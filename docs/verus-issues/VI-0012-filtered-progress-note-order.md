@@ -112,5 +112,4 @@ timing-dependent, as in stock. On a c7i.8xlarge host, 2 of 10 stock runs with
 did; the test makes 20 such runs (stock passes all of them about 1% of the
 time).
 
-The fork builds only the optional interactive engine. Stock-mode workaround:
-None adopted, as before.
+Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md) Sail runs the fork for every verification, default mode included. Stock runs remain only as the conformance oracle and under the `SAIL_CARGO_VERUS` development override. No stock-mode workaround is adopted, as before.

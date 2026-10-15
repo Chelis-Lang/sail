@@ -44,6 +44,10 @@ time divided by concurrent jobs), from medians of three rounds.
 
 ## Setup
 
+These measurements predate [ADR 0043](decisions/0043-default-mode-runs-the-fork.md):
+Sail then ran the stock Verus release below. Sail now runs its own Verus,
+built from its fork, and these claims have not yet been re-measured on it.
+
 | | Linux | macOS |
 |---|---|---|
 | Machine | EC2 c7i.4xlarge (16 vCPU, 30 GiB), us-east-1, Ubuntu 24.04, `scripts/perf-host.sh up l36`, no other work on the host | EC2 mac-m4.metal (Apple M4: 4 performance and 6 efficiency cores, 24 GiB), us-east-1b, macOS 27.0 (26A428), `scripts/perf-host-mac.sh up l39-mac`, no other work on the host, Spotlight indexing off. Load average 1.5 when each run started (macOS background services), rising to 5–14 from the runs themselves |
@@ -227,7 +231,10 @@ or `scripts/perf-agents.sh demo 4 3`.
 ## Running the scripts
 
 `scripts/perf-loops.sh` and `scripts/perf-agents.sh` need `sail` and
-`sail-z3`, `cargo verus` and `verus` on `PATH`, plus `git`, `perl` and `awk`.
+`sail-z3`, the stock `cargo verus` and `verus` for the plain baseline on
+`PATH`, plus `git`, `perl` and `awk`. `sail` runs its own Verus: the one in
+the Sail cache, or `SAIL_VERUS_BUILD` (the scripts keep it, and use
+`SAIL_ENGINE_BUILD` when it is the only one set).
 They print the tables above and keep every log in the output directory
 (`SAIL_PERF_OUT`, default `~/sail-perf/...`). Set `SAIL_PERF_MACHINE` to
 describe the machine in the header; the header also records the CPU, core
@@ -241,7 +248,9 @@ under test, after installing Rust with rustup (and, on Linux, `unzip`):
 
 ```sh
 cargo build --release -p sail-cli -p sail-shim
-cargo xtask fetch-verus      # prints the PATH line for the Verus release
+python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
+  --cache ~/.cache/sail      # Sail's Verus; artifact-macos.json on macOS
+cargo xtask fetch-verus      # the stock baseline; prints its PATH line
 export PATH="$PWD/target/release:$HOME/.cache/sail/verus/0.2026.10.04.426d8b0/verus-x86-linux:$PATH"
 #   on macOS: .../verus-arm64-macos instead of .../verus-x86-linux
 export SAIL_PERF_MACHINE="EC2 c7i.4xlarge (16 vCPU, 30 GiB), us-east-1, idle"

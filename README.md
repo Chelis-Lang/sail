@@ -6,10 +6,13 @@ developers and coding agents, without changing what Verus tells you. The gain
 is largest on solver-heavy projects; small projects and first runs take about
 as long as plain Verus ([performance](docs/performance.md)).
 
-`sail verify` runs your own `cargo verus verify` with the same arguments and
-puts a cache in front of the Z3 solver that Verus uses. You get the same
-verdicts, the same errors and the same exit code as plain Verus with its
-pinned Z3; Sail's conformance suite checks exactly that. On top of that, Sail
+`sail verify` runs `cargo verus verify` with the same arguments and puts a
+cache in front of the Z3 solver that Verus uses. Sail ships its own Verus,
+built from Sail's [Verus fork](https://github.com/Chelis-Lang/verus), which
+removes known run-to-run variation in the solver queries stock Verus sends
+for the same input (variation defeats caching). You get the same verdicts, the
+same errors and the same exit code as plain stock Verus with its pinned Z3;
+Sail's conformance suite checks exactly that. On top of that, Sail
 adds complete per-target reports, durable background jobs, a file watcher, an
 MCP server for agents and signed team caches. When anything in Sail fails,
 verification falls back to the pinned Z3 and stays correct.
@@ -21,15 +24,16 @@ projects (see [Limits](#limits)).
 
 Sail is a prebuilt archive per platform on
 [GitHub releases](https://github.com/Chelis-Lang/sail/releases). It holds
-`sail`, the solver shim `sail-z3` and the proof-repair engine. Verus itself is
-installed separately (step 2), because Sail runs your own `cargo verus`.
+`sail`, the solver shim `sail-z3` and Sail's Verus (with the pinned Z3 and
+the proof-repair engine). You install Sail and a Rust toolchain; no separate
+Verus installation is needed, and an existing one is left alone.
 
-**Prerequisites.** A C toolchain, `curl`, `unzip` and `git` (Verus needs
-them, and `cargo verus new` runs `git init`). On Debian or Ubuntu:
+**Prerequisites.** A C toolchain and `curl` (Rust and Verus need them). On
+Debian or Ubuntu:
 
 ```sh
 sudo apt-get update
-sudo apt-get install -y build-essential curl git unzip
+sudo apt-get install -y build-essential curl
 ```
 
 On macOS, install the Xcode command line tools (`xcode-select --install`).
@@ -59,44 +63,20 @@ sail --version
 
 The check must print `OK`. Minimal Linux images have no `shasum` (it comes
 with perl); `sha256sum -c` with the same file is equivalent. Keep the unpacked directory as it is:
-`sail` finds `sail-z3` beside it in `bin/` and the engine in `engine/`, so
+`sail` finds `sail-z3` beside it in `bin/` and its Verus in `engine/`, so
 put that `bin/` on `PATH` rather than copying `sail` elsewhere. On macOS, an
 archive downloaded with a browser instead of `curl` is quarantined; clear
 that with `xattr -dr com.apple.quarantine ~/.local/opt/sail-$VERSION-$TARGET`.
 
-**2. Verus.** If you already use Verus, keep it: Sail runs whatever
-`cargo-verus` is on `PATH` (or `SAIL_CARGO_VERUS`). Otherwise install the
-release Sail is tested with, Verus `0.2026.10.04.426d8b0`, and the Rust
-toolchain it pins, `1.98.1`.
-
-With the prerequisites above in place, install [rustup](https://rustup.rs)
-and the Rust toolchain Verus pins:
+**2. Rust.** Verus compiles your crate with the Rust toolchain it pins,
+`1.98.1`. Install [rustup](https://rustup.rs) and that toolchain:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 . "$HOME/.cargo/env"
 rustup toolchain install 1.98.1 --profile minimal
+sail engine status                 # checks Sail's Verus against its pins
 ```
-
-Download and unpack Verus, and put it on `PATH`:
-
-```sh
-VERUS=0.2026.10.04.426d8b0
-PLATFORM=x86-linux                 # or arm64-macos
-mkdir -p ~/.local/opt/verus-$VERUS
-cd ~/.local/opt/verus-$VERUS
-curl -fLO "https://github.com/verus-lang/verus/releases/download/release/$VERUS/verus-$VERUS-$PLATFORM.zip"
-unzip -q "verus-$VERUS-$PLATFORM.zip"            # creates verus-$PLATFORM/
-export PATH="$HOME/.local/opt/verus-$VERUS/verus-$PLATFORM:$PATH"   # add to your shell profile
-cd -
-cargo verus --help
-```
-
-The archive's SHA-256 is
-`624018662868563a7bec0dd07be5e4dd0c3d61124b4b55105765884bf2d4d1a0` for
-`x86-linux` and
-`83cafc50284caea07fa8762df04b00cc0af441f25cdf1631d6c30987c65af446` for
-`arm64-macos` (`shasum -a 256 verus-$VERUS-$PLATFORM.zip`).
 
 **From source (contributors).** With rustup, a C toolchain and `git`:
 
@@ -105,26 +85,41 @@ git clone https://github.com/Chelis-Lang/sail
 cd sail
 cargo build --release -p sail-cli -p sail-shim   # installs the Rust toolchain Sail pins
 export PATH="$PWD/target/release:$PATH"
-cargo xtask fetch-verus                          # the pinned Verus; prints its PATH line
+python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
+  --cache ~/.cache/sail                          # Sail's Verus; artifact-macos.json on macOS
 ```
 
-A source build has no bundled engine; [proof repair](#experimental-proof-repair)
-says how to get one.
+A source build bundles no Verus; the `fetch` line downloads the pinned,
+digest-checked runtime from the
+[fork's releases](https://github.com/Chelis-Lang/verus/releases) (no
+credentials needed), and `cargo xtask build-verus-engine` builds it instead.
+Contributors running the conformance suite also need the stock Verus it
+compares against: `cargo xtask fetch-verus`.
 
 ## First verification
 
-In any Cargo project that Verus verifies:
+In any Cargo project that Verus verifies, run `sail verify` instead of
+`cargo verus verify`. To start a new one, create a Cargo library and add the
+two entries `cargo verus new` would add, the `vstd` dependency for the Verus
+release Sail pins and Verus's `verify` flag:
 
 ```sh
-cargo verus new --lib demo     # or use your own project
+cargo new --lib demo
 cd demo
-sail verify                    # instead of: cargo verus verify
+cat >>Cargo.toml <<'TOML'
+vstd = "=0.0.0-2026-10-04-0306"
+
+[package.metadata.verus]
+verify = true
+TOML
+sail verify
 ```
 
 `sail verify` takes the same arguments as `cargo verus verify` and prints the
-same output. It starts the Sail cache daemon on demand; you never need to
+same output. The first run also builds and checks `vstd`, which takes about
+half a minute. It starts the Sail cache daemon on demand; you never need to
 start it yourself. Run it again after an edit: solver queries Verus has seen
-before are answered from the cache. To stop using Sail, run
+before are answered from the cache. To stop using Sail, run your own
 `cargo verus verify` again. Nothing else changes.
 
 `sail verify --output json` also prints one JSON document on stdout with
@@ -196,6 +191,9 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
 
 ## Limits
 
+- **Sail runs only its own Verus,** built from its fork at the Verus release
+  it pins (`0.2026.10.04.426d8b0`). Projects that need another Verus release
+  are not supported yet.
 - **Cargo projects only.** `sail verify`, `--incremental`, `watch` and MCP run
   `cargo verus`. Projects verified with `verus file.rs` directly are not
   supported (the opt-in portfolio is the exception, with `--verus-source`).
@@ -222,24 +220,11 @@ See [known issues](docs/known-issues.md) for the full list.
 ## Experimental: proof repair
 
 `sail repair-check` focuses verification on one function, then independently
-verifies the full target, using an optional interactive engine built from
-Sail's public [Verus fork](https://github.com/Chelis-Lang/verus). A repair is
-accepted only when the complete target verifies.
+verifies the full target, using the interactive engine inside Sail's Verus. A
+repair is accepted only when the complete target verifies.
 
-The Linux and macOS release archives include the engine, and `sail` finds it
-in the unpacked directory with no setup. Check it with:
-
-```sh
-sail engine status                  # checks every runtime file against its pin
-```
-
-The engine also uses the stock Verus from step 2 of [Install](#install). In a
-source checkout, download the prebuilt runtime from the
-[fork's releases](https://github.com/Chelis-Lang/verus/releases) (no
-credentials needed) with
-`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json --cache ~/.cache/sail`
-(`artifact-macos.json` on macOS), or build it with
-`cargo xtask build-verus-engine`. Follow the
+The engine needs no setup beyond [Install](#install): it is part of the
+runtime `sail engine status` checks. Follow the
 [repair walkthrough](docs/proof-repair-walkthrough.md); the
 [repair guide](docs/proof-repair.md) has the details.
 

@@ -38,8 +38,9 @@ layout, and how `sail` finds the bundled engine.
 and when receipts are reused.
 The [reader acceptance guide](reader-acceptance.md) gives the native reader
 latency gate and how to run it.
-The [interactive source engine](../engine/verus/README.md) describes Sail's
-Verus fork, the prebuilt artifact and the runtime identity. Its checks are in
+[Sail's Verus](../engine/verus/README.md) describes the fork runtime every
+verification runs ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)),
+its interactive engine, the prebuilt artifact and the runtime identity. Its checks are in
 the [M7 validation record](validation/m7.md) (Gate 1). Long corpus, source-build and benchmark work
 runs locally, and required CI stays short. Reference performance numbers come
 from a native x86-64 Linux host (`scripts/perf-host.sh`).
@@ -53,7 +54,8 @@ feature's tests and integration evidence, and the
 [macOS engine record](validation/macos-engine.md) qualifies the engine runtime
 bundled in the macOS release archive, and the
 [clean macOS record](validation/clean-macos.md) checks the release candidate
-on a fresh Mac. Raw logs stay outside the
+on a fresh Mac, and the [fork-default record](validation/fork-default.md)
+compares Sail on its Verus with plain stock Verus. Raw logs stay outside the
 repository and are cited by SHA-256. Earlier per-run records and unselected
 engine candidates are preserved in the `archive/m7-contracts-f7103bf` tag.
 Each record applies to its stated source, runtime and environment. A later pass

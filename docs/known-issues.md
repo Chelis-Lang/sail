@@ -22,10 +22,12 @@ are in the `archive/m7-contracts-f7103bf` tag.
   the CLI, MCP or any agent session reuse it. A shared per-toolchain vstd is a
   deferred follow-up. The 31 s first-contact cost was measured by L16
   (rescue lane report, tag `archive/rescue-m7-98f6292`).
-- **Stock and engine runs each verify vstd once in their own target.** That
-  is about 30 s on HumanEval for the first stock `sail verify` and again for
-  the first engine run (`sail verify --engine interactive` or
-  `repair-check`), because their compilers differ. Repair functions share
+- **Default and engine runs each verify vstd once in their own target.** That
+  was about 30 s on HumanEval for the first default `sail verify` and again
+  for the first engine run (`sail verify --engine interactive` or
+  `repair-check`), measured while default mode still ran stock Verus. Both
+  now run Sail's Verus (ADR 0043); whether they can share a target is not
+  yet measured. Repair functions share
   one target, so a new function no longer verifies vstd again.
   L19 measured the separate stock and engine targets and L23 the shared
   repair target (rescue lane report, tag `archive/rescue-m7-98f6292`).
@@ -69,10 +71,20 @@ are in the `archive/m7-contracts-f7103bf` tag.
 - Managed compiler targets are removed only by `sail cache projects prune`;
   there is no quota or automatic collection. See
   [disk use and cleanup](workspace-hygiene.md#managed-compiler-targets).
-- The engine is built without Verus's `singular` feature, so targets that
-  verify `by(integer_ring)` fall back to the configured stock Verus
-  (`SAIL3124`) and cannot accept a repair. See
+- Sail's Verus, like the stock release, is built without Verus's `singular`
+  feature, so `by(integer_ring)` proofs fail in Sail as they do in the stock
+  release. The repair engine falls back to ordinary verification for such
+  targets (`SAIL3124`), which cannot accept a repair. See
   [Verus features the engine lacks](proof-repair.md#verus-features-the-engine-lacks).
+- Sail runs only its own Verus, at the release it pins
+  ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). A project that
+  needs another Verus release cannot use Sail yet. `SAIL_CARGO_VERUS` runs
+  another `cargo-verus` only as a labelled development override
+  (`warning[SAIL0108]`).
+- Until the next runtime re-pin, the bundled Verus cannot run
+  `cargo verus new`
+  ([VI-0017](verus-issues/VI-0017-source-build-cargo-verus-new.md)); the
+  README creates new projects with `cargo new` instead.
 
 ## Verus and Z3
 

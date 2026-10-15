@@ -43,9 +43,9 @@ including the impl segment (`impl&%N`) that the friendly name replaces, so
 distinct impls are told apart, including several in one module. The `function`
 field is unchanged. `func-details` stays keyed by friendly name.
 
-The fork builds only the optional interactive engine. Stock-mode workaround:
-Still needed: Sail declines attribution for repeated friendly names in stock
-runs, and does not yet read `function-path` from engine runs. Comparisons
+Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md) Sail runs the fork for every verification, default mode included. Stock runs remain only as the conformance oracle and under the `SAIL_CARGO_VERUS` development override. Still needed: Sail declines
+attribution for repeated friendly names, and does not yet read
+`function-path` from the fork's output. Comparisons
 compare a repeated name as one group only when every function under it has
 the same result on each side and the counts match; otherwise the name is
 `incomparable` (vest has 95 such names, shared by 207 functions).

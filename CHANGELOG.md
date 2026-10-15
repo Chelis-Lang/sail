@@ -5,6 +5,24 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **Sail runs its own Verus** (ADR 0043). Every verification (`sail verify`,
+  `--incremental`, `--output json`, `watch`, MCP, jobs, portfolios,
+  `fragility`, repairs) runs the runtime built from Sail's Verus fork, which
+  removes known run-to-run variation in the SMT stock Verus emits (VI-0001,
+  VI-0015) so the cache hits. Release archives ship it; users install Sail
+  and the Rust toolchain only. Sail no longer runs a `cargo-verus` found on
+  `PATH`. It uses `SAIL_VERUS_BUILD`, then a runtime in the Sail cache, then
+  the bundled one, each validated against its pins. `SAIL0101` now means
+  that runtime is missing or invalid (there is no fallback to another
+  Verus). `SAIL_CARGO_VERUS` remains a development override and prints
+  `warning[SAIL0108]`. `sail engine status` checks the runtime. The README
+  creates new projects with `cargo new` plus two `Cargo.toml` entries
+  (VI-0017). Conformance compares Sail on its Verus with plain stock Verus
+  (`sail-conformance run --sail-verus stock` keeps the old arm). `--output
+  json` reads the per-crate log directory the fork writes (VI-0004 fix).
+  `cargo xtask build-verus-engine` writes Verus's toolchain manifest so the
+  runtime's `cargo verus new` works after the next re-pin.
+
 - The README installs Sail from the release archive (checksum check,
   unpacked `bin/` on `PATH`) and installs the pinned stock Verus and its Rust
   toolchain without a Sail checkout; the source build is a short contributor

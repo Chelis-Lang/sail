@@ -114,8 +114,10 @@ complete current full validation. M7 remains incomplete until these gates pass.
 | Frozen repair performance (≥2× each) | Accepted at the measured speedup (ADR 0038 amendment 2026-10-13) | Three native rounds on runtime `13a1176c` (`d187e49`), every sample valid: HumanEval 2.14× (64.7 s / 30.3 s), Vest 1.82× (246.6 s / 135.1 s) ([benchmarks](benchmarks.md); L22 rescue lane report, tag `archive/rescue-m7-98f6292`); L23 measured 2.11× and 1.80× on the same protocol |
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
-immutable baselines and comparisons are implemented; stock verification stays
-the default. Start with [the repair walkthrough](proof-repair-walkthrough.md),
+immutable baselines and comparisons are implemented. Since
+[ADR 0043](decisions/0043-default-mode-runs-the-fork.md) every verification,
+default mode included, runs Sail's Verus from the fork; stock Verus is the
+conformance oracle. Start with [the repair walkthrough](proof-repair-walkthrough.md),
 [the MCP guide](mcp.md) or [the SDK contract](result-client.md). Every gate
 above has native x86-64 evidence; the speed gate is accepted at the measured
 speedup rather than met at 2× on Vest (ADR 0038 amendment). M7's acceptance as
@@ -232,11 +234,13 @@ The levers that matter now:
     HumanEval, 50 s → 24.4 s on Vest). The engine defect came from the
     dropped VI-0005 fork fix and does not occur at the current pin
     (L19 rescue lane report, tag `archive/rescue-m7-98f6292`).
-- **Determinism (VI-0001),** to raise hit rates. In edit loops a reordered
-  bucket costs about 2.7 s per affected human-eval-verus cycle. The fork's
-  remaining variation under `cargo verus` is fixed on fork branch
-  `l21/determinism` (`1612b951`), which is not yet pinned
-  (L21 rescue lane report, tag `archive/rescue-m7-98f6292`);
+- **Determinism (VI-0001, VI-0015),** to raise hit rates. In edit loops a
+  reordered bucket costs about 2.7 s per affected human-eval-verus cycle.
+  The fork's fixes (pinned in `13a1176c`, including `af212563` for
+  `cargo verus`) now reach default mode too
+  ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md),
+  [record](validation/fork-default.md)); further fork determinism fixes
+  follow with the next re-pin;
 - **Fill cost on slow filesystems:** write-behind stores in the daemon.
 
 ## Charter roadmap (designed for, built later)

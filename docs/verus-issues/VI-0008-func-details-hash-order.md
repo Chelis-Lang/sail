@@ -52,6 +52,5 @@ on the pinned stock source and passes on the fork. `func-details` entries are
 inserted sorted by friendly name, then by function identity. The test checks
 eight functions; stock passes by chance once in 40,320 runs.
 
-The fork builds only the optional interactive engine. Stock-mode workaround:
-None was needed; stock runs are unchanged (the corpus harness compares parsed
-JSON).
+Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md) Sail runs the fork for every verification, default mode included. Stock runs remain only as the conformance oracle and under the `SAIL_CARGO_VERUS` development override. None was needed; stock runs are unchanged (the corpus
+harness compares parsed JSON).

@@ -49,10 +49,10 @@ the pinned stock source and passes on the fork. Via Cargo, each crate logs to
 only that subdirectory. Direct (non-Cargo) runs keep the given directory. The
 solver log directory (`.verus-solver-log`) is unchanged.
 
-The fork builds only the optional interactive engine. Stock-mode workaround:
-Still needed for default `sail verify` (stock Verus): Sail requests logs only
-when one Verus process will write them. Sail's engine adapter runs under
-Cargo, so an engine-established full phase logs to the crate subdirectory;
-the adapter reads it from there (`full_log_dir` in
-`crates/sail-verus/src/adapter.rs`), and from the given directory after a
-stock fallback. The focused phase keeps its explicit `focus` directory.
+Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md) Sail runs the fork for every verification, default mode included. Stock runs remain only as the conformance oracle and under the `SAIL_CARGO_VERUS` development override. Sail still requests logs only when one
+Verus process will write them. Under Cargo the fork writes them to the
+crate's subdirectory: `--output json` reads the one subdirectory holding
+logs (`read_logs` in `crates/sail-verus/src/attribution.rs`), and the managed
+adapter reads `<logs>/<crate>` when it exists (`full_log_dir` in
+`crates/sail-verus/src/adapter.rs`), else the given directory (a stock
+override). The focused phase keeps its explicit `focus` directory.
