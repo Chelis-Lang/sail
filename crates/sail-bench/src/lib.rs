@@ -29,6 +29,8 @@ pub mod profile;
 pub mod repair;
 pub mod replay;
 pub mod report;
+#[cfg(unix)]
+pub mod snapshot;
 pub mod solver;
 pub mod trace;
 pub mod warm;

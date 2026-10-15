@@ -11,13 +11,15 @@
 
 use std::collections::VecDeque;
 use std::io::{Read, Write};
-use std::path::Path;
+use std::net::Shutdown;
+use std::os::unix::net::UnixStream;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, ExitCode, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
@@ -294,13 +296,130 @@ impl Pairer {
     }
 }
 
+/// Where the solver's input goes.
+enum Feed {
+    Pipe(ChildStdin),
+    /// A resumed snapshot's connection (prototype, ADR 0048 draft).
+    Sock(UnixStream),
+}
+
+impl Feed {
+    fn send(&mut self, bytes: &[u8]) -> std::io::Result<()> {
+        match self {
+            Self::Pipe(p) => p.write_all(bytes).and_then(|()| p.flush()),
+            Self::Sock(s) => s.write_all(bytes),
+        }
+    }
+
+    /// Ends the solver's input.
+    fn close(self) {
+        if let Self::Sock(s) = self {
+            let _ = s.shutdown(Shutdown::Write);
+        }
+    }
+}
+
+/// The solver process the output side waits for.
+enum Proc {
+    Child(Child),
+    /// A resumed snapshot: its exit status arrives on this connection.
+    Resumed(UnixStream),
+}
+
+impl Proc {
+    fn wait(self) -> u8 {
+        match self {
+            Self::Child(mut c) => c.wait().map_or(1, |s| crate::status_code(s).1),
+            Self::Resumed(s) => sail_api::snapshot::read_status(s)
+                .and_then(|c| u8::try_from(c & 0xff).ok())
+                .unwrap_or(1),
+        }
+    }
+}
+
+/// Whether snapshot markers may be sent to this solver.
+enum Marking {
+    Off,
+    /// Until the library confirms it loaded (it creates `ready`).
+    Pending {
+        ready: PathBuf,
+        deadline: Instant,
+    },
+    On,
+}
+
+/// A snapshot point seen while serving from the cache: a top-level `push`.
+struct Candidate {
+    /// Raw input offset of the `push`.
+    offset: usize,
+    /// Replies served before it.
+    served: u64,
+    /// The snapshot name for the input before it.
+    name: String,
+}
+
+/// Snapshot state of a session (prototype, ADR 0048 draft).
+struct Snap {
+    cfg: sail_api::snapshot::Config,
+    candidates: Vec<Candidate>,
+}
+
+/// Whether `item` is a top-level `push`: a snapshot point.
+fn top_push(session: &Session, item: &Item) -> bool {
+    item.kind == ItemKind::List
+        && session.depth() == 0
+        && matches!(
+            classify(&item.bytes).map(|c| c.kind),
+            Ok(CommandKind::Push(_))
+        )
+}
+
+/// Records `item` as a snapshot point if it is one: a candidate to resume
+/// from while serving, or a marker for a running solver.
+fn note_point(
+    snap: &mut Snap,
+    solving: Option<&mut Solving>,
+    session: &Session,
+    item: &Item,
+    (prefix, raw, served): (&PrefixHasher, &[u8], u64),
+) {
+    if !top_push(session, item) {
+        return;
+    }
+    let offset = usize::try_from(item.offset).unwrap_or(usize::MAX);
+    let name = point_name(prefix, raw, offset);
+    match solving {
+        Some(s) => s.marks.push_back((offset, name)),
+        None => snap.candidates.push(Candidate {
+            offset,
+            served,
+            name,
+        }),
+    }
+}
+
+/// The snapshot name for a process that has received `raw[..offset]`.
+fn point_name(prefix: &PrefixHasher, raw: &[u8], offset: usize) -> String {
+    let mut h = prefix.clone();
+    let from = usize::try_from(h.len()).unwrap_or(usize::MAX);
+    h.update(raw.get(from..offset).unwrap_or_default());
+    sail_api::snapshot::name(&h.key())
+}
+
 struct Solving {
-    stdin: Option<ChildStdin>,
+    stdin: Option<Feed>,
     expects: Sender<Expect>,
     /// Set once the input side has seen the end of its input.
     input_done: Arc<AtomicBool>,
     /// The output side; it owns the solver and returns its exit status.
     output: JoinHandle<u8>,
+    /// Raw input bytes written to the solver so far.
+    written: usize,
+    /// Snapshot points not yet written: (raw offset, name).
+    marks: VecDeque<(usize, String)>,
+    marking: Marking,
+    /// The raw offset a resumed snapshot took over at.
+    resumed_at: Option<usize>,
 }
 
 /// Sends paired replies to the daemon on its own thread, so forwarding never
@@ -379,7 +498,7 @@ fn queue_stores(
 /// pass-through does.
 fn output_side(
     mut from: impl Read,
-    mut child: Child,
+    proc: Proc,
     skip: u64,
     expects: &Receiver<Expect>,
     client: Option<Client>,
@@ -455,10 +574,7 @@ fn output_side(
     if forward_from.is_some() && all.len() > forwarded {
         forwarding_ok &= write_out(all.get(forwarded..).unwrap_or_default());
     }
-    let (_, mut code) = match child.wait() {
-        Ok(status) => crate::status_code(status),
-        Err(_) => (None, 1),
-    };
+    let mut code = proc.wait();
     // The last reply runs to the end of the stream, and is complete only if
     // the solver exited cleanly.
     if let Some((k, s)) = prev.take()
@@ -491,28 +607,48 @@ fn output_side(
     code
 }
 
-/// Starts the solver, queues `first` (the expectation for the command that
-/// caused the start) and writes `raw` to it. `client`, if any, records.
+/// Starts the solver and queues `first` (the expectation for the command
+/// that caused the start). `client`, if any, records. Nothing is written
+/// yet: the caller writes the input with [`Solving::write_to`]. With `snap`,
+/// the solver runs with the snapshot library and takes snapshots at `marks`.
 fn start_solver(
     solver: &Path,
     args: &[std::ffi::OsString],
-    raw: &[u8],
     skip: u64,
     first: Expect,
     client: Option<Client>,
+    snap: Option<(&sail_api::snapshot::Config, VecDeque<(usize, String)>)>,
 ) -> Option<Solving> {
     // Observation failure must not prevent replay: inherit solver stderr and
     // disable publication when its silence cannot be established.
     let (stderr, child_stderr) = crate::cached_stderr::Monitor::new()
         .map_or_else(|_| (None, Stdio::inherit()), |(m, io)| (Some(m), io));
     let client = stderr.as_ref().and(client);
-    let mut child = Command::new(solver)
-        .args(args)
+    let mut cmd = Command::new(solver);
+    cmd.args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(child_stderr)
-        .spawn()
-        .ok()?;
+        .stderr(child_stderr);
+    let (marking, marks) = match snap {
+        Some((cfg, marks)) => {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_nanos());
+            let ready = cfg
+                .dir
+                .join(format!(".ready-{}-{nanos}", std::process::id()));
+            cmd.envs(cfg.solver_env(&ready));
+            (
+                Marking::Pending {
+                    ready,
+                    deadline: Instant::now() + Duration::from_millis(300),
+                },
+                marks,
+            )
+        }
+        None => (Marking::Off, VecDeque::new()),
+    };
+    let mut child = cmd.spawn().ok()?;
     let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
         let _ = child.kill();
         let _ = child.wait();
@@ -527,31 +663,214 @@ fn start_solver(
     // when `stdin` is dropped below.
     let output = std::thread::Builder::new()
         .name("sail-z3-cached-out".to_owned())
-        .spawn(move || output_side(stdout, child, skip, &rx, client, &done, stderr.as_ref()))
+        .spawn(move || {
+            output_side(
+                stdout,
+                Proc::Child(child),
+                skip,
+                &rx,
+                client,
+                &done,
+                stderr.as_ref(),
+            )
+        })
         .ok()?;
-    let mut s = Solving {
-        stdin: Some(stdin),
+    Some(Solving {
+        stdin: Some(Feed::Pipe(stdin)),
         expects: tx,
         input_done,
         output,
+        written: 0,
+        marks,
+        marking,
+        resumed_at: None,
+    })
+}
+
+/// Takes over a resumed snapshot that has received exactly `raw[..at]`.
+/// On failure before anything was sent, hands `first` and `client` back
+/// for a fresh start.
+fn resume_solver(
+    resumed: sail_api::snapshot::Resumed,
+    at: usize,
+    skip: u64,
+    first: Expect,
+    client: Option<Client>,
+    marks: VecDeque<(usize, String)>,
+) -> Result<Solving, (Expect, Option<Client>)> {
+    let sail_api::snapshot::Resumed { io, err, status } = resumed;
+    let Ok(reader) = io.try_clone() else {
+        return Err((first, client));
     };
-    s.write(raw);
+    let stderr = crate::cached_stderr::Monitor::from_stream(err).ok();
+    let client = stderr.as_ref().and(client);
+    let (tx, rx) = std::sync::mpsc::channel();
+    let _ = tx.send(first);
+    let input_done = Arc::new(AtomicBool::new(false));
+    let done = Arc::clone(&input_done);
+    let output = std::thread::Builder::new()
+        .name("sail-z3-cached-out".to_owned())
+        .spawn(move || {
+            output_side(
+                reader,
+                Proc::Resumed(status),
+                skip,
+                &rx,
+                client,
+                &done,
+                stderr.as_ref(),
+            )
+        });
+    let Ok(output) = output else {
+        // The expectation went with the channel: a fresh start records nothing.
+        return Err((Expect::Stop, None));
+    };
+    Ok(Solving {
+        stdin: Some(Feed::Sock(io)),
+        expects: tx,
+        input_done,
+        output,
+        written: at,
+        marks,
+        marking: Marking::On,
+        resumed_at: Some(at),
+    })
+}
+
+/// Starts a solver for a session that has received `raw` and been served
+/// `served` replies: from the latest parked snapshot of a prefix of `raw` if
+/// there is one, otherwise a fresh solver (taking snapshots, with `snap`).
+/// Writes `raw[..upto]` to it.
+fn start(
+    solver: &Path,
+    args: &[std::ffi::OsString],
+    (raw, upto): (&[u8], usize),
+    served: u64,
+    first: Expect,
+    client: Option<Client>,
+    snap: Option<&Snap>,
+) -> Option<Solving> {
+    let mut first = first;
+    let mut client = client;
+    let mut s = None;
+    if let Some(snap) = snap {
+        for (i, c) in snap.candidates.iter().enumerate().rev() {
+            let Ok(r) = sail_api::snapshot::resume(&snap.cfg.dir, &c.name) else {
+                continue;
+            };
+            let marks = snap
+                .candidates
+                .get(i + 1..)
+                .unwrap_or_default()
+                .iter()
+                .map(|c| (c.offset, c.name.clone()))
+                .collect();
+            let skip = served.saturating_sub(c.served);
+            match resume_solver(r, c.offset, skip, first, client, marks) {
+                Ok(solving) => {
+                    s = Some(solving);
+                    first = Expect::Stop;
+                    client = None;
+                }
+                Err((f, cl)) => {
+                    first = f;
+                    client = cl;
+                }
+            }
+            break;
+        }
+    }
+    let mut s = match (s, snap) {
+        (Some(s), _) => s,
+        (None, Some(snap)) => {
+            snap.cfg.evict();
+            let marks = snap
+                .candidates
+                .iter()
+                .map(|c| (c.offset, c.name.clone()))
+                .collect();
+            start_solver(
+                solver,
+                args,
+                served,
+                first,
+                client,
+                Some((&snap.cfg, marks)),
+            )?
+        }
+        (None, None) => start_solver(solver, args, served, first, client, None)?,
+    };
+    s.write_to(raw, upto);
     Some(s)
 }
 
 impl Solving {
-    fn write(&mut self, bytes: &[u8]) {
+    fn send(&mut self, bytes: &[u8]) {
         if let Some(stdin) = &mut self.stdin
-            && stdin.write_all(bytes).and_then(|()| stdin.flush()).is_err()
+            && stdin.send(bytes).is_err()
         {
             self.stdin = None;
+        }
+    }
+
+    /// Whether markers may be sent; waits briefly for the library to confirm
+    /// that it loaded, since an unstripped marker would reach the solver.
+    fn marking_on(&mut self) -> bool {
+        loop {
+            match &self.marking {
+                Marking::On => return true,
+                Marking::Off => return false,
+                Marking::Pending { ready, deadline } => {
+                    if ready.exists() {
+                        let _ = std::fs::remove_file(ready);
+                        self.marking = Marking::On;
+                    } else if Instant::now() >= *deadline {
+                        self.marking = Marking::Off;
+                    } else {
+                        std::thread::sleep(Duration::from_millis(1));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Writes `raw[written..end]`, with a snapshot marker before each point.
+    fn write_to(&mut self, raw: &[u8], end: usize) {
+        loop {
+            while self.marks.front().is_some_and(|(o, _)| *o < self.written) {
+                self.marks.pop_front();
+            }
+            let stop = match self.marks.front() {
+                Some((o, _)) if *o < end => *o,
+                _ => end,
+            };
+            if stop > self.written {
+                let bytes = raw.get(self.written..stop).unwrap_or_default().to_vec();
+                self.send(&bytes);
+                self.written = stop;
+            }
+            match self.marks.front() {
+                Some((o, _)) if *o == self.written && *o < end => {
+                    if let Some((_, name)) = self.marks.pop_front()
+                        && self.marking_on()
+                    {
+                        self.send(&sail_api::snapshot::marker(&name));
+                    }
+                }
+                _ => break,
+            }
         }
     }
 
     fn finish(mut self, terminal: QueryKey) -> ExitCode {
         self.input_done.store(true, Ordering::SeqCst);
         let _ = self.expects.send(Expect::Terminal(terminal));
-        drop(self.stdin.take());
+        if let Some(feed) = self.stdin.take() {
+            feed.close();
+        }
+        if let Marking::Pending { ready, .. } = &self.marking {
+            let _ = std::fs::remove_file(ready);
+        }
         drop(self.expects);
         ExitCode::from(self.output.join().unwrap_or(1))
     }
@@ -630,6 +949,21 @@ fn observe(
     (output, name, expect)
 }
 
+/// The servable cached reply for `command` under `key`, if any. A daemon
+/// error drops the client for the rest of the session.
+fn lookup(client: &mut Option<Client>, key: &QueryKey, command: &[u8]) -> Option<Vec<u8>> {
+    match client.as_mut().map(|c| c.get_with_effort(&key.0)) {
+        Some(Ok(found)) => found
+            .filter(|(r, e)| !unservable(command, r, e.as_ref()))
+            .map(|(r, _)| r),
+        Some(Err(_)) => {
+            *client = None;
+            None
+        }
+        None => None,
+    }
+}
+
 /// Runs a cached session. Returns `None`, having consumed no input, if the
 /// daemon cannot be reached or cannot identify the solver; the caller then
 /// runs plain pass-through.
@@ -647,6 +981,10 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     let mut served = 0u64;
     let mut solving: Option<Solving> = None;
     let mut client = Some(client);
+    let mut snap = sail_api::snapshot::Config::from_env().map(|cfg| Snap {
+        cfg,
+        candidates: Vec::new(),
+    });
     let mut stdin = std::io::stdin().lock();
     let mut buf = vec![0u8; 64 * 1024];
 
@@ -663,8 +1001,16 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         splitter.push(&chunk, &mut items);
         // Expectations for commands in this chunk are queued before the
         // chunk reaches the solver.
-        let mut fresh_solver = false;
         for item in items {
+            if let Some(snap) = &mut snap {
+                note_point(
+                    snap,
+                    solving.as_mut(),
+                    &session,
+                    &item,
+                    (&prefix, &raw, served),
+                );
+            }
             let (expects, name, expect) = observe(&mut session, &item, &mut prefix, &raw);
             if name == "exit" && closes_session(&item.bytes) {
                 if let Some(s) = &solving
@@ -672,10 +1018,8 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 {
                     let _ = s.expects.send(expect);
                 }
-                if let Some(s) = &mut solving
-                    && !fresh_solver
-                {
-                    s.write(&chunk);
+                if let Some(s) = &mut solving {
+                    s.write_to(&raw, raw.len());
                 }
                 return finish_run(
                     solving,
@@ -684,7 +1028,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                     args,
                     (&raw, served),
                     &mut prefix,
-                    true,
+                    (true, snap.as_ref()),
                 );
             }
             if let Some(s) = &solving {
@@ -695,16 +1039,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
             let hit = match expects {
                 Output::None => continue,
-                Output::One => match client.as_mut().map(|c| c.get_with_effort(&prefix.key().0)) {
-                    Some(Ok(found)) => found
-                        .filter(|(r, e)| !unservable(&item.bytes, r, e.as_ref()))
-                        .map(|(r, _)| r),
-                    Some(Err(_)) => {
-                        client = None;
-                        None
-                    }
-                    None => None,
-                },
+                Output::One => lookup(&mut client, &prefix.key(), &item.bytes),
                 Output::Unknown => None,
             };
             if let Some(reply) = hit {
@@ -714,17 +1049,24 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 served += 1;
                 continue;
             }
-            // Miss: start the solver with the whole input so far.
-            let Some(s) = start_solver(solver, args, &raw, served, expect, client.take()) else {
+            // Miss: start the solver (or resume a snapshot) with the input
+            // so far; the rest of the chunk follows below.
+            let end = usize::try_from(item.offset + item.bytes.len() as u64).unwrap_or(raw.len());
+            let Some(s) = start(
+                solver,
+                args,
+                (&raw, end.min(raw.len())),
+                served,
+                expect,
+                client.take(),
+                snap.as_ref(),
+            ) else {
                 return Some(ExitCode::from(1));
             };
             solving = Some(s);
-            fresh_solver = true;
         }
-        if let Some(s) = &mut solving
-            && !fresh_solver
-        {
-            s.write(&chunk);
+        if let Some(s) = &mut solving {
+            s.write_to(&raw, raw.len());
         }
     }
     // At the end of input while serving, incomplete trailing input goes to
@@ -736,7 +1078,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         args,
         (&raw, served),
         &mut prefix,
-        splitter.finish().is_none(),
+        (splitter.finish().is_none(), snap.as_ref()),
     )
 }
 
@@ -755,7 +1097,7 @@ fn finish_run(
     args: &[std::ffi::OsString],
     (raw, served): (&[u8], u64),
     prefix: &mut PrefixHasher,
-    complete: bool,
+    (complete, snap): (bool, Option<&Snap>),
 ) -> Option<ExitCode> {
     let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
     prefix.update(raw.get(from..).unwrap_or_default());
@@ -765,8 +1107,8 @@ fn finish_run(
         terminal: prefix.silence_key(),
         complete,
     };
-    let (code, started) = finish_input(solving, client, solver, args, &end);
-    record_provenance(raw, end.served, started);
+    let (code, started, resumed_at) = finish_input(solving, client, solver, args, &end, snap);
+    record_provenance(raw, end.served, started, resumed_at);
     code
 }
 
@@ -783,7 +1125,8 @@ fn finish_input(
     solver: &Path,
     args: &[std::ffi::OsString],
     end: &SessionEnd<'_>,
-) -> (Option<ExitCode>, bool) {
+    snap: Option<&Snap>,
+) -> (Option<ExitCode>, bool, Option<usize>) {
     let certified = solving.is_none()
         && end.complete
         && client.as_mut().is_some_and(|c| {
@@ -792,21 +1135,25 @@ fn finish_input(
                 .flatten()
                 .is_some_and(|r| r == b"sail-session-silent/v1\n")
         });
-    match solving {
-        Some(s) => (Some(s.finish(end.terminal)), true),
-        None if !certified => (
-            start_solver(
-                solver,
-                args,
-                end.raw,
-                end.served,
-                Expect::Stop,
-                client.take(),
-            )
-            .map(|s| s.finish(end.terminal)),
-            true,
+    let solving = match solving {
+        Some(s) => Some(s),
+        None if !certified => start(
+            solver,
+            args,
+            (end.raw, end.raw.len()),
+            end.served,
+            Expect::Stop,
+            client.take(),
+            snap,
         ),
-        None => (Some(ExitCode::SUCCESS), false),
+        None => return (Some(ExitCode::SUCCESS), false, None),
+    };
+    match solving {
+        Some(s) => {
+            let at = s.resumed_at;
+            (Some(s.finish(end.terminal)), true, at)
+        }
+        None => (None, true, None),
     }
 }
 
@@ -817,7 +1164,7 @@ fn finish_input(
 ///
 /// Best effort, and only after every reply has been forwarded and the
 /// solver has exited: nothing here can affect what the client receives.
-fn record_provenance(input: &[u8], served: u64, solver_started: bool) {
+fn record_provenance(input: &[u8], served: u64, solver_started: bool, resumed_at: Option<usize>) {
     let Some(dir) = std::env::var_os(crate::ENV_PROVENANCE_DIR).filter(|v| !v.is_empty()) else {
         return;
     };
@@ -832,6 +1179,7 @@ fn record_provenance(input: &[u8], served: u64, solver_started: bool) {
         "input_sha256": hex,
         "replies_served": served,
         "solver_started": solver_started,
+        "snapshot_resumed_at": resumed_at,
     });
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

@@ -66,6 +66,15 @@ pub(super) struct Monitor {
 impl Monitor {
     pub(super) fn new() -> std::io::Result<(Self, Stdio)> {
         let (reader, writer) = UnixStream::pair()?;
+        Ok((
+            Self::from_stream(reader)?,
+            Stdio::from(OwnedFd::from(writer)),
+        ))
+    }
+
+    /// Monitors a stream that already carries the solver's stderr, such as a
+    /// resumed snapshot's stderr connection.
+    pub(super) fn from_stream(reader: UnixStream) -> std::io::Result<Self> {
         reader.set_nonblocking(true)?;
         let state = Arc::new(Mutex::new(State {
             stream: reader,
@@ -90,14 +99,11 @@ impl Monitor {
                     std::thread::sleep(Duration::from_millis(10));
                 }
             })?;
-        Ok((
-            Self {
-                state,
-                stop,
-                thread: Some(thread),
-            },
-            Stdio::from(OwnedFd::from(writer)),
-        ))
+        Ok(Self {
+            state,
+            stop,
+            thread: Some(thread),
+        })
     }
 
     /// Drain bytes already written before forwarding the next stdout chunk.

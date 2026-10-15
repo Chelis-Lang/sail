@@ -20,3 +20,5 @@ pub mod schema;
 
 #[cfg(unix)]
 pub mod client;
+#[cfg(unix)]
+pub mod snapshot;

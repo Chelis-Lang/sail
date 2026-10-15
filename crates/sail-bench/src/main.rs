@@ -46,7 +46,9 @@ const USAGE: &str = "usage:
                     [--project ID]... [--filter CYCLE_SUBSTR] [--timeout-secs S] [--resume]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
-  sail-bench profile <trace-dir>... [--json PATH]";
+  sail-bench profile <trace-dir>... [--json PATH]
+  sail-bench snapshot-exactness --z3 PATH --lib PATH --dir SOCKDIR [--points N]
+                    [--jobs J] [--json PATH] TRANSCRIPT_OR_DIR...";
 
 /// Which corpus units to run.
 struct Selection<'a> {
@@ -935,6 +937,75 @@ fn hits_cmd(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(unix)]
+fn snapshot_cmd(args: &[String]) -> Result<(), String> {
+    use sail_bench::snapshot::{Options, execute, summary};
+    let mut o = Options {
+        z3: PathBuf::new(),
+        lib: PathBuf::new(),
+        dir: PathBuf::new(),
+        points: 8,
+        jobs: 1,
+        inputs: Vec::new(),
+    };
+    let mut json = None::<PathBuf>;
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        let mut value = || it.next().cloned().ok_or(format!("{arg} needs a value"));
+        match arg.as_str() {
+            "--z3" => o.z3 = PathBuf::from(value()?),
+            "--lib" => o.lib = PathBuf::from(value()?),
+            "--dir" => o.dir = PathBuf::from(value()?),
+            "--points" => o.points = value()?.parse().map_err(|_| "--points: a number")?,
+            "--jobs" => o.jobs = value()?.parse().map_err(|_| "--jobs: a number")?,
+            "--json" => json = Some(PathBuf::from(value()?)),
+            flag if flag.starts_with("--") => {
+                return Err(format!("unknown option `{flag}`\n{USAGE}"));
+            }
+            path => o.inputs.push(PathBuf::from(path)),
+        }
+    }
+    if o.z3.as_os_str().is_empty() || o.lib.as_os_str().is_empty() || o.dir.as_os_str().is_empty() {
+        return Err(format!(
+            "snapshot-exactness needs --z3, --lib and --dir\n{USAGE}"
+        ));
+    }
+    std::fs::create_dir_all(&o.dir).map_err(|e| e.to_string())?;
+    let sink = json
+        .as_ref()
+        .map(|p| std::fs::File::create(p).map_err(|e| format!("cannot write {}: {e}", p.display())))
+        .transpose()?
+        .map(std::sync::Mutex::new);
+    let reports = execute(&o, &|r| {
+        let bad = r.error.is_some()
+            || r.marked.as_ref().is_some_and(|c| !c.exact())
+            || r.resumes
+                .iter()
+                .any(|x| !x.cmp.exact() || x.status != Some(0));
+        eprintln!(
+            "{} {} points={} resumed={} fresh={:.2}s{}",
+            if bad { "DIFF" } else { "ok  " },
+            r.file,
+            r.points,
+            r.resumes.len(),
+            r.fresh_secs,
+            r.error
+                .as_deref()
+                .map(|e| format!(" error: {e}"))
+                .unwrap_or_default()
+        );
+        if let Some(f) = &sink
+            && let Ok(mut f) = f.lock()
+            && let Ok(line) = serde_json::to_string(r)
+        {
+            use std::io::Write as _;
+            let _ = writeln!(f, "{line}");
+        }
+    });
+    print!("{}", summary(&reports));
+    Ok(())
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if matches!(
@@ -957,6 +1028,8 @@ fn main() -> ExitCode {
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
         Some("repair") => repair_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
+        #[cfg(unix)]
+        Some("snapshot-exactness") => snapshot_cmd(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),
     };
     match result {
