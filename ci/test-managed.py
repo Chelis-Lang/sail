@@ -459,6 +459,38 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert vstd(edited)["reused"], diagnostic(edited)
         assert b"Compiling vstd" not in edited_run.stderr, edited_run.stderr.decode()
 
+        # Generated files stay bound by content (#120): the build script
+        # declares an environment variable and writes its value into a file
+        # the crate includes. An unchanged value reuses the proof; a changed
+        # value must verify the crate again.
+        (project / "build.rs").write_text(
+            'fn main() {\n'
+            '    println!("cargo::rerun-if-env-changed=DEMO_GENERATED_VALUE");\n'
+            '    let value = std::env::var("DEMO_GENERATED_VALUE").unwrap_or_default();\n'
+            '    let out = std::env::var("OUT_DIR").unwrap();\n'
+            '    std::fs::write(format!("{out}/generated.rs"),\n'
+            '        format!("pub const GENERATED: &str = {value:?};\\n")).unwrap();\n'
+            '}\n')
+        source.write_text('include!(concat!(env!("OUT_DIR"), "/generated.rs"));\n' + good)
+        env["DEMO_GENERATED_VALUE"] = "first"
+        try:
+            first_run, first_generated, first_target = managed()
+            assert first_run.returncode == 0 and first_target["complete"], diagnostic(first_generated)
+            if first_generated["currentness"] != "current":
+                first_run, first_generated, first_target = managed()
+                assert first_generated["currentness"] == "current", diagnostic(first_generated)
+            same_run, same, same_target = managed()
+            assert same["currentness"] == "current", diagnostic(same)
+            assert same["execution"]["verifier_invocations"] == 0 and same_target["reused"], diagnostic(same)
+            env["DEMO_GENERATED_VALUE"] = "second"
+            changed_run, changed, changed_target = managed()
+            assert changed_run.returncode == 0 and changed_target["complete"], diagnostic(changed)
+            assert changed["execution"]["verifier_invocations"] >= 1, diagnostic(changed)
+            assert not changed_target["reused"], diagnostic(changed)
+            assert changed_target["establishing_run"] != same_target["establishing_run"], diagnostic(changed)
+        finally:
+            env.pop("DEMO_GENERATED_VALUE", None)
+
         print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs, prune and build-script reuse passed")
     finally:
         stop_daemon()

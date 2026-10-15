@@ -158,8 +158,9 @@ pub(super) fn stale_after(
     stale_scheduled(path, data, None, unscheduled)
 }
 
-/// The packages Cargo provably did not schedule in a finished run: Cargo's
-/// JSON output (`stdout`) ends exactly one build, and its unit records
+/// The packages Cargo provably did not schedule in a successful run: Cargo's
+/// JSON output (`stdout`) ends exactly one build, which succeeded (a failed
+/// build may have stopped before a script it scheduled), and its unit records
 /// (`artifacts`) report no compilation and no script execution of them,
 /// fresh or not. Cargo's resolve graph is wider than the build: it keeps
 /// dev-dependencies, other platforms' dependencies and features that only
@@ -172,12 +173,12 @@ pub(super) fn unscheduled(
     data: &Value,
 ) -> Option<BTreeSet<String>> {
     let output = std::fs::read(stdout).ok()?;
-    let finished = output
+    let finished: Vec<Value> = output
         .split(|b| *b == b'\n')
         .filter_map(|line| serde_json::from_slice::<Value>(line).ok())
         .filter(|value| value["reason"] == "build-finished")
-        .count();
-    if finished != 1 {
+        .collect();
+    if !matches!(finished.as_slice(), [only] if only["success"] == true) {
         return None;
     }
     let mut reported = BTreeSet::new();
@@ -523,10 +524,16 @@ mod tests {
         let skipped = unscheduled(&stdout, &artifacts, &data).ok_or("unscheduled refused")?;
         assert!(!skipped.contains("serde"));
         assert!(!stale_after(&state, &data, &skipped).2);
-        // Without a single finished build, or with unreadable unit records,
-        // nothing is known to be unscheduled.
+        // Without a single successful build, or with unreadable unit records,
+        // nothing is known to be unscheduled: a failed build may have stopped
+        // before a script it scheduled.
         std::fs::write(&artifacts, unit("compiler-artifact", "a"))?;
-        for output in [String::new(), format!("{finished}\n{finished}\n")] {
+        let failed = r#"{"reason":"build-finished","success":false}"#;
+        for output in [
+            String::new(),
+            format!("{finished}\n{finished}\n"),
+            failed.to_owned(),
+        ] {
             std::fs::write(&stdout, output)?;
             assert_eq!(unscheduled(&stdout, &artifacts, &data), None);
         }

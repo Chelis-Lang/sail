@@ -812,7 +812,7 @@ mod tests {
         let mut packages = Vec::new();
         let mut records = Vec::new();
         let mut by_package = std::collections::BTreeMap::new();
-        for name in ["edited", "dependent", "vstd"] {
+        for name in ["edited", "dependent", "top", "vstd"] {
             let directory = root.join(name);
             std::fs::create_dir_all(directory.join("src"))?;
             let manifest = directory.join("Cargo.toml");
@@ -844,6 +844,9 @@ mod tests {
         }
         let data = serde_json::json!({"sail_cache_directory":root.join("cache"),
             "packages":packages, "resolve":{"root":null,"nodes":[
+                // `top` reaches `edited` only through `dependent` and is
+                // listed first, so the refusal needs a second pass.
+                {"id":"top","dependencies":["dependent"]},
                 {"id":"edited","dependencies":["vstd"]},
                 {"id":"dependent","dependencies":["edited","vstd"]},
                 {"id":"vstd","dependencies":[]}]}});
@@ -864,12 +867,12 @@ mod tests {
         publish(&export, "compiler", &target, &local, &data);
         let published = read(&export).ok_or("export missing")?;
         assert!(published.sources.is_some(), "the inventory is exported");
-        assert_eq!(published.records.len(), 3);
+        assert_eq!(published.records.len(), 4);
         // A comment-only edit to the package with the undeclared script.
         std::fs::write(root.join("edited/src/lib.rs"), "pub fn f() {}\n// edit\n")?;
         begin(&export, "compiler", &target, &local, &data)?;
         let (clean, _, covered) = super::super::stale(&local, &data);
-        assert_eq!(clean, vec!["dependent", "edited"]);
+        assert_eq!(clean, vec!["dependent", "edited", "top"]);
         assert!(!covered);
         let kept: Vec<BuildInput> = super::super::read(&local).ok_or("local missing")?;
         assert!(
@@ -892,7 +895,7 @@ mod tests {
         begin(&export, "compiler", &target, &local, &data)?;
         assert_eq!(
             super::super::stale(&local, &data).0,
-            vec!["dependent", "edited", "vstd"]
+            vec!["dependent", "edited", "top", "vstd"]
         );
         // Without a resolve graph only the refused package itself is known.
         assert_eq!(
