@@ -196,6 +196,7 @@ fn project(root: &Path) -> ProjectResult {
         currentness: sail_api::project::Currentness::Historical,
         exit_code: Some(1),
         targets: vec![TargetResult {
+            dependency_store: None,
             package_id: "demo".to_owned(),
             target: "demo".to_owned(),
             kind: vec!["lib".to_owned()],

@@ -9,9 +9,47 @@ those receipts and starts no verifier. See
 
 ## What the first run costs
 
-A new proof context has no compiled dependencies and no receipts. Even a
-one-function project first compiles its macro dependencies and verifies vstd,
-which takes tens of seconds. A context changes when the arguments, the engine
+A new proof context has no compiled dependencies and no receipts. On a
+machine that has never verified it, even a one-function project first
+compiles its macro dependencies and verifies vstd, which takes tens of
+seconds.
+
+### Later new projects start from the dependency store
+
+The first managed run on a machine stores the verified vstd it built, with
+its compiled dependencies, its receipt and the verifier's output, in
+`<cache>/dependency-store/`
+([ADR 0045](decisions/0045-dependency-store.md)). The first managed run of
+any later project, worktree or sandbox that resolves vstd identically copies
+it into its new Cargo target and verifies only its own crates. Identically
+means the same vstd version and features, the same versions of vstd's own
+dependencies (as `Cargo.lock` resolves them), the same `[profile]` settings,
+toolchain, Sail and Verus, Cargo configuration, relevant environment and
+`sail verify` arguments. On a native Linux host
+(`c7i.4xlarge`, the method under [performance](performance.md#5-cold-first-run)):
+
+| First managed run of | Before | With the store | Plain `cargo verus verify` |
+|---|---:|---:|---:|
+| a new one-function project (CLI) | 27.5 s | 1.3 s | 29.5 s |
+| a new one-function project (MCP `verify`) | 27.7 s | 1.5 s | 29.5 s |
+| a new vest worktree (`-p vest_lib`) | 52.3 s | 25.7 s | 66.1 s |
+
+Medians of three rounds; the first managed run on the machine is unchanged
+(demo 28.2 s, vest 67.9 s) and stores vstd. See the
+[dependency store record](validation/dependency-store.md), which also checks
+seeded runs against plain stock Verus byte for byte.
+
+The copy is only a starting point. Cargo's own fingerprints decide whether
+the copied units are fresh, exactly as in a target directory plain
+`cargo verus` had built itself, and vstd is reported reused only when the
+stored receipt matches the bytes Cargo found fresh. The run that copied it
+marks vstd's target with `dependency_store` and the note `SAIL3130`, and names
+the run that verified it as `establishing_run`; vstd's report is that run's
+report. A different resolution, a path dependency on vstd, an edited registry
+source, a damaged entry (`warning[SAIL3131]`) or a dynamic-loader variable
+(`LD_*`, `DYLD_*`) in the environment all verify vstd as before.
+The store keeps the four most recently used entries, about 120 MB each
+([disk use](workspace-hygiene.md#dependency-store)). A context changes when the arguments, the engine
 selection, the relevant environment, the Cargo configuration or the installed
 toolchain (Verus, Cargo, rustc, Z3, Sail, the sysroot libraries) changes;
 installed files are identified by device, inode, size and modification time,
