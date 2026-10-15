@@ -160,7 +160,8 @@ pub(crate) fn verify(
         }
         return crate::jobs::background(&args, out, err);
     }
-    if std::env::var_os("SAIL_JOB_GUARD_PARENT").is_some_and(|v| v == "1") {
+    let worker = std::env::var_os("SAIL_JOB_GUARD_PARENT").is_some_and(|v| v == "1");
+    if worker {
         crate::portfolio::guard_parent();
     }
     let config = match config(options.args) {
@@ -173,7 +174,8 @@ pub(crate) fn verify(
     };
     let mut config = config;
     config.args = args;
-    let result = if mode == sail_api::jobs::Mode::Interactive {
+    let interactive = mode == sail_api::jobs::Mode::Interactive;
+    let result = if interactive {
         sail_verus::engine::verify(&config, err)
     } else if options.json {
         sail_verus::managed::run(&config, err)
@@ -195,6 +197,14 @@ pub(crate) fn verify(
                     .and_then(|n| u8::try_from(n & 0xff).ok())
                     .unwrap_or(1),
             )
+        }
+        // A setup managed verification cannot bind to a receipt (SAIL3112)
+        // is refused before anything runs. From the command line it is then
+        // verified as plain Cargo-Verus verifies it (ADR 0046); a job's
+        // worker, which must return a project result, and the opt-in engine
+        // still report it.
+        Err(error) if error.code == "SAIL3112" && !worker && !interactive => {
+            crate::verify::unbound(&config.args, options.json, &error.message, out, err)
         }
         Err(error) => failure(&error.to_string(), out, err, options.json),
     }

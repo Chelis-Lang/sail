@@ -1656,7 +1656,8 @@ pub(crate) fn run_engine_held(
         owned.cargo_verus.clone_from(&engine.cargo_verus);
     }
     let config = &owned;
-    if config.args.iter().any(|s| {
+    if let Some(unbound) = config.args.iter().find(|s| {
+        let s = s.as_str();
         [
             "--tests",
             "--benches",
@@ -1668,7 +1669,7 @@ pub(crate) fn run_engine_held(
             "--no-verify",
         ]
         .iter()
-        .any(|flag| s == flag || s.starts_with(&format!("{flag}=")))
+        .any(|flag| s == *flag || s.starts_with(&format!("{flag}=")))
             || s == "--target-dir"
             || s.starts_with("--target-dir=")
             || s == "--no-verify"
@@ -1677,9 +1678,11 @@ pub(crate) fn run_engine_held(
             || s == "--sysroot"
             || s.starts_with("--sysroot=")
     }) {
+        // SAIL3112: a setup managed verification cannot bind to a receipt.
+        // `sail verify` then verifies it as plain Cargo-Verus does (ADR 0046).
         return Err(Error::new(
-            "SAIL3100",
-            "sail verify owns the Cargo target and Verus logs and verifies lib and bin targets: --target-dir, --log options, --no-verify, --sysroot, tests, benches and examples are not supported",
+            "SAIL3112",
+            format!("`{unbound}` is not bound to a proof receipt by managed verification"),
         ));
     }
     let started = Instant::now();
@@ -1713,15 +1716,15 @@ pub(crate) fn run_engine_held(
     let workspace_root = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     if std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some() {
         return Err(Error::new(
-            "SAIL3100",
-            "sail verify does not support a chained workspace rustc wrapper (RUSTC_WORKSPACE_WRAPPER)",
+            "SAIL3112",
+            "RUSTC_WORKSPACE_WRAPPER is set, and managed verification cannot chain a workspace rustc wrapper",
         ));
     }
     let expected = expected_targets(&data, &config.args);
     if expected.is_empty() {
         return Err(Error::new(
-            "SAIL3100",
-            "no selected Cargo targets declare package.metadata.verus.verify=true",
+            "SAIL3112",
+            "no selected Cargo target declares package.metadata.verus.verify = true, so there is no proof to record",
         ));
     }
     drop(metadata_phase);

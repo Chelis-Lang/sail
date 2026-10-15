@@ -332,7 +332,7 @@ fn driver() -> Result<ExitCode> {
     if custom_compiler_context(&args) {
         return Err(Error::new(
             "SAIL3111",
-            "sail verify does not support a custom sysroot or JSON target specification",
+            "managed verification does not support a custom sysroot or JSON target specification",
         ));
     }
     let runtime_path = PathBuf::from(required("SAIL_MANAGED_RUNTIME")?);

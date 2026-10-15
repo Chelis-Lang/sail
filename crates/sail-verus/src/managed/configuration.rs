@@ -31,7 +31,7 @@ fn validate(value: &toml::Value, file: &Path) -> Result<()> {
         Error::new(
             "SAIL3112",
             format!(
-                "sail verify cannot identify the runtime configuration in {}, so it does not support this setup",
+                "managed verification cannot identify the runtime configuration in {}",
                 file.display()
             ),
         )
@@ -143,9 +143,7 @@ fn check_environment(
         if compiler || flags || target {
             return Err(Error::new(
                 "SAIL3112",
-                format!(
-                    "sail verify cannot identify the runtime selector {key}, so it does not support this setup"
-                ),
+                format!("managed verification cannot identify the runtime selector {key}"),
             ));
         }
     }
@@ -156,7 +154,7 @@ fn check_environment(
     {
         return Err(Error::new(
             "SAIL3112",
-            "sail verify does not support Cargo --config overrides",
+            "Cargo `--config` overrides are not bound to a proof receipt",
         ));
     }
     let home = std::env::var_os("CARGO_HOME")

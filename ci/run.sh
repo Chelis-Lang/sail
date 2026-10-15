@@ -243,6 +243,45 @@ RS
       touch src/lib.rs
       CARGO_TARGET_DIR="$work/target-sail" "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
       "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
+      # Setups managed verification cannot bind to a proof receipt (ADR 0046)
+      # are verified as plain Cargo-Verus verifies them: one note line, then
+      # Cargo-Verus's own output and exit code. Each side runs once to warm
+      # its target; the second runs are compared, with Cargo's `Finished ... in
+      # Ns` timing blanked.
+      unbound_normalize() { sed -E '/^note\[SAIL3112\]/d; s/^( +Finished .* in )[0-9.]+s$/\1Ns/' "$1"; }
+      unbound_compare() { # label
+        local label="$1" part
+        if [ "$(grep -c '^note\[SAIL3112\]' "$work/$label-sail.err")" != 1 ]; then
+          echo "e2e: $label: expected one note[SAIL3112] line" >&2
+          cat "$work/$label-sail.err" >&2
+          exit 1
+        fi
+        for part in rc out err; do
+          if ! cmp -s <(unbound_normalize "$work/$label-plain.$part") <(unbound_normalize "$work/$label-sail.$part"); then
+            echo "e2e: $label $part differs from plain cargo verus verify" >&2
+            diff -u <(unbound_normalize "$work/$label-plain.$part") <(unbound_normalize "$work/$label-sail.$part") >&2 || true
+            exit 1
+          fi
+        done
+      }
+      unbound_case() { # label; rest = the arguments for both sides
+        local label="$1"; shift
+        plain_run "$label-plainwarm" cargo verus verify "$@"
+        plain_run "$label-plain" cargo verus verify "$@"
+        sail_run "$label-sailwarm" "$sail" verify "$@"
+        sail_run "$label-sail" "$sail" verify "$@"
+        unbound_compare "$label"
+      }
+      unbound_case no-verify -- --no-verify
+      unbound_case config --config build.jobs=2
+      unbound_case tests --tests
+      # An explicit target directory: each side its own, both warmed.
+      run target-dir-plainwarm cargo verus verify --target-dir "$work/td-plain"
+      run target-dir-plain cargo verus verify --target-dir "$work/td-plain"
+      run target-dir-sailwarm "$sail" verify --target-dir "$work/td-sail"
+      run target-dir-sail "$sail" verify --target-dir "$work/td-sail"
+      unbound_compare target-dir
+      echo "e2e: --no-verify, --config, --tests and --target-dir verified as plain cargo verus verify"
       bash "$sail_portfolio_test"
     fi
     if [ "$phase" = full ] || [ "$phase" = managed ]; then

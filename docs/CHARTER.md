@@ -234,7 +234,8 @@ Each entry names the charter text it qualifies and the ADR that records it.
    is met on its output: without `--output json`, `sail verify` prints what
    plain `cargo verus verify` prints for the same verification work, with
    the same exit code. Switching is still one command for Cargo library and
-   binary targets. Setups managed verification cannot bind (tests, benches,
-   examples, `--target-dir`, Verus log options, Cargo `--config`) are
-   refused with an error and stay with `cargo verus verify` until it
-   supports them. See ADR 0046.
+   binary targets, and nothing plain Cargo-Verus accepts is refused: setups
+   managed verification cannot bind (tests, benches, examples,
+   `--target-dir`, Verus log options, Cargo `--config`, loader variables)
+   are verified as plain Cargo-Verus verifies them, with one note and no
+   proof reuse. See ADR 0046.

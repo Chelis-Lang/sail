@@ -72,13 +72,24 @@
    prints for the same verification work on the same target state.
    Verdicts and diagnostics are never reused from a failed or incomplete
    run: such targets get no receipt and are verified again, as Cargo does.
-4. **Unsupported setups fail; they do not fall back.** Managed verification
-   owns the target and Verus's logs and binds every input it reuses. It
-   refuses `--target-dir`, Verus's `--log` options, `--no-verify`, tests,
+4. **Setups managed verification cannot bind fail safe; nothing plain
+   Cargo-Verus accepts is refused (lead decision, 2026-10-15).** Managed
+   verification owns the target and Verus's logs and binds every input it
+   reuses. `--target-dir`, Verus's `--log` options, `--no-verify`, tests,
    benches and examples, `--sysroot`, a chained `RUSTC_WORKSPACE_WRAPPER`,
-   Cargo `--config` and configuration it cannot identify (`SAIL3100`,
-   `SAIL3112`), and points at `cargo verus verify`. A silent fallback would
-   be the removed pass-through under another name.
+   Cargo `--config` and configuration it cannot identify, and a project
+   with no `verify = true` target cannot be bound to a receipt. The runner
+   reports them as `SAIL3112` before anything runs. `sail verify` then
+   prints one `note[SAIL3112]` line naming the reason and verifies exactly
+   as `cargo verus verify` does, in the user's own target, with `sail-z3`
+   and the solver cache, reusing and recording nothing; with
+   `--output json` it prints one schema-v2 report. Refusing them was a
+   capability regression for the only `sail verify`. This is not a mode a
+   user can choose: it is the fail-safe for invocations the runner cannot
+   bind, announced every time. Jobs, `watch` and MCP, which must return a
+   project result, still report them as `SAIL3112` errors, as they did
+   before this change. The e2e legacy phase compares `--no-verify`,
+   `--config`, `--tests` and `--target-dir` runs with plain Cargo-Verus.
 
    **Process-loader variables fail safe (lead decision, 2026-10-15).**
    `LD_LIBRARY_PATH`, `LD_PRELOAD` and the macOS `DYLD_*` loader variables

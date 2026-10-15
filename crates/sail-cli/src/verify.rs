@@ -352,6 +352,50 @@ pub fn verify(
     }
 }
 
+/// A setup managed verification cannot bind to a proof receipt (`why`, from
+/// `SAIL3112`): verified exactly as plain `cargo verus verify` verifies it,
+/// with `sail-z3` and the solver cache in front of Z3, no proof reuse and no
+/// receipts (ADR 0046). One `note[SAIL3112]` line on stderr says why; the
+/// rest of the output, the verdicts and the exit code are Cargo-Verus's.
+/// With `--output json`, stdout is one schema-v2 report, as for the explicit
+/// experiments.
+pub(crate) fn unbound(
+    args: &[String],
+    json: bool,
+    why: &str,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+) -> ExitCode {
+    let _ = writeln!(
+        err,
+        "note[SAIL3112]: {why}; verifying as `cargo verus verify` does, with Sail's solver cache and without proof reuse"
+    );
+    let _ = err.flush();
+    let setup = match setup() {
+        Ok(s) => s,
+        Err(e) if json => return json_failure(args, &e, out, err),
+        Err(e) => {
+            let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
+            return ExitCode::from(EXIT_SETUP);
+        }
+    };
+    if json {
+        return verify_json(&setup, args, out, err);
+    }
+    let (mut cmd, _) = command(&setup, args);
+    match cmd.status() {
+        Ok(status) => exit_code(status.code()),
+        Err(e) => {
+            let _ = writeln!(
+                err,
+                "error[SAIL0105]: sail verify: cannot run {}: {e}",
+                setup.cargo_verus.display()
+            );
+            ExitCode::from(EXIT_SETUP)
+        }
+    }
+}
+
 /// `args` without `--incremental` before any `--`.
 fn without_incremental(args: &[String]) -> Vec<String> {
     let split = args.iter().position(|a| a == "--").unwrap_or(args.len());

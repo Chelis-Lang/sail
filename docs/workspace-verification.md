@@ -42,38 +42,45 @@ its report describes that requested scope. Cargo configuration discovery
 uses the original invocation directory, including member-directory ancestors;
 relative Cargo/cache homes are resolved against that directory.
 
-### What `sail verify` does not support
+### Setups verified without proof reuse
 
-Sail owns the Cargo target and Verus's logs, and verifies Cargo library and
-binary targets. It refuses, with an error and without running anything:
+Sail owns the Cargo target and Verus's logs, and binds Cargo library and
+binary targets to proof receipts. It never refuses what plain
+`cargo verus verify` accepts. When an invocation asks for something it
+cannot bind to a receipt, `sail verify` prints one `note[SAIL3112]` line on
+stderr naming the reason, then verifies exactly as `cargo verus verify`
+does, in your own target, with `sail-z3` and the solver cache in front of
+Z3: the rest of the output, the verdicts and the exit code are Cargo-Verus's.
+Nothing is reused or recorded. These setups are:
 
 - `--target-dir`, Verus's `--log`, `--log-all` and `--log-dir`, and
-  `--no-verify` (`SAIL3100`);
-- tests, benches and examples (`--tests`, `--test`, `--all-targets`, …)
-  (`SAIL3100`);
-- a chained workspace rustc wrapper (`RUSTC_WORKSPACE_WRAPPER`), custom
-  sysroots and JSON target specifications (`SAIL3100`, `SAIL3111`);
-- Cargo `--config`, configuration includes, and compiler, wrapper or
-  sysroot overrides it cannot identify (`SAIL3112`);
-- a project with no target that sets `package.metadata.verus.verify = true`
-  (`SAIL3100`).
+  `--no-verify`;
+- tests, benches and examples (`--tests`, `--test`, `--all-targets`, …);
+- `--sysroot`, a chained workspace rustc wrapper (`RUSTC_WORKSPACE_WRAPPER`),
+  Cargo `--config`, configuration includes, and compiler, wrapper or sysroot
+  overrides Sail cannot identify;
+- a project with no target that sets `package.metadata.verus.verify = true`.
 
-`cargo verus verify` still runs these, without Sail.
+With `--output json` such a run prints one schema-v2 report (as
+`--measure-fragility` does) instead of a `sail-project-result`. Background
+jobs, `watch` and MCP, which return project results, report these setups as
+`SAIL3112` errors, as before.
 
 A process-loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`,
 `DYLD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES` or `DYLD_FRAMEWORK_PATH`) is
-not refused. Sail cannot bind what it changes to a receipt, so such a run
-prints one `note[SAIL3112]` line, verifies what Cargo rebuilds exactly as
-`cargo verus verify` does, and neither reuses nor records proof receipts
-or dependency records. The solver cache still answers queries Verus has sent
-before. `--output json` reads `unknown`, with a `SAIL3112` note, and has no
-report for a target Cargo found up to date. Unset the variable for the
-`sail verify` command to get reuse back. `--verus-source FILE`
-(a single file with `verus FILE`) is only for the opt-in portfolio.
-`--measure-fragility` and `--portfolio accept-first-proof` are explicit solver
-experiments: they run `cargo verus verify` with `sail-z3` directly and print
-one schema-v2 report, and they do not take `--background` or `--engine`
-(`SAIL0110`).
+handled the same way inside managed verification, so it also works for jobs
+and MCP: Sail cannot bind what it changes to a receipt, so such a run prints
+one `note[SAIL3112]` line, verifies what Cargo rebuilds exactly as
+`cargo verus verify` does, in Sail's target, and neither reuses nor records
+proof receipts or dependency records. `--output json` reads `unknown`, with
+a `SAIL3112` note, and has no report for a target Cargo found up to date.
+Unset the variable for the `sail verify` command to get reuse back.
+
+`--verus-source FILE` (a single file with `verus FILE`) is only for the
+opt-in portfolio. `--measure-fragility` and `--portfolio accept-first-proof`
+are explicit solver experiments: they run `cargo verus verify` with
+`sail-z3` directly and print one schema-v2 report, and they do not take
+`--background` or `--engine` (`SAIL0110`).
 
 ### Output compared with `cargo verus verify`
 

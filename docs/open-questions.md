@@ -375,6 +375,7 @@ planned for releases after 0.1.0. The owner answered all twelve on
     variable set is verified as plain Cargo-Verus verifies it, prints one
     `note[SAIL3112]` line, reuses no proof receipts and records none (nor
     dependency records); the solver cache stays on, since its keys bind query
-    bytes and solver identity. No check is weakened. Cargo `--config`,
-    `--target-dir`, Verus log options, tests, benches and examples are still
-    refused.
+    bytes and solver identity. No check is weakened. The same applies to
+    Cargo `--config`, `--target-dir`, Verus log options, `--no-verify`,
+    tests, benches and examples: nothing plain Cargo-Verus accepts is
+    refused (ADR 0046, decision 4).

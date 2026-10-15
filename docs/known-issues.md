@@ -24,11 +24,12 @@ are in the `archive/m7-contracts-f7103bf` tag.
   plain Verus (vest 28.5 s against 39.6 s) but about 3 s slower than the
   removed pass-through was. Where the time goes is in
   [ADR 0046](decisions/0046-managed-verification-by-default.md#measurements).
-- **Some setups are refused by `sail verify`.** Tests, benches, examples,
-  `--target-dir`, Verus `--log` options, `--no-verify` and Cargo `--config`
-  overrides (`SAIL3100`, `SAIL3112`); `cargo verus verify` still runs them.
-  With `LD_LIBRARY_PATH` or another loader variable set, `sail verify` runs
-  but reuses no proofs ([workspace verification](workspace-verification.md#what-sail-verify-does-not-support)).
+- **Some setups get no proof reuse.** Tests, benches, examples,
+  `--target-dir`, Verus `--log` options, `--no-verify`, Cargo `--config`
+  overrides and loader variables such as `LD_LIBRARY_PATH` are verified as
+  plain `cargo verus verify` verifies them, with one `note[SAIL3112]` line,
+  but nothing is reused or recorded. Jobs, `watch` and MCP report all but
+  the loader variables as `SAIL3112` errors ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)).
 - **A project's first managed verify verifies vstd.** As with plain `cargo
   verus verify` on a fresh target, the first managed run of each project
   verifies vstd in its own Cargo target (about 31 s natively). Later runs from

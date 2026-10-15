@@ -18,13 +18,13 @@ semantic versioning once the API is published.
   schema-v2 report per target) instead of one schema-v2 report;
   `--measure-fragility` and the portfolio still print one report.
   `--incremental` is accepted and does nothing (deprecated). Setups managed
-  verification does not support (`--target-dir`, Verus `--log` options,
-  `--no-verify`, tests, benches, examples, Cargo `--config` overrides) are
-  now refused with `SAIL3100` or `SAIL3112` instead of running without
-  Sail's target; `cargo verus verify` still runs them. With
-  `LD_LIBRARY_PATH`, `LD_PRELOAD` or a `DYLD_*` loader variable set, which
-  used to be refused, managed verification now runs without proof reuse and
-  prints one `note[SAIL3112]` line. Passing
+  verification cannot bind to a receipt (`--target-dir`, Verus `--log`
+  options, `--no-verify`, tests, benches, examples, Cargo `--config`
+  overrides) are verified as plain `cargo verus verify` verifies them, with
+  one `note[SAIL3112]` line and no proof reuse. With `LD_LIBRARY_PATH`,
+  `LD_PRELOAD` or a `DYLD_*` loader variable set, which managed runs used to
+  refuse, managed verification now runs without proof reuse and prints one
+  `note[SAIL3112]` line. Passing
   `-- --output-json` or `-- --time` to managed verification no longer fails
   with "Option given more than once". The conformance harness's Sail arm now
   adds the managed driver's logging flags (`--sail-arm shim` keeps the bare
