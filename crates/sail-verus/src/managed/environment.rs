@@ -33,6 +33,9 @@ const OBSERVATION_ONLY: &[&str] = &[
     "SAIL_PROVENANCE_DIR",
     "SAIL_TRACE_DIR",
     "SAIL_PROJECT_SOCKET",
+    // Whether and how much the dependency store keeps (ADR 0045); it never
+    // changes what Cargo or the verifier produce.
+    "SAIL_DEPENDENCY_STORE_ENTRIES",
 ];
 
 /// Families the pinned tools read, by prefix. Sources:

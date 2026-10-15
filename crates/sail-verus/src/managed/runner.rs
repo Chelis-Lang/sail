@@ -954,6 +954,7 @@ fn target_records(
     context: &str,
     force: bool,
     expected: &BTreeSet<(String, String, String)>,
+    seeded: &[super::store::Seeded],
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
@@ -1050,6 +1051,7 @@ fn target_records(
                 let _ = std::fs::remove_file(&path);
             }
             results.push(TargetResult {
+                dependency_store: None,
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
@@ -1059,7 +1061,7 @@ fn target_records(
                 complete: call.success && complete(&call.report),
                 report: call.report.clone(),
             });
-        } else if let Some(receipt) = {
+        } else if let Some((receipt, store_key)) = {
             let mut observed: BTreeSet<PathBuf> = artifact["filenames"]
                 .as_array()
                 .into_iter()
@@ -1108,11 +1110,37 @@ fn target_records(
                         read::<Receipt>(&receipts.join(file)).filter(|r| matches(r, sibling))
                     })
                 })
+                .map(|r| (r, None))
+                .or_else(|| {
+                    // A dependency this run placed from the dependency store
+                    // (ADR 0045): its stored receipt, moved into this target,
+                    // must describe exactly the bytes Cargo found fresh here.
+                    if requested {
+                        return None;
+                    }
+                    seeded.iter().find_map(|seed| {
+                        let r = &seed.receipt;
+                        (artifact["fresh"] == true
+                            && r.package_id == package_id
+                            && r.invocation.identity.manifest
+                                == Path::new(package["manifest_path"].as_str().unwrap_or_default())
+                            && r.invocation.identity.name == name.replace('-', "_")
+                            && r.name == name
+                            && r.kind == kind
+                            && r.artifact_hashes.keys().cloned().collect::<BTreeSet<_>>()
+                                == observed
+                            && super::receipts::digests_match(&r.artifact_hashes)
+                            && super::receipts::digests_match(&r.invocation.dependencies)
+                            && super::environment::unchanged(&r.declared_environment))
+                        .then(|| (r.clone(), seed.placed.then(|| seed.key.clone())))
+                    })
+                })
         } {
             event(
                 &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.run_id}),
             );
             results.push(TargetResult {
+                dependency_store: store_key,
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
@@ -1150,6 +1178,7 @@ fn target_records(
                 })
             });
             results.push(TargetResult {
+                dependency_store: None,
                 package_id: package
                     .and_then(|p| p["id"].as_str())
                     .unwrap_or_default()
@@ -1173,7 +1202,7 @@ fn target_records(
 }
 
 /// Package ids reachable from `roots` through every resolved dependency kind.
-fn dependency_closure<'a>(
+pub(super) fn dependency_closure<'a>(
     data: &Value,
     roots: impl IntoIterator<Item = &'a str>,
 ) -> BTreeSet<String> {
@@ -1588,6 +1617,15 @@ pub(crate) fn run_engine_held(
     );
     let inputs = diagnostics.phase(Phase::Inputs);
     let (paths, ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
+    // A Cargo target this run creates (a new project, worktree or sandbox, or
+    // after a prune) may start from the machine's dependency store (ADR 0045).
+    // Focused runs build in a separate directory and verify no dependency.
+    let store_candidates = if super::store::enabled() && !focused(&config.args) {
+        super::store::candidates(&data, &expected, &compiler_hash)
+    } else {
+        Vec::new()
+    };
+    let new_target = super::store::new_target(&paths.target);
     super::build_inputs::family::begin(
         &paths.compiler_inputs,
         &compiler_hash,
@@ -1745,6 +1783,26 @@ pub(crate) fn run_engine_held(
     };
     json(&paths.runtime, &runtime)?;
     let invocation_phase = diagnostics.phase(Phase::Invocation);
+    // After every cleanup, so nothing seeded is cleaned again before Cargo
+    // decides its freshness.
+    let seeded = if new_target {
+        super::store::seed(&config.cache, &paths.target, &store_candidates, &data, err)
+    } else {
+        // Only a dependency without a receipt of this context needs the store.
+        let own: BTreeSet<String> = std::fs::read_dir(&paths.receipts)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter_map(|e| read::<Receipt>(&e.path()))
+            .map(|r| r.package_id)
+            .collect();
+        let unowned: Vec<_> = store_candidates
+            .iter()
+            .filter(|c| !own.contains(&c.root))
+            .cloned()
+            .collect();
+        super::store::attach(&config.cache, &paths.target, &unowned, &data)
+    };
     let mut exit = invoke(config, &paths, err)?;
     drop(invocation_phase);
     let records_phase = diagnostics.phase(Phase::TargetRecords);
@@ -1754,7 +1812,7 @@ pub(crate) fn run_engine_held(
     // discards it and reads metadata again after its own invocation.
     let (records, after_metadata) = std::thread::scope(|threads| {
         let after = threads.spawn(|| metadata(&config.workspace, &config.args, &config.cargo));
-        let records = target_records(&paths, &data, &hash, forced, &expected);
+        let records = target_records(&paths, &data, &hash, forced, &expected, &seeded);
         (records, after.join())
     });
     let mut after_metadata = Some(after_metadata);
@@ -1770,7 +1828,7 @@ pub(crate) fn run_engine_held(
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
         exit = invoke(config, &paths, err)?;
         outside_scope |= !units_in_scope(&paths);
-        let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
+        let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected, &seeded)?;
         targets = retried;
         if !missing.is_empty() {
             return Err(Error::new(
@@ -1872,6 +1930,12 @@ pub(crate) fn run_engine_held(
             "Requested function/module scope is partial; whole-target reuse is disabled".to_owned(),
         );
     }
+    for target in targets.iter().filter(|t| t.dependency_store.is_some()) {
+        notes.push(format!(
+            "SAIL3130: {} was verified by run {} in another workspace and reused from Sail's dependency store",
+            target.package_id, target.establishing_run
+        ));
+    }
     let fallbacks = engine_fallbacks(&targets);
     if fallbacks > 0 {
         notes.push(format!(
@@ -1925,6 +1989,30 @@ pub(crate) fn run_engine_held(
             json(&path, &receipt)?;
         }
         super::receipts::publish(&paths.run, &paths.receipts, &result.context_sha256)?;
+        // Dependencies reused through the store become this context's own
+        // receipts, with every ordinary receipt check on later runs.
+        for target in result.targets.iter().filter(|t| t.reused) {
+            let Some(seed) = seeded.iter().find(|s| {
+                s.receipt.package_id == target.package_id
+                    && s.receipt.invocation.run_id == target.establishing_run
+            }) else {
+                continue;
+            };
+            let input_revision = target_revision(&after_data, &target.package_id);
+            let path = receipt_path(&paths, &target.package_id, &target.target, &target.kind);
+            if input_revision.is_empty() {
+                continue;
+            }
+            super::receipts::adopt(
+                &paths.run,
+                &paths.receipts,
+                path.file_name().unwrap_or_default(),
+                &result.context_sha256,
+                input_revision,
+                seed.receipt.clone(),
+            )?;
+        }
+        store_dependencies(config, &paths, &store_candidates, &result, &after_data);
     }
     publish_compiler_generation(
         &paths,
@@ -1940,6 +2028,55 @@ pub(crate) fn run_engine_held(
     );
     drop(publication);
     Ok((result, ownership.into_workspace()))
+}
+
+/// Offers each store candidate this Current run verified, or reused from its
+/// own proof context, to the dependency store (ADR 0045). Never fails the run.
+fn store_dependencies(
+    config: &Config,
+    paths: &Paths,
+    candidates: &[super::store::Candidate],
+    result: &ProjectResult,
+    data: &Value,
+) {
+    for candidate in candidates {
+        let Some(target) = result.targets.iter().find(|t| {
+            t.package_id == candidate.root
+                && t.complete
+                && t.dependency_store.is_none()
+                && t.kind.iter().any(|k| k == "lib")
+        }) else {
+            continue;
+        };
+        let Some(receipt) = read::<Receipt>(&receipt_path(
+            paths,
+            &target.package_id,
+            &target.target,
+            &target.kind,
+        ))
+        .filter(|r| r.valid(&result.context_sha256)) else {
+            continue;
+        };
+        let sidecar = paths
+            .projects
+            .join(&receipt.context)
+            .join("runs")
+            .join(&receipt.invocation.run_id)
+            .join("sidecars")
+            .join(receipt.invocation.identity.key());
+        super::store::publish(
+            candidate,
+            &super::store::Publication {
+                cache: &config.cache,
+                target: &paths.target,
+                artifacts: &paths.run.join("artifacts.jsonl"),
+                build_inputs: &paths.build_inputs,
+                receipt,
+                sidecar,
+                data,
+            },
+        );
+    }
 }
 
 /// Targets established in this run by the stock fallback after an engine fault.
@@ -2628,7 +2765,7 @@ mod tests {
         assert!(coverage);
         f.result.exit_code = Some(101);
         assert!(f.eligible());
-        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected)?;
+        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected, &[])?;
         assert_eq!(targets.len(), 1);
         assert!(!targets[0].complete && !targets[0].reused);
         assert_eq!(targets[0].report.exit_code, Some(1));
@@ -2857,7 +2994,7 @@ mod tests {
         };
         assert!(stock(&f, &[]));
         assert!(f.eligible(), "the engine arm takes the same branch");
-        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected)?;
+        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected, &[])?;
         assert_eq!(targets.len(), 1);
         assert!(!targets[0].complete && !targets[0].reused);
         assert_eq!(std::fs::read_dir(&f.paths.receipts)?.count(), 0);
@@ -3028,7 +3165,7 @@ mod tests {
             }))?,
         )?;
         let expected = BTreeSet::from([("input".to_owned(), "input".to_owned(), "lib".to_owned())]);
-        let (targets, missing) = target_records(&paths, &data, "missing", false, &expected)?;
+        let (targets, missing) = target_records(&paths, &data, "missing", false, &expected, &[])?;
         assert_eq!(targets, Vec::<TargetResult>::new());
         assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
         assert_eq!(std::fs::read_dir(&paths.receipts)?.count(), 0);
@@ -3051,12 +3188,12 @@ mod tests {
         super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
         assert!(receipt.valid("selected"));
         assert_eq!(receipt.input_revision, target_revision(&data, "input"));
-        let (targets, missing) = target_records(&paths, &data, "selected", false, &expected)?;
+        let (targets, missing) = target_records(&paths, &data, "selected", false, &expected, &[])?;
         assert_eq!(targets.len(), 1);
         assert!(targets[0].reused);
         assert!(missing.is_empty());
         for (context, force) in [("missing", false), ("selected", true)] {
-            let (targets, missing) = target_records(&paths, &data, context, force, &expected)?;
+            let (targets, missing) = target_records(&paths, &data, context, force, &expected, &[])?;
             assert_eq!(targets, Vec::<TargetResult>::new());
             assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
         }

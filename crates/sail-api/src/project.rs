@@ -82,6 +82,14 @@ pub struct TargetResult {
     pub complete: bool,
     /// Original report; its timing and provenance belong to `establishing_run`.
     pub report: Report,
+    /// Set when this run placed the target's compiled, verified artifacts in a
+    /// new Cargo target from Sail's dependency store (ADR 0045): the key of the
+    /// store entry. Plain Cargo-Verus would have verified this dependency in
+    /// this invocation, so a renderer that reproduces plain output prints its
+    /// recorded result here. `establishing_run` names the run, in another
+    /// workspace, that verified it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dependency_store: Option<String>,
 }
 
 /// Current invocation's execution counters.

@@ -57,7 +57,9 @@ bundled in the macOS release archive, and the
 on a fresh Mac, the [fork-default record](validation/fork-default.md)
 compares Sail on its Verus with plain stock Verus, and the
 [determinism record](validation/determinism.md) measures the fork's Verus for
-run-to-run differences. Raw logs stay outside the
+run-to-run differences, and the
+[dependency store record](validation/dependency-store.md) checks new projects
+that start from a stored vstd against plain stock Verus. Raw logs stay outside the
 repository and are cited by SHA-256. Earlier per-run records and unselected
 engine candidates are preserved in the `archive/m7-contracts-f7103bf` tag.
 Each record applies to its stated source, runtime and environment. A later pass

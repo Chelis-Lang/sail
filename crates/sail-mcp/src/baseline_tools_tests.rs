@@ -21,6 +21,7 @@ fn baseline(name: &str) -> Baseline {
             currentness: Currentness::Historical,
             exit_code: Some(1),
             targets: vec![TargetResult {
+                dependency_store: None,
                 package_id: "demo@1".into(),
                 target: "demo".into(),
                 kind: vec!["lib".into()],
