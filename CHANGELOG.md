@@ -5,7 +5,7 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- **`sail verify` runs managed verification by default** (ADR 0045). What
+- **`sail verify` runs managed verification by default** (ADR 0046). What
   `--incremental` used to switch on is now every `sail verify`: Sail's own
   Cargo target under the Sail cache, proof receipts that skip unchanged
   targets, complete reports and durable jobs. The plain pass-through mode is

@@ -1,4 +1,4 @@
-//! `sail verify`'s managed verification (ADR 0023, ADR 0045) and background
+//! `sail verify`'s managed verification (ADR 0023, ADR 0046) and background
 //! submission. This is what every `sail verify` runs, except the explicit
 //! fragility measurement and seed portfolio ([`crate::verify`]).
 

@@ -1,6 +1,6 @@
 # 0023: Managed incremental workspace verification
 
-- **Status:** accepted; amended by [ADR 0045](0045-managed-verification-by-default.md) (managed verification is the only `sail verify`)
+- **Status:** accepted; amended by [ADR 0046](0046-managed-verification-by-default.md) (managed verification is the only `sail verify`)
 - **Date:** 2026-10-09
 
 ## Decision

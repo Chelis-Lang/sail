@@ -1,4 +1,4 @@
-# 0045: Managed verification is the only `sail verify`
+# 0046: Managed verification is the only `sail verify`
 
 - **Status:** accepted (owner decision 2026-10-15)
 - **Date:** 2026-10-15
@@ -113,7 +113,68 @@
 
 ## Measurements
 
-TBD
+`scripts/perf-loops.sh`, three rounds, medians, on EC2 c7i.4xlarge
+(us-east-1, idle, one timed run at a time), Sail's Verus `73dea021`. "Before"
+is `main` at `4cd6fcaa`, whose `sail verify` was the pass-through; "after" is
+this change. Each side is measured with its own plain baseline in the same
+session. Seconds:
+
+| Project, phase | plain `cargo verus verify` | before: pass-through | before: `--incremental` | after: `sail verify` |
+|---|---:|---:|---:|---:|
+| demo, edit | 0.78–0.79 | 0.81 | 1.07 | 1.07 |
+| demo, failing edit | 0.56 | 0.58 | 0.84 | 0.83 |
+| demo, unchanged | 0.11 | 0.11 | 0.32 | 0.30 |
+| demo, cold | 32.1 | — | — | 33.2 |
+| vest, edit | 39.6 | 25.4 | 28.7 | 28.5 |
+| vest, failing edit | 35.3–35.4 | 25.6 | 28.0 | 27.9 |
+| vest, unchanged | 0.22–0.24 | 0.21 | 1.34 | 1.11 |
+| vest, cold | 71.0 | 72.1 | 74.6 | 74.4 |
+| MCP `verify`, unchanged demo / vest | — | — | 0.52 / 1.91 | 0.52 / 1.67 |
+
+Raw logs and tables are kept outside the repository in `l48-linux-perf.tgz`
+(sha256 `df44617d7bf69b472b124203a0b4bbb880a79d6bd4de2539eed73a1df016fb33`)
+and `l48-mac-perf.tgz` (sha256
+`12fff5107e60d1f342342ca5b1ec563b555ffb896982f0c0a9c7e49c564c5466`).
+(The `before` run's demo cold figures, 38–40 s for every mode, were
+disturbed; the `after` run's are shown.)
+
+**Cuts made here.** Matching each input file to the selection's package
+directories scanned every package per file; ancestor lookups in sets take
+the read-check record from about 250 ms to about 35 ms per vest run
+(`managed/input.rs`, `Scope`). The dirty-receipt scan now parses two fields
+instead of whole receipts (about 10 ms). Together: vest unchanged
+1.34 → 1.11 s.
+
+**What remains, and why** (phase timings from `SAIL_JOB_EVENTS`, c7i.8xlarge):
+
+- **Small projects are about 0.28 s slower per run** (demo edit 1.07 s
+  against 0.79 s, +35%). Of that, about 0.27 s is Sail's work around Verus:
+  hashing the reused vstd artifacts that the receipt binds (about 90 ms),
+  the targeted clean of the edited package (about 70 ms, a Cargo start),
+  the second input snapshot (about 40 ms), the first snapshot and runtime
+  identity (about 55 ms). Each is a check a receipt depends on.
+- **Unchanged re-runs are slower than Cargo's no-op**: 0.30 s against
+  0.11 s (demo) and 1.11 s against 0.22 s (vest). Every run hashes every
+  input twice (before and after, about 0.3 s each on vest, ADR 0041) and
+  every reused artifact, then returns the complete report. Cargo checks
+  timestamps and prints nothing.
+- **Solver-heavy edits are faster than plain Verus but about 3 s slower
+  than the removed pass-through** (vest 28.5 s against 39.6 s plain and
+  25.4 s pass-through). The managed driver asks Verus for AIR and SMT
+  transcript logs for attribution (355 MB on vest, about 1 s to write;
+  measured by adding the same flags to the pass-through), reads them (about
+  0.3 s), and the runner's input and receipt checks take about 1.2 s.
+- **Cold runs** are 1–3 s slower (demo 33.2 s against 32.1 s, vest 74.4 s
+  against 71.0 s), for the same logs and checks; and Sail's target is its
+  own, so a project whose `target/` is already built still pays one cold run
+  (L47's pre-verified vstd addresses most of it).
+- **A new set of Verus arguments is a new context**: its first run compiles
+  the dependencies and verifies vstd again. Plain Cargo-Verus treats a crate
+  as fresh when only its Verus arguments change, and prints nothing.
+
+On this Mac (Apple silicon, shared with other lanes, load average 12–23),
+the demo shows the same shape: edit 1.21 s against 0.60 s plain, unchanged
+0.64 s against 0.38 s; the load makes these indicative only.
 
 ## Consequences
 

@@ -3,7 +3,7 @@
 A schema-v2 report describes every function one Verus run verified. This page
 is the reference for that document; the decisions behind it are in ADR 0014,
 amended for version 2 by ADR 0044. `sail verify --output json` (managed
-verification, the default; ADR 0045) prints a `sail-project-result`
+verification, the default; ADR 0046) prints a `sail-project-result`
 envelope holding one schema-v2 report per Cargo target, including targets
 whose reports were reused; see
 [workspace verification](workspace-verification.md). MCP `verify` returns the

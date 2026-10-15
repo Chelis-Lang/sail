@@ -1,7 +1,7 @@
 # Live workspace verification
 
 Every `sail verify` is managed verification
-([ADR 0045](decisions/0045-managed-verification-by-default.md)). Install
+([ADR 0046](decisions/0046-managed-verification-by-default.md)). Install
 Sail; it runs its own Verus and starts its local daemon when needed. No team
 server, credentials or container is required.
 

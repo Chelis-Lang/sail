@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Edit-loop timings for docs/performance.md: plain `cargo verus verify` and
-# `sail verify` (managed verification, the default; ADR 0045) on one
+# `sail verify` (managed verification, the default; ADR 0046) on one
 # project, plus MCP `verify` on unchanged code.
 #
 #   scripts/perf-loops.sh demo|vest [ROUNDS]       (default 3 rounds)
