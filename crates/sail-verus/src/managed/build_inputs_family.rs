@@ -203,10 +203,45 @@ fn eligible(records: Vec<BuildInput>, data: &Value, target: &Path) -> Vec<BuildI
         }
     }
     // A single unchanged unit must not authorize other units of the package.
+    // A package that depends on a refused one loses its contracts too, so the
+    // refusal reaches everything that may have consumed the changed script.
+    let invalid = dependents(data, invalid);
     records
         .into_iter()
         .filter(|r| !invalid.contains(&r.package_id))
         .collect()
+}
+
+/// `invalid` and every package of Cargo's resolve graph that reaches one of
+/// them through any dependency kind. Without a graph only `invalid` is known.
+fn dependents(data: &Value, mut invalid: BTreeSet<String>) -> BTreeSet<String> {
+    let Some(nodes) = data["resolve"]["nodes"].as_array() else {
+        return invalid;
+    };
+    if invalid.is_empty() {
+        return invalid;
+    }
+    loop {
+        let before = invalid.len();
+        for node in nodes {
+            let Some(id) = node["id"].as_str() else {
+                continue;
+            };
+            if !invalid.contains(id)
+                && node["dependencies"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .any(|dependency| invalid.contains(dependency))
+            {
+                invalid.insert(id.to_owned());
+            }
+        }
+        if invalid.len() == before {
+            return invalid;
+        }
+    }
 }
 
 /// Recheck after the original native guards start, before any cached output use.
@@ -258,13 +293,18 @@ pub(in crate::managed) fn begin(
         || (Vec::new(), false),
         |export| {
             let count = export.records.len();
-            let mut records = eligible(export.records, data, target);
+            let records = eligible(export.records, data, target);
             let mut available = count != 0 && count == records.len();
+            // A refused contract (and its dependents) is dropped on its own:
+            // the other packages keep theirs, as without an inventory. Before
+            // this, one edited package whose script declares its whole
+            // directory cleaned every script package, vstd included (#119).
             if let Some(sources) = export.sources {
                 let source_state = local.with_file_name("source-inputs.json");
-                let admitted = available
-                    .then(|| sources.admit(data, &records, target))
-                    .flatten()
+                // Admission validates every generated path against the
+                // retained contracts; a refused inventory is not imported.
+                let admitted = sources
+                    .admit(data, &records, target)
                     .and_then(|inputs| sources::merge(&source_state, inputs));
                 if let Some(inputs) = admitted {
                     // This is only an inventory. The caller subsequently reads
@@ -274,9 +314,6 @@ pub(in crate::managed) fn begin(
                     }
                 } else {
                     available = false;
-                }
-                if !available {
-                    records.clear();
                 }
             }
             (records, available)
@@ -758,6 +795,114 @@ mod tests {
         begin(&f.export, "compiler", &f.target, &f.local, &data)?;
         let (clean, paths, complete) = super::super::stale(&f.local, &data);
         assert!(clean.is_empty() && paths.is_empty() && complete);
+        Ok(())
+    }
+    /// Issue #119: a script without declarations watches its whole package,
+    /// so an edit refuses that package's contract. Only it and the packages
+    /// that depend on it lose their contracts, even when the export carries a
+    /// source inventory; an unrelated dependency (vstd) keeps its contract.
+    #[test]
+    fn edited_package_refuses_only_its_contract_and_its_dependents() -> TestResult {
+        let root =
+            std::env::temp_dir().join(format!("sail-script-family-edit-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        // The inventory admits only canonical paths (macOS /var is a link).
+        let root = root.canonicalize()?;
+        let target = root.join("cache/target");
+        let mut packages = Vec::new();
+        let mut records = Vec::new();
+        let mut by_package = std::collections::BTreeMap::new();
+        for name in ["edited", "dependent", "top", "vstd"] {
+            let directory = root.join(name);
+            std::fs::create_dir_all(directory.join("src"))?;
+            let manifest = directory.join("Cargo.toml");
+            std::fs::write(&manifest, format!("[package]\nname='{name}'\n"))?;
+            let source = directory.join("src/lib.rs");
+            std::fs::write(&source, "pub fn f() {}\n")?;
+            let output = target.join(format!("build/{name}/output"));
+            std::fs::create_dir_all(output.parent().ok_or("unit")?.join("out"))?;
+            // No declarations: Cargo watches the whole package directory.
+            std::fs::write(&output, "")?;
+            let mut record = BuildInput {
+                package_id: name.to_owned(),
+                package_name: name.to_owned(),
+                manifest: manifest.clone(),
+                paths: vec![directory.clone()],
+                env: BTreeMap::new(),
+                digest: String::new(),
+                covered: true,
+                output: Some((output, digest(b""))),
+            };
+            record.digest = current(&record, None).0;
+            records.push(record);
+            by_package.insert(name.to_owned(), vec![source]);
+            packages.push(
+                serde_json::json!({"id":name, "name":name, "version":"0.0.0",
+                "source":null, "manifest_path":manifest,
+                "targets":[{"kind":["lib"]},{"kind":["custom-build"]}]}),
+            );
+        }
+        let data = serde_json::json!({"sail_cache_directory":root.join("cache"),
+            "packages":packages, "resolve":{"root":null,"nodes":[
+                // `top` reaches `edited` only through `dependent` and is
+                // listed first, so the refusal needs a second pass.
+                {"id":"top","dependencies":["dependent"]},
+                {"id":"edited","dependencies":["vstd"]},
+                {"id":"dependent","dependencies":["edited","vstd"]},
+                {"id":"vstd","dependencies":[]}]}});
+        let local = root.join("context/build-inputs.json");
+        std::fs::create_dir_all(local.parent().ok_or("context")?)?;
+        json(&local, &records)?;
+        let source_state = local.with_file_name("source-inputs.json");
+        let paths: Vec<PathBuf> = by_package.values().flatten().cloned().collect();
+        json(
+            &source_state,
+            &crate::managed::source_inputs::Inputs {
+                paths,
+                covered: true,
+                by_package: Some(by_package),
+            },
+        )?;
+        let export = root.join("family.json");
+        publish(&export, "compiler", &target, &local, &data);
+        let published = read(&export).ok_or("export missing")?;
+        assert!(published.sources.is_some(), "the inventory is exported");
+        assert_eq!(published.records.len(), 4);
+        // A comment-only edit to the package with the undeclared script.
+        std::fs::write(root.join("edited/src/lib.rs"), "pub fn f() {}\n// edit\n")?;
+        begin(&export, "compiler", &target, &local, &data)?;
+        let (clean, _, covered) = super::super::stale(&local, &data);
+        assert_eq!(clean, vec!["dependent", "edited", "top"]);
+        assert!(!covered);
+        let kept: Vec<BuildInput> = super::super::read(&local).ok_or("local missing")?;
+        assert!(
+            kept.iter()
+                .any(|r| r.package_id == "vstd" && r.covered && r.output.is_some()),
+            "the unrelated contract survives"
+        );
+        assert!(
+            kept.iter()
+                .filter(|r| r.package_id != "vstd")
+                .all(|r| !r.covered && r.output.is_none())
+        );
+        // A change to the shared dependency refuses everything above it.
+        for record in &mut records {
+            record.digest = current(record, None).0;
+        }
+        json(&local, &records)?;
+        publish(&export, "compiler", &target, &local, &data);
+        std::fs::write(root.join("vstd/src/lib.rs"), "pub fn g() {}\n")?;
+        begin(&export, "compiler", &target, &local, &data)?;
+        assert_eq!(
+            super::super::stale(&local, &data).0,
+            vec!["dependent", "edited", "top", "vstd"]
+        );
+        // Without a resolve graph only the refused package itself is known.
+        assert_eq!(
+            dependents(&serde_json::json!({}), BTreeSet::from(["vstd".to_owned()])),
+            BTreeSet::from(["vstd".to_owned()])
+        );
+        std::fs::remove_dir_all(&root)?;
         Ok(())
     }
 }
