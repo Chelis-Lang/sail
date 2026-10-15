@@ -702,7 +702,13 @@ fn finish(
         mark_engine(&mut report, engine);
     }
     let success = receipt_success(&report, &report_args);
-    let dependencies = driver_dependencies()?;
+    // The complete read of Verus below (about 26 MB) overlaps the reads of
+    // the dependencies; both happen after verification, as before.
+    let (dependencies, verifier_readable) = std::thread::scope(|scope| {
+        let verifier = scope.spawn(|| file_digest(&runtime.original_wrapper).is_ok());
+        (driver_dependencies(), verifier.join().unwrap_or(false))
+    });
+    let dependencies = dependencies?;
     let invocation = Invocation {
         identity,
         run_id: runtime.run_id.clone(),
@@ -720,7 +726,7 @@ fn finish(
         &serde_json::json!({"event":"target-complete","run_id":runtime.run_id,"target":invocation.identity.name,"success":success}),
     );
     // Solver bytes are evidence, never a transformed input.
-    if file_digest(&runtime.original_wrapper).is_err() {
+    if !verifier_readable {
         return Err(Error::new(
             "SAIL3111",
             "Verus disappeared during verification",
