@@ -230,11 +230,22 @@ fn compare(want: &[Vec<u8>], got: &[Vec<u8>]) -> Cmp {
             c.non_stats_differ += 1;
         }
         if c.first_diff.is_none() {
-            let cut = |b: &[u8]| String::from_utf8_lossy(&b[..b.len().min(400)]).into_owned();
+            // Around the first differing byte of the masked replies.
+            let (mw, mg) = (mask(w), mask(g));
+            let at = mw
+                .iter()
+                .zip(&mg)
+                .position(|(x, y)| x != y)
+                .unwrap_or(mw.len().min(mg.len()));
+            let cut = |b: &[u8]| {
+                let from = at.saturating_sub(200).min(b.len());
+                let to = (at + 200).min(b.len());
+                String::from_utf8_lossy(b.get(from..to).unwrap_or_default()).into_owned()
+            };
             c.first_diff = Some(format!(
-                "reply {k}: want {:?} got {:?}",
-                cut(&mask(w)),
-                cut(&mask(g))
+                "reply {k} at byte {at}: want {:?} got {:?}",
+                cut(&mw),
+                cut(&mg)
             ));
         }
     }
