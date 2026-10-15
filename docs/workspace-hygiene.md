@@ -2,7 +2,7 @@
 
 ## Managed compiler targets
 
-Managed runs (`sail verify --incremental`, jobs, MCP and repairs) build in
+Managed runs (every `sail verify`, jobs, MCP and repairs) build in
 their own Cargo targets under the Sail cache:
 
 - `projects/<workspace-key>/compiler-artifacts/<family-key>/target/` holds the

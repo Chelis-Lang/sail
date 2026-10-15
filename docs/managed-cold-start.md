@@ -1,6 +1,8 @@
 # Managed runs: first-run cost, reuse and timings
 
-`sail verify --incremental` (and every managed job from the CLI or MCP) builds
+`sail verify` (managed verification, the default since
+[ADR 0046](decisions/0046-managed-verification-by-default.md), and every
+managed job from the CLI or MCP) builds
 in its own Cargo target under the Sail cache and keeps a proof receipt for each
 target that verified completely. The next run with unchanged inputs reuses
 those receipts and starts no verifier. See

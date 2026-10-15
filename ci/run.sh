@@ -7,27 +7,30 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
-#   e2e [legacy|managed|repair] Run all phases by default; CI runs them in parallel.
+#   e2e [legacy|managed|repair|output|loader|flags|extra] Run all phases by default; CI runs them in parallel.
 #                        `sail new` writes what stock `cargo verus new`
 #                        writes, and its lib and bin projects verify;
-#                        `sail verify` (Sail's Verus, the fork runtime;
+#                        `sail verify` (managed verification, the default,
+#                        ADR 0046, on Sail's Verus, the fork runtime,
 #                        ADR 0043) vs stock `cargo verus verify` on a fresh
 #                        project, cold and warm: identical output and exit;
 #                        then `sail verify --output json`: unchanged stderr
-#                        and exit, a schema-v1 document agreeing with
-#                        Verus's own --output-json; then one `verify` call
-#                        through `sail mcp`, agreeing with that document;
-#                        managed receipts, durable jobs and asynchronous MCP;
-#                        repair CLI/MCP against a validated prebuilt engine
+#                        and exit, a sail-project-result whose requested
+#                        report agrees with Verus's own --output-json; then
+#                        one `verify` call through `sail mcp`, agreeing with
+#                        that document; managed receipts, durable jobs and
+#                        asynchronous MCP; repair CLI/MCP against a
+#                        validated prebuilt engine
 #   conformance TIER [pr | SELECTION...]
-#                        plain stock Verus vs Sail's Verus (the fork) with
-#                        sail-z3 pass-through, then with the
-#                        cache on (fill, then warm), then the source-engine
-#                        arm (validated prebuilt engine vs plain Verus on
-#                        verdicts and diagnostics). `pr` limits the fast
-#                        tier to the guide examples; otherwise extra
-#                        arguments (for example `--project anvil`) are
-#                        passed to sail-conformance
+#                        plain stock Verus vs Sail's Verus (the fork) run as
+#                        `sail verify` runs it (sail-z3 and the managed
+#                        driver's logging flags; ADR 0046): without the
+#                        daemon, then with the cache on (fill, then warm),
+#                        then the source-engine arm (validated prebuilt
+#                        engine vs plain Verus on verdicts and diagnostics).
+#                        `pr` limits the fast tier to the guide examples;
+#                        otherwise extra arguments (for example
+#                        `--project anvil`) are passed to sail-conformance
 #   host                 local-only, outside the image, on the developer's
 #                        own machine (macOS or Linux): clippy and the
 #                        non-solver tests
@@ -126,12 +129,12 @@ case "$step" in
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed|repair' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|repair|output|loader|flags|extra' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed|repair) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|repair" >&2; exit 2 ;;
+      full|legacy|managed|repair|output|loader|flags|extra) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|repair|output|loader|flags|extra" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
     # Sail runs its own Verus, the validated fork runtime the image installs
@@ -195,8 +198,10 @@ RS
         echo $? > "$work/$label.rc"
         set -e
       }
-      # Stock (the oracle) and Sail's Verus each keep their own Cargo target
-      # directory, so neither rebuilds the other's dependencies.
+      # Stock (the oracle) keeps its own Cargo target directory. Managed
+      # `sail verify` builds in its own target under the Sail cache whatever
+      # CARGO_TARGET_DIR says; the variable reaches only setups it verifies
+      # as plain Cargo-Verus does (ADR 0046), which then do not share stock's.
       plain_run() { CARGO_TARGET_DIR="$work/target-plain" run "$@"; }
       sail_run() { CARGO_TARGET_DIR="$work/target-sail" run "$@"; }
       # Warm-up: the first build of a fresh project also builds its vstd
@@ -220,9 +225,10 @@ RS
       entries="$(find "$SAIL_CACHE_DIR/results/v2" -type f | wc -l)"
       echo "e2e: identical to cargo verus verify (exit $(cat "$work/plain.rc")); cache entries: $entries"
       [ "$entries" -gt 0 ]
-      # `--output json` (ADR 0014): stderr and exit code unchanged, stdout one
-      # schema-v1 document whose verdicts agree with Verus's own --output-json.
-      # The runs above filled the cache, so every answer is served from it.
+      # `--output json` (ADR 0014, ADR 0046): stderr and exit code unchanged,
+      # stdout one sail-project-result whose requested target's schema-v2
+      # report agrees with Verus's own --output-json. The runs above filled
+      # the cache, so every answer is served from it.
       sail_run json "$sail" verify --output json
       plain_run verusjson cargo verus verify -- --output-json --time
       for part in rc err; do
@@ -240,6 +246,25 @@ RS
       CARGO_TARGET_DIR="$work/target-sail" "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
       "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
       bash "$sail_portfolio_test"
+    fi
+    if [ "$phase" = full ] || [ "$phase" = output ]; then
+      # `sail verify` against plain `cargo verus verify` across the edit loop
+      # (ADR 0046), in a job of its own.
+      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" loop)
+    fi
+    if [ "$phase" = full ] || [ "$phase" = loader ]; then
+      # A loader variable: verified without proof reuse, with one note.
+      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" loader)
+    fi
+    if [ "$phase" = full ] || [ "$phase" = flags ]; then
+      # The setups verified as plain Cargo-Verus verifies them.
+      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" flags)
+    fi
+    if [ "$phase" = extra ] || { [ "$phase" = full ] && [ "${CI:-}" != true ]; }; then
+      # `-- --output-json --time` and a workspace: four cold builds, so
+      # local-only (ADR 0013).
+      local_only e2e extra
+      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" extra)
     fi
     if [ "$phase" = full ] || [ "$phase" = managed ]; then
       sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"
@@ -283,6 +308,8 @@ RS
     fi
     if [ "$tier" = fast ]; then jobs=4; else jobs=3; fi
     out="${SAIL_CONFORMANCE_OUT:-conformance-out}"
+    # The Sail side runs Verus as `sail verify` does (ADR 0046): first with
+    # no daemon, as when the cache is unavailable.
     ./target/release/sail-conformance run "${select[@]}" --jobs "$jobs" --out "$out/pass-through"
     # With the cache on: fill, then warm. A difference in either is a failure.
     start_daemon

@@ -2,7 +2,10 @@
 
 - **Status:** accepted; amended by [ADR 0044](0044-output-schema-v2.md)
   (schema version 2 renames `tier` to `establishment` and adds
-  `evidence_tier` and ITF values)
+  `evidence_tier` and ITF values);
+  amended by [ADR 0046](0046-managed-verification-by-default.md)
+  (`sail verify --output json` prints the project-result envelope of these
+  reports)
 - **Date:** 2026-10-08
 
 ## Context

@@ -5,6 +5,30 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **`sail verify` runs managed verification by default** (ADR 0046). What
+  `--incremental` used to switch on is now every `sail verify`: Sail's own
+  Cargo target under the Sail cache, proof receipts that skip unchanged
+  targets, complete reports and durable jobs. The plain pass-through mode is
+  gone. Without `--output json`, the output is plain `cargo verus verify`'s:
+  Cargo's lines and Verus's diagnostics on stderr, Verus's own stdout
+  (`verification results:: …`, a requested `--output-json` document or the
+  `--time` report, rebuilt from the document Sail asks Verus for), and its
+  exit code; the `Current evidence: …` summary line is no longer printed.
+  `sail verify --output json` now prints a `sail-project-result` envelope (a
+  schema-v2 report per target) instead of one schema-v2 report;
+  `--measure-fragility` and the portfolio still print one report.
+  `--incremental` is accepted and does nothing (deprecated). Setups managed
+  verification cannot bind to a receipt (`--target-dir`, Verus `--log`
+  options, `--no-verify`, tests, benches, examples, Cargo `--config`
+  overrides) are verified as plain `cargo verus verify` verifies them, with
+  one `note[SAIL3112]` line and no proof reuse. With `LD_LIBRARY_PATH`,
+  `LD_PRELOAD` or a `DYLD_*` loader variable set, which managed runs used to
+  refuse, managed verification now runs without proof reuse and prints one
+  `note[SAIL3112]` line. Passing
+  `-- --output-json` or `-- --time` to managed verification no longer fails
+  with "Option given more than once". The conformance harness's Sail arm now
+  adds the managed driver's logging flags (`--sail-arm shim` keeps the bare
+  shim for diagnosis).
 - **Breaking before release: output schema version 2** (#149, ADR 0044).
   `sail verify --output json` writes `schema_version` 2 and the managed
   `sail-project-result` envelope is version 2. Each function's `tier` is

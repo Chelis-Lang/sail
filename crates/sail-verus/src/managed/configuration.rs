@@ -31,7 +31,7 @@ fn validate(value: &toml::Value, file: &Path) -> Result<()> {
         Error::new(
             "SAIL3112",
             format!(
-                "incremental verification cannot identify runtime configuration in {}; use ordinary sail verify",
+                "managed verification cannot identify the runtime configuration in {}",
                 file.display()
             ),
         )
@@ -98,8 +98,33 @@ pub(super) fn paths(workspace: &Path, cargo_home: Option<&Path>) -> Vec<PathBuf>
     super::input::configuration_paths(workspace, cargo_home)
 }
 
-pub(super) fn check(workspace: &Path, args: &[String]) -> Result<()> {
-    for (key, value) in std::env::vars_os() {
+/// The process-loader variables whose effect on the compiler and verifier
+/// Sail cannot bind to a receipt. A run with one set proceeds without proof
+/// reuse ([`check`]); it is not refused.
+pub(super) const LOADER_VARIABLES: &[&str] = &[
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "DYLD_INSERT_LIBRARIES",
+    "DYLD_LIBRARY_PATH",
+    "DYLD_FRAMEWORK_PATH",
+];
+
+/// Refuses configuration Sail cannot identify (`SAIL3112`). Returns the
+/// first loader variable set in the environment, if any: such a run is
+/// still verified, as plain Cargo-Verus would, but neither reuses nor
+/// records proof receipts or dependency records (ADR 0046).
+pub(super) fn check(workspace: &Path, args: &[String]) -> Result<Option<String>> {
+    check_environment(std::env::vars_os(), workspace, args)
+}
+
+/// [`check`] for an explicit process environment.
+fn check_environment(
+    environment: impl Iterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
+    workspace: &Path,
+    args: &[String],
+) -> Result<Option<String>> {
+    let mut loader_set = None;
+    for (key, value) in environment {
         let key = key.to_string_lossy();
         let value = value.to_string_lossy();
         let compiler = [
@@ -111,20 +136,14 @@ pub(super) fn check(workspace: &Path, args: &[String]) -> Result<()> {
         let flags = (key.ends_with("RUSTFLAGS") || key == "CARGO_ENCODED_RUSTFLAGS")
             && value.contains("--sysroot");
         let target = key == "CARGO_BUILD_TARGET" && custom_target(&value);
-        let loader = [
-            "LD_PRELOAD",
-            "LD_LIBRARY_PATH",
-            "DYLD_INSERT_LIBRARIES",
-            "DYLD_LIBRARY_PATH",
-            "DYLD_FRAMEWORK_PATH",
-        ]
-        .contains(&key.as_ref());
-        if compiler || flags || target || loader {
+        if LOADER_VARIABLES.contains(&key.as_ref()) {
+            loader_set = loader_set.or_else(|| Some(key.clone().into_owned()));
+            continue;
+        }
+        if compiler || flags || target {
             return Err(Error::new(
                 "SAIL3112",
-                format!(
-                    "incremental verification cannot identify runtime selector {key}; use ordinary sail verify"
-                ),
+                format!("managed verification cannot identify the runtime selector {key}"),
             ));
         }
     }
@@ -135,7 +154,7 @@ pub(super) fn check(workspace: &Path, args: &[String]) -> Result<()> {
     {
         return Err(Error::new(
             "SAIL3112",
-            "incremental verification does not support Cargo --config overrides; use ordinary sail verify",
+            "Cargo `--config` overrides are not bound to a proof receipt",
         ));
     }
     let home = std::env::var_os("CARGO_HOME")
@@ -153,12 +172,40 @@ pub(super) fn check(workspace: &Path, args: &[String]) -> Result<()> {
             .map_err(|e| Error::new("SAIL3112", format!("cannot read {}: {e}", path.display())))?;
         validate(&value, &path)?;
     }
-    Ok(())
+    Ok(loader_set)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A loader variable makes the run proceed without proof reuse (ADR
+    /// 0046); compiler selectors are still refused.
+    #[test]
+    fn loader_variables_disable_reuse_and_compiler_selectors_are_refused() {
+        let dir = std::env::temp_dir().join(format!("sail-config-check-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let env = |pairs: &[(&str, &str)]| {
+            pairs
+                .iter()
+                .map(|(k, v)| (std::ffi::OsString::from(k), std::ffi::OsString::from(v)))
+                .collect::<Vec<_>>()
+                .into_iter()
+        };
+        let check = |pairs: &[(&str, &str)]| check_environment(env(pairs), &dir, &[]);
+        assert_eq!(check(&[("PATH", "/bin")]), Ok(None));
+        for variable in LOADER_VARIABLES {
+            assert_eq!(
+                check(&[("PATH", "/bin"), (variable, "/opt/cuda/lib64")]),
+                Ok(Some((*variable).to_owned()))
+            );
+        }
+        assert_eq!(
+            check(&[("LD_LIBRARY_PATH", "/x"), ("CARGO_BUILD_RUSTC", "other")]).map_err(|e| e.code),
+            Err("SAIL3112")
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
     #[test]
     fn runtime_selectors_and_custom_sysroots_are_refused() {
         for text in [

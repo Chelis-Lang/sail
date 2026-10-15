@@ -51,7 +51,7 @@ finish() { # wait for job $1 to end; print its result document
 # context. A first repair run may only establish build-script declarations;
 # a second must be accepted and Current.
 warm() {
-  (cd "$out/$1" && sail verify --incremental --output json "${selection[@]}" >"$out/$1-verify.json")
+  (cd "$out/$1" && sail verify --output json "${selection[@]}" >"$out/$1-verify.json")
   for attempt in 1 2; do
     candidate="$(submit "$1")"
     finish "$candidate" >"$out/$1-$attempt.json"

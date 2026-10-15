@@ -1,23 +1,23 @@
-//! `sail verify`: `cargo verus verify` with sail in front of the solver.
+//! `sail verify`: managed verification by default (ADR 0046).
 //!
-//! Sail runs its own Verus, built from Sail's Verus fork and validated
-//! against its pins (ADR 0043), with the user's arguments unchanged. Stock
-//! Verus is never run in its place. sail only sets three environment
-//! variables:
+//! Every `sail verify` runs Sail's managed runner
+//! ([`crate::managed_cli`]): Sail's own Verus, built from Sail's Verus fork
+//! and validated against its pins (ADR 0043), in a Cargo target Sail owns,
+//! with `sail-z3` and the cache daemon in front of the pinned Z3, proof
+//! receipts reused while inputs are unchanged, and the output plain
+//! `cargo verus verify` prints. `--incremental` is accepted and does
+//! nothing; it was the opt-in for what is now the default.
+//!
+//! This module keeps the explicit solver experiments that are not managed
+//! runs: `--measure-fragility` and the verdict-changing
+//! `--portfolio accept-first-proof` (and its per-seed worker). Each runs
+//! `cargo verus verify` with three environment variables set:
 //! - `VERUS_Z3_PATH` names `sail-z3`;
 //! - `SAIL_Z3_PATH` names the Z3 that Verus would have used;
 //! - `SAIL_DAEMON_SOCKET` names the cache daemon, which is started on demand.
 //!
 //! If the daemon cannot be reached, `sail-z3` passes everything through to
 //! that Z3 unchanged, and one `warning[SAIL0003]` line on stderr says why.
-//! Switching back means running `cargo verus verify` again.
-//!
-//! `sail verify --output json [args…]` (ADR 0014) also asks Verus for
-//! machine-readable results and logs that leave Z3's input unchanged, and
-//! prints one schema-v1 document (`docs/output-schema.md`) on stdout.
-//! Verus's diagnostics still go to stderr, verbatim. Without `--output
-//! json`, nothing is added and, while the daemon is available, the output is
-//! exactly `cargo verus verify`'s.
 
 use std::ffi::OsString;
 use std::io::Read as _;
@@ -306,82 +306,175 @@ fn split_args(args: &[String]) -> Result<(bool, Vec<String>), SetupError> {
     Ok((json, rest))
 }
 
-/// Runs `cargo verus verify <args>` through sail.
+/// `sail verify`: managed verification, or an explicit fragility
+/// measurement or seed portfolio.
 pub fn verify(
     args: &[String],
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
 ) -> ExitCode {
-    if let Some(exit) = crate::managed_cli::verify(args, out, err) {
-        return exit;
-    }
     let fail = |err: &mut dyn std::io::Write, e: &SetupError| {
         let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
         ExitCode::from(EXIT_SETUP)
     };
-    let (args, measure) = match crate::fragility_join::extract(args) {
+    // `--incremental` named the managed runner when it was opt-in; it is
+    // now the default, so the flag is accepted and changes nothing.
+    let args = without_incremental(args);
+    let (args, measure) = match crate::fragility_join::extract(&args) {
         Ok(v) => v,
         Err(message) => return fail(err, &SetupError("SAIL0110", message)),
     };
     let args = args.as_slice();
-    match crate::portfolio::parse(args) {
-        Ok(Some(_)) if measure.is_some() => {
-            return fail(
-                err,
-                &SetupError(
-                    "SAIL0110",
-                    "measure fragility separately from a portfolio".to_owned(),
-                ),
-            );
+    let portfolio = match crate::portfolio::parse(args) {
+        Ok(portfolio) => portfolio,
+        Err(message) => return fail(err, &SetupError("SAIL0110", message)),
+    };
+    if (portfolio.is_some() || measure.is_some()) && managed_only(args) {
+        return fail(
+            err,
+            &SetupError(
+                "SAIL0110",
+                "--background and --engine cannot be combined with a portfolio or fragility measurement".to_owned(),
+            ),
+        );
+    }
+    match portfolio {
+        Some(_) if measure.is_some() => fail(
+            err,
+            &SetupError(
+                "SAIL0110",
+                "measure fragility separately from a portfolio".to_owned(),
+            ),
+        ),
+        Some(options) => crate::portfolio::run(options, out, err),
+        None if measure.is_some() => measure_fragility(args, measure, out, err),
+        None => crate::managed_cli::verify(args, out, err),
+    }
+}
+
+/// A setup managed verification cannot bind to a proof receipt (`why`, from
+/// `SAIL3112`): verified exactly as plain `cargo verus verify` verifies it,
+/// with `sail-z3` and the solver cache in front of Z3, no proof reuse and no
+/// receipts (ADR 0046). One `note[SAIL3112]` line on stderr says why; the
+/// rest of the output, the verdicts and the exit code are Cargo-Verus's.
+/// With `--output json`, stdout is one schema-v2 report, as for the explicit
+/// experiments.
+pub(crate) fn unbound(
+    args: &[String],
+    json: bool,
+    why: &str,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+) -> ExitCode {
+    let _ = writeln!(
+        err,
+        "note[SAIL3112]: {why}; verifying as `cargo verus verify` does, with Sail's solver cache and without proof reuse"
+    );
+    let _ = err.flush();
+    let setup = match setup() {
+        Ok(s) => s,
+        Err(e) if json => return json_failure(args, &e, out, err),
+        Err(e) => {
+            let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
+            return ExitCode::from(EXIT_SETUP);
         }
-        Ok(Some(options)) => return crate::portfolio::run(options, out, err),
-        Ok(None) => {}
-        Err(message) => {
-            return fail(err, &SetupError("SAIL0110", message));
+    };
+    if json {
+        return verify_json(&setup, args, out, err);
+    }
+    let (mut cmd, _) = command(&setup, args);
+    match cmd.status() {
+        Ok(status) => exit_code(status.code()),
+        Err(e) => {
+            let _ = writeln!(
+                err,
+                "error[SAIL0105]: sail verify: cannot run {}: {e}",
+                setup.cargo_verus.display()
+            );
+            ExitCode::from(EXIT_SETUP)
         }
     }
+}
+
+/// `cargo verus verify <args>` with Sail's Verus and nothing changed, for
+/// what plain Cargo-Verus itself refuses (partial verification under
+/// `verify`): its own message and exit code.
+pub(crate) fn plain_verify(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
+    let setup = match setup() {
+        Ok(s) => s,
+        Err(e) => {
+            let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
+            return ExitCode::from(EXIT_SETUP);
+        }
+    };
+    let status = Command::new(&setup.cargo_verus)
+        .arg("verus")
+        .arg("verify")
+        .args(args)
+        .env("VERUS_Z3_PATH", &setup.shim)
+        .env("SAIL_Z3_PATH", &setup.z3)
+        .env("SAIL_SOLVER_MODE", setup.mode.name())
+        .env_remove("SAIL_DAEMON_SOCKET")
+        .status();
+    match status {
+        Ok(status) => exit_code(status.code()),
+        Err(e) => {
+            let _ = writeln!(
+                err,
+                "error[SAIL0105]: sail verify: cannot run {}: {e}",
+                setup.cargo_verus.display()
+            );
+            ExitCode::from(EXIT_SETUP)
+        }
+    }
+}
+
+/// `args` without `--incremental` before any `--`.
+fn without_incremental(args: &[String]) -> Vec<String> {
+    let split = args.iter().position(|a| a == "--").unwrap_or(args.len());
+    args.iter()
+        .enumerate()
+        .filter(|(i, a)| *i >= split || a.as_str() != "--incremental")
+        .map(|(_, a)| a.clone())
+        .collect()
+}
+
+/// Whether `args` use a flag only managed verification has.
+fn managed_only(args: &[String]) -> bool {
+    args.iter()
+        .take_while(|a| *a != "--")
+        .any(|a| a == "--background" || a == "--engine" || a.starts_with("--engine="))
+}
+
+/// `sail verify --measure-fragility`: one run with traces, then the
+/// fragility measurement, reported as one JSON document.
+fn measure_fragility(
+    args: &[String],
+    measure: Option<u64>,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+) -> ExitCode {
     let (json, args) = match split_args(args) {
         Ok(split) => split,
-        Err(e) => return fail(err, &e),
+        Err(e) => return json_failure(args, &e, out, err),
     };
     let mut setup = match setup() {
         Ok(s) => s,
-        Err(e) if json => {
-            let report = crate::report::setup_failure(&args, e.0, &e.1);
-            let _ = writeln!(
-                out,
-                "{}",
-                serde_json::to_string_pretty(&report).unwrap_or_default()
-            );
-            return fail(err, &e);
+        Err(e) if json => return json_failure(&args, &e, out, err),
+        Err(e) => {
+            let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
+            return ExitCode::from(EXIT_SETUP);
         }
-        Err(e) => return fail(err, &e),
     };
     setup.measure = measure;
-    if measure.is_some() {
-        let (measured_args, _ownership) =
-            match crate::measurement::prepare(&args, crate::portfolio::partial(&args)) {
-                Ok(v) => v,
-                Err(message) => {
-                    return json_failure(&args, &SetupError("SAIL0110", message), out, err);
-                }
-            };
-        return verify_json(&setup, &measured_args, out, err);
-    }
-    if json {
-        return verify_json(&setup, &args, out, err);
-    }
-    let (mut cmd, _) = command(&setup, &args);
-    match cmd.status() {
-        Ok(status) => exit_code(status.code()),
-        Err(e) => fail(
-            err,
-            &SetupError(
-                "SAIL0105",
-                format!("cannot run {}: {e}", setup.cargo_verus.display()),
-            ),
-        ),
-    }
+    let (measured_args, _ownership) =
+        match crate::measurement::prepare(&args, crate::portfolio::partial(&args)) {
+            Ok(v) => v,
+            Err(message) => {
+                return json_failure(&args, &SetupError("SAIL0110", message), out, err);
+            }
+        };
+    verify_json(&setup, &measured_args, out, err)
 }
 
 /// Internal independent portfolio worker. Closing its parent's input pipe
@@ -747,7 +840,47 @@ fn verify_json(
 
 #[cfg(test)]
 mod tests {
-    use super::{has_verus_flag, split_args};
+    use super::{has_verus_flag, managed_only, split_args, without_incremental};
+
+    /// `--incremental` is the deprecated name of the default: removed
+    /// before `--`, and kept after it, where it belongs to Verus.
+    #[test]
+    fn incremental_is_accepted_and_does_nothing() {
+        assert_eq!(
+            without_incremental(&strings(&[
+                "--incremental",
+                "-p",
+                "x",
+                "--",
+                "--incremental"
+            ])),
+            strings(&["-p", "x", "--", "--incremental"])
+        );
+        assert_eq!(
+            without_incremental(&strings(&["-p", "x"])),
+            strings(&["-p", "x"])
+        );
+    }
+
+    /// Experiments refuse managed-only flags instead of ignoring them.
+    #[test]
+    fn experiments_refuse_managed_only_flags() {
+        assert!(managed_only(&strings(&["--background"])));
+        assert!(managed_only(&strings(&["--engine=interactive"])));
+        assert!(!managed_only(&strings(&["--", "--background"])));
+        let mut err = Vec::new();
+        let code = super::verify(
+            &strings(&["--portfolio", "accept-first-proof", "--background"]),
+            &mut Vec::new(),
+            &mut err,
+        );
+        assert_eq!(code, std::process::ExitCode::from(2));
+        assert!(
+            String::from_utf8_lossy(&err).starts_with("error[SAIL0110]: sail verify: --background"),
+            "{}",
+            String::from_utf8_lossy(&err)
+        );
+    }
 
     /// A socket path the kernel cannot bind is reported at once, with the
     /// limit and the fix, instead of a silent 5 s wait.

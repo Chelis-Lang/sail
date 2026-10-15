@@ -60,6 +60,9 @@ struct Paths {
     family_contexts: PathBuf,
     /// The workspace's directory of proof contexts.
     projects: PathBuf,
+    /// Whether this run may reuse and record proof receipts. A run with a
+    /// process-loader variable set may not (ADR 0046).
+    reuse: bool,
 }
 
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
@@ -508,6 +511,7 @@ fn prepare(
         run: context.join("runs").join(run_id),
         family_contexts: compiler.join("contexts"),
         projects: root,
+        reuse: true,
     };
     for dir in [
         &paths.receipts,
@@ -545,9 +549,21 @@ fn cargo_build_target(target: &Path, args: &[String]) -> PathBuf {
     }
 }
 
+/// Cargo's cache-directory tag. `cargo clean` refuses a target without it,
+/// and a target seeded from the dependency store (ADR 0045) starts without
+/// one, since Cargo writes it only when it creates the directory itself.
+const CACHEDIR_TAG: &[u8] = b"Signature: 8a477f597d28d172789f06886806bc55\n\
+# This file is a cache directory tag created by cargo.\n\
+# For information about cache directory tags see https://bford.info/cachedir/\n";
+
 fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     if packages.is_empty() {
         return Ok(());
+    }
+    let cleaned = cargo_build_target(target, &config.args);
+    let tag = cleaned.join("CACHEDIR.TAG");
+    if cleaned.is_dir() && !tag.exists() {
+        std::fs::write(&tag, CACHEDIR_TAG).map_err(|e| Error::new("SAIL3105", e.to_string()))?;
     }
     let mut cmd = Command::new(&config.cargo);
     // Cargo-Verus builds with a different rustc fingerprint, so a clean that
@@ -583,7 +599,12 @@ fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     Ok(())
 }
 
-fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<i32>> {
+fn invoke(
+    config: &Config,
+    paths: &Paths,
+    out: &mut Option<&mut dyn Write>,
+    err: &mut dyn Write,
+) -> Result<Option<i32>> {
     let split = config
         .args
         .iter()
@@ -606,6 +627,10 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
         // Cargo argument. Keep the owned relevant target-dir first and the
         // irrelevant message format after the caller's unchanged Cargo options.
         .arg("--message-format=json-render-diagnostics")
+        // Cargo writes to Sail's pipe, not the terminal, so it would print
+        // no colour; ask for it as plain Cargo-Verus would on this terminal.
+        // An argument, not CARGO_TERM_COLOR, so it is not a proof input.
+        .args((out.is_some() && terminal_colour(&config.args[..split])).then_some("--color=always"))
         .args(&config.args[split..])
         .env("RUSTC_BOOTSTRAP", "1")
         .env("CARGO", &paths.cargo_alias)
@@ -632,40 +657,147 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-    let stdout = child.stdout.take().map(|mut pipe| {
-        std::thread::spawn(move || {
-            let mut bytes = Vec::new();
-            pipe.read_to_end(&mut bytes).map(|_| bytes)
-        })
-    });
-    let mut captured = Vec::new();
-    if let Some(mut pipe) = child.stderr.take() {
-        let mut buf = vec![0; 65536];
-        loop {
-            let n = pipe
-                .read(&mut buf)
-                .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-            if n == 0 {
-                break;
-            }
-            captured.extend_from_slice(&buf[..n]);
-            err.write_all(&buf[..n])
-                .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
+    let (stdout, captured) = match relay(&mut child, out, err) {
+        Ok(output) => output,
+        Err(error) => {
+            // A closed stdout or stderr (`| head`) ends the run: stop Cargo.
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
         }
-    }
+    };
     let code = child
         .wait()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?
         .code();
-    let stdout = stdout
-        .ok_or_else(|| Error::new("SAIL3106", "missing Cargo output pipe"))?
-        .join()
-        .map_err(|_| Error::new("SAIL3106", "Cargo output reader failed"))?
-        .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
     std::fs::write(paths.run.join("cargo.stdout"), stdout)
         .and_then(|()| std::fs::write(paths.run.join("cargo.stderr"), captured))
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
     Ok(code)
+}
+
+/// Whether Sail's stderr is a terminal on which plain Cargo would print
+/// colour, and the user chose no colour setting of their own.
+fn terminal_colour(cargo_args: &[String]) -> bool {
+    use std::io::IsTerminal as _;
+    colour_wanted(
+        std::io::stderr().is_terminal(),
+        std::env::var_os("CARGO_TERM_COLOR").is_some(),
+        cargo_args,
+    )
+}
+
+fn colour_wanted(terminal: bool, colour_env: bool, cargo_args: &[String]) -> bool {
+    terminal
+        && !colour_env
+        && !cargo_args
+            .iter()
+            .any(|a| a == "--color" || a.starts_with("--color="))
+}
+
+/// One piece of Cargo-Verus output.
+enum Output {
+    /// A line of stdout, with its newline.
+    Line(Vec<u8>),
+    /// A chunk of stderr.
+    Diagnostics(Vec<u8>),
+}
+
+/// Relays Cargo-Verus's output as it arrives and returns copies of its
+/// stdout and stderr. Stderr goes to `err` verbatim (Cargo's status lines
+/// and Verus's diagnostics). Stdout carries Cargo's JSON messages, which
+/// Sail keeps, and Verus's own stdout as the driver rebuilt it, which goes
+/// to `out` when the caller shows Verus's output (`sail verify`). A JSON
+/// caller passes no `out`: its stdout holds only its document, and its
+/// stderr is what plain `cargo verus verify` prints there.
+fn relay(
+    child: &mut std::process::Child,
+    out: &mut Option<&mut dyn Write>,
+    err: &mut dyn Write,
+) -> Result<(Vec<u8>, Vec<u8>)> {
+    use std::io::BufRead as _;
+    let failed = |e: std::io::Error| Error::new("SAIL3106", e.to_string());
+    let (tx, rx) = std::sync::mpsc::channel::<std::io::Result<Output>>();
+    let readers = [
+        child.stdout.take().map(|pipe| {
+            let tx = tx.clone();
+            std::thread::spawn(move || {
+                let mut reader = std::io::BufReader::new(pipe);
+                loop {
+                    let mut line = Vec::new();
+                    match reader.read_until(b'\n', &mut line) {
+                        Ok(0) => break,
+                        Ok(_) => {
+                            if tx.send(Ok(Output::Line(line))).is_err() {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Err(e));
+                            break;
+                        }
+                    }
+                }
+            })
+        }),
+        child.stderr.take().map(|mut pipe| {
+            let tx = tx.clone();
+            std::thread::spawn(move || {
+                let mut buf = vec![0; 65536];
+                loop {
+                    match pipe.read(&mut buf) {
+                        Ok(0) => break,
+                        Ok(n) => {
+                            if tx.send(Ok(Output::Diagnostics(buf[..n].to_vec()))).is_err() {
+                                break;
+                            }
+                        }
+                        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                        Err(e) => {
+                            let _ = tx.send(Err(e));
+                            break;
+                        }
+                    }
+                }
+            })
+        }),
+    ];
+    drop(tx);
+    if readers.iter().any(Option::is_none) {
+        return Err(Error::new("SAIL3106", "missing Cargo output pipe"));
+    }
+    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+    for piece in rx {
+        match piece.map_err(failed)? {
+            Output::Diagnostics(bytes) => {
+                err.write_all(&bytes).map_err(failed)?;
+                stderr.extend_from_slice(&bytes);
+            }
+            Output::Line(line) => {
+                if let Some(out) = out
+                    && !cargo_message(&line)
+                {
+                    out.write_all(&line)
+                        .and_then(|()| out.flush())
+                        .map_err(failed)?;
+                }
+                stdout.extend_from_slice(&line);
+            }
+        }
+    }
+    for reader in readers.into_iter().flatten() {
+        reader
+            .join()
+            .map_err(|_| Error::new("SAIL3106", "Cargo output reader failed"))?;
+    }
+    Ok((stdout, stderr))
+}
+
+/// Whether a stdout line is one of Cargo's JSON messages (an object with a
+/// `reason`), rather than text a compiler printed.
+fn cargo_message(line: &[u8]) -> bool {
+    serde_json::from_slice::<Value>(line)
+        .is_ok_and(|value| value.get("reason").is_some_and(Value::is_string))
 }
 
 pub(crate) fn focused(args: &[String]) -> bool {
@@ -944,6 +1076,15 @@ fn sibling_receipts(paths: &Paths, context: &str) -> Vec<(String, PathBuf)> {
     siblings
 }
 
+/// The two receipt fields that decide a targeted clean. Reading only these
+/// skips the receipt's embedded report (megabytes for vstd) instead of
+/// building it; reuse still reads and checks the complete receipt.
+#[derive(serde::Deserialize)]
+struct ReceiptRevision {
+    package_id: String,
+    input_revision: String,
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "Receipt matching is kept alongside the observed Cargo target that authorizes reuse."
@@ -1025,7 +1166,8 @@ fn target_records(
                     .filter(|p| p.is_file()),
             );
             let hashes = artifact_hashes(&artifact_paths)?;
-            let reusable = call.success && complete(&call.report) && !input_revision.is_empty();
+            let reusable =
+                paths.reuse && call.success && complete(&call.report) && !input_revision.is_empty();
             if reusable {
                 json(
                     &paths
@@ -1077,7 +1219,8 @@ fn target_records(
                     .filter(|p| p.is_file()),
             );
             let matches = |r: &Receipt, context: &str| {
-                artifact["fresh"] == true
+                paths.reuse
+                    && artifact["fresh"] == true
                     && !force
                     && !input_revision.is_empty()
                     && r.input_revision == input_revision
@@ -1513,12 +1656,27 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     run_engine(config, err, None)
 }
 
+/// [`run`], also showing Verus's own stdout on `out` as plain
+/// `cargo verus verify` would print it. `sail verify` uses this; JSON callers
+/// use [`run`], whose stdout is theirs.
+///
+/// # Errors
+///
+/// As [`run`].
+pub fn run_showing_output(
+    config: &Config,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> Result<ProjectResult> {
+    run_engine_held(config, Some(out), err, None).map(|(result, _)| result)
+}
+
 pub(crate) fn run_engine(
     config: &Config,
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<ProjectResult> {
-    run_engine_held(config, err, engine).map(|(result, _)| result)
+    run_engine_held(config, None, err, engine).map(|(result, _)| result)
 }
 
 /// [`run_engine`], also returning the shared workspace lock, so the caller can
@@ -1529,6 +1687,7 @@ pub(crate) fn run_engine(
 )]
 pub(crate) fn run_engine_held(
     config: &Config,
+    mut out: Option<&mut dyn Write>,
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<(ProjectResult, File)> {
@@ -1540,37 +1699,58 @@ pub(crate) fn run_engine_held(
         owned.cargo_verus.clone_from(&engine.cargo_verus);
     }
     let config = &owned;
-    if config.args.iter().any(|s| {
-        [
-            "--tests",
-            "--benches",
-            "--examples",
-            "--all-targets",
-            "--test",
-            "--bench",
-            "--example",
-            "--no-verify",
-        ]
+    // Cargo options that change what Cargo prints (its message format and
+    // verbose command lines, which would show Sail's driver and flags) are
+    // also left to plain Cargo-Verus.
+    let cargo_output = config
+        .args
         .iter()
-        .any(|flag| s == flag || s.starts_with(&format!("{flag}=")))
-            || s == "--target-dir"
-            || s.starts_with("--target-dir=")
-            || s == "--no-verify"
-            || s.starts_with("--log")
-            || s == "--verus-source"
-            || s == "--sysroot"
-            || s.starts_with("--sysroot=")
+        .take_while(|a| a.as_str() != "--")
+        .find(|a| {
+            a.starts_with("--message-format") || matches!(a.as_str(), "-v" | "-vv" | "--verbose")
+        });
+    if let Some(unbound) = cargo_output.or_else(|| {
+        config.args.iter().find(|s| {
+            let s = s.as_str();
+            [
+                "--tests",
+                "--benches",
+                "--examples",
+                "--all-targets",
+                "--test",
+                "--bench",
+                "--example",
+                "--no-verify",
+            ]
+            .iter()
+            .any(|flag| s == *flag || s.starts_with(&format!("{flag}=")))
+                || s == "--target-dir"
+                || s.starts_with("--target-dir=")
+                || s == "--no-verify"
+                || s.starts_with("--log")
+                || s == "--verus-source"
+                || s == "--sysroot"
+                || s.starts_with("--sysroot=")
+        })
     }) {
+        // SAIL3112: a setup managed verification cannot bind to a receipt.
+        // `sail verify` then verifies it as plain Cargo-Verus does (ADR 0046).
         return Err(Error::new(
-            "SAIL3100",
-            "incremental verification owns its target and logs and requires Cargo verification",
+            "SAIL3112",
+            format!("`{unbound}` is not bound to a proof receipt by managed verification"),
         ));
     }
     let started = Instant::now();
     let diagnostics = Diagnostics::new();
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
-    super::configuration::check(&invocation, &config.args)?;
+    let loader = super::configuration::check(&invocation, &config.args)?;
+    if let Some(variable) = &loader {
+        let _ = writeln!(
+            err,
+            "note[SAIL3112]: {variable} is set, so this run reuses no proof receipts and records none; it verifies what Cargo rebuilds, as `cargo verus verify` does (unset {variable} to reuse proofs)"
+        );
+    }
     // Cargo metadata and the runtime context are independent: neither reads
     // the other's result. They overlap, and their results are consumed in the
     // original order, so the first reported error is unchanged.
@@ -1591,15 +1771,15 @@ pub(crate) fn run_engine_held(
     let workspace_root = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     if std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some() {
         return Err(Error::new(
-            "SAIL3100",
-            "incremental verification does not support a chained workspace rustc wrapper",
+            "SAIL3112",
+            "RUSTC_WORKSPACE_WRAPPER is set, and managed verification cannot chain a workspace rustc wrapper",
         ));
     }
     let expected = expected_targets(&data, &config.args);
     if expected.is_empty() {
         return Err(Error::new(
-            "SAIL3100",
-            "no selected Cargo targets declare package.metadata.verus.verify=true",
+            "SAIL3112",
+            "no selected Cargo target declares package.metadata.verus.verify = true, so there is no proof to record",
         ));
     }
     drop(metadata_phase);
@@ -1616,11 +1796,13 @@ pub(crate) fn run_engine_held(
             .map_or(0, |d| d.as_nanos())
     );
     let inputs = diagnostics.phase(Phase::Inputs);
-    let (paths, ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
+    let (mut paths, ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
+    paths.reuse = loader.is_none();
     // A Cargo target this run creates (a new project, worktree or sandbox, or
     // after a prune) may start from the machine's dependency store (ADR 0045).
-    // Focused runs build in a separate directory and verify no dependency.
-    let store_candidates = if super::store::enabled() && !focused(&config.args) {
+    // Focused runs build in a separate directory and verify no dependency. A
+    // run without proof reuse neither reads nor fills the store (ADR 0046).
+    let store_candidates = if paths.reuse && super::store::enabled() && !focused(&config.args) {
         super::store::candidates(&data, &expected, &compiler_hash)
     } else {
         Vec::new()
@@ -1651,7 +1833,10 @@ pub(crate) fn run_engine_held(
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
             .as_deref(),
     ));
-    if !stale_scripts.is_empty() {
+    // Sail's targeted cleans exist to observe what a receipt binds. A run
+    // without reuse records no receipt, so Cargo's own freshness decides, as
+    // for plain Cargo-Verus.
+    if paths.reuse && !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
     let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
@@ -1675,9 +1860,16 @@ pub(crate) fn run_engine_held(
         .into_iter()
         .filter(|name| !stale_scripts.contains(name))
         .collect();
-    clean(config, &paths.target, &late_scripts)?;
+    if paths.reuse {
+        clean(config, &paths.target, &late_scripts)?;
+    }
     let stamp_before = super::input::mutation_stamp(&before);
-    super::configuration::check(&invocation, &config.args)?;
+    if super::configuration::check(&invocation, &config.args)? != loader {
+        return Err(Error::new(
+            "SAIL3112",
+            "the process environment changed during verification setup",
+        ));
+    }
     super::files::json(&paths.input_state, &data)?;
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
@@ -1711,20 +1903,20 @@ pub(crate) fn run_engine_held(
         })
         .filter_map(|p| p["name"].as_str().map(str::to_owned))
         .collect();
-    if forced {
+    if forced && paths.reuse {
         clean(config, &paths.target, &selected(&config.args, &names))?;
     }
     let dirty: Vec<String> = std::fs::read_dir(&paths.receipts)
         .into_iter()
         .flatten()
         .flatten()
-        .filter_map(|e| read::<Receipt>(&e.path()))
+        .filter_map(|e| read::<ReceiptRevision>(&e.path()))
         .filter(|r| r.input_revision != target_revision(&data, &r.package_id))
         .map(|r| r.package_id)
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
-    if !dirty.is_empty() {
+    if paths.reuse && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);
@@ -1803,7 +1995,7 @@ pub(crate) fn run_engine_held(
             .collect();
         super::store::attach(&config.cache, &paths.target, &unowned, &data)
     };
-    let mut exit = invoke(config, &paths, err)?;
+    let mut exit = invoke(config, &paths, &mut out, err)?;
     drop(invocation_phase);
     let records_phase = diagnostics.phase(Phase::TargetRecords);
     outside_scope |= !units_in_scope(&paths);
@@ -1817,7 +2009,15 @@ pub(crate) fn run_engine_held(
     });
     let mut after_metadata = Some(after_metadata);
     let (mut targets, missing) = records?;
-    if exit == Some(0) && !missing.is_empty() {
+    // A target Cargo found up to date without a matching receipt (pruned
+    // receipts, an interrupted run, an unknown earlier result) gets no report
+    // unless Cargo runs again. A run that shows Verus's output does not retry:
+    // plain Cargo-Verus prints one up-to-date run, and so does Sail. The next
+    // JSON, job or MCP run re-establishes the receipt. Without reuse there is
+    // no retry either. The shown run's result, which is not printed, simply
+    // lacks those targets.
+    let shown = out.is_some();
+    if paths.reuse && !shown && exit == Some(0) && !missing.is_empty() {
         after_metadata = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
@@ -1826,7 +2026,7 @@ pub(crate) fn run_engine_held(
         std::fs::remove_dir_all(paths.run.join("pending-receipts"))
             .and_then(|()| std::fs::create_dir_all(paths.run.join("pending-receipts")))
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
-        exit = invoke(config, &paths, err)?;
+        exit = invoke(config, &paths, &mut out, err)?;
         outside_scope |= !units_in_scope(&paths);
         let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected, &seeded)?;
         targets = retried;
@@ -1876,7 +2076,8 @@ pub(crate) fn run_engine_held(
     let pending = completed_receipts(&paths.run, &after_data)?;
     let stamp_after = super::input::mutation_stamp(&after);
     let absent = absent.finish();
-    let currentness = if !before.complete
+    let currentness = if !paths.reuse
+        || !before.complete
         || !after.complete
         || !after_coverage
         || !source_coverage
@@ -1893,7 +2094,9 @@ pub(crate) fn run_engine_held(
         Currentness::Historical
     };
     drop(post_run);
-    if exit == Some(0)
+    if paths.reuse
+        && !shown
+        && exit == Some(0)
         && expected.iter().any(|(id, name, kind)| {
             !targets.iter().any(|t| {
                 &t.package_id == id
@@ -1919,6 +2122,11 @@ pub(crate) fn run_engine_held(
     let reused_targets =
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = Vec::new();
+    if let Some(variable) = &loader {
+        notes.push(format!(
+            "SAIL3112: {variable} is set, so this run reused and recorded no proof receipts; targets Cargo found up to date have no report"
+        ));
+    }
     if currentness == Currentness::Unknown {
         notes.push(INPUTS_UNCONFIRMED.to_owned());
     }
@@ -2128,6 +2336,18 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Colour is requested only on a terminal, and never over the user's
+    /// own colour setting.
+    #[test]
+    fn colour_follows_the_terminal_unless_the_user_chose() {
+        let args = |v: &[&str]| v.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+        assert!(colour_wanted(true, false, &args(&["-p", "x"])));
+        assert!(!colour_wanted(false, false, &args(&[])));
+        assert!(!colour_wanted(true, true, &args(&[])));
+        assert!(!colour_wanted(true, false, &args(&["--color", "never"])));
+        assert!(!colour_wanted(true, false, &args(&["--color=never"])));
+    }
 
     #[cfg(unix)]
     include!("runner_artifact_isolation_tests.rs");

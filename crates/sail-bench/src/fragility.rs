@@ -170,6 +170,7 @@ fn capture_units(
             shim: shim.to_path_buf(),
             trace_dir: Some(dir),
             daemon_socket: None,
+            observation_logs: false,
         };
         let capture = match run_unit(installed, &unit, &solver, &scratch.join("work")) {
             Ok(rec) => {

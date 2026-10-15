@@ -119,7 +119,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             # input identity; invocation arguments and compiler flags are unchanged.
             observed_env = dict(env, SAIL_JOB_EVENTS=str(events))
             try:
-                run = bounded_verification([sail, "verify", "--incremental", "--output", "json", *args],
+                run = bounded_verification([sail, "verify", "--output", "json", *args],
                                            project, observed_env, 240)
             except subprocess.TimeoutExpired as failure:
                 (evidence / (label + ".stdout.json")).write_bytes(failure.stdout or b"")
@@ -303,6 +303,19 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert refill_run.returncode == 0 and not fresh["reused"] and fresh["complete"], refill
         assert refill["execution"]["verifier_invocations"] == 1, refill["execution"]
 
+        # Without --output json the same missing receipt is not re-verified:
+        # Cargo finds the target up to date, and Sail prints what plain
+        # Cargo-Verus prints for it, once (ADR 0046).
+        selected_receipt.unlink()
+        human = bounded_verification([sail, "verify"], project, env, 240)
+        assert human.returncode == 0, human.stderr.decode()
+        lines = human.stderr.decode().splitlines()
+        assert len([l for l in lines if "Finished" in l]) == 1, lines
+        assert not [l for l in lines if "Checking" in l or "Compiling" in l], lines
+        assert human.stdout == b"", human.stdout
+        refill_run, refill, fresh = managed()
+        assert refill_run.returncode == 0 and not fresh["reused"] and fresh["complete"], refill
+
         # Change a proof into a failure without changing size or mtime. This verifies
         # the content/receipt binding independently of Cargo's timestamp behaviour.
         stamp = source.stat()
@@ -342,7 +355,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         rebuilt_run, rebuilt, rebuilt_target = managed()
         assert rebuilt_run.returncode == 0 and rebuilt["exit_code"] == 0, diagnostic(rebuilt)
         assert not rebuilt_target["reused"] and rebuilt_target["complete"], diagnostic(rebuilt)
-        assert vstd(rebuilt)["dependency_store"], diagnostic(rebuilt)  # ADR 0045
+        assert vstd(rebuilt).get("dependency_store"), diagnostic(rebuilt)  # ADR 0045; absent on a miss
         assert rebuilt["execution"]["verifier_invocations"] >= 1, rebuilt["execution"]
         assert rebuilt_target["report"]["summary"] == target["report"]["summary"], diagnostic(rebuilt)
         if rebuilt["currentness"] == "historical":

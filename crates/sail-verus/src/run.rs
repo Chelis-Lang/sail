@@ -40,6 +40,12 @@ pub enum Solver {
         /// The cache daemon's socket (`SAIL_DAEMON_SOCKET`), for cached
         /// sessions (ADR 0011). `None` runs pure pass-through.
         daemon_socket: Option<PathBuf>,
+        /// Also pass the logging flags `sail verify`'s managed driver adds
+        /// to every verified target ([`crate::adapter::OBSERVATION_LOG_FLAGS`]),
+        /// with a log directory under the run's work directory, so that
+        /// Verus runs exactly as `sail verify` runs it (ADR 0046). `false`
+        /// is the bare shim, kept for diagnosing a difference.
+        observation_logs: bool,
     },
     /// The optional interactive source engine (ADR 0027) with the pinned Z3.
     Engine(EngineRun),
@@ -530,6 +536,17 @@ pub fn run_unit(
         None => Command::new(program),
     };
     add_invocation(&mut cmd, installed, unit, work, target_dir);
+    let observation_logs = matches!(
+        solver,
+        Solver::Shim {
+            observation_logs: true,
+            ..
+        }
+    )
+    .then(|| work.join("sail-logs"));
+    if let Some(logs) = &observation_logs {
+        cmd.args(crate::adapter::OBSERVATION_LOG_FLAGS).arg(logs);
+    }
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -544,6 +561,10 @@ pub fn run_unit(
     if let Some(dir) = target_dir {
         // Build products are large and never compared; keep the disk free.
         let _ = std::fs::remove_dir_all(dir);
+    }
+    if let Some(logs) = &observation_logs {
+        // So are the logs: the managed driver reads them, the harness does not.
+        let _ = std::fs::remove_dir_all(logs);
     }
     let timing = std::fs::read_to_string(&time_file);
     if time_mode.is_some() && timing.is_err() {
@@ -718,6 +739,7 @@ fn solver_env(cmd: &mut Command, installed: &Installed, unit: &Unit, solver: &So
         shim,
         trace_dir,
         daemon_socket,
+        ..
     } = solver
     {
         cmd.env("VERUS_Z3_PATH", shim)
@@ -891,6 +913,7 @@ mod tests {
                 shim: "sail-z3".into(),
                 trace_dir: None,
                 daemon_socket: None,
+                observation_logs: false,
             },
         ] {
             let mut cmd = std::process::Command::new("never-executed");

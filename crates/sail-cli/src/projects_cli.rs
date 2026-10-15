@@ -15,7 +15,7 @@ USAGE:
     sail cache projects list [--json]
     sail cache projects prune (--all | [--older-than DAYS] [--missing]) [--dry-run] [--json]
 
-Managed runs (`sail verify --incremental`, jobs, MCP and repairs) keep each
+Managed runs (`sail verify`, jobs, MCP and repairs) keep each
 workspace's compiled dependencies, proof receipts and run records under
 <cache>/projects/, where <cache> is $SAIL_CACHE_DIR or ~/.cache/sail.
 

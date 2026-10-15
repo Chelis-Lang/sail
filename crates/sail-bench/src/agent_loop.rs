@@ -215,6 +215,7 @@ fn cycle(
         shim: setup.shim.to_path_buf(),
         trace_dir: None,
         daemon_socket: Some(daemon.socket().to_path_buf()),
+        observation_logs: false,
     };
     let work = setup.scratch.join("work");
     let go =

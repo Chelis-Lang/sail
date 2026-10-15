@@ -165,6 +165,7 @@ pub fn run(
             shim: shim.to_path_buf(),
             trace_dir: None,
             daemon_socket: None,
+            observation_logs: false,
         };
         let work: PathBuf = scratch.join("work");
         for round in 0..rounds {

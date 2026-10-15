@@ -460,6 +460,7 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
             shim,
             trace_dir: None,
             daemon_socket: daemon_socket.clone(),
+            observation_logs: false,
         },
         out: &out,
         confirm_runs: o.confirm_runs,
