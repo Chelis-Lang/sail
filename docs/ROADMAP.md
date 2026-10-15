@@ -148,7 +148,7 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | Performance-claims page backed by reproducible `sail-bench` runs on Linux and macOS | Done (#105, [performance](performance.md)) |
 | Disk cleanup for managed targets (review B3) | Done (#97) |
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
-| `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Planned ([#148](https://github.com/Chelis-Lang/sail/issues/148)), after the managed-by-default and pre-verified vstd work lands |
+| `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Implemented ([#148](https://github.com/Chelis-Lang/sail/issues/148)): `sail new` runs Sail's Verus's `cargo verus new`; e2e checks it matches stock and verifies. Clean-install acceptance follows the managed-by-default and pre-verified vstd work |
 | Output schema v2: establishment and evidence-tier axes (question 22) | Planned ([#149](https://github.com/Chelis-Lang/sail/issues/149)), after the managed-by-default and pre-verified vstd work lands |
 | Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Done: draft `v0.1.0-rc.4` (Sail's Verus, fork `73dea021`) passed its revalidation of the fix since rc.3; rc.3 passed every check except a clean `deep-rvt`, whose Different verdicts are stock Verus output-order variants (VI-0008) ([release candidate](validation/release-candidate.md), [clean macOS](validation/clean-macos.md)); the owner reviews it and decides when to publish |
 
