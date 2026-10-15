@@ -615,6 +615,10 @@ fn invoke(
         // Cargo argument. Keep the owned relevant target-dir first and the
         // irrelevant message format after the caller's unchanged Cargo options.
         .arg("--message-format=json-render-diagnostics")
+        // Cargo writes to Sail's pipe, not the terminal, so it would print
+        // no colour; ask for it as plain Cargo-Verus would on this terminal.
+        // An argument, not CARGO_TERM_COLOR, so it is not a proof input.
+        .args((out.is_some() && terminal_colour(&config.args[..split])).then_some("--color=always"))
         .args(&config.args[split..])
         .env("RUSTC_BOOTSTRAP", "1")
         .env("CARGO", &paths.cargo_alias)
@@ -641,7 +645,15 @@ fn invoke(
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-    let (stdout, captured) = relay(&mut child, out, err)?;
+    let (stdout, captured) = match relay(&mut child, out, err) {
+        Ok(output) => output,
+        Err(error) => {
+            // A closed stdout or stderr (`| head`) ends the run: stop Cargo.
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
+        }
+    };
     let code = child
         .wait()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?
@@ -650,6 +662,25 @@ fn invoke(
         .and_then(|()| std::fs::write(paths.run.join("cargo.stderr"), captured))
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
     Ok(code)
+}
+
+/// Whether Sail's stderr is a terminal on which plain Cargo would print
+/// colour, and the user chose no colour setting of their own.
+fn terminal_colour(cargo_args: &[String]) -> bool {
+    use std::io::IsTerminal as _;
+    colour_wanted(
+        std::io::stderr().is_terminal(),
+        std::env::var_os("CARGO_TERM_COLOR").is_some(),
+        cargo_args,
+    )
+}
+
+fn colour_wanted(terminal: bool, colour_env: bool, cargo_args: &[String]) -> bool {
+    terminal
+        && !colour_env
+        && !cargo_args
+            .iter()
+            .any(|a| a == "--color" || a.starts_with("--color="))
 }
 
 /// One piece of Cargo-Verus output.
@@ -1656,27 +1687,39 @@ pub(crate) fn run_engine_held(
         owned.cargo_verus.clone_from(&engine.cargo_verus);
     }
     let config = &owned;
-    if let Some(unbound) = config.args.iter().find(|s| {
-        let s = s.as_str();
-        [
-            "--tests",
-            "--benches",
-            "--examples",
-            "--all-targets",
-            "--test",
-            "--bench",
-            "--example",
-            "--no-verify",
-        ]
+    // Cargo options that change what Cargo prints (its message format and
+    // verbose command lines, which would show Sail's driver and flags) are
+    // also left to plain Cargo-Verus.
+    let cargo_output = config
+        .args
         .iter()
-        .any(|flag| s == *flag || s.starts_with(&format!("{flag}=")))
-            || s == "--target-dir"
-            || s.starts_with("--target-dir=")
-            || s == "--no-verify"
-            || s.starts_with("--log")
-            || s == "--verus-source"
-            || s == "--sysroot"
-            || s.starts_with("--sysroot=")
+        .take_while(|a| a.as_str() != "--")
+        .find(|a| {
+            a.starts_with("--message-format") || matches!(a.as_str(), "-v" | "-vv" | "--verbose")
+        });
+    if let Some(unbound) = cargo_output.or_else(|| {
+        config.args.iter().find(|s| {
+            let s = s.as_str();
+            [
+                "--tests",
+                "--benches",
+                "--examples",
+                "--all-targets",
+                "--test",
+                "--bench",
+                "--example",
+                "--no-verify",
+            ]
+            .iter()
+            .any(|flag| s == *flag || s.starts_with(&format!("{flag}=")))
+                || s == "--target-dir"
+                || s.starts_with("--target-dir=")
+                || s == "--no-verify"
+                || s.starts_with("--log")
+                || s == "--verus-source"
+                || s == "--sysroot"
+                || s.starts_with("--sysroot=")
+        })
     }) {
         // SAIL3112: a setup managed verification cannot bind to a receipt.
         // `sail verify` then verifies it as plain Cargo-Verus does (ADR 0046).
@@ -1955,9 +1998,15 @@ pub(crate) fn run_engine_held(
     });
     let mut after_metadata = Some(after_metadata);
     let (mut targets, missing) = records?;
-    // Without reuse, a target Cargo finds up to date gets no report, as plain
-    // Cargo-Verus prints nothing for it; there is no retry.
-    if paths.reuse && exit == Some(0) && !missing.is_empty() {
+    // A target Cargo found up to date without a matching receipt (pruned
+    // receipts, an interrupted run, an unknown earlier result) gets no report
+    // unless Cargo runs again. A run that shows Verus's output does not retry:
+    // plain Cargo-Verus prints one up-to-date run, and so does Sail. The next
+    // JSON, job or MCP run re-establishes the receipt. Without reuse there is
+    // no retry either. The shown run's result, which is not printed, simply
+    // lacks those targets.
+    let shown = out.is_some();
+    if paths.reuse && !shown && exit == Some(0) && !missing.is_empty() {
         after_metadata = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
@@ -2035,6 +2084,7 @@ pub(crate) fn run_engine_held(
     };
     drop(post_run);
     if paths.reuse
+        && !shown
         && exit == Some(0)
         && expected.iter().any(|(id, name, kind)| {
             !targets.iter().any(|t| {
@@ -2275,6 +2325,18 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Colour is requested only on a terminal, and never over the user's
+    /// own colour setting.
+    #[test]
+    fn colour_follows_the_terminal_unless_the_user_chose() {
+        let args = |v: &[&str]| v.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+        assert!(colour_wanted(true, false, &args(&["-p", "x"])));
+        assert!(!colour_wanted(false, false, &args(&[])));
+        assert!(!colour_wanted(true, true, &args(&[])));
+        assert!(!colour_wanted(true, false, &args(&["--color", "never"])));
+        assert!(!colour_wanted(true, false, &args(&["--color=never"])));
+    }
 
     #[cfg(unix)]
     include!("runner_artifact_isolation_tests.rs");

@@ -56,6 +56,8 @@ Nothing is reused or recorded. These setups are:
 - `--target-dir`, Verus's `--log`, `--log-all` and `--log-dir`, and
   `--no-verify`;
 - tests, benches and examples (`--tests`, `--test`, `--all-targets`, …);
+- Cargo's `-v`/`--verbose` and `--message-format`, which would show Sail's
+  driver and flags;
 - `--sysroot`, a chained workspace rustc wrapper (`RUSTC_WORKSPACE_WRAPPER`),
   Cargo `--config`, configuration includes, and compiler, wrapper or sysroot
   overrides Sail cannot identify;
@@ -103,10 +105,26 @@ What differs is when there is work:
 - **Timings.** Cargo's `Finished … in Ns` and Verus's `--time` figures are
   measured on each run. Verus's `--time` report shows Sail's Verus's own
   build information (ADR 0043).
-- **A retried target.** When Cargo finds a target fresh but Sail has no
-  receipt for it (after a crash, or after `sail cache projects prune`
-  removed receipts but not the target), Sail cleans that target and runs
-  Cargo again, so Cargo's lines for that run appear twice.
+- **A fresh target without a receipt.** When Cargo finds a target fresh but
+  Sail has no receipt for it (after a crash, or after `sail cache projects
+  prune` removed receipts but not the target), `sail verify` prints what
+  plain Cargo-Verus prints for an up-to-date target. `--output json`, jobs
+  and MCP clean that target and run Cargo again, to return its report.
+- **Partial verification.** `sail verify -- --verify-function F` (or
+  `--verify-module`, `--verify-only-module`, `--verify-root`) gets plain
+  Cargo-Verus's refusal ("Partial verification must use `cargo verus
+  focus`") and its exit code. With `--output json`, and for jobs and MCP's
+  scoped `verify`, Sail runs it focused and the report notes that its scope
+  is partial.
+- **Terminal.** On a terminal Sail asks Cargo for colour, as plain Cargo
+  would print there; Cargo's progress bar is not shown. `-v` and
+  `--message-format` are verified as plain Cargo-Verus does (with one
+  `note[SAIL3112]` line), since Cargo would otherwise print Sail's driver and
+  flags.
+- **Combined output.** Verus's summary line reaches stdout once Verus has
+  finished. With `2>&1`, a compile-phase error reported after verification
+  (lifetime or erasure checks) appears before the summary instead of after
+  it; proof failures and ordinary compile errors appear in plain's order.
 
 Proof reuse works on Linux and macOS. On Linux, an ordered native event queue
 also tracks transient creation and removal of missing Cargo configuration

@@ -396,6 +396,39 @@ pub(crate) fn unbound(
     }
 }
 
+/// `cargo verus verify <args>` with Sail's Verus and nothing changed, for
+/// what plain Cargo-Verus itself refuses (partial verification under
+/// `verify`): its own message and exit code.
+pub(crate) fn plain_verify(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
+    let setup = match setup() {
+        Ok(s) => s,
+        Err(e) => {
+            let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
+            return ExitCode::from(EXIT_SETUP);
+        }
+    };
+    let status = Command::new(&setup.cargo_verus)
+        .arg("verus")
+        .arg("verify")
+        .args(args)
+        .env("VERUS_Z3_PATH", &setup.shim)
+        .env("SAIL_Z3_PATH", &setup.z3)
+        .env("SAIL_SOLVER_MODE", setup.mode.name())
+        .env_remove("SAIL_DAEMON_SOCKET")
+        .status();
+    match status {
+        Ok(status) => exit_code(status.code()),
+        Err(e) => {
+            let _ = writeln!(
+                err,
+                "error[SAIL0105]: sail verify: cannot run {}: {e}",
+                setup.cargo_verus.display()
+            );
+            ExitCode::from(EXIT_SETUP)
+        }
+    }
+}
+
 /// `args` without `--incremental` before any `--`.
 fn without_incremental(args: &[String]) -> Vec<String> {
     let split = args.iter().position(|a| a == "--").unwrap_or(args.len());

@@ -303,6 +303,19 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert refill_run.returncode == 0 and not fresh["reused"] and fresh["complete"], refill
         assert refill["execution"]["verifier_invocations"] == 1, refill["execution"]
 
+        # Without --output json the same missing receipt is not re-verified:
+        # Cargo finds the target up to date, and Sail prints what plain
+        # Cargo-Verus prints for it, once (ADR 0046).
+        selected_receipt.unlink()
+        human = bounded_verification([sail, "verify"], project, env, 240)
+        assert human.returncode == 0, human.stderr.decode()
+        lines = human.stderr.decode().splitlines()
+        assert len([l for l in lines if "Finished" in l]) == 1, lines
+        assert not [l for l in lines if "Checking" in l or "Compiling" in l], lines
+        assert human.stdout == b"", human.stdout
+        refill_run, refill, fresh = managed()
+        assert refill_run.returncode == 0 and not fresh["reused"] and fresh["complete"], refill
+
         # Change a proof into a failure without changing size or mtime. This verifies
         # the content/receipt binding independently of Cargo's timestamp behaviour.
         stamp = source.stat()

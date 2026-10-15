@@ -394,7 +394,16 @@ fn driver() -> Result<ExitCode> {
             }),
         )?;
     }
-    let flags = crate::verus_stdout::UserFlags::of(&runtime.args);
+    // The Verus flags this crate actually receives: Cargo-Verus forwards
+    // common and per-crate arguments (`--fwd-verus-args-to`), so the user's
+    // command line alone can name flags a crate does not get, or miss ones it
+    // does.
+    let flags = cargo_package_id()
+        .and_then(|id| cargo_driver_options(&id).ok())
+        .map_or_else(
+            || crate::verus_stdout::UserFlags::of(&runtime.args),
+            |effective| crate::verus_stdout::UserFlags::of_verus(effective.arguments.iter()),
+        );
     let mut cmd = Command::new(&wrapper);
     cmd.args(&launcher_args)
         .envs(&launcher_environment)

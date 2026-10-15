@@ -130,7 +130,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 
 | Code | Meaning | What to do |
 |---|---|---|
-| `SAIL3100` | `sail verify` cannot run this project: Sail's Verus is missing (the message then carries `SAIL0101`), or managed state cannot be set up | Read the message |
+| `SAIL3100` | `sail verify` cannot run this project: Sail's Verus is missing (the message then carries `SAIL0101`), or managed state cannot be set up | Read the message; `cargo verus verify` runs the project without Sail |
 | `SAIL3101` | Cannot read managed state | Check permissions under the cache directory |
 | `SAIL3102` | Cannot write managed state | Check free space and permissions |
 | `SAIL3103` | `cargo metadata` failed | Fix the error Cargo reports |
@@ -140,7 +140,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3107` | Verification produced no complete proof receipt for a target | Re-run; the result is not reused |
 | `SAIL3108` | No Current run is recorded for this project and settings | Verify once; later reads can then be Current |
 | `SAIL3111` | The managed adapter failed (solver capture, receipts or Cargo wrapper) | Read the message; re-run |
-| `SAIL3112` | A setup managed verification cannot bind to a proof receipt: `--target-dir`, Verus `--log` options, `--no-verify`, `--sysroot`, tests, benches or examples, Cargo `--config` or configuration Sail cannot identify, `RUSTC_WORKSPACE_WRAPPER`, a loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_*`), or no target with `verify = true`. As a `note` from `sail verify`: the run is verified as plain `cargo verus verify` verifies it, without proof reuse. As an error from a job, `watch` or MCP: the setup is not supported there | Nothing for the note. For the error, run `sail verify` from the command line, or remove the setting to get proof reuse |
+| `SAIL3112` | A setup managed verification cannot bind to a proof receipt: `--target-dir`, Verus `--log` options, `--no-verify`, `-v`, `--message-format`, `--sysroot`, tests, benches or examples, Cargo `--config` or configuration Sail cannot identify, `RUSTC_WORKSPACE_WRAPPER`, a loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_*`), or no target with `verify = true`. As a `note` from `sail verify`: the run is verified as plain `cargo verus verify` verifies it, without proof reuse. As an error from a job, `watch` or MCP: the setup is not supported there | Nothing for the note. For the error, run `sail verify` from the command line, or remove the setting to get proof reuse |
 | `SAIL3114` | Inputs could not be confirmed unchanged; the result is not Current | Re-run for a current result |
 
 ## Interactive engine (`--engine interactive`)

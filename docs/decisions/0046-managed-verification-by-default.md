@@ -53,8 +53,26 @@
    - the exit code: Cargo-Verus's.
 
    Sail prints nothing of its own on stdout or stderr, apart from the
-   existing one-line `warning[SAIL0003]` when the cache daemon is unavailable
-   and errors that stop a run. `--output json` prints the
+   existing one-line `warning[SAIL0003]` when the cache daemon is
+   unavailable, one `note[SAIL3112]` line when a run gets no proof reuse
+   (decision 4), and errors that stop a run. On a terminal, Sail asks Cargo
+   for colour (`--color=always`, unless the user chose a colour setting), as
+   plain Cargo would print there; Cargo's progress bar is not shown, since
+   Cargo writes to Sail's pipe and Sail cannot learn the terminal width
+   without unsafe code. Partial verification (`-- --verify-function` and the
+   other selectors) under `verify` gets plain Cargo-Verus's own refusal and
+   exit code ("Partial verification must use `cargo verus focus`"); with
+   `--output json`, and in jobs and MCP's scoped `verify`, it runs focused
+   and the partial report says so in its notes. `-v` and `--message-format`
+   would show Sail's driver and flags in Cargo's output, so they get the
+   plain Cargo-Verus path of decision 4. One ordering limit remains in
+   combined output (`2>&1`): Verus prints its summary line after
+   verification and before its compile phase, and Sail can print it only
+   once Verus's document arrives at the end, so a compile-phase error after
+   verification (a lifetime or erasure error) comes before the summary
+   instead of after it; separately, each stream is unchanged, and on proof
+   and compile errors the combined order matches (checked by the e2e legacy
+   phase). `--output json` prints the
    `sail-project-result` envelope (a schema-v2 report per target) instead
    of a single schema-v2 report.
 3. **What differs, and why it is not a rule 1 difference.** Sail's target is
@@ -64,9 +82,13 @@
      `Compiling` lines and vstd's summary even when `target/` is current;
    - plain Cargo-Verus treats a crate as fresh when only its Verus arguments
      changed and prints nothing; Sail verifies again;
-   - a target with a receipt but whose artifact Cargo found stale, or the
-     reverse, is verified again (a retry runs Cargo twice, so its lines
-     appear twice).
+   - a target with a receipt but whose artifact Cargo found stale is
+     verified, as Cargo does. A target Cargo finds up to date without a
+     matching receipt (pruned receipts, an interrupted run) is not
+     re-verified by `sail verify` without `--output json`: it prints what
+     plain Cargo-Verus prints for an up-to-date target, and the next
+     `--output json`, job or MCP run re-establishes
+     the receipt (those retry once, cleaning that target).
 
    In each case Sail's output is exactly what plain `cargo verus verify`
    prints for the same verification work on the same target state.

@@ -118,7 +118,10 @@ In a Cargo project that Verus already verifies, run `sail verify` instead of
 `cargo verus verify`; nothing needs to change in the project.
 
 `sail verify` takes the same arguments as `cargo verus verify` and prints the
-same output, with the same exit code. It builds in its own Cargo target under
+same output, with the same exit code; a few arguments Sail cannot bind to a
+proof receipt run without proof reuse, with one note line
+([details](docs/workspace-verification.md#setups-verified-without-proof-reuse)).
+It builds in its own Cargo target under
 the Sail cache and never touches your `target/`. The first run on a machine
 compiles the dependencies and verifies `vstd`, which takes about half a
 minute; later new projects and worktrees that resolve the same `vstd` start

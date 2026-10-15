@@ -25,3 +25,10 @@ pub(crate) use runner::{run_engine, run_engine_held};
 pub(crate) use receipts::complete as receipt_complete;
 
 pub(crate) use runner::focused;
+
+/// Whether `args` select partial verification (`--verify-function`,
+/// `--verify-module`, `--verify-only-module` or `--verify-root` after `--`).
+#[must_use]
+pub fn partial(args: &[String]) -> bool {
+    focused(args)
+}

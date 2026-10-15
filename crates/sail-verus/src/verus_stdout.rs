@@ -41,8 +41,14 @@ impl UserFlags {
     /// The flags among `args` after the first `--`, where `cargo verus`
     /// arguments end and the Verus arguments it forwards begin.
     pub(crate) fn of(args: &[String]) -> Self {
+        Self::of_verus(args.iter().skip_while(|a| *a != "--").skip(1))
+    }
+
+    /// The flags among Verus arguments themselves, such as the effective
+    /// arguments Cargo-Verus forwards to one crate (common and per-crate).
+    pub(crate) fn of_verus<'a>(args: impl Iterator<Item = &'a String>) -> Self {
         let mut flags = Self::default();
-        for arg in args.iter().skip_while(|a| *a != "--").skip(1) {
+        for arg in args {
             match arg.as_str() {
                 "--output-json" => flags.json = true,
                 "--time" => flags.time = true,
@@ -381,6 +387,21 @@ mod tests {
         assert_eq!(flags.sail_flags(), ["--output-json", "--time"]);
         let flags = UserFlags::of(&strings(&["--", "--output-json", "--time"]));
         assert_eq!(flags.sail_flags(), Vec::<&str>::new());
+    }
+
+    /// Flags are read from the arguments a crate actually receives
+    /// (`--fwd-verus-args-to` can give roots and dependencies different
+    /// ones), not from the command line.
+    #[test]
+    fn effective_crate_arguments_decide_the_added_flags() {
+        let effective = strings(&["--rlimit", "5", "--output-json"]);
+        let flags = UserFlags::of_verus(effective.iter());
+        assert!(flags.json && !flags.time);
+        assert_eq!(flags.sail_flags(), ["--time"]);
+        assert_eq!(
+            UserFlags::of_verus(strings(&[]).iter()).sail_flags(),
+            ["--output-json", "--time"]
+        );
     }
 
     #[test]
