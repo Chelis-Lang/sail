@@ -56,7 +56,9 @@ fn bench_delegates_to_the_benchmark_binary() {
 
 /// ADR 0043: Sail runs only its own Verus. Without it, `sail verify` fails
 /// with SAIL0101 and never runs a `cargo-verus` found on `PATH`; the explicit
-/// development override runs, announced by warning SAIL0108.
+/// development override is used instead, announced by warning SAIL0108.
+/// (Managed verification identifies the override's toolchain before it runs
+/// it, through the `verus` launcher beside it, which this stand-in lacks.)
 #[cfg(unix)]
 #[test]
 fn verify_never_runs_a_cargo_verus_from_path() {
@@ -66,6 +68,16 @@ fn verify_never_runs_a_cargo_verus_from_path() {
     let bin = root.join("bin");
     assert!(std::fs::create_dir_all(&bin).is_ok());
     let marker = root.join("ran");
+    // A Verus project, so verification gets as far as choosing a Verus.
+    assert!(std::fs::create_dir_all(root.join("src")).is_ok());
+    assert!(
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[package.metadata.verus]\nverify = true\n\n[workspace]\n",
+        )
+        .is_ok()
+    );
+    assert!(std::fs::write(root.join("src/lib.rs"), "").is_ok());
     // A copy of `sail` with a stand-in `sail-z3` beside it, so setup succeeds
     // whether or not the shim was built.
     let sail = root.join("sail-bin").join("sail");
@@ -92,6 +104,17 @@ fn verify_never_runs_a_cargo_verus_from_path() {
             .env_remove("SAIL_VERUS_BUILD")
             .env_remove("SAIL_CARGO_VERUS")
             .env("VERUS_Z3_PATH", &fake);
+        // Loader overrides (the CI image sets one) are refused before a
+        // Verus is chosen (SAIL3112); this test is about the choice.
+        for loader in [
+            "LD_PRELOAD",
+            "LD_LIBRARY_PATH",
+            "DYLD_INSERT_LIBRARIES",
+            "DYLD_LIBRARY_PATH",
+            "DYLD_FRAMEWORK_PATH",
+        ] {
+            command.env_remove(loader);
+        }
         if let Some(cargo_verus) = cargo_verus {
             command.env("SAIL_CARGO_VERUS", cargo_verus);
         }
@@ -115,8 +138,12 @@ fn verify_never_runs_a_cargo_verus_from_path() {
         "{stderr}"
     );
     assert!(
-        marker.exists(),
-        "the explicit override did not run: {stderr}"
+        !stderr.contains("SAIL0101") && stderr.contains(&bin.join("verus").display().to_string()),
+        "the explicit override was not used: {stderr}"
+    );
+    assert!(
+        !marker.exists(),
+        "sail ran a cargo-verus without identifying it"
     );
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -222,6 +249,12 @@ fn every_command_has_help() {
     assert_eq!(gc.status.code(), Some(0));
     assert!(String::from_utf8_lossy(&gc.stdout).contains("gc --max-bytes N"));
     let verify = sail(&["verify", "--help"]);
-    assert!(String::from_utf8_lossy(&verify.stdout).contains("--incremental"));
+    let verify = String::from_utf8_lossy(&verify.stdout);
+    // Managed verification is the default; `--incremental` stays accepted
+    // and is documented as a deprecated no-op.
+    assert!(
+        verify.contains("--incremental                 deprecated, does nothing"),
+        "{verify}"
+    );
     assert_eq!(sail(&["help", "frobnicate"]).status.code(), Some(2));
 }

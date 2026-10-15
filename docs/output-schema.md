@@ -1,11 +1,14 @@
-# `sail verify --output json`: schema version 2
+# Verification reports: schema version 2
 
-`sail verify --output json [cargo verus verify arguments…]` verifies exactly
-as `sail verify` does and then prints one JSON document describing every
-verified function. This page is the reference for that document. The decisions
-behind it are in ADR 0014, amended for version 2 by ADR 0044. Managed `--incremental` verification instead wraps
-these per-target reports in the independently versioned project envelope; see
-[workspace verification](workspace-verification.md).
+A schema-v2 report describes every function one Verus run verified. This page
+is the reference for that document; the decisions behind it are in ADR 0014,
+amended for version 2 by ADR 0044. `sail verify --output json` (managed
+verification, the default; ADR 0045) prints a `sail-project-result`
+envelope holding one schema-v2 report per Cargo target, including targets
+whose reports were reused; see
+[workspace verification](workspace-verification.md). MCP `verify` returns the
+requested targets' reports, and `sail verify --measure-fragility` and the
+opt-in portfolio print one schema-v2 report directly.
 
 - JSON Schema: `crates/sail-api/schema/verify-output-v2.json` (draft 2020-12).
 - Rust types: `sail_api::output` (`Report` and the types it contains).
@@ -300,8 +303,7 @@ every failure, bit-vector ones included (VI-0003). So when a crate's
 `verus.errors` equals the number of its functions reported `failed`, no other
 function had an error, and its `unknown` functions passed by Verus's totals.
 Their verdicts stay `unknown` in this document, since no per-function evidence
-confirms them. The human summaries (the `--incremental` evidence line,
-`sail jobs result` and MCP) report them separately as "passed by Verus's
+confirms them. The human summaries (`sail jobs result` and MCP) report them separately as "passed by Verus's
 totals", and MCP counts them in `counts.unknown_passed_by_verus_totals`.
 A Vest edit with one failing lemma, for example, reads
 `0 verified, 1 failed, 3126 passed by Verus's totals (not attributed one by

@@ -284,7 +284,7 @@ For a setup error, inspect it and cancel any owned unfinished job before
 starting a separate stock run:
 
 ```sh
-sail verify --incremental --package repair_demo --lib --output json
+sail verify --package repair_demo --lib --output json
 cargo verus verify --package repair_demo --lib
 ```
 

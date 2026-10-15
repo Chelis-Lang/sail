@@ -26,14 +26,6 @@ impl Counts {
         counts
     }
 
-    pub(crate) fn of_requested(result: &sail_api::project::ProjectResult) -> Self {
-        let mut counts = Self::default();
-        for target in result.targets.iter().filter(|target| target.requested) {
-            counts.add(&target.report);
-        }
-        counts
-    }
-
     fn add(&mut self, report: &sail_api::output::Report) {
         let s = &report.summary;
         self.functions = self.functions.saturating_add(s.functions);

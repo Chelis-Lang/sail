@@ -313,6 +313,7 @@ impl Suite {
                 shim,
                 trace_dir,
                 daemon_socket,
+                ..
             } => {
                 cmd.env("VERUS_Z3_PATH", shim).env("SAIL_Z3_PATH", &self.z3);
                 if let Some(dir) = trace_dir {

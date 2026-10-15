@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Edit-loop timings for docs/performance.md: plain `cargo verus verify`,
-# `sail verify` and `sail verify --incremental` on one project, plus MCP
-# `verify` on unchanged code.
+# Edit-loop timings for docs/performance.md: plain `cargo verus verify` and
+# `sail verify` (managed verification, the default; ADR 0045) on one
+# project, plus MCP `verify` on unchanged code.
 #
 #   scripts/perf-loops.sh demo|vest [ROUNDS]       (default 3 rounds)
 #
@@ -14,7 +14,7 @@
 #   fix    the fix: the postcondition restored and the proof body changed,
 #          so the fixed function's query is new
 #   warm2  again, unchanged
-# After the `--incremental` phases, one `sail mcp` session calls `verify`
+# After the `sail verify` phases, one `sail mcp` session calls `verify`
 # twice on the unchanged code (mcp1, mcp2). Mode order rotates by round.
 #
 # Projects:
@@ -216,7 +216,6 @@ run_phase() { # ROUND MODE DIR PHASE
   case "$mode" in
     plain) (cd "$dir" && cargo verus verify ${pkg_args[@]+"${pkg_args[@]}"}) >"$log" 2>&1 || code=$? ;;
     sail) (cd "$dir" && sail verify ${pkg_args[@]+"${pkg_args[@]}"}) >"$log" 2>&1 || code=$? ;;
-    incremental) (cd "$dir" && sail verify --incremental ${pkg_args[@]+"${pkg_args[@]}"}) >"$log" 2>&1 || code=$? ;;
   esac
   t1=$(now)
   record "$round" "$mode" "$phase" "$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')" "$code"
@@ -264,7 +263,7 @@ run_mode() { # ROUND MODE
     run_phase "$round" "$mode" "$dir" "$phase"
   done
   run_phase "$round" "$mode" "$dir" warm2
-  if [ "$mode" = incremental ]; then run_mcp "$round" "$dir"; fi
+  if [ "$mode" = sail ]; then run_mcp "$round" "$dir"; fi
   stop_daemons "$cache"
   unset SAIL_CACHE_DIR
 }
@@ -285,11 +284,11 @@ load() { uptime | sed 's/.*load average[s]*: //'; }
   echo "load average at start: $(load)"
 } | tee "$out/header.txt"
 
-modes=(plain sail incremental)
+modes=(plain sail)
 for ((r = 1; r <= rounds; r++)); do
   mkdir -p "$out/r$r"
-  for ((i = 0; i < 3; i++)); do
-    run_mode "$r" "${modes[$(((r - 1 + i) % 3))]}"
+  for ((i = 0; i < ${#modes[@]}; i++)); do
+    run_mode "$r" "${modes[$(((r - 1 + i) % ${#modes[@]}))]}"
   done
 done
 echo "load average at end: $(load)" | tee -a "$out/header.txt"
@@ -307,9 +306,9 @@ table() {
       split("cold warm edit fail fix warm2", ph, " ")
       print "| Mode | cold | warm | edit | fail | fix | warm2 |"
       print "|---|---:|---:|---:|---:|---:|---:|"
-      split("plain sail incremental", md, " ")
-      label["plain"] = "`cargo verus verify`"; label["sail"] = "`sail verify`"; label["incremental"] = "`sail verify --incremental`"
-      for (m = 1; m <= 3; m++) {
+      split("plain sail", md, " ")
+      label["plain"] = "`cargo verus verify`"; label["sail"] = "`sail verify`"
+      for (m = 1; m <= 2; m++) {
         row = "| " label[md[m]]
         for (p = 1; p <= 6; p++) {
           k = md[m] SUBSEP ph[p]

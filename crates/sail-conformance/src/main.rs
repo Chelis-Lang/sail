@@ -4,16 +4,20 @@
 //! sail-conformance fetch [--tier T] [--project P]...
 //! sail-conformance run   [--tier T] [--project P]... [--filter S] [--jobs N]
 //!                        [--trace] [--out DIR] [--shim PATH] [--sail-verus fork|stock]
+//!                        [--sail-arm managed|shim]
 //! sail-conformance engine [--tier T] [--project P]... [--filter S] [--jobs N]
 //!                        [--out DIR] [--engine-build PATH] [--no-focus]
 //! sail-conformance rust-verify-test [--filter S]... [--every N] [--jobs N] ...
 //! ```
 //!
-//! `run` compares Sail as users run it, Sail's Verus (built from the fork,
-//! ADR 0043) with `sail-z3` in front of the pinned Z3, against plain stock
-//! Verus with the same Z3 (charter rule 1). `--sail-verus stock` runs the
-//! Sail side on stock Verus instead, to tell a shim difference from a fork
-//! difference. It exits 0 when every unit is the same under sail as under
+//! `run` compares Sail as users run it against plain stock Verus with the
+//! same Z3 (charter rule 1). The Sail side is what `sail verify` runs for
+//! each verified crate (ADR 0045): Sail's Verus (built from the fork,
+//! ADR 0043) with `sail-z3` in front of the pinned Z3 and the logging flags
+//! the managed driver adds. Two diagnostic switches isolate a difference:
+//! `--sail-verus stock` runs the Sail side on stock Verus (a fork
+//! difference), and `--sail-arm shim` drops the managed driver's flags,
+//! leaving the bare shim (a difference those flags cause). It exits 0 when every unit is the same under sail as under
 //! plain Verus, 1 if any unit differs, and 2 on usage or infrastructure
 //! errors.
 //! `engine` is the source-engine arm (ADR 0027): the optional interactive
@@ -42,6 +46,7 @@ const USAGE: &str = "usage:
   sail-conformance run   [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                          [--jobs N] [--trace] [--out DIR] [--shim PATH]
                          [--plain-runs N] [--confirm-runs N] [--sail-verus fork|stock]
+                         [--sail-arm managed|shim]
 
   sail-conformance engine [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                          [--jobs N] [--out DIR] [--plain-runs N] [--confirm-runs N]
@@ -55,6 +60,10 @@ const USAGE: &str = "usage:
   --sail-verus V    the Verus on the Sail side of `run`: `fork` (default;
                     Sail's Verus, as users run it) or `stock` (the pinned
                     release, to isolate the shim)
+  --sail-arm A      what the Sail side of `run` adds: `managed` (default;
+                    the flags `sail verify`'s managed driver adds to each
+                    verified crate) or `shim` (`sail-z3` alone, to isolate
+                    a difference those flags cause)
   --no-focus        run only the engine's full phase (no focused selector)
 
   --plain-runs N    plain Verus runs per unit up front (default 1)
@@ -62,6 +71,10 @@ const USAGE: &str = "usage:
                     instability from sail differences (default 2; ADR 0009)";
 
 #[derive(Debug)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one bool per independent command-line switch"
+)]
 struct Options {
     command: String,
     tier: Tier,
@@ -78,6 +91,9 @@ struct Options {
     /// `run`: whether the Sail side runs Sail's Verus (the fork) rather
     /// than stock.
     sail_on_fork: bool,
+    /// `run`: whether the Sail side adds the managed driver's logging flags
+    /// (`--sail-arm managed`, the default) or runs the bare shim.
+    managed_arm: bool,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -99,6 +115,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
             .map(PathBuf::from),
         focus: true,
         sail_on_fork: true,
+        managed_arm: true,
     };
     while let Some(arg) = it.next() {
         let mut value = || {
@@ -140,6 +157,15 @@ fn parse(args: &[String]) -> Result<Options, String> {
                     "stock" => false,
                     other => {
                         return Err(format!("--sail-verus needs fork or stock, not `{other}`"));
+                    }
+                };
+            }
+            "--sail-arm" => {
+                o.managed_arm = match value()?.as_str() {
+                    "managed" => true,
+                    "shim" => false,
+                    other => {
+                        return Err(format!("--sail-arm needs managed or shim, not `{other}`"));
                     }
                 };
             }
@@ -235,6 +261,10 @@ struct Report {
     /// Verus) or `stock`. The plain side is always stock `verus_release`.
     #[serde(skip_serializing_if = "Option::is_none")]
     sail_verus: Option<String>,
+    /// `run`: `managed` (the managed driver's flags, as `sail verify` runs
+    /// Verus) or `shim` (the bare shim).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sail_arm: Option<String>,
     z3_version: String,
     machine: std::collections::BTreeMap<String, String>,
     started_unix: u64,
@@ -365,6 +395,8 @@ struct Context<'a> {
     /// because `--out` may be inside a Cargo workspace (such as this one).
     work: &'a Path,
     trace: bool,
+    /// [`Options::managed_arm`].
+    managed_arm: bool,
     plain_runs: usize,
     confirm_runs: usize,
     engine: Option<EngineArm>,
@@ -472,6 +504,7 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
         daemon_socket: std::env::var_os("SAIL_DAEMON_SOCKET")
             .filter(|v| !v.is_empty())
             .map(PathBuf::from),
+        observation_logs: cx.managed_arm,
     };
     let sail = match run_unit(cx.sail_verus, unit, &solver, &base.join("sail")) {
         Ok(s) => s,
@@ -767,6 +800,7 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         dir: &dir,
         work: &cache.join("work").join(started.to_string()),
         trace: o.trace,
+        managed_arm: o.managed_arm,
         plain_runs: o.plain_runs,
         confirm_runs: o.confirm_runs,
         engine: engine.as_ref().map(|(arm, _, _)| EngineArm {
@@ -816,6 +850,8 @@ fn run(o: &Options) -> Result<ExitCode, String> {
             fork.as_ref()
                 .map_or_else(|| "stock".to_owned(), |(_, sha)| format!("fork:{sha}"))
         }),
+        sail_arm: (o.command == "run")
+            .then(|| if o.managed_arm { "managed" } else { "shim" }.to_owned()),
         z3_version: installed.pins.z3.version.clone(),
         machine: machine_info(),
         started_unix: started,
@@ -904,6 +940,7 @@ mod tests {
             tier: "deep".to_owned(),
             verus_release: String::new(),
             sail_verus: None,
+            sail_arm: None,
             z3_version: String::new(),
             machine: BTreeMap::new(),
             started_unix: 0,

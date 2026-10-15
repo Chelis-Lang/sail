@@ -31,7 +31,7 @@ fn validate(value: &toml::Value, file: &Path) -> Result<()> {
         Error::new(
             "SAIL3112",
             format!(
-                "incremental verification cannot identify runtime configuration in {}; use ordinary sail verify",
+                "sail verify cannot identify the runtime configuration in {}, so it does not support this setup",
                 file.display()
             ),
         )
@@ -123,7 +123,7 @@ pub(super) fn check(workspace: &Path, args: &[String]) -> Result<()> {
             return Err(Error::new(
                 "SAIL3112",
                 format!(
-                    "incremental verification cannot identify runtime selector {key}; use ordinary sail verify"
+                    "sail verify cannot identify the runtime selector {key}, so it does not support this setup"
                 ),
             ));
         }
@@ -135,7 +135,7 @@ pub(super) fn check(workspace: &Path, args: &[String]) -> Result<()> {
     {
         return Err(Error::new(
             "SAIL3112",
-            "incremental verification does not support Cargo --config overrides; use ordinary sail verify",
+            "sail verify does not support Cargo --config overrides",
         ));
     }
     let home = std::env::var_os("CARGO_HOME")

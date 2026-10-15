@@ -23,11 +23,11 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL0102` | `sail-z3` not found next to `sail` | Reinstall so `sail` and `sail-z3` share a directory |
 | `SAIL0103` | Cannot find the Z3 that Verus uses (Sail's Verus bundles the pinned Z3) | Reinstall Sail, or set `VERUS_Z3_PATH` |
 | `SAIL0104` | Cannot create the fragility trace directory | Check free space and permissions in the temporary directory, or pass `--keep-traces DIR` |
-| `SAIL0105` | Cannot run `cargo-verus` | Check the `cargo-verus` installation |
+| `SAIL0105` | Cannot run `cargo-verus` (fragility measurement or portfolio) | Check Sail's Verus with `sail engine status` |
 | `SAIL0106` | Unknown `--output` format | Use `--output json` |
 | `SAIL0107` | Cannot create a scratch directory for JSON output | Check free space and permissions in the temporary directory |
 | `SAIL0108` | Warning: `SAIL_CARGO_VERUS` replaces Sail's Verus. This development override is not Sail's default mode, and its results are not checked against stock Verus | Unset `SAIL_CARGO_VERUS` |
-| `SAIL0110` | Invalid portfolio or fragility options | Fix the options; a portfolio and a fragility measurement cannot be combined |
+| `SAIL0110` | Invalid portfolio or fragility options | Fix the options; a portfolio and a fragility measurement cannot be combined, and neither takes `--background` or `--engine` |
 | `SAIL0111` | A portfolio attempt could not run or was cancelled | Re-run; the message names the failing step |
 | `SAIL0112` | Cannot retain portfolio or fragility evidence | Check free space and permissions under the cache directory |
 | `SAIL0113` | Not every requested target produced a result | Read the report's diagnostics; the scope was not verified |
@@ -126,11 +126,11 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3042` | A `rust_verify_test` binary cannot list its tests | Rebuild the source build |
 | `SAIL3043` | Another process owns the source build | Wait for it, or remove a stale lock |
 
-## Managed verification (`sail verify --incremental`, jobs, MCP)
+## Managed verification (`sail verify`, jobs, watch, MCP)
 
 | Code | Meaning | What to do |
 |---|---|---|
-| `SAIL3100` | Managed verification cannot run this project as configured | Read the message; use ordinary `sail verify` if it names an unsupported setup |
+| `SAIL3100` | `sail verify` cannot run this project as configured: Sail's Verus is missing (the message then carries `SAIL0101`), or the arguments ask for something managed verification does not support (`--target-dir`, Verus `--log` options, `--no-verify`, `--sysroot`, tests, benches or examples) or there is no target with `package.metadata.verus.verify = true` | Read the message. Unsupported setups are listed in [workspace verification](workspace-verification.md#what-sail-verify-does-not-support); `cargo verus verify` still runs them, without Sail |
 | `SAIL3101` | Cannot read managed state | Check permissions under the cache directory |
 | `SAIL3102` | Cannot write managed state | Check free space and permissions |
 | `SAIL3103` | `cargo metadata` failed | Fix the error Cargo reports |
@@ -140,7 +140,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3107` | Verification produced no complete proof receipt for a target | Re-run; the result is not reused |
 | `SAIL3108` | No Current run is recorded for this project and settings | Verify once; later reads can then be Current |
 | `SAIL3111` | The managed adapter failed (solver capture, receipts or Cargo wrapper) | Read the message; re-run |
-| `SAIL3112` | Unsupported Cargo configuration for incremental verification | Use ordinary `sail verify` |
+| `SAIL3112` | Unsupported Cargo configuration: Cargo `--config`, configuration includes, or a compiler, wrapper, loader or sysroot override Sail cannot identify, including `LD_LIBRARY_PATH`, `LD_PRELOAD` or a `DYLD_*` loader variable in the environment | Remove the override (for example unset `LD_LIBRARY_PATH` for the command), or run `cargo verus verify` without Sail for this configuration |
 | `SAIL3114` | Inputs could not be confirmed unchanged; the result is not Current | Re-run for a current result |
 
 ## Interactive engine (`--engine interactive`)

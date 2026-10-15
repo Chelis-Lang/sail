@@ -4,7 +4,10 @@
 //! check_output <sail.json> <verus-stdout> [--attribution STATUS] [--source SOURCE]
 //! ```
 //!
-//! - the document matches the JSON Schema and the schema's invariants;
+//! The document is a `sail-project-result` (what `sail verify --output json`
+//! prints) whose one requested target's report is checked, or a schema-v2
+//! report (an MCP `verify` reply). For that report:
+//! - it matches the JSON Schema and the schema's invariants;
 //! - its per-function verdicts agree with Verus's own `--output-json`
 //!   (`<verus-stdout>`, the stdout of `cargo verus verify -- --output-json
 //!   --time`): `verified` exactly when Verus says `success`, except where an
@@ -27,6 +30,7 @@ fn check(args: &[String]) -> Result<String, Vec<String>> {
     let read = |p: &str| std::fs::read(p).map_err(|e| vec![format!("{p}: {e}")]);
     let doc: serde_json::Value =
         serde_json::from_slice(&read(sail)?).map_err(|e| vec![format!("{sail}: {e}")])?;
+    let doc = requested_report(doc).map_err(|e| vec![format!("{sail}: {e}")])?;
     let schema: serde_json::Value =
         serde_json::from_str(JSON_SCHEMA).map_err(|e| vec![format!("schema: {e}")])?;
     let mut errors = sail_api::schema::validate(&schema, &doc);
@@ -92,6 +96,23 @@ fn check(args: &[String]) -> Result<String, Vec<String>> {
         ))
     } else {
         Err(errors)
+    }
+}
+
+/// The schema-v2 report to check: the document itself, or the one requested
+/// target's report in a `sail-project-result`.
+fn requested_report(doc: serde_json::Value) -> Result<serde_json::Value, String> {
+    if doc["kind"] != "sail-project-result" {
+        return Ok(doc);
+    }
+    let result: sail_api::project::ProjectResult =
+        serde_json::from_value(doc).map_err(|e| format!("not a project result: {e}"))?;
+    let mut requested = result.targets.into_iter().filter(|t| t.requested);
+    match (requested.next(), requested.next()) {
+        (Some(target), None) => {
+            serde_json::to_value(target.report).map_err(|e| format!("report: {e}"))
+        }
+        _ => Err("expected exactly one requested target".to_owned()),
     }
 }
 

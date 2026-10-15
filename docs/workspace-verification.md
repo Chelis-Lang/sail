@@ -1,17 +1,27 @@
 # Live workspace verification
 
-The managed workflow is local and automatic. Install `sail` and `sail-z3`
-beside each other, with your pinned Cargo-Verus available as usual. Sail starts
-its local daemon when needed. No team server, credentials or container is
-required.
+Every `sail verify` is managed verification
+([ADR 0045](decisions/0045-managed-verification-by-default.md)). Install
+Sail; it runs its own Verus and starts its local daemon when needed. No team
+server, credentials or container is required.
 
 ## Complete incremental reports
 
 ```sh
-sail verify --incremental
-sail verify --incremental --output json
-sail verify --incremental -p my-package --output json
+sail verify
+sail verify --output json
+sail verify -p my-package --output json
 ```
+
+Without `--output json`, `sail verify` prints what `cargo verus verify` prints:
+Cargo's status lines and Verus's diagnostics on stderr, Verus's own stdout
+(`verification results:: N verified, M errors`, the `--output-json` document,
+or the `--time` report, as you asked Verus for them), and the same exit code.
+See [what the output does not repeat](#output-compared-with-cargo-verus-verify)
+for the differences that remain.
+
+`--incremental` was the opt-in for this mode before it became the default.
+It is still accepted and does nothing.
 
 Cargo runs on every request. Sail owns a separate Cargo target directory, so it
 never cleans the caller's artifacts. Successful complete target reports get
@@ -28,16 +38,61 @@ claiming currentness until they can be observed. Failed, interrupted or partial
 target proofs cannot become reusable whole-target receipts. Publication waits
 for a coherent input check and an atomic run commit, so an interrupted publisher
 cannot leave usable unvalidated receipts. Function/module selection runs fresh;
-its report describes that requested scope. Managed mode owns its target and
-observation logs, and does not accept an external `--target-dir`, direct Verus
-source selection, tests/benches/examples, a chained workspace rustc wrapper,
-portfolio, fragility measurement, custom sysroots or JSON target specifications.
-Ordinary Cargo library and binary targets are supported. Cargo `--config`,
-configuration includes, and compiler, wrapper, loader or sysroot overrides that
-cannot be bound safely are rejected with `SAIL3112`. Use ordinary `sail verify`
-for those unsupported managed configurations. Cargo configuration discovery
+its report describes that requested scope. Cargo configuration discovery
 uses the original invocation directory, including member-directory ancestors;
 relative Cargo/cache homes are resolved against that directory.
+
+### What `sail verify` does not support
+
+Sail owns the Cargo target and Verus's logs, and verifies Cargo library and
+binary targets. It refuses, with an error and without running anything:
+
+- `--target-dir`, Verus's `--log`, `--log-all` and `--log-dir`, and
+  `--no-verify` (`SAIL3100`);
+- tests, benches and examples (`--tests`, `--test`, `--all-targets`, …)
+  (`SAIL3100`);
+- a chained workspace rustc wrapper (`RUSTC_WORKSPACE_WRAPPER`), custom
+  sysroots and JSON target specifications (`SAIL3100`, `SAIL3111`);
+- Cargo `--config`, configuration includes, and compiler, wrapper, loader or
+  sysroot overrides it cannot identify (`SAIL3112`), including the loader
+  variables `LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_LIBRARY_PATH`,
+  `DYLD_INSERT_LIBRARIES` and `DYLD_FRAMEWORK_PATH` in the environment
+  ([open question 28](open-questions.md));
+- a project with no target that sets `package.metadata.verus.verify = true`
+  (`SAIL3100`).
+
+`cargo verus verify` still runs these, without Sail. `--verus-source FILE`
+(a single file with `verus FILE`) is only for the opt-in portfolio.
+`--measure-fragility` and `--portfolio accept-first-proof` are explicit solver
+experiments: they run `cargo verus verify` with `sail-z3` directly and print
+one schema-v2 report, and they do not take `--background` or `--engine`
+(`SAIL0110`).
+
+### Output compared with `cargo verus verify`
+
+`sail verify` prints the same bytes as `cargo verus verify` for the same work.
+What differs is when there is work:
+
+- **Its own target.** The first run in a project, worktree or new
+  combination of arguments compiles the dependencies and verifies vstd in
+  Sail's target, so it prints Cargo's `Compiling` lines and vstd's
+  `verification results::` line even when your own `target/` is up to date.
+  After that, only what changed is verified.
+- **Unchanged targets are skipped by content.** Cargo-Verus decides
+  freshness by file content, and so does Sail's target: an unchanged target
+  prints no `Checking` or `verification results::` line, in both. A target
+  whose verification failed is always verified again, in both.
+- **Arguments are part of the context.** Plain `cargo verus verify` treats a
+  crate as fresh after you change only its Verus arguments (for example add
+  `--rlimit` or `--time`) and prints nothing new. Sail verifies again with
+  the new arguments, as a first run in that context.
+- **Timings.** Cargo's `Finished … in Ns` and Verus's `--time` figures are
+  measured on each run. Verus's `--time` report shows Sail's Verus's own
+  build information (ADR 0043).
+- **A retried target.** When Cargo finds a target fresh but Sail has no
+  receipt for it (after a crash, or after `sail cache projects prune`
+  removed receipts but not the target), Sail cleans that target and runs
+  Cargo again, so Cargo's lines for that run appear twice.
 
 Proof reuse works on Linux and macOS. On Linux, an ordered native event queue
 also tracks transient creation and removal of missing Cargo configuration
@@ -47,8 +102,7 @@ created and deleted again within one run is not noticed (see
 [freshness](freshness.md#what-these-checks-do-not-catch)). Present inputs keep
 the same content and mutation checks on both platforms.
 
-The ordinary `sail verify` path keeps its existing drop-in output and behavior.
-The explicit managed JSON format is a `sail-project-result` envelope, version 2,
+`sail verify --output json` prints a `sail-project-result` envelope, version 2,
 containing per-target schema-v2 reports. Its JSON Schema is
 `crates/sail-api/schema/project-result-v2.json`. Each target identifies its package,
 target kind, establishing run, completeness and reuse. The `requested` field
@@ -111,7 +165,7 @@ waits in `queued` until the earlier one finishes, rather than failing on the
 workspace's managed target. The daemon identifies a workspace by the outermost
 directory above the project (or its `--manifest-path`) that holds a
 `Cargo.toml`, so nested packages of one workspace share a queue. Separate
-`sail verify --incremental` processes outside the daemon wait on the managed
+`sail verify` processes outside the daemon wait on the managed
 runner's own lock for up to `SAIL_MANAGED_LOCK_WAIT_SECS` seconds (default
 1,800) and then fail with `SAIL3104`.
 
