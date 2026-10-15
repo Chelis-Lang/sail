@@ -119,8 +119,11 @@ In a Cargo project that Verus already verifies, run `sail verify` instead of
 
 `sail verify` takes the same arguments as `cargo verus verify` and prints the
 same output. The first run also builds and checks `vstd`, which takes about
-half a minute. It starts the Sail cache daemon on demand; you never need to
-start it yourself. Run it again after an edit: solver queries Verus has seen
+half a minute. With `--incremental` (below), that happens once per machine:
+later new projects and worktrees that resolve the same `vstd` start from the
+verified copy the first one stored
+([ADR 0045](docs/decisions/0045-dependency-store.md)). It starts the Sail
+cache daemon on demand; you never need to start it yourself. Run it again after an edit: solver queries Verus has seen
 before are answered from the cache. To stop using Sail, run your own
 `cargo verus verify` again. Nothing else changes.
 
@@ -213,8 +216,13 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
 - **macOS.** Receipt reuse works on Linux and macOS. On macOS a Cargo
   configuration file created and deleted again during a single run is not
   detected; see [freshness](docs/freshness.md#what-these-checks-do-not-catch).
-- **Each new project or worktree verifies vstd once** in managed mode, about
-  30 s, before reuse starts.
+- **The first managed run on a machine verifies vstd,** about 30 s. Later
+  new projects and worktrees reuse it only when they resolve the same vstd
+  (version, features, its dependencies' versions in `Cargo.lock`, profile,
+  arguments) with the same Sail and toolchain; anything else verifies vstd
+  again once and is stored too (four entries, about 120 MB each). Ordinary
+  `sail verify` without `--incremental` still verifies vstd in each new
+  target, as plain `cargo verus verify` does.
 - **Proof repair is experimental** (below).
 
 See [known issues](docs/known-issues.md) for the full list.

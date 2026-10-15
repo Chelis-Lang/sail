@@ -151,6 +151,8 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3122` | The selected function was not found, or not exactly once | Name the exact function |
 | `SAIL3123` | The engine faulted; the result is from stock Verus and accepts no repair | Use the stock result; report the fault if it repeats |
 | `SAIL3124` | A target needs a Verus feature the engine is built without (for example `singular` for `by(integer_ring)`); it was verified by the configured stock Verus and accepts no repair | Use the stock result, or stock `sail verify`; see [Verus features the engine lacks](proof-repair.md#verus-features-the-engine-lacks) |
+| `SAIL3130` | Note: a dependency (such as vstd) was verified by a run in another workspace and placed in this new project from Sail's [dependency store](decisions/0045-dependency-store.md) | None; plain Cargo-Verus would have verified it in this run, and its recorded report is the one shown |
+| `SAIL3131` | Warning: a dependency store entry is damaged (its checksums or digests fail), so it was ignored | None; the dependency is verified normally. Delete `<cache>/dependency-store/` if the warning repeats |
 
 ## Portfolio and solver libraries
 

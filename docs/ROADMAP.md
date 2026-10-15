@@ -150,9 +150,10 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
 | `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Implemented ([#148](https://github.com/Chelis-Lang/sail/issues/148)): `sail new` runs Sail's Verus's `cargo verus new`; e2e checks it matches stock and verifies. Clean-install acceptance follows the managed-by-default and pre-verified vstd work |
 | Output schema v2: establishment and evidence-tier axes (question 22) | Implemented ([#149](https://github.com/Chelis-Lang/sail/issues/149), ADR 0044): `establishment`, `evidence_tier` and ITF counterexample values in `--output json`, the project envelope and MCP; gate, solver, e2e and PR conformance pass on native Linux; macOS host checks pass |
+| Pre-verified vstd for new projects and worktrees (owner direction 2026-10-15; review B1) | Implemented for managed runs ([ADR 0045](decisions/0045-dependency-store.md)): a machine-local dependency store; a new project's first run 27.5 s → 1.3 s (MCP 1.5 s), a new vest worktree's 52.3 s → 25.7 s (Linux); checks against plain stock in the [dependency store record](validation/dependency-store.md). Not shipped prebuilt in archives (diagnostics name the Cargo home); ordinary non-managed `sail verify` unchanged |
 | Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Done: draft `v0.1.0-rc.4` (Sail's Verus, fork `73dea021`) passed its revalidation of the fix since rc.3; rc.3 passed every check except a clean `deep-rvt`, whose Different verdicts are stock Verus output-order variants (VI-0008) ([release candidate](validation/release-candidate.md), [clean macOS](validation/clean-macos.md)); the owner reviews it and decides when to publish |
 
-Out of the release: B1 (shared vstd across projects), B2 (single-file
+Out of the release: B2 (single-file
 `verus file.rs` projects; the release documents that Sail needs a Cargo
 project), B4 (receipts beyond the latest revision) and every section D item.
 

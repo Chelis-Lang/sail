@@ -13,6 +13,7 @@ mod read_check;
 mod receipts;
 mod runner;
 mod source_inputs;
+mod store;
 
 pub(crate) use files::{digest, event, file_digest, json, stat_identity};
 pub use freshness::FreshnessIndex;
