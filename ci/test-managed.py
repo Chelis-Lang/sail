@@ -355,7 +355,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         rebuilt_run, rebuilt, rebuilt_target = managed()
         assert rebuilt_run.returncode == 0 and rebuilt["exit_code"] == 0, diagnostic(rebuilt)
         assert not rebuilt_target["reused"] and rebuilt_target["complete"], diagnostic(rebuilt)
-        assert vstd(rebuilt)["dependency_store"], diagnostic(rebuilt)  # ADR 0045
+        assert vstd(rebuilt).get("dependency_store"), diagnostic(rebuilt)  # ADR 0045; absent on a miss
         assert rebuilt["execution"]["verifier_invocations"] >= 1, rebuilt["execution"]
         assert rebuilt_target["report"]["summary"] == target["report"]["summary"], diagnostic(rebuilt)
         if rebuilt["currentness"] == "historical":

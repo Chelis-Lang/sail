@@ -7,7 +7,7 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
-#   e2e [legacy|managed|repair|output] Run all phases by default; CI runs them in parallel.
+#   e2e [legacy|managed|repair|output|flags] Run all phases by default; CI runs them in parallel.
 #                        `sail new` writes what stock `cargo verus new`
 #                        writes, and its lib and bin projects verify;
 #                        `sail verify` (managed verification, the default,
@@ -129,12 +129,12 @@ case "$step" in
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed|repair|output' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|repair|output|flags' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed|repair|output) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|repair|output" >&2; exit 2 ;;
+      full|legacy|managed|repair|output|flags) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|repair|output|flags" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
     # Sail runs its own Verus, the validated fork runtime the image installs
@@ -249,8 +249,12 @@ RS
     fi
     if [ "$phase" = full ] || [ "$phase" = output ]; then
       # `sail verify` against plain `cargo verus verify` across the edit loop
-      # and output-changing flags (ADR 0046), in a job of its own.
-      (cd "$sail_checkout" && bash ci/test-output.sh "$sail")
+      # (ADR 0046), in a job of its own.
+      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" loop)
+    fi
+    if [ "$phase" = full ] || [ "$phase" = flags ]; then
+      # The same for a workspace and the setups verified without proof reuse.
+      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" flags)
     fi
     if [ "$phase" = full ] || [ "$phase" = managed ]; then
       sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"

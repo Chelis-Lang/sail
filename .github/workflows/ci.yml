@@ -135,7 +135,7 @@ jobs:
     # Preserve the required check name and reject failed, cancelled or skipped phases.
     name: End to end
     if: ${{ always() }}
-    needs: [e2e-legacy, e2e-managed, e2e-repair, e2e-output]
+    needs: [e2e-legacy, e2e-managed, e2e-repair, e2e-output, e2e-flags]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -148,7 +148,8 @@ jobs:
           MANAGED: ${{ needs.e2e-managed.result }}
           REPAIR: ${{ needs.e2e-repair.result }}
           OUTPUT: ${{ needs.e2e-output.result }}
-        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED" "$REPAIR" "$OUTPUT"
+          FLAGS: ${{ needs.e2e-flags.result }}
+        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED" "$REPAIR" "$OUTPUT" "$FLAGS"
 
   e2e-legacy:
     # `sail verify` against `cargo verus verify` on a fresh project.
@@ -174,8 +175,8 @@ jobs:
       - run: ci/run.sh e2e legacy
 
   e2e-output:
-    # `sail verify`'s output against `cargo verus verify` across the edit loop
-    # and output-changing flags (ADR 0046).
+    # `sail verify`'s output against `cargo verus verify` across the edit
+    # loop (ADR 0046).
     name: End to end (output)
     needs: [no-ai-authorship, image]
     runs-on: ubuntu-latest
@@ -196,6 +197,30 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh e2e output
+
+  e2e-flags:
+    # `sail verify` against `cargo verus verify` on a workspace and the setups
+    # it verifies without proof reuse (ADR 0046).
+    name: End to end (flags)
+    needs: [no-ai-authorship, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: ci/run.sh e2e flags
 
   e2e-managed:
     # Complete target receipts and persistent CLI/MCP verification jobs.

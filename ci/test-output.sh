@@ -5,9 +5,16 @@
 # inside the CI image, with Sail's Verus selected (SAIL_VERUS_BUILD) and
 # stock `cargo verus` on PATH.
 #
-#   ci/test-output.sh SAIL
+#   ci/test-output.sh SAIL loop|flags
+#
+# `loop`: combined output, passing proofs, an unchanged re-run, a compile
+# error, `-- --output-json --time`, partial verification and a loader
+# variable. `flags`: a `-p`/`--features` workspace and the setups verified
+# without proof reuse. CI runs the two parts as separate jobs, so each
+# stays well inside the job time limit.
 set -euo pipefail
 sail="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
+part="${2:?usage: ci/test-output.sh SAIL loop|flags}"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 export SAIL_CACHE_DIR="$work/cache"
@@ -67,6 +74,9 @@ quiet_run() { # like run, without touching the source
   echo $? > "$work/$label.rc"
   set -e
 }
+edit_run() { printf '// %s\n' "$1" >> src/lib.rs; quiet_run "$@"; }
+
+if [ "$part" = loop ]; then
 # Combined output (2>&1), as agents read it, on the failing proof.
 set +e
 touch src/lib.rs
@@ -91,34 +101,56 @@ sail_run compile-sail "$sail" verify
 same compile-plain compile-sail
 grep -q "cannot find value" "$work/compile-plain.err"
 sed -i '/pub fn broken/d' src/lib.rs
-# Verus's own stdout flags. New Verus arguments are a new context for
-# Sail (its first run verifies vstd again), so each side runs once
-# first. --time: the table's figures and build lines (Sail's Verus is
-# built from the fork, ADR 0043) are blanked.
-edit_run() { printf '// %s\n' "$1" >> src/lib.rs; quiet_run "$@"; }
-CARGO_TARGET_DIR="$work/target-plain" edit_run time-plainwarm cargo verus verify -- --time
-CARGO_TARGET_DIR="$work/target-sail" edit_run time-sailwarm "$sail" verify -- --time
-CARGO_TARGET_DIR="$work/target-plain" edit_run outjson-plainwarm cargo verus verify -- --output-json
-CARGO_TARGET_DIR="$work/target-sail" edit_run outjson-sailwarm "$sail" verify -- --output-json
-CARGO_TARGET_DIR="$work/target-plain" edit_run time-plain cargo verus verify -- --time
-CARGO_TARGET_DIR="$work/target-sail" edit_run time-sail "$sail" verify -- --time
-same time-plain time-sail "rc err"
-timing() { sed -E '/^  (Version|Toolchain):/d; s/[0-9]+/N/g; s/ +/ /g' "$1"; }
-if ! cmp -s <(timing "$work/time-plain.out") <(timing "$work/time-sail.out"); then
-  echo "e2e: -- --time stdout differs from plain cargo verus verify" >&2
-  diff -u <(timing "$work/time-plain.out") <(timing "$work/time-sail.out") >&2 || true
-  exit 1
-fi
-CARGO_TARGET_DIR="$work/target-plain" edit_run outjson-plain cargo verus verify -- --output-json
-CARGO_TARGET_DIR="$work/target-sail" edit_run outjson-sail "$sail" verify -- --output-json
-same outjson-plain outjson-sail "rc err"
-python3 - "$work/outjson-plain.out" "$work/outjson-sail.out" <<'PY'
+# Verus's own stdout flags, as the conformance harness passes them. New
+# Verus arguments are a new context for Sail (its first run verifies vstd
+# again), so each side runs once first. The documents' timings and build
+# information (Sail's Verus is built from the fork, ADR 0043) differ; their
+# results must not.
+CARGO_TARGET_DIR="$work/target-plain" edit_run json-plainwarm cargo verus verify -- --output-json --time
+CARGO_TARGET_DIR="$work/target-sail" edit_run json-sailwarm "$sail" verify -- --output-json --time
+CARGO_TARGET_DIR="$work/target-plain" edit_run json-plain cargo verus verify -- --output-json --time
+CARGO_TARGET_DIR="$work/target-sail" edit_run json-sail "$sail" verify -- --output-json --time
+same json-plain json-sail "rc err"
+python3 - "$work/json-plain.out" "$work/json-sail.out" <<'PY'
 import json, sys
 docs = [json.loads(open(path).read()) for path in sys.argv[1:]]
 for key in ("verification-results", "func-details"):
     assert docs[0][key] == docs[1][key], (key, docs[0][key], docs[1][key])
-assert "times-ms" not in docs[1], "times-ms without --time"
+assert all("times-ms" in d for d in docs), "times-ms with --time"
 PY
+# Partial verification under `verify`: plain Cargo-Verus's own refusal.
+plain_run partial-plain cargo verus verify -- --verify-function max
+sail_run partial-sail "$sail" verify -- --verify-function max
+same partial-plain partial-sail
+grep -q "Partial verification must use" "$work/partial-plain.err"
+echo "e2e: combined output, passing, unchanged, compile error, --output-json --time and partial verification identical to cargo verus verify"
+# A process-loader variable: verified as plain Cargo-Verus verifies it, with
+# one note line, no proof receipts and no dependency store. The failing proof
+# is back for this case; the JSON run builds the loader context's own target.
+sed -i 's/ensures r >= x,/ensures r > x,/' src/lib.rs
+LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
+  quiet_run loader-json "$sail" verify --output json
+grep -q '^note\[SAIL3112\]: LD_LIBRARY_PATH is set' "$work/loader-json.err"
+python3 - "$work/loader-json.out" "$SAIL_CACHE_DIR" <<'PY'
+import json, pathlib, sys
+doc = json.loads(open(sys.argv[1]).read())
+assert doc["error"] is None and doc["currentness"] == "unknown", doc["currentness"]
+assert any(n.startswith("SAIL3112:") for n in doc["notes"]), doc["notes"]
+assert not any(t["reused"] for t in doc["targets"]), "no reuse"
+contexts = list(pathlib.Path(sys.argv[2], "projects").glob("*/" + doc["context_sha256"]))
+assert len(contexts) == 1 and not list((contexts[0] / "receipts").glob("*.json")), contexts
+PY
+plain_run loader-plain cargo verus verify
+LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
+  run loader-sail "$sail" verify
+[ "$(grep -c '^note\[SAIL3112\]' "$work/loader-sail.err")" = 1 ]
+sed -i '/^note\[SAIL3112\]/d' "$work/loader-sail.err"
+same loader-plain loader-sail
+echo "e2e: LD_LIBRARY_PATH verified as plain cargo verus verify, without proof reuse"
+
+fi
+
+if [ "$part" = flags ]; then
 # A workspace: two crates, `-p` and a feature, each side warmed first.
 ws="$work/ws"
 mkdir -p "$ws/a/src" "$ws/b/src"
@@ -165,36 +197,7 @@ RS
   same ws-plain ws-sail
   grep -q "postcondition not satisfied" "$work/ws-plain.err"
 )
-# Partial verification under `verify`: plain Cargo-Verus's own refusal.
-plain_run partial-plain cargo verus verify -- --verify-function max
-sail_run partial-sail "$sail" verify -- --verify-function max
-same partial-plain partial-sail
-grep -q "Partial verification must use" "$work/partial-plain.err"
-echo "e2e: combined output, passing, unchanged, compile error, --time, --output-json, partial verification and a -p/--features workspace identical to cargo verus verify"
-# A process-loader variable: verified as plain Cargo-Verus verifies it, with
-# one note line, no proof receipts and no dependency store. The failing proof
-# is back for this case; the JSON run builds the loader context's own target.
-sed -i 's/ensures r >= x,/ensures r > x,/' src/lib.rs
-LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
-  quiet_run loader-json "$sail" verify --output json
-grep -q '^note\[SAIL3112\]: LD_LIBRARY_PATH is set' "$work/loader-json.err"
-python3 - "$work/loader-json.out" "$SAIL_CACHE_DIR" <<'PY'
-import json, pathlib, sys
-doc = json.loads(open(sys.argv[1]).read())
-assert doc["error"] is None and doc["currentness"] == "unknown", doc["currentness"]
-assert any(n.startswith("SAIL3112:") for n in doc["notes"]), doc["notes"]
-assert not any(t["reused"] for t in doc["targets"]), "no reuse"
-contexts = list(pathlib.Path(sys.argv[2], "projects").glob("*/" + doc["context_sha256"]))
-assert len(contexts) == 1 and not list((contexts[0] / "receipts").glob("*.json")), contexts
-PY
-plain_run loader-plain cargo verus verify
-LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
-  run loader-sail "$sail" verify
-[ "$(grep -c '^note\[SAIL3112\]' "$work/loader-sail.err")" = 1 ]
-sed -i '/^note\[SAIL3112\]/d' "$work/loader-sail.err"
-same loader-plain loader-sail
-echo "e2e: LD_LIBRARY_PATH verified as plain cargo verus verify, without proof reuse"
-
+echo "e2e: a -p/--features workspace identical to cargo verus verify"
 # Setups managed verification cannot bind to a proof receipt (ADR 0046)
 # are verified as plain Cargo-Verus verifies them: one note line, then
 # Cargo-Verus's own output and exit code. Each side runs once to warm
@@ -235,4 +238,4 @@ unbound_compare target-dir
 # Verus arguments, since `--no-verify` builds it successfully.
 unbound_case no-verify -- --no-verify
 echo "e2e: --no-verify, --config, --tests and --target-dir verified as plain cargo verus verify"
-
+fi
