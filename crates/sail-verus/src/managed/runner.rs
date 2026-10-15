@@ -699,6 +699,15 @@ fn invocations(paths: &Paths) -> Vec<Invocation> {
 ///
 /// A run whose only failure is a compile error in a selected crate qualifies
 /// too ([`confined_compile_failure`]).
+///
+/// A run that established build-script declarations (`script_coverage` false:
+/// a project's first managed run, or any run after one that withdrew them)
+/// qualifies only with Cargo's own completion evidence as well: Cargo finished
+/// its build ([`cargo_build_failed`]) and ran, in this run, every build script
+/// whose contract is kept. Currentness already requires every scheduled
+/// script to hold a covered contract after the run. Without this, a project
+/// whose first runs failed re-verified vstd on every run until one passed
+/// (issue #123), although a passing establishing run keeps the contracts.
 fn negative_compiler_generation(
     paths: &Paths,
     data: &Value,
@@ -708,13 +717,22 @@ fn negative_compiler_generation(
     engine: bool,
     args: &[String],
 ) -> bool {
-    if !script_coverage
-        || focused(args)
+    if focused(args)
         || result.currentness != Currentness::Current
         || result.exit_code != Some(101)
         || result.error.is_some()
         || expected.is_empty()
     {
+        return false;
+    }
+    let established = || {
+        cargo_build_failed(&paths.run.join("cargo.stdout"))
+            && super::build_inputs::executed(
+                &paths.build_inputs,
+                &paths.run.join("artifacts.jsonl"),
+            )
+    };
+    if !(script_coverage || established()) {
         return false;
     }
     let check = || -> Option<bool> {
@@ -2683,8 +2701,34 @@ mod tests {
         publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &establishing);
         assert!(
             !f.paths.compiler_inputs.exists(),
-            "negative declaration establishment cannot publish"
+            "negative declaration establishment needs Cargo's completed build"
         );
+        // A project's first run fails a proof (issue #123): Cargo finished its
+        // build and ran every recorded script, so the dependencies' contracts
+        // are kept and the next run finds vstd fresh.
+        let output = String::from_utf8(built.stdout.clone())?.replace(
+            "\"build-finished\",\"success\":true",
+            "\"build-finished\",\"success\":false",
+        );
+        std::fs::write(f.paths.run.join("cargo.stdout"), &output)?;
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &establishing);
+        assert!(
+            f.paths.compiler_inputs.is_file(),
+            "a complete negative establishing run keeps the contracts"
+        );
+        std::fs::remove_file(&f.paths.compiler_inputs)?;
+        let unexecuted: String = output
+            .lines()
+            .filter(|line| !line.contains("build-script-executed"))
+            .flat_map(|line| [line, "\n"])
+            .collect();
+        std::fs::write(&artifacts, unexecuted)?;
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &establishing);
+        assert!(
+            !f.paths.compiler_inputs.exists(),
+            "a recorded script that Cargo did not run in the establishing run"
+        );
+        std::fs::write(&artifacts, &built.stdout)?;
         // The consumed generation does not survive an interrupted rewrite.
         let input = std::fs::File::open(f.root.join("external.txt"))?;
         let mtime = input.metadata()?.modified()?;
@@ -2931,15 +2975,28 @@ mod tests {
             assert!(!stock(&f, &[]), "only a Current run retains contracts");
         }
         f.result.currentness = Currentness::Current;
-        assert!(!negative_compiler_generation(
-            &f.paths,
-            &f.data,
-            &f.expected,
-            &f.result,
-            false,
-            false,
-            &[]
-        ));
+        // The first run of a project establishes the script declarations
+        // (issue #123): the same Cargo evidence keeps them.
+        let establishing = |f: &NegativeGeneration| {
+            negative_compiler_generation(
+                &f.paths,
+                &f.data,
+                &f.expected,
+                &f.result,
+                false,
+                false,
+                &[],
+            )
+        };
+        assert!(establishing(&f));
+        std::fs::write(&artifacts, without("build-script-executed"))?;
+        assert!(
+            !establishing(&f),
+            "a recorded script that Cargo did not run"
+        );
+        std::fs::write(&artifacts, &output)?;
+        std::fs::write(f.paths.run.join("cargo.stdout"), without("build-finished"))?;
+        assert!(!establishing(&f), "an interrupted establishing build");
         Ok(())
     }
 

@@ -19,7 +19,8 @@ are in the `archive/m7-contracts-f7103bf` tag.
 - **A project's first managed verify verifies vstd.** As with plain `cargo
   verus verify` on a fresh target, the first managed run of each project
   verifies vstd in its own Cargo target (about 31 s natively). Later runs from
-  the CLI, MCP or any agent session reuse it. A shared per-toolchain vstd is a
+  the CLI, MCP or any agent session reuse it, whether that first run passed
+  or failed in the user crate. A shared per-toolchain vstd is a
   deferred follow-up. The 31 s first-contact cost was measured by L16
   (rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **Default and engine runs each verify vstd once in their own target.** That
