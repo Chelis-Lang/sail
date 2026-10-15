@@ -11,6 +11,7 @@ mod help;
 mod jobs;
 mod managed_cli;
 mod measurement;
+mod new;
 mod ops;
 mod portfolio;
 mod portfolio_scope;
@@ -37,6 +38,10 @@ const VERSION: &str = match option_env!("SAIL_VERSION") {
 
 /// Commands named by the charter, in the order `--help` lists them.
 const COMMANDS: &[(&str, &str)] = &[
+    (
+        "new",
+        "create a Verus project that `sail verify` verifies as it stands",
+    ),
     (
         "verify",
         "verify a crate; accepts the same arguments as `cargo verus verify`",
@@ -117,6 +122,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         }
         Some("serve") => serve(args.get(1..).unwrap_or_default(), err),
         Some("_serve-jobs") => serve_jobs(args.get(1..).unwrap_or_default(), err),
+        Some("new") => new::run(&args[1..], out, err),
         Some("verify") => verify::verify(args.get(1..).unwrap_or_default(), out, err),
         Some("_portfolio-attempt") => {
             verify::portfolio_attempt(args.get(1..).unwrap_or_default(), out, err)

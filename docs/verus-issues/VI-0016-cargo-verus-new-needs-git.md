@@ -24,4 +24,10 @@ With `git` installed the same command succeeds.
 
 ## Workaround
 
-The README lists `git` among the prerequisites for installing Verus.
+Users start projects with `sail new`, which runs Sail's Verus's
+`cargo verus new` in a staging directory. When `git` is not on `PATH` and
+every project file was written, `sail new` accepts this failure and keeps
+the project, without a repository, so the README needs no `git`
+prerequisite. With `git` on `PATH` the failure is reported (`SAIL0132`).
+The same `cargo-verus` code still applies to the fork runtime (fork
+`73dea021`).

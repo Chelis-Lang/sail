@@ -19,7 +19,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL0001` | `sail serve` needs Unix sockets | Run the daemon on Linux or macOS |
 | `SAIL0002` | Usage error: unknown command, option or missing value | Fix the command line; `sail help` lists commands |
 | `SAIL0003` | Cannot start `sail-bench`, serve on the socket, or run the daemon. As a warning from `sail verify`: the cache daemon is unavailable, so verification runs without the cache (same results) | `sail bench` is a contributor tool that is not in the release archives: build `sail-bench` from a Sail source checkout. Otherwise check that the socket path is free, writable and short enough (107 bytes on Linux, 103 on macOS; set `SAIL_CACHE_DIR` or `SAIL_DAEMON_SOCKET` to a shorter path). Run `sail serve` to see the daemon's own error |
-| `SAIL0101` | Sail's Verus (the runtime built from Sail's Verus fork, which Sail runs for every verification) is missing, does not match its pins, or its files changed. Sail never falls back to another Verus | Release archives bundle it under `engine/`: unpack the archive again and run its `bin/sail` without moving files out of the directory. In a source checkout, run `python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json --cache ~/.cache/sail` (`artifact-macos.json` on macOS) or `cargo xtask build-verus-engine`. `sail engine status` shows what is wrong |
+| `SAIL0101` | Sail's Verus (the runtime built from Sail's Verus fork, which Sail runs for every verification and for `sail new`) is missing, does not match its pins, or its files changed. Sail never falls back to another Verus | Release archives bundle it under `engine/`: unpack the archive again and run its `bin/sail` without moving files out of the directory. In a source checkout, run `python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json --cache ~/.cache/sail` (`artifact-macos.json` on macOS) or `cargo xtask build-verus-engine`. `sail engine status` shows what is wrong |
 | `SAIL0102` | `sail-z3` not found next to `sail` | Reinstall so `sail` and `sail-z3` share a directory |
 | `SAIL0103` | Cannot find the Z3 that Verus uses (Sail's Verus bundles the pinned Z3) | Reinstall Sail, or set `VERUS_Z3_PATH` |
 | `SAIL0104` | Cannot create the fragility trace directory | Check free space and permissions in the temporary directory, or pass `--keep-traces DIR` |
@@ -33,6 +33,9 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL0113` | Not every requested target produced a result | Read the report's diagnostics; the scope was not verified |
 | `SAIL0115` | Portfolio mode needs the pinned Z3 | Point `VERUS_Z3_PATH` at the pinned Z3 |
 | `SAIL0116` | `bench/portfolio/report.py` cannot render the portfolio probe | Check the retained probe files it names |
+| `SAIL0130` | `sail new`: the path already exists and is not an empty directory. Nothing was changed | Choose a new path, or empty the directory |
+| `SAIL0131` | `sail new`: the package name (from `--name`, or the path's last component) is not one Cargo accepts | Pass `--name NAME` with ASCII letters, digits, `-` and `_`, starting with a letter or `_`, and not a Rust keyword, `test` or `vstd` |
+| `SAIL0132` | `sail new` could not create the project: Sail's Verus's `cargo verus new` failed, or a file operation failed. Nothing is left at the path | Read the message, which includes `cargo verus new`'s own error; check permissions in the parent directory |
 | `SAIL0201` | `sail watch` failed | Read the message; restart `sail watch` |
 | `SAIL0301` | `sail mcp` cannot start | Read the message; check the cache directory |
 | `SAIL0302` | `sail mcp` cannot read stdin | The MCP client closed or broke the pipe; restart it |
