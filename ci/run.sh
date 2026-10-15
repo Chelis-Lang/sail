@@ -78,7 +78,7 @@ release_build() {
 e2e_binaries=(sail sail-z3 sail-conformance examples/check_output examples/check_mcp)
 
 e2e_build() {
-  release_build -p sail-conformance --example check_output --example check_mcp
+  release_build -p sail-conformance --bins --example check_output --example check_mcp
 }
 
 # Unpacks the binaries `e2e-build` packed in this CI run, checking every

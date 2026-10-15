@@ -174,7 +174,7 @@ Run the same steps locally in the same image with `ci/local.sh`:
 ```sh
 ci/local.sh gate                  # fmt, clippy, tests, doctests, rustdoc, layering, deny, benchmarks page
 ci/local.sh solver                # every test that needs the pinned Z3 (incl. fault injection)
-ci/local.sh e2e                   # `sail verify` vs `cargo verus verify`: identical output
+ci/local.sh e2e [PHASE]           # `sail verify` vs `cargo verus verify`: identical output (all phases + extra)
 ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
 ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
@@ -191,10 +191,25 @@ release-style checks belong in the local tiers below, never in CI.
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
 gate, including image creation, to have succeeded. Branches must be current
-with `main` before merging. The `End to end` check aggregates three parallel
-phases, legacy, managed and repair, and succeeds only when all complete successfully.
-`ci/local.sh e2e` runs all three; `e2e legacy`, `e2e managed` or `e2e repair`
-selects a phase for diagnosis. No phase may be skipped to authorize a merge.
+with `main` before merging. The `End to end` check aggregates six parallel
+phases and succeeds only when all complete successfully:
+- `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
+  warm, `--output json`, one MCP `verify` call and the portfolio;
+- `output`: the edit loop (combined output, passing, unchanged, compile error,
+  partial verification);
+- `flags`: the setups verified as plain Cargo-Verus verifies them;
+- `loader`: a loader variable (no proof reuse, one note);
+- `managed`: managed receipts, the dependency store, durable jobs, MCP and
+  Claude Code's tool listing;
+- `repair`: the repair CLI/MCP against the prebuilt engine.
+
+CI builds the release binaries once per run (`End to end (build)`,
+`ci/run.sh e2e-build`) and every phase job unpacks them; a failed build
+skips the phases, and a skipped phase fails the aggregate. `ci/local.sh e2e`
+builds, then runs every phase plus `extra` (`-- --output-json --time` and a
+`-p`/`--features` workspace, four cold builds, local-only);
+`ci/local.sh e2e PHASE` runs one phase (or `extra`) for diagnosis. No phase
+may be skipped to authorize a merge.
 Evidence directories and conformance reports are uploaded only when a job
 fails.
 The optional repair engine is a locally qualified prebuilt runtime pinned in
