@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "sail_version": "0.0.0",
   "mode": "default",
   "command": [],
