@@ -421,17 +421,19 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         # each reports the vstd verified above, marked as placed from the store.
         entries = [p for p in store.iterdir() if not p.name.startswith(".")]
         assert len(entries) == 1 and entries[0].name == stored[0], (entries, stored)
+        # Each copy is the whole workspace, lockfile included, verified from
+        # its member's directory like the original.
         copies = []
         for name in ("worktree-1", "worktree-2"):
-            shutil.copytree(project, root / name)
-            copies.append(root / name)
+            shutil.copytree(workspace, root / name)
+            copies.append(root / name / project.name)
         seeding = [subprocess.Popen([sail, "verify", "--incremental", "--output", "json"],
                                     cwd=copy, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                    for copy in copies]
         for copy, process in zip(copies, seeding):
             out, err = process.communicate(timeout=240)
-            (evidence / (copy.name + ".stdout.json")).write_bytes(out)
-            (evidence / (copy.name + ".stderr")).write_bytes(err)
+            (evidence / (copy.parent.name + ".stdout.json")).write_bytes(out)
+            (evidence / (copy.parent.name + ".stderr")).write_bytes(err)
             seeded = json.loads(out)
             assert process.returncode == 0 and seeded["exit_code"] == 0, err.decode()
             assert b"SAIL3131" not in err, err.decode()
