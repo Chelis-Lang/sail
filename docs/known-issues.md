@@ -23,6 +23,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   or failed in the user crate. A shared per-toolchain vstd is a
   deferred follow-up. The 31 s first-contact cost was measured by L16
   (rescue lane report, tag `archive/rescue-m7-98f6292`).
+- **`deep-rvt` reports stock output-order variants as Different.** The
+  `output_json` tests print `func-details` in stock Verus's hash order
+  ([VI-0008](verus-issues/VI-0008-func-details-hash-order.md)); with 3–6
+  orders in 11 plain runs, a Sail-side run often shows an unseen one. On
+  rc.3, six of eight rounds reported one Different, each with identical
+  stdout and stderr that is a line permutation of plain's. The arm runs the
+  stock source build, which Sail no longer runs (ADR 0043). Release-candidate
+  finding 11.
 - **Default and engine runs each verify vstd once in their own target.** That
   was about 30 s on HumanEval for the first default `sail verify` and again
   for the first engine run (`sail verify --engine interactive` or

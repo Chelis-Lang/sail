@@ -144,7 +144,7 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | Performance-claims page backed by reproducible `sail-bench` runs on Linux and macOS | Done (#105, [performance](performance.md)) |
 | Disk cleanup for managed targets (review B3) | Done (#97) |
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
-| Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Done: draft `v0.1.0-rc.2` passed ([release candidate](validation/release-candidate.md), [clean macOS](validation/clean-macos.md)); the owner reviews it and decides when to publish |
+| Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Done: draft `v0.1.0-rc.3` (Sail's Verus, fork `73dea021`) passed every check except a clean `deep-rvt`, whose Different verdicts are stock Verus output-order variants (VI-0008) ([release candidate](validation/release-candidate.md), [clean macOS](validation/clean-macos.md)); the owner reviews it and decides when to publish |
 
 Out of the release: B1 (shared vstd across projects), B2 (single-file
 `verus file.rs` projects; the release documents that Sail needs a Cargo
