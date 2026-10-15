@@ -255,33 +255,43 @@ Planned for releases after 0.1.0. The pre-verified vstd and managed-by-default
 work in flight for 0.1.0 is not listed here; nor are `sail new` and output
 schema v2, which the owner moved into 0.1.0 (#148, #149).
 
-**Start condition.** No M10 work starts until the 0.1.0 performance scope (the
-vstd fix in #125, managed-by-default mode and pre-verified vstd) has landed and
-is ready for brittonr's review of the fully performance-improved Sail. After
-that, the two tracks below run in parallel, not in sequence
-([question 27](open-questions.md)).
+**Order (owner direction, 2026-10-15).** "We're doing the core verus and perf
+features first and then backburnering the growth to multibackends and prep for
+oyster and such." This supersedes the parallel tracks of
+[question 27](open-questions.md): M10 waits until M11 completes.
 
-1. **Verus serving path.** Sail's reason to exist for today's users comes
-   first, judged against the repeated walkthrough
-   ([roadmap review](reports/2026-10-13-roadmap-review.md) sections B and D).
-   - B1: reuse a verified vstd across projects and worktrees, beyond what the
-     0.1.0 pre-verified vstd covers.
-   - B2: single-file `verus file.rs` projects.
-   - B4: receipts beyond the latest revision, so reverting reuses work.
-   - Cache robustness to incidental edits
-     ([#118](https://github.com/Chelis-Lang/sail/issues/118)); any key change
-     is an ADR under charter rules 5 and 6.
-   - The warm Verus frontend (M8): the M8.0 gate failed and the hermetic
-     bucket memo does not proceed; the cheaper levers under *Measured* above
-     (Cargo bypass, Sail overhead) come first, and the rest waits for user data.
-2. **M10: Verification runtime**
+1. **M11: Verus core and performance** (milestone *M11: Verus core and
+   performance*; ordered backlog in
+   [#168](https://github.com/Chelis-Lang/sail/issues/168)). Sail's reason to
+   exist for today's users, judged against the repeated walkthrough
+   ([roadmap review](reports/2026-10-13-roadmap-review.md) sections B and D)
+   and the [real-project measurements](reports/2026-10-15-real-project-performance.md).
+   In pickup order:
+   1. The verismo soundness check, #160.
+   2. A miss costs only the changed check, #158 (the largest edit-loop lever).
+   3. vstd pre-verified in the release archive, #161.
+   4. Remaining managed overhead against the removed pass-through, #156.
+   5. Cache robustness to incidental edits: stable crate-wide numbering in
+      the fork, [#118](https://github.com/Chelis-Lang/sail/issues/118); any
+      key change is an ADR under charter rules 5 and 6.
+   6. B4, instant revert: receipts beyond the latest revision, #163.
+   7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
+      hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
+      real projects caps every other lever.
+   8. Jobs, watch and MCP fall back like `sail verify` (`SAIL3112`), #165.
+   9. B2, single-file `verus file.rs` projects, #164.
+   10. deep-rvt against the fork, #124.
+   11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.
+
+   B1 (a verified vstd shared across projects and worktrees, beyond the
+   0.1.0 pre-verified vstd) is not yet ordered.
+2. **M10: Verification runtime (backburnered until M11 completes)**
    ([scope](scope/verification-runtime.md), milestone *M10: Verification
    runtime*, umbrella [#146](https://github.com/Chelis-Lang/sail/issues/146)).
    One cached runtime and one ledger behind annotated Rust, raw SMT-LIB and
-   TLA+ jobs (charter appendix entry 5). The interface specifications
-   (#127, #128, #129) start at once, in parallel with item 1, because Oyster
-   and D.I.V.E. are blocked on them. After them the SMT-LIB service (#137)
-   comes first, since Oyster depends on it first; alongside it fan out the
+   TLA+ jobs (charter appendix entry 5). When it starts, the interface
+   specifications (#127, #128, #129) come first, then the SMT-LIB service
+   (#137), since Oyster depends on it first; alongside it fan out the
    verifier backends (#130–#136), certificates (#138), TLA+ jobs through
    D.I.V.E. (#139), the Verus-aware mutator (#140) and library mode (#144);
    then the mutation gate (#141), cross-backend selection (#142) and the
@@ -297,7 +307,7 @@ The charter's original roadmap items map onto this as follows:
 | Multiple SMT backends (cvc5, portable queries) | SMT-LIB service, #137; cross-backend portfolios, #142 |
 | Alethe and Carcara certificates | Proof certificates, #138 |
 | Other verifiers | The M10 backends (#130–#136); Dafny as an evaluation, #145 |
-| A warm Verus frontend | Item 1 (M8), deferred for user data |
+| A warm Verus frontend | M11 (M8), #162 |
 | A Rust pre-solver (M9) | Closed: measured no-go for edit-loop latency (ADR 0038) |
 | Unsat-core pruning, instantiation replay | Designed for, not scheduled |
 | Warm solver sessions, stack-key mode | Not built now (ADR 0040); deferred (ADR 0008 update) |

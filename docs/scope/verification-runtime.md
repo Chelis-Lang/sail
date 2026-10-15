@@ -4,6 +4,9 @@
   0.1.0 is output schema v2 (question 22, #149). M10 work starts only after the
   0.1.0 performance scope (the vstd fix in #125, managed-by-default mode and
   pre-verified vstd) has landed and is ready for brittonr's review.
+- **Backburnered (owner, 2026-10-15):** M10 waits until M11, Verus core and
+  performance (#168), completes; this supersedes the parallel start in
+  question 27 and the dependency graph's start condition below.
 - **Owner answers:** questions 16–29 in [open questions](../open-questions.md),
   answered 2026-10-15.
 - **Source:** owner direction, 2026-10-15.
