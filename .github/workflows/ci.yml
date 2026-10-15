@@ -135,7 +135,7 @@ jobs:
     # Preserve the required check name and reject failed, cancelled or skipped phases.
     name: End to end
     if: ${{ always() }}
-    needs: [e2e-legacy, e2e-managed, e2e-repair, e2e-output, e2e-flags, e2e-loader]
+    needs: [e2e-legacy, e2e-managed, e2e-scripts, e2e-repair, e2e-output, e2e-flags, e2e-loader]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -146,15 +146,17 @@ jobs:
         env:
           LEGACY: ${{ needs.e2e-legacy.result }}
           MANAGED: ${{ needs.e2e-managed.result }}
+          SCRIPTS: ${{ needs.e2e-scripts.result }}
           REPAIR: ${{ needs.e2e-repair.result }}
           OUTPUT: ${{ needs.e2e-output.result }}
           FLAGS: ${{ needs.e2e-flags.result }}
           LOADER: ${{ needs.e2e-loader.result }}
-        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED" "$REPAIR" "$OUTPUT" "$FLAGS" "$LOADER"
+        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED" "$SCRIPTS" "$REPAIR" "$OUTPUT" "$FLAGS" "$LOADER"
 
-  e2e-legacy:
-    # `sail verify` against `cargo verus verify` on a fresh project.
-    name: End to end (legacy)
+  e2e-build:
+    # The release binaries every e2e phase runs, built once per CI run
+    # rather than once per phase (issue #112).
+    name: End to end (build)
     needs: [no-ai-authorship, image]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -173,13 +175,45 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: ci/run.sh e2e-build target/e2e-bin
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-bin
+          path: target/e2e-bin/e2e-bin.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  e2e-legacy:
+    # `sail verify` against `cargo verus verify` on a fresh project.
+    name: End to end (legacy)
+    needs: [no-ai-authorship, image, e2e-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: e2e-bin
+          path: target/e2e-bin
       - run: ci/run.sh e2e legacy
+        env:
+          SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
 
   e2e-output:
     # `sail verify`'s output against `cargo verus verify` across the edit
     # loop (ADR 0046).
     name: End to end (output)
-    needs: [no-ai-authorship, image]
+    needs: [no-ai-authorship, image, e2e-build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -194,16 +228,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          name: e2e-bin
+          path: target/e2e-bin
       - run: ci/run.sh e2e output
+        env:
+          SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
 
   e2e-flags:
     # `sail verify` against `cargo verus verify` for the setups it verifies
     # without proof reuse (ADR 0046).
     name: End to end (flags)
-    needs: [no-ai-authorship, image]
+    needs: [no-ai-authorship, image, e2e-build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -218,16 +255,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          name: e2e-bin
+          path: target/e2e-bin
       - run: ci/run.sh e2e flags
+        env:
+          SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
 
   e2e-loader:
     # `sail verify` with a loader variable set: no proof reuse, one note,
     # plain Cargo-Verus's output (ADR 0046).
     name: End to end (loader)
-    needs: [no-ai-authorship, image]
+    needs: [no-ai-authorship, image, e2e-build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -242,15 +282,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          name: e2e-bin
+          path: target/e2e-bin
       - run: ci/run.sh e2e loader
+        env:
+          SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
 
   e2e-managed:
     # Complete target receipts and persistent CLI/MCP verification jobs.
     name: End to end (managed)
-    needs: [no-ai-authorship, image]
+    needs: [no-ai-authorship, image, e2e-build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -265,11 +308,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          name: e2e-bin
+          path: target/e2e-bin
       - run: ci/run.sh e2e managed
         env:
+          SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
           SAIL_MANAGED_ACCEPTANCE_OUT: ${{ runner.temp }}/managed-acceptance
       - name: Retain managed acceptance evidence
         if: failure()
@@ -279,11 +324,11 @@ jobs:
           path: ${{ runner.temp }}/managed-acceptance
           if-no-files-found: ignore
 
-  e2e-repair:
-    # Repair CLI/MCP against the prebuilt engine: focused evidence, full
-    # acceptance and late compiler errors.
-    name: End to end (repair)
-    needs: [no-ai-authorship, image]
+  e2e-scripts:
+    # Managed reuse across build scripts, generated includes and unbuilt
+    # dev-dependency scripts, on a project of its own.
+    name: End to end (scripts)
+    needs: [no-ai-authorship, image, e2e-build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -298,9 +343,45 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          name: e2e-bin
+          path: target/e2e-bin
+      - run: ci/run.sh e2e scripts
+        env:
+          SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
+          SAIL_MANAGED_ACCEPTANCE_OUT: ${{ runner.temp }}/scripts-acceptance
+      - name: Retain managed acceptance evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scripts-acceptance
+          path: ${{ runner.temp }}/scripts-acceptance
+          if-no-files-found: ignore
+
+  e2e-repair:
+    # Repair CLI/MCP against the prebuilt engine: focused evidence, full
+    # acceptance and late compiler errors.
+    name: End to end (repair)
+    needs: [no-ai-authorship, image, e2e-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: e2e-bin
+          path: target/e2e-bin
       - name: Cache pinned fixture dependencies
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -308,6 +389,7 @@ jobs:
           key: sail-corpus-${{ hashFiles('corpus/corpus.toml') }}
       - run: ci/run.sh e2e repair
         env:
+          SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
           SAIL_REPAIR_ACCEPTANCE_OUT: ${{ runner.temp }}/repair-acceptance
       - name: Retain actual repair evidence
         if: failure()
