@@ -15,6 +15,10 @@ semantic versioning once the API is published.
   script; the next run reuses vstd and any other dependency that verified.
   The failing crate still gets no receipt. Verdicts and diagnostics are
   unchanged.
+- **README First verification writes `src/lib.rs`.** The file `cargo new
+  --lib` writes is not Verus code, so the README's steps failed with `The
+  verus_builtin crate was not imported`; they now write a minimal verified
+  `src/lib.rs`.
 - **Sail's Verus is pinned to fork `73dea021`** (runtimes
   `engine-runtime-73dea021-linux` and `-macos`). Two more run-to-run
   differences are gone from every Sail verification: `--output-json --time`

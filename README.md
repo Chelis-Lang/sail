@@ -99,9 +99,11 @@ compares against: `cargo xtask fetch-verus`.
 ## First verification
 
 In any Cargo project that Verus verifies, run `sail verify` instead of
-`cargo verus verify`. To start a new one, create a Cargo library and add the
-two entries `cargo verus new` would add, the `vstd` dependency for the Verus
-release Sail pins and Verus's `verify` flag:
+`cargo verus verify`. To start a new one, create a Cargo library, add the
+two entries `cargo verus new` would add (the `vstd` dependency for the Verus
+release Sail pins and Verus's `verify` flag), and replace `src/lib.rs` with
+Verus code. Verus needs `use vstd::prelude::*;` in the crate root; the file
+`cargo new` writes has none, so verifying it as is fails to compile:
 
 ```sh
 cargo new --lib demo
@@ -112,6 +114,19 @@ vstd = "=0.0.0-2026-10-04-0306"
 [package.metadata.verus]
 verify = true
 TOML
+cat >src/lib.rs <<'RS'
+use vstd::prelude::*;
+
+verus! {
+
+pub fn max(a: u32, b: u32) -> (r: u32)
+    ensures r >= a, r >= b, r == a || r == b,
+{
+    if a > b { a } else { b }
+}
+
+} // verus!
+RS
 sail verify
 ```
 
