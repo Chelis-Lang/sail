@@ -302,7 +302,7 @@ RS
       CARGO_TARGET_DIR="$work/target-plain" edit_run time-plain cargo verus verify -- --time
       CARGO_TARGET_DIR="$work/target-sail" edit_run time-sail "$sail" verify -- --time
       same time-plain time-sail "rc err"
-      timing() { sed -E '/^  (Version|Toolchain):/d; s/[0-9]+/N/g' "$1"; }
+      timing() { sed -E '/^  (Version|Toolchain):/d; s/[0-9]+/N/g; s/ +/ /g' "$1"; }
       if ! cmp -s <(timing "$work/time-plain.out") <(timing "$work/time-sail.out"); then
         echo "e2e: -- --time stdout differs from plain cargo verus verify" >&2
         diff -u <(timing "$work/time-plain.out") <(timing "$work/time-sail.out") >&2 || true
