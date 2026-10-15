@@ -284,6 +284,35 @@ pub(super) fn snapshot_metadata_home(
     extras: &[PathBuf],
     cargo_home: Option<&Path>,
 ) -> InputSnapshot {
+    stamped_snapshot(data, extras, cargo_home).0
+}
+
+/// [`snapshot_metadata`], with the stamp of its observed paths taken around
+/// its content reads, for [`unchanged_since`].
+pub(super) fn snapshot_metadata_stamped(
+    data: &Value,
+    extras: &[PathBuf],
+) -> (InputSnapshot, Option<String>) {
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    stamped_snapshot(data, extras, home.as_deref())
+}
+
+/// Whether a complete snapshot taken earlier is still the snapshot its
+/// selection would read now: every observed file and directory still has
+/// the stamp it had around the snapshot's content reads.
+pub(super) fn unchanged_since(snapshot: &InputSnapshot, stamp: Option<&String>) -> bool {
+    snapshot.complete
+        && stamp.is_some()
+        && stamp_paths(&snapshot.observation_paths).as_ref() == stamp
+}
+
+fn stamped_snapshot(
+    data: &Value,
+    extras: &[PathBuf],
+    cargo_home: Option<&Path>,
+) -> (InputSnapshot, Option<String>) {
     let workspace = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     let invocation = Path::new(
         data["sail_invocation_directory"]
@@ -359,15 +388,18 @@ pub(super) fn snapshot_metadata_home(
     complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
     roots.sort();
     roots.dedup();
-    InputSnapshot {
-        workspace,
-        revision,
-        roots,
-        excluded,
-        complete,
-        observation_paths,
-        digests,
-    }
+    (
+        InputSnapshot {
+            workspace,
+            revision,
+            roots,
+            excluded,
+            complete,
+            observation_paths,
+            digests,
+        },
+        stamp_before,
+    )
 }
 
 /// `snapshot` narrowed for proof-time kernel coverage of one selection.

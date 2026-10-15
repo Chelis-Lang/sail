@@ -1982,8 +1982,9 @@ pub(crate) fn run_engine_held(
         std::thread::Builder::new()
             .spawn(move || {
                 let hint = read::<super::input::SnapshotHint>(&hint_path)?;
-                let snapshot = snapshot_metadata(&hint.projection, &hint.extras);
-                Some((hint, snapshot))
+                let (snapshot, stamp) =
+                    super::input::snapshot_metadata_stamped(&hint.projection, &hint.extras);
+                Some((hint, snapshot, stamp))
             })
             .ok()
     };
@@ -2070,7 +2071,13 @@ pub(crate) fn run_engine_held(
         .and_then(|thread| thread.join().ok())
         .flatten()
     {
-        Some((hint, snapshot)) if hint == selection => snapshot,
+        // Cargo may have written inputs while it read the metadata (a lockfile
+        // update, extracted registry sources): the snapshot must be unchanged.
+        Some((hint, snapshot, stamp))
+            if hint == selection && super::input::unchanged_since(&snapshot, stamp.as_ref()) =>
+        {
+            snapshot
+        }
         _ => {
             // A hint is only ever a hint: failing to record one changes nothing.
             let _ = std::fs::create_dir_all(hint_path.parent().unwrap_or(&config.cache))
@@ -2298,7 +2305,10 @@ pub(crate) fn run_engine_held(
             Some(after) => (after, None),
             None => std::thread::scope(|threads| {
                 let snapshot = threads.spawn(|| {
-                    snapshot_metadata(&snapshot_projection(&data, &sources), &after_extras)
+                    super::input::snapshot_metadata_stamped(
+                        &snapshot_projection(&data, &sources),
+                        &after_extras,
+                    )
                 });
                 let after = metadata(&config.workspace, &config.args, &config.cargo);
                 (after, snapshot.join().ok())
@@ -2311,8 +2321,15 @@ pub(crate) fn run_engine_held(
         after_data["sail_source_inputs_by_package"] =
             serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
         super::files::json(&paths.input_state, &after_data)?;
+        // Kept only if nothing it observed changed while Cargo read the
+        // metadata (which may rewrite the lockfile).
         let mut after = match speculative {
-            Some(snapshot) if same_snapshot_selection(&data, &after_data) => snapshot,
+            Some((snapshot, stamp))
+                if same_snapshot_selection(&data, &after_data)
+                    && super::input::unchanged_since(&snapshot, stamp.as_ref()) =>
+            {
+                snapshot
+            }
             _ => snapshot_metadata(&after_data, &after_extras),
         };
         after.roots.extend(super::input::configuration_paths(
@@ -4267,6 +4284,22 @@ mod tests {
         assert_eq!(projected.roots, expected.roots);
         assert_eq!(projected.excluded, expected.excluded);
         assert_eq!(projected.workspace, expected.workspace);
+        // A snapshot taken earlier stands only while nothing it observed
+        // changed, even when the bytes are rewritten unchanged.
+        let (stamped, stamp) = super::super::input::snapshot_metadata_stamped(
+            &snapshot_projection(&before, &sources),
+            &extras,
+        );
+        assert!(super::super::input::unchanged_since(
+            &stamped,
+            stamp.as_ref()
+        ));
+        assert!(std::fs::write(app.join("src/lib.rs"), "source").is_ok());
+        assert!(!super::super::input::unchanged_since(
+            &stamped,
+            stamp.as_ref()
+        ));
+        assert!(!super::super::input::unchanged_since(&stamped, None));
         let mut fewer = after.clone();
         if let Some(packages) = fewer["packages"].as_array_mut() {
             packages.pop();
