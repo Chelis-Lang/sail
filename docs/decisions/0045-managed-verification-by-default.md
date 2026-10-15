@@ -79,6 +79,21 @@
    Cargo `--config` and configuration it cannot identify (`SAIL3100`,
    `SAIL3112`), and points at `cargo verus verify`. A silent fallback would
    be the removed pass-through under another name.
+
+   **Process-loader variables fail safe (lead decision, 2026-10-15).**
+   `LD_LIBRARY_PATH`, `LD_PRELOAD` and the macOS `DYLD_*` loader variables
+   change what the compiler and verifier load, which a receipt cannot bind,
+   and `LD_LIBRARY_PATH` is common on Linux (CUDA, conda). Refusing them
+   would lock those users out of the only `sail verify`. Such a run is
+   verified as plain Cargo-Verus verifies it: Sail prints one
+   `note[SAIL3112]` line on stderr, reuses no proof receipt, stages and
+   publishes none, records no read check or compiler-family dependency
+   records (the run is `unknown`), and does not retry a target Cargo finds
+   up to date, which therefore has no report, as plain Cargo-Verus prints
+   nothing for it. The loader variables are already part of the context, so
+   such runs never share receipts with other runs. The solver cache stays on:
+   its keys bind query bytes and solver identity. No check is weakened. The
+   e2e managed phase compares such a run's output with plain Cargo-Verus's.
 5. **Explicit experiments stay explicit.** `--measure-fragility` and the
    verdict-changing `--portfolio accept-first-proof` (with its single-file
    `--verus-source`) still run Cargo-Verus with `sail-z3` directly and print

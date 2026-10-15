@@ -201,8 +201,9 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
   run `cargo verus`. Projects verified with `verus file.rs` directly are not
   supported (the opt-in portfolio is the exception, with `--verus-source`),
   and neither are tests, benches, examples, `--target-dir`, Verus's `--log`
-  options, Cargo `--config` overrides or an `LD_LIBRARY_PATH` set in the
-  environment; `cargo verus verify` still runs those, without Sail ([details](docs/workspace-verification.md#what-sail-verify-does-not-support)).
+  options or Cargo `--config` overrides; `cargo verus verify` still runs
+  those, without Sail. With `LD_LIBRARY_PATH` or another loader variable
+  set, `sail verify` still verifies, but reuses no proofs ([details](docs/workspace-verification.md#what-sail-verify-does-not-support)).
 - **Speed is bounded by the solver's share of the work.** Sail caches solver
   answers; Rust compilation and Verus's own frontend still run every time.
   See [performance](docs/performance.md) for each claim and how to reproduce

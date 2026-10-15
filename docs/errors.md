@@ -140,7 +140,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3107` | Verification produced no complete proof receipt for a target | Re-run; the result is not reused |
 | `SAIL3108` | No Current run is recorded for this project and settings | Verify once; later reads can then be Current |
 | `SAIL3111` | The managed adapter failed (solver capture, receipts or Cargo wrapper) | Read the message; re-run |
-| `SAIL3112` | Unsupported Cargo configuration: Cargo `--config`, configuration includes, or a compiler, wrapper, loader or sysroot override Sail cannot identify, including `LD_LIBRARY_PATH`, `LD_PRELOAD` or a `DYLD_*` loader variable in the environment | Remove the override (for example unset `LD_LIBRARY_PATH` for the command), or run `cargo verus verify` without Sail for this configuration |
+| `SAIL3112` | Unsupported Cargo configuration: Cargo `--config`, configuration includes, or a compiler, wrapper or sysroot override Sail cannot identify. As a `note`: a process-loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_*`) is set, so the run is verified without reusing or recording proof receipts | Remove the override, or run `cargo verus verify` without Sail for this configuration. For the note, unset the loader variable for the `sail verify` command to reuse proofs |
 | `SAIL3114` | Inputs could not be confirmed unchanged; the result is not Current | Re-run for a current result |
 
 ## Interactive engine (`--engine interactive`)
