@@ -248,7 +248,7 @@ RS
       # The same comparison for the rest of the edit loop (ADR 0046). Each
       # case runs plain, then Sail, on the same source; `norm` blanks Cargo's
       # `Finished ... in Ns` timing, which differs between any two runs.
-      norm() { sed -E 's/^( +Finished .* in )[0-9.]+s$/\1Ns/' "$1"; }
+      norm() { sed -E 's/(Finished.* in )[0-9.]+s$/\1Ns/' "$1"; }
       same() { # plain-label sail-label [parts]
         local p="$1" s="$2" part
         for part in ${3:-rc out err}; do
@@ -375,7 +375,7 @@ RS
       # Cargo-Verus's own output and exit code. Each side runs once to warm
       # its target; the second runs are compared, with Cargo's `Finished ... in
       # Ns` timing blanked.
-      unbound_normalize() { sed -E '/^note\[SAIL3112\]/d; s/^( +Finished .* in )[0-9.]+s$/\1Ns/' "$1"; }
+      unbound_normalize() { sed -E '/^note\[SAIL3112\]/d; s/(Finished.* in )[0-9.]+s$/\1Ns/' "$1"; }
       unbound_compare() { # label
         local label="$1" part
         if [ "$(grep -c '^note\[SAIL3112\]' "$work/$label-sail.err")" != 1 ]; then
