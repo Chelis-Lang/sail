@@ -314,6 +314,7 @@ pub fn fragility(
     let z3 = a.z3.clone().or_else(|| {
         cargo_verus
             .as_deref()
+            .ok()
             .and_then(|cv| crate::verify::real_z3(cv, &shim))
     });
     let Some(z3) = z3 else {
@@ -326,8 +327,9 @@ pub fn fragility(
     let (dir, captured, temporary) = if let Some(dir) = a.traces.clone() {
         (dir, None, false)
     } else {
-        let Some(cargo_verus) = cargo_verus else {
-            return fail(err, "SAIL0101", &crate::verify::missing_cargo_verus());
+        let cargo_verus = match cargo_verus {
+            Ok(cargo_verus) => cargo_verus,
+            Err(message) => return fail(err, "SAIL0101", &message),
         };
         if !shim.is_file() {
             return fail(

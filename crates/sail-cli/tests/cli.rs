@@ -54,6 +54,73 @@ fn bench_delegates_to_the_benchmark_binary() {
     );
 }
 
+/// ADR 0043: Sail runs only its own Verus. Without it, `sail verify` fails
+/// with SAIL0101 and never runs a `cargo-verus` found on `PATH`; the explicit
+/// development override runs, announced by warning SAIL0108.
+#[cfg(unix)]
+#[test]
+fn verify_never_runs_a_cargo_verus_from_path() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let root = std::env::temp_dir().join(format!("sail-nostock-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let bin = root.join("bin");
+    assert!(std::fs::create_dir_all(&bin).is_ok());
+    let marker = root.join("ran");
+    // A copy of `sail` with a stand-in `sail-z3` beside it, so setup succeeds
+    // whether or not the shim was built.
+    let sail = root.join("sail-bin").join("sail");
+    assert!(std::fs::create_dir_all(root.join("sail-bin")).is_ok());
+    assert!(std::fs::copy(env!("CARGO_BIN_EXE_sail"), &sail).is_ok());
+    assert!(std::fs::write(root.join("sail-bin").join("sail-z3"), "").is_ok());
+    let fake = bin.join("cargo-verus");
+    let script = format!("#!/bin/sh\ntouch '{}'\nexit 0\n", marker.display());
+    assert!(std::fs::write(&fake, script).is_ok());
+    assert!(std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).is_ok());
+    let path = std::env::join_paths(std::iter::once(bin.clone()).chain(std::env::split_paths(
+        &std::env::var_os("PATH").unwrap_or_default(),
+    )))
+    .unwrap_or_default();
+    let run = |cargo_verus: Option<&std::path::Path>| {
+        let mut command = Command::new(&sail);
+        command
+            .arg("verify")
+            .current_dir(&root)
+            .env("PATH", &path)
+            .env("SAIL_CACHE_DIR", root.join("cache"))
+            // Longer than any Unix socket path: no daemon is started.
+            .env("SAIL_DAEMON_SOCKET", root.join("d".repeat(120)))
+            .env_remove("SAIL_VERUS_BUILD")
+            .env_remove("SAIL_CARGO_VERUS")
+            .env("VERUS_Z3_PATH", &fake);
+        if let Some(cargo_verus) = cargo_verus {
+            command.env("SAIL_CARGO_VERUS", cargo_verus);
+        }
+        command
+            .output()
+            .unwrap_or_else(|e| unreachable!("cannot run sail: {e}"))
+    };
+    let output = run(None);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(2), "{stderr}");
+    assert!(
+        stderr.starts_with("error[SAIL0101]: sail verify: Sail's Verus (the fork runtime and interactive engine) is not installed")
+            && stderr.contains("never falls back"),
+        "{stderr}"
+    );
+    assert!(!marker.exists(), "sail ran the cargo-verus on PATH");
+    let output = run(Some(&fake));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.starts_with("warning[SAIL0108]: SAIL_CARGO_VERUS replaces Sail's Verus"),
+        "{stderr}"
+    );
+    assert!(
+        marker.exists(),
+        "the explicit override did not run: {stderr}"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 #[test]
 fn unknown_command_is_a_usage_error() {
     let output = sail(&["frobnicate"]);
@@ -81,6 +148,7 @@ fn missing_engine_is_reported_up_front() {
             .current_dir(&root)
             .env("SAIL_CACHE_DIR", &cache)
             .env_remove("SAIL_DAEMON_SOCKET")
+            .env_remove("SAIL_VERUS_BUILD")
             .output()
             .unwrap_or_else(|e| unreachable!("cannot run sail: {e}"))
     };
@@ -101,7 +169,9 @@ fn missing_engine_is_reported_up_front() {
         assert_eq!(output.status.code(), Some(2), "{args:?}");
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            stderr.starts_with("error[SAIL3120]: the optional interactive engine is not installed")
+            stderr.starts_with(
+                "error[SAIL3120]: Sail's Verus (the fork runtime and interactive engine) is not installed"
+            )
                 && stderr.contains("sail-build.json")
                 && stderr.contains("cargo xtask build-verus-engine")
                 && stderr.contains("sail engine install --from PATH")

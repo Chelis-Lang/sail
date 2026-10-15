@@ -83,7 +83,7 @@ pub(crate) fn json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
 /// rewrite that restores the modification time is not detected. The change time
 /// is left out: Sail's own hard-linked aliases of `sail` change it on every new
 /// compiler family. Elsewhere this falls back to the complete content digest.
-pub(super) fn stat_identity(path: &Path) -> Result<String> {
+pub(crate) fn stat_identity(path: &Path) -> Result<String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt as _;
