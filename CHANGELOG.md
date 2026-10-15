@@ -15,8 +15,11 @@ semantic versioning once the API is published.
   receipt reports Verus's verdicts, rlimit and time with
   `attribution.status` `unavailable` and a note instead of obligations.
   Sail's targeted cleans now keep rustc's incremental state, as plain Cargo
-  does, and the input checks walk and stamp inputs faster: a vest edit is
-  about MEASURED, an unchanged re-run about MEASURED.
+  does, and the input checks walk and stamp inputs faster. On a native
+  c7i.4xlarge a vest edit takes 27.8 s (managed before: 29.9 s; the removed
+  pass-through: 26.4 s; plain Verus: 41.8 s) and an unchanged re-run 0.99 s
+  (before: 1.31 s); a small project's edit 1.11 s (before: 1.17 s; plain:
+  0.80 s).
   `scripts/perf-loops.sh` measures other Sail builds in the same rotation
   (`SAIL_PERF_BASELINES`).
 - **`sail verify` runs managed verification by default** (ADR 0046). What

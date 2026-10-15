@@ -39,12 +39,12 @@
 - **Where the rest of the time went** (vest `-p vest_lib`, EC2 c7i.4xlarge,
   phase timings from `SAIL_JOB_EVENTS` and experiments on the pass-through
   build, interleaved, three rounds each):
-  - the logs cost 0.6–0.8 s per edit, not 1 s; `--output-json --time`
-    costs nothing measurable;
+  - the logs cost about 0.8 s per edit, writing and reading them included;
+    `--output-json --time`, which every managed run needs, about 0.3 s;
   - Sail's targeted `cargo clean -p` of the edited package deletes rustc's
     incremental state, which plain Cargo keeps across edits: the
-    pass-through with that clean added took 24.8 s against 23.7 s, and
-    with the incremental directory kept, 23.9 s;
+    pass-through with that clean added took 24.9 s against 23.9 s, and
+    with the incremental directory kept, 24.0 s;
   - the "double hashing" was mostly not hashing: one input snapshot of
     11,600 files took about 250 ms, of which reading and hashing every file
     was 65 ms, resolving every path with `realpath` 130 ms, and three
@@ -52,8 +52,8 @@
 - **The fork alternative.** A Verus-fork option writing a compact
   attribution sidecar (function, kind, span, answer, effort, model per op)
   would make structured runs cheap too. Its gain is bounded by what the
-  logs cost there: the measured 0.6–0.8 s per vest edit for `--output json`,
-  jobs and MCP, and nothing for plain `sail verify` after this change.
+  logs cost there: about 0.8 s per vest edit for `--output json`, jobs and
+  MCP, and nothing for plain `sail verify` after this change.
 
 ## Decision
 
@@ -105,14 +105,84 @@
    e2e legacy phase compares it with plain `cargo verus verify` byte for
    byte; the e2e managed phase checks that it writes no logs and that a
    later `--output json` run reuses its proof with the note.
-7. **The fork sidecar is proposed, not built.** It would remove the
-   0.6–0.8 s from structured runs on vest. The owner's rule for fork changes
+7. **The fork sidecar is proposed, not built.** It would remove at most
+   about 0.8 s from structured runs on vest. The owner's rule for fork changes
    is a measured gain first; this records the bound, and a fork change
    needs its own measurement on the fork build.
 
 ## Measurements
 
-MEASUREMENTS
+`scripts/perf-loops.sh` with `SAIL_PERF_BASELINES`, three rounds, medians,
+on EC2 c7i.4xlarge (us-east-1, Ubuntu 24.04, no other work on the host, one
+timed run at a time), Sail's Verus `73dea021`, 2026-10-15. Every mode runs in
+the same rotation: plain stock `cargo verus verify`; the removed
+pass-through (`main` at `4cd6fcaa`); managed verification before this change
+(PR #155 at `27fee790`); and this change. Seconds:
+
+| Project, phase | plain | pass-through | before (#155) | after |
+|---|---:|---:|---:|---:|
+| vest, edit | 41.8 | 26.4 | 29.9 | 27.8 |
+| vest, failing edit | 37.3 | 26.7 | 29.2 | 28.2 |
+| vest, fix | 41.7 | 26.5 | 29.9 | 27.7 |
+| vest, unchanged | 0.23 | 0.23 | 1.31 | 0.99 |
+| vest, cold | 75.1 | 75.4 | 78.4 | 77.6 |
+| vest, MCP `verify` unchanged | — | — | — | 1.34 |
+| demo, edit | 0.80 | 0.82 | 1.17 | 1.11 |
+| demo, failing edit | 0.58 | 0.62 | 0.94 | 0.87 |
+| demo, fix | 0.80 | 0.82 | 1.12 | 1.06 |
+| demo, unchanged | 0.12 | 0.11 | 0.41 | 0.34 |
+| demo, cold | 32.7 | 33.1 | 34.0 | 33.8 |
+| demo, MCP `verify` unchanged | — | — | — | 0.47 |
+
+This host ran about 5% slower than ADR 0046's (plain vest edit 41.8 s
+against 39.6 s); compare within the table. Exit codes were identical across
+modes in every phase. Raw logs and tables are kept outside the repository in
+`l54-linux-perf.tgz` (sha256
+`142d3a133d833d8820ba0a566b0d969ac3f9b142a65589598fd346aab9f1865f`).
+
+**What this change removed** (vest edit): 2.1 s of the 3.5 s that managed
+verification cost over the pass-through; unchanged re-runs 1.31 → 0.99 s.
+
+**What remains** (vest edit, 1.4 s over the pass-through; demo, 0.29 s):
+
+- **Receipt and Currentness checks (ADR 0041), about 0.8 s on vest and
+  0.28 s on demo**, from `SAIL_JOB_EVENTS` phases: Cargo metadata (85 ms),
+  the input snapshot before the run (about 200 ms on vest: 11,600 files read
+  and hashed, three stamp passes, the absent-configuration observer), the
+  dirty-receipt scan and the targeted clean (100 ms, one Cargo start), the
+  target records (120–150 ms: receipt checks, which hash every reused
+  artifact, vstd's included), the second metadata and snapshot (230 ms) and
+  publication (40 ms). On demo, hashing vstd's artifacts for its receipt is
+  the largest item. Each check is one a receipt or a Current label depends
+  on; none can be skipped without changing what they guarantee.
+- **`--output-json --time`, about 0.3–0.5 s on vest.** Managed verification
+  needs Verus's per-function breakdown, which only `--time` produces, for
+  every run's report and receipt. With the same flags the managed invocation
+  and the pass-through take the same time (c7i.8xlarge, four interleaved
+  rounds: Cargo 21.9–22.3 s each).
+- **Logs on structured runs.** `--output json`, jobs and MCP still write the
+  logs; see below.
+
+**Where the flags and logs cost** (vest edits, c7i.4xlarge, four
+interleaved rounds each, medians):
+
+| Run | Seconds |
+|---|---:|
+| pass-through, no extra flags | 25.89 |
+| pass-through, `-- --output-json` | 25.88 |
+| pass-through, `-- --time` | 25.77 |
+| pass-through, `-- --output-json --time` (what managed runs add) | 26.21 |
+| this change, `sail verify` (no logs) | 26.99 |
+| this change, `sail verify --output json` (logs) | 27.76 |
+
+So a fork-side compact attribution sidecar could save structured runs
+(`--output json`, jobs, MCP) at most about 0.8 s per vest edit, and plain
+`sail verify` nothing. That is the bound to beat with a measured fork build
+before proposing the change to the owner.
+
+On this Mac (Apple silicon, shared with other lanes, load average 47–92 at
+the time) no timing was meaningful; macOS was checked for correctness only
+(`ci/run.sh host`).
 
 ## Consequences
 
