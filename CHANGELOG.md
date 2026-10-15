@@ -22,6 +22,14 @@ semantic versioning once the API is published.
   0.80 s).
   `scripts/perf-loops.sh` measures other Sail builds in the same rotation
   (`SAIL_PERF_BASELINES`).
+- **`sail verify` in a workspace member's directory reuses its work** (#157).
+  Run there without `-p`, every managed run used to end with unconfirmed
+  inputs (`SAIL3114`), rebuild the Verus macro crates and verify vstd again,
+  even with nothing changed: on vest, 61 s for each unchanged run. Sail now
+  takes the packages Cargo builds by default from that directory (the member
+  alone) as the run's selection, as `-p` does, so build scripts that only
+  other members use are no longer required. Unchanged runs reuse every
+  receipt and compile nothing, as from the workspace root with `-p`.
 - **`sail verify` runs managed verification by default** (ADR 0046). What
   `--incremental` used to switch on is now every `sail verify`: Sail's own
   Cargo target under the Sail cache, proof receipts that skip unchanged
@@ -108,6 +116,17 @@ semantic versioning once the API is published.
   The "Build-script input declarations were established during this run"
   note now appears only when a script Cargo ran had no current record.
   Verdicts and diagnostics are unchanged.
+- **Fixed: the dependency store no longer skips vstd when a query is slow.**
+  With one verifier thread (Verus's default on a two-CPU machine), Verus
+  prints a `… has been running for N seconds` / `… finished in N seconds`
+  note for any query that takes over two seconds. The store treated these
+  timing notes as vstd output that seeding would hide and refused to store
+  vstd, and, because later runs reuse that same verification, no run stored
+  it until vstd was verified again; new projects then verified vstd too.
+  The notes are now ignored when deciding whether to store (plain Cargo-Verus
+  prints them only when a query happens to be slow); any other output still
+  prevents storing. A skipped publication is now recorded as a
+  `dependency-store-skipped` event with its reason in `SAIL_JOB_EVENTS`.
 - **Fixed: a failing first managed run no longer costs vstd on every later
   run** (#123). When a project's first `sail verify --incremental`, MCP
   `verify` or background job failed a proof or hit a compile error in the

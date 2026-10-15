@@ -124,8 +124,17 @@
    prints their recorded results there; the entry also keeps the verifier's
    raw output. Two rules keep the rest identical: Cargo caps a registry
    package's lints, so plain prints no diagnostics for it; and a candidate
-   whose verifier printed anything but its JSON documents and Cargo artifact
-   notices is never stored. Cargo's `Compiling` progress lines for seeded
+   whose verifier printed anything but its JSON documents, Cargo artifact
+   notices and Verus's long-running timing notes is never stored. A timing
+   note (`<check> has been running for N seconds`, with its second line, or
+   `<check> finished in N seconds`: a note with no code and no children) is
+   printed by a one-thread verifier, Verus's default on a two-CPU host, for
+   any query that takes more than two seconds of wall time, so plain prints
+   it on one run and not the next; a seeded run that prints none is the
+   plain run whose queries all finished in time. (Until 2026-10-15 these
+   notes also refused storage, so on a slow two-CPU CI runner no run stored
+   vstd: later runs reuse that run's verification and its captured output.)
+   Cargo's `Compiling` progress lines for seeded
    units are not printed; their order already varies between plain runs.
 9. **Failure is a normal verification.** A missing entry, another key, an
    entry evicted or deleted while it is being copied, or a changed input (an
@@ -160,9 +169,10 @@
   loader variables turn the store off; another
   feature set, compiler family or profile is another key; an edited
   dependency source is a silent miss; path closures and noisy verifiers are never
-  stored; concurrent publishers leave one entry and concurrent seeders all
+  stored, while a verifier that printed only timing notes is stored and seeded; concurrent publishers leave one entry and concurrent seeders all
   succeed; eviction keeps the most recently used entries.
-- **CI, End to end (managed)** (`ci/test-managed.py`): after a prune, the
+- **CI, End to end (managed)** (`ci/test-managed.py`): the first Current run
+  that verifies vstd stores it; after a prune, the
   rebuilt project's vstd comes from the store; two new projects seeded at
   once each verify only their own crate, report vstd with the stored
   establishing run and exactly the stored report, the same crate verdicts

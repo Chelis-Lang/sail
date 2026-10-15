@@ -51,12 +51,20 @@ report. A different resolution, a path dependency on vstd, an edited registry
 source or a dynamic-loader variable (`LD_*`, `DYLD_*`) in the environment
 verify vstd as before, silently; a damaged entry does too, with
 `warning[SAIL3131]`. A run killed while copying leaves no target behind.
+vstd is stored only if its verification printed no diagnostics, since a
+seeded run prints none; Verus's `has been running for N seconds` timing
+notes, which a one-thread verifier prints for slow queries, do not count.
 The store keeps the four most recently used entries, about 120 MB each
 ([disk use](workspace-hygiene.md#dependency-store)). A context changes when the arguments, the engine
 selection, the relevant environment, the Cargo configuration or the installed
 toolchain (Verus, Cargo, rustc, Z3, Sail, the sysroot libraries) changes;
 installed files are identified by device, inode, size and modification time,
 so reinstalling or rebuilding any of them makes the next run fresh.
+
+A run in a workspace member's directory without `-p` verifies what Cargo
+builds from there by default, the member alone, and reuses its receipts like
+the same run from the workspace root with `-p`. Their arguments differ, so
+they are separate contexts and each pays its own first run.
 
 Contexts that differ only in the repair function selected share one Cargo
 target ([ADR 0036](decisions/0036-managed-compiler-artifact-families.md)), so
