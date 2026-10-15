@@ -16,6 +16,12 @@
   runs. With up to 4 variants, 5 confirming plain runs missed sail's
   variant once in a cache-on run (`different`, until 40 plain runs showed
   sail's output 9 times); the runner now makes up to 10.
+- **Observed again (2026-10-15, rc.3):** eleven plain runs of
+  `test_json_proof_note_on_ensures` and of `test_json_proof_note_on_requires`
+  gave 5 and 6 distinct orders (another test 3), so 10 confirming runs no longer suffice:
+  `deep-rvt` reported one `output_json` test Different in six of eight rounds,
+  each with identical stdout and with stderr that sorts to the same lines as
+  every plain run ([release-candidate finding 11](../validation/release-candidate.md#rc3-findings)).
 - **Workaround:** none needed for correctness; the runner classifies the
   variation as `unstable` (ADR 0009, ADR 0019).
 
