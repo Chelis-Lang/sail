@@ -1,6 +1,6 @@
 # 0043: Default mode runs Sail's Verus, built from the fork
 
-- **Status:** proposed (owner direction 2026-10-15; the lead approves the charter appendix entry)
+- **Status:** accepted (owner direction 2026-10-15)
 - **Date:** 2026-10-15
 - **Supersedes:** the *Scope* line of [ADR 0039](0039-private-verus-fork.md)
   ("The fork serves the opt-in engine only")
