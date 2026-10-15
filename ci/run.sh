@@ -316,7 +316,7 @@ RS
     rounds=(fill warm)
     snap_env=()
     if [ "${SAIL_CONFORMANCE_SNAPSHOTS:-0}" != 0 ]; then
-      # Prototype (ADR 0048 draft): the cache rounds run with exact solver
+      # Prototype (ADR 0049 draft): the cache rounds run with exact solver
       # snapshots, and a `holes` round after fill removes every Nth cache
       # entry, so sessions hit, then miss and resume a parked snapshot.
       snap_lib="$(native/sail-snap/build.sh)"

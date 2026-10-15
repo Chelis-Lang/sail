@@ -299,7 +299,7 @@ impl Pairer {
 /// Where the solver's input goes.
 enum Feed {
     Pipe(ChildStdin),
-    /// A resumed snapshot's connection (prototype, ADR 0048 draft).
+    /// A resumed snapshot's connection (prototype, ADR 0049 draft).
     Sock(UnixStream),
 }
 
@@ -358,7 +358,7 @@ struct Candidate {
     name: String,
 }
 
-/// Snapshot state of a session (prototype, ADR 0048 draft).
+/// Snapshot state of a session (prototype, ADR 0049 draft).
 struct Snap {
     cfg: sail_api::snapshot::Config,
     candidates: Vec<Candidate>,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Solver-side edit cost through sail-z3, with and without solver snapshots.
 
-Prototype evidence for ADR 0048 (draft). Replays Verus solver transcripts
+Prototype evidence for ADR 0049 (draft). Replays Verus solver transcripts
 (`<id>.in.smt2` from SAIL_TRACE_DIR) through `sail-z3` against a fresh cache
 daemon, the way an edit loop does:
 

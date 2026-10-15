@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the sail-snap preload library (prototype, ADR 0048 draft).
+# Builds the sail-snap preload library (prototype, ADR 0049 draft).
 #
 #   native/sail-snap/build.sh [OUT_DIR]     default: target/sail-snap
 #

@@ -1,4 +1,4 @@
-//! Client side of exact solver snapshots (prototype, ADR 0048 draft).
+//! Client side of exact solver snapshots (prototype, ADR 0049 draft).
 //!
 //! A snapshot is a parked copy of a pinned Z3 process, forked by the
 //! `sail-snap` preload library (`native/sail-snap/sail_snap.c`) at the moment

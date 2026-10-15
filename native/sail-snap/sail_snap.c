@@ -1,7 +1,7 @@
 /*
  * sail-snap: exact solver snapshots by fork, without changing the solver.
  *
- * PROTOTYPE (lane M11-2, ADR draft 0048). Loaded into the pinned, unmodified
+ * PROTOTYPE (lane M11-2, ADR 0049 draft). Loaded into the pinned, unmodified
  * Z3 with LD_PRELOAD (Linux) or DYLD_INSERT_LIBRARIES (macOS). Z3 reads its
  * `-smt2 -in` input one character at a time through `getc(stdin)` (libstdc++
  * `stdio_sync_filebuf`, libc++ `__stdinbuf`); this library interposes

@@ -1,6 +1,6 @@
 //! `sail-bench snapshot-exactness`: is a resumed solver snapshot exact?
 //!
-//! Prototype evidence for ADR 0048 (draft). For each solver input transcript
+//! Prototype evidence for ADR 0049 (draft). For each solver input transcript
 //! (`<id>.in.smt2` from a shim trace, `SAIL_TRACE_DIR`), it runs the pinned
 //! Z3:
 //! 1. **fresh**: unmodified, on the whole input (the reference);

@@ -32,7 +32,7 @@
 #   sail         sail verify
 #   incremental  sail verify --incremental
 #   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK first on PATH
-#   snap         sail verify with exact solver snapshots (prototype, ADR 0048
+#   snap         sail verify with exact solver snapshots (prototype, ADR 0049
 #                draft): SAIL_PERF_SNAPSHOT_LIB names the sail-snap library;
 #                SAIL_PERF_SNAPSHOT_GAP_MS (default 1000) the solver time
 #                between snapshots. Parked snapshots and their memory (Linux
