@@ -549,9 +549,21 @@ fn cargo_build_target(target: &Path, args: &[String]) -> PathBuf {
     }
 }
 
+/// Cargo's cache-directory tag. `cargo clean` refuses a target without it,
+/// and a target seeded from the dependency store (ADR 0045) starts without
+/// one, since Cargo writes it only when it creates the directory itself.
+const CACHEDIR_TAG: &[u8] = b"Signature: 8a477f597d28d172789f06886806bc55\n\
+# This file is a cache directory tag created by cargo.\n\
+# For information about cache directory tags see https://bford.info/cachedir/\n";
+
 fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     if packages.is_empty() {
         return Ok(());
+    }
+    let cleaned = cargo_build_target(target, &config.args);
+    let tag = cleaned.join("CACHEDIR.TAG");
+    if cleaned.is_dir() && !tag.exists() {
+        std::fs::write(&tag, CACHEDIR_TAG).map_err(|e| Error::new("SAIL3105", e.to_string()))?;
     }
     let mut cmd = Command::new(&config.cargo);
     // Cargo-Verus builds with a different rustc fingerprint, so a clean that
