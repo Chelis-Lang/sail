@@ -24,7 +24,9 @@ The owner decided on 2026-10-12 that Sail fixes these itself and stays forked. U
   - correct structured output (JSON, timing, logs) without changing verdicts or diagnostics.
 
   Anything that would change a verdict needs its own ADR.
-- **Scope.** The fork serves the opt-in engine only. Default `sail verify` keeps running the stock pinned release, so Sail's stock-mode workarounds stay.
+- **Scope.** The fork serves the opt-in engine only. Default `sail verify` keeps running the stock pinned release, so Sail's stock-mode workarounds stay. *Superseded by
+  [ADR 0043](0043-default-mode-runs-the-fork.md): default mode runs the fork
+  too, and stock Verus is only the conformance oracle.*
 - **Upgrades.** Push the new upstream commit as `upstream/<sha>`, rebase `sail` onto it, rerun every fix's regression test and Verus's `rust_verify_test` suite, then rebuild and re-pin.
 - **Tracking.** `docs/verus-issues/` records each issue and the fork commit that fixes it. Nothing is filed upstream.
 
