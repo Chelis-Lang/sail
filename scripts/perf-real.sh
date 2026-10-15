@@ -75,9 +75,10 @@ project="${1:-}"
 count="${2:-3}"
 case "$count" in '' | *[!0-9]*) echo "count must be a number" >&2; exit 2 ;; esac
 
-# Inherited SAIL_* selectors would change what is measured.
+# Inherited SAIL_* selectors would change what is measured. SAIL_VERUS_BUILD
+# (Sail's Verus for `sail verify`) is kept: a per-run SAIL_CACHE_DIR has none.
 for v in $(env | sed -n 's/^\(SAIL_[A-Z0-9_]*\)=.*/\1/p'); do
-  case "$v" in SAIL_PERF_*) ;; *) unset "$v" ;; esac
+  case "$v" in SAIL_PERF_* | SAIL_VERUS_BUILD) ;; *) unset "$v" ;; esac
 done
 
 corpus="${SAIL_PERF_CORPUS:-$HOME/.cache/sail/corpus}"
