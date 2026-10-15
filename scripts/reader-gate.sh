@@ -19,7 +19,8 @@ selection=(--package "$package" --lib)
 
 mkdir "$out"; out="$(cd "$out" && pwd)"
 export SAIL_CACHE_DIR="$out/cache" SAIL_DAEMON_SOCKET="$out/cache.sock" SAIL_MANAGED_FORCE=1
-export SAIL_CARGO_VERUS="$stock/cargo-verus" VERUS_Z3_PATH="$stock/z3" PATH="$bin:$PATH"
+# Sail runs its own Verus, the fork runtime (ADR 0043).
+export SAIL_VERUS_BUILD="$engine" VERUS_Z3_PATH="$stock/z3" PATH="$bin:$PATH"
 field() { python3 -c 'import json,sys; v=json.load(sys.stdin)
 for k in sys.argv[1:]: v=v[k]
 print(v)' "$@"; }

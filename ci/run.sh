@@ -8,7 +8,8 @@
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
 #   e2e [legacy|managed|repair] Run all phases by default; CI runs them in parallel.
-#                        `sail verify` vs `cargo verus verify` on a fresh
+#                        `sail verify` (Sail's Verus, the fork runtime;
+#                        ADR 0043) vs stock `cargo verus verify` on a fresh
 #                        project, cold and warm: identical output and exit;
 #                        then `sail verify --output json`: unchanged stderr
 #                        and exit, a schema-v1 document agreeing with
@@ -17,7 +18,8 @@
 #                        managed receipts, durable jobs and asynchronous MCP;
 #                        repair CLI/MCP against a validated prebuilt engine
 #   conformance TIER [pr | SELECTION...]
-#                        plain Verus vs sail-z3 pass-through, then with the
+#                        plain stock Verus vs Sail's Verus (the fork) with
+#                        sail-z3 pass-through, then with the
 #                        cache on (fill, then warm), then the source-engine
 #                        arm (validated prebuilt engine vs plain Verus on
 #                        verdicts and diagnostics). `pr` limits the fast
@@ -130,6 +132,10 @@ case "$step" in
       *) echo "e2e: unknown phase '$phase'; expected legacy|managed|repair" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
+    # Sail runs its own Verus, the validated fork runtime the image installs
+    # (ADR 0043); stock `cargo verus` on PATH is only the oracle.
+    : "${SAIL_ENGINE_BUILD:?e2e needs the validated prebuilt fork runtime, the Verus Sail runs}"
+    export SAIL_VERUS_BUILD="$SAIL_ENGINE_BUILD"
     release_build
     install_runtime
     sail_managed_test="$sail_checkout/ci/test-managed.py"
@@ -166,12 +172,17 @@ RS
         echo $? > "$work/$label.rc"
         set -e
       }
-      # Warm-up: the first build of a fresh project also verifies its vstd
+      # Stock (the oracle) and Sail's Verus each keep their own Cargo target
+      # directory, so neither rebuilds the other's dependencies.
+      plain_run() { CARGO_TARGET_DIR="$work/target-plain" run "$@"; }
+      sail_run() { CARGO_TARGET_DIR="$work/target-sail" run "$@"; }
+      # Warm-up: the first build of a fresh project also builds its vstd
       # dependency; afterwards every run below re-verifies only the crate.
-      run warmup cargo verus verify
-      run plain cargo verus verify
-      run cold "$sail" verify
-      run warm "$sail" verify
+      plain_run warmup cargo verus verify
+      plain_run plain cargo verus verify
+      sail_run sailwarmup "$sail" verify
+      sail_run cold "$sail" verify
+      sail_run warm "$sail" verify
       for label in cold warm; do
         for part in rc out err; do
           if ! cmp -s "$work/plain.$part" "$work/$label.$part"; then
@@ -189,8 +200,8 @@ RS
       # `--output json` (ADR 0014): stderr and exit code unchanged, stdout one
       # schema-v1 document whose verdicts agree with Verus's own --output-json.
       # The runs above filled the cache, so every answer is served from it.
-      run json "$sail" verify --output json
-      run verusjson cargo verus verify -- --output-json --time
+      sail_run json "$sail" verify --output json
+      plain_run verusjson cargo verus verify -- --output-json --time
       for part in rc err; do
         if ! cmp -s "$work/plain.$part" "$work/json.$part"; then
           echo "e2e: --output json $part differs from plain cargo verus verify" >&2
@@ -203,7 +214,7 @@ RS
       # equal `sail verify --output json`'s, and its report must pass the same
       # checks against Verus's own --output-json.
       touch src/lib.rs
-      "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
+      CARGO_TARGET_DIR="$work/target-sail" "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
       "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
       bash "$sail_portfolio_test"
     fi

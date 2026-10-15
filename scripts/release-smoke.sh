@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
 # Smoke-tests one release archive in a fresh directory (docs/releasing.md):
 #
-#   scripts/release-smoke.sh ARCHIVE [--no-engine]
+#   scripts/release-smoke.sh ARCHIVE
 #
 # Checks ARCHIVE against ARCHIVE.sha256, unpacks it, and with an empty
-# SAIL_CACHE_DIR checks that `sail engine status` selects the bundled engine,
-# that `sail verify` succeeds on a new `cargo verus new` project, and that one
-# `sail repair-check` through the engine is accepted. `--no-engine` (an
-# archive built without the engine) instead requires `engine status` to
-# report SAIL3120 and skips the repair. Needs the user prerequisites only:
-# the pinned stock Verus (`cargo-verus` on PATH) and its Rust toolchain.
+# SAIL_CACHE_DIR checks that `sail engine status` selects the bundled Verus
+# runtime, that `sail verify` succeeds on a new project written as the
+# README's First verification says, and that one `sail repair-check` through
+# the engine is accepted. Needs the user prerequisites only: rustup and the
+# Rust toolchain Verus pins. No Verus installation is used (ADR 0043): PATH
+# is checked to hold no `cargo-verus`, and SAIL_VERUS_BUILD and
+# SAIL_CARGO_VERUS are unset.
 set -euo pipefail
 
-archive="$(cd "$(dirname "${1:?usage: scripts/release-smoke.sh ARCHIVE [--no-engine]}")" && pwd)/$(basename "$1")"
-engine=1
-[ "${2:-}" = --no-engine ] && engine=0
+archive="$(cd "$(dirname "${1:?usage: scripts/release-smoke.sh ARCHIVE}")" && pwd)/$(basename "$1")"
+unset SAIL_VERUS_BUILD SAIL_CARGO_VERUS
+if command -v cargo-verus >/dev/null; then
+  echo "release-smoke: remove cargo-verus from PATH; the archive must work without it" >&2
+  exit 1
+fi
 # A short path: the job socket lives under SAIL_CACHE_DIR, and macOS's
 # default TMPDIR makes it longer than a Unix socket path allows (SAIL0810).
 work="$(mktemp -d /tmp/sail-smoke.XXXXXX)"
@@ -27,22 +31,22 @@ sail="$release/bin/sail"
 export SAIL_CACHE_DIR="$work/cache"
 "$sail" --version
 
-if [ "$engine" = 1 ]; then
-  status="$("$sail" engine status --output json)"
-  case "$status" in
-    *"\"build\":\"$release/engine/"*) echo "engine: bundled runtime selected" ;;
-    *) echo "release-smoke: sail did not select the bundled engine: $status" >&2; exit 1 ;;
-  esac
-elif "$sail" engine status --output json 2>"$work/engine.err"; then
-  echo "release-smoke: an engine was found but none was expected" >&2; exit 1
-else
-  grep -q SAIL3120 "$work/engine.err"
-  echo "engine: absent (SAIL3120), as expected"
-fi
+status="$("$sail" engine status --output json)"
+case "$status" in
+  *"\"build\":\"$release/engine/"*) echo "verus: bundled runtime selected" ;;
+  *) echo "release-smoke: sail did not select the bundled runtime: $status" >&2; exit 1 ;;
+esac
 
+# The README's new-project steps (First verification).
 cd "$work"
-cargo verus new --lib demo >/dev/null
+cargo new --lib --vcs none demo >/dev/null
 cd demo
+cat >>Cargo.toml <<'TOML'
+vstd = "=0.0.0-2026-10-04-0306"
+
+[package.metadata.verus]
+verify = true
+TOML
 cat >src/lib.rs <<'RS'
 use vstd::prelude::*;
 
@@ -59,11 +63,10 @@ RS
 "$sail" verify
 echo "verify: ok"
 
-if [ "$engine" = 1 ]; then
-  # Exit 0 is acceptance and 1 rejection; the document says why.
-  "$sail" repair-check --package demo --lib --function demo::max \
-    --engine interactive --output json >"$work/repair.json" || [ $? = 1 ]
-  python3 -I - "$work/repair.json" <<'PY'
+# Exit 0 is acceptance and 1 rejection; the document says why.
+"$sail" repair-check --package demo --lib --function demo::max \
+  --engine interactive --output json >"$work/repair.json" || [ $? = 1 ]
+python3 -I - "$work/repair.json" <<'PY'
 import json, sys
 value = json.load(open(sys.argv[1]))
 batch, full = value["batch"], value["batch"]["full"]
@@ -72,5 +75,4 @@ assert (full.get("engine") or {}).get("name") == "interactive", full.get("engine
 assert value["accepted"] is True, "repair not accepted: currentness " + full["currentness"]
 print("repair-check: accepted through the bundled engine")
 PY
-fi
 echo "release-smoke: pass ($work)"
