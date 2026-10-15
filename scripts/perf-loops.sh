@@ -255,8 +255,9 @@ run_mcp() { # ROUND DIR
 
 run_mode() { # ROUND MODE
   local round="$1" mode="$2" dir cache
-  dir="$out/r$round/$mode-proj"
-  cache="$out/r$round/c-$mode"
+  # Cargo package names (the demo is named after its directory) take no `@`.
+  dir="$out/r$round/${mode/@/-}-proj"
+  cache="$out/r$round/c-${mode/@/-}"
   rm -rf "$cache"
   mkdir -p "$cache"
   fresh_copy "$dir"

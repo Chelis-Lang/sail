@@ -377,6 +377,15 @@ The full establishing report, including diagnostics, is available through
 
 At least one of `function` and `obligation` is required.
 
+Obligations and models come from Verus's AIR and SMT transcript logs, which
+every job (and so every MCP verification) asks Verus for. Plain `sail verify`
+does not ask for them ([ADR 0047](decisions/0047-attribution-logs-on-request.md)).
+A passing target whose proof a plain `sail verify` established, and that a job
+then reuses, reports Verus's verdicts, rlimit and time with
+`attribution.status` `unavailable`, a note that the detail was not recorded,
+and no obligations. Failing targets are never reused, so a failure's
+counterexample is always recorded.
+
 The summary states each function's verdict and, for each failing obligation,
 its location and source-level variables:
 

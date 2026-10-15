@@ -1,6 +1,9 @@
 # 0046: Managed verification is the only `sail verify`
 
-- **Status:** accepted (owner decision 2026-10-15)
+- **Status:** accepted (owner decision 2026-10-15); amended by
+  [ADR 0047](0047-attribution-logs-on-request.md) (plain `sail verify` asks
+  Verus for no attribution logs; the logging flags of item 6 are those of
+  `--output json`, jobs and MCP)
 - **Date:** 2026-10-15
 - **Amends:** [ADR 0023](0023-managed-incremental-workspace-verification.md)
   ("The default CLI … unchanged"; "ordinary verification remains

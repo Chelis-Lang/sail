@@ -5,7 +5,9 @@
   `evidence_tier` and ITF values);
   amended by [ADR 0046](0046-managed-verification-by-default.md)
   (`sail verify --output json` prints the project-result envelope of these
-  reports)
+  reports); amended by [ADR 0047](0047-attribution-logs-on-request.md)
+  (managed runs ask for the logs only when their report is read: plain
+  `sail verify` does not)
 - **Date:** 2026-10-08
 
 ## Context

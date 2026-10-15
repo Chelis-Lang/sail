@@ -109,10 +109,14 @@ metadata, identifying the toolchain, the input snapshot and its stamps,
 receipt checks and the final checks. Independent work overlaps: Cargo metadata
 runs while the toolchain is identified, the two sysroot probes run in parallel,
 and large files (input snapshots, receipt artifacts, the driver's AIR and SMT
-logs) are read by up to eight workers. A private alias that is a hard link to
-the installed `sail` is not hashed again, and the targeted `cargo clean` leaves
-the target's rustc probe cache alone, so the next build need not probe the
-compiler again. Natively, these cut managed overhead around Verus on a
+logs) are read, and input paths stamped, by up to eight workers. A private
+alias that is a hard link to the installed `sail` is not hashed again, and the
+targeted `cargo clean` leaves the target's rustc probe cache and rustc's
+incremental state alone, so the next build need not probe the compiler again
+or redo the edited crate's analysis from nothing. The input walk resolves
+only symbolic links. Plain `sail verify` asks Verus for no AIR or SMT logs;
+`--output json`, jobs and MCP do
+([ADR 0047](decisions/0047-attribution-logs-on-request.md)). Natively, these cut managed overhead around Verus on a
 HumanEval single-function edit from 3.03 s to 0.94 s (plain `cargo verus`:
 0.54 s), L7c (rescue lane report, tag `archive/rescue-m7-98f6292`).
 
