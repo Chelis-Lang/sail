@@ -40,8 +40,23 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
     evidence.mkdir(mode=0o700, parents=True, exist_ok=True)
     managed_calls = []
     env = dict(os.environ, SAIL_CACHE_DIR=str(root / "cache"))
-    subprocess.run([cargo_verus, "verus", "new", "--lib", "demo"], cwd=root,
+    # The project is a member of a two-member workspace and every run starts
+    # in its own directory without -p, as a user inside a member crate does.
+    # The other member has a build script that this member never schedules;
+    # it must not withdraw reuse of vstd and the macro crates (#157). A
+    # standalone package is covered by the legacy phase.
+    workspace = root / "ws"
+    workspace.mkdir()
+    subprocess.run([cargo_verus, "verus", "new", "--lib", "demo"], cwd=workspace,
                    env=env, check=True, stdout=subprocess.DEVNULL)
+    (workspace / "helper/src").mkdir(parents=True)
+    (workspace / "helper/Cargo.toml").write_text(
+        '[package]\nname = "helper"\nversion = "0.1.0"\nedition = "2021"\n')
+    (workspace / "helper/build.rs").write_text(
+        'fn main() { println!("cargo:rerun-if-changed=build.rs"); }\n')
+    (workspace / "helper/src/lib.rs").write_text("")
+    (workspace / "Cargo.toml").write_text(
+        '[workspace]\nresolver = "2"\nmembers = ["demo", "helper"]\n')
     socket = root / "d.sock"
     env["SAIL_DAEMON_SOCKET"] = str(socket)
     daemon = subprocess.Popen([sail,"serve","--cache",str(root / "cache"),
@@ -60,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         while not socket.exists() and time.monotonic()<deadline and daemon.poll() is None:
             time.sleep(0.02)
         assert socket.exists() and daemon.poll() is None, "owned cache daemon did not start"
-        project = root / "demo"
+        project = workspace / "demo"
         source = project / "src/lib.rs"
         good = """use vstd::prelude::*;
     verus! {
@@ -207,6 +222,10 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         warm_run, warm, reused = managed()
         assert warm_run.returncode == 0 and reused["reused"] and reused["complete"], diagnostic(warm)
         assert warm["execution"]["verifier_invocations"] == 0, warm["execution"]
+        assert warm["currentness"] == "current", diagnostic(warm)
+        assert vstd(warm)["reused"], diagnostic(warm)
+        # Cargo found every unit fresh: no macro crate or vstd was rebuilt.
+        assert b"Compiling" not in warm_run.stderr, warm_run.stderr.decode()
         assert reused["establishing_run"] == target["establishing_run"], reused
         assert reused["report"] == target["report"], "reuse must preserve establishing report"
 
@@ -377,7 +396,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         # next run reuses nothing, verifies again with the same report, and the
         # run after it reuses the new receipt.
         listed = json.loads(recorded_cli("projects-list", [sail, "cache", "projects", "list", "--json"]).stdout)
-        mine = [p for p in listed["projects"] if p["workspace"] and Path(p["workspace"]).resolve() == project.resolve()]
+        mine = [p for p in listed["projects"] if p["workspace"] and Path(p["workspace"]).resolve() == workspace.resolve()]
         assert len(mine) == 1 and mine[0]["exists"] and mine[0]["bytes"] > 0, listed
         pruned = json.loads(recorded_cli("projects-prune", [sail, "cache", "projects", "prune", "--all", "--json"]).stdout)
         assert [p["key"] for p in pruned["removed"]] == [mine[0]["key"]] and not pruned["busy"], pruned
