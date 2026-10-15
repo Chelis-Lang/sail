@@ -148,6 +148,11 @@ patch_verus_deps = true
 requires = ["rust-target:x86_64-unknown-none"]
 expected = "verified"
 
+# verismo's trusted axiom_size_from_cast_bytes and `SpecSize for char` (1)
+# contradict vstd's size_of::<char>() == 4, so many verismo functions verify
+# from `false` (issue #160; docs/reports/2026-10-15-real-project-performance.md).
+# Sail must still match plain Verus here; edit benchmarks must not rely on a
+# failing assert failing in arbitrary verismo modules.
 [[project]]
 name = "verismo-main"
 url = "https://github.com/microsoft/verismo"
