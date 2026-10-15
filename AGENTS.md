@@ -191,7 +191,7 @@ release-style checks belong in the local tiers below, never in CI.
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
 gate, including image creation, to have succeeded. Branches must be current
-with `main` before merging. The `End to end` check aggregates six parallel
+with `main` before merging. The `End to end` check aggregates seven parallel
 phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
   warm, `--output json`, one MCP `verify` call and the portfolio;
@@ -201,12 +201,13 @@ phases and succeeds only when all complete successfully:
 - `loader`: a loader variable (no proof reuse, one note);
 - `managed`: managed receipts, the dependency store, durable jobs, MCP and
   Claude Code's tool listing;
+- `scripts`: managed reuse across build scripts and generated includes;
 - `repair`: the repair CLI/MCP against the prebuilt engine.
 
 CI builds the release binaries once per run (`End to end (build)`,
 `ci/run.sh e2e-build`) and every phase job unpacks them; a failed build
 skips the phases, and a skipped phase fails the aggregate. `ci/local.sh e2e`
-builds, then runs every phase plus `extra` (`-- --output-json --time` and a
+builds, then runs every phase (`managed` and `scripts` on one project) plus `extra` (`-- --output-json --time` and a
 `-p`/`--features` workspace, four cold builds, local-only);
 `ci/local.sh e2e PHASE` runs one phase (or `extra`) for diagnosis. No phase
 may be skipped to authorize a merge.

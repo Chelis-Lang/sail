@@ -40,7 +40,6 @@ pub fn bad(x: u32) -> (r: u32)
 RS
 run() { # $1 = label; rest = command
   local label="$1"; shift
-  echo "TIMING $(date +%T) $label" >&2
   touch src/lib.rs
   set +e
   "$@" > "$work/$label.out" 2> "$work/$label.err"
@@ -69,7 +68,6 @@ same() { # plain-label sail-label [parts]
 }
 quiet_run() { # like run, without touching the source
   local label="$1"; shift
-  echo "TIMING $(date +%T) $label" >&2
   set +e
   "$@" > "$work/$label.out" 2> "$work/$label.err"
   echo $? > "$work/$label.rc"
