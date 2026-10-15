@@ -1,6 +1,11 @@
 # Scope: Sail as a general verification runtime
 
-- **Status:** planned for releases after 0.1.0. Nothing here changes 0.1.0.
+- **Status:** planned for releases after 0.1.0. The one part that moves into
+  0.1.0 is output schema v2 (question 22, #149). M10 work starts only after the
+  0.1.0 performance scope (the vstd fix in #125, managed-by-default mode and
+  pre-verified vstd) has landed and is ready for brittonr's review.
+- **Owner answers:** questions 16–29 in [open questions](../open-questions.md),
+  answered 2026-10-15.
 - **Source:** owner direction, 2026-10-15.
 - **Tracking:** milestone *M10: Verification runtime*, umbrella issue
   [#146](https://github.com/Chelis-Lang/sail/issues/146). Ordering
@@ -105,7 +110,9 @@ owns the semantics of every construct, because it lowers them.
   values, universal and existential quantification over bounded and
   unbounded domains, and mathematical integers in specifications. Each form
   has precise semantics and a per-backend account of how it lowers, or why it
-  cannot.
+  cannot. Unbounded quantifiers are marked verification-only and are not
+  runtime-checked. The neutral `Int` is `i128` at runtime, panicking on
+  overflow, and a true mathematical integer in verifiers (question 18).
 - **Contract cases,** after ACSL's behaviors: named cases with their own
   assumptions and guarantees, plus optional declarations that the cases are
   complete and disjoint. Cases mirror requirements one to one; Sail
@@ -140,9 +147,13 @@ protocol and the MCP server.
     result came from cache.
 - A verdict is never upgraded across tiers; each tier's result stands on its
   own evidence.
+- **Two named axes:** establishment (`confirmed` or `provisional`) and
+  evidence tier. Output schema v2 introduces both before 0.1.0, so the
+  runtime extends v2 rather than breaking it (question 22).
 - **Counterexamples and witnesses** use ITF's value encoding everywhere,
   including SMT models and Rust-level counterexamples, so clients handle one
-  value format.
+  value format. ITF is a rendering alongside the exact solver output, never
+  a replacement.
 
 ### TLA+ job interface
 
@@ -171,13 +182,20 @@ own verdict on the lowered code.
   predicates becoming `spec fn`. This is the hardest lowering and needs an
   explicit design. Shadow-crate generation preserves spans for diagnostics.
   The existing fast Verus path (Sail's Verus with the cache) stays the engine
-  underneath.
+  underneath: lowered shadow crates run on the fork, with stock Verus on the
+  same lowered crate as the conformance oracle (question 24). The fork's
+  automatic trigger choice serves production runs; the fork also emits the
+  triggers it selected as part of the lowering output, and Sail passes them
+  explicitly to the stock oracle so oracle comparisons are deterministic
+  (question 18).
 - **Vermilion.** A Lean back end behind Verus semantics, adding a
-  kernel-checked tier for Verus-expressible obligations.
+  kernel-checked tier for Verus-expressible obligations. It runs on the fork,
+  and its pins move whenever `fork.toml` moves (question 24).
 - **Creusot.** Annotations on ordinary Rust, discharged through Why3. Why3's
   driver and session architecture is the most mature multiprover design in
-  the field; a decision records whether Sail drives Why3 as a
-  sub-orchestrator or reaches its provers directly.
+  the field. Sail starts by driving Why3 as a sub-orchestrator and moves hot
+  paths to direct prover calls only where measurements justify it (question
+  16; recorded in an ADR).
 - **Prusti.** Annotations on ordinary Rust, discharged through Viper.
 - **Kani.** Function contracts plus generated proof harnesses. It is
   SAT-based through CBMC, so caching keys on harness and model identity, not
@@ -186,12 +204,17 @@ own verdict on the lowered code.
   Lean-specific one. Lean via Aeneas, and Rocq via Aeneas, hax or
   RefinedRust (which reaches unsafe code), are peers under it. Proofs are
   agent-written in the prover's language; Sail runs translation and kernel
-  checking, caches compiled artifacts and keeps warm prover processes.
+  checking, caches compiled artifacts and keeps warm prover processes. The
+  unit of work is a translated module plus its proof files; the prover
+  toolchain and translator are pinned exactly; the cache key also includes
+  the hash of the source crate and of the proof files (question 17).
   Earlier measurements found Lean-backed checking too heavy for an edit loop;
   that is the performance problem to attack.
 - **Sampled tier.** Results of requirement-tagged property tests run under
   `cargo test` with runtime contract checks, recorded as sampled-tier
-  verdicts.
+  verdicts. Sail runs `cargo test` itself, and clients may also report
+  results; reported results are labeled as reported and never count as
+  established in the assurance view (question 25).
 
 ### Backend selection and portfolios
 
@@ -199,7 +222,12 @@ The seed-portfolio machinery generalizes from Z3 seeds to backends. A caller
 may request a specific backend, a minimum tier, or the strongest available
 within limits. Fragility is recorded per obligation per backend. Under racing,
 a verdict's trusted base stays exact: the winning backend's identity, never a
-blend.
+blend. Selection is labeled, not gated as a verdict-changing mode, because
+every verdict is attributed to the one backend that produced it, equals what
+that backend returns on its own, and names it in provenance (question 23). Two
+contradictory conclusive verdicts on the same obligation (one verified, one
+refuted) raise a loud soundness alarm and are never resolved automatically;
+verified on one backend and unknown on another is not a contradiction.
 
 ### SMT-LIB service
 
@@ -218,6 +246,9 @@ natively) and Carcara checks them independently. Isabelle's in-kernel
 reconstruction of SMT proofs is the conceptual precedent. A cached verdict
 with a checked certificate is auditable rather than trusted. Certificate
 production is opt-in per request, and its cost is recorded in benchmarks.
+Certificate-checked results are their own tier and never upgrade an existing
+entry. There is no hard cost ceiling: cost is reported and callers set limits
+(question 19).
 
 ### TLA+ jobs through D.I.V.E.
 
@@ -285,13 +316,23 @@ different audience from this mission.
 
 ## Dependency graph
 
+**Start condition.** No M10 work starts until the 0.1.0 performance scope
+(the vstd fix in #125, managed-by-default mode and pre-verified vstd) has
+landed and is ready for brittonr's review of the fully performance-improved
+Sail.
+
+The Verus-path items in the [roadmap](../ROADMAP.md#after-010) and the
+interface specifications share no dependencies and run in parallel; the
+specifications do not wait behind the Verus items (question 27).
+
 1. **Interface specifications first:** the contract syntax, the request and
-   verdict API, and the TLA+ job interface. Oyster and D.I.V.E. build against
-   them concurrently.
-2. **Then in parallel:** each verifier backend independently; the SMT-LIB
-   service; certificate checking (on the SMT-LIB service); the TLA+ job path
-   with its TLC adapter; the Verus-aware mutator (needs no specification);
-   packaging modes.
+   verdict API, and the TLA+ job interface. They are documents that Oyster
+   and D.I.V.E. are blocked on.
+2. **Then the SMT-LIB service first,** because Oyster depends on it first.
+   The backend workstreams fan out alongside it: each verifier backend
+   independently; certificate checking (on the SMT-LIB service); the TLA+ job
+   path with its TLC adapter; the Verus-aware mutator (needs no
+   specification); packaging modes.
 3. **Dependent work:**
    - the mutation gate's generic layer depends on the backends it drives;
    - the assurance view depends on the ledger carrying requirement IDs and
@@ -312,6 +353,7 @@ All are on milestone *M10: Verification runtime*, under umbrella
 | Specification | Neutral contract syntax crate | [#127](https://github.com/Chelis-Lang/sail/issues/127) |
 | Specification | Request and verdict API, evidence tiers, ITF values | [#128](https://github.com/Chelis-Lang/sail/issues/128) |
 | Specification | TLA+ job interface and TLC adapter | [#129](https://github.com/Chelis-Lang/sail/issues/129) |
+| First after specifications | SMT-LIB service (Z3, cvc5) | [#137](https://github.com/Chelis-Lang/sail/issues/137) |
 | Parallel | Verus lowering | [#130](https://github.com/Chelis-Lang/sail/issues/130) |
 | Parallel | Kernel-checked prover interface (Lean, Rocq) | [#131](https://github.com/Chelis-Lang/sail/issues/131) |
 | Parallel | Vermilion | [#132](https://github.com/Chelis-Lang/sail/issues/132) |
@@ -319,7 +361,6 @@ All are on milestone *M10: Verification runtime*, under umbrella
 | Parallel | Prusti through Viper | [#134](https://github.com/Chelis-Lang/sail/issues/134) |
 | Parallel | Kani | [#135](https://github.com/Chelis-Lang/sail/issues/135) |
 | Parallel | Sampled tier | [#136](https://github.com/Chelis-Lang/sail/issues/136) |
-| Parallel | SMT-LIB service (Z3, cvc5) | [#137](https://github.com/Chelis-Lang/sail/issues/137) |
 | Parallel | Proof certificates (Alethe, Carcara) | [#138](https://github.com/Chelis-Lang/sail/issues/138) |
 | Parallel | TLA+ jobs through D.I.V.E. | [#139](https://github.com/Chelis-Lang/sail/issues/139) |
 | Parallel | Verus-aware mutator | [#140](https://github.com/Chelis-Lang/sail/issues/140) |
@@ -333,25 +374,28 @@ All are on milestone *M10: Verification runtime*, under umbrella
 
 ADRs, each written when its workstream starts: the Verus lowering strategy,
 Why3 integration depth, the kernel-prover interface, neutral quantifier
-forms, and the certificate cost policy. Related owner questions are in
-[open questions](../open-questions.md) 16–27.
+forms, and the certificate cost policy. The owner's answers to questions
+16–27 in [open questions](../open-questions.md) set the direction of each.
 
 ## Guardrails
 
 - Do not regress the Verus serving path's performance or parity.
 - Do not modify users' source; all lowering happens in shadow copies.
-- Do not modify the Oyster or D.I.V.E. repositories; interface needs are
-  drafted here as proposals, and a human decides how they are passed on
-  (question 21).
+- Interface needs may be raised as issues or PRs in the Oyster and D.I.V.E.
+  repositories, which are in this line of work; never in upstream or wider
+  repositories (question 21; the filing rule in `AGENTS.md`).
 - Do not add a dependency from Sail onto Oyster, or from D.I.V.E. onto Sail.
-- Agents do not publish releases or crates; publishing is the owner's
-  decision.
+- Nothing is open-sourced or published to crates.io until the owner's
+  rollout; the workspace keeps `publish = false` (question 20).
+- A backend is forked only with a rigorously measured gain, proven before any
+  Sail use of the fork ships (question 26).
 - Where this scope and the charter conflict, the charter's correctness rules
   win: record the conflict and ask.
 
 ## Conflicts with the charter and current decisions
 
-Each is resolved in the charter's favour until the owner decides otherwise.
+Each was resolved in the charter's favour until the owner answered on
+2026-10-15; the resolutions are recorded below.
 
 1. **Rule 1 names Verus only.** For a new backend, default mode means the same
    verdicts as that backend invoked directly on the same (lowered) input,
@@ -360,10 +404,19 @@ Each is resolved in the charter's favour until the owner decides otherwise.
    limits", a minimum tier, or racing across backends can return a verdict
    the requested backend alone would not. Any such selection is a
    verdict-changing mode: opt-in, named, recorded in `divergences.md`, with
-   separate keys. Racing is deferred today (ADR 0020). Question 23.
+   separate keys. Racing is deferred today (ADR 0020). **Resolved (question
+   23):** selection is not a verdict-changing mode when every verdict is
+   attributed to exactly the backend that produced it, equals what that
+   backend returns on its own (parity per backend), and names the backend in
+   provenance; selection modes are then labeled rather than opt-in. Two
+   contradictory conclusive verdicts on one obligation are a soundness alarm,
+   surfaced loudly and never resolved automatically. Racing still waits for
+   its own ADR.
 3. **Rule 4 and wall-clock-bounded tools.** TLC, CBMC, Lean and SMT-LIB
    clients may bound work by time. Outcomes caused by a wall-clock timeout or
-   an infrastructure failure are never cached as answers. Question 26.
+   an infrastructure failure are never cached as answers. **Resolved
+   (question 26):** measure and report nondeterminism; fork a backend only if
+   its measured nondeterminism costs real cache hits.
 4. **Rule 3 and ITF everywhere.** Sail keeps caching and replaying the
    solver's exact response bytes; ITF is a rendering on top, never a
    replacement. The current schema already carries the raw `get-model` reply.
@@ -375,22 +428,35 @@ Each is resolved in the charter's favour until the owner decides otherwise.
    separate axes; nothing provisional is reported as verified at any tier.
    Results Sail ingests rather than produces, such as sampled-tier test runs,
    need their own provenance. "Tier" already names cache tiers, the
-   confirmed/provisional field and testing tiers. Questions 22 and 25.
+   confirmed/provisional field and testing tiers. **Resolved (questions 22
+   and 25):** output schema v2 names the two axes, establishment and evidence
+   tier, and moves into 0.1.0; reported results are labeled as reported and
+   never count as established.
 7. **Publishing.** The scope describes the contract syntax as "published from
-   this workspace" and also says not to publish crates. The workspace keeps
-   `publish = false` (ADR 0010). Question 20.
+   this workspace" and also says not to publish crates. **Resolved (question
+   20):** the work is staged; nothing is open-sourced or published to
+   crates.io until the owner orchestrates the rollout, and the workspace keeps
+   `publish = false` (ADR 0010). Until then Oyster depends on Sail by git.
 8. **Filing outside this repository.** The scope asks for interface needs to be
-   raised as drafted issues or proposals for Oyster and D.I.V.E.; this
-   repository's rules forbid agents filing in other projects' repositories.
-   Drafts stay here. Question 21.
+   raised as issues or proposals for Oyster and D.I.V.E. **Resolved (question
+   21):** agents may open issues and PRs in this line of work's repositories
+   (Sail, the Verus fork, D.I.V.E., Oyster), never in upstream Verus or wider
+   repositories. `AGENTS.md` lists them.
 9. **Roadmap review deferral.** The 2026-10-13 review deferred more SMT
    backends, certificates and other verifiers for lack of user pull. This
-   owner direction schedules them after 0.1.0.
+   owner direction schedules them after 0.1.0, starting once the 0.1.0
+   performance scope is ready for brittonr's review (question 27).
+10. **Rule 1 and trigger choice in the oracle.** Stock Verus, the
+    conformance oracle for lowered crates, picks triggers differently run to
+    run (VI-0015), which would make oracle comparisons flaky. **Resolved
+    (question 18):** the fork emits the triggers it selected as part of the
+    lowering output, and Sail passes them explicitly to the stock oracle.
+    Production runs keep automatic choice.
 
 ADR 0043 is compatible: the Verus backend's "existing fast Verus path" is
 Sail's Verus on the fork, and stock Verus on the same lowered crate is the
-conformance oracle (question 24 asks the owner to confirm, and to say which
-Verus Vermilion runs on).
+conformance oracle (confirmed in question 24; Vermilion also runs on the
+fork).
 
 ## Reporting
 

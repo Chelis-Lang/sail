@@ -190,67 +190,172 @@ inline with the date and link the ADR that captures it.
 ## Verification runtime scope (owner direction, 2026-10-15)
 
 Questions 16–27 come from the [verification runtime scope](scope/verification-runtime.md),
-planned for releases after 0.1.0. Where the scope conflicts with the charter,
-the charter governs until the owner answers.
+planned for releases after 0.1.0. The owner answered all twelve on
+2026-10-15.
 
 16. **Why3 integration depth.** For Creusot, should Sail drive Why3 as a
     sub-orchestrator (its sessions and drivers own prover calls) or reach
     Why3's provers directly (Sail's cache and keys see every query)? The
     first is less work and matches Creusot users; the second is what makes
     caching and identity exact. To be recorded in an ADR.
+
+    **Answered 2026-10-15 (owner):** As recommended. Start with the
+    sub-orchestrator; move hot paths to direct prover calls only where
+    measurements justify it. To be recorded in the Why3 ADR.
 17. **Kernel-prover interface.** What is the generic interface's unit of work
     (a translated module, a theorem, a proof file) and what is pinned per
     prover (Lean or Rocq toolchain, Aeneas, hax, RefinedRust versions)? Is
     one interface for Lean and Rocq peers acceptable even if it fits neither
     perfectly?
+
+    **Answered 2026-10-15 (owner):** As recommended: the unit is a translated
+    module plus its proof files; the prover toolchain and translator are
+    pinned exactly; one interface serves Lean and Rocq. Addition: the cache
+    key also includes the hash of the source crate and of the proof files.
 18. **Neutral quantifier forms and mathematical integers.** Which quantifier
     forms are in the neutral layer (bounded only, or unbounded too), and how
     are mathematical integers written in stable Rust? Trigger hints are
     excluded from the neutral layer, so Verus lowering relies on automatic
     trigger choice, whose run-dependence is VI-0015: is that acceptable, or
     must the Verus lowering emit explicit triggers?
+
+    **Answered 2026-10-15 (owner):** (a) Both bounded and unbounded
+    quantifiers; unbounded forms are marked verification-only and are not
+    runtime-checked. (b) As recommended: the neutral `Int` is `i128` at
+    runtime, panicking on overflow, and a true mathematical integer in
+    verifiers; panicking is the right failure mode ("the program stops with
+    an error rather than producing a wrong number"). (c) Changed: the fork's
+    deterministic trigger choice is fine for production runs, but stock
+    Verus, the conformance oracle (24), picks triggers differently run to
+    run, so oracle comparisons would be flaky. The fork emits the triggers it
+    selected as part of the lowering output, and Sail passes them explicitly
+    when running the stock oracle. Production still relies on automatic
+    choice; the oracle comparison becomes deterministic.
 19. **Certificate cost policy.** Certificates are opt-in per request. May a
     certificate-checked entry be shared through the signed shared tier as a
     distinct, stronger tier (charter rule 9)? Is there a cost bound beyond
     which Sail declines to produce one?
+
+    **Answered 2026-10-15 (owner):** As recommended. Certificate-checked
+    results are their own tier and never upgrade an existing entry. No hard
+    ceiling: cost is reported and callers set limits.
 20. **Publishing the contract-syntax crate.** The scope calls it "published
     from this workspace" and also says not to publish crates; the workspace
     keeps `publish = false` (ADR 0010). Until a publishing decision, may
     Oyster and users depend on it (and on Sail's library mode) by git
     revision from the private repository?
+
+    **Answered 2026-10-15 (owner), then corrected:** A git dependency until
+    the open-source release; "published from this workspace" meant where the
+    crate lives. The owner's correction governs: "we're not putting anything
+    in open source or crates until I orchestrate a rollout. all of this work
+    is intended for oss but still staged (beyond the verus fork)." The
+    workspace keeps `publish = false`; see the publishing ground rule in
+    `AGENTS.md`.
 21. **Exchanging interface proposals with Oyster and D.I.V.E.** Agents may not
     file in other projects' repositories. Are the sibling `Chelis-Lang`
     repositories covered by that rule? Proposal: interface drafts stay in
     `docs/spec/` with a proposals section, and a human passes them on.
+
+    **Superseded 2026-10-15 (owner):** "the agents can do whatever, gh issues
+    and prs and such, on repos in this line of work (verus fork (but not verus
+    proper), dive, sail, oyster), but they shouldnt do stuff on wider repos of
+    any kind." Agents may raise interface proposals directly in the D.I.V.E.
+    and Oyster repositories; the filing ground rule in `AGENTS.md` lists the
+    repositories.
 22. **Evidence tiers versus the current schema.** Schema v1 has a `tier`
     field (`confirmed` or `provisional`) and `provenance.source`. Proposal:
     keep those as the establishment axis, add `evidence_tier` as a separate
     field in a new schema version, and render ITF values alongside the raw
     solver bytes that rule 3 requires. Does the owner agree with two axes and
     a schema v2 rather than reusing `tier`?
+
+    **Answered 2026-10-15 (owner):** Rename now, before 0.1.0. Ship 0.1.0 on
+    schema v2 with two clearly named axes: establishment (confirmed or
+    provisional) and evidence tier. Nobody depends on v1 yet; "shipping a
+    schema you already plan to break is worse than a small change before
+    release." Counterexamples get ITF rendering alongside the exact solver
+    output.
 23. **Default mode for cross-backend selection.** Is a verdict obtained by
     "strongest available within limits", a minimum tier, or racing across
     backends a verdict-changing mode under rule 8? Proposal: a request for a
     named backend is default mode; anything that can choose among backends is
     opt-in, named and in `divergences.md`, and racing waits for its own ADR
     (ADR 0020 deferred it).
+
+    **Answered 2026-10-15 (owner):** Choosing a backend is not a
+    verdict-changing mode if three conditions hold: every verdict is
+    attributed to exactly the backend that produced it; each verdict is
+    exactly what that backend returns on its own, with parity applying per
+    backend; and the backend's identity appears in provenance. Selection
+    modes are then labeled rather than gated as opt-in. Two backends
+    returning contradictory conclusive verdicts (one verified, one refuted)
+    on the same obligation is a soundness alarm: surface it loudly and never
+    resolve it automatically. Verified on one backend and unknown on another
+    is not a contradiction.
 24. **Which Verus runs lowered code.** Under ADR 0043, the Verus backend runs
     lowered shadow crates on Sail's Verus (the fork) with stock Verus on the
     same lowered crate as the conformance oracle. Confirm. Which Verus does
     Vermilion run on, and do its pins move with `fork.toml`?
+
+    **Answered 2026-10-15 (owner):** Yes to both. The Verus backend runs
+    lowered shadow crates on the fork, with stock Verus as the oracle.
+    Vermilion also runs on the fork, and its pins move whenever `fork.toml`
+    moves.
 25. **Sampled tier provenance.** Does Sail run `cargo test` itself, or ingest
     results that a client reports? Ingested results are not established by
     Sail; should they be recorded with a distinct provenance and never count
     toward the assurance view's "established" relationships?
+
+    **Answered 2026-10-15 (owner):** As recommended. Support both: Sail runs
+    `cargo test`, and clients may report results. Ingested results are
+    labeled as reported and never count as established in the assurance
+    view.
 26. **Wall-clock-bounded and nondeterministic backends.** TLC, CBMC and Lean
     have no deterministic resource limit like Z3's rlimit. Proposal: cache
     only completed outcomes, never timeouts (rule 4), and measure and report
     nondeterminism as ADR 0009 does. Sail forks Verus to drive randomness out
     (ADR 0043); for other backends, is measure-and-report enough, or should
     the same fork-and-fix approach apply?
+
+    **Answered 2026-10-15 (owner):** As recommended: measure and report. Fork
+    a backend only if its measured nondeterminism costs real cache hits. The
+    general forking rule: "we'll fork whatever we need to, if the perf story
+    is there, but we should be trying to rigorously prove out that there is a
+    gain in doing so, before shipping any sail usage of a forked backend or
+    whatever."
 27. **Priority against the Verus path.** The 2026-10-13 roadmap review
     deferred more backends, certificates and other verifiers for lack of user
     pull. The [roadmap](ROADMAP.md#after-010) now orders the Verus-path items
     (B1, B2, B4, #118) before the verification runtime. Is that the owner's
     order, and which runtime workstream comes first after the interface
     specifications?
+
+    **Answered 2026-10-15 (owner):** Don't serialize. The Verus-path items and
+    the interface specifications share no dependencies, so they run in
+    parallel; the specifications are documents that Oyster and D.I.V.E. are
+    blocked on, so they do not wait behind the Verus items. After the
+    specifications, the SMT-LIB service comes first (Oyster depends on it
+    first), and the backend workstreams fan out alongside it. Start
+    condition: none of the M10 work starts until the 0.1.0 performance scope
+    (the vstd fix in #125, managed-by-default mode and pre-verified vstd) has
+    landed and is ready for brittonr's review of the fully performance-improved
+    Sail.
+
+## 0.1.0 release (owner direction, 2026-10-15)
+
+28. **`sail new` or exposing `cargo-verus`.** A first-time user needs a project
+    that verifies against the matching vstd. Should Sail add a `sail new`
+    command that creates a ready-to-verify project, or put its bundled
+    `cargo-verus` on `PATH` so users run `cargo verus new` themselves?
+
+    **Answered 2026-10-15 (owner):** Add `sail new`, and keep the bundled
+    `cargo-verus` off `PATH`. "It gives the best first run without shadowing
+    anyone's stock Verus."
+29. **What 0.1.0 is.** Which release candidate becomes 0.1.0, and what goes to
+    testers first?
+
+    **Answered 2026-10-15 (owner):** Send rc.4 to testers now, once its
+    validation passes. Cut 0.1.0 from rc.5. Managed-by-default mode and
+    pre-verified vstd are the headline speed story, and a user's first
+    public impression should be of that build.
