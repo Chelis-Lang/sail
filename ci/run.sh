@@ -255,6 +255,7 @@ RS
           if ! cmp -s <(norm "$work/$p.$part") <(norm "$work/$s.$part"); then
             echo "e2e: $s $part differs from plain cargo verus verify ($p)" >&2
             diff -u <(norm "$work/$p.$part") <(norm "$work/$s.$part") >&2 || true
+            [ "$part" = err ] || cat "$work/$s.err" >&2
             exit 1
           fi
         done
