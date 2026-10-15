@@ -127,8 +127,12 @@ gives each gate's evidence and its indexed failed attempts, and
 
 ## Open-source release (planned)
 
-Sail stays private until the owner's review; then it is released as open
+Sail stays private until the owner orchestrates the open-source rollout;
+nothing is published to crates.io before then. It is then released as open
 source under the MIT License, with macOS and Linux binaries on GitHub releases.
+rc.4 goes to testers once its validation passes, and 0.1.0 is cut from rc.5,
+with managed-by-default mode and pre-verified vstd as the headline speed story
+([question 29](open-questions.md)).
 Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md).
 
 | In the release | Status |
@@ -144,6 +148,8 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | Performance-claims page backed by reproducible `sail-bench` runs on Linux and macOS | Done (#105, [performance](performance.md)) |
 | Disk cleanup for managed targets (review B3) | Done (#97) |
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
+| `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Planned ([#148](https://github.com/Chelis-Lang/sail/issues/148)), after the managed-by-default and pre-verified vstd work lands |
+| Output schema v2: establishment and evidence-tier axes (question 22) | Planned ([#149](https://github.com/Chelis-Lang/sail/issues/149)), after the managed-by-default and pre-verified vstd work lands |
 | Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Done: draft `v0.1.0-rc.3` (Sail's Verus, fork `73dea021`) passed every check except a clean `deep-rvt`, whose Different verdicts are stock Verus output-order variants (VI-0008) ([release candidate](validation/release-candidate.md), [clean macOS](validation/clean-macos.md)); the owner reviews it and decides when to publish |
 
 Out of the release: B1 (shared vstd across projects), B2 (single-file
@@ -245,9 +251,15 @@ The levers that matter now:
 
 ## After 0.1.0
 
-Planned for releases after 0.1.0, in this order, pending the owner's answer to
-[question 27](open-questions.md). The pre-verified vstd and managed-by-default
-work in flight for 0.1.0 is not listed here.
+Planned for releases after 0.1.0. The pre-verified vstd and managed-by-default
+work in flight for 0.1.0 is not listed here; nor are `sail new` and output
+schema v2, which the owner moved into 0.1.0 (#148, #149).
+
+**Start condition.** No M10 work starts until the 0.1.0 performance scope (the
+vstd fix in #125, managed-by-default mode and pre-verified vstd) has landed and
+is ready for brittonr's review of the fully performance-improved Sail. After
+that, the two tracks below run in parallel, not in sequence
+([question 27](open-questions.md)).
 
 1. **Verus serving path.** Sail's reason to exist for today's users comes
    first, judged against the repeated walkthrough
@@ -266,14 +278,17 @@ work in flight for 0.1.0 is not listed here.
    ([scope](scope/verification-runtime.md), milestone *M10: Verification
    runtime*, umbrella [#146](https://github.com/Chelis-Lang/sail/issues/146)).
    One cached runtime and one ledger behind annotated Rust, raw SMT-LIB and
-   TLA+ jobs (charter appendix entry 5). Interface specifications come first
-   (#127, #128, #129); then, in parallel, the verifier backends (#130–#136),
-   the SMT-LIB service (#137) and certificates (#138), TLA+ jobs through
+   TLA+ jobs (charter appendix entry 5). The interface specifications
+   (#127, #128, #129) start at once, in parallel with item 1, because Oyster
+   and D.I.V.E. are blocked on them. After them the SMT-LIB service (#137)
+   comes first, since Oyster depends on it first; alongside it fan out the
+   verifier backends (#130–#136), certificates (#138), TLA+ jobs through
    D.I.V.E. (#139), the Verus-aware mutator (#140) and library mode (#144);
    then the mutation gate (#141), cross-backend selection (#142) and the
    assurance view (#143). Dafny reach is an evaluation (#145). Every backend
-   passes conformance before any acceleration, and the Verus path keeps its
-   performance and parity.
+   passes conformance before any acceleration, the Verus path keeps its
+   performance and parity, and a backend is forked only with a measured gain
+   proven before Sail ships any use of the fork.
 
 The charter's original roadmap items map onto this as follows:
 
