@@ -186,3 +186,71 @@ inline with the date and link the ADR that captures it.
     **Moot 2026-10-12:** prepared-lowering reuse and the same-input oracle
     were removed from the engine (rescue L7a; ADR 0038's removal note), so
     there is no restored lowering to compare.
+
+## Verification runtime scope (owner direction, 2026-10-15)
+
+Questions 16–27 come from the [verification runtime scope](scope/verification-runtime.md),
+planned for releases after 0.1.0. Where the scope conflicts with the charter,
+the charter governs until the owner answers.
+
+16. **Why3 integration depth.** For Creusot, should Sail drive Why3 as a
+    sub-orchestrator (its sessions and drivers own prover calls) or reach
+    Why3's provers directly (Sail's cache and keys see every query)? The
+    first is less work and matches Creusot users; the second is what makes
+    caching and identity exact. To be recorded in an ADR.
+17. **Kernel-prover interface.** What is the generic interface's unit of work
+    (a translated module, a theorem, a proof file) and what is pinned per
+    prover (Lean or Rocq toolchain, Aeneas, hax, RefinedRust versions)? Is
+    one interface for Lean and Rocq peers acceptable even if it fits neither
+    perfectly?
+18. **Neutral quantifier forms and mathematical integers.** Which quantifier
+    forms are in the neutral layer (bounded only, or unbounded too), and how
+    are mathematical integers written in stable Rust? Trigger hints are
+    excluded from the neutral layer, so Verus lowering relies on automatic
+    trigger choice, whose run-dependence is VI-0015: is that acceptable, or
+    must the Verus lowering emit explicit triggers?
+19. **Certificate cost policy.** Certificates are opt-in per request. May a
+    certificate-checked entry be shared through the signed shared tier as a
+    distinct, stronger tier (charter rule 9)? Is there a cost bound beyond
+    which Sail declines to produce one?
+20. **Publishing the contract-syntax crate.** The scope calls it "published
+    from this workspace" and also says not to publish crates; the workspace
+    keeps `publish = false` (ADR 0010). Until a publishing decision, may
+    Oyster and users depend on it (and on Sail's library mode) by git
+    revision from the private repository?
+21. **Exchanging interface proposals with Oyster and D.I.V.E.** Agents may not
+    file in other projects' repositories. Are the sibling `Chelis-Lang`
+    repositories covered by that rule? Proposal: interface drafts stay in
+    `docs/spec/` with a proposals section, and a human passes them on.
+22. **Evidence tiers versus the current schema.** Schema v1 has a `tier`
+    field (`confirmed` or `provisional`) and `provenance.source`. Proposal:
+    keep those as the establishment axis, add `evidence_tier` as a separate
+    field in a new schema version, and render ITF values alongside the raw
+    solver bytes that rule 3 requires. Does the owner agree with two axes and
+    a schema v2 rather than reusing `tier`?
+23. **Default mode for cross-backend selection.** Is a verdict obtained by
+    "strongest available within limits", a minimum tier, or racing across
+    backends a verdict-changing mode under rule 8? Proposal: a request for a
+    named backend is default mode; anything that can choose among backends is
+    opt-in, named and in `divergences.md`, and racing waits for its own ADR
+    (ADR 0020 deferred it).
+24. **Which Verus runs lowered code.** Under ADR 0043, the Verus backend runs
+    lowered shadow crates on Sail's Verus (the fork) with stock Verus on the
+    same lowered crate as the conformance oracle. Confirm. Which Verus does
+    Vermilion run on, and do its pins move with `fork.toml`?
+25. **Sampled tier provenance.** Does Sail run `cargo test` itself, or ingest
+    results that a client reports? Ingested results are not established by
+    Sail; should they be recorded with a distinct provenance and never count
+    toward the assurance view's "established" relationships?
+26. **Wall-clock-bounded and nondeterministic backends.** TLC, CBMC and Lean
+    have no deterministic resource limit like Z3's rlimit. Proposal: cache
+    only completed outcomes, never timeouts (rule 4), and measure and report
+    nondeterminism as ADR 0009 does. Sail forks Verus to drive randomness out
+    (ADR 0043); for other backends, is measure-and-report enough, or should
+    the same fork-and-fix approach apply?
+27. **Priority against the Verus path.** The 2026-10-13 roadmap review
+    deferred more backends, certificates and other verifiers for lack of user
+    pull. The [roadmap](ROADMAP.md#after-010) now orders the Verus-path items
+    (B1, B2, B4, #118) before the verification runtime. Is that the owner's
+    order, and which runtime workstream comes first after the interface
+    specifications?

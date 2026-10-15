@@ -97,6 +97,8 @@ These block the core use case or mislead the user. None of them needs research.
 | Stability and fragility modes, portfolios | They exist as opt-in tools. No evidence of demand yet. |
 | More SMT backends, certificates, other verifiers | No user pull. They add trust surface. |
 
+Update 2026-10-15: the owner has scheduled more SMT backends, certificates and other verifiers after 0.1.0; see the [verification runtime scope](../scope/verification-runtime.md).
+
 ### E. Closed
 
 - Rust pre-solver: 0.1% of solver time (L6).
