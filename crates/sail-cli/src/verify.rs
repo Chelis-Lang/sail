@@ -1,4 +1,4 @@
-//! `sail verify`: managed verification by default (ADR 0045).
+//! `sail verify`: managed verification by default (ADR 0046).
 //!
 //! Every `sail verify` runs Sail's managed runner
 //! ([`crate::managed_cli`]): Sail's own Verus, built from Sail's Verus fork

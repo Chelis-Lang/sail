@@ -43,7 +43,7 @@ pub enum Solver {
         /// Also pass the logging flags `sail verify`'s managed driver adds
         /// to every verified target ([`crate::adapter::OBSERVATION_LOG_FLAGS`]),
         /// with a log directory under the run's work directory, so that
-        /// Verus runs exactly as `sail verify` runs it (ADR 0045). `false`
+        /// Verus runs exactly as `sail verify` runs it (ADR 0046). `false`
         /// is the bare shim, kept for diagnosing a difference.
         observation_logs: bool,
     },

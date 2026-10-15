@@ -12,7 +12,7 @@
 //!
 //! `run` compares Sail as users run it against plain stock Verus with the
 //! same Z3 (charter rule 1). The Sail side is what `sail verify` runs for
-//! each verified crate (ADR 0045): Sail's Verus (built from the fork,
+//! each verified crate (ADR 0046): Sail's Verus (built from the fork,
 //! ADR 0043) with `sail-z3` in front of the pinned Z3 and the logging flags
 //! the managed driver adds. Two diagnostic switches isolate a difference:
 //! `--sail-verus stock` runs the Sail side on stock Verus (a fork

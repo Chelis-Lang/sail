@@ -237,4 +237,4 @@ Each entry names the charter text it qualifies and the ADR that records it.
    binary targets. Setups managed verification cannot bind (tests, benches,
    examples, `--target-dir`, Verus log options, Cargo `--config`) are
    refused with an error and stay with `cargo verus verify` until it
-   supports them. See ADR 0045.
+   supports them. See ADR 0046.

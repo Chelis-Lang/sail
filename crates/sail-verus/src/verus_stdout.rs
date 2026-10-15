@@ -4,7 +4,7 @@
 //! per-target report and receipt are built from that document. Stock
 //! `cargo verus verify` without those flags prints a human summary instead,
 //! and with them prints the document itself. So that `sail verify` prints
-//! what plain `cargo verus verify` prints (charter rule 1, ADR 0045), the
+//! what plain `cargo verus verify` prints (charter rule 1, ADR 0046), the
 //! driver adds only the flags the user did not pass, and rebuilds the user's
 //! stdout from the document:
 //!

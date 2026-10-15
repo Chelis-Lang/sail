@@ -112,7 +112,7 @@ pub(super) const LOADER_VARIABLES: &[&str] = &[
 /// Refuses configuration Sail cannot identify (`SAIL3112`). Returns the
 /// first loader variable set in the environment, if any: such a run is
 /// still verified, as plain Cargo-Verus would, but neither reuses nor
-/// records proof receipts or dependency records (ADR 0045).
+/// records proof receipts or dependency records (ADR 0046).
 pub(super) fn check(workspace: &Path, args: &[String]) -> Result<Option<String>> {
     check_environment(std::env::vars_os(), workspace, args)
 }
@@ -182,7 +182,7 @@ mod tests {
     use super::*;
 
     /// A loader variable makes the run proceed without proof reuse (ADR
-    /// 0045); compiler selectors are still refused.
+    /// 0046); compiler selectors are still refused.
     #[test]
     fn loader_variables_disable_reuse_and_compiler_selectors_are_refused() {
         let dir = std::env::temp_dir().join(format!("sail-config-check-{}", std::process::id()));

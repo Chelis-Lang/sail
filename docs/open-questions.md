@@ -360,10 +360,10 @@ planned for releases after 0.1.0. The owner answered all twelve on
     pre-verified vstd are the headline speed story, and a user's first
     public impression should be of that build.
 30. **Process-loader variables now that managed verification is the only
-    `sail verify`** (ADR 0045). Managed verification cannot bind what
+    `sail verify`** (ADR 0046). Managed verification cannot bind what
     `LD_LIBRARY_PATH`, `LD_PRELOAD` or a macOS `DYLD_*` loader variable changes
     in the compiler and verifier to a proof receipt, and the first version of
-    ADR 0045 refused such runs (`SAIL3112`). `LD_LIBRARY_PATH` is common on
+    ADR 0046 refused such runs (`SAIL3112`). `LD_LIBRARY_PATH` is common on
     Linux (CUDA, conda, module systems), so that locked those users out.
 
     **Decided 2026-10-15 (lead):** fail safe, never refuse. A run with a loader

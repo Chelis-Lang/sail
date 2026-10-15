@@ -61,7 +61,7 @@ struct Paths {
     /// The workspace's directory of proof contexts.
     projects: PathBuf,
     /// Whether this run may reuse and record proof receipts. A run with a
-    /// process-loader variable set may not (ADR 0045).
+    /// process-loader variable set may not (ADR 0046).
     reuse: bool,
 }
 
@@ -1736,7 +1736,10 @@ pub(crate) fn run_engine_held(
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
             .as_deref(),
     ));
-    if !stale_scripts.is_empty() {
+    // Sail's targeted cleans exist to observe what a receipt binds. A run
+    // without reuse records no receipt, so Cargo's own freshness decides, as
+    // for plain Cargo-Verus.
+    if paths.reuse && !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
     let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
@@ -1760,7 +1763,9 @@ pub(crate) fn run_engine_held(
         .into_iter()
         .filter(|name| !stale_scripts.contains(name))
         .collect();
-    clean(config, &paths.target, &late_scripts)?;
+    if paths.reuse {
+        clean(config, &paths.target, &late_scripts)?;
+    }
     let stamp_before = super::input::mutation_stamp(&before);
     if super::configuration::check(&invocation, &config.args)? != loader {
         return Err(Error::new(
@@ -1801,7 +1806,7 @@ pub(crate) fn run_engine_held(
         })
         .filter_map(|p| p["name"].as_str().map(str::to_owned))
         .collect();
-    if forced {
+    if forced && paths.reuse {
         clean(config, &paths.target, &selected(&config.args, &names))?;
     }
     let dirty: Vec<String> = std::fs::read_dir(&paths.receipts)
@@ -1814,7 +1819,7 @@ pub(crate) fn run_engine_held(
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
-    if !dirty.is_empty() {
+    if paths.reuse && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);

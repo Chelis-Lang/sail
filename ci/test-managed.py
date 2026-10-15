@@ -316,7 +316,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert b"postcondition not satisfied" in plain.stderr, plain.stderr.decode()
         assert b"postcondition not satisfied" in failed_run.stderr, failed_run.stderr.decode()
 
-        # A process-loader variable (ADR 0045): the run is verified as plain
+        # A process-loader variable (ADR 0046): the run is verified as plain
         # Cargo-Verus would verify it, with one note line, and reuses and
         # records no proof receipts. It is never refused.
         loader_env = dict(env, LD_LIBRARY_PATH=str(root / "no-libraries"))
@@ -332,7 +332,10 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         loader_contexts = list((root / "cache/projects").glob("*/" + loader_doc["context_sha256"]))
         assert len(loader_contexts) == 1 and loader_contexts[0] != contexts[0], loader_contexts
         assert not list((loader_contexts[0] / "receipts").glob("*.json")), "no receipts without reuse"
-        # Its human output is plain Cargo-Verus's, apart from the note.
+        # Its human output is plain Cargo-Verus's, apart from the note: the
+        # same failing edit, each in its own target already built above.
+        plain = bounded_verification([cargo_verus, "verus", "verify", "--target-dir",
+                                      str(contexts[0] / "target")], project, env, 120)
         loader_human = bounded_verification([sail, "verify"], project, loader_env, 240)
         notes = [l for l in loader_human.stderr.splitlines(True) if l.startswith(b"note[SAIL3112]")]
         assert len(notes) == 1, loader_human.stderr.decode()

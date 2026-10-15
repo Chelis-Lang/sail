@@ -147,7 +147,7 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | Engine runtimes from the public `Chelis-Lang/verus` fork releases | Done (#94, #100) |
 | Performance-claims page backed by reproducible `sail-bench` runs on Linux and macOS | Done (#105, [performance](performance.md)) |
 | Disk cleanup for managed targets (review B3) | Done (#97) |
-| One `sail verify`: managed verification by default, pass-through removed ([ADR 0045](decisions/0045-managed-verification-by-default.md)) | Implemented; required gates and the standard tier pass on Linux; awaiting review |
+| One `sail verify`: managed verification by default, pass-through removed ([ADR 0046](decisions/0046-managed-verification-by-default.md)) | Implemented; required gates and the standard tier pass on Linux; awaiting review |
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
 | `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Implemented ([#148](https://github.com/Chelis-Lang/sail/issues/148)): `sail new` runs Sail's Verus's `cargo verus new`; e2e checks it matches stock and verifies. Clean-install acceptance follows the managed-by-default and pre-verified vstd work |
 | Output schema v2: establishment and evidence-tier axes (question 22) | Implemented ([#149](https://github.com/Chelis-Lang/sail/issues/149), ADR 0044): `establishment`, `evidence_tier` and ITF counterexample values in `--output json`, the project envelope and MCP; gate, solver, e2e and PR conformance pass on native Linux; macOS host checks pass |
