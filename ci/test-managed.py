@@ -349,10 +349,13 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         # was not recorded, with Verus's own verdicts.
         source.write_text(good + "// plain sail verify establishes this proof\n")
         logs_before = set(root.glob("cache/projects/*/*/runs/*/sidecars/*/logs"))
+        # The second run reuses the first's proof when the first was Current
+        # (and then, like Cargo's no-op, prints nothing), or establishes it.
         for attempt in range(2):
             human = bounded_verification([sail, "verify"], project, env, 240)
             assert human.returncode == 0, human.stderr.decode()
-            assert b"verification results:: 1 verified, 0 errors" in human.stdout, human.stdout.decode()
+            if attempt == 0:
+                assert b"verification results:: 1 verified, 0 errors" in human.stdout, human.stdout.decode()
         assert set(root.glob("cache/projects/*/*/runs/*/sidecars/*/logs")) == logs_before, "plain sail verify wrote attribution logs"
         detail_run, detail, detail_target = managed()
         assert detail_run.returncode == 0 and detail_target["reused"], diagnostic(detail)
