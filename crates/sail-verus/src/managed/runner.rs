@@ -2003,14 +2003,20 @@ pub(crate) fn run_engine_held(
             if input_revision.is_empty() {
                 continue;
             }
-            super::receipts::adopt(
+            // A store problem never changes a run's result: without the
+            // adopted receipt, the next run checks the store entry again.
+            if let Err(error) = super::receipts::adopt(
                 &paths.run,
                 &paths.receipts,
                 path.file_name().unwrap_or_default(),
                 &result.context_sha256,
                 input_revision,
                 seed.receipt.clone(),
-            )?;
+            ) {
+                event(
+                    &serde_json::json!({"event":"dependency-adopt-failed","package_id":target.package_id,"error":error.message}),
+                );
+            }
         }
         store_dependencies(config, &paths, &store_candidates, &result, &after_data);
     }

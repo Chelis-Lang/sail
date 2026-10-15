@@ -12,13 +12,16 @@
 //! usual. A seeded target is reported as reused only when the store's receipt
 //! passes every receipt check against the bytes now in the new target.
 //!
-//! Every failure (missing, corrupt or mismatched entry, a copy error) removes
-//! what the seed placed and verifies normally; a corrupt entry also prints
-//! `warning[SAIL3131]`. The store never changes a solver query, a verdict or a
+//! Entries are copied into a hidden sibling of the new target and renamed into
+//! place, so a killed run never leaves a partial target. Every failure leaves
+//! no target and verification proceeds as usual; only a damaged entry (its own
+//! checksums or digests fail) prints `warning[SAIL3131]`, and a missing,
+//! evicted or mismatched one is a silent miss. Store problems never change a
+//! run's result. The store never changes a solver query, a verdict or a
 //! diagnostic: it only lets Cargo find a dependency fresh.
 
 use super::files::{digest, json};
-use super::receipts::{RECEIPT_VERSION, Receipt, complete, digests_match, read};
+use super::receipts::{RECEIPT_VERSION, Receipt, complete, digests_match};
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -323,10 +326,45 @@ fn relocate(path: &Path, from: &Path, to: &Path) -> PathBuf {
         .map_or_else(|_| path.to_owned(), |relative| to.join(relative))
 }
 
+/// Why an entry was not used. Only a damaged entry is reported; everything
+/// else is an ordinary miss, as when no entry exists (ADR 0045 decision 9).
+#[derive(Debug)]
+enum Refusal {
+    /// The entry is gone (evicted or deleted), of another layout, or no
+    /// longer describes this machine's inputs.
+    Miss,
+    /// An entry whose key matched fails its own checksums or digests.
+    Damaged(String),
+}
+
+fn damaged(what: &str) -> Refusal {
+    Refusal::Damaged(what.to_owned())
+}
+
+/// Leftovers of seeds that never finished (a killed run): hidden siblings of
+/// `target`. Seeding runs under the compiler family's exclusive lock, so no
+/// other run is writing them.
+fn staging_dirs(target: &Path) -> Vec<PathBuf> {
+    let (Some(parent), Some(name)) = (target.parent(), target.file_name()) else {
+        return Vec::new();
+    };
+    let prefix = format!(".{}.seed-", name.to_string_lossy());
+    std::fs::read_dir(parent)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().starts_with(&prefix))
+        .map(|e| e.path())
+        .collect()
+}
+
 /// Places every stored entry of `candidates` in `target`, a Cargo target this
-/// run creates. Returns the entries placed. A missing entry is an ordinary
-/// miss; any other failure prints one warning, removes what it placed and
-/// leaves verification to Cargo and the verifier as usual.
+/// run creates. Entries are copied into a hidden sibling directory, which is
+/// renamed to `target` only once every entry that could be placed is
+/// complete, so a run killed while seeding leaves no partial target (only a
+/// hidden leftover, removed by the next seed). Returns the entries placed. A
+/// missing or mismatched entry is an ordinary miss; a damaged one prints one
+/// warning. Either way verification proceeds as usual.
 pub(super) fn seed(
     cache: &Path,
     target: &Path,
@@ -334,55 +372,105 @@ pub(super) fn seed(
     data: &Value,
     err: &mut dyn Write,
 ) -> Vec<Seeded> {
+    for leftover in staging_dirs(target) {
+        let _ = std::fs::remove_dir_all(leftover);
+    }
+    reclaim(&root(cache), STALE);
+    let available: Vec<&Candidate> = candidates
+        .iter()
+        .filter(|c| root(cache).join(&c.key).join("manifest.json").is_file())
+        .collect();
+    // The caller decided before its cleanups that the target is new; those
+    // cleanups can leave Cargo's bookkeeping files in it, but never a unit.
+    if available.is_empty() || holds_units(target) {
+        return Vec::new();
+    }
+    let staging = target.with_file_name(format!(
+        ".{}.seed-{}-{}",
+        target.file_name().unwrap_or_default().to_string_lossy(),
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos())
+    ));
+    if std::fs::create_dir_all(&staging).is_err() {
+        return Vec::new();
+    }
     let mut placed = Vec::new();
-    for candidate in candidates {
+    for candidate in available {
         let entry = root(cache).join(&candidate.key);
-        if !entry.join("manifest.json").is_file() {
-            continue;
-        }
         let mut files = Vec::new();
         let mut directories = Vec::new();
-        match place(
-            &entry,
-            target,
-            candidate,
-            data,
-            &mut files,
-            &mut directories,
-        ) {
-            Ok(seeded) => {
-                // Recency for eviction; failure to record it changes nothing.
-                let _ = std::fs::write(entry.join("used"), []);
-                super::files::event(&serde_json::json!({
-                    "event": "dependency-seeded", "package_id": candidate.root,
-                    "key": candidate.key, "files": files.len(),
-                }));
-                placed.push(seeded);
-            }
-            Err(error) => {
+        let outcome = validated(&entry, candidate, data)
+            .and_then(|manifest| place(&entry, &staging, manifest, &mut files, &mut directories));
+        match outcome {
+            Ok(manifest) => placed.push((candidate, entry, manifest, files.len())),
+            Err(refusal) => {
                 rollback(&files, &directories);
-                let _ = writeln!(
-                    err,
-                    "warning[SAIL3131]: ignoring the dependency store entry for {}: {}; verifying it normally",
-                    candidate.root, error.message
-                );
+                if let Refusal::Damaged(reason) = refusal {
+                    let _ = writeln!(
+                        err,
+                        "warning[SAIL3131]: ignoring the dependency store entry for {}: {reason}; verifying it normally",
+                        candidate.root
+                    );
+                }
             }
         }
     }
+    if placed.is_empty() {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Vec::new();
+    }
+    // A target holding only Cargo's bookkeeping is moved aside (to a name the
+    // next seed removes) so the staged one can take its place in one rename.
+    // A crash in between leaves no target, which is a new target again.
+    if target.exists() {
+        let mut aside = staging.clone().into_os_string();
+        aside.push("-old");
+        if std::fs::rename(target, &aside).is_err() {
+            let _ = std::fs::remove_dir_all(&staging);
+            return Vec::new();
+        }
+        let _ = std::fs::remove_dir_all(aside);
+    }
+    if std::fs::rename(&staging, target).is_err() {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Vec::new();
+    }
     placed
+        .into_iter()
+        .filter_map(|(candidate, entry, manifest, files)| {
+            // The receipt is checked against the bytes now in the target.
+            let receipt = moved_receipt(&manifest, target)?;
+            // Recency for eviction; failure to record it changes nothing.
+            let _ = std::fs::write(entry.join("used"), []);
+            super::files::event(&serde_json::json!({
+                "event": "dependency-seeded", "package_id": candidate.root,
+                "key": candidate.key, "files": files,
+            }));
+            Some(Seeded {
+                key: candidate.key.clone(),
+                receipt,
+                placed: true,
+            })
+        })
+        .collect()
 }
 
 /// Reads and checks an entry against this machine's current inputs.
-fn validated(entry: &Path, candidate: &Candidate, data: &Value) -> Result<Manifest> {
-    let invalid = |what: &str| Error::new("SAIL3131", what.to_owned());
+fn validated(
+    entry: &Path,
+    candidate: &Candidate,
+    data: &Value,
+) -> std::result::Result<Manifest, Refusal> {
+    let bytes = std::fs::read(entry.join("manifest.json")).map_err(|_| Refusal::Miss)?;
     let manifest: Manifest =
-        read(&entry.join("manifest.json")).ok_or_else(|| invalid("unreadable manifest"))?;
-    if manifest.version != VERSION
-        || !manifest.intact()
-        || manifest.key != candidate.key
-        || manifest.root != candidate.root
-    {
-        return Err(invalid("manifest checksum or binding mismatch"));
+        serde_json::from_slice(&bytes).map_err(|_| damaged("unreadable manifest"))?;
+    if manifest.version != VERSION {
+        return Err(Refusal::Miss);
+    }
+    if !manifest.intact() || manifest.key != candidate.key || manifest.root != candidate.root {
+        return Err(damaged("manifest checksum or binding mismatch"));
     }
     let receipt = &manifest.receipt;
     if receipt.version != RECEIPT_VERSION
@@ -391,21 +479,27 @@ fn validated(entry: &Path, candidate: &Candidate, data: &Value) -> Result<Manife
         || !receipt.invocation.success
         || !complete(&receipt.invocation.report)
     {
-        return Err(invalid("stored proof receipt is not a complete success"));
+        return Err(damaged("stored proof receipt is not a complete success"));
     }
-    // These describe this machine's current inputs, not the entry's bytes: a
-    // difference is an ordinary miss, but it is still reported, since the key
-    // already matched.
-    if revision(data, candidate).as_deref() != Some(manifest.revision.as_str()) {
-        return Err(invalid("the dependency's source files differ"));
-    }
-    if !super::environment::unchanged(&receipt.declared_environment) {
-        return Err(invalid("a declared environment variable differs"));
-    }
-    if !super::build_inputs::contracts_current(&manifest.contracts) {
-        return Err(invalid("a build-script input differs"));
+    // These describe this machine's current inputs, not the entry's bytes:
+    // an edited registry source, a changed declared variable or build-script
+    // input is an ordinary miss, as plain Cargo would rebuild.
+    if revision(data, candidate).as_deref() != Some(manifest.revision.as_str())
+        || !super::environment::unchanged(&receipt.declared_environment)
+        || !super::build_inputs::contracts_current(&manifest.contracts)
+    {
+        return Err(Refusal::Miss);
     }
     Ok(manifest)
+}
+
+/// A relative path of plain components, which cannot leave the directory it
+/// is joined to.
+fn contained(path: &Path) -> bool {
+    !path.is_absolute()
+        && path
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)))
 }
 
 /// The entry's receipt with its paths moved into `target`, if the bytes now
@@ -434,20 +528,30 @@ fn moved_receipt(manifest: &Manifest, target: &Path) -> Option<Receipt> {
     .then_some(receipt)
 }
 
+/// Copies one entry into `staging`, recording what it created for rollback.
 fn place(
     entry: &Path,
-    target: &Path,
-    candidate: &Candidate,
-    data: &Value,
+    staging: &Path,
+    manifest: Manifest,
     files: &mut Vec<PathBuf>,
     directories: &mut Vec<PathBuf>,
-) -> Result<Seeded> {
-    let invalid = |what: &str| Error::new("SAIL3131", what.to_owned());
-    let manifest = validated(entry, candidate, data)?;
+) -> std::result::Result<Manifest, Refusal> {
+    // A copy that fails because the entry went away (evicted or deleted
+    // meanwhile) is a miss; any other failure of an entry still present is
+    // damage.
+    let failure = |what: &str| {
+        if entry.join("manifest.json").is_file() {
+            damaged(what)
+        } else {
+            Refusal::Miss
+        }
+    };
     for directory in &manifest.directories {
-        let path = target.join(directory);
-        // Every directory this seed creates, outermost first, the target
-        // itself included, so a rollback leaves nothing behind.
+        if !contained(directory) {
+            return Err(damaged("stored path escapes the target"));
+        }
+        let path = staging.join(directory);
+        // Every directory this entry creates, outermost first.
         let mut missing: Vec<PathBuf> = path
             .ancestors()
             .take_while(|p| !p.exists())
@@ -455,21 +559,15 @@ fn place(
             .collect();
         missing.reverse();
         for created in missing {
-            std::fs::create_dir(&created)
-                .map_err(|e| Error::new("SAIL3131", format!("{}: {e}", created.display())))?;
+            std::fs::create_dir(&created).map_err(|_| Refusal::Miss)?;
             directories.push(created);
         }
     }
     for file in &manifest.files {
-        if file.path.is_absolute()
-            || file
-                .path
-                .components()
-                .any(|c| !matches!(c, std::path::Component::Normal(_)))
-        {
-            return Err(invalid("stored path escapes the target"));
+        if !contained(&file.path) {
+            return Err(damaged("stored path escapes the target"));
         }
-        let destination = target.join(&file.path);
+        let destination = staging.join(&file.path);
         if destination.exists() {
             // Another entry placed in this run can share a unit (an
             // overlapping closure); only identical bytes are accepted.
@@ -477,26 +575,21 @@ fn place(
             {
                 continue;
             }
-            return Err(invalid("the new target already holds a different file"));
+            return Err(Refusal::Miss);
         }
         let (sha256, size) = copy(
             &entry.join("files").join(&file.path),
             &destination,
             file.executable,
             file.modified,
-        )?;
+        )
+        .map_err(|_| failure("a stored file cannot be read"))?;
         files.push(destination);
         if sha256 != file.sha256 || size != file.size {
-            return Err(invalid("a stored file does not match its digest"));
+            return Err(failure("a stored file does not match its digest"));
         }
     }
-    let receipt = moved_receipt(&manifest, target)
-        .ok_or_else(|| invalid("the stored artifacts do not match the receipt"))?;
-    Ok(Seeded {
-        key: candidate.key.clone(),
-        receipt,
-        placed: true,
-    })
+    Ok(manifest)
 }
 
 /// For a target that already exists: the receipts of stored entries whose
@@ -839,6 +932,7 @@ fn record_output(sidecar: &Path, recorded_dir: &Path) -> Result<Vec<StoredFile>>
 /// entry is renamed away before it is deleted, so a run that is copying from
 /// it fails cleanly and verifies normally.
 fn evict(store: &Path, keep: &str, capacity: usize) {
+    reclaim(store, STALE);
     let Ok(entries) = std::fs::read_dir(store) else {
         return;
     };
@@ -865,6 +959,50 @@ fn evict(store: &Path, keep: &str, capacity: usize) {
             let _ = std::fs::remove_dir_all(doomed);
         }
     }
+}
+
+/// How old an unfinished publication or eviction must be before it is
+/// treated as abandoned by a killed run. Publishing takes seconds.
+const STALE: Duration = Duration::from_secs(3600);
+
+/// Deletes staging and eviction directories older than `age`: leftovers of a
+/// run killed while publishing or evicting, which nothing else reclaims.
+fn reclaim(store: &Path, age: Duration) {
+    let Ok(entries) = std::fs::read_dir(store) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !(name.starts_with(".staging-") || name.starts_with(".evicted-")) {
+            continue;
+        }
+        let old = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.elapsed().ok())
+            .is_some_and(|elapsed| elapsed >= age);
+        if old {
+            let _ = std::fs::remove_dir_all(entry.path());
+        }
+    }
+}
+
+/// Whether `target` holds any compiled Cargo unit: a `.fingerprint`
+/// directory in it or in a profile directory up to two levels below it.
+fn holds_units(target: &Path) -> bool {
+    fn search(directory: &Path, depth: u32) -> bool {
+        std::fs::read_dir(directory)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .any(|entry| {
+                entry.file_type().is_ok_and(|kind| kind.is_dir())
+                    && (entry.file_name() == ".fingerprint"
+                        || (depth > 0 && search(&entry.path(), depth - 1)))
+            })
+    }
+    search(target, 2)
 }
 
 /// Whether `target` is a Cargo target this run creates: it does not exist yet
@@ -1205,10 +1343,9 @@ mod tests {
             )
             .is_empty()
         );
-        // A second seed of an already populated target is refused cleanly
-        // only where bytes differ; identical files are accepted.
+        // An existing target is never seeded again.
         let (_, again, warnings) = seed_into(&fixture, &candidate, "new");
-        assert_eq!(again.len(), 1, "{warnings}");
+        assert!(again.is_empty() && warnings.is_empty(), "{warnings}");
     }
 
     #[test]
@@ -1264,11 +1401,12 @@ mod tests {
         let (_, seeded, warnings) = seed_into(&fixture, &others[0], "new");
         assert!(seeded.is_empty() && warnings.is_empty(), "{warnings}");
         // Changed bytes in the dependency's own source under the same key
-        // are refused.
+        // are an ordinary miss: plain Cargo would rebuild, and prints nothing
+        // about it either.
         write(&fixture.root.join("reg/vstd/vstd.rs"), b"// edited\n");
         let (edited, seeded, warnings) = seed_into(&fixture, &candidate, "edited");
         assert!(seeded.is_empty() && !edited.exists());
-        assert!(warnings.contains("source files differ"), "{warnings}");
+        assert!(warnings.is_empty(), "{warnings}");
     }
 
     #[test]
@@ -1357,6 +1495,162 @@ mod tests {
                 assert_eq!(seeded.len(), 1, "{warnings}");
             }
         });
+    }
+
+    #[test]
+    fn a_seed_killed_midway_leaves_no_target_and_is_cleaned_up() {
+        let fixture = Fixture::new("killed");
+        let (old, candidate, _) = fixture.build("old");
+        // What a run killed while copying leaves: a hidden sibling holding
+        // part of the entry. The target itself was never created.
+        let target = fixture.root.join("new");
+        let leftover = fixture.root.join(".new.seed-1-1");
+        write(
+            &leftover.join("debug/deps/libdep-2222222222222222.rmeta"),
+            b"partial",
+        );
+        assert!(!target.exists() && new_target(&target));
+        let (_, seeded, warnings) = seed_into(&fixture, &candidate, "new");
+        assert_eq!(seeded.len(), 1, "{warnings}");
+        assert!(!leftover.exists(), "the leftover was not removed");
+        let unit = "debug/deps/libdep-2222222222222222.rmeta";
+        assert_eq!(
+            std::fs::read(target.join(unit)).ok(),
+            std::fs::read(old.join(unit)).ok()
+        );
+        assert_eq!(staging_dirs(&target), Vec::<PathBuf>::new());
+    }
+
+    #[test]
+    fn a_target_with_only_cargo_bookkeeping_is_seeded_and_one_with_units_is_not() {
+        let fixture = Fixture::new("bookkeeping");
+        let (_, candidate, _) = fixture.build("old");
+        // What `cargo clean -p` leaves in a target that never built anything.
+        write(&fixture.root.join("new/CACHEDIR.TAG"), b"tag");
+        write(&fixture.root.join("new/debug/.cargo-lock"), b"");
+        let (new, seeded, warnings) = seed_into(&fixture, &candidate, "new");
+        assert_eq!(seeded.len(), 1, "{warnings}");
+        assert!(
+            new.join("debug/deps/libdep-2222222222222222.rmeta")
+                .is_file()
+        );
+        assert!(!new.join("CACHEDIR.TAG").exists());
+        assert_eq!(staging_dirs(&new), Vec::<PathBuf>::new());
+        write(
+            &fixture
+                .root
+                .join("built/debug/.fingerprint/x-0123456789abcdef/lib-x"),
+            b"",
+        );
+        let (built, seeded, _) = seed_into(&fixture, &candidate, "built");
+        assert!(seeded.is_empty());
+        assert!(!built.join("debug/deps").exists());
+    }
+
+    #[test]
+    fn a_truncated_stored_file_warns_and_places_nothing() {
+        let fixture = Fixture::new("truncated");
+        let (_, candidate, _) = fixture.build("old");
+        let stored = root(&fixture.cache())
+            .join(&candidate.key)
+            .join("files/debug/deps/libvstd-0123456789abcdef.rmeta");
+        let bytes = std::fs::read(&stored).unwrap_or_default();
+        write(&stored, &bytes[..bytes.len() / 2]);
+        let (new, seeded, warnings) = seed_into(&fixture, &candidate, "new");
+        assert!(seeded.is_empty() && !new.exists());
+        assert!(warnings.starts_with("warning[SAIL3131]:"), "{warnings}");
+        assert_eq!(staging_dirs(&new), Vec::<PathBuf>::new());
+    }
+
+    #[test]
+    fn an_entry_evicted_during_a_seed_is_a_silent_miss() {
+        let fixture = Fixture::new("evicted");
+        let (_, candidate, _) = fixture.build("old");
+        let entry = root(&fixture.cache()).join(&candidate.key);
+        let manifest = validated(&entry, &candidate, &fixture.data)
+            .unwrap_or_else(|_| unreachable!("fixture entry"));
+        // Eviction renames the entry away and deletes it after validation.
+        assert!(std::fs::remove_dir_all(&entry).is_ok());
+        let staging = fixture.root.join("staging");
+        let (mut files, mut directories) = (Vec::new(), Vec::new());
+        let outcome = place(&entry, &staging, manifest, &mut files, &mut directories);
+        assert!(matches!(outcome, Err(Refusal::Miss)), "{outcome:?}");
+        rollback(&files, &directories);
+        assert!(!staging.exists());
+        // seed() itself finds no entry: nothing placed and nothing printed.
+        let (new, seeded, warnings) = seed_into(&fixture, &candidate, "new");
+        assert!(seeded.is_empty() && warnings.is_empty() && !new.exists());
+    }
+
+    #[test]
+    fn stored_directories_cannot_escape_the_target() {
+        let fixture = Fixture::new("escape");
+        let (_, candidate, _) = fixture.build("old");
+        let entry = root(&fixture.cache()).join(&candidate.key);
+        let mut manifest = validated(&entry, &candidate, &fixture.data)
+            .unwrap_or_else(|_| unreachable!("fixture entry"));
+        manifest.directories.push(PathBuf::from("../outside"));
+        let staging = fixture.root.join("staging");
+        let (mut files, mut directories) = (Vec::new(), Vec::new());
+        let outcome = place(&entry, &staging, manifest, &mut files, &mut directories);
+        assert!(matches!(outcome, Err(Refusal::Damaged(_))), "{outcome:?}");
+        assert!(!fixture.root.join("outside").exists());
+        assert!(!contained(Path::new("/abs")) && !contained(Path::new("a/../b")));
+        assert!(contained(Path::new("debug/deps")));
+    }
+
+    #[test]
+    fn stale_staging_and_eviction_leftovers_are_reclaimed() {
+        let store = std::env::temp_dir().join(format!("sail-store-reclaim-{}", std::process::id()));
+        for name in [".staging-1-1", ".evicted-x-1", "entry"] {
+            write(&store.join(name).join("manifest.json"), b"{}");
+        }
+        // Fresh leftovers may belong to a live publisher: kept.
+        reclaim(&store, STALE);
+        assert!(store.join(".staging-1-1").exists() && store.join(".evicted-x-1").exists());
+        reclaim(&store, Duration::ZERO);
+        assert!(!store.join(".staging-1-1").exists() && !store.join(".evicted-x-1").exists());
+        assert!(store.join("entry").exists(), "entries are never reclaimed");
+        assert!(std::fs::remove_dir_all(store).is_ok());
+    }
+
+    /// Runs only as the child of `loader_variables_turn_the_store_off`.
+    #[test]
+    fn enabled_probe() {
+        if let Some(expected) = std::env::var_os("SAIL_TEST_STORE_ENABLED") {
+            assert_eq!(enabled(), expected == "1");
+        }
+    }
+
+    #[test]
+    fn loader_variables_turn_the_store_off() {
+        let executable = std::env::current_exe().unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        for (variable, expected) in [
+            (None, "1"),
+            (Some("LD_SAIL_TEST_PROBE"), "0"),
+            (Some("DYLD_SAIL_TEST_PROBE"), "0"),
+        ] {
+            let mut command = std::process::Command::new(&executable);
+            command
+                .args(["--exact", "managed::store::tests::enabled_probe"])
+                .env("SAIL_TEST_STORE_ENABLED", expected)
+                .env_remove("SAIL_DEPENDENCY_STORE_ENTRIES")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null());
+            for (key, _) in std::env::vars_os() {
+                let bytes = key.as_encoded_bytes();
+                if bytes.starts_with(b"LD_") || bytes.starts_with(b"DYLD_") {
+                    command.env_remove(&key);
+                }
+            }
+            if let Some(variable) = variable {
+                command.env(variable, "1");
+            }
+            let status = command
+                .status()
+                .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+            assert!(status.success(), "{variable:?}");
+        }
     }
 
     #[test]

@@ -60,7 +60,8 @@ about 120 MB. Sail keeps the four most recently used entries and deletes older
 ones itself; set `SAIL_DEPENDENCY_STORE_ENTRIES` to keep another number, or to
 `0` to turn the store off. Deleting `dependency-store/` is safe at any time:
 the next new project verifies vstd again and stores it. A run that was copying
-from a deleted entry prints `warning[SAIL3131]` and verifies vstd itself.
+from a deleted entry verifies vstd itself. Directories left by a run killed
+while storing or deleting an entry are removed once they are an hour old.
 
 ## Development checkouts
 

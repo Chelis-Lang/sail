@@ -46,8 +46,9 @@ stored receipt matches the bytes Cargo found fresh. The run that copied it
 marks vstd's target with `dependency_store` and the note `SAIL3130`, and names
 the run that verified it as `establishing_run`; vstd's report is that run's
 report. A different resolution, a path dependency on vstd, an edited registry
-source, a damaged entry (`warning[SAIL3131]`) or a dynamic-loader variable
-(`LD_*`, `DYLD_*`) in the environment all verify vstd as before.
+source or a dynamic-loader variable (`LD_*`, `DYLD_*`) in the environment
+verify vstd as before, silently; a damaged entry does too, with
+`warning[SAIL3131]`. A run killed while copying leaves no target behind.
 The store keeps the four most recently used entries, about 120 MB each
 ([disk use](workspace-hygiene.md#dependency-store)). A context changes when the arguments, the engine
 selection, the relevant environment, the Cargo configuration or the installed

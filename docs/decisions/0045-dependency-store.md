@@ -75,6 +75,11 @@
    candidate's package id, every resolve node of its closure (package ids,
    enabled features and dependency edges), and the workspace manifest's
    `[profile]` table. Any difference is another key: an ordinary miss.
+   Cargo-Verus derives a dependency's verifier arguments only from its own
+   arguments (in the family digest) and the `package.metadata.verus` of the
+   closure's packages (registry bytes, bound by the content revision below);
+   it reads no workspace metadata (`cargo-verus`
+   `make_cargo_plan`, verus@426d8b0), so nothing else needs to be in the key.
 4. **What an entry holds.** Every file of every Cargo unit of the closure
    (`.fingerprint/`, `build/` and `deps/` entries named by the unit hashes in
    Cargo's own artifact records of the run, `.vir` files included) with its
@@ -88,11 +93,14 @@
 5. **Using an entry** requires, before anything is copied: an intact manifest
    for exactly this key and package; a sealed, complete, successful receipt;
    an unchanged closure content revision; unchanged declared environment
-   variables; and current build-script contracts. Each file is copied under a
-   temporary name with its digest checked on the bytes written, then renamed,
-   with its recorded modification time (Cargo compares unit times). The
-   receipt is then moved to the new target's paths and its artifact and
-   dependency digests are checked against the copies.
+   variables; and current build-script contracts. Each stored path must be
+   relative and plain (no `..`). Files are copied, with their digests checked
+   on the bytes written and their recorded modification times (Cargo compares
+   unit times), into a hidden sibling of the new target, which is renamed to
+   the target only once every placeable entry is complete. A run killed while
+   seeding therefore leaves no target, only a hidden leftover that the next
+   seed removes. The receipt is then moved to the target's paths and its
+   artifact and dependency digests are checked against the bytes there.
 6. **Reuse is still a receipt check.** The seeded target is reported reused
    only if Cargo reports it fresh and the moved receipt matches the artifact
    names and bytes Cargo reports, the compiled dependencies' bytes and the
@@ -119,13 +127,18 @@
    whose verifier printed anything but its JSON documents and Cargo artifact
    notices is never stored. Cargo's `Compiling` progress lines for seeded
    units are not printed; their order already varies between plain runs.
-9. **Failure is a normal verification.** A missing entry, another key or a
-   changed input is a silent miss. A damaged entry (checksum, digest or copy
-   failure) prints one `warning[SAIL3131]: ignoring the dependency store
-   entry for <package>: <reason>; verifying it normally`, removes everything
-   the seed placed (the new target included) and continues: Cargo builds and
-   the verifier verifies the dependency. A failed publication leaves the
-   store unchanged and never affects the run's result. With any
+9. **Failure is a normal verification.** A missing entry, another key, an
+   entry evicted or deleted while it is being copied, or a changed input (an
+   edited registry source, a declared variable or a build-script input) is a
+   silent miss, as plain Cargo prints nothing when it rebuilds. Only a damaged
+   entry whose key matched (its manifest checksum, receipt seal or a stored
+   file's digest or size fails, or a stored path leaves the target) prints one
+   `warning[SAIL3131]: ignoring the dependency store entry for <package>:
+   <reason>; verifying it normally`. Either way nothing of the entry reaches
+   the target, and Cargo builds and the verifier verifies the dependency. A
+   failed publication or receipt adoption leaves the store and the run's
+   result unchanged; staging and eviction directories left by a killed run
+   are removed once they are an hour old. With any
    dynamic-loader variable set (`LD_*`, `DYLD_*`), the store is neither read
    nor written: the key binds their values, but equal values cannot certify
    what the compiler driver and solver loaded.
@@ -133,16 +146,20 @@
     the four most recently used entries; `SAIL_DEPENDENCY_STORE_ENTRIES`
     sets another limit, and `0` disables the store. This variable never
     reaches a proof, so it is not part of any context. Eviction renames an
-    entry away before deleting it, so a run copying from it fails cleanly
+    entry away before deleting it, so a run copying from it misses cleanly
     (decision 9).
 
 ## Conformance obligations
 
 - **Unit tests** (`sail-verus` `managed::store`): exactly the closure is
   stored and placed with its times; a workspace unit is never stored; a
-  tampered file or manifest warns and leaves the new target absent; another
+  tampered or truncated file or manifest warns and leaves the new target
+  absent; a seed killed midway leaves no target and its leftover is removed;
+  an entry evicted during a seed is a silent miss; stored directories cannot
+  escape the target; stale staging and eviction leftovers are reclaimed;
+  loader variables turn the store off; another
   feature set, compiler family or profile is another key; an edited
-  dependency source is refused; path closures and noisy verifiers are never
+  dependency source is a silent miss; path closures and noisy verifiers are never
   stored; concurrent publishers leave one entry and concurrent seeders all
   succeed; eviction keeps the most recently used entries.
 - **CI, End to end (managed)** (`ci/test-managed.py`): after a prune, the

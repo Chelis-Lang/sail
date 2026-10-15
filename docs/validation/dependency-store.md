@@ -83,6 +83,16 @@ Raw logs: `l47-timings-linux.tgz` (sha256
   timing script started the daemon with `CARGO_TARGET_DIR` set and launched
   the MCP client from Python (locale coercion), two different proof contexts.
   Replaced by the three rounds above.
+- Review of PR #154, 2026-10-15: seeding now goes through a hidden sibling
+  renamed into place, ordinary misses are silent, stale leftovers are
+  reclaimed, stored directories are checked and a failed adoption no longer
+  fails the run. The first version of this change never seeded (its seed
+  required an empty target, but the run's `cargo clean` had already written
+  Cargo's bookkeeping there; the Linux check and `e2e managed` failed). Fixed
+  by moving a bookkeeping-only target aside; then gate 600/600, solver 35/35,
+  `e2e` (all phases), `conformance fast pr` 33/33 and this record's check
+  passed on Linux (seeded 1.18 s against plain 28.8 s), and the check on the
+  Mac.
 - `d6f5612b`, 2026-10-15: CI-image `e2e managed` failed once: the new
   worktree checks ran before the prune checks, and copies of the project share
   its proof context hash. Moved after the prune checks; passed.
