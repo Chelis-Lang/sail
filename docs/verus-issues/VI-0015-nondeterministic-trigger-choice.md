@@ -76,7 +76,7 @@ runs of each fast-tier unit on the fork, `traits.rs` and `chapter-6-1.rs`
 included, each gave one SMT stream
 (L21 rescue lane report, tag `archive/rescue-m7-98f6292`).
 
-**Rescue L42 (2026-10-15).** On the pinned runtime `13a1176c`, no solver
+**Rescue L42 (2026-10-15).** On runtime `13a1176c` (pinned until `73dea021`), no solver
 stream varied in 10 runs of each fast-tier unit (577 buckets) or in the
 measured standard-tier units, `vest` included with either macro source
 ([determinism record](../validation/determinism.md)).

@@ -223,6 +223,9 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   when the report is generated and a refused sample counts as a failure,
   never as a dropped sample (ADR 0038).
 - *Fault injection:* `docs/fault-injection.md`, run as part of `solver`.
+- *Determinism (local, before re-pinning the fork):* `scripts/verus-determinism.py
+  --runs 3` over the fast tier with the new runtime; see
+  `docs/validation/determinism.md`.
 
 ## Tracking
 

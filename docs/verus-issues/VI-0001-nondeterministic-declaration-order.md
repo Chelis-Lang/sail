@@ -4,7 +4,8 @@
   fixed in Sail's Verus fork by `9a5b2cc8` (fix: generate enum arrow accessors in source order)
   for direct `verus` runs, and by `af212563` (fix: declare enum arrow accessors in source order
   in the verifier; first written as `1612b951` on `l21/determinism`) for `cargo verus` runs.
-  Both are in the pinned engine runtime, fork commit `13a1176c` (rescue L22).
+  Both are in Sail's runtime since fork commit `13a1176c` (rescue L22) and in
+  the current pin, `73dea021`.
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08
 - **Reproduction:** `corpus/repros/verus-nondeterministic-declaration-order/`
@@ -118,7 +119,7 @@ digest varied for identical input: 0 of 28 measured HumanEval samples and 0
 of 14 Vest samples, against 16 of 32 HumanEval samples and two varying Vest
 buckets on `89709da7` (L22 rescue lane report, tag `archive/rescue-m7-98f6292`).
 
-**Rescue L42 (2026-10-15).** On the pinned runtime `13a1176c`, no solver
+**Rescue L42 (2026-10-15).** On runtime `13a1176c` (pinned until `73dea021`), no solver
 stream varied in 10 runs of each fast-tier unit (577 buckets) or in the
 measured standard-tier units, `vest` included with either macro source
 ([determinism record](../validation/determinism.md)).

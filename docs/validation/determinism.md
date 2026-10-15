@@ -6,8 +6,8 @@ the fork on identical input, lists the fixes, and states what remains.
 
 | Field | Value |
 |---|---|
-| Status | **Pass on the measured scope** with fork branch `l42/determinism` (`4285ae11`): one solver stream per bucket, one stdout (times blanked), one stderr and one exit code per unit. Not yet on the fork's `sail` branch or pinned |
-| Source | Sail `l42/determinism` (lane L42), 2026-10-15. Fork `Chelis-Lang/verus`: before = pinned runtime commit `13a1176c` (`engine/verus/fork.toml`); after = `l42/determinism` `4285ae11` (`13a1176c` + `54640eed` VI-0017 + `4285ae11` VI-0007), upstream `426d8b0` |
+| Status | **Pass on the measured scope** with fork branch `l42/determinism` (`4285ae11`): one solver stream per bucket, one stdout (times blanked), one stderr and one exit code per unit. Both fixes are on the fork's `sail` branch as `9e32601e` and `bc9cda09` and pinned from `73dea021` ([re-pin check](#pinned-runtime-73dea021)) |
+| Source | Sail `l42/determinism` (lane L42), 2026-10-15. Fork `Chelis-Lang/verus`: before = runtime commit `13a1176c`, pinned at the time (`engine/verus/fork.toml`); after = `l42/determinism` `4285ae11` (`13a1176c` + `54640eed` VI-0017 + `4285ae11` VI-0007), upstream `426d8b0`. The fork's `sail` branch carries the same two changes as `9e32601e` and `bc9cda09` |
 | Runtime | Both built on the host with `cargo xtask build-verus-engine` (vstd rebuilt with `cargo-verus`, as the release does), run as plain `verus` / `cargo verus` (no `SAIL_ENGINE`); pinned Z3 4.16.0; stock release `0.2026.10.04.426d8b0` for the stock comparisons |
 | Environment | Native EC2 c7i.8xlarge (32 vCPU), us-east-1, Ubuntu 24.04; standard-tier units ran 5 at a time, so scheduling was contended |
 | Scope | Fast tier (147 units: `verus-examples`, `vstd`, `human-eval-verus`, direct `verus`); standard tier `vest`, `vest-generated`, `verismo` (2 units) and `verismo-main` (`cargo verus focus`, Verus dependencies patched to the pinned upstream source, as the harness does), plus `vest` patched to the fork's own source (fork macros) after the fixes; before only, 10 runs: `verified-node-replication`, `verified-ironkv`, `verified-storage` `multilog` and `pmemlog` |
@@ -53,8 +53,8 @@ pinned runtime printed two orders of `examples/debug_expand.rs` in 5 runs.
 
 | Issue | Fork commit | Test (fails on `13a1176c`, passes after) | Rule |
 |---|---|---|---|
-| [VI-0017](../verus-issues/VI-0017-timing-json-order.md): `--output-json --time` lists modules by time and functions in hash order | `54640eed` | `sail_vi0017_timing_order` (modules came out `"", m1, m3, m2`) | structured output: lists sorted by name, values unchanged |
-| [VI-0007](../verus-issues/VI-0007-nondeterministic-error-order.md): errors from several buckets print in report order | `4285ae11` (the dropped `f98b87c5`, reinstated) | `sail_vi0007_error_order` (`[39, 38, 37, 40, 35]` instead of `[35, 37, 38, 39, 40]`) | order stock produces: stock printed the fork's exact stderr for `debug_expand.rs` in 1 of 40 runs, and for the VI-0007 repro in 8 of 20 |
+| [VI-0017](../verus-issues/VI-0017-timing-json-order.md): `--output-json --time` lists modules by time and functions in hash order | `9e32601e` (lane branch `54640eed`) | `sail_vi0017_timing_order` (modules came out `"", m1, m3, m2`) | structured output: lists sorted by name, values unchanged |
+| [VI-0007](../verus-issues/VI-0007-nondeterministic-error-order.md): errors from several buckets print in report order | `bc9cda09` (lane branch `4285ae11`; the dropped `f98b87c5`, reinstated) | `sail_vi0007_error_order` (`[39, 38, 37, 40, 35]` instead of `[35, 37, 38, 39, 40]`) | order stock produces: stock printed the fork's exact stderr for `debug_expand.rs` in 1 of 40 runs, and for the VI-0007 repro in 8 of 20 |
 
 On `4285ae11` the full `rust_verify_test` suite (`vargo test --release -p
 rust_verify_test`, vargo-built vstd, every `sail_vi*` test included) gave
@@ -63,6 +63,16 @@ rust_verify_test`, vargo-built vstd, every `sail_vi*` test included) gave
 release way (`cargo-verus build`) for the corpus runs; rebuilding vstd with
 vargo fixed it (test harness setup, not a fork defect). Fork commits were checked with
 `scripts/check-ai-markers.sh range 13a1176c 4285ae11` (clean).
+
+## Pinned runtime 73dea021
+
+The re-pin to fork `73dea021` (lane L43, 2026-10-15) repeated the committed
+check on the published Linux runtime (`engine-runtime-73dea021-linux`, in the
+CI image on an EC2 c7i.8xlarge): `scripts/verus-determinism.py --runs 3` over the
+fast tier's 153 direct inputs (examples and HumanEval, the conformance flags)
+found 153 of 153 identical in solver input (373 buckets), blanked stdout,
+stderr and exit code (`determinism-fast.log` `2d0708f8…2bf6`;
+[fork-default record](fork-default.md)).
 
 ## Residuals
 

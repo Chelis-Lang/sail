@@ -6,7 +6,7 @@ is validated against. Secondary pins are compatibility targets (ADR 0010),
 run locally with `SAIL_VERUS_RELEASE=<release>` (ADR 0013).
 
 **Sail's Verus.** Sail runs its own Verus, built from its fork
-(`engine/verus/fork.toml`, commit `13a1176c`, based on the primary pin), for
+(`engine/verus/fork.toml`, commit `73dea021`, based on the primary pin), for
 every verification
 ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). Stock releases
 are the conformance oracle: `sail-conformance run` compares Sail on its fork
@@ -17,7 +17,7 @@ configuration.
 
 | Release | Role | Z3 | Rust | sail conformance (fast tier) | Notes |
 |---|---|---|---|---|---|
-| `0.2026.10.04.426d8b0` | primary | 4.16.0 (bundled) | 1.98.1 | 147 of 147 the same (macOS arm64 and Linux x86-64); standard tier 159 of 159 (Linux), stock pass-through before ADR 0043; Sail on fork `13a1176c`: see [the fork-default record](validation/fork-default.md) | The corpus is validated against this release; Sail's Verus is built on it |
+| `0.2026.10.04.426d8b0` | primary | 4.16.0 (bundled) | 1.98.1 | 147 of 147 the same (macOS arm64 and Linux x86-64); standard tier 159 of 159 (Linux), stock pass-through before ADR 0043; Sail on fork `73dea021`: see [the fork-default record](validation/fork-default.md) | The corpus is validated against this release; Sail's Verus is built on it |
 | `0.2026.09.06.8dea4a2` | secondary | 4.16.0 (primary's build; VI-0006) | 1.98.0 | 147 of 147 the same (macOS arm64, 2026-10-09) | See below |
 
 ## Plain Verus under the secondary release (fast tier)

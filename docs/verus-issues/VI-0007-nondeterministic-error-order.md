@@ -1,8 +1,8 @@
 # VI-0007: Errors from different modules are reported in a run-dependent order
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `4285ae11` (fix: print bucket diagnostics in
-  bucket order), on branch `l42/determinism`, not yet on `sail` or pinned.
+  fixed in Sail's Verus fork by `bc9cda09` (fix: print bucket diagnostics in
+  bucket order), in Sail's pin since fork `73dea021`.
   The same change was dropped once (`f98b87c5`); stock has since been shown
   to produce its order (see below).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
@@ -54,7 +54,7 @@ distinct stderr outputs over 12 runs.
 
 ## Sail fork
 
-Fixed by `4285ae11` (fix: print bucket diagnostics in bucket order), one
+Fixed by `bc9cda09` (fix: print bucket diagnostics in bucket order), one
 commit with its regression test
 `source/rust_verify_test/tests/sail_vi0007_error_order.rs`. With several
 threads, stock makes the first bucket to send a message the active one and
@@ -86,5 +86,9 @@ Digests are SHA-256 prefixes of complete stderr; the raw outputs are in the
 makes the order irrelevant to conformance; the fix makes it stable for caching
 and agents.
 
-The fork builds only the optional interactive engine until the default
-switches to it (lane L41). Stock-mode workaround: none needed since ADR 0042.
+L42 measured this change as `4285ae11` on its lane branch; it reached the
+fork's `sail` branch unchanged as `bc9cda09`, and Sail pins it from fork
+`73dea021`. Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)
+default mode runs the fork, so Sail's own diagnostics come out in bucket
+order. Stock runs (the conformance oracle) keep the race; no workaround is
+needed since ADR 0042.

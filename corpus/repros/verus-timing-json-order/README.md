@@ -20,8 +20,9 @@ $ ./repro.sh <install dir> 10
    ... (10 distinct orders in 10 runs, stock release, macOS arm64)
 ```
 
-The Sail fork's pinned runtime (`13a1176c`) behaves the same on Linux x86-64
-(10 orders in 10 runs). With the fork fix (VI-0017) every run prints one order.
+The Sail fork's runtime `13a1176c` (pinned until `73dea021`) behaves the same
+on Linux x86-64 (10 orders in 10 runs). With the fork fix (VI-0017, `9e32601e`,
+pinned from `73dea021`) every run prints one order.
 
 ## Impact
 

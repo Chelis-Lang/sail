@@ -5,6 +5,15 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **Sail's Verus is pinned to fork `73dea021`** (runtimes
+  `engine-runtime-73dea021-linux` and `-macos`). Two more run-to-run
+  differences are gone from every Sail verification: `--output-json --time`
+  lists modules and functions by name (VI-0017), and errors from several
+  modules print in module order (VI-0007). Verdicts and diagnostics are
+  unchanged. The runtime's `cargo verus new` now works (VI-0018).
+  `scripts/verus-determinism.py` repeats a Verus command and fails on any
+  byte difference in solver input, stdout (times blanked), stderr or exit
+  code ([determinism record](docs/validation/determinism.md)).
 - **Sail runs its own Verus** (ADR 0043). Every verification (`sail verify`,
   `--incremental`, `--output json`, `watch`, MCP, jobs, portfolios,
   `fragility`, repairs) runs the runtime built from Sail's Verus fork, which
@@ -16,12 +25,12 @@ semantic versioning once the API is published.
   that runtime is missing or invalid (there is no fallback to another
   Verus). `SAIL_CARGO_VERUS` remains a development override and prints
   `warning[SAIL0108]`. `sail engine status` checks the runtime. The README
-  creates new projects with `cargo new` plus two `Cargo.toml` entries
-  (VI-0018). Conformance compares Sail on its Verus with plain stock Verus
+  creates new projects with `cargo new` plus two `Cargo.toml` entries, since
+  no `cargo-verus` need be on `PATH`. Conformance compares Sail on its Verus with plain stock Verus
   (`sail-conformance run --sail-verus stock` keeps the old arm). `--output
   json` reads the per-crate log directory the fork writes (VI-0004 fix).
   `cargo xtask build-verus-engine` writes Verus's toolchain manifest so the
-  runtime's `cargo verus new` works after the next re-pin.
+  runtime's `cargo verus new` works (VI-0018).
 
 - The README installs Sail from the release archive (checksum check,
   unpacked `bin/` on `PATH`) and installs the pinned stock Verus and its Rust

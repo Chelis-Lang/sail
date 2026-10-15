@@ -1,9 +1,8 @@
 # VI-0017: `--output-json --time` lists modules and functions in a run-dependent order
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `54640eed` (fix: list output-json timing
-  modules and functions by name), on branch `l42/determinism`, not yet on
-  `sail` or pinned.
+  fixed in Sail's Verus fork by `9e32601e` (fix: list output-json timing
+  modules and functions by name), in Sail's pin since fork `73dea021`.
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-15 (rescue lane L42)
 - **Reproduction:** `corpus/repros/verus-timing-json-order/`
@@ -15,7 +14,8 @@
   breakdown into per-function records and sorts them, so verdicts and
   conformance are unaffected; a cache or comparison keyed on stdout bytes
   is not.
-- **Workaround:** none in stock mode; Sail compares parsed results.
+- **Workaround:** none needed: Sail compares parsed results, and since
+  ADR 0043 default mode runs the fork, which sorts the lists.
 
 The description below is written so it could be filed upstream unchanged.
 
@@ -47,9 +47,10 @@ function name (the text `--time` report can keep its slowest-first order).
 
 ## Sail fork
 
-Fixed by `54640eed`, one commit with its regression test
+Fixed by `9e32601e` (measured by L42 as `54640eed` on its lane branch, the
+same change), one commit with its regression test
 `source/rust_verify_test/tests/sail_vi0017_timing_order.rs`, which fails on
-the pinned runtime commit (`13a1176c`; modules came out `["", "m1", "m3",
+the previously pinned runtime commit (`13a1176c`; modules came out `["", "m1", "m3",
 "m2"]`) and passes with the fix. Under `--output-json`, the module lists are
 sorted by module name (a module's several buckets keep stock's time order)
 and each breakdown by friendly function name, then function identity.
