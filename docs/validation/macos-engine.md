@@ -8,32 +8,38 @@ same engine checks as the Linux runtime
 
 | Field | Value |
 |---|---|
-| Status | **Pass**: the macOS engine ships in the release archive, and a repair through it is accepted |
-| Source | Sail `l32/release` `dc9dec4` (lane L32; qualification checks), 2026-10-14; fork commit `13a1176c02d461f166affd60591a7c3aa1a67134` on upstream `426d8b0` |
-| Runtime | `cargo xtask build-verus-engine`, pinned in `engine/verus/artifact-macos.json` (archive sha256 `54a0c51f…7fa8`, fork prerelease `engine-runtime-13a1176c-macos`), variant `426d8b01e7ffb910a36c15e1f870ff985bb61eef-52c2ace7480faf24`, manifest sha256 `c95d5f9a686d1f4d101be0ec9f9ebf81809629d1f0246542d1a156041beadce1`, Verus Rust toolchain 1.98.1, no Verus features; stock Verus `0.2026.10.04.426d8b0` (arm64-macos) and its Z3 4.16.0 |
-| Environment | Developer Mac, Apple M3, macOS 26.5 (25F71), shared with other lanes (load average about 16–23) |
-| Scope | Engine build with vstd verification; `test-engine.py` (11 fixtures); `test-cancel.py`; `ci/run.sh conformance fast pr` on the host with `SAIL_ENGINE_BUILD` set to the build (pass-through, cache fill and warm, engine arm) |
-| Limits | Correctness only, one run of each; no performance measurement. The fast PR subset (33 guide units) only; the standard and deep tiers were not run on macOS |
+| Status | **Pass** for the pinned runtime, fork `73dea021`: built, qualified and published; release smoke test not yet run on it |
+| Source | Sail `chore/repin-73dea021` (lane L43), 2026-10-15; fork commit `73dea02112d730e7ab52f58158012d440fb89512` on upstream `426d8b0` |
+| Runtime | `cargo xtask build-verus-engine` (writes Verus's toolchain manifest, VI-0018), pinned in `engine/verus/artifact-macos.json` (archive sha256 `0819e62f…1fb0`, fork prerelease `engine-runtime-73dea021-macos`), variant `426d8b01e7ffb910a36c15e1f870ff985bb61eef-c1eeaec18522f7e7`, manifest sha256 `a42a7d1914332d3e3c10f53c8fab40eb6f4da39093b71c8f39d999eaf3d0b5c8`, version `0.2026.10.15.73dea02`, Verus Rust toolchain 1.98.1, no Verus features; stock Verus `0.2026.10.04.426d8b0` (arm64-macos) and its Z3 4.16.0 |
+| Environment | Developer Mac, Apple M3, macOS 26.5, shared with other lanes (load average about 10–23) |
+| Scope | Engine build with vstd verification; `test-engine.py` (11 fixtures); `test-cancel.py`; `ci/run.sh conformance fast pr` on the host with `SAIL_ENGINE_BUILD` and `SAIL_VERUS_BUILD` set to the build (pass-through, cache fill and warm, engine arm); `cargo verus new` with the runtime |
+| Limits | Correctness only, one run of each; no performance measurement. The fast PR subset (33 guide units) for the engine arm; the full fast tier pass-through is in the [fork-default record](fork-default.md) |
 
 ## Results
 
 | Check | Result | Evidence (sha256 of the log, kept outside the repository) |
 |---|---|---|
-| Build, vstd verification | 2,060 verified, 0 errors (as the release does: `cargo-verus build` of vstd); built in 546 s | `engine-build.log` `1dba6c5c…07fc` |
-| `test-engine.py` | 11 of 11 fixtures match stock (exit, stderr, counters, verdicts, raw SMT): `long_worker_span`, `success`, `failed_focus`, `failed_other`, `rust_frontend_error`, `late_exec`, `bitvector`, `recursive`, `macro_spans`, `missing_function`, `ambiguous_function` | `test-engine.log` `0819d89b…098c` |
-| `test-cancel.py` | no seal after a kill at a blocked solver check; the restart matches stock | `test-cancel.log` `0f6ac145…5988` |
-| Conformance, fast PR subset | pass-through, cache fill and cache warm (3,635 entries): 33 units, 33 same, 0 different, 311 functions. Engine arm: 33 units, 33 same, 0 unstable, 0 different, 0 infra errors, 32 focused units, engine `c95d5f9a686d` | `conformance.log` `e4aeb570…9fe3` |
+| Build, vstd verification | 2,060 verified, 0 errors (as the release does: `cargo-verus build` of vstd); built in 245 s | `mac-build.log` `f1bf5a8a…8294` |
+| `test-engine.py` | 11 of 11 fixtures match stock (exit, stderr, counters, verdicts, raw SMT) | `mac-test-engine.log` `0819d89b…098c` |
+| `test-cancel.py` | no seal after a kill at a blocked solver check; the restart matches stock | `mac-test-cancel.log` `0f6ac145…5988` |
+| Conformance, fast PR subset | pass-through, cache fill and cache warm (3,442 entries): 33 units, 33 same, 0 unstable, 0 different, 0 infra errors, 311 functions each; report `sail_verus: fork:a42a7d19…`. Engine arm: 33 same, 0 unstable, 0 different, 0 infra errors, 32 focused units, engine `a42a7d191433` | `mac-conformance-pr.log` `76c3d593…28d3` |
+| `cargo verus new` (VI-0018) | with the runtime on `PATH`: project created with `vstd = "=0.0.0-2026-10-04-0306"`, `cargo verus verify` 1 verified, 0 errors | `mac-cargo-verus-new.log` `9d0ad17e…bccb` |
 
-## Re-qualification on clean hardware
+The earlier runtime, fork `13a1176c` (archive `54a0c51f…7fa8`, manifest
+`c95d5f9a…dce1`), passed the same checks on 2026-10-14 (Sail `dc9dec4`, lane
+L32; logs `engine-build.log` `1dba6c5c…07fc`, `conformance.log`
+`e4aeb570…9fe3`), and the two sections below.
 
-The same checks on a dedicated, otherwise idle Mac, with the pinned runtime
+## Re-qualification on clean hardware (runtime `13a1176c`)
+
+The same checks on a dedicated, otherwise idle Mac, with the then pinned runtime
 fetched anonymously from the fork release (`ci/engine-artifact.py fetch`,
 archive digest and every runtime file checked):
 
 | Field | Value |
 |---|---|
 | Status | **Pass** |
-| Source | Sail `main` `4c1392a`, 2026-10-14 (lane L39); runtime as pinned above (manifest `c95d5f9a686d…`) |
+| Source | Sail `main` `4c1392a`, 2026-10-14 (lane L39); runtime `13a1176c` (manifest `c95d5f9a686d…`) |
 | Environment | EC2 mac-m4.metal, Apple M4 (4 performance and 6 efficiency cores, 24 GiB), macOS 27.0 (26A428), us-east-1b, a fresh instance with only rustup, the stock Verus release and this checkout added; load average 4–7 during the checks (the checks' own work; about 1.5 from macOS services when idle) |
 | Scope | Engine source build with vstd verification; `test-engine.py`; `test-cancel.py`; `ci/run.sh conformance fast pr` with `SAIL_ENGINE_BUILD` set to the fetched pinned runtime. One run of each, correctness only |
 
@@ -49,7 +55,7 @@ Logs: `l39-mac-engine.tgz` `78845938…8b3d`, holding `engine-build.log`
 `c26b6296…bc14`, `test-engine.log` `0819d89b…098c`, `test-cancel.log`
 `0f6ac145…5988` and `conformance.log` `e4c1cfe8…81ee`.
 
-## Release smoke test
+## Release smoke test (runtime `13a1176c`)
 
 `scripts/release-smoke.sh` on the draft `v0.0.0-preview.3` archives, built by
 `scripts/release.sh` from `14a5445` (rebased on `main` `6f22621`, which
