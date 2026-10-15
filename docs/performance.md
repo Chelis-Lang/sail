@@ -193,6 +193,12 @@ Every sample's full outcome matched the M6 arm. Details and spread are in
 [M7 validation](validation/m7.md#gate-7-frozen-repair-performance). This was
 not measured on macOS.
 
+These figures were measured on the runtime from fork `13a1176c`. A
+one-round recheck on the current `73dea021` runtime (release candidate
+rc.3) did not change them materially: HumanEval 64.6 s against 29.6 s
+(2.18×), Vest 232.5 s against 129.4 s (1.80×)
+([release-candidate record](validation/release-candidate.md#repair-benchmark)).
+
 Reproduce with `sail-bench repair prepare` and `sail-bench repair run`, as
 given in the [acceptance guide](bench/m7-repair-acceptance.md#running) (about
 two hours, and an M6 build from `rescue/m6-baseline`).

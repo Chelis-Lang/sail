@@ -8,7 +8,7 @@ runtime currently pinned.
 
 | Field | Value |
 |---|---|
-| Status | **Pass** on the checks below, through the standard tier; deep tier and a fork-versus-stock `deep-rvt` arm not run |
+| Status | **Pass** on the checks below, through the standard tier, and on rc.3 the deep tier, release smoke and repair benchmark ([below](#release-candidate-rc3)); a fork-versus-stock `deep-rvt` arm not built |
 | Source | Branch `chore/repin-73dea021` (lane L43), 2026-10-15 |
 | Runtime | Fork `73dea021` (pinned; adds VI-0017 `9e32601e` and VI-0007 `bc9cda09` to `13a1176c`): Linux `engine-runtime-73dea021-linux` (archive `71337563…af41`, manifest `4f0d0d3f…ccdd`), macOS `engine-runtime-73dea021-macos` (archive `0819e62f…1fb0`, manifest `a42a7d19…b5c8`); version `0.2026.10.15.73dea02` |
 | Oracle | Stock Verus `0.2026.10.04.426d8b0`, Z3 4.16.0 |
@@ -63,13 +63,29 @@ Attempts:
   check on two anchors this record and the determinism record did not yet
   have; rerun after adding them.
 
+## Release candidate rc.3
+
+`v0.1.0-rc.3` (`8bd4aed2`, lane L45, 2026-10-15) closed three of the gates
+below on the `73dea021` runtime; details in the
+[release-candidate record](release-candidate.md#v010-rc3):
+
+- **Deep tier:** 159 units, 159 same, 0 Different in pass-through, cache
+  fill, warm and engine (sharded by project across four hosts).
+- **Release smoke:** both archives, which bundle the `73dea021` runtimes,
+  passed `scripts/release-smoke.sh` with no Verus installed, and a fresh
+  `ubuntu:24.04` container installed and used Sail from the README alone.
+- **Repair benchmark:** one round per catalogue as a regression check:
+  HumanEval M7 29.6 s (recorded 30.3 s), Vest 129.4 s (recorded 135.1 s);
+  M7 first actionable evidence was no slower. VI-0007's diagnostic hold did
+  not slow the repair loop.
+
 ## Remaining gates
 
-- Deep tier and a per-test fork-versus-stock `deep-rvt` arm (ADR 0043).
-- Release smoke test of archives that carry the `73dea021` runtimes.
-- The repair benchmark on `73dea021` (engine README: run it on a candidate
-  before pinning). M7's frozen repair numbers were measured on `13a1176c`;
-  VI-0007's fix holds a finished module's diagnostics until lower-numbered
-  modules finish, which has not been measured in the repair loop.
-- Performance claims in [performance](../performance.md) were measured on
-  stock Verus and are not yet re-measured on the fork.
+- A per-test fork-versus-stock `deep-rvt` arm (ADR 0043). Not built: the
+  fork's own full `rust_verify_test` pass (4,649 passed, 0 failed, 58
+  ignored; [determinism](determinism.md#fixes)) is the evidence for the fork
+  commit. `deep-rvt` still compares the stock source build with and without
+  `sail-z3`; on rc.3 it reported VI-0008 output-order variants as Different
+  (release-candidate finding 11).
+- Performance claims in [performance](../performance.md) other than claim 6
+  were measured on stock Verus and are not yet re-measured on the fork.
