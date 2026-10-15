@@ -343,6 +343,29 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert not focus_target["reused"], (attempt, focus_target)
             source.write_text(good)
 
+        # Plain `sail verify` asks Verus for no attribution logs (ADR 0047):
+        # its output is plain Cargo-Verus's, it writes no logs, and a later
+        # `--output json` run that reuses its proof says the obligation detail
+        # was not recorded, with Verus's own verdicts.
+        source.write_text(good + "// plain sail verify establishes this proof\n")
+        logs_before = set(root.glob("cache/projects/*/*/runs/*/sidecars/*/logs"))
+        # The second run reuses the first's proof when the first was Current
+        # (and then, like Cargo's no-op, prints nothing), or establishes it.
+        for attempt in range(2):
+            human = bounded_verification([sail, "verify"], project, env, 240)
+            assert human.returncode == 0, human.stderr.decode()
+            if attempt == 0:
+                assert b"verification results:: 1 verified, 0 errors" in human.stdout, human.stdout.decode()
+        assert set(root.glob("cache/projects/*/*/runs/*/sidecars/*/logs")) == logs_before, "plain sail verify wrote attribution logs"
+        detail_run, detail, detail_target = managed()
+        assert detail_run.returncode == 0 and detail_target["reused"], diagnostic(detail)
+        attribution = detail_target["report"]["attribution"]
+        assert attribution["status"] == "unavailable", attribution
+        assert attribution["notes"][0].startswith("obligation detail not recorded"), attribution
+        assert verdicts(detail_target)[0]["verified"] == 1, verdicts(detail_target)
+        assert all(f["obligations"] is None for c in detail_target["report"]["crates"] for f in c["functions"])
+        source.write_text(good)
+
         # Pruning the workspace's managed directory costs only a rebuild: the
         # next run reuses nothing, verifies again with the same report, and the
         # run after it reuses the new receipt.
@@ -405,6 +428,6 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert all(t["reused"] and "dependency_store" not in t for t in repeated["targets"]), diagnostic(repeated)
         assert vstd(repeated)["establishing_run"] == stored_vstd["establishing_run"], diagnostic(repeated)
 
-        print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus and prune passed")
+        print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs and prune passed")
     finally:
         stop_daemon()

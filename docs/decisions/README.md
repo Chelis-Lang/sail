@@ -49,3 +49,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0044: Output schema v2: establishment and evidence tier](0044-output-schema-v2.md)
 - [0045: A machine-local store of verified registry dependencies](0045-dependency-store.md)
 - [0046: Managed verification is the only `sail verify`](0046-managed-verification-by-default.md)
+- [0047: Attribution logs on request, and cheaper managed checks](0047-attribution-logs-on-request.md)

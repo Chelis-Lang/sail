@@ -28,6 +28,9 @@
 #                       keep it short, it holds the daemon sockets
 #   SAIL_PERF_VEST_SRC  an existing vest clone with commit 11af01dd (else cloned)
 #   SAIL_PERF_MACHINE   free-text machine description for the header
+#   SAIL_PERF_BASELINES other Sail builds to measure in the same rotation, as
+#                       space-separated NAME=DIR pairs (DIR holds that build's
+#                       `sail` and `sail-z3`); each adds a mode `sail@NAME`
 #
 # Prints a table of median (min-max) wall seconds per mode and phase, and
 # keeps every log and results.tsv in the output directory.
@@ -35,7 +38,7 @@ set -euo pipefail
 
 project="${1:-}"
 rounds="${2:-3}"
-case "$project" in demo | vest) ;; *) sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
+case "$project" in demo | vest) ;; *) sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
 case "$rounds" in '' | *[!0-9]*) echo "ROUNDS must be a number" >&2; exit 2 ;; esac
 
 vest_commit=11af01ddaef76cceded03517cd48764adb9d35b1
@@ -216,6 +219,8 @@ run_phase() { # ROUND MODE DIR PHASE
   case "$mode" in
     plain) (cd "$dir" && cargo verus verify ${pkg_args[@]+"${pkg_args[@]}"}) >"$log" 2>&1 || code=$? ;;
     sail) (cd "$dir" && sail verify ${pkg_args[@]+"${pkg_args[@]}"}) >"$log" 2>&1 || code=$? ;;
+    sail@*) (cd "$dir" && PATH="$(baseline_dir "${mode#sail@}"):$PATH" \
+      sail verify ${pkg_args[@]+"${pkg_args[@]}"}) >"$log" 2>&1 || code=$? ;;
   esac
   t1=$(now)
   record "$round" "$mode" "$phase" "$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')" "$code"
@@ -250,8 +255,9 @@ run_mcp() { # ROUND DIR
 
 run_mode() { # ROUND MODE
   local round="$1" mode="$2" dir cache
-  dir="$out/r$round/$mode-proj"
-  cache="$out/r$round/c-$mode"
+  # Cargo package names (the demo is named after its directory) take no `@`.
+  dir="$out/r$round/${mode/@/-}-proj"
+  cache="$out/r$round/c-${mode/@/-}"
   rm -rf "$cache"
   mkdir -p "$cache"
   fresh_copy "$dir"
@@ -285,6 +291,23 @@ load() { uptime | sed 's/.*load average[s]*: //'; }
 } | tee "$out/header.txt"
 
 modes=(plain sail)
+baseline_names=() baseline_paths=()
+baseline_dir() { # NAME
+  local i
+  for i in "${!baseline_names[@]}"; do
+    [ "${baseline_names[$i]}" = "$1" ] && { echo "${baseline_paths[$i]}"; return; }
+  done
+  return 1
+}
+for pair in ${SAIL_PERF_BASELINES:-}; do
+  name="${pair%%=*}" bdir="${pair#*=}"
+  case "$name" in '' | *[!a-z0-9-]*) echo "baseline name must be [a-z0-9-]: $pair" >&2; exit 2 ;; esac
+  [ -x "$bdir/sail" ] && [ -x "$bdir/sail-z3" ] || { echo "no sail and sail-z3 in $bdir" >&2; exit 2; }
+  baseline_names+=("$name")
+  baseline_paths+=("$(cd "$bdir" && pwd)")
+  modes+=("sail@$name")
+  echo "baseline sail@$name: $("$bdir/sail" --version 2>/dev/null | head -1) at $bdir" | tee -a "$out/header.txt"
+done
 for ((r = 1; r <= rounds; r++)); do
   mkdir -p "$out/r$r"
   for ((i = 0; i < ${#modes[@]}; i++)); do
@@ -295,7 +318,7 @@ echo "load average at end: $(load)" | tee -a "$out/header.txt"
 
 # Report: median (min-max) seconds per mode and phase.
 table() {
-  awk -F'\t' '
+  awk -F'\t' -v modes="${modes[*]}" '
     function med(a, n,   i, j, t) {
       for (i = 2; i <= n; i++) { t = a[i]; for (j = i - 1; j >= 1 && a[j] > t; j--) a[j + 1] = a[j]; a[j + 1] = t }
       return (n % 2) ? a[(n + 1) / 2] : (a[n / 2] + a[n / 2 + 1]) / 2
@@ -306,9 +329,10 @@ table() {
       split("cold warm edit fail fix warm2", ph, " ")
       print "| Mode | cold | warm | edit | fail | fix | warm2 |"
       print "|---|---:|---:|---:|---:|---:|---:|"
-      split("plain sail", md, " ")
+      nm = split(modes, md, " ")
       label["plain"] = "`cargo verus verify`"; label["sail"] = "`sail verify`"
-      for (m = 1; m <= 2; m++) {
+      for (m = 3; m <= nm; m++) label[md[m]] = "`sail verify` (" substr(md[m], 6) ")"
+      for (m = 1; m <= nm; m++) {
         row = "| " label[md[m]]
         for (p = 1; p <= 6; p++) {
           k = md[m] SUBSEP ph[p]

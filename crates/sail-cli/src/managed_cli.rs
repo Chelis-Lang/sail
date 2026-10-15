@@ -64,7 +64,10 @@ fn options(args: &[String]) -> Result<Options, (&'static str, String)> {
     Ok(result)
 }
 
-pub(crate) fn config(args: Vec<String>) -> Result<sail_verus::managed::Config, String> {
+pub(crate) fn config(
+    args: Vec<String>,
+    attribution_logs: bool,
+) -> Result<sail_verus::managed::Config, String> {
     let cargo_verus =
         crate::verify::cargo_verus().map_err(|message| format!("error[SAIL0101]: {message}"))?;
     let sail = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -93,6 +96,7 @@ pub(crate) fn config(args: Vec<String>) -> Result<sail_verus::managed::Config, S
         socket: daemon.then_some(socket),
         args,
         force: std::env::var_os("SAIL_MANAGED_FORCE").is_some_and(|v| v == "1"),
+        attribution_logs,
     })
 }
 
@@ -170,7 +174,10 @@ pub(crate) fn verify(
     if worker {
         crate::portfolio::guard_parent();
     }
-    let config = match config(options.args) {
+    // Obligation detail (AIR and SMT transcript logs) is written only when
+    // this run's report is read: `--output json`, which jobs and MCP use.
+    // The interactive engine always logs (ADR 0047).
+    let config = match config(options.args, options.json) {
         Ok(c) => c,
         Err(message) => return failure(&message, out, err, options.json),
     };

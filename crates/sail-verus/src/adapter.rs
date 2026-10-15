@@ -355,7 +355,7 @@ fn driver() -> Result<ExitCode> {
     let dir = runtime.sidecars.join(identity.key());
     std::fs::create_dir_all(dir.join("provenance"))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let logs = dir.join("logs");
+    let logs = runtime.attribution_logs.then(|| dir.join("logs"));
     // VI-0011: the pinned launcher chooses macro mode before decoding Cargo's
     // effective per-package options. Relocate only an already requested mode,
     // and only for the explicitly selected optional engine. Stock is unchanged.
@@ -407,10 +407,14 @@ fn driver() -> Result<ExitCode> {
     let mut cmd = Command::new(&wrapper);
     cmd.args(&launcher_args)
         .envs(&launcher_environment)
-        .args(observation_args(flags, &logs))
-        .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
+        .args(observation_args(flags, logs.as_deref()))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    // Session records join cached answers to transcripts; without logs there
+    // is nothing to join them to.
+    if logs.is_some() {
+        cmd.env("SAIL_PROVENANCE_DIR", dir.join("provenance"));
+    }
     let source_events = dir.join("engine.events.jsonl");
     if let Some(engine) = &runtime.engine {
         cmd.env("SAIL_ENGINE", "interactive")
@@ -478,7 +482,7 @@ fn driver() -> Result<ExitCode> {
         stock
             .args(&launcher_args)
             .envs(&launcher_environment)
-            .args(observation_args(flags, &logs));
+            .args(observation_args(flags, logs.as_deref()));
         let captured = std::process::Output {
             stdout,
             stderr,
@@ -529,13 +533,20 @@ pub const OBSERVATION_LOG_FLAGS: &[&str] =
     &["--log", "air", "--log", "smt-transcript", "--log-dir"];
 
 /// The flags the driver adds to every verified target: the structured
-/// output the user did not already request, and isolated logs.
-fn observation_args(flags: crate::verus_stdout::UserFlags, logs: &Path) -> Vec<OsString> {
+/// output the user did not already request, and, when the run's report is
+/// read ([`Runtime::attribution_logs`]), isolated attribution logs.
+fn observation_args(flags: crate::verus_stdout::UserFlags, logs: Option<&Path>) -> Vec<OsString> {
     let mut args: Vec<OsString> = flags.sail_flags().into_iter().map(OsString::from).collect();
-    args.extend(OBSERVATION_LOG_FLAGS.iter().map(OsString::from));
-    args.push(logs.as_os_str().to_owned());
+    if let Some(logs) = logs {
+        args.extend(OBSERVATION_LOG_FLAGS.iter().map(OsString::from));
+        args.push(logs.as_os_str().to_owned());
+    }
     args
 }
+
+/// The attribution note of a report whose run asked Verus for no logs
+/// (ADR 0047). Its functions' verdicts, rlimit and time are Verus's own.
+pub const NOT_REQUESTED: &str = "obligation detail not recorded: the run that established this report did not request it (plain `sail verify`); `sail verify --output json`, jobs and MCP record it";
 
 /// Retains interrupted engine evidence and restarts the exact stock compiler
 /// invocation. Engine observations and focused evidence cannot seal a report
@@ -648,16 +659,25 @@ fn finish(
         .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let (docs, _) = crate::attribution::json_documents(stdout);
-    let logs =
-        crate::attribution::read_logs(&full_log_dir(&dir.join("logs"), engine)).unwrap_or_default();
-    let provenance = if runtime.daemon {
-        crate::attribution::Provenance::Records(crate::attribution::read_session_records(
-            &dir.join("provenance"),
-        ))
+    let attr = if runtime.attribution_logs {
+        let logs = crate::attribution::read_logs(&full_log_dir(&dir.join("logs"), engine))
+            .unwrap_or_default();
+        let provenance = if runtime.daemon {
+            crate::attribution::Provenance::Records(crate::attribution::read_session_records(
+                &dir.join("provenance"),
+            ))
+        } else {
+            crate::attribution::Provenance::NoCache
+        };
+        crate::attribution::attribute(&docs, Some(&logs), &provenance, None)
     } else {
-        crate::attribution::Provenance::NoCache
+        crate::attribution::attribute(
+            &docs,
+            None,
+            &crate::attribution::Provenance::NoCache,
+            Some(NOT_REQUESTED),
+        )
     };
-    let attr = crate::attribution::attribute(&docs, Some(&logs), &provenance, None);
     // Forwarded selectors are per package. A dependency did not receive the
     // requesting package's focused flags, so its full proof is not scoped away.
     let mut report_args = runtime.args.clone();
@@ -889,6 +909,29 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn attribution_logs_are_requested_only_with_a_log_directory() {
+        let flags = crate::verus_stdout::UserFlags::of(&[]);
+        let plain = observation_args(flags, None);
+        assert_eq!(plain, ["--output-json", "--time"].map(OsString::from));
+        let logged = observation_args(flags, Some(Path::new("logs")));
+        assert_eq!(
+            logged,
+            [
+                "--output-json",
+                "--time",
+                "--log",
+                "air",
+                "--log",
+                "smt-transcript",
+                "--log-dir",
+                "logs"
+            ]
+            .map(OsString::from)
+        );
+    }
+
     #[cfg(unix)]
     fn capture_engine(
         log: &InvocationLog<'_>,
