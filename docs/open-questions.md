@@ -342,6 +342,11 @@ planned for releases after 0.1.0. The owner answered all twelve on
     landed and is ready for brittonr's review of the fully performance-improved
     Sail.
 
+    **Superseded 2026-10-15 (owner):** "We're doing the core verus and perf
+    features first and then backburnering the growth to multibackends and
+    prep for oyster and such." M10, including the interface specifications,
+    waits until M11 (Verus core and performance, #168) completes.
+
 ## 0.1.0 release (owner direction, 2026-10-15)
 
 28. **`sail new` or exposing `cargo-verus`.** A first-time user needs a project
