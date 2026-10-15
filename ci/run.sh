@@ -10,24 +10,27 @@
 #   e2e [legacy|managed|repair] Run all phases by default; CI runs them in parallel.
 #                        `sail new` writes what stock `cargo verus new`
 #                        writes, and its lib and bin projects verify;
-#                        `sail verify` (Sail's Verus, the fork runtime;
+#                        `sail verify` (managed verification, the default,
+#                        ADR 0045, on Sail's Verus, the fork runtime,
 #                        ADR 0043) vs stock `cargo verus verify` on a fresh
 #                        project, cold and warm: identical output and exit;
 #                        then `sail verify --output json`: unchanged stderr
-#                        and exit, a schema-v1 document agreeing with
-#                        Verus's own --output-json; then one `verify` call
-#                        through `sail mcp`, agreeing with that document;
-#                        managed receipts, durable jobs and asynchronous MCP;
-#                        repair CLI/MCP against a validated prebuilt engine
+#                        and exit, a sail-project-result whose requested
+#                        report agrees with Verus's own --output-json; then
+#                        one `verify` call through `sail mcp`, agreeing with
+#                        that document; managed receipts, durable jobs and
+#                        asynchronous MCP; repair CLI/MCP against a
+#                        validated prebuilt engine
 #   conformance TIER [pr | SELECTION...]
-#                        plain stock Verus vs Sail's Verus (the fork) with
-#                        sail-z3 pass-through, then with the
-#                        cache on (fill, then warm), then the source-engine
-#                        arm (validated prebuilt engine vs plain Verus on
-#                        verdicts and diagnostics). `pr` limits the fast
-#                        tier to the guide examples; otherwise extra
-#                        arguments (for example `--project anvil`) are
-#                        passed to sail-conformance
+#                        plain stock Verus vs Sail's Verus (the fork) run as
+#                        `sail verify` runs it (sail-z3 and the managed
+#                        driver's logging flags; ADR 0045): without the
+#                        daemon, then with the cache on (fill, then warm),
+#                        then the source-engine arm (validated prebuilt
+#                        engine vs plain Verus on verdicts and diagnostics).
+#                        `pr` limits the fast tier to the guide examples;
+#                        otherwise extra arguments (for example
+#                        `--project anvil`) are passed to sail-conformance
 #   host                 local-only, outside the image, on the developer's
 #                        own machine (macOS or Linux): clippy and the
 #                        non-solver tests
@@ -220,9 +223,10 @@ RS
       entries="$(find "$SAIL_CACHE_DIR/results/v2" -type f | wc -l)"
       echo "e2e: identical to cargo verus verify (exit $(cat "$work/plain.rc")); cache entries: $entries"
       [ "$entries" -gt 0 ]
-      # `--output json` (ADR 0014): stderr and exit code unchanged, stdout one
-      # schema-v1 document whose verdicts agree with Verus's own --output-json.
-      # The runs above filled the cache, so every answer is served from it.
+      # `--output json` (ADR 0014, ADR 0045): stderr and exit code unchanged,
+      # stdout one sail-project-result whose requested target's schema-v2
+      # report agrees with Verus's own --output-json. The runs above filled
+      # the cache, so every answer is served from it.
       sail_run json "$sail" verify --output json
       plain_run verusjson cargo verus verify -- --output-json --time
       for part in rc err; do
@@ -283,6 +287,8 @@ RS
     fi
     if [ "$tier" = fast ]; then jobs=4; else jobs=3; fi
     out="${SAIL_CONFORMANCE_OUT:-conformance-out}"
+    # The Sail side runs Verus as `sail verify` does (ADR 0045): first with
+    # no daemon, as when the cache is unavailable.
     ./target/release/sail-conformance run "${select[@]}" --jobs "$jobs" --out "$out/pass-through"
     # With the cache on: fill, then warm. A difference in either is a failure.
     start_daemon

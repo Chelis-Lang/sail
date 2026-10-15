@@ -1,6 +1,8 @@
 //! MCP's legacy compatibility path over a local duplex stream.
-//! A configured older-Sail adapter delegates ordinary verification to the CLI,
-//! replaying recorded Verus diagnostics/models/logs through fake cargo-verus.
+//! A configured older Sail, one without durable jobs, answers `verify` with
+//! the schema-v1 report its `sail verify --output json` printed: recorded
+//! here from the attribution fixture (`report.golden.json`, `legacy-*.json`).
+//! Other commands go to this build's CLI, with a fake cargo-verus.
 //! Current managed jobs are tested separately by `job_tools` and real CI acceptance.
 //! No real Verus or Z3 runs here.
 #![cfg(unix)]
@@ -25,6 +27,8 @@ struct Client {
 
 impl Client {
     fn start(dir: &Path, env: &[(&str, PathBuf)]) -> Self {
+        let root = dir.parent().unwrap_or(dir);
+        let fx = fixture();
         let legacy = dir.parent().unwrap_or(dir).join("legacy-sail");
         let executable = legacy.with_file_name("real-sail");
         if !executable.is_file() {
@@ -37,10 +41,26 @@ impl Client {
         for (key, value) in env {
             let _ = writeln!(script, "export {key}='{}'", value.display());
         }
+        // An older Sail has no jobs. Its `verify --output json` printed one
+        // report (it passed an unknown `--background` on to Cargo): the
+        // recorded report for each state of the fixture project.
         let _ = write!(
             script,
-            "if [ \"$1\" = jobs ]; then exit 2; fi\nif [ \"$1\" = verify ] && [ \"$2\" = --background ]; then shift 2; set -- verify \"$@\"; fi\nexec '{}' \"$@\"\n",
-            executable.display()
+            r#"if [ "$1" = jobs ]; then exit 2; fi
+if [ "$1" = verify ]; then
+  echo "$@" >> '{root}/sail-args.log'
+  [ -f '{root}/slow' ] && {{ echo started > '{root}/slow.started'; sleep 30; echo finished > '{root}/slow.finished'; }}
+  [ -f '{root}/fresh' ] && {{ cat '{fx}/legacy-fresh.json'; exit 0; }}
+  [ -f '{root}/broken' ] && {{ printf 'error[E0425]: cannot find value `y` in this scope\n --> src/lib.rs:1:14\n\n' >&2; cat '{fx}/legacy-broken.json'; exit 101; }}
+  cat '{fx}/report.golden.json'
+  cat '{fx}/stderr.txt' >&2
+  exit 1
+fi
+exec '{exe}' "$@"
+"#,
+            root = root.display(),
+            fx = fx.display(),
+            exe = executable.display()
         );
         write_exec(&legacy, &script);
         let (server, stdout) = UnixStream::pair().unwrap_or_else(|error| unreachable!("{error}"));
@@ -318,13 +338,12 @@ exit 1
     // A scoped verify passes the module and function to Verus.
     let v = c.tool("verify", &json!({"project_dir": project, "module": "arith", "function": "mul_pos", "verus_args": ["--rlimit", "20"]}));
     assert_eq!(v["isError"], false, "{v}");
-    let logged = std::fs::read_to_string(&args_log).unwrap_or_default();
+    let logged = std::fs::read_to_string(root.join("sail-args.log")).unwrap_or_default();
     let call_args = logged.lines().last().unwrap_or_default();
-    assert!(
-        call_args.starts_with(
-            "verus focus -- --verify-only-module arith --verify-function mul_pos --rlimit 20"
-        ),
-        "{call_args}"
+    assert_eq!(
+        call_args,
+        "verify --output json -- --verify-only-module arith --verify-function mul_pos --rlimit 20",
+        "{logged}"
     );
     let cr = c.tool("cached_result", &json!({}));
     assert_eq!(

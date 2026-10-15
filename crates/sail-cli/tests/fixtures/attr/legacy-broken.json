@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "sail_version": "0.0.0",
+  "mode": "default",
+  "command": [],
+  "exit_code": 101,
+  "solver": {
+    "name": "z3",
+    "version": null,
+    "path": null,
+    "sha256": null
+  },
+  "cache": {
+    "daemon": false
+  },
+  "attribution": {
+    "status": "unavailable",
+    "notes": [
+      "Verus produced no results: Cargo found every package up to date, or the build failed before verification"
+    ],
+    "unmatched_sessions": 0
+  },
+  "crates": [],
+  "diagnostics": [
+    {
+      "level": "error",
+      "code": "E0425",
+      "message": "cannot find value `y` in this scope",
+      "spans": [
+        {
+          "file": "src/lib.rs",
+          "line": 1,
+          "column": 14,
+          "primary": true
+        }
+      ],
+      "rendered": "error[E0425]: cannot find value `y` in this scope\n --> src/lib.rs:1:14"
+    }
+  ],
+  "summary": {
+    "functions": 0,
+    "verified": 0,
+    "failed": 0,
+    "unknown": 0,
+    "provisional": 0,
+    "unstable": 0
+  },
+  "error": null
+}

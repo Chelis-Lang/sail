@@ -359,3 +359,14 @@ planned for releases after 0.1.0. The owner answered all twelve on
     validation passes. Cut 0.1.0 from rc.5. Managed-by-default mode and
     pre-verified vstd are the headline speed story, and a user's first
     public impression should be of that build.
+30. **Unsupported setups now that managed verification is the only
+    `sail verify`** (ADR 0045). Managed verification refuses a process
+    environment with `LD_LIBRARY_PATH`, `LD_PRELOAD` or the macOS `DYLD_*`
+    loader variables, and Cargo `--config`, `--target-dir`, Verus log options,
+    tests, benches and examples (`SAIL3100`, `SAIL3112`), because it cannot
+    bind what they change to a receipt. The pass-through used to run them.
+    `LD_LIBRARY_PATH` is common on Linux (CUDA, conda, module systems), so
+    such users cannot use `sail verify` at all today. Proposal: bind the
+    loader variables' values into the context and keep refusing only
+    `LD_PRELOAD`/`DYLD_INSERT_LIBRARIES`, then support tests and examples;
+    each as its own change with conformance. Which setups matter first?

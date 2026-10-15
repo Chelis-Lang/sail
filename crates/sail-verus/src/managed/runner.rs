@@ -583,7 +583,12 @@ fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     Ok(())
 }
 
-fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<i32>> {
+fn invoke(
+    config: &Config,
+    paths: &Paths,
+    out: &mut Option<&mut dyn Write>,
+    err: &mut dyn Write,
+) -> Result<Option<i32>> {
     let split = config
         .args
         .iter()
@@ -632,40 +637,120 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-    let stdout = child.stdout.take().map(|mut pipe| {
-        std::thread::spawn(move || {
-            let mut bytes = Vec::new();
-            pipe.read_to_end(&mut bytes).map(|_| bytes)
-        })
-    });
-    let mut captured = Vec::new();
-    if let Some(mut pipe) = child.stderr.take() {
-        let mut buf = vec![0; 65536];
-        loop {
-            let n = pipe
-                .read(&mut buf)
-                .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-            if n == 0 {
-                break;
-            }
-            captured.extend_from_slice(&buf[..n]);
-            err.write_all(&buf[..n])
-                .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-        }
-    }
+    let (stdout, captured) = relay(&mut child, out, err)?;
     let code = child
         .wait()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?
         .code();
-    let stdout = stdout
-        .ok_or_else(|| Error::new("SAIL3106", "missing Cargo output pipe"))?
-        .join()
-        .map_err(|_| Error::new("SAIL3106", "Cargo output reader failed"))?
-        .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
     std::fs::write(paths.run.join("cargo.stdout"), stdout)
         .and_then(|()| std::fs::write(paths.run.join("cargo.stderr"), captured))
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
     Ok(code)
+}
+
+/// One piece of Cargo-Verus output.
+enum Output {
+    /// A line of stdout, with its newline.
+    Line(Vec<u8>),
+    /// A chunk of stderr.
+    Diagnostics(Vec<u8>),
+}
+
+/// Relays Cargo-Verus's output as it arrives and returns copies of its
+/// stdout and stderr. Stderr goes to `err` verbatim (Cargo's status lines
+/// and Verus's diagnostics). Stdout carries Cargo's JSON messages, which
+/// Sail keeps, and Verus's own stdout as the driver rebuilt it, which goes
+/// to `out` when the caller shows Verus's output (`sail verify`). A JSON
+/// caller passes no `out`: its stdout holds only its document, and its
+/// stderr is what plain `cargo verus verify` prints there.
+fn relay(
+    child: &mut std::process::Child,
+    out: &mut Option<&mut dyn Write>,
+    err: &mut dyn Write,
+) -> Result<(Vec<u8>, Vec<u8>)> {
+    use std::io::BufRead as _;
+    let failed = |e: std::io::Error| Error::new("SAIL3106", e.to_string());
+    let (tx, rx) = std::sync::mpsc::channel::<std::io::Result<Output>>();
+    let readers = [
+        child.stdout.take().map(|pipe| {
+            let tx = tx.clone();
+            std::thread::spawn(move || {
+                let mut reader = std::io::BufReader::new(pipe);
+                loop {
+                    let mut line = Vec::new();
+                    match reader.read_until(b'\n', &mut line) {
+                        Ok(0) => break,
+                        Ok(_) => {
+                            if tx.send(Ok(Output::Line(line))).is_err() {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Err(e));
+                            break;
+                        }
+                    }
+                }
+            })
+        }),
+        child.stderr.take().map(|mut pipe| {
+            let tx = tx.clone();
+            std::thread::spawn(move || {
+                let mut buf = vec![0; 65536];
+                loop {
+                    match pipe.read(&mut buf) {
+                        Ok(0) => break,
+                        Ok(n) => {
+                            if tx.send(Ok(Output::Diagnostics(buf[..n].to_vec()))).is_err() {
+                                break;
+                            }
+                        }
+                        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                        Err(e) => {
+                            let _ = tx.send(Err(e));
+                            break;
+                        }
+                    }
+                }
+            })
+        }),
+    ];
+    drop(tx);
+    if readers.iter().any(Option::is_none) {
+        return Err(Error::new("SAIL3106", "missing Cargo output pipe"));
+    }
+    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+    for piece in rx {
+        match piece.map_err(failed)? {
+            Output::Diagnostics(bytes) => {
+                err.write_all(&bytes).map_err(failed)?;
+                stderr.extend_from_slice(&bytes);
+            }
+            Output::Line(line) => {
+                if let Some(out) = out
+                    && !cargo_message(&line)
+                {
+                    out.write_all(&line)
+                        .and_then(|()| out.flush())
+                        .map_err(failed)?;
+                }
+                stdout.extend_from_slice(&line);
+            }
+        }
+    }
+    for reader in readers.into_iter().flatten() {
+        reader
+            .join()
+            .map_err(|_| Error::new("SAIL3106", "Cargo output reader failed"))?;
+    }
+    Ok((stdout, stderr))
+}
+
+/// Whether a stdout line is one of Cargo's JSON messages (an object with a
+/// `reason`), rather than text a compiler printed.
+fn cargo_message(line: &[u8]) -> bool {
+    serde_json::from_slice::<Value>(line)
+        .is_ok_and(|value| value.get("reason").is_some_and(Value::is_string))
 }
 
 pub(crate) fn focused(args: &[String]) -> bool {
@@ -942,6 +1027,15 @@ fn sibling_receipts(paths: &Paths, context: &str) -> Vec<(String, PathBuf)> {
         .collect();
     siblings.sort();
     siblings
+}
+
+/// The two receipt fields that decide a targeted clean. Reading only these
+/// skips the receipt's embedded report (megabytes for vstd) instead of
+/// building it; reuse still reads and checks the complete receipt.
+#[derive(serde::Deserialize)]
+struct ReceiptRevision {
+    package_id: String,
+    input_revision: String,
 }
 
 #[allow(
@@ -1484,12 +1578,27 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     run_engine(config, err, None)
 }
 
+/// [`run`], also showing Verus's own stdout on `out` as plain
+/// `cargo verus verify` would print it. `sail verify` uses this; JSON callers
+/// use [`run`], whose stdout is theirs.
+///
+/// # Errors
+///
+/// As [`run`].
+pub fn run_showing_output(
+    config: &Config,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> Result<ProjectResult> {
+    run_engine_held(config, Some(out), err, None).map(|(result, _)| result)
+}
+
 pub(crate) fn run_engine(
     config: &Config,
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<ProjectResult> {
-    run_engine_held(config, err, engine).map(|(result, _)| result)
+    run_engine_held(config, None, err, engine).map(|(result, _)| result)
 }
 
 /// [`run_engine`], also returning the shared workspace lock, so the caller can
@@ -1500,6 +1609,7 @@ pub(crate) fn run_engine(
 )]
 pub(crate) fn run_engine_held(
     config: &Config,
+    mut out: Option<&mut dyn Write>,
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<(ProjectResult, File)> {
@@ -1534,7 +1644,7 @@ pub(crate) fn run_engine_held(
     }) {
         return Err(Error::new(
             "SAIL3100",
-            "incremental verification owns its target and logs and requires Cargo verification",
+            "sail verify owns the Cargo target and Verus logs and verifies lib and bin targets: --target-dir, --log options, --no-verify, --sysroot, tests, benches and examples are not supported",
         ));
     }
     let started = Instant::now();
@@ -1563,7 +1673,7 @@ pub(crate) fn run_engine_held(
     if std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some() {
         return Err(Error::new(
             "SAIL3100",
-            "incremental verification does not support a chained workspace rustc wrapper",
+            "sail verify does not support a chained workspace rustc wrapper (RUSTC_WORKSPACE_WRAPPER)",
         ));
     }
     let expected = expected_targets(&data, &config.args);
@@ -1680,7 +1790,7 @@ pub(crate) fn run_engine_held(
         .into_iter()
         .flatten()
         .flatten()
-        .filter_map(|e| read::<Receipt>(&e.path()))
+        .filter_map(|e| read::<ReceiptRevision>(&e.path()))
         .filter(|r| r.input_revision != target_revision(&data, &r.package_id))
         .map(|r| r.package_id)
         .collect::<BTreeSet<_>>()
@@ -1745,7 +1855,7 @@ pub(crate) fn run_engine_held(
     };
     json(&paths.runtime, &runtime)?;
     let invocation_phase = diagnostics.phase(Phase::Invocation);
-    let mut exit = invoke(config, &paths, err)?;
+    let mut exit = invoke(config, &paths, &mut out, err)?;
     drop(invocation_phase);
     let records_phase = diagnostics.phase(Phase::TargetRecords);
     outside_scope |= !units_in_scope(&paths);
@@ -1768,7 +1878,7 @@ pub(crate) fn run_engine_held(
         std::fs::remove_dir_all(paths.run.join("pending-receipts"))
             .and_then(|()| std::fs::create_dir_all(paths.run.join("pending-receipts")))
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
-        exit = invoke(config, &paths, err)?;
+        exit = invoke(config, &paths, &mut out, err)?;
         outside_scope |= !units_in_scope(&paths);
         let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
         targets = retried;

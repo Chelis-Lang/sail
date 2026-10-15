@@ -119,7 +119,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             # input identity; invocation arguments and compiler flags are unchanged.
             observed_env = dict(env, SAIL_JOB_EVENTS=str(events))
             try:
-                run = bounded_verification([sail, "verify", "--incremental", "--output", "json", *args],
+                run = bounded_verification([sail, "verify", "--output", "json", *args],
                                            project, observed_env, 240)
             except subprocess.TimeoutExpired as failure:
                 (evidence / (label + ".stdout.json")).write_bytes(failure.stdout or b"")

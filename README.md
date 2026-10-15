@@ -118,28 +118,29 @@ In a Cargo project that Verus already verifies, run `sail verify` instead of
 `cargo verus verify`; nothing needs to change in the project.
 
 `sail verify` takes the same arguments as `cargo verus verify` and prints the
-same output. The first run also builds and checks `vstd`, which takes about
-half a minute. It starts the Sail cache daemon on demand; you never need to
-start it yourself. Run it again after an edit: solver queries Verus has seen
-before are answered from the cache. To stop using Sail, run your own
+same output, with the same exit code. It builds in its own Cargo target under
+the Sail cache and never touches your `target/`. The first run in a project
+compiles the dependencies and verifies `vstd` there, which takes about half a
+minute. It starts the Sail cache daemon on demand; you never need to start it
+yourself. Run it again after an edit: targets whose inputs are unchanged keep
+their proof receipts and are not verified again, and solver queries Verus has
+seen before are answered from the cache. To stop using Sail, run your own
 `cargo verus verify` again. Nothing else changes.
 
-`sail verify --output json` also prints one JSON document on stdout with
-per-function verdicts and per-obligation results
+`sail verify --output json` prints one JSON document on stdout instead: a
+complete per-function report for every target, including targets whose
+proofs were reused because their inputs are unchanged
 ([output schema](docs/output-schema.md)). `sail COMMAND --help` lists each
-command's options.
+command's options. `--incremental`, which used to switch this mode on, is
+accepted and does nothing.
 
 ## Reports, jobs and watch
 
-`--incremental` switches to managed verification: complete reports for every
-target, including targets whose proofs were reused because their inputs are
-unchanged, and durable jobs you can inspect later.
-
 ```sh
-sail verify --incremental --output json  # complete report, reused targets included
-sail verify --background                 # submit a job and keep working
-sail jobs list                           # then: jobs status|result|logs|cancel ID
-sail watch                               # re-verify 300 ms after files stop changing
+sail verify --output json   # complete report, reused targets included
+sail verify --background    # submit a job and keep working
+sail jobs list              # then: jobs status|result|logs|cancel ID
+sail watch                  # re-verify 300 ms after files stop changing
 ```
 
 Each result says whether it is still **Current** (its inputs are unchanged),
@@ -196,9 +197,12 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
 - **Sail runs only its own Verus,** built from its fork at the Verus release
   it pins (`0.2026.10.04.426d8b0`). Projects that need another Verus release
   are not supported yet.
-- **Cargo projects only.** `sail verify`, `--incremental`, `watch` and MCP run
-  `cargo verus`. Projects verified with `verus file.rs` directly are not
-  supported (the opt-in portfolio is the exception, with `--verus-source`).
+- **Cargo library and binary targets only.** `sail verify`, `watch` and MCP
+  run `cargo verus`. Projects verified with `verus file.rs` directly are not
+  supported (the opt-in portfolio is the exception, with `--verus-source`),
+  and neither are tests, benches, examples, `--target-dir`, Verus's `--log`
+  options, Cargo `--config` overrides or an `LD_LIBRARY_PATH` set in the
+  environment; `cargo verus verify` still runs those, without Sail ([details](docs/workspace-verification.md#what-sail-verify-does-not-support)).
 - **Speed is bounded by the solver's share of the work.** Sail caches solver
   answers; Rust compilation and Verus's own frontend still run every time.
   See [performance](docs/performance.md) for each claim and how to reproduce
@@ -207,14 +211,15 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
     faster (about 24 s against 34–38 s); the Rust and Verus frontend sets
     that 24 s floor;
   - small projects and cold first runs take the same time as plain Verus;
-  - unchanged re-verification with `--incremental` or MCP `verify` takes
-    0.3–1.8 s, where plain Cargo does nothing in 0.1–0.2 s; its value is the
-    complete report for agents, not speed.
+  - re-running `sail verify` on unchanged code takes about 0.3 s on a small
+    project and 1.3 s on vest, where plain Cargo does nothing in 0.1–0.2 s;
+    Sail checks every input and keeps the complete report for agents.
 - **macOS.** Receipt reuse works on Linux and macOS. On macOS a Cargo
   configuration file created and deleted again during a single run is not
   detected; see [freshness](docs/freshness.md#what-these-checks-do-not-catch).
-- **Each new project or worktree verifies vstd once** in managed mode, about
-  30 s, before reuse starts.
+- **Each new project or worktree verifies vstd once,** about 30 s, before
+  reuse starts, even when its own `target/` is already built. So does a new
+  combination of Verus arguments.
 - **Proof repair is experimental** (below).
 
 See [known issues](docs/known-issues.md) for the full list.

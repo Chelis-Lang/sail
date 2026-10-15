@@ -22,6 +22,7 @@ pub mod run;
 pub mod rvt;
 pub mod source_build;
 pub mod toolchain;
+mod verus_stdout;
 
 /// An error with a stable code (`SAIL3xxx`) and a message.
 #[derive(Debug, Clone, PartialEq, Eq)]

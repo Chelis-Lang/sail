@@ -283,24 +283,29 @@ pub(super) fn closure_digests(
     snapshot
         .digests
         .iter()
-        .filter(|(path, _)| scope.contains(path) || scope.manifests.contains(*path))
+        .filter(|(path, _)| scope.contains(path) || scope.manifests.contains(path.as_path()))
         .map(|(path, hash)| (path.clone(), hash.clone()))
         .collect()
 }
 
 /// Package directories inside and outside one selection's closure, and the
 /// manifests Cargo reads to load the workspace.
+///
+/// Sets, not lists: a run checks every input file (thousands, with registry
+/// dependencies) against every package directory, and testing a file's
+/// ancestors for membership replaces a scan of all packages per file
+/// (about 230 ms per vest run).
 struct Scope {
-    inside: Vec<PathBuf>,
-    outside: Vec<PathBuf>,
-    manifests: Vec<PathBuf>,
+    inside: std::collections::HashSet<PathBuf>,
+    outside: std::collections::HashSet<PathBuf>,
+    manifests: std::collections::HashSet<PathBuf>,
 }
 impl Scope {
     fn new(data: &Value, closure: &BTreeSet<String>) -> Self {
         let mut scope = Self {
-            inside: Vec::new(),
-            outside: Vec::new(),
-            manifests: Vec::new(),
+            inside: std::collections::HashSet::new(),
+            outside: std::collections::HashSet::new(),
+            manifests: std::collections::HashSet::new(),
         };
         for package in data["packages"].as_array().into_iter().flatten() {
             let Some(manifest) = package["manifest_path"].as_str().map(Path::new) else {
@@ -311,15 +316,15 @@ impl Scope {
             };
             // An unidentified package is never excluded from coverage.
             if package["id"].as_str().is_none_or(|id| closure.contains(id)) {
-                scope.inside.push(directory.to_owned());
+                scope.inside.insert(directory.to_owned());
             } else {
-                scope.outside.push(directory.to_owned());
+                scope.outside.insert(directory.to_owned());
             }
             if data["workspace_members"]
                 .as_array()
                 .is_some_and(|members| members.contains(&package["id"]))
             {
-                scope.manifests.push(manifest.to_owned());
+                scope.manifests.insert(manifest.to_owned());
             }
         }
         if let Some(workspace) = data["workspace_root"].as_str().map(Path::new) {
@@ -333,10 +338,12 @@ impl Scope {
         scope
     }
     /// Inside a closure package directory (nested packages stay covered), or
-    /// outside every package directory that is not in the closure.
+    /// outside every package directory that is not in the closure. A path
+    /// starts with a directory exactly when the directory is one of its
+    /// ancestors (both compare by component).
     fn contains(&self, path: &Path) -> bool {
-        self.inside.iter().any(|d| path.starts_with(d))
-            || !self.outside.iter().any(|d| path.starts_with(d))
+        path.ancestors().any(|d| self.inside.contains(d))
+            || !path.ancestors().any(|d| self.outside.contains(d))
     }
 }
 
@@ -475,6 +482,44 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 
 #[cfg(test)]
 mod tests {
+    /// Scope membership by ancestor sets is the original definition: inside
+    /// a closure package directory, or outside every other package directory.
+    #[test]
+    fn scope_membership_matches_directory_prefixes() {
+        use std::collections::BTreeSet;
+        use std::path::Path;
+        let data = serde_json::json!({
+            "workspace_root": "/nonexistent-ws",
+            "workspace_members": ["a"],
+            "packages": [
+                {"id": "a", "manifest_path": "/ws/a/Cargo.toml"},
+                {"id": "b", "manifest_path": "/ws/a/nested/Cargo.toml"},
+                {"id": "c", "manifest_path": "/reg/c-1.0/Cargo.toml"},
+                {"manifest_path": "/reg/unknown/Cargo.toml"}
+            ]
+        });
+        let closure: BTreeSet<String> = ["a".to_owned()].into();
+        let scope = super::Scope::new(&data, &closure);
+        let inside = ["/ws/a", "/reg/unknown"];
+        let outside = ["/ws/a/nested", "/reg/c-1.0"];
+        for path in [
+            "/ws/a/src/lib.rs",
+            "/ws/a/nested/src/lib.rs",
+            "/reg/c-1.0/src/lib.rs",
+            "/reg/c-1.0x/src/lib.rs",
+            "/reg/unknown/x.rs",
+            "/elsewhere/config.toml",
+            "/ws/a",
+            "/reg/c-1.0",
+        ] {
+            let path = Path::new(path);
+            let original = inside.iter().any(|d| path.starts_with(d))
+                || !outside.iter().any(|d| path.starts_with(d));
+            assert_eq!(scope.contains(path), original, "{}", path.display());
+        }
+        assert!(scope.manifests.contains(Path::new("/ws/a/Cargo.toml")));
+    }
+
     #[test]
     fn metadata_command_forwards_each_exact_cargo_feature_alias() {
         use std::ffi::OsStr;

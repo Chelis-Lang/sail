@@ -1,4 +1,6 @@
-//! Explicit managed verification and background submission.
+//! `sail verify`'s managed verification (ADR 0023, ADR 0045) and background
+//! submission. This is what every `sail verify` runs, except the explicit
+//! fragility measurement and seed portfolio ([`crate::verify`]).
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -11,20 +13,11 @@ struct Options {
     args: Vec<String>,
 }
 
-fn options(args: &[String]) -> Result<Option<Options>, String> {
-    let before = args.iter().take_while(|a| a.as_str() != "--");
-    if !before
-        .clone()
-        .any(|a| a == "--incremental" || a == "--background" || a == "--engine")
-    {
-        return Ok(None);
-    }
-    if before
-        .clone()
-        .any(|a| a.starts_with("--portfolio") || a.starts_with("--measure-fragility"))
-    {
-        return Err("managed workspace verification cannot be combined with portfolio or fragility measurement".into());
-    }
+/// Sail's own options before any `--`: `--background` and `--output json`.
+/// (`--incremental` is removed earlier; `--engine` is read with the
+/// arguments by [`crate::jobs::engine_options`].) Everything else goes to
+/// `cargo verus verify`.
+fn options(args: &[String]) -> Result<Options, (&'static str, String)> {
     let mut result = Options {
         background: false,
         json: false,
@@ -38,19 +31,37 @@ fn options(args: &[String]) -> Result<Option<Options>, String> {
                 result.args.extend(iter.cloned());
                 break;
             }
-            "--incremental" => {}
             "--background" => result.background = true,
-            "--output=json" => result.json = true,
-            "--output" => {
-                if iter.next().map(String::as_str) != Some("json") {
-                    return Err("expected --output json".into());
+            "--output" | "--output=json" => {
+                let format = if arg == "--output" {
+                    iter.next().map(String::as_str)
+                } else {
+                    Some("json")
+                };
+                if format != Some("json") {
+                    return Err((
+                        "SAIL0106",
+                        format!(
+                            "unknown output format `{}` (expected `--output json`)",
+                            format.unwrap_or_default()
+                        ),
+                    ));
                 }
                 result.json = true;
+            }
+            other if other.starts_with("--output=") => {
+                return Err((
+                    "SAIL0106",
+                    format!(
+                        "unknown output format `{}` (expected `--output json`)",
+                        &other["--output=".len()..]
+                    ),
+                ));
             }
             _ => result.args.push(arg.clone()),
         }
     }
-    Ok(Some(result))
+    Ok(result)
 }
 
 pub(crate) fn config(args: Vec<String>) -> Result<sail_verus::managed::Config, String> {
@@ -91,7 +102,13 @@ fn failure(
     err: &mut dyn std::io::Write,
     json: bool,
 ) -> ExitCode {
-    let _ = writeln!(err, "error[SAIL3100]: managed verification: {message}");
+    // A message that carries its own code (Sail's Verus missing, an
+    // unsupported configuration) keeps it on stderr.
+    let (code, text) = message
+        .strip_prefix("error[")
+        .and_then(|rest| rest.split_once("]: "))
+        .unwrap_or(("SAIL3100", message));
+    let _ = writeln!(err, "error[{code}]: sail verify: {text}");
     if json {
         let result = ProjectResult {
             kind: "sail-project-result".into(),
@@ -121,41 +138,47 @@ fn failure(
     ExitCode::from(2)
 }
 
-/// Handles managed flags, or leaves ordinary verification to its existing path.
+/// Runs managed verification. Without `--output json`, stdout and stderr
+/// are what plain `cargo verus verify` prints, and the exit code is its exit
+/// code; with it, stdout is one `sail-project-result` document.
 pub(crate) fn verify(
     args: &[String],
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
-) -> Option<ExitCode> {
+) -> ExitCode {
     let options = match options(args) {
-        Ok(Some(o)) => o,
-        Ok(None) => return None,
-        Err(message) => return Some(failure(&message, out, err, false)),
+        Ok(o) => o,
+        Err((code, message)) => {
+            let _ = writeln!(err, "error[{code}]: sail verify: {message}");
+            return ExitCode::from(2);
+        }
     };
     if options.background {
         let mut args = options.args;
         if options.json {
             args.splice(0..0, ["--output".into(), "json".into()]);
         }
-        return Some(crate::jobs::background(&args, out, err));
+        return crate::jobs::background(&args, out, err);
     }
     if std::env::var_os("SAIL_JOB_GUARD_PARENT").is_some_and(|v| v == "1") {
         crate::portfolio::guard_parent();
     }
     let config = match config(options.args) {
         Ok(c) => c,
-        Err(message) => return Some(failure(&message, out, err, options.json)),
+        Err(message) => return failure(&message, out, err, options.json),
     };
     let (mode, args) = match crate::jobs::engine_options(&config.args) {
         Ok(options) => options,
-        Err(message) => return Some(failure(&message, out, err, options.json)),
+        Err(message) => return failure(&message, out, err, options.json),
     };
     let mut config = config;
     config.args = args;
     let result = if mode == sail_api::jobs::Mode::Interactive {
         sail_verus::engine::verify(&config, err)
-    } else {
+    } else if options.json {
         sail_verus::managed::run(&config, err)
+    } else {
+        sail_verus::managed::run_showing_output(&config, out, err)
     };
     match result {
         Ok(result) => {
@@ -165,25 +188,15 @@ pub(crate) fn verify(
                     "{}",
                     serde_json::to_string(&result).unwrap_or_default()
                 );
-            } else {
-                let counts = crate::report::Counts::of_requested(&result);
-                let _ = writeln!(
-                    out,
-                    "{:?} evidence: {}; {} verifier runs, {} target reports reused",
-                    result.currentness,
-                    counts,
-                    result.execution.verifier_invocations,
-                    result.execution.reused_targets,
-                );
             }
-            Some(ExitCode::from(
+            ExitCode::from(
                 result
                     .exit_code
                     .and_then(|n| u8::try_from(n & 0xff).ok())
                     .unwrap_or(1),
-            ))
+            )
         }
-        Err(error) => Some(failure(&error.to_string(), out, err, options.json)),
+        Err(error) => failure(&error.to_string(), out, err, options.json),
     }
 }
 
@@ -191,31 +204,34 @@ pub(crate) fn verify(
 mod tests {
     use super::options;
 
+    fn args(xs: &[&str]) -> Vec<String> {
+        xs.iter().map(|x| (*x).into()).collect()
+    }
+
     #[test]
-    fn only_flags_before_separator_select_managed_verification() {
-        let args = |xs: &[&str]| xs.iter().map(|x| (*x).into()).collect::<Vec<String>>();
-        assert!(options(&args(&["--", "--incremental"])).is_ok_and(|o| o.is_none()));
-        let Some(o) = options(&args(&[
-            "--incremental",
+    fn only_flags_before_the_separator_are_sails() {
+        let o = options(&args(&["--", "--background", "--output", "json"]))
+            .unwrap_or_else(|e| unreachable!("fixture: {e:?}"));
+        assert!(!o.json && !o.background);
+        assert_eq!(o.args, ["--", "--background", "--output", "json"]);
+        let o = options(&args(&[
             "--output=json",
             "-p",
             "demo",
+            "--background",
             "--",
             "--rlimit",
             "10",
         ]))
-        .unwrap_or_else(|e| unreachable!("fixture: {e}")) else {
-            unreachable!("managed flags ignored")
-        };
-        assert!(o.json && !o.background);
+        .unwrap_or_else(|e| unreachable!("fixture: {e:?}"));
+        assert!(o.json && o.background);
         assert_eq!(o.args, ["-p", "demo", "--", "--rlimit", "10"]);
-        assert!(
-            options(&args(&[
-                "--incremental",
-                "--portfolio",
-                "accept-first-proof"
-            ]))
-            .is_err()
-        );
+    }
+
+    #[test]
+    fn only_json_output_is_known() {
+        for bad in [&["--output", "yaml"][..], &["--output"], &["--output=yaml"]] {
+            assert_eq!(options(&args(bad)).err().map(|e| e.0), Some("SAIL0106"));
+        }
     }
 }
