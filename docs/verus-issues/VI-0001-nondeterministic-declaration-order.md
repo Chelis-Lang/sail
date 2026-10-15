@@ -118,6 +118,11 @@ digest varied for identical input: 0 of 28 measured HumanEval samples and 0
 of 14 Vest samples, against 16 of 32 HumanEval samples and two varying Vest
 buckets on `89709da7` (L22 rescue lane report, tag `archive/rescue-m7-98f6292`).
 
+**Rescue L42 (2026-10-15).** On the pinned runtime `13a1176c`, no solver
+stream varied in 10 runs of each fast-tier unit (577 buckets) or in the
+measured standard-tier units, `vest` included with either macro source
+([determinism record](../validation/determinism.md)).
+
 Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md) Sail runs the fork for every verification, default mode included. Stock runs remain only as the conformance oracle and under the `SAIL_CARGO_VERUS` development override. Default mode therefore gets the fix
 and its warm cache hit rates. Stock runs keep the variation; no workaround is
 needed for correctness, and Sail does not reorder declarations.
