@@ -53,15 +53,22 @@ binary targets. It refuses, with an error and without running anything:
   (`SAIL3100`);
 - a chained workspace rustc wrapper (`RUSTC_WORKSPACE_WRAPPER`), custom
   sysroots and JSON target specifications (`SAIL3100`, `SAIL3111`);
-- Cargo `--config`, configuration includes, and compiler, wrapper, loader or
-  sysroot overrides it cannot identify (`SAIL3112`), including the loader
-  variables `LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_LIBRARY_PATH`,
-  `DYLD_INSERT_LIBRARIES` and `DYLD_FRAMEWORK_PATH` in the environment
-  ([open question 28](open-questions.md));
+- Cargo `--config`, configuration includes, and compiler, wrapper or
+  sysroot overrides it cannot identify (`SAIL3112`);
 - a project with no target that sets `package.metadata.verus.verify = true`
   (`SAIL3100`).
 
-`cargo verus verify` still runs these, without Sail. `--verus-source FILE`
+`cargo verus verify` still runs these, without Sail.
+
+A process-loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`,
+`DYLD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES` or `DYLD_FRAMEWORK_PATH`) is
+not refused. Sail cannot bind what it changes to a receipt, so such a run
+prints one `note[SAIL3112]` line, verifies what Cargo rebuilds exactly as
+`cargo verus verify` does, and neither reuses nor records proof receipts
+or dependency records. The solver cache still answers queries Verus has sent
+before. `--output json` reads `unknown`, with a `SAIL3112` note, and has no
+report for a target Cargo found up to date. Unset the variable for the
+`sail verify` command to get reuse back. `--verus-source FILE`
 (a single file with `verus FILE`) is only for the opt-in portfolio.
 `--measure-fragility` and `--portfolio accept-first-proof` are explicit solver
 experiments: they run `cargo verus verify` with `sail-z3` directly and print

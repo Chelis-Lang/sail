@@ -60,6 +60,9 @@ struct Paths {
     family_contexts: PathBuf,
     /// The workspace's directory of proof contexts.
     projects: PathBuf,
+    /// Whether this run may reuse and record proof receipts. A run with a
+    /// process-loader variable set may not (ADR 0045).
+    reuse: bool,
 }
 
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
@@ -508,6 +511,7 @@ fn prepare(
         run: context.join("runs").join(run_id),
         family_contexts: compiler.join("contexts"),
         projects: root,
+        reuse: true,
     };
     for dir in [
         &paths.receipts,
@@ -1119,7 +1123,8 @@ fn target_records(
                     .filter(|p| p.is_file()),
             );
             let hashes = artifact_hashes(&artifact_paths)?;
-            let reusable = call.success && complete(&call.report) && !input_revision.is_empty();
+            let reusable =
+                paths.reuse && call.success && complete(&call.report) && !input_revision.is_empty();
             if reusable {
                 json(
                     &paths
@@ -1171,7 +1176,8 @@ fn target_records(
                     .filter(|p| p.is_file()),
             );
             let matches = |r: &Receipt, context: &str| {
-                artifact["fresh"] == true
+                paths.reuse
+                    && artifact["fresh"] == true
                     && !force
                     && !input_revision.is_empty()
                     && r.input_revision == input_revision
@@ -1680,7 +1686,13 @@ pub(crate) fn run_engine_held(
     let diagnostics = Diagnostics::new();
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
-    super::configuration::check(&invocation, &config.args)?;
+    let loader = super::configuration::check(&invocation, &config.args)?;
+    if let Some(variable) = &loader {
+        let _ = writeln!(
+            err,
+            "note[SAIL3112]: {variable} is set, so this run reuses no proof receipts and records none; it verifies what Cargo rebuilds, as `cargo verus verify` does (unset {variable} to reuse proofs)"
+        );
+    }
     // Cargo metadata and the runtime context are independent: neither reads
     // the other's result. They overlap, and their results are consumed in the
     // original order, so the first reported error is unchanged.
@@ -1726,15 +1738,18 @@ pub(crate) fn run_engine_held(
             .map_or(0, |d| d.as_nanos())
     );
     let inputs = diagnostics.phase(Phase::Inputs);
-    let (paths, ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
+    let (mut paths, ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
+    paths.reuse = loader.is_none();
     // A Cargo target this run creates (a new project, worktree or sandbox, or
     // after a prune) may start from the machine's dependency store (ADR 0045).
-    // Focused runs build in a separate directory and verify no dependency.
-    let store_candidates = if super::store::enabled() && !focused(&config.args) {
-        super::store::candidates(&data, &expected, &compiler_hash)
-    } else {
-        Vec::new()
-    };
+    // Focused runs build in a separate directory and verify no dependency. A
+    // run without proof reuse neither reads nor fills the store (ADR 0046).
+    let store_candidates =
+        if paths.reuse && super::store::enabled() && !focused(&config.args) {
+            super::store::candidates(&data, &expected, &compiler_hash)
+        } else {
+            Vec::new()
+        };
     let new_target = super::store::new_target(&paths.target);
     super::build_inputs::family::begin(
         &paths.compiler_inputs,
@@ -1787,7 +1802,12 @@ pub(crate) fn run_engine_held(
         .collect();
     clean(config, &paths.target, &late_scripts)?;
     let stamp_before = super::input::mutation_stamp(&before);
-    super::configuration::check(&invocation, &config.args)?;
+    if super::configuration::check(&invocation, &config.args)? != loader {
+        return Err(Error::new(
+            "SAIL3112",
+            "the process environment changed during verification setup",
+        ));
+    }
     super::files::json(&paths.input_state, &data)?;
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
@@ -1927,7 +1947,9 @@ pub(crate) fn run_engine_held(
     });
     let mut after_metadata = Some(after_metadata);
     let (mut targets, missing) = records?;
-    if exit == Some(0) && !missing.is_empty() {
+    // Without reuse, a target Cargo finds up to date gets no report, as plain
+    // Cargo-Verus prints nothing for it; there is no retry.
+    if paths.reuse && exit == Some(0) && !missing.is_empty() {
         after_metadata = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
@@ -1986,7 +2008,8 @@ pub(crate) fn run_engine_held(
     let pending = completed_receipts(&paths.run, &after_data)?;
     let stamp_after = super::input::mutation_stamp(&after);
     let absent = absent.finish();
-    let currentness = if !before.complete
+    let currentness = if !paths.reuse
+        || !before.complete
         || !after.complete
         || !after_coverage
         || !source_coverage
@@ -2003,7 +2026,8 @@ pub(crate) fn run_engine_held(
         Currentness::Historical
     };
     drop(post_run);
-    if exit == Some(0)
+    if paths.reuse
+        && exit == Some(0)
         && expected.iter().any(|(id, name, kind)| {
             !targets.iter().any(|t| {
                 &t.package_id == id
@@ -2029,6 +2053,11 @@ pub(crate) fn run_engine_held(
     let reused_targets =
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = Vec::new();
+    if let Some(variable) = &loader {
+        notes.push(format!(
+            "SAIL3112: {variable} is set, so this run reused and recorded no proof receipts; targets Cargo found up to date have no report"
+        ));
+    }
     if currentness == Currentness::Unknown {
         notes.push(INPUTS_UNCONFIRMED.to_owned());
     }
