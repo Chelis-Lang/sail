@@ -18,10 +18,11 @@ are in the `archive/m7-contracts-f7103bf` tag.
   (rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **`sail verify` costs a little on small projects and unchanged runs.**
   Managed verification is the only `sail verify` (ADR 0046). On a native
-  c7i.4xlarge, a small project's edit takes 1.11 s against plain Verus's
-  0.80 s, an unchanged re-run 0.34 s against 0.12 s (vest: 0.99 s against
-  0.23 s), and a cold run 1–3 s more. Solver-heavy edits are faster than
-  plain Verus (vest 27.8 s against 41.8 s) but 1.4 s slower than the removed
+  c7i.4xlarge (rc.5, [performance](performance.md)), a small project's edit
+  takes 1.17 s against plain Verus's 0.88 s, an unchanged re-run 0.36 s
+  against 0.12 s (vest: 0.97 s against 0.22 s), and a cold run 1–2 s more.
+  Solver-heavy edits are faster than plain Verus (vest 27.8 s against
+  42.1 s). Measured before rc.5, they were 1.4 s slower than the removed
   pass-through (26.4 s in the same rotation): about 0.8 s of receipt and
   input checks and 0.3 s of Verus's `--output-json --time`. Where the time
   goes is in
@@ -32,19 +33,31 @@ are in the `archive/m7-contracts-f7103bf` tag.
   plain `cargo verus verify` verifies them, with one `note[SAIL3112]` line,
   but nothing is reused or recorded. Jobs, `watch` and MCP report all but
   the loader variables as `SAIL3112` errors ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)).
-- **A project's first managed verify verifies vstd.** As with plain `cargo
-  verus verify` on a fresh target, the first managed run of each project
-  verifies vstd in its own Cargo target (about 31 s natively). Later runs from
-  the CLI, MCP or any agent session reuse it, whether that first run passed
-  or failed in the user crate. A shared per-toolchain vstd is a
-  deferred follow-up. The 31 s first-contact cost was measured by L16
-  (rescue lane report, tag `archive/rescue-m7-98f6292`).
+- **The first project on a machine verifies vstd.** As with plain `cargo
+  verus verify` on a fresh target, the first `sail verify` on a machine
+  verifies vstd (about 33–40 s natively). Later new projects and worktrees
+  that resolve the same vstd start from Sail's dependency store
+  ([ADR 0045](decisions/0045-dependency-store.md); 1.4 s for a new demo
+  project on rc.5). Some workspaces get a store key of their own and verify
+  vstd once more on their first run: on rc.5 the workspace of issue #121
+  did (release-candidate finding 15; which key input differed was not
+  checked; see also [#177](https://github.com/Chelis-Lang/sail/issues/177)). Shipping a
+  pre-verified vstd in the archive is
+  [#161](https://github.com/Chelis-Lang/sail/issues/161).
+- **The repair benchmark's outcome check fails on output schema v2.** It
+  hashes the per-function `tier` that schema v2 renamed, so every M6/M7 pair
+  reports `SAIL7107` although verdicts and diagnostics match. Harness only;
+  release-candidate finding 13,
+  [#179](https://github.com/Chelis-Lang/sail/issues/179).
+- **Reports omit the release suffix (low).** `sail_version` in reports is
+  the workspace version (`0.1.0`), not the build's `sail --version`
+  (`0.1.0-rc.5`). [#180](https://github.com/Chelis-Lang/sail/issues/180).
 - **`deep-rvt` reports stock output-order variants as Different.** The
   `output_json` tests print `func-details` in stock Verus's hash order
   ([VI-0008](verus-issues/VI-0008-func-details-hash-order.md)); with 3–6
   orders in 11 plain runs, a Sail-side run often shows an unseen one. On
   rc.3, six of eight rounds reported one Different, each with identical
-  stdout and stderr that is a line permutation of plain's. The arm runs the
+  stdout and stderr that is a line permutation of plain's. rc.5's one round had 0 Different and 4 Unstable `output_json` tests. The arm runs the
   stock source build, which Sail no longer runs (ADR 0043). Release-candidate
   finding 11.
 - **Default and engine runs each verify vstd once in their own target.** That
