@@ -243,12 +243,46 @@ The levers that matter now:
   [determinism record](validation/determinism.md));
 - **Fill cost on slow filesystems:** write-behind stores in the daemon.
 
-## Charter roadmap (designed for, built later)
+## After 0.1.0
 
-- Multiple SMT backends.
-- Alethe and Carcara certificates.
-- A Rust pre-solver (measured no-go for edit-loop latency; ADR 0038).
-- Unsat-core pruning.
-- Instantiation replay.
-- A warm Verus frontend.
-- Other verifiers.
+Planned for releases after 0.1.0, in this order, pending the owner's answer to
+[question 27](open-questions.md). The pre-verified vstd and managed-by-default
+work in flight for 0.1.0 is not listed here.
+
+1. **Verus serving path.** Sail's reason to exist for today's users comes
+   first, judged against the repeated walkthrough
+   ([roadmap review](reports/2026-10-13-roadmap-review.md) sections B and D).
+   - B1: reuse a verified vstd across projects and worktrees, beyond what the
+     0.1.0 pre-verified vstd covers.
+   - B2: single-file `verus file.rs` projects.
+   - B4: receipts beyond the latest revision, so reverting reuses work.
+   - Cache robustness to incidental edits
+     ([#118](https://github.com/Chelis-Lang/sail/issues/118)); any key change
+     is an ADR under charter rules 5 and 6.
+   - The warm Verus frontend (M8): the M8.0 gate failed and the hermetic
+     bucket memo does not proceed; the cheaper levers under *Measured* above
+     (Cargo bypass, Sail overhead) come first, and the rest waits for user data.
+2. **M10: Verification runtime**
+   ([scope](scope/verification-runtime.md), milestone *M10: Verification
+   runtime*, umbrella [#146](https://github.com/Chelis-Lang/sail/issues/146)).
+   One cached runtime and one ledger behind annotated Rust, raw SMT-LIB and
+   TLA+ jobs (charter appendix entry 5). Interface specifications come first
+   (#127, #128, #129); then, in parallel, the verifier backends (#130–#136),
+   the SMT-LIB service (#137) and certificates (#138), TLA+ jobs through
+   D.I.V.E. (#139), the Verus-aware mutator (#140) and library mode (#144);
+   then the mutation gate (#141), cross-backend selection (#142) and the
+   assurance view (#143). Dafny reach is an evaluation (#145). Every backend
+   passes conformance before any acceleration, and the Verus path keeps its
+   performance and parity.
+
+The charter's original roadmap items map onto this as follows:
+
+| Charter roadmap item | Where it is now |
+|---|---|
+| Multiple SMT backends (cvc5, portable queries) | SMT-LIB service, #137; cross-backend portfolios, #142 |
+| Alethe and Carcara certificates | Proof certificates, #138 |
+| Other verifiers | The M10 backends (#130–#136); Dafny as an evaluation, #145 |
+| A warm Verus frontend | Item 1 (M8), deferred for user data |
+| A Rust pre-solver (M9) | Closed: measured no-go for edit-loop latency (ADR 0038) |
+| Unsat-core pruning, instantiation replay | Designed for, not scheduled |
+| Warm solver sessions, stack-key mode | Not built now (ADR 0040); deferred (ADR 0008 update) |

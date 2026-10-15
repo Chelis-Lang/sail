@@ -210,3 +210,20 @@ Each entry names the charter text it qualifies and the ADR that records it.
    against plain *stock* Verus with the pinned Z3: Sail on the fork must
    produce the same per-function verdicts and diagnostics, and the
    conformance harness compares exactly that. See ADR 0043.
+5. *Mission, Scope ("Roadmap") and Architecture* (owner direction,
+   2026-10-15; planned for releases after 0.1.0). The mission broadens from
+   accelerating Verus to a general verification runtime: one cached runtime
+   and one ledger behind annotated Rust (a neutral contract syntax lowered to
+   Verus, Vermilion, Creusot, Prusti, Kani and kernel-checked provers), raw
+   SMT-LIB queries (Z3 and cvc5, with Alethe certificates checked by
+   Carcara), and TLA+ jobs run on D.I.V.E. It absorbs the roadmap items
+   "multiple SMT backends" and "other verifiers". The correctness contract
+   above governs every new backend unchanged: rule 1 is read per backend as
+   parity with that backend invoked directly on the same (lowered) input
+   with pinned versions, and conformance comes before any acceleration. The
+   Verus serving path keeps its performance and parity. Where the new scope
+   and these rules conflict, these rules win; the conflicts found (rules 1,
+   3, 4, 5, 7 and 8, crate publishing, and filing outside this repository)
+   are listed in `docs/scope/verification-runtime.md` and raised as
+   questions 16–27 in `docs/open-questions.md`. New crates and dependency
+   edges need ADRs.
