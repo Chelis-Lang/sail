@@ -92,6 +92,38 @@ build-script records, and the next run rebuilds those packages. A failed proof
 or compile error never produces a receipt, so the failing crate itself is
 always verified again.
 
+## Build scripts
+
+Sail records the inputs each build script declares and checks their content
+on every run; a package whose recorded inputs changed is cleaned, so Cargo
+reruns its script. Only that package, and the packages that depend on it,
+lose their records: an edit to a crate whose `build.rs` declares nothing
+(Cargo then watches the whole package directory) rebuilds that crate, not vstd
+([#119](https://github.com/Chelis-Lang/sail/issues/119)). Files a build script
+generates in Sail's target and the compiler includes, such as serde's
+`OUT_DIR/private.rs`, are compared by content, not across the run, so a
+project that depends on serde becomes Current on its first run
+([#120](https://github.com/Chelis-Lang/sail/issues/120)). A script that Cargo
+never runs for the build (a dev-dependency, another platform's dependency, or
+a feature that only another workspace member enables) does not keep a run
+Unknown ([#121](https://github.com/Chelis-Lang/sail/issues/121)). See
+[freshness](freshness.md#how-a-run-decides-it-is-current) for the rules.
+
+On a native `c7i.4xlarge` (us-east-1, idle), each issue's one-function
+reproduction from an empty cache (wall time; the cold first run is 34–35 s in
+every case):
+
+| Reproduction | Before: unchanged / comment edit | After: unchanged / comment edit |
+|---|---|---|
+| `build.rs` without `rerun-if-changed` (#119) | 0.4 s / 30.8 s, vstd verified again | 0.4 s / 1.2 s |
+| depends on serde 1.0.228 (#120) | 30.8 s / 30.8 s, Historical | 0.4 s / 1.1 s |
+| `-p a`, another member enables `foo/serde` (#121) | 30.7 s / 30.9 s, Unknown | 0.5 s / 1.2 s |
+| dev-dependency `libc`, Windows-only `windows-sys` | 31.2 s / 31.2 s, Unknown | 0.6 s / 1.4 s |
+
+Before these fixes every run in the last three rows verified vstd again. On
+an Apple M3 under heavy other load (load average 22–97) the same pattern held:
+#119's edit run went from 84–121 s to 3.2–4.4 s.
+
 ## Concurrent runs
 
 Two managed runs that share a Cargo target (the same workspace and

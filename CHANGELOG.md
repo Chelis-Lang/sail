@@ -69,6 +69,28 @@ semantic versioning once the API is published.
   entries of about 120 MB; `SAIL_DEPENDENCY_STORE_ENTRIES` changes that and
   `0` turns it off. Release archives are unchanged: a vstd built elsewhere
   would print another source path in diagnostics.
+- **Fixed: build scripts no longer make managed runs verify vstd again**
+  (#119, #120, #121). Three cases made every managed run (`sail verify`,
+  MCP `verify`, jobs, `watch`, repairs) rebuild the macro
+  dependencies and verify vstd again, about 31 s natively instead of 0.4 s
+  unchanged and 1.1–1.4 s after a comment edit:
+  - an edit to a crate whose `build.rs` declares no `rerun-if-changed`
+    discarded every package's build-script record, not just that crate's.
+    Now only the changed package and the packages that depend on it lose
+    theirs;
+  - a crate depending on serde 1.0.228 never became Current, because the
+    `OUT_DIR/private.rs` that serde's scripts regenerate counted as a changed
+    input. Files generated inside Sail's own target are now compared by
+    content after the run, not across it; their inputs are still compared;
+  - a `-p` selection whose closure, in Cargo's workspace-wide resolve,
+    reaches a build script that the build never runs (a feature only another
+    member enables, a dev-dependency or another platform's dependency) was
+    always Unknown. After a finished build, a script package Cargo reported
+    no unit of no longer needs a record.
+
+  The "Build-script input declarations were established during this run"
+  note now appears only when a script Cargo ran had no current record.
+  Verdicts and diagnostics are unchanged.
 - **Fixed: a failing first managed run no longer costs vstd on every later
   run** (#123). When a project's first `sail verify --incremental`, MCP
   `verify` or background job failed a proof or hit a compile error in the
