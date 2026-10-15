@@ -5,7 +5,7 @@
 //! so the journal transport is exercised end to end.
 #![cfg(unix)]
 use sail_api::jobs::{Client, Lifecycle, Request, Response};
-use sail_api::output::{Report, TierName, VerdictName};
+use sail_api::output::{EstablishmentName, Report, VerdictName};
 use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
 use sail_api::proof::{InputEvent, Observation, Phase, Target};
 use serde_json::{Value, json};
@@ -67,7 +67,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
     };
     let full = ProjectResult {
         kind: "sail-project-result".into(),
-        schema_version: 1,
+        schema_version: sail_api::project::SCHEMA_VERSION,
         run_id: "mock-run".into(),
         workspace: fixture.root.join("project").display().to_string(),
         context_sha256: "mock-context".into(),
@@ -98,7 +98,8 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         .iter_mut()
         .flat_map(|c| &mut c.functions)
     {
-        f.tier = TierName::Provisional;
+        f.establishment = EstablishmentName::Provisional;
+        f.evidence_tier = None;
         f.verdict = VerdictName::Provisional;
     }
     std::fs::write(fixture.root.join("result.json"), serde_json::to_vec(&full)?)?;
@@ -177,7 +178,7 @@ fn installed_cli_and_mcp_share_journal_explanation_and_baseline_contracts()
     let page = fixture.json(&["jobs", "events", id, "--output", "json"])?;
     assert_eq!(page["events"][0]["input"]["phase"], "focus");
     assert_eq!(
-        page["events"][0]["input"]["observation"]["value"]["tier"],
+        page["events"][0]["input"]["observation"]["value"]["establishment"],
         "provisional"
     );
     assert_eq!(page["gap"], Value::Null);

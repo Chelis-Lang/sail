@@ -1,5 +1,5 @@
-//! Verdicts, obligation identities, provisional and confirmed tiers, and
-//! result provenance (charter rules 7 and 8, ADR 0014).
+//! Verdicts, obligation identities, establishment (provisional or confirmed)
+//! and result provenance (charter rules 7 and 8, ADR 0014).
 //!
 //! The ledger holds what sail knows about each verified function:
 //! - Verus's own verdict for it (`--output-json --time`);
@@ -7,7 +7,7 @@
 //!   stable [`ObligationId`] and the [`CheckRecord`]s of its `check-sat`
 //!   commands;
 //! - how each answer was established ([`Source`]) and under which [`Mode`];
-//! - its [`Tier`].
+//! - its [`Establishment`].
 //!
 //! The reported [`Verdict`] is derived, never stored, so the rule that
 //! nothing provisional is ever reported as verified holds by construction:
@@ -20,7 +20,7 @@ use std::fmt;
 /// Whether a result has been established by the pinned solver on the exact
 /// query (charter rule 7).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Tier {
+pub enum Establishment {
     /// Returned before the pinned solver established it (for example a
     /// speculative result). Never reported as verified.
     Provisional,
@@ -29,7 +29,7 @@ pub enum Tier {
     Confirmed,
 }
 
-impl Tier {
+impl Establishment {
     /// The schema name (`provisional`, `confirmed`).
     #[must_use]
     pub fn as_str(self) -> &'static str {
@@ -446,8 +446,8 @@ pub struct FunctionRecord {
     pub rlimit: Option<u64>,
     /// Its obligations, or `None` when attribution was unavailable.
     pub obligations: Option<Vec<ObligationRecord>>,
-    /// Its tier.
-    pub tier: Tier,
+    /// How it was established (charter rule 7).
+    pub establishment: Establishment,
     /// The mode that produced it.
     pub mode: Mode,
 }
@@ -486,7 +486,7 @@ impl FunctionRecord {
     /// [`Verdict::Provisional`] (charter rule 7).
     #[must_use]
     pub fn verdict(&self) -> Verdict {
-        if self.tier == Tier::Provisional {
+        if self.establishment == Establishment::Provisional {
             return Verdict::Provisional;
         }
         match self.outcome() {
@@ -560,7 +560,7 @@ mod tests {
             smt_micros: None,
             rlimit: None,
             obligations,
-            tier: Tier::Confirmed,
+            establishment: Establishment::Confirmed,
             mode: Mode::Default,
         }
     }
@@ -669,7 +669,7 @@ mod tests {
                     vec![check(Answer::Unsat, 1, None)],
                 )]),
             );
-            f.tier = Tier::Provisional;
+            f.establishment = Establishment::Provisional;
             assert_eq!(f.verdict(), Verdict::Provisional);
         }
     }

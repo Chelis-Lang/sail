@@ -1,23 +1,37 @@
-//! Short human summaries of schema-v1 reports.
+//! Short human summaries of schema-v2 reports.
 //!
 //! Charter rule 7: nothing provisional is ever presented as verified. The
 //! summary counts a function by [`effective_verdict`], which is
-//! `provisional` whenever the tier is, whatever the verdict field says.
+//! `provisional` whenever the establishment is, whatever the verdict field
+//! says.
 
 use std::fmt::Write as _;
 
-use sail_api::output::{FunctionReport, OutcomeName, Report, TierName, VerdictName};
+use sail_api::output::{
+    EstablishmentName, EvidenceTierName, FunctionReport, OutcomeName, Report, VerdictName,
+};
 
 /// How many names a summary line lists before eliding the rest.
 const MAX_NAMES: usize = 8;
 
-/// The verdict to present: `provisional` whenever the tier is provisional.
+/// The verdict to present: `provisional` whenever the establishment is
+/// provisional.
 #[must_use]
 pub fn effective_verdict(f: &FunctionReport) -> VerdictName {
-    if f.tier == TierName::Provisional {
+    if f.establishment == EstablishmentName::Provisional {
         VerdictName::Provisional
     } else {
         f.verdict
+    }
+}
+
+/// The evidence tier to present: the report's, for a presented verdict
+/// that is settled (`verified` or `failed`), and otherwise none.
+#[must_use]
+pub fn effective_evidence_tier(f: &FunctionReport) -> Option<EvidenceTierName> {
+    match effective_verdict(f) {
+        VerdictName::Verified | VerdictName::Failed => f.evidence_tier,
+        VerdictName::Unknown | VerdictName::Provisional => None,
     }
 }
 
@@ -224,7 +238,7 @@ mod tests {
     #[test]
     fn provisional_is_never_counted_as_verified() {
         let mut sneaky = function("demo::p", VerdictName::Verified);
-        sneaky.tier = TierName::Provisional;
+        sneaky.establishment = EstablishmentName::Provisional;
         assert_eq!(effective_verdict(&sneaky), VerdictName::Provisional);
         let r = make(vec![
             function("demo::a", VerdictName::Verified),

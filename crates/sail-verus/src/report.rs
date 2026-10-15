@@ -119,6 +119,7 @@ pub fn incomplete_failures(report: &mut Report) {
             for f in &mut c.functions {
                 if f.verdict == sail_api::output::VerdictName::Verified {
                     f.verdict = sail_api::output::VerdictName::Unknown;
+                    f.evidence_tier = None;
                     uncertain += 1;
                 }
             }

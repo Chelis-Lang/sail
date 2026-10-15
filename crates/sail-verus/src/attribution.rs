@@ -28,8 +28,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use sail_ledger::{
-    Answer, Assignment, CheckRecord, Effort, FunctionRecord, Mode, Model, ObligationId,
-    ObligationKind, ObligationRecord, Source, Tier,
+    Answer, Assignment, CheckRecord, Effort, Establishment, FunctionRecord, Mode, Model,
+    ObligationId, ObligationKind, ObligationRecord, Source,
 };
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter};
@@ -854,7 +854,7 @@ pub fn attribute(
                     smt_micros: micros,
                     rlimit,
                     obligations,
-                    tier: Tier::Confirmed,
+                    establishment: Establishment::Confirmed,
                     mode: Mode::Default,
                 }
             })
@@ -883,7 +883,7 @@ pub fn attribute(
                         smt_micros: None,
                         rlimit: None,
                         obligations: Some(obligations),
-                        tier: Tier::Confirmed,
+                        establishment: Establishment::Confirmed,
                         mode: Mode::Default,
                     });
                 }

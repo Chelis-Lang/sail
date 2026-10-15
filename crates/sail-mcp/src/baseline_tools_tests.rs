@@ -13,7 +13,7 @@ fn baseline(name: &str) -> Baseline {
         job_id: "recorded-job".into(),
         result: ProjectResult {
             kind: "sail-project-result".into(),
-            schema_version: 1,
+            schema_version: sail_api::project::SCHEMA_VERSION,
             run_id: "recorded-run".into(),
             workspace: "recorded-workspace".into(),
             context_sha256: "recorded-context".into(),
@@ -159,7 +159,7 @@ fn baseline_response_cannot_claim_currentness_or_substitute_identity() {
         corrupt["value"]["result"]["currentness"] = json!(currentness);
         assert!(!valid("get_baseline", &corrupt));
     }
-    for (path, value) in [("kind", json!("wrong")), ("schema_version", json!(2))] {
+    for (path, value) in [("kind", json!("wrong")), ("schema_version", json!(1))] {
         let mut corrupt = expected.clone();
         corrupt["value"]["result"][path] = value;
         assert!(!valid("get_baseline", &corrupt));

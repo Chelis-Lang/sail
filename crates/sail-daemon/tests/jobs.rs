@@ -56,7 +56,7 @@ fn wait(client: &Client, id: &str, predicate: impl Fn(Lifecycle) -> bool) -> Sta
         std::thread::sleep(Duration::from_millis(20));
     }
 }
-const REPORT: &str = r#"printf '%s\n' '{"kind":"sail-project-result","schema_version":1,"run_id":"fixture","workspace":"fixture","context_sha256":"fixture","input_revision":"fixture","currentness":"unknown","exit_code":0,"targets":[],"execution":{"verifier_invocations":0,"reused_targets":0,"wall_ms":0},"notes":[],"error":null}'"#;
+const REPORT: &str = r#"printf '%s\n' '{"kind":"sail-project-result","schema_version":2,"run_id":"fixture","workspace":"fixture","context_sha256":"fixture","input_revision":"fixture","currentness":"unknown","exit_code":0,"targets":[],"execution":{"verifier_invocations":0,"reused_targets":0,"wall_ms":0},"notes":[],"error":null}'"#;
 
 #[test]
 fn bounded_event_slices_preserve_unicode_and_wait_for_incomplete_appends() {

@@ -216,7 +216,7 @@ def run(args):
             provenance(result, target)
             focus = document["batch"]["focus"]
             assert focus is not None and all(not t["complete"] for t in focus["targets"]), focus
-            assert all(f["tier"] == "provisional" and f["verdict"] == "provisional"
+            assert all(f["establishment"] == "provisional" and f["evidence_tier"] is None and f["verdict"] == "provisional"
                        for t in focus["targets"] for c in t["report"]["crates"] for f in c["functions"]), focus
             page = cli("success-events", ["jobs", "events", good_job, "--output", "json"])
             assert page["gap"] is None and page["events"], page
@@ -229,7 +229,7 @@ def run(args):
                 # final-report tools too. Older validated engines have no typed
                 # function producer; they must not pass this acceptance script.
                 progress_failures.append("no real provisional function observation before compiler seal")
-            assert all(e["input"]["observation"]["value"]["tier"] == "provisional"
+            assert all(e["input"]["observation"]["value"]["establishment"] == "provisional"
                        and e["input"]["observation"]["value"]["verdict"] == "provisional" for e in preliminary), page
             cursor = page["next"]
             resumed = cli("success-resume", ["jobs", "events", good_job, "--stream", cursor["stream_id"],

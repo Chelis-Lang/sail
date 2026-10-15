@@ -850,7 +850,8 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
     for krate in &mut report.crates {
         krate.functions.retain(|item| item.function == function);
         for item in &mut krate.functions {
-            item.tier = sail_api::output::TierName::Provisional;
+            item.establishment = sail_api::output::EstablishmentName::Provisional;
+            item.evidence_tier = None;
             item.verdict = sail_api::output::VerdictName::Provisional;
         }
     }

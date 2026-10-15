@@ -206,7 +206,7 @@ struct Entry<'a> {
 }
 
 impl Entry<'_> {
-    /// The reported verdict (`provisional` for a provisional tier).
+    /// The reported verdict (`provisional` for a provisional establishment).
     fn verdict(self) -> VerdictName {
         effective(self.report)
     }
@@ -444,7 +444,7 @@ fn comparison_notes(compatible: bool, tally: &Tally) -> Vec<String> {
 }
 
 fn effective(report: &FunctionReport) -> VerdictName {
-    if report.tier == crate::output::TierName::Provisional {
+    if report.establishment == crate::output::EstablishmentName::Provisional {
         VerdictName::Provisional
     } else {
         report.verdict

@@ -275,7 +275,7 @@ planned for releases after 0.1.0. The owner answered all twelve on
     provisional) and evidence tier. Nobody depends on v1 yet; "shipping a
     schema you already plan to break is worse than a small change before
     release." Counterexamples get ITF rendering alongside the exact solver
-    output.
+    output. Implemented in ADR 0044 (#149).
 23. **Default mode for cross-backend selection.** Is a verdict obtained by
     "strongest available within limits", a minimum tier, or racing across
     backends a verdict-changing mode under rule 8? Proposal: a request for a

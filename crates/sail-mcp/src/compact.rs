@@ -610,6 +610,8 @@ fn failure(target: &TargetResult, f: &FunctionReport) -> Value {
         "function": f.function,
         "target": target.target,
         "verdict": verdict_name(effective_verdict(f)),
+        "establishment": f.establishment,
+        "evidence_tier": crate::summary::effective_evidence_tier(f),
         "obligations": obligations,
     })
 }
@@ -620,7 +622,7 @@ fn explanation_summary(document: &Value) -> String {
     let mut text = format!(
         "{}: {} in {} (establishing run {}, currentness {}).",
         f["function"].as_str().unwrap_or("?"),
-        if f["tier"] == "provisional" {
+        if f["establishment"] == "provisional" {
             "provisional"
         } else {
             f["verdict"].as_str().unwrap_or("?")
@@ -885,7 +887,7 @@ mod tests {
                    "establishing_run": "run-1", "reused": false, "requested": requested,
                    "complete": true, "report": report})
         };
-        json!({"kind": "sail-project-result", "schema_version": 1, "run_id": "run-1",
+        json!({"kind": "sail-project-result", "schema_version": 2, "run_id": "run-1",
                "workspace": "/w", "context_sha256": "c", "input_revision": "rev", "currentness": "current",
                "exit_code": 1, "targets": [target("input", true), target("vstd", false)],
                "execution": {"verifier_invocations": 1, "reused_targets": 0, "wall_ms": 1.0},
@@ -1080,9 +1082,9 @@ mod tests {
             "check": 0,
             "model": "(model …)",
             "assignments": [
-                {"name": "a!", "sort": "Int", "value": "1"},
-                {"name": "fuel%vstd!x.", "sort": "Fuel", "value": "Fuel!val!0"},
-                {"name": "r!", "sort": "Int", "value": "0"}
+                {"name": "a!", "sort": "Int", "value": "1", "itf": {"#bigint": "1"}},
+                {"name": "fuel%vstd!x.", "sort": "Fuel", "value": "Fuel!val!0", "itf": {"#unserializable": "Fuel!val!0"}},
+                {"name": "r!", "sort": "Int", "value": "0", "itf": {"#bigint": "0"}}
             ]
         }}]});
         compact_models(&mut value);
