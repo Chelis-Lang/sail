@@ -18,6 +18,7 @@ if not cargo_verus:
     raise SystemExit("managed acceptance requires the pinned cargo-verus")
 
 def bounded_verification(arguments, cwd, env, timeout):
+    print("TIMING", time.strftime("%H:%M:%S"), arguments[1:], flush=True)
     process = subprocess.Popen(arguments, cwd=cwd, env=env,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                start_new_session=True)
@@ -127,6 +128,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
 
         def managed(*args):
             label = f"managed-{len(managed_calls) + 1:02d}"
+            print("TIMING", time.strftime("%H:%M:%S"), label, args, flush=True)
             managed_calls.append(label)
             started = time.monotonic()
             events = evidence / (label + ".events.jsonl")

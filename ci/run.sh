@@ -7,6 +7,10 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
+#   e2e-build DIR        CI only: build the e2e binaries once (release sail,
+#                        sail-z3, sail-conformance, check_output, check_mcp)
+#                        into DIR/e2e-bin.tar, which every e2e phase job
+#                        unpacks (SAIL_E2E_PREBUILT) instead of building
 #   e2e [legacy|managed|repair|output|loader|flags|extra] Run all phases by default; CI runs them in parallel.
 #                        `sail new` writes what stock `cargo verus new`
 #                        writes, and its lib and bin projects verify;
@@ -63,11 +67,27 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|e2e-build|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
   cargo build --release --locked -p sail-cli -p sail-shim "$@"
+}
+
+# The binaries every e2e phase uses, relative to target/release.
+e2e_binaries=(sail sail-z3 sail-conformance examples/check_output examples/check_mcp)
+
+e2e_build() {
+  release_build -p sail-conformance --example check_output --example check_mcp
+}
+
+# Unpacks the binaries `e2e-build` packed in this CI run, checking every
+# file against the digests packed with them; a missing or altered file
+# fails the phase.
+unpack_e2e_binaries() {
+  mkdir -p target/release
+  tar -xf "$1" -C target/release
+  (cd target/release && sha256sum --quiet -c e2e-bin.sha256)
 }
 
 # Copies the release runtime under /tmp and sets $sail. A host-mounted
@@ -126,6 +146,14 @@ case "$step" in
     cargo nextest run --workspace --locked --profile ci --run-ignored only
     ;;
 
+  e2e-build)
+    mkdir -p "${1:?usage: ci/run.sh e2e-build DIR}"
+    out="$(cd "$1" && pwd)"
+    e2e_build
+    (cd target/release && sha256sum "${e2e_binaries[@]}" > e2e-bin.sha256 \
+      && tar -cf "$out/e2e-bin.tar" "${e2e_binaries[@]}" e2e-bin.sha256)
+    ;;
+
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
@@ -141,11 +169,16 @@ case "$step" in
     # (ADR 0043); stock `cargo verus` on PATH is only the oracle.
     : "${SAIL_ENGINE_BUILD:?e2e needs the validated prebuilt fork runtime, the Verus Sail runs}"
     export SAIL_VERUS_BUILD="$SAIL_ENGINE_BUILD"
-    release_build
+    # CI builds once for every phase (`e2e-build`); locally, build here.
+    if [ -n "${SAIL_E2E_PREBUILT:-}" ]; then
+      unpack_e2e_binaries "$SAIL_E2E_PREBUILT"
+    else
+      e2e_build
+    fi
     install_runtime
+    echo "TIMING nproc $(nproc)" >&2
     sail_managed_test="$sail_checkout/ci/test-managed.py"
     if [ "$phase" = full ] || [ "$phase" = legacy ]; then
-      cargo build --release --locked -p sail-cli --example check_output --example check_mcp
       check_output="$PWD/target/release/examples/check_output"
       check_mcp="$PWD/target/release/examples/check_mcp"
       sail_portfolio_test="$PWD/ci/test-portfolio.sh"
@@ -192,6 +225,7 @@ pub fn bad(x: u32) -> (r: u32)
 RS
       run() { # $1 = label; rest = command
         local label="$1"; shift
+        echo "TIMING $(date +%T) $label" >&2
         touch src/lib.rs
         set +e
         "$@" > "$work/$label.out" 2> "$work/$label.err"
@@ -280,7 +314,6 @@ RS
     if [ "$phase" = full ] || [ "$phase" = repair ]; then
       cd "$sail_checkout"
       : "${SAIL_ENGINE_BUILD:?repair acceptance requires the validated prebuilt engine}"
-      release_build -p sail-conformance
       fetch_repair_source
       python3 "$PWD/ci/test-repair.py" --sail "$sail" --engine-build "$SAIL_ENGINE_BUILD" \
         --verus-source "$sail_repair_source" \
