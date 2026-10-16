@@ -16,6 +16,7 @@ import subprocess
 import threading
 import time
 import response_policy
+import memory_lifecycle
 from live_prefix import MAX_INPUT, MAX_INPUT_LIMIT, MAX_OUTPUT, OneUsePool, capture_running_image, path_digest, resident_bytes
 
 
@@ -68,7 +69,7 @@ def main():
     manifest.update(cwd=str(Path.cwd()),
                     environment_sha256=hashlib.sha256(json.dumps(sorted(os.environ.items())).encode()).hexdigest(),
                     source_sha256={name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-                                   for name in ['run.py', 'live_prefix.py', 'response_policy.py']})
+                                   for name in ['run.py', 'live_prefix.py', 'response_policy.py', 'memory_lifecycle.py']})
     manifest["response_policy"] = response_policy.EXPERIMENT if args.experiment_numeric_time_only else "exact-bytes"
     manifest["experiment_only"] = args.experiment_numeric_time_only
     pool = None
@@ -88,6 +89,9 @@ def main():
         threads = []
         verified = False
         peak_rss = peak_pss = 0
+        rss_samples = 0
+        identity = None
+        memory_observations = []
 
         def kill():
             with fd_lock:
@@ -126,6 +130,8 @@ def main():
             if os.uname().sysname == 'Linux':
                 pidfd, image, _ = capture_running_image(process.pid, args.solver_sha256)
                 verified = True
+                if pidfd is not None:
+                    identity = memory_lifecycle.bind_task_identity(process.pid, pidfd)
             threads = [threading.Thread(target=drain, args=(process.stdout, buffers[0])),
                        threading.Thread(target=drain, args=(process.stderr, buffers[1])),
                        threading.Thread(target=send)]
@@ -142,15 +148,19 @@ def main():
                     try:
                         rss, pss = resident_bytes(process.pid)
                         peak_rss, peak_pss = max(peak_rss, rss), max(peak_pss, pss or 0)
+                        rss_samples += 1
                         if rss > args.max_bytes:
                             failure.append('fresh resident memory budget exceeded')
                             kill()
                             break
                     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
-                        if process.poll() is None:
+                        observation = memory_lifecycle.terminal_observation(
+                            process, pidfd, identity, error, rss_samples, deadline)
+                        memory_observations.append(observation)
+                        if not observation['terminal_race']:
                             failure.append('fresh memory observation: ' + str(error))
                             kill()
-                            break
+                        break
                 time.sleep(.01)
             process.wait(timeout=2)
             for thread in threads:
@@ -182,7 +192,8 @@ def main():
                 image = pidfd = None
         result = dict(stdout=bytes(buffers[0]), stderr=bytes(buffers[1]), exit=process.returncode,
                       error='; '.join(failure) if failure else None, image_verified=verified,
-                      sampled_peak_rss=peak_rss, sampled_peak_pss=peak_pss)
+                      sampled_peak_rss=peak_rss, sampled_peak_pss=peak_pss,
+                      rss_samples=rss_samples, memory_observations=memory_observations)
         write_streams(name, result)
         return result
 
@@ -209,7 +220,8 @@ def main():
                               stdout_bytes=len(result['stdout']), stderr_bytes=len(result['stderr']),
                               exit=result['exit'], error=result['error'], image_verified=result['image_verified'],
                               equal_to_first=equal, sampled_peak_rss=result['sampled_peak_rss'],
-                              sampled_peak_pss=result['sampled_peak_pss'])
+                              sampled_peak_pss=result['sampled_peak_pss'], rss_samples=result['rss_samples'],
+                              memory_observations=result['memory_observations'])
                 if args.native_metrics:
                     record.update(guarded_wall=time.monotonic() - started,
                                   solver_cpu=cpu_children() - before_cpu)
@@ -285,7 +297,9 @@ def main():
                             stdout_equal=result['stdout'] == reference['stdout'], stderr_equal=result['stderr'] == reference['stderr'],
                             exit_equal=result['exit'] == reference['exit'],
                             native_images_verified=result['image_verified'] and reference['image_verified'],
-                            identity_stable=path_digest(z3) == args.solver_sha256)
+                            identity_stable=path_digest(z3) == args.solver_sha256,
+                            candidate_memory_observations=result.get('memory_observations', []),
+                            fresh_memory_observations=reference['memory_observations'])
             manifest['raw_equal'] = (all(manifest[k] for k in ['stdout_equal', 'stderr_equal', 'exit_equal', 'identity_stable'])
                                      and not result['error'] and not reference['error'])
             manifest['candidate_gate_pass'] = (manifest['raw_equal'] and manifest['mode'] == 'one-use-live-prefix'

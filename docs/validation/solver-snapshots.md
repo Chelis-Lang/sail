@@ -384,3 +384,17 @@ The `c3c99584` packet is rejected before native execution after an actual-child
 exit7 fixture exposes parent admission that trusted its manifest; corrected by
 `133b4721`. The native `133b4721` pair fails on the Anvil observer error above;
 no replacement fresh sample or Anvil continuation is substituted.
+
+
+A prospective fresh-driver RSS correction is implemented but has no native
+qualification yet. It retains the original error and requires bound owned
+PID/starttime/pidfd identity, prior valid RSS, independent terminal or
+exit-in-progress kernel evidence, bounded exit0 and subsequent complete I/O.
+Fifteen actual-owned-child controls with kernel observations explicitly doubled
+and 23 parser/descriptor controls pass locally; the unchanged eight original
+and nine experimental driver controls also pass. A mandatory bounded native
+mm-teardown fixture must exercise the actual running kernel and reject live,
+foreign, missing-state and nonzero-status cases before any new trace attempt.
+The original Anvil failure is unchanged; no eventual-exit-only exception or
+new performance result is inferred. See the
+[observer boundary](../../native/sail-live-prefix/README.md#prospective-fresh-process-rss-lifetime-correction).

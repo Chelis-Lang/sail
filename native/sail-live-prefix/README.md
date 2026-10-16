@@ -175,7 +175,7 @@ python3 native/sail-live-prefix/run-real.py \
 
 An experimental fresh gate still needs all three complete fresh runs, actual
 native image binding, stable executable identity, equal stderr/status, exit 0
-and no error. An `ESRCH` or cleanup failure is a refusal. Only an eligible
+and no error. Live-process or unclassified `ESRCH` and cleanup failures refuse. Only an eligible
 fresh dataset with a matching historical prefix may attempt one live sample;
 any skipped/refused project remains an explicit overall failure. Preparation,
 foreground latency, total/background CPU, RSS/PSS and all raw failures remain
@@ -201,3 +201,38 @@ A child manifest never overrides its actual process outcome: fresh eligibility
 also requires recorded exit0 and no process error. The parent refuses a true
 manifest followed by actual exit7, or exit0 with a retained timeout observation,
 and preserves that failure before skipping live continuation.
+
+
+## Prospective fresh-process RSS lifetime correction
+
+The native Anvil refusal above remains failed. A source-only correction now
+retains a separate `memory_observations` record for every failed fresh RSS read.
+It distinguishes only a proved owned-child terminal teardown from an observer
+failure; it does not invent a final RSS sample or suppress the original error.
+The same held pidfd inode and original PID/starttime must remain bound, with
+at least one earlier successful RSS/PSS sample. Only `ESRCH`/`ENOENT` can be
+considered, and either the owned pidfd is already terminal or the actual task
+has `PF_EXITING`. A bounded 100 ms wait must then establish exit 0 and a terminal
+pidfd. Complete stdout/stderr draining, existing output budgets, image guards
+and the strict response comparison still apply afterward. Missing proc state,
+eventual exit alone, foreign/closed descriptors, live-process errors, other
+errno values and incomplete I/O refuse. The warming/ready/claim monitor is
+unchanged and continues to refuse its observation failures.
+
+```sh
+python3 native/sail-live-prefix/test-memory-identity.py
+python3 native/sail-live-prefix/test-memory-lifecycle.py --out NEW_LOCAL_CONTROLS
+# Mandatory genuine Linux controls before another trace evaluation:
+python3 native/sail-live-prefix/test-memory-lifecycle-native.py --out NEW_NATIVE_CONTROLS
+```
+
+The local controls use actual owned children for waits/status and explicitly
+double Linux kernel observations. They do not qualify the native boundary.
+The native fixture has a 90-second whole-control bound and bounded attempts:
+a child creates 8,192 4 KiB mappings, waits for a pipe, then calls `os._exit`.
+It must establish genuine mm teardown both after terminal status and before
+waitability, with complete empty remaining streams and exit 0; an unobserved
+window is an explicit failed control. Kernel identity, actual task flags,
+all attempts and the original read errors are retained. Linux v6.8 source
+explains the ordering; it is not asserted to be the actual host kernel. No
+corrected trace result or acceptance follows before native qualification.
