@@ -102,8 +102,9 @@ qualifying the macOS runtime against it).
 
    `VERSION` must start with the workspace version (for example `0.1.0` or
    `0.1.0-rc.1`). Both platforms build with `SAIL_VERSION=VERSION`, so
-   `sail --version` reports the exact release version, suffix included (a
-   build without `SAIL_VERSION` reports the workspace version). The script:
+   `sail --version` and every report's `sail_version` (and the MCP server's
+   version) state the exact release version, suffix included (a build without
+   `SAIL_VERSION` reports the workspace version). The script:
    - refuses a dirty checkout, a commit that is not on `origin`, or an
      existing release `vVERSION`;
    - **Linux:** brings up a native host (lane `$SAIL_RELEASE_LANE`, default
@@ -117,7 +118,8 @@ qualifying the macOS runtime against it).
      fork's release with `ci/engine-artifact.py fetch` (no token; archive
      digest and every runtime file checked) and stages the tree with it;
    - self-checks each staged tree: `sail --version` must print
-     `sail VERSION`, and `sail engine status`
+     `sail VERSION`, `sail mcp` must state the same version, and
+     `sail engine status`
      with an empty `SAIL_CACHE_DIR` must select and validate the bundled
      engine;
    - packages each tree as `dist/sail-VERSION-TARGET.tar.gz` (entries owned by

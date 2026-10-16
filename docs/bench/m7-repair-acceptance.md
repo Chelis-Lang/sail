@@ -69,8 +69,9 @@ Each sample records one arm of one cycle in one round. It holds:
   selection error;
 - compiler driver count (M7 `batch.compiler_invocations`; M6 the sum of
   `execution.verifier_invocations`);
-- the canonical full outcome: exit code, sorted function verdicts and tiers,
-  summary, and ordered diagnostics;
+- the canonical full outcome: exit code, sorted function verdicts and
+  establishments (a v2 report's `establishment`, the frozen M6 baseline's v1
+  `tier`), summary, and ordered diagnostics;
 - cache counters from the daemon's `STATS`: replies served, and replies solved
   and recorded.
 
