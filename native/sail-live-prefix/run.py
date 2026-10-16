@@ -15,6 +15,7 @@ import signal
 import subprocess
 import threading
 import time
+import response_policy
 from live_prefix import MAX_INPUT, MAX_INPUT_LIMIT, MAX_OUTPUT, OneUsePool, capture_running_image, path_digest, resident_bytes
 
 
@@ -45,6 +46,8 @@ def main():
     parser.add_argument('--native-metrics', action='store_true')
     parser.add_argument('--max-input-bytes', type=int, default=MAX_INPUT)
     parser.add_argument('--fresh-only', action='store_true')
+    parser.add_argument('--experiment-numeric-time-only', action='store_true',
+                        help='Research only: only numeric :time response values may vary; raw bytes retained')
     parser.add_argument('--fresh-runs', type=int, default=3)
     args = parser.parse_args()
     if not 0 <= args.preparation_window <= 3600 or any(
@@ -65,7 +68,9 @@ def main():
     manifest.update(cwd=str(Path.cwd()),
                     environment_sha256=hashlib.sha256(json.dumps(sorted(os.environ.items())).encode()).hexdigest(),
                     source_sha256={name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-                                   for name in ['run.py', 'live_prefix.py']})
+                                   for name in ['run.py', 'live_prefix.py', 'response_policy.py']})
+    manifest["response_policy"] = response_policy.EXPERIMENT if args.experiment_numeric_time_only else "exact-bytes"
+    manifest["experiment_only"] = args.experiment_numeric_time_only
     pool = None
 
     def write_streams(name, result):
@@ -208,6 +213,12 @@ def main():
                 if args.native_metrics:
                     record.update(guarded_wall=time.monotonic() - started,
                                   solver_cpu=cpu_children() - before_cpu)
+                if args.experiment_numeric_time_only:
+                    comparison = response_policy.compare((first or result)["stdout"], result["stdout"])
+                    record["experiment_comparison"] = comparison
+                    record["experiment_equal_to_first"] = (comparison["equal_except_numeric_time"] and
+                                                            result["stderr"] == (first or result)["stderr"] and
+                                                            result["exit"] == (first or result)["exit"])
                 records.append(record)
                 manifest['fresh_samples'] = records
                 if first is None:
@@ -217,6 +228,9 @@ def main():
             manifest['raw_equal'] = all(row['equal_to_first'] and not row['error'] for row in records)
             manifest['fresh_control_pass'] = (manifest['raw_equal'] and manifest['identity_stable'] and
                                                all(row['image_verified'] and row['exit'] == 0 for row in records))
+            manifest['experiment_fresh_control_pass'] = (args.experiment_numeric_time_only and
+                manifest['identity_stable'] and all(row['experiment_equal_to_first'] and not row['error'] and
+                row['image_verified'] and row['exit'] == 0 for row in records))
         else:
             children_before = cpu_children()
             preparation_started = time.monotonic()
@@ -226,7 +240,8 @@ def main():
             entry = None
             try:
                 pool = OneUsePool(z3, args.solver_sha256, slots=1, max_bytes=args.max_bytes,
-                                  ttl=args.ttl, run_timeout=args.run_timeout, max_input_bytes=args.max_input_bytes)
+                                  ttl=args.ttl, run_timeout=args.run_timeout, max_input_bytes=args.max_input_bytes,
+                                  experiment_numeric_time_only=args.experiment_numeric_time_only)
                 key = pool.seed(prefix, expected)
                 ready = pool.wait_ready(key, args.preparation_window)
                 manifest.update(prefix_key=key, ready=ready)
@@ -276,6 +291,13 @@ def main():
             manifest['candidate_gate_pass'] = (manifest['raw_equal'] and manifest['mode'] == 'one-use-live-prefix'
                                                and manifest['native_images_verified']
                                                and result['exit'] == 0 and reference['exit'] == 0)
+            if args.experiment_numeric_time_only:
+                comparison = response_policy.compare(result['stdout'], reference['stdout'])
+                manifest['experiment_comparison'] = comparison
+                manifest['experiment_candidate_gate_pass'] = (comparison['equal_except_numeric_time'] and
+                    manifest['stderr_equal'] and manifest['exit_equal'] and manifest['identity_stable'] and
+                    manifest['mode'] == 'one-use-live-prefix' and manifest['native_images_verified'] and
+                    not result['error'] and not reference['error'] and result['exit'] == 0 and reference['exit'] == 0)
             if args.native_metrics:
                 manifest['native_metrics'] = dict(background_and_serving_cpu=prepared_cpu,
                     candidate_total_solver_cpu=prepared_cpu + fallback_cpu, fallback_solver_cpu=fallback_cpu,
@@ -285,18 +307,21 @@ def main():
                     fresh_reference_cpu=cpu_children() - reference_cpu_start,
                     scope='one guarded sample; real background CPU and validation overhead are included')
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
-        manifest.update(error=str(error), candidate_gate_pass=False)
+        manifest.update(error=str(error), candidate_gate_pass=False, experiment_candidate_gate_pass=False,
+                        experiment_fresh_control_pass=False)
     finally:
         try:
             if pool is not None:
                 pool.close()
         except BaseException as error:
             manifest.setdefault('cleanup_errors', []).append(type(error).__name__ + ': ' + str(error))
-            manifest.update(candidate_gate_pass=False, fresh_control_pass=False)
+            manifest.update(candidate_gate_pass=False, fresh_control_pass=False,
+                            experiment_candidate_gate_pass=False, experiment_fresh_control_pass=False)
         finally:
             (args.out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest))
-    return 0 if manifest.get('candidate_gate_pass', False) or manifest.get('fresh_control_pass', False) else 1
+    return 0 if any(manifest.get(key, False) for key in ['candidate_gate_pass', 'fresh_control_pass',
+                'experiment_candidate_gate_pass', 'experiment_fresh_control_pass']) else 1
 
 
 if __name__ == '__main__':

@@ -142,3 +142,43 @@ preserve full provenance, validate byte partitioning, and run complete native
 conformance and end-to-end performance against plain stock. A live process
 preserves history; that observation does not establish raw clock or counter
 equality or a new verdict-changing mode. Full corpus acceptance remains open.
+
+## Explicit numeric-time-only experiment
+
+The owner authorized a separate research comparison under
+`--experiment-numeric-time-only`. It is not default-mode conformance, a cache
+normalization, a shipped mode or permission to change another response byte.
+The original `raw_equal`, `fresh_control_pass` and `candidate_gate_pass` remain
+byte-exact. Separate `experiment_*` fields identify this experiment's outcome.
+Both standalone drivers accept the flag; omission preserves exact comparison.
+An experimental pool binds its named response policy separately in its key,
+while retaining the original exact input, executable and environment bindings.
+
+Only the numeric value token of a single bare `:time` key in a complete,
+top-level, flat keyword/numeric statistics list may differ. Every other byte,
+including whitespace, delimiters, keyword order, other statistics, verdicts,
+models and errors, stays exact. Quoted strings/symbols, comments, nested models,
+duplicate keys and unsupported numeric spellings cannot grant an exception.
+Parsing has explicit byte/token/depth limits and streaming preparation never
+claims an incomplete token or response. A varying-width time token uses the
+actual observed prefix boundary when partitioning whole/prefix/suffix output.
+No original input or raw response is rewritten. Comparison manifests retain
+both hashes and every original numeric time token with its offset and length.
+
+```sh
+python3 native/sail-live-prefix/test-response-policy.py
+python3 native/sail-live-prefix/test-time-driver.py --out NEW_TIME_CONTROLS
+python3 native/sail-live-prefix/run-real.py \
+  --source IMMUTABLE_DATASET_DIRECTORY --out NEW_RESULTS --z3 PINNED_Z3 \
+  --experiment-numeric-time-only
+```
+
+An experimental fresh gate still needs all three complete fresh runs, actual
+native image binding, stable executable identity, equal stderr/status, exit 0
+and no error. An `ESRCH` or cleanup failure is a refusal. Only an eligible
+fresh dataset with a matching historical prefix may attempt one live sample;
+any skipped/refused project remains an explicit overall failure. Preparation,
+foreground latency, total/background CPU, RSS/PSS and all raw failures remain
+visible. This selected-pair experiment cannot establish a real application hit
+rate, default-mode equivalence, shipped acceptance or a performance win by
+itself. Native execution of this new policy remains pending.

@@ -200,3 +200,22 @@ first candidate; current live reuse is Linux-only with held kernel image and
 pidfd guards, and macOS declines it. All 28 bounded native controls pass;
 complete command eligibility, protocol integration, conformance and real-project performance
 remain pending. No earlier option-A raw-equality assertion qualifies this code.
+
+### Separate numeric-time-only research comparison
+
+The owner authorized an explicitly named, opt-in continuation experiment that
+permits variation only in numeric `:time` response values. This is a research
+measurement policy, not default-mode equivalence, query/cache normalization,
+proof reuse or a selected implementation. The default prototype still binds
+and compares exact bytes; the opt-in pool has a distinct policy binding.
+Original inputs and all raw outputs stay unchanged and retained.
+
+The experiment recognizes only complete top-level flat numeric statistics
+lists with one bare `:time` key. It compares every other response byte exactly,
+including whitespace, model/error content and other statistics. Its bounded
+parser never guesses incomplete streaming tokens. Strict raw gate fields stay
+strict; separately named experimental fields expose the exception, hashes and
+all actual time tokens. Executable/input/environment guards, exit-zero
+requirements, memory refusals (including `ESRCH`), timeout/fallback semantics
+and final cleanup checks are unchanged. No production integration or new
+native result is implied by the local comparator/driver fixture controls.

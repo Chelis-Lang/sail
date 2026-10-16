@@ -18,6 +18,7 @@ import subprocess
 import threading
 import time
 from types import MappingProxyType
+import response_policy
 
 
 MAX_INPUT = 2 * 1024 * 1024
@@ -111,6 +112,7 @@ class Entry:
         self.failure = None
         self.claimed = self.written = self.ready = self.closed = False
         self.observed = self.finalized = False
+        self.prefix_output_bytes = 0
         self.deadline = time.monotonic() + pool.ttl
         self.peak_rss = self.peak_pss = 0
         self.process = subprocess.Popen(pool.argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -181,9 +183,20 @@ class Entry:
     def _ready(self):
         if self.failure or self.claimed:
             return
-        if self.stderr or not self.expected.startswith(self.stdout):
+        if self.pool.experiment_numeric_time_only:
+            try:
+                state = response_policy.prefix_state(self.expected, bytes(self.stdout))
+            except ValueError as error:
+                self.fail("unsupported experimental prefix output: " + str(error))
+                return
+            mismatch, equal = state == 'mismatch', state == 'equal'
+        else:
+            mismatch = not self.expected.startswith(self.stdout)
+            equal = self.stdout == self.expected
+        if self.stderr or mismatch:
             self.fail("unexpected prefix output")
-        elif self.written and self.observed and self.stdout == self.expected:
+        elif self.written and self.observed and equal:
+            self.prefix_output_bytes = len(self.stdout)
             self.ready = True
             self.changed.notify_all()
 
@@ -280,8 +293,8 @@ class Entry:
                 if self.failure or any(thread.is_alive() for thread in self.threads):
                     return None
                 return dict(stdout=bytes(self.stdout), stderr=bytes(self.stderr), exit=code,
-                            pid=self.pid, prefix_stdout=bytes(self.expected),
-                            suffix_stdout=bytes(self.stdout[len(self.expected):]),
+                            pid=self.pid, prefix_stdout=bytes(self.stdout[:self.prefix_output_bytes]),
+                            suffix_stdout=bytes(self.stdout[self.prefix_output_bytes:]),
                             prefix_sha256=sha(self.prefix), key=self.key,
                             sampled_peak_rss=self.peak_rss, sampled_peak_pss=self.peak_pss)
         except (OSError, ValueError, subprocess.TimeoutExpired) as error:
@@ -326,7 +339,8 @@ class OneUsePool:
     stream. This is a per-pool prototype, not a host-wide fairness policy.
     """
     def __init__(self, z3, expected_sha256, *, slots=1, max_bytes=128 * 1024 * 1024,
-                 ttl=5, run_timeout=5, environment=None, cwd=None, max_input_bytes=MAX_INPUT):
+                 ttl=5, run_timeout=5, environment=None, cwd=None, max_input_bytes=MAX_INPUT,
+                 experiment_numeric_time_only=False):
         if (os.uname().sysname != "Linux" or not hasattr(os, "pidfd_open") or
                 not hasattr(signal, "pidfd_send_signal")):
             raise ValueError("live reuse requires Linux held-executable and pidfd guards; use fresh fallback")
@@ -336,6 +350,9 @@ class OneUsePool:
             raise ValueError("unsupported pool bounds")
         if not 1 <= max_input_bytes <= MAX_INPUT_LIMIT:
             raise ValueError("input budget exceeds the 16MiB prototype ceiling")
+        if type(experiment_numeric_time_only) is not bool:
+            raise ValueError("experimental policy requires explicit boolean")
+        self.experiment_numeric_time_only = experiment_numeric_time_only
         self.z3 = Path(z3).resolve()
         if path_digest(self.z3) != expected_sha256:
             raise ValueError("pinned solver digest mismatch")
@@ -357,6 +374,8 @@ class OneUsePool:
         self.binding = dict(solver_sha256=self.identity, argv=self.argv, cwd=self.cwd,
                             environment_sha256=sha(json.dumps(sorted(self.environment.items()),
                                                              ensure_ascii=True).encode()))
+        if self.experiment_numeric_time_only:
+            self.binding["response_experiment"] = response_policy.EXPERIMENT
 
     def _identity_unchanged(self):
         try:
@@ -376,6 +395,12 @@ class OneUsePool:
             return None
         if len(prefix) > self.max_input_bytes or len(expected_stdout) > MAX_OUTPUT:
             return None
+        if self.experiment_numeric_time_only:
+            try:
+                response_policy.project(expected_stdout)
+            except ValueError as error:
+                self.last_refusal = str(error)
+                return None
         key = sha(json.dumps(self.binding, sort_keys=True).encode() +
                   len(prefix).to_bytes(8, "little") + prefix +
                   len(expected_stdout).to_bytes(8, "little") + expected_stdout)

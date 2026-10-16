@@ -307,3 +307,26 @@ External driver-control manifests: corrected
 `20d72a1d764e12924447e7de3b9c9d39df4c67e05465a56aa16afc2119fd12ef`,
 archived negative control
 `d6cf9f75774e5ce51b2233af2259d57279ce598b92b89045979f045205eba797`.
+
+### Numeric-time-only experiment: implemented, native pending
+
+A separate opt-in research policy now permits differences only in numeric
+`:time` value tokens in complete top-level flat numeric statistics replies.
+The default and original raw gate fields remain byte-exact. The experiment
+retains original inputs, every stdout/stderr byte, both hashes and all time
+values/offsets; models, errors, verdicts, other statistics, framing and spacing
+remain exact. The separate experimental pool binding cannot collide with the
+default prototype key. This is not query/cache normalization, a selected mode,
+a default correctness claim or a shipped optimization.
+
+Local controls pass: 31 structural/streaming comparison cases, nine actual
+owned-child driver/core experiment cases and all eight original driver cases.
+Native image/RSS checks are doubled in the driver fixtures. The cases reject
+other-statistic, verdict, model and stderr changes, equal nonzero exits,
+`ESRCH`, final cleanup failure and timing differences without opt-in. An
+offline comparison of the preserved three-fresh-run bytes finds only permitted
+time-token differences for both selected projects. The original IronKV
+`ESRCH` and both original strict raw failures remain failures; this offline
+comparison is not a rerun or native qualification. Actual new-policy native
+fresh/live samples, latency/CPU measurements and source/runtime checks remain
+pending. No performance or issue-completion claim is made.
