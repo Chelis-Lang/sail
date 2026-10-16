@@ -24,5 +24,8 @@ rustix.workspace = true
 [target.'cfg(target_os = "linux")'.dependencies]
 inotify.workspace = true
 
+[target.'cfg(target_os = "macos")'.dependencies]
+kqueue.workspace = true
+
 [lints]
 workspace = true

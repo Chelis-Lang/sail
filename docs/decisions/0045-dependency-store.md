@@ -263,3 +263,79 @@ An entry records one verified root's report and output. A root whose closure
 contains another verified root is not stored; the leaf proof may still be
 stored, while its dependents verify normally. This prevents copying another
 proof's artifacts without restoring its evidence and diagnostics.
+
+
+## Compiler-boundary correction (#187, candidate)
+
+Copying a native dependency's output is insufficient to establish that its
+current build would succeed: a changed linker at an unchanged PATH location
+can fail while Cargo accepts the copied fingerprint. The [reproduction and
+candidate gate](../validation/dependency-driver-replay.md) records this
+confirmed defect. This amendment replaces decisions 1, 4 and 5's whole-target
+placement for the candidate; it is not yet qualified or accepted.
+
+Cargo must actually compile native dependencies. Reuse happens only when the
+verified library's metadata-only compiler invocation arrives. The v2 entry
+binds exact native extern bytes, complete source/generated-input topology and
+bytes, actual compiler/sysroot inputs, exact effective flags and declared
+environment values. Pre/post mutation observations bracket recording and
+placement. A matching entry restores only `.rmeta`, `.vir`, dep-info and
+validated output; no native artifact or Cargo fingerprint is restored.
+Unsupported input closures compile normally. Corruption must never produce a
+partial successful materialization, and a replay's `establishing_run` remains
+the original proof run rather than the new materialization run.
+
+The existing Cargo tracked-read environment contract remains: declared reads
+are exact, and the known compiler/Verus environment is bound. No new claim is
+made about arbitrary untracked I/O by build scripts or proc macros. Native
+processes still execute on every fresh target. Exact proc-macro byte identity
+can decline cross-target reuse on macOS; this is a measured acceptance limit,
+not permission to normalize or omit those bytes.
+
+
+### Path-resolution mutation guard (candidate)
+
+Positive file hashes do not cover replacement of a directory above an input
+root. Renaming an ancestor away, reading a different tree at that name, then
+restoring the original leaves the root's own inode and ctime unchanged.
+A symlink target may itself traverse another symlink outside the literal
+root's ancestors. Both cases reproduced against the first candidate helper.
+
+The candidate resolves every component of each original root and every
+expanded symlink target, retaining full local stamps before observation starts.
+It opens each ordinary component and checks that descriptor's inode identity
+before attaching its watch to that held descriptor. Mac watches activate once;
+Linux inotify follows the held `/proc/self/fd` descriptor instead of resolving
+the original name again. Final path identities and symlink stamps are checked
+after activation, before inventory reads. The guarded epoch starts there: an
+ancestor replacement entirely before activation cannot affect any later input
+read. Requiring ordinary ancestor ctime stability before activation instead
+incorrectly refused unrelated concurrent output under shared ancestors.
+
+It synchronously observes ordinary component inodes for rename, deletion,
+revocation and attribute changes. Event drains bracket every later validation,
+and any failure stays latched. Symlinks additionally retain their own inode/ctime
+stamps. Unrelated sibling file or directory output does not invalidate an
+observed ordinary ancestor.
+
+The crate graph adds a direct macOS-only `sail-verus -> kqueue` edge at exact
+version 1.2.1, already present transitively in the lockfile (MIT). Its safe
+`Watcher` API supports synchronous vnode observation without an unsafe Rust
+exception or an asynchronously delivered watcher callback. The helper holds
+all borrowed file descriptors until the queue is dropped, registers once,
+and treats error, revoke and unexpected events as refusal. Linux uses the
+existing direct `inotify` dependency: rename/delete/attribute events, unmount,
+queue overflow and ignored watches refuse. Mounting another filesystem over
+an ancestor and unmounting it can evade vnode-only observation. Mac therefore
+also registers the synchronous global `EVFILT_FS` mount/unmount filter; Linux
+polls a held procfs mount-table descriptor for mount-namespace generation
+changes. Any mount event is a miss, even if unrelated. Native setup/registration
+errors or missing mount observation refuse before any inventory bytes are
+read; stamp-only observation cannot authorize replay.
+
+Resolution is bounded to 4,096 distinct component paths and 40 symlink
+expansions per root. Inventory capture independently bounds the complete tree
+to 100,000 entries and two GiB of streamed bytes with a 64-KiB read buffer.
+Exceeding a bound refuses reuse. These checks do not yet establish native Linux
+or real-project acceptance; the [candidate gate](../validation/dependency-driver-replay.md)
+records that qualification separately.

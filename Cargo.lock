@@ -1267,6 +1267,7 @@ name = "sail-verus"
 version = "0.1.0"
 dependencies = [
  "inotify",
+ "kqueue",
  "rustix",
  "sail-api",
  "sail-ledger",
