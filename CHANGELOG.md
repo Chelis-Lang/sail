@@ -9,6 +9,11 @@ semantic versioning once the API is published.
   confirms termination before deleting cloud resources (#201). Refresh
   credentials or fix `SAIL9001`, then retry `scripts/perf-host.sh down LANE`.
 
+- **CI stock-layer candidate** (#195): retain the full validated stock Verus
+  oracle in four deterministic transfer layers, checking the installed path,
+  byte, permission, owner and link inventory in the final image. Native image
+  parity, correctness and two CI cohorts pass. Startup improvement is not
+  established, so this experiment stays unselected.
 
 - **CI image packaging candidate** (#195): checks share a core image with
   every pinned toolchain/runtime; only managed e2e adds the pinned external

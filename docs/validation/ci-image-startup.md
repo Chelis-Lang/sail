@@ -7,6 +7,101 @@
 | Scope | One Dockerfile, a shared `core` target and its complete `mcp` extension. Every existing toolchain, verifier, solver and runtime digest check remains. Only the existing pinned MCP client layer is excluded from jobs that do not invoke it. |
 | Current checks | Native Linux gate, solver, all seven e2e phases plus extra, and PR conformance pass. Mac host checks pass on the earlier prototype source, as scoped below. No startup performance claim follows from these checks. |
 
+## Unselected follow-up: partition the stock installation
+
+The next source candidate puts the complete stock installation into four
+deterministic layers rather than one large layer. It retains both toolchains,
+the existing archive and solver checks, the fork engine, and the real MCP
+client. `ci/partition-verus.py` keeps each internal hardlink group together,
+preserves independent files even when their bytes match, and copies symlinks
+without following their targets. Every part retains the directory inventory.
+The final image build compares every installed path's type, file bytes, mode,
+owner, group, symlink target and internal hardlink topology with the validated
+installation's inventory. The partition helper is an image-tag input.
+The image tag also binds `.dockerignore`, whose explicit allowlist includes
+every context `COPY` input; local controls check both properties.
+
+Filesystem and independent tar-layer replay controls pass on macOS, including
+empty directories, executable/read-only modes, internal hardlinks, equal but
+independent files, and dangling/external symlinks. Invalid destinations,
+aliased roots and special files are refused. These controls do not qualify
+Docker COPY behavior, actual Linux runtime identity or startup performance.
+The earlier accepted records below do not qualify this new candidate.
+
+| Failed attempt | Scope and result |
+|---|---|
+| `8b99f0c8`, 2026-10-16 | Native x86-64 EC2 c7i.4xlarge, us-east-1: candidate image build failed before parity or gates because `.dockerignore` excluded the new partition helper. Baseline images built; no candidate correctness or timing acceptance. Final raw archive SHA-256 `703c9e5d5c78f7a5f759aa3fab413c42dc2b80cac0b15fe57b5fa620709ba073`. |
+
+The corrected candidate passed native image and correctness checks on source
+`87a222eb62e07bd0c55879292de990d10ff2f986`, based on `c89e29d3`.
+The record below qualifies those exact bytes; subsequent documentation updates
+do not extend its runtime or corpus scope.
+
+| Native check | Result |
+|---|---|
+| Environment | EC2 c7i.4xlarge, native x86-64 Linux, us-east-1; stock oracle `0.2026.10.04.426d8b0`, fork `73dea021`, pinned Z3 4.16.0 |
+| Actual image parity | All 5,029 installed entries agree in bytes, type, permissions, owner, group, symlink target and hardlink topology; package/tool versions and image execution settings agree. Inventories run without cache/toolchain mounts that could mask differences. |
+| Workspace gate | 644 tests pass, 35 solver tests skipped here; two doctests, lint, documentation, layering, dependency policy, links and generated benchmarks pass |
+| Solver | 35/35 pass |
+| End to end | All seven phases plus `extra` pass, including strict combined output, store reuse, build scripts and repair |
+| PR conformance | All four modes: 33/33 units and 311 functions match; zero differences, unstable results, infrastructure errors, skipped projects or rlimit drift |
+
+Candidate core image ID is
+`16fc8470e352f758c571287c747b5d28800f8459ceb068723fb91261bf6faed6`;
+the baseline core is
+`08bd13d88b0f1e3f0e7241e0ab220c11ba106d8dd9438742eeea0afce795bb82`.
+Both core inventories hash to
+`86a3853947b41fdce20b472bc8dbb4441d53dab86526f5befafcdf1aff0cc6de`;
+both complete MCP inventories hash to
+`45348574edc00aec20bbe2cd720bbb971566261279300de4ceb515c51a104a1b`.
+Final raw archive SHA-256 is
+`2ee4214c76511d469b00bbeee628b03fc40eae994c82c6963b21e4f4e1978e79`.
+
+Both planned complete CI cohorts on source `9e90e673` pass all 15 jobs.
+The partitioned core is 1,206,422,530 compressed bytes in 16 layers,
+versus the existing core's 1,205,854,041 bytes in 11 layers: an increase of
+568,489 bytes (0.047%). Its four stock layers are approximately 117–127 MB;
+the unchanged toolchain remains the largest layer at 463,015,823 bytes.
+Published core manifest is
+`sha256:bd9b12940e9c4be5f4a795a97831ee9bb88076db68c15f3bd75cd5fdd224ecf2`;
+MCP is `sha256:bac27c63f76c5fe1ebbe0aa1ea0d9d91129112f6432f53afbd8300e99767b7a6`.
+Published-manifest summary SHA-256:
+`8a7fd1dea730d44f9b970ffa9325afb278e8dc8d9247d4ee39692ef19b60e058`.
+
+| Complete actual CI cohort | Container initialization median (range), 11 jobs |
+|---|---:|
+| Existing image, run `38865557667` | 44 s (40–69) |
+| Existing image, run `38869064211` | 66 s (41–255) |
+| Existing image, run `38870618903` | 62 s (40–70) |
+| Existing image, current main run `38933582302` | 43 s (40–68) |
+| Existing image, contemporary PR run `38939588883` | 59 s (40–68) |
+| Partition candidate, run `38938766295`, attempt 1 | 47 s (42–72) |
+| Partition candidate, same source, attempt 2 | 45 s (43–68) |
+
+Every initialization sample, actual pull interval, full log and job/check
+outcome is retained, including the earlier 255-second sample. Pull medians
+for the candidate are 45.00 s and 44.21 s; the two contemporary existing-image
+cohorts are 41.17 s and 58.67 s. These are separate measurements from check
+execution. The cohorts do not isolate runner/cache/network effects, and their
+variation does not establish a useful startup gain from partitioning.
+
+**Decision: leave the partition experiment unselected.** It passes packaging
+and correctness checks, but adds layers and maintenance without an established
+performance benefit. No further repeat run is scheduled to pursue a better
+sample. The existing core/MCP packaging stays selected and #195 stays open.
+The complete seven-cohort comparison and raw/source bindings hash to
+`1416e0c06b1395b099f860379bbe89cedd805fd7ca1d507e1e57ce9f08505f7b`.
+The two candidate raw summaries hash to
+`d7d1b18b1e8d2dff3cb8921a428dbb6fa4b9c385a1797926c36e946b05558c6c`
+and `d78cc1a2f45c74af6130143fcafbe09a5e46f20e0cea3840767167797076d5d8`.
+
+Use Python 3.12 or later for these controls, as in the CI image:
+
+```sh
+python3 ci/test-partition-verus.py
+python3 ci/partition-verus.py inventory /opt/verus
+```
+
 ## Baseline
 
 The existing published image is
