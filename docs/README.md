@@ -46,6 +46,8 @@ its interactive engine, the prebuilt artifact and the runtime identity. Its chec
 the [M7 validation record](validation/m7.md) (Gate 1). Long corpus, source-build and benchmark work
 runs locally, and required CI stays short. Reference performance numbers come
 from a native x86-64 Linux host (`scripts/perf-host.sh`).
+The [CI image startup record](validation/ci-image-startup.md) describes the
+shared core/MCP packaging targets and their measured acceptance status.
 
 [M7 validation](validation/m7.md) gives each M7 acceptance gate's status, best
 evidence and indexed failed or interrupted attempts, and the
