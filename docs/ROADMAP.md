@@ -312,7 +312,9 @@ oyster and such." This supersedes the parallel tracks of
       implemented; native gates and full fast/standard pass; required PR
       checks are enforced separately ([validation](validation/fallback-parity.md)).
    9. B2, single-file `verus file.rs` projects, #164.
-   10. deep-rvt against the fork, #124.
+   10. deep-rvt against the fork, #124: exact fork and retained stock
+       control arms implemented; native acceptance pending
+       ([guide](deep-verus-tests.md)).
    11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.
 
    B1 (a verified vstd shared across projects and worktrees, beyond the

@@ -14,6 +14,14 @@ semantic versioning once the API is published.
   Older manifests without these digests require a deliberate source rebuild;
   changed, missing or duplicate executable entries are rejected.
 
+- The source-suite runner avoids its duplicate progress flag for the exact
+  original VI-0012 regression source, binary and case (#203). Changed or missing
+  source keeps the default, explicit threads remain unchanged, and reproduction
+  commands now show the same effective `VERUS_EXTRA_ARGS` as actual execution.
+  The original regression, native BASIC and complete fork source suite pass on
+  private qualification source. Remaining runtime gates are separate; the
+  original failure stays recorded.
+
 - **CI image packaging candidate** (#195): checks share a core image with
   every pinned toolchain/runtime; only managed e2e adds the pinned external
   MCP client. Local checks select the same targets. Actual startup improvement
@@ -44,6 +52,15 @@ semantic versioning once the API is published.
   source restoration, records source/runtime identities and retains failed
   samples. Final combined-runtime performance and correctness gates remain
   pending; this does not change Sail's runtime pin or cache keys.
+- **The deep Verus test gate tests Sail's fork** (#124). `deep-rvt` compares
+  the fork with and without `sail-z3` using exact output, then retains
+  the original stock-with-and-without-shim control using ADR 0042 for complete
+  diagnostic messages. Fork-only regression tests remain in the exact arm.
+  `cargo xtask build-verus-source --fork` builds an isolated test variant,
+  without replacing the installed runtime.
+  An explicit `SAIL_VERUS_SOURCE_BUILD` fork suite is checked by the suite
+  loader, separately from the pinned release lookup; it is no longer refused
+  by the ordinary stock-source installer before testing.
 
 - **Real-project benchmarks avoid duplicate managed runs** (#167).
   `scripts/perf-real.sh` now defaults to `plain sail`; `--incremental`

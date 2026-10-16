@@ -231,6 +231,19 @@ impl Installed {
         if let Some(build) = std::env::var_os("SAIL_VERUS_SOURCE_BUILD") {
             return Self::from_source(pins, Path::new(&build));
         }
+        Self::locate_release(pins)
+    }
+
+    /// Locates the pinned binary release, ignoring `SAIL_VERUS_SOURCE_BUILD`.
+    ///
+    /// This supplies the release's solver to a separately validated source
+    /// suite. `SAIL_VERUS_HOME` and secondary-release selection retain their
+    /// normal meaning; this does not admit a source build as a release.
+    ///
+    /// # Errors
+    ///
+    /// `SAIL3003` if the host has no pinned asset or the release is not installed.
+    pub fn locate_release(pins: Pins) -> Result<Self> {
         let asset = pins.assets.get(host()).ok_or_else(|| {
             Error::new(
                 "SAIL3003",

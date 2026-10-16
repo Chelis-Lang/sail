@@ -40,6 +40,8 @@ exactness experiment; no continuation implementation is selected.
 The [source-suite integrity record](validation/source-suite-integrity.md) tracks
 executable digests, legacy-manifest migration and native rebuild controls.
 
+[Deep Verus checks](deep-verus-tests.md) explains the fork and stock source
+variants, exact shim comparisons and the independent stock test-program oracle.
 [Releasing](releasing.md) gives the release procedure, the archive names and
 layout, and how `sail` finds the bundled engine.
 [Managed runs](managed-cold-start.md) explains what the first managed run costs

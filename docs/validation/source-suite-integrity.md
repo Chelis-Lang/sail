@@ -78,9 +78,10 @@ native root-owned-file control demonstrated an archive permission failure
 mechanism. The successful retry verifies privileged full archival before the
 image builds. The earlier lost outcome remains unknown.
 
-After rebasing onto current main, the two Rust implementation files and three
-integrity-control scripts remain byte-identical to qualified source `6ba30636`.
-This does not claim a native run of the rebased head.
+The #202 PR head `7c2d26d1`, rebased onto main `c89e29d3`, retained the two
+Rust implementation files and three integrity-control scripts byte-identically
+to qualified source `6ba30636`. This does not claim a native run of that rebased
+head or any later harness integration.
 
 This checks suite integrity and rebuild/listing behavior, not execution of the
 complete 4,695-case source suite. The genuine combined fork runtime and its
