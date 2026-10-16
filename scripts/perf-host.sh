@@ -100,7 +100,9 @@ EOF
 cmd_sync() {
   require_lane "${1:-}"; host_of "$1"
   # shellcheck disable=SC2046
-  rsync -az --delete -e "ssh $(ssh_opts "$1")" \
+  # Content must decide source updates across worktrees. Copied sources need
+  # current mtimes so Cargo cannot reuse binaries newer than an older checkout.
+  rsync -az --checksum --no-times --delete -e "ssh $(ssh_opts "$1")" \
     --exclude target/ --exclude .claude/ --exclude '__pycache__/' --exclude conformance-out/ \
     --exclude /dist/ --exclude /release-out/ \
     "$(git rev-parse --show-toplevel)/" "ubuntu@$addr:sail/"
