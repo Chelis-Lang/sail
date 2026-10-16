@@ -27,6 +27,12 @@ semantic versioning once the API is published.
   diagnostic messages. Fork-only regression tests remain in the exact arm.
   `cargo xtask build-verus-source --fork` builds an isolated test variant,
   without replacing the installed runtime.
+- **Incidental-edit performance qualification** (#118): an opt-in frozen
+  catalogue covers comments, blank lines, helper insertion/relocation and
+  local renames across three pinned projects. The benchmark checks exact
+  source restoration, records source/runtime identities and retains failed
+  samples. Final combined-runtime performance and correctness gates remain
+  pending; this does not change Sail's runtime pin or cache keys.
 
 - **Real-project benchmarks avoid duplicate managed runs** (#167).
   `scripts/perf-real.sh` now defaults to `plain sail`; `--incremental`

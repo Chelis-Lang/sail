@@ -125,3 +125,10 @@ The combined source candidate `8a373f81` passes the fork CI and the selected
 macOS runtime tests, including all nine `output_json` tests. Full native
 corpus conformance, determinism, the full source suite, and renewed measured
 gain on the final runtime remain gates. Sail's runtime pin is unchanged.
+
+The broader #118 [incidental-edit acceptance](../validation/incidental-edits.md)
+has a frozen 15-case catalogue over Vest, CapybaraKV and IronKV, including
+helper relocation and local renames. Its source-editor controls are checked;
+native final-runtime measurements and exact re-solved-check counts remain
+pending. Daemon reply counts are not substituted for satisfiability-check
+counts.
