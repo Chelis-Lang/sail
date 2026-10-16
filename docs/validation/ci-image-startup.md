@@ -18,6 +18,8 @@ without following their targets. Every part retains the directory inventory.
 The final image build compares every installed path's type, file bytes, mode,
 owner, group, symlink target and internal hardlink topology with the validated
 installation's inventory. The partition helper is an image-tag input.
+The image tag also binds `.dockerignore`, whose explicit allowlist includes
+every context `COPY` input; local controls check both properties.
 
 Filesystem and independent tar-layer replay controls pass on macOS, including
 empty directories, executable/read-only modes, internal hardlinks, equal but
@@ -25,6 +27,10 @@ independent files, and dangling/external symlinks. Invalid destinations,
 aliased roots and special files are refused. These controls do not qualify
 Docker COPY behavior, actual Linux runtime identity or startup performance.
 The earlier accepted records below do not qualify this new candidate.
+
+| Failed attempt | Scope and result |
+|---|---|
+| `8b99f0c8`, 2026-10-16 | Native x86-64 EC2 c7i.4xlarge, us-east-1: candidate image build failed before parity or gates because `.dockerignore` excluded the new partition helper. Baseline images built; no candidate correctness or timing acceptance. Final raw archive SHA-256 `703c9e5d5c78f7a5f759aa3fab413c42dc2b80cac0b15fe57b5fa620709ba073`. |
 
 Remaining gates are an actual native image build and complete runtime/toolchain
 inventory comparison with the current image, native workspace/solver/all e2e
