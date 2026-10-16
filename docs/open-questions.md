@@ -379,3 +379,23 @@ planned for releases after 0.1.0. The owner answered all twelve on
     Cargo `--config`, `--target-dir`, Verus log options, `--no-verify`,
     tests, benches and examples: nothing plain Cargo-Verus accepts is
     refused (ADR 0046, decision 4).
+
+## Solver-continuation research
+
+31. **Existing stored timing versus a new literal continuation oracle.**
+    On actual pinned Linux Z3, three fresh complete runs each of an IronKV
+    and an Anvil body-edit trace exit 0 with empty stderr and identical check
+    replies (24 and nine `unsat`). Every changed stdout line in those samples
+    is a `:time` field. Historical fork/resume `num-allocs` differences remain
+    a separate unresolved failure, and one IronKV fresh run retains a memory
+    observer's exit race. Both live samples were skipped under the unchanged
+    strict raw gate; no gain is claimed.
+
+    [ADR 0011](decisions/0011-local-cache-and-lazy-solver-sessions.md) already
+    permits replaying actual stored time/memory figures. What exact timing
+    behavior should a future continuation gate require relative to that
+    existing contract? This asks for a precise acceptance decision, not
+    permission to mask fields, alter resource limits or waive diagnostics,
+    models, statistics or runtime identity. Until decided and qualified,
+    the current gate remains failed and the prototype stays unselected.
+    [Evidence](validation/solver-snapshots.md).

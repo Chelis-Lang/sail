@@ -34,6 +34,9 @@ projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
 [Socket fixture retirement](validation/mcp-fixture-retirement.md) records the
 MCP test-server cancellation regression and its remaining validation scope.
+[Solver-continuation findings](reports/2026-10-16-solver-snapshots.md) and their
+[qualification record](validation/solver-snapshots.md) preserve the blocked
+exactness experiment; no continuation implementation is selected.
 [Releasing](releasing.md) gives the release procedure, the archive names and
 layout, and how `sail` finds the bundled engine.
 [Managed runs](managed-cold-start.md) explains what the first managed run costs
