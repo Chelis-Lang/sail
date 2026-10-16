@@ -115,6 +115,12 @@ semantic versioning once the API is published.
   every pinned toolchain/runtime; only managed e2e adds the pinned external
   MCP client. Local checks select the same targets. Actual startup improvement
   remains unqualified; required checks and timeouts are unchanged.
+- Avoid repeated conservative cleaning for scripts a successful Current Cargo
+  run did not schedule (#174), preserving observed contracts and all proof
+  checks. On the pending #215 output correction, all nine native fixture samples
+  pass: unchanged median 1.098 s to 0.217 s (5.06×), versus stock 0.109 s.
+  The implementation remains unselected; real-Vest costs and current full gates
+  are pending. See the [scope and preserved histories](docs/validation/unscheduled-script-cleaning.md).
 
 - Solver-continuation research now records its failed exactness gates,
   preserved source/evidence and minimal timer-state reproduction. No solver
