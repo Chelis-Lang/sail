@@ -36,6 +36,8 @@ native linker errors observable. Existing unchanged targets remain silent;
 damaged entries compile and verify normally. A closure containing another
 verified root, an unsupported metadata search or incomplete input coverage
 cannot be served. The original proof run remains the `establishing_run`.
+The candidate refuses HFS inputs because their timestamps cannot detect a
+rapid source change followed by restoration; verification proceeds normally.
 This correction is [still in qualification](validation/dependency-driver-replay.md);
 existing draft assets use the older whole-target store.
 

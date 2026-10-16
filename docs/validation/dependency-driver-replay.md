@@ -163,9 +163,11 @@ have SHA-256 `025d6916b73611b719deba0460849818ea0c4e375a5c5799e346e55c8e5b4c7c`
 and `266f26b07cf298b87a7c43827149dbd4801155fc109f212d446ab041c895f1e7`.
 The corrected actual-source helper passes all 16 Mac tests serially and with
 default parallel execution, including FIFO/no-follow refusal and admission
-predicates. Logs have SHA-256
-`0ec55a40e80c287c03d66e0057f84986bd077a3438c19aeb1280b9d11be67fc3`
-and `4cacac22119f8ba997ee48f35b486c4d3e2d05116d12688362903f6aa7e55856`.
+predicates. The retained original parallel log has SHA-256
+`4cacac22119f8ba997ee48f35b486c4d3e2d05116d12688362903f6aa7e55856`.
+The original serial raw log (`0ec55a40e80c287c03d66e0057f84986bd077a3438c19aeb1280b9d11be67fc3`)
+was overwritten by a later diagnostic script invocation; its loss is retained
+below and that missing log does not qualify the current source.
 Strict direct pedantic clippy passes. Actual filesystem execution is APFS;
 network/pseudo/FUSE/unknown rejection is predicate scope, not a mounted remote
 filesystem experiment. Linux observer, supported filesystem and mount-event
@@ -269,3 +271,40 @@ An invocation of the old direct-check script overwrote its three `guard-open`
 logs with a later fixture run. The original separate 16-case parallel log and
 all source/runtime and native archives remain intact; the latest logs are
 retained separately. No current acceptance depends on the overwritten files.
+
+## Coarse-timestamp HFS counterexample
+
+The exact `c053bb13` resolver (`8e9854925964bcef352d3851b3d6764fc68ff074515ac845268e822e1f7138f8`)
+and inventory (`3929714d5bb319ed6e2dc231f04470e2fe5357f0f8fadb0b9fbfa627d8d973aa`)
+were tested on an owned mounted HFS+ image. The rapid regular-file control
+fails immediately (exit 101): it writes same-length bad bytes, actually reads
+them, restores the original bytes and mtime, and the observation incorrectly
+remains unchanged with an identical full stamp. Source/library/runtime scope
+and the actual setup/test outputs are retained; manifest SHA-256
+`ec1a98281b45aa7d7a697fd950850d79f2e76c725b417370c4c3a85afab24805`.
+
+HFS admission is now removed and its predicate regression requires refusal;
+actual new-source HFS capture refuses both regular roots and recursive trees
+(exit 0). The frozen helper is `bb5cc037524ba9233a135a266db00f139fe0575d12cff4efbd72bd906fee1b46`;
+manifest SHA-256 `fa901435dd3027be2d123c4611231f5a78bbc16e178f6de1e4868f1fd3ee431d`. No byte, topology or native
+mutation check is relaxed. APFS passes 1,000 rounds each of regular-root and
+recursive-child content/mtime restoration and permission ABA (4,000 total),
+log SHA-256 `08b395339de362ce0fda7fa149c81270a3cbdc348339a2a5daac561bcd915cc1`.
+The same 4,000 controls pass on actual native Linux overlay; results manifest
+SHA-256 `98f8435d2ce16f73589083c2d6de2ca5a76d1b4887eec7a355ce9b14c458e11b`.
+Those passes do not establish all admitted filesystems or complete native
+write-event coverage, which remains under review. This candidate is unaccepted.
+
+The `c053bb13` full Mac host gate passes 649 tests (35 skipped), with all 507
+tracked source hashes unchanged; log SHA-256
+`53a4c6e39168f7dbf07392b380bee38e160b262e0952cc9812d57cfe34f04854`.
+This predates HFS refusal. Its live donor still publishes no entry. A separate
+sidecar diagnostic again reaches admission and refuses changed inputs; no
+strict store assertion was relaxed. Further native event/path tracing is
+required to establish the next refusal.
+
+| Date | Source / attempt | Result | Cause / evidence |
+|---|---|---|---|
+| 2026-10-16 | Exact `c053bb13`, actual HFS+ | Failed safety control (101), round 0 | A source ABA with restored mtime retained the same full stamp; manifest above. HFS now refuses. |
+| 2026-10-16 | HFS wrapper setup attempts | Failed before qualified control | Obsolete image format flag and literal/canonical mountpoint mismatch; raw setup failures retained. |
+| 2026-10-16 | Two HFS diagnostic-overlay attempts | Not source qualification | Actual failures retained, but helpers included temporary diagnostics; exact frozen-source attempt above is authoritative. |

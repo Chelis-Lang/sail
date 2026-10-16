@@ -349,14 +349,17 @@ expected inode identity before watching it; hashing checks its full mutation
 stamp and size. The recursive inventory admits each directory and streamed
 file, including pre-existing nested mounts, through the same descriptor check.
 
-Filesystem admission is deliberately limited: local APFS/HFS on macOS, and
+Filesystem admission is deliberately limited: local APFS on macOS, and
 ext2/3/4, XFS, Btrfs, tmpfs and overlayfs on Linux. Network, pseudo, FUSE and
 unknown filesystems refuse replay, because registration success alone does
 not establish that native events cover external changes. The inotify
 [documented limitations](https://man7.org/linux/man-pages/man7/inotify.7.html)
 explicitly exclude remote filesystem events and several pseudo-filesystems.
-Admission predicates are tested; actual Mac execution here is APFS only.
-The admitted Linux types and HFS still need their applicable native gates;
+HFS is refused: an actual HFS+ image accepted a source write/read/restore
+with the original mtime restored and an identical full stamp. A timestamp
+is not a general mutation counter on that filesystem. Admission predicates
+are tested; APFS and Linux overlay have actual rapid-ABA controls. Other
+admitted Linux types still need their applicable native gates;
 this is not a claim that every mount arrangement is qualified.
 
 ### Regular executable access events
@@ -373,3 +376,15 @@ ancestor permissions can affect path resolution. Symlink, mount and complete
 inventory guards are unchanged. Content/permission changes followed by restore
 must still refuse through ctime, and replacement ABA must still refuse.
 The change remains a candidate until live store and both-platform gates pass.
+
+### HFS refusal
+
+The regular-executable correction's full-stamp argument does not hold on HFS.
+An actual mounted HFS+ image with the exact `c053bb13` helper accepted a
+same-length source write, actual bad read, restored bytes and original mtime:
+all stamped metadata was identical. Replay therefore refuses every HFS input
+through held-descriptor filesystem admission before hashing or registration.
+Ordinary verification remains available. APFS/Linux rapid-ABA stress passes
+are scoped evidence, not proof of complete event coverage for every admitted
+filesystem; structural write-event coverage remains under review before this
+candidate can be accepted.
