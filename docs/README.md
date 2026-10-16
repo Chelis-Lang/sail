@@ -86,6 +86,9 @@ M7 rescue's decisions; the rescue review and lane reports are kept in the tag
 [roadmap review](reports/2026-10-13-roadmap-review.md) are the current inputs
 to planning. The [verification runtime scope](scope/verification-runtime.md)
 records the owner's direction for releases after 0.1.0.
+The [private combined-fork candidate](validation/combined-fork-candidate.md)
+records genuine engine/suite builds and their remaining default-runtime,
+corpus, determinism and performance gates.
 
 [Verus issues](verus-issues/README.md) contain local reproductions and workarounds.
 [Survey documents](survey/README.md) retain Verus/Z3 protocol, solver behavior,
