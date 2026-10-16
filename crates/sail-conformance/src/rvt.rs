@@ -128,6 +128,9 @@ fn classify_tests_with(
         .iter()
         .skip(1)
         .any(|p| !compare_tests_with(first, p, exact).is_empty());
+    if exact && plain_varies {
+        differences.push("observed fork runs differ".to_owned());
+    }
     let matches_a_plain_run = plains
         .iter()
         .any(|p| compare_tests_with(p, sail, exact).is_empty());
@@ -181,6 +184,22 @@ mod tests {
         let c = classify_tests(std::slice::from_ref(&a), &a);
         assert_eq!(c.verdict, Verdict::Same);
         assert_eq!(c.differences, Vec::<String>::new());
+    }
+
+    #[test]
+    fn exact_fork_variation_is_different_even_when_candidate_matches_first() {
+        let first = rec(Outcome::Ok, "warning: first\nwarning: second\n");
+        let reordered = rec(Outcome::Ok, "warning: second\nwarning: first\n");
+        let classified = classify_tests_exact(&[first.clone(), reordered], &first);
+        assert_eq!(classified.verdict, Verdict::Different);
+        assert!(classified.plain_varies);
+        assert!(classified.matches_a_plain_run);
+        assert!(
+            classified
+                .differences
+                .iter()
+                .any(|d| d == "observed fork runs differ")
+        );
     }
 
     #[test]
