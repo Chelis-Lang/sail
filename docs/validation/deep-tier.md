@@ -1,5 +1,122 @@
 # Deep-tier soundness validation
 
+## Fork source-suite gate (#124)
+
+**Candidate; complete corrected fork source suite passes on private source.** The revised harness adds an exact
+fork-with-and-without-shim arm and retains the original stock-with-and-without-
+shim control. Stock-versus-fork equivalence remains the mandatory corpus gate.
+Nonignored fork tests must pass, including their assertions; matching failed
+libtests cannot qualify the fork. The source-build variant also generates its
+own Cargo toolchain manifest. This does not qualify an installed release bundle.
+
+On macOS arm64, the first fork-test build from `73dea021` completed with 153
+test binaries. A 244-test selection (`modes::` and `output_json::`, 3 ignored)
+had 241 Same, 3 Different, 0 Unstable and 0 infrastructure errors. All nonignored
+libtests passed. The three differences are the actual JSON proof-note order
+defect [VI-0021](../verus-issues/VI-0021-proof-note-json-order.md), with raw
+reports/logs archived at SHA-256
+`475aa777b9e0ebd98f0ab1b3498d453d3803091aeef54c1d8f2927d43e103444`.
+That failed sample is not whole-suite acceptance. The corrected combined runtime later passed its full native source suite,
+as recorded below; broader runtime acceptance remains pending.
+
+Native source `84ca8c18305628fa18ef9e39ac7f6b9299c3c917` passed the workspace
+gate (636 tests, 35 skipped), solver tests (35), all seven end-to-end phases
+plus extra, PR conformance, full fast conformance and full standard conformance.
+Each of four arms compared 147 fast units (3,450 functions) and 159 standard
+units (12,726 functions): all Same, with zero Different, Unstable,
+infrastructure errors or skipped projects. The standard engine arm recorded
+one unit with rlimit drift; the other standard arms and all fast arms recorded
+none. These corpus runs use the existing pinned fork runtime, not the proposed
+combined runtime or the new source-suite build.
+
+The machine was a native c7i.4xlarge in us-east-1, Ubuntu 24.04, with
+16 CPUs and a 26 GiB container memory bound. Fourteen source manifests agree
+on all 508 tracked file contents, independently checked against the source
+commit (including the `CLAUDE.md` symlink to `AGENTS.md`). Full compressed raw
+evidence SHA-256:
+`eb24d0c9e2b74ec0f37bf32244709f71cd5095a21ff6c46b3a5bc7bcb936d0e6`.
+Independent source/report verification SHA-256:
+`b59f8e8e0ae67fd69ee71c52c83072af10c6c50a0ca799a583019e470e36f673`.
+
+The subsequent `9fa6c9d2` candidate corrects the fork suite's identity to
+describe its actual Vargo-built vstd layout, rather than the installed engine's
+release layout. Its complete fork/stock source-suite outcome was not retrieved
+before the host's shutdown deadline. It remains unqualified; the corpus result
+above does not stand in for that source-suite gate. The current-main rebase
+retains the reviewed implementation. Replacement gates must qualify the stock
+control separately from the corrected combined-fork candidate.
+
+The explicit fork selector now bypasses only the generic stock-source
+installation lookup: its pinned solver comes from the release, and the suite's
+existing manifest, artifact, feature, toolchain and solver checks remain in
+force. Ordinary stock and Singular source installation retain their existing
+selector behavior. On private source `168ab7ab`, all 18 actual-binary list-only selector controls
+and all nine genuine fork `output_json` tests passed. Its complete fork suite
+then failed strictly on a runner-supplied duplicate progress flag: 4,708 Same,
+one Different, no Unstable or infrastructure errors (4,709 selected, 58 ignored).
+The original test and baseline-must-pass rule remain intact. The
+[source-bound option correction](rvt-progress-option.md) passed the original
+VI-0012 regression, BASIC and the full genuine fork suite on private
+`af339f8a`: 4,709 Same (58 ignored), all 4,651 nonignored plain tests passed,
+zero Different, Unstable or infrastructure errors in 1,225.58 s. Raw SHA-256
+`b2304b6dd70355fd69a0ad6241c3f2a00c25156e8443ffb357b80005ce165faf`.
+The main-based harness join `2bd59014` separately passed its full native
+workspace gate and controls in the main `c89e29d3` image `08bd13d8` on a
+c7i.4xlarge/us-east-1; raw archive SHA-256
+`9d417731ece59058f380072fb9171fb54c8120c2c76cd646c47cc5689fbc65cf`.
+This is workspace qualification only, not a fork source-suite run or acceptance
+of the combined runtime. Its broader acceptance remains separate; accepted
+pins are unchanged.
+
+Failed/interrupted attempts, 2026-10-16:
+
+- `af339f8a`: replacement remaining-gates controller fetched the complete fast
+  corpus, then its subprocess proxy lacked `DEVNULL`. The helper failed before
+  any verifier/SMT execution; no determinism/standard/deep result follows.
+  Final raw SHA-256
+  `5f7d7fdfb1d21f0dcd4dc615b58524a5d72ec1d113b3107bb8dc2636c6aea37f`.
+
+- `af339f8a`: subsequent determinism preparation failed before any SMT
+  execution because the fresh host had not fetched the complete fast corpus.
+  No determinism/standard/deep result follows. Final raw SHA-256
+  `eec84add58f8e7bc103ec3c5e940019fa976d5cf39623415ba016dbd48971fc2`.
+
+- `168ab7ab` with combined fork `8a373f81`: complete genuine fork suite,
+  4,708 Same/one Different; the VI-0012 regression failed identically on both
+  sides because the harness injected a second `--no-report-long-running`.
+  Failed raw archive SHA-256
+  `c4e3826df19353f4935ad4d2b80689d2b1c754f61233f9b9aa15d1026608624a`.
+  No reclassification or assertion change; see [#203](https://github.com/Chelis-Lang/sail/issues/203).
+- `6880cb9b` with combined fork `8a373f81`: selected source-JSON run refused
+  `SAIL3040` before any tests, because the generic stock installer consumed
+  the fork-suite selector first. Final raw archive SHA-256
+  `6fbbb1f78bd96633654e40f7e40be20247590ceea6d767b4208062a67714962a`.
+  The correction separates release lookup from suite selection; no source
+  admission check or comparison is relaxed.
+- `c0e7e0f5`: full native stock control completed with 4,695 selected tests
+  (58 ignored), 4,691 Same, 3 Unstable, 1 Different and 0 infrastructure
+  errors in 1,174 s. `output_json::test_json_proof_note_on_requires` did
+  not match any of 11 observed plain runs; plain varied. The strict gate
+  failed, and the runtime after-hash stage was not executed. No JSON
+  normalization or instability reclassification applies. Final raw archive
+  SHA-256 `7227656b22b91737afcf3599334cd4bcdcf0edc509381bdb6ed059c62e5cc66f`.
+
+- `9fa6c9d2`: complete fork/stock source-suite qualification interrupted from
+  the lead's perspective by a prolonged session pause and host shutdown.
+  Final outcome unknown; no final source-suite reports were retrieved. Earlier
+  `84ca8c18` full fast/standard evidence was already archived and is retained
+  above. No acceptance follows from observed intermediate progress.
+- `218824c8`: interrupted selected fork run after relative `--shim` failed
+  from the suite directory; path resolution corrected, comparison retained.
+  Log SHA-256 `867481e25ecea9bff777e0e6f57bad7c9993ec682335f61861b9061fe7e781ec`.
+- `218824c8` plus relative-path correction: rejected new cross-runtime
+  experiment, 2 selected tests Different because relocating identical stock
+  executables changes their reported input paths. No output exemption added;
+  source-suite scope reverted to the two supported runtime-local arms.
+  Reports/log SHA-256 `b676d20c982b843a451353ed51ab1154c283dd12149e60ba749501b57c2a9ec1`.
+
+## Earlier rescue qualification
+
 This page records the deep tier (AGENTS.md, Testing tiers) run before the M7
 rescue is called a release: the corpus deep tier, Verus's own
 `rust_verify_test` suite ([ADR 0019](../decisions/0019-rust-verify-test-conformance.md))

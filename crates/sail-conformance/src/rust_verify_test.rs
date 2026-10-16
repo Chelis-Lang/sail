@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 use sail_conformance::Verdict;
-use sail_conformance::rvt::classify_tests;
+use sail_conformance::rvt::{classify_tests, classify_tests_exact};
 use sail_verus::run::{Solver, copy_tree, machine_info};
 use sail_verus::rvt::{Outcome, Suite, TestCase, TestRecord, kept_input_dir};
 use sail_verus::source_build;
@@ -22,17 +22,21 @@ use crate::{now_unix, slug};
 pub const USAGE: &str = "usage:
   sail-conformance rust-verify-test [--filter SUBSTR]... [--every N] [--jobs N]
                                     [--confirm-runs N] [--out DIR] [--shim PATH]
+                                    [--baseline fork|stock]
                                     [--list]
 
-  Runs every test of Verus's rust_verify_test suite (from `cargo xtask
-  build-verus-source`) plainly and through sail-z3, and compares outcomes,
-  exit codes and diagnostics. The sail side uses SAIL_DAEMON_SOCKET if set.
+  Runs the pinned fork's rust_verify_test suite plainly and through sail-z3
+  with exact output comparison. Build it with `cargo xtask build-verus-source
+  --fork`. With --baseline stock, retain the original stock-vs-shim control
+  using ADR 0042 for diagnostics. The sail side uses SAIL_DAEMON_SOCKET if set.
 
   --filter SUBSTR   only tests whose id (<file>::<test>) contains SUBSTR
                     (repeatable: any of them)
   --every N         then only every N-th test (a spread-out sample)
   --jobs N          tests run in parallel (default 4)
   --confirm-runs N  extra plain runs when sail differs (default 10; ADR 0009)
+  --baseline NAME  fork (default): exact fork vs fork through the shim;
+                    stock: original stock vs stock through the shim, ADR 0042
   --verus-threads N Verus's --num-threads for every test, both sides
                     (default 0: Verus's own default; messages from different
                     modules may come in any order, ADR 0042. 1 gives a fixed
@@ -48,6 +52,7 @@ struct Options {
     out: Option<PathBuf>,
     shim: Option<PathBuf>,
     list: bool,
+    stock_baseline: bool,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -60,6 +65,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
         out: None,
         shim: None,
         list: false,
+        stock_baseline: false,
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -84,6 +90,13 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--out" => o.out = Some(value()?.into()),
             "--shim" => o.shim = Some(value()?.into()),
             "--list" => o.list = true,
+            "--baseline" => {
+                o.stock_baseline = match value()?.as_str() {
+                    "fork" => false,
+                    "stock" => true,
+                    _ => return Err("--baseline must be fork or stock".to_owned()),
+                };
+            }
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
     }
@@ -130,6 +143,11 @@ struct Report {
     suite: &'static str,
     verus_release: String,
     verus_commit: String,
+    /// Present only when this arm runs the pinned fork runtime.
+    fork_commit: Option<String>,
+    comparison: &'static str,
+    baseline_build: PathBuf,
+    candidate_build: PathBuf,
     z3_version: String,
     features: Vec<String>,
     sail_daemon: bool,
@@ -144,6 +162,7 @@ struct Report {
 
 struct Context<'a> {
     suite: &'a Suite,
+    exact: bool,
     sail: Solver,
     out: &'a Path,
     confirm_runs: usize,
@@ -211,8 +230,8 @@ fn reproduce(cx: &Context, test: &TestCase, dir: &Path) -> Result<(), String> {
          input: {input}\n\n\
          Verus's own rerun line (from the source build's `source` directory):\n{rerun}\n\n\
          Rerun the test itself, in {pkg}:\n\
-         plain: VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 {extra}VERUS_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
-         sail:  VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 {extra}VERUS_Z3_PATH={sail_z3} SAIL_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
+         plain: VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 VERUS_EXTRA_ARGS=\"{extra}\" VERUS_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
+         sail: VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 VERUS_EXTRA_ARGS=\"{extra}\" VERUS_Z3_PATH={sail_z3} SAIL_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
          (with Verus's toolchain library directory on the dynamic library path)\n",
         id = test.id(),
         rerun = rerun.join("\n"),
@@ -220,9 +239,7 @@ fn reproduce(cx: &Context, test: &TestCase, dir: &Path) -> Result<(), String> {
         z3 = cx.suite.z3.display(),
         bin = test.path.display(),
         name = test.name,
-        extra = cx.suite.verus_threads.map_or_else(String::new, |n| format!(
-            "VERUS_EXTRA_ARGS=\"--num-threads {n}\" "
-        )),
+        extra = cx.suite.extra_verus_args(test),
     );
     std::fs::write(dir.join("reproduce.txt"), note).map_err(|e| e.to_string())
 }
@@ -253,7 +270,12 @@ fn run_one(cx: &Context, test: &TestCase) -> TestReport {
         Ok(s) => s,
         Err(e) => return infra(test, e.to_string()),
     };
-    let mut c = classify_tests(&plains, &sail);
+    let classify = if cx.exact {
+        classify_tests_exact
+    } else {
+        classify_tests
+    };
+    let mut c = classify(&plains, &sail);
     for _ in 0..cx.confirm_runs {
         if c.verdict != Verdict::Different {
             break;
@@ -262,7 +284,7 @@ fn run_one(cx: &Context, test: &TestCase) -> TestReport {
             Ok(p) => plains.push(p),
             Err(e) => return infra(test, e.to_string()),
         }
-        c = classify_tests(&plains, &sail);
+        c = classify(&plains, &sail);
     }
     let mut artifacts = None;
     if c.verdict != Verdict::Same {
@@ -379,7 +401,14 @@ fn find_shim(given: Option<&Path>) -> Result<PathBuf, String> {
             .with_file_name("sail-z3"),
     };
     if shim.is_file() {
-        Ok(shim)
+        // Each test changes directory into the source suite. Resolve an
+        // explicit relative path while it still names the caller's file.
+        shim.canonicalize().map_err(|e| {
+            format!(
+                "error[SAIL3030]: cannot resolve shim {}: {e}",
+                shim.display()
+            )
+        })
     } else {
         Err(format!(
             "error[SAIL3030]: shim not found at {} (build it with `cargo build --release -p sail-shim`, or pass --shim)",
@@ -400,28 +429,82 @@ fn select(o: &Options, suite: &Suite) -> Result<Vec<TestCase>, String> {
     Ok(tests.into_iter().step_by(o.every).collect())
 }
 
-fn open_suite(threads: u32) -> Result<(Installed, Suite, std::fs::File), String> {
-    let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
-    let installed = Installed::locate(pins).map_err(|e| e.to_string())?;
+fn open_suite(
+    installed: &Installed,
+    threads: u32,
+    fork: bool,
+) -> Result<(Suite, std::fs::File), String> {
     let verus = &installed.pins.verus;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let build = std::env::var_os("SAIL_VERUS_SOURCE_BUILD").map_or_else(
-        || source_build::build_dir(&cache, &verus.commit),
-        PathBuf::from,
-    );
+    let features = if fork {
+        source_build::fork_test_features()
+    } else {
+        Vec::new()
+    };
+    let default =
+        source_build::variant_dir(&cache, &verus.commit, &verus.rust_toolchain, &features);
+    let selected = std::env::var_os("SAIL_VERUS_SOURCE_BUILD");
+    let stock_override = !fork && selected.is_some();
+    let build = selected.map_or(default, PathBuf::from);
     let ownership = source_build::lock_build(&build).map_err(|e| e.to_string())?;
     let mut suite =
         Suite::open(&build, &verus.rust_toolchain, &installed.z3).map_err(|e| e.to_string())?;
+    let z3 = installed
+        .pins
+        .assets
+        .get(sail_verus::toolchain::host())
+        .ok_or_else(|| "no solver pin for this host".to_owned())?;
+    // Installed::locate already validates a stock override. Keep its legacy
+    // ordinary/Singular suite selection, including the override's features;
+    // the default stock directory and every fork selector stay exact variants.
+    let features_match = if stock_override {
+        suite
+            .manifest
+            .features
+            .iter()
+            .all(|feature| feature == "singular")
+    } else {
+        suite.manifest.features == features
+    };
+    if suite.manifest.commit != verus.commit
+        || !features_match
+        || suite.manifest.z3_sha256 != z3.z3_sha256
+    {
+        return Err(format!(
+            "error[SAIL3040]: {} does not match the requested {} source build; rebuild with cargo xtask build-verus-source{}",
+            build.display(),
+            if fork { "fork" } else { "stock" },
+            if fork { " --fork" } else { "" }
+        ));
+    }
     suite.verus_threads = (threads > 0).then_some(threads);
-    Ok((installed, suite, ownership))
+    Ok((suite, ownership))
 }
 
 /// Runs the command; exit 0 if every test is the same (or unstable), 1 on
 /// any difference, 2 on infrastructure errors.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Owns the selected source build through test execution and report publication."
+)]
 pub fn main(args: &[String]) -> Result<ExitCode, String> {
     let o = parse(args)?;
-    let (installed, suite, _ownership) = open_suite(o.verus_threads)?;
+    let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
+    // The fork selector names a suite variant, not an ordinary stock source
+    // installation. Validate it in open_suite; obtain its pinned solver from
+    // the release without applying Installed::locate's stock-only override.
+    let installed = if o.stock_baseline {
+        Installed::locate(pins)
+    } else {
+        Installed::locate_release(pins)
+    }
+    .map_err(|e| e.to_string())?;
     let verus = &installed.pins.verus;
+    let fork = sail_verus::engine::fork().map_err(|e| e.to_string())?;
+    if !o.stock_baseline && fork.upstream != verus.commit {
+        return Err("the fork's upstream base does not match the selected Verus pin".to_owned());
+    }
+    let (suite, _ownership) = open_suite(&installed, o.verus_threads, !o.stock_baseline)?;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
     let tests = select(&o, &suite)?;
     if o.list {
@@ -442,8 +525,12 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
     });
     std::fs::create_dir_all(&out).map_err(|e| format!("cannot create {}: {e}", out.display()))?;
     eprintln!(
-        "rust_verify_test @ {}: {} tests ({} ignored) with {} jobs; sail side {}; output in {}",
-        verus.commit,
+        "rust_verify_test {}: {} tests ({} ignored) with {} jobs; sail side {}; output in {}",
+        if o.stock_baseline {
+            format!("stock {} (ADR 0042)", verus.commit)
+        } else {
+            format!("fork {} (exact)", fork.commit)
+        },
         tests.len(),
         tests.iter().filter(|t| t.ignored).count(),
         o.jobs,
@@ -456,6 +543,7 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
     );
     let cx = Context {
         suite: &suite,
+        exact: !o.stock_baseline,
         sail: Solver::Shim {
             shim,
             trace_dir: None,
@@ -480,6 +568,14 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
         suite: "rust_verify_test",
         verus_release: verus.release.clone(),
         verus_commit: verus.commit.clone(),
+        fork_commit: (!o.stock_baseline).then_some(fork.commit),
+        comparison: if o.stock_baseline {
+            "stock-vs-shim"
+        } else {
+            "fork-vs-shim"
+        },
+        baseline_build: suite.build.clone(),
+        candidate_build: suite.build.clone(),
         z3_version: installed.pins.z3.version.clone(),
         features: suite.manifest.features.clone(),
         sail_daemon: daemon_socket.is_some(),
@@ -515,4 +611,34 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
     } else {
         ExitCode::SUCCESS
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{find_shim, parse};
+
+    #[test]
+    fn explicit_relative_shim_is_resolved_before_suite_changes_directory() {
+        // Only path resolution is under test; no solver is launched.
+        let relative = std::path::Path::new("Cargo.toml");
+        let resolved = find_shim(Some(relative)).unwrap_or_else(|e| unreachable!("{e}"));
+        assert!(resolved.is_absolute());
+        assert_eq!(relative.canonicalize().ok().as_ref(), Some(&resolved));
+    }
+
+    #[test]
+    fn baseline_is_fork_unless_stock_is_explicitly_requested() {
+        assert!(
+            !parse(&[])
+                .unwrap_or_else(|e| unreachable!("{e}"))
+                .stock_baseline
+        );
+        let stock = ["--baseline".to_owned(), "stock".to_owned()];
+        assert!(
+            parse(&stock)
+                .unwrap_or_else(|e| unreachable!("{e}"))
+                .stock_baseline
+        );
+        assert!(parse(&["--baseline".to_owned(), "other".to_owned()]).is_err());
+    }
 }

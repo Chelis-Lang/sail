@@ -280,9 +280,27 @@ The runner checks that known example's actual header and omits its redundant
 extra flag, preserving the thread selection and the same effective options
 on both sides. Source files and diagnostics remain unchanged.
 
-Full runs made before this correction retain their raw reports. That case's
-failed invocation is not accepted as coverage: a separate corrected test in
-all three modes supplies its evidence, without repeating unaffected cases.
+The original fork VI-0012 progress-order regression also supplies this option
+directly. On combined runtime `8a373f81`, the full suite rejected the runner's
+duplicate before verification ([#203](https://github.com/Chelis-Lang/sail/issues/203)).
+The extension omits only the redundant runner default for that exact binary,
+case and whole source SHA-256; changed, missing and unrelated sources retain
+injection. It never deduplicates arbitrary arguments or drops explicit thread
+overrides. The original regression and all its assertions remain unchanged.
+Run execution and exported reproduction commands share the exact effective
+`VERUS_EXTRA_ARGS`, including the empty value for a source-supplied default.
+The original strict failure remains indexed; the original regression and
+BASIC and the complete corrected suite now pass on private `af339f8a`
+(4,709 Same, 58 ignored, every nonignored plain test passed). The main-based
+join and broader runtime gates remain pending in the
+[validation record](../validation/rvt-progress-option.md).
+
+
+Historical full runs before the `examples_assert_by_compute` correction retain
+their raw reports. That example's failed invocation was not accepted as
+coverage: a separate corrected example test in all three modes supplied its
+evidence without repeating unaffected cases. This historical scope does not
+waive a fresh complete fork-suite run for the VI-0012 correction above.
 
 The corrected example was run in an isolated clone of the immutable source
 build (its materialized inputs and OS lock are separate). Pass-through,
@@ -352,3 +370,31 @@ Raw logs: `~/sail-raw-evidence/l20/rvt-full-t0.log` (sha256 `d9048101…`)
 on the lead's machine. The cache fill and warm modes have not been rerun
 with Verus's default threads.
 
+
+## Fork runtime and retained stock control (2026-10-16, #124)
+
+The default deep arm runs the pinned fork with and without `sail-z3`, with
+exact stderr order and passing nonignored libtests. Identical failed tests
+cannot qualify the fork. Observed fork variation is a determinism defect,
+not a stock-unstability exemption. `build-verus-source --fork` builds the
+full suite in a distinct variant whose identity binds the fork commit,
+source lock and generated toolchain-manifest behavior. The installed engine
+runtime is untouched.
+
+A separate `--baseline stock` arm preserves the original stock-with-and-without-
+shim control, ADR 0042's complete-message comparison and ADR 0009's
+complete-observed-stock-run rule. It does not normalize JSON or accept
+combinations from separate stock runs. Mandatory stock-versus-fork equivalence
+continues in the corpus fast, standard and deep gates; these source-suite
+arms make no cross-runtime equivalence claim.
+
+The attempted new cross-runtime source-test arm was rejected after identical
+stock test programs reported different input paths when relocated beside the
+fork runtime. The [deep-tier record](../validation/deep-tier.md) indexes that
+failure; no comparator exemption was added.
+
+`deep-rvt cache` also runs fill and warm exact-fork rounds. Each arm records
+the build and comparison policy, and holds its source-build lock through
+execution and reporting. The [guide](../deep-verus-tests.md) gives commands
+and limits. Historical stock-only acceptance above remains scoped to those
+earlier sources and does not qualify the new fork gate.
