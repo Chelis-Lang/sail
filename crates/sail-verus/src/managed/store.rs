@@ -551,7 +551,7 @@ fn validated(
     }
     let receipt = &manifest.receipt;
     if receipt.version != RECEIPT_VERSION
-        || receipt.clone().seal().checksum != receipt.checksum
+        || receipt.expected_checksum() != receipt.checksum
         || receipt.package_id != candidate.root
         || !receipt.invocation.success
         || !complete(&receipt.invocation.report)

@@ -2830,7 +2830,7 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
                 .path();
             let mut receipt: Receipt = read(&path)
                 .ok_or_else(|| Error::new("SAIL3107", "staged proof receipt is unreadable"))?;
-            if receipt.clone().seal().checksum != receipt.checksum {
+            if receipt.expected_checksum() != receipt.checksum {
                 return Err(Error::new(
                     "SAIL3107",
                     "staged proof receipt checksum failed",
