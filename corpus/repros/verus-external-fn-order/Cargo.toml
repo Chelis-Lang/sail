@@ -1,0 +1,13 @@
+[package]
+name = "sail-external-order-repro"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+vstd = { git = "https://github.com/verus-lang/verus.git", rev = "5c8133a2eabcf9d7396ab462dd8b1ee8143a83b8" }
+
+[package.metadata.verus]
+verify = true
