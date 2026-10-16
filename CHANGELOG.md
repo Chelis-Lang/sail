@@ -12,7 +12,8 @@ semantic versioning once the API is published.
 - **CI stock-layer candidate** (#195): retain the full validated stock Verus
   oracle in four deterministic transfer layers, checking the installed path,
   byte, permission, owner and link inventory in the final image. Native image
-  qualification and actual CI startup measurements remain pending.
+  parity and correctness checks pass; actual CI startup improvement remains
+  unqualified.
 
 - **CI image packaging candidate** (#195): checks share a core image with
   every pinned toolchain/runtime; only managed e2e adds the pinned external

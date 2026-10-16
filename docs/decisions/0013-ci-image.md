@@ -152,8 +152,9 @@ Directories, file bytes/modes/owners/groups and symlink targets are preserved.
 A complete inventory comparison in the final image must succeed before it
 can be used. The helper is an image-tag input, shared by both packaging targets.
 
-This candidate is unqualified. Logical file weights guide partitioning but do
-not predict compressed layer sizes or pull latency. Native final-image and
-toolchain parity, the existing full gates, and repeated actual CI pull cohorts
-are required by the [startup record](../validation/ci-image-startup.md).
+Native final-image/toolchain parity and the existing correctness gates pass;
+CI and startup acceptance remain pending. Logical file weights guide
+partitioning but do not predict compressed layer sizes or pull latency.
+Repeated actual CI pull cohorts are required by the
+[startup record](../validation/ci-image-startup.md).
 No runtime, toolchain, check, timeout or oracle is removed or changed.
