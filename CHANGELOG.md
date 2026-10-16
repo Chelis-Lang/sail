@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- The real-project performance harness has an explicit `fork-shim` arm for
+  focused Cargo-Verus runs through Sail's solver shim and an owned daemon.
+  It does not claim managed CLI support for partial verification. The
+  frontend stage report counts failed samples and distinguishes missing
+  instrumentation from zero work.
+
 - **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).
   Per-obligation detail (op kinds, spans, per-check answers and cache
   provenance, counterexample models) needs Verus's AIR and SMT transcript
