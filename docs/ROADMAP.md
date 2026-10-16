@@ -363,6 +363,11 @@ oyster and such." This supersedes the parallel tracks of
        JSON-order failure remains recorded ([guide](deep-verus-tests.md),
        [qualification](validation/deep-tier.md#fork-source-suite-gate-124)).
    11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.
+       Unscheduled-script cleanup (#174) has a source-only memo join on the
+       pending #215 output correction. PR #197 remains held; historical fixture
+       gain does not qualify this join. Matched native timing and all current
+       gates/full FAST/STANDARD remain pending;
+       [record](validation/unscheduled-script-cleaning.md).
 
    B1 (a verified vstd shared across projects and worktrees, beyond the
    0.1.0 pre-verified vstd) is not yet ordered.
