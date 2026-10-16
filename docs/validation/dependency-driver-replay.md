@@ -308,3 +308,27 @@ required to establish the next refusal.
 | 2026-10-16 | Exact `c053bb13`, actual HFS+ | Failed safety control (101), round 0 | A source ABA with restored mtime retained the same full stamp; manifest above. HFS now refuses. |
 | 2026-10-16 | HFS wrapper setup attempts | Failed before qualified control | Obsolete image format flag and literal/canonical mountpoint mismatch; raw setup failures retained. |
 | 2026-10-16 | Two HFS diagnostic-overlay attempts | Not source qualification | Actual failures retained, but helpers included temporary diagnostics; exact frozen-source attempt above is authoritative. |
+
+## Complete input-event candidate
+
+The structural correction enumerates complete metadata before byte reads,
+activates one bounded queue for all inventory endpoints and resolution paths,
+then requires identical topology/identities before hashing. File writes and
+complete-directory membership changes now latch independently of timestamp
+precision; symlink parents receive membership guards too. Linux uses union
+masks for duplicate-inode watch roles. No native queue is restarted while
+input bytes are read. HFS continues to refuse.
+
+The first combined core/input harness passes 32 focused tests; log SHA-256
+`95a1f7f83d449477c2569e252d6a8ef9d1bce2582600594916ddb3caa3b08584`.
+The helper-only set passes 22 tests and strict clippy. Direct native-only tests
+prove that file write/read/restore and temporary directory membership events
+refuse without consulting any timestamp. A duplicate complete/ancestor watch
+role must retain the stricter mask. These are fixtures; native coarse-filesystem
+controls, active-guard receipt invalidation and final source gates remain.
+
+A real vstd plan enumerates 7,550 files and 1,452 directories across its existing
+36 source/compiler roots (9,002 paths), excluding deleted extern/generated
+paths from that diagnostic run. The 100,000-path cap is bounded and descriptor
+exhaustion refuses; no resource limit is raised. No real store-hit or timing
+acceptance follows from this enumeration or the focused fixture results.

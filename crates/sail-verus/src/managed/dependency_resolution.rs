@@ -1,11 +1,11 @@
 //! Bracket pathname resolution without confusing sibling output writes with renames.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs::{File, Metadata};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
-const MAX_PATHS: usize = 4096;
+const MAX_PATHS: usize = 100_000;
 const MAX_LINKS: usize = 40;
 
 /// Opens an input without following a last-component symlink or waiting for
@@ -84,7 +84,7 @@ fn supported_filesystem(_: &File) -> bool {
 }
 
 /// One exact local file or directory mutation identity.
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub(super) struct Stamp(String);
 
 #[cfg(unix)]
@@ -145,6 +145,7 @@ struct Endpoint {
     identity: Identity,
     symlink: bool,
     regular: bool,
+    membership: bool,
 }
 
 /// Complete resolution components and a latched native ancestor observer.
@@ -163,7 +164,24 @@ impl Resolution {
     /// Resolves every symlink target component, then starts observation before
     /// the inventory reads any source bytes. Opened inode identity and final
     /// pathname identity checks bracket registration; failed setup refuses.
+    #[allow(
+        dead_code,
+        reason = "The shared history guard uses endpoint capture; complete inventories use capture_inventory."
+    )]
     pub(super) fn capture(originals: &[PathBuf]) -> Option<Self> {
+        Self::capture_inventory(originals, &BTreeSet::new())
+    }
+
+    /// Activates one bounded queue for every complete inventory endpoint,
+    /// before any input bytes are read. Complete directories also guard child
+    /// membership; ordinary ancestors permit unrelated sibling writes.
+    pub(super) fn capture_inventory(
+        originals: &[PathBuf],
+        inventory: &BTreeSet<PathBuf>,
+    ) -> Option<Self> {
+        if originals.len() > MAX_PATHS || inventory.len() > MAX_PATHS {
+            return None;
+        }
         let mut result = Self {
             paths: BTreeMap::new(),
             canonical: BTreeMap::new(),
@@ -172,7 +190,7 @@ impl Resolution {
                 failed: false,
             }),
         };
-        for original in originals {
+        for original in originals.iter().chain(inventory) {
             original.to_str()?;
             let resolved = result.resolve(original)?;
             if original.canonicalize().ok()? != resolved {
@@ -180,13 +198,25 @@ impl Resolution {
             }
             result.canonical.insert(original.clone(), resolved);
         }
+        let mut membership = inventory.clone();
+        // A symlink cannot be opened with the regular-file NOFOLLOW contract.
+        // Watching its parent's entries catches rename-aside-and-restore even
+        // when the original symlink's final inode and coarse timestamps agree.
+        for (path, endpoint) in &result.paths {
+            if endpoint.symlink {
+                membership.insert(path.parent()?.to_owned());
+            }
+        }
+        for path in membership {
+            result.paths.get_mut(&path)?.membership = true;
+        }
         let state = result.observer.get_mut().ok()?;
         if let Some(observer) = &mut state.native {
             for (path, endpoint) in &result.paths {
                 // Symlinks retain full inode/ctime guards. The ordinary
                 // directories containing them are observed natively too.
                 if !endpoint.symlink {
-                    observer.add(path, &endpoint.identity)?;
+                    observer.add(path, &endpoint.identity, endpoint.membership)?;
                 }
             }
             observer.start()?;
@@ -271,6 +301,7 @@ impl Resolution {
                     full,
                     symlink: metadata.file_type().is_symlink(),
                     regular: metadata.is_file(),
+                    membership: false,
                 },
             );
         }
@@ -382,7 +413,7 @@ fn walk(
 #[cfg(target_os = "macos")]
 mod platform {
     use super::{Identity, identity, open_input};
-    use kqueue::{EventData, EventFilter, FilterFlag, Vnode, Watcher};
+    use kqueue::{EventFilter, FilterFlag, Watcher};
     use std::fs::File;
     use std::path::Path;
 
@@ -410,9 +441,15 @@ mod platform {
                 files: Vec::new(),
             })
         }
-        pub(super) fn add(&mut self, path: &Path, expected: &Identity) -> Option<()> {
+        pub(super) fn add(
+            &mut self,
+            path: &Path,
+            expected: &Identity,
+            membership: bool,
+        ) -> Option<()> {
             let file = open_input(path)?;
-            if identity(&file.metadata().ok()?).as_ref() != Some(expected) {
+            let metadata = file.metadata().ok()?;
+            if identity(&metadata).as_ref() != Some(expected) {
                 return None;
             }
             let mut flags =
@@ -422,8 +459,11 @@ mod platform {
             // regular-file stamps bind ctime, permissions and identity instead;
             // rename/delete/revoke remain latched. Ancestor directories need
             // ATTRIB because transient permission changes can affect lookup.
-            if file.metadata().ok()?.is_dir() {
+            if metadata.is_dir() {
                 flags |= FilterFlag::NOTE_ATTRIB;
+            }
+            if metadata.is_file() || membership {
+                flags |= FilterFlag::NOTE_WRITE | FilterFlag::NOTE_EXTEND | FilterFlag::NOTE_LINK;
             }
             self.watcher
                 .add_file(&file, EventFilter::EVFILT_VNODE, flags)
@@ -435,19 +475,10 @@ mod platform {
             self.watcher.watch().ok()
         }
         pub(super) fn unchanged(&mut self) -> bool {
-            // Finite coalesced vnode events, bounded by the watched path cap.
-            for _ in 0..super::MAX_PATHS * 8 {
-                let Some(event) = self.watcher.poll(None) else {
-                    return true;
-                };
-                if !matches!(
-                    event.data,
-                    EventData::Vnode(Vnode::Write | Vnode::Extend | Vnode::Link)
-                ) {
-                    return false;
-                }
-            }
-            false
+            // Ordinary ancestor directories never subscribe to sibling writes.
+            // Every event actually requested here is a mutation or an error;
+            // the outer state latches refusal without draining or resetting it.
+            self.watcher.poll(None).is_none()
         }
     }
 }
@@ -477,20 +508,37 @@ mod platform {
                 files: Vec::new(),
             })
         }
-        pub(super) fn add(&mut self, path: &Path, expected: &Identity) -> Option<()> {
+        pub(super) fn add(
+            &mut self,
+            path: &Path,
+            expected: &Identity,
+            membership: bool,
+        ) -> Option<()> {
             let file = open_input(path)?;
-            if identity(&file.metadata().ok()?).as_ref() != Some(expected) {
+            let metadata = file.metadata().ok()?;
+            if identity(&metadata).as_ref() != Some(expected) {
                 return None;
+            }
+            let mut flags = WatchMask::MOVE_SELF
+                | WatchMask::DELETE_SELF
+                | WatchMask::ATTRIB
+                | WatchMask::MASK_ADD;
+            if metadata.is_file() {
+                flags |= WatchMask::MODIFY;
+            }
+            if metadata.is_dir() && membership {
+                flags |= WatchMask::MODIFY
+                    | WatchMask::CREATE
+                    | WatchMask::DELETE
+                    | WatchMask::MOVED_FROM
+                    | WatchMask::MOVED_TO;
             }
             // Follow this held descriptor, not a second lookup of the original
             // pathname which could briefly name a different inode. Missing
             // procfs or unsupported watching refuses registration.
             self.queue
                 .watches()
-                .add(
-                    format!("/proc/self/fd/{}", file.as_raw_fd()),
-                    WatchMask::MOVE_SELF | WatchMask::DELETE_SELF | WatchMask::ATTRIB,
-                )
+                .add(format!("/proc/self/fd/{}", file.as_raw_fd()), flags)
                 .ok()?;
             self.files.push(file);
             Some(())
@@ -531,7 +579,7 @@ mod platform {
         pub(super) fn new() -> Option<Self> {
             None
         }
-        pub(super) fn add(&mut self, _: &Path, _: &super::Identity) -> Option<()> {
+        pub(super) fn add(&mut self, _: &Path, _: &super::Identity, _: bool) -> Option<()> {
             None
         }
         pub(super) fn start(&mut self) -> Option<()> {
@@ -547,6 +595,62 @@ mod platform {
 mod tests {
     use super::*;
     use std::error::Error;
+
+    #[test]
+    fn native_file_writes_latch_without_any_timestamp_comparison() -> Result<(), Box<dyn Error>> {
+        let root = std::env::temp_dir().join(format!("sail-native-content-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let file = root.join("input");
+        std::fs::write(&file, b"AAAA")?;
+        let result = (|| {
+            let before = std::fs::metadata(&file)?;
+            let expected = identity(&before).ok_or("identity")?;
+            let mut native = platform::Observer::new().ok_or("observer")?;
+            native.add(&file, &expected, false).ok_or("watch")?;
+            native.start().ok_or("activation")?;
+            std::fs::write(&file, b"BBBB")?;
+            assert_eq!(std::fs::read(&file)?, b"BBBB");
+            std::fs::write(&file, b"AAAA")?;
+            std::fs::File::open(&file)?.set_modified(before.modified()?)?;
+            assert!(
+                !native.unchanged(),
+                "native event alone must reject the ABA"
+            );
+            Ok::<_, Box<dyn Error>>(())
+        })();
+        std::fs::remove_dir_all(root)?;
+        result
+    }
+
+    #[test]
+    fn native_complete_directory_membership_survives_duplicate_watch_roles()
+    -> Result<(), Box<dyn Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-native-membership-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let result = (|| {
+            let expected = identity(&std::fs::metadata(&root)?).ok_or("identity")?;
+            let mut native = platform::Observer::new().ok_or("observer")?;
+            native.add(&root, &expected, true).ok_or("complete watch")?;
+            // Linux inotify identifies watches by inode. A later ancestor-only
+            // role must union with, rather than replace, its complete mask.
+            native
+                .add(&root, &expected, false)
+                .ok_or("ancestor watch")?;
+            native.start().ok_or("activation")?;
+            let file = root.join("temporary-module.rs");
+            std::fs::write(&file, b"bad source")?;
+            assert_eq!(std::fs::read(&file)?, b"bad source");
+            std::fs::remove_file(file)?;
+            assert!(
+                !native.unchanged(),
+                "native membership event must survive restoration"
+            );
+            Ok::<_, Box<dyn Error>>(())
+        })();
+        std::fs::remove_dir_all(root)?;
+        result
+    }
 
     #[test]
     fn executing_observed_regular_file_keeps_input_guard_current() -> Result<(), Box<dyn Error>> {
@@ -692,7 +796,8 @@ mod tests {
         let mut observer = platform::Observer::new().ok_or("native observer")?;
         let (send, receive) = std::sync::mpsc::sync_channel(1);
         let worker = std::thread::spawn(move || {
-            let refused = open_input(&fifo).is_none() && observer.add(&fifo, &expected).is_none();
+            let refused =
+                open_input(&fifo).is_none() && observer.add(&fifo, &expected, false).is_none();
             let _ = send.send(refused);
         });
         let refused = receive.recv_timeout(std::time::Duration::from_secs(2));
@@ -720,7 +825,7 @@ mod tests {
         let result = (|| {
             let expected = identity(&std::fs::metadata(first)?).ok_or("identity")?;
             let mut observer = platform::Observer::new().ok_or("native observer")?;
-            assert!(observer.add(&second, &expected).is_none());
+            assert!(observer.add(&second, &expected, false).is_none());
             Ok::<_, Box<dyn Error>>(())
         })();
         std::fs::remove_dir_all(root)?;

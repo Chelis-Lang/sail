@@ -8,7 +8,7 @@
 use super::dependency_resolution::{Resolution, Stamp, open_input, stamp};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::Metadata;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -43,6 +43,103 @@ enum Entry {
     },
 }
 
+#[derive(Eq, PartialEq)]
+struct PreparedEntry {
+    path: PathBuf,
+    stamp: Stamp,
+    directory: bool,
+    mode: u32,
+    size: u64,
+}
+
+struct PreparedRoot {
+    original: PathBuf,
+    canonical: PathBuf,
+    label: String,
+    recursive: bool,
+    entries: BTreeMap<String, PreparedEntry>,
+}
+
+#[derive(Default)]
+struct Budget {
+    entries: usize,
+    bytes: u64,
+}
+
+/// Reads only names and metadata. No compiler-input file bytes may be read
+/// until one native queue covers this complete set of files and directories.
+fn prepare(
+    canonical: &Path,
+    recursive: bool,
+    budget: &mut Budget,
+) -> Option<BTreeMap<String, PreparedEntry>> {
+    let root = std::fs::symlink_metadata(canonical).ok()?;
+    if recursive != root.is_dir() {
+        return None;
+    }
+    let mut entries = BTreeMap::new();
+    let mut pending = vec![(canonical.to_owned(), String::new())];
+    while let Some((path, relative)) = pending.pop() {
+        budget.entries = budget.entries.checked_add(1)?;
+        if budget.entries > MAX_ENTRIES {
+            return None;
+        }
+        let metadata = std::fs::symlink_metadata(&path).ok()?;
+        let before = stamp(&metadata)?;
+        let directory = metadata.is_dir();
+        if metadata.is_file() {
+            budget.bytes = budget.bytes.checked_add(metadata.len())?;
+            if budget.bytes > MAX_BYTES {
+                return None;
+            }
+        } else if directory {
+            let held = open_input(&path)?;
+            if stamp(&held.metadata().ok()?)? != before {
+                return None;
+            }
+            let mut children = Vec::new();
+            for child in std::fs::read_dir(&path).ok()? {
+                let child = child.ok()?;
+                let name = child.file_name().into_string().ok()?;
+                children.push((
+                    child.path(),
+                    if relative.is_empty() {
+                        name
+                    } else {
+                        format!("{relative}/{name}")
+                    },
+                ));
+                if budget
+                    .entries
+                    .checked_add(pending.len())?
+                    .checked_add(children.len())?
+                    > MAX_ENTRIES
+                {
+                    return None;
+                }
+            }
+            children.sort_by(|a, b| a.1.cmp(&b.1));
+            pending.extend(children.into_iter().rev());
+        } else {
+            return None;
+        }
+        if stamp(&std::fs::symlink_metadata(&path).ok()?)? != before {
+            return None;
+        }
+        entries.insert(
+            relative,
+            PreparedEntry {
+                path,
+                stamp: before,
+                directory,
+                mode: mode(&metadata)?,
+                size: if directory { 0 } else { metadata.len() },
+            },
+        );
+    }
+    Some(entries)
+}
+
 /// A portable inventory bracketed by exact local file and directory identities.
 pub(super) struct Observation {
     inventory: Inventory,
@@ -63,11 +160,35 @@ impl Observation {
         if roots.is_empty() || roots.len() > MAX_ENTRIES {
             return None;
         }
-        let originals = roots
+        let mut prepared = Vec::new();
+        let mut paths = BTreeSet::new();
+        let mut labels = BTreeSet::new();
+        let mut budget = Budget::default();
+        for root in roots {
+            if root.label.is_empty() || !labels.insert(&root.label) {
+                return None;
+            }
+            let original = std::path::absolute(&root.path).ok()?;
+            let canonical = original.canonicalize().ok()?;
+            canonical.to_str()?;
+            let entries = prepare(&canonical, root.recursive, &mut budget)?;
+            paths.extend(entries.values().map(|entry| entry.path.clone()));
+            prepared.push(PreparedRoot {
+                original,
+                canonical,
+                label: root.label.clone(),
+                recursive: root.recursive,
+                entries,
+            });
+        }
+        let originals = prepared
             .iter()
-            .map(|root| std::path::absolute(&root.path).ok())
-            .collect::<Option<Vec<_>>>()?;
-        let resolution = Resolution::capture(&originals)?;
+            .map(|root| root.original.clone())
+            .collect::<Vec<_>>();
+        // Register exactly once, with the complete path set, before hashing.
+        // Native file-write and directory-membership events remain live until
+        // compilation/restoration has passed its final mutation barrier.
+        let resolution = Resolution::capture_inventory(&originals, &paths)?;
         let mut captured = Self {
             inventory: Inventory(BTreeMap::new()),
             stamps: BTreeMap::new(),
@@ -75,88 +196,42 @@ impl Observation {
             roots: Vec::new(),
             resolution,
         };
-        let mut entries = 0usize;
-        let mut bytes = 0u64;
-        for (root, original) in roots.iter().zip(originals) {
-            if root.label.is_empty() || captured.inventory.0.contains_key(&root.label) {
-                return None;
-            }
-            // A canonicalized root can legitimately have a system alias such
-            // as /tmp. Bind each alias's own inode/ctime so retarget-and-restore
-            // during compilation cannot hide behind equal final canonical text.
-            for ancestor in original.ancestors() {
-                let metadata = std::fs::symlink_metadata(ancestor).ok()?;
-                if metadata.file_type().is_symlink() {
-                    captured.remember(ancestor.to_owned(), stamp(&metadata)?)?;
-                }
-            }
-            let canonical = captured.resolution.canonical(&original)?.to_owned();
-            canonical.to_str()?;
-            let metadata = std::fs::symlink_metadata(&canonical).ok()?;
-            if root.recursive != metadata.is_dir() {
+        let mut final_budget = Budget::default();
+        for root in prepared {
+            if captured.resolution.canonical(&root.original)? != root.canonical
+                || root.original.canonicalize().ok()? != root.canonical
+                || prepare(&root.canonical, root.recursive, &mut final_budget)? != root.entries
+            {
                 return None;
             }
             let mut tree = BTreeMap::new();
-            let mut pending = vec![(canonical.clone(), String::new())];
-            while let Some((path, relative)) = pending.pop() {
-                entries = entries.checked_add(1)?;
-                if entries > MAX_ENTRIES {
+            for (relative, entry) in root.entries {
+                if stamp(&std::fs::symlink_metadata(&entry.path).ok()?)?.ne(&entry.stamp) {
                     return None;
                 }
-                let metadata = std::fs::symlink_metadata(&path).ok()?;
-                let before = stamp(&metadata)?;
-                let mode = mode(&metadata)?;
-                let entry = if metadata.is_file() {
-                    bytes = bytes.checked_add(metadata.len())?;
-                    if bytes > MAX_BYTES {
+                let value = if entry.directory {
+                    Entry::Directory { mode: entry.mode }
+                } else {
+                    let digest = read_file(&entry.path, &entry.stamp, entry.size)?;
+                    if captured
+                        .files
+                        .get(&entry.path)
+                        .is_some_and(|old| old != &digest)
+                    {
                         return None;
                     }
-                    let digest = read_file(&path, &before, metadata.len())?;
-                    captured.files.insert(path.clone(), digest.clone());
+                    captured.files.insert(entry.path.clone(), digest.clone());
                     Entry::File {
-                        mode,
-                        size: metadata.len(),
+                        mode: entry.mode,
+                        size: entry.size,
                         sha256: digest,
                     }
-                } else if metadata.is_dir() {
-                    let directory = open_input(&path)?;
-                    if stamp(&directory.metadata().ok()?)? != before {
-                        return None;
-                    }
-                    let mut children = Vec::new();
-                    for child in std::fs::read_dir(&path).ok()? {
-                        let child = child.ok()?;
-                        let name = child.file_name().into_string().ok()?;
-                        let name = if relative.is_empty() {
-                            name
-                        } else {
-                            format!("{relative}/{name}")
-                        };
-                        children.push((child.path(), name));
-                        if entries
-                            .checked_add(pending.len())?
-                            .checked_add(children.len())?
-                            > MAX_ENTRIES
-                        {
-                            return None;
-                        }
-                    }
-                    // Traversal order is deterministic; portable identity is
-                    // ordered independently of the filesystem's enumeration.
-                    children.sort_by(|a, b| a.1.cmp(&b.1));
-                    pending.extend(children.into_iter().rev());
-                    Entry::Directory { mode }
-                } else {
-                    return None;
                 };
-                if stamp(&std::fs::symlink_metadata(&path).ok()?)? != before {
-                    return None;
-                }
-                captured.remember(path, before)?;
-                tree.insert(relative, entry);
+                captured.remember(entry.path, entry.stamp)?;
+                tree.insert(relative, value);
             }
-            captured.inventory.0.insert(root.label.clone(), tree);
-            captured.roots.push((original, canonical));
+            captured.inventory.0.insert(root.label, tree);
+            captured.roots.push((root.original, root.canonical));
         }
         captured.unchanged().then_some(captured)
     }

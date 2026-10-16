@@ -388,3 +388,24 @@ Ordinary verification remains available. APFS/Linux rapid-ABA stress passes
 are scoped evidence, not proof of complete event coverage for every admitted
 filesystem; structural write-event coverage remains under review before this
 candidate can be accepted.
+
+### Complete native input events
+
+Inventory capture first enumerates every name, type and native stamp without
+reading compiler-input file bytes. One queue then observes every inventory
+file/directory, every resolution ancestor and every symlink parent before
+hashing begins. The complete topology and identities must still match the
+metadata-only pass after activation. Held descriptors and this same queue
+remain active through compilation or restoration.
+
+Regular files latch native writes/extension/link changes (Linux `MODIFY` and
+`ATTRIB`); complete inventory directories latch membership changes. Symlink
+parents also latch membership changes, so coarse timestamps cannot hide an
+alias moved aside and restored. Ancestor-only directories permit unrelated
+sibling writes. Linux duplicate-inode watches union their masks; overflow,
+registration failure, unknown filesystems and admission-cap exhaustion refuse.
+The combined native path cap is 100,000; the streamed-byte cap stays 2 GiB.
+The measured vstd input plan contains about 9,002 existing source/compiler
+paths, before extern/generated inputs and resolution ancestors. macOS keeps
+one descriptor per watched non-symlink path; insufficient process/native-watch
+limits decline replay rather than raising resource limits implicitly.
