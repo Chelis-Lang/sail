@@ -59,6 +59,15 @@ Raw evidence is outside the repository in the target-context evidence set:
 
 Failed attempts remain visible:
 
+- `c753d7cd`, 2026-10-16, native gate (630 tests) and solver passed;
+  end-to-end stopped on the strict unchanged generated-input assertion
+  (`ci/test-managed.py:587`). The script declared `CARGO_TARGET_DIR`, but
+  family import refused every `CARGO_*` variable, dropped its contract and
+  rebuilt it again. The narrow correction admits this caller-preserved
+  variable while keeping exact present/absent binding and all other
+  Cargo-injected variable refusals. Native correction qualification is
+  pending. Failed-attempt archive SHA-256
+  `c220d947efae3edf465034d23df45b64e0a924c84c80f4368ffaed9b1052c0ba`.
 - `a4ba5014`, 2026-10-16, native Linux gate: 629 tests passed and the
   engine-selection fixture failed because its cache was inside its package
   root. The overlap guard correctly selected fallback before that fixture's

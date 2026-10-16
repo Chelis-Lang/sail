@@ -138,12 +138,14 @@ fn matches(record: &BuildInput, data: &Value, target: &Path) -> bool {
 }
 
 // Parent values do not describe Cargo-injected or removed child variables.
-// RUSTC_BOOTSTRAP is the sole pinned, explicitly invoked exception.
+// RUSTC_BOOTSTRAP is pinned by the invocation. CARGO_TARGET_DIR is different:
+// compilation preserves the exact caller value (including absence); only
+// metadata's separate child receives the owned metadata target override.
 fn allowed_environment(key: &str) -> bool {
     if matches!(std::env::var(key), Err(std::env::VarError::NotUnicode(_))) {
         return false;
     }
-    key == "RUSTC_BOOTSTRAP"
+    matches!(key, "RUSTC_BOOTSTRAP" | "CARGO_TARGET_DIR")
         || !(key.starts_with("SAIL_")
             || key.starts_with("VERUS_")
             || key.starts_with("CARGO_")
@@ -678,6 +680,44 @@ mod tests {
             Some("stale-value".to_owned()),
         );
         assert!(!matches(&record, &f.data, &f.target));
+        Ok(())
+    }
+
+    #[test]
+    fn caller_target_contracts_import_only_with_the_exact_declared_value() -> TestResult {
+        let f = Fixture::new("caller-target")?;
+        let record = f.record("host", &f.input, &["CARGO_TARGET_DIR"])?;
+        assert!(matches(&record, &f.data, &f.target));
+        f.export(std::slice::from_ref(&record))?;
+        f.begin(&f.local, "compiler")?;
+        assert_eq!(
+            super::super::stale(&f.local, &f.data).0,
+            Vec::<String>::new()
+        );
+
+        let absent = BTreeMap::new();
+        let present = BTreeMap::from([(
+            "CARGO_TARGET_DIR".to_owned(),
+            f.target.join("caller-selected").display().to_string(),
+        )]);
+        assert_ne!(
+            current(&record, Some(&absent)).0,
+            current(&record, Some(&present)).0
+        );
+        let changed = if record.env["CARGO_TARGET_DIR"].is_none() {
+            &present
+        } else {
+            &absent
+        };
+        let mut stale = record;
+        stale.digest = current(&stale, Some(changed)).0;
+        assert!(!matches(&stale, &f.data, &f.target));
+        f.export(&[stale])?;
+        f.begin(&f.local, "compiler")?;
+        assert_eq!(
+            super::super::stale(&f.local, &f.data).0,
+            vec!["registry-script"]
+        );
         Ok(())
     }
     #[test]

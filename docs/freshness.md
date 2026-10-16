@@ -153,7 +153,10 @@ Cargo's own. Two parts of the environment bind a result:
 owned `--target-dir` to Cargo. Setting, changing or unsetting the caller's
 directory therefore keeps the same compiled target. It still reaches child
 processes, and an `env!` or build-script declaration binds its exact value
-in proof receipts, just like any other declared read.
+in proof receipts, just like any other declared read. Compiler-family script
+observations also retain its exact presence/value: unlike Cargo-injected
+variables, compilation preserves this caller value. The metadata override
+is confined to separate metadata children.
 
 Managed metadata probes, including Cargo-Verus's private metadata subprocess,
 select `cargo-metadata/` under the Sail cache with a highest-priority
