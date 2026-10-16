@@ -154,3 +154,46 @@ All-target release clippy passes (log SHA-256
 `7db328f8d531582edece0c006edb0c4eeca09066749f3eb0fab37ed6fb61e85f`).
 These checks are the final focused Mac fixture scope, not the full host,
 solver, real Verus conformance or performance gates.
+
+
+## Literal compiler-input resolution correction
+
+The `f608cad7` coverage check accepted a dep-info path after canonicalizing an
+unobserved external alias into inventoried source. Retargeting that alias,
+reading different compiler input and restoring it left the observed source
+unchanged. The same failure occurs through an external directory alias and
+through an unobserved ordinary directory followed by `..`: temporarily replace
+that directory with a symlink into a different tree, read different source,
+then restore the ordinary directory before checking.
+
+An actual negative control uses the exact `f608cad7` resolver and coverage
+behavior with the three regression tests. All three strict coverage assertions
+fail (exit 101); the other 14 history tests pass. The source with tests and raw
+log remain external: resolver SHA-256
+`4fcb814a31c29aab0c49c115f5a2986a0023a0526e9bbef8b3338cff2bfec1a4`,
+history SHA-256
+`defad2b33fd3cb935f8ac5d41757cf17125d4aac796184bdc0d568c6d2c45b86`,
+log SHA-256
+`15e5353784a490909ea4eacf88919d72eb6c5d071eb691a674fdc3f0a5536180`.
+
+Capture and read-only coverage now use one component walker. Every literal or
+expanded intermediate endpoint, including ordinary components consumed by
+`..`, must have been observed before the epoch. An unknown symlink refuses;
+only a terminal regular file may be absent from that resolution map, and it
+must still match a positive inventory digest. Native barriers bracket the
+walk. Final canonical resolution is only a consistency check, never an
+alternative authorization path.
+
+All 190 actual `sail-verus` library tests pass in the bounded macOS release
+build, including the three new negatives, observed-alias/parent-component
+positive coverage, and retained A → B → A/generated-input restoration (log
+SHA-256 `69a46159f172ef5865967834331d11de00961f9ae9a5a80e88862086881ec9d6`).
+All-target release clippy passes (log SHA-256 `1b1d57eaad44a575984ad5698a161e44e3d559a64d4b3c167f7654ecc456ca1f`).
+Shared resolver source SHA-256:
+`22dde0d4e1f8518d29be4121bf05c645a527591002516d679716eb70cbdd17c0`.
+Independent static review is clean; native/full-host/conformance/performance
+gates remain pending for this correction.
+
+- `f608cad7` plus regressions, 2026-10-16: failed three external input
+  resolution ABA controls; canonical target membership omitted literal path
+  components that the compiler could traverse during the epoch.

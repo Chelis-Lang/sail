@@ -106,6 +106,14 @@
    leave every observed final byte unchanged. Synchronous inode and global
    mount-generation events must therefore remain clean throughout the guarded
    epoch; an error or event permanently refuses retention/restoration.
+   Dep-info coverage uses the same component walker as observation setup:
+   every literal and expanded intermediate component must already be observed,
+   including ordinary directories later consumed by `..`. Unknown symlinks
+   refuse, even when their final canonical target is inventoried. Only a
+   terminal regular file can be absent from the resolution map, and its bytes
+   must match a positively bound inventory entry. Final canonical membership
+   alone cannot authorize a compiler input: an external alias can be retargeted
+   and restored without mutating its previously observed target.
    Unsupported observation and more than 4,096 distinct resolution components
    or 40 symlink expansions per root are ordinary misses. Earlier performance
    results do not qualify these additional checks.

@@ -18,7 +18,9 @@ semantic versioning once the API is published.
   toolchain) to have the recorded content. Native inode and mount observers
   refuse restoration after an ancestor or intermediate alias changes during a
   run, even if its original content returns; unavailable observation or
-  unsupported filesystems verify normally. `--output json`, jobs and MCP
+  unsupported filesystems verify normally. Unobserved input aliases and
+  intermediate directories also verify normally, even if their current final
+  target is known source. `--output json`, jobs and MCP
   report the target as reused, name the run that verified it, and add the
   note `SAIL3132`. Each logical target keeps its four most recently used proofs
   across compiler-argument and Cargo-unit variants

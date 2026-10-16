@@ -198,55 +198,34 @@ impl Resolution {
     }
 
     fn resolve(&mut self, original: &Path) -> Option<PathBuf> {
-        let mut current = PathBuf::from("/");
-        let mut pending: VecDeque<_> = original
-            .components()
-            .map(|part| part.as_os_str().to_owned())
-            .collect();
-        let mut links = 0usize;
-        self.remember(&current)?;
-        while let Some(part) = pending.pop_front() {
-            match Path::new(&part).components().next()? {
-                Component::RootDir => current = PathBuf::from("/"),
-                Component::CurDir => {}
-                Component::ParentDir => {
-                    current.pop();
-                    if current.as_os_str().is_empty() {
-                        current.push("/");
-                    }
-                }
-                Component::Normal(name) => {
-                    let path = current.join(name);
-                    let metadata = self.remember(&path)?;
-                    if metadata.file_type().is_symlink() {
-                        links = links.checked_add(1)?;
-                        if links > MAX_LINKS {
-                            return None;
-                        }
-                        let target = std::fs::read_link(&path).ok()?;
-                        target.to_str()?;
-                        if stamp(&std::fs::symlink_metadata(&path).ok()?)?
-                            .ne(&self.paths.get(&path)?.full)
-                        {
-                            return None;
-                        }
-                        let mut expanded: VecDeque<_> = target
-                            .components()
-                            .map(|part| part.as_os_str().to_owned())
-                            .collect();
-                        expanded.append(&mut pending);
-                        pending = expanded;
-                    } else {
-                        if !metadata.is_dir() && !pending.is_empty() {
-                            return None;
-                        }
-                        current = path;
-                    }
-                }
-                Component::Prefix(_) => return None,
+        walk(original, |path, _| self.remember(path))
+    }
+
+    /// Requires every literal and expanded intermediate component to have
+    /// been observed before the guarded epoch. Only a terminal regular file
+    /// can be new to this resolution map; its exact bytes must independently
+    /// belong to the caller's complete, positively bound inventory. The
+    /// caller must bracket this read-only walk with `unchanged()` barriers.
+    pub(super) fn covered(&self, original: &Path) -> Option<PathBuf> {
+        original.to_str()?;
+        let resolved = walk(original, |path, terminal| {
+            let metadata = std::fs::symlink_metadata(path).ok()?;
+            if let Some(endpoint) = self.paths.get(path) {
+                (identity(&metadata).as_ref() == Some(&endpoint.identity)
+                    && (!endpoint.symlink || stamp(&metadata).as_ref() == Some(&endpoint.full)))
+                .then_some(metadata)
+            } else {
+                (terminal && metadata.is_file()).then_some(metadata)
             }
+        })?;
+        if self
+            .canonical(original)
+            .is_some_and(|expected| expected != resolved)
+            || original.canonicalize().ok()? != resolved
+        {
+            return None;
         }
-        Some(current)
+        Some(resolved)
     }
 
     fn remember(&mut self, path: &Path) -> Option<Metadata> {
@@ -319,6 +298,63 @@ impl Resolution {
         }
         true
     }
+}
+
+fn walk(
+    original: &Path,
+    mut visit: impl FnMut(&Path, bool) -> Option<Metadata>,
+) -> Option<PathBuf> {
+    if !original.is_absolute() {
+        return None;
+    }
+    let mut current = PathBuf::from("/");
+    let mut pending: VecDeque<_> = original
+        .components()
+        .map(|part| part.as_os_str().to_owned())
+        .collect();
+    let mut links = 0usize;
+    visit(&current, false)?;
+    while let Some(part) = pending.pop_front() {
+        match Path::new(&part).components().next()? {
+            Component::RootDir => current = PathBuf::from("/"),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                current.pop();
+                if current.as_os_str().is_empty() {
+                    current.push("/");
+                }
+            }
+            Component::Normal(name) => {
+                let path = current.join(name);
+                let metadata = visit(&path, pending.is_empty())?;
+                if metadata.file_type().is_symlink() {
+                    links = links.checked_add(1)?;
+                    if links > MAX_LINKS {
+                        return None;
+                    }
+                    let before = stamp(&metadata)?;
+                    let target = std::fs::read_link(&path).ok()?;
+                    target.to_str()?;
+                    if stamp(&std::fs::symlink_metadata(&path).ok()?)?.ne(&before) {
+                        return None;
+                    }
+                    let mut expanded: VecDeque<_> = target
+                        .components()
+                        .map(|part| part.as_os_str().to_owned())
+                        .collect();
+                    expanded.append(&mut pending);
+                    pending = expanded;
+                } else {
+                    if !metadata.is_dir() && !pending.is_empty() {
+                        return None;
+                    }
+                    current = path;
+                }
+            }
+            Component::Prefix(_) => return None,
+        }
+    }
+    Some(current)
 }
 
 #[cfg(target_os = "macos")]

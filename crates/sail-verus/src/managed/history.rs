@@ -184,9 +184,7 @@ impl SourceGuard {
         self.resolution.unchanged()
             && inputs.iter().all(|(path, digest)| {
                 self.resolution
-                    .canonical(path)
-                    .map(Path::to_owned)
-                    .or_else(|| path.canonicalize().ok())
+                    .covered(path)
                     .and_then(|canonical| self.before.digests.get(&canonical))
                     == Some(digest)
             })
@@ -1529,6 +1527,113 @@ mod tests {
             "an intermediate alias changed within the guarded epoch"
         );
         assert!(!source.unchanged(), "event refusal remains latched");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_external_input_alias_requires_observed_resolution_coverage() {
+        use std::os::unix::fs::symlink;
+        let f = fixture("external-alias-coverage");
+        let alias = f.root.join("external.rs");
+        let replacement = f.root.join("replacement.rs");
+        write(&replacement, b"different compiler input\n");
+        assert!(symlink(&f.source, &alias).is_ok());
+        let source = SourceGuard::begin(&f.runtime, &f.identity, &f.process)
+            .unwrap_or_else(|| unreachable!("complete initial inventory"));
+        assert!(std::fs::remove_file(&alias).is_ok());
+        assert!(symlink(&replacement, &alias).is_ok());
+        assert_eq!(
+            std::fs::read(&alias).ok(),
+            Some(b"different compiler input\n".to_vec())
+        );
+        assert!(std::fs::remove_file(&alias).is_ok());
+        assert!(symlink(&f.source, &alias).is_ok());
+        let inputs = BTreeMap::from([(alias, sha("pub fn a() {}\n"))]);
+        assert!(
+            !source.unchanged() || !source.covers(&inputs),
+            "unobserved alias resolution cannot authorize retained compiler inputs"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_external_directory_alias_requires_observed_resolution_coverage() {
+        use std::os::unix::fs::symlink;
+        let f = fixture("external-directory-alias");
+        let alias = f.root.join("external-directory");
+        let replacement = f.root.join("replacement");
+        write(&replacement.join("lib.rs"), b"different compiler input\n");
+        assert!(symlink(f.root.join("ws/src"), &alias).is_ok());
+        let source = SourceGuard::begin(&f.runtime, &f.identity, &f.process)
+            .unwrap_or_else(|| unreachable!("complete initial inventory"));
+        assert!(std::fs::remove_file(&alias).is_ok());
+        assert!(symlink(&replacement, &alias).is_ok());
+        let input = alias.join("lib.rs");
+        assert_eq!(
+            std::fs::read(&input).ok(),
+            Some(b"different compiler input\n".to_vec())
+        );
+        assert!(std::fs::remove_file(&alias).is_ok());
+        assert!(symlink(f.root.join("ws/src"), &alias).is_ok());
+        assert!(source.unchanged(), "the external alias was not observed");
+        assert!(!source.covers(&BTreeMap::from([(input, sha("pub fn a() {}\n"))])));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unobserved_components_consumed_by_parent_dir_cannot_authorize_inputs() {
+        use std::os::unix::fs::symlink;
+        let f = fixture("external-parent-component");
+        let component = f.root.join("unwatched");
+        assert!(std::fs::create_dir(&component).is_ok());
+        let alternate = f.root.join("replacement");
+        assert!(std::fs::create_dir_all(alternate.join("nested")).is_ok());
+        write(
+            &alternate.join("ws/src/lib.rs"),
+            b"different compiler input\n",
+        );
+        let source = SourceGuard::begin(&f.runtime, &f.identity, &f.process)
+            .unwrap_or_else(|| unreachable!("complete initial inventory"));
+        assert!(std::fs::remove_dir(&component).is_ok());
+        assert!(symlink(alternate.join("nested"), &component).is_ok());
+        let input = component.join("../ws/src/lib.rs");
+        assert_eq!(
+            std::fs::read(&input).ok(),
+            Some(b"different compiler input\n".to_vec())
+        );
+        assert!(std::fs::remove_file(&component).is_ok());
+        assert!(std::fs::create_dir(&component).is_ok());
+        assert_eq!(
+            std::fs::read(&input).ok(),
+            Some(b"pub fn a() {}\n".to_vec())
+        );
+        assert!(
+            source.unchanged(),
+            "the external component was not observed"
+        );
+        assert!(!source.covers(&BTreeMap::from([(input, sha("pub fn a() {}\n"))])));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn observed_aliases_and_parent_components_cover_inventory_files() {
+        use std::os::unix::fs::symlink;
+        let f = fixture("observed-alias-coverage");
+        let workspace = f.root.join("ws");
+        let alias = workspace.join("known-alias");
+        assert!(symlink(workspace.join("src"), &alias).is_ok());
+        let source = SourceGuard::begin(&f.runtime, &f.identity, &f.process)
+            .unwrap_or_else(|| unreachable!("complete initial inventory"));
+        let inputs = BTreeMap::from([
+            (f.source.clone(), sha("pub fn a() {}\n")),
+            (alias.join("lib.rs"), sha("pub fn a() {}\n")),
+            (workspace.join("src/../src/lib.rs"), sha("pub fn a() {}\n")),
+        ]);
+        assert!(source.unchanged());
+        assert!(
+            source.covers(&inputs),
+            "observed paths retain positive coverage"
+        );
     }
 
     #[test]
