@@ -68,7 +68,8 @@ The fork arm obtains the pinned solver from the installed binary release
 fork suite separately. The source selector is not passed through the ordinary
 stock-source installer. The `--baseline stock` arm retains that installer's
 explicit source override and Singular checks; its test suite still comes from
-the default stock suite directory. A fork-suite selector therefore cannot
+that validated ordinary or Singular override, or the default stock suite
+directory when no override is set. A fork-suite selector therefore cannot
 stand in for a stock installation. The release lookup still reports `SAIL3003`
 when the release is missing.
 
@@ -82,6 +83,9 @@ python3 scripts/test-rvt-selector.py --binary target/release/sail-conformance \
 
 These isolated manifest and list-only executable fixtures test routing and
 refusal. They do not qualify a source runtime or replace the real suite gates.
+The 22 controls include distinct nondefault ordinary and Singular suite markers,
+so installer admission alone cannot hide a misrouted stock suite. Fork and
+engine feature variants remain refused by the stock selector.
 
 The runner normally adds `--no-report-long-running` through
 `VERUS_EXTRA_ARGS` on both arms. The known `assert_by_compute` example supplies

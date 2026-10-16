@@ -443,11 +443,9 @@ fn open_suite(
     };
     let default =
         source_build::variant_dir(&cache, &verus.commit, &verus.rust_toolchain, &features);
-    let build = if fork {
-        std::env::var_os("SAIL_VERUS_SOURCE_BUILD").map_or(default, PathBuf::from)
-    } else {
-        default
-    };
+    let selected = std::env::var_os("SAIL_VERUS_SOURCE_BUILD");
+    let stock_override = !fork && selected.is_some();
+    let build = selected.map_or(default, PathBuf::from);
     let ownership = source_build::lock_build(&build).map_err(|e| e.to_string())?;
     let mut suite =
         Suite::open(&build, &verus.rust_toolchain, &installed.z3).map_err(|e| e.to_string())?;
@@ -456,8 +454,20 @@ fn open_suite(
         .assets
         .get(sail_verus::toolchain::host())
         .ok_or_else(|| "no solver pin for this host".to_owned())?;
+    // Installed::locate already validates a stock override. Keep its legacy
+    // ordinary/Singular suite selection, including the override's features;
+    // the default stock directory and every fork selector stay exact variants.
+    let features_match = if stock_override {
+        suite
+            .manifest
+            .features
+            .iter()
+            .all(|feature| feature == "singular")
+    } else {
+        suite.manifest.features == features
+    };
     if suite.manifest.commit != verus.commit
-        || suite.manifest.features != features
+        || !features_match
         || suite.manifest.z3_sha256 != z3.z3_sha256
     {
         return Err(format!(

@@ -31,6 +31,17 @@ on a c7i.4xlarge in us-east-1. Raw archive SHA-256
 That result qualifies the workspace join, not the private fork runtime or any
 source-suite run at this later source. Combined-runtime corpus, determinism and
 performance gates remain separate.
+The subsequent integration with #202's test-executable digests requires a new
+native workspace/routing gate; it remains pending. Its selector fixtures bind
+their newly written list executables and reject legacy digestless or incorrect
+digests. The expanded 22 controls also distinguish nondefault ordinary and
+Singular stock suites from the default by their actual listed markers, and
+reject fork/engine feature variants under the stock selector. These restore
+the preexisting stock source-override behavior; the earlier list controls did
+not distinguish installer admission from selection of the actual suite.
+The completed #202 integrity/rebuild and full fast/standard runs qualify
+`6ba30636` separately, as recorded in the
+[source-suite integrity record](source-suite-integrity.md).
 There is no fork rebuild, accepted-pin change or publication in this correction.
 
 | Attempt | Result / limits | Raw SHA-256 |

@@ -89,8 +89,12 @@ def main():
         correct = fixture(selected, features)
         stock = cache / "verus-src-build" / pins["verus"]["commit"]
         fixture(stock, [], "stock_default")
+        custom_stock = home / "ordinary-source"
+        fixture(custom_stock, [], "custom_stock_override")
         singular = home / "singular-source"
         fixture(singular, ["singular"], "singular_override")
+        engine_source = home / "engine-source"
+        fixture(engine_source, features[:3] + ["vstd-build:cargo-verus-release"], "engine_override")
         variant_id = (
             f"{pins['verus']['commit']}:{pins['verus']['rust_toolchain']}:"
             + json.dumps(features)
@@ -120,6 +124,8 @@ def main():
         check("implicit fork accepts explicit fork suite", baseline=None)
         check("explicit fork accepts explicit fork suite")
         check("stock installer still rejects fork source", baseline="stock", error="SAIL3040")
+        check("stock rejects engine source variant", baseline="stock", selector=engine_source, error="SAIL3040")
+        check("fork rejects engine source variant", selector=engine_source, error="SAIL3040")
         for name, field, value in [
             ("fork rejects stock source", "features", []),
             ("fork rejects wrong fork identity", "features", ["sail-fork:wrong"]),
@@ -139,8 +145,8 @@ def main():
         (selected / "sail-build.json").write_text(json.dumps(correct))
         check("fork default source variant", selector=None, marker="fork_default")
         check("stock default source unchanged", baseline="stock", selector=None, marker="stock_default")
-        check("stock explicit ordinary source unchanged", baseline="stock", selector=stock, marker="stock_default")
-        check("stock Singular installation override unchanged", baseline="stock", selector=singular, marker="stock_default")
+        check("stock explicit ordinary suite override unchanged", baseline="stock", selector=custom_stock, marker="custom_stock_override")
+        check("stock Singular suite override unchanged", baseline="stock", selector=singular, marker="singular_override")
         check("fork missing selector refuses", selector=home / "missing", error="SAIL3040")
         check("stock missing override refuses", baseline="stock", selector=home / "missing", error="SAIL3040")
         (release / "verus").unlink()
