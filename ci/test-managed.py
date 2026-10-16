@@ -131,7 +131,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                         } for target in document["targets"]]
                 }
 
-        def managed(*args):
+        def managed(*args, expected_requested=1):
             label = f"managed-{len(managed_calls) + 1:02d}"
             managed_calls.append(label)
             started = time.monotonic()
@@ -158,8 +158,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert result["kind"] == "sail-project-result", result
             assert result["error"] is None, result
             selected = [target for target in result["targets"] if target["requested"]]
-            assert len(selected) == 1, selected
-            return run, result, selected[0]
+            assert len(selected) == expected_requested, selected
+            return run, result, selected[0] if selected else None
 
         def vstd(document):
             found = [t for t in document["targets"] if t["target"] == "vstd"]
@@ -610,8 +610,11 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 assert not changed_target["reused"], diagnostic(changed)
                 assert changed_target["establishing_run"] != same_target["establishing_run"], diagnostic(changed)
                 env["CARGO_TARGET_DIR"] = str(root / "declared-target-change")
-                declared_run, declared, _ = managed()
-                assert declared_run.returncode != 0, diagnostic(declared)
+                # Cargo stops in the failing build script, before it creates
+                # the requested artifact; no requested proof may be reported.
+                declared_run, declared, _ = managed(expected_requested=0)
+                assert declared_run.returncode == declared["exit_code"] == 101, diagnostic(declared)
+                assert declared["currentness"] == "unknown", diagnostic(declared)
                 assert b"declared caller target changed" in declared_run.stderr, declared_run.stderr.decode()
                 assert declared["context_sha256"] == changed["context_sha256"], diagnostic(declared)
             finally:

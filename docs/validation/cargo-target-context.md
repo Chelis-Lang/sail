@@ -1,17 +1,24 @@
 # Owned metadata target selection
 
-Status: implementation and bounded macOS checks pass; native Linux gate and
-full end-to-end/conformance remain pending. Fixes #166 and the compiler false
-reuse in [#189](https://github.com/Chelis-Lang/sail/issues/189).
+Status: native gate, solver, all seven end-to-end phases plus extra,
+PR/full fast and full standard conformance pass on `7cc62383`. Joined
+current-main source `682ddd98` also passes gate, solver, all end-to-end plus
+extra and PR conformance. Required PR checks are enforced separately.
+Fixes #166 and the compiler false reuse in
+[#189](https://github.com/Chelis-Lang/sail/issues/189).
 
-Source: candidate over `0a7c1d0d`; `crates/sail-verus/src/adapter.rs` SHA-256
+Source: native candidate `7cc62383`, with the qualified #183 product changes.
+Joined candidate `682ddd98` is based on main `4846cfe1`.
+`crates/sail-verus/src/adapter.rs` SHA-256
 `39d0c48dea35b208c58af62bc122643f0d92bbd75b5c7f0ea2f34872613b0120`.
 The cache-overlap guard additionally qualifies `configuration.rs` SHA-256
 `3c6fb9f3b5aa07b265bafd261401766c705b2e0ea4d35ecad3de55a7416fed50`,
 on the metadata correction `6c03eaa5` (stacked on #183).
-Runtime: installed source build variant `c1eeaec18522f7e7`, upstream
-`426d8b01`, fork lineage `73dea021`, pinned Z3 4.16.0. Correctness-only local
-checks used a no-vstd library and the pinned verus_builtin package; these
+Runtime: upstream `426d8b01`, fork lineage `73dea021`, pinned Z3 4.16.0.
+The native engine manifest is
+`4f0d0d3f4315a3b0c2c4d2a977a712db8db5ba2c3f7f72c39899cf9fd50fccdd`;
+Mac boundary controls used installed source variant `c1eeaec18522f7e7`.
+Correctness-only local checks used a no-vstd library and the pinned verus_builtin package; these
 compiler/source-boundary tests contain no SMT obligations.
 
 Runner and Cargo-Verus's own metadata both select the absolute
@@ -43,7 +50,13 @@ conservatively; the default external cache keeps managed reuse.
 | Physical boundary unit controls | Both containment directions, every package, nonexistent disjoint suffixes, similar-name siblings, aliases and dangling/unidentified roots |
 | Selected Rust tests | 177 sail-verus tests pass with one test thread |
 | Selected clippy | sail-verus, release profile, all targets, warnings denied |
-| Native Linux/full host/e2e/conformance | Pending; no acceptance claim |
+| Native workspace gate | `7cc62383`: 631 pass; joined `682ddd98`: 638 pass; both skip 35 solver-dependent tests |
+| Native solver | Both sources: 35 pass |
+| Native end-to-end | Both sources: all seven phases plus local extra pass |
+| PR conformance | Both sources, all four modes: 33/33 Same, 311 functions; no Different, Unstable, infrastructure error, counter drift or skipped project |
+| Full fast conformance | `7cc62383`, all four modes: 147/147 Same, 3,450 functions; no Different, Unstable, infrastructure error, counter drift or skipped project |
+| Standard conformance | `7cc62383`, all four modes: each 159/159 Same and 12,726 functions; one rlimit-counter drift per mode, zero Different, Unstable, infrastructure errors or skipped projects |
+| Joined current-main qualification | Gate, solver, all end-to-end plus extra and PR conformance pass; full fast/standard evidence remains tied to `7cc62383` |
 
 Raw evidence is outside the repository in the target-context evidence set:
 
@@ -57,16 +70,50 @@ Raw evidence is outside the repository in the target-context evidence set:
 | `cache-source-overlap-2026-10-16.tgz` (pre-fix false Current and outside-cache control) | `7c2491bf63dd6d9d2e820425be1d905710b8b0972ce069c7831ff66b3e3eaed2` |
 | `cache-overlap-guard-fixed-2026-10-16.tgz` (source/binary identities, 177 tests, clippy, exact CI blocks and old-binary negative control) | `a1fadb954956c1d985d6006db1334e7996706a261e6b829e594b102f7c9845cf` |
 
+Native acceptance on `7cc62383` ran on a dedicated EC2 c7i.8xlarge in
+us-east-1. All 502 tracked-file hashes match before and after except excluded
+local agent settings. Internal packages were cleaned and all Rust/Cargo mtimes
+refreshed before compiling. Joined `682ddd98` retains the complete accepted main input/receipt overlap,
+foreign closure bindings and dependency-output replay; its own 508 tracked
+hashes are also checked. Both runs exclude only local agent settings. The
+pre-integration source has no current-main full fast/standard claim; joined
+checks are recorded separately. Corpus pins and
+conformance comparisons are unchanged.
+
+Native archive `cache-overlap-native-evidence.tgz`, SHA-256
+`0797ec4e190512e1d201f88adfb4aa7cc0337322afa9b2670305448b7df16070`.
+Qualified binaries `cache-overlap-linux-binaries.tgz`, SHA-256
+`8e0cf9f72c145894f48c5c81c6dbfbe0afbd0eabe1d2dc5028ca2c87af41b6d5`.
+
+Joined archive `cache-overlap-joined-native-evidence.tgz`, SHA-256
+`b6ee8a9fb786291a02e11e1f9837297c4c02b909c0db2e5379687938fbbe8572`.
+Joined binaries `cache-overlap-joined-linux-binaries.tgz`, SHA-256
+`4864eb5e47519c1a67eaaa2f331d1af18dcaaee51dc2cf33d1dabb29a9525230`.
+Both archives were downloaded, checksummed and their report/source manifests
+verified. Raw evidence remains outside git.
+
 Failed attempts remain visible:
 
+- `51e3b806`, 2026-10-16, native gate (631 tests) and solver passed;
+  end-to-end passed unchanged reuse and generated-value invalidation, then
+  its expected caller-target build-script failure reached a helper that
+  required a requested artifact even though Cargo never built it. The actual
+  report is Unknown, exit 101, with no requested target; stderr contains the
+  deliberate caller-value assertion. The corrected negative control requires
+  exactly these failure properties; every other helper call still requires
+  one requested target. Failed-attempt archive SHA-256
+  `2f3aa2bbbdd71935a9eefe602c22d5313d646b2fea368199e554cd967b16fe1c`.
+- `f28a12bf`, 2026-10-16, native gate stopped on the new regression's
+  `assert_is_empty` lint; the assertion was rewritten with the same empty
+  value expectation. Archive SHA-256
+  `d41b3ea40190136de57a11bbd514fc08ff06774f6e2dd9e473502d1b8f3cd2eb`.
 - `c753d7cd`, 2026-10-16, native gate (630 tests) and solver passed;
   end-to-end stopped on the strict unchanged generated-input assertion
   (`ci/test-managed.py:587`). The script declared `CARGO_TARGET_DIR`, but
   family import refused every `CARGO_*` variable, dropped its contract and
   rebuilt it again. The narrow correction admits this caller-preserved
   variable while keeping exact present/absent binding and all other
-  Cargo-injected variable refusals. Native correction qualification is
-  pending. Failed-attempt archive SHA-256
+  Cargo-injected variable refusals. This failed attempt is superseded by the qualified `7cc62383` correction. Failed-attempt archive SHA-256
   `c220d947efae3edf465034d23df45b64e0a924c84c80f4368ffaed9b1052c0ba`.
 - `a4ba5014`, 2026-10-16, native Linux gate: 629 tests passed and the
   engine-selection fixture failed because its cache was inside its package
