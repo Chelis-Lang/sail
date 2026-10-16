@@ -358,3 +358,18 @@ explicitly exclude remote filesystem events and several pseudo-filesystems.
 Admission predicates are tested; actual Mac execution here is APFS only.
 The admitted Linux types and HFS still need their applicable native gates;
 this is not a claim that every mount arrangement is qualified.
+
+### Regular executable access events
+
+On macOS, executing a watched regular Mach-O file reports `NOTE_ATTRIB`
+when its access time advances, despite unchanged compiler bytes and guarded
+metadata. Treating that event as an input mutation prevented live publication.
+Regular endpoints therefore bind the full native stamp (identity, permissions,
+link count, ownership, size, mtime and ctime) in registration, declared-path
+coverage and both mutation barriers. Access time is excluded as before.
+Native rename/delete/revoke events still latch refusal for every watched
+regular file; directories retain native attribute events because transient
+ancestor permissions can affect path resolution. Symlink, mount and complete
+inventory guards are unchanged. Content/permission changes followed by restore
+must still refuse through ctime, and replacement ABA must still refuse.
+The change remains a candidate until live store and both-platform gates pass.

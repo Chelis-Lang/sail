@@ -143,6 +143,7 @@ struct Endpoint {
     full: Stamp,
     identity: Identity,
     symlink: bool,
+    regular: bool,
 }
 
 /// Complete resolution components and a latched native ancestor observer.
@@ -227,7 +228,8 @@ impl Resolution {
             let metadata = std::fs::symlink_metadata(path).ok()?;
             if let Some(endpoint) = self.paths.get(path) {
                 (identity(&metadata).as_ref() == Some(&endpoint.identity)
-                    && (!endpoint.symlink || stamp(&metadata).as_ref() == Some(&endpoint.full)))
+                    && (!(endpoint.symlink || endpoint.regular)
+                        || stamp(&metadata).as_ref() == Some(&endpoint.full)))
                 .then_some(metadata)
             } else {
                 ((terminal && metadata.is_file())
@@ -253,7 +255,7 @@ impl Resolution {
         let full = stamp(&metadata)?;
         if let Some(previous) = self.paths.get(path) {
             if identity(&metadata).as_ref() != Some(&previous.identity)
-                || (previous.symlink && previous.full != full)
+                || ((previous.symlink || previous.regular) && previous.full != full)
             {
                 return None;
             }
@@ -267,6 +269,7 @@ impl Resolution {
                     identity: identity(&metadata)?,
                     full,
                     symlink: metadata.file_type().is_symlink(),
+                    regular: metadata.is_file(),
                 },
             );
         }
@@ -297,7 +300,8 @@ impl Resolution {
         let valid = self.paths.iter().all(|(path, before)| {
             std::fs::symlink_metadata(path).is_ok_and(|metadata| {
                 identity(&metadata).as_ref() == Some(&before.identity)
-                    && (!before.symlink || stamp(&metadata).as_ref() == Some(&before.full))
+                    && (!(before.symlink || before.regular)
+                        || stamp(&metadata).as_ref() == Some(&before.full))
             })
         }) && self
             .canonical
@@ -410,15 +414,18 @@ mod platform {
             if identity(&file.metadata().ok()?).as_ref() != Some(expected) {
                 return None;
             }
+            let mut flags =
+                FilterFlag::NOTE_RENAME | FilterFlag::NOTE_DELETE | FilterFlag::NOTE_REVOKE;
+            // Executing a regular Mach-O file advances its access time and
+            // delivers NOTE_ATTRIB without changing any guarded input. Full
+            // regular-file stamps bind ctime, permissions and identity instead;
+            // rename/delete/revoke remain latched. Ancestor directories need
+            // ATTRIB because transient permission changes can affect lookup.
+            if file.metadata().ok()?.is_dir() {
+                flags |= FilterFlag::NOTE_ATTRIB;
+            }
             self.watcher
-                .add_file(
-                    &file,
-                    EventFilter::EVFILT_VNODE,
-                    FilterFlag::NOTE_RENAME
-                        | FilterFlag::NOTE_DELETE
-                        | FilterFlag::NOTE_REVOKE
-                        | FilterFlag::NOTE_ATTRIB,
-                )
+                .add_file(&file, EventFilter::EVFILT_VNODE, flags)
                 .ok()?;
             self.files.push(file);
             Some(())
@@ -539,6 +546,100 @@ mod platform {
 mod tests {
     use super::*;
     use std::error::Error;
+
+    #[test]
+    fn executing_observed_regular_file_keeps_input_guard_current() -> Result<(), Box<dyn Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-resolution-execute-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let executable = root.join("echo");
+        let source = root.join("echo.rs");
+        std::fs::write(&source, "fn main() { println!(\"observed execution\"); }")?;
+        let compiled = std::process::Command::new("rustc")
+            .arg(&source)
+            .arg("-o")
+            .arg(&executable)
+            .output()?;
+        assert!(compiled.status.success());
+        let result = (|| {
+            let resolution =
+                Resolution::capture(std::slice::from_ref(&executable)).ok_or("capture")?;
+            let before = stamp(&std::fs::metadata(&executable)?).ok_or("stamp")?;
+            let output = std::process::Command::new(&executable)
+                .arg("observed execution")
+                .output()?;
+            assert!(output.status.success());
+            assert_eq!(output.stdout, b"observed execution\n");
+            assert!(stamp(&std::fs::metadata(&executable)?).as_ref() == Some(&before));
+            assert!(resolution.unchanged());
+            assert_eq!(
+                resolution.covered(&executable),
+                Some(executable.canonicalize()?)
+            );
+            Ok::<_, Box<dyn Error>>(())
+        })();
+        std::fs::remove_dir_all(root)?;
+        result
+    }
+
+    #[test]
+    fn regular_content_and_permission_aba_refuse_every_read_path() -> Result<(), Box<dyn Error>> {
+        use std::os::unix::fs::PermissionsExt as _;
+        let root =
+            std::env::temp_dir().join(format!("sail-resolution-regular-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let file = root.join("input");
+        std::fs::write(&file, "correct")?;
+        let result = (|| {
+            for change_permission in [false, true] {
+                let resolution =
+                    Resolution::capture(std::slice::from_ref(&file)).ok_or("capture")?;
+                if change_permission {
+                    let permissions = std::fs::metadata(&file)?.permissions();
+                    std::fs::set_permissions(
+                        &file,
+                        std::fs::Permissions::from_mode(permissions.mode() ^ 0o100),
+                    )?;
+                    std::fs::set_permissions(&file, permissions)?;
+                } else {
+                    std::fs::write(&file, "bad input")?;
+                    assert_eq!(std::fs::read_to_string(&file)?, "bad input");
+                    std::fs::write(&file, "correct")?;
+                }
+                assert!(resolution.covered(&file).is_none());
+                assert!(!resolution.unchanged());
+                assert!(!resolution.unchanged());
+            }
+            Ok::<_, Box<dyn Error>>(())
+        })();
+        std::fs::remove_dir_all(root)?;
+        result
+    }
+
+    #[test]
+    fn observed_regular_file_replacement_aba_is_latched() -> Result<(), Box<dyn Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-resolution-file-aba-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let file = root.join("input");
+        let saved = root.join("saved");
+        let bad = root.join("bad");
+        std::fs::write(&file, "correct")?;
+        std::fs::write(&bad, "bad input")?;
+        let result = (|| {
+            let resolution = Resolution::capture(std::slice::from_ref(&file)).ok_or("capture")?;
+            std::fs::rename(&file, &saved)?;
+            std::fs::rename(&bad, &file)?;
+            assert_eq!(std::fs::read_to_string(&file)?, "bad input");
+            std::fs::rename(&file, &bad)?;
+            std::fs::rename(&saved, &file)?;
+            assert!(!resolution.unchanged());
+            assert!(!resolution.unchanged());
+            Ok::<_, Box<dyn Error>>(())
+        })();
+        std::fs::remove_dir_all(root)?;
+        result
+    }
 
     #[test]
     fn filesystem_admission_refuses_unknown_network_and_pseudo_types() {

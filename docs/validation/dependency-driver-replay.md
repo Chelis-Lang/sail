@@ -204,7 +204,8 @@ not performance measurements.
   published; the second project and both concurrent projects did not reuse;
   without an entry the corruption test could not exercise warning/fallback.
   All measured exits, verdict summaries and compared stderr match plain.
-  No assertion was relaxed. Publication refusal remains under investigation.
+  No assertion was relaxed. A subsequent live diagnostic identifies a regular
+  executable access-time attribute event as one publication refusal, below.
 
 The qualification archive (logs, manifests, comparisons and reproduction
 scripts) has SHA-256
@@ -228,3 +229,43 @@ Unknown directory/file aliases also refuse; captured nested directories and
 captured root aliases remain usable. All 27 combined focused cases and strict
 direct clippy pass; independent static review is clean. The focused test log
 has SHA-256 `5adc6dd68c82d750048a29203d55dcf20036f7f7171137fe51d9182b7b672bf4`.
+
+## Regular executable observer correction
+
+On source `8007192b` with a temporary, separately archived diagnostic overlay,
+a live donor reaches metadata replay admission, then refuses publication on
+macOS `Vnode(Attrib)` for the pinned regular `verus` executable. An isolated
+observation followed by `verus --version` reproduces the event: exit 0, unchanged
+bytes and guarded metadata, advancing access time. Raw live stderr SHA-256
+`fb3984834d40de4f19384b0665831d27b0febaec3696af0920d5695cb7f459bd`;
+isolated probe log SHA-256
+`7b905bf325f72afe0206631af840dd5a491196f27b96f4cf0e640f5a7914295c`.
+The diagnostic overlay was removed before implementing the correction.
+
+The correction checks full regular-endpoint stamps in registration,
+`covered_with` and `unchanged`, and omits macOS regular-file attribute watches
+while retaining native rename/delete/revoke and directory attribute watches.
+Source/tree, symlink, mount and native pre/post barriers remain mandatory.
+Twenty actual-source helper tests and strict clippy pass, including an owned
+rustc-built Mach-O execution positive, content/chmod ABA declared-coverage and
+mutation refusals, and a replacement ABA with an actual bad read. Twenty
+ordinary parallel rounds pass. The same execution-positive test on the old
+`8007192b` helper fails (exit 101).
+
+- Corrected helper test log SHA-256: `4c15b28294ce2b33d8a38f55a855b9c5487cf3bbff84b136494069032cf769f1`.
+- Twenty parallel rounds SHA-256: `2a416334e2a3d38553375519687d81dbbbbe2539f3b0dbc9d7178b57a4d955f8`.
+- Old-source negative SHA-256: `39037ac371d783474943b4ee301b695e243e1265d1163f708de3348b0e985bbe`.
+
+Independent static review of this boundary is clean. These focused results
+do not establish live publication/reuse or native Linux qualification; the
+strict store matrix remains a failed acceptance gate until rerun successfully.
+
+| Date | Source / attempt | Result | Cause / evidence |
+|---|---|---|---|
+| 2026-10-16 | Execution fixture attempt 1 | Failed before guard assertion | Copying Apple's platform `/bin/echo` produced an unexecutable copy; replaced with an owned rustc-built fixture. Raw attempt retained. |
+| 2026-10-16 | Execution fixture attempt 2 | Failed expected-path assertion | Expected literal temporary path instead of the API's canonical result; corrected expectation, mutation checks unchanged. Raw attempt retained. |
+
+An invocation of the old direct-check script overwrote its three `guard-open`
+logs with a later fixture run. The original separate 16-case parallel log and
+all source/runtime and native archives remain intact; the latest logs are
+retained separately. No current acceptance depends on the overwritten files.
