@@ -37,6 +37,9 @@ MCP test-server cancellation regression and its remaining validation scope.
 [Solver-continuation findings](reports/2026-10-16-solver-snapshots.md) and their
 [qualification record](validation/solver-snapshots.md) preserve the blocked
 exactness experiment; no continuation implementation is selected.
+The [source-suite integrity record](validation/source-suite-integrity.md) tracks
+executable digests, legacy-manifest migration and native rebuild controls.
+
 [Releasing](releasing.md) gives the release procedure, the archive names and
 layout, and how `sail` finds the bundled engine.
 [Managed runs](managed-cold-start.md) explains what the first managed run costs
