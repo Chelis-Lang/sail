@@ -6,6 +6,16 @@ and indexed failed attempts are in [M7 validation](validation/m7.md); the
 [roadmap](ROADMAP.md) tracks the remaining work. Fixed and superseded issues
 are in the `archive/m7-contracts-f7103bf` tag.
 
+## Experimental performance gates
+
+- **The disabled changed-check solver prototype has no real-trace raw
+  acceptance (#158).** Three complete native fresh runs per IronKV and Anvil
+  transcript agree on all check replies but differ in literal clock statistics.
+  Neither live-prefix timing sample is eligible. An IronKV sample additionally
+  retains an observer `ESRCH` during normal process exit. No normalization or
+  error exemption was introduced; the [qualification record](validation/solver-snapshots.md#actual-native-full-trace-fresh-controls)
+  keeps source identities, all raw failures and remaining gates.
+
 ## Open M7 defects and failing gates
 
 - **Vest repair is about 1.8× M6, below the 2× figure.** The owner accepted

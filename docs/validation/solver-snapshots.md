@@ -231,5 +231,52 @@ test `5f9351cd0408a0081b8c46e39a9e9c9d90fe3cd2db4c3648f49a8851ead6f379`,
 driver `cadb166f602bc697b60e8c4c55202b4ff7f02ab6f58fc3b0c13ec061b7e99e67`.
 The native manifest SHA-256 is
 `e42238f526ce2e1c8d695bfc00fdfa36ea971bb8ce9e4b5591112ab0df406627`.
-These controls execute the core, not the new driver's fresh-only branch.
-Full fresh-versus-fresh real-trace and live timing gates remain pending.
+These 28 controls execute the core, not the driver's fresh-only branch.
+
+### Actual native full-trace fresh controls
+
+The separately reviewed `run-real.py` controller now exercises that branch
+with the frozen core/driver above. Controller SHA-256:
+`606910691e32f53957c1f58bbbf0dd58860ab08d6fcc65217608a1004f3cc157`.
+Native EC2 c7i.8xlarge in us-east-1, Xeon Platinum 8488C, 32 logical CPUs;
+Linux `7.0.0-1014-aws`, CI image `sail-ci:3c02e445e25df766`, image digest
+`03d6865e6602ae702f480b4396543c5c1c51fe07f88fd80faa210880a66abef6`.
+Actual pinned Z3 image identity is verified before input in all six samples.
+The limits are 300 s per preparation/serving/oracle/fallback, 600 s TTL,
+16MiB input, one slot and 1GiB sampled resident memory. The owned container
+also has a separate 2GiB memory limit. No other benchmark runs concurrently.
+
+| Dataset | Fresh samples | Actual check replies per sample | Guarded wall seconds | Literal raw result |
+|---|---:|---|---|---|
+| IronKV body-late | 3 | 24 `unsat`, no `sat`/`unknown` | 2.190 / 2.178 / 2.177 | Fail: `:time` bytes vary |
+| Anvil body-late | 3 | 9 `unsat`, no `sat`/`unknown` | 55.068 / 55.910 / 55.853 | Fail: `:time` bytes vary |
+
+Every process exits 0 with empty stderr. All changed stdout lines in the
+recorded comparisons are `:time` fields; the other bytes, including
+`num-allocs`, match in these samples. This observation is specific to these
+fresh runs and does not resolve historical snapshot allocation differences.
+One IronKV sample additionally records `ESRCH` reading `smaps_rollup` during
+normal exit, after earlier successful memory samples. The driver already
+rechecks child status on observer errors; this sample still refuses and is
+retained as an unresolved observer/exit race. No error exemption was added.
+Observed peak RSS is approximately 68–75MiB for IronKV and 211–214MiB for
+Anvil; these are samples rather than hard peak-memory proofs.
+
+Both strict fresh controls fail. Both one-use samples are explicitly skipped
+with that reason; the parent exits 1. Final source and solver identities
+match. No live latency, changed-check speedup, default integration or issue
+completion is claimed. Raw stdout/stderr/status and all samples remain intact;
+no clock or allocation field is masked and the acceptance gate is unchanged.
+
+The external `live-prefix-review-2026-10-16` evidence set contains:
+
+| Artifact | SHA-256 |
+|---|---|
+| `real-trace-result.tgz` (source, inputs, every raw sample and parent/driver manifests) | `4b43d3a60365266f3f9be19d54e350a9654f07fce4e0395fe619c430f48ac657` |
+| `real-trace-result-summary.json` (unmodified-byte difference locations/classification) | `b05dbaf9eca11fb942db7e591aba4a844a9dc062b04db8abc872b94a6b19b405` |
+
+- `60691069` controller digest, 2026-10-16: all six complete fresh controls
+  produce the same check replies but fail literal clock-byte equality; one
+  IronKV sample also has the retained memory-observer exit refusal. Live
+  timing is not run. This is a failed research gate, not a solver verdict
+  disagreement or an accepted performance result.

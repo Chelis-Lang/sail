@@ -274,9 +274,11 @@ oyster and such." This supersedes the parallel tracks of
       Solver snapshots and a one-use live-prefix alternative remain disabled
       prototypes; all 28 bounded native live-prefix controls pass, including
       actual executable substitution refusal and timer-worker preservation.
-      Lossless framing and parked
-      admission bounds are implemented; native qualification and raw-output
-      exactness remain pending ([record](validation/solver-snapshots.md)).
+      Lossless framing and parked admission bounds are implemented. Three
+      complete native fresh runs on each real IronKV/Anvil changed transcript
+      agree on all check replies but fail literal `:time` equality; one-use
+      timing is skipped, not accepted. Full qualification remains open
+      ([record](validation/solver-snapshots.md)).
    3. vstd pre-verified in the release archive, #161.
    4. Remaining managed overhead against the removed pass-through, #156.
    5. Cache robustness to incidental edits: stable crate-wide numbering in

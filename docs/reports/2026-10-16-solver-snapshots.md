@@ -147,3 +147,34 @@ and a guarded fresh reference. No Mac performance measurements or saved-CPU
 claim are made. The complete command/response boundary must currently come
 from trusted capture metadata; Session/ledger eligibility and full protocol
 binding remain implementation gates before default use.
+
+## Real full-trace fresh controls
+
+The native baseline now uses complete, actually changed IronKV and Anvil
+body-edit transcripts from the preserved archive. IronKV's exact common prefix
+contains 23 solved checks before one remaining check; Anvil's contains seven
+before two remaining checks. The full edited inputs are 2.46MB and 6.29MB.
+The selected command boundary uses existing trace responses; no SMT command
+is added and no output is normalized.
+
+Three independent complete runs per dataset use the same actual pinned Linux
+Z3, with finite 300 s limits, a 16MiB input ceiling and 1GiB sampled RSS budget.
+Every process exits 0 with empty stderr and the same check replies: 24 `unsat`
+for IronKV, nine for Anvil. All six actual executable images are verified.
+Their complete stdout is nevertheless different between fresh runs. Every
+changed line in these recorded comparisons is a `:time` field. The other
+bytes, including `num-allocs`, match in this particular fresh scope. That does
+not explain or erase the old fork/resume allocation differences.
+
+IronKV's guarded fresh runs take 2.190, 2.178 and 2.177 s; Anvil takes 55.068,
+55.910 and 55.853 s on the native c7i.8xlarge. These are baseline observations,
+not live-prefix gains. One IronKV sample also retains an `ESRCH` memory-read
+error during normal process exit; it remains a failed sample. The literal raw
+gate fails for both datasets, so the controller records two explicit skips
+and runs no one-use timing sample. It exits 1 and keeps every raw result.
+
+The disabled prototype therefore remains unaccepted. This evidence separates
+agreement of check replies from literal clock-byte equality; it does not
+change the charter, normalize output or relax the gate. The
+[qualification record](../validation/solver-snapshots.md#actual-native-full-trace-fresh-controls)
+records exact source/runtime identities, limits, all failures and checksums.

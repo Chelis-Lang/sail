@@ -89,6 +89,29 @@ memory refusals and errors remain recorded failures. The trace files must be
 owned immutable regular files. No archived statistics are masked to make
 fresh output or prefix readiness match.
 
+`run-real.py` runs the retained IronKV and Anvil changed-check datasets in
+sequence. Its source directory contains `pairs.json`, `source-hashes.json`,
+the frozen `run.py`/`live_prefix.py`, and each project's `prefix.smt2`,
+`prefix.stdout` and `suffix.smt2`. It validates those hashes and the full edited
+input reconstructed from prefix plus suffix. It first runs three complete
+fresh controls per dataset; a one-use sample is eligible only when those
+strict controls pass and the archived expected prefix matches fresh output.
+Every failed or ineligible dataset has a retained reason and makes the parent
+exit nonzero. Source and solver identities are checked again in its final
+block, including on errors.
+
+```sh
+python3 native/sail-live-prefix/run-real.py \
+  --source IMMUTABLE_DATASET_DIRECTORY --out NEW_RESULTS --z3 PINNED_Z3
+```
+
+The actual native three-run controls fail for both datasets: all check replies
+agree, but literal `:time` output varies between independent fresh processes.
+No live-prefix timing runs follow that failure, and no statistics are removed
+from the acceptance predicate. One IronKV sample also retains a memory-observer
+`ESRCH` during normal process exit; it remains a failed sample. This does not
+complete #158 or establish a real-workload speedup.
+
 The native suite reproduces the executable ABA by actually running a foreign
 image, restoring the path and refusing it. Earlier Mac positive fixtures
 predate that defect and do not qualify the current candidate. Current Mac

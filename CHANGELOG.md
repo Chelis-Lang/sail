@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- The disabled changed-check experiment has a bounded real-trace controller
+  that validates captured input/source identities, runs three strict full
+  fresh controls first and records ineligible live samples explicitly.
+  Current IronKV/Anvil controls fail literal clock equality; no default
+  verification path or acceptance rule changes.
 - Add a disabled one-use live-prefix solver experiment, with exact input and
   raw output checks, bounded preparation/serving, native executable identity
   guards and explicit fresh fallback. Native qualification and edit-loop
