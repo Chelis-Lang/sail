@@ -49,12 +49,22 @@ current diagnostics. This proposal does not authorize query normalization.
 
 ## Implementation status
 
-No persistent frontend cache or key from this proposal is implemented or
-accepted. The first implementation candidate instead replaces discarded
+No persistent frontend cache or qualified key from this proposal is
+implemented or accepted. The first implementation candidate instead replaces discarded
 identity rewrites in reachability pruning with read-only traversal of the
 same current AST. It has no cross-invocation key and does not skip checks.
 Its independent review, native performance and runtime qualification remain
 separate gates. It does not complete #162.
+
+A separate measurement-only fork prototype (`2371ca51`, based on `520f3b57`)
+can project serialized spans to encounter-ordered identifiers while retaining
+identifier aliasing, with location fields separated. It records an explicitly
+unqualified key policy and always lowers and verifies freshly. Four tests
+check ordinary serialization, alias distinctions, thread isolation and scope
+restoration; `rust_verify` checks successfully. No native key-stability or
+fresh-output equivalence result exists yet. This probe is not a cache key and
+a match cannot authorize reuse. Other identifier consumers and exact current
+location binding remain unresolved.
 
 ## Consequences
 

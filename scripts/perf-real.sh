@@ -189,6 +189,19 @@ if [ -n "$fork" ] && [ ! -x "$fork/cargo-verus" ]; then
   echo "SAIL_PERF_FORK=$fork has no cargo-verus" >&2; exit 1
 fi
 
+if [ "$cmd" = run ]; then
+  modes=(${SAIL_PERF_MODES:-plain sail})
+  for mode in "${modes[@]}"; do
+    case "$mode" in
+      plain | sail | incremental | fork-plain | fork-sail | fork-shim) ;;
+      *) echo "unknown performance mode: $mode" >&2; exit 2 ;;
+    esac
+    case "$mode" in
+      fork-*) [ -n "$fork" ] || { echo "$mode requires SAIL_PERF_FORK" >&2; exit 2; } ;;
+    esac
+  done
+fi
+
 now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
 
 # --- Source preparation ------------------------------------------------------
@@ -526,7 +539,6 @@ if [ "$cmd" = det ]; then
 fi
 
 : >"$results"
-modes=(${SAIL_PERF_MODES:-plain sail})
 header | tee "$out/header.txt"
 echo "modes: ${modes[*]}; rounds: $count; edits: $(selected_edits | awk '{print $1}' | tr '\n' ' ')" | tee -a "$out/header.txt"
 for ((r = 1; r <= count; r++)); do
