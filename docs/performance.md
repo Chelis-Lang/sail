@@ -14,13 +14,13 @@ time as plain Verus.
 | # | Claim | Linux (EC2 c7i.4xlarge, idle) | macOS (EC2 mac-m4.metal (Apple M4), idle) |
 |---|---|---|---|
 | 1 | Verdicts, errors and exit codes are identical to plain Verus | 0 differences in the conformance tiers and in Verus's own 4,695-test suite | 0 differences in the fast PR subset |
-| 2 | Edit loops on a solver-heavy project are faster | vest: 1.3–1.5× (`sail verify`, about 28 s against 37–42 s) | vest: 1.2–1.3× (about 16–17 s against 19–21 s) |
-| 3 | Unchanged re-verification gives agents a complete report in about a second; it does not beat Cargo's no-op | `sail verify` 0.34 s (demo), 0.99 s (vest); MCP `verify` 0.47 s, 1.34 s; plain 0.12 s, 0.23 s | `sail verify` 0.36 s, 1.37 s; MCP 0.57 s, 1.75 s; plain 0.18 s, 0.24 s |
-| 4 | Small projects: about 0.3 s slower than plain Verus per run | demo edits 1.11 s against 0.80 s | 0.75 s against 0.44 s |
-| 5 | Cold first run: a few seconds slower than plain Verus | demo 33.8 s against 32.7 s; vest 77.6 s against 75.1 s | 15–18% slower: demo 18.7 s against 16.3 s; vest 43.5 s against 36.8 s |
+| 2 | Edit loops on a solver-heavy project are faster | vest catalogue edit: 1.3–1.6× (`sail verify`, about 28 s against 37–42 s). Real projects: 1.2–2.3× for an edit confined to one module, about 1.0× for a change to a widely used spec function (see the [real-project report](reports/2026-10-15-real-project-performance.md)) | vest: 1.2–1.3× (about 16–17 s against 19–21 s) |
+| 3 | Unchanged re-verification gives agents a complete report in about a second; it does not beat Cargo's no-op | `sail verify` 0.36 s (demo), 0.97 s (vest); MCP `verify` 0.47 s, 1.26 s; plain 0.12 s, 0.22 s | `sail verify` 0.36 s, 1.37 s; MCP 0.57 s, 1.75 s; plain 0.18 s, 0.24 s |
+| 4 | Small projects: about 0.3 s slower than plain Verus per run | demo edits 1.17 s against 0.88 s | 0.75 s against 0.44 s |
+| 5 | Cold first run: a few seconds slower than plain Verus | demo 38.0 s against 36.8 s; vest 77.4 s against 75.6 s | 15–18% slower: demo 18.7 s against 16.3 s; vest 43.5 s against 36.8 s |
 | 6 | Repair loops with the engine are faster than verifying the function, then the crate | HumanEval 2.14×, Vest 1.82× (c7i.8xlarge) | not measured |
 | 7 | Several agents on one daemon do not wait for each other | 4 vest agents finish 2.2× sooner (47 s against 105 s) | 4 vest agents (2 workers) finish 1.3× sooner (51 s against 67 s) |
-| 8 | A new project or worktree's first managed run skips vstd once the machine has verified it | demo 1.3 s against 27.5 s before (MCP `verify` 1.5 s against 27.7 s); vest worktree 25.7 s against 52.3 s; plain 29.5 s and 66.1 s | demo 3.2 s against plain 67 s (Apple M3 under load 15–23; not measured idle) |
+| 8 | A new project or worktree's first run skips vstd once the machine has verified it | demo 1.4 s against plain 39.0 s; vest worktree 33.1 s against plain 89.1 s; first on the machine 40.1 s and 89.8 s | demo 3.2 s against plain 67 s (Apple M3 under load 15–23; not measured idle) |
 
 Ratios are plain Verus time divided by Sail time (for claim 7, one job at a
 time divided by concurrent jobs), from medians of three rounds.
@@ -48,6 +48,15 @@ time divided by concurrent jobs), from medians of three rounds.
   removed pass-through took. `sail verify --output json`, jobs and MCP also
   ask Verus for its AIR and SMT logs, for per-obligation detail (about
   0.8 s more; [ADR 0047](decisions/0047-attribution-logs-on-request.md)).
+- **Edits in large modules and widely used definitions.** Verus checks
+  each module in one solver process. When an edit changes any query in a
+  module, the solver re-runs that module's earlier queries as well, so the
+  cost of an edit is the cost of its whole module, wherever the edit is.
+  A change to a spec function used across the crate re-runs most modules,
+  and Sail is then about as fast as plain Verus. Adding a new function or
+  closure can also re-run unrelated modules that use closures. Comments
+  and blank lines cost nothing
+  ([real-project report](reports/2026-10-15-real-project-performance.md)).
 - **Unchanged code from the CLI.** Plain Cargo sees nothing changed and exits
   in 0.1–0.25 s. `sail verify` takes 0.3–1.4 s, because it checks its inputs
   and builds a complete report. Its value is the report, not the time.
@@ -57,17 +66,29 @@ time divided by concurrent jobs), from medians of three rounds.
 Every `sail verify` is managed verification
 ([ADR 0046](decisions/0046-managed-verification-by-default.md)); before
 that change it was a thin pass-through, and managed verification was
-`sail verify --incremental`. The Linux rows of claims 2–5 were re-measured
-on 2026-10-15 with Sail's Verus, built from its fork (ADR 0043): EC2
-c7i.4xlarge, us-east-1, no other work on the host, `scripts/perf-host.sh up
-l54p` (vest) and `l54q` (demo), Sail at the ADR 0047 change, Verus runtime
-`73dea021`. These hosts ran about 5% slower than earlier ones (plain vest
-edit 41.8 s against 39.6 s). The same rotation measured the removed
-pass-through and the managed verification before ADR 0047
-(`SAIL_PERF_BASELINES`); [ADR 0047](decisions/0047-attribution-logs-on-request.md#measurements)
-has all four. The macOS rows, the Linux row of
-claim 7 and the column headings below come from the earlier run with the
-stock Verus release, where the managed figures are `--incremental`'s.
+`sail verify --incremental`.
+
+The Linux rows of claims 2–5 and 8 were measured for release candidate
+`v0.1.0-rc.5` on 2026-10-15, at `main` `c3687990` (managed by default, the
+dependency store, and the reuse fixes of #170, #173 and #175) with Sail's
+Verus `73dea021`: EC2 c7i.4xlarge (16 vCPU, 30 GiB), us-east-1, Ubuntu
+24.04, one timed run at a time and no other work on the host,
+`scripts/perf-host.sh up l56p` (vest; load average 2.2 at the start, from
+the build before it) and `l56q` (demo, 3.4 at the start; the first-call
+runs, 0.1). Raw logs: `l56-rc5.tar.gz`, cited in the
+[release-candidate record](validation/release-candidate.md#rc5-evidence).
+Against the previous Linux run (`l54p` and `l54q`, Sail at the ADR 0047
+change, the same runtime), both plain and Sail were slower on these hosts
+(plain demo cold 36.8 s against 32.7 s, plain vest edit 42.1 s against
+41.8 s) and the differences between them did not change materially. That
+earlier rotation also measured the removed pass-through and the managed
+verification before ADR 0047 (`SAIL_PERF_BASELINES`);
+[ADR 0047](decisions/0047-attribution-logs-on-request.md#measurements) has
+all four.
+
+The macOS rows were not re-measured for rc.5: they, the Linux row of
+claim 7 and the table below come from the earlier run with the stock Verus
+release, where the managed figures are `--incremental`'s.
 
 | | Linux | macOS |
 |---|---|---|
@@ -119,12 +140,12 @@ Wall seconds, median (min–max) of three rounds:
 
 | vest | Mode | cold | edit | fail | fix |
 |---|---|---:|---:|---:|---:|
-| Linux | `cargo verus verify` | 75.1 (74.4–75.1) | 41.8 (41.4–41.8) | 37.3 (37.0–37.4) | 41.7 (41.6–41.7) |
-| Linux | `sail verify` | 77.6 (76.6–77.9) | 27.8 (27.7–28.0) | 28.2 (27.9–28.3) | 27.7 (27.3–28.0) |
+| Linux | `cargo verus verify` | 75.6 (75.5–76.1) | 42.1 (41.4–42.2) | 37.5 (37.1–37.6) | 42.1 (41.5–42.1) |
+| Linux | `sail verify` | 77.4 (75.1–78.0) | 27.8 (27.3–27.9) | 28.3 (28.3–29.7) | 27.8 (27.6–29.2) |
 | macOS M4 | `cargo verus verify` | 36.8 (36.8–37.8) | 20.7 (20.7–20.7) | 19.2 (19.2–19.3) | 20.8 (20.7–20.8) |
 | macOS M4 | `sail verify` (then `--incremental`) | 43.5 (43.4–43.8) | 16.8 (16.7–16.9) | 16.0 (16.0–16.1) | 16.4 (16.4–16.4) |
 
-On Linux, `sail verify` saves 9–14 s per edit (1.3–1.5×); on the Mac it
+On Linux, `sail verify` saves 9–14 s per edit (1.3–1.5×; 1.6× in the [real-project report](reports/2026-10-15-real-project-performance.md)'s run, with vstd patched to the pinned source); on the Mac it
 saved 3–4 s (1.2–1.3×). About 28 s per edit remains on Linux and 16 s on the
 Mac: the frontend floor described above, plus Sail's checks (and, on the
 Mac's older run, the attribution logs plain `sail verify` no longer writes).
@@ -143,9 +164,9 @@ second call is shown). Wall seconds, median of three rounds:
 
 | | Linux demo | Linux vest | macOS M4 demo | macOS M4 vest |
 |---|---:|---:|---:|---:|
-| `cargo verus verify` | 0.12 | 0.23 | 0.18 | 0.24 |
-| `sail verify` | 0.34 | 0.99 | 0.36 | 1.37 |
-| MCP `verify` | 0.47 | 1.34 | 0.57 | 1.75 |
+| `cargo verus verify` | 0.12 | 0.22 | 0.18 | 0.24 |
+| `sail verify` | 0.36 | 0.97 | 0.36 | 1.37 |
+| MCP `verify` | 0.47 | 1.26 | 0.57 | 1.75 |
 
 Plain Cargo is fastest here: it sees nothing changed and prints nothing new.
 `sail verify` and MCP `verify` check that the inputs are unchanged and
@@ -166,8 +187,8 @@ with a rewritten body. Wall seconds, median (min–max) of three rounds:
 
 | demo | Mode | cold | edit | fail | fix |
 |---|---|---:|---:|---:|---:|
-| Linux | `cargo verus verify` | 32.7 (32.4–32.7) | 0.80 (0.79–0.80) | 0.58 (0.58–0.59) | 0.80 (0.79–0.81) |
-| Linux | `sail verify` | 33.8 (33.3–34.0) | 1.11 (1.10–1.12) | 0.87 (0.86–0.88) | 1.06 (1.06–1.07) |
+| Linux | `cargo verus verify` | 36.8 (36.7–37.2) | 0.88 (0.87–0.89) | 0.63 (0.62–0.63) | 0.88 (0.88–0.89) |
+| Linux | `sail verify` | 38.0 (36.8–38.5) | 1.17 (1.15–1.21) | 0.93 (0.92–0.95) | 1.15 (1.14–1.18) |
 | macOS M4 | `cargo verus verify` | 16.3 (16.3–16.6) | 0.44 (0.43–0.45) | 0.40 (0.40–0.41) | 0.44 (0.43–0.44) |
 | macOS M4 | `sail verify` (then `--incremental`) | 18.7 (18.7–18.8) | 0.75 (0.74–0.75) | 0.66 (0.66–0.66) | 0.66 (0.65–0.66) |
 
@@ -180,7 +201,7 @@ minutes).
 
 The `cold` columns above: a new copy, an empty Sail cache, and every
 dependency compiled and vstd verified. On Linux `sail verify` is 1–3 s slower
-than plain Verus (demo 33.8 s against 32.7 s, vest 77.6 s against 75.1 s);
+than plain Verus (demo 38.0 s against 36.8 s, vest 77.4 s against 75.6 s);
 on the idle Mac it was 15–18% slower. Sail pays this once per machine
 (claim 8), even when a project's own `target/` is built, and then reuses its compiled
 dependencies and receipts
@@ -188,6 +209,31 @@ dependencies and receipts
 
 ### New projects after the first (claim 8)
 
+On the rc.5 build (`c3687990`, where every `sail verify` is managed), three
+rounds on the native c7i.4xlarge `l56q`, one timed command at a time, load
+average 0.1 at the start. Each round starts with an empty Sail cache: a
+first project made with `sail new --lib` and its first `sail verify` (first
+on the machine), a second new project's first `sail verify`, the same again
+unchanged, and a project made with stock `cargo verus new --lib` under plain
+`cargo verus verify`; then vest (`-p vest_lib`) in three fresh copies with
+the same cache (vest uses another vstd, so its first copy is its first on
+the machine), the second under `sail verify` and the third plain. Seconds,
+median (min–max):
+
+| Run | `sail verify` | Plain `cargo verus verify` |
+|---|---:|---:|
+| demo, first on the machine | 40.1 (39.9–41.0) | 39.0 (38.8–39.5) |
+| demo, new project | **1.41** (1.40–1.45) | 39.0 |
+| demo, new project, unchanged | 0.36 (0.36–0.36) | — |
+| vest, first on the machine | 89.8 (88.8–90.6) | 89.1 (87.4–89.2) |
+| vest, new worktree | **33.1** (32.9–33.2) | 89.1 |
+
+The vest worktree's 33 s is vest_lib's own verification. These first-run
+times are higher than the `cold` columns of claims 2 and 4 on both sides
+(the same machine type; the cause was not investigated). The script is
+`firstcall.sh` in the raw logs.
+
+The measurement when the store was added:
 [ADR 0045](decisions/0045-dependency-store.md)'s dependency store, measured
 on `feat/prebuilt-vstd` (code at `93a55a0d`) against `main` at `d4ac51af`,
 both on Sail's Verus `73dea021`, on a native c7i.4xlarge in the CI image,
@@ -239,6 +285,11 @@ one-round recheck on the current `73dea021` runtime (release candidate
 rc.3) did not change them materially: HumanEval 64.6 s against 29.6 s
 (2.18×), Vest 232.5 s against 129.4 s (1.80×)
 ([release-candidate record](validation/release-candidate.md#repair-benchmark)).
+A one-round recheck on rc.5 (`c3687990`): HumanEval 64.8 s against 29.0 s
+(2.23×), Vest 266.8 s against 146.1 s (1.83×; both arms about 8% slower on
+that host). Every pair's verdicts and diagnostics matched, but the
+benchmark's own outcome check currently fails on the schema v2 field
+rename ([#179](https://github.com/Chelis-Lang/sail/issues/179)).
 
 Reproduce with `sail-bench repair prepare` and `sail-bench repair run`, as
 given in the [acceptance guide](bench/m7-repair-acceptance.md#running) (about
