@@ -246,3 +246,20 @@ exists (Sail's targeted `cargo clean -p`, after which a changed profile gives
 the rebuilt unit another directory) is dropped after the run. Kept, it could
 never match its output again, and the next run cleaned the package and its
 dependents: after a profile change, vstd was verified a second time.
+
+## Displayed stdout when seeding (#184)
+
+The entry carries `verus.shown-stdout`: the exact bytes the driver rendered
+with the target's effective output flags. Its digest and size, and those of
+stderr, are checked before any artifact is placed. Older entries without
+that stream miss; damaged or missing stored bytes warn and verify normally.
+The existing narrow stderr policy still rejects diagnostics; only artifact
+notices and recognized wall-time progress notes are omitted (decision 8).
+On the first run of a newly seeded target, a matching fresh Cargo artifact
+event restores displayed stdout once, before a dependent target's output.
+Existing-target attachments and unchanged receipt reuse print nothing.
+
+An entry records one verified root's report and output. A root whose closure
+contains another verified root is not stored; the leaf proof may still be
+stored, while its dependents verify normally. This prevents copying another
+proof's artifacts without restoring its evidence and diagnostics.

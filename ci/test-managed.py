@@ -479,6 +479,24 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert all(t["reused"] and "dependency_store" not in t for t in repeated["targets"]), diagnostic(repeated)
             assert vstd(repeated)["establishing_run"] == stored_vstd["establishing_run"], diagnostic(repeated)
 
+            # A new plain run must display the stored dependency's original
+            # summary before its own summary (#184). JSON/report reuse alone
+            # did not catch the missing dependency stdout. Its unchanged run
+            # must then remain silent, like Cargo's ordinary no-op.
+            plain_workspace = root / "plain-seeded"
+            shutil.copytree(workspace, plain_workspace)
+            plain_copy = plain_workspace / project.name
+            displayed = bounded_verification([sail, "verify"], plain_copy, env, 240)
+            expected_stdout = b"".join(
+                f"verification results:: {crate['verus']['verified']} verified, {crate['verus']['errors']} errors\n".encode()
+                for report in (stored_vstd["report"], target["report"])
+                for crate in report["crates"]
+            )
+            assert displayed.returncode == 0, displayed.stderr.decode()
+            assert displayed.stdout == expected_stdout, (displayed.stdout, expected_stdout)
+            unchanged = bounded_verification([sail, "verify"], plain_copy, env, 240)
+            assert unchanged.returncode == 0 and unchanged.stdout == b"", (unchanged.stdout, unchanged.stderr)
+
         if part != "core":
             if part == "scripts":
                 # The project as the core cases leave it: proof and vstd
