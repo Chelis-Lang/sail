@@ -220,6 +220,22 @@ if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ] && [ "$cmd" = run ] \
   exit 2
 fi
 
+if [ "$cmd" = run ]; then
+  modes=(${SAIL_PERF_MODES:-plain sail})
+  if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
+    modes=(${SAIL_PERF_MODES:-plain sail fork-sail})
+  fi
+  for mode in "${modes[@]}"; do
+    case "$mode" in
+      plain | sail | incremental | fork-plain | fork-sail | fork-shim) ;;
+      *) echo "unknown performance mode: $mode" >&2; exit 2 ;;
+    esac
+    case "$mode" in
+      fork-*) [ -n "$fork" ] || { echo "$mode requires SAIL_PERF_FORK" >&2; exit 2; } ;;
+    esac
+  done
+fi
+
 now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
 
 # --- Source preparation ------------------------------------------------------
@@ -610,17 +626,6 @@ if [ "$cmd" = det ]; then
 fi
 
 : >"$results"
-modes=(${SAIL_PERF_MODES:-plain sail})
-if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
-  modes=(${SAIL_PERF_MODES:-plain sail fork-sail})
-fi
-for mode in "${modes[@]}"; do
-  case "$mode" in
-    plain | sail | incremental) ;;
-    fork-plain | fork-sail) [ -n "$fork" ] || { echo "$mode requires SAIL_PERF_FORK" >&2; exit 2; } ;;
-    *) echo "unknown mode $mode" >&2; exit 2 ;;
-  esac
-done
 header | tee "$out/header.txt"
 echo "modes: ${modes[*]}; rounds: $count; edits: $(awk '{print $1}' "$out/selected-edits.txt" | tr '\n' ' ')" | tee -a "$out/header.txt"
 for ((r = 1; r <= count; r++)); do
