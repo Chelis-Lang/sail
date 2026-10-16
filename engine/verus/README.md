@@ -55,10 +55,13 @@ The fork's branches:
 
 Each fix is small and self-contained so it can be rebased, dropped (when a
 Verus release fixes the issue) or reviewed alone. Fix commits change only
-orders, the `--output-json` fields named in their issue, or Cargo log layout.
-An ordering fix must choose an order stock Verus is shown to produce (ADR
-0039); the engine conformance arm, with its stock confirmation runs, checks
-this. VI-0005's dep-info carry-over was dropped: it made every Sail repair
+orders, the `--output-json` fields named in their issue, Cargo log layout,
+or (VI-0019, [ADR 0049](../../docs/decisions/0049-stable-closure-names.md))
+closure-type names. An ordering fix must choose an order stock Verus is shown
+to produce (ADR 0039); the engine conformance arm, with its stock
+confirmation runs, checks this. The closure-name fix produces stock's output
+up to a one-to-one renaming of closure numbers, and must qualify on
+fork-versus-stock conformance and the full `rust_verify_test` suite. VI-0005's dep-info carry-over was dropped: it made every Sail repair
 rebuild (the selected function is a forwarded argument). VI-0007's
 bucket-order diagnostics were dropped once, when the check found
 `debug_expand.rs` different and no stock run had shown the fork's order, and

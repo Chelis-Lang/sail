@@ -44,3 +44,12 @@ Building the engine from source no longer needs access either:
 `cargo xtask build-verus-engine` clones the pinned fork commit anonymously.
 The owner also decided on 2026-10-14 that the repair engine ships with Sail:
 release binaries are to include prebuilt engine runtimes.
+
+## Note (2026-10-16): renaming solver symbols
+
+The fix rules above cover orders and structured output. A fix that renames
+solver symbols one-to-one is neither: for a given source it prints names
+stock never prints. [ADR 0049](0049-stable-closure-names.md) (proposed)
+admits one such fix, stable closure-type names (VI-0019), on fork-versus-stock
+conformance and the fork's full `rust_verify_test` suite instead of a
+construction argument.
