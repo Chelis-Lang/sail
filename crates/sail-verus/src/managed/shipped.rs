@@ -553,7 +553,7 @@ pub(crate) struct Call<'a> {
 }
 
 /// The keyed arguments of an invocation (this machine's directories as
-/// placeholders, rendering and capped lint settings left out) and the
+/// placeholders) and the
 /// digests of the crates it links.
 #[allow(
     clippy::type_complexity,
@@ -572,43 +572,15 @@ fn keyed_arguments(
             .into_owned(),
     ];
     let mut externs = Vec::new();
-    // Cargo caps every lint of a registry package (`--cap-lints allow`);
-    // the lint levels and expected `cfg`s it passes then change no
-    // output, and Cargo versions pass them differently (a package's
-    // `[lints]` table).
-    let capped = text
-        .windows(2)
-        .any(|w| w[0] == "--cap-lints" && w[1] == "allow")
-        || text.iter().any(|a| a == "--cap-lints=allow");
-    let mut skip_next = false;
     for (index, arg) in text.iter().enumerate().skip(1) {
-        if skip_next {
-            skip_next = false;
-            continue;
-        }
-        // Rendering options: an entry is only served when its compiler
-        // printed no diagnostic, so they cannot change its output.
-        if arg.starts_with("--diagnostic-width") || arg.starts_with("--color=") {
-            continue;
-        }
-        if arg == "--color" || (capped && LINT_FLAGS.contains(&arg.as_str())) {
-            skip_next = true;
-            continue;
-        }
-        if capped && lint_setting(arg) {
-            continue;
-        }
-        if let Some(kinds) = arg.strip_prefix("--json=") {
-            let kept: Vec<&str> = kinds
-                .split(',')
-                .filter(|k| *k != "diagnostic-rendered-ansi")
-                .collect();
-            keyed_args.push(format!("--json={}", kept.join(",")));
-            continue;
-        }
-        if index > 0
-            && text[index - 1] == "--extern"
-            && let Some((_, path)) = arg.split_once('=')
+        // Keep every compiler option exactly: even rendering and capped lint
+        // options can produce argument errors, and forced warnings bypass
+        // --cap-lints. Different Cargo versions may therefore safely miss.
+        let external = arg
+            .strip_prefix("--extern=")
+            .or_else(|| (text[index - 1] == "--extern").then_some(arg.as_str()));
+        if let Some(external) = external
+            && let Some((_, path)) = external.split_once('=')
         {
             let path = Path::new(path);
             let library = sha256_file(path)
@@ -624,25 +596,6 @@ fn keyed_arguments(
         keyed_args.push(normalizer.normalize(arg));
     }
     Ok((keyed_args, externs))
-}
-
-/// Lint-level and expected-`cfg` flags that take their value as the next
-/// argument.
-const LINT_FLAGS: &[&str] = &["-A", "-W", "-D", "-F", "--check-cfg"];
-
-/// A lint-level or expected-`cfg` flag with its value attached.
-fn lint_setting(arg: &str) -> bool {
-    [
-        "--allow=",
-        "--warn=",
-        "--deny=",
-        "--forbid=",
-        "--force-warn=",
-        "--check-cfg=",
-    ]
-    .iter()
-    .any(|prefix| arg.starts_with(prefix))
-        || (arg.len() > 2 && ["-A", "-W", "-D", "-F"].iter().any(|p| arg.starts_with(p)))
 }
 
 fn argument_value(args: &[String], flag: &str) -> Option<String> {
@@ -1315,15 +1268,15 @@ mod tests {
         assert_ne!(ka, kc);
         let kd = Call::new(&pb, &args_b, true, vars(b, &[]).into_iter()).map(|c| c.key);
         assert_ne!(ka, kd);
-        // Under `--cap-lints allow`, lint levels and expected cfgs are not
-        // keyed; without it they are.
+        // Capped lint flags and rendering options remain bound: malformed
+        // options still diagnose, and --force-warn bypasses the cap.
         let capped = |extra: &[&str]| {
             let mut args = args_b.clone();
             args.extend(["--cap-lints", "allow"].map(OsString::from));
             args.extend(extra.iter().map(OsString::from));
             Call::new(&pb, &args, false, vars(b, &[]).into_iter()).map(|c| c.key)
         };
-        assert_eq!(
+        assert_ne!(
             capped(&[]),
             capped(&[
                 "--allow=clippy::zero_ptr",
@@ -1333,6 +1286,19 @@ mod tests {
                 "unused"
             ])
         );
+        // Forced warnings bypass --cap-lints: serving the quiet build would
+        // hide diagnostics from a compiler invocation that requests them.
+        assert_ne!(capped(&[]), capped(&["--force-warn=unused"]));
+        assert_ne!(capped(&[]), capped(&["--force-warn", "unused"]));
+        for extra in [
+            vec!["--color=invalid"],
+            vec!["--diagnostic-width=invalid"],
+            vec!["--check-cfg=oops"],
+            vec!["--check-cfg", "oops"],
+            vec!["--json=diagnostic-rendered-ansi,artifacts"],
+        ] {
+            assert_ne!(capped(&[]), capped(&extra));
+        }
         let mut linted = args_b.clone();
         linted.push("--allow=clippy::zero_ptr".into());
         let ke = Call::new(&pb, &linted, false, vars(b, &[]).into_iter()).map(|c| c.key);
@@ -1548,6 +1514,30 @@ mod tests {
         let source = user.plan.registry.join("demo-0.1.0/src/lib.rs");
         assert!(dep_info.contains(&source.display().to_string()));
         assert!(!dep_info.contains(&build.root.display().to_string()));
+        Ok(())
+    }
+
+    #[test]
+    fn attached_extern_arguments_bind_library_and_vir_bytes() -> TestResult {
+        let mut machine = Machine::new("attached-extern", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let external = machine.args.pop().ok_or("no extern argument")?;
+        machine.args.pop().ok_or("no extern flag")?;
+        let mut attached = OsString::from("--extern=");
+        attached.push(external);
+        machine.args.push(attached);
+        let original = machine.call(false).ok_or("no call")?.key;
+        let dependency = machine.plan.target.join("debug/deps/libdep-1.rlib");
+        std::fs::write(&dependency, b"changed library")?;
+        assert_ne!(original, machine.call(false).ok_or("no call")?.key);
+        std::fs::write(&dependency, b"dependency bytes")?;
+        assert_eq!(original, machine.call(false).ok_or("no call")?.key);
+        std::fs::write(dependency.with_extension("vir"), b"exported VIR")?;
+        let with_vir = machine.call(false).ok_or("no call")?.key;
+        assert_ne!(original, with_vir);
+        std::fs::write(dependency.with_extension("vir"), b"changed VIR")?;
+        assert_ne!(with_vir, machine.call(false).ok_or("no call")?.key);
         Ok(())
     }
 
