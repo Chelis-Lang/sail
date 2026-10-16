@@ -3,6 +3,7 @@
 mod absent;
 mod build_inputs;
 mod configuration;
+mod dependency_resolution;
 mod diagnostics;
 mod environment;
 mod files;

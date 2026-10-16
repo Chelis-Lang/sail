@@ -119,6 +119,7 @@ pub(crate) struct SourceGuard {
     before: super::input::InputSnapshot,
     revision: String,
     stamp: String,
+    resolution: super::dependency_resolution::Resolution,
 }
 
 impl SourceGuard {
@@ -148,38 +149,73 @@ impl SourceGuard {
         if !before.complete {
             return None;
         }
-        let revision = source_revision(&before)?;
+        let (revision, paths) = source_revision(&before)?;
         let stamp = super::input::mutation_stamp(&before)?;
-        Some(Self {
+        let resolution = super::dependency_resolution::Resolution::capture(&paths)?;
+        let observed = Self {
             view,
             extras,
             before,
             revision,
             stamp,
-        })
+            resolution,
+        };
+        // The first snapshot discovers all roots and aliases. Observation is
+        // activated before a second full snapshot proves those preceding
+        // bytes/topology/stamps still match the guarded compiler epoch.
+        observed.unchanged().then_some(observed)
     }
 
     fn unchanged(&self) -> bool {
+        if !self.resolution.unchanged() {
+            return false;
+        }
         let after = source_snapshot(&self.view, &self.extras);
         after.complete
-            && source_revision(&after).as_ref() == Some(&self.revision)
+            && source_revision(&after)
+                .map(|(revision, _)| revision)
+                .as_ref()
+                == Some(&self.revision)
             && super::input::mutation_stamp(&after).as_ref() == Some(&self.stamp)
+            && self.resolution.unchanged()
     }
 
     fn covers(&self, inputs: &BTreeMap<PathBuf, String>) -> bool {
-        inputs.iter().all(|(path, digest)| {
-            path.canonicalize()
-                .ok()
-                .and_then(|canonical| self.before.digests.get(&canonical))
-                == Some(digest)
-        })
+        self.resolution.unchanged()
+            && inputs.iter().all(|(path, digest)| {
+                self.resolution
+                    .canonical(path)
+                    .map(Path::to_owned)
+                    .or_else(|| path.canonicalize().ok())
+                    .and_then(|canonical| self.before.digests.get(&canonical))
+                    == Some(digest)
+            })
+            && self.resolution.unchanged()
     }
 }
 
 /// Bind the snapshot's file bytes and the entries of its already observed
 /// directories. Canonical file deduplication alone misses new symlink aliases
 /// and empty directories, either of which a compiler or macro can inspect.
-fn source_revision(snapshot: &super::input::InputSnapshot) -> Option<String> {
+fn source_revision(snapshot: &super::input::InputSnapshot) -> Option<(String, Vec<PathBuf>)> {
+    let mut resolution_paths = BTreeSet::new();
+    for root in &snapshot.roots {
+        // Cargo configuration roots may be absent. Keep the existing absence
+        // checks, and observe resolution through their nearest existing parent.
+        let mut path = std::path::absolute(root).ok()?;
+        loop {
+            match std::fs::symlink_metadata(&path) {
+                Ok(_) => break,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    if !path.pop() {
+                        return None;
+                    }
+                }
+                Err(_) => return None,
+            }
+        }
+        resolution_paths.insert(path);
+    }
     let excluded: BTreeSet<_> = snapshot
         .excluded
         .iter()
@@ -195,6 +231,7 @@ fn source_revision(snapshot: &super::input::InputSnapshot) -> Option<String> {
         if !directory.is_dir() {
             continue;
         }
+        resolution_paths.insert(directory.to_owned());
         bytes(b"directory-root");
         bytes(directory.as_os_str().as_encoded_bytes());
         let mut entries = std::fs::read_dir(directory)
@@ -223,6 +260,9 @@ fn source_revision(snapshot: &super::input::InputSnapshot) -> Option<String> {
             bytes(b"entry");
             bytes(name.as_encoded_bytes());
             if kind.is_symlink() {
+                // Canonical file deduplication can omit this alias from the
+                // snapshot's roots. Its full resolution chain still matters.
+                resolution_paths.insert(entry.path());
                 bytes(b"symlink");
                 bytes(
                     std::fs::read_link(entry.path())
@@ -240,7 +280,10 @@ fn source_revision(snapshot: &super::input::InputSnapshot) -> Option<String> {
         }
         bytes(b"end-directory");
     }
-    Some(format!("{:x}", hash.finalize()))
+    Some((
+        format!("{:x}", hash.finalize()),
+        resolution_paths.into_iter().collect(),
+    ))
 }
 
 fn source_snapshot(view: &serde_json::Value, extras: &[PathBuf]) -> super::input::InputSnapshot {
@@ -1425,6 +1468,67 @@ mod tests {
             write(&f.root.join("ws/src/new.rs"), b"new\n");
             assert!(!source.unchanged(), "a newly present input is observed");
         }
+    }
+
+    #[test]
+    fn source_inventory_observes_ordinary_ancestor_replacement_and_restoration() {
+        let f = fixture("ancestor-aba");
+        let source = SourceGuard::begin(&f.runtime, &f.identity, &f.process)
+            .unwrap_or_else(|| unreachable!("complete initial inventory"));
+        let parked = f.root.with_extension("parked");
+        assert!(std::fs::rename(&f.root, &parked).is_ok());
+        write(&f.source, b"pub fn a() { this does not compile }\n");
+        assert_ne!(
+            std::fs::read(&f.source).ok(),
+            Some(b"pub fn a() {}\n".to_vec())
+        );
+        assert!(std::fs::remove_dir_all(&f.root).is_ok());
+        assert!(std::fs::rename(&parked, &f.root).is_ok());
+        assert_eq!(
+            std::fs::read(&f.source).ok(),
+            Some(b"pub fn a() {}\n".to_vec())
+        );
+        assert!(
+            !source.unchanged(),
+            "a different source tree was observable during the guarded epoch"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn source_inventory_observes_deduplicated_alias_target_chain_aba() {
+        use std::os::unix::fs::symlink;
+        let f = fixture("indirect-alias-aba");
+        let workspace = f.root.join("ws");
+        let hop = f.root.join("hop");
+        let alias = workspace.join("src/alias");
+        let bad = f.root.join("bad");
+        write(&bad.join("src/lib.rs"), b"this does not compile\n");
+        assert!(symlink(&workspace, &hop).is_ok());
+        assert!(symlink(&hop, &alias).is_ok());
+        let source = SourceGuard::begin(&f.runtime, &f.identity, &f.process)
+            .unwrap_or_else(|| unreachable!("complete initial inventory"));
+        assert!(
+            !source.before.roots.contains(&alias),
+            "the alias target is already visited"
+        );
+        assert!(std::fs::remove_file(&hop).is_ok());
+        assert!(symlink(&bad, &hop).is_ok());
+        assert_ne!(
+            std::fs::read(alias.join("src/lib.rs")).ok(),
+            Some(b"pub fn a() {}\n".to_vec())
+        );
+        assert!(std::fs::remove_file(&hop).is_ok());
+        assert!(symlink(&workspace, &hop).is_ok());
+        assert_eq!(
+            std::fs::read(alias.join("src/lib.rs")).ok(),
+            Some(b"pub fn a() {}\n".to_vec())
+        );
+        assert!(
+            !source.unchanged(),
+            "an intermediate alias changed within the guarded epoch"
+        );
+        assert!(!source.unchanged(), "event refusal remains latched");
     }
 
     #[test]

@@ -88,13 +88,37 @@
    crate that includes a generated file it describes the previous generated
    file (or none, after targeted cleaning). The driver instead snapshots the
    complete source view after Cargo finishes the package's script and adds
-   its current `OUT_DIR`. A second snapshot and mutation stamp must match
-   after verification or restoration. Scripts can regenerate earlier content
+   its current `OUT_DIR`. A shared path-resolution guard observes existing
+   roots, observed directories and every symlink from the same topology pass,
+   including aliases whose canonical targets were already visited. Optional
+   absent configuration paths keep their existing absence checks; their nearest
+   existing resolution parents are observed. After native activation a second
+   complete snapshot, topology revision and mutation stamp must match the
+   preceding inventory before the driver may compile or restore. They must
+   match again after verification or restoration, with the native guard checked
+   on both sides of each check. Scripts can regenerate earlier content
    while newly appearing inputs remain bound. Positive dep-info paths alone
    are insufficient: adding `leaf/mod.rs` beside a previously verified
    `leaf.rs` makes `mod leaf;` ambiguous without changing any old input bytes.
    The first prototype incorrectly restored success in that case; the
    [validation record](../validation/retained-proofs.md) preserves the repro.
+   Rename-and-restore of an ordinary ancestor or an intermediate symlink may
+   leave every observed final byte unchanged. Synchronous inode and global
+   mount-generation events must therefore remain clean throughout the guarded
+   epoch; an error or event permanently refuses retention/restoration.
+   Unsupported observation and more than 4,096 distinct resolution components
+   or 40 symlink expansions per root are ordinary misses. Earlier performance
+   results do not qualify these additional checks.
+
+   This adds the macOS-only direct `sail-verus -> kqueue` dependency at exact
+   version 1.2.1 (already transitive in the lockfile, MIT) for its safe synchronous
+   vnode and global filesystem-event API. Linux uses the existing `inotify`
+   and `rustix` dependencies, including sticky procfs mount-generation polling
+   ([ADR 0032](0032-kernel-mount-generation-coverage.md)). Opened inode checks
+   and final path checks bracket registration; input reads are trusted only
+   after observation activates. No unsafe Rust exception or asynchronous
+   notification thread is introduced. Borrowed file descriptors stay open until
+   the queue is dropped; no unsupported or overflowed queue authorizes reuse.
 4. **Provenance (charter rule 7).** A restored target is `reused` and its
    `establishing_run` is the run that verified it; the run adds
    `SAIL3132: <target> has the content that run <id> verified; its retained

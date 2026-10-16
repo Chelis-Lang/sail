@@ -278,9 +278,10 @@ oyster and such." This supersedes the parallel tracks of
       key change is an ADR under charter rules 5 and 6.
    6. B4, instant revert: receipts beyond the latest revision, #163.
       Implemented ([ADR 0050](decisions/0050-retained-proofs-instant-revert.md),
-      complete source inventories guard restoration and compiler variants
-      share one storage bound); review fixes tested locally, native
-      qualification and independent review pending. See the
+      complete source inventories plus native ancestor/mount observers guard
+      restoration, and compiler variants share one storage bound); updated
+      observer qualification, independent review and native performance gates
+      remain pending. See the
       [validation record](validation/retained-proofs.md).
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on

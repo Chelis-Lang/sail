@@ -1,9 +1,10 @@
 # Retained-proof qualification (#163, ADR 0050)
 
-**Status:** candidate implemented; local regression checks pass. Independent
-review of the source-inventory fixes and the full macOS host check pass. Native
-Linux gates, full fast/standard conformance and performance
-qualification remain required. This record does not qualify a release.
+**Status:** candidate implemented; path-resolution guard qualification is in
+progress. Earlier source-inventory review and macOS host results below predate
+this guard and do not qualify it. Independent review, the full macOS host gate,
+native Linux gates, full fast/standard conformance and new performance
+measurements remain required. This record does not qualify a release.
 
 ## Source, runtime and scope
 
@@ -75,3 +76,58 @@ timings do not qualify the new source-inventory guards.
 - `c226ff7e`, 2026-10-16: failed candidate review; real driver restored a
   successful result after a new module candidate should produce E0761.
   Cause: dep-info recorded positive input paths without absence coverage.
+
+
+## Ancestor and mount mutation correction
+
+The `0996f708` candidate's complete file/topology snapshots still accepted an
+ordinary ancestor rename-and-restore: move the fixture's parent away, put a bad
+source tree at the old path, read bad source, remove it and restore the parent.
+The observed workspace inode and final bytes are unchanged. The regression
+fails against the old guard (exit 101; raw log SHA-256
+`a808ae500c18119c2bacaa1157d9a4fa71a2c4d595751086a84c234c93a4ff2d`).
+
+A second actual old-guard negative control uses an interior directory alias
+whose canonical target is already the visited workspace, so snapshot root
+deduplication omits that alias. An intermediate symlink outside the workspace
+is retargeted to a bad tree and restored after reading different source. The
+old guard again accepts; the new strict assertion fails with exit 101 (log
+SHA-256 `d795ce94df921eecf32eb81e7ea542cbf611f74a454a6ca6260b9493e03c341f`,
+old source plus regression SHA-256
+`4980b44987b4e9dc7219e3525d4aefd50b66853bdfbb7d4e464baffd3292bd58`).
+
+The candidate now uses the shared synchronous resolution guard, collecting
+aliases from its existing topology enumeration. It attaches watches to opened,
+identity-checked ordinary ancestor inodes and expands every symlink target
+component. Native activation is followed by a full snapshot/revision/mutation
+consistency check before compilation or restoration; later barriers check the
+native guard before and after their existing checks. Unavailable setup or any
+latched mutation refuses. Original content/dep-info/environment/dependency and
+artifact/provenance checks remain strict.
+
+The shared guard's actual macOS overmount fixture mounts a small APFS image
+over a source root, reads different bytes, detaches and confirms the old bytes
+returned. A vnode-only negative control wrongly accepts (exit 101, log SHA-256
+`a638cb31329bd16f8bcc04a604b88418096970571f0f61ceedaf93ea4030d54f`).
+The global filesystem-event observer refuses and remains latched (exit 0, log
+SHA-256 `869b8b4ed68bc84231e145e770f416324e8619123d4fa9dae830d765ae28acd4`).
+This qualifies the shared observer fixture only, not a full retained-proof
+Verus run, native Linux execution or real-project performance.
+
+- `0996f708`, 2026-10-16: failed ordinary ancestor ABA regression; complete
+  final snapshots did not reveal a different source tree read during the epoch.
+- `0996f708` plus new alias regression, 2026-10-16: failed indirect alias ABA;
+  an intermediate symlink was absent from the root mutation stamps.
+
+
+The integrated candidate's bounded release build passes all 184 `sail-verus`
+library tests serially, including both new ABA tests and the existing positive
+A → B → A/generated-input restoration tests. The 13 history tests also pass
+with default parallel execution. Their logs have SHA-256
+`faeb8fc72dfcd86ea026aa0fbeaa48be28e31a5615e8edf913b4ef5ec3da4bf3`
+and `5d04f05ea8fb62b820c1477a24c5deffbbd0f1b33354d026312b2153c189855d`.
+Release clippy for all crate targets passes after a lint-only in-place parent
+traversal change (log SHA-256
+`1d6caa2c58634f24b16b8f6de66ff5d8c855d6ca5a160957eae5411ed3c5a42e`).
+These focused checks do not qualify the final shared observer's filesystem
+admission or nonblocking-open hardening, which remain in progress.
