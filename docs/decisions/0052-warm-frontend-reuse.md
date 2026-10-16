@@ -66,6 +66,25 @@ fresh-output equivalence result exists yet. This probe is not a cache key and
 a match cannot authorize reuse. Other identifier consumers and exact current
 location binding remain unresolved.
 
+The next measurement source starts at combined fork `8a373f81`, excluding
+the read-only pruning experiment. It records the ordinary pruned AST without
+that projection, a bounded raw serialization digest, selected lowering
+arguments and available global-context Debug observations, then fresh SST
+Debug. Source preparation is not a successful build or qualification. Each
+manifest states that neither the input nor output is qualified for reuse.
+Opaque `RawSpan`, private global state, rustc callbacks/source maps and the
+loss of span IDs/packed positions in existing SST Debug remain explicit
+coverage gaps. `Span.data` contains a stable crate identifier and packed
+source positions; it is not a source-file content digest. No complete key
+has been established by hashing the pruned crate.
+
+The offline `scripts/frontend-input-diff.py` describes positional differences
+in ordinary AST JSON, preserving numeric tokens, object-pair/array order and
+duplicate keys. Only literal raw equality returns success; formatting or
+escape-spelling differences still fail. Its bounded summaries never become
+keys or normalized input. The native capture plan and its remaining proof
+obligations are in the [profile report](../reports/2026-10-16-warm-frontend.md).
+
 ## Consequences
 
 A key that misses ordinary edits is recorded as a failed performance design,

@@ -41,6 +41,16 @@ inconclusive. No frontend performance change is selected or shipped.
   IronKV 8.863 to 8.887 s. This does not establish a useful overall gain.
   Direct-Z3 timings include solving; no all-cache-hit scope is claimed.
   IronKV's generated member lock was not retained, limiting cold attribution.
+- The next disabled observer source is prepared on combined `8a373f81`,
+  without pruning or span projection. It captures bounded ordinary AST JSON
+  and explicitly incomplete context/fresh-SST observations. It has not been
+  compiled or run. Local observer commit is `80a19b1a`. Seven offline Python controls pass for lossless positional
+  analysis, original span fields and strict raw-byte exit statuses. This does
+  not establish a complete key or diagnostic rebinding. Independent review
+  and native capture remain pending; see the report's bounded capture plan.
+  Five capture-controller controls also pass, including observed default-off
+  emptiness and refusal of incomplete/modified evidence. The single-runtime
+  build controller is prepared; no native execution is inferred from it.
 
 Raw logs are in the external `frontend-review-2026-10-16` evidence set:
 

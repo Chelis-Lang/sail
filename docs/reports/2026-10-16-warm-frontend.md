@@ -243,6 +243,82 @@ After these cheap measurements, the across-edit prototype must demonstrate
 stable complete keys and current-source diagnostics before skipping work.
 A raw key that misses every body edit cannot establish a performance gain.
 
+## Next measurement: explain raw input misses
+
+Prepared source on combined fork `8a373f81` adds a disabled observer, without
+the pruning optimization or the `2371ca51` span projection. It has not been
+built or measured. The reviewed local source is `80a19b1a`. At most two exact
+buckets in one named crate are captured
+per compiler process. Each record has a 63 MiB artifact budget and a 1 MiB
+manifest budget. Failed/truncated representations remain marked incomplete;
+all fresh lowering and verification still run.
+
+The observer writes ordinary pruned-AST JSON, a bounded raw bincode digest,
+available lowering/context Debug observations and fresh SST Debug. The AST
+retains `Span.id`, `Span.data` and `Span.as_string`. Existing serialization
+omits opaque `RawSpan`. Packed span data contains crate identity and source
+positions, not a source-file digest. The lowering call also reads selected
+functions, pruning results and `GlobalCtx`; some private maps, warning state,
+graphs, counters, rustc callbacks and imported-source mappings are not fully
+represented. SST Debug prints display locations but omits packed positions
+and span IDs. These are incomplete observations, never sufficient keys or
+reusable lowering artifacts. Diagnostic rebinding remains unproved.
+
+Offline analysis uses:
+
+```sh
+python3 scripts/frontend-input-diff.py before-pruned-ast.json after-pruned-ast.json
+python3 scripts/test-frontend-input-diff.py
+```
+
+The analyzer preserves object-pair order and duplicate occurrences, array
+positions, numeric tokens, and every ordinary span field. It counts
+positional differences, with at most 256 detail entries; original raw files
+remain the evidence. Exit 0 means raw bytes match, 1 means they differ and
+2 means analysis refused. Equal parsed values do not excuse byte differences.
+Seven Python controls pass, including command exit statuses. Five separate
+capture-controller controls reject missing buckets, incomplete or modified
+payloads, failed verification and any observer artifact in the disabled
+control. The new fork unit tests and compiler have not yet run.
+
+The proposed native capture is bounded to one 16-CPU Linux host for at most
+120 minutes, allocated only after independent patch review. Build the exact
+committed observer candidate with Rust 1.98.1 and the retained source lock;
+record all source, runtime, toolchain and pinned-Z3 hashes. Do not present a
+direct research runtime as a qualified Sail runtime. For pinned Vest and
+IronKV, retain the actual generated member lock and pristine manifests, then
+select the edited bucket plus one unchanged control bucket. Capture two
+identical-source fresh compilations, a comment insertion and one body edit.
+Force the primary crate to compile using package-scoped Cargo cleaning in an
+owned target directory; keep dependencies warm and record preparation cost.
+Restore edited source in a final cleanup, including interruption. A comment
+can affect `line!()` expansion and is not assumed to preserve input.
+
+Every process must preserve complete raw stdout/stderr and status. Check
+expected bucket count, manifest completion and every artifact digest; a
+missing bucket or capped artifact is a failed capture. Retain independent
+full SMT streams and verification/proof-note JSON. Byte inequality stays a
+failure, not a normalized match. Use the ordinary fresh path with the observer
+disabled as a control. This is input diagnosis, not a latency claim or frontend
+reuse acceptance; coverage remains unqualified even when observations match.
+
+`scripts/build-frontend-observer.py` builds that exact observer commit from
+the two retained bundles in a new owned native checkout, with eight build
+jobs and per-command deadlines. It verifies bundle, dependency lock and Z3
+identities, captures the full build and two observer unit tests, copies the
+direct runtime and hashes all its files. Generated versioned toolchain
+manifests are retained as build inputs; unexpected source changes fail.
+`scripts/capture-frontend-inputs.py` consumes the resulting runtime file map
+plus an independently built, hashed project-manifest patcher. It refuses an
+existing output directory and records every subprocess failure. The exact
+selected buckets are Vest's `asn1::der_ord`/`asn1::boolean` and IronKV's
+`host_impl_v`/`verus_extra::clone_v`; missing selections fail rather than
+silently changing the scope. Its research gate compares same-source raw SMT
+multisets and verification/proof-note JSON, observes that disabled output is
+empty, and validates all captured artifact hashes and completion flags.
+Edited-source raw SMT comparisons remain separate recorded observations;
+no equality is assumed. The default candidate gate always remains false.
+
 ## Evidence
 
 Raw logs remain outside the repository in the

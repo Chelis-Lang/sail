@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Refusal controls for ordinary frontend input capture evidence."""
+
+import importlib.util
+import json
+from pathlib import Path
+import tempfile
+import unittest
+
+SPEC = importlib.util.spec_from_file_location(
+    "capture_frontend_inputs", Path(__file__).with_name("capture-frontend-inputs.py")
+)
+CAPTURE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(CAPTURE)
+
+
+class CaptureTests(unittest.TestCase):
+    def test_verification_requires_actual_positive_error_free_json(self):
+        good = {"verification-results": {"verified": 7, "errors": 0,
+                "encountered-error": False, "encountered-vir-error": False}, "func-details": {}}
+        raw = json.dumps(good).encode()
+        self.assertEqual(len(CAPTURE.verification(b"cargo prefix\n" + raw)), 1)
+        for bad in [b"", b"{}", raw.replace(b'"errors": 0', b'"errors": 1'),
+                    raw.replace(b'"verified": 7', b'"verified": 0')]:
+            with self.assertRaises(ValueError):
+                CAPTURE.verification(bad)
+
+    def test_capture_requires_exact_complete_payloads_and_bucket_set(self):
+        with tempfile.TemporaryDirectory(prefix="sail-m8-capture-test-") as temporary:
+            root = Path(temporary)
+            artifacts = []
+            for suffix in ["pruned-ast.json", "context.debug", "fresh-sst.debug"]:
+                path = root / ("sail-m8-123-0-" + suffix)
+                path.write_bytes(b'{"span":{"id":81,"data":[1,2]}}')
+                artifacts.append({"name": path.name, "bytes": path.stat().st_size,
+                                  "sha256": CAPTURE.sha(path), "representation_finished": True})
+            manifest = {"version": 1, "crate": "test", "bucket": "module one",
+                        "key_qualified": False, "output_artifact_qualified": False,
+                        "raw_pruned_bincode_finished": True, "fresh_lowering_returned": True,
+                        "fresh_bucket_returned": True, "artifacts": artifacts}
+            path = root / "sail-m8-123-0-manifest.json"
+
+            def validate():
+                path.write_text(json.dumps(manifest))
+                return CAPTURE.validate_captures(root, "test", ["module one"])
+
+            self.assertEqual(len(validate()), 1)
+            for key in ["raw_pruned_bincode_finished", "fresh_lowering_returned", "fresh_bucket_returned"]:
+                manifest[key] = False
+                with self.assertRaises(ValueError):
+                    validate()
+                manifest[key] = True
+            artifacts[0]["representation_finished"] = False
+            with self.assertRaises(ValueError):
+                validate()
+            artifacts[0]["representation_finished"] = True
+            payload = root / artifacts[0]["name"]
+            payload.write_bytes(b"different bytes")
+            with self.assertRaises(ValueError):
+                validate()
+
+    def test_missing_observer_cannot_count_as_success(self):
+        with tempfile.TemporaryDirectory(prefix="sail-m8-empty-test-") as temporary:
+            with self.assertRaises(ValueError):
+                CAPTURE.validate_captures(Path(temporary), "test", ["module one"])
+
+    def test_disabled_observer_requires_actually_empty_directory(self):
+        with tempfile.TemporaryDirectory(prefix="sail-m8-disabled-test-") as temporary:
+            root = Path(temporary)
+            self.assertEqual(CAPTURE.validate_disabled(root), [])
+            (root / "unexpected-pruned-ast.json").write_bytes(b"{}")
+            with self.assertRaises(ValueError):
+                CAPTURE.validate_disabled(root)
+
+    def test_body_edit_is_explicit_and_rejects_wrong_location(self):
+        raw = b"// prefix\nproof fn lemma(x: int)\n    requires x > 0,\n{\n}\n"
+        self.assertEqual(CAPTURE.body_edit(raw, 2), raw.replace(b"{", b"{ assert(true);", 1))
+        with self.assertRaises(ValueError):
+            CAPTURE.body_edit(raw, 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

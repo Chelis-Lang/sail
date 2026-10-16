@@ -229,6 +229,9 @@ The levers that matter now:
     its overall edit gain is inconclusive and runtime qualification is pending.
     The raw memo key misses ordinary edits,
     so persistent reuse remains unimplemented (proposed ADR 0052).
+    A disabled observer on combined `8a373f81` is source-prepared to diagnose
+    untouched AST/context differences; its complete-key and diagnostic
+    boundaries remain unqualified, with native capture pending review.
   - The earlier M8.0 gate failed on the reference host. Unchanged-bucket work is
     9–12% of the median edit cycle (gate: 25%), so the hermetic bucket memo
     (M8.1) does not proceed.
