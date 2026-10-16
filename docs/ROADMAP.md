@@ -283,7 +283,9 @@ oyster and such." This supersedes the parallel tracks of
       counter found is the closure-type number (VI-0019); its fork fix
       (`8d03ab54`, [ADR 0049](decisions/0049-stable-closure-names.md),
       proposed) is independently reviewed and measured in isolation; the combined runtime
-      still needs full qualification before a re-pin.
+      still needs full qualification before a re-pin. The three-project
+      [incidental-edit catalogue](validation/incidental-edits.md) is prepared;
+      its final-runtime measurements and exact solver-work counts are pending.
    6. B4, instant revert: receipts beyond the latest revision, #163.
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
