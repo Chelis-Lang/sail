@@ -1,6 +1,6 @@
 # 0055: Acknowledge final managed stdout through Cargo
 
-- **Status:** proposed; focused macOS correctness passes, complete gates pending, unselected
+- **Status:** accepted; joined Mac host, full native correctness and targeted cost qualification pass; required CI gates delivery
 - **Date:** 2026-10-18
 
 ## Context
@@ -49,7 +49,9 @@ so a valid JSON final record remains independently parseable by Cargo. The marke
 contributes no public bytes. Actual matched controls must establish identical
 captured and public output for newline-terminated and unterminated valid JSON,
 plain partial text and multiline output containing a large JSON record. Those
-expanded controls pass in focused macOS attempt 10; complete gates remain pending. A malformed current-capability marker
+expanded controls pass in focused macOS attempt 10, the joined Mac host and
+full native qualification. The [paired records](../validation/managed-output-order.md)
+retain the measured overhead and scope. A malformed current-capability marker
 fails with SAIL3106. Foreign marker-like text stays literal. The sender refuses
 an exact current-capability collision before writing any payload.
 

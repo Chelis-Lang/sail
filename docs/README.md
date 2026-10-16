@@ -136,3 +136,7 @@ main checks.
 The [spec formal naming qualification](validation/spec-parameter-names.md) records
 the qualified binder fix, both platform artifacts, completed native gates and
 preserved earlier failures.
+
+[Unscheduled-script validation](validation/unscheduled-script-cleaning.md) records
+the qualified #174/#215 implementation, its nine-sample targeted gain, complete
+native/Mac gates, unchanged Vest costs and preserved historical failures.
