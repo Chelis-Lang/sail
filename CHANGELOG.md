@@ -21,6 +21,12 @@ semantic versioning once the API is published.
   project's reused vstd prints its original result before the project's own
   result, as plain Cargo-Verus does on a fresh target. Ordinary unchanged
   runs remain silent. Damaged or missing displayed output verifies normally.
+- **Incidental-edit performance qualification** (#118): an opt-in frozen
+  catalogue covers comments, blank lines, helper insertion/relocation and
+  local renames across three pinned projects. The benchmark checks exact
+  source restoration, records source/runtime identities and retains failed
+  samples. Final combined-runtime performance and correctness gates remain
+  pending; this does not change Sail's runtime pin or cache keys.
 
 - **Real-project benchmarks avoid duplicate managed runs** (#167).
   `scripts/perf-real.sh` now defaults to `plain sail`; `--incremental`

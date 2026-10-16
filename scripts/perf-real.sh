@@ -28,7 +28,9 @@
 #   plain        cargo verus verify (focus with --verify-module)
 #   sail         sail verify
 #   incremental  explicit legacy alias for sail verify --incremental
-#   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK first on PATH
+#   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK: first on
+#                PATH, and for fork-sail also as SAIL_CARGO_VERUS (Sail does not
+#                search PATH, ADR 0043)
 # Every run passes `--time-expanded` to Verus. Sail runs record the daemon's
 # counters (`sail status --json`) before and after, and the shim's per-session
 # provenance (SAIL_PROVENANCE_DIR: replies served, solver started).
@@ -45,6 +47,9 @@
 #   SAIL_PERF_FORK     directory holding a fork build's cargo-verus, verus and z3
 #                      (fork-* modes; for `det`, every run uses it)
 #   SAIL_PERF_EDITS    edits to run (default: all of the project's)
+#   SAIL_PERF_CATALOGUE  incidental: frozen comment/blank/helper/rename edits
+#   SAIL_PERF_BASELINE directory holding the old fork for `sail` mode only;
+#                      `plain` stays the stock conformance oracle on PATH
 #   SAIL_PERF_NOOPS    unchanged reruns after cold (default 3)
 #   SAIL_PERF_CORPUS   fetched corpus (default ~/.cache/sail/corpus)
 #   SAIL_PERF_VERUS_ARGS  extra Verus arguments for every run (e.g. "-V spinoff-all")
@@ -66,6 +71,7 @@ fi
 project="${1:-}"
 count="${2:-3}"
 case "$count" in '' | *[!0-9]*) echo "count must be a number" >&2; exit 2 ;; esac
+[ "$count" -gt 0 ] || { echo "count must be positive" >&2; exit 2; }
 
 # Inherited SAIL_* selectors would change what is measured.
 for v in $(env | sed -n 's/^\(SAIL_[A-Z0-9_]*\)=.*/\1/p'); do
@@ -122,6 +128,7 @@ body-early body source/verismo/src/security/mem.rs 191 0
 body-late body source/verismo/src/security/mem.rs 1264 0
 comment-top comment source/verismo/src/security/mem.rs 1 0
 lemma-mid lemma source/verismo/src/security/mem.rs 627 0
+lemma-early lemma source/verismo/src/arch/rmp/db_u.rs 53 0
 spec-wide rename source/verismo/src/arch/rmp/db_u.rs 53 0
 fail fail source/verismo/src/tspec_e/array/sort.rs 9 1
 fix fix source/verismo/src/tspec_e/array/sort.rs 9 0
@@ -159,6 +166,15 @@ EOF
   *) echo "unknown project \`$project\` (vest, capybarakv, verismo, ironkv, anvil)" >&2; exit 2 ;;
 esac
 
+# The incidental acceptance catalogue is opt-in; historical L40 edits and
+# explicit legacy modes retain their existing meaning.
+if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
+  edits() { python3 -I "$here/perf-incidental.py" list "$project"; }
+  edits >/dev/null
+elif [ -n "${SAIL_PERF_CATALOGUE:-}" ]; then
+  echo "unknown SAIL_PERF_CATALOGUE=$SAIL_PERF_CATALOGUE" >&2; exit 2
+fi
+
 # Extra Verus arguments for every mode (for example "-V spinoff-all").
 # shellcheck disable=SC2206
 vargs+=(${SAIL_PERF_VERUS_ARGS:-})
@@ -166,7 +182,12 @@ vargs+=(${SAIL_PERF_VERUS_ARGS:-})
 selected_edits() {
   if [ -n "${SAIL_PERF_EDITS:-}" ]; then
     local e
-    for e in $SAIL_PERF_EDITS; do edits | awk -v e="$e" '$1 == e'; done
+    for e in $SAIL_PERF_EDITS; do
+      local selected
+      selected=$(edits | awk -v e="$e" '$1 == e')
+      [ -n "$selected" ] || { echo "unknown edit $e for $project" >&2; return 2; }
+      printf '%s\n' "$selected"
+    done
   else
     edits
   fi
@@ -175,6 +196,7 @@ selected_edits() {
 out="${SAIL_PERF_OUT:-$HOME/sail-perf/real-$project-$(date +%Y%m%dT%H%M%S)}"
 mkdir -p "$out"
 out="$(cd "$out" && pwd)"
+selected_edits >"$out/selected-edits.txt"
 
 for tool in sail sail-z3 sail-conformance cargo-verus verus python3 perl git jq; do
   command -v "$tool" >/dev/null || { echo "$tool is not on PATH" >&2; exit 1; }
@@ -182,6 +204,15 @@ done
 fork="${SAIL_PERF_FORK:-}"
 if [ -n "$fork" ] && [ ! -x "$fork/cargo-verus" ]; then
   echo "SAIL_PERF_FORK=$fork has no cargo-verus" >&2; exit 1
+fi
+baseline="${SAIL_PERF_BASELINE:-}"
+if [ -n "$baseline" ] && [ ! -x "$baseline/cargo-verus" ]; then
+  echo "SAIL_PERF_BASELINE=$baseline has no cargo-verus" >&2; exit 1
+fi
+if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ] && [ "$cmd" = run ] \
+    && { [ -z "$baseline" ] || [ -z "$fork" ]; }; then
+  echo "incidental timing requires explicit SAIL_PERF_BASELINE and SAIL_PERF_FORK runtimes" >&2
+  exit 2
 fi
 
 now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
@@ -259,6 +290,10 @@ fresh_copy() { # DIR
 #   catalog  vest only: the frozen catalogue's edit (scripts/perf-loops.sh)
 apply_op() {
   local dir="$1" op="$2" file="$3" line="$4"
+  if [ "$op" = incidental ]; then
+    python3 -I "$here/perf-incidental.py" apply "$project" "$line" "$out/pristine" "$dir" >>"$out/source-edits.jsonl"
+    return
+  fi
   cp "$out/pristine/$file" "$dir/$file"
   OP="$op" LINE="$line" perl -0777 -e '
     my $src = do { local $/; <> };
@@ -338,6 +373,9 @@ reset_files() { # DIR: every edited file back to pristine
   for f in $(edits | awk '{print $3}' | sort -u) "$noop_file"; do
     cmp -s "$out/pristine/$f" "$1/$f" || cp "$out/pristine/$f" "$1/$f"
   done
+  if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
+    python3 -I "$here/perf-incidental.py" restore "$project" "$1"
+  fi
 }
 
 # --- Running -----------------------------------------------------------------
@@ -351,7 +389,15 @@ verus_cmd() { # MODE EXTRA_VERUS_ARGS...
   [ "$partial" = 1 ] && sub=focus
   case "$mode" in
     plain | fork-plain) cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
-    sail | fork-sail) sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    sail)
+      if [ -n "$baseline" ]; then
+        SAIL_CARGO_VERUS="$baseline/cargo-verus" sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+      else
+        sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+      fi ;;
+    # Sail never searches PATH for Verus (ADR 0043); the development
+    # override is the only way to run another build under Sail.
+    fork-sail) SAIL_CARGO_VERUS="$fork/cargo-verus" sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     incremental) sail verify --incremental ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
   esac
 }
@@ -380,6 +426,7 @@ times_of() { # LOG
 }
 
 results="$out/results.tsv"
+sample_failures=0
 
 run_one() { # ROUND MODE DIR PHASE
   local round="$1" mode="$2" dir="$3" phase="$4" log prov t0 t1 code=0 s0 s1
@@ -412,12 +459,18 @@ run_one() { # ROUND MODE DIR PHASE
     "$sessions" "$started" "$served" "$d" "$(times_of "$log")" "$load1" >>"$results"
   printf '  r%s %-11s %-14s %8.2f s exit %s  load %s  sessions %s (solver %s)  daemon %s\n' "$round" "$mode" "$phase" \
     "$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')" "$code" "$load1" "$sessions" "$started" "$d"
+  # Every incidental edit must verify, including cold/unchanged controls.
+  # Retain a failed sample and finish the table, then refuse acceptance.
+  if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ] && [ "$code" -ne 0 ]; then
+    sample_failures=$((sample_failures + 1))
+  fi
 }
 
 run_mode() { # ROUND MODE
   local round="$1" mode="$2" dir="$out/r$1/$2-proj" cache="$out/r$1/c-$2" i
   rm -rf "$cache"; mkdir -p "$cache"
   fresh_copy "$dir"
+  reset_files "$dir"
   export SAIL_CACHE_DIR="$cache"
   run_one "$round" "$mode" "$dir" cold
   for ((i = 1; i <= ${SAIL_PERF_NOOPS:-3}; i++)); do
@@ -428,10 +481,11 @@ run_mode() { # ROUND MODE
     reset_files "$dir"
     apply_op "$dir" "$op" "$file" "$line"
     run_one "$round" "$mode" "$dir" "$name"
-  done < <(selected_edits)
+  done <"$out/selected-edits.txt"
   reset_files "$dir"
   apply_op "$dir" noop "$noop_file" end
   run_one "$round" "$mode" "$dir" noopend
+  reset_files "$dir"
   pkill -f -- "--socket $cache/" 2>/dev/null || true
   sleep 1
   unset SAIL_CACHE_DIR
@@ -445,6 +499,18 @@ header() {
   echo "sail: $(sail --version 2>/dev/null | head -1) at $(command -v sail)"
   echo "verus: $(verus --version 2>&1 | sed -n 's/^ *Version: //p')"
   [ -n "$fork" ] && echo "fork: $(sed -n 's/^ *//p' "$fork/version.txt" 2>/dev/null | head -1) at $fork"
+  if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
+    python3 -I "$here/perf-incidental.py" check "$corpus" >"$out/catalogue-manifest.json"
+    python3 - "$sail_root" "$baseline" "$fork" <<'PY'
+import hashlib, json, pathlib, shutil, sys
+files = [pathlib.Path(sys.argv[1]) / 'corpus/incidental-edits.json']
+files += [pathlib.Path(p) for n in ('sail', 'sail-z3', 'cargo-verus', 'verus') if (p := shutil.which(n))]
+for directory in sys.argv[2:]:
+    if directory:
+        files += [pathlib.Path(directory) / n for n in ('cargo-verus', 'verus', 'z3', 'version.txt')]
+print('acceptance identities: ' + json.dumps({str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in files if p.is_file()}))
+PY
+  fi
   echo "load average at start: $(uptime | sed 's/.*load average[s]*: //')"
 }
 
@@ -455,17 +521,33 @@ if [ "$cmd" = det ]; then
   # SAIL_PERF_FORK set, the fork's Verus runs them.
   d="$out/det"
   mkdir -p "$d"
+  if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ] && [ -e "$d/results.tsv" ]; then
+    echo "incidental SMT capture needs a fresh output directory" >&2; exit 2
+  fi
+  : >"$d/results.tsv"
   [ -n "$fork" ] && export PATH="$fork:$PATH"
   { header; echo "det: $count unchanged reruns, then each edit; verus: $(command -v cargo-verus)"; } | tee "$d/header.txt"
   dir="$d/proj"
   fresh_copy "$dir"
-  (cd "$dir/$pkg" && verus_cmd plain) >"$d/cold.log" 2>&1 || true
+  cold_code=0
+  (cd "$dir/$pkg" && verus_cmd plain) >"$d/cold.log" 2>&1 || cold_code=$?
+  printf 'cold\t%s\t-\n' "$cold_code" >>"$d/results.tsv"
+  if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ] && [ "$cold_code" -ne 0 ]; then
+    sample_failures=$((sample_failures + 1))
+  fi
   i=0
   logrun() { # NAME
     rm -rf "$d/smt-$1"
+    mkdir -p "$d/smt-$1"
     local code=0
     (cd "$dir/$pkg" && verus_cmd plain --log smt --log-dir "$d/smt-$1") >"$d/$1.log" 2>&1 || code=$?
-    echo "  det $1: exit $code, $(find "$d/smt-$1" -type f | wc -l | tr -d ' ') SMT files"
+    local files
+    files=$(find "$d/smt-$1" -type f | wc -l | tr -d ' ')
+    echo "  det $1: exit $code, $files SMT files"
+    printf '%s\t%s\t%s\n' "$1" "$code" "$files" >>"$d/results.tsv"
+    if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ] && { [ "$code" -ne 0 ] || [ "$files" -eq 0 ]; }; then
+      sample_failures=$((sample_failures + 1))
+    fi
   }
   for ((i = 1; i <= count; i++)); do
     apply_op "$dir" noop "$noop_file" "$i"
@@ -476,16 +558,28 @@ if [ "$cmd" = det ]; then
     apply_op "$dir" noop "$noop_file" "e$name"
     apply_op "$dir" "$op" "$file" "$line"
     logrun "$name"
-  done < <(selected_edits)
+  done <"$out/selected-edits.txt"
   python3 -I "$here/perf-real-report.py" --det "$d" | tee "$d/table.md"
+  reset_files "$dir"
   rm -rf "$dir"
+  [ "$sample_failures" -eq 0 ] || { echo "incidental SMT capture failed; not acceptance evidence" >&2; exit 1; }
   exit 0
 fi
 
 : >"$results"
 modes=(${SAIL_PERF_MODES:-plain sail})
+if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
+  modes=(${SAIL_PERF_MODES:-plain sail fork-sail})
+fi
+for mode in "${modes[@]}"; do
+  case "$mode" in
+    plain | sail | incremental) ;;
+    fork-plain | fork-sail) [ -n "$fork" ] || { echo "$mode requires SAIL_PERF_FORK" >&2; exit 2; } ;;
+    *) echo "unknown mode $mode" >&2; exit 2 ;;
+  esac
+done
 header | tee "$out/header.txt"
-echo "modes: ${modes[*]}; rounds: $count; edits: $(selected_edits | awk '{print $1}' | tr '\n' ' ')" | tee -a "$out/header.txt"
+echo "modes: ${modes[*]}; rounds: $count; edits: $(awk '{print $1}' "$out/selected-edits.txt" | tr '\n' ' ')" | tee -a "$out/header.txt"
 for ((r = 1; r <= count; r++)); do
   mkdir -p "$out/r$r"
   n=${#modes[@]}
@@ -495,3 +589,7 @@ for ((r = 1; r <= count; r++)); do
 done
 echo "load average at end: $(uptime | sed 's/.*load average[s]*: //')" | tee -a "$out/header.txt"
 python3 -I "$here/perf-real-report.py" "$out" | tee "$out/table.md"
+if [ "$sample_failures" -ne 0 ]; then
+  echo "$sample_failures incidental samples failed; not an acceptance result" >&2
+  exit 1
+fi
