@@ -386,15 +386,38 @@ exit7 fixture exposes parent admission that trusted its manifest; corrected by
 no replacement fresh sample or Anvil continuation is substituted.
 
 
-A prospective fresh-driver RSS correction is implemented but has no native
-qualification yet. It retains the original error and requires bound owned
-PID/starttime/pidfd identity, prior valid RSS, independent terminal or
-exit-in-progress kernel evidence, bounded exit0 and subsequent complete I/O.
-Fifteen actual-owned-child controls with kernel observations explicitly doubled
-and 23 parser/descriptor controls pass locally; the unchanged eight original
-and nine experimental driver controls also pass. A mandatory bounded native
-mm-teardown fixture must exercise the actual running kernel and reject live,
-foreign, missing-state and nonzero-status cases before any new trace attempt.
-The original Anvil failure is unchanged; no eventual-exit-only exception or
-new performance result is inferred. See the
+A subsequent pretrace attempt at source `8b7c9922` on native
+`c7i.4xlarge`, `us-east-1`, kernel `7.0.0-1014-aws`, fails its mandatory
+lifecycle gate: 8 of 9 checks pass. Genuine terminal smaps disappearance and
+all seven live/foreign/status negatives pass, but all eight bounded attempts
+observe an already-terminal pidfd; the required pre-waitable exit window is
+unobserved. All per-attempt raw streams and actual status are retained and
+hash-checked. No IronKV or Anvil command runs. The original 28 native core and
+31/8/9/12/2/23/15 functional controls all actually pass, as do final source and
+runtime checks. The later `controls` archive checkpoint is not reached;
+that does not mean these commands were unrun. Aggregate exit is 1 and no
+qualification or selection follows.
+
+| Artifact | SHA-256 |
+|---|---|
+| Failed pretrace final archive | `b651f57f4d6d0bec55eab54ef611967da63bf35c1439e88a24ee61ec10c5e913` |
+| Exact native control and outcome summary | `a1cd8fb5c137ad5502618180c4e7ea011135d2d0b74497b1e3b586139e339d89` |
+
+The current source removes the unqualified exit-in-progress admission entirely.
+It requires the continuously held owned pidfd to be already terminal before
+any wait, plus prior valid RSS and the original PID/starttime binding, then
+bounded successful status and complete I/O. Any nonterminal pidfd refuses,
+including `PF_EXITING` or eventual exit0. Missing proc state does not establish
+exit. The original read error is retained, not discarded. Fifteen local actual
+owned-child controls (kernel observations explicitly doubled) and 23 parser/FD
+controls pass; the new native fixture still must prove genuine after-reap and
+unreaped-but-terminal positives plus all seven negatives before either trace.
+The prior native evidence does not qualify this changed source. See the
 [observer boundary](../../native/sail-live-prefix/README.md#prospective-fresh-process-rss-lifetime-correction).
+
+Additional failed setup attempts remain indexed: the `362ee196`/`889579d5`
+packet is unrun after peer review finds lost native-control failure streams;
+`8b7c9922` preserves them and reaches the strict native refusal above. The first
+terminal-only timeout fixture mistakenly waited for its child before testing
+the timeout; it fails locally, then passes after that setup wait is removed.
+No product assertion or benchmark baseline is changed.

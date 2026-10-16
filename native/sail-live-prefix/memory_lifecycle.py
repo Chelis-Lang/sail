@@ -1,8 +1,8 @@
 """Conservative Linux owned-child terminal memory-observation classification.
 
-An exiting task drops its mm before it becomes waitable. A failed RSS read is
-not an RSS sample. Only independently evidenced terminal teardown can end the
-sampling interval; the caller must still prove complete successful I/O/status.
+A failed RSS read is not an RSS sample. Only an ALREADY terminal owned pidfd
+can end the sampling interval. Exit-in-progress or eventual exit is insufficient;
+the caller must still prove complete successful I/O/status.
 """
 import errno
 import os
@@ -11,9 +11,6 @@ import select
 import subprocess
 import time
 
-# Linux v6.8 include/linux/sched.h: PF_EXITING; kernel/exit.c do_exit sets it
-# in exit_signals before exit_mm and exit_notify. Unsupported evidence refuses.
-PF_EXITING = 0x00000004
 TERMINAL_WAIT_SECONDS = 0.1
 
 
@@ -82,20 +79,19 @@ def terminal_observation(process, pidfd, identity, error, prior_samples, deadlin
     """
     result = dict(error=type(error).__name__ + ': ' + str(error),
                   errno=getattr(error, 'errno', None), prior_samples=prior_samples,
-                  terminal_race=False, owned_pid=process.pid, identity=identity)
+                  terminal_race=False, owned_pid=process.pid, identity=identity,
+                  owned_returncode_before=process.returncode)
     try:
         if (os.uname().sysname != 'Linux' or not isinstance(error, OSError) or
                 error.errno not in {errno.ESRCH, errno.ENOENT} or prior_samples <= 0 or
-                not identity or identity['pid'] != process.pid):
+                not identity or identity['pid'] != process.pid or
+                type(identity.get('starttime')) is not int or identity['starttime'] <= 0):
             raise ValueError('no eligible terminal-disappearance evidence')
         if pidfd_binding(pidfd) != identity['pidfd_binding']:
             raise ValueError('held pidfd identity changed')
         result['pidfd_terminal_before'] = terminal_pidfd(pidfd, process.pid, process.returncode is not None)
         if not result['pidfd_terminal_before']:
-            observed = task_identity(process.pid)
-            result['observed_task'] = observed
-            if observed['starttime'] != identity['starttime'] or not observed['flags'] & PF_EXITING:
-                raise ValueError('owned child is not proven in terminal teardown')
+            raise ValueError('owned pidfd was not already terminal; no exit-in-progress exception')
         remaining = min(TERMINAL_WAIT_SECONDS, deadline - time.monotonic())
         if remaining <= 0:
             raise ValueError('terminal observation deadline exceeded')

@@ -35,11 +35,11 @@ def main():
             '0.4' if case == 'terminal-timeout' else '0.005',
             '7' if case == 'nonzero-exit' else '0'], stdin=subprocess.PIPE)
         identity = dict(pid=child.pid, state='S', flags=0, starttime=17, pidfd_binding=[1, 2, 3])
-        observed = dict(identity, flags=lifecycle.PF_EXITING)
+        observed = dict(identity, flags=0x4)
         prior = 0 if case == 'no-prior-RSS' else 1
         errnum = {'EIO-terminal': errno.EIO, 'permission-terminal': errno.EACCES}.get(case, errno.ESRCH)
         error = OSError(errnum, 'retained controlled RSS observation')
-        terminal_before = case in {'already-terminal', 'EIO-terminal', 'permission-terminal', 'nonzero-exit'}
+        terminal_before = case in {'already-terminal', 'EIO-terminal', 'permission-terminal', 'nonzero-exit', 'terminal-timeout', 'pidfd-not-terminal-after'}
         calls = []
 
         def terminal(fd, pid, reaped):
@@ -65,7 +65,7 @@ def main():
             if case != 'live-ESRCH':
                 child.stdin.write(b'x')
                 child.stdin.flush()
-            if terminal_before:
+            if terminal_before and case != 'terminal-timeout':
                 child.wait(timeout=2)
             with contextlib.ExitStack() as stack:
                 stack.enter_context(patch.object(lifecycle.os, 'uname', lambda: type('U', (), {'sysname': 'Linux'})()))
@@ -73,7 +73,7 @@ def main():
                 stack.enter_context(patch.object(lifecycle, 'terminal_pidfd', terminal))
                 stack.enter_context(patch.object(lifecycle, 'task_identity', task))
                 result = lifecycle.terminal_observation(child, 123, identity, error, prior, time.monotonic() + 2)
-            expected = case in {'already-terminal', 'exit-in-progress'}
+            expected = case == 'already-terminal'
             assert result['terminal_race'] is expected, (case, result)
             assert result['error'] and result['errno'] == errnum
             if expected:

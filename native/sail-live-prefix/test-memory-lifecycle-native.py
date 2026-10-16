@@ -1,7 +1,7 @@
 """Bounded native Linux owned-task/mm-teardown controls, before trace evaluation.
 
-Original errors and every attempt are retained. An unavailable genuine teardown
-window fails the control; it is never replaced by injected positive evidence.
+Original errors and every attempt are retained. Both genuine terminal cases
+are mandatory; nonterminal errors always refuse, with no exit-progress exception.
 """
 import argparse
 import errno
@@ -36,8 +36,8 @@ def main():
     if (os.uname().sysname, os.uname().machine) != ('Linux', 'x86_64'):
         parser.error('native x86-64 Linux only')
     args.out.mkdir(exist_ok=False)
-    kernel = dict(uname=list(os.uname()), PF_EXITING=lifecycle.PF_EXITING,
-        reference='Linux v6.8 source rationale; actual kernel behavior must pass genuine controls')
+    kernel = dict(uname=list(os.uname()),
+        reference='Actual owned pidfd terminal status only; no PF_EXITING or prewaitable admission')
     for name in ['/proc/version', '/proc/version_signature']:
         try:
             with open(name) as stream:
@@ -205,15 +205,15 @@ def main():
             row.get('observation', {}).get('terminal_race') is True)))
         found = False
         for index in range(8):
-            row = one('exit-in-progress-' + str(index), progressing=True)
+            row = one('unreaped-terminal-' + str(index), progressing=True)
             observation = row.get('observation', {})
             if (not row.get('control_error') and row.get('complete_io') is True and
                     row.get('actual_exit') == 0 and observation.get('terminal_race') and
-                    not observation.get('pidfd_terminal_before') and
-                    observation.get('observed_task', {}).get('flags', 0) & lifecycle.PF_EXITING):
+                    observation.get('pidfd_terminal_before') is True and
+                    observation.get('owned_returncode_before') is None):
                 found = True
                 break
-        checks.append(dict(case='actual-mm-release-before-waitable', passed=found))
+        checks.append(dict(case='actual-mm-release-terminal-before-explicit-wait', passed=found))
         for case in ['live-ESRCH', 'foreign-starttime', 'foreign-pid', 'missing-pidfd',
                      'no-prior-RSS', 'nonzero', 'EIO-terminal']:
             row = one(case)

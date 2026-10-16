@@ -205,19 +205,32 @@ and preserves that failure before skipping live continuation.
 
 ## Prospective fresh-process RSS lifetime correction
 
-The native Anvil refusal above remains failed. A source-only correction now
-retains a separate `memory_observations` record for every failed fresh RSS read.
-It distinguishes only a proved owned-child terminal teardown from an observer
-failure; it does not invent a final RSS sample or suppress the original error.
-The same held pidfd inode and original PID/starttime must remain bound, with
-at least one earlier successful RSS/PSS sample. Only `ESRCH`/`ENOENT` can be
-considered, and either the owned pidfd is already terminal or the actual task
-has `PF_EXITING`. A bounded 100 ms wait must then establish exit 0 and a terminal
-pidfd. Complete stdout/stderr draining, existing output budgets, image guards
-and the strict response comparison still apply afterward. Missing proc state,
-eventual exit alone, foreign/closed descriptors, live-process errors, other
-errno values and incomplete I/O refuse. The warming/ready/claim monitor is
-unchanged and continues to refuse its observation failures.
+The original native Anvil refusal remains failed. A later native preflight at
+`8b7c9922` passes its terminal-teardown case and seven negatives, but cannot
+observe the required pre-waitable exit window in eight bounded attempts. The
+mandatory gate fails and neither dataset runs. All actual errors/streams and
+that failed gate remain preserved in the
+[validation record](../../docs/validation/solver-snapshots.md).
+
+The current source narrows admission further: a failed fresh RSS read can be
+classified as terminal teardown only when the owned pidfd is **already
+terminal before any wait**. A nonterminal pidfd always refuses, including
+exit-in-progress flags and eventual exit 0. There is no `PF_EXITING` admission.
+The original RSS error stays verbatim in `memory_observations`; it is not a
+synthetic final RSS sample. At least one earlier valid RSS/PSS sample and the
+original owned PID/starttime/held pidfd binding are required. Only
+`ESRCH`/`ENOENT` can be considered. The subsequent bounded 100 ms status wait
+must establish exit 0, then complete stdout/stderr draining, existing output
+budgets, image guards and strict response comparison must still pass.
+Missing proc state alone, foreign/closed descriptors, nonterminal errors,
+other errno values, incomplete I/O and unsuccessful status refuse. The live
+warming/ready/claim monitor is unchanged and remains strict.
+
+The actual driver captures the pidfd once and retains it continuously until
+after classification and complete I/O; cancellation signals it and never
+closes/reassigns it. This lifetime plus live PID binding is essential. Inode
+stamps are supplemental: no portable inode-uniqueness theorem for replaced,
+reaped foreign descriptors follows from doubled fixtures or older kernels.
 
 ```sh
 python3 native/sail-live-prefix/test-memory-identity.py
@@ -226,20 +239,21 @@ python3 native/sail-live-prefix/test-memory-lifecycle.py --out NEW_LOCAL_CONTROL
 python3 native/sail-live-prefix/test-memory-lifecycle-native.py --out NEW_NATIVE_CONTROLS
 ```
 
-The local controls use actual owned children for waits/status and explicitly
-double Linux kernel observations. They do not qualify the native boundary.
-The native fixture has a 90-second whole-control bound and bounded attempts:
-a child creates 8,192 4 KiB mappings, waits for a pipe, then calls `os._exit`.
-It must establish genuine mm teardown both after terminal status and before
-waitability, with complete empty remaining streams and exit 0; an unobserved
-window is an explicit failed control. Kernel identity, actual task flags,
-all attempts and the original read errors are retained. Linux v6.8 source
-explains the ordering; it is not asserted to be the actual host kernel. No
-corrected trace result or acceptance follows before native qualification.
+Local controls use actual owned children for waits/status and explicitly
+double kernel observations. They do not qualify Linux. The native fixture has
+a 90-second whole-control bound and bounded attempts: a child creates 8,192
+4 KiB mappings, waits for a pipe, then calls `os._exit`. Its two positive cases
+must establish genuine failed smaps reads with an already-terminal owned
+pidfd: after explicit reaping, and while still unreaped before any explicit
+status wait. Both require complete empty remaining streams and exit 0; no
+injected positive is substituted. Kernel identity, every attempt and original
+read error stay retained. A missing positive fails before either trace runs.
+No pre-waitable exit window or kernel flag semantics are claimed.
 
 Every native lifecycle-control attempt retains bounded raw stdout/stderr,
 including consumed readiness bytes, startup failures, negative controls and
 actual post-cleanup status. Each stream is capped at 64 KiB; overflow/read
-failure/EOF timeout is explicit and fails that control. Actual owned-child
-startup/post-readiness diagnostic fixtures exercise this capture locally,
-with the Linux image guard and worker explicitly doubled.
+failure/EOF timeout or cleanup error is explicit and fails that control.
+Actual-owned-child startup, post-readiness and injected cleanup-report failure
+fixtures exercise capture locally, with Linux image/platform/worker doubled.
+The terminal-only source and its native fixture have no new native result yet.
