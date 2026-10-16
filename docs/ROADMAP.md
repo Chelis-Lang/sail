@@ -279,7 +279,11 @@ oyster and such." This supersedes the parallel tracks of
       A cheaper per-function report in the fork remains a separate lever.
    5. Cache robustness to incidental edits: stable crate-wide numbering in
       the fork, [#118](https://github.com/Chelis-Lang/sail/issues/118); any
-      key change is an ADR under charter rules 5 and 6.
+      key change is an ADR under charter rules 5 and 6. The only crate-wide
+      counter found is the closure-type number (VI-0019); its fork fix
+      (`8d03ab54`, [ADR 0049](decisions/0049-stable-closure-names.md),
+      proposed) is independently reviewed and measured in isolation; the combined runtime
+      still needs full qualification before a re-pin.
    6. B4, instant revert: receipts beyond the latest revision, #163.
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
