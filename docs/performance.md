@@ -395,6 +395,22 @@ SAIL_PERF_OUT=$HOME/sp/vest  scripts/perf-loops.sh vest 3     # claims 2, 3, 5
 SAIL_PERF_OUT=$HOME/sp/agents scripts/perf-agents.sh vest 4 3  # claim 7
 ```
 
+After archiving results, run `scripts/perf-host.sh down LANE`. The Linux
+helper confirms that the instance is terminated or absent before deleting
+its security group, key pair and local connection files. Authentication,
+API, waiter or cleanup errors return `SAIL9001` and retain lane state for
+retry; refresh credentials or fix the named AWS error, then repeat the same
+command. Already terminated/absent resources and an unrecorded lane are
+idempotent. New lane state records the launch region and uses it for later commands;
+keep the same AWS account. Older state without a region still requires the
+original region. A successful JSON response with exactly empty `Reservations`
+means absent; malformed responses, unknown states and mismatched IDs refuse.
+State defaults to `~/.sail-perf`; `SAIL_PERF_STATE_DIR` selects a different
+owned directory, including for isolated fake-AWS controls:
+`python3 scripts/test-perf-host-down.py`. Those controls create no EC2 hosts. See the
+[teardown validation record](validation/perf-host-teardown.md) for their native
+workspace-gate scope and raw evidence.
+
 The macOS rows above came from the same commands, plus
 `scripts/perf-agents.sh demo 4 3`, on an EC2 Mac host
 (`scripts/perf-host-mac.sh up LANE`; Apple's licence bills a Mac host for at

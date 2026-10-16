@@ -93,7 +93,9 @@ record discoveries in this repository.
 [Dependency-store stdout validation](validation/dependency-store-output.md) records the rc.5 output defect and its correction.
 
 [Native source-sync validation](validation/host-source-sync.md) records source
-content and timestamp controls for the EC2 host helpers.
+content and timestamp controls for the EC2 host helpers. The
+[Linux teardown record](validation/perf-host-teardown.md) covers retained
+recovery state and termination-before-cleanup controls.
 
 The [Cargo target-context record](validation/cargo-target-context.md) covers
 owned metadata selection, source-directory coverage, and declared environment
