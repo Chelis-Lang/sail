@@ -189,3 +189,8 @@ that extra response completes. The same child then completes the unexpected
 response and is refused. Both exact and experimental policies keep this
 boundary. `test-readiness.py` runs these real pipe/thread controls with native
 image/RSS checks explicitly doubled.
+
+`run-real.py --project ironkv|anvil` explicitly selects one dataset for a
+durable per-project checkpoint. Omission runs both. The aggregate native
+record must identify both datasets, every fresh/live refusal and any deferred
+scope; selection cannot silently turn a partial run into a completed pair.

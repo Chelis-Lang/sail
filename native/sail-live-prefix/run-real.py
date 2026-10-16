@@ -6,7 +6,7 @@ import response_policy
 SOLVER='e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765'
 def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def main():
- ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--source',type=Path,required=True);ap.add_argument('--out',type=Path,required=True);ap.add_argument('--z3',type=Path,required=True);ap.add_argument('--experiment-numeric-time-only',action='store_true');a=ap.parse_args()
+ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--source',type=Path,required=True);ap.add_argument('--out',type=Path,required=True);ap.add_argument('--z3',type=Path,required=True);ap.add_argument('--experiment-numeric-time-only',action='store_true');ap.add_argument('--project',choices=['ironkv','anvil']);a=ap.parse_args()
  assert platform.system()=='Linux' and platform.machine()=='x86_64';src=a.source.resolve(strict=True);z3=a.z3.resolve(strict=True);assert digest(z3)==SOLVER
  hashes=None
  a.out.mkdir(parents=True,exist_ok=False);m={'complete':False,'scope':'real archived full traces; strict research controls only; no default integration','solver_sha256':SOLVER,'steps':[],'projects':{},'errors':[],'qualified':False,'selected':False,'response_policy':response_policy.EXPERIMENT if a.experiment_numeric_time_only else 'exact-bytes'}
@@ -34,7 +34,7 @@ def main():
   for name,value in hashes.items():assert digest(src/name)==value,(name,'source mismatch')
   m['source_sha256']=hashes;m['controller_sha256']=digest(Path(__file__));m['environment_sha256']=hashlib.sha256(json.dumps(sorted(os.environ.items())).encode()).hexdigest();m['platform']=platform.platform()
   selected={r['project']:r for r in json.loads((src/'pairs.json').read_text())['selected']}
-  for project in ['ironkv','anvil']:
+  for project in ([a.project] if a.project else ['ironkv','anvil']):
    data=src/project;full=(data/'prefix.smt2').read_bytes()+(data/'suffix.smt2').read_bytes();assert hashlib.sha256(full).hexdigest()==selected[project]['edited.smt2_sha256'];m['projects'][project]={'trace':selected[project]}
    common=['python3',str(src/'run.py'),'--z3',str(z3),'--solver-sha256',SOLVER,'--prefix',str(data/'prefix.smt2'),'--prefix-stdout',str(data/'prefix.stdout'),'--suffix',str(data/'suffix.smt2'),'--native-metrics','--preparation-window','300','--ttl','600','--run-timeout','300','--oracle-timeout','300','--fallback-timeout','300','--max-bytes',str(1024**3),'--max-input-bytes',str(16*1024**2)]
    if a.experiment_numeric_time_only:common+=['--experiment-numeric-time-only']

@@ -28,7 +28,7 @@ raise SystemExit(7 if case=='live-exit' and not fresh else 0)
 rows = []
 for case in ['experiment-pass', 'strict-default', 'fresh-error', 'wrong-prefix',
              'live-refused', 'live-exit', 'missing-experiment-field',
-             'source-change', 'solver-change']:
+             'source-change', 'solver-change', 'project-one']:
     with tempfile.TemporaryDirectory(prefix='live real driver ') as td:
         root = Path(td)
         src = root / 'owned source'
@@ -59,6 +59,8 @@ for case in ['experiment-pass', 'strict-default', 'fresh-error', 'wrong-prefix',
         argv = [str(HERE / 'run-real.py'), '--source', str(src), '--out', str(output), '--z3', str(z3)]
         if case != 'strict-default':
             argv += ['--experiment-numeric-time-only']
+        if case == 'project-one':
+            argv += ['--project', 'anvil']
         raised = None
         with contextlib.ExitStack() as stack:
             stack.enter_context(patch.object(sys, 'argv', argv))
@@ -72,7 +74,7 @@ for case in ['experiment-pass', 'strict-default', 'fresh-error', 'wrong-prefix',
                 raised = type(error).__name__
                 code = 1
         m = json.loads((output / 'manifest.json').read_text())
-        wanted = case == 'experiment-pass'
+        wanted = case in ['experiment-pass', 'project-one']
         assert (code == 0) is wanted, (case, m)
         assert not m['qualified'] and not m['selected']
         assert bool(m['errors']) is not wanted
@@ -82,7 +84,9 @@ for case in ['experiment-pass', 'strict-default', 'fresh-error', 'wrong-prefix',
             assert raised == 'AssertionError'
             assert not m['final_source_identity_stable'] if case == 'source-change' else not m['final_solver_identity_stable']
         if wanted:
-            assert len(m['steps']) == 4
+            assert len(m['steps']) == (2 if case == 'project-one' else 4)
+            if case == 'project-one':
+                assert set(m['projects']) == {'anvil'}
             assert all(row['experiment_candidate_gate_pass'] for row in m['projects'].values())
             assert all(not row['fresh_control_pass'] and not row['candidate_gate_pass'] for row in m['projects'].values())
         rows.append({'case': case, 'passed': True, 'exit': code,
