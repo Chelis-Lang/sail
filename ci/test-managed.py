@@ -544,11 +544,39 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             # serde (whose build scripts generate the included OUT_DIR/private.rs)
             # and a dev-dependency with a build script that `cargo verus verify`
             # never builds.
+            # #174: two versions of one scripted package, one normal and one
+            # dev-only. Cleaning the unscheduled version by package name also
+            # removes the scheduled sibling. The OUT_DIR marker changes on
+            # every real script execution, including after a destructive clean.
+            workspace_manifest = workspace / "Cargo.toml"
+            workspace_manifest.write_text(workspace_manifest.read_text()
+                + 'exclude = ["schedule-old", "schedule-new"]\n')
+            for directory, version, label in [
+                ("schedule-old", "1.0.0", "old"),
+                ("schedule-new", "2.0.0", "new"),
+            ]:
+                package = workspace / directory
+                (package / "src").mkdir(parents=True)
+                (package / "Cargo.toml").write_text(
+                    f'[package]\nname = "sail-schedule-fixture"\nversion = "{version}"\n'
+                    'edition = "2021"\n')
+                (package / "src/lib.rs").write_text("")
+                (package / "build.rs").write_text(
+                    'fn main() {\n'
+                    '    println!("cargo::rerun-if-changed=build.rs");\n'
+                    '    let out = std::env::var("OUT_DIR").unwrap();\n'
+                    '    let time = std::time::SystemTime::now().duration_since('
+                    'std::time::UNIX_EPOCH).unwrap().as_nanos();\n'
+                    f'    std::fs::write(format!("{{out}}/sail-schedule-marker"), '
+                    f'format!("{label}:{{time}}")).unwrap();\n'
+                    '}\n')
             manifest = project / "Cargo.toml"
             text = manifest.read_text()
             assert "[dependencies]\n" in text, text
-            text = text.replace("[dependencies]\n", "[dependencies]\nserde = \"=1.0.228\"\n", 1)
-            manifest.write_text(text + "\n[dev-dependencies]\nlibc = \"0.2\"\n")
+            text = text.replace("[dependencies]\n", '[dependencies]\nserde = "=1.0.228"\n'
+                'schedule-current = { package = "sail-schedule-fixture", path = "../schedule-new" }\n', 1)
+            manifest.write_text(text + '\n[dev-dependencies]\nlibc = "0.2"\n'
+                'schedule-old = { package = "sail-schedule-fixture", path = "../schedule-old" }\n')
             (project / "build.rs").write_text("fn main() {}\n")
             scripts_run, scripts, scripts_target = managed()
             assert scripts_run.returncode == 0 and scripts_target["complete"], diagnostic(scripts)
@@ -563,10 +591,23 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             # and the unbuilt dev-dependency script no longer withhold it), and the
             # unchanged run after it verifies nothing.
             assert scripts["currentness"] == "current", diagnostic(scripts)
+            def schedule_marker():
+                markers = list((root / "cache/projects").glob(
+                    "*/compiler-artifacts/*/target/**/out/sail-schedule-marker"))
+                assert len(markers) == 1, markers
+                marker = markers[0].read_text()
+                assert marker.startswith("new:"), marker
+                return marker
+            script_execution = schedule_marker()
             unchanged_run, unchanged, unchanged_target = managed()
             assert unchanged_run.returncode == 0 and unchanged["currentness"] == "current", diagnostic(unchanged)
             assert unchanged["execution"]["verifier_invocations"] == 0, diagnostic(unchanged)
             assert unchanged_target["reused"], diagnostic(unchanged)
+            assert schedule_marker() == script_execution, "unchanged run rebuilt scheduled sibling"
+            # A second consecutive hit must also keep the same established fact.
+            again_run, again, _ = managed()
+            assert again_run.returncode == 0 and again["currentness"] == "current", diagnostic(again)
+            assert schedule_marker() == script_execution, "second unchanged run rebuilt scheduled sibling"
             # Issue #119: a comment-only edit verifies only the edited crate; vstd
             # keeps its build-script records and its receipt.
             source.write_text(source.read_text() + "// comment-only edit\n")
@@ -576,6 +617,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert not edited_target["reused"] and edited_target["complete"], diagnostic(edited)
             assert vstd(edited)["reused"], diagnostic(edited)
             assert b"Compiling vstd" not in edited_run.stderr, edited_run.stderr.decode()
+            assert schedule_marker() != script_execution, "changed source incorrectly kept old scheduling memo"
 
             # Generated files stay bound by content (#120): the build script
             # declares an environment variable and writes its value into a file

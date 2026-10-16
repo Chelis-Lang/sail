@@ -35,6 +35,15 @@ are in the `archive/m7-contracts-f7103bf` tag.
   an unsupported setup, taking SAIL3112 fallback without Current proof state.
   See the [validation record](validation/cargo-target-context.md).
 
+- **Unscheduled script cleaning can rebuild a same-name version** (#174).
+  The candidate memoizes only successful Current scheduling under identical
+  full inputs; Mac checks and native required gates pass. A targeted native
+  unchanged fixture falls from 0.94 s to 0.20 s; full fast/standard remain
+  pending ([record](validation/unscheduled-script-cleaning.md)). Source edits and unknown selection closures
+  (including `--workspace`) still take conservative cleaning. Cargo
+  1.99 also cleans both versions when given an exact version/package ID
+  ([reproduction](../corpus/repros/cargo-clean-package-versions/README.md)).
+
 - **Vest repair is about 1.8× M6, below the 2× figure.** The owner accepted
   M7's speed as measured (ADR 0038 amendment 2026-10-13). On the `13a1176c`
   runtime, three native rounds, every sample valid and Current: HumanEval

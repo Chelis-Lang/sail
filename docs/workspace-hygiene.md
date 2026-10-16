@@ -14,6 +14,14 @@ their own Cargo targets under the Sail cache:
 - `projects/<workspace-key>/<proof-context>/` holds proof receipts and run
   records.
 
+The proof context can also hold `unscheduled-scripts.json`, an optional
+scheduling memo capped at 1 MiB. It avoids cleaning scripts a successful
+Current Cargo build did not schedule under exactly the same inputs. Deleting
+it is safe: the next run uses conservative script cleaning and can establish
+it again. It contains no proof receipt. Source edits and unknown selection
+closures retain conservative cleaning; see the
+[validation record](validation/unscheduled-script-cleaning.md) for scope.
+
 These directories grow with every workspace, copy and configuration you
 verify: one copy of a mid-sized project can take 2 GB. Nothing removes them
 automatically. `sail cache stats` shows their total on its last line, and
