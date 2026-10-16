@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Solver-continuation research now records its failed exactness gates,
+  preserved source/evidence and minimal timer-state reproduction. No solver
+  continuation, runtime pin or default behavior is changed.
 - **Faster managed checks** (#156, [ADR 0047 note](docs/decisions/0047-attribution-logs-on-request.md#note-2026-10-16-cheaper-checks-156)).
   `sail verify` reads the same inputs and receipts as before, completely
   and at the same points around Cargo, but overlaps the reads with Cargo's

@@ -50,3 +50,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0045: A machine-local store of verified registry dependencies](0045-dependency-store.md)
 - [0046: Managed verification is the only `sail verify`](0046-managed-verification-by-default.md)
 - [0047: Attribution logs on request, and cheaper managed checks](0047-attribution-logs-on-request.md)
+- [0051: Solver continuation for changed-check misses (proposed, blocked and unselected)](0051-exact-solver-snapshots.md)
