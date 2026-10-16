@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **Source-suite executable integrity** (#202): cached Verus test executables
+  must match their recorded SHA-256 before a source suite can be reused.
+  Older manifests without these digests require a deliberate source rebuild;
+  changed, missing or duplicate executable entries are rejected.
+
 - **CI image packaging candidate** (#195): checks share a core image with
   every pinned toolchain/runtime; only managed e2e adds the pinned external
   MCP client. Local checks select the same targets. Actual startup improvement
