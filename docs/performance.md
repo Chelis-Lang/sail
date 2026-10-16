@@ -70,7 +70,7 @@ Every `sail verify` is managed verification
 that change it was a thin pass-through, and managed verification was
 `sail verify --incremental`.
 
-The Linux rows of claims 2–5 were re-measured on 2026-10-16 for the change
+The Linux rows of claims 2–5 below retain historical 2026-10-16 measurements for the change
 that made the managed checks cheaper (#156): EC2 c7i.4xlarge, us-east-1,
 Ubuntu 24.04, one timed run at a time and no other work on the host,
 `scripts/perf-host.sh up m114p`, the change applied to `main` `502fc669` (before
@@ -78,7 +78,31 @@ it was rebased onto later `main`), Sail's Verus `73dea021`. The same rotation me
 before the change and the removed pass-through (`SAIL_PERF_BASELINES`); the
 [ADR 0047 note](decisions/0047-attribution-logs-on-request.md#note-2026-10-16-cheaper-checks-156)
 has all four and cites the raw logs. This host ran about 3% slower than the
-rc.5 hosts below (plain vest edit 43.2 s against 42.1 s).
+rc.5 hosts below (plain vest edit 43.2 s against 42.1 s). Those measurements
+precede the rebase and final raw-path spelling correction; they do not qualify
+the final code. The final-code comparison below qualifies the unchanged-run
+gain and a small-project body edit, with a narrower scope.
+
+### Final managed-check comparison
+
+Corrected source `6563a170` against released rc.5 `c3687990`, EC2
+c7i.8xlarge, us-east-1, Ubuntu 24.04, same fork `73dea021` and pinned Z3.
+Three alternating, interleaved rounds use independent warmed compiler targets
+and automatic Sail daemon/cache per project and mode. All 24 measured commands
+exit 0. Seconds:
+
+| Case | rc.5 median | Corrected median |
+|---|---:|---:|
+| Demo unchanged | 0.388 | 0.207 |
+| Demo body edit | 1.154 | 0.957 |
+| Vest unchanged | 1.013 | 0.539 |
+| Vest body edit | 24.078 | 23.817 |
+
+Vest edit ranges overlap (23.86–24.23 s versus 23.70–24.08 s), so this does
+not establish a vest edit gain. This comparison does not qualify cold,
+plain, failing/fixing, MCP or Mac performance. See the
+[validation record](validation/managed-overhead.md) for checksummed raw evidence
+and earlier attempts.
 
 The Linux row of claim 8, and claims 2–5 before that change, were measured
 for release candidate `v0.1.0-rc.5` on 2026-10-15, at `main` `c3687990` (managed by default, the

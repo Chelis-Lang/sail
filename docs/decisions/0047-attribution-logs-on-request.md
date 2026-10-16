@@ -221,8 +221,10 @@ the same point relative to the invocation; nothing is skipped and no
 stamp replaces a content read (ADR 0041):
 
 1. Snapshots collect paths in hashed sets and sort them once by a byte key
-   that orders exactly as `Path` does (a unit test compares the sets with
-   ordered inserts); digests reuse one read buffer per thread.
+   that orders exactly as `Path` does. A stable sort preserves the first raw
+   spelling of equivalent paths, as ordered inserts did; a unit test compares
+   the original path bytes with ordered inserts. Digests reuse one read
+   buffer per thread.
 2. The snapshot before the run is taken while Cargo reads the metadata,
    from what the previous run of the same directory and arguments selected
    (`<cache>/snapshot-hints/`). It is used only if this run's selection
@@ -250,7 +252,9 @@ stamp replaces a content read (ADR 0041):
 7. The driver's complete read of Verus overlaps its dependency reads.
 8. The run's large values are freed off the caller's path.
 
-**Measurements.** `scripts/perf-loops.sh` with `SAIL_PERF_BASELINES`, three
+**Historical measurements.** These precede the rebase and final raw-path
+spelling correction; final-code qualification follows below.
+`scripts/perf-loops.sh` with `SAIL_PERF_BASELINES`, three
 rounds, medians, EC2 c7i.4xlarge (us-east-1, Ubuntu 24.04, no other work
 on the host, one timed run at a time), Sail's Verus `73dea021`,
 2026-10-16. "main" is `502fc669` (#173), the pass-through `4cd6fcaa`.
@@ -296,3 +300,14 @@ unchanged re-runs 0.36 s and 0.10 s over Cargo's no-op):
   would rebuild anyway (it needs Cargo's freshness rules replicated);
   answering Cargo-Verus's own metadata call from Sail's (Cargo-Verus would
   observe metadata taken earlier).
+
+**Final-code qualification.** Corrected `6563a170` against released rc.5
+`c3687990`, isolated c7i.8xlarge/us-east-1, same fork `73dea021` and pinned Z3,
+three alternating, interleaved rounds: unchanged demo 0.388 to 0.207 s,
+unchanged vest 1.013 to 0.539 s, demo body edit 1.154 to 0.957 s, vest body
+edit 24.078 to 23.817 s. Vest edit ranges overlap, so that edit gain remains
+inconclusive. Independent compiler and automatic SMT-daemon caches were warm
+for every measured mode; all 24 measured commands exit 0. There is no final-head
+cold, plain, failing/fixing, MCP or Mac performance claim. The
+[validation record](../validation/managed-overhead.md) records full native gates,
+standard conformance, raw evidence hashes and superseded attempts.
