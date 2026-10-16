@@ -280,3 +280,30 @@ The external `live-prefix-review-2026-10-16` evidence set contains:
   IronKV sample also has the retained memory-observer exit refusal. Live
   timing is not run. This is a failed research gate, not a solver verdict
   disagreement or an accepted performance result.
+
+### Driver success and evidence-retention correction
+
+The isolated follow-up changes only the standalone Python driver's success
+predicate and final manifest retention. A candidate now requires actual exit 0
+from both its process and the fresh reference, as well as the unchanged exact
+stream/status/image conditions. Equal nonzero or signal exits no longer pass.
+If final pool cleanup raises, the manifest retains that cleanup error alongside
+an earlier failure and marks the candidate failed; writing the manifest is
+attempted independently of cleanup. No native guard, raw comparison, timing
+policy, input or production integration changes.
+
+Eight actual-driver/owned-child fixture controls pass: equal successful exits,
+equal nonzero exits, equal signal exits, different statuses, fresh fallback,
+final cleanup error, nonzero plus cleanup error, and an original identity
+observation error plus cleanup error. Raw NUL/non-UTF8 bytes and child statuses
+are retained. Linux/image/RSS admission is explicitly doubled; these are
+functional driver tests, not native Z3 or performance qualification. The same
+controls against archived driver `cadb166f` fail the two equal-error acceptance
+and three cleanup-retention cases. Core `a9704a14` is unchanged, so the native
+28 core checks above remain their original source scope. The actual ESRCH
+failure is not excused, and no real-trace sample or timing decision is rerun.
+
+External driver-control manifests: corrected
+`20d72a1d764e12924447e7de3b9c9d39df4c67e05465a56aa16afc2119fd12ef`,
+archived negative control
+`d6cf9f75774e5ce51b2233af2259d57279ce598b92b89045979f045205eba797`.

@@ -73,7 +73,24 @@ limits; explicitly choose bounded limits for long workloads. Every limit and
 timeout/refusal is recorded. A fallback or failed raw comparison exits 1 and
 stays in the sample set. The driver retains candidate, preparation and
 independent fresh stdout/stderr/status. Raw equality is never masked. The
-fresh reference includes image-validation overhead and is labelled guarded;
+candidate gate requires both candidate and reference exit 0; equal failing or
+signal exits cannot pass. A final cleanup error forces failure and is retained
+alongside any earlier error in the manifest. Cleanup is still attempted.
+These driver paths have eight actual-child fixture controls:
+
+```sh
+python3 native/sail-live-prefix/test-driver.py --out NEW_DRIVER_CONTROLS
+```
+
+They execute the driver, core threads, pipes, child status and cleanup, with
+explicit Linux/image/RSS guard doubles so they can run on either platform.
+They do not qualify those native guards, Z3, performance or a timing exception.
+The archived driver fails five controls: equal nonzero and signal exits, and
+three final-cleanup manifest-retention cases. The native 28 core controls remain
+a separate unchanged source/evidence scope; the memory-observer exit race and
+both real-trace raw failures remain unresolved.
+
+The fresh reference includes image-validation overhead and is labelled guarded;
 this is not a plain-Verus benchmark. Preparation CPU, total solver CPU and
 foreground/fallback latency are separate: background work is not saved CPU.
 The driver waits until ready or the preparation window expires before claiming

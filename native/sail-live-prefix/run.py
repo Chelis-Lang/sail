@@ -274,7 +274,8 @@ def main():
             manifest['raw_equal'] = (all(manifest[k] for k in ['stdout_equal', 'stderr_equal', 'exit_equal', 'identity_stable'])
                                      and not result['error'] and not reference['error'])
             manifest['candidate_gate_pass'] = (manifest['raw_equal'] and manifest['mode'] == 'one-use-live-prefix'
-                                               and manifest['native_images_verified'])
+                                               and manifest['native_images_verified']
+                                               and result['exit'] == 0 and reference['exit'] == 0)
             if args.native_metrics:
                 manifest['native_metrics'] = dict(background_and_serving_cpu=prepared_cpu,
                     candidate_total_solver_cpu=prepared_cpu + fallback_cpu, fallback_solver_cpu=fallback_cpu,
@@ -286,9 +287,14 @@ def main():
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         manifest.update(error=str(error), candidate_gate_pass=False)
     finally:
-        if pool is not None:
-            pool.close()
-        (args.out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+        try:
+            if pool is not None:
+                pool.close()
+        except BaseException as error:
+            manifest.setdefault('cleanup_errors', []).append(type(error).__name__ + ': ' + str(error))
+            manifest.update(candidate_gate_pass=False, fresh_control_pass=False)
+        finally:
+            (args.out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest))
     return 0 if manifest.get('candidate_gate_pass', False) or manifest.get('fresh_control_pass', False) else 1
 
