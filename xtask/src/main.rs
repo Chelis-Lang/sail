@@ -21,7 +21,7 @@ commands:
     build-verus-engine [--force] [--keep-intermediates]
                     build the isolated optional interactive proof engine
     fetch-verus     install the pinned Verus release (corpus/toolchain.toml)
-    build-verus-source [--force] [--keep-intermediates] [--singular]
+    build-verus-source [--force] [--keep-intermediates] [--fork] [--features=singular]
                     build the pinned Verus commit from source, with its
                     rust_verify_test binaries (deep tier; ADR 0019)
 ";

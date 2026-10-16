@@ -239,9 +239,11 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   Run it before pushing changes that touch platform-specific code.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
   `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
-  suite (4,695 cases, including 58 ignored), plain vs `sail-z3` test by test,
-  from a source build of the pinned Verus commit that the step makes first under
-  `<cache>/verus-src-build/<commit>` (`cargo xtask build-verus-source`).
+  suite, the pinned fork with and without `sail-z3`, with exact output checks,
+  then the same stock test programs against stock and the fork (ADR 0042's
+  complete diagnostic messages). The step builds isolated fork-test and stock
+  source variants first (`cargo xtask build-verus-source --fork` and without
+  `--fork`). Fork-only regression tests run in the exact fork arm.
   `cache` adds rounds with the cache daemon; ARGS such as `--filter modes::`
   or `--every 10` select a subset. It runs on the host too (`ci/run.sh
   deep-rvt`). See ADR 0019.

@@ -34,6 +34,8 @@ projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
 [Socket fixture retirement](validation/mcp-fixture-retirement.md) records the
 MCP test-server cancellation regression and its remaining validation scope.
+[Deep Verus checks](deep-verus-tests.md) explains the fork and stock source
+variants, exact shim comparisons and the independent stock test-program oracle.
 [Releasing](releasing.md) gives the release procedure, the archive names and
 layout, and how `sail` finds the bundled engine.
 [Managed runs](managed-cold-start.md) explains what the first managed run costs
