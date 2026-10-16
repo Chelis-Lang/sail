@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **CI image packaging candidate** (#195): checks share a core image with
+  every pinned toolchain/runtime; only managed e2e adds the pinned external
+  MCP client. Local checks select the same targets. Actual startup improvement
+  remains unqualified; required checks and timeouts are unchanged.
+
 - **Faster managed checks** (#156, [ADR 0047 note](docs/decisions/0047-attribution-logs-on-request.md#note-2026-10-16-cheaper-checks-156)).
   `sail verify` reads the same inputs and receipts as before, completely
   and at the same points around Cargo, but overlaps the reads with Cargo's

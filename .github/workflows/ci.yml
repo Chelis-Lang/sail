@@ -300,7 +300,7 @@ jobs:
       contents: read
       packages: read
     container:
-      image: ${{ needs.image.outputs.image }}
+      image: ${{ needs.image.outputs.mcp_image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

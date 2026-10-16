@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 # Prints the CI image tag: a hash of every input to ci/Dockerfile, so the
-# image is rebuilt exactly when one of them changes.
+# image is rebuilt exactly when one of them changes. The optional core target
+# omits only the MCP smoke client; mcp (the default) keeps the complete image.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-python3 - <<'PY'
+case "${1:-mcp}" in
+  core|mcp) ;;
+  *) echo 'usage: ci/image-tag.sh [core|mcp]' >&2; exit 2 ;;
+esac
+[ "$#" -le 1 ] || { echo 'usage: ci/image-tag.sh [core|mcp]' >&2; exit 2; }
+python3 - "${1:-mcp}" <<'PY'
 import hashlib
+import sys
 from pathlib import Path
 
 inputs = (
@@ -18,5 +25,6 @@ contents = [Path(name).read_bytes() for name in inputs]
 digest = hashlib.sha256()
 for content in contents:
     digest.update(content)
-print(digest.hexdigest()[:16])
+suffix = "-core" if sys.argv[1] == "core" else ""
+print(digest.hexdigest()[:16] + suffix)
 PY

@@ -179,6 +179,14 @@ ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cac
 ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
 
+The image has two packaging targets from one Dockerfile: `core` retains every
+pinned toolchain and verifier/runtime; `mcp` adds the pinned real MCP client.
+CI's managed e2e phase and local `e2e managed`/full `e2e` use `mcp`; other
+phases use `core`. `ci/local.sh` selects the matching target automatically.
+Direct Dockerfile builds still default to the complete `mcp` target. The
+[startup record](docs/validation/ci-image-startup.md) distinguishes the
+packaging candidate from measured CI acceptance.
+
 On the host, the fast loop is still `cargo nextest run --workspace` plus the
 gate commands in `ci/run.sh`. `cargo xtask fetch-verus` installs the pinned
 Verus for host runs.
