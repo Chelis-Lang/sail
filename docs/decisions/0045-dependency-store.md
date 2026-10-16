@@ -212,3 +212,37 @@
 - Same trust boundary as receipts (ADR 0023): the checksums detect accidental
   corruption, not a local writer who fabricates both the manifest and its
   files. The store lives in the user's own cache directory.
+
+## Amendment (2026-10-16, #177 and rc.5 finding 15): selection-free key and receipt binding
+
+**Key.** Decision 3 bound the exact arguments. The `-p a` run of the #121
+workspace therefore missed the entry a single-package project had stored,
+although the resolve nodes of vstd's closure were identical in both
+(15 packages) and the same workspace run from the member's directory without
+`-p` was seeded. The key now uses the compiler family digest without the
+arguments that only select workspace packages and targets (`-p`/`--package`,
+`--workspace`/`--all`, `--exclude`, `--lib`, `--bin`, `--bins`; arguments
+after `--` are kept). Cargo-Verus gives a dependency the same verifier
+arguments whichever members are selected; a selection that changes how the
+dependency compiles (feature unification) changes Cargo's unit hashes, so
+Cargo rebuilds the seeded units and the stored receipt's artifact names do
+not match (decision 6): a miss, never a wrong reuse.
+
+**Receipt binding.** A receipt's input revision bound the bytes of the
+workspace `Cargo.toml` and `Cargo.lock` for every target, so adding any
+dependency cleaned vstd and verified it again (22 s on a c7i.8xlarge; plain
+Cargo-Verus keeps vstd fresh). For a target whose whole closure comes from a
+registry or git source (the candidates of decision 2), the revision now binds
+the closure's resolve nodes and the workspace's `[profile]` table, the same
+inputs decision 3 argues are complete, together with the closure's file
+contents, compiler-declared inputs, the `rust-toolchain` files and the Cargo
+configuration, in place of those two files' bytes. Other targets keep the
+full binding, and run currentness and read checks still compare every
+manifest and lockfile (ADR 0041). Cargo's own freshness and the receipt's
+artifact and dependency digests are unchanged.
+
+**Removed script units.** A build-script record whose unit directory no longer
+exists (Sail's targeted `cargo clean -p`, after which a changed profile gives
+the rebuilt unit another directory) is dropped after the run. Kept, it could
+never match its output again, and the next run cleaned the package and its
+dependents: after a profile change, vstd was verified a second time.

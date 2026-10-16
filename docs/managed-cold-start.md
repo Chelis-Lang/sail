@@ -27,7 +27,10 @@ it into its new Cargo target and verifies only its own crates. Identically
 means the same vstd version and features, the same versions of vstd's own
 dependencies (as `Cargo.lock` resolves them), the same `[profile]` settings,
 toolchain, Sail and Verus, Cargo configuration, relevant environment and
-`sail verify` arguments. On a native Linux host
+`sail verify` arguments, apart from which packages and targets they select
+(`-p`, `--workspace`, `--exclude`, `--lib`, `--bin`, `--bins`): `sail verify
+-p a` in a workspace starts from the vstd a single-package project stored.
+On a native Linux host
 (`c7i.4xlarge`, the method under [performance](performance.md#5-cold-first-run)):
 
 | First managed run of | Before | With the store | Plain `cargo verus verify` |
@@ -99,6 +102,35 @@ A compile error in a dependency, a crash, an interrupted build, a partial
 build-script records, and the next run rebuilds those packages. A failed proof
 or compile error never produces a receipt, so the failing crate itself is
 always verified again.
+
+### Adding a dependency
+
+vstd's receipt describes vstd, not the project around it. For a dependency
+whose whole closure comes from a registry or git source, the receipt binds
+how Cargo resolved that closure (package versions, enabled features and
+edges), the workspace's `[profile]` table, the closure's own bytes, the
+`rust-toolchain` files and the Cargo configuration, but not the bytes of the
+workspace `Cargo.toml` and `Cargo.lock`
+([#177](https://github.com/Chelis-Lang/sail/issues/177)). Adding a
+dependency, a dev-dependency or a `build.rs` therefore verifies only the
+crate, as plain `cargo verus verify` does. A change that reaches vstd's
+closure (a profile setting, another version of one of its dependencies, a
+feature some new dependency enables on a shared crate such as `syn`) still
+verifies vstd, once: the run after it reuses vstd again. A path dependency
+in the closure keeps the workspace manifest and lockfile in the binding.
+Whether a run is Current, and every later read of it, still compare every
+manifest and lockfile.
+
+On a native `c7i.8xlarge` (us-east-1), one-function project, each step after
+an established run:
+
+| Step | Before | After | Plain `cargo verus verify` |
+|---|---:|---:|---:|
+| add `serde = "=1.0.228"` | 22.3 s, vstd verified | 2.6 s | 2.2 s |
+| add a `libc` dev-dependency and an empty `build.rs` | 22.2 s, vstd verified | 2.1 s | 0.8 s |
+| add `[profile.dev] debug-assertions = false` | 28.1 s, vstd verified | 28.5 s, vstd verified | 29.1 s |
+| the unchanged run after it | 22.1 s, vstd verified | 0.5 s | 0.1 s |
+| first `-p a` run of the #121 workspace, store filled by another project | 28.9 s, vstd verified | 1.3 s | |
 
 ## Build scripts
 
