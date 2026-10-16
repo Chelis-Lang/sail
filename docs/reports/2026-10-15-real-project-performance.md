@@ -93,8 +93,16 @@ source; the targets are listed in the script):
 | catalog (vest) | the frozen catalogue edit used by `docs/performance.md` |
 | upstream-body, upstream-spec (verismo) | the same kinds of edit in the dependency crate `verismo_tspec` |
 
-Modes: plain `cargo verus verify` (`focus` for anvil), `sail verify`,
+Historical modes: plain `cargo verus verify` (`focus` for anvil), `sail verify`,
 `sail verify --incremental`, and both Sail and plain with the fork's Verus.
+The current harness defaults to `plain sail`: since ADR 0046 made managed
+verification the default, `--incremental` selects the same behavior and no
+longer needs a second default timing arm. Explicit `SAIL_PERF_MODES` can
+still select `incremental`, and the report reader retains that historical
+mode and its earlier result files. The measurements below retain their
+original modes. The [mode-default validation](../validation/perf-real-default-modes.md)
+records the gate and historical-reader controls; it claims no new timings.
+
 Three rounds per project, two for anvil (124 s per plain run), each round
 starting from a fresh copy and an empty cache. Every run passes
 `--time-expanded`. Cache counters come from `sail status --json` before and

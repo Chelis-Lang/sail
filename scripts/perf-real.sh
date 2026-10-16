@@ -24,10 +24,10 @@
 #               reruns for nondeterminism)
 #   each edit   applied alone to the pristine source (see `edits_PROJECT`)
 #   noopend     the pristine source plus a comment, after the edits
-# Modes (SAIL_PERF_MODES, default "plain sail incremental"):
+# Modes (SAIL_PERF_MODES, default "plain sail"):
 #   plain        cargo verus verify (focus with --verify-module)
 #   sail         sail verify
-#   incremental  sail verify --incremental
+#   incremental  explicit legacy alias for sail verify --incremental
 #   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK first on PATH
 # Every run passes `--time-expanded` to Verus. Sail runs record the daemon's
 # counters (`sail status --json`) before and after, and the shim's per-session
@@ -483,7 +483,7 @@ if [ "$cmd" = det ]; then
 fi
 
 : >"$results"
-modes=(${SAIL_PERF_MODES:-plain sail incremental})
+modes=(${SAIL_PERF_MODES:-plain sail})
 header | tee "$out/header.txt"
 echo "modes: ${modes[*]}; rounds: $count; edits: $(selected_edits | awk '{print $1}' | tr '\n' ' ')" | tee -a "$out/header.txt"
 for ((r = 1; r <= count; r++)); do
