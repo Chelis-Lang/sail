@@ -7,7 +7,9 @@ daemon, the way an edit loop does:
 
   1. base: every transcript of the unchanged run (fills the cache; with
      snapshots, takes them);
-  2. edit: every transcript of the edited run, timed one at a time.
+  2. edit: for each edited run in turn, every transcript, timed one at a
+     time (each edit is measured against the cache and snapshots the base
+     run left, plus whatever earlier edits added).
 
 Each edit transcript is paired with the base transcript sharing its longest
 prefix. For each edit transcript it records wall time, whether a solver
@@ -17,7 +19,7 @@ input once `:time`/`:memory`/`:max-memory` are masked (byte-identical
 otherwise).
 
   scripts/snapshot-edit-replay.py --sail DIR --z3 Z3 [--lib LIB] [--gap-ms N]
-      --base TRACE_DIR --edit TRACE_DIR --out OUT_DIR [--label L] [--only-changed]
+      --base TRACE_DIR --edit TRACE_DIR... --out OUT_DIR [--label L] [--only-changed]
 
 `--lib` enables snapshots (mode `snap`); without it the mode is `off`.
 Writes OUT_DIR/<label>.jsonl and prints a summary.
@@ -33,11 +35,13 @@ import subprocess
 import sys
 import time
 
-MASK = re.compile(rb"(:(?:time|memory|max-memory)\s+)[0-9.]+")
+# Statistics that differ between any two plain runs (and `:time` is printed
+# only when non-zero), as in `sail-bench snapshot-exactness`.
+MASK = re.compile(rb"\s*:(?:time|memory|max-memory|num-allocs)\s+[0-9.]+")
 
 
 def masked(b):
-    return MASK.sub(rb"\1X", b)
+    return MASK.sub(b"", b)
 
 
 def common_prefix(a, b):
@@ -67,7 +71,7 @@ def main():
     ap.add_argument("--lib")
     ap.add_argument("--gap-ms", default="0")
     ap.add_argument("--base", required=True)
-    ap.add_argument("--edit", required=True)
+    ap.add_argument("--edit", required=True, nargs="+")
     ap.add_argument("--out", required=True)
     ap.add_argument("--label", default=None)
     ap.add_argument("--only-changed", action="store_true",
@@ -113,7 +117,6 @@ def main():
         return p.stdout, p.returncode, secs, rec
 
     base = load(a.base)
-    edit = load(a.edit)
     t = time.time()
     for data in base.values():
         through_shim(data)
@@ -132,35 +135,39 @@ def main():
                             mem_pss += int(line.split()[1])
                 except OSError:
                     pass
-    rows = []
-    for path, data in edit.items():
-        best, bp = None, -1
-        for bpath, bdata in base.items():
-            c = common_prefix(bdata, data)
-            if c > bp:
-                best, bp = bpath, c
-        changed = best is None or base[best] != data
-        if a.only_changed and not changed:
-            continue
-        out, code, secs, rec = through_shim(data)
-        fresh = subprocess.run([a.z3, "-smt2", "-in"], input=data, capture_output=True)
-        rows.append(dict(
-            file=path, base=best, common_prefix=bp, bytes=len(data), changed=changed,
-            secs=round(secs, 3), exit=code, fresh_exit=fresh.returncode,
-            identical=out == fresh.stdout, masked_identical=masked(out) == masked(fresh.stdout),
-            solver_started=rec.get("solver_started"), replies_served=rec.get("replies_served"),
-            resumed_at=rec.get("snapshot_resumed_at")))
-    with open(os.path.join(a.out, label + ".jsonl"), "w") as f:
-        for r in rows:
-            f.write(json.dumps(r) + "\n")
-    tot = sum(r["secs"] for r in rows)
-    bad = [r for r in rows if not r["masked_identical"] or r["exit"] != r["fresh_exit"]]
-    resumed = [r for r in rows if r["resumed_at"] is not None]
-    print(f"{label}: base {len(base)} transcripts in {base_secs:.1f} s; parked {parked} "
-          f"(pss {mem_pss} kB); edit {len(rows)} transcripts in {tot:.2f} s; "
-          f"resumed {len(resumed)}; output different from fresh z3: {len(bad)}")
-    for r in bad:
-        print("  DIFF", r["file"])
+    print(f"{label}: base {len(base)} transcripts in {base_secs:.1f} s; parked {parked} (pss {mem_pss} kB)")
+    for edit_dir in a.edit:
+        edit = load(edit_dir)
+        name = os.path.basename(os.path.normpath(edit_dir))
+        rows = []
+        for path, data in edit.items():
+            best, bp = None, -1
+            for bpath, bdata in base.items():
+                c = common_prefix(bdata, data)
+                if c > bp:
+                    best, bp = bpath, c
+            changed = best is None or base[best] != data
+            if a.only_changed and not changed:
+                continue
+            out, code, secs, rec = through_shim(data)
+            fresh = subprocess.run([a.z3, "-smt2", "-in"], input=data, capture_output=True)
+            rows.append(dict(
+                edit=name, file=path, base=best, common_prefix=bp, bytes=len(data), changed=changed,
+                secs=round(secs, 3), exit=code, fresh_exit=fresh.returncode,
+                identical=out == fresh.stdout, masked_identical=masked(out) == masked(fresh.stdout),
+                solver_started=rec.get("solver_started"), replies_served=rec.get("replies_served"),
+                resumed_at=rec.get("snapshot_resumed_at")))
+        with open(os.path.join(a.out, f"{label}-{name}.jsonl"), "w") as f:
+            for r in rows:
+                f.write(json.dumps(r) + "\n")
+        tot = sum(r["secs"] for r in rows)
+        bad = [r for r in rows if not r["masked_identical"] or r["exit"] != r["fresh_exit"]]
+        resumed = [r for r in rows if r["resumed_at"] is not None]
+        print(f"{label} {name}: {len(rows)} transcripts in {tot:.2f} s; solver started "
+              f"{sum(1 for r in rows if r['solver_started'])}; resumed {len(resumed)}; "
+              f"output different from fresh z3: {len(bad)}", flush=True)
+        for r in bad:
+            print("  DIFF", r["file"])
     daemon.send_signal(signal.SIGTERM)
     daemon.wait(timeout=30)
     shutil.rmtree(snapdir, ignore_errors=True)
