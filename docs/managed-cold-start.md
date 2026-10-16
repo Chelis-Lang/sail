@@ -123,8 +123,9 @@ corpus qualification; see [its validation record](validation/retained-proofs.md)
 Uncovered inputs or changes during recording or restoration verify normally.
 The candidate also observes ancestor replacement, intermediate symlink changes
 and mount changes, even when the original bytes return before a check. Missing
-native observation or an excessive resolution inventory declines restoration;
-the crate verifies normally. Performance must be remeasured with these guards.
+native observation, unsupported filesystems (including network/FUSE paths), or
+an excessive resolution inventory declines restoration; the crate verifies
+normally. Performance must be remeasured with these guards.
 
 With `--output json`, jobs and MCP, the reverted target is `reused`, names
 the run that verified it as `establishing_run`, and the note `SAIL3132` says

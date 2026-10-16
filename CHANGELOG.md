@@ -17,8 +17,8 @@ semantic versioning once the API is published.
   dependencies, the environment Cargo gives it, the arguments and the
   toolchain) to have the recorded content. Native inode and mount observers
   refuse restoration after an ancestor or intermediate alias changes during a
-  run, even if its original content returns; unavailable observation verifies
-  normally. `--output json`, jobs and MCP
+  run, even if its original content returns; unavailable observation or
+  unsupported filesystems verify normally. `--output json`, jobs and MCP
   report the target as reused, name the run that verified it, and add the
   note `SAIL3132`. Each logical target keeps its four most recently used proofs
   across compiler-argument and Cargo-unit variants

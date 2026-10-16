@@ -119,6 +119,14 @@
    after observation activates. No unsafe Rust exception or asynchronous
    notification thread is introduced. Borrowed file descriptors stay open until
    the queue is dropped; no unsupported or overflowed queue authorizes reuse.
+
+   Watch attachment opens use safe `rustix` with nonblocking/no-follow/close-on-exec
+   flags and require a held regular file or directory. A FIFO substituted after
+   stat refuses without waiting. Each observed directory/root also requires a
+   supported held filesystem: local APFS/HFS on Mac, or ext2/3/4, XFS, Btrfs,
+   tmpfs or overlayfs on Linux. Network, pseudo, FUSE and unknown types decline
+   restoration. Predicate checks cover admission; actual local execution here
+   is APFS, and the Linux/HFS gates are still required before their acceptance.
 4. **Provenance (charter rule 7).** A restored target is `reused` and its
    `establishing_run` is the run that verified it; the run adds
    `SAIL3132: <target> has the content that run <id> verified; its retained

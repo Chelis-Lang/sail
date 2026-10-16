@@ -129,5 +129,28 @@ and `5d04f05ea8fb62b820c1477a24c5deffbbd0f1b33354d026312b2153c189855d`.
 Release clippy for all crate targets passes after a lint-only in-place parent
 traversal change (log SHA-256
 `1d6caa2c58634f24b16b8f6de66ff5d8c855d6ca5a160957eae5411ed3c5a42e`).
-These focused checks do not qualify the final shared observer's filesystem
-admission or nonblocking-open hardening, which remain in progress.
+These checks precede the shared observer's final filesystem-admission and
+nonblocking-open hardening, qualified below.
+
+
+The final shared observer opens watch endpoints with safe nonblocking,
+no-follow, close-on-exec descriptors, requires regular-file/directory type,
+and admits only the documented local filesystem types. Every directory from
+the source topology pass participates, including already-mounted subtrees.
+The actual-source FIFO/watch test refuses without a peer; restoring the old
+blocking watch-open variant fails its two-second assertion (exit 101, log
+SHA-256 `266f26b07cf298b87a7c43827149dbd4801155fc109f212d446ab041c895f1e7`).
+Admission tests cover APFS/HFS local flags and recognized Linux types versus
+network, pseudo, FUSE and unknown types. This is predicate scope; actual Mac
+filesystem execution is APFS, and native Linux/HFS execution is not claimed.
+
+With the exact shared observer source SHA-256
+`4fcb814a31c29aab0c49c115f5a2986a0023a0526e9bbef8b3338cff2bfec1a4`,
+all 186 `sail-verus` library tests pass serially, including actual positive
+retained-proof A → B → A and generated-input reuse, both ABA regressions and
+bounded FIFO refusal. The bounded release log SHA-256 is
+`fd2de65bd6313ea51747e742e2befd493d6a03299cec4e8fd1ab756c9b7160a3`.
+All-target release clippy passes (log SHA-256
+`7db328f8d531582edece0c006edb0c4eeca09066749f3eb0fab37ed6fb61e85f`).
+These checks are the final focused Mac fixture scope, not the full host,
+solver, real Verus conformance or performance gates.
