@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "projects": {
+    "vest": {
+      "corpus_entry": "vest",
+      "commit": "11af01ddaef76cceded03517cd48764adb9d35b1",
+      "source_dir": "vest-11af01ddaef7",
+      "files": {
+        "vest_lib/src/asn1/der_ord.rs": "008dbaed1e93fba4f127fe35125cc4629f139b753f2833fe9899e5a1efacade1",
+        "vest_lib/src/core/spec.rs": "a6b2096eefe800d3c08d448596af426e7692fe98614e3a65ad74e5d9a6a49091"
+      },
+      "edits": [
+        {
+          "id": "comment",
+          "kind": "comment",
+          "file": "vest_lib/src/asn1/der_ord.rs",
+          "before": "//! Allocation-free comparison of values by their complete DER encodings.\n#![allow(unused_variables)]\n\nuse crate::asn1::set_of::*;\nuse crate::asn1::tag::TAG_FMT_MAX_BYTE_LEN;\nuse crate::asn1::{\n    ASN1Fmt, Any, AnyFmt, AnySpec, BitString, BitStringFmt, Bi",
+          "replacement": "// sail-incidental: comment-only edit\n//! Allocation-free comparison of values by their complete DER encodings.\n#![allow(unused_variables)]\n\nuse crate::asn1::set_of::*;\nuse crate::asn1::tag::TAG_FMT_MAX_BYTE_LEN;\nuse crate::asn1::{\n    ASN1Fmt, Any, AnyFmt, AnySpec, BitString, BitStringFmt, Bi"
+        },
+        {
+          "id": "blank",
+          "kind": "blank",
+          "file": "vest_lib/src/asn1/der_ord.rs",
+          "before": "//! Allocation-free comparison of values by their complete DER encodings.\n#![allow(unused_variables)]\n\nuse crate::asn1::set_of::*;\nuse crate::asn1::tag::TAG_FMT_MAX_BYTE_LEN;\nuse crate::asn1::{\n    ASN1Fmt, Any, AnyFmt, AnySpec, BitString, BitStringFmt, Bi",
+          "replacement": "\n//! Allocation-free comparison of values by their complete DER encodings.\n#![allow(unused_variables)]\n\nuse crate::asn1::set_of::*;\nuse crate::asn1::tag::TAG_FMT_MAX_BYTE_LEN;\nuse crate::asn1::{\n    ASN1Fmt, Any, AnyFmt, AnySpec, BitString, BitStringFmt, Bi"
+        },
+        {
+          "id": "helper-insert",
+          "kind": "helper-insert",
+          "file": "vest_lib/src/asn1/der_ord.rs",
+          "before": "broadcast proof fn lemma_star_consistent_index<A: Consistency>(\n",
+          "replacement": "pub proof fn sail_incidental_helper(x: int)\n    ensures x + 0 == x,\n{\n}\n\nbroadcast proof fn lemma_star_consistent_index<A: Consistency>(\n"
+        },
+        {
+          "id": "helper-move",
+          "kind": "helper-move",
+          "file": "vest_lib/src/core/spec.rs",
+          "remove": "/// Returns `true` when parser `p` fails on input `ibuf`.\npub open spec fn parser_fails_on<P: SpecParser>(p: P, ibuf: Seq<u8>) -> bool {\n    p.spec_parse(ibuf) is None\n}\n\n",
+          "insert_before": "/// Two parsers have disjoint domains if no input can be successfully parsed by both.\n"
+        },
+        {
+          "id": "local-rename",
+          "kind": "local-rename",
+          "file": "vest_lib/src/core/spec.rs",
+          "before": "    forall|input: Seq<u8>| p1.spec_parse(input) is Some && p2.spec_parse(input) is Some ==> false\n",
+          "replacement": "    forall|sail_incidental_input: Seq<u8>| p1.spec_parse(sail_incidental_input) is Some && p2.spec_parse(sail_incidental_input) is Some ==> false\n"
+        }
+      ]
+    },
+    "capybarakv": {
+      "corpus_entry": "verified-storage",
+      "commit": "41cab95051229ebd457b4eed7fc111e3e7c9099c",
+      "source_dir": "verified-storage-41cab9505122",
+      "files": {
+        "capybaraKV/capybarakv/src/common/subrange_v.rs": "eee551c93b41865e63882b8695ea6aef53ac9d6ebfc84428f5afdd1bb9ac18a7",
+        "capybaraKV/capybarakv/src/kv2/rwkv_v.rs": "5b53b1e3886b93c3e7bb9c1e15c81c72946bc72102444ab9b7be0379db758c32"
+      },
+      "edits": [
+        {
+          "id": "comment",
+          "kind": "comment",
+          "file": "capybaraKV/capybarakv/src/kv2/rwkv_v.rs",
+          "before": "#![allow(unused_imports)]\nuse vstd::prelude::*;\n\nuse super::concurrentspec_t::*;\nuse super::impl_v::*;\nuse super::recover_v::*;\nuse super::rwkv_t::*;\nuse super::rwlock_t::{\n    RwLockPredicate, RwLockReadGuardWithPredicate, RwLockWithPredicate, RwLockWrite",
+          "replacement": "// sail-incidental: comment-only edit\n#![allow(unused_imports)]\nuse vstd::prelude::*;\n\nuse super::concurrentspec_t::*;\nuse super::impl_v::*;\nuse super::recover_v::*;\nuse super::rwkv_t::*;\nuse super::rwlock_t::{\n    RwLockPredicate, RwLockReadGuardWithPredicate, RwLockWithPredicate, RwLockWrite"
+        },
+        {
+          "id": "blank",
+          "kind": "blank",
+          "file": "capybaraKV/capybarakv/src/kv2/rwkv_v.rs",
+          "before": "#![allow(unused_imports)]\nuse vstd::prelude::*;\n\nuse super::concurrentspec_t::*;\nuse super::impl_v::*;\nuse super::recover_v::*;\nuse super::rwkv_t::*;\nuse super::rwlock_t::{\n    RwLockPredicate, RwLockReadGuardWithPredicate, RwLockWithPredicate, RwLockWrite",
+          "replacement": "\n#![allow(unused_imports)]\nuse vstd::prelude::*;\n\nuse super::concurrentspec_t::*;\nuse super::impl_v::*;\nuse super::recover_v::*;\nuse super::rwkv_t::*;\nuse super::rwlock_t::{\n    RwLockPredicate, RwLockReadGuardWithPredicate, RwLockWithPredicate, RwLockWrite"
+        },
+        {
+          "id": "helper-insert",
+          "kind": "helper-insert",
+          "file": "capybaraKV/capybarakv/src/kv2/rwkv_v.rs",
+          "before": "proof fn linearize_nop<PM, K, I, L, Op, CB>(\n",
+          "replacement": "pub proof fn sail_incidental_helper(x: int)\n    ensures x + 0 == x,\n{\n}\n\nproof fn linearize_nop<PM, K, I, L, Op, CB>(\n"
+        },
+        {
+          "id": "helper-move",
+          "kind": "helper-move",
+          "file": "capybaraKV/capybarakv/src/common/subrange_v.rs",
+          "remove": "// Extracts a subrange of a sequence starting at index `i` with length `len`.\npub open spec fn extract_section<T>(s: Seq<T>, i: int, len: nat) -> Seq<T>\n{\n    s.subrange(i, i + len)\n}\n\n",
+          "insert_before": "// Indicates whether two persistent memory views match within a specified range [start, end).\n"
+        },
+        {
+          "id": "local-rename",
+          "kind": "local-rename",
+          "file": "capybaraKV/capybarakv/src/common/subrange_v.rs",
+          "before": "pub broadcast proof fn broadcast_can_result_from_partial_write_effect_on_match(\n    s2: Seq<u8>,\n    s1: Seq<u8>,\n    write_addr: int,\n    bytes: Seq<u8>\n)\n    requires\n        #[trigger] can_result_from_partial_write(s2, s1, write_addr, bytes),\n        0 <= write_addr,\n        write_addr + bytes.len() <= s1.len(),\n    ensures\n        seqs_match_except_in_range(s1, s2, write_addr, write_addr + bytes.len())\n{\n    let end = write_addr + bytes.len();\n    lemma_can_result_from_partial_write_effect(s2, s1, write_addr, bytes);\n    assert(s1.subrange(0, write_addr) =~= s2.subrange(0, write_addr));\n    assert(s1.subrange(end, s1.len() as int) =~= s2.subrange(end, s1.len() as int));\n}\n\n",
+          "replacement": "pub broadcast proof fn broadcast_can_result_from_partial_write_effect_on_match(\n    s2: Seq<u8>,\n    s1: Seq<u8>,\n    write_addr: int,\n    bytes: Seq<u8>\n)\n    requires\n        #[trigger] can_result_from_partial_write(s2, s1, write_addr, bytes),\n        0 <= write_addr,\n        write_addr + bytes.len() <= s1.len(),\n    ensures\n        seqs_match_except_in_range(s1, s2, write_addr, write_addr + bytes.len())\n{\n    let sail_incidental_end = write_addr + bytes.len();\n    lemma_can_result_from_partial_write_effect(s2, s1, write_addr, bytes);\n    assert(s1.subrange(0, write_addr) =~= s2.subrange(0, write_addr));\n    assert(s1.subrange(sail_incidental_end, s1.len() as int) =~= s2.subrange(sail_incidental_end, s1.len() as int));\n}\n\n"
+        }
+      ]
+    },
+    "ironkv": {
+      "corpus_entry": "verified-ironkv",
+      "commit": "7e35ed097c4089b9fbda483ea2629a0033f4d874",
+      "source_dir": "verified-ironkv-7e35ed097c40",
+      "files": {
+        "ironsht/src/host_impl_v.rs": "105faeeb417840525bc90c16f20015c9b329eb3548c56aa10ed05bcc07ac5c07"
+      },
+      "edits": [
+        {
+          "id": "comment",
+          "kind": "comment",
+          "file": "ironsht/src/host_impl_v.rs",
+          "before": "\nuse crate::abstract_end_point_t::*;\nuse crate::abstract_parameters_t::*;\nuse crate::abstract_service_t::*;\nuse crate::app_interface_t::*;\nuse crate::args_t::*;\nuse crate::cmessage_v::*;\nuse crate::delegation_map_t::*;\nuse crate::delegation_map_v::*;\nuse c",
+          "replacement": "// sail-incidental: comment-only edit\n\nuse crate::abstract_end_point_t::*;\nuse crate::abstract_parameters_t::*;\nuse crate::abstract_service_t::*;\nuse crate::app_interface_t::*;\nuse crate::args_t::*;\nuse crate::cmessage_v::*;\nuse crate::delegation_map_t::*;\nuse crate::delegation_map_v::*;\nuse c"
+        },
+        {
+          "id": "blank",
+          "kind": "blank",
+          "file": "ironsht/src/host_impl_v.rs",
+          "before": "\nuse crate::abstract_end_point_t::*;\nuse crate::abstract_parameters_t::*;\nuse crate::abstract_service_t::*;\nuse crate::app_interface_t::*;\nuse crate::args_t::*;\nuse crate::cmessage_v::*;\nuse crate::delegation_map_t::*;\nuse crate::delegation_map_v::*;\nuse c",
+          "replacement": "\n\nuse crate::abstract_end_point_t::*;\nuse crate::abstract_parameters_t::*;\nuse crate::abstract_service_t::*;\nuse crate::app_interface_t::*;\nuse crate::args_t::*;\nuse crate::cmessage_v::*;\nuse crate::delegation_map_t::*;\nuse crate::delegation_map_v::*;\nuse c"
+        },
+        {
+          "id": "helper-insert",
+          "kind": "helper-insert",
+          "file": "ironsht/src/host_impl_v.rs",
+          "before": "pub fn make_empty_event_results() -> (res: Ghost<EventResults>)\n",
+          "replacement": "pub proof fn sail_incidental_helper(x: int)\n    ensures x + 0 == x,\n{\n}\n\npub fn make_empty_event_results() -> (res: Ghost<EventResults>)\n"
+        },
+        {
+          "id": "helper-move",
+          "kind": "helper-move",
+          "file": "ironsht/src/host_impl_v.rs",
+          "remove": "// Translates Impl/LiveSHT/SchedulerModel.i.dfy :: AllIosAreSends\npub open spec fn all_ios_are_sends(ios: Seq<LSHTIo>) -> bool\n{\n    forall |i: int| 0 <= i && i < ios.len() ==> ios[i] is Send\n}\n\n",
+          "insert_before": "// Translates Impl/LiveSHT/RawIoConsistentWithSpecIO\n"
+        },
+        {
+          "id": "local-rename",
+          "kind": "local-rename",
+          "file": "ironsht/src/host_impl_v.rs",
+          "before": "  rawlog.map_values(|evt: NetEvent| abstractify_net_event_to_lsht_io(evt))\n",
+          "replacement": "  rawlog.map_values(|sail_incidental_evt: NetEvent| abstractify_net_event_to_lsht_io(sail_incidental_evt))\n"
+        }
+      ]
+    }
+  }
+}
