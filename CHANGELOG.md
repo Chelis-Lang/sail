@@ -75,6 +75,11 @@ semantic versioning once the API is published.
   to an explicit `--target-dir`. A loader-variable run (`LD_LIBRARY_PATH` and
   the like) also reports `no_reuse`, with `verified_as` `managed`. Comparisons
   involving these results remain `incomparable`, including saved baselines.
+- The native read-only pruning research controller records cold and edited
+  compiler runs, restores pristine manifests/lockfiles between arms, and
+  fails on verification or exact SMT-stream differences. Its initial
+  Vest/IronKV comparison leaves the compiler candidate unselected; no default
+  runtime or verification behavior changes.
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);
