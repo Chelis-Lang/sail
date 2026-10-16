@@ -37,6 +37,10 @@
 #                SAIL_PERF_SNAPSHOT_GAP_MS (default 1000) the solver time
 #                between snapshots. Parked snapshots and their memory (Linux
 #                PSS) are recorded per run in snapshots.tsv.
+#   shim, shim-snap  plain cargo verus (focus with --verify-module) with
+#                sail-z3 in front of Z3 and a Sail daemon, without and with
+#                snapshots: the solver path alone, as `sail verify` ran it
+#                before ADR 0046 (the Verus in SAIL_PERF_FORK if set)
 # Every run passes `--time-expanded` to Verus. Sail runs record the daemon's
 # counters (`sail status --json`) before and after, and the shim's per-session
 # provenance (SAIL_PROVENANCE_DIR: replies served, solver started).
@@ -61,7 +65,7 @@
 set -euo pipefail
 
 cmd="${1:-}"
-case "$cmd" in run | det | trace | report) ;; *) sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
+case "$cmd" in run | det | trace | report) ;; *) sed -n '2,64p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
 shift
 here="$(cd "$(dirname "$0")" && pwd)"
 sail_root="$(cd "$here/.." && pwd)"
@@ -355,13 +359,16 @@ verus_cmd() { # MODE EXTRA_VERUS_ARGS...
   [ "$partial" = 1 ] && sub=focus
   case "$mode" in
     plain | fork-plain) cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    shim | shim-snap)
+      VERUS_Z3_PATH="$(command -v sail-z3)" SAIL_Z3_PATH="$(dirname "$(command -v verus)")/z3" \
+        cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     sail | fork-sail | snap) sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     incremental) sail verify --incremental ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
   esac
 }
 
 mode_path() { # MODE: PATH for the mode
-  case "$1" in fork-*) echo "$fork:$PATH" ;; *) echo "$PATH" ;; esac
+  case "$1" in fork-* | shim*) [ -n "$fork" ] && echo "$fork:$PATH" || echo "$PATH" ;; *) echo "$PATH" ;; esac
 }
 
 stats() { # -> "hellos gets hits puts" of the daemon for SAIL_CACHE_DIR, or zeros
@@ -433,7 +440,12 @@ run_mode() { # ROUND MODE
   rm -rf "$cache"; mkdir -p "$cache"
   fresh_copy "$dir"
   export SAIL_CACHE_DIR="$cache"
-  if [ "$mode" = snap ]; then
+  if [ "${mode#shim}" != "$mode" ]; then
+    export SAIL_DAEMON_SOCKET="$cache/d.sock"
+    sail serve --socket "$SAIL_DAEMON_SOCKET" --cache "$cache/results" --idle-timeout 0 >"$cache/serve.log" 2>&1 &
+    for _ in $(seq 100); do [ -S "$SAIL_DAEMON_SOCKET" ] && break; sleep 0.1; done
+  fi
+  if [ "$mode" = snap ] || [ "$mode" = shim-snap ]; then
     : "${SAIL_PERF_SNAPSHOT_LIB:?snap mode needs SAIL_PERF_SNAPSHOT_LIB}"
     export SAIL_SNAPSHOT_LIB="$SAIL_PERF_SNAPSHOT_LIB" SAIL_SNAPSHOT_DIR="$out/r$round/sn"
     export SAIL_SNAPSHOT_GAP_MS="${SAIL_PERF_SNAPSHOT_GAP_MS:-1000}" SAIL_SNAPSHOT_TTL_S=7200
@@ -454,6 +466,7 @@ run_mode() { # ROUND MODE
   apply_op "$dir" noop "$noop_file" end
   run_one "$round" "$mode" "$dir" noopend
   pkill -f -- "--socket $cache/" 2>/dev/null || true
+  unset SAIL_DAEMON_SOCKET
   if [ -n "${SAIL_SNAPSHOT_DIR:-}" ]; then
     # Removing the sockets evicts every parked snapshot.
     rm -rf "$SAIL_SNAPSHOT_DIR"
