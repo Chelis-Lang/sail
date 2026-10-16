@@ -31,8 +31,14 @@ on a c7i.4xlarge in us-east-1. Raw archive SHA-256
 That result qualifies the workspace join, not the private fork runtime or any
 source-suite run at this later source. Combined-runtime corpus, determinism and
 performance gates remain separate.
-The subsequent integration with #202's test-executable digests requires a new
-native workspace/routing gate; it remains pending. Its selector fixtures bind
+The subsequent integration with #202's test-executable digests, source
+`b66efa6a`, passes its full native workspace gate: 655 tests passed, 35 skipped
+and two doctests. All 22 built-binary routing controls pass, with their actual
+executable and pinned-solver identities unchanged. Four source inventories
+each match all 554 files and the expected Git/index/untracked state. The
+c7i.4xlarge/us-east-1 run uses image `sail-ci:44261d52f2b2ff03-core`, identity
+`7d76f32afdbcb3040803e916758cd2d8c39e71d4de551a7ead23f6d740fc9415`.
+Its selector fixtures bind
 their newly written list executables and reject legacy digestless or incorrect
 digests. The expanded 22 controls also distinguish nondefault ordinary and
 Singular stock suites from the default by their actual listed markers, and
@@ -43,9 +49,15 @@ The completed #202 integrity/rebuild and full fast/standard runs qualify
 `6ba30636` separately, as recorded in the
 [source-suite integrity record](source-suite-integrity.md).
 There is no fork rebuild, accepted-pin change or publication in this correction.
+The final documentation amendment does not change the qualified implementation
+or routing fixture bytes; the native source above remains the recorded run.
 
 | Attempt | Result / limits | Raw SHA-256 |
 |---|---|---|
+| 2026-10-16, Sail `b66efa6a`, final joined gate/routing run | Native workspace 655 passed, 35 skipped, two doctests; all 22 built-binary selector controls passed; source/runtime identities unchanged. No real source suite is executed by this joined gate. | Final `42a02f66e68227b58f73b914f00fd51938b791f2d7221c0ec7cdd6693b3f91cf`; gate `ccd77d5838686605fae88a3b027337b49da18bcbd99a5e67aa776a22ded9476e`; routing `9fc0d6b353a22868021b77e79ac6ace21ff9ddbc35ae76c89020f9d997f54076` |
+| 2026-10-16, Sail `b66efa6a`, preceding joined attempt | Refused before images or gates: the watchdog command writes its schedule to stderr, while the operational controller read only stdout. Both original streams are retained; no source gate result follows. | Final `d24baf77520e62bae491d7d76b34b04c179b90afbdf30a7a5b38dfd7c6f45638` |
+| 2026-10-16, Sail `b66efa6a`, next joined attempt | Refused before images or gates: operational code subtracted the cleanup reserve after applying the 20-second permission cap, leaving a 0.01-second child timeout. No source gate result follows. | Final `27a280463fbfb65cde40ea082b7e43cf47077dda46cfd39a116ad434177203a9` |
+| 2026-10-16, preceding `ba935014` joined capsule | Stopped before image builds or gates because local evidence-collection free space was below its threshold. No qualification. | No native gate ran. |
 | 2026-10-16, Sail `af339f8a`, same genuine runtime/environment | Native BASIC passed; original VI-0012 regression 1/1 Same, both arms passed in 6.56 s; nine source-JSON regressions Same. Full suite 4,709/4,709 Same (58 ignored), all nonignored plain tests passed. | BASIC `dd39093b23b8c970c687db18014edd90d4c41e8baadb2bd22365ab26fb86e569`; original regression `cc9c1e0087778d3c66dd30fa6810d313c0da8996a62cbaf89e6e07908d32d67a`; JSON `884eab935f931dd26e4ef82eb5ec1b38bb0f9195c2cfacabda817bef42d16d1f`; full suite `b2304b6dd70355fd69a0ad6241c3f2a00c25156e8443ffb357b80005ce165faf` |
 | 2026-10-16, Sail `af339f8a`, replacement remaining-gates controller | Complete fast corpus fetched; determinism helper failed before verifier/SMT execution because its subprocess recording proxy lacked `DEVNULL`. No determinism/standard/deep result follows. The corrected helper is independently tested through the entire committed oracle and TEE; this fixture coverage is not native acceptance. | `5f7d7fdfb1d21f0dcd4dc615b58524a5d72ec1d113b3107bb8dc2636c6aea37f` |
 | 2026-10-16, Sail `af339f8a`, subsequent determinism phase | Preparation failed before any SMT execution: full fast corpus had not been fetched on the fresh host. No determinism, standard or deep result follows. The source-suite pass above remains its own completed scope. | `eec84add58f8e7bc103ec3c5e940019fa976d5cf39623415ba016dbd48971fc2` |
