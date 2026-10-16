@@ -101,6 +101,16 @@ semantic versioning once the API is published.
   every pinned toolchain/runtime; only managed e2e adds the pinned external
   MCP client. Local checks select the same targets. Actual startup improvement
   remains unqualified; required checks and timeouts are unchanged.
+- **Unchanged runs keep scheduled build-script products** (#174). Sail
+  remembers scripts Cargo did not schedule in a successful Current run,
+  bound to the same complete input bytes, graph, selection and runtime
+  context. It no longer repeatedly cleans an unscheduled package and its
+  scheduled same-name version. Any source or configuration change, missing
+  observation or malformed memo retains conservative cleaning. Observed
+  scripts keep their declared-input checks; this memo supplies no proof. In
+  three native rounds on a small same-name normal/dev-dependency fixture,
+  unchanged medians fall from 0.94 s to 0.20 s (plain stock: 0.10 s);
+  [scope and limits](docs/validation/unscheduled-script-cleaning.md).
 
 - Solver-continuation research now records its failed exactness gates,
   preserved source/evidence and minimal timer-state reproduction. No solver
