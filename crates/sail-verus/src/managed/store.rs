@@ -80,14 +80,14 @@ pub(super) struct Candidate {
 /// packages that declare `package.metadata.verus.verify = true`, are not
 /// workspace members or selected targets, and whose whole dependency closure
 /// comes from a registry or git source (never a local path, whose bytes are
-/// per-workspace). The key binds the compiler family (exact arguments,
-/// toolchain, runtime and engine identities, relevant environment and Cargo
+/// per-workspace). The key binds the compiler family (its arguments other
+/// than package and target selection, toolchain, runtime and engine identities, relevant environment and Cargo
 /// configuration bytes), the root, the resolved closure (package ids, enabled
 /// features and dependency edges) and the workspace's `[profile]` table.
 pub(super) fn candidates(
     data: &Value,
     expected: &BTreeSet<(String, String, String)>,
-    compiler_hash: &str,
+    family: &str,
 ) -> Vec<Candidate> {
     let packages: BTreeMap<&str, &Value> = data["packages"]
         .as_array()
@@ -95,12 +95,7 @@ pub(super) fn candidates(
         .flatten()
         .filter_map(|p| Some((p["id"].as_str()?, p)))
         .collect();
-    let members: BTreeSet<&str> = data["workspace_members"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
-        .collect();
+    let members = workspace_members(data);
     let Some(profile) = profile_table(data) else {
         return Vec::new();
     };
@@ -119,34 +114,12 @@ pub(super) fn candidates(
             continue;
         }
         let closure = super::runner::dependency_closure(data, [*id]);
-        let foreign = closure.iter().all(|member| {
-            !members.contains(member.as_str())
-                && packages
-                    .get(member.as_str())
-                    .is_some_and(|p| p["source"].as_str().is_some_and(|s| !s.is_empty()))
-        });
-        if !foreign {
+        let Some(nodes) = foreign_nodes(data, &members, &closure) else {
             continue;
-        }
-        let nodes: Vec<&Value> = closure
-            .iter()
-            .filter_map(|member| {
-                data["resolve"]["nodes"]
-                    .as_array()?
-                    .iter()
-                    .find(|n| n["id"].as_str() == Some(member))
-            })
-            .collect();
-        if nodes.len() != closure.len() {
-            continue;
-        }
-        let Ok(bytes) = serde_json::to_vec(&(
-            "sail-dependency-store-v1",
-            compiler_hash,
-            id,
-            &nodes,
-            &profile,
-        )) else {
+        };
+        let Ok(bytes) =
+            serde_json::to_vec(&("sail-dependency-store-v1", family, id, &nodes, &profile))
+        else {
             continue;
         };
         out.push(Candidate {
@@ -156,6 +129,63 @@ pub(super) fn candidates(
         });
     }
     out
+}
+
+/// The resolve nodes (package id, enabled features, dependency edges) of
+/// every package of `closure`, in package-id order, when the whole closure
+/// comes from registry or git sources: no workspace member and no local path,
+/// whose bytes are per workspace. `None` otherwise, or when a package or its
+/// resolve node is missing.
+fn foreign_nodes<'a>(
+    data: &'a Value,
+    members: &BTreeSet<&str>,
+    closure: &BTreeSet<String>,
+) -> Option<Vec<&'a Value>> {
+    let packages = data["packages"].as_array()?;
+    let foreign = !closure.is_empty()
+        && closure.iter().all(|member| {
+            !members.contains(member.as_str())
+                && packages.iter().any(|p| {
+                    p["id"].as_str() == Some(member.as_str())
+                        && p["source"].as_str().is_some_and(|s| !s.is_empty())
+                })
+        });
+    if !foreign {
+        return None;
+    }
+    let resolve = data["resolve"]["nodes"].as_array()?;
+    let nodes: Vec<&Value> = closure
+        .iter()
+        .filter_map(|member| resolve.iter().find(|n| n["id"].as_str() == Some(member)))
+        .collect();
+    (nodes.len() == closure.len()).then_some(nodes)
+}
+
+/// What the workspace decides for a dependency whose whole closure comes
+/// from registry or git sources (such as vstd), as a digest: how Cargo
+/// resolved the closure (its resolve nodes) and the workspace's `[profile]`
+/// table. The workspace manifest and lockfile reach such a closure only
+/// through these; Cargo-Verus derives a dependency's verifier arguments from
+/// its own arguments and the closure's own metadata, never from the
+/// workspace (ADR 0045 decision 3). The closure's bytes are bound separately.
+/// So adding an unrelated dependency to the workspace leaves it unchanged
+/// (#177), while a different resolution of the closure, a feature it gains
+/// or a profile change does not. `None` when the closure is not entirely
+/// foreign, or when a node or the workspace manifest cannot be read.
+pub(super) fn foreign_closure_binding(data: &Value, closure: &BTreeSet<String>) -> Option<String> {
+    let nodes = foreign_nodes(data, &workspace_members(data), closure)?;
+    let profile = profile_table(data)?;
+    let bytes = serde_json::to_vec(&("sail-foreign-closure-v1", &nodes, &profile)).ok()?;
+    Some(digest(&bytes))
+}
+
+fn workspace_members(data: &Value) -> BTreeSet<&str> {
+    data["workspace_members"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect()
 }
 
 /// The workspace manifest's `[profile]` table, which Cargo applies to every

@@ -248,17 +248,67 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         b"sail-runtime-identities".to_vec(),
         identity_sha.clone().into_bytes(),
     );
-    let (hash, compiler_hash) = context_hashes(
-        &config.args,
-        engine,
-        &identity,
-        &environment.into_iter().collect::<Vec<_>>(),
-    )?;
+    let environment = environment.into_iter().collect::<Vec<_>>();
+    let (hash, compiler_hash) = context_hashes(&config.args, engine, &identity, &environment)?;
+    let store_hash = store_family_hash(&config.args, engine, &identity, &environment)?;
     super::files::json(&state.join(format!("{hash}.link")), &identity_sha)?;
     Ok(Context {
         hash,
         compiler_hash,
+        store_hash,
     })
+}
+
+/// The compiler family as the dependency store sees it (ADR 0045): the
+/// compiler family digest without the arguments that only select which
+/// workspace packages and targets Cargo builds (`-p`, `--workspace`,
+/// `--exclude`, `--lib`, `--bin`, `--bins`). Cargo-Verus gives a dependency
+/// the same verifier arguments whichever members are selected; a selection
+/// that changes how the dependency is compiled (feature unification) changes
+/// Cargo's unit hashes, so Cargo rebuilds the seeded units and the stored
+/// receipt does not match. So `-p a` in a workspace and a single-package
+/// project share vstd's entry (rc.5 finding 15). Arguments after `--`
+/// (Verus's own) are kept.
+fn store_family_hash(
+    args: &[String],
+    engine: Option<&crate::engine::Request>,
+    identity: &[(String, String)],
+    environment: &[(Vec<u8>, Vec<u8>)],
+) -> Result<String> {
+    Ok(digest(
+        &serde_json::to_vec(&(
+            "sail-dependency-store-family-v1",
+            without_selection(args),
+            engine.map(crate::engine::Request::artifact_identity),
+            identity,
+            environment,
+        ))
+        .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
+    ))
+}
+
+/// `args` without Cargo's package and target selection, up to `--`.
+fn without_selection(args: &[String]) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut it = args.iter().map(String::as_str);
+    while let Some(arg) = it.next() {
+        if arg == "--" {
+            out.push(arg);
+            out.extend(it.by_ref());
+            break;
+        }
+        match arg {
+            "-p" | "--package" | "--exclude" | "--bin" => {
+                it.next();
+            }
+            "--workspace" | "--all" | "--lib" | "--bins" => {}
+            _ if ["--package=", "--exclude=", "--bin=", "-p"]
+                .iter()
+                .any(|prefix| arg.starts_with(prefix)) => {}
+            _ => out.push(arg),
+        }
+    }
+    out
 }
 
 /// Files of the installed sysroots that compilation can load: `bin/rustc`,
@@ -309,6 +359,9 @@ fn sysroot_files(sysroots: &BTreeSet<PathBuf>) -> Result<Vec<PathBuf>> {
 struct Context {
     hash: String,
     compiler_hash: String,
+    /// The dependency store's view of the compiler family
+    /// ([`store_family_hash`]).
+    store_hash: String,
 }
 
 fn context_hashes(
@@ -1506,11 +1559,51 @@ fn target_revision(data: &Value, package_id: &str) -> String {
                 .collect(),
         );
     }
-    let snapshot = snapshot_metadata(&package_data, &[]);
-    if snapshot.complete {
-        snapshot.revision
-    } else {
-        String::new()
+    // A dependency whose whole closure is registry or git code (vstd) is
+    // bound to what the workspace decides for it, its resolved closure and
+    // the `[profile]` table, instead of the bytes of the workspace manifest
+    // and lockfile, so adding an unrelated dependency keeps its receipt, as
+    // Cargo keeps it fresh (#177). The toolchain files and Cargo
+    // configuration stay bound by their bytes.
+    let foreign = super::store::foreign_closure_binding(data, &closure);
+    let mut extras = Vec::new();
+    if foreign.is_some() {
+        let workspace = Path::new(data["workspace_root"].as_str().unwrap_or_default());
+        extras.extend(
+            ["rust-toolchain", "rust-toolchain.toml"]
+                .iter()
+                .map(|name| workspace.join(name))
+                .filter(|path| path.is_file()),
+        );
+        let root = data["packages"].as_array().and_then(|packages| {
+            packages
+                .iter()
+                .find(|p| p["id"].as_str() == Some(package_id))?["manifest_path"]
+                .as_str()
+                .and_then(|manifest| Path::new(manifest).parent())
+                .map(Path::to_owned)
+        });
+        let Some(root) = root else {
+            return String::new();
+        };
+        // The snapshot adds the manifest and lockfile of its workspace root;
+        // the package's own directory has neither outside its own files.
+        package_data["workspace_root"] = Value::String(root.to_string_lossy().into_owned());
+        if package_data["sail_invocation_directory"].is_null() {
+            package_data["sail_invocation_directory"] =
+                Value::String(workspace.to_string_lossy().into_owned());
+        }
+    }
+    let snapshot = snapshot_metadata(&package_data, &extras);
+    if !snapshot.complete {
+        return String::new();
+    }
+    match foreign {
+        Some(binding) => digest(
+            &serde_json::to_vec(&("sail-foreign-target-v1", &snapshot.revision, &binding))
+                .unwrap_or_default(),
+        ),
+        None => snapshot.revision,
     }
 }
 
@@ -1861,6 +1954,7 @@ pub(crate) fn run_engine_held(
     let Context {
         hash,
         compiler_hash,
+        store_hash,
     } = context_result?;
 
     let run_id = format!(
@@ -1878,7 +1972,7 @@ pub(crate) fn run_engine_held(
     // Focused runs build in a separate directory and verify no dependency. A
     // run without proof reuse neither reads nor fills the store (ADR 0046).
     let store_candidates = if paths.reuse && super::store::enabled() && !focused(&config.args) {
-        super::store::candidates(&data, &expected, &compiler_hash)
+        super::store::candidates(&data, &expected, &store_hash)
     } else {
         Vec::new()
     };
@@ -2576,6 +2670,55 @@ mod tests {
         assert_ne!(
             compiler,
             context_hashes(&args, Some(&selected), &identity, &changed)?.1
+        );
+        Ok(())
+    }
+
+    /// rc.5 finding 15: the dependency store's family ignores which members
+    /// and targets Cargo builds, and nothing else.
+    #[test]
+    fn store_family_ignores_only_package_and_target_selection()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let identity = vec![("compiler".to_owned(), "compiler-bytes".to_owned())];
+        let environment = vec![(b"RUSTFLAGS".to_vec(), b"flags".to_vec())];
+        let family = |args: &[&str]| {
+            let args: Vec<String> = args.iter().map(|&a| a.to_owned()).collect();
+            store_family_hash(&args, None, &identity, &environment)
+        };
+        let plain = family(&[])?;
+        for selection in [
+            &["-p", "a"][..],
+            &["-pa"],
+            &["--package", "a", "--lib"],
+            &["--package=a", "--bin", "main"],
+            &["--bin=main", "--bins"],
+            &["--workspace", "--exclude", "b"],
+            &["--all", "--exclude=b"],
+        ] {
+            assert_eq!(family(selection)?, plain, "{selection:?}");
+        }
+        for other in [
+            &["--features", "x"][..],
+            &["-p", "a", "--release"],
+            &["--", "-p", "a"],
+            &["--", "--lib"],
+            &["--manifest-path", "other/Cargo.toml"],
+        ] {
+            assert_ne!(family(other)?, plain, "{other:?}");
+        }
+        assert_eq!(
+            family(&["-p", "a", "--", "--rlimit", "5"])?,
+            family(&["--", "--rlimit", "5"])?
+        );
+        assert_ne!(
+            plain,
+            store_family_hash(&[], None, &[], &environment)?,
+            "the toolchain identity stays bound"
+        );
+        assert_ne!(
+            plain,
+            store_family_hash(&[], None, &identity, &[])?,
+            "the environment stays bound"
         );
         Ok(())
     }
@@ -3947,6 +4090,109 @@ mod tests {
         assert_ne!(target_revision(&data, "vstd"), dependency_before);
         assert_ne!(target_revision(&data, "app"), app_before);
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    /// Issue #177: a registry dependency's receipt (vstd) is bound to its
+    /// resolved closure, its bytes and the `[profile]` table, not to the bytes
+    /// of the workspace manifest and lockfile. Adding a dependency keeps it;
+    /// anything that changes how its closure is built or resolved does not.
+    #[test]
+    fn a_new_workspace_dependency_keeps_a_registry_closure_receipt()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-foreign-closure-{}", std::process::id()));
+        let app = root.join("app");
+        let registry = root.join("registry");
+        let local = root.join("local");
+        for path in [&app, &registry.join("vstd"), &registry.join("syn"), &local] {
+            std::fs::create_dir_all(path)?;
+            std::fs::write(path.join("Cargo.toml"), "[package]\n")?;
+            std::fs::write(path.join("lib.rs"), "source")?;
+        }
+        let manifest = app.join("Cargo.toml");
+        let lockfile = app.join("Cargo.lock");
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"app\"\n[dependencies]\nvstd = \"1\"\n",
+        )?;
+        std::fs::write(&lockfile, "version = 4\n")?;
+        let source = "registry+https://github.com/rust-lang/crates.io-index";
+        let mut data = serde_json::json!({
+            "workspace_root": app, "workspace_members": ["app"],
+            "packages": [
+                {"id":"app","manifest_path":manifest},
+                {"id":"vstd","source":source,"manifest_path":registry.join("vstd/Cargo.toml")},
+                {"id":"syn","source":source,"manifest_path":registry.join("syn/Cargo.toml")},
+                {"id":"local","manifest_path":local.join("Cargo.toml")}],
+            "resolve": {"nodes": [
+                {"id":"app","dependencies":["vstd","local"],"features":[]},
+                {"id":"vstd","dependencies":["syn"],"features":["std"]},
+                {"id":"syn","dependencies":[],"features":["full"]},
+                {"id":"local","dependencies":[],"features":[]}]}
+        });
+        let vstd = target_revision(&data, "vstd");
+        let app_revision = target_revision(&data, "app");
+        let local_revision = target_revision(&data, "local");
+        assert!(!vstd.is_empty() && !app_revision.is_empty() && !local_revision.is_empty());
+
+        // The crate gains a registry dependency: new manifest and lockfile
+        // bytes and a new package and node outside vstd's closure.
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"app\"\n[dependencies]\nvstd = \"1\"\nserde = \"1\"\n",
+        )?;
+        std::fs::write(&lockfile, "version = 4\n[[package]]\nname = \"serde\"\n")?;
+        std::fs::create_dir_all(registry.join("serde"))?;
+        std::fs::write(registry.join("serde/Cargo.toml"), "[package]\n")?;
+        data["packages"].as_array_mut().ok_or("packages")?.push(
+            serde_json::json!({"id":"serde","source":source,"manifest_path":registry.join("serde/Cargo.toml")}),
+        );
+        data["resolve"]["nodes"]
+            .as_array_mut()
+            .ok_or("nodes")?
+            .push(serde_json::json!({"id":"serde","dependencies":[],"features":[]}));
+        data["resolve"]["nodes"][0]["dependencies"] = serde_json::json!(["vstd", "local", "serde"]);
+        assert_eq!(
+            target_revision(&data, "vstd"),
+            vstd,
+            "vstd keeps its receipt"
+        );
+        assert_ne!(
+            target_revision(&data, "app"),
+            app_revision,
+            "the crate is verified again"
+        );
+        // A path dependency's closure is per workspace: it stays bound to the
+        // workspace manifest and lockfile bytes, as before.
+        assert_ne!(target_revision(&data, "local"), local_revision);
+
+        // Anything that decides how vstd's closure is built changes its binding.
+        let reused = target_revision(&data, "vstd");
+        let changed = |data: &Value| target_revision(data, "vstd") != reused;
+        let mut features = data.clone();
+        features["resolve"]["nodes"][2]["features"] = serde_json::json!(["full", "extra-traits"]);
+        assert!(changed(&features), "a closure package gains a feature");
+        let mut version = data.clone();
+        version["resolve"]["nodes"][1]["dependencies"] = serde_json::json!(["syn2"]);
+        assert!(changed(&version), "the closure resolves differently");
+        std::fs::write(registry.join("syn/lib.rs"), "edited")?;
+        assert!(changed(&data), "a closure source is edited");
+        std::fs::write(registry.join("syn/lib.rs"), "source")?;
+        assert!(!changed(&data));
+        let text = std::fs::read_to_string(&manifest)?;
+        std::fs::write(&manifest, format!("{text}[profile.dev]\nopt-level = 1\n"))?;
+        assert!(changed(&data), "the workspace profile changes");
+        std::fs::write(&manifest, &text)?;
+        assert!(!changed(&data));
+        std::fs::write(app.join("rust-toolchain.toml"), "[toolchain]\n")?;
+        assert!(changed(&data), "a toolchain file appears");
+        std::fs::remove_file(app.join("rust-toolchain.toml"))?;
+        assert!(!changed(&data));
+        // A workspace manifest that cannot be read binds nothing reusable.
+        std::fs::write(&manifest, "not toml [")?;
+        assert!(changed(&data));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[test]
