@@ -9,6 +9,13 @@ semantic versioning once the API is published.
   confirms termination before deleting cloud resources (#201). Refresh
   credentials or fix `SAIL9001`, then retry `scripts/perf-host.sh down LANE`.
 
+- The source-suite runner avoids its duplicate progress flag for the exact
+  original VI-0012 regression source, binary and case (#203). Changed or missing
+  source keeps the default, explicit threads remain unchanged, and reproduction
+  commands now show the same effective `VERUS_EXTRA_ARGS` as actual execution.
+  The original regression, native BASIC and complete fork source suite pass on
+  private qualification source. Remaining runtime gates are separate; the
+  original failure stays recorded.
 
 - **CI image packaging candidate** (#195): checks share a core image with
   every pinned toolchain/runtime; only managed e2e adds the pinned external

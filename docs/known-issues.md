@@ -8,6 +8,17 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **The original VI-0012 fork regression receives a duplicate progress flag**
+  ([#203](https://github.com/Chelis-Lang/sail/issues/203)). On private source
+  `168ab7ab`, the full genuine `8a373f81` suite retained one Different among
+  4,709 selected tests: both arms rejected the duplicate before verification.
+  A narrow runner correction binds the original source SHA, binary and case;
+  the original corrected test and complete suite now pass strictly on private
+  `af339f8a` (4,709 Same, 58 ignored). The main-based harness join remains
+  pending. The original test and strict
+  baseline-must-pass check remain unchanged. See the
+  [validation record](validation/rvt-progress-option.md).
+
 - **Changed-check continuation remains unqualified** ([#158](https://github.com/Chelis-Lang/sail/issues/158)).
   Historical fork continuations have raw statistics differences. Three fresh
   full runs per real IronKV/Anvil trace also differ in literal clock bytes,
