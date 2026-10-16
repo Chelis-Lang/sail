@@ -119,3 +119,31 @@ and Linux Z3 SHA-256
 `e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765`.
 Historical replay headlines discard stderr and judge masked stdout; they are
 exploratory measurements, not complete raw-output acceptance.
+
+
+## One-use live-prefix implementation
+
+`native/sail-live-prefix` implements an alternative research path: prepare a
+fresh pinned process on the exact prefix, keep its original threads/state,
+then consume it once on an exact match. A first set of tiny Mac fixtures
+matched raw Boolean, NUL, model and timeout continuations and observed the
+same serving PID with two timer threads. Independent executable-image review
+then rejected that source: swapping a private executable at Popen and restoring
+its pathname before claim returned `sat` where fresh pinned Z3 returned `unsat`.
+Those positives therefore do not qualify a usable candidate.
+
+The current correction holds the actual Linux `/proc/PID/exe` image and pidfd,
+verifies it before sending prefix input and again at claim, and refuses Mac
+live reuse. All 23 bounded native Linux controls pass, including actual foreign
+execution refusal, exact continuations, a two-thread timer worker and resource
+and claim controls. Mac refusal and exact fresh fallback have been checked. This is not
+Sail/daemon integration, arbitrary-SMT eligibility or real-project acceptance.
+
+The driver has explicit recorded preparation, TTL, serving, fallback and oracle
+limits, each bounded by one hour with short correctness defaults. It saves raw
+streams/status and keeps refused/timeout/fallback samples as failures. Native
+metrics distinguish background CPU, total solver CPU, foreground fallback cost
+and a guarded fresh reference. No Mac performance measurements or saved-CPU
+claim are made. The complete command/response boundary must currently come
+from trusted capture metadata; Session/ledger eligibility and full protocol
+binding remain implementation gates before default use.

@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add a disabled one-use live-prefix solver experiment, with exact input and
+  raw output checks, bounded preparation/serving, native executable identity
+  guards and explicit fresh fallback. Native qualification and edit-loop
+  performance remain pending; it changes no default verification path.
+
 - The disabled solver-snapshot prototype now refuses observed threads, timers,
   CPU limits and solver-owned output descriptors. Its new bounded raw probe
   records stdout, stderr and exit status without masking; raw exactness and

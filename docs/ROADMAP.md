@@ -271,7 +271,10 @@ oyster and such." This supersedes the parallel tracks of
    In pickup order:
    1. The verismo soundness check, #160.
    2. A miss costs only the changed check, #158 (the largest edit-loop lever).
-      Solver snapshots remain a disabled prototype: lossless framing and parked
+      Solver snapshots and a one-use live-prefix alternative remain disabled
+      prototypes; all 23 bounded native live-prefix controls pass, including
+      actual executable substitution refusal and timer-worker preservation.
+      Lossless framing and parked
       admission bounds are implemented; native qualification and raw-output
       exactness remain pending ([record](validation/solver-snapshots.md)).
    3. vstd pre-verified in the release archive, #161.

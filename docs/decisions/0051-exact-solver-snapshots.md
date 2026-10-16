@@ -151,3 +151,20 @@ processes created before the process-state guards. The lossless input framing
 and `SAILSNAP2` stream headers are unchanged; their version describes transport,
 not admission compatibility. A pre-guard library cannot satisfy the new ready
 acknowledgment and falls back before receiving framed solver input.
+
+
+## Alternative under evaluation: one-use live prefixes
+
+The reviewed fork admission can decline useful post-check points because timed
+queries leave worker threads. The alternative keeps the original fresh pinned
+process alive and consumes it once on an exact-prefix match (ADR 0040 option A).
+It copies no process state and injects no SMT command. The
+[disabled prototype](../../native/sail-live-prefix/README.md) binds its prefix,
+expected prefix output, executable, argv, environment and working directory.
+All warming/ready/claimed states count against bounded slots, RSS is sampled,
+and unused work expires or is killed before fresh fallback.
+
+This is background replay, not free saved computation. Qualification must
+report preparation CPU, total CPU, foreground cost, fallbacks, memory and TTL
+pressure, alongside an independent exact raw oracle. Literal timing failures
+remain failures. It changes no proof status or accepted default-mode behavior.

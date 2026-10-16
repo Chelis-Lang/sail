@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""Bounded one-use sample with retained raw oracle and explicit failure limits.
+
+Timing/CPU metrics require native x86-64 Linux. The guarded fresh reference
+includes its actual-image validation overhead. No default Sail integration or
+proof verdict is supplied. Failed/fallback samples are retained and exit1.
+"""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import resource
+import signal
+import subprocess
+import threading
+import time
+from live_prefix import MAX_INPUT, MAX_OUTPUT, OneUsePool, capture_running_image, path_digest
+
+
+def cpu_children():
+    value = resource.getrusage(resource.RUSAGE_CHILDREN)
+    return value.ru_utime + value.ru_stime
+
+
+def proc_cpu(pid):
+    fields = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+    return (int(fields[11]) + int(fields[12])) / os.sysconf('SC_CLK_TCK')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--z3', required=True)
+    parser.add_argument('--solver-sha256', required=True)
+    parser.add_argument('--prefix', type=Path, required=True)
+    parser.add_argument('--prefix-stdout', type=Path, required=True)
+    parser.add_argument('--suffix', type=Path, required=True)
+    parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--preparation-window', type=float, default=1)
+    parser.add_argument('--ttl', type=float, default=5)
+    parser.add_argument('--run-timeout', type=float, default=5)
+    parser.add_argument('--oracle-timeout', type=float, default=5)
+    parser.add_argument('--fallback-timeout', type=float, default=5)
+    parser.add_argument('--max-bytes', type=int, default=128 * 1024 * 1024)
+    parser.add_argument('--native-metrics', action='store_true')
+    args = parser.parse_args()
+    if not 0 <= args.preparation_window <= 3600 or any(
+            not 0 < limit <= 3600 for limit in [args.ttl, args.run_timeout, args.oracle_timeout, args.fallback_timeout]):
+        parser.error('all limits must be bounded by 3600 seconds')
+    if args.native_metrics and (os.uname().sysname, os.uname().machine) != ('Linux', 'x86_64'):
+        parser.error('performance metrics require native x86-64 Linux')
+    args.out.mkdir(parents=True, exist_ok=False)
+    z3 = str(Path(args.z3).resolve())
+    manifest = dict(solver_sha256=args.solver_sha256, argv=[z3, '-smt2', '-in'], platform=list(os.uname()),
+                    limits=dict(preparation_window=args.preparation_window, ttl=args.ttl,
+                                serving=args.run_timeout, oracle=args.oracle_timeout,
+                                fallback=args.fallback_timeout, bytes=args.max_bytes), raw_equal=False)
+    pool = None
+
+    def write_streams(name, result):
+        for stream in ['stdout', 'stderr']:
+            (args.out / (name + '.' + stream)).write_bytes(result[stream])
+
+    def fresh(name, timeout, data):
+        process = subprocess.Popen([z3, '-smt2', '-in'], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        buffers = [bytearray(), bytearray()]
+        failure = []
+        lock = threading.Lock()
+        fd_lock = threading.Lock()
+        pidfd = image = None
+        threads = []
+        verified = False
+
+        def kill():
+            with fd_lock:
+                try:
+                    if pidfd is not None:
+                        signal.pidfd_send_signal(pidfd, signal.SIGKILL)
+                    elif process.poll() is None:
+                        process.kill()
+                except ProcessLookupError:
+                    pass
+
+        def drain(stream, output):
+            try:
+                while block := os.read(stream.fileno(), 65536):
+                    available = MAX_OUTPUT - len(output)
+                    output.extend(block[:available])
+                    if len(block) > available:
+                        with lock:
+                            failure.append('output budget exceeded')
+                        kill()
+                        return
+            except (OSError, ValueError) as error:
+                with lock:
+                    failure.append('output read: ' + str(error))
+                kill()
+
+        def send():
+            try:
+                process.stdin.write(data)
+                process.stdin.close()
+            except (OSError, ValueError) as error:
+                with lock:
+                    failure.append('input write: ' + str(error))
+
+        try:
+            if os.uname().sysname == 'Linux':
+                pidfd, image, _ = capture_running_image(process.pid, args.solver_sha256)
+                verified = True
+            threads = [threading.Thread(target=drain, args=(process.stdout, buffers[0])),
+                       threading.Thread(target=drain, args=(process.stderr, buffers[1])),
+                       threading.Thread(target=send)]
+            for thread in threads:
+                thread.start()
+            deadline = time.monotonic() + timeout
+            while process.poll() is None:
+                if failure or time.monotonic() >= deadline:
+                    with lock:
+                        failure.append('timeout or I/O failure')
+                    kill()
+                    break
+                time.sleep(.01)
+            process.wait(timeout=2)
+            for thread in threads:
+                thread.join(timeout=2)
+            if any(thread.is_alive() for thread in threads):
+                failure.append('I/O did not finish')
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            failure.append(str(error))
+            kill()
+            # Capture startup diagnostics even if native image binding failed.
+            if not threads:
+                out, err = process.communicate(timeout=2)
+                buffers = [bytearray(out[:MAX_OUTPUT]), bytearray(err[:MAX_OUTPUT])]
+        finally:
+            kill()
+            process.wait(timeout=2)
+            for thread in threads:
+                if thread.ident is not None:
+                    thread.join(timeout=2)
+            for stream in [process.stdin, process.stdout, process.stderr]:
+                try:
+                    stream.close()
+                except (OSError, ValueError) as error:
+                    failure.append('stream close: ' + str(error))
+            with fd_lock:
+                for fd in [image, pidfd]:
+                    if fd is not None:
+                        os.close(fd)
+                image = pidfd = None
+        result = dict(stdout=bytes(buffers[0]), stderr=bytes(buffers[1]), exit=process.returncode,
+                      error='; '.join(failure) if failure else None, image_verified=verified)
+        write_streams(name, result)
+        return result
+
+    try:
+        prefix, expected, suffix = args.prefix.read_bytes(), args.prefix_stdout.read_bytes(), args.suffix.read_bytes()
+        data = prefix + suffix
+        if len(data) > MAX_INPUT or len(expected) > MAX_OUTPUT:
+            raise ValueError('input/expected-output budget exceeded')
+        manifest.update(input_sha256=hashlib.sha256(data).hexdigest(), prefix_sha256=hashlib.sha256(prefix).hexdigest(),
+                        expected_prefix_stdout_sha256=hashlib.sha256(expected).hexdigest())
+        for name, value in [('prefix.smt2', prefix), ('prefix.stdout', expected), ('suffix.smt2', suffix)]:
+            (args.out / name).write_bytes(value)
+        children_before = cpu_children()
+        preparation_started = time.monotonic()
+        preparation_completed = attached = preparation_started
+        warm_cpu = None
+        result = None
+        entry = None
+        try:
+            pool = OneUsePool(z3, args.solver_sha256, slots=1, max_bytes=args.max_bytes,
+                              ttl=args.ttl, run_timeout=args.run_timeout)
+            key = pool.seed(prefix, expected)
+            ready = pool.wait_ready(key, args.preparation_window)
+            manifest.update(prefix_key=key, ready=ready)
+            entry = pool.entries.get(key)
+            if entry is not None:
+                manifest['prepared_pid'] = entry.pid
+            preparation_completed = time.monotonic()
+            warm_cpu = proc_cpu(entry.pid) if args.native_metrics and ready else None
+            attached = time.monotonic()
+            result = pool.consume(key, data) if ready else None
+            manifest['refusal'] = entry.failure if entry else pool.last_refusal
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            preparation_completed = attached = time.monotonic()
+            manifest['refusal'] = str(error)
+        finally:
+            if pool is not None:
+                pool.close()
+        if entry is not None:
+            write_streams('preparation-attempt', dict(stdout=bytes(entry.stdout), stderr=bytes(entry.stderr)))
+            manifest['preparation_attempt'] = dict(claimed=entry.claimed, wrote_prefix=entry.written,
+                                                   exit=entry.process.returncode, failure=entry.failure)
+            if not manifest.get('ready') and not manifest.get('refusal'):
+                manifest['refusal'] = 'not ready at request time'
+        prepared_cpu = cpu_children() - children_before
+        fallback_cpu_start = cpu_children()
+        if result is None:
+            result = fresh('candidate', args.fallback_timeout, data)
+            manifest['mode'] = 'fresh-fallback'
+        else:
+            result.update(error=None, image_verified=True)
+            manifest.update(mode='one-use-live-prefix', serving_pid=result['pid'],
+                            sampled_peak_rss=result['sampled_peak_rss'], sampled_peak_pss=result['sampled_peak_pss'])
+            write_streams('candidate', result)
+        candidate_completed = time.monotonic()
+        fallback_cpu = cpu_children() - fallback_cpu_start
+        reference_cpu_start, reference_started = cpu_children(), time.monotonic()
+        reference = fresh('fresh', args.oracle_timeout, data)
+        reference_completed = time.monotonic()
+        manifest.update(candidate_exit=result['exit'], fresh_exit=reference['exit'],
+                        candidate_error=result['error'], fresh_error=reference['error'],
+                        stdout_equal=result['stdout'] == reference['stdout'], stderr_equal=result['stderr'] == reference['stderr'],
+                        exit_equal=result['exit'] == reference['exit'],
+                        native_images_verified=result['image_verified'] and reference['image_verified'],
+                        identity_stable=path_digest(z3) == args.solver_sha256)
+        manifest['raw_equal'] = (all(manifest[k] for k in ['stdout_equal', 'stderr_equal', 'exit_equal', 'identity_stable'])
+                                 and not result['error'] and not reference['error'])
+        manifest['candidate_gate_pass'] = (manifest['raw_equal'] and manifest['mode'] == 'one-use-live-prefix'
+                                           and manifest['native_images_verified'])
+        if args.native_metrics:
+            manifest['native_metrics'] = dict(background_and_serving_cpu=prepared_cpu,
+                candidate_total_solver_cpu=prepared_cpu + fallback_cpu, fallback_solver_cpu=fallback_cpu,
+                prefix_cpu_observed_at_claim=warm_cpu, preparation_wall=preparation_completed - preparation_started,
+                foreground_wall_including_fallback=candidate_completed - attached,
+                guarded_fresh_reference_wall=reference_completed - reference_started,
+                fresh_reference_cpu=cpu_children() - reference_cpu_start,
+                scope='one guarded sample; real background CPU and validation overhead are included')
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+        manifest.update(error=str(error), candidate_gate_pass=False)
+    finally:
+        if pool is not None:
+            pool.close()
+        (args.out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    print(json.dumps(manifest))
+    return 0 if manifest.get('candidate_gate_pass', False) else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -133,3 +133,63 @@ or real-project raw acceptance is claimed.
 
 All-target release clippy for `sail-api` also passes, with warnings denied
 (log SHA-256 `485da955ab634320c2d5067cb64254a19a5beaaa717de9677667f333b03d086e`).
+
+
+## One-use live-prefix experiment: implementation, not acceptance
+
+A separate disabled prototype keeps the original solver alive and consumes
+it once. The first local Mac fixture pass is superseded by an independent,
+actual executable pathname ABA: reviewed source SHA-256
+`9051aa78377bf31e6029a6068fc17f82977344eb437a5ad5a4c01919f1f851fe`
+accepted a running shell substitute after the pinned pathname was restored.
+The candidate returned `sat`, fresh pinned Z3 returned `unsat`, both exit 0.
+The raw `executable-aba.json` SHA-256 is
+`bee4842e33607d1479de2c18025bf9075f9e3818e2e0276ce16b6c5dfb020319`.
+An earlier reproduction setup failed its alias-path assertion before the
+substitution; the corrected actual wrong-image result is the rejection evidence.
+
+Current code binds actual Linux executable images through a held procfs image
+FD and pidfd before any prefix input and revalidates at claim. Mac live reuse
+refuses pending an equivalent qualified guard. The current focused Mac refusal
+manifest has SHA-256
+`de1dc7f0fc49abcd696c1fadd514ccd2eda95d6d9e2518637b9b1ce4c4091440`.
+The exact fresh-fallback manifest has SHA-256
+`93fbf7bf5bdde53c73e2f453e83f87efefb54ae706bc7dabcc8da4b26308fb84`:
+raw streams/status match, but candidate acceptance is false and the sample
+exits 1.
+
+The rejected source is preserved externally byte for byte under its `9051`
+digest. The frozen Linux-control candidate is `live_prefix.py` SHA-256
+`4fe47fe2d6c1708ec0f73ed780054b8c32b59823f5eb75846d1ae3eb95ddf956`;
+test SHA-256 `11414c9e1286f042b596a2121056464ae1494f369b9175e65383d1062c472aea`;
+driver SHA-256 `1dbc9198e76aaa6a8757a7b9401bffc161f231836bd302d43489b608b376d491`.
+That exact core/test/driver passes all 23 controls on native x86-64 Linux,
+kernel `7.0.0-1014-aws`, in the existing Sail CI image with pinned Z3 SHA-256
+`e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765`.
+The native manifest SHA-256 is
+`5c9b8579e43adcba0d98aff908623daadc6f1f5a66b74496c330bc23f1fcc833`.
+The foreign executable actually runs, its pathname is restored, and capture
+refuses; fresh pinned Z3 returns `unsat`, exit 0. Genuine Boolean, NUL-comment,
+model and timer continuations match exact stdout/stderr/status, the serving PID
+is unchanged, and the idle timer retains two threads. Wrong-prefix, double and
+concurrent claims, capacity, RSS, expiry and unexpected-prefix controls pass.
+Two initial native launch attempts fail before testing because the supplied
+solver paths do not exist; both evidence directories remain preserved. These
+are setup failures, not passing controls. The successful run uses the actual
+installed solver path after verifying its exact digest.
+
+An owned no-output fixture confirms bounded fresh timeout retention: partial
+streams and signal status remain recorded, raw equality and candidate
+acceptance are false, and the driver exits 1. Its manifest SHA-256 is
+`8093f5eb5d471c616b78c91cb8fbd3a61b7e75f5f1c82ac1b4bd5ca2aa8209d6`;
+this tests artifact/error collection, not the pinned solver or native guard.
+
+See the [prototype commands and scope](../../native/sail-live-prefix/README.md).
+The driver records long-workload limits explicitly and retains timeout/error
+artifacts. Defaults remain five-second correctness limits. Native metrics
+include actual preparation work, fallbacks and identity-validation overhead;
+a guarded solver probe is not a full plain-Verus benchmark. Session/ledger
+eligibility, actual shared-runtime/OS/filesystem scope, unsolicited-output
+handling, daemon fairness, full conformance and real edit-loop measurements
+remain required. No source inspection or old rejected-source fixture pass
+satisfies those gates.
