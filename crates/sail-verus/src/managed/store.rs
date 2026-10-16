@@ -117,6 +117,20 @@ pub(super) fn candidates(
         let Some(nodes) = foreign_nodes(data, &members, &closure) else {
             continue;
         };
+        // An entry records one verified root's receipt and displayed output.
+        // Copying a second verified root's artifacts without its own complete
+        // entry could suppress that root's report or diagnostics. Store the
+        // leaf proof instead; the dependent root then verifies normally.
+        if closure.iter().any(|member| {
+            member.as_str() != *id
+                && packages
+                    .get(member.as_str())
+                    .and_then(|package| package.pointer("/metadata/verus/verify"))
+                    .and_then(Value::as_bool)
+                    == Some(true)
+        }) {
+            continue;
+        }
         let Ok(bytes) =
             serde_json::to_vec(&("sail-dependency-store-v1", family, id, &nodes, &profile))
         else {
@@ -278,6 +292,9 @@ pub(super) struct Seeded {
     /// True when this run copied the entry into its new target, so plain
     /// Cargo-Verus would have verified the dependency in this invocation.
     pub placed: bool,
+    /// Exact displayed stdout of a root placed into this run's new target.
+    /// Empty for an attached receipt, whose existing target prints nothing.
+    pub shown_stdout: Vec<u8>,
 }
 
 fn modified(meta: &std::fs::Metadata) -> Option<(u64, u32)> {
@@ -431,10 +448,15 @@ pub(super) fn seed(
         let entry = root(cache).join(&candidate.key);
         let mut files = Vec::new();
         let mut directories = Vec::new();
-        let outcome = validated(&entry, candidate, data)
-            .and_then(|manifest| place(&entry, &staging, manifest, &mut files, &mut directories));
+        let outcome = validated(&entry, candidate, data).and_then(|manifest| {
+            let stdout = shown_stdout(&entry, &manifest)?;
+            place(&entry, &staging, manifest, &mut files, &mut directories)
+                .map(|manifest| (manifest, stdout))
+        });
         match outcome {
-            Ok(manifest) => placed.push((candidate, entry, manifest, files.len())),
+            Ok((manifest, stdout)) => {
+                placed.push((candidate, entry, manifest, files.len(), stdout));
+            }
             Err(refusal) => {
                 rollback(&files, &directories);
                 if let Refusal::Damaged(reason) = refusal {
@@ -469,7 +491,7 @@ pub(super) fn seed(
     }
     placed
         .into_iter()
-        .filter_map(|(candidate, entry, manifest, files)| {
+        .filter_map(|(candidate, entry, manifest, files, shown_stdout)| {
             // The receipt is checked against the bytes now in the target.
             let receipt = moved_receipt(&manifest, target)?;
             // Recency for eviction; failure to record it changes nothing.
@@ -482,9 +504,34 @@ pub(super) fn seed(
                 key: candidate.key.clone(),
                 receipt,
                 placed: true,
+                shown_stdout,
             })
         })
         .collect()
+}
+
+/// Validates the exact displayed output before a seed can place any files.
+/// Older entries lack it and safely miss; output damage warns and verifies.
+fn shown_stdout(entry: &Path, manifest: &Manifest) -> std::result::Result<Vec<u8>, Refusal> {
+    let read = |name| {
+        let file = manifest
+            .recorded
+            .iter()
+            .find(|file| file.path == Path::new(name))
+            .ok_or(Refusal::Miss)?;
+        let bytes = std::fs::read(entry.join("recorded").join(name))
+            .map_err(|_| damaged("stored verifier output cannot be read"))?;
+        if bytes.len() as u64 != file.size || digest(&bytes) != file.sha256 {
+            return Err(damaged("stored verifier output does not match its digest"));
+        }
+        Ok(bytes)
+    };
+    // Never suppress a stored diagnostic. The same narrow stderr policy as
+    // publication admits only artifact notices and wall-time progress notes.
+    if !quiet_stderr(&read("verus.stderr")?) {
+        return Err(Refusal::Miss);
+    }
+    read("verus.shown-stdout")
 }
 
 /// Reads and checks an entry against this machine's current inputs.
@@ -641,6 +688,7 @@ pub(super) fn attach(
                 key: candidate.key.clone(),
                 receipt: moved_receipt(&manifest, target)?,
                 placed: false,
+                shown_stdout: Vec::new(),
             })
         })
         .collect()
@@ -854,15 +902,17 @@ fn quiet(sidecar: &Path) -> bool {
         return false;
     };
     let (documents, rest) = crate::attribution::json_documents(&stdout);
-    !documents.is_empty()
-        && rest.iter().all(u8::is_ascii_whitespace)
-        && stderr
-            .split(|b| *b == b'\n')
-            .filter(|line| !line.iter().all(u8::is_ascii_whitespace))
-            .all(|line| {
-                serde_json::from_slice::<Value>(line)
-                    .is_ok_and(|v| v["$message_type"] == "artifact" || long_running_note(&v))
-            })
+    !documents.is_empty() && rest.iter().all(u8::is_ascii_whitespace) && quiet_stderr(&stderr)
+}
+
+fn quiet_stderr(stderr: &[u8]) -> bool {
+    stderr
+        .split(|b| *b == b'\n')
+        .filter(|line| !line.iter().all(u8::is_ascii_whitespace))
+        .all(|line| {
+            serde_json::from_slice::<Value>(line)
+                .is_ok_and(|v| v["$message_type"] == "artifact" || long_running_note(&v))
+        })
 }
 
 /// Whether `message` is one of Verus's long-running progress notes:
@@ -987,7 +1037,7 @@ fn stage(candidate: &Candidate, publication: &Publication<'_>, staging: &Path) -
 fn record_output(sidecar: &Path, recorded_dir: &Path) -> Result<Vec<StoredFile>> {
     std::fs::create_dir_all(recorded_dir).map_err(|e| Error::new("SAIL3102", e.to_string()))?;
     let mut recorded = Vec::new();
-    for name in ["verus.stdout", "verus.stderr"] {
+    for name in ["verus.stdout", "verus.stderr", "verus.shown-stdout"] {
         let source = sidecar.join(name);
         let Ok(meta) = std::fs::metadata(&source) else {
             continue;
@@ -1332,6 +1382,10 @@ mod tests {
                 .unwrap_or_else(|| unreachable!());
             let sidecar = self.root.join(format!("{name}-sidecar"));
             write(&sidecar.join("verus.stdout"), b"{\"recorded\":true}\n");
+            write(
+                &sidecar.join("verus.shown-stdout"),
+                b"verification results:: 1 verified, 0 errors\n",
+            );
             write(&sidecar.join("verus.stderr"), stderr);
             publish(
                 &candidate,
@@ -1409,6 +1463,10 @@ mod tests {
         );
         assert!(digests_match(&moved.artifact_hashes));
         assert!(seeded[0].placed);
+        assert_eq!(
+            seeded[0].shown_stdout,
+            b"verification results:: 1 verified, 0 errors\n"
+        );
         // An existing target holding exactly the stored bytes is attached
         // without copying; one without them is not.
         let attached = attach(
@@ -1418,6 +1476,7 @@ mod tests {
             &fixture.data,
         );
         assert!(attached.len() == 1 && !attached[0].placed);
+        assert_eq!(attached[0].shown_stdout, Vec::<u8>::new());
         assert!(
             attach(
                 &fixture.cache(),
@@ -1638,6 +1697,19 @@ mod tests {
     }
 
     #[test]
+    fn a_root_never_seeds_another_verified_roots_unrecorded_output() {
+        let fixture = Fixture::new("nested-proof");
+        let mut data = fixture.data.clone();
+        data["packages"][2]["metadata"] = serde_json::json!({"verus":{"verify":true}});
+        let candidates = candidates(&data, &fixture.expected, "family");
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(
+            candidates[0].root,
+            data["packages"][2]["id"].as_str().unwrap_or_default()
+        );
+    }
+
+    #[test]
     fn concurrent_publishers_and_seeders_agree() {
         let fixture = Fixture::new("concurrent");
         let (_, candidate, _) = fixture.build("old");
@@ -1737,6 +1809,28 @@ mod tests {
         assert!(seeded.is_empty() && !new.exists());
         assert!(warnings.starts_with("warning[SAIL3131]:"), "{warnings}");
         assert_eq!(staging_dirs(&new), Vec::<PathBuf>::new());
+    }
+
+    #[test]
+    fn damaged_or_missing_displayed_output_never_seeds_artifacts() {
+        for name in ["verus.shown-stdout", "verus.stderr"] {
+            for case in ["damaged", "missing"] {
+                let fixture = Fixture::new(&format!("{case}-{name}"));
+                let (_, candidate, _) = fixture.build("old");
+                let output = root(&fixture.cache())
+                    .join(&candidate.key)
+                    .join("recorded")
+                    .join(name);
+                if case == "damaged" {
+                    write(&output, b"wrong output");
+                } else {
+                    assert!(std::fs::remove_file(output).is_ok());
+                }
+                let (new, seeded, warnings) = seed_into(&fixture, &candidate, "new");
+                assert!(seeded.is_empty() && !new.exists());
+                assert!(warnings.starts_with("warning[SAIL3131]:"), "{warnings}");
+            }
+        }
     }
 
     #[test]

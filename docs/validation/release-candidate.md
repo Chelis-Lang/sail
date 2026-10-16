@@ -16,13 +16,24 @@ pre-verified vstd. Clean-macOS validation has its own record
 
 | Field | Value |
 |---|---|
-| Status | **`v0.1.0-rc.5`** ([below](#v010-rc5)): pass. Release build, both smoke tests, the README install and first use on Linux and macOS (with a second new project, a workspace member, a failing first run, MCP, a loader variable, `--verify-function` and the reproductions of #119–#121), the gate, solver, e2e, `ci/run.sh host` and the managed e2e on macOS, fast PR, fast, standard and deep conformance (0 Different in every arm) and one round of `deep-rvt` (0 Different) pass. The repair benchmark shows no regression, but its outcome check now fails on a schema mismatch in the harness (finding 13, issue #179). Supersedes rc.4, whose draft is deleted. **`v0.1.0-rc.4`** ([below](#v010-rc4)): pass. Release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR conformance and `ci/run.sh host` pass; a failing first managed run no longer makes the next one verify vstd again (finding 12 fixed: 0.7 s Linux, 1.4 s macOS, was 21–27 s). The standard and deep tiers, `deep-rvt` and the repair benchmark carry over from rc.3 unchanged. **`v0.1.0-rc.3`** ([below](#v010-rc3)): release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR, standard and deep conformance (0 Different in every arm) and the repair benchmark (no regression) pass. **`deep-rvt` is not clean**: some rounds report one `output_json` test Different, each a stock-Verus output-order variant ([VI-0008](../verus-issues/VI-0008-func-details-hash-order.md), finding 11); this arm runs the stock source build, which Sail no longer runs, and Sail's Verus fixes VI-0008; not a blocker. The README's First verification failed as written and was fixed (finding 10). Superseded by rc.4; its draft is deleted. **`v0.1.0-rc.2`:** pass; superseded by rc.3, its draft is deleted. **`v0.1.0-rc.1`:** code pass; its draft is deleted. **Clean macOS:** pass on rc.1 ([clean macOS](clean-macos.md)) |
+| Status | **`v0.1.0-rc.5`** ([below](#v010-rc5)): original scoped checks passed; later validation found a dependency-store stdout defect ([#184](dependency-store-output.md)). The exact asset is not currently accepted; it remains a draft. Release build, both smoke tests, the README install and first use on Linux and macOS (with a second new project, a workspace member, a failing first run, MCP, a loader variable, `--verify-function` and the reproductions of #119–#121), the gate, solver, e2e, `ci/run.sh host` and the managed e2e on macOS, fast PR, fast, standard and deep conformance (0 Different in every arm) and one round of `deep-rvt` (0 Different) pass. The repair benchmark shows no regression, but its outcome check now fails on a schema mismatch in the harness (finding 13, issue #179). Supersedes rc.4, whose draft is deleted. **`v0.1.0-rc.4`** ([below](#v010-rc4)): pass. Release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR conformance and `ci/run.sh host` pass; a failing first managed run no longer makes the next one verify vstd again (finding 12 fixed: 0.7 s Linux, 1.4 s macOS, was 21–27 s). The standard and deep tiers, `deep-rvt` and the repair benchmark carry over from rc.3 unchanged. **`v0.1.0-rc.3`** ([below](#v010-rc3)): release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR, standard and deep conformance (0 Different in every arm) and the repair benchmark (no regression) pass. **`deep-rvt` is not clean**: some rounds report one `output_json` test Different, each a stock-Verus output-order variant ([VI-0008](../verus-issues/VI-0008-func-details-hash-order.md), finding 11); this arm runs the stock source build, which Sail no longer runs, and Sail's Verus fixes VI-0008; not a blocker. The README's First verification failed as written and was fixed (finding 10). Superseded by rc.4; its draft is deleted. **`v0.1.0-rc.2`:** pass; superseded by rc.3, its draft is deleted. **`v0.1.0-rc.1`:** code pass; its draft is deleted. **Clean macOS:** pass on rc.1 ([clean macOS](clean-macos.md)) |
 | Source | **`v0.1.0-rc.5`** (draft), built from `main` at `c3687990a8139b0f0453c6ef574b3787aded6e92`, which every rc.5 check ran. rc.4: `5d99671e0d17d164a1f53166a921c49a0fd984f8`. rc.3: `8bd4aed2c2c18b6956a4472863dac048530ef49b`. rc.2: `8f427e810dd613b9b476d09bb3eb3aea492f4ce4`. rc.1: `7782b136564ad810adf33c72749c6d75ee9483f8` for every suite; draft built from `958dee95321165f30cca25b5ebe95ac1251eb62e` |
 | Runtime | rc.3 to rc.5: CI image `sail-ci:3c02e445e25df766`, built on each host from the committed inputs; Sail's Verus from fork `73dea021` (Linux `engine-runtime-73dea021-linux`, manifest `4f0d0d3f…ccdd`; macOS `engine-runtime-73dea021-macos`, manifest `a42a7d19…b5c8`); oracle stock Verus `0.2026.10.04.426d8b0`, Z3 4.16.0; `rust_verify_test` from the stock source build of `426d8b0`. rc.1 and rc.2: image `sail-ci:14df87b176833bea`, stock Verus for default mode, engine `engine-runtime-13a1176c-linux` |
 | Environment | Native EC2 c7i.8xlarge hosts (32 vCPU), us-east-1, Ubuntu 24.04, one suite or shard per host (layouts below); the developer Mac (Apple M3, macOS 26.5, shared with other lanes) |
 | Limits | Correctness only; wall times are indicative, not benchmarks, except the repair benchmark (one round per catalogue, a regression check, not an acceptance run). Walkthrough times are one sample each. rc.2's and rc.3's walkthroughs ran in a fresh `ubuntu:24.04` container |
 
 ## v0.1.0-rc.5
+
+**Post-validation correction (#184).** The exact draft rc.5 macOS asset
+omits vstd's stdout summary when a second project's fresh target is seeded
+from the dependency store. Its original fresh-install check exercised the
+second project but did not compare stdout for that case. The conformance
+tier results below remain results for their recorded scope; they did not
+cover this output regression. The [minimal reproduction and correction
+record](dependency-store-output.md) identifies the asset, source, runtime
+and raw evidence. The correction is a separate post-rc.5 candidate; the
+existing draft asset has not been rebuilt or revalidated and remains a
+draft. No release acceptance follows from the candidate fix's checks.
 
 The 0.1.0 candidate. `main` changed materially after rc.4: every
 `sail verify` is managed verification (#155, ADR 0046); new projects and
@@ -151,6 +162,12 @@ differ (finding 13).
     the versions of vstd's dependencies in `Cargo.lock` (README Limits),
     and this workspace's lock differs from a new project's; which input
     differed was not checked (see also #177). Low.
+
+16. **Fresh dependency-store seeding omits vstd's stdout summary.** Later
+    reproduced on the exact draft rc.5 macOS asset; issue #184. The original
+    second-project install check did not compare stdout. A separate
+    post-rc.5 correction is being qualified; the draft asset remains affected.
+    See the [correction record](dependency-store-output.md).
 
 Finding 11 (`deep-rvt` output order, issue #124) is unchanged: this round
 had 0 Different and 4 Unstable `output_json` tests. Open from earlier

@@ -734,6 +734,7 @@ fn invoke(
     paths: &Paths,
     out: &mut Option<&mut dyn Write>,
     err: &mut dyn Write,
+    seeded: &[super::store::Seeded],
 ) -> Result<Option<i32>> {
     let split = config
         .args
@@ -787,7 +788,7 @@ fn invoke(
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-    let (stdout, captured) = match relay(&mut child, out, err) {
+    let (stdout, captured) = match relay(&mut child, out, err, seeded) {
         Ok(output) => output,
         Err(error) => {
             // A closed stdout or stderr (`| head`) ends the run: stop Cargo.
@@ -844,6 +845,7 @@ fn relay(
     child: &mut std::process::Child,
     out: &mut Option<&mut dyn Write>,
     err: &mut dyn Write,
+    seeded: &[super::store::Seeded],
 ) -> Result<(Vec<u8>, Vec<u8>)> {
     use std::io::BufRead as _;
     let failed = |e: std::io::Error| Error::new("SAIL3106", e.to_string());
@@ -897,6 +899,7 @@ fn relay(
         return Err(Error::new("SAIL3106", "missing Cargo output pipe"));
     }
     let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+    let mut emitted = BTreeSet::new();
     for piece in rx {
         match piece.map_err(failed)? {
             Output::Diagnostics(bytes) => {
@@ -904,6 +907,16 @@ fn relay(
                 stderr.extend_from_slice(&bytes);
             }
             Output::Line(line) => {
+                if let Ok(artifact) = serde_json::from_slice::<Value>(&line)
+                    && let Some(bytes) = seeded_stdout(&artifact, seeded, &mut emitted)
+                {
+                    if let Some(out) = out {
+                        out.write_all(bytes)
+                            .and_then(|()| out.flush())
+                            .map_err(failed)?;
+                    }
+                    stdout.extend_from_slice(bytes);
+                }
                 if let Some(out) = out
                     && !cargo_message(&line)
                 {
@@ -921,6 +934,37 @@ fn relay(
             .map_err(|_| Error::new("SAIL3106", "Cargo output reader failed"))?;
     }
     Ok((stdout, stderr))
+}
+
+/// Restores a seeded root's exact output at Cargo's fresh-artifact boundary,
+/// before a dependent target's output. Existing targets and rebuilt units do
+/// not replay; each newly seeded root can emit at most once.
+fn seeded_stdout<'a>(
+    artifact: &Value,
+    seeded: &'a [super::store::Seeded],
+    emitted: &mut BTreeSet<usize>,
+) -> Option<&'a [u8]> {
+    if artifact["reason"] != "compiler-artifact" || artifact["fresh"] != true {
+        return None;
+    }
+    let name = artifact["target"]["name"].as_str()?.replace('-', "_");
+    let kind = artifact["target"]["kind"].as_array()?;
+    let (index, seed) = seeded.iter().enumerate().find(|(index, seed)| {
+        seed.placed
+            && !emitted.contains(index)
+            && artifact["package_id"].as_str() == Some(seed.receipt.package_id.as_str())
+            && name == seed.receipt.invocation.identity.name
+            && kind.len() == seed.receipt.kind.len()
+            && seed.receipt.kind.iter().all(|kind| {
+                artifact["target"]["kind"].as_array().is_some_and(|kinds| {
+                    kinds
+                        .iter()
+                        .any(|candidate| candidate.as_str() == Some(kind))
+                })
+            })
+    })?;
+    emitted.insert(index);
+    Some(&seed.shown_stdout)
 }
 
 /// Whether a stdout line is one of Cargo's JSON messages (an object with a
@@ -2271,7 +2315,7 @@ pub(crate) fn run_engine_held(
             .collect();
         super::store::attach(&config.cache, &paths.target, &unowned, &data)
     };
-    let mut exit = invoke(config, &paths, &mut out, err)?;
+    let mut exit = invoke(config, &paths, &mut out, err, &seeded)?;
     drop(invocation_phase);
     let records_phase = diagnostics.phase(Phase::TargetRecords);
     outside_scope |= !units_in_scope(&paths);
@@ -2394,7 +2438,7 @@ pub(crate) fn run_engine_held(
         std::fs::remove_dir_all(paths.run.join("pending-receipts"))
             .and_then(|()| std::fs::create_dir_all(paths.run.join("pending-receipts")))
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
-        exit = invoke(config, &paths, &mut out, err)?;
+        exit = invoke(config, &paths, &mut out, err, &[])?;
         outside_scope |= !units_in_scope(&paths);
         let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected, &seeded)?;
         targets = retried;
@@ -3121,6 +3165,54 @@ mod tests {
             declared_environment: BTreeMap::new(),
         }
         .seal()
+    }
+
+    #[test]
+    fn newly_seeded_stdout_replays_once_at_its_fresh_artifact()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-seeded-output-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        let data = serde_json::json!({"packages":[{"id":"input", "manifest_path":root.join("Cargo.toml")}]});
+        let shown = b"verification results:: 1 verified, 0 errors\n";
+        let seed = super::super::store::Seeded {
+            key: "key".into(),
+            receipt: compiler_receipt(&paths, &data, &root.join("absent")),
+            placed: true,
+            shown_stdout: shown.to_vec(),
+        };
+        let mut seeds = [seed];
+        let record = |package, fresh| {
+            serde_json::json!({
+                "reason":"compiler-artifact", "package_id":package, "fresh":fresh,
+                "target":{"name":"input","kind":["lib"]}
+            })
+        };
+        let mut emitted = BTreeSet::new();
+        assert_eq!(
+            seeded_stdout(&record("other", true), &seeds, &mut emitted),
+            None
+        );
+        assert_eq!(
+            seeded_stdout(&record("input", false), &seeds, &mut emitted),
+            None
+        );
+        assert_eq!(
+            seeded_stdout(&record("input", true), &seeds, &mut emitted),
+            Some(shown.as_slice())
+        );
+        assert_eq!(
+            seeded_stdout(&record("input", true), &seeds, &mut emitted),
+            None
+        );
+        seeds[0].placed = false;
+        assert_eq!(
+            seeded_stdout(&record("input", true), &seeds, &mut BTreeSet::new()),
+            None
+        );
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     struct NegativeGeneration {
