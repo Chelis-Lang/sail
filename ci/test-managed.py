@@ -131,7 +131,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                         } for target in document["targets"]]
                 }
 
-        def managed(*args):
+        def managed(*args, expected_requested=1):
             label = f"managed-{len(managed_calls) + 1:02d}"
             managed_calls.append(label)
             started = time.monotonic()
@@ -158,8 +158,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert result["kind"] == "sail-project-result", result
             assert result["error"] is None, result
             selected = [target for target in result["targets"] if target["requested"]]
-            assert len(selected) == 1, selected
-            return run, result, selected[0]
+            assert len(selected) == expected_requested, selected
+            return run, result, selected[0] if selected else None
 
         def vstd(document):
             found = [t for t in document["targets"] if t["target"] == "vstd"]
@@ -253,6 +253,37 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert reused["report"] == target["report"], "reuse must preserve establishing report"
 
             stored_vstd = vstd(warm)
+
+            # Caller target selection cannot partition the owned build or
+            # exclude source files from managed metadata (#166).
+            caller_target = env.pop("CARGO_TARGET_DIR", None)
+            try:
+                for directory in (str(project), str(project / "src"), None):
+                    if directory is None:
+                        env.pop("CARGO_TARGET_DIR", None)
+                    else:
+                        env["CARGO_TARGET_DIR"] = directory
+                    switched_run, switched, _ = managed()
+                    assert switched_run.returncode == 0, diagnostic(switched)
+                    assert switched["context_sha256"] == warm["context_sha256"], diagnostic(switched)
+                    assert switched["input_revision"] == warm["input_revision"], diagnostic(switched)
+                    assert switched["execution"]["verifier_invocations"] == 0, diagnostic(switched)
+                    assert not (project / ".rustc_info.json").exists()
+                    assert not (project / "src/.rustc_info.json").exists()
+                env["CARGO_TARGET_DIR"] = str(project)
+                source.write_text(bad)
+                changed_run, changed, changed_target = managed()
+                assert changed_run.returncode != 0 and not changed_target["reused"], diagnostic(changed)
+                assert changed["input_revision"] != warm["input_revision"], diagnostic(changed)
+                source.write_text(good)
+                restored_run, restored, target = managed()
+                assert restored_run.returncode == 0 and target["complete"], diagnostic(restored)
+                assert restored["currentness"] == "current", diagnostic(restored)
+            finally:
+                if caller_target is None:
+                    env.pop("CARGO_TARGET_DIR", None)
+                else:
+                    env["CARGO_TARGET_DIR"] = caller_target
 
             # The installed CLI and MCP must use that same complete evidence through
             # durable jobs, rather than substitute a Cargo 'fresh' message for proof.
@@ -553,6 +584,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             (project / "build.rs").write_text(
                 'fn main() {\n'
                 '    println!("cargo::rerun-if-env-changed=DEMO_GENERATED_VALUE");\n'
+                '    println!("cargo::rerun-if-env-changed=CARGO_TARGET_DIR");\n'
+                '    assert!(std::env::var_os("CARGO_TARGET_DIR").is_none(), "declared caller target changed");\n'
                 '    let value = std::env::var("DEMO_GENERATED_VALUE").unwrap_or_default();\n'
                 '    let out = std::env::var("OUT_DIR").unwrap();\n'
                 '    std::fs::write(format!("{out}/generated.rs"),\n'
@@ -560,6 +593,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 '}\n')
             source.write_text('include!(concat!(env!("OUT_DIR"), "/generated.rs"));\n' + good)
             env["DEMO_GENERATED_VALUE"] = "first"
+            declared_caller_target = env.pop("CARGO_TARGET_DIR", None)
             try:
                 first_run, first_generated, first_target = managed()
                 assert first_run.returncode == 0 and first_target["complete"], diagnostic(first_generated)
@@ -575,10 +609,126 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 assert changed["execution"]["verifier_invocations"] >= 1, diagnostic(changed)
                 assert not changed_target["reused"], diagnostic(changed)
                 assert changed_target["establishing_run"] != same_target["establishing_run"], diagnostic(changed)
+                env["CARGO_TARGET_DIR"] = str(root / "declared-target-change")
+                # Cargo stops in the failing build script, before it creates
+                # the requested artifact; no requested proof may be reported.
+                declared_run, declared, _ = managed(expected_requested=0)
+                assert declared_run.returncode == declared["exit_code"] == 101, diagnostic(declared)
+                assert declared["currentness"] == "unknown", diagnostic(declared)
+                assert b"declared caller target changed" in declared_run.stderr, declared_run.stderr.decode()
+                assert declared["context_sha256"] == changed["context_sha256"], diagnostic(declared)
             finally:
                 env.pop("DEMO_GENERATED_VALUE", None)
+                if declared_caller_target is None:
+                    env.pop("CARGO_TARGET_DIR", None)
+                else:
+                    env["CARGO_TARGET_DIR"] = declared_caller_target
 
         if part != "scripts":
+            # Cargo config can name a source tree as its ordinary target.
+            # Managed compilation uses an owned target, so metadata must not
+            # exclude that source tree (#189). This tiny no-vstd compiler
+            # fixture adds no cold vstd verification to the phase.
+            lock = (workspace / "Cargo.lock").read_text()
+            builtin_package = next(block for block in lock.split("[[package]]")
+                                   if '\nname = "verus_builtin"\n' in block)
+            builtin_version = next(json.loads(line.split("=", 1)[1].strip())
+                                   for line in builtin_package.splitlines() if line.startswith("version = "))
+            for selection in ("src", "."):
+                fixture = root / ("metadata-source-" + ("root" if selection == "." else "src"))
+                (fixture / "src").mkdir(parents=True)
+                (fixture / ".cargo").mkdir()
+                (fixture / ".cargo/config.toml").write_text(f'[build]\ntarget-dir = "{selection}"\n')
+                (fixture / "Cargo.toml").write_text(
+                    '[package]\nname="metadata_source"\nversion="0.1.0"\nedition="2021"\n'
+                    f'[dependencies]\nverus_builtin="={builtin_version}"\n'
+                    '[package.metadata.verus]\nverify=true\nno-vstd=true\n')
+                (fixture / "src/lib.rs").write_text('extern crate verus_builtin; mod leaf; pub use leaf::answer;\n')
+                (fixture / "src/leaf.rs").write_text('pub fn answer() -> u32 { 42 }\n')
+                fixture_env = dict(env)
+                fixture_env.pop("CARGO_TARGET_DIR", None)
+                def fixture_run(label):
+                    result = bounded_verification([sail, "verify", "--output", "json"], fixture, fixture_env, 120)
+                    (evidence / f"metadata-{fixture.name}-{label}.stdout.json").write_bytes(result.stdout)
+                    (evidence / f"metadata-{fixture.name}-{label}.stderr").write_bytes(result.stderr)
+                    return result, json.loads(result.stdout)
+                initial_run, initial = fixture_run("initial")
+                assert initial_run.returncode == 0, diagnostic(initial)
+                if initial["currentness"] != "current":
+                    established_run, established = fixture_run("established")
+                    assert established_run.returncode == 0 and established["currentness"] == "current", diagnostic(established)
+                warm_run, warm_fixture = fixture_run("warm")
+                assert warm_run.returncode == 0 and warm_fixture["execution"]["verifier_invocations"] == 0, diagnostic(warm_fixture)
+                assert warm_fixture["currentness"] == "current", diagnostic(warm_fixture)
+                assert not (fixture / ".rustc_info.json").exists()
+                assert not (fixture / "src/.rustc_info.json").exists()
+                (fixture / "src/leaf").mkdir()
+                (fixture / "src/leaf/mod.rs").write_text('pub fn answer() -> u32 { 43 }\n')
+                ambiguous_run, ambiguous = fixture_run("ambiguous")
+                assert ambiguous_run.returncode != 0 and b"E0761" in ambiguous_run.stderr, diagnostic(ambiguous)
+                assert ambiguous["execution"]["verifier_invocations"] > 0, diagnostic(ambiguous)
+                assert ambiguous["input_revision"] != warm_fixture["input_revision"], diagnostic(ambiguous)
+
+            # A Sail cache is excluded from snapshots and therefore cannot
+            # also contain package input. Refuse managed receipts, including
+            # physical aliases and future cache suffixes; plain Cargo fallback
+            # must never describe its result as Current (#189).
+            for mode in ("outside", "source", "alias", "prefix", "ancestor"):
+                container = root / ("cache-overlap-" + mode)
+                fixture = container / "package"
+                (fixture / "src").mkdir(parents=True)
+                (fixture / "Cargo.toml").write_text(
+                    '[package]\nname="cache_overlap"\nversion="0.1.0"\nedition="2021"\n'
+                    f'[dependencies]\nverus_builtin="={builtin_version}"\n'
+                    '[package.metadata.verus]\nverify=true\nno-vstd=true\n')
+                (fixture / "src/lib.rs").write_text('extern crate verus_builtin; mod leaf; pub use leaf::answer;\n')
+                (fixture / "src/leaf.rs").write_text('pub fn answer() -> u32 { 42 }\n')
+                cache = container / "cache"
+                if mode == "source":
+                    cache = fixture / "src"
+                elif mode == "alias":
+                    cache.symlink_to(fixture / "src", target_is_directory=True)
+                elif mode == "prefix":
+                    cache = fixture / "src/not-created/cache"
+                elif mode == "ancestor":
+                    cache = container
+                fixture_env = dict(env, SAIL_CACHE_DIR=str(cache),
+                                   CARGO_TARGET_DIR=str(container / "caller-target"))
+                def cache_fixture_run(label):
+                    result = bounded_verification([sail, "verify", "--output", "json"], fixture, fixture_env, 120)
+                    (evidence / f"cache-{mode}-{label}.stdout.json").write_bytes(result.stdout)
+                    (evidence / f"cache-{mode}-{label}.stderr").write_bytes(result.stderr)
+                    return result, json.loads(result.stdout)
+                initial_run, initial = cache_fixture_run("initial")
+                assert initial_run.returncode == 0, diagnostic(initial)
+                if mode == "outside" and initial["currentness"] != "current":
+                    established_run, established = cache_fixture_run("established")
+                    assert established_run.returncode == 0 and established["currentness"] == "current", diagnostic(established)
+                warm_run, warm_fixture = cache_fixture_run("warm")
+                assert warm_run.returncode == 0, diagnostic(warm_fixture)
+                if mode == "outside":
+                    assert warm_fixture["currentness"] == "current", diagnostic(warm_fixture)
+                    assert warm_fixture["execution"]["verifier_invocations"] == 0, diagnostic(warm_fixture)
+                else:
+                    for result, document in ((initial_run, initial), (warm_run, warm_fixture)):
+                        assert document.get("currentness") != "current", diagnostic(document)
+                        assert result.stderr.count(b"note[SAIL3112]") == 1, result.stderr.decode()
+                        assert b"physically disjoint" in result.stderr, result.stderr.decode()
+                    assert not (cache / "projects").exists(), "overlapping cache received managed proof state"
+                    # Cargo itself need not detect an added alternative module
+                    # in a warm target. Request a fresh ordinary target for the
+                    # fallback error control, without editing any source bytes.
+                    fixture_env["CARGO_TARGET_DIR"] = str(container / "fresh-caller-target")
+                (fixture / "src/leaf").mkdir()
+                (fixture / "src/leaf/mod.rs").write_text('pub fn answer() -> u32 { 43 }\n')
+                ambiguous_run, ambiguous = cache_fixture_run("ambiguous")
+                assert ambiguous_run.returncode != 0 and b"E0761" in ambiguous_run.stderr, diagnostic(ambiguous)
+                if mode == "outside":
+                    assert ambiguous["execution"]["verifier_invocations"] > 0, diagnostic(ambiguous)
+                    assert ambiguous["input_revision"] != warm_fixture["input_revision"], diagnostic(ambiguous)
+                else:
+                    assert ambiguous.get("currentness") != "current", diagnostic(ambiguous)
+                    assert not (cache / "projects").exists(), "overlapping cache received managed proof state"
             print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs and prune passed")
         if part != "core":
             print("managed acceptance: build-script reuse passed")

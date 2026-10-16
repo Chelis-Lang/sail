@@ -9,7 +9,28 @@ those receipts and starts no verifier. See
 [ADR 0023](decisions/0023-managed-incremental-workspace-verification.md) and
 [freshness](freshness.md) for what "unchanged" means.
 
+Managed metadata probes, including Cargo-Verus's private metadata subprocess,
+select `cargo-metadata/` under the Sail cache with a highest-priority
+`build.target-dir` override. Neither caller environment nor Cargo configuration
+can exclude source directories for these probes. Cargo metadata can otherwise create
+`.rustc_info.json` in a source directory named by that override. Compilation
+and cleanup keep the caller's environment value; an internal marker is removed
+before compilation so a build script's own nested Cargo commands retain their
+ordinary environment. Public fallback snapshots retain caller target selection.
+
+The Sail cache must be physically disjoint from every resolved package
+directory. A cache inside a package, or a package stored beneath the cache,
+uses ordinary Cargo-Verus fallback with one `note[SAIL3112]` and no managed
+proof reuse or receipts. Symbolic aliases and not-yet-created cache suffixes
+are checked too. Use an external cache (the default) to reuse proofs. This
+conservatively includes projects checked out beneath the Sail cache: its
+excluded output directories must never hide new source inputs (#189).
+
 ## What the first run costs
+
+Setting or unsetting `CARGO_TARGET_DIR` keeps the same managed context: Sail
+always selects its own Cargo target. Declared project reads of that variable
+still invalidate receipts when its value changes.
 
 A new proof context has no compiled dependencies and no receipts. On a
 machine that has never verified it, even a one-function project first

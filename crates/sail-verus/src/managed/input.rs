@@ -56,7 +56,40 @@ fn metadata_command(workspace: &Path, args: &[String], cargo: &Path) -> Command 
 }
 
 pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Result<Value> {
-    let output = metadata_command(workspace, args, cargo)
+    read_metadata(metadata_command(workspace, args, cargo), args)
+}
+
+fn managed_metadata_command(
+    workspace: &Path,
+    args: &[String],
+    cargo: &Path,
+    cache: &Path,
+) -> Result<Command> {
+    let mut command = metadata_command(workspace, args, cargo);
+    // Metadata does not build anything. Keep its excluded output directory
+    // independent of the caller's target override: managed compilation uses
+    // an explicit owned target, even when the caller names a source directory.
+    crate::adapter::configure_metadata_target(
+        &mut command,
+        &crate::adapter::metadata_target(cache)?,
+    )?;
+    Ok(command)
+}
+
+pub(super) fn managed_metadata(
+    workspace: &Path,
+    args: &[String],
+    cargo: &Path,
+    cache: &Path,
+) -> Result<Value> {
+    read_metadata(
+        managed_metadata_command(workspace, args, cargo, cache)?,
+        args,
+    )
+}
+
+fn read_metadata(mut command: Command, args: &[String]) -> Result<Value> {
+    let output = command
         .output()
         .map_err(|e| Error::new("SAIL3103", e.to_string()))?;
     if !output.status.success() {
@@ -664,6 +697,28 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn only_managed_metadata_ignores_the_callers_target_override() {
+        let workspace = std::path::Path::new("workspace");
+        let cargo = std::path::Path::new("cargo");
+        let cache = std::path::Path::new("owned-cache");
+        let managed = super::managed_metadata_command(workspace, &[], cargo, cache)
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        let expected =
+            crate::adapter::metadata_target(cache).unwrap_or_else(|error| unreachable!("{error}"));
+        assert!(
+            managed.get_envs().any(
+                |(key, value)| key == "CARGO_TARGET_DIR" && value == Some(expected.as_os_str())
+            )
+        );
+        let ordinary = super::metadata_command(workspace, &[], cargo);
+        assert!(
+            !ordinary
+                .get_envs()
+                .any(|(key, _)| key == "CARGO_TARGET_DIR")
+        );
+    }
+
     /// The keyed sort builds exactly the set that ordered inserts build,
     /// including paths whose byte order differs from their component order
     /// and spellings that name the same path.

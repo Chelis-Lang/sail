@@ -106,6 +106,10 @@ fn verify_never_runs_a_cargo_verus_from_path() {
     let bin = root.join("bin");
     assert!(std::fs::create_dir_all(&bin).is_ok());
     let marker = root.join("ran");
+    // Keep this engine-selection fixture in the supported managed setup;
+    // overlapping package/cache roots deliberately take the plain fallback.
+    let cache = root.with_extension("cache");
+    let _ = std::fs::remove_dir_all(&cache);
     // A Verus project, so verification gets as far as choosing a Verus.
     assert!(std::fs::create_dir_all(root.join("src")).is_ok());
     assert!(
@@ -136,7 +140,7 @@ fn verify_never_runs_a_cargo_verus_from_path() {
             .arg("verify")
             .current_dir(&root)
             .env("PATH", &path)
-            .env("SAIL_CACHE_DIR", root.join("cache"))
+            .env("SAIL_CACHE_DIR", &cache)
             // Longer than any Unix socket path: no daemon is started.
             .env("SAIL_DAEMON_SOCKET", root.join("d".repeat(120)))
             .env_remove("SAIL_VERUS_BUILD")
@@ -184,6 +188,7 @@ fn verify_never_runs_a_cargo_verus_from_path() {
         "sail ran a cargo-verus without identifying it"
     );
     let _ = std::fs::remove_dir_all(&root);
+    let _ = std::fs::remove_dir_all(&cache);
 }
 
 #[test]
