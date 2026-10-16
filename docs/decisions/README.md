@@ -52,3 +52,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0047: Attribution logs on request, and cheaper managed checks](0047-attribution-logs-on-request.md)
 - [0049: The fork names closure types by definition path (proposed)](0049-stable-closure-names.md)
 - [0051: Solver continuation for changed-check misses (proposed, blocked and unselected)](0051-exact-solver-snapshots.md)
+- [0052: Complete frontend inputs and current-source diagnostic binding (proposed)](0052-warm-frontend-reuse.md)
