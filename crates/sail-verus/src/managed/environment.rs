@@ -36,6 +36,9 @@ const OBSERVATION_ONLY: &[&str] = &[
     // Whether and how much the dependency store keeps (ADR 0045); it never
     // changes what Cargo or the verifier produce.
     "SAIL_DEPENDENCY_STORE_ENTRIES",
+    // How many earlier proofs each target retains (ADR 0048); a restored
+    // proof is the one the same inputs produced.
+    "SAIL_RETAINED_PROOFS",
 ];
 
 /// Families the pinned tools read, by prefix. Sources:
@@ -217,6 +220,8 @@ mod tests {
             "SAIL_JOB_EVENTS",
             "SAIL_MANAGED_FORCE",
             "SAIL_MANAGED_PROXY",
+            "SAIL_DEPENDENCY_STORE_ENTRIES",
+            "SAIL_RETAINED_PROOFS",
         ] {
             assert!(!input_environment_key(OsStr::new(key)), "{key}");
         }

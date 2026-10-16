@@ -355,6 +355,18 @@ fn driver() -> Result<ExitCode> {
     let dir = runtime.sidecars.join(identity.key());
     std::fs::create_dir_all(dir.join("provenance"))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    // A workspace target whose content was verified before (an undone edit,
+    // a checkout back): its retained proof replaces the verifier when every
+    // recorded input matches (ADR 0048). Anything else verifies as usual.
+    let retained = runtime.engine.is_none() && runtime.retained.contains(&identity.manifest);
+    if retained {
+        let dependencies = driver_dependencies()?;
+        if let Some(restored) =
+            crate::managed::restore_retained(&runtime, &identity, &args, &dependencies)
+        {
+            return replay(&runtime, identity, &dir, restored, dependencies);
+        }
+    }
     let logs = runtime.attribution_logs.then(|| dir.join("logs"));
     // VI-0011: the pinned launcher chooses macro mode before decoding Cargo's
     // effective per-package options. Relocate only an already requested mode,
@@ -506,6 +518,7 @@ fn driver() -> Result<ExitCode> {
             .write_all(&stderr)
             .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
+    let observed = (retained && exit.success()).then(|| identity.clone());
     finish(
         &runtime,
         identity,
@@ -517,6 +530,9 @@ fn driver() -> Result<ExitCode> {
         },
         established.as_ref(),
     )?;
+    if let Some(identity) = observed {
+        crate::managed::observe_retained(&args, &identity, &dir);
+    }
     // Plain Verus's stdout, rebuilt from the document Sail asked for; Cargo
     // forwards it, and the managed runner shows it to the user.
     std::io::stdout()
@@ -524,6 +540,54 @@ fn driver() -> Result<ExitCode> {
         .and_then(|()| std::io::stdout().flush())
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     Ok(status(exit))
+}
+
+/// Completes a target from its retained proof (ADR 0048): the verifier's
+/// recorded stderr and Verus's stdout as plain Verus prints it, and the
+/// receipt's report as this run's observation, marked with the run that
+/// verified it.
+fn replay(
+    runtime: &Runtime,
+    identity: TargetIdentity,
+    dir: &Path,
+    restored: crate::managed::Restored,
+    dependencies: std::collections::BTreeMap<PathBuf, String>,
+) -> Result<ExitCode> {
+    let flags = cargo_package_id()
+        .and_then(|id| cargo_driver_options(&id).ok())
+        .map_or_else(
+            || crate::verus_stdout::UserFlags::of(&runtime.args),
+            |effective| crate::verus_stdout::UserFlags::of_verus(effective.arguments.iter()),
+        );
+    std::fs::write(dir.join("verus.stdout"), &restored.stdout)
+        .and_then(|()| std::fs::write(dir.join("verus.stderr"), &restored.stderr))
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let establishing = restored.receipt.invocation.establishing_run().to_owned();
+    let invocation = Invocation {
+        identity,
+        run_id: runtime.run_id.clone(),
+        report: restored.receipt.invocation.report,
+        success: true,
+        dependencies,
+        restored: Some(establishing.clone()),
+    };
+    json(
+        &runtime
+            .invocations
+            .join(format!("{}.json", invocation.identity.key())),
+        &invocation,
+    )?;
+    event(
+        &serde_json::json!({"event":"target-restored","run_id":runtime.run_id,"target":invocation.identity.name,"establishing_run":establishing}),
+    );
+    std::io::stderr()
+        .write_all(&restored.stderr)
+        .and_then(|()| {
+            std::io::stdout().write_all(&crate::verus_stdout::rebuild(&restored.stdout, flags))
+        })
+        .and_then(|()| std::io::stdout().flush())
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    Ok(ExitCode::SUCCESS)
 }
 
 /// The logging flags the managed driver adds to every verified target,
@@ -709,6 +773,7 @@ fn finish(
         report,
         success,
         dependencies,
+        restored: None,
     };
     json(
         &runtime

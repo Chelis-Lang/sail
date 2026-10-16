@@ -14,6 +14,8 @@
 #   fix    the fix: the postcondition restored and the proof body changed,
 #          so the fixed function's query is new
 #   warm2  again, unchanged
+#   revert the edited file back to its content after `edit`, which verified
+#          before the failing edit and the fix (an undone change; ADR 0048)
 # After the `sail verify` phases, one `sail mcp` session calls `verify`
 # twice on the unchanged code (mcp1, mcp2). Mode order rotates by round.
 #
@@ -266,9 +268,12 @@ run_mode() { # ROUND MODE
   run_phase "$round" "$mode" "$dir" warm
   for phase in edit fail fix; do
     apply_edit "$dir" "$phase"
+    [ "$phase" != edit ] || cp "$dir/$edit_file" "$out/r$round/${mode/@/-}.edited"
     run_phase "$round" "$mode" "$dir" "$phase"
   done
   run_phase "$round" "$mode" "$dir" warm2
+  cp "$out/r$round/${mode/@/-}.edited" "$dir/$edit_file"
+  run_phase "$round" "$mode" "$dir" revert
   if [ "$mode" = sail ]; then run_mcp "$round" "$dir"; fi
   stop_daemons "$cache"
   unset SAIL_CACHE_DIR
@@ -326,15 +331,15 @@ table() {
     function fmt(x) { return (x < 10) ? sprintf("%.2f", x) : sprintf("%.1f", x) }
     { k = $2 SUBSEP $3; n[k]++; v[k, n[k]] = $4; if (!(k in lo) || $4 < lo[k]) lo[k] = $4; if (!(k in hi) || $4 > hi[k]) hi[k] = $4 }
     END {
-      split("cold warm edit fail fix warm2", ph, " ")
-      print "| Mode | cold | warm | edit | fail | fix | warm2 |"
-      print "|---|---:|---:|---:|---:|---:|---:|"
+      split("cold warm edit fail fix warm2 revert", ph, " ")
+      print "| Mode | cold | warm | edit | fail | fix | warm2 | revert |"
+      print "|---|---:|---:|---:|---:|---:|---:|---:|"
       nm = split(modes, md, " ")
       label["plain"] = "`cargo verus verify`"; label["sail"] = "`sail verify`"
       for (m = 3; m <= nm; m++) label[md[m]] = "`sail verify` (" substr(md[m], 6) ")"
       for (m = 1; m <= nm; m++) {
         row = "| " label[md[m]]
-        for (p = 1; p <= 6; p++) {
+        for (p = 1; p <= 7; p++) {
           k = md[m] SUBSEP ph[p]
           if (!(k in n)) { row = row " | -"; continue }
           delete a; for (i = 1; i <= n[k]; i++) a[i] = v[k, i]

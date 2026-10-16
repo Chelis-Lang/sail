@@ -1267,13 +1267,15 @@ fn target_records(
             } else {
                 let _ = std::fs::remove_file(&path);
             }
+            // A target the driver restored from a retained proof (ADR 0048)
+            // is reused, and names the run that verified it.
             results.push(TargetResult {
                 dependency_store: None,
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: call.run_id.clone(),
-                reused: false,
+                establishing_run: call.establishing_run().to_owned(),
+                reused: call.restored.is_some(),
                 requested,
                 complete: call.success && complete(&call.report),
                 report: call.report.clone(),
@@ -1354,15 +1356,16 @@ fn target_records(
                     })
                 })
         } {
+            let establishing_run = receipt.invocation.establishing_run().to_owned();
             event(
-                &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.run_id}),
+                &serde_json::json!({"event":"target-reused","target":name,"establishing_run":establishing_run}),
             );
             results.push(TargetResult {
                 dependency_store: store_key,
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: receipt.invocation.run_id,
+                establishing_run,
                 reused: true,
                 requested,
                 complete: true,
@@ -1375,7 +1378,7 @@ fn target_records(
     // A failing compiler may not emit an artifact; preserve its observed target report.
     for call in calls {
         if !results.iter().any(|r| {
-            r.establishing_run == call.run_id
+            r.establishing_run == call.establishing_run()
                 && r.target.replace('-', "_") == call.identity.name
                 && r.kind.iter().any(|k| {
                     k == &call.identity.crate_type
@@ -2005,6 +2008,30 @@ pub(crate) fn run_engine_held(
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
+    // The workspace targets whose earlier proofs the driver may restore and
+    // record (ADR 0048): a run that may reuse, with every input observed, and
+    // neither forced, focused nor an interactive-engine run.
+    let retained: BTreeSet<PathBuf> =
+        if paths.reuse && !forced && engine.is_none() && super::history::capacity() > 0 {
+            data["packages"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|p| {
+                    data["workspace_members"]
+                        .as_array()
+                        .is_some_and(|members| members.contains(&p["id"]))
+                        && p.pointer("/metadata/verus/verify").and_then(Value::as_bool)
+                            == Some(true)
+                        && p["id"]
+                            .as_str()
+                            .is_some_and(|id| scope.as_ref().is_none_or(|s| s.contains(id)))
+                })
+                .filter_map(|p| Some(PathBuf::from(p["manifest_path"].as_str()?)))
+                .collect()
+        } else {
+            BTreeSet::new()
+        };
     if paths.reuse && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
@@ -2062,6 +2089,7 @@ pub(crate) fn run_engine_held(
             .collect(),
         attribution_logs: config.attribution_logs || engine.is_some(),
         engine,
+        retained,
     };
     json(&paths.runtime, &runtime)?;
     let invocation_phase = diagnostics.phase(Phase::Invocation);
@@ -2253,6 +2281,14 @@ pub(crate) fn run_engine_held(
             target.package_id, target.establishing_run
         ));
     }
+    for call in invocations(&paths) {
+        if let Some(establishing) = &call.restored {
+            notes.push(format!(
+                "SAIL3132: {} has the content that run {establishing} verified; its retained proof was restored instead of verifying it again",
+                call.identity.name
+            ));
+        }
+    }
     let fallbacks = engine_fallbacks(&targets);
     if fallbacks > 0 {
         notes.push(format!(
@@ -2302,10 +2338,28 @@ pub(crate) fn run_engine_held(
     }
     json(&paths.run.join("result.json"), &result)?;
     if result.currentness == Currentness::Current {
-        for (path, receipt) in pending {
-            json(&path, &receipt)?;
+        for (path, receipt) in &pending {
+            json(path, receipt)?;
         }
         super::receipts::publish(&paths.run, &paths.receipts, &result.context_sha256)?;
+        // Each newly verified workspace target's proof is retained, so that
+        // reverting to this content later restores it (ADR 0048). Retention
+        // never changes the run's result.
+        let capacity = super::history::capacity();
+        let retained = super::history::root(&paths.receipts);
+        for (_, receipt) in &pending {
+            if !runtime
+                .retained
+                .contains(&receipt.invocation.identity.manifest)
+            {
+                continue;
+            }
+            if let Err(error) = super::history::retain(&retained, &paths.run, receipt, capacity) {
+                event(
+                    &serde_json::json!({"event":"retain-failed","target":receipt.invocation.identity.name,"error":error.message}),
+                );
+            }
+        }
         // Dependencies reused through the store become this context's own
         // receipts, with every ordinary receipt check on later runs.
         for target in result.targets.iter().filter(|t| t.reused) {
@@ -2754,6 +2808,7 @@ mod tests {
                 report,
                 success: true,
                 dependencies: BTreeMap::new(),
+                restored: None,
             },
             artifact_hashes: artifact_hashes(&[artifact.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),
@@ -3745,6 +3800,7 @@ mod tests {
                 report: crate::report::setup_failure(&[], "SAIL3100", "fixture"),
                 success: true,
                 dependencies: BTreeMap::new(),
+                restored: None,
             },
             artifact_hashes: BTreeMap::new(),
             committed: run.join("committed.json"),

@@ -125,14 +125,14 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                         } for target in document["targets"]]
                 }
 
-        def managed(*args):
+        def managed(*args, extra_env=None):
             label = f"managed-{len(managed_calls) + 1:02d}"
             managed_calls.append(label)
             started = time.monotonic()
             events = evidence / (label + ".events.jsonl")
             # This existing observation-only variable is excluded from managed
             # input identity; invocation arguments and compiler flags are unchanged.
-            observed_env = dict(env, SAIL_JOB_EVENTS=str(events))
+            observed_env = dict(env, SAIL_JOB_EVENTS=str(events), **(extra_env or {}))
             try:
                 run = bounded_verification([sail, "verify", "--output", "json", *args],
                                            project, observed_env, 240)
@@ -319,13 +319,19 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
 
         # Delete only the selected receipt. Dependencies must stay warm and a fresh
         # selected proof must replace missing evidence rather than returning nothing.
+        # Retention is off for these runs (an observation-only setting, so the
+        # proof context is the same): with it, the proof retained for this
+        # content would be restored instead (ADR 0048), which the revert
+        # checks below cover.
+        no_retained = {"SAIL_RETAINED_PROOFS": "0"}
         contexts = list((root / "cache/projects").glob("*/" + warm["context_sha256"]))
         assert len(contexts) == 1, contexts
         receipts = list((contexts[0] / "receipts").glob("*.json"))
         selected_receipt = next(path for path in receipts
                                 if json.loads(path.read_text())["package_id"] == reused["package_id"])
         selected_receipt.unlink()
-        refill_run, refill, fresh = managed()
+        refill_run, refill, fresh = managed(extra_env=no_retained)
+        assert refill["context_sha256"] == warm["context_sha256"], diagnostic(refill)
         assert refill_run.returncode == 0 and not fresh["reused"] and fresh["complete"], refill
         assert refill["execution"]["verifier_invocations"] == 1, refill["execution"]
 
@@ -339,7 +345,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert len([l for l in lines if "Finished" in l]) == 1, lines
         assert not [l for l in lines if "Checking" in l or "Compiling" in l], lines
         assert human.stdout == b"", human.stdout
-        refill_run, refill, fresh = managed()
+        refill_run, refill, fresh = managed(extra_env=no_retained)
         assert refill_run.returncode == 0 and not fresh["reused"] and fresh["complete"], refill
 
         # Change a proof into a failure without changing size or mtime. This verifies
@@ -515,9 +521,54 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert changed["execution"]["verifier_invocations"] >= 1, diagnostic(changed)
             assert not changed_target["reused"], diagnostic(changed)
             assert changed_target["establishing_run"] != same_target["establishing_run"], diagnostic(changed)
+
+            # ADR 0048: going back to inputs that verified before restores
+            # the proof retained for them. The build script runs again and
+            # generates the first value; the crate is restored, not verified.
+            env["DEMO_GENERATED_VALUE"] = "first"
+            back_run, back, back_target = managed()
+            assert back_run.returncode == 0 and back["currentness"] == "current", diagnostic(back)
+            assert back["execution"]["verifier_invocations"] == 0, diagnostic(back)
+            assert back_target["reused"] and back_target["complete"], diagnostic(back)
+            assert back_target["establishing_run"] == first_target["establishing_run"], diagnostic(back)
+            assert back_target["report"] == first_target["report"], "a restored proof keeps its report"
+            assert any(n.startswith("SAIL3132:") for n in back["notes"]), back["notes"]
+            # The restored proof is this context's receipt again.
+            after_run, after, after_target = managed()
+            assert after["execution"]["verifier_invocations"] == 0 and after_target["reused"], diagnostic(after)
+            assert after_target["establishing_run"] == first_target["establishing_run"], diagnostic(after)
+
+            # An edit, then the edit undone: the same, for the source.
+            base = source.read_text()
+            source.write_text(base + "// an edit that is undone\n")
+            edit_run, edit, edit_target = managed()
+            assert edit["execution"]["verifier_invocations"] == 1 and not edit_target["reused"], diagnostic(edit)
+            source.write_text(base)
+            undo_run, undo, undo_target = managed()
+            assert undo["execution"]["verifier_invocations"] == 0 and undo_target["reused"], diagnostic(undo)
+            assert undo_target["establishing_run"] == first_target["establishing_run"], diagnostic(undo)
+            assert undo["currentness"] == "current", diagnostic(undo)
+            # One byte different from everything retained: verified again.
+            source.write_text(base + " ")
+            byte_run, byte, byte_target = managed()
+            assert byte["execution"]["verifier_invocations"] == 1 and not byte_target["reused"], diagnostic(byte)
+            # Damaged retained proofs are ignored and the crate is verified
+            # again, with the same verdicts.
+            blobs = list(contexts[0].parent.glob("*/retained/blobs/*"))
+            assert blobs, "retained proofs are kept beside the receipts"
+            for stored in blobs:
+                stored.write_bytes(b"damaged")
+            source.write_text(base + "// an edit that is undone\n")
+            damaged_run, damaged, damaged_target = managed()
+            assert damaged_run.returncode == 0, damaged_run.stderr.decode()
+            assert damaged["execution"]["verifier_invocations"] == 1, diagnostic(damaged)
+            assert not damaged_target["reused"] and damaged_target["complete"], diagnostic(damaged)
+            assert verdicts(damaged_target) == verdicts(edit_target), (verdicts(damaged_target), verdicts(edit_target))
+            assert damaged["currentness"] == "current", diagnostic(damaged)
+            source.write_text(base)
         finally:
             env.pop("DEMO_GENERATED_VALUE", None)
 
-        print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs, prune and build-script reuse passed")
+        print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs, prune, build-script reuse and retained proofs passed")
     finally:
         stop_daemon()

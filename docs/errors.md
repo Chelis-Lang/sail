@@ -153,6 +153,8 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3124` | A target needs a Verus feature the engine is built without (for example `singular` for `by(integer_ring)`); it was verified by the configured stock Verus and accepts no repair | Use the stock result, or stock `sail verify`; see [Verus features the engine lacks](proof-repair.md#verus-features-the-engine-lacks) |
 | `SAIL3130` | Note: a dependency (such as vstd) was verified by a run in another workspace and placed in this new project from Sail's [dependency store](decisions/0045-dependency-store.md) | None; plain Cargo-Verus would have verified it in this run, and its recorded report is the one shown |
 | `SAIL3131` | Warning: a dependency store entry is damaged (its checksums or digests fail), so it was ignored | None; the dependency is verified normally. Delete `<cache>/dependency-store/` if the warning repeats |
+| `SAIL3132` | Note (`--output json`, jobs, MCP): a workspace target has inputs that an earlier run verified, and that run's [retained proof](decisions/0048-retained-proofs-instant-revert.md) was restored instead of verifying it again (an undone edit, a checkout back) | None; the output is what plain Cargo-Verus prints when it verifies the same content, and the report is the one the named run recorded |
+| `SAIL3133` | A retained proof could not be stored; recorded only in `SAIL_JOB_EVENTS`, never printed | None; the run's result is unchanged, and that content is verified again if it comes back. Check the free space of the Sail cache if it repeats |
 
 ## Portfolio and solver libraries
 

@@ -7,8 +7,9 @@
 #
 #   ci/test-output.sh SAIL loop|loader|flags|extra
 #
-# `loop`: combined output, passing proofs, an unchanged re-run, a compile
-# error and partial verification. `loader`: a loader variable. `flags`: the
+# `loop`: combined output, passing proofs, an unchanged re-run, an undone
+# edit (ADR 0048), a compile error and partial verification. `loader`: a
+# loader variable. `flags`: the
 # setups verified without proof reuse. `extra`: `-- --output-json --time` and
 # a `-p`/`--features` workspace. Every cold build verifies vstd (about two
 # minutes on a CI runner), so CI runs `loop`, `loader` and `flags` as
@@ -97,6 +98,30 @@ grep -q "verified, 0 errors" "$work/pass-plain.out"
 CARGO_TARGET_DIR="$work/target-plain" quiet_run noop-plain cargo verus verify
 CARGO_TARGET_DIR="$work/target-sail" quiet_run noop-sail "$sail" verify
 same noop-plain noop-sail
+# Instant revert (ADR 0048): an edit, then the edit undone. Plain
+# Cargo-Verus verifies the reverted content again; Sail restores the proof
+# it retained for that content and prints the same output. Content that
+# differs by one byte is verified again.
+cp src/lib.rs "$work/passing.rs"
+sed -i 's/ensures r >= x,/ensures r >= x, r <= x,/' src/lib.rs
+plain_run edit-plain cargo verus verify
+sail_run edit-sail "$sail" verify
+same edit-plain edit-sail
+cp "$work/passing.rs" src/lib.rs
+plain_run revert-plain cargo verus verify
+SAIL_JOB_EVENTS="$work/revert.events" sail_run revert-sail "$sail" verify
+same revert-plain revert-sail
+grep -q "verified, 0 errors" "$work/revert-plain.out"
+grep -q '"event":"target-restored"' "$work/revert.events"
+printf '// one more byte\n' >> src/lib.rs
+plain_run changed-plain cargo verus verify
+SAIL_JOB_EVENTS="$work/changed.events" sail_run changed-sail "$sail" verify
+same changed-plain changed-sail
+if grep -q '"event":"target-restored"' "$work/changed.events"; then
+  echo "e2e: content that differs from every retained proof was restored" >&2
+  exit 1
+fi
+cp "$work/passing.rs" src/lib.rs
 printf 'pub fn broken() -> u32 { y }\n' >> src/lib.rs
 plain_run compile-plain cargo verus verify
 sail_run compile-sail "$sail" verify
@@ -108,7 +133,7 @@ plain_run partial-plain cargo verus verify -- --verify-function max
 sail_run partial-sail "$sail" verify -- --verify-function max
 same partial-plain partial-sail
 grep -q "Partial verification must use" "$work/partial-plain.err"
-echo "e2e: combined output, passing, unchanged, compile error and partial verification identical to cargo verus verify"
+echo "e2e: combined output, passing, unchanged, an undone edit, compile error and partial verification identical to cargo verus verify"
 
 fi
 

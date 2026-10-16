@@ -27,6 +27,11 @@ pub(crate) struct Runtime {
     /// `attribution_logs`; always for an interactive-engine run).
     #[serde(default)]
     pub attribution_logs: bool,
+    /// The manifests of the workspace packages whose retained proofs this
+    /// run may restore and record (ADR 0048). Empty when retention is off or
+    /// the run cannot reuse.
+    #[serde(default)]
+    pub retained: BTreeSet<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,6 +55,18 @@ pub(crate) struct Invocation {
     pub report: Report,
     pub success: bool,
     pub dependencies: BTreeMap<PathBuf, String>,
+    /// Set when the driver restored this target's retained proof instead of
+    /// verifying it (ADR 0048): the run that verified it. Absent, and so
+    /// leaving earlier receipt checksums unchanged, for a verification.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub restored: Option<String>,
+}
+
+impl Invocation {
+    /// The run that actually verified this target's report.
+    pub(crate) fn establishing_run(&self) -> &str {
+        self.restored.as_deref().unwrap_or(&self.run_id)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -274,6 +291,7 @@ mod tests {
                 report,
                 success: true,
                 dependencies: BTreeMap::new(),
+                restored: None,
             },
             artifact_hashes: artifact_hashes(&[path.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),

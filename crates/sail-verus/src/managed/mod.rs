@@ -7,6 +7,7 @@ mod diagnostics;
 mod environment;
 mod files;
 mod freshness;
+mod history;
 mod input;
 pub mod projects;
 mod read_check;
@@ -22,6 +23,7 @@ pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_
 pub use runner::{Config, refresh_context, refresh_result, run, run_showing_output};
 pub(crate) use runner::{run_engine, run_engine_held};
 
+pub(crate) use history::{Restored, observe as observe_retained, restore as restore_retained};
 pub(crate) use receipts::complete as receipt_complete;
 
 pub(crate) use runner::focused;

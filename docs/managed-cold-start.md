@@ -100,6 +100,37 @@ build-script records, and the next run rebuilds those packages. A failed proof
 or compile error never produces a receipt, so the failing crate itself is
 always verified again.
 
+## Reverting to verified content
+
+Undoing an edit, checking out earlier code or switching back to a branch
+brings back content that Sail has already verified. Plain `cargo verus
+verify` verifies it again: the files are newer than its last build. Sail
+keeps the four most recently used proofs of each workspace target
+([ADR 0048](decisions/0048-retained-proofs-instant-revert.md)), with the
+files the compiler wrote for it and the verifier's output. Cargo still sees
+the reverted crate as changed, prints its usual `Checking` line and calls
+Sail's driver, which then restores the retained proof instead of verifying
+when every input of the crate matches the one that verified it: the
+content of every source file and generated include the compiler read, the
+compiled dependencies, the environment Cargo gives the compiler, the
+arguments and the toolchain. It prints the recorded diagnostics and Verus's
+`verification results::` line, so the output is what plain Cargo-Verus
+prints when it verifies the same content.
+
+| Reverted run (Linux `c7i.4xlarge`) | Plain `cargo verus verify` | `sail verify` before | `sail verify` now |
+|---|---:|---:|---:|
+| one-function demo | measured below | | |
+| vest `-p vest_lib` | | | |
+
+With `--output json`, jobs and MCP, the reverted target is `reused`, names
+the run that verified it as `establishing_run`, and the note `SAIL3132` says
+it was restored. Any byte of difference in an input, another proof context
+(other arguments, toolchain or environment), a forced or focused run, or a
+damaged retained proof means the crate is verified as usual. Only complete,
+successful verifications from runs that ended Current are kept; set
+`SAIL_RETAINED_PROOFS` to keep another number, or `0` to turn this off
+([disk use](workspace-hygiene.md#retained-proofs)).
+
 ## Build scripts
 
 Sail records the inputs each build script declares and checks their content
