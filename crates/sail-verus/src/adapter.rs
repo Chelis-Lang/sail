@@ -432,8 +432,11 @@ fn driver() -> Result<ExitCode> {
             None,
             Some(&replay.unit),
         )?;
+        let shown_stdout = crate::verus_stdout::rebuild(&replay.stdout, flags);
+        std::fs::write(dir.join("verus.shown-stdout"), &shown_stdout)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         std::io::stdout()
-            .write_all(&crate::verus_stdout::rebuild(&replay.stdout, flags))
+            .write_all(&shown_stdout)
             .and_then(|()| std::io::stdout().flush())
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         return Ok(ExitCode::SUCCESS);

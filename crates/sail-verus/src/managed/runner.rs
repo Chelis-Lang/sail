@@ -3794,6 +3794,7 @@ mod tests {
             key: "store-key".into(),
             receipt,
             placed: true,
+            shown_stdout: Vec::new(),
         }];
         let (stored, missing) = target_records(&paths, &data, "other", false, &empty, &seeds)?;
         assert_eq!(missing, BTreeSet::<String>::new());
