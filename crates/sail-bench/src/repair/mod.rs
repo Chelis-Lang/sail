@@ -279,7 +279,8 @@ pub struct Facts {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compiler_invocations: Option<u64>,
     /// SHA-256 of the canonical full outcome's JSON (exit code, sorted
-    /// function verdicts and tiers, summary and ordered diagnostics); arms
+    /// function verdicts and establishments, summary and ordered
+    /// diagnostics); arms
     /// are compared by it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outcome_sha256: Option<String>,
@@ -419,11 +420,28 @@ fn currentness(project: &Value) -> Option<String> {
 /// The canonical full outcome of a `sail-project-result` document: the
 /// value compared between arms.
 ///
+/// Each function contributes its name, verdict and establishment (ADR 0044).
+/// Schema v2 names the establishment `establishment`; the frozen M6 baseline
+/// binary predates v2 and writes the same value as v1's `tier`, so a v1
+/// document's `tier` is read in its place. `evidence_tier` exists only in v2
+/// and is a function of the verdict, so it is not part of the outcome.
+///
 /// # Errors
 ///
 /// Why the document carries no comparable outcome (an infrastructure
-/// error, no exit code, or not exactly one requested target).
+/// error, no exit code, an unknown schema version, or not exactly one
+/// requested target).
 pub fn canonical_outcome(project: &Value) -> Result<Value, String> {
+    let establishment = match project.get("schema_version").and_then(Value::as_u64) {
+        Some(2) => "establishment",
+        Some(1) => "tier",
+        other => {
+            return Err(format!(
+                "unsupported project result schema_version {}",
+                other.map_or_else(|| "(missing)".to_owned(), |v| v.to_string())
+            ));
+        }
+    };
     if project.get("error").is_some_and(|e| !e.is_null()) {
         return Err(format!(
             "project infrastructure error: {}",
@@ -470,7 +488,7 @@ pub fn canonical_outcome(project: &Value) -> Result<Value, String> {
             serde_json::json!([
                 f.get("function").cloned().unwrap_or(Value::Null),
                 f.get("verdict").cloned().unwrap_or(Value::Null),
-                f.get("tier").cloned().unwrap_or(Value::Null),
+                f.get(establishment).cloned().unwrap_or(Value::Null),
             ])
         })
         .collect();
@@ -572,7 +590,8 @@ mod tests {
 
     fn project(exit: i64, currentness: &str) -> Value {
         json!({
-            "kind": "sail-project-result", "currentness": currentness, "exit_code": exit,
+            "kind": "sail-project-result", "schema_version": 2,
+            "currentness": currentness, "exit_code": exit,
             "error": null, "execution": {"verifier_invocations": 1},
             "targets": [
                 {"requested": false, "report": {"crates": []}},
@@ -580,8 +599,10 @@ mod tests {
                     "error": null, "summary": {"verified": 2},
                     "diagnostics": [{"message": "m"}],
                     "crates": [{"functions": [
-                        {"function": "b", "verdict": "verified", "tier": "solver"},
-                        {"function": "a", "verdict": "failed", "tier": "solver"}
+                        {"function": "b", "verdict": "verified",
+                         "establishment": "confirmed", "evidence_tier": "smt_verified"},
+                        {"function": "a", "verdict": "failed",
+                         "establishment": "confirmed", "evidence_tier": "smt_verified"}
                     ]}]
                 }}
             ]
@@ -617,6 +638,49 @@ mod tests {
         let mut broken = project(0, "current");
         broken["error"] = json!({"code": "SAIL0001"});
         assert!(canonical_outcome(&broken).is_err());
+        let mut unversioned = project(0, "current");
+        unversioned["schema_version"] = Value::Null;
+        assert!(canonical_outcome(&unversioned).is_err());
+    }
+
+    /// A v2 document's establishment is part of the outcome, and a frozen
+    /// M6 baseline's v1 document with the same verdicts and `tier` values
+    /// has the same outcome (#179).
+    #[test]
+    fn outcome_reads_schema_v2_establishment() {
+        let v2 = project(1, "current");
+        let Ok(a) = canonical_outcome(&v2) else {
+            unreachable!()
+        };
+        assert_eq!(
+            a["functions"],
+            json!([["a", "failed", "confirmed"], ["b", "verified", "confirmed"]])
+        );
+
+        let mut provisional = v2.clone();
+        provisional["targets"][1]["report"]["crates"][0]["functions"][0]["establishment"] =
+            json!("provisional");
+        assert_ne!(canonical_outcome(&provisional).ok(), Some(a.clone()));
+
+        let mut v1 = v2.clone();
+        v1["schema_version"] = json!(1);
+        for f in v1["targets"][1]["report"]["crates"][0]["functions"]
+            .as_array_mut()
+            .into_iter()
+            .flatten()
+        {
+            let Some(f) = f.as_object_mut() else {
+                unreachable!()
+            };
+            let establishment = f.remove("establishment").unwrap_or(Value::Null);
+            f.remove("evidence_tier");
+            f.insert("tier".to_owned(), establishment);
+        }
+        assert_eq!(canonical_outcome(&v1).ok(), Some(a.clone()));
+        let mut v1_verdict = v1.clone();
+        v1_verdict["targets"][1]["report"]["crates"][0]["functions"][1]["verdict"] =
+            json!("verified");
+        assert_ne!(canonical_outcome(&v1_verdict).ok(), Some(a));
     }
 
     #[test]

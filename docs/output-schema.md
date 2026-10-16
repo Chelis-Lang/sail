@@ -70,7 +70,7 @@ omitted when no portfolio was requested.
 | Field | Type | Meaning |
 |---|---|---|
 | `schema_version` | `2` | This schema. |
-| `sail_version` | string | The `sail` that wrote it. |
+| `sail_version` | string | The `sail` that wrote it, exactly as `sail --version` prints it (a release build includes its suffix, for example `0.1.0-rc.5`). |
 | `mode` | string | `default`, or explicitly selected `accept-first-proof` (charter rule 8). |
 | `command` | string[] | The arguments passed to `cargo verus verify`, without sail's own flags. |
 | `exit_code` | int \| null | `cargo verus verify`'s exit code. |

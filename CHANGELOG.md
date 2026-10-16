@@ -5,6 +5,17 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **Reports state the release version** (#180). A release build's reports
+  (`sail_version`), daemon status and MCP server info now state the same
+  version as `sail --version`, suffix included (for example `0.1.0-rc.5`);
+  they used to state the workspace version (`0.1.0`).
+- **The repair benchmark compares schema v2 outcomes** (#179). `sail-bench
+  repair` hashed each function's v1 `tier`, which schema v2 (ADR 0044) renamed
+  `establishment`, so every M6/M7 pair was judged as differing (`SAIL7107`).
+  The outcome now holds each function's verdict and establishment, read from a
+  v2 document's `establishment` or the frozen M6 baseline's v1 `tier`, and an
+  unknown schema version is refused as no outcome.
+
 - **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).
   Per-obligation detail (op kinds, spans, per-check answers and cache
   provenance, counterexample models) needs Verus's AIR and SMT transcript

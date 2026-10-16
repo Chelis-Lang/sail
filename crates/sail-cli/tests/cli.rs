@@ -1,6 +1,7 @@
 //! Smoke tests for the `sail` binary's command surface.
 
-use std::process::{Command, Output};
+use std::io::Write as _;
+use std::process::{Command, Output, Stdio};
 
 fn sail(args: &[&str]) -> Output {
     match Command::new(env!("CARGO_BIN_EXE_sail")).args(args).output() {
@@ -36,6 +37,43 @@ fn version_reports_the_build_version() {
         String::from_utf8_lossy(&output.stdout),
         format!("sail {expected}\n")
     );
+    assert_eq!(expected, sail_api::VERSION, "reports state this version");
+}
+
+/// The MCP server states the version `sail --version` prints (#180).
+#[test]
+fn mcp_server_states_the_cli_version() {
+    let cache = std::env::temp_dir().join(format!("sail-cli-version-{}", std::process::id()));
+    let child = Command::new(env!("CARGO_BIN_EXE_sail"))
+        .arg("mcp")
+        .env("SAIL_CACHE_DIR", &cache)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn();
+    let Ok(mut child) = child else {
+        unreachable!("cannot run sail mcp: {child:?}")
+    };
+    let init = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}"#;
+    if let Some(mut stdin) = child.stdin.take() {
+        assert!(writeln!(stdin, "{init}").is_ok());
+    }
+    let output = child.wait_with_output();
+    let _ = std::fs::remove_dir_all(&cache);
+    let Ok(output) = output else {
+        unreachable!("sail mcp failed: {output:?}")
+    };
+    let text = String::from_utf8_lossy(&output.stdout);
+    let reply: serde_json::Value = text
+        .lines()
+        .next()
+        .and_then(|l| serde_json::from_str(l).ok())
+        .unwrap_or_default();
+    let version = String::from_utf8_lossy(&sail(&["--version"]).stdout).into_owned();
+    let served = reply["result"]["serverInfo"]["version"]
+        .as_str()
+        .unwrap_or("(none)");
+    assert_eq!(format!("sail {served}\n"), version, "{text}");
 }
 
 #[test]
