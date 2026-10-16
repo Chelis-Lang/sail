@@ -496,14 +496,34 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             for name in ("worktree-1", "worktree-2"):
                 shutil.copytree(workspace, root / name)
                 copies.append(root / name / project.name)
-            fresh_runs = [subprocess.Popen([sail, "verify", "--incremental", "--output", "json"],
-                                        cwd=copy, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                       for copy in copies]
+            fresh_runs = []
+            fresh_outputs = {}
+            try:
+                for copy in copies:
+                    process = subprocess.Popen([sail, "verify", "--incremental", "--output", "json"],
+                                               cwd=copy, env=env, stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE, start_new_session=True)
+                    fresh_runs.append((copy, process))
+                for copy, process in fresh_runs:
+                    fresh_outputs[copy] = process.communicate(timeout=240)
+            finally:
+                # Reap every owned process group before scratch cleanup, even
+                # after launch/read failure. Retain all partial producer output.
+                for copy, process in fresh_runs:
+                    if copy not in fresh_outputs:
+                        try:
+                            os.killpg(process.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                for copy, process in fresh_runs:
+                    if copy not in fresh_outputs:
+                        fresh_outputs[copy] = process.communicate(timeout=10)
+                    out, err = fresh_outputs[copy]
+                    (evidence / (copy.parent.name + ".stdout.json")).write_bytes(out)
+                    (evidence / (copy.parent.name + ".stderr")).write_bytes(err)
             own_vstd_receipts = []
-            for copy, process in zip(copies, fresh_runs):
-                out, err = process.communicate(timeout=240)
-                (evidence / (copy.parent.name + ".stdout.json")).write_bytes(out)
-                (evidence / (copy.parent.name + ".stderr")).write_bytes(err)
+            for copy, process in fresh_runs:
+                out, err = fresh_outputs[copy]
                 fresh = json.loads(out)
                 assert process.returncode == 0 and fresh["exit_code"] == 0, err.decode()
                 assert b"SAIL3131" not in err, err.decode()
@@ -525,6 +545,9 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                     assert established.returncode == 0 and fresh["currentness"] == "current", diagnostic(fresh)
                     assert all(t["complete"] and "dependency_store" not in t for t in fresh["targets"]), diagnostic(fresh)
                 assert fresh["currentness"] == "current", diagnostic(fresh)
+                own = [t for t in fresh["targets"] if t["requested"]]
+                assert len(own) == 1 and own[0]["complete"], diagnostic(fresh)
+                assert verdicts(own[0]) == verdicts(target), diagnostic(fresh)
                 own_vstd_receipts.append(vstd(fresh))
             # Each Current project owns its next reuse; no foreign establishing
             # run can be substituted for the fresh project's own proof.
@@ -532,7 +555,10 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                                          copies[0], env, 240)
             repeated = json.loads(again.stdout)
             assert again.returncode == 0 and repeated["execution"]["verifier_invocations"] == 0, diagnostic(repeated)
+            assert repeated["currentness"] == "current", diagnostic(repeated)
             assert all(t["reused"] and "dependency_store" not in t for t in repeated["targets"]), diagnostic(repeated)
+            repeated_own = [t for t in repeated["targets"] if t["requested"]]
+            assert len(repeated_own) == 1 and verdicts(repeated_own[0]) == verdicts(target), diagnostic(repeated)
             assert vstd(repeated)["establishing_run"] == own_vstd_receipts[0]["establishing_run"], diagnostic(repeated)
             assert vstd(repeated)["report"] == own_vstd_receipts[0]["report"], diagnostic(repeated)
 
