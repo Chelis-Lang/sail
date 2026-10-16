@@ -19,6 +19,15 @@ are in the `archive/m7-contracts-f7103bf` tag.
   baseline-must-pass check remain unchanged. See the
   [validation record](validation/rvt-progress-option.md).
 
+- **A combined-output disagreement remains unresolved** ([#174](https://github.com/Chelis-Lang/sail/issues/174)).
+  The native memo candidate's original E2E run reordered the project summary
+  and Cargo error relative to plain Verus. Cause unknown; the old trap removed
+  the complete temporary streams. A bounded three-arm reproduction matched
+  every retained comparison but used explicit daemons. A subsequent single
+  automatic-daemon loop also matched with complete retained observations;
+  neither accepts the memo candidate. The [failure observer](e2e-output-evidence.md)
+  preserves bounded original bytes; [evidence and limits](validation/e2e-output-evidence.md).
+
 - **Changed-check continuation remains unqualified** ([#158](https://github.com/Chelis-Lang/sail/issues/158)).
   Historical fork continuations have raw statistics differences. Three fresh
   full runs per real IronKV/Anvil trace also differ in literal clock bytes,
