@@ -37,6 +37,11 @@ semantic versioning once the API is published.
   Cargo target (#166), avoiding a redundant cold context. Declared source
   and build-script reads still invalidate proof receipts when its value changes.
 
+- The native read-only pruning research controller records cold and edited
+  compiler runs, restores pristine manifests/lockfiles between arms, and
+  fails on verification or exact SMT-stream differences. Its initial
+  Vest/IronKV comparison leaves the compiler candidate unselected; no default
+  runtime or verification behavior changes.
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);

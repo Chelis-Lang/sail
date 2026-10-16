@@ -131,6 +131,99 @@ It requires independent review, a measured native gain and exact whole-corpus
 SMT/verdict/diagnostic validation before a runtime is selected. An unchanged
 query's bytes must remain identical; a different verdict is a blocker.
 
+### Native research runtime comparison
+
+The read-only traversal has passed independent static review. Two complete
+research runtimes were built natively on an EC2 c7i.8xlarge in us-east-1
+(32 logical CPUs, Xeon Platinum 8488C). Arm A is combined fork source
+`8a373f81a507b7ef4f144767ccd237d3d3de6c48`; arm B applies the reviewed
+read-only pruning patch, SHA-256
+`e5333c1c71292a6f939a99b75e1fb7de0337942645bbdc2282998e2e08ccfc58`.
+B is identified by that source and patch, rather than claiming an unmodified
+`8a373f81` build. Rust is 1.98.1. The native CI image is
+`sail-ci:3c02e445e25df766`, image SHA-256
+`03d6865e6602ae702f480b4396543c5c1c51fe07f88fd80faa210880a66abef6`.
+
+Both `vargo build --release` logs explicitly invoke `vstd_build` and report
+2,060 verified obligations and zero errors. The subsequent Cargo-Verus
+release builds also succeed. The copied runtimes have identical `verus`,
+`cargo-verus`, pinned Z3, `libvstd.rlib` and `vstd.vir` bytes; only
+`rust_verify` and the vstd fingerprint differ. These are direct compiler
+research runtimes. They do not contain Sail's source-build manifest and
+are not selected or qualified Sail runtimes.
+
+The bounded comparison is implemented in
+`scripts/profile-readonly-pruning.py`. It verifies all runtime hashes against
+the build manifest, uses each arm's absolute Cargo-Verus path and sibling
+compiler, and binds its own Z3. Two rounds reverse A/B order. Each arm starts
+from the same pristine project manifests, lockfile and source, with an empty
+project target directory. Cold and comment-only edit runs are both retained.
+Separate raw SMT captures are excluded from timing samples. The controller
+requires positive verification counts, identical verification/proof-note
+JSON and identical complete SMT stream multisets, including multiplicity.
+Any failure makes the research gate fail with a nonzero exit. Raw stdout,
+stderr, timings and failures remain unchanged. This research gate does not
+replace corpus or diagnostic conformance.
+
+The corrected native controller completes with exit 0: all 20 verification
+runs pass, including the four separately timed capture runs. All eight paired
+cold/warm verification/proof-note JSON comparisons match. Complete raw SMT
+multisets match exactly: 266 streams for each Vest arm and 25 for each IronKV
+arm. Runtime hashes remain unchanged and tracked project inputs are restored.
+The research gate passes; default/corpus acceptance remains false.
+
+Medians of two samples per arm and phase, with captures excluded:
+
+| Project | Metric | A: existing traversal | B: read-only traversal |
+|---|---|---:|---:|
+| Vest | Cold command wall | 64.77 s | 63.96 s |
+| Vest | Comment edit wall | 35.46 s | 35.21 s |
+| Vest | Comment edit child CPU | 192.26 s | 191.83 s |
+| Vest | Reported Rust / VIR stage | 6.969 / 5.668 s | 6.954 / 5.353 s |
+| IronKV | Cold command wall | 41.00 s | 38.37 s |
+| IronKV | Comment edit wall | 8.863 s | 8.887 s |
+| IronKV | Comment edit child CPU | 22.566 s | 22.592 s |
+| IronKV | Reported Rust / VIR stage | 1.492 / 1.167 s | 1.490 / 1.113 s |
+
+VIR stage time falls in both projects, but the overall improvement is small
+and inconclusive: Vest improves by about 0.25 s (0.7%), while IronKV's median
+edit is 0.025 s slower. Vest's warm samples are 35.21/35.71 s for A and
+34.96/35.46 s for B; IronKV's are 8.838/8.887 s and 8.787/8.988 s. Two
+rounds do not establish a useful default gain. Cold times include dependency
+resolution and download/cache warming, so their difference cannot all be
+attributed to pruning. Vest's resolved lock hashes match across all four
+arms. IronKV has no committed lock; the generated member lock was not
+retained by this controller, which only records a root lock. A future floor
+comparison must pin and retain that resolved lock before timing. No sample
+is omitted, and these measurements do not select the candidate.
+
+For an already prepared owned build directory, inside the same native
+environment:
+
+```sh
+python3 scripts/profile-readonly-pruning.py \
+  --work /path/to/prepared/research-build \
+  --rlibs /path/to/existing/gate-target/release/deps \
+  --timeout 600
+```
+
+The directory must contain the exact A/B `build-results/manifest.json` and
+runtime copies. The helper compiles only a small patcher against existing
+read-only Sail library artifacts. It creates fresh owned project directories,
+preserves all raw evidence and restores edited project inputs even after
+interruption. It refuses to overwrite an existing result directory.
+
+Direct-Z3 edit timings include solving and do not isolate the frontend floor.
+If the stage measurements justify another experiment, the bounded follow-up
+is three interleaved comment-only and single-body-edit loops on Vest and
+IronKV, comparing both compilers directly and through the full-prefix solver
+shim. The cache preparation is real work and must be recorded separately.
+An all-hit label requires complete current-invocation provenance, zero solver
+starts, every daemon get hitting and no puts; missing sidecars or mere
+regex counts do not establish that scope. No managed runtime identity is
+invented for these direct compiler runs. An inconclusive gain keeps the
+candidate unselected; persistent-key design remains the larger task.
+
 Building proc macros at opt-level 3 is another candidate: six warm samples
 per arm show Vest 38.72 to 36.58 s and IronKV 8.89 to 8.27 s. One cold sample
 per arm worsens from about 73 to 85 s and 42 to 56 s, respectively. That is
@@ -158,6 +251,10 @@ Raw logs remain outside the repository in the
 
 | Artifact in that evidence set | SHA-256 |
 |---|---|
+| `build-compare/native-build-result/manifest.json` | `b751dad93f2561e3cf42b88d8c40215213cca3a43acef9ba4c35839a43c70e53` |
+| `build-compare/profile-attempt1-results.tgz` (interrupted, unaccepted harness attempt) | `867c51156034f4d041ccad2d7406ec2052ede9783c423e01ef6e639de0047ee3` |
+| `build-compare/native-profile-v2/manifest.json` | `bc2f1f7426108b22d61494a7aeefd142a6ac2a86faed643bc0d2255fa0181d15` |
+| `build-compare/m8-native-build-profile-v2.tgz` (runtimes, source/controllers, logs and all raw captures) | `3aa85479b6d3bce3320a0ef4853611058d4b8794b7d2eeaa66b10e08b4a686e2` |
 | `m11-8a/out/vest/results.tsv` | `31fd2bf26eea7baff8b7cdea4a3e6fb2dad6b15ded175f6d2d691f097a1d32e2` |
 | `m11-8b/out/ironkv/results.tsv` | `1a8dfbfe27b3754a165da8701fd184eaaa2cc0a4c4a4f6286c07f1cc6ae2132c` |
 | `m11-8b/out/verismo/results.tsv` | `3673a5e0092758f4606631ef8f5254e6cf79de27cca7bd0e423dcf59bbc22990` |

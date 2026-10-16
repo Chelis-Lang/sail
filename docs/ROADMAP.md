@@ -225,8 +225,9 @@ solver-side remainder. Edit loops agree.
 The levers that matter now:
 - **The warm Verus frontend** (the charter roadmap item).
   - The [larger-project profile](reports/2026-10-16-warm-frontend.md) is recorded.
-    A read-only pruning candidate is implemented separately; native gain and
-    runtime qualification are pending. The raw memo key misses ordinary edits,
+    A read-only pruning candidate passes a bounded native A/B query comparison;
+    its overall edit gain is inconclusive and runtime qualification is pending.
+    The raw memo key misses ordinary edits,
     so persistent reuse remains unimplemented (proposed ADR 0052).
   - The earlier M8.0 gate failed on the reference host. Unchanged-bucket work is
     9–12% of the median edit cycle (gate: 25%), so the hermetic bucket memo
