@@ -1,10 +1,11 @@
 # Native-artifact store quarantine
 
-**Status:** containment policy accepted; integrated tests and ordinary gates
-pending. No release or runtime pin changes.
+**Status:** containment policy accepted. Native integrated gate, solver,
+end-to-end, PR conformance and full FAST pass; STANDARD is still in progress.
+No release or runtime pin changes.
 
 [ADR 0053](../decisions/0053-disable-unqualified-native-store.md) disables
-disabling v1 dependency-store reads and publication until native input identity
+v1 dependency-store reads and publication until native input identity
 is qualified. This addresses the mechanism behind
 [#187](https://github.com/Chelis-Lang/sail/issues/187) by making fresh targets
 execute normal native compilation.
@@ -52,11 +53,36 @@ per-function verdicts, and subsequent reuse of each project's own receipts.
 The old requirement and its red assessment remain visible above. No
 conformance comparator or benchmark baseline is changed.
 
-Full native gate, solver tests, every end-to-end phase plus extra, full FAST
-and STANDARD conformance, and independent review of the integrated source are
-still pending. Earlier assessment results do not qualify the later test and
-documentation changes. A sound fast replacement and first-run speed recovery
-remain open work; containment alone does not complete them.
+Native Linux qualification uses the original pinned fork and Z3, on separate
+EC2 c7i.8xlarge hosts in us-east-1:
+
+| Source | Actual completed scope | Result |
+|---|---|---|
+| `7b0908bd` | Workspace gate, solver, all seven end-to-end phases plus extra, changed native compiler, PR subset, full FAST | 655 unit tests and two doctests pass; 35 solver tests pass. Each PR arm has 33 Same / 311 functions; each full FAST arm has 147 Same / 3,450 functions. Zero differences, instability, infrastructure errors or skipped projects. STANDARD remains in progress. |
+| `eae5c4d2`, based on main `3dd4e28e` | Workspace gate, solver, all seven end-to-end phases plus extra, changed native compiler, PR subset | Same gate and solver counts; all four PR arms have 33 Same / 311 functions and zero differences, instability, infrastructure errors or skipped projects. Final source, runtime and binary guards pass. |
+
+The current-main integration changes only the failure-evidence harness and
+documentation relative to `7b0908bd`; the Rust and managed acceptance source
+are identical. Independently compiled `sail`, `sail-z3` and
+`sail-conformance` are byte-identical, including the current-main final guard.
+Full FAST and the ongoing STANDARD run belong to `7b0908bd`; they are not
+described as current-head tier runs. The current-head queue also ran a separate
+workspace gate for research source `fee8abff`, with its own target and cache;
+that result does not qualify the research experiment itself.
+
+The shared developer Mac ran `ci/run.sh host` on exact `7b0908bd`: clippy and
+644 tests pass, with 35 skipped. Source inventories match before and after.
+This is a host correctness check, not a clean-machine performance measurement.
+
+Current-main final archive SHA-256
+`85a913c6a411fd2f06570b83004c0085cfe7743075c196280abde6c995bd7314`;
+Mac host log SHA-256
+`6ef9acb4ffb029c2c20f520bf0b7a94488645b731ce6e28e877dd480af155107`.
+All archive members, sizes, modes and digests were independently checked.
+
+STANDARD completion and final independent integration review remain required
+before merging. A sound fast replacement and first-run speed recovery remain
+open work; containment alone does not complete them.
 
 | Source / date | Attempt | Result and limit |
 |---|---|---|
