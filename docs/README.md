@@ -73,9 +73,9 @@ M7 rescue's decisions; the rescue review and lane reports are kept in the tag
 [new-user walkthrough](reports/2026-10-13-new-user-walkthrough.md) and
 [roadmap review](reports/2026-10-13-roadmap-review.md) are the current inputs
 to planning. The [warm frontend profile](reports/2026-10-16-warm-frontend.md)
-records the current floor, failed Anvil scope and remaining reuse gates;
-its [qualification record](validation/warm-frontend.md) distinguishes unit
-checks from pending native acceptance.
+records the current floor, failed Anvil scope and bounded native compiler
+comparison; its [qualification record](validation/warm-frontend.md)
+distinguishes the research checks from pending runtime acceptance.
 The [verification runtime scope](scope/verification-runtime.md)
 records the owner's direction for releases after 0.1.0.
 
