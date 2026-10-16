@@ -5,11 +5,11 @@
 //! also retains local identities through compilation or restoration. Unsupported
 //! inputs decline replay; no partial inventory can authorize reuse.
 
-use super::dependency_resolution::{Resolution, Stamp, stamp};
+use super::dependency_resolution::{Resolution, Stamp, open_input, stamp};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
-use std::fs::{File, Metadata};
+use std::fs::Metadata;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
@@ -119,6 +119,10 @@ impl Observation {
                         sha256: digest,
                     }
                 } else if metadata.is_dir() {
+                    let directory = open_input(&path)?;
+                    if stamp(&directory.metadata().ok()?)? != before {
+                        return None;
+                    }
                     let mut children = Vec::new();
                     for child in std::fs::read_dir(&path).ok()? {
                         let child = child.ok()?;
@@ -225,7 +229,7 @@ impl Observation {
 }
 
 fn read_file(path: &Path, before: &Stamp, size: u64) -> Option<String> {
-    let mut file = File::open(path).ok()?;
+    let mut file = open_input(path)?;
     if stamp(&file.metadata().ok()?)?.ne(before) {
         return None;
     }
@@ -266,6 +270,7 @@ fn mode(_: &Metadata) -> Option<u32> {
 mod tests {
     use super::*;
     use std::error::Error;
+    use std::fs::File;
     use std::sync::atomic::{AtomicU64, Ordering};
 
     type TestResult = Result<(), Box<dyn Error>>;
@@ -519,6 +524,34 @@ mod tests {
         std::fs::set_permissions(&fixture.0, previous)?;
         assert!(!observed.unchanged());
         assert!(!observed.unchanged());
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regular_file_replaced_by_fifo_after_stat_refuses_without_blocking() -> TestResult {
+        let fixture = Fixture::new()?;
+        let path = fixture.0.join("source");
+        std::fs::write(&path, "source")?;
+        let before = stamp(&std::fs::metadata(&path)?).ok_or("before")?;
+        std::fs::remove_file(&path)?;
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(&path)
+                .status()?
+                .success()
+        );
+        let (send, receive) = std::sync::mpsc::sync_channel(1);
+        let worker = std::thread::spawn(move || {
+            let _ = send.send(read_file(&path, &before, 6).is_none());
+        });
+        let refused = receive.recv_timeout(std::time::Duration::from_secs(2));
+        assert_eq!(
+            refused.ok(),
+            Some(true),
+            "FIFO replacement must refuse without a peer"
+        );
+        assert!(worker.join().is_ok());
         Ok(())
     }
 

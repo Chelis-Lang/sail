@@ -141,3 +141,32 @@ retaining the complete raw environment for declared reads. The candidate now
 checks those cases directly; excluded routing variables remain exact when a
 source declares them. The same real-compiler fixtures include a native `.rlib`
 negative control and an `option_env!` absence-to-presence replay refusal.
+
+
+## Nonblocking opens and filesystem admission
+
+A source stat followed by `File::open` could wait forever if the file changed
+to a FIFO before the open. The same race existed when attaching ancestor
+watches. Safe descriptor opens now use nonblocking/no-follow/close-on-exec
+flags, check regular-file/directory type and inspect the held filesystem before
+hashing or registering a watch. Recursive inventory directories and every
+streamed input file undergo admission, so an already-mounted unsupported
+subtree cannot authorize replay merely because its package root is local.
+
+Two bounded negative controls preserve the old blocking-open behavior: a
+regular source replaced by a FIFO after stat, and a FIFO substituted at watch
+registration. Each fails its two-second refusal assertion (exit 101); logs
+have SHA-256 `025d6916b73611b719deba0460849818ea0c4e375a5c5799e346e55c8e5b4c7c`
+and `266f26b07cf298b87a7c43827149dbd4801155fc109f212d446ab041c895f1e7`.
+The corrected actual-source helper passes all 16 Mac tests serially and with
+default parallel execution, including FIFO/no-follow refusal and admission
+predicates. Logs have SHA-256
+`0ec55a40e80c287c03d66e0057f84986bd077a3438c19aeb1280b9d11be67fc3`
+and `4cacac22119f8ba997ee48f35b486c4d3e2d05116d12688362903f6aa7e55856`.
+Strict direct pedantic clippy passes. Actual filesystem execution is APFS;
+network/pseudo/FUSE/unknown rejection is predicate scope, not a mounted remote
+filesystem experiment. Linux observer, supported filesystem and mount-event
+qualification remains pending.
+
+- 2026-10-16, old blocking-open variants: failed both bounded FIFO controls;
+  the file reader and watch registration could wait for a FIFO peer.

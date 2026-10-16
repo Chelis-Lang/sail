@@ -339,3 +339,22 @@ to 100,000 entries and two GiB of streamed bytes with a 64-KiB read buffer.
 Exceeding a bound refuses reuse. These checks do not yet establish native Linux
 or real-project acceptance; the [candidate gate](../validation/dependency-driver-replay.md)
 records that qualification separately.
+
+
+Input opens use safe `rustix` with `RDONLY | NONBLOCK | NOFOLLOW | CLOEXEC`.
+The held descriptor must be a regular file or directory before any hash or
+watch registration. This also refuses a FIFO substituted after the caller's
+stat without waiting for another process. Resolution checks the descriptor's
+expected inode identity before watching it; hashing checks its full mutation
+stamp and size. The recursive inventory admits each directory and streamed
+file, including pre-existing nested mounts, through the same descriptor check.
+
+Filesystem admission is deliberately limited: local APFS/HFS on macOS, and
+ext2/3/4, XFS, Btrfs, tmpfs and overlayfs on Linux. Network, pseudo, FUSE and
+unknown filesystems refuse replay, because registration success alone does
+not establish that native events cover external changes. The inotify
+[documented limitations](https://man7.org/linux/man-pages/man7/inotify.7.html)
+explicitly exclude remote filesystem events and several pseudo-filesystems.
+Admission predicates are tested; actual Mac execution here is APFS only.
+The admitted Linux types and HFS still need their applicable native gates;
+this is not a claim that every mount arrangement is qualified.

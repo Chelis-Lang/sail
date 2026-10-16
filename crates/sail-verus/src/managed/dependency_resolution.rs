@@ -1,12 +1,86 @@
 //! Bracket pathname resolution without confusing sibling output writes with renames.
 
 use std::collections::{BTreeMap, VecDeque};
-use std::fs::Metadata;
+use std::fs::{File, Metadata};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
 const MAX_PATHS: usize = 4096;
 const MAX_LINKS: usize = 40;
+
+/// Opens an input without following a last-component symlink or waiting for
+/// a FIFO peer, then admits only a held regular file/directory on a local
+/// filesystem with supported native observation semantics.
+pub(super) fn open_input(path: &Path) -> Option<File> {
+    let file = open_nonblocking(path)?;
+    supported_filesystem(&file).then_some(file)
+}
+
+#[cfg(unix)]
+fn open_nonblocking(path: &Path) -> Option<File> {
+    use rustix::fs::{Mode, OFlags, open};
+    let file = File::from(
+        open(
+            path,
+            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::empty(),
+        )
+        .ok()?,
+    );
+    let metadata = file.metadata().ok()?;
+    (metadata.is_file() || metadata.is_dir()).then_some(file)
+}
+
+#[cfg(not(unix))]
+fn open_nonblocking(_: &Path) -> Option<File> {
+    None
+}
+
+#[cfg(any(test, target_os = "linux"))]
+fn admitted_linux_type(kind: impl TryInto<u64>) -> bool {
+    // ext2/3/4, XFS, Btrfs, tmpfs and overlayfs. Unknown, network, FUSE and
+    // pseudo-filesystems have no qualified native-event contract here.
+    kind.try_into().is_ok_and(|kind| {
+        matches!(
+            kind,
+            0xef53 | 0x5846_5342 | 0x9123_683e | 0x0102_1994 | 0x794c_7630
+        )
+    })
+}
+
+#[cfg(any(test, target_os = "macos"))]
+fn admitted_macos_type(name: &[u8], local: bool) -> bool {
+    local && matches!(name, b"apfs" | b"hfs")
+}
+
+#[cfg(target_os = "linux")]
+fn supported_filesystem(file: &File) -> bool {
+    rustix::fs::fstatfs(file).is_ok_and(|stats| admitted_linux_type(stats.f_type))
+}
+
+#[cfg(target_os = "macos")]
+fn supported_filesystem(file: &File) -> bool {
+    let Ok(stats) = rustix::fs::fstatfs(file) else {
+        return false;
+    };
+    let Ok(name) = stats
+        .f_fstypename
+        .iter()
+        .copied()
+        .take_while(|byte| *byte != 0)
+        .map(u8::try_from)
+        .collect::<Result<Vec<_>, _>>()
+    else {
+        return false;
+    };
+    // Darwin MNT_LOCAL (sys/mount.h): filesystem stored locally.
+    admitted_macos_type(&name, stats.f_flags & 0x1000 != 0)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+fn supported_filesystem(_: &File) -> bool {
+    false
+}
 
 /// One exact local file or directory mutation identity.
 #[derive(Eq, PartialEq)]
@@ -249,7 +323,7 @@ impl Resolution {
 
 #[cfg(target_os = "macos")]
 mod platform {
-    use super::{Identity, identity};
+    use super::{Identity, identity, open_input};
     use kqueue::{EventData, EventFilter, FilterFlag, Vnode, Watcher};
     use std::fs::File;
     use std::path::Path;
@@ -279,7 +353,7 @@ mod platform {
             })
         }
         pub(super) fn add(&mut self, path: &Path, expected: &Identity) -> Option<()> {
-            let file = File::open(path).ok()?;
+            let file = open_input(path)?;
             if identity(&file.metadata().ok()?).as_ref() != Some(expected) {
                 return None;
             }
@@ -319,7 +393,7 @@ mod platform {
 
 #[cfg(target_os = "linux")]
 mod platform {
-    use super::{Identity, identity};
+    use super::{Identity, identity, open_input};
     use inotify::{Inotify, WatchMask};
     use rustix::event::{PollFd, PollFlags, Timespec, poll};
     use std::fs::File;
@@ -332,7 +406,7 @@ mod platform {
     }
     impl Observer {
         pub(super) fn new() -> Option<Self> {
-            let mounts = File::open("/proc/self/mounts").ok()?;
+            let mounts = super::open_nonblocking(Path::new("/proc/self/mounts"))?;
             if rustix::fs::fstatfs(&mounts).ok()?.f_type != rustix::fs::PROC_SUPER_MAGIC {
                 return None;
             }
@@ -343,7 +417,7 @@ mod platform {
             })
         }
         pub(super) fn add(&mut self, path: &Path, expected: &Identity) -> Option<()> {
-            let file = File::open(path).ok()?;
+            let file = open_input(path)?;
             if identity(&file.metadata().ok()?).as_ref() != Some(expected) {
                 return None;
             }
@@ -412,6 +486,70 @@ mod platform {
 mod tests {
     use super::*;
     use std::error::Error;
+
+    #[test]
+    fn filesystem_admission_refuses_unknown_network_and_pseudo_types() {
+        for kind in [
+            0xef53_u64,
+            0x5846_5342,
+            0x9123_683e,
+            0x0102_1994,
+            0x794c_7630,
+        ] {
+            assert!(admitted_linux_type(kind));
+        }
+        for kind in [0_u64, 0x6969, 0x6573_5546, 0x9fa0, 0x6265_6572, u64::MAX] {
+            assert!(!admitted_linux_type(kind));
+        }
+        assert!(admitted_macos_type(b"apfs", true));
+        assert!(admitted_macos_type(b"hfs", true));
+        for name in [b"nfs".as_slice(), b"smbfs", b"macfuse", b"unknown"] {
+            assert!(!admitted_macos_type(name, true));
+        }
+        assert!(!admitted_macos_type(b"apfs", false));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fifo_or_last_component_symlink_refuses_without_waiting() -> Result<(), Box<dyn Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "sail-dependency-resolution-special-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir(&root)?;
+        let fifo = root.join("fifo");
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(&fifo)
+                .status()?
+                .success()
+        );
+        let regular = root.join("regular");
+        std::fs::write(&regular, "regular input")?;
+        let alias = root.join("alias");
+        std::os::unix::fs::symlink(&regular, &alias)?;
+        assert!(open_input(&regular).is_some());
+        assert!(
+            open_input(&alias).is_none(),
+            "last-component symlink cannot be followed"
+        );
+        let expected = identity(&std::fs::metadata(&regular)?).ok_or("regular identity")?;
+        let mut observer = platform::Observer::new().ok_or("native observer")?;
+        let (send, receive) = std::sync::mpsc::sync_channel(1);
+        let worker = std::thread::spawn(move || {
+            let refused = open_input(&fifo).is_none() && observer.add(&fifo, &expected).is_none();
+            let _ = send.send(refused);
+        });
+        let refused = receive.recv_timeout(std::time::Duration::from_secs(2));
+        std::fs::remove_dir_all(root)?;
+        assert_eq!(
+            refused.ok(),
+            Some(true),
+            "FIFO open must refuse without a peer"
+        );
+        assert!(worker.join().is_ok());
+        Ok(())
+    }
 
     #[test]
     fn watch_registration_refuses_an_unexpected_opened_inode() -> Result<(), Box<dyn Error>> {
