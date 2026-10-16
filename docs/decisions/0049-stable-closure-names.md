@@ -67,6 +67,11 @@ and how it is validated.
 5. **Prove the gain before pinning.** The re-pin needs the measured gain on
    the vest `lemma-mid` edit, recorded in
    [VI-0019](../verus-issues/VI-0019-crate-wide-closure-numbering.md).
+   Issue #118 also requires the broader frozen incidental-edit catalogue:
+   comments, blank lines, helper insertion/relocation and local renames on
+   three pinned projects. The [acceptance record](../validation/incidental-edits.md)
+   distinguishes the prepared harness from outstanding final-runtime timing,
+   solver-work and correctness gates.
 
 ## Consequences
 
