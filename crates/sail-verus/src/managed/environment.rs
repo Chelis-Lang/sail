@@ -73,6 +73,12 @@ const NAMES: &[&str] = &[
 /// Whether an environment variable is part of the proof context.
 pub(super) fn input_environment_key(key: &OsStr) -> bool {
     let bytes = key.as_encoded_bytes();
+    // Managed Cargo always receives its owned --target-dir. The caller's
+    // directory cannot select build artifacts, but a source or build script
+    // may still read it: those declared reads remain receipt inputs below.
+    if key == "CARGO_TARGET_DIR" {
+        return false;
+    }
     if OBSERVATION_ONLY.iter().any(|name| key == *name) || bytes.starts_with(b"SAIL_MANAGED_") {
         return false;
     }
@@ -189,7 +195,6 @@ mod tests {
             "RUSTC",
             "RUSTUP_TOOLCHAIN",
             "RUST_MIN_STACK",
-            "CARGO_TARGET_DIR",
             "__CARGO_DEFAULT_LIB_METADATA",
             "VERUS_Z3_PATH",
             "VSTD_KIND",
@@ -202,6 +207,7 @@ mod tests {
             assert!(input_environment_key(OsStr::new(key)), "{key}");
         }
         for key in [
+            "CARGO_TARGET_DIR",
             "PATH",
             "HOME",
             "TERM",
@@ -266,5 +272,30 @@ mod tests {
         let mut changed = recorded;
         changed.insert("SAIL_TEST_SURELY_UNSET_L16".into(), Some(b"1".to_vec()));
         assert!(!unchanged(&changed));
+    }
+
+    #[test]
+    fn target_directory_declared_reads_still_bind_exact_values() {
+        let name = "CARGO_TARGET_DIR".to_owned();
+        assert_eq!(
+            declarations("# env-dep:CARGO_TARGET_DIR=caller-target\n", true),
+            std::slice::from_ref(&name)
+        );
+        assert_eq!(
+            declarations("cargo:rerun-if-env-changed=CARGO_TARGET_DIR\n", false),
+            std::slice::from_ref(&name)
+        );
+        let mut recorded = values(&BTreeSet::from([name.clone()]));
+        assert!(unchanged(&recorded));
+        let mut different = recorded
+            .get(&name)
+            .and_then(Clone::clone)
+            .unwrap_or_default();
+        different.push(b'x');
+        recorded.insert(name, Some(different));
+        assert!(
+            !unchanged(&recorded),
+            "declared reads cannot share proof evidence after a value change"
+        );
     }
 }

@@ -11,11 +11,30 @@ are in the `archive/m7-contracts-f7103bf` tag.
 - **rc.5 omits verifier stdout after dependency-store seeding** ([#184](https://github.com/Chelis-Lang/sail/issues/184)).
   A second new project reuses vstd but omits its `verification results::`
   line; plain stock on a fresh target prints it. Verdicts, exit codes and
-  stderr matched in the reproduction. A standalone correction is implemented
-  and passes both-platform checks plus native full fast/standard conformance;
-  the final rebased native and Mac gates and live stdout check pass; CI
-  remains pending. The original draft asset is
-  unchanged; [evidence](validation/dependency-store-output.md).
+  stderr matched in the reproduction. The source correction is merged and
+  passed both-platform checks, full native fast/standard conformance and
+  required PR checks. The original draft asset is unchanged;
+  [evidence](validation/dependency-store-output.md).
+- **Native-linker changes can be missed by dependency-store seeding** ([#187](https://github.com/Chelis-Lang/sail/issues/187)).
+  On source `0a7c1d0d` plus stdout fix `2f7102c4` (macOS 26.5, Apple M3,
+  pinned fork `73dea021`), replacing private `cc` bytes at unchanged `PATH`
+  after a successful donor made fresh stock exit 101 with a linker error,
+  while store-seeded Sail exited 0 without that diagnostic. Current main
+  still uses v1 native-artifact seeding by source inspection; today's exact
+  main was not rerun. Raw archive SHA-256
+  `7bea96ebf3bd10a292ec6508bb7322a8a799fbc25ef024a89cf256d90783f51c`.
+  The unmerged #187 replacement has a separate APFS mmap guard blocker;
+  the #166/#189 metadata correction fixes neither defect.
+- **Draft rc.5 can hide source inputs through output-directory exclusions (#189).**
+  Adding an alternative module under a configured Cargo target or Sail cache
+  can reuse an old proof although fresh compilation rejects it with E0761.
+  The source correction uses owned metadata targets and refuses managed
+  reuse when Sail cache and package roots physically overlap. Native
+  full fast/standard and the separate joined main checks pass; the original
+  draft asset is unchanged. Cache/package overlap in either direction remains
+  an unsupported setup, taking SAIL3112 fallback without Current proof state.
+  See the [validation record](validation/cargo-target-context.md).
+
 - **Vest repair is about 1.8× M6, below the 2× figure.** The owner accepted
   M7's speed as measured (ADR 0038 amendment 2026-10-13). On the `13a1176c`
   runtime, three native rounds, every sample valid and Current: HumanEval
