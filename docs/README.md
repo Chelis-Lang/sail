@@ -79,3 +79,5 @@ records the owner's direction for releases after 0.1.0.
 [Survey documents](survey/README.md) retain Verus/Z3 protocol, solver behavior,
 corpus and prior-art research. Upstream reports are a human decision; agents
 record discoveries in this repository.
+
+[Dependency-store stdout validation](validation/dependency-store-output.md) records the rc.5 output defect and its correction.
