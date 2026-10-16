@@ -12,6 +12,11 @@ semantic versioning once the API is published.
 - Retain bounded original output E2E failure streams, command/source snapshots
   and producer records without changing comparisons or the original exit code.
 
+- Proposed fallback for #187: disable v1 compiled-dependency store consumption
+  and publication pending qualified native-input identity. This isolated
+  candidate is unselected; strict store-reuse and performance requirements
+  remain unchanged while its correctness and cost are assessed (ADR 0053).
+
 - Linux benchmark host teardown retains connection state on AWS errors and
   confirms termination before deleting cloud resources (#201). Refresh
   credentials or fix `SAIL9001`, then retry `scripts/perf-host.sh down LANE`.

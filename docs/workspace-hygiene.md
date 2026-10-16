@@ -58,7 +58,13 @@ vstd with its compiled dependencies, for new projects and worktrees to start
 from ([ADR 0045](decisions/0045-dependency-store.md)). An entry for vstd takes
 about 120 MB. Sail keeps the four most recently used entries and deletes older
 ones itself; set `SAIL_DEPENDENCY_STORE_ENTRIES` to keep another number, or to
-`0` to turn the store off. Deleting `dependency-store/` is safe at any time:
+`0` to turn the store off. In the isolated
+[ADR 0053 fallback candidate](decisions/0053-disable-unqualified-native-store.md),
+v1 reads and publication are disabled for every setting while native-input
+identity remains unqualified. This candidate is not selected; its cost and
+strict reuse requirements are tracked in the
+[assessment](validation/dependency-store-fail-closed.md).
+Deleting `dependency-store/` is safe at any time:
 the next new project verifies vstd again and stores it. A run that was copying
 from a deleted entry verifies vstd itself. Directories left by a run killed
 while storing or deleting an entry are removed once they are an hour old.
