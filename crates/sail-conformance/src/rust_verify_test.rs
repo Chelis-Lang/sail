@@ -482,7 +482,15 @@ fn open_suite(
 pub fn main(args: &[String]) -> Result<ExitCode, String> {
     let o = parse(args)?;
     let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
-    let installed = Installed::locate(pins).map_err(|e| e.to_string())?;
+    // The fork selector names a suite variant, not an ordinary stock source
+    // installation. Validate it in open_suite; obtain its pinned solver from
+    // the release without applying Installed::locate's stock-only override.
+    let installed = if o.stock_baseline {
+        Installed::locate(pins)
+    } else {
+        Installed::locate_release(pins)
+    }
+    .map_err(|e| e.to_string())?;
     let verus = &installed.pins.verus;
     let fork = sail_verus::engine::fork().map_err(|e| e.to_string())?;
     if !o.stock_baseline && fork.upstream != verus.commit {
