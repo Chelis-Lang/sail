@@ -1,7 +1,9 @@
 # 0047: Attribution logs on request, and cheaper managed checks
 
 - **Status:** accepted (lead decision for the owner's "certainly we don't
-  want a perf regression", 2026-10-15)
+  want a perf regression", 2026-10-15); see the
+  [2026-10-16 note](#note-2026-10-16-cheaper-checks-156) for the checks'
+  current cost
 - **Date:** 2026-10-15
 - **Amends:** [ADR 0014](0014-attribution-ledger-and-output-schema.md)
   (when Sail asks Verus for `--log air` and `--log smt-transcript`) and
@@ -197,3 +199,100 @@ the time) no timing was meaningful; macOS was checked for correctness only
   own target; `sail cache projects prune` removes it with the rest.
 - **What remains** is listed under Measurements: the receipt and
   Currentness checks (ADR 0041) and, for structured runs, the logs.
+
+## Note (2026-10-16): cheaper checks (#156)
+
+**Where the time went.** An instrumented build (timestamps at every
+statement of the run, `perf` on the Sail process, `strace` for its
+children) on vest `-p vest_lib`, c7i.4xlarge, unchanged re-run, about
+1.0 s in all: Cargo metadata, overlapping the runtime context, 0.12 s; the
+input snapshot before the run 0.19 s, a third of it ordered inserts that
+compare paths component by component, the rest walking and reading 11,600
+files; Cargo-Verus 0.17 s; the receipt checks 0.13 s, which read vstd's
+40 MB `.vir` twice and parsed each stored receipt twice; the post-run
+metadata and snapshot 0.2 s; the two stamps 0.03 s; dependency-store
+publication 0.05 s, re-validating vstd's receipt on every run although the
+store already held it; the result document 0.025 s; freeing the run's data
+0.02 s. On the demo (0.34 s), the receipt checks (0.11 s) and the store
+publication (0.05 s) were the largest items.
+
+**What changed.** Every check reads what it read before, completely, at
+the same point relative to the invocation; nothing is skipped and no
+stamp replaces a content read (ADR 0041):
+
+1. Snapshots collect paths in hashed sets and sort them once by a byte key
+   that orders exactly as `Path` does (a unit test compares the sets with
+   ordered inserts); digests reuse one read buffer per thread.
+2. The snapshot before the run is taken while Cargo reads the metadata,
+   from what the previous run of the same directory and arguments selected
+   (`<cache>/snapshot-hints/`). It is used only if this run's selection
+   (the metadata fields the snapshot reads and the extra inputs) is equal,
+   the snapshot is complete, and every path it observed still has the
+   stamp it had around its reads once the metadata has arrived, since
+   Sail's own `cargo metadata` may rewrite the lockfile or extract
+   registry sources. Otherwise it is taken again. Its reads still finish
+   before Cargo-Verus starts, and the run's mutation stamp is still taken
+   after them.
+3. After the invocation, when no retry can follow (a run that shows Verus's
+   output, a run without reuse, or one that failed), the post-run inputs
+   overlap the receipt checks, and the snapshot overlaps the post-run
+   metadata; it is kept only for the same package list and unchanged
+   stamps. The stamp that brackets every content read is taken once both
+   have finished. One difference: if the receipt checks fail with an I/O
+   error, the build-script and source-input records have already been
+   updated from this run's Cargo output, which they describe.
+4. One phase's receipt checks read each artifact and dependency once, in
+   one overlapping batch, and parse each stored receipt once.
+5. Target revisions copy only the metadata fields the snapshot reads, not
+   the whole metadata per target.
+6. A dependency the store already holds is not re-validated for
+   publication, which would store nothing.
+7. The driver's complete read of Verus overlaps its dependency reads.
+8. The run's large values are freed off the caller's path.
+
+**Measurements.** `scripts/perf-loops.sh` with `SAIL_PERF_BASELINES`, three
+rounds, medians, EC2 c7i.4xlarge (us-east-1, Ubuntu 24.04, no other work
+on the host, one timed run at a time), Sail's Verus `73dea021`,
+2026-10-16. "main" is `502fc669` (#173), the pass-through `4cd6fcaa`.
+This host ran about 3% slower than the one above (plain vest edit 43.2 s
+against 41.8 s). Seconds:
+
+| Project, phase | plain | pass-through | main | this change |
+|---|---:|---:|---:|---:|
+| vest, edit | 43.2 | 27.8 | 29.1 | 28.6 |
+| vest, failing edit | 38.9 | 27.8 | 29.5 | 28.8 |
+| vest, fix | 43.5 | 27.9 | 29.4 | 28.7 |
+| vest, unchanged | 0.23 | 0.23 | 1.04 | 0.59 |
+| vest, cold | 77.9 | 79.0 | 80.7 | 80.5 |
+| vest, MCP `verify` unchanged | — | — | — | 1.02 |
+| demo, edit | 0.85 | 0.85 | 1.19 | 1.08 |
+| demo, failing edit | 0.61 | 0.64 | 0.92 | 0.81 |
+| demo, fix | 0.84 | 0.84 | 1.11 | 1.02 |
+| demo, unchanged | 0.12 | 0.12 | 0.35 | 0.22 |
+| demo, cold | 35.0 | 36.0 | 36.5 | 36.6 |
+| demo, MCP `verify` unchanged | — | — | — | 0.35 |
+
+Exit codes were identical across modes in every phase. Raw logs and tables
+are kept outside the repository in `m114-linux-perf.tgz` (sha256
+`2b94e9bf9be67ac3410576a9eacc61b634750b73e25e3b73f43ad90e92b5f8af`).
+
+**What remains** (vest edit 0.8 s over the pass-through, demo 0.23 s;
+unchanged re-runs 0.36 s and 0.10 s over Cargo's no-op):
+
+- Verus's `--output-json --time`, which every report and receipt needs:
+  0.4–0.5 s per vest edit (Sail's Verus through plain `cargo verus verify`
+  on c7i.8xlarge, four interleaved rounds: 35.6 s without, 36.1 s with).
+  A cheaper per-function report in the fork is bounded by this and needs
+  its own measured fork build.
+- Sail's own `cargo metadata` before the run, 0.11 s on vest (it also pays
+  Cargo's rustc probes, since the user's `target/` holds no cache), now
+  overlapping the snapshot; the targeted clean of an edited package,
+  0.05–0.08 s (one Cargo start); the receipt checks, which read vstd's
+  artifacts (0.03–0.05 s); the two stamps (0.03 s); the result document
+  (0.025 s on vest).
+- Not done, because each would weaken or change a check: reusing digests
+  across the before and after snapshots by stat (ADR 0041 reads every
+  input in full on both sides); skipping the targeted clean when Cargo
+  would rebuild anyway (it needs Cargo's freshness rules replicated);
+  answering Cargo-Verus's own metadata call from Sail's (Cargo-Verus would
+  observe metadata taken earlier).

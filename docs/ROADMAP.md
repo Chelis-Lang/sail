@@ -272,7 +272,10 @@ oyster and such." This supersedes the parallel tracks of
    1. The verismo soundness check, #160.
    2. A miss costs only the changed check, #158 (the largest edit-loop lever).
    3. vstd pre-verified in the release archive, #161.
-   4. Remaining managed overhead against the removed pass-through, #156.
+   4. Remaining managed overhead against the removed pass-through, #156:
+      the checks are cheaper (vest edit 0.8 s over the pass-through, of
+      which Verus's `--output-json --time` is 0.4–0.5 s); a cheaper
+      per-function report in the fork is the next lever.
    5. Cache robustness to incidental edits: stable crate-wide numbering in
       the fork, [#118](https://github.com/Chelis-Lang/sail/issues/118); any
       key change is an ADR under charter rules 5 and 6.
