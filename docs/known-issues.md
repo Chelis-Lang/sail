@@ -86,14 +86,18 @@ are in the `archive/m7-contracts-f7103bf` tag.
 - **Reports omit the release suffix (low).** `sail_version` in reports is
   the workspace version (`0.1.0`), not the build's `sail --version`
   (`0.1.0-rc.5`). [#180](https://github.com/Chelis-Lang/sail/issues/180).
-- **`deep-rvt` reports stock output-order variants as Different.** The
+- **The deep stock oracle can report unseen JSON output-order variants as Different.** The
   `output_json` tests print `func-details` in stock Verus's hash order
   ([VI-0008](verus-issues/VI-0008-func-details-hash-order.md)); with 3–6
   orders in 11 plain runs, a Sail-side run often shows an unseen one. On
   rc.3, six of eight rounds reported one Different, each with identical
   stdout and stderr that is a line permutation of plain's. rc.5's one round had 0 Different and 4 Unstable `output_json` tests. The arm runs the
   stock source build, which Sail no longer runs (ADR 0043). Release-candidate
-  finding 11.
+  finding 11. The new [deep fork gate](deep-verus-tests.md) compares the fork
+  with and without the shim exactly, and keeps the same stock test programs
+  as a separate oracle with ADR 0042's diagnostic-message comparison.
+  JSON output from stock is not normalized. Native acceptance of that new
+  gate is pending; the historical stock-only results do not qualify it.
 - **Default and engine runs each verify vstd once in their own target.** That
   was about 30 s on HumanEval for the first default `sail verify` and again
   for the first engine run (`sail verify --engine interactive` or

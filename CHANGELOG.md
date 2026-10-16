@@ -35,6 +35,12 @@ semantic versioning once the API is published.
   source restoration, records source/runtime identities and retains failed
   samples. Final combined-runtime performance and correctness gates remain
   pending; this does not change Sail's runtime pin or cache keys.
+- **The deep Verus test gate tests Sail's fork** (#124). `deep-rvt` compares
+  the fork with and without `sail-z3` using exact output, then runs identical
+  stock test programs against stock and the fork using ADR 0042 for complete
+  diagnostic messages. Fork-only regression tests remain in the exact arm.
+  `cargo xtask build-verus-source --fork` builds an isolated test variant,
+  without replacing the installed runtime.
 
 - **Real-project benchmarks avoid duplicate managed runs** (#167).
   `scripts/perf-real.sh` now defaults to `plain sail`; `--incremental`
