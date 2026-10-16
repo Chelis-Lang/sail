@@ -5,7 +5,7 @@
 [fork]
 repo = "/research-fork"
 branch = "experiment/log-completion"
-commit = "98979080114fae77d54e4666174e3962bfc444cc"
+commit = "b84386e995117fdfb3ff4a09f154a04913ee422b"
 # The upstream Verus commit the `sail` branch is rebased on. It must equal
 # corpus/toolchain.toml's [verus] commit.
 upstream = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
