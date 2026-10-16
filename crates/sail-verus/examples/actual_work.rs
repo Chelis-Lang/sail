@@ -377,8 +377,11 @@ fn observe_with_completion(
                     }
                     validator.validate(air_body)?;
                     use sha2::{Digest, Sha256};
+                    let log_path = path
+                        .to_str()
+                        .ok_or_else(|| invalid("non-UTF8 completed log path"))?;
                     completed_zero_contexts.push(serde_json::json!({
-                        "transcript": path,
+                        "transcript": log_path,
                         "transcript_sha256": format!("{:x}", Sha256::digest(&transcript)),
                         "air_sha256": format!("{:x}", Sha256::digest(&air)),
                     }));
@@ -588,11 +591,10 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     #[test]
     fn paired_zero_evidence_is_opt_in_and_cannot_hide_any_session() -> io::Result<()> {
         use sha2::{Digest, Sha256};
-        use std::os::unix::fs::PermissionsExt as _;
         let fixture = Fixture::new()?;
         let run = fixture.0.join("run");
         let child = run.join("sidecars/target");
@@ -607,14 +609,9 @@ mod tests {
             "targets": [], "execution": {"verifier_invocations": 1, "reused_targets": 0, "wall_ms": 0},
             "notes": [], "error": null});
         std::fs::write(&result, serde_json::to_vec(&document).map_err(invalid)?)?;
-        // This script tests the observer's helper protocol only. Genuine AIR
+        // This ELF fixture tests the observer's helper protocol only. Genuine AIR
         // grammar positives/negatives belong to the source-bound AIR example.
-        let helper = fixture.0.join("validator");
-        std::fs::write(
-            &helper,
-            b"#!/bin/sh\ncat >/dev/null\nprintf 'SAIL-AIR-NO-QUERY 1\\n'\n",
-        )?;
-        std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o700))?;
+        let helper = std::fs::canonicalize("/bin/cat")?;
         let digest = format!("{:x}", Sha256::digest(read(&helper)?));
         let validator = completion::Validator::new(&helper, &digest, &"a".repeat(40))?;
         let transcript = logs.join("zero.smt_transcript");
@@ -622,7 +619,7 @@ mod tests {
         std::fs::write(&transcript, b";; SAIL-COMPLETE 1 transcript zero-process\n")?;
         std::fs::write(
             &air,
-            b"(declare-sort T 0)\n;; SAIL-COMPLETE 1 air zero-process\n",
+            b"SAIL-AIR-NO-QUERY 1\n;; SAIL-COMPLETE 1 air zero-process\n",
         )?;
         assert!(observe(&result, &run).is_err());
         let observed = observe_with_completion(&result, &run, Some(&validator))?;
@@ -646,7 +643,7 @@ mod tests {
         assert!(observe_with_completion(&result, &run, Some(&validator)).is_err());
         std::fs::write(
             &air,
-            b"(declare-sort T 0)\n;; SAIL-COMPLETE 1 air zero-process\n",
+            b"SAIL-AIR-NO-QUERY 1\n;; SAIL-COMPLETE 1 air zero-process\n",
         )?;
         for hash in [
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_owned(),

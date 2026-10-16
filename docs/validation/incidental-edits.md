@@ -224,8 +224,20 @@ helper. An empty-input or unmatched session still refuses. The observation
 records each zero context's original AIR/transcript hashes and helper identity.
 No missing AIR, missing marker or malformed evidence is treated as zero.
 
-The helper takes at most 8 MiB AIR, has a 2-second per-call limit and retains at
-most 4 KiB each stdout/stderr. Timeout, overflow, nonzero status, any stderr,
+This opt-in helper path requires Linux. Before sending any AIR it opens and
+holds `/proc/<owned child>/exe`, hashes the actual mapped executable, and
+requires the expected helper digest. Missing proc evidence, early exit or a
+foreign mapped image refuses; pathname hashes are also checked before and after.
+The source-bound genuine helper starts no children, executes no other image and
+blocks on stdin until the caller supplies its input. Other platforms return an
+explicit unsupported error in this research mode; the default observer is
+unchanged.
+
+The helper takes at most 8 MiB AIR, has a 2-second per-call work limit and retains
+at most 4 KiB each stdout/stderr. This is an admitted genuine-helper protocol,
+not an arbitrary-program sandbox or an unconditional OS hard-wall guarantee;
+the native controller's aggregate deadlines and owned-container cleanup remain
+required. Timeout, overflow, nonzero status, any stderr,
 unexpected stdout or a changed executable hash refuses. The helper source and
 binary identities must also be bound by the external build/capture controller;
 a supplied source-commit string is not independent build provenance.

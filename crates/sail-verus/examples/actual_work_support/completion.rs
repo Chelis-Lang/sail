@@ -3,14 +3,21 @@
 use super::{invalid, read};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use std::io::{self, Read, Write};
+use std::io;
+#[cfg(target_os = "linux")]
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+#[cfg(target_os = "linux")]
 use std::process::{Child, Command, Stdio};
+#[cfg(target_os = "linux")]
 use std::sync::{Arc, Mutex};
+#[cfg(target_os = "linux")]
 use std::time::{Duration, Instant};
 
 const MAX_AIR_BYTES: usize = 8 * 1024 * 1024;
+#[cfg(target_os = "linux")]
 const MAX_OUTPUT_BYTES: usize = 4096;
+#[cfg(target_os = "linux")]
 const TIME_LIMIT: Duration = Duration::from_secs(2);
 const PREFIX: &[u8] = b";; SAIL-COMPLETE ";
 
@@ -41,6 +48,7 @@ pub(super) struct Validator {
     path: PathBuf,
     binary_sha256: String,
     source_commit: String,
+    image_admission: &'static str,
 }
 
 fn hex(value: &str, len: usize) -> bool {
@@ -60,10 +68,15 @@ impl Validator {
         if format!("{:x}", Sha256::digest(read(path)?)) != binary_sha256 {
             return Err(invalid("validator binary identity differs"));
         }
+        let path = std::fs::canonicalize(path)?;
+        if path.to_str().is_none() {
+            return Err(invalid("non-UTF8 validator executable path"));
+        }
         let validator = Self {
-            path: std::fs::canonicalize(path)?,
+            path,
             binary_sha256: binary_sha256.to_owned(),
             source_commit: source_commit.to_owned(),
+            image_admission: "held Linux proc exe digest before AIR input",
         };
         validator.check_identity()?;
         Ok(validator)
@@ -81,13 +94,14 @@ impl Validator {
             return Err(invalid("completed zero-context AIR exceeds 8 MiB"));
         }
         self.check_identity()?;
-        let outcome = invoke(&self.path, air);
+        let outcome = invoke(&self.path, &self.binary_sha256, air);
         // An identity failure remains a refusal even if the child succeeded.
         self.check_identity()?;
         outcome
     }
 }
 
+#[cfg(target_os = "linux")]
 #[derive(Default, Clone)]
 struct Capture {
     bytes: Vec<u8>,
@@ -95,6 +109,7 @@ struct Capture {
     failed: bool,
 }
 
+#[cfg(target_os = "linux")]
 fn capture(reader: impl Read + Send + 'static) -> Arc<Mutex<Capture>> {
     let state = Arc::new(Mutex::new(Capture::default()));
     let destination = state.clone();
@@ -131,8 +146,10 @@ fn capture(reader: impl Read + Send + 'static) -> Arc<Mutex<Capture>> {
     state
 }
 
+#[cfg(target_os = "linux")]
 struct OwnedChild(Child);
 
+#[cfg(target_os = "linux")]
 impl Drop for OwnedChild {
     fn drop(&mut self) {
         // Never signal a process group after its leader has been reaped and
@@ -140,7 +157,7 @@ impl Drop for OwnedChild {
         // starts no children. The enclosing native controller separately owns
         // its container and retires it on any failed observation.
         if !matches!(self.0.try_wait(), Ok(Some(_))) {
-            #[cfg(unix)]
+            #[cfg(target_os = "linux")]
             {
                 let _ = Command::new("/bin/kill")
                     .args(["-s", "KILL", "--", &format!("-{}", self.0.id())])
@@ -152,18 +169,60 @@ impl Drop for OwnedChild {
     }
 }
 
-fn invoke(program: &Path, air: &[u8]) -> io::Result<()> {
+#[cfg(target_os = "linux")]
+fn admit_image(child: &mut Child, expected: &str) -> io::Result<std::fs::File> {
+    if child.try_wait()?.is_some() {
+        return Err(invalid("validator exited before image admission"));
+    }
+    let mut image = std::fs::File::open(format!("/proc/{}/exe", child.id()))?;
+    let metadata = image.metadata()?;
+    if !metadata.is_file() || metadata.len() > super::MAX_FILE_BYTES {
+        return Err(invalid("unsupported mapped validator image"));
+    }
+    let mut bytes = Vec::new();
+    (&mut image)
+        .take(super::MAX_FILE_BYTES + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > super::MAX_FILE_BYTES {
+        return Err(invalid("mapped validator image exceeded the limit"));
+    }
+    let actual = format!("{:x}", Sha256::digest(&bytes));
+    if actual != expected {
+        return Err(invalid(format!(
+            "mapped validator image differs: expected={expected}; actual={actual}; no AIR delivered"
+        )));
+    }
+    if child.try_wait()?.is_some() {
+        return Err(invalid("validator exited during image admission"));
+    }
+    Ok(image)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn invoke(_program: &Path, _expected: &str, _air: &[u8]) -> io::Result<()> {
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "paired-completion validator requires Linux mapped-image admission",
+    ))
+}
+
+#[cfg(target_os = "linux")]
+fn invoke(program: &Path, expected: &str, air: &[u8]) -> io::Result<()> {
     let mut command = Command::new(program);
     command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     {
         use std::os::unix::process::CommandExt as _;
         command.process_group(0);
     }
     let mut child = OwnedChild(command.spawn()?);
+    // Do not deliver even one AIR byte before binding the executable actually
+    // mapped in this unreaped owned child. The genuine helper blocks on stdin
+    // and contains no fork/exec path; hold its image FD for the entire call.
+    let _mapped_image = admit_image(&mut child.0, expected)?;
     let Some(mut stdin) = child.0.stdin.take() else {
         return Err(invalid("missing validator stdin"));
     };
@@ -254,10 +313,10 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     struct Fixture(PathBuf);
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     impl Fixture {
         fn new() -> io::Result<Self> {
             static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -271,14 +330,24 @@ mod tests {
         }
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     impl Drop for Fixture {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
     }
 
-    #[cfg(unix)]
+    #[cfg(not(target_os = "linux"))]
+    #[test]
+    fn unsupported_platform_never_launches_a_helper() -> io::Result<()> {
+        let Err(error) = invoke(Path::new("/never-executed"), &"a".repeat(64), b"AIR") else {
+            return Err(invalid("unsupported image admission accepted"));
+        };
+        assert_eq!(error.kind(), io::ErrorKind::Unsupported);
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
     fn program(fixture: &Fixture, text: &str) -> io::Result<PathBuf> {
         use std::os::unix::fs::PermissionsExt as _;
         let path = fixture.0.join("validator");
@@ -287,51 +356,129 @@ mod tests {
         Ok(path)
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     #[test]
     fn explicit_identity_and_exact_success_contract() -> io::Result<()> {
-        let fixture = Fixture::new()?;
-        let path = program(&fixture, "cat >/dev/null\nprintf 'SAIL-AIR-NO-QUERY 1\\n'")?;
+        let path = std::fs::canonicalize("/bin/cat")?;
         let digest = format!("{:x}", Sha256::digest(read(&path)?));
         let validator = Validator::new(&path, &digest, &"a".repeat(40))?;
-        validator.validate(b"(declare-sort T 0)\n")?;
+        // Actual ELF/input transport fixture only; native qualification must
+        // separately execute the genuine source-bound AIR grammar helper.
+        validator.validate(b"SAIL-AIR-NO-QUERY 1\n")?;
         assert!(Validator::new(&path, &"0".repeat(64), &"a".repeat(40)).is_err());
         assert!(Validator::new(&path, &digest, "invalid").is_err());
-        std::fs::write(&path, b"changed executable")?;
-        assert!(validator.validate(b"(declare-sort T 0)\n").is_err());
+        assert!(validator.validate(b"not the success contract\n").is_err());
+        assert!(
+            validator
+                .validate(&vec![b'x'; MAX_OUTPUT_BYTES + 1])
+                .is_err()
+        );
+        assert!(validator.validate(&vec![b' '; MAX_AIR_BYTES + 1]).is_err());
         Ok(())
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     #[test]
-    fn helper_failure_malformed_output_stderr_and_overflow_refuse() -> io::Result<()> {
+    fn interpreter_or_changed_path_refuses_before_input() -> io::Result<()> {
         let fixture = Fixture::new()?;
-        for body in [
-            "cat >/dev/null; exit 23",
-            "cat >/dev/null; printf 'SAIL-AIR-NO-QUERY 1'",
-            "cat >/dev/null; printf 'SAIL-AIR-NO-QUERY 1\\nextra\\n'",
-            "cat >/dev/null; printf 'SAIL-AIR-NO-QUERY 1\\n'; printf warning >&2",
-            "cat >/dev/null; printf '%05000d' 0",
-        ] {
-            let path = program(&fixture, body)?;
-            let digest = format!("{:x}", Sha256::digest(read(&path)?));
-            let validator = Validator::new(&path, &digest, &"a".repeat(40))?;
-            assert!(validator.validate(b"(declare-sort T 0)\n").is_err());
+        let captured = fixture.0.join("delivered-air");
+        let quoted = captured.to_string_lossy().replace('\'', "'\\''");
+        let path = program(&fixture, &format!("cat > '{quoted}'"))?;
+        let digest = format!("{:x}", Sha256::digest(read(&path)?));
+        let validator = Validator::new(&path, &digest, &"a".repeat(40))?;
+        let error = validator
+            .validate(b"AIR MUST NOT BE DELIVERED")
+            .err()
+            .ok_or_else(|| invalid("foreign interpreter accepted"))?;
+        assert!(error.to_string().contains("mapped validator image differs"));
+        match std::fs::read(&captured) {
+            Ok(bytes) => assert!(bytes.is_empty()),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+        std::fs::write(&path, b"changed executable")?;
+        assert!(validator.validate(b"AIR MUST NOT BE DELIVERED").is_err());
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn restored_expected_path_cannot_admit_a_foreign_mapped_image() -> io::Result<()> {
+        let fixture = Fixture::new()?;
+        let cat = std::fs::canonicalize("/bin/cat")?;
+        let expected = format!("{:x}", Sha256::digest(read(&cat)?));
+        let restored = fixture.0.join("expected-image");
+        std::fs::copy(&cat, &restored)?;
+        let path = fixture.0.join("validator");
+        let delivered = fixture.0.join("delivered-air");
+        let quote = |p: &Path| format!("'{}'", p.to_string_lossy().replace('\'', "'\\''"));
+        program(
+            &fixture,
+            &format!(
+                "mv {} {}\nprintf 'restored\\n'\ncat > {}",
+                quote(&restored),
+                quote(&path),
+                quote(&delivered)
+            ),
+        )?;
+        let mut command = Command::new(&path);
+        use std::os::unix::process::CommandExt as _;
+        command
+            .process_group(0)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+        let mut child = OwnedChild(command.spawn()?);
+        let output = capture(
+            child
+                .0
+                .stdout
+                .take()
+                .ok_or_else(|| invalid("missing fixture stdout"))?,
+        );
+        let deadline = Instant::now() + TIME_LIMIT;
+        loop {
+            let state = output.lock().map_err(invalid)?.clone();
+            if state.bytes == b"restored\n" {
+                break;
+            }
+            if state.failed || state.done || Instant::now() >= deadline {
+                return Err(invalid(
+                    "foreign-image fixture failed to restore expected path",
+                ));
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert_eq!(format!("{:x}", Sha256::digest(read(&path)?)), expected);
+        let error = admit_image(&mut child.0, &expected)
+            .err()
+            .ok_or_else(|| invalid("foreign image admitted after pathname restore"))?;
+        assert!(error.to_string().contains("mapped validator image differs"));
+        // No AIR is provided before image admission. The same production guard
+        // refuses although the restored pathname now has the expected bytes.
+        match std::fs::read(&delivered) {
+            Ok(bytes) => assert!(bytes.is_empty()),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
         }
         Ok(())
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     #[test]
-    fn timeout_and_input_capacity_refuse() -> io::Result<()> {
-        let fixture = Fixture::new()?;
-        let path = program(&fixture, "exec sleep 30")?;
+    fn an_attested_process_that_blocks_is_retired_on_timeout() -> io::Result<()> {
+        // Actual ELF/timeout transport fixture only, not an AIR validator or
+        // proof. The real source-bound helper is separately qualified natively.
+        let path = std::fs::canonicalize("/usr/bin/python3")?;
         let digest = format!("{:x}", Sha256::digest(read(&path)?));
         let validator = Validator::new(&path, &digest, &"a".repeat(40))?;
         let started = Instant::now();
-        assert!(validator.validate(b"(declare-sort T 0)\n").is_err());
+        let error = validator
+            .validate(b"import time\ntime.sleep(30)\n")
+            .err()
+            .ok_or_else(|| invalid("blocking fixture accepted"))?;
+        assert!(error.to_string().contains("exceeded 2 seconds"));
         assert!(started.elapsed() < Duration::from_secs(5));
-        assert!(validator.validate(&vec![b' '; MAX_AIR_BYTES + 1]).is_err());
         Ok(())
     }
 }
