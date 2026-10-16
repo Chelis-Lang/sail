@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- The disabled solver-snapshot prototype now refuses observed threads, timers,
+  CPU limits and solver-owned output descriptors. Its new bounded raw probe
+  records stdout, stderr and exit status without masking; raw exactness and
+  native performance acceptance remain pending.
+
 - Keep the experimental solver-snapshot transport lossless for NUL input and
   bound parked-process admission by count and resident memory. Missing preload
   handshakes fall back before sending input. Masked statistics no longer count

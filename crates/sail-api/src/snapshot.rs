@@ -4,8 +4,8 @@
 //! `sail-snap` preload library (`native/sail-snap/sail_snap.c`) at the moment
 //! Z3 had consumed exactly a known input prefix. It is named after that
 //! prefix's v2 key ([`name`]), so a session whose input starts with the same
-//! bytes can resume from it and get exactly the replies a fresh process fed
-//! the whole input would give.
+//! bytes can attempt a continuation. Raw-output equivalence is unqualified;
+//! process, timer and allocator state can differ despite equal input bytes.
 //!
 //! The wire protocol is the library's: three connections to the snapshot's
 //! Unix socket, each starting with a fixed 29-byte header
@@ -37,11 +37,13 @@ pub const ENV_SNAPSHOT_TTL_S: &str = "SAIL_SNAPSHOT_TTL_S";
 /// least recently used are evicted beyond it.
 pub const ENV_SNAPSHOT_MAX_PARKED: &str = "SAIL_SNAPSHOT_MAX_PARKED";
 
-/// Version of the snapshot naming and protocol, bound into every name.
-const VERSION: &[u8] = b"sail-snapshot/v2";
+/// Version of snapshot naming/admission, bound into every name. The wire
+/// framing remains version 2; generations predating process-state admission
+/// must never be discovered under this namespace.
+const VERSION: &[u8] = b"sail-snapshot/v3";
 
-/// The preload library must acknowledge this framing before receiving input.
-pub const READY: &[u8] = b"sail-snap/2\n";
+/// The preload must acknowledge this admission policy before framed input.
+pub const READY: &[u8] = b"sail-snap/3\n";
 
 /// Upper bound on the aggregate resident bytes reserved for parked snapshots.
 pub const ENV_SNAPSHOT_MAX_BYTES: &str = "SAIL_SNAPSHOT_MAX_BYTES";
@@ -284,6 +286,9 @@ mod tests {
         let a = name(&QueryKey([1; 32]));
         let b = name(&QueryKey([2; 32]));
         assert_eq!(a.len(), 33);
+        // A generation published before thread/timer/fd admission cannot be
+        // resumed merely because its exact solver-prefix key still matches.
+        assert_ne!(a, "sa41c92b29ae730b256564a2798db89e8");
         assert_ne!(a, b);
         assert_eq!(a, name(&QueryKey([1; 32])));
         assert!(

@@ -1,5 +1,5 @@
 /*
- * sail-snap: exact solver snapshots by fork, without changing the solver.
+ * sail-snap: experimental solver snapshots by fork; raw exactness unqualified.
  *
  * PROTOTYPE (lane M11-2, ADR 0051 draft). Loaded into the pinned, unmodified
  * Z3 with LD_PRELOAD (Linux) or DYLD_INSERT_LIBRARIES (macOS). Z3 reads its
@@ -11,8 +11,10 @@
  * at a point P. The library strips the marker, so Z3 receives exactly the
  * client's SMT-LIB bytes. When Z3 asks for the character at P, the library
  * forks. The parent carries on at once. The child is the snapshot: it holds
- * Z3's whole memory exactly as it was when Z3 had consumed the bytes before P
- * and asked for the next one. It detaches, binds the Unix socket
+ * one inherited implementation-state image after Z3 has consumed the bytes
+ * before P. Platform and solver atfork handlers may change that state: the
+ * admission checks below reject known unsupported cases, not every possible
+ * source of divergence. It detaches, binds the Unix socket
  * `$SAIL_SNAP_DIR/<name>` and parks.
  *
  * Resume. A client connects three times to the socket, each connection
@@ -51,6 +53,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/resource.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -124,12 +127,14 @@ __attribute__((constructor)) static void sail_snap_init(void) {
     if (ready && *ready) {
         int fd = open(ready, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
         if (fd >= 0) {
-            const char signature[] = "sail-snap/2\n";
+            const char signature[] = "sail-snap/3\n";
             (void)write(fd, signature, sizeof signature - 1);
             close(fd);
         }
     }
 }
+
+static int fork_kernel_state_supported(void);
 
 /* ---- the parked snapshot ------------------------------------------------ */
 
@@ -339,6 +344,11 @@ static void park(const char *name, int budget_fd, int ready_fd) {
             g->used = 0;
             continue;
         }
+        if (!fork_kernel_state_supported()) {
+            for (int r2 = 0; r2 < 3; r2++) close(g->fd[r2]);
+            g->used = 0;
+            continue;
+        }
         pid_t child = fork();
         if (child == 0) {
             become_resumed(lfd, g, groups, run, nrun);
@@ -418,8 +428,87 @@ static int within_budget(void) {
     return ok && count < max_parked && proposed <= max_bytes;
 }
 
+/* A process image is not all of a solver's state. Other threads disappear
+   in the child; pinned Z3 also finalizes idle timer threads in an atfork
+   prepare callback, mutating the continuing parent. Kernel interval timers
+   and consumed CPU budgets are not copied. These are conservative admission
+   checks, not a proof of raw-output equality or a thread-creation lock. */
+static int single_threaded(void) {
+#ifdef __linux__
+    DIR *tasks = opendir("/proc/self/task");
+    if (!tasks) return 0;
+    int count = 0;
+    errno = 0;
+    struct dirent *entry;
+    while ((entry = readdir(tasks))) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+        count++;
+    }
+    int ok = errno == 0 && count == 1;
+    if (closedir(tasks) != 0) ok = 0;
+    return ok;
+#else
+    struct proc_taskinfo task;
+    int n = proc_pidinfo(getpid(), PROC_PIDTASKINFO, 0, &task, sizeof task);
+    return n == (int)sizeof task && task.pti_threadnum == 1;
+#endif
+}
+
+static int fork_kernel_state_supported(void) {
+    if (!single_threaded()) return 0;
+    struct rlimit cpu;
+    if (getrlimit(RLIMIT_CPU, &cpu) != 0 || cpu.rlim_cur != RLIM_INFINITY || cpu.rlim_max != RLIM_INFINITY) return 0;
+    const int timers[] = {ITIMER_REAL, ITIMER_VIRTUAL, ITIMER_PROF};
+    for (size_t i = 0; i < sizeof timers / sizeof timers[0]; i++) {
+        struct itimerval timer;
+        if (getitimer(timers[i], &timer) != 0 || timer.it_value.tv_sec || timer.it_value.tv_usec || timer.it_interval.tv_sec || timer.it_interval.tv_usec) return 0;
+    }
+    sigset_t pending;
+    if (sigpending(&pending) != 0) return 0;
+    for (int signum = 1; signum < NSIG; signum++)
+        if (sigismember(&pending, signum) != 0) return 0;
+#ifdef __linux__
+    /* Linux exposes POSIX timers separately from getitimer(). Missing or
+       unreadable procfs is unsupported, never assumed to mean no timers. */
+    FILE *timers_file = fopen("/proc/self/timers", "r");
+    if (!timers_file) return 0;
+    int empty = fgetc(timers_file) == EOF && !ferror(timers_file);
+    if (fclose(timers_file) != 0) empty = 0;
+    if (!empty) return 0;
+#endif
+    return 1;
+}
+
+/* park() must release the original pipes to let their client see EOF. It
+   cannot silently discard a solver-owned proof/trace/output descriptor. */
+static int only_standard_descriptors(void) {
+#ifdef __linux__
+    DIR *files = opendir("/proc/self/fd");
+    if (!files) return 0;
+    int own = dirfd(files), ok = 1;
+    struct dirent *entry;
+    errno = 0;
+    while ((entry = readdir(files))) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+        char *end;
+        long fd = strtol(entry->d_name, &end, 10);
+        if (*end || fd < 0 || (fd > 2 && fd != own)) { ok = 0; break; }
+    }
+    if (errno != 0) ok = 0;
+    if (closedir(files) != 0) ok = 0;
+    return ok;
+#else
+    struct proc_fdinfo files[128];
+    int n = proc_pidinfo(getpid(), PROC_PIDLISTFDS, 0, files, sizeof files);
+    if (n <= 0 || (size_t)n >= sizeof files || (size_t)n % sizeof files[0]) return 0;
+    for (size_t i = 0; i < (size_t)n / sizeof files[0]; i++)
+        if (files[i].proc_fd > 2) return 0;
+    return 1;
+#endif
+}
+
 static void snapshot(const char *name) {
-    if (taken >= max_snaps) return;
+    if (taken >= max_snaps || !fork_kernel_state_supported() || !only_standard_descriptors()) return;
     for (size_t i = 0; i < owned_count;) {
         pid_t got = waitpid(owned_snapshots[i], NULL, WNOHANG);
         if (got > 0 || (got < 0 && errno == ECHILD)) owned_snapshots[i] = owned_snapshots[--owned_count];

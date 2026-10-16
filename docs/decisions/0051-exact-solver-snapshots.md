@@ -52,8 +52,10 @@ a time through `std::cin.get()`; synced with stdio, that is one
 `sail-z3` puts a marker `\0<name>\0` before each top-level `(push)`; the
 library strips it, so Z3 reads exactly stock's bytes. When Z3 asks for the
 character after the marker, the library forks. The parent continues. The
-child is a byte-for-byte copy of Z3 that has consumed exactly the input
-before the marker and is waiting for the next character. It drops its
+child inherits one implementation-state image after consuming the input
+before the marker. This is not a proof of identical continuation: Z3's atfork
+handlers can change both images, other threads disappear in the child, and
+kernel timers and process CPU consumption are not copied. It drops its
 stdio read-ahead, detaches, binds `<dir>/<name>` and parks. To resume, a
 client connects three times (stdin/stdout, stderr, status); the parked
 process forks again and the new child returns from `getc` with the first
@@ -80,7 +82,7 @@ TBD
 ## Prototype hardening (not qualification)
 
 The version-2 transport doubles genuine NUL bytes; markers remain NUL,
-nonempty snapshot name, NUL. The preload must acknowledge `sail-snap/2` before
+nonempty snapshot name, NUL. The preload must acknowledge the current admission policy (`sail-snap/3`) before
 any framed input is sent. Missing/incompatible acknowledgment kills that owned
 child and starts a plain solver before forwarding any input. Snapshot names and
 resume headers have a new namespace; old parked processes are not resumed.
@@ -110,3 +112,42 @@ admission, a one-byte memory budget, and a zero-count budget. They do not
 qualify default operation or establish an edit-loop performance gain. Native
 Linux qualification, full-corpus output checks, raw-statistics exactness, and
 active-worker resource policy remain pending.
+
+
+## Process-state and raw-output audit
+
+The [timer-state reproduction](../../corpus/repros/z3-snapshot-timer-state/README.md)
+confirms that pinned Z3's timer pool is not transparent to `fork`. The
+candidate therefore refuses observed multiple threads, solver-owned file
+descriptors beyond standard I/O, active interval or pending signal state and
+finite CPU limits before taking a snapshot. Linux also requires an empty,
+readable `/proc/self/timers`. Kernel/thread state is checked again before each
+resume fork. Refusal skips the optimization and the original solver continues;
+it never deletes output-channel state and calls that a successful snapshot.
+These checks are conservative admission, not a synchronization proof against
+arbitrary asynchronous thread creation or a qualification of every kernel,
+allocator, library and clock state.
+
+A separate bounded `native/sail-snap/raw_audit.py` probe retains every exact
+stdout/stderr stream and exit status for two fresh runs, a marked run and
+repeated resumes. It refuses points whose prefix produces any output; it is
+not yet a whole-corpus or later-prefix oracle. It checks equality without
+masking, resetting counters or normalizing output. All raw differences remain
+failures, including differences between two fresh runs. It does not establish
+cross-stream stdout/stderr interleaving.
+
+Literal clock statistics differ even in independent fresh runs. ADR 0011
+already permits replaying the actual stored time/memory figures; that does
+not authorize synthesizing a new counter value, ignoring `rlimit-count`, or
+silently loosening the snapshot raw gate. The current gate remains pending.
+The actual cause of historical native `num-allocs` variation is still
+unestablished. Future evaluation must distinguish the existing verifier's
+accepted timing behavior from exact solver replies and demonstrate unchanged
+verdicts, diagnostics, models and resource-limited behavior.
+
+
+Admission names use `sail-snapshot/v3`, so clients never discover parked
+processes created before the process-state guards. The lossless input framing
+and `SAILSNAP2` stream headers are unchanged; their version describes transport,
+not admission compatibility. A pre-guard library cannot satisfy the new ready
+acknowledgment and falls back before receiving framed solver input.

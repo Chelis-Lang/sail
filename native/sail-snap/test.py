@@ -47,8 +47,8 @@ def main():
                     SAIL_SNAP_READY=str(directory / "ready"), SAIL_SNAP_TTL_S="2",
                     SAIL_SNAP_MAX_PARKED=count, SAIL_SNAP_MAX_BYTES=memory)
 
-    def run(data, env=None):
-        return subprocess.run([z3, "-smt2", "-in"], input=data, env=env,
+    def run(data, env=None, extra=()):
+        return subprocess.run([z3, "-smt2", "-in", *extra], input=data, env=env,
                               capture_output=True, timeout=10)
 
     def sockets(directory):
@@ -58,6 +58,26 @@ def main():
         rows.append(dict(test=name, passed=bool(condition), **details))
 
     try:
+        probe = root / "state-probe"
+        subprocess.run([os.environ.get("CC", "cc"), "-O2", "-Wall", "-Wextra", "-Werror",
+                        "-pthread", str(Path(__file__).with_name("state_probe.c")), "-o", str(probe)],
+                       check=True, timeout=20)
+        cases = ["thread", "timer", "cpu", "descriptor"]
+        if os.uname().sysname == "Linux":
+            cases.append("posix-timer")
+        for case in cases:
+            directory = root / ("kernel-" + case)
+            data = b"unchanged bytes\n"
+            plain = subprocess.run([probe, case], input=data, capture_output=True, timeout=5)
+            done = subprocess.run([probe, case], input=marker("sstate") + frame(data),
+                                  env=environment(directory), capture_output=True, timeout=5)
+            check("process-state-" + case, plain.returncode == 0 and
+                  (plain.returncode, plain.stdout, plain.stderr) ==
+                  (done.returncode, done.stdout, done.stderr) and not sockets(directory),
+                  parked=len(sockets(directory)), plain_exit=plain.returncode,
+                  preload_exit=done.returncode, stdout_equal=plain.stdout == done.stdout,
+                  stderr_equal=plain.stderr == done.stderr)
+
         for name, data in [
             ("nul-string", b'(echo "x\0y")\n(exit)\n'),
             ("nul-comment", b'; x\0y\n(echo "after")\n(exit)\n'),
@@ -73,6 +93,36 @@ def main():
 
         def input_for(prefix):
             return b"".join(marker(f"s{prefix}{i}") + b"(push)\n(pop)\n" for i in range(8)) + b'(echo "done")\n(exit)\n'
+
+        for name, prefix, extra in [
+            ("idle-timeout-thread", (Path(__file__).resolve().parents[2] /
+                                     "corpus/repros/z3-snapshot-timer-state/idle-timer.smt2").read_bytes(), ()),
+            ("active-global-timeout-thread", b'', ('-T:30',)),
+        ]:
+            directory = root / name
+            suffix = b'(echo "done")\n(exit)\n'
+            plain = run(prefix + suffix, extra=extra)
+            done = run(frame(prefix) + marker("sstate") + frame(suffix),
+                       environment(directory), extra=extra)
+            check(name, (plain.returncode, plain.stdout, plain.stderr) ==
+                  (done.returncode, done.stdout, done.stderr) and not sockets(directory),
+                  stdout_equal=plain.stdout == done.stdout,
+                  stderr_equal=plain.stderr == done.stderr,
+                  plain_exit=plain.returncode, preload_exit=done.returncode,
+                  parked=len(sockets(directory)))
+
+        directory = root / "output-descriptor"
+        output_file = root / "solver-output.txt"
+        prefix = f'(set-option :regular-output-channel "{output_file}")\n'.encode()
+        suffix = b'(echo "still-open")\n(exit)\n'
+        plain = run(prefix + suffix)
+        plain_file = output_file.read_bytes()
+        output_file.unlink()  # Both runs start with the same absent output path.
+        done = run(frame(prefix) + marker("sdescriptor") + frame(suffix), environment(directory))
+        check("solver-output-descriptor", plain_file == output_file.read_bytes() and
+              (plain.returncode, plain.stdout, plain.stderr) ==
+              (done.returncode, done.stdout, done.stderr) and not sockets(directory),
+              parked=len(sockets(directory)), side_effect_equal=plain_file == output_file.read_bytes())
 
         directory = root / "count"
         done = run(input_for("one"), environment(directory))

@@ -63,3 +63,59 @@ digest, exact argv and input digest, explicitly recording reference reuse.
 Timing an edit can select only changed transcripts after establishing the full
 base cache; this is a changed-transcript experiment and cannot be labelled a
 whole-project benchmark. Neither optimization permits dropping failed samples.
+
+
+## Continuation state audit
+
+Pinned Z3 source tag `z3-4.16.0` resolves to commit
+`ddb49568d3520e99799e364fb22f35fc67d887b1`. Its
+[`scoped_timer.cpp`](https://github.com/Z3Prover/z3/blob/ddb49568d3520e99799e364fb22f35fc67d887b1/src/util/scoped_timer.cpp)
+registers `finalize` as a pthread atfork prepare handler. Completed timed
+queries leave idle timer workers; the handler joins and deletes those workers
+before either process continues. On the actual pinned Mac runtime, the
+minimal timeout query leaves two threads; the old snapshot marker reduces the
+continuing parent to one. A global shell timeout uses an active timer worker,
+which is absent from a forked child. No upstream soundness defect is alleged.
+The corpus [minimal reproduction](../../corpus/repros/z3-snapshot-timer-state/README.md)
+and new conservative admission checks keep those cases visible.
+
+The source's
+[`memory_manager.cpp`](https://github.com/Z3Prover/z3/blob/ddb49568d3520e99799e364fb22f35fc67d887b1/src/util/memory_manager.cpp)
+also shows why `num-allocs` is implementation state, not a logical effort
+counter. Its thread-local implementation integrates allocation counts into a
+global count at 100,000-byte accounting thresholds; allocation/deallocation
+accounting uses the allocator's actual usable block size. Fork callbacks,
+libc allocator state and parked-server control allocations therefore need
+qualification, rather than an assumption that copying the address space is
+sufficient. This source observation does not identify the cause of the
+historical native counter differences, and no counter is reset or masked.
+
+The new raw probe retained a 125,724-byte IronKV transcript at its first push
+(offset 105,643), whose prefix emitted no stdout/stderr. It ran two independent
+fresh processes, one marked process and three resumes on local macOS. One old
+prototype resume differed in three printed `:time` values, 0.00 versus 0.01;
+a second run with admission checks also observed the same clock variation
+between two fresh processes. Every exit was zero and stderr empty. Both whole
+raw comparisons fail. In this sample the other bytes, including `num-allocs`,
+match; this does not qualify other transcripts, later snapshots or native
+Linux. It also does not establish that snapshotting caused the clock changes.
+
+Z3's
+[`stopwatch.h`](https://github.com/Z3Prover/z3/blob/ddb49568d3520e99799e364fb22f35fc67d887b1/src/util/stopwatch.h)
+uses a steady clock. Literal equality of independent clock readings is not a
+useful state-copy theorem. The snapshot acceptance predicate nevertheless
+remains unchanged and failing; ADR 0011's stored timing behavior does not
+license a new normalization or statistical-counter exemption. Semantic/verdict
+agreement must be qualified independently on the exact runtime and complete
+corpus, with resource limits and all diagnostics preserved.
+
+The complete inherited native run is now archived externally as
+`m112a-results.tgz`, SHA-256
+`bcccdcc149d31cb6bef770e5b760897c085d2ebbf7e917d83552c385ffcef573`.
+Its source, traces and masked replay summaries are retained, along with the
+actual binary/preload archive SHA-256
+`68294281141178e832e17a15a8323e613fb16c068ca90e6572afaa1456b0c309`
+and Linux Z3 SHA-256
+`e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765`.
+Historical replay headlines discard stderr and judge masked stdout; they are
+exploratory measurements, not complete raw-output acceptance.
