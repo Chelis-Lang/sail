@@ -20,7 +20,7 @@
 //! run's result. The store never changes a solver query, a verdict or a
 //! diagnostic: it only lets Cargo find a dependency fresh.
 //!
-//! The v1 native-artifact path is currently disabled in this candidate. Its
+//! The v1 native-artifact path is disabled. Its
 //! identity does not establish the native compiler/linker inputs that fresh
 //! Cargo would read (#187). The format below remains available for investigation;
 //! managed runs neither seed nor publish entries until that path is qualified.
@@ -1892,7 +1892,7 @@ mod tests {
         assert!(std::fs::remove_dir_all(store).is_ok());
     }
 
-    /// Runs only as the child of `loader_variables_turn_the_store_off`.
+    /// Runs only as the child of `native_artifact_reuse_cannot_be_reenabled`.
     #[test]
     fn enabled_probe() {
         if let Some(expected) = std::env::var_os("SAIL_TEST_STORE_ENABLED") {
@@ -1901,17 +1901,19 @@ mod tests {
     }
 
     #[test]
-    fn loader_variables_turn_the_store_off() {
+    fn native_artifact_reuse_cannot_be_reenabled() {
         let executable = std::env::current_exe().unwrap_or_else(|e| unreachable!("fixture: {e}"));
-        for (variable, expected) in [
-            (None, "1"),
-            (Some("LD_SAIL_TEST_PROBE"), "0"),
-            (Some("DYLD_SAIL_TEST_PROBE"), "0"),
+        for (variable, capacity) in [
+            (None, None),
+            (None, Some("0")),
+            (None, Some("4")),
+            (Some("LD_SAIL_TEST_PROBE"), Some("4")),
+            (Some("DYLD_SAIL_TEST_PROBE"), Some("4")),
         ] {
             let mut command = std::process::Command::new(&executable);
             command
                 .args(["--exact", "managed::store::tests::enabled_probe"])
-                .env("SAIL_TEST_STORE_ENABLED", expected)
+                .env("SAIL_TEST_STORE_ENABLED", "0")
                 .env_remove("SAIL_DEPENDENCY_STORE_ENTRIES")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null());
@@ -1923,6 +1925,9 @@ mod tests {
             }
             if let Some(variable) = variable {
                 command.env(variable, "1");
+            }
+            if let Some(capacity) = capacity {
+                command.env("SAIL_DEPENDENCY_STORE_ENTRIES", capacity);
             }
             let status = command
                 .status()

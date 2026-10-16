@@ -175,6 +175,21 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             return [line for line in run.stderr.decode().splitlines() if line.startswith("error")]
 
         if part != "scripts":
+            # Keep PATH and CC fixed across a real native-tool replacement.
+            # The good compiler establishes the donor; the failing compiler
+            # must still be executed by a later fresh target (#187, ADR 0053).
+            real_cc = shutil.which("cc", path=env.get("PATH"))
+            assert real_cc, "managed acceptance requires a native C compiler"
+            native_bin = root / "native-bin"
+            native_bin.mkdir()
+            private_cc = native_bin / "cc"
+            good_cc = (f"#!{sys.executable}\nimport os, sys\n"
+                       f"os.execv({real_cc!r}, [{real_cc!r}, *sys.argv[1:]])\n")
+            private_cc.write_text(good_cc)
+            private_cc.chmod(0o700)
+            env["PATH"] = str(native_bin) + os.pathsep + env.get("PATH", "")
+            env["CC"] = "cc"
+            env["SAIL_DEPENDENCY_STORE_ENTRIES"] = "4"
             # The pinned Verus's verdict on the failing proof, from a copy with its
             # own target, verified while the managed runs below proceed: a cold
             # build of vstd under stock Verus that need not hold up the job.
@@ -204,13 +219,12 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 assert first_run.returncode != 0 and first["currentness"] == "current", diagnostic(first)
             established_vstd = vstd(first)
             assert established_vstd["complete"], diagnostic(first)
-            # ADR 0045: the Current run that verified vstd stores it, whatever the
-            # verifier's timing notes (a one-thread verifier prints them for any
-            # query slower than two seconds).
+            # ADR 0053: native-artifact publication is quarantined. Proofs in
+            # this project's own managed target still establish reusable receipts.
             store = root / "cache/dependency-store/v1"
             stored = [p.name for p in store.iterdir() if not p.name.startswith(".")] if store.is_dir() else []
             events = evidence / (managed_calls[-1] + ".events.jsonl")
-            assert len(stored) == 1, (stored, events.read_text() if events.exists() else None)
+            assert stored == [], (stored, events.read_text() if events.exists() else None)
 
             # The failing proof again: only the selected crate is verified, with the
             # same verdicts and errors; vstd is reused from the failing run.
@@ -459,8 +473,9 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             rebuilt_run, rebuilt, rebuilt_target = managed()
             assert rebuilt_run.returncode == 0 and rebuilt["exit_code"] == 0, diagnostic(rebuilt)
             assert not rebuilt_target["reused"] and rebuilt_target["complete"], diagnostic(rebuilt)
-            assert vstd(rebuilt).get("dependency_store"), diagnostic(rebuilt)  # ADR 0045; absent on a miss
-            assert rebuilt["execution"]["verifier_invocations"] >= 1, rebuilt["execution"]
+            assert not vstd(rebuilt)["reused"] and vstd(rebuilt)["complete"], diagnostic(rebuilt)
+            assert "dependency_store" not in vstd(rebuilt), diagnostic(rebuilt)
+            assert rebuilt["execution"]["verifier_invocations"] >= 2, rebuilt["execution"]
             assert rebuilt_target["report"]["summary"] == target["report"]["summary"], diagnostic(rebuilt)
             if rebuilt["currentness"] == "historical":
                 rebuilt_run, rebuilt, rebuilt_target = managed()
@@ -471,49 +486,58 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert reread_target["establishing_run"] == rebuilt_target["establishing_run"], reread_target
             assert reread_target["report"] == rebuilt_target["report"], "reuse must preserve the rebuilt report"
 
-            # ADR 0045: new projects (or worktrees) with the same vstd start from
-            # the machine's dependency store, two at once. Neither verifies vstd;
-            # each reports the vstd verified above, marked as placed from the store.
-            entries = [p for p in store.iterdir() if not p.name.startswith(".")]
-            assert len(entries) == 1 and entries[0].name == stored[0], (entries, stored)
+            # ADR 0053: each new project must perform its own compilation and
+            # establish its own proof. No native artifacts cross target directories.
+            entries = [p for p in store.iterdir() if not p.name.startswith(".")] if store.is_dir() else []
+            assert entries == [], entries
             # Each copy is the whole workspace, lockfile included, verified from
             # its member's directory like the original.
             copies = []
             for name in ("worktree-1", "worktree-2"):
                 shutil.copytree(workspace, root / name)
                 copies.append(root / name / project.name)
-            seeding = [subprocess.Popen([sail, "verify", "--incremental", "--output", "json"],
+            fresh_runs = [subprocess.Popen([sail, "verify", "--incremental", "--output", "json"],
                                         cwd=copy, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                        for copy in copies]
-            for copy, process in zip(copies, seeding):
+            own_vstd_receipts = []
+            for copy, process in zip(copies, fresh_runs):
                 out, err = process.communicate(timeout=240)
                 (evidence / (copy.parent.name + ".stdout.json")).write_bytes(out)
                 (evidence / (copy.parent.name + ".stderr")).write_bytes(err)
-                seeded = json.loads(out)
-                assert process.returncode == 0 and seeded["exit_code"] == 0, err.decode()
+                fresh = json.loads(out)
+                assert process.returncode == 0 and fresh["exit_code"] == 0, err.decode()
                 assert b"SAIL3131" not in err, err.decode()
-                seeded_vstd = vstd(seeded)
-                assert seeded_vstd["reused"] and seeded_vstd["dependency_store"] == entries[0].name, diagnostic(seeded)
-                assert seeded_vstd["establishing_run"] == stored_vstd["establishing_run"], diagnostic(seeded)
-                assert seeded_vstd["report"] == stored_vstd["report"], "the store must preserve vstd's report"
-                assert seeded["execution"]["verifier_invocations"] == 1, diagnostic(seeded)
-                assert any(note.startswith("SAIL3130:") for note in seeded["notes"]), seeded["notes"]
-                own = [t for t in seeded["targets"] if t["requested"]]
-                assert len(own) == 1 and not own[0]["reused"] and own[0]["complete"], diagnostic(seeded)
+                fresh_vstd = vstd(fresh)
+                assert not fresh_vstd["reused"] and fresh_vstd["complete"], diagnostic(fresh)
+                assert "dependency_store" not in fresh_vstd, diagnostic(fresh)
+                assert verdicts(fresh_vstd) == verdicts(stored_vstd), diagnostic(fresh)
+                assert fresh["execution"]["verifier_invocations"] >= 2, diagnostic(fresh)
+                assert not any(note.startswith("SAIL3130:") for note in fresh["notes"]), fresh["notes"]
+                own = [t for t in fresh["targets"] if t["requested"]]
+                assert len(own) == 1 and not own[0]["reused"] and own[0]["complete"], diagnostic(fresh)
                 assert verdicts(own[0]) == verdicts(target), (verdicts(own[0]), verdicts(target))
-            # The next run of a seeded project reuses its own receipts, which a
-            # Current seeded run adopts: nothing is verified or placed again.
+                if fresh["currentness"] == "historical":
+                    established = bounded_verification([sail, "verify", "--incremental", "--output", "json"],
+                                                       copy, env, 240)
+                    (evidence / (copy.parent.name + "-current.stdout.json")).write_bytes(established.stdout)
+                    (evidence / (copy.parent.name + "-current.stderr")).write_bytes(established.stderr)
+                    fresh = json.loads(established.stdout)
+                    assert established.returncode == 0 and fresh["currentness"] == "current", diagnostic(fresh)
+                    assert all(t["complete"] and "dependency_store" not in t for t in fresh["targets"]), diagnostic(fresh)
+                assert fresh["currentness"] == "current", diagnostic(fresh)
+                own_vstd_receipts.append(vstd(fresh))
+            # Each Current project owns its next reuse; no foreign establishing
+            # run can be substituted for the fresh project's own proof.
             again = bounded_verification([sail, "verify", "--incremental", "--output", "json"],
                                          copies[0], env, 240)
             repeated = json.loads(again.stdout)
             assert again.returncode == 0 and repeated["execution"]["verifier_invocations"] == 0, diagnostic(repeated)
             assert all(t["reused"] and "dependency_store" not in t for t in repeated["targets"]), diagnostic(repeated)
-            assert vstd(repeated)["establishing_run"] == stored_vstd["establishing_run"], diagnostic(repeated)
+            assert vstd(repeated)["establishing_run"] == own_vstd_receipts[0]["establishing_run"], diagnostic(repeated)
+            assert vstd(repeated)["report"] == own_vstd_receipts[0]["report"], diagnostic(repeated)
 
-            # A new plain run must display the stored dependency's original
-            # summary before its own summary (#184). JSON/report reuse alone
-            # did not catch the missing dependency stdout. Its unchanged run
-            # must then remain silent, like Cargo's ordinary no-op.
+            # A new plain run displays both fresh summaries (#184); its own
+            # unchanged run must then remain silent, like Cargo's ordinary no-op.
             plain_workspace = root / "plain-seeded"
             shutil.copytree(workspace, plain_workspace)
             plain_copy = plain_workspace / project.name
@@ -527,6 +551,31 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert displayed.stdout == expected_stdout, (displayed.stdout, expected_stdout)
             unchanged = bounded_verification([sail, "verify"], plain_copy, env, 240)
             assert unchanged.returncode == 0 and unchanged.stdout == b"", (unchanged.stdout, unchanged.stderr)
+
+            # A changed native compiler cannot be hidden by the earlier donor.
+            # This is a real fresh-target compile against the same PATH and CC;
+            # both stock and Sail must execute the replacement and fail.
+            broken_workspace = root / "changed-compiler"
+            shutil.copytree(workspace, broken_workspace)
+            broken_project = broken_workspace / project.name
+            marker = b"SAIL_TEST_CHANGED_CC"
+            private_cc.write_text(
+                f"#!{sys.executable}\nimport sys\n"
+                "sys.stderr.write('SAIL_TEST_CHANGED_CC\\n')\nraise SystemExit(42)\n")
+            try:
+                commands = [
+                    ("stock-changed-compiler", [cargo_verus, "verus", "verify", "--target-dir", str(root / "changed-compiler-oracle")]),
+                    ("sail-changed-compiler", [sail, "verify"]),
+                ]
+                for label, arguments in commands:
+                    failed = bounded_verification(arguments, broken_project, env, 240)
+                    (evidence / (label + ".stdout")).write_bytes(failed.stdout)
+                    (evidence / (label + ".stderr")).write_bytes(failed.stderr)
+                    assert failed.returncode == 101 and marker in failed.stderr, (label, failed.returncode, failed.stderr.decode())
+                    assert b"verification results:: 1 verified, 0 errors" not in failed.stdout, failed.stdout
+            finally:
+                private_cc.write_text(good_cc)
+            assert not list(store.glob("*/manifest.json")), "native artifacts were published"
 
         if part != "core":
             if part == "scripts":
@@ -729,7 +778,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 else:
                     assert ambiguous.get("currentness") != "current", diagnostic(ambiguous)
                     assert not (cache / "projects").exists(), "overlapping cache received managed proof state"
-            print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs and prune passed")
+            print("managed acceptance: failing first runs keep vstd, cold, unchanged, native store quarantine, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs and prune passed")
         if part != "core":
             print("managed acceptance: build-script reuse passed")
     finally:
