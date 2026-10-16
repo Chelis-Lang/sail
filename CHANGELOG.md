@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Prepare an explicit source-bound paired-log completion mode for the untimed
+  solver-work observer (#118). It is unqualified experimental tooling; the
+  default observer still refuses missing or interrupted evidence.
+
 - Linux benchmark host teardown retains connection state on AWS errors and
   confirms termination before deleting cloud resources (#201). Refresh
   credentials or fix `SAIL9001`, then retry `scripts/perf-host.sh down LANE`.

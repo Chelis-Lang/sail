@@ -14,6 +14,9 @@ use std::collections::BTreeMap;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
+#[path = "actual_work_support/completion.rs"]
+mod completion;
+
 const MAX_FILE_BYTES: u64 = 128 * 1024 * 1024;
 const MAX_FILES: usize = 100_000;
 
@@ -107,21 +110,33 @@ struct Counts {
 
 fn log_counts(path: &Path) -> io::Result<(String, Counts)> {
     let bytes = read(path)?;
+    log_counts_payload(path, &bytes, None)
+}
+
+fn log_counts_payload(
+    path: &Path,
+    bytes: &[u8],
+    completed_air: Option<&[u8]>,
+) -> io::Result<(String, Counts)> {
     // Lossy transcript decoding must never authorize a complete observation.
-    std::str::from_utf8(&bytes).map_err(invalid)?;
-    let transcript = Transcript::parse(&bytes);
+    std::str::from_utf8(bytes).map_err(invalid)?;
+    let transcript = Transcript::parse(bytes);
     if transcript.batches.is_empty()
         || transcript.batches.iter().any(|b| b.response.is_none())
         || !bytes.ends_with(b";;;<<<\n")
     {
         return Err(invalid("empty or interrupted transcript"));
     }
-    let air = String::from_utf8(read(&path.with_extension("air"))?).map_err(invalid)?;
+    let air = String::from_utf8(match completed_air {
+        Some(bytes) => bytes.to_vec(),
+        None => read(&path.with_extension("air"))?,
+    })
+    .map_err(invalid)?;
     let stem = path
         .file_stem()
         .and_then(|s| s.to_str())
         .ok_or_else(|| invalid("non-UTF log name"))?;
-    let log = LogFile::new(stem, &air, &bytes);
+    let log = LogFile::new(stem, &air, bytes);
     if log.air.len() != log.ops.len() {
         return Err(invalid("AIR/transcript query coverage differs"));
     }
@@ -293,6 +308,14 @@ fn join(mut logs: BTreeMap<String, Vec<Counts>>, records: Vec<SessionRecord>) ->
 }
 
 fn observe(result_path: &Path, run: &Path) -> io::Result<serde_json::Value> {
+    observe_with_completion(result_path, run, None)
+}
+
+fn observe_with_completion(
+    result_path: &Path,
+    run: &Path,
+    validator: Option<&completion::Validator>,
+) -> io::Result<serde_json::Value> {
     let result: ProjectResult = serde_json::from_slice(&read(result_path)?).map_err(invalid)?;
     if result.kind != "sail-project-result"
         || result.schema_version != SCHEMA_VERSION
@@ -326,6 +349,8 @@ fn observe(result_path: &Path, run: &Path) -> io::Result<serde_json::Value> {
     let mut logs: BTreeMap<String, Vec<Counts>> = BTreeMap::new();
     let mut records = Vec::new();
     let mut evidence_files = 0usize;
+    let mut completed_zero_contexts = Vec::new();
+    let mut completed_used_contexts = 0u64;
     for child in children {
         let paths = transcripts(&child.join("logs"))?;
         if paths.is_empty() {
@@ -338,7 +363,32 @@ fn observe(result_path: &Path, run: &Path) -> io::Result<serde_json::Value> {
             if evidence_files > MAX_FILES {
                 return Err(invalid("too many evidence files"));
             }
-            let (hash, counts) = log_counts(&path)?;
+            let (hash, counts) = if let Some(validator) = validator {
+                let transcript = read(&path)?;
+                let air = read(&path.with_extension("air"))?;
+                let (transcript_body, mode) = completion::payload(&transcript, "transcript")?;
+                let (air_body, air_mode) = completion::payload(&air, "air")?;
+                if mode != air_mode {
+                    return Err(invalid("AIR/transcript completion modes differ"));
+                }
+                if mode == completion::Mode::Zero {
+                    if !transcript_body.is_empty() {
+                        return Err(invalid("zero-process transcript contains solver bytes"));
+                    }
+                    validator.validate(air_body)?;
+                    use sha2::{Digest, Sha256};
+                    completed_zero_contexts.push(serde_json::json!({
+                        "transcript": path,
+                        "transcript_sha256": format!("{:x}", Sha256::digest(&transcript)),
+                        "air_sha256": format!("{:x}", Sha256::digest(&air)),
+                    }));
+                    continue;
+                }
+                completed_used_contexts += 1;
+                log_counts_payload(&path, transcript_body, Some(air_body))?
+            } else {
+                log_counts(&path)?
+            };
             logs.entry(hash).or_default().push(counts);
         }
         for path in entries(&child.join("provenance"))? {
@@ -349,26 +399,58 @@ fn observe(result_path: &Path, run: &Path) -> io::Result<serde_json::Value> {
             if path.extension().is_none_or(|extension| extension != "json") {
                 return Err(invalid("unfinished or unknown session evidence"));
             }
-            records.push(record(&path)?);
+            let record = record(&path)?;
+            if validator.is_some()
+                && record.input_sha256
+                    == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            {
+                return Err(invalid(
+                    "completed zero-mode evidence cannot have an empty-input session",
+                ));
+            }
+            records.push(record);
         }
     }
     let work = join(logs, records)?;
-    Ok(
-        serde_json::json!({"schema_version": 1, "run_id": result.run_id,
-        "scope": "default full-prefix-replay shim, separate untimed capture",
-        "work": work}),
-    )
+    let mut value = serde_json::json!({"schema_version": 1, "run_id": result.run_id,
+        "scope": "default full-prefix-replay shim, separate untimed capture", "work": work});
+    if let Some(validator) = validator {
+        value["paired_log_completion"] = serde_json::json!({
+            "version": 1, "validator": validator,
+            "completed_zero_contexts": completed_zero_contexts,
+            "completed_used_contexts": completed_used_contexts,
+            "scope": "explicit source-bound logging experiment; not fork adoption",
+        });
+    }
+    Ok(value)
 }
 
 fn run() -> io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let [result_option, result, run_option, run] = args.as_slice() else {
-        return Err(invalid("usage: --result RESULT --run-dir RUN"));
+    let usage = "usage: --result RESULT --run-dir RUN [--paired-completion-validator PATH --validator-sha256 SHA --validator-source COMMIT]";
+    let [result_option, result, run_option, run, tail @ ..] = args.as_slice() else {
+        return Err(invalid(usage));
     };
     if result_option != "--result" || run_option != "--run-dir" {
-        return Err(invalid("usage: --result RESULT --run-dir RUN"));
+        return Err(invalid(usage));
     }
-    let value = observe(Path::new(result), Path::new(run))?;
+    let validator = match tail {
+        [] => None,
+        [option, path, sha_option, sha, source_option, source]
+            if option == "--paired-completion-validator"
+                && sha_option == "--validator-sha256"
+                && source_option == "--validator-source" =>
+        {
+            Some(completion::Validator::new(Path::new(path), sha, source)?)
+        }
+        _ => return Err(invalid(usage)),
+    };
+    let value = match validator.as_ref() {
+        Some(validator) => {
+            observe_with_completion(Path::new(result), Path::new(run), Some(validator))?
+        }
+        None => observe(Path::new(result), Path::new(run))?,
+    };
     println!("{}", serde_json::to_string_pretty(&value).map_err(invalid)?);
     Ok(())
 }
@@ -503,6 +585,86 @@ mod tests {
             format!("{query}sat\n(model (define-fun x () Bool true)\n;;;<<<\n"),
         )?;
         assert!(log_counts(&transcript).is_err());
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn paired_zero_evidence_is_opt_in_and_cannot_hide_any_session() -> io::Result<()> {
+        use sha2::{Digest, Sha256};
+        use std::os::unix::fs::PermissionsExt as _;
+        let fixture = Fixture::new()?;
+        let run = fixture.0.join("run");
+        let child = run.join("sidecars/target");
+        let logs = child.join("logs");
+        let provenance = child.join("provenance");
+        std::fs::create_dir_all(&logs)?;
+        std::fs::create_dir(&provenance)?;
+        let result = fixture.0.join("result.json");
+        let mut document = serde_json::json!({"kind": "sail-project-result", "schema_version": SCHEMA_VERSION,
+            "run_id": "run", "workspace": fixture.0, "context_sha256": "0".repeat(64),
+            "input_revision": "0".repeat(64), "currentness": "current", "exit_code": 0,
+            "targets": [], "execution": {"verifier_invocations": 1, "reused_targets": 0, "wall_ms": 0},
+            "notes": [], "error": null});
+        std::fs::write(&result, serde_json::to_vec(&document).map_err(invalid)?)?;
+        // This script tests the observer's helper protocol only. Genuine AIR
+        // grammar positives/negatives belong to the source-bound AIR example.
+        let helper = fixture.0.join("validator");
+        std::fs::write(
+            &helper,
+            b"#!/bin/sh\ncat >/dev/null\nprintf 'SAIL-AIR-NO-QUERY 1\\n'\n",
+        )?;
+        std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o700))?;
+        let digest = format!("{:x}", Sha256::digest(read(&helper)?));
+        let validator = completion::Validator::new(&helper, &digest, &"a".repeat(40))?;
+        let transcript = logs.join("zero.smt_transcript");
+        let air = transcript.with_extension("air");
+        std::fs::write(&transcript, b";; SAIL-COMPLETE 1 transcript zero-process\n")?;
+        std::fs::write(
+            &air,
+            b"(declare-sort T 0)\n;; SAIL-COMPLETE 1 air zero-process\n",
+        )?;
+        assert!(observe(&result, &run).is_err());
+        let observed = observe_with_completion(&result, &run, Some(&validator))?;
+        assert_eq!(observed["work"]["actual_solver_checks"], 0);
+        assert_eq!(
+            observed["paired_log_completion"]["completed_zero_contexts"]
+                .as_array()
+                .map(Vec::len),
+            Some(1)
+        );
+        for bad in [
+            b"".as_slice(),
+            b"(check-sat)\n;; SAIL-COMPLETE 1 transcript zero-process\n",
+            b";; SAIL-COMPLETE 1 transcript process-used\n",
+        ] {
+            std::fs::write(&transcript, bad)?;
+            assert!(observe_with_completion(&result, &run, Some(&validator)).is_err());
+        }
+        std::fs::write(&transcript, b";; SAIL-COMPLETE 1 transcript zero-process\n")?;
+        std::fs::remove_file(&air)?;
+        assert!(observe_with_completion(&result, &run, Some(&validator)).is_err());
+        std::fs::write(
+            &air,
+            b"(declare-sort T 0)\n;; SAIL-COMPLETE 1 air zero-process\n",
+        )?;
+        for hash in [
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_owned(),
+            "a".repeat(64),
+        ] {
+            std::fs::write(
+                provenance.join("unexpected.json"),
+                serde_json::to_vec(&serde_json::json!({
+                    "version":1, "input_sha256":hash, "replies_served":0, "solver_started":false
+                }))
+                .map_err(invalid)?,
+            )?;
+            assert!(observe_with_completion(&result, &run, Some(&validator)).is_err());
+        }
+        std::fs::remove_file(provenance.join("unexpected.json"))?;
+        document["currentness"] = serde_json::json!("unknown");
+        std::fs::write(&result, serde_json::to_vec(&document).map_err(invalid)?)?;
+        assert!(observe_with_completion(&result, &run, Some(&validator)).is_err());
         Ok(())
     }
 }

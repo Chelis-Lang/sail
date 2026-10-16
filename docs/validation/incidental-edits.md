@@ -183,3 +183,61 @@ a failed capture, not an empty successful result. Archive complete logs,
 manifests, runtime/source identities, refused samples and final source
 restoration before host teardown. Add checksums and final results here in the
 code PR once those native gates actually complete.
+
+
+## Paired completion source experiment
+
+An independent first cold Vest capture completed with a successful Current
+result, 725 transcript paths and 631 session records. Of those transcripts,
+631 were nonempty and matched all 631 session digests with exact multiplicity;
+94 were zero-byte placeholders. The producer creates transcript files eagerly
+but launches its solver lazily. The observer refused the first empty transcript
+with `SAIL0930`; its wrapper then refused the remaining 59 planned rows without
+executing them. The failed attempt remains failed. Raw captured run archive
+SHA-256 `aaf978b037076909408cbd772b001a3c64c1356045f1ac342abb11c6bfc1a712`.
+The separately retained 90 wall-time samples are not actual-work acceptance.
+
+A new **unbuilt, unqualified source experiment** consumes each completed fork
+context and emits paired, versioned AIR/transcript EOF witnesses only when both
+logs were requested. No solver command, default flag or fork pin changes.
+Its source-only helper reuses the genuine AIR grammar, constructs no Context
+and starts no solver; it rejects query commands and unbalanced scopes. This
+validates command syntax, not a proof or semantic typing. Old logs do not gain
+completion witnesses retroactively.
+
+The observer's original invocation and incomplete-evidence checks remain the
+default. A separately reviewed logging experiment can explicitly request:
+
+```sh
+cargo run --release -p sail-verus --example actual_work -- \
+  --result RESULT --run-dir RUN \
+  --paired-completion-validator HELPER \
+  --validator-sha256 BINARY_SHA256 --validator-source FORK_COMMIT
+```
+
+The opt-in path requires exact unique paired EOF markers with matching version
+and mode. Process-used contexts retain every original batch, response, AIR
+coverage, SMT check and session-bijection check after removal of only the exact
+EOF comment. A zero-process context additionally requires an empty transcript
+body and successful validation of its complete AIR bytes by the source-bound
+helper. An empty-input or unmatched session still refuses. The observation
+records each zero context's original AIR/transcript hashes and helper identity.
+No missing AIR, missing marker or malformed evidence is treated as zero.
+
+The helper takes at most 8 MiB AIR, has a 2-second per-call limit and retains at
+most 4 KiB each stdout/stderr. Timeout, overflow, nonzero status, any stderr,
+unexpected stdout or a changed executable hash refuses. The helper source and
+binary identities must also be bound by the external build/capture controller;
+a supplied source-commit string is not independent build provenance.
+
+Direct Rust test sources cover the marker protocol, explicit helper identity,
+bounded child failures and zero-mode/session rejection. The fork has genuine
+AIR-parser grammar controls and minimal Verus zero/query/spinoff regression
+sources. **These additions have not been compiled or executed.** Original
+observer controls are preserved. Native qualification, deterministic direct-SMT
+byte comparisons, full raw Verus results and normal unchanged conformance
+checks remain required before any new actual-work measurement or adoption.
+Paired comments are completion witnesses, not cryptographic authentication;
+completed Current status, immutable producer/runtime and complete capture
+remain mandatory. The 94 old placeholders and failed markerless attempt are
+not accepted by this experiment.
