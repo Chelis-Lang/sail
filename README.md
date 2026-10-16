@@ -110,8 +110,9 @@ sail verify
 a package name other than the directory's), with the files `cargo verus new`
 writes: a `vstd` dependency at the version that matches Sail's Verus,
 Verus's `verify` flag, and a `src/lib.rs` (or `src/main.rs`) with one
-verified function. It refuses a path that exists and is not an empty
-directory. Sail makes the project with its own Verus and never puts that
+verified function, plus a `Cargo.lock` that resolves vstd's dependencies as
+the release's shipped vstd build did. It refuses a path that exists and is
+not an empty directory. Sail makes the project with its own Verus and never puts that
 Verus's `cargo-verus` on `PATH`, so your own `cargo verus` is unaffected.
 
 In a Cargo project that Verus already verifies, run `sail verify` instead of
@@ -122,11 +123,17 @@ same output, with the same exit code; a few arguments Sail cannot bind to a
 proof receipt run without proof reuse, with one note line
 ([details](docs/workspace-verification.md#setups-verified-without-proof-reuse)).
 It builds in its own Cargo target under
-the Sail cache and never touches your `target/`. The first run on a machine
-compiles the dependencies and verifies `vstd`, which takes about half a
-minute; later new projects and worktrees that resolve the same `vstd` start
-from the verified copy the first one stored
-([ADR 0045](docs/decisions/0045-dependency-store.md)). It starts the Sail
+the Sail cache and never touches your `target/`. Release archives ship
+`vstd` compiled and verified by Sail's own Verus, so even the first run on a
+fresh machine (a CI runner, container or sandbox) verifies only your crates
+when the project resolves vstd's dependencies as the shipped build did,
+which a `sail new` project does
+([ADR 0048](docs/decisions/0048-shipped-dependency-build.md)). Otherwise the
+first run compiles the dependencies and verifies `vstd`, about half a
+minute, and later new projects and worktrees that resolve the same `vstd`
+start from the verified copy it stored
+([ADR 0045](docs/decisions/0045-dependency-store.md)). Either way the output
+is what plain `cargo verus verify` prints. It starts the Sail
 cache daemon on demand; you never need to start it yourself. Run it again
 after an edit: targets whose inputs are unchanged keep their proof receipts
 and are not verified again, and solver queries Verus has seen before are
@@ -229,8 +236,12 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
 - **macOS.** Receipt reuse works on Linux and macOS. On macOS a Cargo
   configuration file created and deleted again during a single run is not
   detected; see [freshness](docs/freshness.md#what-these-checks-do-not-catch).
-- **The first run on a machine verifies vstd,** about 30 s. Later new
-  projects and worktrees reuse it only when they resolve the same vstd
+- **vstd is verified once unless the release shipped it.** A project
+  whose `Cargo.lock` resolves vstd's dependencies differently from the
+  release's shipped build (an older or newer `syn`, say), or that sets
+  `RUSTFLAGS` or other compiler settings, verifies vstd on its first run,
+  about 30 s. Later new projects and worktrees reuse it only when they
+  resolve the same vstd
   (version, features, its dependencies' versions in `Cargo.lock`, profile,
   arguments) with the same Sail and toolchain; anything else verifies vstd
   again once and is stored too (four entries, about 120 MB each). A run

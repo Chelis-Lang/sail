@@ -42,8 +42,10 @@ are in the `archive/m7-contracts-f7103bf` tag.
   vstd once more on their first run: on rc.5 the workspace of issue #121
   did (release-candidate finding 15; which key input differed was not
   checked; see also [#177](https://github.com/Chelis-Lang/sail/issues/177)). Shipping a
-  pre-verified vstd in the archive is
-  [#161](https://github.com/Chelis-Lang/sail/issues/161).
+  pre-verified vstd in the archive is implemented on a candidate branch
+  ([ADR 0048](decisions/0048-shipped-dependency-build.md), #161), but still
+  awaits reviewed and pinned runtimes plus conformance and CI serving gates
+  ([validation](validation/shipped-dependency-build.md)).
 - **The repair benchmark's outcome check fails on output schema v2.** It
   hashes the per-function `tier` that schema v2 renamed, so every M6/M7 pair
   reports `SAIL7107` although verdicts and diagnostics match. Harness only;

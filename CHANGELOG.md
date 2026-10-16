@@ -16,6 +16,18 @@ semantic versioning once the API is published.
   v2 document's `establishment` or the frozen M6 baseline's v1 `tier`, and an
   unknown schema version is refused as no outcome.
 
+- **Release archives ship vstd compiled and verified** (ADR 0048). A fresh
+  machine's first `sail verify` (CI runners, containers, agent sandboxes)
+  replays vstd and its dependencies from the release's shipped build
+  instead of compiling and verifying them, when the project resolves vstd's
+  dependencies as the build did; `sail new` writes that resolution as the
+  project's `Cargo.lock`. Output is plain `cargo verus verify`'s, including
+  diagnostics that point into vstd, which name and quote the user's own
+  Cargo home: the build names vstd's sources by rustc's virtual rustc-dev
+  base, and Sail's Verus (fork `b4450da9`) maps it back. Replayed targets
+  carry `shipped` and a `SAIL3132` note; a damaged entry prints
+  `warning[SAIL3133]` and is compiled and verified as usual. Archives grow
+  by the build (about 115 MB unpacked).
 - **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).
   Per-obligation detail (op kinds, spans, per-check answers and cache
   provenance, counterexample models) needs Verus's AIR and SMT transcript
