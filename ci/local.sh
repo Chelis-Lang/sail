@@ -12,9 +12,16 @@
 # volumes, so they never mix with the host's own `target/`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-image="sail-ci:$(ci/image-tag.sh)"
+# Only these phases invoke the real external MCP client. The core target keeps
+# every pinned Rust, verifier, solver and corpus tool unchanged.
+sail_image_target=core
+if [ "${1:-}" = e2e ]; then
+  case "${2:-full}" in full|managed) sail_image_target=mcp ;; esac
+fi
+image="sail-ci:$(ci/image-tag.sh "$sail_image_target")"
 if ! docker image inspect "$image" >/dev/null 2>&1; then
-  docker buildx build --platform linux/amd64 -f ci/Dockerfile -t "$image" --load .
+  docker buildx build --platform linux/amd64 -f ci/Dockerfile \
+    --target "$sail_image_target" -t "$image" --load .
 fi
 sail_runtime_env=()
 for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_RELEASE_OUT SAIL_VERSION SAIL_BUILD_JOBS SAIL_BENCH_LABEL; do

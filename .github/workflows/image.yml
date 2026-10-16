@@ -1,14 +1,17 @@
 name: image
 
-# Reusable: builds and pushes the CI image (ci/Dockerfile, ADR 0013) when its
-# inputs change, and returns its name. Called by ci.
+# Reusable: builds core and MCP-client CI image targets from one Dockerfile
+# (ADR 0013), when their complete input tags are missing. Called by ci.
 
 on:
   workflow_call:
     outputs:
       image:
-        description: "The CI image to run jobs in"
+        description: "The core CI image, with every pinned toolchain and runtime"
         value: ${{ jobs.image.outputs.image }}
+      mcp_image:
+        description: "The complete image, adding the pinned real MCP smoke client"
+        value: ${{ jobs.image.outputs.mcp_image }}
 
 permissions:
   contents: read
@@ -23,15 +26,19 @@ jobs:
       packages: write
     outputs:
       image: ${{ steps.tag.outputs.image }}
+      mcp_image: ${{ steps.tag.outputs.mcp_image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - id: tag
-        run: echo "image=ghcr.io/chelis-lang/sail-ci:$(ci/image-tag.sh)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "image=ghcr.io/chelis-lang/sail-ci:$(ci/image-tag.sh core)" >> "$GITHUB_OUTPUT"
+          echo "mcp_image=ghcr.io/chelis-lang/sail-ci:$(ci/image-tag.sh mcp)" >> "$GITHUB_OUTPUT"
       - name: Build and push if missing
         env:
           IMAGE: ${{ steps.tag.outputs.image }}
+          SAIL_MCP_IMAGE: ${{ steps.tag.outputs.mcp_image }}
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ACTOR: ${{ github.actor }}
         run: |
@@ -39,6 +46,12 @@ jobs:
           if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
             echo "$IMAGE exists"
           else
-            docker build -f ci/Dockerfile -t "$IMAGE" .
+            docker build -f ci/Dockerfile --target core -t "$IMAGE" .
             docker push "$IMAGE"
+          fi
+          if docker manifest inspect "$SAIL_MCP_IMAGE" >/dev/null 2>&1; then
+            echo "$SAIL_MCP_IMAGE exists"
+          else
+            docker build -f ci/Dockerfile --target mcp -t "$SAIL_MCP_IMAGE" .
+            docker push "$SAIL_MCP_IMAGE"
           fi

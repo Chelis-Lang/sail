@@ -112,3 +112,30 @@ scheduling, not proof deadlines, acceptance assertions or coverage. At revision
 `a518a104`, native Linux legacy and managed jobs completed in 316 and 348 seconds;
 all required checks passed. Long corpus runs and performance measurements remain
 local-only.
+
+## Candidate 2026-10-16: share the core image without the optional MCP client
+
+Issue [#195](https://github.com/Chelis-Lang/sail/issues/195) records an actual
+five-minute image pull inside a ten-minute job, and a later same-digest control
+with a much shorter startup. The delay is variable. The published image's
+pinned external MCP client occupies a separate 119,609,629-byte compressed
+layer, although only the managed e2e phase invokes it.
+
+The candidate keeps one Dockerfile and every existing installation and digest
+check. Its `core` target retains both Rust toolchains, stock Verus/Z3, the
+validated fork engine and all corpus/build tools. Its final, default `mcp`
+target adds exactly the existing pinned client. No validated runtime file is
+removed, deduplicated, rewritten or shared through new hard links.
+
+The image workflow publishes both content-tagged targets; managed e2e uses
+`mcp`, while all other required jobs use `core`. The existing default image
+tag remains the complete target; `ci/image-tag.sh core` adds `-core` to that
+tag. Local `ci/local.sh e2e managed` and full `e2e` select `mcp`, with every
+other phase selecting `core`. The real client smoke check stays mandatory,
+and missing its executable still fails. Protected checks, seven e2e phases,
+test commands, runtime validation and all timeouts stay unchanged.
+
+This is a packaging prototype, not an accepted speed claim. The
+[startup gate](../validation/ci-image-startup.md) requires native image/gate
+parity and actual cold GitHub job startup/check timings, with failed attempts
+retained. Compressed-byte reduction alone cannot establish a startup gain.

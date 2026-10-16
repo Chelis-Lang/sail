@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
 #
-# The sail test environment: everything CI needs to run every check, on the
-# reference platform (Linux x86-64, ADR 0010). CI jobs run inside this image,
-# and `ci/local.sh` runs the same steps locally. Its tag is a hash of its
-# inputs (see ci/image-tag.sh), so it is rebuilt only when a pin changes.
-FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+# One test environment with two packaging targets (ADR 0013): core has every
+# toolchain/runtime; mcp adds the real smoke-test client. Only the managed/full
+# e2e phases need that client. `ci/local.sh` selects the same target as CI.
+# Both tags bind every input (ci/image-tag.sh).
+FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55 AS core
 
 ENV DEBIAN_FRONTEND=noninteractive
 # build-essential/pkg-config/libssl-dev/cmake/ninja: corpus build
@@ -44,14 +44,6 @@ RUN set -eu; cd /tmp \
  && rm -rf nextest.tgz deny.tgz cargo-deny-0.20.2-x86_64-unknown-linux-musl \
  && cargo nextest --version && cargo deny --version
 
-# Claude Code, pinned and digest-checked, for the e2e managed phase's real
-# MCP client smoke test (ci/test-claude-code.sh). That test registers
-# `sail mcp` and lists its tools; it needs no credentials and makes no model
-# calls.
-RUN curl -sSfLo /usr/local/bin/claude https://downloads.claude.ai/claude-code-releases/2.1.299/linux-x64/claude \
- && echo "2d894a4b1bfaaa9aab72aeff7803e3c73bc2510f279a171f6b8f59f72d17d077  /usr/local/bin/claude" | sha256sum -c - \
- && chmod 0755 /usr/local/bin/claude
-
 # The pinned Verus release, checked by SHA-256 (archive and bundled z3).
 COPY ci/fetch-verus.py /tmp/
 RUN python3 /tmp/fetch-verus.py /tmp/pins/toolchain.toml /opt/verus
@@ -70,3 +62,11 @@ RUN python3 /tmp/ci/engine-artifact.py fetch \
       --pin /tmp/pins/artifact-linux.json --cache /opt/sail-engine-cache \
  && python3 -c 'import json,pathlib; p=json.loads(pathlib.Path("/tmp/pins/artifact-linux.json").read_text()); pathlib.Path("/opt/sail-engine").symlink_to(pathlib.Path("/opt/sail-engine-cache/verus-src-build") / p["variant"])'
 ENV SAIL_ENGINE_BUILD=/opt/sail-engine
+
+# The default target stays complete for callers that build this Dockerfile
+# directly. Keeping the client last lets all other jobs pull the shared core
+# without this optional binary; no validated runtime file is removed or changed.
+FROM core AS mcp
+RUN curl -sSfLo /usr/local/bin/claude https://downloads.claude.ai/claude-code-releases/2.1.299/linux-x64/claude \
+ && echo "2d894a4b1bfaaa9aab72aeff7803e3c73bc2510f279a171f6b8f59f72d17d077  /usr/local/bin/claude" | sha256sum -c - \
+ && chmod 0755 /usr/local/bin/claude
