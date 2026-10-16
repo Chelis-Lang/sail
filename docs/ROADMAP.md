@@ -272,7 +272,11 @@ oyster and such." This supersedes the parallel tracks of
    1. The verismo soundness check, #160.
    2. A miss costs only the changed check, #158 (the largest edit-loop lever).
    3. vstd pre-verified in the release archive, #161.
-   4. Remaining managed overhead against the removed pass-through, #156.
+   4. Remaining managed overhead against the removed pass-through, #156:
+      cheaper checks qualify against rc.5 on unchanged vest/demo runs
+      (1.01/0.39 s to 0.54/0.21 s); the final vest edit gain is
+      inconclusive. See the [validation record](validation/managed-overhead.md).
+      A cheaper per-function report in the fork remains a separate lever.
    5. Cache robustness to incidental edits: stable crate-wide numbering in
       the fork, [#118](https://github.com/Chelis-Lang/sail/issues/118); any
       key change is an ADR under charter rules 5 and 6.

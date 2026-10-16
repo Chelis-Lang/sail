@@ -1,6 +1,6 @@
 //! Persisted driver observations and successful proof receipts.
 
-use super::files::{digest, digest_all, json};
+use super::files::{digest, digest_all, file_digest, json};
 use crate::{Error, Result};
 use sail_api::output::{Report, VerdictName};
 use serde::{Deserialize, Serialize};
@@ -82,6 +82,11 @@ impl Receipt {
         self
     }
     pub(crate) fn valid(&self, context: &str) -> bool {
+        self.valid_in(context, &PhaseDigests::default())
+    }
+
+    /// [`Receipt::valid`], reading each file at most once in `digests`' phase.
+    pub(super) fn valid_in(&self, context: &str, digests: &PhaseDigests) -> bool {
         let checksum = self.clone().seal().checksum;
         self.version == RECEIPT_VERSION
             && super::environment::unchanged(&self.declared_environment)
@@ -93,10 +98,20 @@ impl Receipt {
             && self.checksum == checksum
             && self.context == context
             && self.invocation.success
-            && digests_match(&self.invocation.dependencies)
             && complete(&self.invocation.report)
             && !self.artifact_hashes.is_empty()
-            && digests_match(&self.artifact_hashes)
+            && {
+                // Both sets are read together, as one overlapping batch.
+                digests.prefetch(
+                    self.invocation
+                        .dependencies
+                        .keys()
+                        .chain(self.artifact_hashes.keys())
+                        .map(PathBuf::as_path),
+                );
+                digests.matches(&self.invocation.dependencies)
+                    && digests.matches(&self.artifact_hashes)
+            }
     }
 }
 
@@ -211,6 +226,7 @@ pub(crate) fn complete(report: &Report) -> bool {
         })
 }
 
+#[cfg(test)]
 pub(super) fn artifact_hashes(paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, String>> {
     // Complete reads of every artifact overlap; the first failure in path order
     // is still the reported error.
@@ -220,6 +236,57 @@ pub(super) fn artifact_hashes(paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, Str
         .zip(digest_all(&files))
         .map(|(p, digest)| Ok((p.clone(), digest?)))
         .collect()
+}
+
+/// Complete content digests read at most once per path within one phase:
+/// the receipt checks after one invocation. A dependency's artifacts are both
+/// its own receipt's artifacts and every dependent's inputs (vstd's `.vir` is
+/// about 40 MB), and the checks of several receipts overlap their reads.
+/// Every digest is still a complete read made in this phase, after the
+/// invocation; nothing is carried over from an earlier phase or run.
+#[derive(Default)]
+pub(super) struct PhaseDigests(std::cell::RefCell<BTreeMap<PathBuf, Result<String>>>);
+
+impl PhaseDigests {
+    /// Reads every path not yet read in this phase, concurrently.
+    pub(super) fn prefetch<'a>(&self, paths: impl IntoIterator<Item = &'a Path>) {
+        let pending: Vec<&Path> = {
+            let read = self.0.borrow();
+            let mut pending: Vec<&Path> = paths
+                .into_iter()
+                .filter(|path| !read.contains_key(*path))
+                .collect();
+            pending.sort_unstable();
+            pending.dedup();
+            pending
+        };
+        let digests = digest_all(&pending);
+        self.0
+            .borrow_mut()
+            .extend(pending.into_iter().map(Path::to_path_buf).zip(digests));
+    }
+
+    /// Every listed file has exactly the recorded digest.
+    pub(super) fn matches(&self, expected: &BTreeMap<PathBuf, String>) -> bool {
+        self.prefetch(expected.keys().map(PathBuf::as_path));
+        let read = self.0.borrow();
+        expected
+            .iter()
+            .all(|(path, hash)| read.get(path).is_some_and(|d| d.as_ref() == Ok(hash)))
+    }
+
+    /// As [`artifact_hashes`]: the first failure in path order is the error.
+    pub(super) fn hashes(&self, paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, String>> {
+        self.prefetch(paths.iter().map(PathBuf::as_path));
+        let read = self.0.borrow();
+        paths
+            .iter()
+            .map(|path| {
+                let digest = read.get(path).cloned().unwrap_or_else(|| file_digest(path));
+                Ok((path.clone(), digest?))
+            })
+            .collect()
+    }
 }
 
 /// Every listed file still has exactly the recorded digest; reads overlap.
