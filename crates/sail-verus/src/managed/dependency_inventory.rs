@@ -191,19 +191,11 @@ impl Observation {
         let Ok(original) = std::path::absolute(path) else {
             return false;
         };
-        // A declared alias outside the observed roots cannot gain coverage
-        // merely by resolving to a recorded file after the compiler ran.
-        for ancestor in original.ancestors() {
-            let Ok(metadata) = std::fs::symlink_metadata(ancestor) else {
-                return false;
-            };
-            if metadata.file_type().is_symlink()
-                && stamp(&metadata).as_ref() != self.stamps.get(ancestor)
-            {
-                return false;
-            }
-        }
-        let Ok(canonical) = path.canonicalize() else {
+        let Some(canonical) = self.resolution.covered_with(&original, |path, metadata| {
+            self.stamps
+                .get(path)
+                .is_some_and(|before| stamp(metadata).as_ref() == Some(before))
+        }) else {
             return false;
         };
         self.files
@@ -322,6 +314,57 @@ mod tests {
         assert!(!a.covers(&first.0.join("lib.rs"), "wrong digest"));
         assert!(!a.covers(&second.0.join("lib.rs"), &digest));
         assert!(a.unchanged());
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn declared_paths_require_observed_literal_and_expanded_components() -> TestResult {
+        use std::os::unix::fs::symlink;
+        let fixture = Fixture::new()?;
+        let rogue = Fixture::new()?;
+        let source = fixture.0.join("source");
+        let ordinary = fixture.0.join("ordinary");
+        std::fs::create_dir_all(source.join("known"))?;
+        std::fs::create_dir(&ordinary)?;
+        std::fs::create_dir_all(rogue.0.join("source"))?;
+        std::fs::create_dir(rogue.0.join("branch"))?;
+        std::fs::write(source.join("lib.rs"), "good")?;
+        std::fs::write(rogue.0.join("source/lib.rs"), "bad!")?;
+        let directory_alias = fixture.0.join("directory-alias");
+        let file_alias = fixture.0.join("file-alias");
+        symlink(&source, &directory_alias)?;
+        symlink(source.join("lib.rs"), &file_alias)?;
+        let observation = Observation::capture(&[Root {
+            label: "source".to_owned(),
+            path: source.clone(),
+            recursive: true,
+        }])
+        .ok_or("source capture")?;
+        let digest = format!("{:x}", Sha256::digest(b"good"));
+        let declared = ordinary.join("../source/lib.rs");
+        let saved = fixture.0.join("ordinary-saved");
+        std::fs::rename(&ordinary, &saved)?;
+        symlink(rogue.0.join("branch"), &ordinary)?;
+        assert_eq!(std::fs::read(&declared)?, b"bad!");
+        std::fs::remove_file(&ordinary)?;
+        std::fs::rename(&saved, &ordinary)?;
+        assert!(
+            observation.unchanged(),
+            "the mutation was outside the source tree"
+        );
+        assert!(!observation.covers(&declared, &digest));
+        assert!(!observation.covers(&directory_alias.join("lib.rs"), &digest));
+        assert!(!observation.covers(&file_alias, &digest));
+        assert!(observation.covers(&source.join("known/../lib.rs"), &digest));
+        let alias_observation = Observation::capture(&[Root {
+            label: "source".to_owned(),
+            path: directory_alias.clone(),
+            recursive: true,
+        }])
+        .ok_or("observed alias capture")?;
+        assert!(alias_observation.covers(&directory_alias.join("known/../lib.rs"), &digest));
+        assert!(alias_observation.unchanged());
         Ok(())
     }
 

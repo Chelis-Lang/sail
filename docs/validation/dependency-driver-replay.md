@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Implemented candidate; **not accepted**. Native Linux gates, real store-hit/output/linker checks, macOS host gate and independent input-boundary review remain. |
+| Status | Implemented candidate; **not accepted**. The real macOS store matrix fails five strict reuse/publication assertions. Native Linux gates and final source qualification remain. |
 | Defect | [#187](https://github.com/Chelis-Lang/sail/issues/187): copying native dependency artifacts can suppress a changed linker's error. Separate from [#184](dependency-store-output.md). |
 | Source scope | Reproduced on main `0a7c1d0d` plus the standalone stdout correction `2f7102c4`; no shipped dependency feature. Runtime: pinned fork `73dea021`, primary Verus/Z3 pin. |
 | Environment | Shared Apple M3 developer machine, macOS 26.5; correctness reproduction, not a benchmark. |
@@ -182,3 +182,49 @@ native Linux gates.
 
 The cache, dep-info and extern-byte readers also share the filesystem-admitted
 nonblocking opener. The resulting 26-case run passes (log SHA-256 `15901e570a9e64fd810ec9aabc49d66de9e99bdd7725705d6c593bdce7b1e730`); strict direct clippy passes.
+
+## Actual macOS candidate checks
+
+Candidate `a1624c68`, before the #183 rebase and final declared-path correction,
+was built with Rust 1.99.0 against the existing pinned `73dea021` runtime.
+Its reported version is `0.1.0-store-driver-candidate.a1624c68`; all 507 tracked
+source digests matched before and after building and the macOS host gate.
+The staged Sail/shim and all 15 runtime-file digests are retained in the raw
+manifest. These are correctness checks on a shared, loaded developer Mac,
+not performance measurements.
+
+- `ci/run.sh host`: workspace all-target clippy passes; 642 tests pass and
+  35 configured cases skip. The final rebased source still needs its own gate.
+- Same-path linker mutation: the donor verifies successfully. Replacing its
+  `cc` at the same `PATH` then makes a fresh second project exit 101 and print
+  the deliberate linker failure, exactly as fresh plain Cargo-Verus does.
+- Plain output: the second project's stdout equals plain Cargo-Verus,
+  including both verification summaries; its unchanged run prints no stdout.
+- The strict store matrix **fails five assertions**: no donor entry was
+  published; the second project and both concurrent projects did not reuse;
+  without an entry the corruption test could not exercise warning/fallback.
+  All measured exits, verdict summaries and compared stderr match plain.
+  No assertion was relaxed. Publication refusal remains under investigation.
+
+The qualification archive (logs, manifests, comparisons and reproduction
+scripts) has SHA-256
+`d4e56284bdfe4183b1b46efc8a1287d2a275ce6a6416833e075432546e094559`.
+Post-compile offline constructor and payload probes pass; those probes do not
+establish that the live compiler bracket is valid or that reuse works.
+
+| Date | Source | Result | Cause / evidence |
+|---|---|---|---|
+| 2026-10-16 | `a1624c68`, pinned fork `73dea021` | Failed real store matrix, five strict assertions | No entry published; cause remains under investigation. Archive above. |
+| 2026-10-16 | Initial `a1624c68` staging attempt | Failed before verification | Runtime files had not yet been copied into the candidate stage; corrected before the actual matrix. Raw failure retained in archive. |
+
+The final declared-path guard walks every literal and expanded component,
+including components consumed by `..`. Unknown symlinks refuse; an unknown
+intermediate ordinary directory is accepted only with its full exact native
+stamp from the complete captured inventory. The terminal file still requires
+its positively captured bytes and stamp, within the existing native mutation
+barriers. A regression actually reads different bytes through a temporary
+unknown-directory/symlink substitution, restores it, and requires refusal.
+Unknown directory/file aliases also refuse; captured nested directories and
+captured root aliases remain usable. All 27 combined focused cases and strict
+direct clippy pass; independent static review is clean. The focused test log
+has SHA-256 `5adc6dd68c82d750048a29203d55dcf20036f7f7171137fe51d9182b7b672bf4`.
