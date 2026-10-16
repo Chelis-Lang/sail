@@ -50,8 +50,8 @@
 #                        rust_verify_test binaries, under the cache
 #   deep-rvt [cache] [ARGS...]
 #                        deep tier: the fork's rust_verify_test suite with
-#                        exact fork vs sail-z3 checks, then the same stock
-#                        test programs against stock and the fork (ADR 0042);
+#                        exact fork vs sail-z3 checks, then the original
+#                        stock-with-and-without-shim control (ADR 0042);
 #                        with
 #                        `cache`, then also with the cache daemon (fill,
 #                        warm). ARGS go to `sail-conformance
