@@ -193,3 +193,43 @@ eligibility, actual shared-runtime/OS/filesystem scope, unsolicited-output
 handling, daemon fairness, full conformance and real edit-loop measurements
 remain required. No source inspection or old rejected-source fixture pass
 satisfies those gates.
+
+### Real changed-check datasets and bounded-input candidate
+
+Two actual base/body-late pairs have been selected from the retained native
+archive (`m112a-results.tgz`, SHA-256
+`bcccdcc149d31cb6bef770e5b760897c085d2ebbf7e917d83552c385ffcef573`).
+Selection compares exact input bytes, chooses the last complete top-level
+push boundary before the first changed byte, and requires previous solved
+checks plus a remaining changed suffix. Unchanged sessions are excluded by
+exact byte equality, not by statistics or query normalization.
+
+| Dataset | Edited input bytes | Shared prefix bytes | Prior / remaining checks | Edited input SHA-256 |
+|---|---:|---:|---:|---|
+| IronKV body-late | 2,464,885 | 2,426,183 | 23 / 1 | `c6744afeba46d2277efeadf69af43f8a5ebbeca21a3266d26632403985f6cf87` |
+| Anvil body-late | 6,285,771 | 5,658,439 | 7 / 2 | `148bdb444d0b31f998ad989b3919ef86ad90444c40d6febed845760db531e7cf` |
+
+Expected prefix stdout comes literally from each complete, paired, successful
+archived native trace, cut at its existing echo-response boundary. The IronKV
+prefix contains 80,087 output bytes; Anvil contains 24,799. Clock and allocation
+statistics remain present. Preparation may therefore refuse even an identical
+logical prefix. These are selected datasets, not current runtime/performance
+acceptance. The next gate is three independent full fresh runs per edited
+trace, compared byte for byte before any live timing. Every failed sample
+remains visible.
+
+Both real inputs exceed the prototype's unchanged 2MiB default. A reviewed
+candidate adds an explicit input budget capped at 16MiB, strict integer resource
+budgets, oversized-input controls and a separate fresh-only driver mode. It
+records source/environment/input digests, all raw outputs and status, finite
+run limits, sampled RSS/PSS and native CPU work. All 28 bounded controls pass
+on the same native Linux/pinned-solver scope, including explicit larger input,
+default and whole-input refusal, the ceiling and noninteger budget controls.
+The exact source SHA-256 values are core
+`a9704a14845e69c61fca6190b4fb986500612165613d68df99f3ea56918a7cf0`,
+test `5f9351cd0408a0081b8c46e39a9e9c9d90fe3cd2db4c3648f49a8851ead6f379`,
+driver `cadb166f602bc697b60e8c4c55202b4ff7f02ab6f58fc3b0c13ec061b7e99e67`.
+The native manifest SHA-256 is
+`e42238f526ce2e1c8d695bfc00fdfa36ea971bb8ce9e4b5591112ab0df406627`.
+These controls execute the core, not the new driver's fresh-only branch.
+Full fresh-versus-fresh real-trace and live timing gates remain pending.

@@ -197,6 +197,6 @@ Preparation replays the complete prefix and its CPU cost is reported
 separately from foreground latency. A request falls back if the exact process
 is not ready. The executable-image review found an actual pathname ABA in the
 first candidate; current live reuse is Linux-only with held kernel image and
-pidfd guards, and macOS declines it. All 23 bounded native controls pass;
+pidfd guards, and macOS declines it. All 28 bounded native controls pass;
 complete command eligibility, protocol integration, conformance and real-project performance
 remain pending. No earlier option-A raw-equality assertion qualifies this code.

@@ -134,7 +134,7 @@ Those positives therefore do not qualify a usable candidate.
 
 The current correction holds the actual Linux `/proc/PID/exe` image and pidfd,
 verifies it before sending prefix input and again at claim, and refuses Mac
-live reuse. All 23 bounded native Linux controls pass, including actual foreign
+live reuse. All 28 bounded native Linux controls pass, including actual foreign
 execution refusal, exact continuations, a two-thread timer worker and resource
 and claim controls. Mac refusal and exact fresh fallback have been checked. This is not
 Sail/daemon integration, arbitrary-SMT eligibility or real-project acceptance.

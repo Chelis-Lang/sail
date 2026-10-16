@@ -31,6 +31,10 @@ This is a sampled safety threshold, not an OS hard memory limit. There are at
 most eight slots and 16MiB per captured stream. TTL covers preparation and
 idle time; a separate recorded run limit covers consumption. The driver uses
 one slot. Host-wide fairness and daemon integration remain unbuilt.
+The input budget remains 2MiB by default. An explicit integer budget may
+increase it to at most 16MiB for real research traces; both seed and whole-input
+admission enforce that budget. Fractional count/byte budgets are refused.
+Native fresh reference processes use the same sampled RSS threshold.
 
 ## Executable-image boundary
 
@@ -47,7 +51,7 @@ foreign running image into the pinned one. Fresh native fallback/oracle
 processes use the same image-capture routine before input. macOS live reuse
 refuses until an equivalent native guard is implemented and qualified; its
 fresh fallback remains ordinary direct execution, never candidate acceptance.
-The bounded native Linux suite passes all 23 controls, including the actual
+The bounded native Linux suite passes all 28 controls, including the actual
 foreign-image substitution and refusal, genuine pinned continuations and a
 two-thread idle timer worker. This does not qualify arbitrary transcripts,
 shared-library/filesystem mutation, integration or performance.
@@ -60,6 +64,7 @@ python3 native/sail-live-prefix/run.py --z3 Z3 --solver-sha256 SHA256 \
   --prefix PREFIX --prefix-stdout EXPECTED_PREFIX_OUTPUT --suffix SUFFIX \
   --preparation-window 600 --ttl 900 --run-timeout 900 \
   --oracle-timeout 900 --fallback-timeout 900 --max-bytes 1073741824 \
+  --max-input-bytes 16777216 \
   --native-metrics --out NEW_SAMPLE_EVIDENCE
 ```
 
@@ -74,6 +79,15 @@ foreground/fallback latency are separate: background work is not saved CPU.
 The driver waits until ready or the preparation window expires before claiming
 the process. This measures idealized availability, not a predictor's real hit
 rate or an application's editing schedule.
+
+Before a real trace sample, run the same command with `--fresh-only
+--fresh-runs 3`. This starts three independent fresh processes with the full
+original input and compares every stdout/stderr byte and exit status. It
+never seeds a pool; `candidate_gate_pass` stays false. Only complete, identical
+native runs with exit 0 pass `fresh_control_pass`; differences, timeouts,
+memory refusals and errors remain recorded failures. The trace files must be
+owned immutable regular files. No archived statistics are masked to make
+fresh output or prefix readiness match.
 
 The native suite reproduces the executable ABA by actually running a foreign
 image, restoring the path and refusing it. Earlier Mac positive fixtures

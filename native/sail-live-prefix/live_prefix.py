@@ -21,6 +21,7 @@ from types import MappingProxyType
 
 
 MAX_INPUT = 2 * 1024 * 1024
+MAX_INPUT_LIMIT = 16 * 1024 * 1024
 MAX_OUTPUT = 16 * 1024 * 1024
 MAX_ENGINE = 512 * 1024 * 1024
 
@@ -248,7 +249,7 @@ class Entry:
     def consume(self, whole_input):
         with self.changed:
             if (not self.ready or self.failure or self.claimed or self.closed or
-                    not whole_input.startswith(self.prefix) or len(whole_input) > MAX_INPUT):
+                    not whole_input.startswith(self.prefix) or len(whole_input) > self.pool.max_input_bytes):
                 return None
             if time.monotonic() >= self.deadline or self.process.poll() is not None:
                 self.fail("entry expired before claim")
@@ -325,12 +326,16 @@ class OneUsePool:
     stream. This is a per-pool prototype, not a host-wide fairness policy.
     """
     def __init__(self, z3, expected_sha256, *, slots=1, max_bytes=128 * 1024 * 1024,
-                 ttl=5, run_timeout=5, environment=None, cwd=None):
+                 ttl=5, run_timeout=5, environment=None, cwd=None, max_input_bytes=MAX_INPUT):
         if (os.uname().sysname != "Linux" or not hasattr(os, "pidfd_open") or
                 not hasattr(signal, "pidfd_send_signal")):
             raise ValueError("live reuse requires Linux held-executable and pidfd guards; use fresh fallback")
+        if any(type(value) is not int for value in [slots, max_bytes, max_input_bytes]):
+            raise ValueError("count and byte budgets require integer bounds")
         if not 1 <= slots <= 8 or max_bytes <= 0 or not 0 < ttl <= 3600 or not 0 < run_timeout <= 3600:
             raise ValueError("unsupported pool bounds")
+        if not 1 <= max_input_bytes <= MAX_INPUT_LIMIT:
+            raise ValueError("input budget exceeds the 16MiB prototype ceiling")
         self.z3 = Path(z3).resolve()
         if path_digest(self.z3) != expected_sha256:
             raise ValueError("pinned solver digest mismatch")
@@ -343,6 +348,7 @@ class OneUsePool:
         self.cwd = str(Path(cwd or os.getcwd()).resolve())
         self.argv = (str(self.z3), "-smt2", "-in")  # No global timeout or external channel flags.
         self.slots, self.bytes_per_slot = slots, max_bytes // slots
+        self.max_input_bytes = max_input_bytes
         self.ttl, self.run_timeout = ttl, run_timeout
         self.entries = {}
         self.lock = threading.Lock()
@@ -368,7 +374,7 @@ class OneUsePool:
         """
         if not isinstance(prefix, bytes) or not isinstance(expected_stdout, bytes):
             return None
-        if len(prefix) > MAX_INPUT or len(expected_stdout) > MAX_OUTPUT:
+        if len(prefix) > self.max_input_bytes or len(expected_stdout) > MAX_OUTPUT:
             return None
         key = sha(json.dumps(self.binding, sort_keys=True).encode() +
                   len(prefix).to_bytes(8, "little") + prefix +

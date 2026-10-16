@@ -272,7 +272,7 @@ oyster and such." This supersedes the parallel tracks of
    1. The verismo soundness check, #160.
    2. A miss costs only the changed check, #158 (the largest edit-loop lever).
       Solver snapshots and a one-use live-prefix alternative remain disabled
-      prototypes; all 23 bounded native live-prefix controls pass, including
+      prototypes; all 28 bounded native live-prefix controls pass, including
       actual executable substitution refusal and timer-worker preservation.
       Lossless framing and parked
       admission bounds are implemented; native qualification and raw-output

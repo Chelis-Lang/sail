@@ -12,7 +12,7 @@ from unittest.mock import patch
 import live_prefix as implementation
 import time
 from concurrent.futures import ThreadPoolExecutor
-from live_prefix import OneUsePool
+from live_prefix import MAX_INPUT, MAX_INPUT_LIMIT, OneUsePool
 
 
 def main():
@@ -168,6 +168,40 @@ def main():
         entry = pool.entries.get(key)
         check('unexpected-prefix-refuses', not ready and pool.consume(key, b'(check-sat)\n(exit)\n') is None
               and entry is not None and entry.failure is not None)
+
+    large_prefix = b';' + b'x' * MAX_INPUT + b'\n'
+    with OneUsePool(z3, identity) as pool:
+        check('default-input-bound-refuses-large-prefix', pool.seed(large_prefix, b'') is None)
+        key = pool.seed(b'', b'')
+        ready = pool.wait_ready(key, 3)
+        check('whole-input-bound-refuses-without-consuming', ready and
+              pool.consume(key, b' ' * (MAX_INPUT + 1)) is None and
+              pool.consume(key, b'(check-sat)\n(exit)\n') is not None)
+    with OneUsePool(z3, identity, max_input_bytes=MAX_INPUT_LIMIT) as pool:
+        key = pool.seed(large_prefix, b'')
+        ready = pool.wait_ready(key, 3)
+        whole = large_prefix + b'(check-sat)\n(exit)\n'
+        result = pool.consume(key, whole)
+        fresh = subprocess.run([z3, '-smt2', '-in'], input=whole, capture_output=True, timeout=5)
+        save('large-input-fresh', dict(stdout=fresh.stdout, stderr=fresh.stderr, exit=fresh.returncode))
+        if result is not None:
+            save('large-input-live', result)
+        check('explicit-bounded-large-input-exact', ready and result is not None and
+              (result['stdout'], result['stderr'], result['exit']) ==
+              (fresh.stdout, fresh.stderr, fresh.returncode))
+    try:
+        OneUsePool(z3, identity, max_input_bytes=MAX_INPUT_LIMIT + 1)
+    except ValueError:
+        check('input-bound-above-ceiling-refuses', True)
+    else:
+        check('input-bound-above-ceiling-refuses', False)
+    refused = 0
+    for options in [dict(slots=1.5), dict(max_bytes=float('inf')), dict(max_input_bytes=1.5)]:
+        try:
+            OneUsePool(z3, identity, **options)
+        except ValueError:
+            refused += 1
+    check('noninteger-resource-bounds-refuse', refused == 3)
 
     manifest = dict(runtime_sha256=identity, platform=list(os.uname()), rows=rows,
                     all_pass=all(row['passed'] for row in rows), scope='bounded correctness, no performance claim')
