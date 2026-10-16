@@ -7,6 +7,38 @@
 | Scope | One Dockerfile, a shared `core` target and its complete `mcp` extension. Every existing toolchain, verifier, solver and runtime digest check remains. Only the existing pinned MCP client layer is excluded from jobs that do not invoke it. |
 | Current checks | Native Linux gate, solver, all seven e2e phases plus extra, and PR conformance pass. Mac host checks pass on the earlier prototype source, as scoped below. No startup performance claim follows from these checks. |
 
+## Unqualified follow-up: partition the stock installation
+
+The next source candidate puts the complete stock installation into four
+deterministic layers rather than one large layer. It retains both toolchains,
+the existing archive and solver checks, the fork engine, and the real MCP
+client. `ci/partition-verus.py` keeps each internal hardlink group together,
+preserves independent files even when their bytes match, and copies symlinks
+without following their targets. Every part retains the directory inventory.
+The final image build compares every installed path's type, file bytes, mode,
+owner, group, symlink target and internal hardlink topology with the validated
+installation's inventory. The partition helper is an image-tag input.
+
+Filesystem and independent tar-layer replay controls pass on macOS, including
+empty directories, executable/read-only modes, internal hardlinks, equal but
+independent files, and dangling/external symlinks. Invalid destinations,
+aliased roots and special files are refused. These controls do not qualify
+Docker COPY behavior, actual Linux runtime identity or startup performance.
+The earlier accepted records below do not qualify this new candidate.
+
+Remaining gates are an actual native image build and complete runtime/toolchain
+inventory comparison with the current image, native workspace/solver/all e2e
+phases plus extra/PR conformance, and multiple complete actual CI pull cohorts.
+Record each attempt's published manifest and every slow or failed sample;
+compare initialization, pull and check durations separately. More layers may
+add transfer/application overhead. Neither smaller compressed payload nor a
+latency improvement is established, and #195 remains open.
+
+```sh
+python3 ci/test-partition-verus.py
+python3 ci/partition-verus.py inventory /opt/verus
+```
+
 ## Baseline
 
 The existing published image is
