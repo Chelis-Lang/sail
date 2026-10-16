@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **Dependency-store seeding preserves verifier stdout** (#184). A fresh
+  project's reused vstd prints its original result before the project's own
+  result, as plain Cargo-Verus does on a fresh target. Ordinary unchanged
+  runs remain silent. Damaged or missing displayed output verifies normally.
+
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);

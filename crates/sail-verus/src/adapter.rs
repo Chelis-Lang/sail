@@ -560,10 +560,15 @@ fn driver() -> Result<ExitCode> {
         established.as_ref(),
         None,
     )?;
+    let shown = crate::verus_stdout::rebuild(&stdout, flags);
+    // The dependency store must replay exactly what this target displayed,
+    // including effective per-package output flags, when it seeds a new target.
+    std::fs::write(dir.join("verus.shown-stdout"), &shown)
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     // Plain Verus's stdout, rebuilt from the document Sail asked for; Cargo
     // forwards it, and the managed runner shows it to the user.
     std::io::stdout()
-        .write_all(&crate::verus_stdout::rebuild(&stdout, flags))
+        .write_all(&shown)
         .and_then(|()| std::io::stdout().flush())
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     Ok(status(exit))

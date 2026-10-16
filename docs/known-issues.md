@@ -8,6 +8,11 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **rc.5 omits verifier stdout after dependency-store seeding** ([#184](https://github.com/Chelis-Lang/sail/issues/184)).
+  A second new project reuses vstd but omits its `verification results::`
+  line; plain stock on a fresh target prints it. Verdicts, exit codes and
+  stderr matched in the reproduction. A standalone correction is implemented
+  and awaits full validation; [evidence](validation/dependency-store-output.md).
 - **Vest repair is about 1.8× M6, below the 2× figure.** The owner accepted
   M7's speed as measured (ADR 0038 amendment 2026-10-13). On the `13a1176c`
   runtime, three native rounds, every sample valid and Current: HumanEval

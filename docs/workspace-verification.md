@@ -29,6 +29,12 @@ proof receipts bound to the verification context and actual Cargo artifacts.
 When Cargo reports an artifact fresh and its receipt matches, Sail returns the
 complete establishing report without invoking Verus for that target. A missing
 or incompatible receipt requires fresh verification.
+When the dependency store seeds a new Cargo target, each dependency's exact
+validated displayed stdout is restored at its fresh Cargo artifact event,
+before its dependents' output. An ordinary unchanged target emits nothing.
+An entry with missing or damaged output is ignored and verified normally.
+The store admits a verified root only when its closure contains no other
+verified root, so it cannot suppress another proof's diagnostics.
 
 Verification arguments, features, toolchain and executable identity participate
 in the context. Declared workspace and path-dependency inputs are checked for
