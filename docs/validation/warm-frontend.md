@@ -15,6 +15,10 @@ unit-checked. No frontend performance change is selected or shipped.
 - Benchmark command regression: all four tests pass. They verify focused
   versus full Cargo-Verus commands, the fork solver/shim/owned socket binding,
   and refusal of unknown modes. No compiler or solver runs in these tests.
+- Separate key-projection source `2371ca51` on the `520f3b57` measurement
+  branch: four JSON serialization/isolation/scope tests pass; `rust_verify`
+  checks successfully; clippy for the selected projection test passes. It
+  measures a possible key and never skips fresh lowering or verification.
 - No candidate runtime, corpus, exact-SMT comparison or performance
   measurement has been qualified. The tests above do not establish a gain
   or equivalence over real projects.
@@ -25,6 +29,9 @@ Raw logs are in the external `frontend-review-2026-10-16` evidence set:
 |---|---|
 | `readonly-walk-test.log` | `d81f488c81e29e7d99eea3820c890651e96deb8b24f5715a5f63428d90d6b969` |
 | `readonly-walk-clippy.log` | `a2db7a82dd2f91484b2976605b34d3f8a3421b54e72cb806cf4121e09eadabbf` |
+| `key-projection-test.log` | `20ca1717e589501587d25697e33c53fc662ed5e08c5cfe547cae1bf5edafcb77` |
+| `key-projection-check.log` | `1951f1dd0bdd7d2c195b9ac7196ec09df9aea98a3353fe843631181f74270b2f` |
+| `key-projection-clippy.log` | `95e83b967575ed6a1de786feb1306ee655f450f6265e1d8957212a0e547928aa` |
 
 ## Profile scope and failed attempts
 

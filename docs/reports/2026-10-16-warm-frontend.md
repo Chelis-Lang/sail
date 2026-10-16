@@ -136,6 +136,16 @@ per arm show Vest 38.72 to 36.58 s and IronKV 8.89 to 8.27 s. One cold sample
 per arm worsens from about 73 to 85 s and 42 to 56 s, respectively. That is
 an incomplete experiment, not an accepted default or a cross-corpus claim.
 
+The separate measurement-only candidate `2371ca51` extends the original
+timing branch. With `SAIL_M8_KEY_PROXY=relocated` and `--time-expanded`, its
+JSON identifies `key-policy=span-relocated-v1-unqualified`. Span identifiers
+are mapped bijectively in encounter order and location fields are separated;
+no cached artifact is loaded and fresh lowering/verification always run.
+Four focused serialization/isolation tests and a `rust_verify` check pass.
+Native key hit rates, exact fresh outputs and diagnostic rebinding remain
+unqualified. The raw key policy has its own hash namespace. This experiment
+does not change the selected runtime.
+
 After these cheap measurements, the across-edit prototype must demonstrate
 stable complete keys and current-source diagnostics before skipping work.
 A raw key that misses every body edit cannot establish a performance gain.
