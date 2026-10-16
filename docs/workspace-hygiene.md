@@ -76,6 +76,10 @@ longer.
 
 ## Development checkouts
 
+Native-host source sync compares file contents and gives changed files current
+timestamps. This keeps reused Cargo volumes from treating an older checkout
+as already compiled. Build artifacts stay on the native host.
+
 Sail's own development uses one worktree per change under
 `.claude/worktrees/`. Remove a worktree once its branch is merged, after
 checking for uncommitted source. Build directories (`target/`) can be deleted
