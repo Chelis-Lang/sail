@@ -75,6 +75,9 @@ semantic versioning once the API is published.
   to an explicit `--target-dir`. A loader-variable run (`LD_LIBRARY_PATH` and
   the like) also reports `no_reuse`, with `verified_as` `managed`. Comparisons
   involving these results remain `incomparable`, including saved baselines.
+- Unselected frontend research includes an offline ordinary-AST difference
+  analyzer and a bounded capture plan. It preserves original fields and raw
+  byte failures; it does not enable frontend reuse or change the runtime.
 - The native read-only pruning research controller records cold and edited
   compiler runs, restores pristine manifests/lockfiles between arms, and
   fails on verification or exact SMT-stream differences. Its initial
