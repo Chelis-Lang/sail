@@ -52,6 +52,13 @@ Native workspace-gate attempts, 2026-10-16:
   `3648f582073201c90ae0647b99c5e6880b87111ad42cef905e6ae9486b35f7e9`.
   These checks qualify the harness and observer; final-runtime performance
   and broader corpus acceptance remain pending.
+- `2d7d7e61`, joined onto main `35c089b4`: the native workspace gate
+  passed again (638 tests, 35 solver tests excluded). All four source
+  snapshots match the frozen 519-file manifest. Feature code is byte-identical
+  to `644e1c0f`; differences in feature-owned paths are documentation only.
+  Solver, end-to-end and conformance were not repeated on this join.
+  Raw archive SHA-256
+  `eed8cbab64df397aa27de1080f34549458938a454d42e02e1e9b96c08d9dfe8e`.
 
 ## Exact solver-work capture design
 
