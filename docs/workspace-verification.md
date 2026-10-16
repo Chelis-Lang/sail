@@ -70,9 +70,27 @@ Nothing is reused or recorded. These setups are:
 - a project with no target that sets `package.metadata.verus.verify = true`.
 
 With `--output json` such a run prints one schema-v2 report (as
-`--measure-fragility` does) instead of a `sail-project-result`. Background
-jobs, `watch` and MCP, which return project results, report these setups as
-`SAIL3112` errors, as before.
+`--measure-fragility` does) instead of a `sail-project-result`.
+
+Background jobs (`sail verify --background`), `sail watch` and the MCP tools
+verify these setups the same way: the job's worker prints the
+`note[SAIL3112]` line into the job's diagnostics and runs plain
+Cargo-Verus in your own target. Since they return project results, the
+result is a `sail-project-result` with:
+
+- `no_reuse`: `{"code": "SAIL3112", "reason": …, "verified_as":
+  "plain-cargo-verus"}`;
+- one requested target named `cargo verus verify`, with empty `package_id`
+  and `kind`, `reused` and `complete` false, holding the run's schema-v2
+  report for every crate Verus verified. A crate Cargo found up to date
+  is not verified again, as with plain Cargo-Verus, and has no report;
+- currentness `unknown`, empty `context_sha256` and `input_revision`, and a
+  note starting `SAIL3112:`. Such a result is never `current`, establishes no
+  freshness record, and nothing reuses it.
+
+The job's exit code is Cargo-Verus's. `sail jobs result` adds a
+`no proof reuse (SAIL3112)` line, and `sail watch --output jsonl` emits a
+`no-reuse` event (see [watch](#watch-and-agent-tools)).
 
 A process-loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`,
 `DYLD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES` or `DYLD_FRAMEWORK_PATH`) is
@@ -81,8 +99,9 @@ and MCP: Sail cannot bind what it changes to a receipt, so such a run prints
 one `note[SAIL3112]` line, verifies what Cargo rebuilds exactly as
 `cargo verus verify` does, in Sail's target, and neither reuses nor records
 proof receipts or dependency records. `--output json` reads `unknown`, with
-a `SAIL3112` note, and has no report for a target Cargo found up to date.
-Unset the variable for the `sail verify` command to get reuse back.
+a `SAIL3112` note and `no_reuse` whose `verified_as` is `managed`, and has
+no report for a target Cargo found up to date. Unset the variable for the
+`sail verify` command to get reuse back.
 
 `--verus-source FILE` (a single file with `verus FILE`) is only for the
 opt-in portfolio. `--measure-fragility` and `--portfolio accept-first-proof`
@@ -147,7 +166,9 @@ target kind, establishing run, completeness and reuse. The `requested` field
 distinguishes the selected Cargo scope from dependency reports. Embedded diagnostic,
 timing and solver provenance fields describe that establishing run. The outer
 execution counters describe the current Cargo request; historical timings are
-never counted as fresh verification work.
+never counted as fresh verification work. A run without proof reuse adds the
+optional `no_reuse` object
+([setups verified without proof reuse](#setups-verified-without-proof-reuse)).
 An explicitly selected source engine adds an optional top-level `engine` object
 (`name`, `manifest_sha256`), and each embedded report
 records whether the engine or its stock fallback established it (see
@@ -287,7 +308,12 @@ unchanged inputs do not trigger another verification. A settled native watcher
 does not poll completed jobs or rehash the verifier runtime.
 Its JSON-lines stream carries job lifecycle and target completion/reuse events.
 It verifies the requested Cargo scope; it does not guess semantic function
-independence.
+independence. A completed run without proof reuse
+([`SAIL3112`](#setups-verified-without-proof-reuse)) adds one event
+`{"kind": "sail-watch-event", "schema_version": 1, "event": "no-reuse",
+"job_id": …, "no_reuse": …, "currentness": "unknown", "exit_code": …}`; in the
+human stream the job's `note[SAIL3112]` line says the same. An explicit
+`--target-dir` is Cargo's output, so writes there do not restart a run.
 
 MCP exposes `start_verification`, `verification_status`, `verification_result`
 and `cancel_verification`. Existing blocking verification and result tools

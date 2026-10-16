@@ -37,6 +37,24 @@ semantic versioning once the API is published.
   Cargo target (#166), avoiding a redundant cold context. Declared source
   and build-script reads still invalidate proof receipts when its value changes.
 
+
+- **Jobs, `watch` and MCP verify unbound setups instead of refusing them**
+  (#165). Setups managed verification cannot bind to a proof receipt
+  (tests, benches and examples, `--target-dir`, Verus `--log`,
+  `--no-verify`, `--sysroot`, `-v`, `--message-format`, Cargo `--config`,
+  `RUSTC_WORKSPACE_WRAPPER`, no `verify = true` target) failed as `SAIL3112`
+  infrastructure errors in background jobs, `sail watch` and the MCP tools.
+  They are now verified as `sail verify` verifies them, exactly as
+  `cargo verus verify` does, in the project's own target and without proof
+  reuse. The job's `sail-project-result` carries a new optional `no_reuse`
+  object (`code`, `reason`, `verified_as`), one requested target named
+  `cargo verus verify` holding the run's schema-v2 report, a `SAIL3112`
+  note, and currentness `unknown`; it is never `current` and nothing reuses
+  it. MCP summaries add a `No proof reuse (SAIL3112)` line and the agent view
+  a `no_reuse` field; `sail jobs result` names the missing reuse; `sail watch
+  --output jsonl` emits a `no-reuse` event and no longer restarts on writes
+  to an explicit `--target-dir`. A loader-variable run (`LD_LIBRARY_PATH` and
+  the like) also reports `no_reuse`, with `verified_as` `managed`.
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);

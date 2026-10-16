@@ -284,7 +284,8 @@ oyster and such." This supersedes the parallel tracks of
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
       real projects caps every other lever.
-   8. Jobs, watch and MCP fall back like `sail verify` (`SAIL3112`), #165.
+   8. Jobs, watch and MCP fall back like `sail verify` (`SAIL3112`), #165:
+      implemented (PR pending review).
    9. B2, single-file `verus file.rs` projects, #164.
    10. deep-rvt against the fork, #124.
    11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.

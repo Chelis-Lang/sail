@@ -38,6 +38,7 @@ fn baseline(name: &str) -> Baseline {
             notes: vec!["Recorded evidence only.".into()],
             error: None,
             engine: None,
+            no_reuse: None,
         },
     }
 }

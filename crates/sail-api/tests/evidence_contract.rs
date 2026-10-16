@@ -31,6 +31,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
         notes: vec![],
         error: None,
         engine: None,
+        no_reuse: None,
     })
 }
 fn success(mut project: ProjectResult) -> ProjectResult {
