@@ -836,12 +836,31 @@ fn actual_focus() -> bool {
     })
 }
 
+/// The explicit extern value in either rustc spelling, without interpreting
+/// the crate name or artifact path. Kept shared with dependency replay keys.
+pub(crate) fn extern_argument<'a>(argument: &'a str, previous: Option<&str>) -> Option<&'a str> {
+    argument
+        .strip_prefix("--extern=")
+        .or_else(|| (previous == Some("--extern")).then_some(argument))
+}
+
 fn driver_dependencies() -> Result<std::collections::BTreeMap<PathBuf, String>> {
-    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    dependency_hashes(&std::env::args_os().skip(1).collect::<Vec<_>>())
+}
+
+fn dependency_hashes(args: &[OsString]) -> Result<std::collections::BTreeMap<PathBuf, String>> {
     let mut present = Vec::new();
-    for pair in args.windows(2).filter(|w| w[0] == "--extern") {
-        if let Some((_, path)) = pair[1].to_str().and_then(|s| s.split_once('=')) {
-            let path = PathBuf::from(path);
+    for (index, argument) in args.iter().enumerate() {
+        let previous = index.checked_sub(1).and_then(|i| args[i].to_str());
+        if let Some((_, path)) = argument
+            .to_str()
+            .and_then(|argument| extern_argument(argument, previous))
+            .and_then(|value| value.split_once('='))
+        {
+            // Preserve this driver's cwd interpretation in receipts consumed
+            // later by the workspace process, including lexical symlink names.
+            let path =
+                std::path::absolute(path).map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             let vir = path.with_extension("vir");
             if path.is_file() {
                 present.push(path);
@@ -971,6 +990,40 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn inline_and_separated_externs_bind_library_and_vir_bytes()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-extern-receipt-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let first = root.join("libfirst.rmeta");
+        let second = root.join("libsecond.rmeta");
+        let vir = second.with_extension("vir");
+        std::fs::write(&first, "first artifact")?;
+        std::fs::write(&second, "second artifact")?;
+        std::fs::write(&vir, "second VIR")?;
+        let args = [
+            OsString::from("rustc"),
+            OsString::from("--extern"),
+            OsString::from(format!("first={}", first.display())),
+            OsString::from(format!("--extern=second={}", second.display())),
+        ];
+        let original = dependency_hashes(&args)?;
+        assert_eq!(original.len(), 3);
+        assert_eq!(original.get(&first), Some(&file_digest(&first)?));
+        assert_eq!(original.get(&second), Some(&file_digest(&second)?));
+        assert_eq!(original.get(&vir), Some(&file_digest(&vir)?));
+        std::fs::write(&second, "changed inline artifact")?;
+        std::fs::write(&vir, "changed inline VIR")?;
+        let changed = dependency_hashes(&args)?;
+        assert_ne!(changed.get(&second), original.get(&second));
+        assert_ne!(changed.get(&vir), original.get(&vir));
+        assert_eq!(changed.get(&first), original.get(&first));
+        assert!(extern_argument("implicit", Some("--extern")).is_some());
+        assert!(extern_argument("ordinary", None).is_none());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn attribution_logs_are_requested_only_with_a_log_directory() {
