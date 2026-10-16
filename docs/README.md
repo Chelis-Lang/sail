@@ -136,3 +136,7 @@ main checks.
 The [spec formal naming qualification](validation/spec-parameter-names.md) records
 the qualified binder fix, both platform artifacts, completed native gates and
 preserved earlier failures.
+
+[Unscheduled-script validation](validation/unscheduled-script-cleaning.md) records
+the unselected #174/#215 join, its nine-sample native fixture pass, historical
+failures and pending real-Vest/full-gate qualification.

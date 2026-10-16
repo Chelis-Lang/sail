@@ -151,7 +151,7 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | Performance-claims page backed by reproducible `sail-bench` runs on Linux and macOS | Done (#105, [performance](performance.md)) |
 | Disk cleanup for managed targets (review B3) | Done (#97) |
 | One `sail verify`: managed verification by default, pass-through removed ([ADR 0046](decisions/0046-managed-verification-by-default.md)) | Implemented; required gates and the standard tier pass on Linux; awaiting review |
-| Causal managed stdout completion (#215) | Focused and full Mac host checks pass; native gate/solver/all E2E plus extra/PR commands pass. Full corpus, final native guards and cost gates remain pending; prior payload IPC stays rejected ([record](validation/managed-output-order.md)) |
+| Managed stdout completion and relevant script facts (#215, #174) | Joined Mac759/Clippy and Linux gate/solver/all9E2E+extra/PR/FAST checkpoints pass; STANDARD/final qualification running. Retained Vest facts show no gain (B +0.99%, unchanged overlaps); capture-parent deadline remains failed, unselected ([output](validation/managed-output-order.md), [scheduling](validation/unscheduled-script-cleaning.md)) |
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
 | `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Implemented ([#148](https://github.com/Chelis-Lang/sail/issues/148)): `sail new` runs Sail's Verus's `cargo verus new`; e2e checks it matches stock and verifies. Clean-install acceptance follows the managed-by-default and pre-verified vstd work |
 | Output schema v2: establishment and evidence-tier axes (question 22) | Implemented ([#149](https://github.com/Chelis-Lang/sail/issues/149), ADR 0044): `establishment`, `evidence_tier` and ITF counterexample values in `--output json`, the project envelope and MCP; gate, solver, e2e and PR conformance pass on native Linux; macOS host checks pass |
@@ -369,6 +369,13 @@ oyster and such." This supersedes the parallel tracks of
        JSON-order failure remains recorded ([guide](deep-verus-tests.md),
        [qualification](validation/deep-tier.md#fork-source-suite-gate-124)).
    11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.
+       Unscheduled-script cleanup (#174) joins #215 on accepted #225 executable
+       source. The old 1.098 → 0.217 s (5.06×) result covers only its tiny fixture.
+       Joined Mac759/Clippy and Linux checks through FAST pass; STANDARD/final
+       qualification remains running. Complete Vest facts show no speed/CPU gain,
+       and the enclosing capture-parent deadline failure remains. PR #197 stays
+       held until explicit supersession;
+       [record](validation/unscheduled-script-cleaning.md).
 
    B1 (a verified vstd shared across projects and worktrees, beyond the
    0.1.0 pre-verified vstd) is not yet ordered.
