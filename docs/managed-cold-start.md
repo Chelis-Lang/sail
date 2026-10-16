@@ -18,6 +18,14 @@ and cleanup keep the caller's environment value; an internal marker is removed
 before compilation so a build script's own nested Cargo commands retain their
 ordinary environment. Public fallback snapshots retain caller target selection.
 
+The Sail cache must be physically disjoint from every resolved package
+directory. A cache inside a package, or a package stored beneath the cache,
+uses ordinary Cargo-Verus fallback with one `note[SAIL3112]` and no managed
+proof reuse or receipts. Symbolic aliases and not-yet-created cache suffixes
+are checked too. Use an external cache (the default) to reuse proofs. This
+conservatively includes projects checked out beneath the Sail cache: its
+excluded output directories must never hide new source inputs (#189).
+
 ## What the first run costs
 
 Setting or unsetting `CARGO_TARGET_DIR` keeps the same managed context: Sail

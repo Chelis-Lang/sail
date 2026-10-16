@@ -6,6 +6,9 @@ reuse in [#189](https://github.com/Chelis-Lang/sail/issues/189).
 
 Source: candidate over `0a7c1d0d`; `crates/sail-verus/src/adapter.rs` SHA-256
 `39d0c48dea35b208c58af62bc122643f0d92bbd75b5c7f0ea2f34872613b0120`.
+The cache-overlap guard additionally qualifies `configuration.rs` SHA-256
+`3c6fb9f3b5aa07b265bafd261401766c705b2e0ea4d35ecad3de55a7416fed50`,
+on the metadata correction `6c03eaa5` (stacked on #183).
 Runtime: installed source build variant `c1eeaec18522f7e7`, upstream
 `426d8b01`, fork lineage `73dea021`, pinned Z3 4.16.0. Correctness-only local
 checks used a no-vstd library and the pinned verus_builtin package; these
@@ -21,6 +24,13 @@ scripts. Compilation/clean environment bytes and public fallback snapshots
 retain their existing behavior. Only the exact `CARGO_TARGET_DIR` environment
 key is omitted from managed context identity; declared reads still bind values.
 
+The cache must also be physically disjoint from every resolved package input
+root. Canonical aliases and existing ancestors of a future cache suffix are
+checked before prepare, proof receipt reads or dependency seeding. A package
+inside the cache, or a cache inside any package, takes the ordinary Cargo-Verus
+SAIL3112 fallback without managed receipts. Unknown/dangling paths are refused
+conservatively; the default external cache keeps managed reuse.
+
 | Check | Result and scope |
 |---|---|
 | Caller target unset → external → project root → source directory → root → unset | Same context/revision, Current and zero fresh verifier calls after establishment; no stray `.rustc_info.json` |
@@ -28,7 +38,10 @@ key is omitted from managed context identity; declared reads still bind values.
 | Declared build-script target read | Unset succeeds; setting it fails the script with exit 101 under the same context |
 | Existing `.rustc_info.json` included as user source | Its bytes remain untouched; unchanged proof reused; editing it changes revision and starts verification |
 | Config target `src` and project root | Exact new CI fixture executed locally: after warm reuse, new alternative module forces E0761, fresh invocation and changed input revision |
-| Selected Rust tests | 172 sail-verus tests pass with one test thread |
+| Sail cache outside package roots | Current, unchanged zero verifier invocations; adding an alternative module forces fresh E0761 and changed revision |
+| Sail cache in source, alias to source, future source suffix, or ancestor of package | One SAIL3112 fallback note, no Current claim or managed proof state; fresh ordinary-target error control fails E0761 |
+| Physical boundary unit controls | Both containment directions, every package, nonexistent disjoint suffixes, similar-name siblings, aliases and dangling/unidentified roots |
+| Selected Rust tests | 177 sail-verus tests pass with one test thread |
 | Selected clippy | sail-verus, release profile, all targets, warnings denied |
 | Native Linux/full host/e2e/conformance | Pending; no acceptance claim |
 
@@ -41,9 +54,16 @@ Raw evidence is outside the repository in the target-context evidence set:
 | `ci-regression-executed.py` | `3868f17c40588fb07ec4f2ecf219371e5cd956a81d256152194f05f0c38814e9` |
 | `library-tests-serial.log` | `fc4a64d71cf62bfa7ca4385b4b34be27460305825a57e41953d8635b2d2e8d46` |
 | `clippy.log` | `8f16f54d9ae2159dff898ccd27501810b6a37db6a34564541e9cf1bcba38662a` |
+| `cache-source-overlap-2026-10-16.tgz` (pre-fix false Current and outside-cache control) | `7c2491bf63dd6d9d2e820425be1d905710b8b0972ce069c7831ff66b3e3eaed2` |
+| `cache-overlap-guard-fixed-2026-10-16.tgz` (source/binary identities, 177 tests, clippy, exact CI blocks and old-binary negative control) | `a1fadb954956c1d985d6006db1334e7996706a261e6b829e594b102f7c9845cf` |
 
 Failed attempts remain visible:
 
+- Main-derived #184 staged binary, 2026-10-16: `SAIL_CACHE_DIR=workspace/src`
+  hides a new alternative module after warm establishment: exit 0, Current,
+  reused and zero verifier calls with unchanged revision. The outside-cache
+  control instead recompiles and fails E0761. The new exact cache CI block
+  also fails against the pre-guard #166 binary on its missing fallback note.
 - Main-derived #184 staged binary, 2026-10-16: configured source target reused
   success after an alternative module appeared; fresh fork compilation exited
   101 with E0761. Fresh stderr SHA-256

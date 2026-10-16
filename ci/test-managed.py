@@ -665,6 +665,67 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 assert ambiguous_run.returncode != 0 and b"E0761" in ambiguous_run.stderr, diagnostic(ambiguous)
                 assert ambiguous["execution"]["verifier_invocations"] > 0, diagnostic(ambiguous)
                 assert ambiguous["input_revision"] != warm_fixture["input_revision"], diagnostic(ambiguous)
+
+            # A Sail cache is excluded from snapshots and therefore cannot
+            # also contain package input. Refuse managed receipts, including
+            # physical aliases and future cache suffixes; plain Cargo fallback
+            # must never describe its result as Current (#189).
+            for mode in ("outside", "source", "alias", "prefix", "ancestor"):
+                container = root / ("cache-overlap-" + mode)
+                fixture = container / "package"
+                (fixture / "src").mkdir(parents=True)
+                (fixture / "Cargo.toml").write_text(
+                    '[package]\nname="cache_overlap"\nversion="0.1.0"\nedition="2021"\n'
+                    f'[dependencies]\nverus_builtin="={builtin_version}"\n'
+                    '[package.metadata.verus]\nverify=true\nno-vstd=true\n')
+                (fixture / "src/lib.rs").write_text('extern crate verus_builtin; mod leaf; pub use leaf::answer;\n')
+                (fixture / "src/leaf.rs").write_text('pub fn answer() -> u32 { 42 }\n')
+                cache = container / "cache"
+                if mode == "source":
+                    cache = fixture / "src"
+                elif mode == "alias":
+                    cache.symlink_to(fixture / "src", target_is_directory=True)
+                elif mode == "prefix":
+                    cache = fixture / "src/not-created/cache"
+                elif mode == "ancestor":
+                    cache = container
+                fixture_env = dict(env, SAIL_CACHE_DIR=str(cache),
+                                   CARGO_TARGET_DIR=str(container / "caller-target"))
+                def cache_fixture_run(label):
+                    result = bounded_verification([sail, "verify", "--output", "json"], fixture, fixture_env, 120)
+                    (evidence / f"cache-{mode}-{label}.stdout.json").write_bytes(result.stdout)
+                    (evidence / f"cache-{mode}-{label}.stderr").write_bytes(result.stderr)
+                    return result, json.loads(result.stdout)
+                initial_run, initial = cache_fixture_run("initial")
+                assert initial_run.returncode == 0, diagnostic(initial)
+                if mode == "outside" and initial["currentness"] != "current":
+                    established_run, established = cache_fixture_run("established")
+                    assert established_run.returncode == 0 and established["currentness"] == "current", diagnostic(established)
+                warm_run, warm_fixture = cache_fixture_run("warm")
+                assert warm_run.returncode == 0, diagnostic(warm_fixture)
+                if mode == "outside":
+                    assert warm_fixture["currentness"] == "current", diagnostic(warm_fixture)
+                    assert warm_fixture["execution"]["verifier_invocations"] == 0, diagnostic(warm_fixture)
+                else:
+                    for result, document in ((initial_run, initial), (warm_run, warm_fixture)):
+                        assert document.get("currentness") != "current", diagnostic(document)
+                        assert result.stderr.count(b"note[SAIL3112]") == 1, result.stderr.decode()
+                        assert b"physically disjoint" in result.stderr, result.stderr.decode()
+                    assert not (cache / "projects").exists(), "overlapping cache received managed proof state"
+                    # Cargo itself need not detect an added alternative module
+                    # in a warm target. Request a fresh ordinary target for the
+                    # fallback error control, without editing any source bytes.
+                    fixture_env["CARGO_TARGET_DIR"] = str(container / "fresh-caller-target")
+                (fixture / "src/leaf").mkdir()
+                (fixture / "src/leaf/mod.rs").write_text('pub fn answer() -> u32 { 43 }\n')
+                ambiguous_run, ambiguous = cache_fixture_run("ambiguous")
+                assert ambiguous_run.returncode != 0 and b"E0761" in ambiguous_run.stderr, diagnostic(ambiguous)
+                if mode == "outside":
+                    assert ambiguous["execution"]["verifier_invocations"] > 0, diagnostic(ambiguous)
+                    assert ambiguous["input_revision"] != warm_fixture["input_revision"], diagnostic(ambiguous)
+                else:
+                    assert ambiguous.get("currentness") != "current", diagnostic(ambiguous)
+                    assert not (cache / "projects").exists(), "overlapping cache received managed proof state"
             print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs and prune passed")
         if part != "core":
             print("managed acceptance: build-script reuse passed")

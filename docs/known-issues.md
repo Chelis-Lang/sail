@@ -17,11 +17,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
   remains pending. The original draft asset is
   unchanged; [evidence](validation/dependency-store-output.md).
 
-- **Configured target directories can hide source inputs (#189).** Current
+- **Output-directory exclusions can hide source inputs (#189).** Current
   main can reuse a proof after an alternative module appears under a source
-  directory selected by Cargo's `build.target-dir`. A fresh compiler invocation
-  rejects it with E0761. The owned metadata-probe fix is implemented in the
-  #166 candidate; native qualification and merge remain pending. See the
+  directory selected by Cargo's `build.target-dir` or used as `SAIL_CACHE_DIR`.
+  A fresh compiler invocation rejects it with E0761. The #166 candidate uses
+  an owned metadata target and refuses managed reuse when Sail cache and
+  package input roots physically overlap. Native qualification and merge
+  remain pending. See the
   [validation record](validation/cargo-target-context.md).
 
 - **Vest repair is about 1.8× M6, below the 2× figure.** The owner accepted

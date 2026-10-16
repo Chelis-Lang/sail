@@ -2058,6 +2058,9 @@ pub(crate) fn run_engine_held(
         (data, context_result, metadata_phase)
     });
     let mut data = data?;
+    // An excluded cache subtree cannot also contain source inputs. Refuse
+    // before prepare(), dependency seeding or any proof receipt is inspected.
+    super::configuration::check_cache_inputs(&data, &config.cache)?;
     data["sail_invocation_directory"] = Value::String(invocation.to_string_lossy().into_owned());
     data["sail_cache_directory"] = Value::String(config.cache.to_string_lossy().into_owned());
     let workspace_root = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());

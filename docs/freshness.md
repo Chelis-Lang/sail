@@ -164,6 +164,15 @@ and cleanup keep the caller's environment value; an internal marker is removed
 before compilation so a build script's own nested Cargo commands retain their
 ordinary environment. Public fallback snapshots retain caller target selection.
 
+Before reading or seeding any proof receipt, managed verification checks that
+the physical Sail cache and every resolved package directory are disjoint.
+Overlap in either ancestor direction, an unresolved alias, or an unidentifiable
+input root takes the SAIL3112 ordinary-Cargo fallback without managed receipts.
+Existing ancestors are resolved before a future cache suffix is considered.
+Thus an excluded cache tree cannot hide an added source file, including when
+the cache aliases a source directory or contains a checked-out package.
+The default external cache keeps managed reuse.
+
 `PATH` and `HOME` are not bound as raw values. What they select is: the
 resolved `cargo`, `rustc`, `rustup`, `cargo-verus`, `verus`, `rust_verify`
 and `z3`, identified by path and file stamp, and the resolved Cargo and rustup

@@ -254,3 +254,12 @@ can exclude source directories for these probes. Cargo metadata can otherwise cr
 and cleanup keep the caller's environment value; an internal marker is removed
 before compilation so a build script's own nested Cargo commands retain their
 ordinary environment. Public fallback snapshots retain caller target selection.
+
+Managed reuse additionally requires the physical Sail cache to be disjoint
+from every resolved package input directory (#189). The check resolves
+aliases and existing ancestors of future cache paths and runs before any
+receipt read, dependency seeding or proof publication. Overlap in either
+ancestor direction, including a project checked out under the Sail cache,
+returns SAIL3112 for ordinary Cargo-Verus fallback without managed receipts.
+This is a conservative unsupported-configuration boundary, not an expansion
+of the input exclusions; the default external cache is unaffected.

@@ -29,7 +29,9 @@ semantic versioning once the API is published.
 
 - Managed metadata always uses an owned probe target. A Cargo configuration
   that names a source directory as its ordinary target can no longer hide
-  newly appearing compiler inputs or cause false proof reuse (#189).
+  newly appearing compiler inputs or cause false proof reuse (#189). A Sail
+  cache that physically overlaps any resolved package directory now takes
+  the ordinary Cargo-Verus fallback with SAIL3112 and no proof receipts.
 
 - Setting, changing or unsetting `CARGO_TARGET_DIR` shares the same managed
   Cargo target (#166), avoiding a redundant cold context. Declared source
