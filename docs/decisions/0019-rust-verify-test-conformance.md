@@ -352,3 +352,25 @@ Raw logs: `~/sail-raw-evidence/l20/rvt-full-t0.log` (sha256 `d9048101…`)
 on the lead's machine. The cache fill and warm modes have not been rerun
 with Verus's default threads.
 
+
+## Fork runtime and identical stock test oracle (2026-10-16, #124)
+
+The default deep arm now runs the pinned fork with and without `sail-z3`,
+with exact stderr order. Observed fork variation is a determinism defect,
+not a stock-unstability exemption. `build-verus-source --fork` builds the
+full suite in a distinct variant whose identity binds the fork commit and
+source lock; the installed engine runtime is untouched.
+
+A separate `--baseline stock` arm runs identical stock test programs against
+stock and the fork. Stock binaries are copied beside the fork runtime, which
+the upstream harness resolves relative to its executable; their working
+directory, test logic and fixtures remain stock's. The arm keeps ADR 0042's
+complete-message comparison and ADR 0009's complete-observed-stock-run rule.
+It does not normalize JSON test output or accept combinations from separate
+stock runs. Fork-only regressions remain in the exact arm.
+
+`deep-rvt cache` also runs fill and warm exact-fork rounds. Each arm records
+both builds and the comparison policy, and holds both source-build locks
+through execution and reporting. The [guide](../deep-verus-tests.md) gives
+commands and limits. Historical stock-only acceptance above remains scoped
+to those earlier sources and does not qualify the new fork gate.

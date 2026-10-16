@@ -25,6 +25,8 @@
 //! pinned in `engine/verus/fork.toml`, fetched without credentials, whose
 //! upstream base must be the pinned commit. Local only; CI installs the
 //! prebuilt runtime.
+//! `--fork` builds that same pinned fork with the full test suite, in a
+//! separate cache variant. Stock source builds remain the independent oracle.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -48,6 +50,7 @@ struct Options {
     features: Vec<String>,
     print_path: bool,
     engine: bool,
+    fork_tests: bool,
 }
 
 fn parse(args: &[String]) -> Result<Options> {
@@ -56,15 +59,28 @@ fn parse(args: &[String]) -> Result<Options> {
         match arg.as_str() {
             "--force" => o.force = true,
             "--interactive-engine" => o.engine = true,
+            "--fork" => o.fork_tests = true,
             "--features=singular" => o.features = vec!["singular".to_owned()],
             "--print-path" => o.print_path = true,
             "--keep-intermediates" => o.keep_intermediates = true,
             _ => {
                 return Err(format!(
-                    "unknown argument `{arg}`\nusage: cargo xtask build-verus-source [--force] [--keep-intermediates] [--features=singular]"
+                    "unknown argument `{arg}`\nusage: cargo xtask build-verus-source [--force] [--keep-intermediates] [--fork] [--features=singular]"
                 ));
             }
         }
+    }
+    if o.engine && o.fork_tests {
+        return Err(
+            "--fork builds the fork's test suite; it cannot be combined with --interactive-engine"
+                .to_owned(),
+        );
+    }
+    if o.fork_tests && !o.features.is_empty() {
+        return Err(
+            "--fork uses the pinned fork's features; separate feature variants are not supported"
+                .to_owned(),
+        );
     }
     Ok(o)
 }
@@ -464,7 +480,9 @@ pub fn build(args: &[String]) -> Result<()> {
     let commit = &pins.verus.commit;
     let toolchain = &pins.verus.rust_toolchain;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let features = if o.engine {
+    let features = if o.fork_tests {
+        sail_verus::source_build::fork_test_features()
+    } else if o.engine {
         sail_verus::engine::features()
     } else {
         o.features.clone()
@@ -501,7 +519,7 @@ pub fn build(args: &[String]) -> Result<()> {
     }
     std::fs::create_dir_all(&build)
         .map_err(|e| format!("cannot create {}: {e}", build.display()))?;
-    let checkout = if o.engine {
+    let checkout = if o.engine || o.fork_tests {
         let fork = sail_verus::engine::fork().map_err(|e| e.to_string())?;
         if fork.upstream != *commit {
             return Err(format!(
@@ -520,7 +538,7 @@ pub fn build(args: &[String]) -> Result<()> {
         println!("fetching verus @ {commit} into {}", build.display());
         source_build::fetch_source(&build, commit).map_err(|e| e.to_string())?
     };
-    if o.engine {
+    if o.engine || o.fork_tests {
         std::fs::write(
             checkout.join("source/Cargo.lock"),
             sail_verus::engine::SOURCE_LOCK,
@@ -596,8 +614,19 @@ pub fn build(args: &[String]) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{relative_binaries, reset_suite_outputs, test_executables};
+    use super::{parse, relative_binaries, reset_suite_outputs, test_executables};
     use std::path::PathBuf;
+
+    #[test]
+    fn fork_test_build_is_explicit_and_cannot_alias_an_engine_or_feature_variant() {
+        let fork = ["--fork".to_owned()];
+        let options = parse(&fork).unwrap_or_else(|e| unreachable!("{e}"));
+        assert!(options.fork_tests);
+        assert!(!options.engine);
+        for other in ["--interactive-engine", "--features=singular"] {
+            assert!(parse(&[fork[0].clone(), other.to_owned()]).is_err());
+        }
+    }
 
     #[test]
     fn finds_test_executables_in_cargo_messages() {

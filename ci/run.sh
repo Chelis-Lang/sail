@@ -45,12 +45,14 @@
 #   release              local-only: stage the Linux release tree (binaries
 #                        and the prebuilt engine) in $SAIL_RELEASE_OUT for
 #                        scripts/release.sh
-#   build-verus-source [--force] [--keep-intermediates]
+#   build-verus-source [--force] [--keep-intermediates] [--fork]
 #                        a source build of the pinned Verus commit with its
 #                        rust_verify_test binaries, under the cache
 #   deep-rvt [cache] [ARGS...]
-#                        deep tier: Verus's rust_verify_test suite, plain vs
-#                        sail-z3 pass-through, per test (ADR 0019); with
+#                        deep tier: the fork's rust_verify_test suite with
+#                        exact fork vs sail-z3 checks, then the same stock
+#                        test programs against stock and the fork (ADR 0042);
+#                        with
 #                        `cache`, then also with the cache daemon (fill,
 #                        warm). ARGS go to `sail-conformance
 #                        rust-verify-test` (for example --filter modes::)
@@ -415,15 +417,17 @@ RS
     local_only deep-rvt "$@"
     with_cache=false
     if [ "${1:-}" = cache ]; then with_cache=true; shift; fi
+    cargo xtask build-verus-source --fork
     cargo xtask build-verus-source
     release_build -p sail-conformance
     out="${SAIL_CONFORMANCE_OUT:-conformance-out}/rust-verify-test"
     # Keep local parallelism modest: 4 tests at a time unless --jobs says so.
-    ./target/release/sail-conformance rust-verify-test --jobs 4 --out "$out/pass-through" "$@"
+    ./target/release/sail-conformance rust-verify-test --jobs 4 --out "$out/pass-through" "$@" --baseline fork
+    ./target/release/sail-conformance rust-verify-test --jobs 4 --out "$out/stock-oracle" "$@" --baseline stock
     if [ "$with_cache" = true ]; then
       start_daemon
       for round in fill warm; do
-        SAIL_DAEMON_SOCKET="$sock" ./target/release/sail-conformance rust-verify-test --jobs 4 --out "$out/cache-$round" "$@"
+        SAIL_DAEMON_SOCKET="$sock" ./target/release/sail-conformance rust-verify-test --jobs 4 --out "$out/cache-$round" "$@" --baseline fork
       done
       echo "cache entries: $(find "$cache/v2" -type f | wc -l)"
     fi
