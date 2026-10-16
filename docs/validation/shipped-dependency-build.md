@@ -31,6 +31,10 @@ matching a pinned toolchain's version alone is insufficient. Unit tests
 require identical copies at different roots to match and altered, missing,
 non-file or dangling inputs to miss. Fresh-machine serving with this final
 guard remains pending. No sysroot hashing is added to unchanged runs.
+The local checker now also relocates the actual Verus toolchain into a
+private Rustup home, requiring a hit with identical bytes. Appending inert
+bytes to that copy's Cargo executable must then miss despite its unchanged
+version; the system installation is left intact.
 
 The old broad lint equivalence and Apple link-variable exclusions below
 were removed; the cross-Cargo serving result is historical. The checker

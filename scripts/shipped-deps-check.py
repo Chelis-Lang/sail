@@ -25,6 +25,10 @@ SAIL3133 warning).
 6. mismatch: vstd with other features is another key: verified, no warning.
 7. corrupt: a copy of the release whose stored vstd metadata is damaged
    prints warning[SAIL3133] and verifies vstd.
+8. other-toolchain-home: identical installed Verus toolchain bytes relocated
+   into a private Rustup home must still serve.
+9. changed-toolchain: append inert bytes to that copy's Cargo executable
+   (its version still matches); the actual-byte guard must refuse serving.
 
 Timings are printed with the load average. Exit status 0 means every check
 held. This is a local check (ADR 0013).
@@ -114,6 +118,29 @@ def results(cache):
     files = sorted(glob.glob(str(cache / "projects/*/*/runs/*/result.json")),
                    key=os.path.getmtime)
     return json.loads(Path(files[-1]).read_text()) if files else {}
+
+
+def copied_toolchain_home(work, release):
+    """A private actual Verus sysroot, without changing the installed tools."""
+    manifest = json.loads(next(release.glob("engine/*/sail-build.json")).read_text())
+    pinned = manifest["rust_toolchain"]
+    active = subprocess.check_output(["rustup", "show", "active-toolchain"], text=True).split()[0]
+    sysroot = Path(subprocess.check_output(
+        ["rustup", "run", pinned, "rustc", "--print", "sysroot"], text=True).strip())
+    home = work / "private-rustup-home"
+    toolchains = home / "toolchains"
+    toolchains.mkdir(parents=True)
+    copied = toolchains / sysroot.name
+    if sys.platform == "darwin":
+        # APFS clones keep this acceptance case from doubling local storage.
+        subprocess.run(["cp", "-cR", str(sysroot), str(copied)], check=True)
+    else:
+        shutil.copytree(sysroot, copied, symlinks=True)
+    active_root = Path(subprocess.check_output(
+        ["rustup", "run", active, "rustc", "--print", "sysroot"], text=True).strip())
+    if active_root.name != sysroot.name:
+        (toolchains / active_root.name).symlink_to(active_root, target_is_directory=True)
+    return home, active, copied / "bin/cargo", pinned
 
 
 def compare(label, sail, stock, path, env, out, expect_shipped, expect_warning=False):
@@ -239,6 +266,26 @@ def main():
             failures.append("corrupt: no stored vstd metadata to damage")
         failures += compare("corrupt", str(damaged / "bin/sail"), stock, corrupt, env6, out,
                             False, expect_warning=True)[1]
+
+        toolchain_home, active, cargo, pinned = copied_toolchain_home(work, release)
+        relocated_env = dict(environment(work, "other-toolchain-home", release),
+                             RUSTUP_HOME=str(toolchain_home), RUSTUP_TOOLCHAIN=active)
+        relocated = new_project(sail, work / "other-toolchain-home", "proj", relocated_env)
+        failures += compare("other-toolchain-home", sail, stock, relocated, relocated_env,
+                            out, True)[1]
+        before = subprocess.check_output(["rustup", "run", pinned, "cargo", "--version"],
+                                         env=relocated_env)
+        with cargo.open("ab") as executable:
+            executable.write(b"\n")
+        after = subprocess.check_output(["rustup", "run", pinned, "cargo", "--version"],
+                                        env=relocated_env)
+        if before != after:
+            failures.append("changed-toolchain: the version should be unchanged")
+        changed_env = dict(environment(work, "changed-toolchain", release),
+                           RUSTUP_HOME=str(toolchain_home), RUSTUP_TOOLCHAIN=active)
+        changed = new_project(sail, work / "changed-toolchain", "proj", changed_env)
+        failures += compare("changed-toolchain", sail, stock, changed, changed_env,
+                            out, False)[1]
     for failure in failures:
         print("FAIL", failure, file=sys.stderr)
     print("shipped dependency check:", "passed" if not failures else f"{len(failures)} failure(s)")
