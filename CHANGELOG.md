@@ -5,10 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- Proposed fallback for #187: disable v1 compiled-dependency store consumption
-  and publication pending qualified native-input identity. This isolated
-  candidate is unselected; strict store-reuse and performance requirements
-  remain unchanged while its correctness and cost are assessed (ADR 0053).
+- Disable v1 compiled-dependency store consumption and publication: it could
+  suppress a fresh native compilation failure after the compiler changed at
+  an unchanged `PATH` (#187, ADR 0053). Positive
+  `SAIL_DEPENDENCY_STORE_ENTRIES` settings cannot re-enable it. Fresh projects
+  lose the former first-run speedup; same-project proof receipts and exact
+  solver caching remain. A sound replacement and first-run performance
+  recovery are still required.
 
 - Linux benchmark host teardown retains connection state on AWS errors and
   confirms termination before deleting cloud resources (#201). Refresh
