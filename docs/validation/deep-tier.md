@@ -1,5 +1,37 @@
 # Deep-tier soundness validation
 
+## Fork source-suite gate (#124)
+
+**Candidate; native acceptance pending.** The revised harness adds an exact
+fork-with-and-without-shim arm and retains the original stock-with-and-without-
+shim control. Stock-versus-fork equivalence remains the mandatory corpus gate.
+Nonignored fork tests must pass, including their assertions; matching failed
+libtests cannot qualify the fork. The source-build variant also generates its
+own Cargo toolchain manifest. This does not qualify an installed release bundle.
+
+On macOS arm64, the first fork-test build from `73dea021` completed with 153
+test binaries. A 244-test selection (`modes::` and `output_json::`, 3 ignored)
+had 241 Same, 3 Different, 0 Unstable and 0 infrastructure errors. All nonignored
+libtests passed. The three differences are the actual JSON proof-note order
+defect [VI-0021](../verus-issues/VI-0021-proof-note-json-order.md), with raw
+reports/logs archived at SHA-256
+`475aa777b9e0ebd98f0ab1b3498d453d3803091aeef54c1d8f2927d43e103444`.
+That failed sample is not whole-suite acceptance. Corrected runtime validation
+and complete native Linux gates remain pending.
+
+Failed/interrupted attempts, 2026-10-16:
+
+- `218824c8`: interrupted selected fork run after relative `--shim` failed
+  from the suite directory; path resolution corrected, comparison retained.
+  Log SHA-256 `867481e25ecea9bff777e0e6f57bad7c9993ec682335f61861b9061fe7e781ec`.
+- `218824c8` plus relative-path correction: rejected new cross-runtime
+  experiment, 2 selected tests Different because relocating identical stock
+  executables changes their reported input paths. No output exemption added;
+  source-suite scope reverted to the two supported runtime-local arms.
+  Reports/log SHA-256 `b676d20c982b843a451353ed51ab1154c283dd12149e60ba749501b57c2a9ec1`.
+
+## Earlier rescue qualification
+
 This page records the deep tier (AGENTS.md, Testing tiers) run before the M7
 rescue is called a release: the corpus deep tier, Verus's own
 `rust_verify_test` suite ([ADR 0019](../decisions/0019-rust-verify-test-conformance.md))

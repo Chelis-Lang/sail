@@ -68,10 +68,16 @@ are in the `archive/m7-contracts-f7103bf` tag.
   stdout and stderr that is a line permutation of plain's. rc.5's one round had 0 Different and 4 Unstable `output_json` tests. The arm runs the
   stock source build, which Sail no longer runs (ADR 0043). Release-candidate
   finding 11. The new [deep fork gate](deep-verus-tests.md) compares the fork
-  with and without the shim exactly, and keeps the same stock test programs
-  as a separate oracle with ADR 0042's diagnostic-message comparison.
+  with and without the shim exactly, and retains the original stock-with-and-
+  without-shim control with ADR 0042's diagnostic-message comparison.
   JSON output from stock is not normalized. Native acceptance of that new
   gate is pending; the historical stock-only results do not qualify it.
+- **Fork JSON proof-note arrays are not deterministic.** Eight repeated
+  runs of the same failing proof emit both note orders; the exact source-suite
+  sample has three Differences. No verdict or rendered-diagnostic difference
+  was observed. A reviewed fork correction is pending runtime qualification
+  ([VI-0021](verus-issues/VI-0021-proof-note-json-order.md),
+  [#185](https://github.com/Chelis-Lang/sail/issues/185)).
 - **Default and engine runs each verify vstd once in their own target.** That
   was about 30 s on HumanEval for the first default `sail verify` and again
   for the first engine run (`sail verify --engine interactive` or

@@ -232,8 +232,10 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
   `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
   suite, the pinned fork with and without `sail-z3`, with exact output checks,
-  then the same stock test programs against stock and the fork (ADR 0042's
-  complete diagnostic messages). The step builds isolated fork-test and stock
+  then the original stock-with-and-without-shim control (ADR 0042's
+  complete diagnostic messages). Corpus conformance separately compares stock
+  against the fork. Nonignored fork libtests must pass on both sides. The step
+  builds isolated fork-test and stock
   source variants first (`cargo xtask build-verus-source --fork` and without
   `--fork`). Fork-only regression tests run in the exact fork arm.
   `cache` adds rounds with the cache daemon; ARGS such as `--filter modes::`

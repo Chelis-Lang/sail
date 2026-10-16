@@ -22,8 +22,8 @@ semantic versioning once the API is published.
   result, as plain Cargo-Verus does on a fresh target. Ordinary unchanged
   runs remain silent. Damaged or missing displayed output verifies normally.
 - **The deep Verus test gate tests Sail's fork** (#124). `deep-rvt` compares
-  the fork with and without `sail-z3` using exact output, then runs identical
-  stock test programs against stock and the fork using ADR 0042 for complete
+  the fork with and without `sail-z3` using exact output, then retains
+  the original stock-with-and-without-shim control using ADR 0042 for complete
   diagnostic messages. Fork-only regression tests remain in the exact arm.
   `cargo xtask build-verus-source --fork` builds an isolated test variant,
   without replacing the installed runtime.
