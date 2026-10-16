@@ -353,7 +353,7 @@ fn actual_wrapper(cargo_verus: &Path) -> Result<PathBuf> {
         .map_err(|e| Error::new("SAIL3104", e.to_string()))
 }
 
-fn verifier_sysroot(wrapper: &Path, workspace: &Path) -> Result<PathBuf> {
+pub(super) fn verifier_sysroot(wrapper: &Path, workspace: &Path) -> Result<PathBuf> {
     let output = Command::new(wrapper)
         .args(["--version", "--output-json"])
         .current_dir(workspace)

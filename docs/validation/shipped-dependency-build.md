@@ -25,6 +25,12 @@ miss even when the bytes match. Every destination is checked before placing
 any output from an entry. Regression tests cover these boundaries.
 Public proof origin uses `shipped:<identity>/<key>` rather than the local
 replay run; it survives receipt, local-store and adopted-receipt reuse.
+The build identity now additionally binds actual installed compiler/sysroot
+bytes under relative paths, including the standard library and `proc_macro`;
+matching a pinned toolchain's version alone is insufficient. Unit tests
+require identical copies at different roots to match and altered, missing,
+non-file or dangling inputs to miss. Fresh-machine serving with this final
+guard remains pending. No sysroot hashing is added to unchanged runs.
 
 The old broad lint equivalence and Apple link-variable exclusions below
 were removed; the cross-Cargo serving result is historical. The checker

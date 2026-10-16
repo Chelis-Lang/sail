@@ -106,6 +106,18 @@
    emit different arguments safely miss. A dependency compiled on the
    machine has other bytes, so every dependent is another key: shipped and
    local units never mix inconsistently.
+
+   The build identity also binds the actual installed Verus Rust sysroot's
+   bytes under relative paths: `bin/rustc`, `bin/cargo`, the files directly
+   under `lib`, and files recursively under each `lib/rustlib/*/lib`. This
+   covers the existing local receipt guard's compiler input set and nested
+   linker inputs. An equal version string is insufficient. Different
+   compiler, standard-library or `proc_macro` bytes produce another identity;
+   unreadable inputs, unsupported entries and `VERUS_USE_RUSTUP=0` decline
+   shipped reuse. This fingerprint is computed once per recording/new-target
+   plan; unchanged runs and installations without a bundle do not probe or
+   hash a sysroot for this feature. A different set of installed target
+   components may therefore safely miss.
 5. **Serving.** Only on a managed run that creates its Cargo target
    (unfocused; no loader variables; no registry or target directory with
    whitespace, `:`, `#`, `"`, `\` or `verus_builtin`), the proxy looks up each

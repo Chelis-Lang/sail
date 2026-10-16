@@ -17,7 +17,8 @@
 //! directories, and replays the compiler's recorded stdout and stderr. Cargo
 //! then records its own fingerprints exactly as after a compilation, and the
 //! verifier's recorded documents become the target's report. The key binds
-//! the shipped build's identity (runtime build manifest and virtual base), the
+//! the shipped build's identity (runtime build manifest, installed compiler
+//! and sysroot bytes under relative paths, and virtual base), the
 //! invocation's arguments and the environment the compiler reads (with this
 //! machine's target and registry directories replaced by placeholders), and
 //! the digests of every crate it links (`--extern`), so a dependency compiled
@@ -204,12 +205,73 @@ fn runtime_root(cargo_verus: &Path) -> Option<PathBuf> {
         .then_some(root)
 }
 
+/// Relevant installed compiler bytes under portable sysroot-relative names.
+/// This covers the local receipt input set (compiler/Cargo, root libraries
+/// and target libraries), including target libraries' nested linker inputs.
+/// Unreadable files and unsupported filesystem entries decline reuse.
+fn sysroot_identity(sysroot: &Path) -> Option<String> {
+    fn files(directory: &Path, out: &mut Vec<PathBuf>, recursive: bool) -> Option<()> {
+        for entry in std::fs::read_dir(directory).ok()? {
+            let entry = entry.ok()?;
+            let kind = entry.file_type().ok()?;
+            if kind.is_file()
+                || kind.is_symlink() && std::fs::metadata(entry.path()).ok()?.is_file()
+            {
+                out.push(entry.path());
+            } else if kind.is_dir() {
+                if recursive {
+                    files(&entry.path(), out, true)?;
+                }
+            } else {
+                return None;
+            }
+        }
+        Some(())
+    }
+    let mut inputs = vec![sysroot.join("bin/rustc"), sysroot.join("bin/cargo")];
+    files(&sysroot.join("lib"), &mut inputs, false)?;
+    for entry in std::fs::read_dir(sysroot.join("lib/rustlib")).ok()? {
+        let entry = entry.ok()?;
+        let kind = entry.file_type().ok()?;
+        if kind.is_symlink() {
+            return None;
+        }
+        if !kind.is_dir() {
+            continue;
+        }
+        let library = entry.path().join("lib");
+        match std::fs::symlink_metadata(&library) {
+            Ok(metadata) if metadata.is_dir() => files(&library, &mut inputs, true)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            _ => return None,
+        }
+    }
+    let mut portable = BTreeMap::new();
+    for path in inputs {
+        let relative = path.strip_prefix(sysroot).ok()?.to_str()?.to_owned();
+        portable.insert(relative, sha256_file(&path)?);
+    }
+    Some(digest(&serde_json::to_vec(&portable).ok()?))
+}
+
 /// The identity a shipped build must have to be used with a runtime: its
-/// build manifest (every runtime file's digest) and the virtual base.
+/// build manifest, actual installed compiler/sysroot bytes and virtual base.
 fn identity(root: &Path, virtual_base: &str) -> Option<String> {
+    // Without rustup the launcher may load another system's compiler
+    // libraries. That configuration cannot establish this portable binding.
+    if std::env::var_os("VERUS_USE_RUSTUP").is_some_and(|value| value == "0") {
+        return None;
+    }
     let manifest = std::fs::read(root.join(crate::source_build::MANIFEST)).ok()?;
+    let wrapper = root.join("verus/source/target-verus/release/verus");
+    let sysroot = super::runner::verifier_sysroot(&wrapper, Path::new(".")).ok()?;
+    let compiler = sysroot_identity(&sysroot)?;
     Some(digest(
-        format!("{KIND}-v{SCHEMA}\n{}\n{virtual_base}\n", digest(&manifest)).as_bytes(),
+        format!(
+            "{KIND}-v{SCHEMA}\n{}\n{virtual_base}\n{compiler}\n",
+            digest(&manifest)
+        )
+        .as_bytes(),
     ))
 }
 
@@ -253,6 +315,8 @@ const LOCKFILE: &str = "Cargo.lock";
 pub fn new_project_lockfile(cargo_verus: &Path, name: &str) -> Option<String> {
     let virtual_base = virtual_base()?;
     let root = runtime_root(cargo_verus)?;
+    // An ordinary install without a bundle needs no shipped-input probe.
+    read_manifest(&bundle_dir(root.file_name()?)?)?;
     let identity = identity(&root, &virtual_base)?;
     let bundle = accepted_bundle(&root, &identity, &virtual_base)?;
     let lock = std::fs::read_to_string(bundle.join(LOCKFILE)).ok()?;
@@ -304,21 +368,27 @@ pub(crate) fn plan(
     registry: Option<&Path>,
     new_target: bool,
 ) -> Option<Plan> {
+    let recording = std::env::var_os(RECORD_ENV).filter(|v| !v.is_empty());
+    // Ordinary unchanged runs do not use a shipped build and must not probe
+    // or hash a toolchain solely for an unused shipped-dependency identity.
+    if recording.is_none() && !new_target {
+        return None;
+    }
     let virtual_base = virtual_base()?;
     let registry = registry?;
     if !plain_directory(registry) || !plain_directory(target) || loader_variables() {
         return None;
     }
     let root = runtime_root(cargo_verus)?;
+    if recording.is_none() {
+        read_manifest(&bundle_dir(root.file_name()?)?)?;
+    }
     let identity = identity(&root, &virtual_base)?;
-    let mode = if let Some(out) = std::env::var_os(RECORD_ENV).filter(|v| !v.is_empty()) {
+    let mode = if let Some(out) = recording {
         Mode::Record {
             out: std::path::absolute(out).ok()?,
         }
     } else {
-        if !new_target {
-            return None;
-        }
         Mode::Serve {
             bundle: accepted_bundle(&root, &identity, &virtual_base)?,
         }
@@ -1464,6 +1534,50 @@ mod tests {
     }
 
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
+
+    #[test]
+    fn installed_compiler_and_sysroot_bytes_are_portable_but_never_omitted() -> TestResult {
+        let root =
+            std::env::temp_dir().join(format!("sail-shipped-sysroot-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (a, b) = (root.join("machine-a"), root.join("machine-b"));
+        let inputs = [
+            "bin/rustc",
+            "bin/cargo",
+            "lib/librustc_driver.so",
+            "lib/rustlib/host/lib/libstd.rlib",
+            "lib/rustlib/host/lib/libproc_macro.rlib",
+            "lib/rustlib/host/lib/self-contained/crt.o",
+        ];
+        for machine in [&a, &b] {
+            for path in inputs {
+                let path = machine.join(path);
+                std::fs::create_dir_all(path.parent().ok_or("no parent")?)?;
+                std::fs::write(path, b"matching toolchain bytes")?;
+            }
+        }
+        let original = sysroot_identity(&a).ok_or("no identity")?;
+        assert_eq!(Some(original.clone()), sysroot_identity(&b));
+        for input in inputs {
+            let path = b.join(input);
+            std::fs::write(&path, b"another compiler input with the same version")?;
+            assert_ne!(Some(original.clone()), sysroot_identity(&b), "{input}");
+            std::fs::remove_file(&path)?;
+            assert_ne!(Some(original.clone()), sysroot_identity(&b), "{input}");
+            std::fs::create_dir(&path)?;
+            assert_ne!(Some(original.clone()), sysroot_identity(&b), "{input}");
+            std::fs::remove_dir(&path)?;
+            std::fs::write(path, b"matching toolchain bytes")?;
+        }
+        #[cfg(unix)]
+        {
+            let path = b.join("lib/rustlib/host/lib/dangling.rlib");
+            std::os::unix::fs::symlink("absent", path)?;
+            assert!(sysroot_identity(&b).is_none());
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     /// One machine: a registry with the `demo` package, a target with one
     /// dependency rlib, and the compiler invocation Cargo would make.
