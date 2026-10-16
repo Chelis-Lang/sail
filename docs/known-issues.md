@@ -65,8 +65,9 @@ are in the `archive/m7-contracts-f7103bf` tag.
   `--target-dir`, Verus `--log` options, `--no-verify`, Cargo `--config`
   overrides and loader variables such as `LD_LIBRARY_PATH` are verified as
   plain `cargo verus verify` verifies them, with one `note[SAIL3112]` line,
-  but nothing is reused or recorded. Jobs, `watch` and MCP report all but
-  the loader variables as `SAIL3112` errors ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)).
+  but nothing is reused or recorded. Jobs, `watch` and MCP verify them the
+  same way and mark the result `no_reuse`, never `current`
+  ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)).
 - **The first project on a machine verifies vstd.** As with plain `cargo
   verus verify` on a fresh target, the first `sail verify` on a machine
   verifies vstd (about 33–40 s natively). Later new projects and worktrees
