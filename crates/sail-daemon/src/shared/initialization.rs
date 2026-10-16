@@ -310,7 +310,19 @@ mod tests {
             )
             .unwrap();
             Self {
-                tier: super::super::SharedTier::auto(None, &root),
+                // These tests exercise constructor ownership and reloads.
+                // Optional automatic discovery may correctly decline after
+                // 100 ms on a loaded host, leaving no setup owner to await.
+                // Presence freshness and its bound have separate controls.
+                tier: super::super::SharedTier::auto(
+                    Some(SharedConfig {
+                        store: "http://127.0.0.1:1".into(),
+                        trust_dir: root.join("trust"),
+                        timeout: super::super::DEFAULT_SHARED_TIMEOUT,
+                        backoff: super::super::DEFAULT_SHARED_BACKOFF,
+                    }),
+                    &root,
+                ),
                 root,
             }
         }
@@ -345,6 +357,29 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.root);
         }
+    }
+
+    #[test]
+    fn setup_fixture_does_not_depend_on_optional_presence_discovery() {
+        let fixture = Fixture::new("explicit-setup");
+        let count = Arc::new(AtomicUsize::new(0));
+        let calls = Arc::clone(&count);
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let release_rx = Mutex::new(release_rx);
+        *fixture.tier.remote.presence.before_read.lock().unwrap() = Some(Arc::new(move || {
+            calls.fetch_add(1, Ordering::Relaxed);
+            let _ = release_rx.lock().unwrap().recv();
+        }));
+        fixture.tier.prepare();
+        let owns_setup = fixture.tier.setup.lock().unwrap().is_some();
+        // Release an old fixture's discovery worker before the assertion.
+        let _ = release_tx.send(());
+        assert!(
+            owns_setup,
+            "constructor tests require an explicit setup owner"
+        );
+        fixture.wait_finished();
+        assert_eq!(count.load(Ordering::Relaxed), 0);
     }
 
     #[test]
