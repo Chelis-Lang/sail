@@ -404,6 +404,35 @@ fn driver() -> Result<ExitCode> {
             || crate::verus_stdout::UserFlags::of(&runtime.args),
             |effective| crate::verus_stdout::UserFlags::of_verus(effective.arguments.iter()),
         );
+    let dependency_call = runtime
+        .dependency_build
+        .as_ref()
+        .and_then(|plan| crate::managed::dependency_build::Call::new(plan, &launcher_args));
+    if let Some(replay) = dependency_call
+        .as_ref()
+        .and_then(|call| call.serve(&mut std::io::stderr()))
+    {
+        finish(
+            &runtime,
+            identity,
+            &dir,
+            &Captured {
+                stdout: &replay.stdout,
+                stderr: &replay.stderr,
+                exit: Some(0),
+            },
+            None,
+            Some((&replay.origin, &replay.report)),
+        )?;
+        let shown = crate::verus_stdout::rebuild(&replay.stdout, flags);
+        std::fs::write(dir.join("verus.shown-stdout"), &shown)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        std::io::stderr()
+            .write_all(&replay.stderr)
+            .and_then(|()| std::io::stdout().write_all(&shown))
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let mut cmd = Command::new(&wrapper);
     cmd.args(&launcher_args)
         .envs(&launcher_environment)
@@ -508,7 +537,7 @@ fn driver() -> Result<ExitCode> {
     }
     finish(
         &runtime,
-        identity,
+        identity.clone(),
         &dir,
         &Captured {
             stdout: &stdout,
@@ -516,7 +545,11 @@ fn driver() -> Result<ExitCode> {
             exit: exit.code(),
         },
         established.as_ref(),
+        None,
     )?;
+    if let Some(call) = &dependency_call {
+        call.record(&stdout, &stderr, &runtime, &identity);
+    }
     let shown = crate::verus_stdout::rebuild(&stdout, flags);
     // The dependency store must replay exactly what this target displayed,
     // including effective per-package output flags, when it seeds a new target.
@@ -654,7 +687,12 @@ fn finish(
     dir: &Path,
     captured: &Captured<'_>,
     engine: Option<&sail_api::output::EngineProvenance>,
+    dependency: Option<(
+        &crate::managed::dependency_build::Origin,
+        &sail_api::output::Report,
+    )>,
 ) -> Result<()> {
+    let dependency_origin = dependency.map(|(origin, _)| origin);
     let Captured {
         stdout,
         stderr,
@@ -664,7 +702,14 @@ fn finish(
         .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let (docs, _) = crate::attribution::json_documents(stdout);
-    let attr = if runtime.attribution_logs {
+    let attr = if dependency_origin.is_some() {
+        crate::attribution::attribute(
+            &docs,
+            None,
+            &crate::attribution::Provenance::NoCache,
+            Some("obligation detail not recorded: replayed from a prior dependency verification"),
+        )
+    } else if runtime.attribution_logs {
         let logs = crate::attribution::read_logs(&full_log_dir(&dir.join("logs"), engine))
             .unwrap_or_default();
         let provenance = if runtime.daemon {
@@ -706,6 +751,11 @@ fn finish(
     if let Some(engine) = engine {
         mark_engine(&mut report, engine);
     }
+    if let Some((_, original_report)) = dependency {
+        // This is preserved evidence of the original proof, including any
+        // recorded obligation detail; replay does not establish new detail.
+        report = original_report.clone();
+    }
     let success = receipt_success(&report, &report_args);
     // The complete read of Verus below (about 26 MB) overlaps the reads of
     // the dependencies; both happen after verification, as before.
@@ -715,6 +765,7 @@ fn finish(
     });
     let dependencies = dependencies?;
     let invocation = Invocation {
+        dependency_origin: dependency_origin.cloned(),
         identity,
         run_id: runtime.run_id.clone(),
         report,

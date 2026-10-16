@@ -9,6 +9,9 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Runtime {
+    /// Driver-boundary dependency proof reuse; native dependencies still compile.
+    #[serde(default)]
+    pub dependency_build: Option<super::dependency_build::Plan>,
     pub run_id: String,
     pub args: Vec<String>,
     pub z3: PathBuf,
@@ -45,6 +48,9 @@ impl TargetIdentity {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Invocation {
+    /// Original proof run when this compiler invocation replayed an exact entry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dependency_origin: Option<super::dependency_build::Origin>,
     pub identity: TargetIdentity,
     pub run_id: String,
     pub report: Report,
@@ -331,6 +337,7 @@ mod tests {
             context: "ctx".to_owned(),
             input_revision: "inputs".to_owned(),
             invocation: Invocation {
+                dependency_origin: None,
                 identity: TargetIdentity {
                     manifest: PathBuf::from("Cargo.toml"),
                     name: "input".to_owned(),

@@ -1278,6 +1278,7 @@ mod tests {
             diagnostics: &[],
         });
         let invocation = crate::managed::Invocation {
+            dependency_origin: None,
             run_id: root
                 .file_name()
                 .and_then(|s| s.to_str())

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import select
 import signal
 import subprocess
@@ -46,6 +47,16 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
     evidence.mkdir(mode=0o700, parents=True, exist_ok=True)
     managed_calls = []
     env = dict(os.environ, SAIL_CACHE_DIR=str(root / "cache"))
+    # The same executable path is mutated only after all passing-store cases.
+    # Copying native outputs used to bypass its later linker error (#187).
+    real_cc = shutil.which("cc", path=env.get("PATH"))
+    assert real_cc, "managed native diagnostic fixture requires cc"
+    native_bin = root / "native-bin"
+    native_bin.mkdir()
+    cc = native_bin / "cc"
+    cc.write_text("#!/bin/sh\nexec " + shlex.quote(real_cc) + ' "$@"\n')
+    cc.chmod(0o700)
+    env["PATH"] = str(native_bin) + os.pathsep + env.get("PATH", "")
     # The project is a member of a two-member workspace and every run starts
     # in its own directory without -p, as a user inside a member crate does.
     # The other member has a build script that this member never schedules;
@@ -207,7 +218,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             # ADR 0045: the Current run that verified vstd stores it, whatever the
             # verifier's timing notes (a one-thread verifier prints them for any
             # query slower than two seconds).
-            store = root / "cache/dependency-store/v1"
+            store = root / "cache/dependency-store/v2"
             stored = [p.name for p in store.iterdir() if not p.name.startswith(".")] if store.is_dir() else []
             events = evidence / (managed_calls[-1] + ".events.jsonl")
             assert len(stored) == 1, (stored, events.read_text() if events.exists() else None)
@@ -496,6 +507,22 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert displayed.stdout == expected_stdout, (displayed.stdout, expected_stdout)
             unchanged = bounded_verification([sail, "verify"], plain_copy, env, 240)
             assert unchanged.returncode == 0 and unchanged.stdout == b"", (unchanged.stdout, unchanged.stderr)
+
+            broken_workspace = root / "changed-linker"
+            shutil.copytree(workspace, broken_workspace)
+            cc.write_text("#!/bin/sh\necho fixture-native-linker-failed >&2\nexit 42\n")
+            try:
+                rejected = bounded_verification([sail, "verify", "--output", "json"],
+                                                broken_workspace / project.name, env, 240)
+                (evidence / "changed-linker.stdout.json").write_bytes(rejected.stdout)
+                (evidence / "changed-linker.stderr").write_bytes(rejected.stderr)
+                assert rejected.returncode != 0, rejected.stdout.decode()
+                assert b"fixture-native-linker-failed" in rejected.stderr, rejected.stderr.decode()
+                document = json.loads(rejected.stdout)
+                assert document["exit_code"] != 0, diagnostic(document)
+                assert not any(target.get("dependency_store") for target in document["targets"]), diagnostic(document)
+            finally:
+                cc.write_text("#!/bin/sh\nexec " + shlex.quote(real_cc) + ' "$@"\n')
 
         if part != "core":
             if part == "scripts":

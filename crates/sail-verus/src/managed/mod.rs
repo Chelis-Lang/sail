@@ -3,6 +3,9 @@
 mod absent;
 mod build_inputs;
 mod configuration;
+pub(crate) mod dependency_build;
+mod dependency_inventory;
+mod dependency_resolution;
 mod diagnostics;
 mod environment;
 mod files;

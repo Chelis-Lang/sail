@@ -153,7 +153,7 @@ def main():
         rows.append(compare("donor", managed(sail, donor, env), stock, donor, env, out))
         if rows[-1]["vstd_from_store"]:
             failures.append("donor: an empty store supplied vstd")
-        store = work / "cache/dependency-store/v1"
+        store = work / "cache/dependency-store/v2"
         entries = [p for p in store.iterdir() if not p.name.startswith(".")] \
             if store.is_dir() else []
         if len(entries) != 1:
@@ -188,9 +188,15 @@ def main():
         if rows[-1]["vstd_from_store"] or rows[-1]["warned"]:
             failures.append("mismatch: another key was served, or a warning printed")
 
-        damaged = sorted((entries[0] / "files").rglob("*.rmeta"))[:1] if entries else []
-        for stored in damaged:
-            stored.write_bytes(stored.read_bytes() + b"corrupt")
+        damaged = []
+        if entries:
+            entry_path = entries[0] / "entry.json"
+            descriptor = json.loads(entry_path.read_text())
+            metadata = [file for file in descriptor["files"] if file["name"].endswith(".rmeta")]
+            if metadata and metadata[0]["bytes"]:
+                metadata[0]["bytes"][0] ^= 1
+                entry_path.write_text(json.dumps(descriptor))
+                damaged.append(entry_path)
         corrupt = project(work, "corrupt", dependency, lock)
         rows.append(compare("corrupt", managed(sail, corrupt, env), stock, corrupt, env, out))
         if not damaged or rows[-1]["vstd_from_store"] or not rows[-1]["warned"]:

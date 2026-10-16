@@ -29,12 +29,15 @@ proof receipts bound to the verification context and actual Cargo artifacts.
 When Cargo reports an artifact fresh and its receipt matches, Sail returns the
 complete establishing report without invoking Verus for that target. A missing
 or incompatible receipt requires fresh verification.
-When the dependency store seeds a new Cargo target, each dependency's exact
-validated displayed stdout is restored at its fresh Cargo artifact event,
-before its dependents' output. An ordinary unchanged target emits nothing.
-An entry with missing or damaged output is ignored and verified normally.
-The store admits a verified root only when its closure contains no other
-verified root, so it cannot suppress another proof's diagnostics.
+The compiler-boundary dependency-store candidate lets Cargo build native
+packages normally, then may restore a verified registry library's exact
+metadata and verifier output when its driver invocation arrives. This keeps
+native linker errors observable. Existing unchanged targets remain silent;
+damaged entries compile and verify normally. A closure containing another
+verified root, an unsupported metadata search or incomplete input coverage
+cannot be served. The original proof run remains the `establishing_run`.
+This correction is [still in qualification](validation/dependency-driver-replay.md);
+existing draft assets use the older whole-target store.
 
 Verification arguments, features, toolchain and executable identity participate
 in the context. Declared workspace and path-dependency inputs are checked for
@@ -309,3 +312,14 @@ same results. An explicit `SAIL_DAEMON_SOCKET` is used as given, so keep it
 short.
 An explicitly selected older cache daemon can keep running: Sail starts a
 private jobs-only sidecar alongside it instead of terminating it.
+
+
+### Dependency-store correctness correction
+
+The v1 store can suppress a newly failing native linker by restoring native
+artifacts from an earlier project ([#187](https://github.com/Chelis-Lang/sail/issues/187)).
+The compiler-boundary candidate retires that placement: Cargo builds native
+dependencies, and Sail may replay only exact verified metadata afterwards.
+The [validation record](validation/dependency-driver-replay.md) states the
+current qualification status and platform limits. Existing draft release
+assets have not been rebuilt with this candidate.

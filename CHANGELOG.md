@@ -17,6 +17,8 @@ semantic versioning once the API is published.
   [validation record](docs/validation/managed-overhead.md) for scope and
   evidence. Sail keeps a few kilobytes per invocation in
   `<cache>/snapshot-hints/`, safe to delete.
+- **Dependency-store native builds are preserved** (#187, qualification pending). Cargo compiles native dependencies normally; only exact verified metadata is eligible for guarded driver replay. Remaining gates and platform limits are in `docs/validation/dependency-driver-replay.md`.
+
 - **Dependency-store seeding preserves verifier stdout** (#184). A fresh
   project's reused vstd prints its original result before the project's own
   result, as plain Cargo-Verus does on a fresh target. Ordinary unchanged

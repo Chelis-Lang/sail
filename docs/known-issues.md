@@ -8,6 +8,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **The dependency store can hide a changed native tool's failure** ([#187](https://github.com/Chelis-Lang/sail/issues/187)).
+  Replacing `cc` at the same PATH location after filling the store lets a new
+  target reuse copied native artifacts, while a fresh plain build fails to
+  link. A compiler-boundary correction preserves actual native builds and
+  exact extern bytes; it remains unaccepted pending input-boundary review,
+  live serving checks and native gates. [Reproduction and gate](validation/dependency-driver-replay.md).
+
 - **rc.5 omits verifier stdout after dependency-store seeding** ([#184](https://github.com/Chelis-Lang/sail/issues/184)).
   A second new project reuses vstd but omits its `verification results::`
   line; plain stock on a fresh target prints it. Verdicts, exit codes and

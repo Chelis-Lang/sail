@@ -190,6 +190,38 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
             .into_owned(),
         installed(&wrapper.with_file_name("rust_verify"))?,
     ));
+    let mut replay_compiler_files = vec![
+        (verifier_sysroot.join("lib"), true),
+        (verifier_sysroot.join("bin/rustc"), false),
+        (verifier_sysroot.join("bin/cargo"), false),
+    ];
+    replay_compiler_files.extend(
+        [
+            config.sail.clone(),
+            config.z3.clone(),
+            config.shim.clone(),
+            config.cargo_verus.clone(),
+            wrapper.clone(),
+            wrapper.with_file_name("rust_verify"),
+        ]
+        .into_iter()
+        .map(|path| (path, false)),
+    );
+    // Runtime siblings have fixed names in the validated installation. Their
+    // native build intermediates are not executable runtime inputs; installed
+    // sysroot trees above bind all library search candidates and absences.
+    if let Some(directory) = wrapper.parent() {
+        replay_compiler_files.extend(
+            std::fs::read_dir(directory)
+                .map_err(|e| Error::new("SAIL3104", e.to_string()))?
+                .filter_map(std::result::Result::ok)
+                .map(|entry| entry.path())
+                .filter(|path| path.is_file())
+                .map(|path| (path, false)),
+        );
+    }
+    replay_compiler_files.sort();
+    replay_compiler_files.dedup();
     for path in sysroot_files(&BTreeSet::from([cargo_sysroot, verifier_sysroot]))? {
         identity.push((path.to_string_lossy().into_owned(), installed(&path)?));
     }
@@ -258,6 +290,7 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         hash,
         compiler_hash,
         store_hash,
+        compiler_files: replay_compiler_files,
     })
 }
 
@@ -364,6 +397,7 @@ struct Context {
     /// The dependency store's view of the compiler family
     /// ([`store_family_hash`]).
     store_hash: String,
+    compiler_files: Vec<(PathBuf, bool)>,
 }
 
 fn context_hashes(
@@ -1409,12 +1443,15 @@ fn target_records(
                 let _ = std::fs::remove_file(&path);
             }
             results.push(TargetResult {
-                dependency_store: None,
+                dependency_store: call.dependency_origin.as_ref().map(|o| o.key.clone()),
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: call.run_id.clone(),
-                reused: false,
+                establishing_run: call
+                    .dependency_origin
+                    .as_ref()
+                    .map_or_else(|| call.run_id.clone(), |o| o.run.clone()),
+                reused: call.dependency_origin.is_some(),
                 requested,
                 complete: call.success && complete(&call.report),
                 report: call.report.clone(),
@@ -1505,7 +1542,11 @@ fn target_records(
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: receipt.invocation.run_id,
+                establishing_run: receipt
+                    .invocation
+                    .dependency_origin
+                    .as_ref()
+                    .map_or_else(|| receipt.invocation.run_id.clone(), |o| o.run.clone()),
                 reused: true,
                 requested,
                 complete: true,
@@ -1518,7 +1559,11 @@ fn target_records(
     // A failing compiler may not emit an artifact; preserve its observed target report.
     for call in calls {
         if !results.iter().any(|r| {
-            r.establishing_run == call.run_id
+            r.establishing_run
+                == call
+                    .dependency_origin
+                    .as_ref()
+                    .map_or_else(|| call.run_id.clone(), |o| o.run.clone())
                 && r.target.replace('-', "_") == call.identity.name
                 && r.kind.iter().any(|k| {
                     k == &call.identity.crate_type
@@ -2068,6 +2113,7 @@ pub(crate) fn run_engine_held(
         hash,
         compiler_hash,
         store_hash,
+        compiler_files,
     } = context_result?;
 
     let run_id = format!(
@@ -2084,11 +2130,15 @@ pub(crate) fn run_engine_held(
     // after a prune) may start from the machine's dependency store (ADR 0045).
     // Focused runs build in a separate directory and verify no dependency. A
     // run without proof reuse neither reads nor fills the store (ADR 0046).
-    let store_candidates = if paths.reuse && super::store::enabled() && !focused(&config.args) {
+    let driver_candidates = if paths.reuse && super::store::enabled() && !focused(&config.args) {
         super::store::candidates(&data, &expected, &store_hash)
     } else {
         Vec::new()
     };
+    // v1 copied native executables and could hide changed linker diagnostics.
+    // Keep legacy helpers reachable for old-layout fixture checks, but never
+    // seed or publish that layout in a live run.
+    let store_candidates = Vec::new();
     let new_target = super::store::new_target(&paths.target);
     super::build_inputs::family::begin(
         &paths.compiler_inputs,
@@ -2241,6 +2291,17 @@ pub(crate) fn run_engine_held(
     drop(cleanup);
     let source_engine = engine.is_some();
     let runtime = Runtime {
+        dependency_build: if source_engine {
+            None
+        } else {
+            super::dependency_build::plan(
+                &config.cache,
+                &paths.target,
+                &driver_candidates,
+                &data,
+                &compiler_files,
+            )
+        },
         run_id: run_id.clone(),
         args: config.args.clone(),
         z3: config.z3.clone(),
@@ -3146,6 +3207,7 @@ mod tests {
             context: "selected".to_owned(),
             input_revision: target_revision(data, "input"),
             invocation: Invocation {
+                dependency_origin: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: PathBuf::from(
                         data["packages"][0]["manifest_path"]
@@ -4189,6 +4251,7 @@ mod tests {
             context: "context".to_owned(),
             input_revision: target_revision(&data, "vstd"),
             invocation: Invocation {
+                dependency_origin: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: dependency.join("Cargo.toml"),
                     name: "vstd".to_owned(),

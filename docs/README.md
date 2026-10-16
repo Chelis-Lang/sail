@@ -81,3 +81,5 @@ corpus and prior-art research. Upstream reports are a human decision; agents
 record discoveries in this repository.
 
 [Dependency-store stdout validation](validation/dependency-store-output.md) records the rc.5 output defect and its correction.
+
+The [dependency driver replay gate](validation/dependency-driver-replay.md) tracks the local-store native-build correction and its remaining acceptance checks.

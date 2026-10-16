@@ -42,7 +42,7 @@ pub(super) fn root(cache: &Path) -> PathBuf {
     cache.join("dependency-store").join(format!("v{VERSION}"))
 }
 
-fn capacity() -> usize {
+pub(super) fn capacity() -> usize {
     std::env::var("SAIL_DEPENDENCY_STORE_ENTRIES")
         .ok()
         .and_then(|value| value.parse().ok())
@@ -924,7 +924,7 @@ fn quiet_stderr(stderr: &[u8]) -> bool {
 /// on the next. Omitting them reproduces a plain run in which every query
 /// finished in time. They carry no verdict, and a diagnostic that Verus
 /// flushes early when it prints one is still refused (ADR 0045, decision 8).
-fn long_running_note(message: &Value) -> bool {
+pub(super) fn long_running_note(message: &Value) -> bool {
     const DISCOVERED: &str =
         "\nreporting errors as they are discovered (they may not be in source order)";
     // `<check><infix><N> seconds`: a one-line check name and a whole number.
@@ -1356,6 +1356,7 @@ mod tests {
                 context: "establishing".to_owned(),
                 input_revision: "workspace-specific".to_owned(),
                 invocation: super::super::receipts::Invocation {
+                    dependency_origin: None,
                     identity: super::super::receipts::TargetIdentity {
                         manifest: self.root.join("reg/vstd/Cargo.toml"),
                         name: "vstd".to_owned(),
