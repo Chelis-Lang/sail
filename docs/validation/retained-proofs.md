@@ -1,7 +1,8 @@
 # Retained-proof qualification (#163, ADR 0050)
 
 **Status:** candidate implemented; local regression checks pass. Independent
-review, native Linux gates, full fast/standard conformance and performance
+review of the source-inventory fixes and the full macOS host check pass. Native
+Linux gates, full fast/standard conformance and performance
 qualification remain required. This record does not qualify a release.
 
 ## Source, runtime and scope
@@ -18,6 +19,8 @@ qualification remain required. This record does not qualify a release.
   input reverts, dependency/environment differences, corruption, provenance
   and capacity shared across compiler-identity variants. All 180 local
   `sail-verus` library tests pass; clippy for all crate targets passes.
+- Full macOS host check on `d94d36b6`: clippy and all 620 enabled non-solver
+  tests pass, with 35 solver tests skipped by the host tier.
 - Integration scope: one tiny Cargo fixture using `verus_builtin` with
   `no-vstd`, exercising the real Sail driver and pinned fork. Its functions
   carry no SMT proof obligations; it qualifies the restoration and compiler
@@ -54,6 +57,7 @@ directory:
 |---|---|
 | Original incorrect `new-module.stdout` | `f181d5eee78b70d7072ccfa01ad72687e0fed2b4b743125f14ef73cb3cf8445b` |
 | Direct pinned-fork `direct-pinned-fork.stderr` | `775d1344e79311c8b931204aaaf11259556768dad5c1a1c0ad6b6a1bf1ee8b74` |
+| Full macOS host `macos-host-d94d36b6.log` | `1ae47cf0f0263f64a334aa6b6e74e49cd3ae845fc3a0126a7f1e707b0666f8cb` |
 | Earlier corrected `fixed-summary.json` | `782ce1e3b7ce3e79684e34296af95cb0cee0bff57c05962b27fc787cdb5ffc55` |
 | Latest `qualified-summary.json` (including alias topology) | `5d60410ae526c377767082f0c4e5991031616ef0bceb4556ccf519ee615cce8e` |
 
@@ -64,7 +68,7 @@ fresh source build; its source attribution is limited accordingly.
 ## Remaining gates and attempt index
 
 Run the full local gate, solver checks, every end-to-end phase including
-`extra`, full fast and standard conformance, macOS host checks and isolated
+`extra`, full fast and standard conformance and isolated
 native performance measurements on the final source. Existing prototype
 timings do not qualify the new source-inventory guards.
 
