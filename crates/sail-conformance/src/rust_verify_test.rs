@@ -2,7 +2,7 @@
 //! own `rust_verify_test` suite, from the source build made by `cargo xtask
 //! build-verus-source` (ADR 0019).
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Mutex;
@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 use sail_conformance::Verdict;
-use sail_conformance::rvt::classify_tests;
+use sail_conformance::rvt::{classify_tests, classify_tests_exact};
 use sail_verus::run::{Solver, copy_tree, machine_info};
 use sail_verus::rvt::{Outcome, Suite, TestCase, TestRecord, kept_input_dir};
 use sail_verus::source_build;
@@ -22,17 +22,21 @@ use crate::{now_unix, slug};
 pub const USAGE: &str = "usage:
   sail-conformance rust-verify-test [--filter SUBSTR]... [--every N] [--jobs N]
                                     [--confirm-runs N] [--out DIR] [--shim PATH]
+                                    [--baseline fork|stock]
                                     [--list]
 
-  Runs every test of Verus's rust_verify_test suite (from `cargo xtask
-  build-verus-source`) plainly and through sail-z3, and compares outcomes,
-  exit codes and diagnostics. The sail side uses SAIL_DAEMON_SOCKET if set.
+  Runs the pinned fork's rust_verify_test suite plainly and through sail-z3
+  with exact output comparison. Build it with `cargo xtask build-verus-source
+  --fork`. With --baseline stock, compare the stock suite against the fork
+  using ADR 0042 for diagnostics. The sail side uses SAIL_DAEMON_SOCKET if set.
 
   --filter SUBSTR   only tests whose id (<file>::<test>) contains SUBSTR
                     (repeatable: any of them)
   --every N         then only every N-th test (a spread-out sample)
   --jobs N          tests run in parallel (default 4)
   --confirm-runs N  extra plain runs when sail differs (default 10; ADR 0009)
+  --baseline NAME  fork (default): exact fork vs fork through the shim;
+                    stock: stock vs fork through the shim, ADR 0042
   --verus-threads N Verus's --num-threads for every test, both sides
                     (default 0: Verus's own default; messages from different
                     modules may come in any order, ADR 0042. 1 gives a fixed
@@ -48,6 +52,7 @@ struct Options {
     out: Option<PathBuf>,
     shim: Option<PathBuf>,
     list: bool,
+    stock_baseline: bool,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -60,6 +65,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
         out: None,
         shim: None,
         list: false,
+        stock_baseline: false,
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -84,6 +90,13 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--out" => o.out = Some(value()?.into()),
             "--shim" => o.shim = Some(value()?.into()),
             "--list" => o.list = true,
+            "--baseline" => {
+                o.stock_baseline = match value()?.as_str() {
+                    "fork" => false,
+                    "stock" => true,
+                    _ => return Err("--baseline must be fork or stock".to_owned()),
+                };
+            }
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
     }
@@ -130,6 +143,13 @@ struct Report {
     suite: &'static str,
     verus_release: String,
     verus_commit: String,
+    /// The fork commit of the candidate runtime, not its upstream base.
+    fork_commit: String,
+    comparison: &'static str,
+    baseline_build: PathBuf,
+    candidate_build: PathBuf,
+    /// Fork-only regression tests are covered by the fork-baseline arm.
+    fork_only_tests: Vec<String>,
     z3_version: String,
     features: Vec<String>,
     sail_daemon: bool,
@@ -144,6 +164,9 @@ struct Report {
 
 struct Context<'a> {
     suite: &'a Suite,
+    candidate: &'a Suite,
+    candidate_tests: &'a BTreeMap<String, TestCase>,
+    exact: bool,
     sail: Solver,
     out: &'a Path,
     confirm_runs: usize,
@@ -173,6 +196,10 @@ fn save(dir: &Path, name: &str, r: &TestRecord) {
 
 /// Exports the test's input (`VERUS_KEEP_TEST_DIR`) and how to rerun it.
 fn reproduce(cx: &Context, test: &TestCase, dir: &Path) -> Result<(), String> {
+    let candidate = cx
+        .candidate_tests
+        .get(&test.id())
+        .ok_or_else(|| "the fork is missing this baseline test".to_owned())?;
     let kept = cx
         .suite
         .run(test, &Solver::Plain, true)
@@ -206,19 +233,31 @@ fn reproduce(cx: &Context, test: &TestCase, dir: &Path) -> Result<(), String> {
         Solver::Shim { shim, .. } => shim.display().to_string(),
         Solver::Plain | Solver::Engine(_) => String::new(),
     };
+    let oracle_setup = if cx.exact {
+        String::new()
+    } else {
+        format!(
+            "The temporary oracle executable was removed after this run. Recreate it from the identical stock test program before the sail command, then remove it afterwards:\ncp {} {}\n\n",
+            test.path.display(),
+            candidate.path.display()
+        )
+    };
     let note = format!(
         "test: {id}\n\
          input: {input}\n\n\
          Verus's own rerun line (from the source build's `source` directory):\n{rerun}\n\n\
          Rerun the test itself, in {pkg}:\n\
+         {oracle_setup}\
          plain: VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 {extra}VERUS_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
-         sail:  VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 {extra}VERUS_Z3_PATH={sail_z3} SAIL_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
+         sail (from {candidate_pkg}): VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 {extra}VERUS_Z3_PATH={sail_z3} SAIL_Z3_PATH={z3} {candidate_bin} --exact {name} --nocapture --test-threads 1\n\
          (with Verus's toolchain library directory on the dynamic library path)\n",
         id = test.id(),
         rerun = rerun.join("\n"),
         pkg = cx.suite.package_dir().display(),
         z3 = cx.suite.z3.display(),
         bin = test.path.display(),
+        candidate_pkg = cx.candidate.package_dir().display(),
+        candidate_bin = candidate.path.display(),
         name = test.name,
         extra = cx.suite.verus_threads.map_or_else(String::new, |n| format!(
             "VERUS_EXTRA_ARGS=\"--num-threads {n}\" "
@@ -228,6 +267,15 @@ fn reproduce(cx: &Context, test: &TestCase, dir: &Path) -> Result<(), String> {
 }
 
 fn run_one(cx: &Context, test: &TestCase) -> TestReport {
+    let Some(candidate) = cx.candidate_tests.get(&test.id()) else {
+        return infra(test, "the fork is missing this baseline test".to_owned());
+    };
+    if candidate.ignored != test.ignored {
+        return infra(
+            test,
+            "baseline and fork disagree whether the test is ignored".to_owned(),
+        );
+    }
     if test.ignored {
         return TestReport {
             id: test.id(),
@@ -249,11 +297,16 @@ fn run_one(cx: &Context, test: &TestCase) -> TestReport {
         Ok(p) => plains.push(p),
         Err(e) => return infra(test, e.to_string()),
     }
-    let sail = match cx.suite.run(test, &cx.sail, false) {
+    let sail = match cx.candidate.run(candidate, &cx.sail, false) {
         Ok(s) => s,
         Err(e) => return infra(test, e.to_string()),
     };
-    let mut c = classify_tests(&plains, &sail);
+    let classify = if cx.exact {
+        classify_tests_exact
+    } else {
+        classify_tests
+    };
+    let mut c = classify(&plains, &sail);
     for _ in 0..cx.confirm_runs {
         if c.verdict != Verdict::Different {
             break;
@@ -262,7 +315,7 @@ fn run_one(cx: &Context, test: &TestCase) -> TestReport {
             Ok(p) => plains.push(p),
             Err(e) => return infra(test, e.to_string()),
         }
-        c = classify_tests(&plains, &sail);
+        c = classify(&plains, &sail);
     }
     let mut artifacts = None;
     if c.verdict != Verdict::Same {
@@ -400,30 +453,130 @@ fn select(o: &Options, suite: &Suite) -> Result<Vec<TestCase>, String> {
     Ok(tests.into_iter().step_by(o.every).collect())
 }
 
-fn open_suite(threads: u32) -> Result<(Installed, Suite, std::fs::File), String> {
-    let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
-    let installed = Installed::locate(pins).map_err(|e| e.to_string())?;
+/// Stock's test programs must remain identical on both sides of the oracle.
+/// Their runtime is found relative to `current_exe`, so a physical copy next
+/// to the fork runtime changes only the runtime, not the test or its fixtures.
+struct OracleTests {
+    tests: BTreeMap<String, TestCase>,
+    copies: Vec<PathBuf>,
+}
+
+impl Drop for OracleTests {
+    fn drop(&mut self) {
+        for path in &self.copies {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+fn copy_oracle_tests(tests: Vec<TestCase>, deps: &Path) -> Result<OracleTests, String> {
+    std::fs::create_dir_all(deps).map_err(|e| e.to_string())?;
+    let mut oracle = OracleTests {
+        tests: BTreeMap::new(),
+        copies: Vec::new(),
+    };
+    let mut binaries: BTreeMap<PathBuf, PathBuf> = BTreeMap::new();
+    for mut test in tests {
+        let path = if let Some(path) = binaries.get(&test.path) {
+            path.clone()
+        } else {
+            let name = test
+                .path
+                .file_name()
+                .ok_or("test binary has no file name")?;
+            let path = deps.join(format!(
+                "sail-stock-oracle-{}-{}",
+                std::process::id(),
+                name.to_string_lossy()
+            ));
+            let mut dest = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+                .map_err(|e| format!("cannot create {}: {e}", path.display()))?;
+            oracle.copies.push(path.clone());
+            let mut source = std::fs::File::open(&test.path).map_err(|e| e.to_string())?;
+            std::io::copy(&mut source, &mut dest).map_err(|e| e.to_string())?;
+            std::fs::set_permissions(
+                &path,
+                source.metadata().map_err(|e| e.to_string())?.permissions(),
+            )
+            .map_err(|e| e.to_string())?;
+            binaries.insert(test.path.clone(), path.clone());
+            path
+        };
+        test.path = path;
+        oracle.tests.insert(test.id(), test);
+    }
+    Ok(oracle)
+}
+
+fn open_suite(
+    installed: &Installed,
+    threads: u32,
+    fork: bool,
+) -> Result<(Suite, std::fs::File), String> {
     let verus = &installed.pins.verus;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let build = std::env::var_os("SAIL_VERUS_SOURCE_BUILD").map_or_else(
-        || source_build::build_dir(&cache, &verus.commit),
-        PathBuf::from,
-    );
+    let features = if fork {
+        source_build::fork_test_features()
+    } else {
+        Vec::new()
+    };
+    let default =
+        source_build::variant_dir(&cache, &verus.commit, &verus.rust_toolchain, &features);
+    let build = if fork {
+        std::env::var_os("SAIL_VERUS_SOURCE_BUILD").map_or(default, PathBuf::from)
+    } else {
+        default
+    };
     let ownership = source_build::lock_build(&build).map_err(|e| e.to_string())?;
     let mut suite =
         Suite::open(&build, &verus.rust_toolchain, &installed.z3).map_err(|e| e.to_string())?;
+    let z3 = installed
+        .pins
+        .assets
+        .get(sail_verus::toolchain::host())
+        .ok_or_else(|| "no solver pin for this host".to_owned())?;
+    if suite.manifest.commit != verus.commit
+        || suite.manifest.features != features
+        || suite.manifest.z3_sha256 != z3.z3_sha256
+    {
+        return Err(format!(
+            "error[SAIL3040]: {} does not match the requested {} source build; rebuild with cargo xtask build-verus-source{}",
+            build.display(),
+            if fork { "fork" } else { "stock" },
+            if fork { " --fork" } else { "" }
+        ));
+    }
     suite.verus_threads = (threads > 0).then_some(threads);
-    Ok((installed, suite, ownership))
+    Ok((suite, ownership))
 }
 
 /// Runs the command; exit 0 if every test is the same (or unstable), 1 on
 /// any difference, 2 on infrastructure errors.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Both runtime locks and temporary oracle binaries stay owned through the complete report lifecycle."
+)]
 pub fn main(args: &[String]) -> Result<ExitCode, String> {
     let o = parse(args)?;
-    let (installed, suite, _ownership) = open_suite(o.verus_threads)?;
+    let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
+    let installed = Installed::locate(pins).map_err(|e| e.to_string())?;
     let verus = &installed.pins.verus;
+    let fork = sail_verus::engine::fork().map_err(|e| e.to_string())?;
+    if fork.upstream != verus.commit {
+        return Err("the fork's upstream base does not match the selected Verus pin".to_owned());
+    }
+    let (candidate, _candidate_ownership) = open_suite(&installed, o.verus_threads, true)?;
+    let baseline = if o.stock_baseline {
+        Some(open_suite(&installed, o.verus_threads, false)?)
+    } else {
+        None
+    };
+    let suite = baseline.as_ref().map_or(&candidate, |(suite, _)| suite);
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let tests = select(&o, &suite)?;
+    let tests = select(&o, suite)?;
     if o.list {
         for t in &tests {
             println!("{}{}", t.id(), if t.ignored { " (ignored)" } else { "" });
@@ -431,6 +584,31 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
         return Ok(ExitCode::SUCCESS);
     }
     let shim = find_shim(o.shim.as_deref())?;
+    let fork_tests: BTreeMap<_, _> = candidate
+        .list()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|test| (test.id(), test))
+        .collect();
+    let baseline_ids: std::collections::BTreeSet<_> = suite
+        .list()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|test| test.id())
+        .collect();
+    let fork_only_tests: Vec<_> = fork_tests
+        .keys()
+        .filter(|id| !baseline_ids.contains(*id))
+        .cloned()
+        .collect();
+    let oracle = if o.stock_baseline {
+        let deps =
+            source_build::checkout_dir(&candidate.build).join("source/target-verus/release/deps");
+        Some(copy_oracle_tests(tests.clone(), &deps)?)
+    } else {
+        None
+    };
+    let candidate_tests = oracle.as_ref().map_or(&fork_tests, |oracle| &oracle.tests);
     let daemon_socket = std::env::var_os("SAIL_DAEMON_SOCKET")
         .filter(|v| !v.is_empty())
         .map(PathBuf::from);
@@ -442,8 +620,13 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
     });
     std::fs::create_dir_all(&out).map_err(|e| format!("cannot create {}: {e}", out.display()))?;
     eprintln!(
-        "rust_verify_test @ {}: {} tests ({} ignored) with {} jobs; sail side {}; output in {}",
-        verus.commit,
+        "rust_verify_test fork {} against {}: {} tests ({} ignored) with {} jobs; sail side {}; {} fork-only tests; output in {}",
+        fork.commit,
+        if o.stock_baseline {
+            "stock (ADR 0042)"
+        } else {
+            "fork (exact)"
+        },
         tests.len(),
         tests.iter().filter(|t| t.ignored).count(),
         o.jobs,
@@ -452,10 +635,16 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
         } else {
             "pass-through"
         },
+        fork_only_tests.len(),
         out.display()
     );
     let cx = Context {
-        suite: &suite,
+        suite,
+        // The stock oracle also keeps stock's working directory and fixture
+        // environment. Only its test executable's physical location changes.
+        candidate: if o.stock_baseline { suite } else { &candidate },
+        candidate_tests,
+        exact: !o.stock_baseline,
         sail: Solver::Shim {
             shim,
             trace_dir: None,
@@ -467,8 +656,14 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
     };
     let clock = Instant::now();
     suite.clear_inputs();
+    if o.stock_baseline {
+        candidate.clear_inputs();
+    }
     let mut results = run_all(tests, o.jobs, &cx);
     suite.clear_inputs();
+    if o.stock_baseline {
+        candidate.clear_inputs();
+    }
     results.sort_by(|a, b| a.id.cmp(&b.id));
     let summary = summarize(&results, clock.elapsed().as_secs_f64());
     let mut selection: Vec<String> = o.filters.iter().map(|f| format!("filter:{f}")).collect();
@@ -480,6 +675,15 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
         suite: "rust_verify_test",
         verus_release: verus.release.clone(),
         verus_commit: verus.commit.clone(),
+        fork_commit: fork.commit,
+        comparison: if o.stock_baseline {
+            "stock-vs-fork"
+        } else {
+            "fork-vs-shim"
+        },
+        baseline_build: suite.build.clone(),
+        candidate_build: candidate.build.clone(),
+        fork_only_tests,
         z3_version: installed.pins.z3.version.clone(),
         features: suite.manifest.features.clone(),
         sail_daemon: daemon_socket.is_some(),
@@ -515,4 +719,71 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
     } else {
         ExitCode::SUCCESS
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{copy_oracle_tests, parse};
+    use sail_verus::rvt::TestCase;
+
+    #[test]
+    fn baseline_is_fork_unless_stock_is_explicitly_requested() {
+        assert!(
+            !parse(&[])
+                .unwrap_or_else(|e| unreachable!("{e}"))
+                .stock_baseline
+        );
+        let stock = ["--baseline".to_owned(), "stock".to_owned()];
+        assert!(
+            parse(&stock)
+                .unwrap_or_else(|e| unreachable!("{e}"))
+                .stock_baseline
+        );
+        assert!(parse(&["--baseline".to_owned(), "other".to_owned()]).is_err());
+    }
+
+    #[test]
+    fn stock_oracle_uses_identical_program_and_cleans_up_its_copy() {
+        let root = std::env::temp_dir().join(format!("sail-rvt-oracle-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap_or_else(|e| unreachable!("{e}"));
+        let source = root.join("stock-test");
+        let bytes = b"the exact stock test program";
+        std::fs::write(&source, bytes).unwrap_or_else(|e| unreachable!("{e}"));
+        let tests: Vec<_> = ["first", "second"]
+            .into_iter()
+            .map(|name| TestCase {
+                binary: "basic".to_owned(),
+                path: source.clone(),
+                name: name.to_owned(),
+                ignored: false,
+            })
+            .collect();
+        let deps = root.join("fork/target-verus/release/deps");
+        let oracle =
+            copy_oracle_tests(tests.clone(), &deps).unwrap_or_else(|e| unreachable!("{e}"));
+        assert_eq!(oracle.copies.len(), 1);
+        let path = oracle.copies[0].clone();
+        assert_ne!(path, source);
+        assert!(oracle.tests.values().all(|test| test.path == path));
+        assert_eq!(std::fs::read(&path).unwrap_or_default(), bytes);
+        assert_eq!(std::fs::read(&source).unwrap_or_default(), bytes);
+        drop(oracle);
+        assert!(!path.exists());
+        // A later missing input must also clean copies already created.
+        let missing = TestCase {
+            binary: "missing".to_owned(),
+            path: root.join("missing"),
+            name: "test".to_owned(),
+            ignored: false,
+        };
+        let mut failing = tests;
+        failing.push(missing);
+        assert!(copy_oracle_tests(failing, &deps).is_err());
+        assert_eq!(
+            std::fs::read_dir(&deps).map_or(usize::MAX, Iterator::count),
+            0
+        );
+        assert_eq!(std::fs::read(&source).unwrap_or_default(), bytes);
+        std::fs::remove_dir_all(&root).unwrap_or_else(|e| unreachable!("{e}"));
+    }
 }
