@@ -1,6 +1,6 @@
-# 0048: Retained proofs: reverting to verified content restores its proof
+# 0050: Retained proofs: reverting to verified content restores its proof
 
-- **Status:** accepted (lead decision for roadmap item B4, issue #163)
+- **Status:** implemented candidate; independent review and qualification pending (#163)
 - **Date:** 2026-10-16
 - **Extends:** [ADR 0023](0023-managed-incremental-workspace-verification.md)
   (receipts), [ADR 0036](0036-managed-compiler-artifact-families.md) (one
@@ -45,7 +45,8 @@
    driver received from Cargo (every proof-context variable, which includes
    Cargo's per-unit `CARGO_*` and the Verus driver's `__VERUS_*`, plus
    `OUT_DIR` and every variable the dep-info declares; Cargo's jobserver
-   handle excluded), and the working directory. Only workspace members that
+   handle excluded), the working directory and the complete source inventory
+   described below. Only workspace members that
    declare `package.metadata.verus.verify = true` and are in the selection's
    dependency closure are retained; registry dependencies have the
    [dependency store](0045-dependency-store.md).
@@ -65,10 +66,16 @@
      exactly the bytes the establishing verification read;
    - every file the dep-info names has the recorded content (rehashed in
      full; nothing is inferred from timestamps), and the environment and
-     working directory are the same.
-   These are the inputs of Cargo's own fingerprint of the unit (its compiler
-   arguments, dependencies, dep-info files and declared variables), compared
-   by content instead of modification time. On a match the driver writes the
+     working directory are the same;
+   - a complete managed source snapshot has the recorded revision, including
+     directory inventory and symlink targets. It covers the package's whole
+     dependency closure, workspace manifests, Cargo configuration, known
+     external source directories and the current `OUT_DIR`. Every dep-info
+     input must be present with the same bytes in that snapshot; unknown
+     inputs refuse retention and restoration.
+   Managed snapshots and mutation stamps bracket fresh verification and
+   restoration. Changed bytes, new files, rewritten inputs and retargeted
+   symlinks refuse the optimization. On a match the driver writes the
    stored files back to their paths (each through a temporary file, with its
    digest checked on the bytes written), writes the recorded stderr and
    Verus's stdout as plain Verus prints it (rebuilt from the recorded document
@@ -76,11 +83,18 @@
    target's observation, marked with the run that verified it. Cargo then
    records its own fingerprint from the restored dep-info, as after a
    compilation. Anything else is an ordinary miss and the driver verifies.
-3. **Not keyed by the package's content revision.** The runner's per-package
-   revision is computed before Cargo runs, so for a crate that includes a
-   file its build script generates it describes the previous generated file
-   (or none, after the targeted clean). The dep-info names the generated file
-   with the content rustc actually read, so the driver's check covers it.
+3. **Source inventory after Cargo's scripts, before the verifier.** The
+   runner's per-package revision is computed before Cargo runs, so for a
+   crate that includes a generated file it describes the previous generated
+   file (or none, after targeted cleaning). The driver instead snapshots the
+   complete source view after Cargo finishes the package's script and adds
+   its current `OUT_DIR`. A second snapshot and mutation stamp must match
+   after verification or restoration. Scripts can regenerate earlier content
+   while newly appearing inputs remain bound. Positive dep-info paths alone
+   are insufficient: adding `leaf/mod.rs` beside a previously verified
+   `leaf.rs` makes `mod leaf;` ambiguous without changing any old input bytes.
+   The first prototype incorrectly restored success in that case; the
+   [validation record](../validation/retained-proofs.md) preserves the repro.
 4. **Provenance (charter rule 7).** A restored target is `reused` and its
    `establishing_run` is the run that verified it; the run adds
    `SAIL3132: <target> has the content that run <id> verified; its retained
@@ -94,11 +108,15 @@
    for an interactive-engine run. A run whose result is not Current retains
    nothing. Only a successful complete verification is retained; failures
    never are.
-6. **Bound.** Each target keeps its four most recently used retained proofs;
+6. **Bound.** Each logical target (manifest, crate name and crate type) keeps
+   its four most recently used proofs across compiler-argument and Cargo-unit
+   variants;
    `SAIL_RETAINED_PROOFS` sets another number, and `0` turns retention off
    (restoring and recording). The variable never reaches a proof and is
    observation-only, so it changes no proof context. Retaining the same
-   inputs again replaces the older proof of them. Blobs that no remaining
+   inputs and compiler identity again replaces the older proof of them.
+   Compiler identity still matches exactly during restoration; another
+   variant is a miss rather than a damaged entry. Blobs that no remaining
    proof refers to are deleted when a proof is retained; copies left by a
    killed run are deleted after an hour. `sail cache projects prune` removes
    retained proofs with the rest of the workspace's directory.
@@ -107,7 +125,8 @@
    output missing) is skipped silently; a damaged one is deleted. If writing
    a stored file fails, the files already placed are removed, so the unit's
    files are either all the retained ones or Cargo's own, and the driver
-   verifies. A failure to retain never changes the run's result (an event in
+   verifies. Failed optional dependency reads and incomplete source inventories
+   also run the verifier. A failure to retain never changes the run's result (an event in
    `SAIL_JOB_EVENTS` records it).
 
 ## Conformance obligations
@@ -123,12 +142,16 @@
   its files in the target; eviction keeps the most recently used proofs and
   only their blobs; outputs rewritten after the driver observed them are
   never retained; dep-info with escaped spaces and declared variables is
-  read exactly.
+  read exactly. New source candidates, generated directory additions,
+  symlink retargeting, same-byte writes during observation and uncovered
+  compiler inputs refuse restoration. Compiler-identity variants share one
+  target's bound and mismatches never delete usable variants.
 - **CI, End to end (output)** (`ci/test-output.sh loop`): an edit and its
   undo print exactly what plain stock `cargo verus verify` prints on the same
   content (stdout, stderr with Cargo's elapsed time blanked, exit code), the
   undo restores the retained proof, and a one-byte change verifies again and
-  is identical too.
+  is identical too. Adding an ambiguous module candidate produces stock's
+  E0761 and exit code, with no retained restoration.
 - **CI, End to end (managed)** (`ci/test-managed.py`): returning a
   build script's declared variable to an earlier value regenerates the
   included file and restores that content's proof (no verifier, Current, the
@@ -139,7 +162,10 @@
 
 ## Measurements
 
-To be filled in from the native host runs (below).
+Native performance qualification remains pending for the source-inventory
+implementation. Measurements of the earlier dep-info-only prototype do not
+qualify this candidate. Scope and remaining gates are in
+[retained-proof validation](../validation/retained-proofs.md).
 
 ## Consequences
 

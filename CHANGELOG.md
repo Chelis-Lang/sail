@@ -5,18 +5,20 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- **Undoing an edit restores its proof** (ADR 0048, #163). Reverting a
+- **Undoing an edit restores its proof** (ADR 0050, #163). Reverting a
   workspace crate to content that Sail verified before (an agent's
   try-and-undo, `git checkout` back, switching branches) no longer verifies
   it again: Cargo still rebuilds the crate and prints its usual lines, and
   Sail's driver restores the retained proof, its compiled files and the
   verifier's recorded output, so the output is what plain `cargo verus
   verify` prints when it verifies that content. Restoring requires every
-  input the compiler read (sources, generated includes, compiled
+  input the compiler read and the complete source inventory, including newly
+  appearing files (sources, generated includes, compiled
   dependencies, the environment Cargo gives it, the arguments and the
   toolchain) to have the recorded content. `--output json`, jobs and MCP
   report the target as reused, name the run that verified it, and add the
-  note `SAIL3132`. Each target keeps its four most recently used proofs
+  note `SAIL3132`. Each logical target keeps its four most recently used proofs
+  across compiler-argument and Cargo-unit variants
   under its proof context (`retained/`; `SAIL_RETAINED_PROOFS` sets another
   number, `0` turns it off). `scripts/perf-loops.sh` adds a `revert` phase.
 - **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).

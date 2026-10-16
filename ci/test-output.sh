@@ -8,7 +8,7 @@
 #   ci/test-output.sh SAIL loop|loader|flags|extra
 #
 # `loop`: combined output, passing proofs, an unchanged re-run, an undone
-# edit (ADR 0048), a compile error and partial verification. `loader`: a
+# edit (ADR 0050), a compile error and partial verification. `loader`: a
 # loader variable. `flags`: the
 # setups verified without proof reuse. `extra`: `-- --output-json --time` and
 # a `-p`/`--features` workspace. Every cold build verifies vstd (about two
@@ -98,7 +98,7 @@ grep -q "verified, 0 errors" "$work/pass-plain.out"
 CARGO_TARGET_DIR="$work/target-plain" quiet_run noop-plain cargo verus verify
 CARGO_TARGET_DIR="$work/target-sail" quiet_run noop-sail "$sail" verify
 same noop-plain noop-sail
-# Instant revert (ADR 0048): an edit, then the edit undone. Plain
+# Instant revert (ADR 0050): an edit, then the edit undone. Plain
 # Cargo-Verus verifies the reverted content again; Sail restores the proof
 # it retained for that content and prints the same output. Content that
 # differs by one byte is verified again.
@@ -113,6 +113,26 @@ SAIL_JOB_EVENTS="$work/revert.events" sail_run revert-sail "$sail" verify
 same revert-plain revert-sail
 grep -q "verified, 0 errors" "$work/revert-plain.out"
 grep -q '"event":"target-restored"' "$work/revert.events"
+# A new module candidate is absent from the earlier dep-info. It must
+# invalidate a retained proof even though all earlier source bytes match.
+printf '\nmod retained_leaf;\n' >> src/lib.rs
+printf 'pub fn answer() -> u32 { 42 }\n' > src/retained_leaf.rs
+plain_run module-plain cargo verus verify
+sail_run module-sail "$sail" verify
+same module-plain module-sail
+mkdir src/retained_leaf
+printf 'pub fn answer() -> u32 { 0 }\n' > src/retained_leaf/mod.rs
+plain_run ambiguous-plain cargo verus verify
+SAIL_JOB_EVENTS="$work/ambiguous.events" sail_run ambiguous-sail "$sail" verify
+same ambiguous-plain ambiguous-sail
+grep -q 'E0761' "$work/ambiguous-plain.err"
+if grep -q '"event":"target-restored"' "$work/ambiguous.events"; then
+  echo "e2e: a new ambiguous module candidate reused a retained proof" >&2
+  exit 1
+fi
+rm src/retained_leaf/mod.rs src/retained_leaf.rs
+rmdir src/retained_leaf
+cp "$work/passing.rs" src/lib.rs
 printf '// one more byte\n' >> src/lib.rs
 plain_run changed-plain cargo verus verify
 SAIL_JOB_EVENTS="$work/changed.events" sail_run changed-sail "$sail" verify

@@ -106,21 +106,21 @@ Undoing an edit, checking out earlier code or switching back to a branch
 brings back content that Sail has already verified. Plain `cargo verus
 verify` verifies it again: the files are newer than its last build. Sail
 keeps the four most recently used proofs of each workspace target
-([ADR 0048](decisions/0048-retained-proofs-instant-revert.md)), with the
+([ADR 0050](decisions/0050-retained-proofs-instant-revert.md)), with the
 files the compiler wrote for it and the verifier's output. Cargo still sees
 the reverted crate as changed, prints its usual `Checking` line and calls
 Sail's driver, which then restores the retained proof instead of verifying
 when every input of the crate matches the one that verified it: the
-content of every source file and generated include the compiler read, the
+complete source inventory (including newly appearing files), generated
+includes from the current build script, every compiler-declared input, the
 compiled dependencies, the environment Cargo gives the compiler, the
 arguments and the toolchain. It prints the recorded diagnostics and Verus's
 `verification results::` line, so the output is what plain Cargo-Verus
 prints when it verifies the same content.
 
-| Reverted run (Linux `c7i.4xlarge`) | Plain `cargo verus verify` | `sail verify` before | `sail verify` now |
-|---|---:|---:|---:|
-| one-function demo | measured below | | |
-| vest `-p vest_lib` | | | |
+The source-inventory implementation is awaiting native performance and
+corpus qualification; see [its validation record](validation/retained-proofs.md).
+Uncovered inputs or changes during recording or restoration verify normally. |
 
 With `--output json`, jobs and MCP, the reverted target is `reused`, names
 the run that verified it as `establishing_run`, and the note `SAIL3132` says

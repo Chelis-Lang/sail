@@ -1267,7 +1267,7 @@ fn target_records(
             } else {
                 let _ = std::fs::remove_file(&path);
             }
-            // A target the driver restored from a retained proof (ADR 0048)
+            // A target the driver restored from a retained proof (ADR 0050)
             // is reused, and names the run that verified it.
             results.push(TargetResult {
                 dependency_store: None,
@@ -2009,7 +2009,7 @@ pub(crate) fn run_engine_held(
         .into_iter()
         .collect();
     // The workspace targets whose earlier proofs the driver may restore and
-    // record (ADR 0048): a run that may reuse, with every input observed, and
+    // record (ADR 0050): a run that may reuse, with every input observed, and
     // neither forced, focused nor an interactive-engine run.
     let retained: BTreeSet<PathBuf> =
         if paths.reuse && !forced && engine.is_none() && super::history::capacity() > 0 {
@@ -2032,6 +2032,41 @@ pub(crate) fn run_engine_held(
         } else {
             BTreeSet::new()
         };
+    let retained_sources = data["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|package| {
+            let manifest = PathBuf::from(package["manifest_path"].as_str()?);
+            if !retained.contains(&manifest) {
+                return None;
+            }
+            let closure = dependency_closure(&data, [package["id"].as_str()?]);
+            let mut view = serde_json::json!({
+                "workspace_root": data["workspace_root"],
+                "sail_invocation_directory": data["sail_invocation_directory"],
+                "sail_cache_directory": data["sail_cache_directory"],
+                "target_directory": data["target_directory"],
+            });
+            view["packages"] = Value::Array(
+                data["packages"]
+                    .as_array()?
+                    .iter()
+                    .filter(|p| p["id"].as_str().is_some_and(|id| closure.contains(id)))
+                    .map(|p| serde_json::json!({"manifest_path": p["manifest_path"]}))
+                    .collect(),
+            );
+            view["sail_source_inputs"] = Value::Array(
+                closure
+                    .iter()
+                    .filter_map(|id| data["sail_source_inputs_by_package"][id].as_array())
+                    .flatten()
+                    .cloned()
+                    .collect(),
+            );
+            Some((manifest, view))
+        })
+        .collect();
     if paths.reuse && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
@@ -2090,6 +2125,7 @@ pub(crate) fn run_engine_held(
         attribution_logs: config.attribution_logs || engine.is_some(),
         engine,
         retained,
+        retained_sources,
     };
     json(&paths.runtime, &runtime)?;
     let invocation_phase = diagnostics.phase(Phase::Invocation);
@@ -2343,7 +2379,7 @@ pub(crate) fn run_engine_held(
         }
         super::receipts::publish(&paths.run, &paths.receipts, &result.context_sha256)?;
         // Each newly verified workspace target's proof is retained, so that
-        // reverting to this content later restores it (ADR 0048). Retention
+        // reverting to this content later restores it (ADR 0050). Retention
         // never changes the run's result.
         let capacity = super::history::capacity();
         let retained = super::history::root(&paths.receipts);

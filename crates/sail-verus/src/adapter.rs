@@ -357,15 +357,17 @@ fn driver() -> Result<ExitCode> {
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     // A workspace target whose content was verified before (an undone edit,
     // a checkout back): its retained proof replaces the verifier when every
-    // recorded input matches (ADR 0048). Anything else verifies as usual.
+    // recorded input matches (ADR 0050). Anything else verifies as usual.
     let retained = runtime.engine.is_none() && runtime.retained.contains(&identity.manifest);
-    if retained {
-        let dependencies = driver_dependencies()?;
-        if let Some(restored) =
-            crate::managed::restore_retained(&runtime, &identity, &args, &dependencies)
-        {
-            return replay(&runtime, identity, &dir, restored, dependencies);
-        }
+    let source = retained
+        .then(|| crate::managed::begin_retained(&runtime, &identity))
+        .flatten();
+    if let Some(source) = &source
+        && let Ok(dependencies) = driver_dependencies()
+        && let Some(restored) =
+            crate::managed::restore_retained(&runtime, &identity, &args, &dependencies, source)
+    {
+        return replay(&runtime, identity, &dir, restored, dependencies);
     }
     let logs = runtime.attribution_logs.then(|| dir.join("logs"));
     // VI-0011: the pinned launcher chooses macro mode before decoding Cargo's
@@ -518,7 +520,7 @@ fn driver() -> Result<ExitCode> {
             .write_all(&stderr)
             .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
-    let observed = (retained && exit.success()).then(|| identity.clone());
+    let observed = (source.is_some() && exit.success()).then(|| identity.clone());
     finish(
         &runtime,
         identity,
@@ -530,8 +532,8 @@ fn driver() -> Result<ExitCode> {
         },
         established.as_ref(),
     )?;
-    if let Some(identity) = observed {
-        crate::managed::observe_retained(&args, &identity, &dir);
+    if let (Some(identity), Some(source)) = (observed, source) {
+        crate::managed::observe_retained(&args, &identity, &dir, &source);
     }
     // Plain Verus's stdout, rebuilt from the document Sail asked for; Cargo
     // forwards it, and the managed runner shows it to the user.
@@ -542,7 +544,7 @@ fn driver() -> Result<ExitCode> {
     Ok(status(exit))
 }
 
-/// Completes a target from its retained proof (ADR 0048): the verifier's
+/// Completes a target from its retained proof (ADR 0050): the verifier's
 /// recorded stderr and Verus's stdout as plain Verus prints it, and the
 /// receipt's report as this run's observation, marked with the run that
 /// verified it.

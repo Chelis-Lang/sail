@@ -321,7 +321,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         # selected proof must replace missing evidence rather than returning nothing.
         # Retention is off for these runs (an observation-only setting, so the
         # proof context is the same): with it, the proof retained for this
-        # content would be restored instead (ADR 0048), which the revert
+        # content would be restored instead (ADR 0050), which the revert
         # checks below cover.
         no_retained = {"SAIL_RETAINED_PROOFS": "0"}
         contexts = list((root / "cache/projects").glob("*/" + warm["context_sha256"]))
@@ -522,7 +522,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert not changed_target["reused"], diagnostic(changed)
             assert changed_target["establishing_run"] != same_target["establishing_run"], diagnostic(changed)
 
-            # ADR 0048: going back to inputs that verified before restores
+            # ADR 0050: going back to inputs that verified before restores
             # the proof retained for them. The build script runs again and
             # generates the first value; the crate is restored, not verified.
             env["DEMO_GENERATED_VALUE"] = "first"

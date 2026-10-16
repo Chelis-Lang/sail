@@ -28,10 +28,14 @@ pub(crate) struct Runtime {
     #[serde(default)]
     pub attribution_logs: bool,
     /// The manifests of the workspace packages whose retained proofs this
-    /// run may restore and record (ADR 0048). Empty when retention is off or
+    /// run may restore and record (ADR 0050). Empty when retention is off or
     /// the run cannot reuse.
     #[serde(default)]
     pub retained: BTreeSet<PathBuf>,
+    /// Complete source views for eligible retained targets. Generated inputs
+    /// are added by the driver after Cargo runs the target's build script.
+    #[serde(default)]
+    pub retained_sources: BTreeMap<PathBuf, serde_json::Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,7 +60,7 @@ pub(crate) struct Invocation {
     pub success: bool,
     pub dependencies: BTreeMap<PathBuf, String>,
     /// Set when the driver restored this target's retained proof instead of
-    /// verifying it (ADR 0048): the run that verified it. Absent, and so
+    /// verifying it (ADR 0050): the run that verified it. Absent, and so
     /// leaving earlier receipt checksums unchanged, for a verification.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub restored: Option<String>,

@@ -23,7 +23,9 @@ pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_
 pub use runner::{Config, refresh_context, refresh_result, run, run_showing_output};
 pub(crate) use runner::{run_engine, run_engine_held};
 
-pub(crate) use history::{Restored, observe as observe_retained, restore as restore_retained};
+pub(crate) use history::{
+    Restored, begin as begin_retained, observe as observe_retained, restore as restore_retained,
+};
 pub(crate) use receipts::complete as receipt_complete;
 
 pub(crate) use runner::focused;

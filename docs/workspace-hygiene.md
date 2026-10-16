@@ -68,11 +68,13 @@ while storing or deleting an entry are removed once they are an hour old.
 `projects/<workspace-key>/<proof-context>/retained/` keeps earlier proofs of
 the workspace's own targets, so that undoing an edit or checking out earlier
 code restores them instead of verifying again
-([ADR 0048](decisions/0048-retained-proofs-instant-revert.md)). Each proof
+([ADR 0050](decisions/0050-retained-proofs-instant-revert.md)). Each proof
 stores the files the compiler wrote for the target (its `.rmeta`, `.vir` and
 dep-info) once per distinct content: about 20 KB for a small crate, about
 30 MB for vest's `vest_lib`. Sail keeps the four most recently used proofs of
-each target and deletes older ones, and their files, itself; set
+each logical target (manifest, crate name and crate type), counting all
+compiler-argument and Cargo-unit variants together. It deletes older proofs
+and unreferenced blobs itself; set
 `SAIL_RETAINED_PROOFS` to keep another number, or to `0` to turn retention
 off. Deleting `retained/` is safe at any time: reverted content is then
 verified again. `sail cache projects prune` removes it with the rest of the
