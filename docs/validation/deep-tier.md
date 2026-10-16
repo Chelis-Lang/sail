@@ -2,7 +2,7 @@
 
 ## Fork source-suite gate (#124)
 
-**Candidate; full source-suite acceptance pending.** The revised harness adds an exact
+**Candidate; complete corrected fork source suite passes on private source.** The revised harness adds an exact
 fork-with-and-without-shim arm and retains the original stock-with-and-without-
 shim control. Stock-versus-fork equivalence remains the mandatory corpus gate.
 Nonignored fork tests must pass, including their assertions; matching failed
@@ -16,8 +16,8 @@ libtests passed. The three differences are the actual JSON proof-note order
 defect [VI-0021](../verus-issues/VI-0021-proof-note-json-order.md), with raw
 reports/logs archived at SHA-256
 `475aa777b9e0ebd98f0ab1b3498d453d3803091aeef54c1d8f2927d43e103444`.
-That failed sample is not whole-suite acceptance. Corrected runtime validation
-and complete native source-suite gates remain pending.
+That failed sample is not whole-suite acceptance. The corrected combined runtime later passed its full native source suite,
+as recorded below; broader runtime acceptance remains pending.
 
 Native source `84ca8c18305628fa18ef9e39ac7f6b9299c3c917` passed the workspace
 gate (636 tests, 35 skipped), solver tests (35), all seven end-to-end phases
@@ -50,11 +50,32 @@ The explicit fork selector now bypasses only the generic stock-source
 installation lookup: its pinned solver comes from the release, and the suite's
 existing manifest, artifact, feature, toolchain and solver checks remain in
 force. Ordinary stock and Singular source installation retain their existing
-selector behavior. The new list-only selector controls and corrected real fork
-run are pending native execution; source review and formatting are not acceptance.
+selector behavior. On private source `168ab7ab`, all 18 actual-binary list-only selector controls
+and all nine genuine fork `output_json` tests passed. Its complete fork suite
+then failed strictly on a runner-supplied duplicate progress flag: 4,708 Same,
+one Different, no Unstable or infrastructure errors (4,709 selected, 58 ignored).
+The original test and baseline-must-pass rule remain intact. The
+[source-bound option correction](rvt-progress-option.md) passed the original
+VI-0012 regression, BASIC and the full genuine fork suite on private
+`af339f8a`: 4,709 Same (58 ignored), all 4,651 nonignored plain tests passed,
+zero Different, Unstable or infrastructure errors in 1,225.58 s. Raw SHA-256
+`b2304b6dd70355fd69a0ad6241c3f2a00c25156e8443ffb357b80005ce165faf`.
+The main-based join and combined runtime corpus/determinism/performance gates
+remain pending; accepted pins are unchanged.
 
 Failed/interrupted attempts, 2026-10-16:
 
+- `af339f8a`: subsequent determinism preparation failed before any SMT
+  execution because the fresh host had not fetched the complete fast corpus.
+  No determinism/standard/deep result follows. Final raw SHA-256
+  `eec84add58f8e7bc103ec3c5e940019fa976d5cf39623415ba016dbd48971fc2`.
+
+- `168ab7ab` with combined fork `8a373f81`: complete genuine fork suite,
+  4,708 Same/one Different; the VI-0012 regression failed identically on both
+  sides because the harness injected a second `--no-report-long-running`.
+  Failed raw archive SHA-256
+  `c4e3826df19353f4935ad4d2b80689d2b1c754f61233f9b9aa15d1026608624a`.
+  No reclassification or assertion change; see [#203](https://github.com/Chelis-Lang/sail/issues/203).
 - `6880cb9b` with combined fork `8a373f81`: selected source-JSON run refused
   `SAIL3040` before any tests, because the generic stock installer consumed
   the fork-suite selector first. Final raw archive SHA-256

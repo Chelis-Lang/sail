@@ -14,6 +14,14 @@ semantic versioning once the API is published.
   Older manifests without these digests require a deliberate source rebuild;
   changed, missing or duplicate executable entries are rejected.
 
+- The source-suite runner avoids its duplicate progress flag for the exact
+  original VI-0012 regression source, binary and case (#203). Changed or missing
+  source keeps the default, explicit threads remain unchanged, and reproduction
+  commands now show the same effective `VERUS_EXTRA_ARGS` as actual execution.
+  The original regression, native BASIC and complete fork source suite pass on
+  private qualification source. Remaining runtime gates are separate; the
+  original failure stays recorded.
+
 - **CI image packaging candidate** (#195): checks share a core image with
   every pinned toolchain/runtime; only managed e2e adds the pinned external
   MCP client. Local checks select the same targets. Actual startup improvement

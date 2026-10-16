@@ -82,3 +82,13 @@ python3 scripts/test-rvt-selector.py --binary target/release/sail-conformance \
 
 These isolated manifest and list-only executable fixtures test routing and
 refusal. They do not qualify a source runtime or replace the real suite gates.
+
+The runner normally adds `--no-report-long-running` through
+`VERUS_EXTRA_ARGS` on both arms. The known `assert_by_compute` example supplies
+it through its checked header. The original VI-0012 progress-order regression
+also supplies it itself; the runner omits its own duplicate only for the exact
+recorded source SHA, binary and case. Changed or missing source retains the
+default. Explicit thread overrides are never dropped to repair a conflicting
+test invocation. Exported `reproduce.txt` commands show the same effective
+`VERUS_EXTRA_ARGS`, including an explicit empty value when the original test
+supplies the default. See the [correction and retained failed run](validation/rvt-progress-option.md).
