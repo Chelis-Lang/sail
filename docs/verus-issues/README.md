@@ -41,6 +41,7 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0016](VI-0016-cargo-verus-new-needs-git.md) | `cargo verus new` fails with a bare "No such file or directory" without git | open | — | described (steps) |
 | [VI-0017](VI-0017-timing-json-order.md) | `--output-json --time` lists modules and functions in a run-dependent order | open in stock Verus; fixed in the fork | fixed: `9e32601e` fix: list output-json timing modules and functions by name (pinned in `73dea021`) | `corpus/repros/verus-timing-json-order/` |
 | [VI-0018](VI-0018-source-build-cargo-verus-new.md) | A source-built `cargo verus new` knows no vstd for its own version | fixed in Sail's runtime (from `73dea021`) | not a source change: `cargo xtask build-verus-engine` writes the toolchain manifest, as the release workflow does | described (steps) |
+| [VI-0019](VI-0019-crate-wide-closure-numbering.md) | Inserting an item renames closure types crate-wide | open in stock Verus; fixed on a fork branch, not yet pinned | fixed on `m11-5/stable-closure-ids`: `8d03ab54` fix: name closure types by definition path, not crate-wide index (a renaming, under [ADR 0049](../decisions/0049-stable-closure-names.md)) | `corpus/repros/verus-closure-renumbering/` |
 | [VI-0021](VI-0021-proof-note-json-order.md) | JSON proof-note arrays follow hash-set order | reproduced in the pinned fork; correction pending | — | `corpus/repros/verus-proof-note-order/` |
 
 Z3 behaviour is recorded the same way, as reproductions under

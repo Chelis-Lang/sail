@@ -28,7 +28,9 @@
 #   plain        cargo verus verify (focus with --verify-module)
 #   sail         sail verify
 #   incremental  explicit legacy alias for sail verify --incremental
-#   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK first on PATH
+#   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK: first on
+#                PATH, and for fork-sail also as SAIL_CARGO_VERUS (Sail does not
+#                search PATH, ADR 0043)
 # Every run passes `--time-expanded` to Verus. Sail runs record the daemon's
 # counters (`sail status --json`) before and after, and the shim's per-session
 # provenance (SAIL_PROVENANCE_DIR: replies served, solver started).
@@ -122,6 +124,7 @@ body-early body source/verismo/src/security/mem.rs 191 0
 body-late body source/verismo/src/security/mem.rs 1264 0
 comment-top comment source/verismo/src/security/mem.rs 1 0
 lemma-mid lemma source/verismo/src/security/mem.rs 627 0
+lemma-early lemma source/verismo/src/arch/rmp/db_u.rs 53 0
 spec-wide rename source/verismo/src/arch/rmp/db_u.rs 53 0
 fail fail source/verismo/src/tspec_e/array/sort.rs 9 1
 fix fix source/verismo/src/tspec_e/array/sort.rs 9 0
@@ -351,7 +354,10 @@ verus_cmd() { # MODE EXTRA_VERUS_ARGS...
   [ "$partial" = 1 ] && sub=focus
   case "$mode" in
     plain | fork-plain) cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
-    sail | fork-sail) sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    sail) sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    # Sail never searches PATH for Verus (ADR 0043); the development
+    # override is the only way to run another build under Sail.
+    fork-sail) SAIL_CARGO_VERUS="$fork/cargo-verus" sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     incremental) sail verify --incremental ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
   esac
 }
