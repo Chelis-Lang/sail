@@ -18,6 +18,8 @@ without following their targets. Every part retains the directory inventory.
 The final image build compares every installed path's type, file bytes, mode,
 owner, group, symlink target and internal hardlink topology with the validated
 installation's inventory. The partition helper is an image-tag input.
+The image tag also binds `.dockerignore`, whose explicit allowlist includes
+every context `COPY` input; local controls check both properties.
 
 Filesystem and independent tar-layer replay controls pass on macOS, including
 empty directories, executable/read-only modes, internal hardlinks, equal but
@@ -26,13 +28,42 @@ aliased roots and special files are refused. These controls do not qualify
 Docker COPY behavior, actual Linux runtime identity or startup performance.
 The earlier accepted records below do not qualify this new candidate.
 
-Remaining gates are an actual native image build and complete runtime/toolchain
-inventory comparison with the current image, native workspace/solver/all e2e
-phases plus extra/PR conformance, and multiple complete actual CI pull cohorts.
+| Failed attempt | Scope and result |
+|---|---|
+| `8b99f0c8`, 2026-10-16 | Native x86-64 EC2 c7i.4xlarge, us-east-1: candidate image build failed before parity or gates because `.dockerignore` excluded the new partition helper. Baseline images built; no candidate correctness or timing acceptance. Final raw archive SHA-256 `703c9e5d5c78f7a5f759aa3fab413c42dc2b80cac0b15fe57b5fa620709ba073`. |
+
+The corrected candidate passed native image and correctness checks on source
+`87a222eb62e07bd0c55879292de990d10ff2f986`, based on `c89e29d3`.
+The record below qualifies those exact bytes; subsequent documentation updates
+do not extend its runtime or corpus scope.
+
+| Native check | Result |
+|---|---|
+| Environment | EC2 c7i.4xlarge, native x86-64 Linux, us-east-1; stock oracle `0.2026.10.04.426d8b0`, fork `73dea021`, pinned Z3 4.16.0 |
+| Actual image parity | All 5,029 installed entries agree in bytes, type, permissions, owner, group, symlink target and hardlink topology; package/tool versions and image execution settings agree. Inventories run without cache/toolchain mounts that could mask differences. |
+| Workspace gate | 644 tests pass, 35 solver tests skipped here; two doctests, lint, documentation, layering, dependency policy, links and generated benchmarks pass |
+| Solver | 35/35 pass |
+| End to end | All seven phases plus `extra` pass, including strict combined output, store reuse, build scripts and repair |
+| PR conformance | All four modes: 33/33 units and 311 functions match; zero differences, unstable results, infrastructure errors, skipped projects or rlimit drift |
+
+Candidate core image ID is
+`16fc8470e352f758c571287c747b5d28800f8459ceb068723fb91261bf6faed6`;
+the baseline core is
+`08bd13d88b0f1e3f0e7241e0ab220c11ba106d8dd9438742eeea0afce795bb82`.
+Both core inventories hash to
+`86a3853947b41fdce20b472bc8dbb4441d53dab86526f5befafcdf1aff0cc6de`;
+both complete MCP inventories hash to
+`45348574edc00aec20bbe2cd720bbb971566261279300de4ceb515c51a104a1b`.
+Final raw archive SHA-256 is
+`2ee4214c76511d469b00bbeee628b03fc40eae994c82c6963b21e4f4e1978e79`.
+
+Remaining gates are the required CI checks and multiple complete actual CI pull cohorts.
 Record each attempt's published manifest and every slow or failed sample;
 compare initialization, pull and check durations separately. More layers may
 add transfer/application overhead. Neither smaller compressed payload nor a
 latency improvement is established, and #195 remains open.
+
+Use Python 3.12 or later for these controls, as in the CI image:
 
 ```sh
 python3 ci/test-partition-verus.py

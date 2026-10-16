@@ -5,12 +5,45 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shlex
+import shutil
+import subprocess
 import tarfile
 import tempfile
 
 spec = importlib.util.spec_from_file_location("partition_verus", Path(__file__).with_name("partition-verus.py"))
 partitioner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(partitioner)
+
+repository = Path(__file__).resolve().parent.parent
+# This repository uses a literal allowlist, not arbitrary Dockerignore rules.
+# Check every context COPY input before spending a native image build on it.
+# Native Docker builds remain authoritative for actual context/COPY behavior.
+rules = [line.strip() for line in (repository / ".dockerignore").read_text().splitlines()
+         if line.strip() and not line.lstrip().startswith("#")]
+assert rules[0] == "*" and all(rule.startswith("!") and not any(
+    character in rule[1:] for character in "*?[]") for rule in rules[1:]), "context policy needs explicit review"
+allowed = {rule[1:] for rule in rules[1:]}
+context_inputs = set()
+for line in (repository / "ci/Dockerfile").read_text().splitlines():
+    if line.startswith("COPY "):
+        fields = shlex.split(line)[1:]
+        if fields[0].startswith("--from="):
+            continue
+        assert not fields[0].startswith("--"), "new COPY syntax needs explicit context review"
+        context_inputs.update(fields[:-1])
+assert context_inputs <= allowed, "Docker context excludes COPY inputs: " + repr(sorted(context_inputs - allowed))
+assert all((repository / name).is_file() for name in context_inputs), "missing Docker context input"
+with tempfile.TemporaryDirectory(prefix="sail-image-tag-") as tag_temporary:
+    copy = Path(tag_temporary)
+    for name in context_inputs | {".dockerignore", "ci/Dockerfile", "ci/image-tag.sh"}:
+        (copy / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(repository / name, copy / name)
+    tag_before = subprocess.check_output(["bash", "ci/image-tag.sh"], cwd=copy)
+    with (copy / ".dockerignore").open("a") as stream:
+        stream.write("\n# Independent context-hash regression control\n")
+    tag_after = subprocess.check_output(["bash", "ci/image-tag.sh"], cwd=copy)
+    assert tag_before != tag_after, "image tag failed to bind Docker context policy"
 
 with tempfile.TemporaryDirectory(prefix="sail-verus-layers-") as temporary:
     root = Path(temporary)

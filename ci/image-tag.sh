@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 inputs = (
-    "ci/Dockerfile", "ci/fetch-verus.py", "ci/partition-verus.py", "ci/engine-artifact.py",
+    ".dockerignore", "ci/Dockerfile", "ci/fetch-verus.py", "ci/partition-verus.py", "ci/engine-artifact.py",
     "engine/verus/artifact-linux.json", "engine/verus/fork.toml",
     "engine/verus/Cargo.lock", "rust-toolchain.toml", "corpus/toolchain.toml",
 )
