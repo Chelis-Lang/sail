@@ -31,6 +31,8 @@
 #   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK: first on
 #                PATH, and for fork-sail also as SAIL_CARGO_VERUS (Sail does not
 #                search PATH, ADR 0043)
+#   fork-shim    cargo verus verify/focus with sail-z3 and its cache daemon,
+#                using SAIL_PERF_FORK; measures the shim, not managed Sail CLI
 # Every run passes `--time-expanded` to Verus. Sail runs record the daemon's
 # counters (`sail status --json`) before and after, and the shim's per-session
 # provenance (SAIL_PROVENANCE_DIR: replies served, solver started).
@@ -46,6 +48,9 @@
 #   SAIL_PERF_MODES    modes for `run`
 #   SAIL_PERF_FORK     directory holding a fork build's cargo-verus, verus and z3
 #                      (fork-* modes; for `det`, every run uses it)
+#   SAIL_PERF_VERUS_BUILD  Sail's Verus for the Sail modes, passed as
+#                      SAIL_VERUS_BUILD (each Sail run has its own empty cache,
+#                      so Sail cannot find a runtime installed in ~/.cache/sail)
 #   SAIL_PERF_EDITS    edits to run (default: all of the project's)
 #   SAIL_PERF_CATALOGUE  incidental: frozen comment/blank/helper/rename edits
 #   SAIL_PERF_BASELINE directory holding the old fork for `sail` mode only;
@@ -58,7 +63,7 @@
 set -euo pipefail
 
 cmd="${1:-}"
-case "$cmd" in run | det | report) ;; *) sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
+case "$cmd" in run | det | report) ;; *) sed -n '2,/^set -euo pipefail/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 2 ;; esac
 shift
 here="$(cd "$(dirname "$0")" && pwd)"
 sail_root="$(cd "$here/.." && pwd)"
@@ -213,6 +218,22 @@ if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ] && [ "$cmd" = run ] \
     && { [ -z "$baseline" ] || [ -z "$fork" ]; }; then
   echo "incidental timing requires explicit SAIL_PERF_BASELINE and SAIL_PERF_FORK runtimes" >&2
   exit 2
+fi
+
+if [ "$cmd" = run ]; then
+  modes=(${SAIL_PERF_MODES:-plain sail})
+  if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
+    modes=(${SAIL_PERF_MODES:-plain sail fork-sail})
+  fi
+  for mode in "${modes[@]}"; do
+    case "$mode" in
+      plain | sail | incremental | fork-plain | fork-sail | fork-shim) ;;
+      *) echo "unknown performance mode: $mode" >&2; exit 2 ;;
+    esac
+    case "$mode" in
+      fork-*) [ -n "$fork" ] || { echo "$mode requires SAIL_PERF_FORK" >&2; exit 2; } ;;
+    esac
+  done
 fi
 
 now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
@@ -381,13 +402,21 @@ reset_files() { # DIR: every edited file back to pristine
 # --- Running -----------------------------------------------------------------
 
 partial=0
-for a in ${vargs[@]+"${vargs[@]}"}; do case "$a" in --verify-module | --verify-function) partial=1 ;; esac; done
+for a in ${vargs[@]+"${vargs[@]}"}; do
+  case "$a" in
+    --verify-module | --verify-module=* | --verify-only-module | --verify-only-module=* | \
+    --verify-function | --verify-function=* | --verify-root) partial=1 ;;
+  esac
+done
 
 verus_cmd() { # MODE EXTRA_VERUS_ARGS...
   local mode="$1"; shift
   local sub=verify
   [ "$partial" = 1 ] && sub=focus
   case "$mode" in
+    fork-shim)
+      VERUS_Z3_PATH="$(command -v sail-z3)" SAIL_Z3_PATH="$fork/z3" \
+        cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     plain | fork-plain) cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     sail)
       if [ -n "$baseline" ]; then
@@ -399,6 +428,7 @@ verus_cmd() { # MODE EXTRA_VERUS_ARGS...
     # override is the only way to run another build under Sail.
     fork-sail) SAIL_CARGO_VERUS="$fork/cargo-verus" sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     incremental) sail verify --incremental ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    *) echo "unknown performance mode: $mode" >&2; return 2 ;;
   esac
 }
 
@@ -444,7 +474,8 @@ run_one() { # ROUND MODE DIR PHASE
     load1=$(uptime | sed 's/.*load average[s]*: //; s/,.*//')
   fi
   t0=$(now)
-  (cd "$dir/$pkg" && PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$prov" verus_cmd "$mode" --time-expanded) >"$log" 2>&1 || code=$?
+  (cd "$dir/$pkg" && if [ -n "${SAIL_PERF_VERUS_BUILD:-}" ]; then export SAIL_VERUS_BUILD="$SAIL_PERF_VERUS_BUILD"; fi &&
+    PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$prov" verus_cmd "$mode" --time-expanded) >"$log" 2>&1 || code=$?
   t1=$(now)
   s1=$(stats)
   local sessions started served
@@ -466,12 +497,35 @@ run_one() { # ROUND MODE DIR PHASE
   fi
 }
 
+shim_pid=""
+cleanup_shim() {
+  if [ -n "$shim_pid" ]; then
+    kill "$shim_pid" 2>/dev/null || true
+    wait "$shim_pid" 2>/dev/null || true
+    shim_pid=""
+  fi
+}
+trap cleanup_shim EXIT
+
 run_mode() { # ROUND MODE
   local round="$1" mode="$2" dir="$out/r$1/$2-proj" cache="$out/r$1/c-$2" i
   rm -rf "$cache"; mkdir -p "$cache"
   fresh_copy "$dir"
   reset_files "$dir"
   export SAIL_CACHE_DIR="$cache"
+  if [ "$mode" = fork-shim ]; then
+    [ -n "$fork" ] && [ -x "$fork/z3" ] || { echo "fork-shim requires SAIL_PERF_FORK with z3" >&2; exit 2; }
+    export SAIL_DAEMON_SOCKET="$cache/d.sock"
+    sail serve --socket "$SAIL_DAEMON_SOCKET" >"$out/r$round/$mode.daemon.log" 2>&1 &
+    shim_pid=$!
+    local ready=0 attempt
+    for ((attempt = 0; attempt < 100; attempt++)); do
+      if sail status --json 2>/dev/null | jq -e '.running' >/dev/null; then ready=1; break; fi
+      kill -0 "$shim_pid" 2>/dev/null || break
+      sleep 0.05
+    done
+    [ "$ready" = 1 ] || { echo "fork-shim daemon did not start; see $out/r$round/$mode.daemon.log" >&2; exit 2; }
+  fi
   run_one "$round" "$mode" "$dir" cold
   for ((i = 1; i <= ${SAIL_PERF_NOOPS:-3}; i++)); do
     apply_op "$dir" noop "$noop_file" "$i"
@@ -486,7 +540,12 @@ run_mode() { # ROUND MODE
   apply_op "$dir" noop "$noop_file" end
   run_one "$round" "$mode" "$dir" noopend
   reset_files "$dir"
-  pkill -f -- "--socket $cache/" 2>/dev/null || true
+  if [ "$mode" = fork-shim ]; then
+    cleanup_shim
+    unset SAIL_DAEMON_SOCKET
+  else
+    pkill -f -- "--socket $cache/" 2>/dev/null || true
+  fi
   sleep 1
   unset SAIL_CACHE_DIR
   rm -rf "$dir"
@@ -567,17 +626,6 @@ if [ "$cmd" = det ]; then
 fi
 
 : >"$results"
-modes=(${SAIL_PERF_MODES:-plain sail})
-if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
-  modes=(${SAIL_PERF_MODES:-plain sail fork-sail})
-fi
-for mode in "${modes[@]}"; do
-  case "$mode" in
-    plain | sail | incremental) ;;
-    fork-plain | fork-sail) [ -n "$fork" ] || { echo "$mode requires SAIL_PERF_FORK" >&2; exit 2; } ;;
-    *) echo "unknown mode $mode" >&2; exit 2 ;;
-  esac
-done
 header | tee "$out/header.txt"
 echo "modes: ${modes[*]}; rounds: $count; edits: $(awk '{print $1}' "$out/selected-edits.txt" | tr '\n' ' ')" | tee -a "$out/header.txt"
 for ((r = 1; r <= count; r++)); do

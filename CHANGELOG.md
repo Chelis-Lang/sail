@@ -75,6 +75,14 @@ semantic versioning once the API is published.
   to an explicit `--target-dir`. A loader-variable run (`LD_LIBRARY_PATH` and
   the like) also reports `no_reuse`, with `verified_as` `managed`. Comparisons
   involving these results remain `incomparable`, including saved baselines.
+- Unselected frontend research includes an offline ordinary-AST difference
+  analyzer and a bounded capture plan. It preserves original fields and raw
+  byte failures; it does not enable frontend reuse or change the runtime.
+- The native read-only pruning research controller records cold and edited
+  compiler runs, restores pristine manifests/lockfiles between arms, and
+  fails on verification or exact SMT-stream differences. Its initial
+  Vest/IronKV comparison leaves the compiler candidate unselected; no default
+  runtime or verification behavior changes.
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);
@@ -102,6 +110,13 @@ semantic versioning once the API is published.
   `build.rs` 22.2 s → 2.1 s (plain: 0.8 s); the unchanged run after a
   profile change 22.1 s → 0.5 s; the first `-p a` run of the #121 workspace
   28.9 s → 1.3 s. Run currentness still binds every manifest and lockfile.
+- The real-project performance harness has an explicit `fork-shim` arm for
+  focused Cargo-Verus runs through Sail's solver shim and an owned daemon.
+  It does not claim managed CLI support for partial verification. The
+  frontend stage report counts failed samples and distinguishes missing
+  instrumentation from zero work. Unknown modes and fork modes without a
+  selected fork are refused before source preparation.
+
 - **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).
   Per-obligation detail (op kinds, spans, per-check answers and cache
   provenance, counterexample models) needs Verus's AIR and SMT transcript
