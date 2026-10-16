@@ -139,3 +139,21 @@ This is a packaging prototype, not an accepted speed claim. The
 [startup gate](../validation/ci-image-startup.md) requires native image/gate
 parity and actual cold GitHub job startup/check timings, with failed attempts
 retained. Compressed-byte reduction alone cannot establish a startup gain.
+
+## Candidate 2026-10-16: partition the stock installation layers
+
+The accepted core/MCP split reduces compressed bytes but has not resolved
+the slow pull tail. Its largest stock layer is approximately 492 MB compressed.
+A subsequent packaging candidate installs and validates the same pinned
+archive in a temporary stage, then partitions its complete file tree into four
+deterministic COPY layers. Each internal hardlink group stays together;
+independent paths are never deduplicated because their hashes happen to match.
+Directories, file bytes/modes/owners/groups and symlink targets are preserved.
+A complete inventory comparison in the final image must succeed before it
+can be used. The helper is an image-tag input, shared by both packaging targets.
+
+This candidate is unqualified. Logical file weights guide partitioning but do
+not predict compressed layer sizes or pull latency. Native final-image and
+toolchain parity, the existing full gates, and repeated actual CI pull cohorts
+are required by the [startup record](../validation/ci-image-startup.md).
+No runtime, toolchain, check, timeout or oracle is removed or changed.

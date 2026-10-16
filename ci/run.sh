@@ -128,6 +128,7 @@ case "$step" in
     bash ci/test-completion.sh
     # The image's engine installer: corrupt or stale runtimes never install.
     python3 ci/test-engine-artifact.py
+    python3 ci/test-partition-verus.py
     python3 scripts/check-links.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings

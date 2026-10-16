@@ -4,7 +4,7 @@
 # toolchain/runtime; mcp adds the real smoke-test client. Only the managed/full
 # e2e phases need that client. `ci/local.sh` selects the same target as CI.
 # Both tags bind every input (ci/image-tag.sh).
-FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55 AS core
+FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55 AS toolchains
 
 ENV DEBIAN_FRONTEND=noninteractive
 # build-essential/pkg-config/libssl-dev/cmake/ninja: corpus build
@@ -45,8 +45,24 @@ RUN set -eu; cd /tmp \
  && cargo nextest --version && cargo deny --version
 
 # The pinned Verus release, checked by SHA-256 (archive and bundled z3).
+FROM toolchains AS verus-install
 COPY ci/fetch-verus.py /tmp/
-RUN python3 /tmp/fetch-verus.py /tmp/pins/toolchain.toml /opt/verus
+COPY ci/partition-verus.py /tmp/
+RUN python3 /tmp/fetch-verus.py /tmp/pins/toolchain.toml /opt/verus \
+ && python3 /tmp/partition-verus.py partition /opt/verus /tmp/verus-layers --parts 4 \
+ && rm -rf /opt/verus
+
+# Keep the complete oracle, spread across four independent transfer layers.
+# Every path, byte, mode, owner and internal hardlink group is checked below.
+# A smaller largest blob is a packaging experiment, not a latency guarantee.
+FROM toolchains AS core
+COPY --from=verus-install /tmp/verus-layers/0/ /opt/verus/
+COPY --from=verus-install /tmp/verus-layers/1/ /opt/verus/
+COPY --from=verus-install /tmp/verus-layers/2/ /opt/verus/
+COPY --from=verus-install /tmp/verus-layers/3/ /opt/verus/
+COPY --from=verus-install /tmp/verus-layers/manifest.json /tmp/verus-layer-manifest.json
+COPY ci/partition-verus.py /tmp/
+RUN python3 -c 'import json,runpy; p=runpy.run_path("/tmp/partition-verus.py"); expected=json.load(open("/tmp/verus-layer-manifest.json"))["files"]; actual=p["inventory"]("/opt/verus"); assert actual == expected, "partitioned oracle installation changed"'
 ENV SAIL_VERUS_HOME=/opt/verus \
     SAIL_TEST_Z3=/opt/verus/verus-x86-linux/z3 \
     PATH=/opt/verus/verus-x86-linux:/opt/cargo/bin:$PATH
