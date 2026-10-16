@@ -138,27 +138,17 @@ const WALL: [&str; 3] = [":time", ":memory", ":max-memory"];
 
 /// A reply with the wall-clock and memory figures of statistics masked.
 fn mask(reply: &[u8]) -> Vec<u8> {
-    let text = String::from_utf8_lossy(reply);
-    if !text.trim_start().starts_with("(:") {
+    // Statistics compare as key/value maps without the masked keys: Z3
+    // prints `:time` only when it rounds to non-zero, so even its presence
+    // depends on the wall clock. Other replies compare byte for byte.
+    let Some(map) = stats(reply) else {
         return reply.to_vec();
+    };
+    let mut out = String::from("(stats");
+    for (k, v) in map.iter().filter(|(k, _)| !MASKED.contains(&k.as_str())) {
+        let _ = write!(out, " {k} {v}");
     }
-    let mut out = String::with_capacity(text.len());
-    for line in text.split_inclusive('\n') {
-        let body = line.trim_start_matches(['(', ' ']);
-        let key = body.split_whitespace().next().unwrap_or_default();
-        if MASKED.contains(&key) {
-            let close = if line.trim_end().ends_with(')') {
-                ")"
-            } else {
-                ""
-            };
-            let nl = if line.ends_with('\n') { "\n" } else { "" };
-            let lead = &line[..line.len() - body.len()];
-            let _ = write!(out, "{lead}{key} X{close}{nl}");
-        } else {
-            out.push_str(line);
-        }
-    }
+    out.push(')');
     out.into_bytes()
 }
 
@@ -660,6 +650,8 @@ mod tests {
         let a = b"(:memory 1.5\n :rlimit-count 7\n :time 0.01)\n";
         let b = b"(:memory 2.5\n :rlimit-count 7\n :time 0.02)\n";
         assert_eq!(mask(a), mask(b));
+        // `:time` is absent when it rounds to zero.
+        assert_eq!(mask(a), mask(b"(:memory 2.5\n :rlimit-count 7)\n"));
         let c = b"(:memory 2.5\n :rlimit-count 8\n :time 0.02)\n";
         assert_ne!(mask(a), mask(c));
     }
