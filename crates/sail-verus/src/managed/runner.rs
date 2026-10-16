@@ -1290,7 +1290,7 @@ fn target_records(
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: call.run_id.clone(),
+                establishing_run: call.establishing_run(),
                 reused: false,
                 requested,
                 complete: call.success && complete(&call.report),
@@ -1373,15 +1373,15 @@ fn target_records(
                 })
         } {
             event(
-                &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.run_id}),
+                &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.establishing_run()}),
             );
             results.push(TargetResult {
                 dependency_store: store_key,
-                shipped: None,
+                shipped: receipt.invocation.shipped.clone(),
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: receipt.invocation.run_id,
+                establishing_run: receipt.invocation.establishing_run(),
                 reused: true,
                 requested,
                 complete: true,
@@ -1394,7 +1394,7 @@ fn target_records(
     // A failing compiler may not emit an artifact; preserve its observed target report.
     for call in calls {
         if !results.iter().any(|r| {
-            r.establishing_run == call.run_id
+            r.establishing_run == call.establishing_run()
                 && r.target.replace('-', "_") == call.identity.name
                 && r.kind.iter().any(|k| {
                     k == &call.identity.crate_type
@@ -1414,16 +1414,17 @@ fn target_records(
                             || (kind == "lib" && call.identity.crate_type == "rlib"))
                 })
             });
+            let establishing_run = call.establishing_run();
             results.push(TargetResult {
                 dependency_store: None,
-                shipped: None,
+                shipped: call.shipped.clone(),
                 package_id: package
                     .and_then(|p| p["id"].as_str())
                     .unwrap_or_default()
                     .to_owned(),
                 target: call.identity.name,
                 kind: vec![call.identity.crate_type],
-                establishing_run: call.run_id,
+                establishing_run,
                 reused: false,
                 requested,
                 complete: call.success && complete(&call.report),
@@ -2365,7 +2366,7 @@ pub(crate) fn run_engine_held(
         for target in result.targets.iter().filter(|t| t.reused) {
             let Some(seed) = seeded.iter().find(|s| {
                 s.receipt.package_id == target.package_id
-                    && s.receipt.invocation.run_id == target.establishing_run
+                    && s.receipt.invocation.establishing_run() == target.establishing_run
             }) else {
                 continue;
             };
@@ -3639,6 +3640,91 @@ mod tests {
             assert_eq!(targets, Vec::<TargetResult>::new());
             assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
         }
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn shipped_proof_origin_survives_receipt_and_store_reuse()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-shipped-origin-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
+        let data = serde_json::json!({"workspace_root":root,
+            "sail_cache_directory":config.cache, "target_directory":paths.target,
+            "workspace_members":[], "resolve":{"nodes":[{"id":"input","dependencies":[]}]},
+            "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
+                "source":"registry+https://github.com/rust-lang/crates.io-index",
+                "metadata":{"verus":{"verify":true}},
+                "targets":[{"name":"input","kind":["lib"],"src_path":root.join("lib.rs")}]}]});
+        std::fs::create_dir_all(&paths.target)?;
+        let artifact = paths.target.join("input.rlib");
+        std::fs::write(&artifact, "shipped artifact")?;
+        let artifact_record = |fresh| {
+            serde_json::json!({
+                "reason":"compiler-artifact", "package_id":"input", "fresh":fresh,
+                "target":{"name":"input","kind":["lib"]}, "filenames":[artifact]
+            })
+        };
+        json(&paths.run.join("artifacts.jsonl"), &artifact_record(false))?;
+        let mut call = compiler_receipt(&paths, &data, &artifact).invocation;
+        call.shipped = Some("build/entry".to_owned());
+        let invocation = paths.run.join("invocations/call.json");
+        json(&invocation, &call)?;
+        let empty = BTreeSet::new();
+        let (first, missing) = target_records(&paths, &data, "selected", false, &empty, &[])?;
+        assert_eq!(missing, BTreeSet::<String>::new());
+        assert_eq!(first.len(), 1);
+        assert!(!first[0].reused);
+        assert_eq!(first[0].establishing_run, "shipped:build/entry");
+        assert_eq!(first[0].shipped.as_deref(), Some("build/entry"));
+        super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+        std::fs::remove_file(invocation)?;
+        json(&paths.run.join("artifacts.jsonl"), &artifact_record(true))?;
+        let (reused, missing) = target_records(&paths, &data, "selected", false, &empty, &[])?;
+        assert_eq!(missing, BTreeSet::<String>::new());
+        assert_eq!(reused.len(), 1);
+        assert!(reused[0].reused);
+        assert_eq!(reused[0].establishing_run, first[0].establishing_run);
+        assert_eq!(reused[0].shipped, first[0].shipped);
+        let path = receipt_path(&paths, "input", "input", &["lib".to_owned()]);
+        let receipt: Receipt = read(&path).ok_or("missing receipt")?;
+        assert_eq!(receipt.invocation.run_id, "run");
+        assert!(receipt.valid("selected"));
+        std::fs::remove_file(&path)?;
+        let seeds = [super::super::store::Seeded {
+            key: "store-key".into(),
+            receipt,
+            placed: true,
+        }];
+        let (stored, missing) = target_records(&paths, &data, "other", false, &empty, &seeds)?;
+        assert_eq!(missing, BTreeSet::<String>::new());
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].dependency_store.as_deref(), Some("store-key"));
+        assert_eq!(stored[0].establishing_run, first[0].establishing_run);
+        assert_eq!(stored[0].shipped, first[0].shipped);
+        assert_eq!(
+            seeds[0].receipt.invocation.establishing_run(),
+            stored[0].establishing_run
+        );
+        super::super::receipts::adopt(
+            &paths.run,
+            &paths.receipts,
+            path.file_name().ok_or("receipt name")?,
+            "other",
+            target_revision(&data, "input"),
+            seeds[0].receipt.clone(),
+        )?;
+        let (adopted, _) = target_records(&paths, &data, "other", false, &empty, &[])?;
+        assert_eq!(adopted.len(), 1);
+        assert_eq!(adopted[0].establishing_run, first[0].establishing_run);
+        assert_eq!(adopted[0].shipped, first[0].shipped);
         drop(ownership);
         std::fs::remove_dir_all(root)?;
         Ok(())

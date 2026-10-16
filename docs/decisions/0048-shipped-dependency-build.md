@@ -81,8 +81,8 @@
    Cargo home, compiled with the remapping above by the archive's own
    runtime. An entry holds the outputs, the dep-info and stdout and stderr
    with the target and registry directories and the package's Cargo-Verus id
-   as placeholders, the digests of every source file the dep-info names, and
-   the declared variables. The release refuses an invocation that printed
+   as placeholders, the digests of every source file the dep-info names and
+   the package's Cargo.toml, and the declared variables. The release refuses an invocation that printed
    anything but artifact notices, failed, or whose outputs (other than the
    dep-info, and a dynamic library's install name) still name the registry or
    target directory, and fails unless vstd itself was recorded and a second
@@ -95,34 +95,33 @@
    Cargo variables, `RUST*` and `VERUS_*` except paths and crash settings
    and `RUSTUP_*` (rustup's proxies set `RUSTUP_TOOLCHAIN` to the user's own
    default; the Verus launcher runs its driver with its pinned toolchain),
-   Cargo-Verus's variables for this package, `VSTD_KIND` and Sail's solver
-   mode; Apple's `SDKROOT` and `MACOSX_DEPLOYMENT_TARGET` only change how the
-   closure's proc macros and build scripts are linked, not what they compute,
-   and Python sets `SDKROOT` for every process it starts), with the target and registry
+   Cargo-Verus's variables for this package, `VSTD_KIND`, Sail's solver mode,
+   `SDKROOT` and `MACOSX_DEPLOYMENT_TARGET`), with the target and registry
    directories and the package id replaced by placeholders, and the SHA-256
-   of every `--extern` crate and its `.vir`. Rendering flags (`--color`,
-   `--diagnostic-width`, ANSI rendering) are left out: an entry exists only
-   for an invocation that printed no diagnostic. So are lint levels and
-   expected `cfg`s (`--allow`, `-W`, `--check-cfg`, ...) of an invocation with
-   `--cap-lints allow`, which Cargo passes for every registry package: capped
-   lints print nothing, and Cargo 1.98 and 1.99 pass a package's `[lints]`
-   table differently. A dependency compiled on the
+   of every `--extern` crate and its `.vir` (both split and attached argument
+   forms). Every compiler option remains in the key, including rendering,
+   lint levels and expected `cfg`s: malformed options can emit errors, and
+   `--force-warn` bypasses Cargo's lint cap. Different Cargo versions that
+   emit different arguments safely miss. A dependency compiled on the
    machine has other bytes, so every dependent is another key: shipped and
    local units never mix inconsistently.
 5. **Serving.** Only on a managed run that creates its Cargo target
    (unfocused; no loader variables; no registry or target directory with
    whitespace, `:`, `#`, `"`, `\` or `verus_builtin`), the proxy looks up each
    registry invocation. Before anything is copied, every recorded source must
-   have its recorded digest on this machine and every declared variable its
-   recorded value; otherwise it compiles as usual (a silent miss, as plain
+   have its recorded digest on this machine and resolve to the same relative
+   canonical filename (interior source symlinks miss), and every declared
+   variable its recorded value; otherwise it compiles as usual (a silent miss, as plain
    Cargo prints nothing when it rebuilds). Files are copied with their digests
    checked, under temporary names, and renamed; the dep-info, stdout and
    stderr get this machine's directories. A damaged entry (unreadable, or a
    stored file's digest fails) prints `warning[SAIL3133]` and compiles as
    usual. For the verified unit (vstd) the replayed stdout is the verifier's
    recorded document, which becomes the target's report as for a fresh run,
-   with `shipped` set to `<identity>/<key>`, the note `SAIL3132`, and
-   attribution not recorded. The engine never replays.
+   with `shipped` set to `<identity>/<key>`, `establishing_run` set to the
+   nonlocal origin `shipped:<identity>/<key>`, the note `SAIL3132`, and
+   attribution not recorded. Later receipt and local-store reuse preserve
+   that origin; local invocation ids still bind receipt publication. The engine never replays.
 6. **`sail new`** writes the shipped `Cargo.lock` (root package renamed) when
    the release has a shipped build, so a new project resolves vstd's closure
    as the shipped build did instead of to whatever crates.io holds later.
@@ -164,8 +163,10 @@
   dependency store.
 - Keys bind Cargo's arguments, so a Cargo that passes vstd's closure other
   arguments (another `-C metadata` scheme, or new flags) than the release's
-  misses; Cargo 1.98.1 and 1.99.1 both hit. A user's `RUSTFLAGS` or profile
-  settings for dependencies miss too, as they change the build.
+  misses. Cargo 1.98.1 and 1.99.1 pass registry-package lint tables
+  differently, so their builds may not share entries. A user's `RUSTFLAGS`,
+  SDK or deployment-target overrides, or profile settings for dependencies
+  can miss too, as they change the build inputs.
 - Archives grow by the shipped build (sizes in the validation record).
 - A Verus or toolchain upgrade re-records the build at release time; there
   is nothing to migrate.

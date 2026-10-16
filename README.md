@@ -126,8 +126,8 @@ It builds in its own Cargo target under
 the Sail cache and never touches your `target/`. Release archives ship
 `vstd` compiled and verified by Sail's own Verus, so even the first run on a
 fresh machine (a CI runner, container or sandbox) verifies only your crates
-when the project resolves vstd's dependencies as the shipped build did,
-which a `sail new` project does
+when the project resolves vstd's dependencies as the shipped build did
+(which `sail new` ensures), and Cargo passes the same compiler arguments
 ([ADR 0048](docs/decisions/0048-shipped-dependency-build.md)). Otherwise the
 first run compiles the dependencies and verifies `vstd`, about half a
 minute, and later new projects and worktrees that resolve the same `vstd`
@@ -239,8 +239,9 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
 - **vstd is verified once unless the release shipped it.** A project
   whose `Cargo.lock` resolves vstd's dependencies differently from the
   release's shipped build (an older or newer `syn`, say), or that sets
-  `RUSTFLAGS` or other compiler settings, verifies vstd on its first run,
-  about 30 s. Later new projects and worktrees reuse it only when they
+  `RUSTFLAGS`, SDK overrides or other compiler settings, verifies vstd on
+  its first run. A different Cargo version can also miss when it emits
+  different flags. A cold verification takes about 30 s. Later new projects and worktrees reuse it only when they
   resolve the same vstd
   (version, features, its dependencies' versions in `Cargo.lock`, profile,
   arguments) with the same Sail and toolchain; anything else verifies vstd

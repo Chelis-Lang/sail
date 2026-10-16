@@ -142,6 +142,15 @@ distinguishes the selected Cargo scope from dependency reports. Embedded diagnos
 timing and solver provenance fields describe that establishing run. The outer
 execution counters describe the current Cargo request; historical timings are
 never counted as fresh verification work.
+A dependency proved during release construction carries `shipped` as
+`<build identity>/<entry key>` and `establishing_run` as
+`shipped:<build identity>/<entry key>`. This nonlocal namespace identifies
+the original proof, not the local replay invocation or a locally readable
+run directory. Both fields survive subsequent receipt and dependency-store
+reuse. Its attribution is unavailable with an explicit shipped-build note;
+no verifier process is counted for a replayed dependency. The optional
+`dependency_store` field identifies the store entry copied by this request,
+independently of where its proof originated.
 An explicitly selected source engine adds an optional top-level `engine` object
 (`name`, `manifest_sha256`), and each embedded report
 records whether the engine or its stock fallback established it (see

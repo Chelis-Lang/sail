@@ -16,13 +16,14 @@ stdout and stderr without Cargo's progress lines (and without Sail's one
 SAIL3133 warning).
 
 1. new: a new library project; vstd must be served (the run's `shipped`).
-2. other-home: the same under a Cargo home with a longer path and another
-   default Rust toolchain (`RUSTUP_TOOLCHAIN`).
-3. package-dir: a package of a two-member workspace, run from the package's
+2. other-home: the same under a Cargo home with a longer path.
+3. other-cargo: another default Rust toolchain (`RUSTUP_TOOLCHAIN`);
+   a different Cargo argument set may safely miss, but output must match.
+4. package-dir: a package of a two-member workspace, run from the package's
    directory.
-4. rerun: case 1 again; vstd is reused and no verifier runs for it.
-5. mismatch: vstd with other features is another key: verified, no warning.
-6. corrupt: a copy of the release whose stored vstd metadata is damaged
+5. rerun: case 1 again; vstd is reused and no verifier runs for it.
+6. mismatch: vstd with other features is another key: verified, no warning.
+7. corrupt: a copy of the release whose stored vstd metadata is damaged
    prints warning[SAIL3133] and verifies vstd.
 
 Timings are printed with the load average. Exit status 0 means every check
@@ -84,8 +85,10 @@ def environment(work, name, release):
                           "a-considerably-longer-cargo-home-directory-name/nested")
     env = dict(os.environ, CARGO_HOME=str(home), SAIL_CACHE_DIR=str(work / name / "cache"),
                SAIL_DEPENDENCY_STORE_ENTRIES="0")
+    # Apple may set SDKROOT when launching Python. Test the default user
+    # environment explicitly; SDK/linker overrides are bound and may miss.
     for variable in ("CARGO_TARGET_DIR", "SAIL_VERUS_BUILD", "SAIL_SHIPPED_DEPS",
-                     "SAIL_SHIPPED_RECORD"):
+                     "SAIL_SHIPPED_RECORD", "SDKROOT", "MACOSX_DEPLOYMENT_TARGET"):
         env.pop(variable, None)
     home.mkdir(parents=True, exist_ok=True)
     return env
@@ -127,6 +130,10 @@ def compare(label, sail, stock, path, env, out, expect_shipped, expect_warning=F
         "verifier_invocations": document.get("execution", {}).get("verifier_invocations"),
         "vstd_shipped": bool(vstd and vstd[0].get("shipped")),
         "vstd_reused": bool(vstd and vstd[0].get("reused")),
+        "vstd_establishing_run": vstd[0].get("establishing_run") if vstd else None,
+        "dependency_store": vstd[0].get("dependency_store") if vstd else None,
+        "shipped_origin_valid": not (vstd and vstd[0].get("shipped")) or
+            vstd[0].get("establishing_run") == "shipped:" + vstd[0]["shipped"],
         "warned": b"warning[SAIL3133]" in done.stderr,
         "exit_identical": done.returncode == plain.returncode,
         "stdout_identical": done.stdout == plain.stdout,
@@ -138,7 +145,8 @@ def compare(label, sail, stock, path, env, out, expect_shipped, expect_warning=F
         (out / f"{label}.{name}").write_bytes(data)
     print(json.dumps(row), flush=True)
     failures = []
-    for check in ("exit_identical", "stdout_identical", "stderr_identical", "vstd_diagnostic"):
+    for check in ("exit_identical", "stdout_identical", "stderr_identical", "vstd_diagnostic",
+                  "shipped_origin_valid"):
         if not row[check]:
             failures.append(f"{label}: {check} is false")
     if expect_shipped is not None and row["vstd_shipped"] != expect_shipped:
@@ -169,11 +177,17 @@ def main():
             failures.append("new: sail new wrote no Cargo.lock from the shipped build")
         failures += compare("new", sail, stock, project, env, out, True)[1]
 
-        # Another default toolchain too: rustup's proxies pass the user's
-        # default as RUSTUP_TOOLCHAIN, which the Verus launcher overrides.
-        env2 = dict(environment(work, "other-home", release), RUSTUP_TOOLCHAIN="1.98.1")
+        env2 = environment(work, "other-home", release)
         other = new_project(sail, work / "other-home", "proj", env2)
         failures += compare("other-home", sail, stock, other, env2, out, True)[1]
+
+        # The launcher fixes the compiler toolchain, but Cargo may emit
+        # different flags for the same package. Keep those flags keyed and
+        # require diagnostic identity whether this version hits or misses.
+        another_env = dict(environment(work, "other-cargo", release),
+                           RUSTUP_TOOLCHAIN="1.98.1")
+        another = new_project(sail, work / "other-cargo", "proj", another_env)
+        failures += compare("other-cargo", sail, stock, another, another_env, out, None)[1]
 
         env3 = environment(work, "package-dir", release)
         workspace = work / "package-dir" / "ws"
@@ -185,10 +199,26 @@ def main():
             '[workspace]\nmembers = ["pkg", "other"]\nresolver = "2"\n')
         failures += compare("package-dir", sail, stock, package, env3, out, True)[1]
 
-        row, more = compare("rerun", sail, stock, project, env, out, False)
+        row, more = compare("rerun", sail, stock, project, env, out, True)
         failures += more
         if not row["vstd_reused"] or row["verifier_invocations"] != 1:
             failures.append("rerun: vstd was not reused, or a verifier ran for it")
+
+        # A shipped proof keeps its nonlocal origin when copied through the
+        # machine-local dependency store into another project's new target.
+        store_env = dict(environment(work, "store", release), SAIL_DEPENDENCY_STORE_ENTRIES="4")
+        store_rows = []
+        for label in ("store-first", "store-copy"):
+            parent = work / "store" / label
+            parent.mkdir(parents=True)
+            stored_project = new_project(sail, parent, "proj", store_env)
+            store_row, more = compare(label, sail, stock, stored_project, store_env, out, True)
+            failures += more
+            store_rows.append(store_row)
+        if not store_rows[1]["dependency_store"] or not store_rows[1]["vstd_reused"]:
+            failures.append("store-copy: vstd was not reused from the dependency store")
+        if store_rows[0]["vstd_establishing_run"] != store_rows[1]["vstd_establishing_run"]:
+            failures.append("store-copy: shipped proof origin changed")
 
         env5 = environment(work, "mismatch", release)
         mismatch = new_project(

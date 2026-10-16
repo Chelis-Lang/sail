@@ -6,14 +6,34 @@ the first managed run on a fresh machine replays them.
 
 | Field | Value |
 |---|---|
-| Status | **Pass** on the measured scope: first runs on fresh machines replay vstd and match plain stock Verus in exit code, stdout and stderr (without Cargo progress lines), with diagnostics that point into each machine's own Cargo home; mismatched and damaged entries fall back to a normal verification. **Not yet shippable:** the fork commit's runtimes are not published or pinned (gates below) |
+| Status | **Prior candidate passed** on the measured scope: first runs on fresh machines replay vstd and match plain stock Verus in exit code, stdout and stderr (without Cargo progress lines), with diagnostics that point into each machine's own Cargo home; mismatched and damaged entries fall back to a normal verification. **Current hardening awaits staged revalidation. Not yet shippable:** the fork commit's runtimes are not published or pinned (gates below) |
 | Source | Sail `feat/shipped-vstd` (lane M11-3); Sail's Verus from fork commit `b4450da9` (branch `m11-3/shipped-vstd`, fork PR #4), built locally with `cargo xtask build-verus-engine` on each platform |
 | Oracle | stock release `0.2026.10.04.426d8b0`; Z3 4.16.0 |
 | Environment | Linux: native EC2 c7i.4xlarge (16 vCPU, Xeon 8488C), us-east-1, Ubuntu 24.04, outside the CI image, load average 2–4; default toolchain 1.99.1 (Cargo 1.99.1). macOS: Apple M3 (macOS 26.5) under other work, load average 15–31; default toolchain stable |
 | Scope | Staged release trees (`scripts/release.sh stage`) whose shipped build was recorded from a `sail new --lib` project with crates.io `vstd = "=0.0.0-2026-10-04-0306"`; checked projects made with `sail new` |
 | Limits | One vstd version and resolution. No idle macOS timing. The CI image still runs the pinned `73dea021` runtime, which cannot record a shipped build, so CI does not exercise serving yet |
 
-## Checks against plain stock Verus
+## Candidate hardening after takeover
+
+The current source retains every compiler argument in its key, including
+lint and rendering options: `--force-warn` bypasses `--cap-lints allow`,
+and invalid `--color`, `--diagnostic-width` and `--check-cfg` options emit
+errors. SDKROOT and MACOSX_DEPLOYMENT_TARGET are now bound, undecodable
+environment input misses, both --extern spellings bind library and VIR
+bytes, Cargo.toml is a recorded source, and redirected source filenames
+miss even when the bytes match. Every destination is checked before placing
+any output from an entry. Regression tests cover these boundaries.
+Public proof origin uses `shipped:<identity>/<key>` rather than the local
+replay run; it survives receipt, local-store and adopted-receipt reuse.
+
+The old broad lint equivalence and Apple link-variable exclusions below
+were removed; the cross-Cargo serving result is historical. The checker
+still requires serving at another Cargo home with matched compiler inputs,
+and compares exact output under another Cargo version whether it hits or
+misses. Current staged results will replace the historical table after the
+candidate build is checked.
+
+## Checks against plain stock Verus (prior candidate)
 
 `scripts/shipped-deps-check.py` (the method is in its docstring) gives every
 case an empty Sail cache and a new Cargo home at another path than the
@@ -91,3 +111,8 @@ the checks were then redone; serving costs the same).
   a package's `[lints]` table as `--allow=…` and `--check-cfg` flags, 1.99.1
   does not. Capped lint settings were removed from the key; both platforms
   then passed.
+
+- 2026-10-16, takeover, inherited Linux gate, solver, end-to-end and fast PR
+  conformance passed on the original candidate with runtime `73dea021`
+  (serving was not exercised by these gates); archive sha256
+  `b36db856a8148f4a77051ca7598d79223078f5b46c89693b7b4704606e45f2ea`.

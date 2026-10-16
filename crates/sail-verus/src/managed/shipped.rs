@@ -496,11 +496,14 @@ const RUST_UNBOUND: &[&str] = &[
 ];
 /// Single variables the compiler, the Verus driver or a dependency's macros
 /// read: `VSTD_KIND` (Verus's `builtin_macros`) and Sail's solver mode.
-/// Apple's `SDKROOT` and `MACOSX_DEPLOYMENT_TARGET` are not bound: rustc
-/// reads them only to link the closure's proc macros and build scripts, which
-/// compute the same output however they were linked (and Python sets
-/// `SDKROOT` for every process it starts on macOS).
-const NAMES: &[&str] = &["VSTD_KIND", "SAIL_SOLVER_MODE"];
+/// Apple's link settings remain bound too: an invalid SDK or deployment
+/// target may fail a compilation that succeeded during release recording.
+const NAMES: &[&str] = &[
+    "VSTD_KIND",
+    "SAIL_SOLVER_MODE",
+    "SDKROOT",
+    "MACOSX_DEPLOYMENT_TARGET",
+];
 const VERUS_OWN: &[&str] = &[
     " __VERUS_DRIVER_ARGS_FOR_",
     "__VERUS_DRIVER_VERIFY_",
@@ -579,6 +582,9 @@ fn keyed_arguments(
         let external = arg
             .strip_prefix("--extern=")
             .or_else(|| (text[index - 1] == "--extern").then_some(arg.as_str()));
+        if external.is_some_and(|external| !external.contains('=') && external != "proc_macro") {
+            return Err("an --extern lookup has no explicit artifact path".to_owned());
+        }
         if let Some(external) = external
             && let Some((_, path)) = external.split_once('=')
         {
@@ -645,9 +651,10 @@ impl<'a> Call<'a> {
         verifying: bool,
         vars: impl Iterator<Item = (OsString, OsString)>,
     ) -> Option<Self> {
+        // An undecodable input must miss, rather than masquerade as absent.
         let vars: BTreeMap<String, String> = vars
-            .filter_map(|(k, v)| Some((k.into_string().ok()?, v.into_string().ok()?)))
-            .collect();
+            .map(|(k, v)| Some((k.into_string().ok()?, v.into_string().ok()?)))
+            .collect::<Option<_>>()?;
         let manifest = PathBuf::from(vars.get("CARGO_MANIFEST_DIR")?);
         if manifest.parent()? != plan.registry {
             return None;
@@ -875,7 +882,12 @@ impl<'a> Call<'a> {
     fn stage(&self, staging: &Path, stdout: &str, stderr: &str) -> std::result::Result<(), String> {
         let (files, dep_info, text) = self.stage_outputs(staging)?;
         let mut sources = Vec::new();
-        for source in dep_info_sources(&text) {
+        let manifest =
+            Path::new(self.vars.get("CARGO_MANIFEST_DIR").ok_or("no manifest")?).join("Cargo.toml");
+        for source in dep_info_sources(&text)
+            .into_iter()
+            .chain(std::iter::once(manifest.to_string_lossy().into_owned()))
+        {
             let normalized = self.normalizer.normalize(&source);
             if !(normalized.starts_with(REGISTRY) || normalized.starts_with(TARGET)) {
                 return Err(format!("source outside the registry and target: {source}"));
@@ -973,10 +985,35 @@ impl<'a> Call<'a> {
         if unit.schema != SCHEMA || unit.key != self.key || unit.verifying != self.verifying {
             return Err(Refusal::Damaged("entry of another key".to_owned()));
         }
+        // Validate every destination before placing any output. A malformed
+        // later filename must not leave earlier copied artifacts behind.
+        if let Some(file) = unit
+            .files
+            .iter()
+            .find(|file| file.name.contains('/') || file.name.starts_with('.'))
+        {
+            return Err(Refusal::Damaged(format!("unsafe file name {}", file.name)));
+        }
         // This machine's sources and declared variables must be the ones the
         // entry was compiled from; otherwise compiling here is the answer.
         for (source, sha256) in &unit.sources {
             let path = self.normalizer.localize(source);
+            // Hash equality does not preserve the filename stock records if
+            // a registry file is now redirected by an interior symlink.
+            let root_and_relative = source
+                .strip_prefix(REGISTRY)
+                .map(|rest| (&self.plan.registry, rest))
+                .or_else(|| {
+                    source
+                        .strip_prefix(TARGET)
+                        .map(|rest| (&self.plan.target, rest))
+                });
+            let canonical_name = root_and_relative.and_then(|(root, rest)| {
+                Some(root.canonicalize().ok()?.join(rest.strip_prefix('/')?))
+            });
+            if canonical_name.is_none() || Path::new(&path).canonicalize().ok() != canonical_name {
+                return Err(Refusal::Miss(format!("source {path} is redirected")));
+            }
             if sha256_file(Path::new(&path)).is_none_or(|(actual, _)| actual != *sha256) {
                 return Err(Refusal::Miss(format!("source {path} differs")));
             }
@@ -1007,9 +1044,6 @@ impl<'a> Call<'a> {
             .localize(&read_text(&entry.join("stderr"), &unit.stderr)?);
         let mut placed = Vec::new();
         for file in &unit.files {
-            if file.name.contains('/') || file.name.starts_with('.') {
-                return Err(Refusal::Damaged(format!("unsafe file name {}", file.name)));
-            }
             let from = entry.join("files").join(&file.name);
             let to = self.out_dir.join(&file.name);
             let result = if file.name == unit.dep_info {
@@ -1246,10 +1280,6 @@ mod tests {
                     ("TERM", "xterm"),
                     ("RUSTUP_TOOLCHAIN", "stable-x86_64-unknown-linux-gnu"),
                     ("RUSTUP_HOME", "/elsewhere/.rustup"),
-                    (
-                        "SDKROOT",
-                        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
-                    ),
                 ],
             )
             .into_iter(),
@@ -1266,6 +1296,16 @@ mod tests {
         )
         .map(|c| c.key);
         assert_ne!(ka, kc);
+        for name in ["SDKROOT", "MACOSX_DEPLOYMENT_TARGET"] {
+            let changed = Call::new(
+                &pb,
+                &args_b,
+                false,
+                vars(b, &[(name, "invalid")]).into_iter(),
+            )
+            .map(|c| c.key);
+            assert_ne!(ka, changed, "{name}");
+        }
         let kd = Call::new(&pb, &args_b, true, vars(b, &[]).into_iter()).map(|c| c.key);
         assert_ne!(ka, kd);
         // Capped lint flags and rendering options remain bound: malformed
@@ -1331,6 +1371,18 @@ mod tests {
         let mut vars = vars(root, &[]);
         vars.retain(|(k, _)| k != "CARGO_MANIFEST_DIR");
         vars.push(("CARGO_MANIFEST_DIR".into(), "/machine/project".into()));
+        assert!(Call::new(&plan, &args, false, vars.into_iter()).is_none());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_utf8_environment_is_a_miss() {
+        use std::os::unix::ffi::OsStringExt as _;
+        let root = Path::new("/machine");
+        let plan = plan(root, Mode::Record { out: root.into() });
+        let args = args(root);
+        let mut vars = vars(root, &[]);
+        vars.push(("SDKROOT".into(), OsString::from_vec(vec![0xff])));
         assert!(Call::new(&plan, &args, false, vars.into_iter()).is_none());
     }
 
@@ -1429,6 +1481,7 @@ mod tests {
             let plan = plan(&root, mode(&root));
             let package = plan.registry.join("demo-0.1.0");
             std::fs::create_dir_all(package.join("src"))?;
+            std::fs::write(package.join("Cargo.toml"), "[package]\nname = \"demo\"\n")?;
             std::fs::write(package.join("src/lib.rs"), "pub fn f() {}\n")?;
             let deps = plan.target.join("debug/deps");
             std::fs::create_dir_all(&deps)?;
@@ -1538,6 +1591,13 @@ mod tests {
         assert_ne!(original, with_vir);
         std::fs::write(dependency.with_extension("vir"), b"changed VIR")?;
         assert_ne!(with_vir, machine.call(false).ok_or("no call")?.key);
+        machine.args.pop().ok_or("no attached argument")?;
+        machine.args.push("--extern=unqualified".into());
+        assert!(machine.call(false).is_none());
+        machine.args.pop().ok_or("no attached argument")?;
+        // Cargo's implicit proc_macro is provided by the pinned compiler.
+        machine.args.push("--extern=proc_macro".into());
+        assert!(machine.call(false).is_some());
         Ok(())
     }
 
@@ -1571,6 +1631,24 @@ mod tests {
         );
         std::fs::write(&source, "pub fn f() {}\n")?;
 
+        #[cfg(unix)]
+        {
+            let redirected = user.root.join("redirected.rs");
+            std::fs::rename(&source, &redirected)?;
+            std::os::unix::fs::symlink(&redirected, &source)?;
+            assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
+            assert_eq!(err, Vec::<u8>::new());
+            std::fs::remove_file(&source)?;
+            std::fs::rename(redirected, &source)?;
+        }
+
+        let manifest = user.plan.registry.join("demo-0.1.0/Cargo.toml");
+        let original_manifest = std::fs::read(&manifest)?;
+        std::fs::write(&manifest, "[package]\nname = \"changed\"\n")?;
+        assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
+        assert_eq!(err, Vec::<u8>::new());
+        std::fs::write(manifest, original_manifest)?;
+
         // A dependency compiled here (other bytes) is another key: a miss.
         let dependency = user.plan.target.join("debug/deps/libdep-1.rlib");
         std::fs::write(&dependency, b"local bytes")?;
@@ -1579,6 +1657,18 @@ mod tests {
         assert!(other.serve(&mut err).is_none());
         assert_eq!(err, Vec::<u8>::new());
         std::fs::write(&dependency, b"dependency bytes")?;
+
+        // Even a malformed final destination leaves no earlier outputs.
+        let original_unit = std::fs::read(entry.join(UNIT))?;
+        let mut malformed: Unit = serde_json::from_slice(&original_unit)?;
+        malformed.files.last_mut().ok_or("no files")?.name = "../redirected".into();
+        std::fs::write(entry.join(UNIT), serde_json::to_vec(&malformed)?)?;
+        assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
+        assert!(String::from_utf8(std::mem::take(&mut err))?.starts_with("warning[SAIL3133]"));
+        for name in ["libdemo-abc.rlib", "libdemo-abc.rmeta", "demo-abc.d"] {
+            assert!(!user.plan.target.join("debug/deps").join(name).exists());
+        }
+        std::fs::write(entry.join(UNIT), original_unit)?;
 
         // A damaged stored file warns once, places nothing and is a miss.
         std::fs::write(entry.join("files/libdemo-abc.rlib"), b"corrupt")?;

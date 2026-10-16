@@ -56,6 +56,16 @@ pub(crate) struct Invocation {
     pub shipped: Option<String>,
 }
 
+impl Invocation {
+    /// Proof origin exposed to clients. `run_id` remains the local invocation
+    /// used to seal and publish the receipt, even when it replayed a proof.
+    pub(crate) fn establishing_run(&self) -> String {
+        self.shipped
+            .as_ref()
+            .map_or_else(|| self.run_id.clone(), |unit| format!("shipped:{unit}"))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Receipt {
     pub version: u32,
