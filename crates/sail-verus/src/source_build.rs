@@ -83,7 +83,7 @@ pub fn variant_dir(cache: &Path, commit: &str, toolchain: &str, features: &[Stri
 #[must_use]
 pub fn fork_test_features() -> Vec<String> {
     let mut features = crate::engine::features();
-    features.push("suite:rust-verify-test".to_owned());
+    features.push("suite:rust-verify-test+toolchain-manifest".to_owned());
     features
 }
 
