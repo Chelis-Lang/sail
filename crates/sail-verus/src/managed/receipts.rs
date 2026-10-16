@@ -4,6 +4,7 @@ use super::files::{digest, digest_all, file_digest, json};
 use crate::{Error, Result};
 use sail_api::output::{Report, VerdictName};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest as _, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
@@ -97,10 +98,83 @@ pub(crate) struct Receipt {
 /// Receipts before version 3 did not bind declared environment variables.
 pub(crate) const RECEIPT_VERSION: u32 = 3;
 
+/// The exact persisted receipt fields, borrowing their existing allocations.
+/// Keep the order identical to `Receipt`; its exhaustive destructuring below
+/// makes a new receipt field require an explicit checksum decision.
+#[derive(Serialize)]
+struct ReceiptChecksum<'a> {
+    version: &'a u32,
+    checksum: &'static str,
+    package_id: &'a str,
+    name: &'a str,
+    kind: &'a [String],
+    context: &'a str,
+    input_revision: &'a str,
+    invocation: &'a Invocation,
+    artifact_hashes: &'a BTreeMap<PathBuf, String>,
+    committed: &'a Path,
+    declared_environment: &'a BTreeMap<String, Option<Vec<u8>>>,
+}
+
+struct DigestWriter(Sha256);
+
+impl std::io::Write for DigestWriter {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.update(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 impl Receipt {
+    /// The original derived JSON serialization with an empty checksum, hashed
+    /// without cloning its report or allocating a second serialized receipt.
+    pub(super) fn expected_checksum(&self) -> String {
+        let Self {
+            version,
+            checksum: _,
+            package_id,
+            name,
+            kind,
+            context,
+            input_revision,
+            invocation,
+            artifact_hashes,
+            committed,
+            declared_environment,
+        } = self;
+        let fields = ReceiptChecksum {
+            version,
+            checksum: "",
+            package_id,
+            name,
+            kind,
+            context,
+            input_revision,
+            invocation,
+            artifact_hashes,
+            committed,
+            declared_environment,
+        };
+        // Buffer serde's small punctuation/token writes before feeding SHA-256;
+        // storage stays bounded independently of the embedded report's size.
+        let mut writer = std::io::BufWriter::new(DigestWriter(Sha256::new()));
+        if serde_json::to_writer(&mut writer, &fields).is_err() {
+            // Preserve the existing `to_vec(...).unwrap_or_default()` behavior
+            // even if serialization fails after emitting a partial document.
+            return digest(&[]);
+        }
+        match writer.into_inner() {
+            Ok(writer) => format!("{:x}", writer.0.finalize()),
+            Err(_) => digest(&[]),
+        }
+    }
+
     pub(crate) fn seal(mut self) -> Self {
-        self.checksum = String::new();
-        self.checksum = digest(&serde_json::to_vec(&self).unwrap_or_default());
+        self.checksum = self.expected_checksum();
         self
     }
     pub(crate) fn valid(&self, context: &str) -> bool {
@@ -109,7 +183,7 @@ impl Receipt {
 
     /// [`Receipt::valid`], reading each file at most once in `digests`' phase.
     pub(super) fn valid_in(&self, context: &str, digests: &PhaseDigests) -> bool {
-        let checksum = self.clone().seal().checksum;
+        let checksum = self.expected_checksum();
         self.version == RECEIPT_VERSION
             && super::environment::unchanged(&self.declared_environment)
             && read::<Commit>(&self.committed).is_some_and(|commit| {
@@ -166,7 +240,7 @@ pub(super) fn publish(run: &Path, destination: &Path, context: &str) -> Result<(
         if receipt.context != context
             || receipt.invocation.run_id != commit.run_id
             || receipt.committed != run.join("committed.json")
-            || receipt.clone().seal().checksum != receipt.checksum
+            || receipt.expected_checksum() != receipt.checksum
         {
             return Err(Error::new(
                 "SAIL3107",
@@ -328,6 +402,102 @@ pub(crate) fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
 mod tests {
     use super::*;
     use sail_api::output::CrateReport;
+
+    // Compatibility oracle deliberately retains the original derived serializer
+    // and clone/empty-checksum algorithm, independently of the borrowed view.
+    fn original_checksum(receipt: &Receipt) -> String {
+        let mut original = receipt.clone();
+        original.checksum.clear();
+        digest(&serde_json::to_vec(&original).unwrap_or_default())
+    }
+
+    #[test]
+    fn borrowed_checksum_matches_derived_serialization_for_rich_receipts()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use sail_api::output::{
+            EngineEstablishment, EngineProvenance, PortfolioAttempt, PortfolioReport,
+            SolverConfiguration,
+        };
+        let path =
+            std::env::temp_dir().join(format!("sail-receipt-checksum-{}", std::process::id()));
+        let mut receipt = fixture(&path, path.with_extension("committed.json"));
+        assert_eq!(receipt.expected_checksum(), original_checksum(&receipt));
+        receipt.invocation.report = serde_json::from_str(include_str!(
+            "../../../sail-cli/tests/fixtures/attr/report.golden.json"
+        ))?;
+        receipt.package_id = "path+file:///workspace/quoted \"name\"/雪#input@0.1.0".to_owned();
+        receipt.name = "input\\with\ncontrol\tbytes".to_owned();
+        receipt.kind = vec!["rlib".to_owned(), "bin".to_owned()];
+        receipt.invocation.dependencies = BTreeMap::from([
+            (PathBuf::from("../dependency/雪.rs"), "ab".repeat(32)),
+            (
+                PathBuf::from("/dependency/quoted \"input\""),
+                "cd".repeat(32),
+            ),
+        ]);
+        receipt.declared_environment = BTreeMap::from([
+            ("SAIL_CHECKSUM_ABSENT".to_owned(), None),
+            (
+                "SAIL_CHECKSUM_PRESENT".to_owned(),
+                Some(vec![0, 1, 127, 255]),
+            ),
+        ]);
+        receipt.checksum = "previous checksum must be ignored".to_owned();
+        assert_eq!(receipt.expected_checksum(), original_checksum(&receipt));
+
+        let engine = EngineProvenance {
+            name: "interactive".to_owned(),
+            manifest_sha256: "ef".repeat(32),
+            established_by: EngineEstablishment::Engine,
+        };
+        receipt.invocation.report.engine = Some(engine);
+        let attempt = receipt.invocation.report.clone();
+        receipt.invocation.report.portfolio = Some(PortfolioReport {
+            seeds: vec![0, 7],
+            winner_seed: Some(7),
+            attempts: vec![PortfolioAttempt {
+                configuration: SolverConfiguration { seed: 7 },
+                verified: false,
+                exit_code: Some(1),
+                wall_ms: 12.345,
+                error: Some("quoted \"error\"\n雪".to_owned()),
+                report: Some(Box::new(attempt)),
+                stderr: "verbatim\noutput".to_owned(),
+            }],
+        });
+        assert_eq!(receipt.expected_checksum(), original_checksum(&receipt));
+        let sealed = receipt.clone().seal();
+        assert_eq!(sealed.checksum, original_checksum(&receipt));
+        let reread: Receipt = serde_json::from_slice(&serde_json::to_vec(&sealed)?)?;
+        assert_eq!(reread.expected_checksum(), sealed.checksum);
+        receipt
+            .invocation
+            .report
+            .command
+            .push("--changed".to_owned());
+        assert_ne!(receipt.expected_checksum(), sealed.checksum);
+        assert_eq!(receipt.expected_checksum(), original_checksum(&receipt));
+        std::fs::remove_file(path)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn serialization_error_keeps_original_empty_bytes_checksum()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use std::os::unix::ffi::OsStringExt as _;
+        let path = std::env::temp_dir().join(format!(
+            "sail-receipt-checksum-error-{}",
+            std::process::id()
+        ));
+        let mut receipt = fixture(&path, PathBuf::new());
+        receipt.committed = std::ffi::OsString::from_vec(vec![b'p', 255]).into();
+        assert!(serde_json::to_vec(&receipt).is_err());
+        assert_eq!(receipt.expected_checksum(), digest(&[]));
+        assert_eq!(receipt.expected_checksum(), original_checksum(&receipt));
+        std::fs::remove_file(path)?;
+        Ok(())
+    }
     fn fixture(path: &Path, committed: PathBuf) -> Receipt {
         assert!(std::fs::write(path, "artifact").is_ok());
         let mut report = crate::report::setup_failure(&[], "SAIL3100", "fixture");

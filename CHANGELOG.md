@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Prepare receipt checksum validation without cloning embedded reports (#156).
+  The candidate preserves the existing serialized checksum bytes and proof
+  checks; useful native performance and delivery gates remain pending. See the
+  [candidate record](docs/validation/receipt-checksum.md).
+
 - Prepare an unchanged-run optimization that skips optional proof-archive planning
   for already covered receipt revisions (#156). A 36-call native Vest screen
   lowers unchanged checks from 0.895 s to 0.544 s (39.29%) and the four-call sum
