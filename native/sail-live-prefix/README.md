@@ -182,3 +182,10 @@ foreground latency, total/background CPU, RSS/PSS and all raw failures remain
 visible. This selected-pair experiment cannot establish a real application hit
 rate, default-mode equivalence, shipped acceptance or a performance win by
 itself. Native execution of this new policy remains pending.
+
+The readiness regression drives an actual child through exact-prefix ready,
+extra incomplete output and a claim attempt; the claim must refuse before
+that extra response completes. The same child then completes the unexpected
+response and is refused. Both exact and experimental policies keep this
+boundary. `test-readiness.py` runs these real pipe/thread controls with native
+image/RSS checks explicitly doubled.

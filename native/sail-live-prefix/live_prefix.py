@@ -183,6 +183,9 @@ class Entry:
     def _ready(self):
         if self.failure or self.claimed:
             return
+        # Any newly observed bytes invalidate a previous readiness decision.
+        # A partial additional response must never leave the old state latched.
+        self.ready = False
         if self.pool.experiment_numeric_time_only:
             try:
                 state = response_policy.prefix_state(self.expected, bytes(self.stdout))

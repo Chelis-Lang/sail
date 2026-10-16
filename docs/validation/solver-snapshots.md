@@ -320,7 +320,12 @@ default prototype key. This is not query/cache normalization, a selected mode,
 a default correctness claim or a shipped optimization.
 
 Local controls pass: 31 structural/streaming comparison cases, nine actual
-owned-child driver/core experiment cases and all eight original driver cases.
+owned-child driver/core experiment cases, all eight original driver cases,
+nine whole real-trace parent-entry controls and two actual Entry readiness
+barriers. The initial experimental checkpoint incorrectly latched readiness
+when extra incomplete bytes arrived before claim; the owned-child barrier
+fails that checkpoint and passes after readiness is invalidated on every
+observation until the exact complete prefix matches again.
 Native image/RSS checks are doubled in the driver fixtures. The cases reject
 other-statistic, verdict, model and stderr changes, equal nonzero exits,
 `ESRCH`, final cleanup failure and timing differences without opt-in. An
