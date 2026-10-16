@@ -3,7 +3,7 @@
 use super::diagnostics::{Diagnostics, Phase};
 use super::environment::input_environment_key;
 use super::files::{digest, event, file_digest, json};
-use super::input::{SNAPSHOT_FIELDS, metadata, snapshot_metadata};
+use super::input::{SNAPSHOT_FIELDS, managed_metadata as metadata, snapshot_metadata};
 #[cfg(test)]
 use super::receipts::artifact_hashes;
 use super::receipts::{
@@ -766,6 +766,10 @@ fn invoke(
         .env("RUSTC_BOOTSTRAP", "1")
         .env("CARGO", &paths.cargo_alias)
         .env("SAIL_MANAGED_CARGO", &config.cargo)
+        .env(
+            crate::adapter::CARGO_METADATA_ENV,
+            crate::adapter::metadata_target(&config.cache)?,
+        )
         .env("SAIL_MANAGED_PROXY", &paths.proxy_alias)
         .env("SAIL_MANAGED_RUNTIME", &paths.runtime)
         .env("SAIL_MANAGED_ARTIFACTS", paths.run.join("artifacts.jsonl"))
@@ -2036,7 +2040,14 @@ pub(crate) fn run_engine_held(
     // the other's result. They overlap, and their results are consumed in the
     // original order, so the first reported error is unchanged.
     let (data, context_result, metadata_phase) = std::thread::scope(|scope| {
-        let pending = scope.spawn(|| metadata(&config.workspace, &config.args, &config.cargo));
+        let pending = scope.spawn(|| {
+            metadata(
+                &config.workspace,
+                &config.args,
+                &config.cargo,
+                &config.cache,
+            )
+        });
         let context_phase = diagnostics.phase(Phase::RuntimeContext);
         let context_result = context(config, engine.as_ref());
         drop(context_phase);
@@ -2354,7 +2365,12 @@ pub(crate) fn run_engine_held(
                         &after_extras,
                     )
                 });
-                let after = metadata(&config.workspace, &config.args, &config.cargo);
+                let after = metadata(
+                    &config.workspace,
+                    &config.args,
+                    &config.cargo,
+                    &config.cache,
+                );
                 (after, snapshot.join().ok())
             }),
         };
@@ -2411,7 +2427,12 @@ pub(crate) fn run_engine_held(
         let after = threads.spawn(|| {
             if retry_possible {
                 (
-                    Some(metadata(&config.workspace, &config.args, &config.cargo)),
+                    Some(metadata(
+                        &config.workspace,
+                        &config.args,
+                        &config.cargo,
+                        &config.cache,
+                    )),
                     None,
                 )
             } else {

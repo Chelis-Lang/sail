@@ -1,0 +1,65 @@
+# Owned metadata target selection
+
+Status: implementation and bounded macOS checks pass; native Linux gate and
+full end-to-end/conformance remain pending. Fixes #166 and the compiler false
+reuse in [#189](https://github.com/Chelis-Lang/sail/issues/189).
+
+Source: candidate over `0a7c1d0d`; `crates/sail-verus/src/adapter.rs` SHA-256
+`39d0c48dea35b208c58af62bc122643f0d92bbd75b5c7f0ea2f34872613b0120`.
+Runtime: installed source build variant `c1eeaec18522f7e7`, upstream
+`426d8b01`, fork lineage `73dea021`, pinned Z3 4.16.0. Correctness-only local
+checks used a no-vstd library and the pinned verus_builtin package; these
+compiler/source-boundary tests contain no SMT obligations.
+
+Runner and Cargo-Verus's own metadata both select the absolute
+`cargo-metadata/` namespace under the configured Sail cache. A highest-priority
+`build.target-dir` override prevents either the caller's environment or Cargo
+configuration from making metadata exclude source directories. It contains no
+compiled project artifacts. The private adapter marker is removed before
+subprocess execution, preserving ordinary nested Cargo commands in build
+scripts. Compilation/clean environment bytes and public fallback snapshots
+retain their existing behavior. Only the exact `CARGO_TARGET_DIR` environment
+key is omitted from managed context identity; declared reads still bind values.
+
+| Check | Result and scope |
+|---|---|
+| Caller target unset → external → project root → source directory → root → unset | Same context/revision, Current and zero fresh verifier calls after establishment; no stray `.rustc_info.json` |
+| Source edit while caller target names project root | Compile failure, fresh invocation, changed input revision; restored source verifies Current |
+| Declared build-script target read | Unset succeeds; setting it fails the script with exit 101 under the same context |
+| Existing `.rustc_info.json` included as user source | Its bytes remain untouched; unchanged proof reused; editing it changes revision and starts verification |
+| Config target `src` and project root | Exact new CI fixture executed locally: after warm reuse, new alternative module forces E0761, fresh invocation and changed input revision |
+| Selected Rust tests | 172 sail-verus tests pass with one test thread |
+| Selected clippy | sail-verus, release profile, all targets, warnings denied |
+| Native Linux/full host/e2e/conformance | Pending; no acceptance claim |
+
+Raw evidence is outside the repository in the target-context evidence set:
+
+| File | SHA-256 |
+|---|---|
+| `audit-summary.json` | `50442d0349ac3d74ce618fbbba7fc1c3411f32227feec0d4118625add7d860fd` |
+| `config-summary.json` | `21fecf1aa2b0652a7f05cc98cff8d51971efeb2c5015686a61a94f537d74a0c9` |
+| `ci-regression-executed.py` | `3868f17c40588fb07ec4f2ecf219371e5cd956a81d256152194f05f0c38814e9` |
+| `library-tests-serial.log` | `fc4a64d71cf62bfa7ca4385b4b34be27460305825a57e41953d8635b2d2e8d46` |
+| `clippy.log` | `8f16f54d9ae2159dff898ccd27501810b6a37db6a34564541e9cf1bcba38662a` |
+
+Failed attempts remain visible:
+
+- Main-derived #184 staged binary, 2026-10-16: configured source target reused
+  success after an alternative module appeared; fresh fork compilation exited
+  101 with E0761. Fresh stderr SHA-256
+  `df9285db195855345e48d85533a656210e6678a9a142e8b20a0217d484e219c7`.
+- Initial #166 candidate, 2026-10-16: first caller-root run was Historical
+  because Cargo metadata wrote a real `.rustc_info.json`; the strict zero-work
+  assertion exposed this. Removing the caller override alone still excluded
+  configured source directories. Negative-control summary SHA-256
+  `f97962c5a6dcbcba236a872f35d1ef69f8f8e14dfce5080db1f8193dd31692d6`.
+- Parallel cargo-test, 2026-10-16: 170 pass, 2 fail; existing engine and adapter
+  fixtures share `sail-engine-fallback-<pid>` and collide in one process.
+  Serial execution passes all 172. Raw failure SHA-256
+  `8b1f24000c91621aac7189c72c4646988e429dc1c03c0886ee8d1e54a5f5f149`.
+- First selected clippy attempt: the draft declared-environment test used two
+  redundant clones; corrected to reference slices and rerun successfully.
+
+The fix may conservatively inventory unrelated user output directories that
+were previously excluded by metadata's target selection. No source-tree
+exclusion is restored for speed; native performance measurement is pending.

@@ -136,7 +136,7 @@ Cargo's own. Two parts of the environment bind a result:
 
 - **What the pinned tools read.** The proof context, and so the Cargo target,
   binds the current value or absence of every variable in these families:
-  `CARGO_*` and `__CARGO_*` (Cargo configuration); `RUST*` (`RUSTFLAGS`,
+  `CARGO_*` (except `CARGO_TARGET_DIR`) and `__CARGO_*` (Cargo configuration); `RUST*` (`RUSTFLAGS`,
   `RUSTC*`, `RUSTDOC*`, `RUSTUP_*`, `RUST_MIN_STACK`, `RUST_BACKTRACE`,
   `RUST_LOG`); `VERUS_*`, `__VERUS_*`, `VARGO_*` and `VSTD_KIND` (the Verus
   launcher, driver and macros); `Z3_*`; `SAIL_*`, except the observation-only
@@ -148,6 +148,21 @@ Cargo's own. Two parts of the environment bind a result:
   `option_env!`, and the Verus driver's own declarations) and build scripts'
   `rerun-if-env-changed`. Each receipt records their values, and it is reused
   only while every one is unchanged.
+
+`CARGO_TARGET_DIR` does not select a managed context: Sail always passes its
+owned `--target-dir` to Cargo. Setting, changing or unsetting the caller's
+directory therefore keeps the same compiled target. It still reaches child
+processes, and an `env!` or build-script declaration binds its exact value
+in proof receipts, just like any other declared read.
+
+Managed metadata probes, including Cargo-Verus's private metadata subprocess,
+select `cargo-metadata/` under the Sail cache with a highest-priority
+`build.target-dir` override. Neither caller environment nor Cargo configuration
+can exclude source directories for these probes. Cargo metadata can otherwise create
+`.rustc_info.json` in a source directory named by that override. Compilation
+and cleanup keep the caller's environment value; an internal marker is removed
+before compilation so a build script's own nested Cargo commands retain their
+ordinary environment. Public fallback snapshots retain caller target selection.
 
 `PATH` and `HOME` are not bound as raw values. What they select is: the
 resolved `cargo`, `rustc`, `rustup`, `cargo-verus`, `verus`, `rust_verify`

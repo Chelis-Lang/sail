@@ -26,6 +26,15 @@ semantic versioning once the API is published.
   `scripts/perf-real.sh` now defaults to `plain sail`; `--incremental`
   selects the same managed verification as `sail verify`. The explicit
   `incremental` arm and the reader for earlier results remain available.
+
+- Managed metadata always uses an owned probe target. A Cargo configuration
+  that names a source directory as its ordinary target can no longer hide
+  newly appearing compiler inputs or cause false proof reuse (#189).
+
+- Setting, changing or unsetting `CARGO_TARGET_DIR` shares the same managed
+  Cargo target (#166), avoiding a redundant cold context. Declared source
+  and build-script reads still invalidate proof receipts when its value changes.
+
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);

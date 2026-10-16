@@ -228,3 +228,29 @@ the demo shows the same shape: edit 1.21 s against 0.60 s plain, unchanged
   documents. MCP and jobs already used it.
 - **Remaining costs** are listed under Measurements, with numbers; L47's
   pre-verified vstd addresses the first-run cost.
+
+## Amendment (2026-10-16): caller target-directory selection
+
+`CARGO_TARGET_DIR` does not partition managed contexts (#166). Every managed compilation and
+cleanup command explicitly selects the owned target with `--target-dir`,
+which takes precedence over that environment variable. Managed-run metadata
+probes select an owned metadata-only target under the Sail cache, overriding
+both environment and Cargo configuration to keep source exclusions stable. Public snapshots for ordinary-Cargo fallback
+retain the caller's target selection. No compiler artifacts are taken from the
+caller's directory.
+
+The environment variable still reaches child processes. Its presence and
+exact bytes remain receipt inputs whenever rustc declares an `env!` read or
+a build script declares `rerun-if-env-changed=CARGO_TARGET_DIR`. Such reads
+still invalidate receipts and force Cargo re-verification. This exception
+only removes redundant target selection from the context key; it does not
+remove declared input validation or change unsupported-setup fallback.
+
+Managed metadata probes, including Cargo-Verus's private metadata subprocess,
+select `cargo-metadata/` under the Sail cache with a highest-priority
+`build.target-dir` override. Neither caller environment nor Cargo configuration
+can exclude source directories for these probes. Cargo metadata can otherwise create
+`.rustc_info.json` in a source directory named by that override. Compilation
+and cleanup keep the caller's environment value; an internal marker is removed
+before compilation so a build script's own nested Cargo commands retain their
+ordinary environment. Public fallback snapshots retain caller target selection.

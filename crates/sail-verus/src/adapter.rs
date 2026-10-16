@@ -11,6 +11,31 @@ use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
+/// Only Cargo-Verus's own metadata probe receives this private marker. The
+/// build subprocess removes it so nested user commands retain their environment.
+pub(crate) const CARGO_METADATA_ENV: &str = "SAIL_MANAGED_CARGO_METADATA";
+
+/// An owned metadata-only namespace; it contains no compilation artifacts.
+pub(crate) fn metadata_target(cache: &Path) -> Result<PathBuf> {
+    std::path::absolute(cache)
+        .map(|cache| cache.join("cargo-metadata"))
+        .map_err(|error| Error::new("SAIL3112", error.to_string()))
+}
+
+/// Prevent environment or Cargo configuration from excluding source trees in
+/// managed metadata. The CLI configuration has the highest Cargo precedence.
+pub(crate) fn configure_metadata_target(command: &mut Command, target: &Path) -> Result<()> {
+    let target_text = target
+        .to_str()
+        .ok_or_else(|| Error::new("SAIL3112", "managed metadata target is not UTF-8"))?;
+    let quoted = serde_json::to_string(target_text)
+        .map_err(|error| Error::new("SAIL3112", error.to_string()))?;
+    command
+        .env("CARGO_TARGET_DIR", target)
+        .args(["--config", &format!("build.target-dir={quoted}")]);
+    Ok(())
+}
+
 fn required(name: &str) -> Result<OsString> {
     std::env::var_os(name)
         .filter(|v| !v.is_empty())
@@ -71,6 +96,15 @@ fn cargo() -> Result<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let mut cmd = Command::new(required("SAIL_MANAGED_CARGO")?);
     cmd.args(&args);
+    if args.first().is_some_and(|argument| argument == "metadata")
+        && let Some(target) = std::env::var_os(CARGO_METADATA_ENV)
+    {
+        // Cargo metadata probes rustc and can write .rustc_info.json in the
+        // caller's target, even though it does not compile. Managed builds use
+        // their explicit owned target, so that override cannot select artifacts.
+        configure_metadata_target(&mut cmd, Path::new(&target))?;
+    }
+    cmd.env_remove(CARGO_METADATA_ENV);
     let build = args.iter().any(|s| s == "build" || s == "check");
     if !build {
         return cmd

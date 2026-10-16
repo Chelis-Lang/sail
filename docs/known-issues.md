@@ -16,6 +16,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   the final rebased native and Mac gates and live stdout check pass; CI
   remains pending. The original draft asset is
   unchanged; [evidence](validation/dependency-store-output.md).
+
+- **Configured target directories can hide source inputs (#189).** Current
+  main can reuse a proof after an alternative module appears under a source
+  directory selected by Cargo's `build.target-dir`. A fresh compiler invocation
+  rejects it with E0761. The owned metadata-probe fix is implemented in the
+  #166 candidate; native qualification and merge remain pending. See the
+  [validation record](validation/cargo-target-context.md).
+
 - **Vest repair is about 1.8× M6, below the 2× figure.** The owner accepted
   M7's speed as measured (ADR 0038 amendment 2026-10-13). On the `13a1176c`
   runtime, three native rounds, every sample valid and Current: HumanEval
