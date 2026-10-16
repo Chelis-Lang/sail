@@ -7,7 +7,7 @@
 | Source scope | Reproduced on main `0a7c1d0d` plus the standalone stdout correction `2f7102c4`; no shipped dependency feature. Runtime: pinned fork `73dea021`, primary Verus/Z3 pin. |
 | Environment | Shared Apple M3 developer machine, macOS 26.5; correctness reproduction, not a benchmark. |
 | Best evidence | Same-PATH linker reproduction archive SHA-256 `7bea96ebf3bd10a292ec6508bb7322a8a799fbc25ef024a89cf256d90783f51c`. |
-| Current focused checks | Complete integration `cargo check --release -p sail-verus` passes. Original core/inventory harness passes 11 tests and direct pedantic clippy. After native resolution observation was added, the combined 16 tests pass serially but parallel execution exposes initial-capture refusals under sibling activity; this is under correction, not a qualified pass. These include real rustc metadata restoration, added-module ambiguity, post-compile source mutation and corruption refusal; they are fixtures, not Verus/corpus acceptance. |
+| Current focused checks | Complete integration release typecheck passes. Combined core/input-resolution harness passes20 tests with ordinary parallel execution, including real rustc metadata restoration, actual repeated-emit union refusal, exact declared env absence-to-presence refusal, topology/race guards and original Report/proof-origin preservation. Direct pedantic and forbidden-operation clippy passes. Five earlier ordinary-parallel rounds passed all17 then-current cases. These are fixtures, not Verus/corpus acceptance. |
 
 ## Minimal reproduction
 
@@ -114,7 +114,7 @@ Verus or a real store hit and is not a full macOS host gate.
 | 2026-10-16 | Initial inventory helper SHA-256 above | Failed two mutation regressions | Ordinary ancestor ABA and indirect symlink-target ABA were invisible; negative-control log above. |
 | 2026-10-16 | Candidate resolution helper, 13 focused Mac tests | Passed fixture scope only | Test log above; Linux, independent review and full integration pending. |
 
-| 2026-10-16 | v2 driver candidate with native resolution observer | Failed focused parallel test execution | 14 initial captures refused under concurrent fixture activity; all16 pass serially. Registration contention is under investigation; no gate weakened. |
+| 2026-10-16 | v2 driver candidate with native resolution observer | Failed focused parallel test execution | 14 initial captures refused under concurrent fixture activity; all16 pass serially. Registration was corrected before the inventory epoch; ordinary-parallel rounds now pass. No gate was weakened. |
 
 
 An additional real macOS mount fixture overmounted the observed nonempty
@@ -134,3 +134,10 @@ latches future matching filesystem events, and
 reports a mount-namespace generation change even after the mount table's text
 has returned to its earlier state. Errors and events refuse; no metadata or
 output is normalized.
+
+The caller review also required refusing repeated output controls (rustc unions
+repeated `--emit` options), raw import forms outside the supported closure and
+retaining the complete raw environment for declared reads. The candidate now
+checks those cases directly; excluded routing variables remain exact when a
+source declares them. The same real-compiler fixtures include a native `.rlib`
+negative control and an `option_env!` absence-to-presence replay refusal.

@@ -160,26 +160,66 @@ pub(crate) struct Call<'a> {
 }
 
 fn value(args: &[String], flag: &str) -> Option<String> {
-    args.windows(2)
-        .find(|w| w[0] == flag)
-        .map(|w| w[1].clone())
-        .or_else(|| {
-            args.iter()
-                .find_map(|a| a.strip_prefix(&format!("{flag}=")).map(str::to_owned))
-        })
+    let mut found = None;
+    for (index, argument) in args.iter().enumerate() {
+        let value = if argument == flag {
+            Some(args.get(index + 1)?.clone())
+        } else {
+            argument
+                .strip_prefix(&format!("{flag}="))
+                .map(str::to_owned)
+        };
+        if let Some(value) = value
+            && found.replace(value).is_some()
+        {
+            return None;
+        }
+    }
+    found
 }
 
-fn environment() -> Option<BTreeMap<String, String>> {
-    std::env::vars_os()
-        .filter(|(name, _)| {
-            let name = name.as_encoded_bytes();
-            // These variables exclusively route this Sail driver's observation
-            // files and Cargo's inherited jobserver. They are not compiler flags.
-            !(name.starts_with(b"SAIL_MANAGED_")
-                || name == b"CARGO_MAKEFLAGS"
-                || name == b"MAKEFLAGS")
-        })
-        .map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
+fn extra_filename(args: &[String]) -> Option<String> {
+    let mut found = None;
+    for (index, argument) in args.iter().enumerate() {
+        let option = if argument == "-C" {
+            args.get(index + 1)?.as_str()
+        } else {
+            argument.strip_prefix("-C").unwrap_or_default()
+        };
+        let option = option.strip_prefix('=').unwrap_or(option);
+        if let Some(value) = option.strip_prefix("extra-filename=")
+            && found.replace(value.to_owned()).is_some()
+        {
+            return None;
+        }
+    }
+    found
+}
+
+fn metadata_outputs(args: &[String]) -> Option<(String, PathBuf, String)> {
+    if !matches!(value(args, "--crate-type")?.as_str(), "lib" | "rlib") {
+        return None;
+    }
+    let emit = value(args, "--emit")?;
+    let emits: Vec<_> = emit.split(',').collect();
+    if !emits.contains(&"metadata")
+        || !emits.contains(&"dep-info")
+        || emits.iter().any(|e| !matches!(*e, "metadata" | "dep-info"))
+    {
+        return None;
+    }
+    let out_dir = PathBuf::from(value(args, "--out-dir")?);
+    let crate_name = value(args, "--crate-name")?;
+    let stem = format!("{crate_name}{}", extra_filename(args)?);
+    Some((crate_name, out_dir, stem))
+}
+
+fn environment(
+    vars: impl Iterator<Item = (OsString, OsString)>,
+) -> Option<BTreeMap<String, String>> {
+    // Declared reads may name any variable, including Sail/Cargo routing
+    // variables omitted from the key. Never discard their presence or value.
+    vars.map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
         .collect()
 }
 
@@ -202,9 +242,14 @@ impl<'a> Call<'a> {
                 || arg.starts_with("-Zcodegen-backend=")
                 || arg.starts_with("profile-use=")
                 || arg.starts_with("-Cprofile-use=")
+                || arg.starts_with("--import")
+                || arg.starts_with("import-dep-if-present")
+                || arg.starts_with("llvm-args=")
+                || arg.starts_with("-Cllvm-args=")
         }) {
             return None;
         }
+        let (crate_name, out_dir, stem) = metadata_outputs(&args)?;
         let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR")?).join("Cargo.toml");
         let package = plan.packages.iter().find(|p| p.manifest == manifest)?;
         // Cargo executes registry invocations from that package's source root.
@@ -213,32 +258,9 @@ impl<'a> Call<'a> {
         if cwd.canonicalize().ok()? != manifest.parent()?.canonicalize().ok()? {
             return None;
         }
-        if !matches!(value(&args, "--crate-type")?.as_str(), "lib" | "rlib") {
-            return None;
-        }
-        let emit = value(&args, "--emit")?;
-        let emits: Vec<_> = emit.split(',').collect();
-        if !emits.contains(&"metadata")
-            || !emits.contains(&"dep-info")
-            || emits.iter().any(|e| !matches!(*e, "metadata" | "dep-info"))
-        {
-            return None;
-        }
-        let out_dir = PathBuf::from(value(&args, "--out-dir")?);
         if !plain_path(&out_dir) || !plain_path(&cwd) || !out_dir.starts_with(&plan.target) {
             return None;
         }
-        let crate_name = value(&args, "--crate-name")?;
-        let extra = args
-            .windows(2)
-            .find_map(|w| {
-                (w[0] == "-C").then(|| w[1].strip_prefix("extra-filename=").map(str::to_owned))?
-            })
-            .or_else(|| {
-                args.iter()
-                    .find_map(|a| a.strip_prefix("-Cextra-filename=").map(str::to_owned))
-            })?;
-        let stem = format!("{crate_name}{extra}");
         let mut roots = Vec::new();
         for (index, path) in package.sources.iter().enumerate() {
             roots.push(Root {
@@ -338,7 +360,7 @@ impl<'a> Call<'a> {
         if seen_externs != package.extern_names {
             return None;
         }
-        let environment = environment()?;
+        let environment = environment(std::env::vars_os())?;
         let cargo_id = format!(
             "{}-{}-{}",
             environment.get("CARGO_PKG_NAME")?,
@@ -395,6 +417,8 @@ impl<'a> Call<'a> {
         // These identify this already-running Sail proxy, not a compiler
         // selected by the dependency. The plan binds the actual proxy/runtime
         // bytes; a declared read of either still requires its exact raw value.
+        keyed_environment.remove("CARGO_MAKEFLAGS");
+        keyed_environment.remove("MAKEFLAGS");
         keyed_environment.remove("RUSTC_WRAPPER");
         keyed_environment.remove("RUSTC_WORKSPACE_WRAPPER");
         if let Some(out) = keyed_environment.get_mut("OUT_DIR") {
@@ -908,6 +932,7 @@ mod tests {
                 ])
                 .arg(self.root.join("target/deps"))
                 .arg(self.root.join("source/lib.rs"))
+                .env_remove("SAIL_MANAGED_USER_VALUE")
                 .output()?)
         }
 
@@ -1034,6 +1059,164 @@ mod tests {
         let bytes = Fixture::seal(stored)?;
         assert!(call.restore(&bytes).is_err());
         assert_eq!(std::fs::read_dir(&call.out_dir)?.count(), 0);
+        Ok(())
+    }
+    #[test]
+    fn repeated_output_controls_and_raw_imports_are_ineligible()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture = Fixture::new("repeated-output")?;
+        let args = vec![
+            "rustc".to_owned(),
+            "--crate-name".to_owned(),
+            "demo".to_owned(),
+            "--crate-type".to_owned(),
+            "lib".to_owned(),
+            "--emit=dep-info,metadata".to_owned(),
+            "-C".to_owned(),
+            "extra-filename=-hash".to_owned(),
+            "--out-dir".to_owned(),
+            fixture
+                .root
+                .join("target/deps")
+                .to_string_lossy()
+                .into_owned(),
+            fixture
+                .root
+                .join("source/lib.rs")
+                .to_string_lossy()
+                .into_owned(),
+        ];
+        assert!(metadata_outputs(&args).is_some());
+        let mut repeated = args.clone();
+        repeated.push("--emit=link".to_owned());
+        let output = std::process::Command::new("rustc")
+            .args(&repeated[1..])
+            .output()?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(fixture.root.join("target/deps/libdemo-hash.rlib").is_file());
+        assert!(metadata_outputs(&repeated).is_none());
+        for tail in [
+            vec!["--crate-type=proc-macro"],
+            vec!["--out-dir=other"],
+            vec!["-Cextra-filename=-other"],
+            vec!["-C", "extra-filename=-other"],
+        ] {
+            let mut repeated = args.clone();
+            repeated.extend(tail.into_iter().map(str::to_owned));
+            assert!(metadata_outputs(&repeated).is_none());
+        }
+        let run = std::process::Command::new(std::env::current_exe()?)
+            .args([
+                "--exact",
+                "managed::dependency_build::tests::constructor_probe",
+                "--nocapture",
+            ])
+            .env("SAIL_TEST_DEPENDENCY_CONSTRUCTOR", &fixture.root)
+            .env("CARGO_MANIFEST_DIR", fixture.root.join("source"))
+            .env("CARGO_PKG_NAME", "demo")
+            .env("CARGO_PKG_VERSION", "0.1.0")
+            .current_dir(fixture.root.join("source"))
+            .output()?;
+        assert!(
+            run.status.success(),
+            "{} {}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn excluded_declared_variable_absence_to_presence_refuses_replay()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture = Fixture::new("declared-routing")?;
+        std::fs::write(
+            fixture.root.join("source/lib.rs"),
+            "pub const FLAG: Option<&str> = option_env!(\"SAIL_MANAGED_USER_VALUE\");",
+        )?;
+        let Some(mut call) = fixture.call() else {
+            return Err("missing observation".into());
+        };
+        fixture.payload()?;
+        let Some(stored) = call.stage(b"verified", b"", "origin", &Fixture::report()) else {
+            return Err("not staged".into());
+        };
+        assert_eq!(stored.declared.get("SAIL_MANAGED_USER_VALUE"), Some(&None));
+        let bytes = Fixture::seal(stored)?;
+        fixture.clear()?;
+        call.environment = environment(std::iter::once((
+            OsString::from("SAIL_MANAGED_USER_VALUE"),
+            OsString::from("present"),
+        )))
+        .ok_or("environment")?;
+        assert_eq!(
+            call.environment
+                .get("SAIL_MANAGED_USER_VALUE")
+                .map(String::as_str),
+            Some("present")
+        );
+        assert!(call.restore(&bytes).is_err());
+        assert_eq!(std::fs::read_dir(&call.out_dir)?.count(), 0);
+        Ok(())
+    }
+    #[test]
+    fn constructor_probe() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let Some(root) = std::env::var_os("SAIL_TEST_DEPENDENCY_CONSTRUCTOR") else {
+            return Ok(());
+        };
+        let root = PathBuf::from(root);
+        std::fs::write(
+            root.join("source/Cargo.toml"),
+            "[package]\nname=\"demo\"\nversion=\"0.1.0\"\n",
+        )?;
+        std::fs::write(root.join("compiler"), "observed compiler fixture")?;
+        let plan = Plan {
+            directory: root.join("store"),
+            target: root.join("target"),
+            compiler: vec![(root.join("compiler"), false)],
+            packages: vec![Package {
+                manifest: root.join("source/Cargo.toml"),
+                key: "candidate".to_owned(),
+                sources: vec![root.join("source")],
+                extern_names: Vec::new(),
+            }],
+        };
+        let args: Vec<OsString> = [
+            "rustc",
+            "--crate-name",
+            "demo",
+            "--crate-type",
+            "lib",
+            "--emit=dep-info,metadata",
+            "-C",
+            "extra-filename=-hash",
+            "--out-dir",
+        ]
+        .into_iter()
+        .map(OsString::from)
+        .chain([
+            root.join("target/deps").into_os_string(),
+            root.join("source/lib.rs").into_os_string(),
+        ])
+        .collect();
+        assert!(Call::new(&plan, &args).is_some());
+        for tail in [
+            vec!["--emit=link"],
+            vec!["--crate-type=proc-macro"],
+            vec!["--out-dir=other"],
+            vec!["-Cextra-filename=-other"],
+            vec!["--import=foreign=/tmp/foreign.vir"],
+            vec!["--import", "foreign=/tmp/foreign.vir"],
+            vec!["-V", "import-dep-if-present=foreign"],
+        ] {
+            let mut variant = args.clone();
+            variant.extend(tail.into_iter().map(OsString::from));
+            assert!(Call::new(&plan, &variant).is_none(), "{variant:?}");
+        }
         Ok(())
     }
 }
