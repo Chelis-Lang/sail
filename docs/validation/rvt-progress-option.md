@@ -1,7 +1,8 @@
 # Source-supplied progress option (#203)
 
 **Implemented; native BASIC and all 4,709 fork source cases pass on private source.**
-The main-based harness join and remaining corpus/determinism gates are pending. The runner omits only
+The main-based harness join passes its native workspace gate; overall
+combined-runtime acceptance remains separate. The runner omits only
 its own redundant `--no-report-long-running` default for
 `sail_vi0012_progress_order::sail_vi0012_bucket_start_notes_in_bucket_order`
 when the original 1,986-byte source has SHA-256
@@ -23,12 +24,19 @@ genuine fork suite passed strictly: 4,709 Same (58 ignored), all 4,651
 nonignored plain tests passed, zero Different, Unstable or infrastructure
 errors, in 1,225.58 s. These results identify that private
 source, not a native gate of the subsequent main-based harness-only join.
-Combined-runtime corpus, determinism and performance gates remain separate.
+The main-based harness-only join `2bd59014` separately passed its full native
+workspace gate and all controls in image `08bd13d8`, built from main `c89e29d3`,
+on a c7i.4xlarge in us-east-1. Raw archive SHA-256
+`9d417731ece59058f380072fb9171fb54c8120c2c76cd646c47cc5689fbc65cf`.
+That result qualifies the workspace join, not the private fork runtime or any
+source-suite run at this later source. Combined-runtime corpus, determinism and
+performance gates remain separate.
 There is no fork rebuild, accepted-pin change or publication in this correction.
 
 | Attempt | Result / limits | Raw SHA-256 |
 |---|---|---|
 | 2026-10-16, Sail `af339f8a`, same genuine runtime/environment | Native BASIC passed; original VI-0012 regression 1/1 Same, both arms passed in 6.56 s; nine source-JSON regressions Same. Full suite 4,709/4,709 Same (58 ignored), all nonignored plain tests passed. | BASIC `dd39093b23b8c970c687db18014edd90d4c41e8baadb2bd22365ab26fb86e569`; original regression `cc9c1e0087778d3c66dd30fa6810d313c0da8996a62cbaf89e6e07908d32d67a`; JSON `884eab935f931dd26e4ef82eb5ec1b38bb0f9195c2cfacabda817bef42d16d1f`; full suite `b2304b6dd70355fd69a0ad6241c3f2a00c25156e8443ffb357b80005ce165faf` |
+| 2026-10-16, Sail `af339f8a`, replacement remaining-gates controller | Complete fast corpus fetched; determinism helper failed before verifier/SMT execution because its subprocess recording proxy lacked `DEVNULL`. No determinism/standard/deep result follows. The corrected helper is independently tested through the entire committed oracle and TEE; this fixture coverage is not native acceptance. | `5f7d7fdfb1d21f0dcd4dc615b58524a5d72ec1d113b3107bb8dc2636c6aea37f` |
 | 2026-10-16, Sail `af339f8a`, subsequent determinism phase | Preparation failed before any SMT execution: full fast corpus had not been fetched on the fresh host. No determinism, standard or deep result follows. The source-suite pass above remains its own completed scope. | `eec84add58f8e7bc103ec3c5e940019fa976d5cf39623415ba016dbd48971fc2` |
 | 2026-10-16, Sail `168ab7abc7cd44196326f141aeba6284b9f84573`, genuine fork `8a373f81a507b7ef4f144767ccd237d3d3de6c48`, native c7i.8xlarge/us-east-1 | Full source suite **failed strictly**: 4,709 selected (58 ignored), 4,708 Same, one Different, zero Unstable/infrastructure errors, 1,177 s. Original VI-0012 case failed on both arms with `Option 'no-report-long-running' given more than once`; eleven plain runs were stable and matched the shim. Identical failed nonignored tests remain Different. No determinism/standard/deep followed. | `c4e3826df19353f4935ad4d2b80689d2b1c754f61233f9b9aa15d1026608624a` |
 

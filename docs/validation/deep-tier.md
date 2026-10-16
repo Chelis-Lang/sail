@@ -60,10 +60,21 @@ VI-0012 regression, BASIC and the full genuine fork suite on private
 `af339f8a`: 4,709 Same (58 ignored), all 4,651 nonignored plain tests passed,
 zero Different, Unstable or infrastructure errors in 1,225.58 s. Raw SHA-256
 `b2304b6dd70355fd69a0ad6241c3f2a00c25156e8443ffb357b80005ce165faf`.
-The main-based join and combined runtime corpus/determinism/performance gates
-remain pending; accepted pins are unchanged.
+The main-based harness join `2bd59014` separately passed its full native
+workspace gate and controls in the main `c89e29d3` image `08bd13d8` on a
+c7i.4xlarge/us-east-1; raw archive SHA-256
+`9d417731ece59058f380072fb9171fb54c8120c2c76cd646c47cc5689fbc65cf`.
+This is workspace qualification only, not a fork source-suite run or acceptance
+of the combined runtime. Its broader acceptance remains separate; accepted
+pins are unchanged.
 
 Failed/interrupted attempts, 2026-10-16:
+
+- `af339f8a`: replacement remaining-gates controller fetched the complete fast
+  corpus, then its subprocess proxy lacked `DEVNULL`. The helper failed before
+  any verifier/SMT execution; no determinism/standard/deep result follows.
+  Final raw SHA-256
+  `5f7d7fdfb1d21f0dcd4dc615b58524a5d72ec1d113b3107bb8dc2636c6aea37f`.
 
 - `af339f8a`: subsequent determinism preparation failed before any SMT
   execution because the fresh host had not fetched the complete fast corpus.
