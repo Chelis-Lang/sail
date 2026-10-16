@@ -8,6 +8,35 @@ script never publishes one, and only the owner publishes.
 Releases are built locally. CI stays Linux-only and never builds, packages or
 publishes a release (ADR 0013); there are no macOS runners.
 
+Source-suite validation checks both runtime-artifact and test-executable
+SHA-256 digests before reusing a cached build. A suite manifest without test
+digests predates this check: rebuild it using `cargo xtask build-verus-source
+--force` with the intended variant options. Do not fill in digests from an
+existing cache. This development-suite requirement does not change bundled
+runtime identity or qualify any new release; see
+[ADR 0019](decisions/0019-rust-verify-test-conformance.md).
+
+For the source-suite integrity control, use an owned native Linux stock build;
+the script deliberately changes a named test executable and then rebuilds it.
+Keep its evidence outside the source/cache tree. Build the matching xtask and
+conformance binaries first, with no caller build-directory override:
+
+```sh
+cargo build --release --locked -p xtask -p sail-conformance
+target/release/xtask build-verus-source --keep-intermediates
+sail_stock_suite="$(target/release/xtask build-verus-source --print-path)"
+python3 scripts/test-source-suite-integrity.py --build "$sail_stock_suite" \
+  --binary target/release/sail-conformance --out "$SAIL_INTEGRITY_OUT"
+```
+
+`--build` must identify the single active-pin stock build; do not use a fork,
+engine, shared build or unrelated cache. Set `SAIL_TEST_Z3` to the pinned binary
+release's Z3, and use Python 3.11 or newer. The control refuses mismatched
+manifests and retains failed/interrupted raw results. If a rebuild is
+interrupted, the source cache may be incomplete and needs rebuilding before
+validation. The [qualification record](validation/source-suite-integrity.md)
+states the remaining gates; a list-only check does not qualify verifier results.
+
 ## Assets
 
 For version `VERSION`, the draft release `vVERSION` holds four assets:

@@ -75,6 +75,7 @@ const CARGO_ENV: &[&str] = &[
     "CARGO",
     "CARGO_TARGET_DIR",
     "CARGO_BUILD_TARGET_DIR",
+    "CARGO_BUILD_BUILD_DIR",
     "CARGO_MANIFEST_DIR",
     "CARGO_MANIFEST_PATH",
     "CARGO_PKG_NAME",
@@ -383,16 +384,54 @@ fn relative_binaries(build: &Path, executables: &[(String, PathBuf)]) -> Result<
         .map_err(|e| format!("cannot resolve {}: {e}", build.display()))?;
     let mut test_binaries = Vec::new();
     for (name, exe) in executables {
+        if !exe.is_file() {
+            return Err(format!("not a regular suite executable: {}", exe.display()));
+        }
         let rel = exe
             .strip_prefix(&root)
             .map_err(|_| format!("{} is outside {}", exe.display(), build.display()))?;
         test_binaries.push(TestBinary {
             name: name.clone(),
             path: rel.to_path_buf(),
+            sha256: file_sha256(exe)?,
         });
     }
 
     Ok(test_binaries)
+}
+
+/// A failed completeness check cannot be repaired by hashing Cargo-fresh
+/// outputs: Cargo does not authenticate executable contents. Remove both fixed
+/// release output trees so retained intermediates cannot supply old tests or
+/// runtime copies. Every existing parent must be a directory, not a symlink.
+fn reset_suite_outputs(checkout: &Path) -> Result<()> {
+    let root = checkout.canonicalize().map_err(|e| e.to_string())?;
+    for output in ["target", "target-verus"] {
+        let mut release = root.clone();
+        let mut present = true;
+        for component in ["source", output, "release"] {
+            release.push(component);
+            match std::fs::symlink_metadata(&release) {
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    present = false;
+                    break;
+                }
+                Err(error) => return Err(format!("cannot inspect {}: {error}", release.display())),
+                Ok(metadata) if !metadata.is_dir() => {
+                    return Err(format!(
+                        "refusing redirected or non-directory suite output {}",
+                        release.display()
+                    ));
+                }
+                Ok(_) => {}
+            }
+        }
+        if present {
+            std::fs::remove_dir_all(&release)
+                .map_err(|e| format!("cannot reset suite output {}: {e}", release.display()))?;
+        }
+    }
+    Ok(())
 }
 
 fn active_pins() -> Result<(Pins, AssetPin)> {
@@ -494,6 +533,18 @@ pub fn build(args: &[String]) -> Result<()> {
             "verus@{commit} pins Rust {channel}, but corpus/toolchain.toml says {toolchain}"
         ));
     }
+    if !o.engine {
+        let actual = checkout.canonicalize().map_err(|e| e.to_string())?;
+        if actual
+            != build
+                .canonicalize()
+                .map_err(|e| e.to_string())?
+                .join("verus")
+        {
+            return Err("refusing redirected source-build checkout".to_owned());
+        }
+        reset_suite_outputs(&checkout)?;
+    }
     let jobs = std::env::var("SAIL_BUILD_JOBS")
         .ok()
         .filter(|j| j.parse::<u32>().is_ok_and(|n| n > 0))
@@ -545,7 +596,7 @@ pub fn build(args: &[String]) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::test_executables;
+    use super::{relative_binaries, reset_suite_outputs, test_executables};
     use std::path::PathBuf;
 
     #[test]
@@ -562,5 +613,76 @@ not json
                 ("modes".to_owned(), PathBuf::from("/b/deps/modes-1")),
             ]
         );
+    }
+
+    #[test]
+    fn recorded_suite_digests_bind_the_compiled_executable() {
+        let build = std::env::temp_dir().join(format!("sail-test-digest-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&build).is_ok());
+        let build = build
+            .canonicalize()
+            .unwrap_or_else(|e| unreachable!("build: {e}"));
+        let exe = build.join("test");
+        assert!(std::fs::write(&exe, "compiled test").is_ok());
+        let binaries = relative_binaries(&build, &[("test".to_owned(), exe.clone())])
+            .unwrap_or_else(|e| unreachable!("binaries: {e}"));
+        assert_eq!(binaries.len(), 1);
+        assert_eq!(binaries[0].path, PathBuf::from("test"));
+        assert_eq!(
+            binaries[0].sha256,
+            crate::verus::file_sha256(&exe).unwrap_or_default()
+        );
+        assert!(std::fs::remove_file(&exe).is_ok());
+        assert!(relative_binaries(&build, &[("test".to_owned(), exe)]).is_err());
+        let _ = std::fs::remove_dir_all(build);
+    }
+
+    #[test]
+    fn incomplete_suite_reset_removes_outputs_and_retains_source() {
+        let checkout =
+            std::env::temp_dir().join(format!("sail-suite-reset-{}", std::process::id()));
+        let release = checkout.join("source/target-verus/release");
+        assert!(std::fs::create_dir_all(release.join("deps")).is_ok());
+        assert!(std::fs::create_dir_all(release.join(".fingerprint")).is_ok());
+        let public_output = checkout.join("source/target/release");
+        assert!(std::fs::create_dir_all(&public_output).is_ok());
+        assert!(std::fs::write(public_output.join("runtime"), "old runtime copy").is_ok());
+        assert!(std::fs::write(release.join("deps/test"), "old modified executable").is_ok());
+        assert!(std::fs::write(release.join(".fingerprint/fresh"), "old cargo state").is_ok());
+        assert!(std::fs::write(checkout.join("source/input.rs"), "source").is_ok());
+        assert!(reset_suite_outputs(&checkout).is_ok());
+        assert!(!release.exists());
+        assert!(!public_output.exists());
+        assert_eq!(
+            std::fs::read(checkout.join("source/input.rs")).ok(),
+            Some(b"source".to_vec())
+        );
+        assert!(reset_suite_outputs(&checkout).is_ok());
+        assert!(std::fs::write(&release, "not a directory").is_ok());
+        assert!(reset_suite_outputs(&checkout).is_err());
+        let _ = std::fs::remove_dir_all(checkout);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn suite_reset_refuses_redirected_output_without_removing_external_bytes() {
+        let root = std::env::temp_dir().join(format!("sail-suite-redirect-{}", std::process::id()));
+        let checkout = root.join("checkout");
+        let external = root.join("external");
+        assert!(std::fs::create_dir_all(checkout.join("source")).is_ok());
+        assert!(std::fs::create_dir_all(external.join("release")).is_ok());
+        assert!(std::fs::write(external.join("release/test"), "preserved").is_ok());
+        assert!(
+            std::os::unix::fs::symlink(&external, checkout.join("source/target-verus")).is_ok()
+        );
+        assert!(reset_suite_outputs(&checkout).is_err());
+        assert_eq!(
+            std::fs::read(external.join("release/test")).ok(),
+            Some(b"preserved".to_vec())
+        );
+        assert!(std::fs::remove_dir_all(external.join("release")).is_ok());
+        assert!(reset_suite_outputs(&checkout).is_err());
+        assert!(!external.join("release").exists());
+        let _ = std::fs::remove_dir_all(root);
     }
 }

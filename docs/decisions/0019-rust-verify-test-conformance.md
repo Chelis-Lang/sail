@@ -88,6 +88,38 @@ Facts found while building it at the pinned commit (`426d8b0`):
   executables. A complete build matching the pins is left alone; `--force`
   rebuilds.
 
+**Executable digest correction (2026-10-16, #202).** Each listed test
+executable now records its SHA-256 at build time, in addition to the existing
+runtime-artifact hashes. Completeness checks read every executable and require
+the recorded bytes; missing files, malformed or missing digests, empty names,
+duplicate names and duplicate executable paths are incomplete. This closes
+the previous existence-only test check. It does not establish that files
+cannot change after the check or replace the exclusive build lock.
+
+Schema 1 remains readable. Older entries deserialize with an empty digest
+and fail completeness instead of inheriting trust from their present bytes.
+A runner refuses an incomplete suite with `SAIL3040`. Before a non-engine
+source rebuild, the builder removes both fixed release-output trees under the
+selected checkout: `source/target/release` (Vargo's Cargo outputs and runtime
+copy sources) and `source/target-verus/release` (the separate Cargo build
+directory and assembled runtime). This also clears Cargo freshness records,
+so `--keep-intermediates`, `--force` or legacy-manifest migration cannot establish
+new digests merely by hashing previously cached executable bytes. Complete
+matching caches still return without resetting either tree. Engine-only build
+and release-runtime validation retain their existing behavior.
+The nested build environment also removes `CARGO_BUILD_BUILD_DIR`, alongside
+the existing Cargo target overrides, so callers cannot redirect the freshness
+state outside these fixed trees.
+
+The reset uses fixed checkout-relative paths, never paths supplied by an old
+manifest. Missing output directories are allowed only under unredirected
+existing parents; non-directory, symlink or redirected output trees and reset
+errors refuse the rebuild. Source files remain in place. Digests are recorded
+after the fresh compilation, not inferred from an old cache. Do not manually
+add hashes to an old manifest to qualify an old build. The exclusive build lock
+still governs cooperating builders and runners; this correction does not claim
+to prevent arbitrary external mutation during or after validation.
+
 **The runner.** `sail-conformance rust-verify-test` lists every test
 (`--list --format terse`, plus `--ignored` for the ignored ones) and runs
 each one alone, as `<binary> --exact <test> --nocapture --test-threads 1`

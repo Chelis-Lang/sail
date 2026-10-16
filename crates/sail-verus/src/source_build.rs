@@ -9,7 +9,7 @@
 //! in a [`Manifest`]. The harness ([`crate::rvt`]) reads the manifest.
 
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -153,6 +153,10 @@ pub struct TestBinary {
     pub name: String,
     /// The executable, relative to the build directory.
     pub path: PathBuf,
+    /// SHA-256 of the executable produced by the recorded source build.
+    /// Older manifests deserialize without a digest, but cannot be reused.
+    #[serde(default)]
+    pub sha256: String,
 }
 
 /// What a source build contains, written once the build succeeds.
@@ -222,17 +226,26 @@ impl Manifest {
             .map_err(|e| Error::new("SAIL3040", format!("cannot write {}: {e}", path.display())))
     }
 
-    /// Whether every test binary the manifest names exists.
+    /// Whether the recorded runtime and every named test binary match their bytes.
+    ///
+    /// Manifests predating test-binary digests require a rebuild. Names and
+    /// executable paths must be nonempty and unique within the suite.
     #[must_use]
     pub fn is_complete(&self, build: &Path) -> bool {
+        let mut names = BTreeSet::new();
+        let mut paths = BTreeSet::new();
         !self.test_binaries.is_empty()
             && self.artifacts.iter().all(|(p, hash)| {
                 safe_relative(p) && hash_file(&build.join(p)).ok().as_ref() == Some(hash)
             })
-            && self
-                .test_binaries
-                .iter()
-                .all(|b| safe_relative(&b.path) && build.join(&b.path).is_file())
+            && self.test_binaries.iter().all(|b| {
+                !b.name.is_empty()
+                    && names.insert(&b.name)
+                    && paths.insert(&b.path)
+                    && safe_relative(&b.path)
+                    && build.join(&b.path).is_file()
+                    && hash_file(&build.join(&b.path)).ok().as_ref() == Some(&b.sha256)
+            })
     }
 }
 
@@ -275,15 +288,81 @@ mod tests {
             test_binaries: vec![TestBinary {
                 name: "basic".to_owned(),
                 path: PathBuf::from("bin/basic-123"),
+                sha256: format!("{:x}", Sha256::digest(b"built test executable")),
             }],
         };
         assert!(m.save(&dir).is_ok());
         assert_eq!(Manifest::load(&dir).ok(), Some(m.clone()));
         assert!(!m.is_complete(&dir));
-        assert!(std::fs::write(dir.join("bin/basic-123"), "").is_ok());
+        assert!(std::fs::write(dir.join("bin/basic-123"), "built test executable").is_ok());
         assert!(m.is_complete(&dir));
         let _ = std::fs::remove_dir_all(&dir);
         assert!(Manifest::load(&dir).is_err_and(|e| e.code == "SAIL3040"));
+    }
+
+    #[test]
+    fn test_binary_changes_and_incomplete_entries_are_rejected() {
+        let dir = std::env::temp_dir().join(format!("sail-suite-hash-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&dir).is_ok());
+        assert!(std::fs::write(dir.join("runtime"), "runtime").is_ok());
+        assert!(std::fs::write(dir.join("test"), "original").is_ok());
+        let manifest = Manifest {
+            schema_version: SCHEMA_VERSION,
+            commit: "abc".to_owned(),
+            rust_toolchain: "1".to_owned(),
+            z3_sha256: "hash".to_owned(),
+            features: vec![],
+            build_seconds: 0,
+            artifacts: BTreeMap::from([(
+                "runtime".into(),
+                hash_file(&dir.join("runtime")).unwrap_or_default(),
+            )]),
+            test_binaries: vec![TestBinary {
+                name: "test".to_owned(),
+                path: "test".into(),
+                sha256: hash_file(&dir.join("test")).unwrap_or_default(),
+            }],
+        };
+        assert!(manifest.is_complete(&dir));
+        // Only suite bytes change; the runtime and its recorded digest stay fixed.
+        for bytes in ["modified", ""] {
+            assert!(std::fs::write(dir.join("test"), bytes).is_ok());
+            assert!(!manifest.is_complete(&dir));
+        }
+        assert!(std::fs::write(dir.join("test"), "original").is_ok());
+        assert!(manifest.is_complete(&dir));
+        for digest in ["", "not-a-digest"] {
+            let mut incomplete = manifest.clone();
+            incomplete.test_binaries[0].sha256 = digest.to_owned();
+            assert!(!incomplete.is_complete(&dir));
+        }
+        let mut duplicate = manifest.clone();
+        duplicate
+            .test_binaries
+            .push(manifest.test_binaries[0].clone());
+        assert!(!duplicate.is_complete(&dir));
+        duplicate.test_binaries[1].name = "other-name".into();
+        assert!(!duplicate.is_complete(&dir));
+        assert!(std::fs::write(dir.join("other-test"), "original").is_ok());
+        duplicate.test_binaries[1].name = "test".into();
+        duplicate.test_binaries[1].path = "other-test".into();
+        assert!(!duplicate.is_complete(&dir));
+        let mut unnamed = manifest.clone();
+        unnamed.test_binaries[0].name.clear();
+        assert!(!unnamed.is_complete(&dir));
+        let mut legacy = serde_json::to_value(&manifest).unwrap_or_default();
+        assert!(
+            legacy["test_binaries"][0]
+                .as_object_mut()
+                .and_then(|entry| entry.remove("sha256"))
+                .is_some()
+        );
+        let legacy: Manifest =
+            serde_json::from_value(legacy).unwrap_or_else(|e| unreachable!("legacy manifest: {e}"));
+        assert!(!legacy.is_complete(&dir));
+        assert!(std::fs::remove_file(dir.join("test")).is_ok());
+        assert!(!manifest.is_complete(&dir));
+        let _ = std::fs::remove_dir_all(dir);
     }
     #[test]
     fn feature_builds_and_toolchains_have_distinct_locations() {
@@ -314,6 +393,7 @@ mod tests {
             test_binaries: vec![TestBinary {
                 name: "test".to_owned(),
                 path: "solver".into(),
+                sha256: hash_file(&dir.join("solver")).unwrap_or_default(),
             }],
             artifacts: BTreeMap::from([(
                 "solver".into(),
