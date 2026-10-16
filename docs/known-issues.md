@@ -8,6 +8,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **Changed-check continuation remains unqualified** ([#158](https://github.com/Chelis-Lang/sail/issues/158)).
+  Historical fork continuations have raw statistics differences. Three fresh
+  full runs per real IronKV/Anvil trace also differ in literal clock bytes,
+  so both one-use live samples were skipped; one IronKV sample additionally
+  retains a memory-observer exit refusal. The strict gate stays failed and
+  the prototype stays archived, with no default integration. See the
+  [qualification record](validation/solver-snapshots.md).
 - **rc.5 omits verifier stdout after dependency-store seeding** ([#184](https://github.com/Chelis-Lang/sail/issues/184)).
   A second new project reuses vstd but omits its `verification results::`
   line; plain stock on a fresh target prints it. Verdicts, exit codes and
