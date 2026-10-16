@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Retain bounded original output E2E failure streams, command/source snapshots
+  and producer records without changing comparisons or the original exit code.
+
 - Linux benchmark host teardown retains connection state on AWS errors and
   confirms termination before deleting cloud resources (#201). Refresh
   credentials or fix `SAIL9001`, then retry `scripts/perf-host.sh down LANE`.

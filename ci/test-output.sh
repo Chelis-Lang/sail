@@ -17,8 +17,59 @@
 set -euo pipefail
 sail="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 part="${2:?usage: ci/test-output.sh SAIL loop|loader|flags|extra}"
+sail_output_phase="$part"
+sail_output_checkout="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_output_checkout/target/e2e-output-evidence}"
+# Resolve a caller-relative observer path before entering the temporary fixture.
+case "$sail_output_evidence" in /*) ;; *) sail_output_evidence="$PWD/$sail_output_evidence" ;; esac
+# The observer path is harness state, never a verifier input.
+unset SAIL_E2E_OUTPUT_OUT
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+output_cleanup() {
+  local original_exit=$? capture_exit
+  trap - EXIT
+  set +e
+  if [ "$original_exit" -ne 0 ]; then
+    timeout --signal=TERM --kill-after=5s 60s python3 \
+      "$sail_output_checkout/ci/capture-output-evidence.py" \
+      --work "$work" --out "$sail_output_evidence" --part "$sail_output_phase" \
+      --exit "$original_exit" --sail "$sail"
+    capture_exit=$?
+    if [ "$capture_exit" -ne 0 ]; then
+      echo "e2e: failure evidence collector exited $capture_exit; original test exit $original_exit retained" >&2
+    fi
+  fi
+  rm -rf "$work"
+  exit "$original_exit"
+}
+trap output_cleanup EXIT
+# These copies are outside the project and are diagnostic observations only.
+# Failure to record metadata never changes a verifier command or its exit code.
+record_start() {
+  local label="$1" sail_output_source record_failed=0; shift
+  mkdir -p "$work/commands" || record_failed=1
+  printf '%s\0' "$@" > "$work/commands/$label.argv" || record_failed=1
+  printf '%s\n' "$PWD" > "$work/commands/$label.cwd" || record_failed=1
+  printf '%s\n' "${CARGO_TARGET_DIR-}" > "$work/commands/$label.target-dir" || record_failed=1
+  date -u +%s > "$work/commands/$label.started" || record_failed=1
+  python3 "$sail_output_checkout/ci/capture-output-evidence.py" snapshot \
+    --work "$work" --cwd "$PWD" --label "$label" --stage start || record_failed=1
+  if [ "$record_failed" -ne 0 ]; then
+    echo "e2e: could not record command metadata for $label" >&2
+    printf '%s\n' "$label metadata recording failed" >> "$work/metadata-errors.err" || true
+  fi
+}
+record_finish() {
+  local label="$1" code="$2" sail_output_stream record_failed=0
+  python3 "$sail_output_checkout/ci/capture-output-evidence.py" snapshot \
+    --work "$work" --cwd "$PWD" --label "$label" --stage finish || record_failed=1
+  printf '%s\n' "$code" > "$work/$label.rc" || record_failed=1
+  date -u +%s > "$work/commands/$label.finished" || record_failed=1
+  if [ "$record_failed" -ne 0 ]; then
+    echo "e2e: could not record command completion for $label" >&2
+    printf '%s\n' "$label completion recording failed" >> "$work/metadata-errors.err" || true
+  fi
+}
 export SAIL_CACHE_DIR="$work/cache"
 cd "$work"
 cargo verus new --lib demo >/dev/null
@@ -39,11 +90,13 @@ pub fn bad(x: u32) -> (r: u32)
 } // verus!
 RS
 run() { # $1 = label; rest = command
-  local label="$1"; shift
+  local label="$1" code; shift
   touch src/lib.rs
+  record_start "$label" "$@"
   set +e
   "$@" > "$work/$label.out" 2> "$work/$label.err"
-  echo $? > "$work/$label.rc"
+  code=$?
+  record_finish "$label" "$code"
   set -e
 }
 # Stock keeps its own Cargo target directory; managed `sail verify` builds in
@@ -67,10 +120,12 @@ same() { # plain-label sail-label [parts]
   done
 }
 quiet_run() { # like run, without touching the source
-  local label="$1"; shift
+  local label="$1" code; shift
+  record_start "$label" "$@"
   set +e
   "$@" > "$work/$label.out" 2> "$work/$label.err"
-  echo $? > "$work/$label.rc"
+  code=$?
+  record_finish "$label" "$code"
   set -e
 }
 edit_run() { printf '// %s\n' "$1" >> src/lib.rs; quiet_run "$@"; }
@@ -93,9 +148,15 @@ if [ "$part" = loop ]; then
 # Combined output (2>&1), as agents read it, on the failing proof.
 set +e
 touch src/lib.rs
+CARGO_TARGET_DIR="$work/target-plain" record_start combined-plain cargo verus verify
 CARGO_TARGET_DIR="$work/target-plain" cargo verus verify > "$work/combined-plain.out" 2>&1
+sail_output_exit=$?
+record_finish combined-plain "$sail_output_exit"
 touch src/lib.rs
+CARGO_TARGET_DIR="$work/target-sail" record_start combined-sail "$sail" verify
 CARGO_TARGET_DIR="$work/target-sail" "$sail" verify > "$work/combined-sail.out" 2>&1
+sail_output_exit=$?
+record_finish combined-sail "$sail_output_exit"
 set -e
 same combined-plain combined-sail out
 # Passing proofs, then an unchanged re-run (Cargo's no-op; Sail reuses

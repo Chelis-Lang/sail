@@ -130,6 +130,7 @@ case "$step" in
     bash ci/test-completion.sh
     # The image's engine installer: corrupt or stale runtimes never install.
     python3 ci/test-engine-artifact.py
+    python3 ci/test-output-evidence.py
     python3 scripts/check-links.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
@@ -169,6 +170,8 @@ case "$step" in
       *) echo "e2e: unknown phase '$phase'; expected legacy|managed|scripts|repair|output|loader|flags|extra" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
+    sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_checkout/target/e2e-output-evidence}"
+    unset SAIL_E2E_OUTPUT_OUT
     # Sail runs its own Verus, the validated fork runtime the image installs
     # (ADR 0043); stock `cargo verus` on PATH is only the oracle.
     : "${SAIL_ENGINE_BUILD:?e2e needs the validated prebuilt fork runtime, the Verus Sail runs}"
@@ -292,21 +295,21 @@ RS
     if [ "$phase" = full ] || [ "$phase" = output ]; then
       # `sail verify` against plain `cargo verus verify` across the edit loop
       # (ADR 0046), in a job of its own.
-      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" loop)
+      (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" loop)
     fi
     if [ "$phase" = full ] || [ "$phase" = loader ]; then
       # A loader variable: verified without proof reuse, with one note.
-      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" loader)
+      (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" loader)
     fi
     if [ "$phase" = full ] || [ "$phase" = flags ]; then
       # The setups verified as plain Cargo-Verus verifies them.
-      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" flags)
+      (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" flags)
     fi
     if [ "$phase" = extra ] || { [ "$phase" = full ] && [ "${CI:-}" != true ]; }; then
       # `-- --output-json --time` and a workspace: four cold builds, so
       # local-only (ADR 0013).
       local_only e2e extra
-      (cd "$sail_checkout" && bash ci/test-output.sh "$sail" extra)
+      (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" extra)
     fi
     if [ "$phase" = full ] || [ "$phase" = managed ] || [ "$phase" = scripts ]; then
       sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"
