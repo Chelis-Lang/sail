@@ -76,6 +76,17 @@ pub fn variant_dir(cache: &Path, commit: &str, toolchain: &str, features: &[Stri
         .join(format!("{commit}-{}", &hash[..16]))
 }
 
+/// Identifies a source build of the pinned fork with its full test suite.
+///
+/// This has a separate directory from both stock source builds and installed
+/// engine runtimes, whose manifests contain no test executables.
+#[must_use]
+pub fn fork_test_features() -> Vec<String> {
+    let mut features = crate::engine::features();
+    features.push("suite:rust-verify-test".to_owned());
+    features
+}
+
 fn safe_relative(path: &Path) -> bool {
     path.components()
         .all(|p| matches!(p, std::path::Component::Normal(_)))
