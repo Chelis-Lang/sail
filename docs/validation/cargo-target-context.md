@@ -59,6 +59,12 @@ Raw evidence is outside the repository in the target-context evidence set:
 
 Failed attempts remain visible:
 
+- `a4ba5014`, 2026-10-16, native Linux gate: 629 tests passed and the
+  engine-selection fixture failed because its cache was inside its package
+  root. The overlap guard correctly selected fallback before that fixture's
+  intended engine-identification check. Its cache now lives in an owned
+  sibling directory; every assertion is unchanged. Failed-attempt archive
+  SHA-256 `216e2b61510422036ccd3738b26a46bad81b09759b84b2665aa46bf5f710b3ef`.
 - Main-derived #184 staged binary, 2026-10-16: `SAIL_CACHE_DIR=workspace/src`
   hides a new alternative module after warm establishment: exit 0, Current,
   reused and zero verifier calls with unchanged revision. The outside-cache
