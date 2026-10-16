@@ -12,7 +12,7 @@ and [ADR 0049](../decisions/0049-stable-closure-names.md).
 | Source controls | Full-file SHA-256 before editing; exactly one textual anchor; helper relocation preserves all other bytes; restoration checks every catalogue file before each independent edit and before removing each working copy |
 | Bounded harness checks | All 15 edits apply and restore against the fetched pins; all 15 edited copies refuse a pristine assertion; changed source pins and ambiguous anchors refuse. Stub dispatch retains all 24 samples in both positive and failure controls; the three failed helper samples make the command fail. No Verus invocation or performance claim |
 | Native timing | Pending: old fork, combined candidate and plain stock, three rounds, quiet host, every sample retained |
-| Solver work | Pending: exact re-solved satisfiability-check observations. Existing daemon `puts` counts replies of multiple command types; it must not be reported as a count of checks |
+| Solver work | Observer controls pass on macOS and native Linux; a two-proof native project distinguishes unchanged reuse, cached answers and prefix replay. Final-runtime corpus observations remain pending. Existing daemon `puts` must not be reported as a count of checks |
 | SMT characterization | Pending: unchanged repetitions and every edit on each runtime. The `det` table counts checks after the first byte divergence (with log-only comments omitted), not actual solver executions |
 | Correctness | Pending final runtime's full fast/standard conformance, source suite and determinism gates; matching benchmark exit codes alone is insufficient |
 
@@ -27,6 +27,20 @@ Bounded-check raw evidence, 2026-10-16: archive SHA-256
 It includes the 15 source round trips, corruption controls, stub command
 dispatch checks, scripts and exact source hashes. Stub wall times are fixture
 output only and are not performance evidence.
+
+After integrating the two ordinary default modes from #167, the incidental
+catalogue still defaults to its three comparison arms. A fixture-only rerun
+without `SAIL_PERF_MODES` retains all 24 samples in each control; the three
+deliberately failed helper samples still make the command fail. Archive
+SHA-256 `a02c7fe183af2659169e37db6f6697dde880f986c373195fe6fb6236dc5966b2`.
+No verifier or performance measurement is implied by these dispatch controls.
+
+Native workspace-gate attempts, 2026-10-16:
+
+- `3898ee2f`: 632 tests passed and one failed because the new observer's
+  `SAIL0930` code was missing from the error-code registry. The code is now
+  documented; the registry check is unchanged. Raw archive SHA-256
+  `7c857ef4786a03bf669348fe3c35e6a107adb772ceb291da2837d44eeb614cbb`.
 
 ## Exact solver-work capture design
 
@@ -50,8 +64,57 @@ and therefore undercounts this actual replay work. Sessions that never start
 a solver contribute zero executed checks. Keep prefix replay counts separate
 from newly answered checks, and retain raw records for both.
 
-This describes the intended observer; the observer build, complete capture
-controls and final-runtime measurements remain pending.
+The candidate observer is
+[`actual_work`](../../crates/sail-verus/examples/actual_work.rs). It requires
+a real run directory whose basename matches the successful Current project
+result's `run_id`. Its direct child sidecars must cover every recorded verifier
+invocation. Transcripts and session records join by exact input digest with
+multiplicity; missing AIR, partial command/response streams, unsupported session
+records and unmatched evidence refuse with `SAIL0930`. A missing run directory
+cannot authorize a zero-work result. Historical target reports are never read
+for these counters.
+
+The output separates `actual_solver_checks`, `new_solver_answers`,
+`cached_prefix_checks_replayed` and `checks_answered_from_cache`. This observer
+supports the default shim which starts a fresh solver with the whole exact
+prefix on its first miss. Snapshot and live-prefix experiments need their own
+actual-work observer; a filename or schema match does not qualify those modes.
+
+```sh
+cargo build --release --locked -p sail-verus --example actual_work
+target/release/examples/actual_work \
+  --result "$CURRENT_RESULT_JSON" --run-dir "$MANAGED_RUN_DIR"
+```
+
+Pass the current run's directory, not any reused target's establishing-run
+sidecars. Use a separate JSON capture and preserve its exact Sail/shim/runtime
+identities and environment with the raw records. This command does not run
+verification or reconstruct missing evidence.
+
+Focused macOS and native Linux source checks cover cached-prefix replay
+counting, duplicate input multiplicity, missing/aliased run roots and truncated
+model replies. All four controls and strict Clippy pass on both platforms.
+
+An untimed native two-proof project, using Sail source `6583c2c3` and its
+validated pinned fork runtime, gives the following actual observations:
+
+| Run | Actual solver checks | Newly answered checks | Cached prefix checks replayed | Checks answered from cache |
+|---|---:|---:|---:|---:|
+| First verification | 2 | 2 | 0 | 0 |
+| Unchanged | 0 | 0 | 0 | 0 |
+| Comment-only edit | 0 | 0 | 0 | 2 |
+| Later proof-body edit | 2 | 1 | 1 | 1 |
+
+The complete raw capture archive has SHA-256
+`dfb6fc0e8f0fb9284b8f61bb81638d475305d20ed539941a40d5f6c7955a60e9`.
+Its observer source is
+`1b0241543be5fc93b44c34d1bd82ae2a695f5f8e9a93d8102743289391f65c42`;
+the manifest binds the executable and library hashes, exact commands and run
+sidecars. The initial setup attempt failed because its isolated cache lacked an
+explicit runtime selection; its logs remain in the archive. The successful
+attempt explicitly selected the installed fork runtime. These controls qualify
+the observer for the current default replay path. They do not accept a new
+runtime, solver experiment, full corpus result or performance improvement.
 
 ## Native commands
 
