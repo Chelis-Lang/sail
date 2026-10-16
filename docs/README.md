@@ -32,6 +32,8 @@ The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
+[Output failure evidence](e2e-output-evidence.md) describes bounded original
+E2E streams and producer records retained for diagnosis.
 [Socket fixture retirement](validation/mcp-fixture-retirement.md) records the
 MCP test-server cancellation regression and its remaining validation scope.
 [Solver-continuation findings](reports/2026-10-16-solver-snapshots.md) and their

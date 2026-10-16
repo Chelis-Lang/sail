@@ -235,6 +235,14 @@ jobs:
       - run: ci/run.sh e2e output
         env:
           SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
+          SAIL_E2E_OUTPUT_OUT: ${{ runner.temp }}/e2e-output-evidence
+      - name: Retain original output failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-output-evidence-output
+          path: ${{ runner.temp }}/e2e-output-evidence
+          if-no-files-found: ignore
 
   e2e-flags:
     # `sail verify` against `cargo verus verify` for the setups it verifies
@@ -262,6 +270,14 @@ jobs:
       - run: ci/run.sh e2e flags
         env:
           SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
+          SAIL_E2E_OUTPUT_OUT: ${{ runner.temp }}/e2e-output-evidence
+      - name: Retain original output failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-output-evidence-flags
+          path: ${{ runner.temp }}/e2e-output-evidence
+          if-no-files-found: ignore
 
   e2e-loader:
     # `sail verify` with a loader variable set: no proof reuse, one note,
@@ -289,6 +305,14 @@ jobs:
       - run: ci/run.sh e2e loader
         env:
           SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
+          SAIL_E2E_OUTPUT_OUT: ${{ runner.temp }}/e2e-output-evidence
+      - name: Retain original output failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-output-evidence-loader
+          path: ${{ runner.temp }}/e2e-output-evidence
+          if-no-files-found: ignore
 
   e2e-managed:
     # Complete target receipts and persistent CLI/MCP verification jobs.
