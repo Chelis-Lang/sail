@@ -88,6 +88,11 @@ result is a `sail-project-result` with:
   note starting `SAIL3112:`. Such a result is never `current`, establishes no
   freshness record, and nothing reuses it.
 
+For this aggregate target, `execution.verifier_invocations` is one when the
+Cargo-Verus driver returns a report, including when Cargo verifies zero or
+several crates, and zero when setup or the driver fails without a report.
+It does not count actual per-crate Verus or solver work.
+
 The job's exit code is Cargo-Verus's. `sail jobs result` adds a
 `no proof reuse (SAIL3112)` line, and `sail watch --output jsonl` emits a
 `no-reuse` event (see [watch](#watch-and-agent-tools)).
@@ -278,7 +283,10 @@ generates proof edits.
   `unchanged`, `regressed`, `became_unknown`, `recovered`, `added`, `removed`,
   `not_observed`, `incomparable` or `changed`. Transitions are labelled as
   regressions only when the verification context and the requested scopes
-  agree. A partial scope reports `not_observed`, never `removed`. A function
+  agree. Runs marked `no_reuse` and results without a bound context are
+  `incomparable`, including when saved as baselines: matching empty context
+  fields do not establish that two setups agree.
+  A partial scope reports `not_observed`, never `removed`. A function
   that passed by Verus's totals (reported `unknown`, not attributed one by
   one) is classified as verified, with its reported verdict kept and flagged.
   A repeated friendly function name (VI-0010) is compared as one group only
@@ -314,6 +322,9 @@ independence. A completed run without proof reuse
 "job_id": …, "no_reuse": …, "currentness": "unknown", "exit_code": …}`; in the
 human stream the job's `note[SAIL3112]` line says the same. An explicit
 `--target-dir` is Cargo's output, so writes there do not restart a run.
+Watch retains its current input roots for these runs. Additional external
+include and build-script paths require a managed run that supplies an input
+record.
 
 MCP exposes `start_verification`, `verification_status`, `verification_result`
 and `cancel_verification`. Existing blocking verification and result tools

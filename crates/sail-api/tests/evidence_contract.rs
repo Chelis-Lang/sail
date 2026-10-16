@@ -51,6 +51,53 @@ fn success(mut project: ProjectResult) -> ProjectResult {
     }
     project
 }
+
+/// Unbound setups can produce different verdicts without establishing the
+/// same runtime context. Neither a shared empty context nor a loader run's
+/// nonempty context authorizes a proof-regression comparison.
+#[test]
+fn unbound_results_never_claim_comparable_proof_contexts() -> Result<(), Box<dyn std::error::Error>>
+{
+    use sail_api::project::{NoReuse, VerifiedAs};
+    for verified_as in [VerifiedAs::PlainCargoVerus, VerifiedAs::Managed] {
+        let mut before = success(project()?);
+        let mut after = project()?;
+        before.no_reuse = Some(NoReuse {
+            code: "SAIL3112".into(),
+            reason: "--tests".into(),
+            verified_as,
+        });
+        after.no_reuse = Some(NoReuse {
+            code: "SAIL3112".into(),
+            reason: "--config build.rustflags=[]".into(),
+            verified_as,
+        });
+        for empty in [false, true] {
+            if empty {
+                before.context_sha256.clear();
+                after.context_sha256.clear();
+            }
+            for (left, right) in [(&before, &after), (&after, &before)] {
+                let comparison = sail_api::evidence::compare(left, right);
+                assert!(!comparison.compatible);
+                assert_ne!(comparison.differences, []);
+                assert!(comparison.differences.iter().all(|difference| {
+                    difference.change == Change::Incomparable
+                        && difference
+                            .obligations
+                            .iter()
+                            .all(|obligation| obligation.change == Change::Incomparable)
+                }));
+            }
+        }
+    }
+    let mut before = success(project()?);
+    let mut after = project()?;
+    before.context_sha256.clear();
+    after.context_sha256.clear();
+    assert!(!sail_api::evidence::compare(&before, &after).compatible);
+    Ok(())
+}
 #[test]
 fn exact_target_obligation_comparisons_preserve_scope_and_removal_limits()
 -> Result<(), Box<dyn std::error::Error>> {

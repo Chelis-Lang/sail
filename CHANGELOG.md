@@ -68,7 +68,8 @@ semantic versioning once the API is published.
   a `no_reuse` field; `sail jobs result` names the missing reuse; `sail watch
   --output jsonl` emits a `no-reuse` event and no longer restarts on writes
   to an explicit `--target-dir`. A loader-variable run (`LD_LIBRARY_PATH` and
-  the like) also reports `no_reuse`, with `verified_as` `managed`.
+  the like) also reports `no_reuse`, with `verified_as` `managed`. Comparisons
+  involving these results remain `incomparable`, including saved baselines.
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);

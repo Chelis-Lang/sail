@@ -378,6 +378,9 @@ marked so an agent cannot mistake it for reusable evidence:
   Verus verified no function;
 - `no_reuse` is `{"code": "SAIL3112", "reason": …, "verified_as":
   "plain-cargo-verus"}` (`managed` for a process-loader variable);
+- `execution.verifier_invocations` counts the aggregate Cargo-Verus driver
+  result (one), including zero or several verified crates; setup/driver failure
+  without that result counts zero. It is not a per-crate Verus work count;
 - the one target is named `cargo verus verify`, with `reused` false; its
   report covers every crate Verus verified in the run;
 - `currentness` is `unknown`, and `notes` has a `SAIL3112:` entry.

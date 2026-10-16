@@ -132,6 +132,10 @@ pub struct TargetResult {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Execution {
     /// Number of target verification subprocesses started in this invocation.
+    /// For [`VerifiedAs::PlainCargoVerus`], this counts the one aggregate
+    /// Cargo-Verus driver result, even if Cargo verifies zero or several crates;
+    /// it is zero when setup or the driver fails without an aggregate result.
+    /// It does not measure per-crate verifier or solver work in that mode.
     pub verifier_invocations: u64,
     /// Number of targets whose reports were reused from complete receipts.
     pub reused_targets: u64,
