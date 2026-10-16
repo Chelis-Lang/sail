@@ -6,9 +6,11 @@
 //! both publication and placement; uncertain coverage is an ordinary miss.
 
 use super::dependency_inventory::{Inventory, Observation, Root};
-use super::files::{digest, file_digest};
+use super::files::digest;
+use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::io::{Read, Write};
@@ -297,10 +299,10 @@ impl<'a> Call<'a> {
                 if let Some((name, path)) = external.split_once('=') {
                     seen_externs.push(name.to_owned());
                     let path = PathBuf::from(path);
-                    let hash = file_digest(&path).ok()?;
+                    let hash = regular_digest(&path)?;
                     let vir = path.with_extension("vir");
                     let vir_hash = match std::fs::symlink_metadata(&vir) {
-                        Ok(_) => Some(file_digest(&vir).ok()?),
+                        Ok(_) => Some(regular_digest(&vir)?),
                         Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
                         Err(_) => return None,
                     };
@@ -456,41 +458,48 @@ impl<'a> Call<'a> {
     }
 
     /// Validate every stream and payload before any output becomes visible.
-    pub(crate) fn serve(&self, err: &mut dyn Write) -> Option<Replay> {
+    pub(crate) fn serve(&self, err: &mut dyn Write) -> Result<Option<Replay>> {
         let entry = self.entry();
         if std::fs::metadata(&entry).is_ok_and(|metadata| metadata.len() > MAX_ENTRY_BYTES) {
             let _ = writeln!(
                 err,
                 "warning[SAIL3131]: ignoring an oversized verified dependency entry; compiling it normally"
             );
-            return None;
+            return Ok(None);
         }
-        let bytes = read_limited(&entry, MAX_ENTRY_BYTES)?;
-        let result = self.restore(&bytes);
-        match result {
-            Ok(replay) => Some(replay),
-            Err(false) => None,
-            Err(true) => {
+        let Some(bytes) = read_limited(&entry, MAX_ENTRY_BYTES) else {
+            return Ok(None);
+        };
+        match self.restore(&bytes) {
+            Ok(replay) => Ok(Some(replay)),
+            Err(Refusal::Miss) => Ok(None),
+            Err(Refusal::Damaged) => {
                 let _ = writeln!(
                     err,
                     "warning[SAIL3131]: ignoring a damaged verified dependency entry; compiling it normally"
                 );
-                None
+                Ok(None)
             }
+            Err(Refusal::Cleanup(message)) => Err(Error::new(
+                "SAIL3111",
+                format!(
+                    "cannot clean incomplete dependency replay: {message}; refusing to run the compiler with partial outputs"
+                ),
+            )),
         }
     }
 
-    fn restore(&self, bytes: &[u8]) -> std::result::Result<Replay, bool> {
+    fn restore(&self, bytes: &[u8]) -> std::result::Result<Replay, Refusal> {
         let mut stored: Stored = serde_json::from_slice(bytes).map_err(|_| true)?;
         let checksum = std::mem::take(&mut stored.checksum);
         if digest(&serde_json::to_vec(&stored).map_err(|_| true)?) != checksum {
-            return Err(true);
+            return Err(Refusal::Damaged);
         }
         if stored.version != VERSION
             || stored.key != self.key
             || !super::receipts::complete(&stored.report)
         {
-            return Err(true);
+            return Err(Refusal::Damaged);
         }
         if &stored.inventory != self.observation.inventory()
             || !self.observation.unchanged()
@@ -499,13 +508,13 @@ impl<'a> Call<'a> {
                 .iter()
                 .all(|(name, value)| self.environment.get(name) == value.as_ref())
         {
-            return Err(false);
+            return Err(Refusal::Miss);
         }
         if digest(&serde_json::to_vec(&(&stored.stdout, &stored.stderr)).map_err(|_| true)?)
             != stored.streams_sha256
             || !self.complete_payload(&stored.files)
         {
-            return Err(true);
+            return Err(Refusal::Damaged);
         }
         let output = self.out_dir.to_str().ok_or(false)?;
         let stderr = self.artifacts(&stored.stderr, false).ok_or(true)?;
@@ -539,23 +548,22 @@ impl<'a> Call<'a> {
                 Ok(mut out) => {
                     // Ownership begins as soon as create_new succeeds, even
                     // when a subsequent write fills the disk or is interrupted.
-                    placed.push(destination);
+                    let identity = out
+                        .metadata()
+                        .map_err(|error| Refusal::Cleanup(error.to_string()))?;
+                    placed.push((destination, identity));
                     out.write_all(&bytes)
                 }
                 Err(error) => Err(error),
             };
             if written.is_err() {
-                for path in placed {
-                    let _ = std::fs::remove_file(path);
-                }
-                return Err(false);
+                rollback(&placed)?;
+                return Err(Refusal::Miss);
             }
         }
         if !self.observation.unchanged() {
-            for path in placed {
-                let _ = std::fs::remove_file(path);
-            }
-            return Err(false);
+            rollback(&placed)?;
+            return Err(Refusal::Miss);
         }
         Ok(Replay {
             stdout: stored.stdout,
@@ -661,7 +669,11 @@ impl<'a> Call<'a> {
             return None;
         }
         let dep_name = format!("{}.d", self.stem);
-        let text = std::fs::read_to_string(self.out_dir.join(&dep_name)).ok()?;
+        let text = String::from_utf8(read_limited(
+            &self.out_dir.join(&dep_name),
+            MAX_PAYLOAD_BYTES,
+        )?)
+        .ok()?;
         for path in text
             .lines()
             .filter(|line| !line.starts_with('#'))
@@ -669,7 +681,7 @@ impl<'a> Call<'a> {
             .filter(|line| !line.is_empty() && !line.contains(": "))
         {
             let path = PathBuf::from(path.replace("\\ ", " "));
-            if !self.observation.covers(&path, &file_digest(&path).ok()?) {
+            if !self.observation.covers(&path, &regular_digest(&path)?) {
                 return None;
             }
         }
@@ -805,11 +817,92 @@ impl<'a> Call<'a> {
     }
 }
 
+#[derive(Debug)]
+enum Refusal {
+    Miss,
+    Damaged,
+    Cleanup(String),
+}
+
+impl From<bool> for Refusal {
+    fn from(damaged: bool) -> Self {
+        if damaged { Self::Damaged } else { Self::Miss }
+    }
+}
+
+fn rollback(placed: &[(PathBuf, std::fs::Metadata)]) -> std::result::Result<(), Refusal> {
+    let mut failed = None;
+    for (path, original) in placed {
+        let result = match std::fs::symlink_metadata(path) {
+            Ok(current) if same_file(&current, original) => std::fs::remove_file(path),
+            Ok(_) => Err(std::io::Error::other(
+                "replay output was replaced; leaving it untouched",
+            )),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(error),
+        };
+        if let Err(error) = result {
+            failed.get_or_insert_with(|| format!("{}: {error}", path.display()));
+        }
+    }
+    failed.map_or(Ok(()), |error| Err(Refusal::Cleanup(error)))
+}
+
+#[cfg(unix)]
+fn same_file(current: &std::fs::Metadata, original: &std::fs::Metadata) -> bool {
+    use std::os::unix::fs::MetadataExt as _;
+    current.is_file() && current.dev() == original.dev() && current.ino() == original.ino()
+}
+#[cfg(not(unix))]
+fn same_file(_: &std::fs::Metadata, _: &std::fs::Metadata) -> bool {
+    false
+}
+
+#[cfg(unix)]
+fn regular_file(path: &Path) -> Option<std::fs::File> {
+    let fd = rustix::fs::open(
+        path,
+        rustix::fs::OFlags::RDONLY
+            | rustix::fs::OFlags::NONBLOCK
+            | rustix::fs::OFlags::NOFOLLOW
+            | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::Mode::empty(),
+    )
+    .ok()?;
+    let file = std::fs::File::from(fd);
+    file.metadata().ok()?.is_file().then_some(file)
+}
+#[cfg(not(unix))]
+fn regular_file(_: &Path) -> Option<std::fs::File> {
+    None
+}
+
+fn regular_digest(path: &Path) -> Option<String> {
+    let mut file = regular_file(path)?.take(2 * 1024 * 1024 * 1024 + 1);
+    let mut hash = Sha256::new();
+    let mut read = 0u64;
+    let mut buffer = vec![0u8; 65_536];
+    loop {
+        let count = file.read(&mut buffer).ok()?;
+        if count == 0 {
+            break;
+        }
+        read = read.checked_add(count as u64)?;
+        if read > 2 * 1024 * 1024 * 1024 {
+            return None;
+        }
+        hash.update(&buffer[..count]);
+    }
+    Some(format!("{:x}", hash.finalize()))
+}
+
 fn read_limited(path: &Path, limit: u64) -> Option<Vec<u8>> {
+    let file = regular_file(path)?;
+    if file.metadata().ok()?.len() > limit {
+        return None;
+    }
     let mut bytes = Vec::new();
-    std::fs::File::open(path)
-        .ok()?
-        .take(limit.checked_add(1)?)
+    file.take(limit.checked_add(1)?)
         .read_to_end(&mut bytes)
         .ok()?;
     (bytes.len() as u64 <= limit).then_some(bytes)
@@ -1218,6 +1311,69 @@ mod tests {
             variant.extend(tail.into_iter().map(OsString::from));
             assert!(Call::new(&plan, &variant).is_none(), "{variant:?}");
         }
+        Ok(())
+    }
+    #[cfg(unix)]
+    #[test]
+    fn fifo_and_redirected_cache_entries_decline_without_blocking()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use std::os::unix::fs::symlink;
+        let fixture = Fixture::new("special-entry")?;
+        let fifo = fixture.root.join("fifo");
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(&fifo)
+                .status()?
+                .success()
+        );
+        assert!(read_limited(&fifo, 1024).is_none());
+        let alias = fixture.root.join("alias");
+        symlink(&fifo, &alias)?;
+        assert!(read_limited(&alias, 1024).is_none());
+        assert!(read_limited(&fixture.root, 1024).is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn rollback_cleans_owned_outputs_and_refuses_replacements()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture = Fixture::new("rollback")?;
+        let owned = fixture.root.join("target/deps/owned");
+        std::fs::write(&owned, "partial replay")?;
+        let metadata = std::fs::metadata(&owned)?;
+        assert!(rollback(&[(owned.clone(), metadata)]).is_ok());
+        assert!(!owned.exists());
+        std::fs::write(&owned, "partial replay")?;
+        let metadata = std::fs::metadata(&owned)?;
+        std::fs::remove_file(&owned)?;
+        std::fs::create_dir(&owned)?;
+        assert!(matches!(
+            rollback(&[(owned.clone(), metadata)]),
+            Err(Refusal::Cleanup(_))
+        ));
+        assert!(
+            owned.is_dir(),
+            "a replacement is never removed as our partial file"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn partial_restore_removes_created_outputs_and_preserves_existing_file()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture = Fixture::new("partial-restore")?;
+        let call = fixture.call().ok_or("missing observation")?;
+        fixture.payload()?;
+        let stored = call
+            .stage(b"verified", b"", "origin", &Fixture::report())
+            .ok_or("not staged")?;
+        let bytes = Fixture::seal(stored)?;
+        fixture.clear()?;
+        let existing = call.out_dir.join(format!("lib{}.rmeta", call.stem));
+        std::fs::write(&existing, "existing compiler artifact")?;
+        assert!(matches!(call.restore(&bytes), Err(Refusal::Miss)));
+        assert_eq!(std::fs::read(&existing)?, b"existing compiler artifact");
+        assert_eq!(std::fs::read_dir(&call.out_dir)?.count(), 1);
         Ok(())
     }
 }

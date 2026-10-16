@@ -139,7 +139,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3106` | Cannot run Cargo or capture its output | Check the Cargo install |
 | `SAIL3107` | Verification produced no complete proof receipt for a target | Re-run; the result is not reused |
 | `SAIL3108` | No Current run is recorded for this project and settings | Verify once; later reads can then be Current |
-| `SAIL3111` | The managed adapter failed (solver capture, receipts or Cargo wrapper) | Read the message; re-run |
+| `SAIL3111` | The managed adapter failed (solver capture, receipts or Cargo wrapper) | Read the message; re-run. If incomplete dependency outputs could not be removed, fix the reported permissions or remove the affected Sail build artifacts before retrying; Sail stops rather than compile over partial replay files. |
 | `SAIL3112` | A setup managed verification cannot bind to a proof receipt: `--target-dir`, Verus `--log` options, `--no-verify`, `-v`, `--message-format`, `--sysroot`, tests, benches or examples, Cargo `--config` or configuration Sail cannot identify, `RUSTC_WORKSPACE_WRAPPER`, a loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_*`), or no target with `verify = true`. As a `note` from `sail verify`: the run is verified as plain `cargo verus verify` verifies it, without proof reuse. As an error from a job, `watch` or MCP: the setup is not supported there | Nothing for the note. For the error, run `sail verify` from the command line, or remove the setting to get proof reuse |
 | `SAIL3114` | Inputs could not be confirmed unchanged; the result is not Current | Re-run for a current result |
 

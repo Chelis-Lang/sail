@@ -408,10 +408,11 @@ fn driver() -> Result<ExitCode> {
         .dependency_build
         .as_ref()
         .and_then(|plan| crate::managed::dependency_build::Call::new(plan, &launcher_args));
-    if let Some(replay) = dependency_call
-        .as_ref()
-        .and_then(|call| call.serve(&mut std::io::stderr()))
-    {
+    let dependency_replay = match &dependency_call {
+        Some(call) => call.serve(&mut std::io::stderr())?,
+        None => None,
+    };
+    if let Some(replay) = dependency_replay {
         finish(
             &runtime,
             identity,

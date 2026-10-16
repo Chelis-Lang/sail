@@ -7,7 +7,7 @@
 | Source scope | Reproduced on main `0a7c1d0d` plus the standalone stdout correction `2f7102c4`; no shipped dependency feature. Runtime: pinned fork `73dea021`, primary Verus/Z3 pin. |
 | Environment | Shared Apple M3 developer machine, macOS 26.5; correctness reproduction, not a benchmark. |
 | Best evidence | Same-PATH linker reproduction archive SHA-256 `7bea96ebf3bd10a292ec6508bb7322a8a799fbc25ef024a89cf256d90783f51c`. |
-| Current focused checks | Complete integration release typecheck passes. Combined core/input-resolution harness passes20 tests with ordinary parallel execution, including real rustc metadata restoration, actual repeated-emit union refusal, exact declared env absence-to-presence refusal, topology/race guards and original Report/proof-origin preservation. Direct pedantic and forbidden-operation clippy passes. Five earlier ordinary-parallel rounds passed all17 then-current cases. These are fixtures, not Verus/corpus acceptance. |
+| Current focused checks | Complete integration release typecheck passes. Combined core/input-resolution harness passes 26 tests with ordinary parallel execution, including real rustc metadata restoration, actual repeated-emit union refusal, exact declared env absence-to-presence refusal, topology/race guards, FIFO/cache-reader refusal, partial-placement cleanup and original Report/proof-origin preservation. Direct pedantic and forbidden-operation clippy passes. Five earlier ordinary-parallel rounds passed all17 then-current cases. These are fixtures, not Verus/corpus acceptance. |
 
 ## Minimal reproduction
 
@@ -49,7 +49,10 @@ names, directory topology and absence. Relevant installed verifier/sysroot
 bytes join that identity. Local mutation observations bracket compiler start
 through recording and input validation through placement. Corrupt streams or
 payloads refuse before placement; failed placement removes only files that
-this replay created. The original proof run stays distinct from the current
+this replay created. An unsuccessful cleanup stops with `SAIL3111`, rather
+than invoking a compiler over partial replay outputs. Cache and dep-info
+readers use bounded, nonblocking regular-file descriptors and reject symlinks
+and special files. The original proof run stays distinct from the current
 receipt/publication run, including later receipt reuse.
 
 ## Remaining gates and limits
@@ -170,3 +173,9 @@ qualification remains pending.
 
 - 2026-10-16, old blocking-open variants: failed both bounded FIFO controls;
   the file reader and watch registration could wait for a FIFO peer.
+
+The final combined 26-case macOS fixture run passes against the FIFO-safe
+helper and cache-failure caller changes (log SHA-256 `85eac8e8d84f3a2fbc3f7e9b04e21a60c29a52ebc1426ee82f55531de804e62c`).
+Strict direct clippy passes; the complete release integration typecheck also
+passes. These checks do not replace the pending actual Verus store-hit and
+native Linux gates.
