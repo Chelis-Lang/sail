@@ -83,6 +83,22 @@ impl Fixture {
             root,
         }
     }
+    /// Open fixture command text through the installed interpreter. The timed
+    /// calls still launch a real child and read fresh command/response files,
+    /// without making first execution of a newly created executable part of
+    /// the job-service responsiveness oracle.
+    fn interpreted(mut self) -> Self {
+        let script = std::fs::read_to_string(&self.context.config.sail)
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        let script = script.replace("d=${0%/*}", "d=.");
+        for name in ["verify", "jobs"] {
+            let command = format!("set -- {name} \"$@\"\n{script}");
+            assert!(std::fs::write(self.root.join(name), command).is_ok());
+        }
+        self.context.config.sail = PathBuf::from("/bin/sh");
+        self
+    }
+
     fn write(&self, name: &str, value: &impl serde::Serialize) {
         let bytes = serde_json::to_vec(value).unwrap_or_default();
         assert_ne!(bytes.len(), 0);
@@ -253,7 +269,7 @@ fn populate_job_fixture(fixture: &Fixture) {
 
 #[test]
 fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs() {
-    let fixture = Fixture::new();
+    let fixture = Fixture::new().interpreted();
     populate_job_fixture(&fixture);
     let arguments = json!({"job_id":"running"})
         .as_object()
