@@ -409,3 +409,43 @@ The measured vstd input plan contains about 9,002 existing source/compiler
 paths, before extern/generated inputs and resolution ancestors. macOS keeps
 one descriptor per watched non-symlink path; insufficient process/native-watch
 limits decline replay rather than raising resource limits implicitly.
+
+### Acceptance blocked by memory-mapped writes
+
+The complete-event candidate is not accepted. Independent actual-source
+APFS controls wrote different bytes through writable memory mappings, read
+those bytes, restored the original contents, and kept the mappings open at
+the guard barrier. All six regular-root/recursive-child cases retained equal
+full stamps and were incorrectly accepted by the native-event observation.
+Neither fine timestamps nor complete subscribed write events establish the
+required compile bracket. The [validation record](../validation/dependency-driver-replay.md)
+retains the exact source and failed controls; no input boundary is waived.
+
+When an admitted guard does detect a mutation, its invalidation also suppresses
+ordinary receipts and makes project currentness Unknown. Unsupported preflight
+continues ordinary verification, and store publication I/O alone leaves a sound
+compiler observation available. Focused adapter/runner tests establish this
+publication ordering, not completeness of the still-blocked input guard.
+
+### Unimplemented conservative fallback after the blocked guard
+
+One immediate correctness proposal is to withhold v1 native-artifact seeding
+and publication, retain normal Cargo/native compilation, and accelerate only
+the actual verifier's exact Z3 queries through the existing shim/daemon.
+`managed::runner::invoke` already selects this path; ADR 0008's default key
+binds the solver identity, platform, mode and complete solver-process input
+prefix. No source-derived proof key, new filesystem observer, native-artifact
+copy or history-tolerant query key would be introduced.
+
+This is not implemented or accepted. Historical first-project evidence puts
+the remaining fresh vstd path near 25–30 seconds on the original host class,
+against the old store's 1.3-second total; the [gate record](../validation/dependency-driver-replay.md)
+states scope and raw identities. The existing strict store-hit assertions
+would still fail, so this cannot be called delivery of first-run proof reuse
+or used to relax those checks. The current v1 changed-linker defect remains
+open pending an explicit correctness/test/performance decision.
+
+A longer-term alternative needs a complete compiler-derived proof identity
+or private immutable compiler inputs that preserve native compilation and
+diagnostics. Exported `.vir` alone omits proof bodies and is insufficient.
+Those alternatives are unimplemented designs, not established safe boundaries.

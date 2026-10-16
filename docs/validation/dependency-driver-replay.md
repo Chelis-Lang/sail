@@ -2,12 +2,12 @@
 
 | Field | Value |
 |---|---|
-| Status | Implemented candidate; **not accepted**. The real macOS store matrix fails five strict reuse/publication assertions. Native Linux gates and final source qualification remain. |
+| Status | **Blocked; not accepted.** The complete-event candidate incorrectly accepts a confirmed APFS memory-mapping mutation. The real macOS store matrix also fails five strict reuse/publication assertions. No shipped or local-store acceleration is qualified by this candidate. |
 | Defect | [#187](https://github.com/Chelis-Lang/sail/issues/187): copying native dependency artifacts can suppress a changed linker's error. Separate from [#184](dependency-store-output.md). |
 | Source scope | Reproduced on main `0a7c1d0d` plus the standalone stdout correction `2f7102c4`; no shipped dependency feature. Runtime: pinned fork `73dea021`, primary Verus/Z3 pin. |
 | Environment | Shared Apple M3 developer machine, macOS 26.5; correctness reproduction, not a benchmark. |
 | Best evidence | Same-PATH linker reproduction archive SHA-256 `7bea96ebf3bd10a292ec6508bb7322a8a799fbc25ef024a89cf256d90783f51c`. |
-| Current focused checks | Complete integration release typecheck passes. Combined core/input-resolution harness passes 26 tests with ordinary parallel execution, including real rustc metadata restoration, actual repeated-emit union refusal, exact declared env absence-to-presence refusal, topology/race guards, FIFO/cache-reader refusal, partial-placement cleanup and original Report/proof-origin preservation. Direct pedantic and forbidden-operation clippy passes. Five earlier ordinary-parallel rounds passed all17 then-current cases. These are fixtures, not Verus/corpus acceptance. |
+| Current focused checks | The complete-event core/input harness passes 32 focused tests; its actual APFS mmap control nevertheless fails, below. Focused publication-flow checks exercise the real private adapter and rustc with an explicitly synthetic verifier report. These are fixtures, not Verus/corpus acceptance. |
 
 ## Minimal reproduction
 
@@ -35,6 +35,9 @@ only a successful metadata-only registry proof may be reused. A v2 entry
 contains the verifier's `.rmeta`, `.vir` and dep-info, structured stdout,
 replayable artifact notices and the actual original verification run.
 No native executable, proc-macro library or Cargo fingerprint is restored.
+This architecture remains an unaccepted candidate: the input observation does
+not yet cover every mutation visible to the compiler, as the mmap case below
+demonstrates.
 
 The exact compiler arguments, effective per-package driver options, compiler
 working directory, Cargo resolution/profile and relevant environment bind the
@@ -324,11 +327,91 @@ The first combined core/input harness passes 32 focused tests; log SHA-256
 The helper-only set passes 22 tests and strict clippy. Direct native-only tests
 prove that file write/read/restore and temporary directory membership events
 refuse without consulting any timestamp. A duplicate complete/ancestor watch
-role must retain the stricter mask. These are fixtures; native coarse-filesystem
-controls, active-guard receipt invalidation and final source gates remain.
+role must retain the stricter mask. These are fixtures, and the memory-mapping
+counterexample below blocks acceptance despite their passes.
 
 A real vstd plan enumerates 7,550 files and 1,452 directories across its existing
 36 source/compiler roots (9,002 paths), excluding deleted extern/generated
 paths from that diagnostic run. The 100,000-path cap is bounded and descriptor
 exhaustion refuses; no resource limit is raised. No real store-hit or timing
 acceptance follows from this enumeration or the focused fixture results.
+
+## Memory-mapped input mutation blocks acceptance
+
+Independent review tested the exact `43eaf7a9` helper on APFS. A writer maps
+an observed input, writes different same-length bytes that the compiler can
+actually read, and restores the original bytes while keeping the mapping
+open at the guard barrier. All six regular-root/recursive-child cases pass
+the guard incorrectly: the original full stamp is unchanged, and no subscribed
+native event rejects the observation. The cases include a mapping created
+before capture, a pre-dirtied mapping, and a mapping created after capture.
+Fine timestamp precision and complete write-event registration therefore do
+not establish this guard's correctness. No new acceptance claim or filesystem
+exception follows from the ordinary-write fixture passes.
+
+- Resolver SHA-256: `a7f1cfeb8568afa4c25f72b8751fedd6cf866f9a459a74e3f13c6db60ad52542`.
+- Inventory SHA-256: `024de915154ed915e6fe25fdaf43a84b3c9b35d12e76cd6980ad591f740a9a41`.
+- Actual-source harness SHA-256: `166fad1b0e17d23a9aa5e5616633605f622de7c8a436ae0d34c0701ef63af8e5`.
+- Writer SHA-256: `ce35ebea184c3d2591925431de75d6589d9b1f07b5c530c76db768717ad77e75`.
+- Actual APFS stdout SHA-256: `7b29bb01e1606945be21b1af3bb986b0ba0c7e4f9b2cde6d683b0657d983f18c` (exit 1).
+
+This proves a defect in the unmerged candidate's input guard. It does not by
+itself reproduce an ordinary managed-receipt defect on main or qualify a
+particular cache replay through real Verus.
+
+| Date | Source / attempt | Result | Cause / evidence |
+|---|---|---|---|
+| 2026-10-16 | Exact `43eaf7a9`, actual APFS mmap | Failed safety control, all six cases | Different mapped bytes were read and restored without a changed stamp or refusing event; stdout hash above. |
+
+## Detected mutations invalidate ordinary receipts too
+
+For an admitted active guard, a detected mutation now withholds both the v2
+entry and the ordinary successful invocation. A durable per-run marker makes
+project currentness Unknown and prevents pending receipts, including receipts
+for another successful target in that run. Unsupported preflight remains the
+ordinary verification path; cache publication I/O failure alone does not
+invalidate a sound compiler observation.
+
+The private-driver integration fixture actually invokes rustc for metadata,
+then emits an explicitly synthetic verifier summary. A successful positive
+control publishes both observations; changing source after rustc returns
+withholds both reuse paths, while an unwritable store path preserves ordinary
+success. A separate runner fixture proves the per-run marker also blocks
+another target's pending receipt. These checks establish publication ordering
+only. They do not repair or waive the mmap blocker above.
+Both focused tests and scoped CLI/Verus all-target pedantic clippy pass with
+the source manifest unchanged; raw manifest SHA-256
+`0820aec790069fe18ac6246f7f0102ddace68dc9e173bb4b9a8f420b6aaa5b40`.
+
+## Read-only fallback assessment
+
+No code or test expectation changes follow from this assessment. Withholding
+the v1 whole-target store would leave fresh Cargo/native compilation and the
+existing exact-prefix Z3 cache intact. The actual verifier still establishes
+each report; a cached solver answer does not become whole-target proof reuse.
+This avoids a new source-observation boundary but forfeits most store gain.
+
+The original native c7i.4xlarge [store measurement](dependency-store.md), fork
+`73dea021`, recorded a donor-cache-warm new demo at 27.5 s before the store,
+1.30 s with it and 29.5 s plain. The corresponding new Vest worktree was
+52.3/25.7/66.1 s. These are committed historical medians, not a new candidate
+benchmark; their cited archive is `c48fa5edbfbbdb08fcc6ee759af150155a98d962131704c3c6baeb0381bfe954`.
+
+Preserved older native deep-tier raw logs were read directly: one direct
+vstd invocation takes 23.83 s with the exact solver cache warm, against paired
+plain stock's 26.75 s. Warm Rust time is 9.796 s and verification time 11.259 s,
+including 5.897 s VIR; both runs verify 2,060 functions. This is an older
+stock-plus-shim single-file corpus case, without Cargo's native-dependency
+work, not current-fork qualification. Its warm/plain stdout hashes are
+`b65d73e1f0a11b7380c6d58290d9ffb329f9871f46d6f691fffaea0c66fab8fb`
+and `bcfcc3f1ba1dced65cb30cf808904b909a4eaeb8687772e4442185ee457a42d8`;
+the time-log hashes are `d796a9c118def590f2a3adeae5210f370b8ba99be796ffe70e1ec3c090f40a94`
+and `6e6dc07e78b0f185a0a52f2cfb50233774e490221ea21df8bfa7535c3bb7225c`.
+
+An estimated fresh-vstd path of roughly 25–30 s on that historical host class
+is therefore plausible; a 1.3 s first call is not. Strict store-hit assertions
+remain failing requirements, never relabelled or skipped. Any temporary safety
+hold still needs the actual linker/output reproduction and normal gates before
+acceptance. Complete compiler-derived identity/private immutable inputs remain
+unimplemented alternatives, and `.vir` alone cannot key proof bodies. Full
+read-only assessment SHA-256: `a2c223ada6816fcecb2f86a289897991b137c8b0f138a98360aeee5d8bf3738a`.

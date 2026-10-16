@@ -413,7 +413,7 @@ fn driver() -> Result<ExitCode> {
         None => None,
     };
     if let Some(replay) = dependency_replay {
-        finish(
+        let invocation = finish(
             &runtime,
             identity,
             &dir,
@@ -425,6 +425,7 @@ fn driver() -> Result<ExitCode> {
             None,
             Some((&replay.origin, &replay.report)),
         )?;
+        record_invocation(&runtime, invocation, dependency_call.as_ref())?;
         let shown = crate::verus_stdout::rebuild(&replay.stdout, flags);
         std::fs::write(dir.join("verus.shown-stdout"), &shown)
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -536,7 +537,7 @@ fn driver() -> Result<ExitCode> {
             .write_all(&stderr)
             .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
-    finish(
+    let invocation = finish(
         &runtime,
         identity.clone(),
         &dir,
@@ -549,8 +550,9 @@ fn driver() -> Result<ExitCode> {
         None,
     )?;
     if let Some(call) = &dependency_call {
-        call.record(&stdout, &stderr, &runtime, &identity);
+        call.record(&stdout, &stderr, &runtime, &invocation);
     }
+    record_invocation(&runtime, invocation, dependency_call.as_ref())?;
     let shown = crate::verus_stdout::rebuild(&stdout, flags);
     // The dependency store must replay exactly what this target displayed,
     // including effective per-package output flags, when it seeds a new target.
@@ -692,7 +694,7 @@ fn finish(
         &crate::managed::dependency_build::Origin,
         &sail_api::output::Report,
     )>,
-) -> Result<()> {
+) -> Result<Invocation> {
     let dependency_origin = dependency.map(|(origin, _)| origin);
     let Captured {
         stdout,
@@ -773,15 +775,6 @@ fn finish(
         success,
         dependencies,
     };
-    json(
-        &runtime
-            .invocations
-            .join(format!("{}.json", invocation.identity.key())),
-        &invocation,
-    )?;
-    event(
-        &serde_json::json!({"event":"target-complete","run_id":runtime.run_id,"target":invocation.identity.name,"success":success}),
-    );
     // Solver bytes are evidence, never a transformed input.
     if !verifier_readable {
         return Err(Error::new(
@@ -789,6 +782,30 @@ fn finish(
             "Verus disappeared during verification",
         ));
     }
+    Ok(invocation)
+}
+
+/// Finish all guarded reads before an observation can authorize an ordinary
+/// receipt. Store I/O failure leaves this sound observation available; an
+/// actual input mutation makes both reuse paths unavailable for the run.
+fn record_invocation(
+    runtime: &Runtime,
+    mut invocation: Invocation,
+    guard: Option<&crate::managed::dependency_build::Call<'_>>,
+) -> Result<()> {
+    if guard.is_some_and(|guard| !guard.inputs_current()) {
+        crate::managed::mark_inputs_changed(runtime)?;
+        invocation.success = false;
+    }
+    json(
+        &runtime
+            .invocations
+            .join(format!("{}.json", invocation.identity.key())),
+        &invocation,
+    )?;
+    event(
+        &serde_json::json!({"event":"target-complete","run_id":runtime.run_id,"target":invocation.identity.name,"success":invocation.success}),
+    );
     Ok(())
 }
 

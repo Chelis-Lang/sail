@@ -32,6 +32,39 @@ pub(crate) struct Runtime {
     pub attribution_logs: bool,
 }
 
+const INPUTS_CHANGED: &str = "inputs-changed";
+
+/// A detected mutation invalidates this run even if restored bytes and coarse
+/// filesystem timestamps would make the ordinary final snapshot look equal.
+pub(crate) fn mark_inputs_changed(runtime: &Runtime) -> Result<()> {
+    let run = runtime
+        .invocations
+        .parent()
+        .ok_or_else(|| Error::new("SAIL3111", "private invocation directory has no run"))?;
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(run.join(INPUTS_CHANGED))
+    {
+        Ok(_) => Ok(()),
+        // Any existing object already makes inputs_changed() refuse. Do not
+        // follow or truncate it, including a damaged cache's symlink.
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Ok(()),
+        Err(error) => Err(Error::new(
+            "SAIL3111",
+            format!("cannot record changed inputs: {error}"),
+        )),
+    }
+}
+
+/// Any marker or unreadable marker state refuses proof publication.
+pub(super) fn inputs_changed(run: &Path) -> bool {
+    match std::fs::symlink_metadata(run.join(INPUTS_CHANGED)) {
+        Ok(_) => true,
+        Err(error) => error.kind() != std::io::ErrorKind::NotFound,
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct TargetIdentity {
     pub manifest: PathBuf,

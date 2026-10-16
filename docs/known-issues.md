@@ -12,8 +12,10 @@ are in the `archive/m7-contracts-f7103bf` tag.
   Replacing `cc` at the same PATH location after filling the store lets a new
   target reuse copied native artifacts, while a fresh plain build fails to
   link. A compiler-boundary correction preserves actual native builds and
-  exact extern bytes; it remains unaccepted pending input-boundary review,
-  live serving checks and native gates. [Reproduction and gate](validation/dependency-driver-replay.md).
+  exact extern bytes; it remains unaccepted. Independent review confirmed
+  its proposed input guard misses memory-mapped write/read/restore mutations
+  on APFS. This candidate failure blocks acceptance alongside the strict
+  store-hit and native gates. [Reproduction and gate](validation/dependency-driver-replay.md).
 
 - **rc.5 omits verifier stdout after dependency-store seeding** ([#184](https://github.com/Chelis-Lang/sail/issues/184)).
   A second new project reuses vstd but omits its `verification results::`

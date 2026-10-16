@@ -1307,6 +1307,7 @@ fn target_records(
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
+    let guarded_inputs_changed = super::receipts::inputs_changed(&paths.run);
     let calls = invocations(paths);
     let siblings = sibling_receipts(paths, context);
     // Every unit's declared variables, as Cargo fingerprints them; their
@@ -1416,8 +1417,11 @@ fn target_records(
                     .filter(|p| p.is_file()),
             );
             let hashes = digests.hashes(&artifact_paths)?;
-            let reusable =
-                paths.reuse && call.success && complete(&call.report) && !input_revision.is_empty();
+            let reusable = paths.reuse
+                && !guarded_inputs_changed
+                && call.success
+                && complete(&call.report)
+                && !input_revision.is_empty();
             if reusable {
                 json(
                     &paths
@@ -2531,6 +2535,7 @@ pub(crate) fn run_engine_held(
     let stamp_after = super::input::mutation_stamp(&after_run);
     let absent = absent.finish();
     let currentness = if !paths.reuse
+        || super::receipts::inputs_changed(&paths.run)
         || !before.complete
         || !after.complete
         || !after_coverage
@@ -4100,6 +4105,31 @@ mod tests {
             assert_eq!(targets, Vec::<TargetResult>::new());
             assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
         }
+        // A successful target cannot publish a new ordinary receipt after
+        // another admitted driver guard detected an input mutation in this run.
+        // The real adapter transport regression covers the affected driver's
+        // own success=false observation and durable marker creation.
+        json(
+            &paths
+                .run
+                .join("invocations")
+                .join(format!("{}.json", receipt.invocation.identity.key())),
+            &receipt.invocation,
+        )?;
+        let pending = paths.run.join("pending-receipts");
+        std::fs::remove_dir_all(&pending)?;
+        std::fs::create_dir_all(&pending)?;
+        let (targets, missing) = target_records(&paths, &data, "selected", false, &expected, &[])?;
+        assert_eq!(targets.len(), 1);
+        assert!(targets[0].complete && missing.is_empty());
+        assert_eq!(std::fs::read_dir(&pending)?.count(), 1);
+        std::fs::remove_dir_all(&pending)?;
+        std::fs::create_dir_all(&pending)?;
+        std::fs::write(paths.run.join("inputs-changed"), [])?;
+        let (targets, missing) = target_records(&paths, &data, "selected", false, &expected, &[])?;
+        assert_eq!(targets.len(), 1);
+        assert!(targets[0].complete && missing.is_empty());
+        assert_eq!(std::fs::read_dir(&pending)?.count(), 0);
         drop(ownership);
         std::fs::remove_dir_all(root)?;
         Ok(())

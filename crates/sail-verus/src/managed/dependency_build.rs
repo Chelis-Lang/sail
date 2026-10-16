@@ -457,6 +457,13 @@ impl<'a> Call<'a> {
         self.plan.directory.join(&self.key).join("entry.json")
     }
 
+    /// An admitted guard stays authoritative through ordinary observation
+    /// publication too; a store miss or publication I/O failure is different
+    /// from a compiler input that changed during the guarded invocation.
+    pub(crate) fn inputs_current(&self) -> bool {
+        self.observation.unchanged()
+    }
+
     /// Validate every stream and payload before any output becomes visible.
     pub(crate) fn serve(&self, err: &mut dyn Write) -> Result<Option<Replay>> {
         let entry = self.entry();
@@ -605,13 +612,8 @@ impl<'a> Call<'a> {
         stdout: &[u8],
         stderr: &[u8],
         runtime: &super::receipts::Runtime,
-        identity: &super::receipts::TargetIdentity,
+        call: &super::receipts::Invocation,
     ) {
-        let Some(call) = super::receipts::read::<super::receipts::Invocation>(
-            &runtime.invocations.join(format!("{}.json", identity.key())),
-        ) else {
-            return;
-        };
         if !call.success
             || !super::receipts::complete(&call.report)
             || !self.observation.unchanged()
