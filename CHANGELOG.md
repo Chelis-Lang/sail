@@ -12,12 +12,16 @@ semantic versioning once the API is published.
   gates remain pending; this candidate is unselected. See the
   [paired validation](docs/validation/instant-revert.md#unchanged-run-optional-plan-candidate-156).
 
-- Prepare a final-stdout completion barrier for managed drivers (#215). User
-  bytes stay on Cargo's original pipes, preserving diagnostic rendering; only
-  a private completion marker is removed. The source-only successor replaces
-  the rejected payload-IPC candidate. It is unselected, with real Verus and
-  both-platform gates pending. See the
-  [qualification record](docs/validation/managed-output-order.md).
+- Prepare joined managed-output and build-script scheduling corrections (#215,
+  #174). Final driver stdout stays on Cargo's original pipe and is acknowledged
+  before driver exit; stderr keeps Cargo's diagnostic handling. Optional facts
+  avoid cleaning scripts a successful Current build did not schedule, only under
+  identical inputs and the existing selected dependency closure. The prior tiny
+  fixture improves 1.098 s to 0.217 s (5.06×); this is not a real-Vest or default
+  claim. Joined Mac checks pass; full native qualification and a fresh Vest cost
+  comparison are running. The first Vest cohort failed complete capture, so its
+  timings are not accepted. See [output](docs/validation/managed-output-order.md)
+  and [scheduling](docs/validation/unscheduled-script-cleaning.md) records.
 
 - Restore a previously verified workspace revision on ordinary Linux checks
   within the qualified public alloc/std dependency profile (#163). Restored
@@ -115,6 +119,14 @@ semantic versioning once the API is published.
   every pinned toolchain/runtime; only managed e2e adds the pinned external
   MCP client. Local checks select the same targets. Actual startup improvement
   remains unqualified; required checks and timeouts are unchanged.
+- Avoid repeated conservative cleaning for scripts a successful Current Cargo
+  run did not schedule (#174), preserving observed contracts and all proof
+  checks. Optional facts cover only the existing selected dependency closure;
+  empty scheduling facts do not bind or publish a memo. On the pending #215
+  output correction, all nine native fixture samples
+  pass: unchanged median 1.098 s to 0.217 s (5.06×), versus stock 0.109 s.
+  The implementation remains unselected; real-Vest costs and current full gates
+  are pending. See the [scope and preserved histories](docs/validation/unscheduled-script-cleaning.md).
 
 - Solver-continuation research now records its failed exactness gates,
   preserved source/evidence and minimal timer-state reproduction. No solver
