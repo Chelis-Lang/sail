@@ -15,7 +15,23 @@ semantic versioning once the API is published.
   The outcome now holds each function's verdict and establishment, read from a
   v2 document's `establishment` or the frozen M6 baseline's v1 `tier`, and an
   unknown schema version is refused as no outcome.
-
+- **Adding a dependency no longer verifies vstd again** (#177). vstd's proof
+  receipt was bound to the bytes of the workspace `Cargo.toml` and
+  `Cargo.lock`, so adding any dependency cleaned vstd and verified it again,
+  which plain `cargo verus verify` never does. A dependency whose whole
+  closure comes from a registry or git source is now bound to how Cargo
+  resolved that closure (versions, features, edges), the workspace's
+  `[profile]` table, its own bytes and the toolchain files: a new dependency
+  reuses vstd, while a profile change or a different resolution of vstd's
+  closure still verifies it. The run after such a change no longer verifies
+  vstd a second time either (a stale build-script record of the removed
+  unit cleaned it). The dependency store now ignores package and target
+  selection, so `sail verify -p a` in a workspace starts from the vstd that
+  a single-package project stored. On a native c7i.8xlarge: adding
+  `serde` 22.3 s → 2.6 s (plain: 2.2 s); adding a dev-dependency and a
+  `build.rs` 22.2 s → 2.1 s (plain: 0.8 s); the unchanged run after a
+  profile change 22.1 s → 0.5 s; the first `-p a` run of the #121 workspace
+  28.9 s → 1.3 s. Run currentness still binds every manifest and lockfile.
 - **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).
   Per-obligation detail (op kinds, spans, per-check answers and cache
   provenance, counterexample models) needs Verus's AIR and SMT transcript
