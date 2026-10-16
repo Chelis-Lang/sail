@@ -1230,6 +1230,7 @@ mod tests {
                     success: true,
                     dependencies: super::super::receipts::artifact_hashes(&[dep])
                         .unwrap_or_default(),
+                    shipped: None,
                 },
                 artifact_hashes: super::super::receipts::artifact_hashes(&[rmeta, vir])
                     .unwrap_or_default(),

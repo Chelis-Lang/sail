@@ -322,12 +322,15 @@ fn custom_compiler_context(args: &[OsString]) -> bool {
 fn driver() -> Result<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
-    if !verifying(&args) {
-        return Command::new(wrapper)
-            .args(args)
-            .status()
-            .map(status)
-            .map_err(|e| Error::new("SAIL3111", e.to_string()));
+    let verifies = verifying(&args);
+    // ADR 0048: a registry invocation may be served from, or recorded into,
+    // Sail's shipped dependency build.
+    let plan = crate::managed::shipped::active();
+    let call = plan.as_ref().and_then(|plan| {
+        crate::managed::shipped::Call::new(plan, &args, verifies, std::env::vars_os())
+    });
+    if !verifies {
+        return plain_driver(&wrapper, &args, call.as_ref());
     }
     if custom_compiler_context(&args) {
         return Err(Error::new(
@@ -404,10 +407,46 @@ fn driver() -> Result<ExitCode> {
             || crate::verus_stdout::UserFlags::of(&runtime.args),
             |effective| crate::verus_stdout::UserFlags::of_verus(effective.arguments.iter()),
         );
+    // The engine runs its own phases; a shipped dependency is never the
+    // engine's selected crate, and the engine is not asked to replay one.
+    if runtime.engine.is_none()
+        && let Some(replay) = call
+            .as_ref()
+            .and_then(|call| call.serve(&mut std::io::stderr()))
+    {
+        event(
+            &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),
+        );
+        std::io::stderr()
+            .write_all(&replay.stderr)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        finish(
+            &runtime,
+            identity,
+            &dir,
+            &Captured {
+                stdout: &replay.stdout,
+                stderr: &replay.stderr,
+                exit: Some(0),
+            },
+            None,
+            Some(&replay.unit),
+        )?;
+        std::io::stdout()
+            .write_all(&crate::verus_stdout::rebuild(&replay.stdout, flags))
+            .and_then(|()| std::io::stdout().flush())
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let mut cmd = Command::new(&wrapper);
     cmd.args(&launcher_args)
         .envs(&launcher_environment)
         .args(observation_args(flags, logs.as_deref()))
+        .args(
+            call.as_ref()
+                .map(crate::managed::shipped::Call::record_args)
+                .unwrap_or_default(),
+        )
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     // Session records join cached answers to transcripts; without logs there
@@ -506,6 +545,9 @@ fn driver() -> Result<ExitCode> {
             .write_all(&stderr)
             .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
+    if let Some(call) = &call {
+        call.record(&stdout, &stderr, exit.code());
+    }
     finish(
         &runtime,
         identity,
@@ -516,6 +558,7 @@ fn driver() -> Result<ExitCode> {
             exit: exit.code(),
         },
         established.as_ref(),
+        None,
     )?;
     // Plain Verus's stdout, rebuilt from the document Sail asked for; Cargo
     // forwards it, and the managed runner shows it to the user.
@@ -524,6 +567,50 @@ fn driver() -> Result<ExitCode> {
         .and_then(|()| std::io::stdout().flush())
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     Ok(status(exit))
+}
+
+/// A non-verified invocation: served from Sail's shipped dependency build,
+/// recorded into one, or forwarded with its original bytes.
+fn plain_driver(
+    wrapper: &Path,
+    args: &[OsString],
+    call: Option<&crate::managed::shipped::Call<'_>>,
+) -> Result<ExitCode> {
+    let failed = |e: std::io::Error| Error::new("SAIL3111", e.to_string());
+    if let Some(call) = call {
+        if let Some(replay) = call.serve(&mut std::io::stderr()) {
+            std::io::stderr()
+                .write_all(&replay.stderr)
+                .map_err(failed)?;
+            std::io::stdout()
+                .write_all(&replay.stdout)
+                .and_then(|()| std::io::stdout().flush())
+                .map_err(failed)?;
+            return Ok(ExitCode::SUCCESS);
+        }
+        let record = call.record_args();
+        if !record.is_empty() {
+            let output = Command::new(wrapper)
+                .args(args)
+                .args(record)
+                .stdin(Stdio::null())
+                .output()
+                .map_err(failed)?;
+            std::io::stderr()
+                .write_all(&output.stderr)
+                .map_err(failed)?;
+            std::io::stdout()
+                .write_all(&output.stdout)
+                .map_err(failed)?;
+            call.record(&output.stdout, &output.stderr, output.status.code());
+            return Ok(status(output.status));
+        }
+    }
+    Command::new(wrapper)
+        .args(args)
+        .status()
+        .map(status)
+        .map_err(failed)
 }
 
 /// The logging flags the managed driver adds to every verified target,
@@ -543,6 +630,11 @@ fn observation_args(flags: crate::verus_stdout::UserFlags, logs: Option<&Path>) 
     }
     args
 }
+
+/// The attribution note of a report replayed from Sail's shipped dependency
+/// build (ADR 0048). Its functions' verdicts, rlimit and time are Verus's own,
+/// from the release build that verified the dependency.
+pub const SHIPPED_NOT_RECORDED: &str = "obligation detail not recorded: this dependency's report comes from Sail's shipped dependency build, verified when the Sail release was built";
 
 /// The attribution note of a report whose run asked Verus for no logs
 /// (ADR 0047). Its functions' verdicts, rlimit and time are Verus's own.
@@ -649,6 +741,7 @@ fn finish(
     dir: &Path,
     captured: &Captured<'_>,
     engine: Option<&sail_api::output::EngineProvenance>,
+    shipped: Option<&str>,
 ) -> Result<()> {
     let Captured {
         stdout,
@@ -659,7 +752,16 @@ fn finish(
         .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let (docs, _) = crate::attribution::json_documents(stdout);
-    let attr = if runtime.attribution_logs {
+    let attr = if shipped.is_some() {
+        // Replayed from Sail's shipped dependency build, which records no
+        // attribution logs.
+        crate::attribution::attribute(
+            &docs,
+            None,
+            &crate::attribution::Provenance::NoCache,
+            Some(SHIPPED_NOT_RECORDED),
+        )
+    } else if runtime.attribution_logs {
         let logs = crate::attribution::read_logs(&full_log_dir(&dir.join("logs"), engine))
             .unwrap_or_default();
         let provenance = if runtime.daemon {
@@ -709,6 +811,7 @@ fn finish(
         report,
         success,
         dependencies,
+        shipped: shipped.map(str::to_owned),
     };
     json(
         &runtime

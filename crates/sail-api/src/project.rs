@@ -90,6 +90,14 @@ pub struct TargetResult {
     /// workspace, that verified it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dependency_store: Option<String>,
+    /// Set when this run's verifier output for the target was replayed from
+    /// the Sail release's shipped dependency build (ADR 0048):
+    /// `<build identity>/<entry key>`. The release build compiled and
+    /// verified the target with the same Verus runtime from the same sources,
+    /// arguments and environment; plain Cargo-Verus would have verified it in
+    /// this invocation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shipped: Option<String>,
 }
 
 /// Current invocation's execution counters.

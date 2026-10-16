@@ -33,6 +33,10 @@ sail-VERSION-TARGET/
     sail-build.json             its build manifest (provenance and digests)
     verus/source/target-verus/release/
                                 cargo-verus, verus, rust_verify, z3, vstd.vir, ...
+  deps/<variant>/               the shipped vstd build (ADR 0048)
+    manifest.json               its identity and entries
+    Cargo.lock                  the resolution it was built with
+    units/<key>/                one compiler invocation's outputs and output
 ```
 
 `<variant>` is the engine's source-variant name: the pinned Verus commit
@@ -48,13 +52,25 @@ README's [Install](../README.md#install) covers that, along with the archive
 download and checksum check. When the Verus pin changes, update the toolchain
 and the `vstd` version quoted there.
 
-The archive carries no prebuilt `vstd` for Cargo projects. A `vstd` compiled
-on the release host names its source by the release host's Cargo home in
-every diagnostic that points into it, and Cargo rebuilds a registry unit
-compiled under another Cargo home anyway. Instead, the first managed run on
-each machine stores the `vstd` it verified, and later new projects start from
-that copy ([ADR 0045](decisions/0045-dependency-store.md)). The runtime's own
-`libvstd.rlib` and `vstd.vir` serve direct `verus FILE` runs only.
+The archive also carries `vstd` compiled and verified for Cargo projects:
+the shipped dependency build ([ADR 0048](decisions/0048-shipped-dependency-build.md)).
+`scripts/release.sh stage` records it with the staged `sail` and runtime from
+a new `sail new --lib` project in a fresh Cargo home (crates.io must be
+reachable), with vstd's registry sources named by rustc's virtual rustc-dev
+base, which Sail's Verus maps back to each user's own Cargo home. It then
+requires a second new project, under another Cargo home, to be served on its
+first run, and stops the release otherwise. On a user's machine, the first
+managed run of a new Cargo target replays every compiler invocation of
+vstd's closure whose key matches (the same runtime, arguments, relevant
+environment, linked crates and sources); anything else compiles and verifies
+as usual, and later new projects start from the machine's dependency store
+([ADR 0045](decisions/0045-dependency-store.md)). `sail new` writes the
+build's `Cargo.lock`, so new projects resolve vstd's dependencies as the
+build did. The runtime's own `libvstd.rlib` and `vstd.vir` serve direct
+`verus FILE` runs only. The shipped build adds about 115 MB unpacked
+(sizes per platform in the
+[validation record](validation/shipped-dependency-build.md)).
+`scripts/release.sh record-deps OUT` records it again for a staged tree.
 
 ## How sail finds the bundled engine
 
@@ -145,7 +161,10 @@ qualifying the macOS runtime against it).
 `scripts/release.sh stage OUT ENGINE_BUILD` is the staging step alone: it
 copies `target/release/sail` and `sail-z3` (stripped of the release
 profile's line tables with `strip -S`; function symbols stay), and the engine build's manifest
-and runtime files, into `OUT`, then runs the self-check.
+and runtime files, into `OUT`, runs the self-check, and records and checks
+the shipped vstd build (above). Before a release, check a staged tree
+against plain stock Verus with
+`python3 scripts/shipped-deps-check.py --release OUT --stock STOCK_CARGO_VERUS --out DIR`.
 
 ## Qualifying the macOS engine
 

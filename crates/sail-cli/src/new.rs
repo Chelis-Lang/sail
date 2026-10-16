@@ -25,7 +25,9 @@ use std::process::{Command, ExitCode, Stdio};
 pub(crate) const USAGE: &str = "\
 Create a Cargo project that Sail verifies as it stands: a Verus binary
 (default) or library whose vstd dependency matches Sail's Verus. The files
-are what `cargo verus new` writes, made by Sail's own Verus.
+are what `cargo verus new` writes, made by Sail's own Verus, plus, from a
+release archive, a Cargo.lock that resolves vstd's dependencies as Sail's
+shipped vstd build did, so the first `sail verify` does not verify vstd.
 
 USAGE:
     sail new [--bin | --lib] [--name NAME] PATH
@@ -328,6 +330,13 @@ fn create(options: &Options) -> Result<Created, Failure> {
         }
     }
     let manifest = std::fs::read_to_string(staged.join("Cargo.toml")).unwrap_or_default();
+    // With a shipped dependency build (ADR 0048), the project starts from the
+    // resolution vstd's closure was built and verified with, so its first
+    // `sail verify` replays vstd instead of verifying it.
+    if let Some(lock) = sail_verus::managed::new_project_lockfile(&cargo_verus, &name) {
+        std::fs::write(staged.join("Cargo.lock"), lock)
+            .map_err(cannot("cannot write Cargo.lock".to_owned()))?;
+    }
     // An empty destination directory is replaced; a non-empty one (created
     // meanwhile) makes the rename fail, so nothing is ever overwritten.
     if options.path.is_dir() {

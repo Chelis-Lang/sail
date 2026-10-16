@@ -153,6 +153,9 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3124` | A target needs a Verus feature the engine is built without (for example `singular` for `by(integer_ring)`); it was verified by the configured stock Verus and accepts no repair | Use the stock result, or stock `sail verify`; see [Verus features the engine lacks](proof-repair.md#verus-features-the-engine-lacks) |
 | `SAIL3130` | Note: a dependency (such as vstd) was verified by a run in another workspace and placed in this new project from Sail's [dependency store](decisions/0045-dependency-store.md) | None; plain Cargo-Verus would have verified it in this run, and its recorded report is the one shown |
 | `SAIL3131` | Warning: a dependency store entry is damaged (its checksums or digests fail), so it was ignored | None; the dependency is verified normally. Delete `<cache>/dependency-store/` if the warning repeats |
+| `SAIL3132` | Note: a dependency (such as vstd) was compiled and verified when this Sail release was built, and its result was replayed from the release's [shipped dependency build](decisions/0048-shipped-dependency-build.md) | None; plain Cargo-Verus would have verified it in this run, from the same sources with the same Verus, and its recorded report is the one shown |
+| `SAIL3133` | Warning: an entry of the release's shipped dependency build is damaged (a stored file's digest fails, or the entry cannot be read), so it was ignored | None; the dependency is compiled and verified normally. Unpack the release archive again if the warning repeats |
+| `SAIL3134` | Release tooling: recording the shipped dependency build (`SAIL_SHIPPED_RECORD`) recorded no verified dependency, or could not write the build | Read the reasons under the build's `skipped/` directory; the release's Verus must name registry sources by its virtual base (ADR 0048) |
 
 ## Portfolio and solver libraries
 

@@ -32,13 +32,16 @@ are in the `archive/m7-contracts-f7103bf` tag.
   plain `cargo verus verify` verifies them, with one `note[SAIL3112]` line,
   but nothing is reused or recorded. Jobs, `watch` and MCP report all but
   the loader variables as `SAIL3112` errors ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)).
-- **A project's first managed verify verifies vstd.** As with plain `cargo
-  verus verify` on a fresh target, the first managed run of each project
-  verifies vstd in its own Cargo target (about 31 s natively). Later runs from
+- **A project's first managed verify verifies vstd unless it was shipped.**
+  A release archive's shipped vstd build (ADR 0048) serves the first run of a
+  project whose `Cargo.lock` resolves vstd's closure as the build did (every
+  `sail new` project) with the same compiler settings; the machine's
+  dependency store (ADR 0045) serves later new projects. Otherwise, as with
+  plain `cargo verus verify` on a fresh target, the first managed run
+  verifies vstd in its own Cargo target (about 31 s natively, measured by
+  L16, rescue lane report, tag `archive/rescue-m7-98f6292`). Later runs from
   the CLI, MCP or any agent session reuse it, whether that first run passed
-  or failed in the user crate. A shared per-toolchain vstd is a
-  deferred follow-up. The 31 s first-contact cost was measured by L16
-  (rescue lane report, tag `archive/rescue-m7-98f6292`).
+  or failed in the user crate.
 - **`deep-rvt` reports stock output-order variants as Different.** The
   `output_json` tests print `func-details` in stock Verus's hash order
   ([VI-0008](verus-issues/VI-0008-func-details-hash-order.md)); with 3–6

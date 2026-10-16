@@ -158,6 +158,10 @@
           "description": "Key of the dependency store entry this run placed in a new Cargo target (ADR 0045); absent otherwise",
           "type": "string"
         },
+        "shipped": {
+          "description": "Set when the verifier output for this target was replayed from the Sail release's shipped dependency build (ADR 0048): <build identity>/<entry key>; absent otherwise",
+          "type": "string"
+        },
         "report": {
           "$ref": "verify-output-v2.json"
         }

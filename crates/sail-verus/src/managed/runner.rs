@@ -70,6 +70,10 @@ struct Paths {
     /// Whether this run may reuse and record proof receipts. A run with a
     /// process-loader variable set may not (ADR 0046).
     reuse: bool,
+    /// This run's shipped-dependency plan file, when it has one (ADR 0048).
+    shipped_plan: Option<PathBuf>,
+    /// `SAIL_RUSTC_DEV_SOURCE_BASE` for Sail's Verus (ADR 0048).
+    source_base: Option<std::ffi::OsString>,
 }
 
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
@@ -519,6 +523,8 @@ fn prepare(
         family_contexts: compiler.join("contexts"),
         projects: root,
         reuse: true,
+        shipped_plan: None,
+        source_base: None,
     };
     for dir in [
         &paths.receipts,
@@ -716,6 +722,8 @@ fn invoke(
         .env("VERUS_Z3_PATH", &config.shim)
         .env("SAIL_Z3_PATH", &config.z3)
         .env("SAIL_SOLVER_MODE", "default")
+        .env_remove(super::shipped::PLAN_ENV)
+        .env_remove(super::shipped::SOURCE_BASE_ENV)
         .env_remove("SAIL_ENGINE")
         .env_remove("SAIL_ENGINE_FUNCTION")
         .env_remove("SAIL_ENGINE_EVENTS")
@@ -728,6 +736,12 @@ fn invoke(
         cmd.env("SAIL_DAEMON_SOCKET", socket);
     } else {
         cmd.env_remove("SAIL_DAEMON_SOCKET");
+    }
+    if let Some(plan) = &paths.shipped_plan {
+        cmd.env(super::shipped::PLAN_ENV, plan);
+    }
+    if let Some(base) = &paths.source_base {
+        cmd.env(super::shipped::SOURCE_BASE_ENV, base);
     }
     let mut child = cmd
         .spawn()
@@ -968,8 +982,11 @@ fn negative_compiler_generation(
                 _ => return Some(false),
             }
         }
+        // A call replayed from the shipped dependency build (ADR 0048) starts
+        // no verifier process.
         let mut names: Vec<_> = calls
             .values()
+            .filter(|call| call.shipped.is_none())
             .map(|call| call.identity.name.clone())
             .collect();
         names.sort();
@@ -1269,6 +1286,7 @@ fn target_records(
             }
             results.push(TargetResult {
                 dependency_store: None,
+                shipped: call.shipped.clone(),
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
@@ -1359,6 +1377,7 @@ fn target_records(
             );
             results.push(TargetResult {
                 dependency_store: store_key,
+                shipped: None,
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
@@ -1397,6 +1416,7 @@ fn target_records(
             });
             results.push(TargetResult {
                 dependency_store: None,
+                shipped: None,
                 package_id: package
                     .and_then(|p| p["id"].as_str())
                     .unwrap_or_default()
@@ -1883,6 +1903,31 @@ pub(crate) fn run_engine_held(
         Vec::new()
     };
     let new_target = super::store::new_target(&paths.target);
+    // Sail's Verus names the shipped build's registry sources by this
+    // machine's registry directory, in every managed run (ADR 0048): a target
+    // or store entry may hold shipped units from an earlier run.
+    let registry = super::shipped::registry_dir(&data);
+    paths.source_base = registry.as_deref().and_then(|registry| {
+        Some(super::shipped::source_base(
+            &super::shipped::virtual_base()?,
+            registry,
+        ))
+    });
+    let shipped_plan = if focused(&config.args) {
+        None
+    } else {
+        super::shipped::plan(
+            &config.cargo_verus,
+            &paths.target,
+            registry.as_deref(),
+            new_target,
+        )
+    };
+    if let Some(plan) = &shipped_plan {
+        let file = paths.run.join("shipped.json");
+        json(&file, plan)?;
+        paths.shipped_plan = Some(file);
+    }
     super::build_inputs::family::begin(
         &paths.compiler_inputs,
         &compiler_hash,
@@ -2087,6 +2132,9 @@ pub(crate) fn run_engine_held(
     };
     let mut exit = invoke(config, &paths, &mut out, err)?;
     drop(invocation_phase);
+    if let Some(plan) = &shipped_plan {
+        super::shipped::finish_record(plan, &config.cargo_verus, &workspace_root)?;
+    }
     let records_phase = diagnostics.phase(Phase::TargetRecords);
     outside_scope |= !units_in_scope(&paths);
     // The post-run Cargo metadata starts once the verifier invocation has
@@ -2246,6 +2294,12 @@ pub(crate) fn run_engine_held(
         notes.push(
             "Requested function/module scope is partial; whole-target reuse is disabled".to_owned(),
         );
+    }
+    for target in targets.iter().filter(|t| t.shipped.is_some()) {
+        notes.push(format!(
+            "SAIL3132: {} was verified when this Sail release was built and replayed from its shipped dependency build",
+            target.package_id
+        ));
     }
     for target in targets.iter().filter(|t| t.dependency_store.is_some()) {
         notes.push(format!(
@@ -2754,6 +2808,7 @@ mod tests {
                 report,
                 success: true,
                 dependencies: BTreeMap::new(),
+                shipped: None,
             },
             artifact_hashes: artifact_hashes(&[artifact.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),
@@ -3745,6 +3800,7 @@ mod tests {
                 report: crate::report::setup_failure(&[], "SAIL3100", "fixture"),
                 success: true,
                 dependencies: BTreeMap::new(),
+                shipped: None,
             },
             artifact_hashes: BTreeMap::new(),
             committed: run.join("committed.json"),

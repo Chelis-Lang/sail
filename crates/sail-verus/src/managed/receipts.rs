@@ -50,6 +50,10 @@ pub(crate) struct Invocation {
     pub report: Report,
     pub success: bool,
     pub dependencies: BTreeMap<PathBuf, String>,
+    /// Set when the verifier's output was replayed from Sail's shipped
+    /// dependency build (ADR 0048): `<build identity>/<entry key>`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shipped: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -274,6 +278,7 @@ mod tests {
                 report,
                 success: true,
                 dependencies: BTreeMap::new(),
+                shipped: None,
             },
             artifact_hashes: artifact_hashes(&[path.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),

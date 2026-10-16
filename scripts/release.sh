@@ -7,7 +7,11 @@
 #                                    copy this checkout's release binaries
 #                                    (target/release) and Sail's Verus (the
 #                                    validated fork runtime, which is also the
-#                                    repair engine) into OUT, then self-check it
+#                                    repair engine) into OUT, record the
+#                                    shipped vstd build, then self-check it
+#   scripts/release.sh record-deps OUT
+#                                    (re)record OUT's shipped vstd build
+#                                    (ADR 0048) and check that it serves
 #
 # VERSION must start with the workspace version in Cargo.toml (for example
 # 0.1.0 or 0.1.0-rc.1); the binaries are built with SAIL_VERSION=VERSION so
@@ -51,6 +55,48 @@ self_check() {
   echo "$status"
 }
 
+# record_deps OUT: Sail's shipped dependency build (ADR 0048) in
+# OUT/deps/<variant>/: vstd and its registry closure, compiled and verified by
+# OUT's own sail and runtime from a new `sail new --lib` project in a fresh
+# Cargo home (crates.io must be reachable). Then a second new project, under
+# another Cargo home and cache, must get vstd from it on its first
+# `sail verify` (the `shipped` field), so a build that would not serve never
+# ships.
+record_deps() {
+  local out="$1" scratch variant bundle
+  variant="$(basename "$(find "$out/engine" -mindepth 1 -maxdepth 1 -type d | head -n1)")"
+  [ -n "$variant" ] || die "no runtime in $out/engine"
+  bundle="$out/deps/$variant"
+  rm -rf "$out/deps"
+  mkdir -p "$out/deps"
+  scratch="$(mktemp -d)"
+  (
+    cd "$scratch"
+    unset SAIL_VERUS_BUILD SAIL_SHIPPED_DEPS CARGO_TARGET_DIR
+    export SAIL_CACHE_DIR="$scratch/record-cache" CARGO_HOME="$scratch/record-home" SAIL_DEPENDENCY_STORE_ENTRIES=0
+    "$out/bin/sail" new --lib --name sail-shipped-dependencies record >/dev/null
+    cd record
+    SAIL_SHIPPED_RECORD="$bundle" "$out/bin/sail" verify
+  ) || { rm -rf "$scratch"; die "recording the shipped vstd build failed"; }
+  (
+    cd "$scratch"
+    unset SAIL_VERUS_BUILD SAIL_SHIPPED_DEPS CARGO_TARGET_DIR
+    export SAIL_CACHE_DIR="$scratch/check-cache" CARGO_HOME="$scratch/check-home" SAIL_DEPENDENCY_STORE_ENTRIES=0
+    "$out/bin/sail" new check >/dev/null
+    cd check
+    "$out/bin/sail" verify --output json >"$scratch/check.json"
+  ) || { rm -rf "$scratch"; die "a new project does not verify with the shipped vstd build"; }
+  python3 -c 'import json,sys
+d = json.load(open(sys.argv[1]))
+assert any(t["target"] == "vstd" and t.get("shipped") for t in d["targets"]), "vstd was not served"' "$scratch/check.json" \
+    || { rm -rf "$scratch"; die "the shipped vstd build did not serve a new project"; }
+  rm -rf "$scratch"
+  # Why the release left invocations out (build-script probes) is
+  # diagnostic output of the recording run, not part of the build.
+  rm -rf "$bundle/skipped"
+  echo "shipped vstd build: $(du -sh "$bundle" | cut -f1) in $bundle"
+}
+
 # stage OUT ENGINE_BUILD: bin/{sail,sail-z3} and engine/<variant>/ holding
 # exactly the runtime files the manifest binds (sail-build.json and
 # verus/source/target-verus/release/*). The variant name is the build's own
@@ -73,6 +119,7 @@ stage() {
   cp "$build/sail-build.json" "$out/engine/$variant/"
   find "$build/$runtime/" -maxdepth 1 \( -type f -o -type l \) -exec cp -L {} "$out/engine/$variant/$runtime/" \;
   self_check "$out"
+  record_deps "$out"
 }
 
 # package DIR NAME: NAME.tar.gz (top directory NAME, root-owned entries) and
@@ -142,6 +189,7 @@ Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/s
 
 case "${1:-}" in
   stage) shift; stage "$@" ;;
-  ""|-h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  record-deps) shift; record_deps "${1:?usage: scripts/release.sh record-deps OUT}" ;;
+  ""|-h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
   *) release "$1" ;;
 esac
