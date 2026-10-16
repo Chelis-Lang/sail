@@ -213,14 +213,18 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
   answers; Rust compilation and Verus's own frontend still run every time.
   See [performance](docs/performance.md) for each claim and how to reproduce
   it. In short, on a 16-vCPU Linux host:
-  - edits on a solver-heavy project (vest, 3,237 functions) are 1.3–1.4×
-    faster (about 28 s against 35–40 s); the Rust and Verus frontend sets
-    most of that floor;
+  - edits on a solver-heavy project (vest, 3,237 functions) are 1.3–1.5×
+    faster (about 28 s against 37–42 s); the Rust and Verus frontend sets
+    most of that floor. On real projects, an edit confined to one module
+    is 1.2–2.3× faster, and a change to a widely used spec function about
+    as fast as plain Verus, because the solver re-runs each changed
+    module's earlier queries
+    ([real-project report](docs/reports/2026-10-15-real-project-performance.md));
   - small projects cost about 0.3 s more per run than plain Verus (demo
-    edits 1.07 s against 0.79 s), and cold first runs 1–3 s more, for
+    edits 1.17 s against 0.88 s), and cold first runs 1–2 s more, for
     Sail's receipts and complete reports;
-  - re-running `sail verify` on unchanged code takes about 0.3 s on a small
-    project and 1.1 s on vest, where plain Cargo does nothing in 0.1–0.2 s;
+  - re-running `sail verify` on unchanged code takes about 0.4 s on a small
+    project and 1.0 s on vest, where plain Cargo does nothing in 0.1–0.2 s;
     Sail checks every input and keeps the complete report for agents.
 - **macOS.** Receipt reuse works on Linux and macOS. On macOS a Cargo
   configuration file created and deleted again during a single run is not

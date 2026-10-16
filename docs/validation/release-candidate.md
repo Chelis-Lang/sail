@@ -9,16 +9,175 @@ then a short revalidation of `v0.1.0-rc.2` after the fixes for rc.1's
 findings; then `v0.1.0-rc.3`, the first candidate on which Sail runs its own
 Verus ([ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)), pinned
 to fork `73dea021`; then a short revalidation of `v0.1.0-rc.4` after the
-fix for rc.3's finding 12. Clean-macOS validation has its own record
+fix for rc.3's finding 12; then `v0.1.0-rc.5`, the 0.1.0 candidate, on
+which every `sail verify` is managed and new projects start from a
+pre-verified vstd. Clean-macOS validation has its own record
 ([clean macOS](clean-macos.md)).
 
 | Field | Value |
 |---|---|
-| Status | **`v0.1.0-rc.4`** ([below](#v010-rc4)): pass. Release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR conformance and `ci/run.sh host` pass; a failing first managed run no longer makes the next one verify vstd again (finding 12 fixed: 0.7 s Linux, 1.4 s macOS, was 21–27 s). The standard and deep tiers, `deep-rvt` and the repair benchmark carry over from rc.3 unchanged. **`v0.1.0-rc.3`** ([below](#v010-rc3)): release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR, standard and deep conformance (0 Different in every arm) and the repair benchmark (no regression) pass. **`deep-rvt` is not clean**: some rounds report one `output_json` test Different, each a stock-Verus output-order variant ([VI-0008](../verus-issues/VI-0008-func-details-hash-order.md), finding 11); this arm runs the stock source build, which Sail no longer runs, and Sail's Verus fixes VI-0008; not a blocker. The README's First verification failed as written and was fixed (finding 10). Superseded by rc.4; its draft is deleted. **`v0.1.0-rc.2`:** pass; superseded by rc.3, its draft is deleted. **`v0.1.0-rc.1`:** code pass; its draft is deleted. **Clean macOS:** pass on rc.1 ([clean macOS](clean-macos.md)) |
-| Source | **`v0.1.0-rc.4`** (draft), built from `main` at `5d99671e0d17d164a1f53166a921c49a0fd984f8`, which every rc.4 check ran. rc.3: `8bd4aed2c2c18b6956a4472863dac048530ef49b`. rc.2: `8f427e810dd613b9b476d09bb3eb3aea492f4ce4`. rc.1: `7782b136564ad810adf33c72749c6d75ee9483f8` for every suite; draft built from `958dee95321165f30cca25b5ebe95ac1251eb62e` |
-| Runtime | rc.3 and rc.4: CI image `sail-ci:3c02e445e25df766`, built on each host from the committed inputs; Sail's Verus from fork `73dea021` (Linux `engine-runtime-73dea021-linux`, manifest `4f0d0d3f…ccdd`; macOS `engine-runtime-73dea021-macos`, manifest `a42a7d19…b5c8`); oracle stock Verus `0.2026.10.04.426d8b0`, Z3 4.16.0; `rust_verify_test` from the stock source build of `426d8b0`. rc.1 and rc.2: image `sail-ci:14df87b176833bea`, stock Verus for default mode, engine `engine-runtime-13a1176c-linux` |
+| Status | **`v0.1.0-rc.5`** ([below](#v010-rc5)): pass. Release build, both smoke tests, the README install and first use on Linux and macOS (with a second new project, a workspace member, a failing first run, MCP, a loader variable, `--verify-function` and the reproductions of #119–#121), the gate, solver, e2e, `ci/run.sh host` and the managed e2e on macOS, fast PR, fast, standard and deep conformance (0 Different in every arm) and one round of `deep-rvt` (0 Different) pass. The repair benchmark shows no regression, but its outcome check now fails on a schema mismatch in the harness (finding 13, issue #179). Supersedes rc.4, whose draft is deleted. **`v0.1.0-rc.4`** ([below](#v010-rc4)): pass. Release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR conformance and `ci/run.sh host` pass; a failing first managed run no longer makes the next one verify vstd again (finding 12 fixed: 0.7 s Linux, 1.4 s macOS, was 21–27 s). The standard and deep tiers, `deep-rvt` and the repair benchmark carry over from rc.3 unchanged. **`v0.1.0-rc.3`** ([below](#v010-rc3)): release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR, standard and deep conformance (0 Different in every arm) and the repair benchmark (no regression) pass. **`deep-rvt` is not clean**: some rounds report one `output_json` test Different, each a stock-Verus output-order variant ([VI-0008](../verus-issues/VI-0008-func-details-hash-order.md), finding 11); this arm runs the stock source build, which Sail no longer runs, and Sail's Verus fixes VI-0008; not a blocker. The README's First verification failed as written and was fixed (finding 10). Superseded by rc.4; its draft is deleted. **`v0.1.0-rc.2`:** pass; superseded by rc.3, its draft is deleted. **`v0.1.0-rc.1`:** code pass; its draft is deleted. **Clean macOS:** pass on rc.1 ([clean macOS](clean-macos.md)) |
+| Source | **`v0.1.0-rc.5`** (draft), built from `main` at `c3687990a8139b0f0453c6ef574b3787aded6e92`, which every rc.5 check ran. rc.4: `5d99671e0d17d164a1f53166a921c49a0fd984f8`. rc.3: `8bd4aed2c2c18b6956a4472863dac048530ef49b`. rc.2: `8f427e810dd613b9b476d09bb3eb3aea492f4ce4`. rc.1: `7782b136564ad810adf33c72749c6d75ee9483f8` for every suite; draft built from `958dee95321165f30cca25b5ebe95ac1251eb62e` |
+| Runtime | rc.3 to rc.5: CI image `sail-ci:3c02e445e25df766`, built on each host from the committed inputs; Sail's Verus from fork `73dea021` (Linux `engine-runtime-73dea021-linux`, manifest `4f0d0d3f…ccdd`; macOS `engine-runtime-73dea021-macos`, manifest `a42a7d19…b5c8`); oracle stock Verus `0.2026.10.04.426d8b0`, Z3 4.16.0; `rust_verify_test` from the stock source build of `426d8b0`. rc.1 and rc.2: image `sail-ci:14df87b176833bea`, stock Verus for default mode, engine `engine-runtime-13a1176c-linux` |
 | Environment | Native EC2 c7i.8xlarge hosts (32 vCPU), us-east-1, Ubuntu 24.04, one suite or shard per host (layouts below); the developer Mac (Apple M3, macOS 26.5, shared with other lanes) |
 | Limits | Correctness only; wall times are indicative, not benchmarks, except the repair benchmark (one round per catalogue, a regression check, not an acceptance run). Walkthrough times are one sample each. rc.2's and rc.3's walkthroughs ran in a fresh `ubuntu:24.04` container |
+
+## v0.1.0-rc.5
+
+The 0.1.0 candidate. `main` changed materially after rc.4: every
+`sail verify` is managed verification (#155, ADR 0046); new projects and
+worktrees start from a machine-local store of verified vstd (#154, ADR
+0045) and `sail new` creates a ready-to-verify project (#152); reports use
+output schema v2 (#153); attribution logs are written on request (#172,
+ADR 0047); and managed reuse was fixed for member directories (#170, issue
+#157), build-script edits, generated includes and unbuilt scripts (#173,
+issues #119–#121) and store publication (#175). The Verus pin, both
+runtimes and the CI image are unchanged. Everything below ran on
+`c3687990`, 2026-10-15/16, lane L56, on native c7i.8xlarge hosts (32 vCPU,
+us-east-1), one suite or shard per host, unless stated.
+
+| Check | Environment | Result |
+|---|---|---|
+| `scripts/release.sh 0.1.0-rc.5` | Linux half on a native c7i.4xlarge (lane `l56-rel`, torn down by the script); macOS half on the developer Mac | pass: draft `v0.1.0-rc.5` targeting `c3687990`; both self-checks selected and validated the bundled runtime (manifests `4f0d0d3f…ccdd` and `a42a7d19…b5c8`); `sail --version` prints `sail 0.1.0-rc.5` from each archive |
+| `ci/local.sh gate` | `l56`, image `sail-ci:3c02e445e25df766` | pass: 620 passed, 35 skipped; fmt, clippy, doctests, rustdoc, links, layering, deny, benchmarks page |
+| `ci/local.sh solver` | `l56` | pass: 35 passed |
+| `ci/local.sh e2e` (legacy, managed, repair) | `l56b` | pass: `sail new` identical to `cargo verus new`; `sail verify` identical to `cargo verus verify` (exit 101; 20,247 cache entries); combined output, compile error and partial verification identical; `LD_LIBRARY_PATH`, `--no-verify`, `--config`, `--tests`, `--target-dir`, `--output-json --time` and a `-p`/`--features` workspace as plain; managed acceptance (failing first runs keep vstd, dependency store seeding, CLI/MCP jobs, prune, build-script reuse and more); `claude-code: listed 15 sail tools on protocol 2026-07-28`; real repair CLI/MCP acceptance |
+| `ci/local.sh conformance fast pr` | `l56` | 33 / 33 / 0 / 0 / 0 without the daemon, fill and warm (311 functions, 3,442 entries); engine 33 same, 32 focused (`4f0d0d3f4315`) |
+| `ci/local.sh conformance fast` | `l56b` | 147 / 147 / 0 / 0 / 0 in every arm (3,450 functions; 40,361 entries); engine 147 same, 146 focused |
+| standard tier, without the daemon and engine | `l56c` | 159 / 159 / 0 / 0 / 0 in both; 12,726 functions; 158 focused; 0 units with rlimit drift |
+| standard tier, fill and warm | `l56d`, its own daemon on a fresh cache | 159 / 159 / 0 / 0 / 0 in both; 144,933 entries |
+| deep tier, every arm | `l56e` (group A, all arms), `l56f` and `l56g` (group B) | 159 / 159 / 0 / 0 / 0 in every arm (150 + 9 units; 9,404 + 3,322 = 12,726 functions; 149 + 9 focused). Group A's engine arm showed the usual rlimit drift with no difference (VNR `log_entry_alive_value_wrap_around`, 51,948 against 51,945) |
+| `ci/local.sh deep-rvt`, one round (no cache rounds) | `l56` | 4,695 tests (58 ignored): 4,691 same, 4 Unstable, **0 Different**; plain 4,635 ok and the 2 source-build `cargo::cargo_new_*` FAILED, as before. All 4 Unstable are `output_json` tests (finding 11) |
+| repair benchmark, one round per catalogue | `l56` (HumanEval), `l56b` (Vest) | no regression; the outcome check fails on a harness schema mismatch (below; finding 13) |
+| `ci/run.sh host` | developer Mac (Apple M3, macOS 26.5, shared; load average 35–45) | pass: clippy clean; 609 passed, 35 skipped |
+| `ci/run.sh e2e managed` | developer Mac, the pinned macOS runtime, stock Verus as the oracle | pass: managed acceptance as on Linux; `claude-code: listed 15 sail tools`. The first attempt failed before any check: the fixture's daemon socket under macOS's default `TMPDIR` is longer than a Unix socket allows; rerun with `TMPDIR=/tmp` |
+| `scripts/release-smoke.sh`, Linux archive | fresh c7i.4xlarge `l56s`, no Sail checkout and no Verus; rustup and Rust 1.98.1 only | pass: bundled runtime selected; `sail new` and `sail verify` passed; `repair-check demo::max` accepted |
+| `scripts/release-smoke.sh`, macOS archive | developer Mac, fresh directory, empty `SAIL_CACHE_DIR`, no `cargo-verus` on `PATH` (functional check only, not clean-macOS evidence) | pass, same checks |
+| README install and first use, with the checks below | Linux: fresh `ubuntu:24.04` container (24.04.5) on `l56s`; macOS: the developer Mac, the macOS archive in a fresh directory, empty cache | pass |
+
+| Asset | Size | sha256 |
+|---|---:|---|
+| `sail-0.1.0-rc.5-x86_64-unknown-linux-gnu.tar.gz` | 42.3 MB (42,268,534 B) | `ea4cfb787c79ce24496d61c7a8944ab5861184a9641e0ac810369d5fd27f2f5e` |
+| `sail-0.1.0-rc.5-aarch64-apple-darwin.tar.gz` | 35.2 MB (35,243,180 B) | `303e0750a8c2d7ea48d7a149f10608cd68ff00d7d67b4dd9cf2db58880b5d309` |
+
+### README install and first use
+
+Both platforms followed README Install and First verification verbatim
+(on Linux as a new non-root user `walker` with only `sudo` added; the
+draft's assets, which cannot be downloaded anonymously, were copied in
+instead of fetched with `curl`). `shasum -a 256 -c`: `OK`; rustup and Rust
+1.98.1 in 19 s; `sail engine status` selected the bundled runtime; no
+`cargo-verus` on `PATH`. Then, in the same cache: a second new project, a
+workspace member verified from its own directory (#157), a new project
+whose first run fails, MCP `verify` on it, the fix, `repair-check`, a
+loader variable and `--verify-function`. Seconds, one sample each; the
+macOS times are on the shared developer Mac at load average 33–47 and are
+indicative only:
+
+| Step | Linux | macOS | Result |
+|---|---:|---:|---|
+| `sail new --lib demo` | 0.1 | 1.3 | `Created Verus library package demo … (vstd 0.0.0-2026-10-04-0306, matching Sail's Verus)` |
+| `sail verify` (README; first on the machine, vstd verified) | 33.0 | 140.5 | 2,060 vstd and 1 demo verified |
+| the same, unchanged | 0.4 | 0.7 | exit 0, no output, as plain Cargo |
+| second new project, first `sail verify` | **1.3** | **3.0** | `1 verified`; vstd from the dependency store |
+| workspace member from its directory (no `-p`), first / second / after an edit | 1.3 / **0.4** / 1.0 | 2.9 / **0.8** / 1.8 | the second run reuses everything, the edit reuses vstd (#157 fixed); `--output json`: Current, `reused: true` |
+| new project whose first run fails, first / second | 1.1 / 0.7 | 2.9 / 1.4 | exit 101, `postcondition not satisfied`, `0 verified, 1 errors` |
+| MCP `verify` on it (stdio client, protocol `2025-06-18`, 15 tools) | 0.95 | 1.5 | 3.9 KB: `FAILED: 1 of 1 function(s) in demo3 failed: demo3::max`; vstd 1,871 verified, not shown |
+| fixed / unchanged | 1.0 / 0.4 | 1.3 / 0.6 | `1 verified`; `--output json` Current |
+| `repair-check --function demo3::max --engine interactive` | 30.2 | 136.8 | accepted, full evidence Current |
+
+- **Loader variable.** A new project verified with `LD_LIBRARY_PATH` set,
+  compared with plain `cargo verus verify` (the bundled `cargo-verus` by
+  path, in a fresh `target/`) under the same variable: exit codes equal,
+  stdout byte-identical (`2060 verified`, then `1 verified`), stderr
+  identical once Cargo's progress lines and Sail's one
+  `note[SAIL3112]: LD_LIBRARY_PATH is set, so this run reuses no proof
+  receipts and records none …` are removed. Sail 29.2 s against plain
+  31.4 s on Linux (vstd verified, as plain does; the solver cache stays on).
+- **`--verify-function`.** `sail verify -- --verify-function max` and plain
+  `cargo verus verify -- --verify-function max` both stop with
+  `Error: Partial verification must use cargo verus focus`, exit 1, on
+  passing and failing code: identical stdout and stderr.
+- **Issues #119–#121.** Their reproductions, run as `sail verify --output
+  json` (now the default managed path) on both platforms; every run
+  Current. Linux seconds (macOS in brackets):
+
+  | Reproduction | Runs | Result |
+  |---|---|---|
+  | #119, `build.rs` without `rerun-if-changed`: cold, unchanged, two comment-only edits | 1.4, 0.4, 1.1, 1.1 (5.0, 1.0, 3.7, 4.9) | each edit 1 verifier run with vstd reused (was 17 s and 0 reused) |
+  | #120, a `serde = "=1.0.228"` dependency: three unchanged runs | 2.7, 0.4, 0.4 (20.3, 1.8, 1.5) | runs 2 and 3: 0 verifier runs, both targets reused (was Historical every run) |
+  | #121, workspace `-p a`, `b` enabling `foo/serde`: three unchanged runs | 1.3, 0.4, 0.4 (8.3, 1.4, 1.6) | runs 2 and 3: 0 verifier runs, both targets reused (was Unknown every run) |
+
+  The first time this workspace was verified on each machine (an earlier
+  pass of the same script), its first run did not use the dependency store
+  and verified vstd (29 s Linux, 111 s macOS) and stored another entry;
+  the second pass above reused it (finding 15).
+
+### Repair benchmark
+
+`sail-bench repair` as for rc.3: M6 from `rescue/m6-baseline` (`26f124f`),
+M7 at `c3687990` with the `73dea021` runtime, one round per catalogue on
+its own c7i.8xlarge, against the frozen figures measured on `13a1176c`.
+
+| Catalogue | M6 whole loop | M7 whole loop | Speedup | Recorded (M6 / M7 / speedup) | M7 first actionable |
+|---|---:|---:|---:|---|---|
+| HumanEval | 64.8 s | 29.0 s | 2.23× | 64.7 s / 30.3 s / 2.14× | 3.47 s (recorded 3.46–3.57 s) |
+| Vest | 266.8 s | 146.1 s | 1.83× | 246.6 s / 135.1 s / 1.82× | 14.6–15.1 s (recorded 13.4–13.7 s) |
+
+No M7 figure is more than 15% slower than recorded, so no three-round run
+followed. On Vest both arms ran 8% slower than recorded, the unchanged M6
+binary included, so the speedup held; the cause of the slower host was not
+investigated. Every sample was Current and accepted as the catalogue
+expects, but the judge reported `SAIL7107` (differing M6/M7 full outcomes)
+for all ten pairs. A comparison of the raw documents found equal exit
+codes, per-function verdicts (331 and 3,127 functions) and diagnostics in
+every pair: the outcome hash reads the per-function `tier`, which output
+schema v2 renamed `evidence_tier`, so the v1 (M6) and v2 (M7) hashes always
+differ (finding 13).
+
+### rc.5 findings
+
+13. **The repair benchmark's outcome check fails on schema v2.** Above.
+    Harness only; no verdict differs. Medium: the benchmark's acceptance
+    gate cannot pass until it compares outcomes across schema versions.
+    Issue #179.
+14. **Reports omit the release suffix.** Every report's `sail_version` is
+    `0.1.0`, where `sail --version` prints `0.1.0-rc.5`
+    (`CARGO_PKG_VERSION` rather than `SAIL_VERSION`). Low. Issue #180.
+15. **Some workspaces get their own dependency-store entry.** The #121
+    workspace's first run on each machine verified vstd although the store
+    held an entry for the same vstd; it then stored and reused its own.
+    Correct but slower once per such workspace. The store's key includes
+    the versions of vstd's dependencies in `Cargo.lock` (README Limits),
+    and this workspace's lock differs from a new project's; which input
+    differed was not checked (see also #177). Low.
+
+Finding 11 (`deep-rvt` output order, issue #124) is unchanged: this round
+had 0 Different and 4 Unstable `output_json` tests. Open from earlier
+candidates: 5 and 9 (low).
+
+### rc.5 evidence
+
+Raw logs outside the repository, in `~/sail-raw-evidence/l56/` on the
+lead's machine: `l56-rc5.tar.gz` (sha256
+`390340d5f2a7f0b2fc6bc9adbaba4fe029cf75708d81ecaa76dc4a359715378a`) holds
+the release log, every host's logs and conformance reports, both repair
+benchmark journals and raw outputs, the performance runs for
+[performance](../performance.md) (`l56p`, `l56q`), the Linux smoke and
+walkthrough logs and files, the macOS host, managed e2e, smoke and
+walkthrough logs and files, the asset checksum files and the harness
+scripts. For the vest edit loops it holds the script's output (every
+sample's time and exit code, and the table), not the per-command logs,
+which a packing error left on the host before it was terminated.
+
+Attempts:
+- `c3687990`, 2026-10-16, `ci/run.sh e2e managed` on macOS: failed before
+  any check (daemon socket path too long under the default `TMPDIR`; test
+  environment); passed with `TMPDIR=/tmp`.
+- `c3687990`, 2026-10-16, Linux walkthrough: the container has no
+  `python3`, so the MCP client and the reproduction summaries did not run
+  in the first pass; rerun in the same container after installing
+  `python3` (outside the README steps).
 
 ## v0.1.0-rc.4
 
