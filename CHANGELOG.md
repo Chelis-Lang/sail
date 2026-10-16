@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Retain the disabled one-use solver-continuation research driver and its
+  strict failure evidence (#158). A separate opt-in timing-token comparator
+  does not change Sail verification, default cache keys or shipped behavior.
+
 - Retain bounded original output E2E failure streams, command/source snapshots
   and producer records without changing comparisons or the original exit code.
 

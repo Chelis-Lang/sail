@@ -184,3 +184,21 @@ the current corpus.
   can skip re-solving unchanged queries after a miss. The same data shows
   that this matters only where buckets are large and edits fall early in
   them.
+
+
+## Named one-use timing experiment, 2026-10-16 (#158)
+
+The owner authorized a disabled research comparator that permits only numeric
+`:time` response tokens to vary, under its own opt-in policy binding. All other
+response bytes and original default keys remain exact. The standalone
+[prototype](../../native/sail-live-prefix/README.md) keeps one original process
+alive and consumes it once; preparation costs real CPU. It adds no product
+integration and selects neither history-tolerant serving nor a pool.
+
+The [actual validation record](../validation/solver-snapshots.md#named-numeric-time-only-research-experiment)
+preserves a single earlier IronKV foreground reduction without CPU saving and
+the subsequent failed pair: live-monitor fallback doubles solver CPU, while
+Anvil's fresh observer refuses before live serving. Native lifecycle controls
+pass but do not override workload refusals. This closes the bounded measurement
+loop as blocked research; no implementation is selected and default/corpus
+qualification remains required.
