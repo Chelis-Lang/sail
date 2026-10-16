@@ -98,6 +98,10 @@ are in the `archive/m7-contracts-f7103bf` tag.
   without-shim control with ADR 0042's diagnostic-message comparison.
   JSON output from stock is not normalized. Native acceptance of that new
   gate is pending; the historical stock-only results do not qualify it.
+  The current native `c0e7e0f5` stock control still fails strictly: 4,691 Same,
+  3 Unstable, 1 Different, 0 infrastructure errors; the Different JSON proof-note
+  output matched none of 11 plain runs. The explicit fork-selector routing
+  correction awaits native validation; see the [deep-tier record](validation/deep-tier.md).
 - **Fork JSON proof-note arrays are not deterministic.** Eight repeated
   runs of the same failing proof emit both note orders; the exact source-suite
   sample has three Differences. No verdict or rendered-diagnostic difference
