@@ -208,6 +208,7 @@ fn jobs_verify_unbound_setups_as_plain_cargo_verus() {
     let fixture = Fixture::new("jobs");
     let mut daemon = fixture.jobs();
     let client = Client::new(sail_api::jobs::socket_path(&fixture.cache_socket));
+    let baseline = "tests-without-reuse";
     for setup in SETUPS {
         let submission = Submission {
             mode: sail_api::jobs::Mode::Stock,
@@ -279,6 +280,31 @@ fn jobs_verify_unbound_setups_as_plain_cargo_verus() {
             text.contains("no proof reuse (SAIL3112)") && text.contains("verified now"),
             "{text}"
         );
+        if setup == SETUPS[0] {
+            let Ok(Response::Baseline(saved)) = client.call(&Request::SaveBaseline {
+                id: status.id.clone(),
+                name: baseline.to_owned(),
+            }) else {
+                unreachable!("no saved baseline")
+            };
+            assert_eq!(saved.result.currentness, Currentness::Historical);
+            assert!(saved.result.no_reuse.is_some());
+        } else {
+            // Two different unbound setups share the synthetic target name
+            // and empty context. Saving the earlier result must not make
+            // those empty bindings authorize a proof comparison.
+            let Ok(Response::Comparison(comparison)) = client.call(&Request::Compare {
+                before: sail_api::evidence::Reference::Baseline(baseline.to_owned()),
+                after: status.id.clone(),
+            }) else {
+                unreachable!("no baseline comparison")
+            };
+            assert!(!comparison.compatible);
+            assert_ne!(comparison.differences, []);
+            assert!(comparison.differences.iter().all(|difference| {
+                difference.change == sail_api::evidence::Change::Incomparable
+            }));
+        }
     }
     daemon.shutdown();
 }
@@ -504,6 +530,26 @@ fn mcp_verifies_unbound_setups_as_plain_cargo_verus() {
                 .unwrap_or_else(|error| unreachable!("{error}: {full}"));
         assert_plain(&project, setup);
     }
+    drop(mcp);
+    daemon.shutdown();
+}
+
+/// Cargo may succeed without invoking Verus for any target. That exit code
+/// must not become an MCP claim that the current inputs were verified.
+#[test]
+fn mcp_unbound_up_to_date_run_reports_no_result() {
+    let fixture = Fixture::new("mcp-empty");
+    write_exec(&fixture.root.join("cargo-verus"), "#!/bin/sh\nexit 0\n");
+    let mut daemon = fixture.jobs();
+    let mut mcp = Mcp::start(&fixture);
+    let result = mcp.tool("verify", &json!({"cargo_args": ["--tests"]}));
+    let summary = result["content"][0]["text"].as_str().unwrap_or_default();
+    assert!(summary.starts_with("NO RESULT:"), "{result}");
+    assert!(summary.contains("No proof reuse (SAIL3112)"), "{result}");
+    let view = &result["structuredContent"];
+    assert_eq!(view["exit_code"], 0);
+    assert_eq!(view["currentness"], "unknown");
+    assert_eq!(view["no_reuse"]["verified_as"], "plain-cargo-verus");
     drop(mcp);
     daemon.shutdown();
 }
