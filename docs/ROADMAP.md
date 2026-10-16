@@ -224,7 +224,11 @@ solver-side remainder. Edit loops agree.
 
 The levers that matter now:
 - **The warm Verus frontend** (the charter roadmap item).
-  - The M8.0 gate failed on the reference host. Unchanged-bucket work is
+  - The [larger-project profile](reports/2026-10-16-warm-frontend.md) is recorded.
+    A read-only pruning candidate is implemented separately; native gain and
+    runtime qualification are pending. The raw memo key misses ordinary edits,
+    so persistent reuse remains unimplemented (proposed ADR 0052).
+  - The earlier M8.0 gate failed on the reference host. Unchanged-bucket work is
     9–12% of the median edit cycle (gate: 25%), so the hermetic bucket memo
     (M8.1) does not proceed.
   - With 7 Verus threads it is 18–27%.
