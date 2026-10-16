@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- The source-suite runner avoids its duplicate progress flag for the exact
+  original VI-0012 regression source, binary and case (#203). Changed or missing
+  source keeps the default, explicit threads remain unchanged, and reproduction
+  commands now show the same effective `VERUS_EXTRA_ARGS` as actual execution.
+  Corrected native qualification is pending; the original full-suite failure
+  remains recorded.
+
 - **CI image packaging candidate** (#195): checks share a core image with
   every pinned toolchain/runtime; only managed e2e adds the pinned external
   MCP client. Local checks select the same targets. Actual startup improvement

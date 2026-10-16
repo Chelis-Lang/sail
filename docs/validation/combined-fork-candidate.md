@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Genuine Linux builds/private packaging and earlier-source native BASIC/full fast pass. **Not accepted or selected for release**; corrected source-suite, deeper corpus, determinism and performance qualification remain. |
+| Status | Genuine Linux builds/private packaging and native BASIC/source-JSON pass; **full fork source suite failed strictly**. Not accepted or selected for release; corrected source-suite, deeper corpus, determinism and performance qualification remain. |
 | Fork | `8a373f81a507b7ef4f144767ccd237d3d3de6c48`: closure identity, source mapping and deterministic proof-note JSON changes; no M8 pruning or telemetry. |
 | Build source | Sail `b9816738a3114cf9f14400b0dd75f1215ebabf69`, exact builder/harness source `9fa6c9d2` plus its isolated fork selection. This source predates #196 and is **not** the source for subsequent default CLI/corpus/performance checks. |
 | Qualification source | Current main `4b0f265f` (including #196 metadata/runner, #199 incidental-work harness, #198 CI packaging and #200 blocked-continuation record), reviewed #124 machinery and the explicit-suite selector correction are joined privately. Accepted main/macOS pins and public assets stay unchanged. |
@@ -53,7 +53,7 @@ determinism; repeated actual proof-note JSON and existing multi-note
 unchanged stock control. Measured #118 solver work and edit cost must retain
 an independent accepted old-fork/stock baseline. macOS qualification remains
 separate. No static review, successful build or fixture substitutes for these
-checks, and no deeper-tier, corrected source-suite or performance result is claimed here. Earlier-source BASIC/full fast results below retain their actual source scope.
+checks. No corrected full-source-suite, deeper-tier or performance acceptance is claimed here. Results below retain their actual source scope.
 
 The existing local-store native-linker defect [#187](https://github.com/Chelis-Lang/sail/issues/187)
 remains open; these builds neither fix it nor broaden its acceptance.
@@ -67,10 +67,13 @@ remains open; these builds neither fix it nor broaden its acceptance.
 | 2026-10-16, qualification `6880cb9b` | Native BASIC pass | Workspace gate 644 passed/35 skipped, solver 35 passed, all seven e2e phases plus extra, PR four arms each 33 Same/311 functions, and eight exact proof-note JSON repetitions. Source/runtime/test identities checked before/after each stage. Final raw archive SHA-256 `0966182f9920a2ab0e39bba9f139e7dbc105f5d7b7b0fd0fbb278b8c640806c3`. |
 | 2026-10-16, qualification `6880cb9b` | Full fast pass | Four arms each 147 Same/3,450 functions, zero Different/Unstable/infrastructure errors/drift/skips; 465.4 s. Final raw archive SHA-256 `1fc047a94bebc33b44d063c593d044815da646df1ca28c5533af43f0b9c79fd6`. This is not a full-fast run of the subsequent selector correction. |
 | 2026-10-16, qualification `6880cb9b`, source-JSON | Refused before any source tests | Generic stock installation lookup consumed the explicit fork suite, then refused its fork features with `SAIL3040`. Final raw archive SHA-256 `6fbbb1f78bd96633654e40f7e40be20247590ceea6d767b4208062a67714962a`; chain stopped and shut down. No determinism/standard/deep ran. The correction separates release/Z3 lookup from the unchanged strict suite admission. |
+| 2026-10-16, qualification `168ab7ab` | Native BASIC and genuine fork source-JSON pass | Workspace gate 644 passed/35 skipped, solver 35, all seven e2e phases plus extra, PR four arms each 33 Same/311 functions, eight exact proof-note repetitions, and 18/18 actual-binary selector controls. BASIC final archive `81d4c153715b97ac5b77fe0df4fa8a9c542c8a3b108c0d7021b003251e20498e`. Source-JSON: 9/9 Same, every nonignored test passed; final archive `a900abce8c218aba825ada36042baa96fc8359d85d14a4b27ad9ba96307e9593`. |
+| 2026-10-16, qualification `168ab7ab`, full fork suite | **Strict failure**, 4,709 selected/58 ignored: 4,708 Same, 1 Different, zero Unstable/infrastructure errors | Both arms of the original VI-0012 progress-order regression failed identically because the runner added a duplicate `--no-report-long-running`. Eleven stable plain failures remain Different under the unchanged baseline-must-pass rule. Final archive `c4e3826df19353f4935ad4d2b80689d2b1c754f61233f9b9aa15d1026608624a`; chain stopped. No determinism/standard/deep ran. The [source-bound correction](rvt-progress-option.md) is not yet natively qualified. |
 | 2026-10-16, independent stock `c0e7e0f5` | Full stock control failed strictly | 4,695 tests selected (58 ignored), 4,691 Same/3 Unstable/1 Different/0 infrastructure errors in 1,174 s. The unmatched proof-note JSON run remains Different; no normalization or reclassification. This is not a qualified stock control. Full scope and raw hash are in the [deep-tier record](deep-tier.md). |
 
-The next frozen source must run its own native BASIC and the 18 list-only
-selector controls before genuine fork source-JSON/full-suite, exact fast
+The source-bound progress-option correction must run its own native BASIC
+and actual selector controls before the original VI-0012 regression and genuine
+fork source-JSON/full-suite, exact fast
 three-run determinism, standard and deep. Selector fixtures are admission
 controls, not proof verification. Prior `6880cb9b` full fast may supply only
 its explicitly identified 147-unit selection and observed exit/proof-count

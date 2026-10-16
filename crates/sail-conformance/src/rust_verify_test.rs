@@ -230,8 +230,8 @@ fn reproduce(cx: &Context, test: &TestCase, dir: &Path) -> Result<(), String> {
          input: {input}\n\n\
          Verus's own rerun line (from the source build's `source` directory):\n{rerun}\n\n\
          Rerun the test itself, in {pkg}:\n\
-         plain: VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 {extra}VERUS_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
-         sail: VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 {extra}VERUS_Z3_PATH={sail_z3} SAIL_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
+         plain: VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 VERUS_EXTRA_ARGS=\"{extra}\" VERUS_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
+         sail: VERUS_IN_VARGO=1 RUSTC_BOOTSTRAP=1 RUST_MIN_STACK=20971520 VERUS_EXTRA_ARGS=\"{extra}\" VERUS_Z3_PATH={sail_z3} SAIL_Z3_PATH={z3} {bin} --exact {name} --nocapture --test-threads 1\n\
          (with Verus's toolchain library directory on the dynamic library path)\n",
         id = test.id(),
         rerun = rerun.join("\n"),
@@ -239,9 +239,7 @@ fn reproduce(cx: &Context, test: &TestCase, dir: &Path) -> Result<(), String> {
         z3 = cx.suite.z3.display(),
         bin = test.path.display(),
         name = test.name,
-        extra = cx.suite.verus_threads.map_or_else(String::new, |n| format!(
-            "VERUS_EXTRA_ARGS=\"--num-threads {n}\" "
-        )),
+        extra = cx.suite.extra_verus_args(test),
     );
     std::fs::write(dir.join("reproduce.txt"), note).map_err(|e| e.to_string())
 }

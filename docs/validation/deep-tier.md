@@ -50,11 +50,22 @@ The explicit fork selector now bypasses only the generic stock-source
 installation lookup: its pinned solver comes from the release, and the suite's
 existing manifest, artifact, feature, toolchain and solver checks remain in
 force. Ordinary stock and Singular source installation retain their existing
-selector behavior. The new list-only selector controls and corrected real fork
-run are pending native execution; source review and formatting are not acceptance.
+selector behavior. On private source `168ab7ab`, all 18 actual-binary list-only selector controls
+and all nine genuine fork `output_json` tests passed. Its complete fork suite
+then failed strictly on a runner-supplied duplicate progress flag: 4,708 Same,
+one Different, no Unstable or infrastructure errors (4,709 selected, 58 ignored).
+The original test and baseline-must-pass rule remain intact. The
+[source-bound option correction](rvt-progress-option.md) still needs native
+validation; source review and formatting are not acceptance.
 
 Failed/interrupted attempts, 2026-10-16:
 
+- `168ab7ab` with combined fork `8a373f81`: complete genuine fork suite,
+  4,708 Same/one Different; the VI-0012 regression failed identically on both
+  sides because the harness injected a second `--no-report-long-running`.
+  Failed raw archive SHA-256
+  `c4e3826df19353f4935ad4d2b80689d2b1c754f61233f9b9aa15d1026608624a`.
+  No reclassification or assertion change; see [#203](https://github.com/Chelis-Lang/sail/issues/203).
 - `6880cb9b` with combined fork `8a373f81`: selected source-JSON run refused
   `SAIL3040` before any tests, because the generic stock installer consumed
   the fork-suite selector first. Final raw archive SHA-256

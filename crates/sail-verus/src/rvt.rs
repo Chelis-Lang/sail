@@ -259,9 +259,6 @@ impl Suite {
             .env_remove("SAIL_TRACE_DIR")
             .env_remove("SAIL_DAEMON_SOCKET")
             .env("SAIL_SOLVER_MODE", "default");
-        // Suppress timing-dependent progress notes at their source, on both
-        // sides, exactly as the ordinary corpus harness does (ADR 0006).
-        cmd.env("VERUS_EXTRA_ARGS", extra_args(self.verus_threads, false));
         for var in [
             "CARGO",
             "CARGO_TARGET_DIR",
@@ -276,6 +273,18 @@ impl Suite {
         }
     }
 
+    /// The exact `VERUS_EXTRA_ARGS` used for this test, including the
+    /// progress-suppression default and any explicit verification threads.
+    /// Known tests that supply progress suppression themselves omit only
+    /// that redundant default; their original arguments remain unchanged.
+    #[must_use]
+    pub fn extra_verus_args(&self, test: &TestCase) -> String {
+        extra_args(
+            self.verus_threads,
+            supplies_progress_flag(test, &self.build),
+        )
+    }
+
     /// Runs one test with `solver`. With `keep_input`, the harness keeps the
     /// test's materialized input directory and prints where it is and how
     /// to rerun it (`VERUS_KEEP_TEST_DIR`).
@@ -288,11 +297,9 @@ impl Suite {
         let mut cmd = Command::new(&test.path);
         cmd.args(["--exact", &test.name, "--nocapture", "--test-threads", "1"]);
         self.environment(&mut cmd);
-        // This example supplies the same flag from its source header. Verus
-        // rejects duplicate flags, so retain the effective option exactly once.
-        if supplies_progress_flag(test, &self.build) {
-            cmd.env("VERUS_EXTRA_ARGS", extra_args(self.verus_threads, true));
-        }
+        // Suppress timing-dependent progress notes on both sides (ADR 0006),
+        // without duplicating a source-bound test's own effective option.
+        cmd.env("VERUS_EXTRA_ARGS", self.extra_verus_args(test));
         if keep_input {
             cmd.env("VERUS_KEEP_TEST_DIR", "1");
         }
@@ -362,6 +369,20 @@ fn extra_args(threads: Option<u32>, progress_supplied: bool) -> String {
 }
 
 fn supplies_progress_flag(test: &TestCase, build: &Path) -> bool {
+    if test.binary == "sail_vi0012_progress_order"
+        && test.name == "sail_vi0012_bucket_start_notes_in_bucket_order"
+    {
+        // This original regression passes the flag directly to verify_one_file.
+        // Bind its entire source: a name-only exemption could silently lose
+        // suppression if a later revision removes that argument. Do not parse
+        // or normalize arbitrary test arguments, including explicit threads.
+        return crate::source_build::hash_file(
+            &build.join("verus/source/rust_verify_test/tests/sail_vi0012_progress_order.rs"),
+        )
+        .is_ok_and(|sha| {
+            sha == "046f7fb964c3a6dcb4cbccca1ec9cd61e4d4ed603d09b7976353f930fb6d8a63"
+        });
+    }
     test.binary == "examples"
         && test.name == "examples_assert_by_compute"
         && std::fs::read_to_string(build.join("verus/examples/assert_by_compute.rs"))
@@ -500,6 +521,52 @@ pub fn kept_input_dir(stderr: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fork_progress_default_requires_exact_original_source_and_case() {
+        const ORIGINAL: &[u8] =
+            include_bytes!("../tests/fixtures/rvt-progress/sail_vi0012_progress_order.rs");
+        let dir = std::env::temp_dir().join(format!("sail-rvt-vi0012-{}", std::process::id()));
+        let source = dir.join("verus/source/rust_verify_test/tests/sail_vi0012_progress_order.rs");
+        assert!(std::fs::create_dir_all(source.parent().unwrap_or(&dir)).is_ok());
+        let mut test = TestCase {
+            binary: "sail_vi0012_progress_order".to_owned(),
+            path: PathBuf::new(),
+            name: "sail_vi0012_bucket_start_notes_in_bucket_order".to_owned(),
+            ignored: false,
+        };
+        assert!(!supplies_progress_flag(&test, &dir));
+        assert!(std::fs::write(&source, ORIGINAL).is_ok());
+        assert!(supplies_progress_flag(&test, &dir));
+        // Omit only the redundant default, never an explicit thread override.
+        assert_eq!(extra_args(None, supplies_progress_flag(&test, &dir)), "");
+        assert_eq!(
+            extra_args(Some(1), supplies_progress_flag(&test, &dir)),
+            "--num-threads 1"
+        );
+        test.name = "another_case".to_owned();
+        assert!(!supplies_progress_flag(&test, &dir));
+        test.name = "sail_vi0012_bucket_start_notes_in_bucket_order".to_owned();
+        test.binary = "foreign_binary".to_owned();
+        assert!(!supplies_progress_flag(&test, &dir));
+        test.binary = "sail_vi0012_progress_order".to_owned();
+        let mut changed = ORIGINAL.to_vec();
+        changed.extend_from_slice(b"\n// changed source must retain the default\n");
+        assert!(std::fs::write(&source, changed).is_ok());
+        assert_eq!(
+            extra_args(None, supplies_progress_flag(&test, &dir)),
+            "--no-report-long-running"
+        );
+        let changed = String::from_utf8_lossy(ORIGINAL).replace(
+            "\"--no-report-long-running\"",
+            "\"--no-report-long-runninG\"",
+        );
+        assert!(std::fs::write(&source, changed).is_ok());
+        assert!(!supplies_progress_flag(&test, &dir));
+        assert!(std::fs::remove_file(&source).is_ok());
+        assert!(!supplies_progress_flag(&test, &dir));
+        let _ = std::fs::remove_dir_all(dir);
+    }
 
     #[test]
     fn source_supplied_progress_option_is_not_added_twice() {

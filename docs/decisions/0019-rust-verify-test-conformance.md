@@ -248,9 +248,24 @@ The runner checks that known example's actual header and omits its redundant
 extra flag, preserving the thread selection and the same effective options
 on both sides. Source files and diagnostics remain unchanged.
 
-Full runs made before this correction retain their raw reports. That case's
-failed invocation is not accepted as coverage: a separate corrected test in
-all three modes supplies its evidence, without repeating unaffected cases.
+The original fork VI-0012 progress-order regression also supplies this option
+directly. On combined runtime `8a373f81`, the full suite rejected the runner's
+duplicate before verification ([#203](https://github.com/Chelis-Lang/sail/issues/203)).
+The extension omits only the redundant runner default for that exact binary,
+case and whole source SHA-256; changed, missing and unrelated sources retain
+injection. It never deduplicates arbitrary arguments or drops explicit thread
+overrides. The original regression and all its assertions remain unchanged.
+Run execution and exported reproduction commands share the exact effective
+`VERUS_EXTRA_ARGS`, including the empty value for a source-supplied default.
+The original strict failure remains indexed; corrected native qualification is
+pending in the [validation record](../validation/rvt-progress-option.md).
+
+
+Historical full runs before the `examples_assert_by_compute` correction retain
+their raw reports. That example's failed invocation was not accepted as
+coverage: a separate corrected example test in all three modes supplied its
+evidence without repeating unaffected cases. This historical scope does not
+waive a fresh complete fork-suite run for the VI-0012 correction above.
 
 The corrected example was run in an isolated clone of the immutable source
 build (its materialized inputs and OS lock are separate). Pass-through,
