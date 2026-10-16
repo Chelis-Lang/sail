@@ -58,13 +58,54 @@ separate gates. It does not complete #162.
 
 A separate measurement-only fork prototype (`2371ca51`, based on `520f3b57`)
 can project serialized spans to encounter-ordered identifiers while retaining
-identifier aliasing, with location fields separated. It records an explicitly
+identifier aliasing, replacing actual packed positions and display strings
+with empty fields. No proof makes those values irrelevant or rebinds current
+diagnostics. It records an explicitly
 unqualified key policy and always lowers and verifies freshly. Four tests
 check ordinary serialization, alias distinctions, thread isolation and scope
 restoration; `rust_verify` checks successfully. No native key-stability or
 fresh-output equivalence result exists yet. This probe is not a cache key and
 a match cannot authorize reuse. Other identifier consumers and exact current
 location binding remain unresolved.
+
+The next measurement source starts at combined fork `8a373f81`, excluding
+the read-only pruning experiment. It records the ordinary pruned AST without
+that projection, a bounded raw serialization digest, selected lowering
+arguments and available global-context Debug observations, then fresh SST
+Debug. Source `80a19b1a` builds and passes its two native unit tests, but
+both edited project buckets refuse incomplete SST output at its first
+64 MiB record cap. The single capacity revision `7812863f` allows 256 MiB
+per record, still two records per process and a separate 64 MiB raw-hash
+ceiling. No field or acceptance check changes. Its build, unit tests and ten
+bounded project capture runs pass; its observations remain incomplete for
+reuse. A build or capture is not complete-key qualification. Each
+manifest states that neither the input nor output is qualified for reuse.
+Opaque `RawSpan`, private global state, rustc callbacks/source maps and the
+loss of span IDs/packed positions in existing SST Debug remain explicit
+coverage gaps. `Span.data` contains a stable crate identifier and packed
+source positions; it is not a source-file content digest. No complete key
+has been established by hashing the pruned crate.
+
+The offline `scripts/frontend-input-diff.py` describes positional differences
+in ordinary AST JSON, preserving numeric tokens, object-pair/array order and
+duplicate keys. Only literal raw equality returns success; formatting or
+escape-spelling differences still fail. Its bounded summaries never become
+keys or normalized input. The native capture plan and its remaining proof
+obligations are in the [profile report](../reports/2026-10-16-warm-frontend.md).
+
+All 12 native-capture AST comparisons now complete. Vest unchanged inputs
+match, but IronKV contains a two-entry external-function order reversal.
+Comment/body captures change position-bearing fields even in control
+buckets. These are diagnoses of literal input misses, not permission to
+sort/drop fields or reuse context; the [report](../reports/2026-10-16-warm-frontend.md)
+records exact scope and raw hashes.
+
+A later audit finds the captures' dependency patch was a no-op: the full
+source API received a packaged runtime directory. Retained Cargo locks bind
+original project macro/library dependencies, not the fork-built copies.
+The corrected controller requires a full frozen checkout, a nonempty patch
+receipt and exact Cargo metadata origins, but remains unexecuted natively.
+No complete-key or fork-macro qualification follows from the old captures.
 
 ## Consequences
 
