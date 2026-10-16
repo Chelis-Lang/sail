@@ -379,3 +379,22 @@ planned for releases after 0.1.0. The owner answered all twelve on
     Cargo `--config`, `--target-dir`, Verus log options, `--no-verify`,
     tests, benches and examples: nothing plain Cargo-Verus accepts is
     refused (ADR 0046, decision 4).
+
+31. **Timing semantics for changed-check solver continuations (#158).**
+    Three complete native fresh runs of each selected IronKV/Anvil input,
+    using the identical pinned Z3 image, all exit 0 with empty stderr and
+    identical check replies (24 and nine `unsat`, respectively). Their full
+    stdout differs only in literal `:time` fields; allocation-counter bytes
+    match in this fresh scope. One IronKV sample also retains an observer
+    exit refusal. The [exact record](validation/solver-snapshots.md#actual-native-full-trace-fresh-controls)
+    identifies inputs, runtime, limits and all raw samples.
+
+    [ADR 0011](decisions/0011-local-cache-and-lazy-solver-sessions.md#consequences)
+    already permits cached statistics to retain their original timing/memory
+    figures. Does that existing behavior cover a one-use process continuation,
+    and what additional exactness/provenance evidence should its gate require
+    when independent fresh clocks vary? The proposed continuation gate still
+    compares every raw byte and remains failing; both live samples are skipped.
+    No normalization, clock exemption or new acceptance rule is authorized.
+    Historical snapshot allocation differences remain a separate unresolved
+    issue, and agreeing check replies alone do not establish acceptance.
