@@ -80,7 +80,7 @@ def main():
                 artifacts={str(p.relative_to(build)): sha256(p)
                            for p in (*runtime.iterdir(), test)},
                 build_seconds=0,
-                test_binaries=[dict(name="selector", path="list-tests")],
+                test_binaries=[dict(name="selector", path="list-tests", sha256=sha256(test))],
             )
             (build / "sail-build.json").write_text(json.dumps(manifest))
             return manifest
@@ -129,6 +129,8 @@ def main():
             ("fork rejects wrong solver", "z3_sha256", "wrong"),
             ("fork rejects corrupt artifact", "artifacts", {"list-tests": "wrong"}),
             ("fork rejects missing test binary", "test_binaries", [dict(name="missing", path="missing")]),
+            ("fork rejects legacy digestless test binary", "test_binaries", [dict(name="selector", path="list-tests")]),
+            ("fork rejects changed test binary digest", "test_binaries", [dict(name="selector", path="list-tests", sha256="0" * 64)]),
         ]:
             changed = copy.deepcopy(correct)
             changed[field] = value
