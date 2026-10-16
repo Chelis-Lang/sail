@@ -8,16 +8,17 @@
 #   scripts/perf-host.sh extend LANE MINUTES       reset the self-termination watchdog
 #   scripts/perf-host.sh allow [LANE]              allow SSH from this machine's current IP
 #                                                  (every lane by default; after a network change)
-#   scripts/perf-host.sh down LANE                 terminate; delete key and security group
+#   scripts/perf-host.sh down LANE                 verify termination, then delete group/key/state
 #   scripts/perf-host.sh list                      every running Project=sail instance
 #
 # Every host terminates itself after SAIL_PERF_TTL_MIN minutes (default 480)
 # unless extended, so a forgotten host cannot leak. Resources are tagged
-# Project=sail and Lane=LANE. State lives in ~/.sail-perf/LANE.*.
+# Project=sail and Lane=LANE. State lives in ~/.sail-perf/LANE.*
+# (SAIL_PERF_STATE_DIR overrides that directory). Failed teardown retains it.
 set -euo pipefail
 
 region="${AWS_REGION:-us-east-1}"
-state_dir="${HOME}/.sail-perf"
+state_dir="${SAIL_PERF_STATE_DIR:-${HOME}/.sail-perf}"
 ttl="${SAIL_PERF_TTL_MIN:-480}"
 aws_ec2() { aws ec2 --region "$region" "$@"; }
 
@@ -79,7 +80,7 @@ EOF
     --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=200,VolumeType=gp3,Iops=6000,Throughput=500,DeleteOnTermination=true}' \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$name},{Key=Project,Value=sail},{Key=Lane,Value=$lane}]" \
     --user-data "$user_data" --query 'Instances[0].InstanceId' --output text)
-  printf 'id=%s\nsg=%s\nkey=%s\ntype=%s\n' "$id" "$sg" "$name" "$type" >"$state_dir/$lane.env"
+  printf 'id=%s\nsg=%s\nkey=%s\ntype=%s\nregion=%s\n' "$id" "$sg" "$name" "$type" "$region" >"$state_dir/$lane.env"
   aws_ec2 wait instance-running --instance-ids "$id"
   local addr
   addr=$(aws_ec2 describe-instances --instance-ids "$id" \
@@ -141,13 +142,97 @@ cmd_allow() {
   done
 }
 
+# Accept only the expected AWS operation/code, never arbitrary "not found" text.
+# The CLI can put blank lines before its error message.
+ec2_absent() {
+  local message="$1" code="$2" operation="$3"
+  while [ "${message#$'\n'}" != "$message" ]; do message="${message#$'\n'}"; done
+  case "$message" in
+    "An error occurred ($code) when calling the $operation operation: "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+down_failed() {
+  printf 'error[SAIL9001]: %s; retain lane state and retry down after fixing the error\n' "$1" >&2
+  [ -z "${2:-}" ] || printf '%s\n' "$2" >&2
+}
+
+down_instance_state() {
+  local result state
+  if result=$(aws_ec2 describe-instances --instance-ids "$1" --output json 2>&1); then
+    # The API can return success with an empty Reservations array for an old
+    # terminated ID. A missing/malformed response or mismatched ID is ambiguous.
+    if state=$(printf '%s\n' "$result" | python3 -c '
+import json, sys
+try:
+    response = json.load(sys.stdin)
+    reservations = response["Reservations"]
+    if not isinstance(reservations, list):
+        raise ValueError("Reservations is not an array")
+    if not reservations:
+        print("absent")
+    else:
+        if len(reservations) != 1:
+            raise ValueError("ambiguous reservations")
+        instances = reservations[0]["Instances"]
+        if not isinstance(instances, list) or len(instances) != 1:
+            raise ValueError("ambiguous instances")
+        instance = instances[0]
+        state = instance["State"]["Name"]
+        if instance["InstanceId"] != sys.argv[1] or state not in (
+            "pending", "running", "stopping", "stopped", "shutting-down", "terminated"
+        ):
+            raise ValueError("unknown identity or state")
+        print(state)
+except (KeyError, TypeError, ValueError) as error:
+    print("invalid instance response: " + str(error), file=sys.stderr)
+    sys.exit(1)
+' "$1"); then
+      printf '%s\n' "$state"
+    else
+      down_failed "AWS returned an unknown state for $1"; return 1
+    fi
+  elif ec2_absent "$result" InvalidInstanceID.NotFound DescribeInstances; then
+    printf 'absent\n'
+  else
+    down_failed "cannot establish the state of $1" "$result"; return 1
+  fi
+}
+
 cmd_down() {
-  require_lane "${1:-}"; local lane="$1"; host_of "$lane"
-  aws_ec2 terminate-instances --instance-ids "$id" >/dev/null || true
-  aws_ec2 wait instance-terminated --instance-ids "$id" || true
-  aws_ec2 delete-security-group --group-id "$sg" >/dev/null || true
-  aws_ec2 delete-key-pair --key-name "$key" >/dev/null || true
-  rm -f "$state_dir/$lane".{env,pem,known_hosts}
+  require_lane "${1:-}"; local lane="$1" state result
+  if [ ! -f "$state_dir/$lane.env" ]; then
+    echo "no recorded host for lane $lane"; return 0
+  fi
+  host_of "$lane"
+  state=$(down_instance_state "$id") || return 1
+  case "$state" in
+    terminated | absent) ;;
+    *)
+      if ! result=$(aws_ec2 terminate-instances --instance-ids "$id" 2>&1); then
+        down_failed "cannot terminate $lane ($id)" "$result"; return 1
+      fi
+      if ! result=$(aws_ec2 wait instance-terminated --instance-ids "$id" 2>&1); then
+        down_failed "termination wait failed for $lane ($id)" "$result"; return 1
+      fi
+      state=$(down_instance_state "$id") || return 1
+      case "$state" in
+        terminated | absent) ;;
+        *) down_failed "termination is unconfirmed for $lane ($id): $state"; return 1 ;;
+      esac ;;
+  esac
+  if result=$(aws_ec2 delete-security-group --group-id "$sg" 2>&1); then :
+  elif ! ec2_absent "$result" InvalidGroup.NotFound DeleteSecurityGroup; then
+    down_failed "cannot delete security group $sg" "$result"; return 1
+  fi
+  if result=$(aws_ec2 delete-key-pair --key-name "$key" 2>&1); then :
+  elif ! ec2_absent "$result" InvalidKeyPair.NotFound DeleteKeyPair; then
+    down_failed "cannot delete key pair $key" "$result"; return 1
+  fi
+  if ! rm -f "$state_dir/$lane".{env,pem,known_hosts}; then
+    down_failed "resources are gone but local state cleanup failed for $lane"; return 1
+  fi
   echo "$lane down ($id)"
 }
 
