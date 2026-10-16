@@ -22,6 +22,10 @@ semantic versioning once the API is published.
   result, as plain Cargo-Verus does on a fresh target. Ordinary unchanged
   runs remain silent. Damaged or missing displayed output verifies normally.
 
+- **Real-project benchmarks avoid duplicate managed runs** (#167).
+  `scripts/perf-real.sh` now defaults to `plain sail`; `--incremental`
+  selects the same managed verification as `sail verify`. The explicit
+  `incremental` arm and the reader for earlier results remain available.
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);
