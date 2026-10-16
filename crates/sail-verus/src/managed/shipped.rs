@@ -593,10 +593,15 @@ fn keyed_arguments(
                 .ok_or_else(|| format!("unreadable --extern {}", path.display()))?
                 .0;
             let vir = path.with_extension("vir");
-            let vir = vir
-                .is_file()
-                .then(|| sha256_file(&vir).map(|d| d.0))
-                .flatten();
+            let vir = match std::fs::symlink_metadata(&vir) {
+                Ok(_) => Some(
+                    sha256_file(&vir)
+                        .ok_or_else(|| format!("unreadable --extern VIR {}", vir.display()))?
+                        .0,
+                ),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                Err(error) => return Err(format!("--extern VIR {}: {error}", vir.display())),
+            };
             externs.push((normalizer.normalize(arg), library, vir));
         }
         keyed_args.push(normalizer.normalize(arg));
@@ -1591,6 +1596,16 @@ mod tests {
         assert_ne!(original, with_vir);
         std::fs::write(dependency.with_extension("vir"), b"changed VIR")?;
         assert_ne!(with_vir, machine.call(false).ok_or("no call")?.key);
+        std::fs::remove_file(dependency.with_extension("vir"))?;
+        std::fs::create_dir(dependency.with_extension("vir"))?;
+        assert!(machine.call(false).is_none());
+        std::fs::remove_dir(dependency.with_extension("vir"))?;
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink("missing-vir", dependency.with_extension("vir"))?;
+            assert!(machine.call(false).is_none());
+            std::fs::remove_file(dependency.with_extension("vir"))?;
+        }
         machine.args.pop().ok_or("no attached argument")?;
         machine.args.push("--extern=unqualified".into());
         assert!(machine.call(false).is_none());

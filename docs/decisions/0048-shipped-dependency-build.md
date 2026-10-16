@@ -99,7 +99,8 @@
    `SDKROOT` and `MACOSX_DEPLOYMENT_TARGET`), with the target and registry
    directories and the package id replaced by placeholders, and the SHA-256
    of every `--extern` crate and its `.vir` (both split and attached argument
-   forms). Every compiler option remains in the key, including rendering,
+   forms). A present VIR that cannot be read is a miss, including a dangling
+   symlink or a non-file at its path. Every compiler option remains in the key, including rendering,
    lint levels and expected `cfg`s: malformed options can emit errors, and
    `--force-warn` bypasses Cargo's lint cap. Different Cargo versions that
    emit different arguments safely miss. A dependency compiled on the

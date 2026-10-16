@@ -119,6 +119,7 @@ def results(cache):
 def compare(label, sail, stock, path, env, out, expect_shipped, expect_warning=False):
     done, seconds = run([sail, "verify"], path, env)
     document = results(Path(env["SAIL_CACHE_DIR"]))
+    (out / f"{label}.project-result.json").write_text(json.dumps(document, indent=2) + "\n")
     target = path.parent / (path.name + "-plain-target")
     plain, plain_seconds = run([stock, "verify"], path, dict(env, CARGO_TARGET_DIR=str(target)))
     vstd = [t for t in document.get("targets", []) if t["target"] == "vstd"]

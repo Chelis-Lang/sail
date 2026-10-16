@@ -6,7 +6,7 @@ the first managed run on a fresh machine replays them.
 
 | Field | Value |
 |---|---|
-| Status | **Prior candidate passed** on the measured scope: first runs on fresh machines replay vstd and match plain stock Verus in exit code, stdout and stderr (without Cargo progress lines), with diagnostics that point into each machine's own Cargo home; mismatched and damaged entries fall back to a normal verification. **Current hardening awaits staged revalidation. Not yet shippable:** the fork commit's runtimes are not published or pinned (gates below) |
+| Status | **Not yet qualified or shippable.** The hardened macOS matrix has one store-copy output failure (#184); eight other cases pass. The fork commit's runtimes are not published or pinned, re-pinned conformance is pending, and CI does not yet exercise serving. Prior candidate results below are historical |
 | Source | Sail `feat/shipped-vstd` (lane M11-3); Sail's Verus from fork commit `b4450da9` (branch `m11-3/shipped-vstd`, fork PR #4), built locally with `cargo xtask build-verus-engine` on each platform |
 | Oracle | stock release `0.2026.10.04.426d8b0`; Z3 4.16.0 |
 | Environment | Linux: native EC2 c7i.4xlarge (16 vCPU, Xeon 8488C), us-east-1, Ubuntu 24.04, outside the CI image, load average 2–4; default toolchain 1.99.1 (Cargo 1.99.1). macOS: Apple M3 (macOS 26.5) under other work, load average 15–31; default toolchain stable |
@@ -31,7 +31,13 @@ were removed; the cross-Cargo serving result is historical. The checker
 still requires serving at another Cargo home with matched compiler inputs,
 and compares exact output under another Cargo version whether it hits or
 misses. Current staged results will replace the historical table after the
-candidate build is checked.
+candidate build is checked. The hardened `c98b3828` matrix completed on
+macOS with the same candidate fork: eight cases passed, while store-copy
+omitted vstd's stdout result line. The exact defect independently reproduces
+on rc.5 and is tracked as [#184](https://github.com/Chelis-Lang/sail/issues/184);
+the new assertion remains strict. Raw matrix and host-check evidence:
+`shipped-macos-c98b3828-failed.tgz`, SHA-256
+`40a14821146831c6811302947ac8295960199553ceacec8e14100d3725a10fa0`.
 
 ## Checks against plain stock Verus (prior candidate)
 
@@ -90,6 +96,7 @@ the checks were then redone; serving costs the same).
 
 | Gate | Status |
 |---|---|
+| Dependency-store output correction (#184) | Open; separate fix reproduces rc.5's defect and passes the live macOS reproduction; native qualification pending |
 | Fork change reviewed and merged into the fork's `sail` branch | Open (fork PR #4; the fork's CI passes) |
 | Runtimes for the fork commit published (`engine-runtime-<sha>-linux`, `-macos`) and pinned in `fork.toml` and `artifact-*.json` | Open (maintainer step); the PR keeps the `73dea021` pin, so CI stays on the published runtime |
 | `ci/local.sh conformance fast` and `standard` with the re-pinned runtime | Open, after the re-pin (ADR 0043) |
@@ -116,3 +123,8 @@ the checks were then redone; serving costs the same).
   conformance passed on the original candidate with runtime `73dea021`
   (serving was not exercised by these gates); archive sha256
   `b36db856a8148f4a77051ca7598d79223078f5b46c89693b7b4704606e45f2ea`.
+- 2026-10-16, `c98b3828`, hardened macOS matrix: eight cases passed;
+  store-copy failed stdout identity (#184), despite matching proof origin,
+  exit code and stderr. Exact rc.5 reproduction established that the omission
+  predates the shipped-build change. The separate correction must qualify
+  before this feature can pass its full acceptance matrix.
