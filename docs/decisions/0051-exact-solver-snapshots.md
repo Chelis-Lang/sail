@@ -25,9 +25,10 @@
   answers (ADR 0008: 3,645 of 3,645) but changes `rlimit-count` for 2,617 of
   3,644 checks and model bytes for 64 of 97, so it can only be a labelled
   opt-in mode (charter rule 8).
-- **What exactness needs.** Resuming Z3 from a state identical to the state
-  stock's process had at the same input point gives the replies stock gives,
-  `rlimit-count` and models included, without any replay.
+- **What exactness needs.** The hypothesis is that resuming an identical logical and implementation
+  state can preserve stock's replies without replay. The prototype has not
+  established raw equality: `:num-allocs` differences remain visible, so state
+  copying alone is insufficient evidence of the complete byte contract.
 
 Lane M11-2 investigated whether Z3 4.16.0 can be snapshotted exactly, built
 a prototype, and measured it. Evidence:
@@ -37,10 +38,10 @@ a prototype, and measured it. Evidence:
 
 | Option | Exact? | Platforms | Verdict |
 |---|---|---|---|
-| (a) `fork()` inside the unmodified pinned Z3, through a preload library (`LD_PRELOAD`, `DYLD_INSERT_LIBRARIES`) that interposes `getc` on stdin | yes: the child is the process, same binary | Linux, macOS (Z3 is not hardened-runtime signed) | **prototyped** |
-| (b) a Z3 patch adding a `(sail-fork)` command | yes in the patched binary, but the binary is no longer the pinned one (new identity, new conformance baseline) | both | not needed: (a) gets the same state without changing the solver |
+| (a) `fork()` inside the unmodified pinned Z3, through a preload library (`LD_PRELOAD`, `DYLD_INSERT_LIBRARIES`) that interposes `getc` on stdin | state-copy candidate; raw reply equality pending, including observed statistics differences | Linux, macOS (Z3 is not hardened-runtime signed) | **prototyped** |
+| (b) a Z3 patch adding a `(sail-fork)` command | hypothesis requiring qualification of a different binary and explicit identity | both | not pursued: evaluate the unmodified-binary candidate first |
 | (c) libz3 in a helper process that forks | the C API's text front end is not the `z3` binary's (`Z3_eval_smtlib2_string`, non-interactive parser, different error behaviour) | both | rejected: replies are not provably the binary's |
-| (d) CRIU checkpoint and restore | yes | Linux only, needs `CAP_CHECKPOINT_RESTORE` or root, restore costs a process image write and read | rejected: no macOS, privileges |
+| (d) CRIU checkpoint and restore | state-copy candidate; unqualified | Linux only, needs `CAP_CHECKPOINT_RESTORE` or root, restore costs a process image write and read | rejected: no macOS, privileges |
 | (e) an existing Z3 facility | none: Z3 has no state serialisation; `push`/`pop` work only inside one process | — | — |
 
 **How (a) works.** Z3's `-smt2 -in` front end reads stdin one character at
