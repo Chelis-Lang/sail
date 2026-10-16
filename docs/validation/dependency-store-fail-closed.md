@@ -4,7 +4,7 @@
 pending. No release or runtime pin changes.
 
 [ADR 0053](../decisions/0053-disable-unqualified-native-store.md) disables
-disabling v1 dependency-store reads and publication until native input identity
+v1 dependency-store reads and publication until native input identity
 is qualified. This addresses the mechanism behind
 [#187](https://github.com/Chelis-Lang/sail/issues/187) by making fresh targets
 execute normal native compilation.
