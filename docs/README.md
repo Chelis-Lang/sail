@@ -83,3 +83,6 @@ corpus and prior-art research. Upstream reports are a human decision; agents
 record discoveries in this repository.
 
 [Dependency-store stdout validation](validation/dependency-store-output.md) records the rc.5 output defect and its correction.
+
+[Native source-sync validation](validation/host-source-sync.md) records source
+content and timestamp controls for the EC2 host helpers.
