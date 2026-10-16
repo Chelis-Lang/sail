@@ -289,9 +289,10 @@ impl<'a> Call<'a> {
         let mut seen_externs = Vec::new();
         let mut externs = Vec::new();
         for (index, argument) in args.iter().enumerate() {
-            let external = argument.strip_prefix("--extern=").or_else(|| {
-                (index > 0 && args[index - 1] == "--extern").then_some(argument.as_str())
-            });
+            let external = crate::adapter::extern_argument(
+                argument,
+                index.checked_sub(1).map(|i| args[i].as_str()),
+            );
             if let Some(external) = external {
                 if let Some((name, path)) = external.split_once('=') {
                     seen_externs.push(name.to_owned());
