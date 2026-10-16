@@ -399,3 +399,17 @@ planned for releases after 0.1.0. The owner answered all twelve on
     models, statistics or runtime identity. Until decided and qualified,
     the current gate remains failed and the prototype stays unselected.
     [Evidence](validation/solver-snapshots.md).
+
+## Mutation corpus (ADR 0053)
+
+32. **Where should the FPBench translation live?** The pilot's generated
+    Verus crates and their mutant catalogue exist only locally. A corpus
+    entry needs a URL pinned by full commit SHA: a new repository under
+    `Chelis-Lang`, a directory in this repository, or somewhere else.
+    Nothing has been published.
+
+33. **Which project is the independent base?** ADR 0053 lists the criteria:
+    never used for Sail before, verifies with the pinned release unchanged,
+    mostly specified, solver-heavy, stable, permissive licence, no Singular,
+    and a full run within one host's lifetime. No candidate has been
+    screened yet.
