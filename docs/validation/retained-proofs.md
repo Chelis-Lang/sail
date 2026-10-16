@@ -1,10 +1,41 @@
 # Retained-proof qualification (#163, ADR 0050)
 
+**Integration blocked:** actual HFS+ and ext2 content-write/restore controls
+show that equal final timestamps do not establish an unchanged compiler
+epoch. HFS+ admission is now refused, but Linux ext2 shares an admitted type
+with ext3/ext4. Complete per-input native event coverage is still required;
+stress passes on APFS or another Linux filesystem do not settle that gap.
+
 **Status:** candidate implemented; path-resolution guard qualification is in
 progress. Earlier source-inventory review and macOS host results below predate
 this guard and do not qualify it. Independent review, the full macOS host gate,
 native Linux gates, full fast/standard conformance and new performance
 measurements remain required. This record does not qualify a release.
+
+## Coarse-timestamp defect and partial correction
+
+The actual `SourceGuard` regression fails on HFS+ at `b07caf1b` with only its
+new test added: a same-length syntax-invalid source is written and read, then
+the original content and mtime are restored. `unchanged()` incorrectly returns
+true (exit 101). The old executable SHA-256 is
+`9ed7337a7f4426f2bf3f898032a8fc5024a322125cd284fb0d41d4d89bb56846`;
+the exact source/test patch and old source files are retained externally.
+The narrowed guard declines HFS+ before beginning a compiler epoch. The same
+actual SourceGuard fixture now passes (exit 0). In the same owned HFS+ volume,
+the dependency-store guard independently refuses both regular-file and
+recursive-directory captures. The complete manifest SHA-256 is
+`fa901435dd3027be2d123c4611231f5a78bbc16e178f6de1e4868f1fd3ee431d`.
+
+On APFS, all 191 `sail-verus` library tests pass and all-target release clippy
+with warnings denied passes, using the existing release dependencies. This
+is not the full macOS host gate. Their raw log SHA-256 values are
+`0eaf48b88ebc48374486752f76fe6620d724b65db05238a6c57549c106ecd238`
+and `a104d8f47ce23cdf1ca828bc9bd97fad188b5a458854d7febaeee09327f5a176`,
+respectively. Native ext2 also reproduces the underlying
+shared-helper defect at the earlier guard source (manifest SHA-256
+`a71b1feaff8f4fad415874d5e7ed0afa8d6da2e3be06450d6b6f1e259861a1af`).
+The HFS+ refusal is therefore a partial correction, not integration signoff;
+complete per-input event observation is still required on the admitted scope.
 
 ## Source, runtime and scope
 
@@ -140,9 +171,9 @@ the source topology pass participates, including already-mounted subtrees.
 The actual-source FIFO/watch test refuses without a peer; restoring the old
 blocking watch-open variant fails its two-second assertion (exit 101, log
 SHA-256 `266f26b07cf298b87a7c43827149dbd4801155fc109f212d446ab041c895f1e7`).
-Admission tests cover APFS/HFS local flags and recognized Linux types versus
+Admission tests cover APFS local flags and recognized Linux types versus
 network, pseudo, FUSE and unknown types. This is predicate scope; actual Mac
-filesystem execution is APFS, and native Linux/HFS execution is not claimed.
+filesystem execution at that checkpoint is APFS; it did not qualify Linux or HFS.
 
 With the exact shared observer source SHA-256
 `4fcb814a31c29aab0c49c115f5a2986a0023a0526e9bbef8b3338cff2bfec1a4`,

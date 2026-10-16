@@ -1469,6 +1469,54 @@ mod tests {
     }
 
     #[test]
+    fn source_inventory_rejects_content_aba_or_coarse_filesystem() {
+        let f = fixture("content-timestamp-aba");
+        let source = SourceGuard::begin(&f.runtime, &f.identity, &f.process);
+        let Some(source) = source else {
+            // Coarse filesystems must refuse before a compiler epoch begins.
+            #[cfg(target_os = "macos")]
+            {
+                let input = std::fs::File::open(&f.source)
+                    .unwrap_or_else(|error| unreachable!("fixture input: {error}"));
+                let stats = rustix::fs::fstatfs(&input)
+                    .unwrap_or_else(|error| unreachable!("fixture filesystem: {error}"));
+                assert_eq!(
+                    stats
+                        .f_fstypename
+                        .iter()
+                        .copied()
+                        .take_while(|b| *b != 0)
+                        .collect::<Vec<_>>(),
+                    b"hfs"
+                        .iter()
+                        .map(|b| i8::try_from(*b).unwrap_or_default())
+                        .collect::<Vec<_>>()
+                );
+                return;
+            }
+            #[cfg(not(target_os = "macos"))]
+            unreachable!("complete initial inventory on the qualified test filesystem");
+        };
+        let before = std::fs::metadata(&f.source)
+            .unwrap_or_else(|error| unreachable!("fixture metadata: {error}"));
+        write(&f.source, b"pub fn !() {}\n");
+        assert_eq!(
+            std::fs::read(&f.source).ok(),
+            Some(b"pub fn !() {}\n".to_vec())
+        );
+        write(&f.source, b"pub fn a() {}\n");
+        assert!(
+            std::fs::File::open(&f.source)
+                .and_then(|file| file.set_modified(before.modified()?))
+                .is_ok()
+        );
+        assert!(
+            !source.unchanged(),
+            "changed compiler bytes were visible despite restored content and modification time"
+        );
+    }
+
+    #[test]
     fn source_inventory_observes_ordinary_ancestor_replacement_and_restoration() {
         let f = fixture("ancestor-aba");
         let source = SourceGuard::begin(&f.runtime, &f.identity, &f.process)

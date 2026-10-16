@@ -50,7 +50,10 @@ fn admitted_linux_type(kind: impl TryInto<u64>) -> bool {
 
 #[cfg(any(test, target_os = "macos"))]
 fn admitted_macos_type(name: &[u8], local: bool) -> bool {
-    local && matches!(name, b"apfs" | b"hfs")
+    // HFS+ can restore content and mtime within one coarse ctime tick. Native
+    // ancestor events do not yet observe every descendant write, so decline
+    // before a guarded epoch rather than trusting an equal final timestamp.
+    local && name == b"apfs"
 }
 
 #[cfg(target_os = "linux")]
@@ -538,7 +541,7 @@ mod tests {
             assert!(!admitted_linux_type(kind));
         }
         assert!(admitted_macos_type(b"apfs", true));
-        assert!(admitted_macos_type(b"hfs", true));
+        assert!(!admitted_macos_type(b"hfs", true));
         for name in [b"nfs".as_slice(), b"smbfs", b"macfuse", b"unknown"] {
             assert!(!admitted_macos_type(name, true));
         }

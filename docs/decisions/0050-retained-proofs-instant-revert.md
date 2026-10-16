@@ -131,10 +131,13 @@
    Watch attachment opens use safe `rustix` with nonblocking/no-follow/close-on-exec
    flags and require a held regular file or directory. A FIFO substituted after
    stat refuses without waiting. Each observed directory/root also requires a
-   supported held filesystem: local APFS/HFS on Mac, or ext2/3/4, XFS, Btrfs,
+   supported held filesystem: local APFS on Mac, or ext2/3/4, XFS, Btrfs,
    tmpfs or overlayfs on Linux. Network, pseudo, FUSE and unknown types decline
-   restoration. Predicate checks cover admission; actual local execution here
-   is APFS, and the Linux/HFS gates are still required before their acceptance.
+   restoration. HFS+ is explicitly refused: its coarse ctime can retain an
+   identical mutation stamp after content is changed, read and restored with
+   the original mtime. Ancestor events do not yet cover every descendant write.
+   APFS and Linux stress controls do not prove a general timestamp-resolution
+   guarantee; complete per-input event coverage remains a structural follow-up.
 4. **Provenance (charter rule 7).** A restored target is `reused` and its
    `establishing_run` is the run that verified it; the run adds
    `SAIL3132: <target> has the content that run <id> verified; its retained

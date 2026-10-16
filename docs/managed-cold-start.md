@@ -123,7 +123,7 @@ corpus qualification; see [its validation record](validation/retained-proofs.md)
 Uncovered inputs or changes during recording or restoration verify normally.
 The candidate also observes ancestor replacement, intermediate symlink changes
 and mount changes, even when the original bytes return before a check. Missing
-native observation, unsupported filesystems (including network/FUSE paths), or
+native observation, unsupported filesystems (including HFS+, network/FUSE paths), or
 an excessive resolution inventory declines restoration; the crate verifies
 normally. A compiler input reached through an unobserved alias or directory
 component also declines restoration, even if the path currently resolves to
