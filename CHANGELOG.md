@@ -5,6 +5,18 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **Faster managed checks** (#156, [ADR 0047 note](docs/decisions/0047-attribution-logs-on-request.md#note-2026-10-16-cheaper-checks-156)).
+  `sail verify` reads the same inputs and receipts as before, completely
+  and at the same points around Cargo, but overlaps the reads with Cargo's
+  metadata and the receipt checks, reads each artifact once per check, and
+  no longer re-validates a dependency the store already holds. On a native
+  c7i.8xlarge, final-head unchanged medians are 0.54 s for vest
+  (rc.5: 1.01 s) and 0.21 s for a small project (rc.5: 0.39 s), with
+  three interleaved rounds. Small-project edits fall from 1.15 to 0.96 s;
+  vest edit ranges overlap, so that gain is inconclusive. See the
+  [validation record](docs/validation/managed-overhead.md) for scope and
+  evidence. Sail keeps a few kilobytes per invocation in
+  `<cache>/snapshot-hints/`, safe to delete.
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);

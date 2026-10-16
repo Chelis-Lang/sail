@@ -4,7 +4,7 @@ use super::files::digest_all;
 use crate::{Error, Result};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -128,10 +128,16 @@ fn selected_packages(data: &Value, args: &[String]) -> Option<Vec<String>> {
     Some(selected)
 }
 
+/// Paths seen during one walk. A set compared by components, like the
+/// sorted sets it feeds, but hashed: a walk tests every entry once, and
+/// ordered inserts compared paths component by component (about a third of
+/// a vest snapshot's time).
+type Seen = HashSet<PathBuf>;
+
 fn collect(
     path: &Path,
-    files: &mut BTreeSet<PathBuf>,
-    visited: &mut BTreeSet<PathBuf>,
+    files: &mut Vec<PathBuf>,
+    visited: &mut Seen,
     roots: &mut Vec<PathBuf>,
 ) -> bool {
     let Ok(canonical) = path.canonicalize() else {
@@ -145,7 +151,7 @@ fn collect(
         roots.push(path.to_owned());
     }
     if canonical.is_file() {
-        files.insert(canonical);
+        files.push(canonical);
         return true;
     }
     collect_directory(&canonical, files, visited, roots)
@@ -157,8 +163,8 @@ fn collect(
 /// per file (about 100 ms per snapshot on vest's 11,600 input files).
 fn collect_directory(
     directory: &Path,
-    files: &mut BTreeSet<PathBuf>,
-    visited: &mut BTreeSet<PathBuf>,
+    files: &mut Vec<PathBuf>,
+    visited: &mut Seen,
     roots: &mut Vec<PathBuf>,
 ) -> bool {
     let Ok(entries) = std::fs::read_dir(directory) else {
@@ -178,7 +184,7 @@ fn collect_directory(
         match entry.file_type() {
             Ok(kind) if kind.is_file() => {
                 if visited.insert(path.clone()) {
-                    files.insert(path);
+                    files.push(path);
                 }
             }
             Ok(kind) if kind.is_dir() => {
@@ -192,6 +198,59 @@ fn collect_directory(
     complete
 }
 
+/// The ordered set of `paths`, exactly as inserting each into a
+/// `BTreeSet<PathBuf>` builds it. Sorting by a byte key that orders as
+/// `Path`'s component comparison does replaces thousands of component-wise
+/// comparisons with byte comparisons; equal keys are equal paths.
+pub(super) fn path_set(paths: Vec<PathBuf>) -> BTreeSet<PathBuf> {
+    let mut keyed: Vec<(Vec<u8>, PathBuf)> = Vec::with_capacity(paths.len());
+    let mut paths = paths.into_iter();
+    while let Some(path) = paths.next() {
+        let Some(key) = order_key(&path) else {
+            return keyed
+                .into_iter()
+                .map(|(_, path)| path)
+                .chain(std::iter::once(path))
+                .chain(paths)
+                .fold(BTreeSet::new(), |mut set, path| {
+                    set.insert(path);
+                    set
+                });
+        };
+        keyed.push((key, path));
+    }
+    // Path equality ignores some spelling differences (`a//b`, `a/b/`).
+    // Keep the first raw spelling, as repeated BTreeSet::insert did: the
+    // revision hashes its original OsStr bytes, not normalized components.
+    keyed.sort_by(|a, b| a.0.cmp(&b.0));
+    keyed.dedup_by(|a, b| a.0 == b.0);
+    // Already sorted and unique: the set is built without comparing again
+    // beyond one check per element.
+    keyed.into_iter().map(|(_, path)| path).collect()
+}
+
+/// A byte string whose order is `Path`'s order: the components in turn, each
+/// as its kind (in `Component`'s declaration order) and bytes, closed by a
+/// zero byte, which no path component contains. `None` for a Windows prefix,
+/// whose order is not byte order; the caller then compares paths directly.
+fn order_key(path: &Path) -> Option<Vec<u8>> {
+    use std::path::Component;
+    let mut key = Vec::with_capacity(path.as_os_str().len() + 16);
+    for component in path.components() {
+        let kind = match component {
+            Component::Prefix(_) => return None,
+            Component::RootDir => 1,
+            Component::CurDir => 2,
+            Component::ParentDir => 3,
+            Component::Normal(_) => 4,
+        };
+        key.push(kind);
+        key.extend_from_slice(component.as_os_str().as_encoded_bytes());
+        key.push(0);
+    }
+    Some(key)
+}
+
 pub(super) fn snapshot_metadata(data: &Value, extras: &[PathBuf]) -> InputSnapshot {
     let home = std::env::var_os("CARGO_HOME")
         .map(PathBuf::from)
@@ -199,19 +258,77 @@ pub(super) fn snapshot_metadata(data: &Value, extras: &[PathBuf]) -> InputSnapsh
     snapshot_metadata_home(data, extras, home.as_deref())
 }
 
+/// What one invocation's input snapshot selected: the metadata the snapshot
+/// reads and the extra inputs. The next run of the same invocation takes its
+/// snapshot from it while Cargo reads the metadata, and keeps that snapshot
+/// only if its own selection is equal. It never authorizes anything.
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(super) struct SnapshotHint {
+    pub version: u32,
+    pub projection: Value,
+    pub extras: Vec<PathBuf>,
+}
+
+pub(super) const SNAPSHOT_HINT_VERSION: u32 = 1;
+
+/// Where the snapshot hint of an invocation (directory and arguments) lives.
+pub(super) fn hint_path(cache: &Path, invocation: &Path, args: &[String]) -> PathBuf {
+    let key = super::files::digest(&serde_json::to_vec(&(invocation, args)).unwrap_or_default());
+    cache.join("snapshot-hints").join(format!("{key}.json"))
+}
+
+/// The metadata fields [`snapshot_metadata_home`] reads, besides each
+/// package's `manifest_path`.
+pub(super) const SNAPSHOT_FIELDS: [&str; 5] = [
+    "workspace_root",
+    "sail_invocation_directory",
+    "sail_cache_directory",
+    "target_directory",
+    "sail_source_inputs",
+];
+
 pub(super) fn snapshot_metadata_home(
     data: &Value,
     extras: &[PathBuf],
     cargo_home: Option<&Path>,
 ) -> InputSnapshot {
+    stamped_snapshot(data, extras, cargo_home).0
+}
+
+/// [`snapshot_metadata`], with the stamp of its observed paths taken around
+/// its content reads, for [`unchanged_since`].
+pub(super) fn snapshot_metadata_stamped(
+    data: &Value,
+    extras: &[PathBuf],
+) -> (InputSnapshot, Option<String>) {
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    stamped_snapshot(data, extras, home.as_deref())
+}
+
+/// Whether a complete snapshot taken earlier is still the snapshot its
+/// selection would read now: every observed file and directory still has
+/// the stamp it had around the snapshot's content reads.
+pub(super) fn unchanged_since(snapshot: &InputSnapshot, stamp: Option<&String>) -> bool {
+    snapshot.complete
+        && stamp.is_some()
+        && stamp_paths(&snapshot.observation_paths).as_ref() == stamp
+}
+
+fn stamped_snapshot(
+    data: &Value,
+    extras: &[PathBuf],
+    cargo_home: Option<&Path>,
+) -> (InputSnapshot, Option<String>) {
     let workspace = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     let invocation = Path::new(
         data["sail_invocation_directory"]
             .as_str()
             .unwrap_or_else(|| workspace.to_str().unwrap_or_default()),
     );
-    let mut files = BTreeSet::new();
-    let mut visited = BTreeSet::new();
+    let mut files = Vec::new();
+    let mut visited = Seen::new();
     let mut excluded: Vec<PathBuf> = ["sail_cache_directory", "target_directory"]
         .into_iter()
         .filter_map(|name| data[name].as_str().map(|p| invocation.join(p)))
@@ -219,7 +336,7 @@ pub(super) fn snapshot_metadata_home(
     if let Ok(path) = crate::cache_dir() {
         excluded.push(invocation.join(path));
     }
-    let excluded_canonical: BTreeSet<_> = excluded
+    let excluded_canonical: HashSet<_> = excluded
         .iter()
         .filter_map(|p| p.canonicalize().ok())
         .collect();
@@ -245,7 +362,7 @@ pub(super) fn snapshot_metadata_home(
     ] {
         let path = workspace.join(name);
         if path.is_file() {
-            files.insert(path);
+            files.push(path);
         }
     }
 
@@ -271,21 +388,26 @@ pub(super) fn snapshot_metadata_home(
             .into_iter()
             .filter(|p| !excluded_canonical.contains(p)),
     );
+    let observation_paths = path_set(observation_paths);
+    let files = path_set(files);
     let stamp_before = stamp_paths(&observation_paths);
     let (revision, readable, digests) = contents_revision(&files);
     complete &= readable;
     complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
     roots.sort();
     roots.dedup();
-    InputSnapshot {
-        workspace,
-        revision,
-        roots,
-        excluded,
-        complete,
-        observation_paths,
-        digests,
-    }
+    (
+        InputSnapshot {
+            workspace,
+            revision,
+            roots,
+            excluded,
+            complete,
+            observation_paths,
+            digests,
+        },
+        stamp_before,
+    )
 }
 
 /// `snapshot` narrowed for proof-time kernel coverage of one selection.
@@ -399,7 +521,7 @@ impl Scope {
 // overlap, and their digests are folded in the original sorted order.
 fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool, BTreeMap<PathBuf, String>) {
     let mut complete = true;
-    let mut recorded = BTreeMap::new();
+    let mut recorded = Vec::with_capacity(files.len());
     let mut hasher = Sha256::new();
     let paths: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
     for (path, digest) in files.iter().zip(digest_all(&paths)) {
@@ -408,29 +530,38 @@ fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool, BTreeMap<PathB
         hasher.update(bytes);
         if let Ok(hash) = digest {
             hasher.update(hash.as_bytes());
-            recorded.insert(path.clone(), hash);
+            recorded.push((path.clone(), hash));
         } else {
             complete = false;
             hasher.update(b"unreadable");
         }
     }
-    (format!("{:x}", hasher.finalize()), complete, recorded)
+    // Already in the set's order: the map is built without ordered inserts.
+    (
+        format!("{:x}", hasher.finalize()),
+        complete,
+        recorded.into_iter().collect(),
+    )
 }
 
 // A run-local mutation stamp is separate from logical proof keys: reverting an
 // edit between completed runs may reuse a proof, reverting during a run may not.
 pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
     let mut paths = snapshot.observation_paths.clone();
+    // Package roots share most ancestors (the registry source directory, the
+    // home directory): each ancestor is examined once.
+    let mut examined = HashSet::new();
     for path in &snapshot.roots {
         paths.insert(path.clone());
         if let Ok(canonical) = path.canonicalize() {
             paths.insert(canonical);
         }
-        for alias in path
-            .ancestors()
-            .filter(|p| std::fs::symlink_metadata(p).is_ok_and(|m| m.file_type().is_symlink()))
-        {
-            paths.insert(alias.to_owned());
+        for alias in path.ancestors() {
+            if examined.insert(alias)
+                && std::fs::symlink_metadata(alias).is_ok_and(|m| m.file_type().is_symlink())
+            {
+                paths.insert(alias.to_owned());
+            }
         }
     }
     stamp_paths(&paths)
@@ -533,6 +664,61 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 
 #[cfg(test)]
 mod tests {
+    /// The keyed sort builds exactly the set that ordered inserts build,
+    /// including paths whose byte order differs from their component order
+    /// and spellings that name the same path.
+    #[test]
+    fn path_set_is_the_ordered_set_of_its_paths() {
+        use std::collections::BTreeSet;
+        use std::path::PathBuf;
+        let spellings = [
+            "/a/b",
+            "/a-b",
+            "/a/b/c",
+            "/a/b-c",
+            "/a/b.c",
+            "/a/b ",
+            "/a/..",
+            "/a/-x",
+            "/a/.x",
+            "/a//b",
+            "/a/./b",
+            "/a/b/",
+            "/a",
+            "/",
+            "a/b",
+            "./a/b",
+            "../a",
+            "a",
+            "",
+            "/z/\u{e9}",
+            "/z/e",
+            "/z/E",
+        ];
+        // Repetition also exercises duplicate partitioning in an unstable sort.
+        let paths: Vec<PathBuf> = spellings
+            .iter()
+            .cycle()
+            .take(spellings.len() * 3)
+            .map(PathBuf::from)
+            .collect();
+        let raw = |set: &BTreeSet<PathBuf>| {
+            set.iter()
+                .map(|path| path.as_os_str().as_encoded_bytes().to_vec())
+                .collect::<Vec<_>>()
+        };
+        for paths in [paths.clone(), paths.into_iter().rev().collect()] {
+            // FromIterator may choose another equal representative; the
+            // pre-optimization implementation inserted each path in order.
+            let mut expected = BTreeSet::new();
+            for path in &paths {
+                expected.insert(path.clone());
+            }
+            let built = super::path_set(paths);
+            assert_eq!(raw(&built), raw(&expected));
+        }
+    }
+
     /// Scope membership by ancestor sets is the original definition: inside
     /// a closure package directory, or outside every other package directory.
     #[test]
@@ -974,9 +1160,14 @@ mod tests {
         symlink(outside.join("c.rs"), package.join("src/linked-file.rs"))?;
         symlink(package.join("src"), package.join("src/nested/cycle"))?;
         symlink(root.join("missing"), package.join("src/dangling"))?;
-        let mut found = (BTreeSet::new(), BTreeSet::new(), Vec::new());
+        let mut walked = (Vec::new(), Seen::new(), Vec::new());
         let mut expected = (BTreeSet::new(), BTreeSet::new(), Vec::new());
-        let complete = collect(&package, &mut found.0, &mut found.1, &mut found.2);
+        let complete = collect(&package, &mut walked.0, &mut walked.1, &mut walked.2);
+        let mut found = (
+            path_set(walked.0),
+            walked.1.into_iter().collect::<BTreeSet<_>>(),
+            walked.2,
+        );
         let reference = collect_resolving_every_entry(
             &package,
             &mut expected.0,

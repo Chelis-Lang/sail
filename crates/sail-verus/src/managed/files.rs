@@ -12,19 +12,25 @@ pub(crate) fn digest(bytes: &[u8]) -> String {
 }
 
 pub(crate) fn file_digest(path: &Path) -> Result<String> {
+    // One read buffer per thread: a snapshot reads thousands of small files,
+    // and zeroing a new 64 KiB buffer for each cost more than reading it.
+    thread_local! {
+        static BUFFER: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(vec![0u8; 65536]);
+    }
     let mut input = std::fs::File::open(path)
         .map_err(|e| Error::new("SAIL3101", format!("cannot read {}: {e}", path.display())))?;
     let mut hasher = Sha256::new();
-    let mut buf = vec![0u8; 65536];
-    loop {
-        let n = input
-            .read(&mut buf)
-            .map_err(|e| Error::new("SAIL3101", e.to_string()))?;
-        if n == 0 {
-            break;
+    BUFFER.with_borrow_mut(|buf| -> Result<()> {
+        loop {
+            let n = input
+                .read(buf)
+                .map_err(|e| Error::new("SAIL3101", e.to_string()))?;
+            if n == 0 {
+                return Ok(());
+            }
+            hasher.update(&buf[..n]);
         }
-        hasher.update(&buf[..n]);
-    }
+    })?;
     Ok(format!("{:x}", hasher.finalize()))
 }
 

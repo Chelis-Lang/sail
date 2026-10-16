@@ -63,6 +63,17 @@ the next new project verifies vstd again and stores it. A run that was copying
 from a deleted entry verifies vstd itself. Directories left by a run killed
 while storing or deleting an entry are removed once they are an hour old.
 
+## Snapshot hints
+
+`snapshot-hints/<key>.json` records, for each directory and argument list
+you run `sail verify` with, which package directories and extra inputs its
+last input snapshot read (a few kilobytes each). The next run reads those
+inputs while Cargo prints its metadata, and uses that snapshot only if the
+new metadata selects exactly the same inputs; otherwise it reads them again.
+A hint never decides what is verified or reused. Deleting `snapshot-hints/`
+is safe at any time: the next run of each invocation only takes a little
+longer.
+
 ## Development checkouts
 
 Sail's own development uses one worktree per change under

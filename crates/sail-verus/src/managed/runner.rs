@@ -3,14 +3,16 @@
 use super::diagnostics::{Diagnostics, Phase};
 use super::environment::input_environment_key;
 use super::files::{digest, event, file_digest, json};
-use super::input::{metadata, snapshot_metadata};
+use super::input::{SNAPSHOT_FIELDS, metadata, snapshot_metadata};
+#[cfg(test)]
+use super::receipts::artifact_hashes;
 use super::receipts::{
-    Invocation, RECEIPT_VERSION, Receipt, Runtime, artifact_hashes, complete, read,
+    Invocation, PhaseDigests, RECEIPT_VERSION, Receipt, Runtime, complete, read,
 };
 use crate::{Error, Result};
 use sail_api::project::{Currentness, Execution, ProjectResult, SCHEMA_VERSION, TargetResult};
 use serde_json::Value;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -1232,28 +1234,70 @@ fn target_records(
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
     let declared = super::environment::values(&super::environment::declared_names(&paths.target));
-    for artifact in artifacts(paths) {
-        let Some(package) = data["packages"]
+    let artifacts = artifacts(paths);
+    let verified = |artifact: &Value| {
+        let package = data["packages"]
             .as_array()
             .into_iter()
             .flatten()
-            .find(|p| p["id"] == artifact["package_id"])
-        else {
-            continue;
-        };
-        if package
+            .find(|p| p["id"] == artifact["package_id"])?;
+        (package
             .pointer("/metadata/verus/verify")
             .and_then(Value::as_bool)
-            != Some(true)
-        {
+            == Some(true)
+            && !artifact["target"]["kind"]
+                .as_array()
+                .is_some_and(|k| k.iter().any(|v| v == "custom-build")))
+        .then_some(package)
+    };
+    // Each stored receipt is read once, and every file that the receipts and
+    // the produced artifacts bind is read in one overlapping batch: a
+    // dependency's artifacts are also each dependent's inputs.
+    let digests = PhaseDigests::default();
+    let mut stored: HashMap<PathBuf, Option<Receipt>> = HashMap::new();
+    let mut batch: Vec<PathBuf> = Vec::new();
+    for artifact in &artifacts {
+        if verified(artifact).is_none() {
             continue;
         }
-        if artifact["target"]["kind"]
+        let produced: Vec<PathBuf> = artifact["filenames"]
             .as_array()
-            .is_some_and(|k| k.iter().any(|v| v == "custom-build"))
-        {
-            continue;
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(PathBuf::from)
+            .collect();
+        batch.extend(produced.iter().map(|p| p.with_extension("vir")));
+        batch.extend(produced);
+        let path = receipt_path(
+            paths,
+            artifact["package_id"].as_str().unwrap_or_default(),
+            artifact["target"]["name"].as_str().unwrap_or_default(),
+            &artifact["target"]["kind"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect::<Vec<_>>(),
+        );
+        let receipt = read::<Receipt>(&path);
+        if let Some(receipt) = &receipt {
+            batch.extend(receipt.artifact_hashes.keys().cloned());
+            batch.extend(receipt.invocation.dependencies.keys().cloned());
         }
+        stored.insert(path, receipt);
+    }
+    digests.prefetch(
+        batch
+            .iter()
+            .filter(|path| path.is_file())
+            .map(PathBuf::as_path),
+    );
+    for artifact in artifacts {
+        let Some(package) = verified(&artifact) else {
+            continue;
+        };
         let name = artifact["target"]["name"].as_str().unwrap_or_default();
         let kind: Vec<String> = artifact["target"]["kind"]
             .as_array()
@@ -1293,7 +1337,7 @@ fn target_records(
                     .map(|p| p.with_extension("vir"))
                     .filter(|p| p.is_file()),
             );
-            let hashes = artifact_hashes(&artifact_paths)?;
+            let hashes = digests.hashes(&artifact_paths)?;
             let reusable =
                 paths.reuse && call.success && complete(&call.report) && !input_revision.is_empty();
             if reusable {
@@ -1363,9 +1407,11 @@ fn target_records(
                     && r.name == name
                     && r.kind == kind
                     && r.artifact_hashes.keys().cloned().collect::<BTreeSet<_>>() == observed
-                    && r.valid(context)
+                    && r.valid_in(context, &digests)
             };
-            read::<Receipt>(&path)
+            stored
+                .remove(&path)
+                .unwrap_or_else(|| read::<Receipt>(&path))
                 .filter(|r| matches(r, context))
                 .or_else(|| {
                     // A dependency's full verification does not depend on
@@ -1400,8 +1446,8 @@ fn target_records(
                             && r.kind == kind
                             && r.artifact_hashes.keys().cloned().collect::<BTreeSet<_>>()
                                 == observed
-                            && super::receipts::digests_match(&r.artifact_hashes)
-                            && super::receipts::digests_match(&r.invocation.dependencies)
+                            && digests.matches(&r.artifact_hashes)
+                            && digests.matches(&r.invocation.dependencies)
                             && super::environment::unchanged(&r.declared_environment))
                         .then(|| (r.clone(), seed.placed.then(|| seed.key.clone())))
                     })
@@ -1535,19 +1581,25 @@ fn artifacts_within(paths: &Paths, closure: Option<&BTreeSet<String>>) -> bool {
 
 fn target_revision(data: &Value, package_id: &str) -> String {
     let closure = dependency_closure(data, [package_id]);
-    let mut package_data = data.clone();
-    let mut packages: Vec<Value> = data["packages"]
+    // Only the fields the snapshot reads: copying the whole metadata (several
+    // MB on vest) for each target cost more than the snapshot itself.
+    let mut package_data = serde_json::Map::new();
+    for field in SNAPSHOT_FIELDS {
+        if let Some(value) = data.get(field) {
+            package_data.insert(field.to_owned(), value.clone());
+        }
+    }
+    let mut package_data = Value::Object(package_data);
+    // Every closure package is content-bound, registry and git ones included:
+    // local edits or corruption of a fetched crate cannot silently retain an
+    // old proof.
+    let packages: Vec<Value> = data["packages"]
         .as_array()
         .into_iter()
         .flatten()
         .filter(|p| p["id"].as_str().is_some_and(|id| closure.contains(id)))
-        .cloned()
+        .map(|p| serde_json::json!({ "manifest_path": p["manifest_path"] }))
         .collect();
-    // Immutable registry/git packages are still content-bound; local edits or
-    // corruption of a fetched crate cannot silently retain an old proof.
-    for package in &mut packages {
-        package["source"] = Value::Null;
-    }
     package_data["packages"] = Value::Array(packages);
     if let Some(observed) = data["sail_source_inputs_by_package"].as_object() {
         package_data["sail_source_inputs"] = Value::Array(
@@ -1919,6 +1971,23 @@ pub(crate) fn run_engine_held(
             "note[SAIL3112]: {variable} is set, so this run reuses no proof receipts and records none; it verifies what Cargo rebuilds, as `cargo verus verify` does (unset {variable} to reuse proofs)"
         );
     }
+    // The input snapshot before the run is taken while Cargo reads the
+    // metadata, from the package list and extra inputs the previous run of
+    // this invocation selected, and kept only if this run selects exactly the
+    // same ones: then it is the snapshot this run's selection reads. The hint
+    // authorizes nothing; any difference takes the snapshot again.
+    let hint_path = super::input::hint_path(&config.cache, &invocation, &config.args);
+    let speculative_before = {
+        let hint_path = hint_path.clone();
+        std::thread::Builder::new()
+            .spawn(move || {
+                let hint = read::<super::input::SnapshotHint>(&hint_path)?;
+                let (snapshot, stamp) =
+                    super::input::snapshot_metadata_stamped(&hint.projection, &hint.extras);
+                Some((hint, snapshot, stamp))
+            })
+            .ok()
+    };
     // Cargo metadata and the runtime context are independent: neither reads
     // the other's result. They overlap, and their results are consumed in the
     // original order, so the first reported error is unchanged.
@@ -1993,7 +2062,30 @@ pub(crate) fn run_engine_held(
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
     extras.extend(script_roots.clone());
-    let mut before = snapshot_metadata(&data, &extras);
+    let selection = super::input::SnapshotHint {
+        version: super::input::SNAPSHOT_HINT_VERSION,
+        projection: snapshot_projection(&data, &data["sail_source_inputs"]),
+        extras: extras.clone(),
+    };
+    let mut before = match speculative_before
+        .and_then(|thread| thread.join().ok())
+        .flatten()
+    {
+        // Cargo may have written inputs while it read the metadata (a lockfile
+        // update, extracted registry sources): the snapshot must be unchanged.
+        Some((hint, snapshot, stamp))
+            if hint == selection && super::input::unchanged_since(&snapshot, stamp.as_ref()) =>
+        {
+            snapshot
+        }
+        _ => {
+            // A hint is only ever a hint: failing to record one changes nothing.
+            let _ = std::fs::create_dir_all(hint_path.parent().unwrap_or(&config.cache))
+                .map_err(|e| Error::new("SAIL3102", e.to_string()))
+                .and_then(|()| json(&hint_path, &selection));
+            snapshot_metadata(&data, &extras)
+        }
+    };
     before.complete &= source_coverage;
     before.roots.extend(super::input::configuration_paths(
         &invocation,
@@ -2183,16 +2275,78 @@ pub(crate) fn run_engine_held(
     drop(invocation_phase);
     let records_phase = diagnostics.phase(Phase::TargetRecords);
     outside_scope |= !units_in_scope(&paths);
-    // The post-run Cargo metadata starts once the verifier invocation has
-    // ended and overlaps the receipt checks, which never read it. A retry
-    // discards it and reads metadata again after its own invocation.
-    let (records, after_metadata) = std::thread::scope(|threads| {
-        let after = threads.spawn(|| metadata(&config.workspace, &config.args, &config.cargo));
-        let records = target_records(&paths, &data, &hash, forced, &expected, &seeded);
-        (records, after.join())
-    });
-    let mut after_metadata = Some(after_metadata);
-    let (mut targets, missing) = records?;
+    // The inputs after the run: Cargo metadata again, the build-script and
+    // source-input records this run's artifacts update, and the complete
+    // content snapshot they select.
+    let after_inputs = |after_metadata: Option<Result<Value>>| -> Result<AfterInputs> {
+        super::build_inputs::update(
+            &paths.build_inputs,
+            &paths.run.join("artifacts.jsonl"),
+            &data,
+        )?;
+        let (sources, source_coverage) =
+            super::source_inputs::update(&source_state, &paths.run.join("artifacts.jsonl"), &data)?;
+        // Coverage after the run needs a contract for every script Cargo ran.
+        let unscheduled = super::build_inputs::unscheduled(
+            &paths.run.join("cargo.stdout"),
+            &paths.run.join("artifacts.jsonl"),
+            &data,
+        )
+        .unwrap_or_default();
+        let (_, mut after_extras, after_coverage) =
+            super::build_inputs::stale_after(&paths.build_inputs, &data, &unscheduled);
+        after_extras.extend(script_roots.iter().cloned());
+        let sources = serde_json::to_value(sources).unwrap_or_default();
+        // Without metadata in hand, the snapshot is taken while Cargo reads it,
+        // from the package list before the run, and kept only if the metadata
+        // after the run lists exactly the same packages: then it is the
+        // snapshot that list selects. Otherwise it is taken again.
+        let (after_data, speculative) = match after_metadata {
+            Some(after) => (after, None),
+            None => std::thread::scope(|threads| {
+                let snapshot = threads.spawn(|| {
+                    super::input::snapshot_metadata_stamped(
+                        &snapshot_projection(&data, &sources),
+                        &after_extras,
+                    )
+                });
+                let after = metadata(&config.workspace, &config.args, &config.cargo);
+                (after, snapshot.join().ok())
+            }),
+        };
+        let mut after_data = after_data?;
+        after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
+        after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
+        after_data["sail_source_inputs"] = sources;
+        after_data["sail_source_inputs_by_package"] =
+            serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
+        super::files::json(&paths.input_state, &after_data)?;
+        // Kept only if nothing it observed changed while Cargo read the
+        // metadata (which may rewrite the lockfile).
+        let mut after = match speculative {
+            Some((snapshot, stamp))
+                if same_snapshot_selection(&data, &after_data)
+                    && super::input::unchanged_since(&snapshot, stamp.as_ref()) =>
+            {
+                snapshot
+            }
+            _ => snapshot_metadata(&after_data, &after_extras),
+        };
+        after.roots.extend(super::input::configuration_paths(
+            &invocation,
+            std::env::var_os("CARGO_HOME")
+                .map(PathBuf::from)
+                .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
+                .as_deref(),
+        ));
+        Ok(AfterInputs {
+            data: after_data,
+            snapshot: after,
+            unscheduled,
+            after_coverage,
+            source_coverage,
+        })
+    };
     // A target Cargo found up to date without a matching receipt (pruned
     // receipts, an interrupted run, an unknown earlier result) gets no report
     // unless Cargo runs again. A run that shows Verus's output does not retry:
@@ -2201,7 +2355,37 @@ pub(crate) fn run_engine_held(
     // no retry either. The shown run's result, which is not printed, simply
     // lacks those targets.
     let shown = out.is_some();
-    if paths.reuse && !shown && exit == Some(0) && !missing.is_empty() {
+    let retry_possible = paths.reuse && !shown && exit == Some(0);
+    // The post-run Cargo metadata starts once the verifier invocation has
+    // ended and overlaps the receipt checks, which never read it. When no
+    // retry can follow, the rest of the inputs after the run overlap them
+    // too: neither reads what the other writes, and the stamp that brackets
+    // every content read of both is taken once both have finished. A retry
+    // discards the metadata and reads everything again after its own
+    // invocation.
+    let (records, after_thread) = std::thread::scope(|threads| {
+        let after = threads.spawn(|| {
+            if retry_possible {
+                (
+                    Some(metadata(&config.workspace, &config.args, &config.cargo)),
+                    None,
+                )
+            } else {
+                (None, Some(after_inputs(None)))
+            }
+        });
+        let records = target_records(&paths, &data, &hash, forced, &expected, &seeded);
+        (records, after.join())
+    });
+    let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
+    let (mut after_metadata, overlapped) = after_thread.unwrap_or_else(|_| {
+        (
+            Some(Err(reader_failed())),
+            (!retry_possible).then(|| Err(reader_failed())),
+        )
+    });
+    let (mut targets, missing) = records?;
+    if retry_possible && !missing.is_empty() {
         after_metadata = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
@@ -2223,43 +2407,16 @@ pub(crate) fn run_engine_held(
     }
     drop(records_phase);
     let post_run = diagnostics.phase(Phase::PostRun);
-    super::build_inputs::update(
-        &paths.build_inputs,
-        &paths.run.join("artifacts.jsonl"),
-        &data,
-    )?;
-    let (sources, source_coverage) =
-        super::source_inputs::update(&source_state, &paths.run.join("artifacts.jsonl"), &data)?;
-    // Coverage after the run needs a contract for every script Cargo ran.
-    let unscheduled = super::build_inputs::unscheduled(
-        &paths.run.join("cargo.stdout"),
-        &paths.run.join("artifacts.jsonl"),
-        &data,
-    )
-    .unwrap_or_default();
-    let (_, mut after_extras, after_coverage) =
-        super::build_inputs::stale_after(&paths.build_inputs, &data, &unscheduled);
-    after_extras.extend(script_roots);
-    let mut after_data = match after_metadata {
-        Some(after) => {
-            after.unwrap_or_else(|_| Err(Error::new("SAIL3103", "Cargo metadata reader failed")))?
-        }
-        None => metadata(&config.workspace, &config.args, &config.cargo)?,
+    let AfterInputs {
+        data: after_data,
+        snapshot: after,
+        unscheduled,
+        after_coverage,
+        source_coverage,
+    } = match overlapped {
+        Some(inputs) => inputs?,
+        None => after_inputs(after_metadata)?,
     };
-    after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
-    after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
-    after_data["sail_source_inputs"] = serde_json::to_value(sources).unwrap_or_default();
-    after_data["sail_source_inputs_by_package"] =
-        serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
-    super::files::json(&paths.input_state, &after_data)?;
-    let mut after = snapshot_metadata(&after_data, &after_extras);
-    after.roots.extend(super::input::configuration_paths(
-        &invocation,
-        std::env::var_os("CARGO_HOME")
-            .map(PathBuf::from)
-            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
-            .as_deref(),
-    ));
     // Resolve fresh receipt bindings while the input stamp still brackets every
     // content read. A newly discovered include may already belong to another
     // observed package, so global currentness alone does not imply that the
@@ -2444,7 +2601,64 @@ pub(crate) fn run_engine_held(
         },
     );
     drop(publication);
+    // Freeing the metadata and snapshots (tens of thousands of allocations on
+    // vest, about 15 ms) does not hold up the caller; nothing reads them.
+    let _ = std::thread::Builder::new().spawn(move || {
+        drop((data, after_data, after, before_run, after_run));
+        drop((before.digests, before.observation_paths));
+    });
     Ok((result, ownership.into_workspace()))
+}
+
+/// The metadata [`snapshot_metadata`] reads from `data`, with `sources` as
+/// the observed source inputs: exactly what the snapshot of metadata that
+/// lists the same packages, with those sources, reads.
+fn snapshot_projection(data: &Value, sources: &Value) -> Value {
+    let mut projection = serde_json::Map::new();
+    for field in SNAPSHOT_FIELDS {
+        if let Some(value) = data.get(field) {
+            projection.insert(field.to_owned(), value.clone());
+        }
+    }
+    projection.insert("sail_source_inputs".to_owned(), sources.clone());
+    projection.insert(
+        "packages".to_owned(),
+        Value::Array(
+            data["packages"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|p| serde_json::json!({ "manifest_path": p["manifest_path"] }))
+                .collect(),
+        ),
+    );
+    Value::Object(projection)
+}
+
+/// Whether two metadata documents select the same snapshot, given the same
+/// invocation and cache directories and source inputs: the same workspace
+/// root, target directory and package manifests, in the same order.
+fn same_snapshot_selection(before: &Value, after: &Value) -> bool {
+    let manifests = |data: &Value| -> Vec<Value> {
+        data["packages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|p| p["manifest_path"].clone())
+            .collect()
+    };
+    before["workspace_root"] == after["workspace_root"]
+        && before["target_directory"] == after["target_directory"]
+        && manifests(before) == manifests(after)
+}
+
+/// The inputs observed after a run's invocation (see `run_engine_held`).
+struct AfterInputs {
+    data: Value,
+    snapshot: super::input::InputSnapshot,
+    unscheduled: BTreeSet<String>,
+    after_coverage: bool,
+    source_coverage: bool,
 }
 
 /// Offers each store candidate this Current run verified, or reused from its
@@ -2457,6 +2671,11 @@ fn store_dependencies(
     data: &Value,
 ) {
     for candidate in candidates {
+        // A held key is never stored again; checking first spares re-reading
+        // the receipt's artifacts (vstd's are about 40 MB) on every run.
+        if super::store::holds(&config.cache, candidate) {
+            continue;
+        }
         let Some(target) = result.targets.iter().find(|t| {
             t.package_id == candidate.root
                 && t.complete
@@ -4023,6 +4242,109 @@ mod tests {
         Ok(())
     }
 
+    /// The snapshot taken from the projection of the metadata before a run
+    /// is the snapshot of any metadata that selects the same packages.
+    #[test]
+    fn projected_snapshot_is_the_snapshot_of_the_same_selection() {
+        let root =
+            std::env::temp_dir().join(format!("sail-projected-snapshot-{}", std::process::id()));
+        let app = root.join("app");
+        let dependency = root.join("registry/dep");
+        let target = app.join("target");
+        for path in [&app, &dependency, &target] {
+            assert!(std::fs::create_dir_all(path.join("src")).is_ok());
+            assert!(std::fs::write(path.join("Cargo.toml"), "manifest").is_ok());
+            assert!(std::fs::write(path.join("src/lib.rs"), "source").is_ok());
+        }
+        let generated = root.join("generated.rs");
+        assert!(std::fs::write(&generated, "generated").is_ok());
+        let sources = serde_json::json!([generated]);
+        let full = |extra: &str| {
+            serde_json::json!({
+                "workspace_root":app,"target_directory":target,
+                "sail_invocation_directory":app,"sail_cache_directory":root.join("cache"),
+                "sail_source_inputs":sources,"version":extra,
+                "packages":[{"id":"app","name":"app","manifest_path":app.join("Cargo.toml"),
+                             "targets":[{"kind":["lib"]}],"source":null},
+                            {"id":"dep","name":"dep","manifest_path":dependency.join("Cargo.toml"),
+                             "source":"registry"}],
+                "resolve":{"nodes":[{"id":"app","dependencies":["dep"]}]}
+            })
+        };
+        let before = full("before");
+        let after = full("after");
+        assert!(same_snapshot_selection(&before, &after));
+        let extras = vec![root.join("registry")];
+        let expected = snapshot_metadata(&after, &extras);
+        let projected = snapshot_metadata(&snapshot_projection(&before, &sources), &extras);
+        assert!(expected.complete && projected.complete);
+        assert_eq!(projected.revision, expected.revision);
+        assert_eq!(projected.digests, expected.digests);
+        assert_eq!(projected.observation_paths, expected.observation_paths);
+        assert_eq!(projected.roots, expected.roots);
+        assert_eq!(projected.excluded, expected.excluded);
+        assert_eq!(projected.workspace, expected.workspace);
+        // A snapshot taken earlier stands only while nothing it observed
+        // changed, even when the bytes are rewritten unchanged.
+        let (stamped, stamp) = super::super::input::snapshot_metadata_stamped(
+            &snapshot_projection(&before, &sources),
+            &extras,
+        );
+        assert!(super::super::input::unchanged_since(
+            &stamped,
+            stamp.as_ref()
+        ));
+        assert!(std::fs::write(app.join("src/lib.rs"), "source").is_ok());
+        assert!(!super::super::input::unchanged_since(
+            &stamped,
+            stamp.as_ref()
+        ));
+        assert!(!super::super::input::unchanged_since(&stamped, None));
+        let mut fewer = after.clone();
+        if let Some(packages) = fewer["packages"].as_array_mut() {
+            packages.pop();
+        }
+        assert!(!same_snapshot_selection(&before, &fewer));
+        let mut moved = after;
+        moved["target_directory"] = Value::String("elsewhere".into());
+        assert!(!same_snapshot_selection(&before, &moved));
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    /// `target_revision` as it was before it copied only the snapshot's
+    /// fields: the whole metadata, narrowed to the closure's packages.
+    fn whole_metadata_revision(data: &Value, package_id: &str) -> String {
+        let closure = dependency_closure(data, [package_id]);
+        let mut package_data = data.clone();
+        let mut packages: Vec<Value> = data["packages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|p| p["id"].as_str().is_some_and(|id| closure.contains(id)))
+            .cloned()
+            .collect();
+        for package in &mut packages {
+            package["source"] = Value::Null;
+        }
+        package_data["packages"] = Value::Array(packages);
+        if let Some(observed) = data["sail_source_inputs_by_package"].as_object() {
+            package_data["sail_source_inputs"] = Value::Array(
+                closure
+                    .iter()
+                    .filter_map(|id| observed.get(id).and_then(Value::as_array))
+                    .flatten()
+                    .cloned()
+                    .collect(),
+            );
+        }
+        let snapshot = snapshot_metadata(&package_data, &[]);
+        if snapshot.complete {
+            snapshot.revision
+        } else {
+            String::new()
+        }
+    }
+
     #[test]
     fn discovered_workspace_sources_do_not_dirty_dependency_receipts() {
         let root =
@@ -4083,6 +4405,12 @@ mod tests {
             serde_json::to_value(super::super::source_inputs::packages(&state)).unwrap_or_default();
         assert_eq!(target_revision(&data, "vstd"), dependency_before);
         assert_eq!(target_revision(&data, "app"), app_before);
+        for id in ["vstd", "app"] {
+            assert_eq!(
+                target_revision(&data, id),
+                whole_metadata_revision(&data, id)
+            );
+        }
         assert!(std::fs::write(&app_source, "fail").is_ok());
         assert_eq!(target_revision(&data, "vstd"), dependency_before);
         assert_ne!(target_revision(&data, "app"), app_before);

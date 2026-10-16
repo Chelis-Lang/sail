@@ -775,12 +775,21 @@ pub(super) struct Publication<'a> {
     pub data: &'a Value,
 }
 
+/// Whether the store already holds `candidate`'s key, so [`publish`] would
+/// store nothing.
+pub(super) fn holds(cache: &Path, candidate: &Candidate) -> bool {
+    root(cache)
+        .join(&candidate.key)
+        .join("manifest.json")
+        .is_file()
+}
+
 /// Stores `candidate` from a Current run whose own receipt for it is valid,
 /// unless the store already holds its key. Any failure leaves the store
 /// unchanged; publication never affects the run's result.
 pub(super) fn publish(candidate: &Candidate, publication: &Publication<'_>) {
     let store = root(publication.cache);
-    if store.join(&candidate.key).join("manifest.json").is_file() {
+    if holds(publication.cache, candidate) {
         return;
     }
     let staging = store.join(format!(

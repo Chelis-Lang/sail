@@ -75,14 +75,6 @@ are in the `archive/m7-contracts-f7103bf` tag.
   source verifies that crate again (HumanEval 6.2 s instead of 0.6 s, Vest
   27.5 s instead of 1.8 s). Why the rebuilt bytes differ was not
   investigated. L23 (rescue lane report, tag `archive/rescue-m7-98f6292`).
-- **Repair selectors lose compiler-declared input coverage.** A warmup can
-  return Historical full evidence after exit-zero verification. See `b89546c`
-  in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and
-  [#77](https://github.com/Chelis-Lang/sail/issues/77). Not yet rechecked
-  after ADR 0041. The include named there, serde_core's generated
-  `out/private.rs`, is no longer compared across a run
-  ([#120](https://github.com/Chelis-Lang/sail/issues/120)); whether that
-  closes #77 is not yet measured.
 - **Intermittent shared HTTP deadline failures.** The 250 ms
   lookup/coalescing fixtures have failed in many complete gates and passed in
   others. Cause unknown; the deadlines are unchanged.
@@ -91,8 +83,6 @@ are in the `archive/m7-contracts-f7103bf` tag.
   amd64 emulation, which is no longer used for performance or Linux
   validation (ADR 0038). [#68](https://github.com/Chelis-Lang/sail/issues/68),
   [reproduction](../corpus/repros/linux-emulation-verus-stall/).
-- **Managed metadata ignores Cargo `-F` feature aliases.**
-  [#78](https://github.com/Chelis-Lang/sail/issues/78).
 - **Release-candidate wording gaps (low).** A failing managed summary leads
   with `0 verified` before `… passed by Verus's totals`; after a Rust compile
   error the managed count line reads `0 verified, 0 failed, 0 unknown`; and
@@ -101,6 +91,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
   [release-candidate record](validation/release-candidate.md#rc1-findings).
 
 ## Product limitations
+
+- **Repair selector inventories have a bounded source scope.** Compiler-family
+  imports cover package sources and generated inputs with validated build-script
+  contracts. An arbitrary external include may require a full run in a new
+  selector context before Current evidence is available; changed external bytes
+  still force verification. Closing #77 qualifies the original generated-input
+  defect, not this unsupported external-path extension.
 
 - Current means the files a result depended on are unchanged; it is separate
   from the verdict. In doubt a result reads back Unknown ("inputs could not be
