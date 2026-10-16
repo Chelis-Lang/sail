@@ -62,3 +62,23 @@ sail-conformance rust-verify-test --baseline stock --filter modes::
 manifest matches the exact requested fork variant. A stock build or an
 installed engine runtime cannot stand in for it. Missing or mismatched builds
 report `SAIL3040`; another owner of the selected build reports `SAIL3043`.
+
+The fork arm obtains the pinned solver from the installed binary release
+(`SAIL_VERUS_HOME`, or its normal cache location), then validates the selected
+fork suite separately. The source selector is not passed through the ordinary
+stock-source installer. The `--baseline stock` arm retains that installer's
+explicit source override and Singular checks; its test suite still comes from
+the default stock suite directory. A fork-suite selector therefore cannot
+stand in for a stock installation. The release lookup still reports `SAIL3003`
+when the release is missing.
+
+Selection controls require Python 3.11 or newer and run against an already
+built matching harness and the pinned solver, without executing any verification:
+
+```sh
+python3 scripts/test-rvt-selector.py --binary target/release/sail-conformance \
+  --z3 "$SAIL_Z3_PATH" --out selector-controls.json
+```
+
+These isolated manifest and list-only executable fixtures test routing and
+refusal. They do not qualify a source runtime or replace the real suite gates.

@@ -46,7 +46,28 @@ above does not stand in for that source-suite gate. The current-main rebase
 retains the reviewed implementation. Replacement gates must qualify the stock
 control separately from the corrected combined-fork candidate.
 
+The explicit fork selector now bypasses only the generic stock-source
+installation lookup: its pinned solver comes from the release, and the suite's
+existing manifest, artifact, feature, toolchain and solver checks remain in
+force. Ordinary stock and Singular source installation retain their existing
+selector behavior. The new list-only selector controls and corrected real fork
+run are pending native execution; source review and formatting are not acceptance.
+
 Failed/interrupted attempts, 2026-10-16:
+
+- `6880cb9b` with combined fork `8a373f81`: selected source-JSON run refused
+  `SAIL3040` before any tests, because the generic stock installer consumed
+  the fork-suite selector first. Final raw archive SHA-256
+  `6fbbb1f78bd96633654e40f7e40be20247590ceea6d767b4208062a67714962a`.
+  The correction separates release lookup from suite selection; no source
+  admission check or comparison is relaxed.
+- `c0e7e0f5`: full native stock control completed with 4,695 selected tests
+  (58 ignored), 4,691 Same, 3 Unstable, 1 Different and 0 infrastructure
+  errors in 1,174 s. `output_json::test_json_proof_note_on_requires` did
+  not match any of 11 observed plain runs; plain varied. The strict gate
+  failed, and the runtime after-hash stage was not executed. No JSON
+  normalization or instability reclassification applies. Final raw archive
+  SHA-256 `7227656b22b91737afcf3599334cd4bcdcf0edc509381bdb6ed059c62e5cc66f`.
 
 - `9fa6c9d2`: complete fork/stock source-suite qualification interrupted from
   the lead's perspective by a prolonged session pause and host shutdown.
