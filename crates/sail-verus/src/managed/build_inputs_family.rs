@@ -18,6 +18,9 @@ use std::path::Path;
 #[path = "build_inputs_sources.rs"]
 mod sources;
 
+#[path = "build_inputs_schedule.rs"]
+pub(in crate::managed) mod schedule;
+
 const MAX_BYTES: usize = 1024 * 1024;
 
 #[derive(Serialize, Deserialize)]

@@ -20,6 +20,25 @@ first-run performance still to recover; see the
 
 ## Claims
 
+### Recent core-performance changes
+
+These changes are merged on main. Each row compares its stated earlier Sail
+baseline, rather than stock Verus. The measurements use separate native EC2
+cohorts; their percentages must not be added or treated as a combined speedup.
+All values are three-round medians, with complete costs and correctness scope
+in the linked records.
+
+| Workflow | Earlier Sail → changed Sail | Scope and cost |
+|---|---:|---|
+| Rename a specification parameter | CapybaraKV 54.199 → 41.933 s; Anvil 108.648 → 44.017 s | 22.63% / 59.49% lower on c7i.8xlarge, us-east-1. Cold and forced-comment controls are nearly unchanged; this is the chosen rename edit, not arbitrary edits. [Runtime qualification](validation/spec-parameter-names.md) |
+| Verify Vest A, edit to B, undo to A, verify unchanged A | Four-call sum 130.657 → 113.084 s; returned A 26.540 → 2.509 s | 13.45% lower cycle sum on c7i.4xlarge, us-east-1. Cold/edit/unchanged costs rise and cache grows about 519 MB. Ordinary reuse covers the qualified Linux/public alloc/std profile. [Revert qualification](validation/instant-revert.md) |
+| Recheck unchanged Vest after that cycle | 0.895 → 0.544 s | A further 39.29% lower on c7i.4xlarge, us-east-1; the complete four-call sum improves 0.73%. No general CPU or Mac performance claim. [Optional-plan qualification](validation/instant-revert.md#unchanged-run-optional-plan-candidate-156) |
+
+The older stock comparisons below retain their original sources and runtimes;
+they are not a remeasurement of these changes together.
+
+### Historical stock comparisons
+
 | # | Claim | Linux (EC2 c7i.4xlarge, idle) | macOS (EC2 mac-m4.metal (Apple M4), idle) |
 |---|---|---|---|
 | 1 | Verdicts, errors and exit codes are identical to plain Verus | 0 differences in the conformance tiers and in Verus's own 4,695-test suite | 0 differences in the fast PR subset |

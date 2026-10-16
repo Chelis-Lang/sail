@@ -51,6 +51,36 @@ Measurements and validation: natively, managed overhead on a HumanEval
 edit fell from 3.03 s to 0.94 s and on Vest from 7.27 s to 3.40 s, and Vest
 results read back Current instead of Unknown (`SAIL7102`), L7c (rescue lane report, tag `archive/rescue-m7-98f6292`).
 
+## Note (2026-10-16): memoize successful Cargo scheduling (#174)
+
+Cargo's resolved graph includes scripts the selected build never schedules.
+A successful Current run may memoize those absent scripts for the same full
+input digest map, resolved package graph, selection, invocation directory,
+proof context and compiler identity (including arguments and environment).
+The memo is a bounded, checksummed optional sidecar, not a script contract
+or proof receipt. Missing, malformed, incomplete or changed inputs keep the
+original cleaning behavior; even an ordinary source edit discards it.
+The initial memo requires the existing unambiguous selected dependency
+closure: default/member and `-p` selections qualify; `--workspace` and
+ambiguous package selections retain original cleaning.
+
+Every observed script's declared content and environment checks and the late
+compiler-family recheck still run. The current invocation must independently
+confirm that every exempted script remained unscheduled in a successful
+Cargo build. A contradiction or changed binding prevents Current and proof
+receipt publication. Failed, Historical and Unknown runs cannot establish
+new scheduling facts. This avoids repeated destructive cleaning when an
+unscheduled package shares a name with a scheduled version; even an exact
+Cargo package spec does not isolate that clean on the pinned Cargo
+([minimal reproduction](../../corpus/repros/cargo-clean-package-versions/README.md)).
+
+The joined candidate records only scripts in the existing selected dependency
+closure. Out-of-closure scripts were already exempt from cleaning and provide
+no useful memo fact. Empty observations skip binding/publication; loading an
+empty memo is a miss. The nonempty exact-input/current confirmation and all
+ordinary proof checks above are unchanged. See the current
+[qualification scope](../validation/unscheduled-script-cleaning.md).
+
 ## Note (2026-10-14): macOS absent-configuration rule
 
 - **Problem.** On macOS, a run also stamped the nearest existing parent

@@ -2,194 +2,133 @@
 
 ## Status
 
-**Provisional #225 common-base composition:** this isolated source candidate
-ports exact `f8232eca` onto `17464f16` (the tested #225 executable source).
-Only the changelog needed manual conflict resolution; both entries remain.
-This composition is unbuilt and unselected, awaits accepted final main and
-requires its own source-bound validation. The actual results below describe
-the preceding output source, not this new composition.
+The joined #215/#174 implementation is qualified on macOS and native Linux;
+the final delivery head still requires its own CI and review. Executed
+source `7411f458` combines output `354d2995` and scheduling facts on
+`17464f16`. Accepted main `ee163bc3` (#225) differs from that baseline only in
+three Markdown files; every executable body and mode is identical. The local
+delivery rebase preserves every non-Markdown body and mode from `7411f458`.
 
-The printable-marker original-pipe successor for #215 passes focused macOS
-controls and the complete Mac host gate. Native Linux workspace, solver,
-all nine end-to-end phases plus extra and PR conformance commands pass.
-Full FAST/STANDARD, final native guards and native overhead remain pending;
-the candidate is unselected. The preceding control-character marker
-candidate failed its actual-Cargo test despite eight other focused controls
-passing. It restores Cargo's original handling of every stderr
-byte, then acknowledges only each driver's final stdout through a same-stdout
-completion marker. Proof metadata, output filtering, receipts, runtime pins and
-reuse checks are unchanged. No corpus entry changes. Full-corpus completion,
-final native guards and overhead gates remain pending.
+| Joined qualification | Actual scope and result |
+|---|---|
+| Independent source reviews | Output and relevant-script scheduling reviews CLEAN; source review is not execution acceptance |
+| Full macOS host | PASS: 759 tests, 35 solver/platform skips and all-target workspace Clippy on `7411f458`, 206.32 s |
+| Native workspace gate | PASS on `7411f458`, 83.09 s |
+| Solver, all nine E2E phases plus extra, PR subset and full FAST | PASS: 9.09 s / 640.94 s / 54.60 s / 491.74 s; FAST has all four arms, 147 Same / 3,450 functions each |
+| Full STANDARD and final native guards | PASS: 5,108.27 s, all four arms 159 Same / 12,726 functions each; final source/runtime/products and strict complete archive pass |
+| Current-pin Vest changed/unchanged costs | Complete 36-row retained facts verified: output B median +1.04%, joined +0.99% versus MAIN; unchanged ranges overlap. No Vest/CPU gain; enclosing capture-deadline failure remains ([costs](unscheduled-script-cleaning.md#current-pin-vest-cost-facts)) |
+| Delivery | Native and Mac qualification complete; final documentation successor needs its own required CI and review |
 
-The [proposed decision](../decisions/0055-acknowledged-managed-output.md) claims
-final stdout delivery before that driver exits and allows its subsequent Cargo
-error. It makes no global stdout/stderr or independent-job ordering claim.
+The full Mac result is outside git at
+`vest-output-scheduling-joined-qualification-2026-10-18/mac-host-01/result.json`,
+SHA-256 `bb15223b5cdd4b806a5ba7128b854b7ddc8c9a69f7c0439119f593150bd505cb`.
+Accepted-main equality is recorded in
+`unscheduled-script-output-join-2026-10-18/combined-vest-source-prep/accepted-main-equality.json`,
+SHA-256 `729c608a785db6ed0aae96bf0bc954ec140ca8429a5e1e84c000731341f1dfd7`.
+Baseline #225 gates do not qualify this joined implementation.
 
-## Evidence and limits
+## Complete native qualification
 
-An actual main-relay fixture reversed 44 of 96 combined causal writes while
-preserving separate bytes. It wrote a large filtered Cargo JSON record, a
-summary and then a Cargo-like error. This is a controlled relay reproduction,
-not real-project Verus acceptance or attribution of #174's original failure.
-Raw SHA-256: `145ac95ef790cbea0ee9b17e6e73f5f4d15b692b897999ae1d560c22955a3377`.
+The native c7i.4xlarge (16 vCPU), us-east-1, x86-64 Linux qualification runs
+the normal CI image's full gate, solver, all nine E2E phases plus `extra`, PR
+subset, full FAST and full STANDARD. Every required command and report checker
+passes. FAST retains all 147 unit IDs and 3,450 functions in pass-through,
+cache-fill, cache-warm and engine arms; STANDARD retains all 159 reference IDs
+and 12,726 functions in each arm. Each arm has zero skipped, different,
+unstable or infrastructure-error units. Recorded rlimit drift remains visible
+in 12 FAST units and 18 STANDARD units per arm; it is not a verdict difference.
 
-The superseded payload-IPC candidate `8766ff71` passed eight focused macOS
-production-sender/relay and cleanup controls with a Cargo-like child and release
-Clippy. Raw result: `c90c892df3a4d9a133d8138d2fe42723b9fd335878455a9b5e50168fe67c2448`.
-Those fixtures did not exercise Cargo's real diagnostic parser. A subsequent
-actual Cargo 1.98.1 control demonstrated that raw rustc JSON stderr is rendered
-and filtered before becoming public stderr. Payload IPC bypasses that behavior;
-its fixture pass does not qualify it. Both original and marked commands retain
-exit 101 and their complete raw streams. Result SHA-256:
-`40a756ef1c23ab422b80e66762e17a7d6454539c6c94b2f844f13e6d0e19f210`.
-The first wrapper also introduced a jobserver warning; the later control
-preserves inherited jobserver descriptors and does not reproduce that warning.
+All 649 source files match before/after, all five established native products
+match their final hashes/sizes, and the full runtime/stock/MCP inventories match.
+The final delivery source preserves all 453 tracked non-Markdown files from
+`7411f458`, including their hashes, sizes, modes and physical working bytes.
 
-Four actual Cargo boundary controls establish the narrower mechanism: a
-same-stdout marker after either a complete or incomplete line is observed and
-acknowledged before wrapper exit. Plain Cargo adds a newline to an unterminated
-stdout prefix at EOF. A JSON diagnostic marker is rendered on stderr but does
-not flush an earlier incomplete stdout prefix. Raw result SHA-256:
-`89fd8e464d32086740544ac3a4956e05a2e54e419181c418ec46a8f2a014a8df`;
-assessment: `8ddf3cc99625841dcf4b12d99d62c573623fad2a9c67372204578ff9a66c9e80`.
-These are tiny Cargo transport controls, not verifier or performance acceptance.
+External evidence is under
+`vest-output-scheduling-joined-qualification-2026-10-18/prospective-source-7411/`:
 
-The new source tests require the real production sender and relay through
-matched plain/barrier arms through actual Cargo with byte-for-byte equality of
-complete captured and public stdout/stderr and exit status, final stdout delivery
-before Cargo's final error, and the observed unterminated-line behavior. The
-expanded matrix covers plain partial text, valid JSON with and without a
-final newline, and multiline output with a 64 KiB JSON field. The sender completes
-an unterminated record with Cargo's EOF newline before a separate marker, keeping
-JSON parsing independent of the marker. Additional
-owned-pipe controls retain binary bytes, a large complete filtered JSON record,
-structured-output suppression, broken-public-pipe NACK and endpoint cleanup,
-lock serialization and release after NACK, symlink/capability collision refusal,
-malformed/foreign markers, and the bounded missing-ACK path. A real grandchild
-retains both Cargo pipe descriptors while a failed relay must stop and join
-its readers without waiting for EOF; the test parent then reaps its owned
-grandchild. Cancellation ownership and process groups are unchanged. They pass in focused attempt 10 below; complete gates remain pending.
-The old broader concurrent-cross-stream and payload-chunk fixture claims do
-not apply to the new protocol.
+- Complete archive: SHA-256 `6a1080b8b9d2483dfa44fe3e18c4b1213334f74f96ad369d9abf6989c757400f` (51,138,055 compressed / 860,282,837 raw bytes; all 9,789 regular files independently index/hash/size/mode verified).
+- Independent final audit: SHA-256 `ae211eadbb96aacd45a747ab23890a4aa0b93f66f281faa8619a84848dfafba9`.
 
-The current real-Cargo fixture writes captured/public/combined streams and
-status before assertions. An explicit `SAIL_VISIBLE_TEST_EVIDENCE` directory
-retains complete owned fixture file snapshots with path/mode/size/hash indexes
-under an 8 MiB cumulative cap. The matched actual-Cargo arms now share one
-owned `CARGO_HOME`, separate from other concurrently running tests. Cargo runs
-offline on a dependency-free fixture; the selected Cargo executable, Rustup home
-and toolchain remain unchanged. No package-lock status line is filtered.
-Known FIFO metadata is indexed without opening
-the pipe. A failed or absent external capture preserves the original failed
-fixture tree and prints its path; it does not silently remove uncaptured raw.
-Printed diagnostics have a 64 KiB prefix bound per stream, with full bytes
-retained in the fixture files. This retention is test-only.
+An optional read-only replay of an older CPU profile failed before its report
+because `perf` refused the trace's preserved owner. That separate diagnostic
+failure remains in this archive; it supplies no caller attribution and does
+not replace or qualify any product gate. The original profiling failure,
+standalone STANDARD timeout and both Vest capture failures remain separate.
 
-A separate actual Cargo 1.98.1 tiny control preserves an ASCII marker but strips
-its surrounding record/unit-separator bytes (`0x1e`, `0x1f`) from stdout. The
-exact control-character ACK therefore times out; raw result SHA-256:
-`c5cc33b95843f7e5df4d8a0fc65f57e3de906bb80fab6fa9f88226d76cef416f`.
-This establishes an independent framing defect. It does not reconstruct the
-missing inner streams of focused attempt 07. The successor uses printable,
-fresh-capability framing and retains all exact full-stream and exit checks.
+## Behavior and controls
+
+Keep user bytes on Cargo's original stdout and stderr pipes, including Cargo's
+rendering and filtering of rustc JSON. Each managed driver appends a private,
+fresh-capability completion marker after its final stdout record. The runner
+removes only that exact marker and acknowledges after forwarding and flushing
+the record, or intentionally suppressing human output for a structured caller.
+A failed public write sends NACK; the driver cannot report successful completion.
+The [proposed decision](../decisions/0055-acknowledged-managed-output.md) promises
+that final stdout precedes the driver's exit and its subsequent Cargo error.
+It makes no global order claim across stderr or independent Cargo jobs.
+
+Matched production sender/relay controls run through actual Cargo 1.98.1 and
+require complete captured/public stdout, stderr and exit equality. They cover
+partial text, newline-terminated and unterminated valid JSON, and multiline
+output with a 64 KiB JSON field. Cargo adds a newline to an unterminated stdout
+record at EOF; the sender preserves that behavior before its separate marker.
+Additional controls cover structured suppression, binary bytes, broken-pipe
+NACK, lock serialization, malformed/foreign markers, private endpoint identity,
+capability collision and the bounded missing-ACK path. A real grandchild holds
+both pipe descriptors while cancellation must stop and join the readers without
+waiting for EOF. Existing owned Cargo/compiler kill-and-wait guards remain.
+There is no new dependency, query normalization, proof authority or receipt key.
+
+The lock and private ACK have a 30-second bound. This does not bound ordinary
+public-pipe backpressure or promise termination of every arbitrary descendant.
+The real-Cargo test arms share one isolated owned `CARGO_HOME`; no lock-warning
+line is filtered. Explicit test capture retains the complete fixture bytes
+before assertions. The old missing historical streams are not reconstructed.
+
+## Prior source scope
+
+Standalone output source `9dff1ab4` passes nine production sender/relay controls,
+the separate compiler cleanup control and Clippy, then the full Mac host
+(752 tests, 35 skips). Focused result SHA-256:
+`1cfe7d12b7155f06dc6d328956daabbef1d664f9f944ee4faa3c7c2aa8d869d3`;
+full-host result: `ef734f53b96e8dc5a29f3d00f85b0c8c262de40a3c130c3826f299755eff6518`.
+Its native gate, solver, all nine E2E phases plus extra and PR subset pass.
+Full FAST passes all four arms, 147 Same / 3,450 functions each. STANDARD's
+three completed arms pass 159 Same / 12,726 functions each; the engine arm has
+no final report after its fixed 5,400-second deadline. This is incomplete
+standalone qualification, not joined-source acceptance.
+
+The complete failed standalone archive is outside git at
+`managed-output-order-qualification-native-2026-10-18/isolated-cargo-capture-successor/result.tgz`,
+SHA-256 `b168dacc2f9e1e225a626325a51a0c6749c968d54ccd40abf941146b160b2a8a`
+(50,932,321 compressed / 855,678,177 raw bytes). Its source/runtime final guards
+pass. The joined STANDARD result above uses its own prospective cap; it does not
+extend or reclassify that earlier attempt.
 
 ## Failed and interrupted attempts
 
-- `3892881a` plus payload candidate, 2026-10-18, attempt 01: disk admission
-  refused; controls unrun.
-- Same base, attempt 02: interrupted compilation after a normal transient Cargo
-  release path vanished; no unit result.
-- Same base, attempt 03: five controls pass; the broken-pipe fixture incorrectly
-  required its producer to succeed after pipe closure. The corrected fixture
-  retained NACK and cleanup checks.
-- Same base, attempt 04: six relay controls and compiler cleanup pass; four
-  Clippy errors and Cargo's regenerable `.rustc_info.json` update fail the
-  enclosing attempt. Protected bodies remain unchanged.
-- Same base, attempt 05: under-specified deferred-buffer type fails compilation;
-  attempt 06 supplies its explicit type and passes the focused scope above.
-- `8766ff71`, actual Cargo control: payload IPC bypasses diagnostic rendering;
-  rejected despite the prior Cargo-like fixture passes. The original #174
-  complete temporary streams remain unavailable and its cause stays unknown.
-- `e3b1f42f`, 2026-10-18, focused attempt 07: eight of nine tests pass,
-  including protocol/refusal and descendant-FD cleanup controls. Actual Cargo
-  fails at the missing barrier-completion record; exit 101 is retained, but the
-  fixture deleted its inner streams on assertion failure, so the exact cause
-  stays unknown. Source/protected-file/child guards pass; Clippy is unrun after
-  the unit failure. Raw result SHA-256:
-  `f20057251f2bdedd939edb710764509794ddbfe13bb6717eda13348807f3a7bc`.
+Each line remains scoped to its original source and command; later success does
+not erase it.
 
-- `def2b553`, 2026-10-18, focused attempt 08: Cargo exits zero with zero
-  matching tests and 281 filtered after a shared-target worktree change. The
-  required nine-test count rejects this harness result; no #215 test passes.
-- Same source, focused attempt 09: forced package compilation fails with E0599
-  because the test-only capture function lacks `OpenOptionsExt` for `.mode`.
-  No tests run. Source/protected-file/child guards pass. The successor adds only
-  the missing Unix trait import; production code is unchanged.
+- `3892881a` plus payload candidate, 2026-10-18, attempt 01: disk admission refused; controls unrun.
+- Same base, attempt 02: compilation interrupted after a regenerable Cargo path vanished; no unit result.
+- Same base, attempt 03: five controls pass; the broken-pipe fixture wrongly required producer success after closure.
+- Same base, attempt 04: six relay controls and compiler cleanup pass; test-only Clippy and a changing Cargo metadata guard fail the enclosing attempt.
+- Same base, attempt 05: an under-specified deferred-buffer type fails compilation; no production behavior is accepted from this attempt.
+- `8766ff71`, actual Cargo control: payload IPC bypasses JSON diagnostic rendering; rejected despite Cargo-like fixture passes. Result `40a756ef1c23ab422b80e66762e17a7d6454539c6c94b2f844f13e6d0e19f210`.
+- `e3b1f42f`, focused 07: eight of nine controls pass, actual Cargo misses ACK; the old fixture deleted inner streams, so cause UNKNOWN. Result `f20057251f2bdedd939edb710764509794ddbfe13bb6717eda13348807f3a7bc`.
+- `def2b553`, focused 08: zero selected tests; the required nine-test count rejects the result.
+- Same source, focused 09: test-only missing Unix trait import causes E0599; no tests run.
+- `2a523370`, focused 10: nine sender/relay controls plus compiler cleanup pass; three test-only Clippy findings fail the whole attempt. Result `936e24ab58b4c3d007f3c811afbf06e6ea198a521e2122961e6b4e14dc6f63d3`.
+- `d26b6bb8`, native 01: local `operator.py` entered the remote package and shadowed the standard module; product gates unrun.
+- Same source, native 02: exact real-Cargo comparison rejects two barrier-only package-cache lock lines; the successor isolates the arms without filtering. Separate raw-capture permission failure remains. Diagnosis `041031037b87acff380b34eb9c848df6c3839baa21b4f03962dd9e70f085a1f2`.
+- `9dff1ab4`, standalone native: STANDARD engine arm interrupted at the fixed 5,400-second cap after three 159-Same arms; complete archive `b168dacc2f9e1e225a626325a51a0c6749c968d54ccd40abf941146b160b2a8a`.
+- `7411f458` four-actor Vest comparison: all 36 calls and final product/runtime/cache guards complete, but strict whole capture rejects a hard-linked exported Sail inode. Detailed rows were lost; no timing or performance acceptance. Preserved top-level status SHA-256 `f8747031869c8ac85653103acde21145e5c9c5c137ea7720f065d1150ba43770`.
 
-- `2a523370`, 2026-10-18, focused attempt 10: all nine production sender/relay
-  tests pass, including four matched real-Cargo plain/barrier pairs with exact
-  captured/public streams and exit, plus the separate compiler-cleanup test.
-  The actual unit executable is source-bound and its complete fixture evidence
-  is retained. The enclosing attempt fails three test-only Clippy findings
-  (raw-string hashes, similar local names and path Debug formatting); no
-  assertions or production code change in the correction. All source/runtime/
-  protected-body guards pass and children are reaped. Total 102.17 seconds;
-  this is correctness scope, not a native performance result. Raw result
-  SHA-256: `936e24ab58b4c3d007f3c811afbf06e6ea198a521e2122961e6b4e14dc6f63d3`.
+The actual relay fixture reversed 44 of 96 controlled causal writes, preserving
+separate bytes (SHA-256 `145ac95ef790cbea0ee9b17e6e73f5f4d15b692b897999ae1d560c22955a3377`).
+Actual Cargo also strips control-character framing bytes; the printable-marker
+successor preserves its full comparisons. These reproduce concrete transport
+problems, not the cause of #174's historical missing-stream failure.
 
-- `d26b6bb8`, 2026-10-18, native attempt 01: remote packaging included local
-  `operator.py`, shadowing Python's standard module during runtime inspection.
-  Product gates are unrun; final source guard passes. The corrected remote
-  inventory excludes local operator files.
-- Same source, native attempt 02: gate fails one of 763 tests. Exact decoded
-  assertion tuples show two leading `Blocking waiting for file lock on package
-  cache` lines only in the barrier arm's captured/public stderr; stdout and
-  remaining stderr match. The strict full-stream comparison rejects the sample.
-  The successor isolates both arms with one owned `CARGO_HOME`; no comparison,
-  output filtering or whole-gate parallelism changes. Complete fallback gate
-  log and decoded streams remain external; diagnosis SHA-256:
-  `041031037b87acff380b34eb9c848df6c3839baa21b4f03962dd9e70f085a1f2`.
-  Separate capture permission failure remains visible; no complete enclosing
-  qualification is claimed.
-
-Focused attempt 11 passes on exact tested source `f3c51b78`: all nine sender/relay
-controls, including the four real-Cargo matched pairs, the separate compiler
-cleanup test, and release all-target `sail-verus` Clippy. All source/protected-body
-guards pass and compiler children are reaped. Total 100.07 seconds. Raw result
-SHA-256: `06ba7ba44a5236cadc4ab1de985ea229b76a2c96c57e499f30f57b8d034ca53c`; actual unit
-SHA-256: `c18b17111fd21433a0869a3b029ea16011c5d6717da00e4e91cfde48596cdc83`.
-The paired documentation successor changes no tested code. This is focused Mac
-correctness, not the full host gate, native Linux acceptance or performance.
-
-## Current delivery checks
-
-The test-only successor `9dff1ab4` changes only the real-Cargo fixture's shared
-owned cache; production remains byte-identical to `d26b6bb8`. Focused Mac
-attempt 12 passes all nine sender/relay controls, four actual-Cargo pairs,
-compiler cleanup and Clippy in 100.85 s. Result SHA-256:
-`1cfe7d12b7155f06dc6d328956daabbef1d664f9f944ee4faa3c7c2aa8d869d3`.
-The full Mac host gate then passes 752 tests with 35 skips and all-target
-workspace Clippy in 204.46 s. Source, runtime and protected bodies remain
-unchanged and owned compiler children are reaped. External evidence
-`managed-output-order-source-2026-10-18/mac-host-02/result.json`, SHA-256:
-`ef734f53b96e8dc5a29f3d00f85b0c8c262de40a3c130c3826f299755eff6518`.
-
-The matching source on native EC2 c7i.4xlarge, us-east-1, passes the workspace
-gate, solver tests, every end-to-end phase plus extra, and PR conformance in
-85.02 s, 9.45 s, 668.50 s and 57.73 s respectively. These exercise real passing,
-failing, compile-error and unchanged verification, structured output and MCP;
-they supplement the focused causal-delivery and closed-pipe controls. This is
-a completed-command checkpoint, not completion of the still-running worker:
-full FAST/STANDARD and final source/runtime/product guards remain pending.
-
-The complete three command logs were copied and checked against their remote
-SHA-256 inventory before pushing. External evidence under
-`managed-output-order-qualification-native-2026-10-18/isolated-cargo-capture-successor/completed-command-checkpoint/`:
-
-- `completed-command-result.json`: `4da946f135febf14b5b3a9c783ed490eb5bf063b150cd35286f86dbcbe66a34e`.
-- `gate.log`: `042e1e44b684b0001cea02f3e0bdf5b1382da132a41ebc0b225f9abc2b32a797`.
-- `e2e.log`: `8c11f0e9c1689f443f2de258891407bba046d78d959b17e9291b867ffc744c76`.
-- `pr.log`: `b4bdb53295c8fef95d4fac054de55343b483d0ac56e50747a598f8bd932b456b`.
-
-Measure native overhead before selection. Raw originals remain outside the
-repository; the earlier failures remain failed.
+- `7411f458`, second four-actor Vest comparison: complete 36-row semantic/cost facts and full archive verify, but capture exceeds its fixed 120 s parent deadline and worker exits 1; late receipt does not reclassify the failure. Archive `7d33128f868513b0b86c9aafcb7eb17868baf72320acce3ec1950954a6ea4f5f`; scoped audit `54b9ed44295e37a807548088104efff477db981bf5c18a32c5cff382b00c74ed`.

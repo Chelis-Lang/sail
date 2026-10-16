@@ -328,7 +328,7 @@ clippy stderr SHA-256:
 
 ## Unchanged-run optional-plan candidate (#156)
 
-A separate, unselected candidate `e0d14d75`, based on `3892881a`, omits the optional
+The optimization measured at `e0d14d75`, based on `3892881a`, omits the optional
 retained-content plan when every requested target has an own-context receipt
 header with the current nonempty input revision. It reuses the existing fresh
 dirty-receipt scan; it adds no second source-hash pass. Cold or missing receipts,
@@ -386,8 +386,8 @@ instability, infrastructure errors or skipped projects. The reports retain
 rlimit-only drift in 12 FAST and 18 STANDARD units per arm; those metric drifts
 are not verdict or diagnostic differences. Final source/runtime/product guards
 and the complete FAST/STANDARD evidence capture pass. The optimization is
-qualified for the existing default profile; no Mac performance or general CPU
-gain is claimed.
+qualified for the existing default profile and merged through #225 with all
+required CI checks green. No Mac performance or general CPU gain is claimed.
 
 The Linux gate commands completed successfully with unchanged source, runtime
 and built-product maps. Their enclosing evidence export failed because the
