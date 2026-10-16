@@ -488,6 +488,12 @@ fn agent_view(project: &ProjectResult, job: &Value, reuse: &[String]) -> Value {
             names(&unresolved),
             counts.verified
         )
+    } else if project.no_reuse.is_some() && counts.functions == 0 && errors.is_empty() {
+        // Without proof reuse, Cargo-Verus skips crates it finds up to date
+        // and reports nothing for them: no function result is not a proof.
+        format!(
+            "NO RESULT: no function was verified in this run; Cargo found every package up to date, or verified nothing ({exit})."
+        )
     } else if project.exit_code == Some(0) && !requested.is_empty() {
         format!("VERIFIED: all {scope} verified ({exit}).")
     } else if errors.is_empty() {
@@ -584,6 +590,7 @@ fn agent_view(project: &ProjectResult, job: &Value, reuse: &[String]) -> Value {
             "note": "Dependency reports are not included. Pass detail \"full\" to include them.",
         },
         "notes": project.notes,
+        "no_reuse": project.no_reuse,
         "error": project.error,
     })
 }

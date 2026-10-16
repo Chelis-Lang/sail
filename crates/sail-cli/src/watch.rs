@@ -191,6 +191,11 @@ fn refresh_roots(
         }
     }
     next.extend_from_slice(extra);
+    // An explicit `--target-dir` (verified without proof reuse, SAIL3112) is
+    // Cargo's output, not an input: watching it would restart every run.
+    if let Some(target) = target_dir(args) {
+        inputs.excluded.push(project.join(target));
+    }
     path_aliases(&mut next);
     path_aliases(&mut inputs.excluded);
     monitoring.subscribe(&next, &inputs.excluded, subscriptions, err);
@@ -231,6 +236,20 @@ fn desired_subscriptions(roots: &[PathBuf]) -> BTreeMap<PathBuf, bool> {
         }
     }
     subscriptions
+}
+
+/// Cargo's `--target-dir` among `args` (before any `--`).
+fn target_dir(args: &[String]) -> Option<PathBuf> {
+    let mut iterator = args.iter().take_while(|arg| arg.as_str() != "--");
+    let mut found = None;
+    while let Some(arg) = iterator.next() {
+        if arg == "--target-dir" {
+            found = iterator.next().map(PathBuf::from);
+        } else if let Some(value) = arg.strip_prefix("--target-dir=") {
+            found = Some(PathBuf::from(value));
+        }
+    }
+    found
 }
 
 fn relevant(path: &Path) -> bool {
@@ -379,6 +398,7 @@ impl Live {
                 && let Some(result) = document.result
                 && let Ok(result) =
                     serde_json::from_value::<sail_api::project::ProjectResult>(result)
+                && !self.no_reuse(&status, &result, out)
                 && let Ok(environment) = crate::jobs::environment()
                 && let Ok(cache) = sail_verus::cache_dir()
                 && let Ok(snapshot) =
@@ -389,6 +409,30 @@ impl Live {
         }
         self.status = Some(status);
         Ok(())
+    }
+    /// Announces a completed run without proof reuse (`SAIL3112`, verified as
+    /// plain Cargo-Verus verifies it) and returns whether it was one. The
+    /// human stream already carries the job's `note[SAIL3112]` line; the
+    /// JSON-lines stream gets a `no-reuse` event. Such a run has no input
+    /// record to refresh the watched roots from.
+    fn no_reuse(
+        &self,
+        status: &Status,
+        result: &sail_api::project::ProjectResult,
+        out: &mut dyn Write,
+    ) -> bool {
+        let Some(no_reuse) = &result.no_reuse else {
+            return false;
+        };
+        if self.jsonl {
+            let _ = writeln!(
+                out,
+                "{}",
+                json!({"kind":"sail-watch-event","schema_version":1,"event":"no-reuse","job_id":status.id,"no_reuse":no_reuse,"currentness":result.currentness,"exit_code":result.exit_code})
+            );
+            let _ = out.flush();
+        }
+        true
     }
 }
 

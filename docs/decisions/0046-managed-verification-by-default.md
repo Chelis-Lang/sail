@@ -112,8 +112,13 @@
    capability regression for the only `sail verify`. This is not a mode a
    user can choose: it is the fail-safe for invocations the runner cannot
    bind, announced every time. Jobs, `watch` and MCP, which must return a
-   project result, still report them as `SAIL3112` errors, as they did
-   before this change. The e2e legacy phase compares `--no-verify`,
+   project result, still reported them as `SAIL3112` errors at first.
+   *Amended 2026-10-16 (#165):* they now verify them the same way; the
+   job's project result holds one target (`cargo verus verify`) with the
+   run's schema-v2 report, a `no_reuse` object and a `SAIL3112` note, and is
+   `unknown`, never `current`, binding no context or input revision. Only
+   the opt-in interactive engine still reports `SAIL3112` as an error. The
+   e2e legacy phase compares `--no-verify`,
    `--config`, `--tests` and `--target-dir` runs with plain Cargo-Verus.
 
    **Process-loader variables fail safe (lead decision, 2026-10-15).**
