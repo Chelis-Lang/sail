@@ -70,7 +70,7 @@ pub fn build(inputs: &Inputs<'_>) -> Report {
     let mut report = Report {
         portfolio: None,
         schema_version: SCHEMA_VERSION,
-        sail_version: env!("CARGO_PKG_VERSION").to_owned(),
+        sail_version: sail_api::VERSION.to_owned(),
         mode: "default".to_owned(),
         command: inputs.args.to_vec(),
         exit_code: inputs.exit_code,
@@ -139,7 +139,7 @@ pub fn setup_failure(args: &[String], code: &str, message: &str) -> Report {
     Report {
         portfolio: None,
         schema_version: SCHEMA_VERSION,
-        sail_version: env!("CARGO_PKG_VERSION").to_owned(),
+        sail_version: sail_api::VERSION.to_owned(),
         mode: "default".to_owned(),
         command: args.to_vec(),
         exit_code: None,
@@ -158,5 +158,16 @@ pub fn setup_failure(args: &[String], code: &str, message: &str) -> Report {
             message: message.to_owned(),
         }),
         engine: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// Reports state the version `sail --version` prints, including a
+    /// release build's `SAIL_VERSION` suffix (#180).
+    #[test]
+    fn reports_state_the_sail_version() {
+        let r = super::setup_failure(&[], "SAIL0001", "m");
+        assert_eq!(r.sail_version, sail_api::VERSION);
     }
 }

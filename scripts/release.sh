@@ -39,6 +39,13 @@ self_check() {
   if [ -n "${SAIL_VERSION:-}" ] && [ "$reported" != "sail $SAIL_VERSION" ]; then
     die "sail reports \"$reported\", not \"sail $SAIL_VERSION\""
   fi
+  # Reports state the same version (sail_api::VERSION); the MCP server's
+  # serverInfo is the cheapest one to read.
+  case "$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"release","version":"0"}}}' \
+    | "$out/bin/sail" mcp 2>/dev/null)" in
+    *"\"version\":\"${reported#sail }\"}"*) ;;
+    *) die "sail mcp does not report version ${reported#sail }" ;;
+  esac
   [ -x "$out/bin/sail-z3" ] || die "sail-z3 missing from $out"
   scratch="$(mktemp -d)"
   status="$(env -u SAIL_VERUS_BUILD SAIL_CACHE_DIR="$scratch" "$out/bin/sail" engine status --output json)" \

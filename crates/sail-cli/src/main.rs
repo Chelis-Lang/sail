@@ -28,13 +28,8 @@ mod watch;
 use std::fmt::Write as _;
 use std::process::ExitCode;
 
-/// The version `sail --version` reports: `SAIL_VERSION` when the build sets
-/// it (`scripts/release.sh` passes the release version, for example
-/// `0.1.0-rc.1`), else the crate version.
-const VERSION: &str = match option_env!("SAIL_VERSION") {
-    Some(version) if !version.is_empty() => version,
-    _ => env!("CARGO_PKG_VERSION"),
-};
+/// The version `sail --version` reports, which every report also states.
+const VERSION: &str = sail_api::VERSION;
 
 /// Commands named by the charter, in the order `--help` lists them.
 const COMMANDS: &[(&str, &str)] = &[

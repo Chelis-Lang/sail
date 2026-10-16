@@ -115,7 +115,7 @@ fn capabilities() -> Value {
 }
 
 fn server_info() -> Value {
-    json!({"name": "sail", "title": "sail (S.A.I.L.)", "version": env!("CARGO_PKG_VERSION")})
+    json!({"name": "sail", "title": "sail (S.A.I.L.)", "version": sail_api::VERSION})
 }
 
 impl Server {

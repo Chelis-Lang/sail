@@ -414,7 +414,7 @@ impl State {
         let (queued, queued_bytes) = self.writer.load();
         Info {
             protocol_version: sail_api::protocol::PROTOCOL_VERSION,
-            sail_version: env!("CARGO_PKG_VERSION").to_owned(),
+            sail_version: sail_api::VERSION.to_owned(),
             pid: std::process::id(),
             uptime_secs: self.started.elapsed().as_secs(),
             socket: self.socket.display().to_string(),
@@ -641,7 +641,7 @@ pub fn bind(
         .spawn(move || w.writer.run(&w.disk, &w.memory, delay, &w.log))?;
     state.log.line(&format!(
         "started: sail {}, protocol {}, socket {}, cache {}, memory {} bytes, queue {} bytes, idle timeout {}",
-        env!("CARGO_PKG_VERSION"),
+        sail_api::VERSION,
         sail_api::protocol::PROTOCOL_VERSION,
         socket.display(),
         cache_root.display(),
