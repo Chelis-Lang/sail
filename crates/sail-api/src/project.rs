@@ -39,6 +39,42 @@ pub struct ProjectResult {
     /// established it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub engine: Option<EngineIdentity>,
+    /// Present when Sail could not bind this invocation's setup to a proof
+    /// receipt (`SAIL3112`, ADR 0046). Such a run reuses and records no proof
+    /// receipts, and its result is never `current`. Absent for runs that
+    /// can reuse proofs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_reuse: Option<NoReuse>,
+}
+
+/// Name of the one target of a run verified as plain `cargo verus verify`
+/// ([`VerifiedAs::PlainCargoVerus`]): its report covers the whole run.
+pub const PLAIN_TARGET: &str = "cargo verus verify";
+
+/// Why and how a run was verified without proof reuse (`SAIL3112`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoReuse {
+    /// Always `SAIL3112`.
+    pub code: String,
+    /// The setup Sail could not bind to a proof receipt.
+    pub reason: String,
+    /// How the run was verified.
+    pub verified_as: VerifiedAs,
+}
+
+/// How a run without proof reuse was verified.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum VerifiedAs {
+    /// Exactly as plain `cargo verus verify` verifies it, in the invocation's
+    /// own Cargo target, with Sail's solver cache. `targets` holds one
+    /// requested target named [`PLAIN_TARGET`] whose report covers every
+    /// crate Verus verified; a crate Cargo found up to date has no report.
+    /// `context_sha256` and `input_revision` are empty.
+    PlainCargoVerus,
+    /// By managed verification in Sail's own target, with per-target
+    /// reports (a process-loader variable is set).
+    Managed,
 }
 
 /// The validated source engine of a project run.
@@ -96,9 +132,52 @@ pub struct TargetResult {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Execution {
     /// Number of target verification subprocesses started in this invocation.
+    /// For [`VerifiedAs::PlainCargoVerus`], this counts the one aggregate
+    /// Cargo-Verus driver result, even if Cargo verifies zero or several crates;
+    /// it is zero when setup or the driver fails without an aggregate result.
+    /// It does not measure per-crate verifier or solver work in that mode.
     pub verifier_invocations: u64,
     /// Number of targets whose reports were reused from complete receipts.
     pub reused_targets: u64,
     /// Total wall-clock time including Cargo and input validation.
     pub wall_ms: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{NoReuse, VerifiedAs};
+
+    /// `no_reuse` matches its JSON Schema, and the schema refuses a
+    /// document that drops how the run was verified.
+    #[test]
+    fn no_reuse_matches_its_schema() {
+        let schema: serde_json::Value =
+            serde_json::from_str(include_str!("../schema/project-result-v2.json"))
+                .unwrap_or_default();
+        let schema = &schema["properties"]["no_reuse"];
+        for verified_as in [VerifiedAs::PlainCargoVerus, VerifiedAs::Managed] {
+            let value = serde_json::to_value(NoReuse {
+                code: "SAIL3112".to_owned(),
+                reason: "`--tests` is not bound to a proof receipt".to_owned(),
+                verified_as,
+            })
+            .unwrap_or_default();
+            assert_eq!(
+                crate::schema::validate(schema, &value),
+                Vec::<String>::new()
+            );
+            let mut missing = value.clone();
+            if let Some(object) = missing.as_object_mut() {
+                object.remove("verified_as");
+            }
+            assert_ne!(
+                crate::schema::validate(schema, &missing),
+                Vec::<String>::new()
+            );
+        }
+        assert_eq!(
+            serde_json::to_value(VerifiedAs::PlainCargoVerus).ok(),
+            Some(serde_json::json!("plain-cargo-verus"))
+        );
+    }
 }

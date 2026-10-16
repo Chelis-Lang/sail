@@ -9,6 +9,17 @@ semantic versioning once the API is published.
   must match their recorded SHA-256 before a source suite can be reused.
   Older manifests without these digests require a deliberate source rebuild;
   changed, missing or duplicate executable entries are rejected.
+- Linux benchmark host teardown retains connection state on AWS errors and
+  confirms termination before deleting cloud resources (#201). Refresh
+  credentials or fix `SAIL9001`, then retry `scripts/perf-host.sh down LANE`.
+
+- The source-suite runner avoids its duplicate progress flag for the exact
+  original VI-0012 regression source, binary and case (#203). Changed or missing
+  source keeps the default, explicit threads remain unchanged, and reproduction
+  commands now show the same effective `VERUS_EXTRA_ARGS` as actual execution.
+  The original regression, native BASIC and complete fork source suite pass on
+  private qualification source. Remaining runtime gates are separate; the
+  original failure stays recorded.
 
 - **CI image packaging candidate** (#195): checks share a core image with
   every pinned toolchain/runtime; only managed e2e adds the pinned external
@@ -40,6 +51,15 @@ semantic versioning once the API is published.
   source restoration, records source/runtime identities and retains failed
   samples. Final combined-runtime performance and correctness gates remain
   pending; this does not change Sail's runtime pin or cache keys.
+- **The deep Verus test gate tests Sail's fork** (#124). `deep-rvt` compares
+  the fork with and without `sail-z3` using exact output, then retains
+  the original stock-with-and-without-shim control using ADR 0042 for complete
+  diagnostic messages. Fork-only regression tests remain in the exact arm.
+  `cargo xtask build-verus-source --fork` builds an isolated test variant,
+  without replacing the installed runtime.
+  An explicit `SAIL_VERUS_SOURCE_BUILD` fork suite is checked by the suite
+  loader, separately from the pinned release lookup; it is no longer refused
+  by the ordinary stock-source installer before testing.
 
 - **Real-project benchmarks avoid duplicate managed runs** (#167).
   `scripts/perf-real.sh` now defaults to `plain sail`; `--incremental`
@@ -56,6 +76,33 @@ semantic versioning once the API is published.
   Cargo target (#166), avoiding a redundant cold context. Declared source
   and build-script reads still invalidate proof receipts when its value changes.
 
+
+- **Jobs, `watch` and MCP verify unbound setups instead of refusing them**
+  (#165). Setups managed verification cannot bind to a proof receipt
+  (tests, benches and examples, `--target-dir`, Verus `--log`,
+  `--no-verify`, `--sysroot`, `-v`, `--message-format`, Cargo `--config`,
+  `RUSTC_WORKSPACE_WRAPPER`, no `verify = true` target) failed as `SAIL3112`
+  infrastructure errors in background jobs, `sail watch` and the MCP tools.
+  They are now verified as `sail verify` verifies them, exactly as
+  `cargo verus verify` does, in the project's own target and without proof
+  reuse. The job's `sail-project-result` carries a new optional `no_reuse`
+  object (`code`, `reason`, `verified_as`), one requested target named
+  `cargo verus verify` holding the run's schema-v2 report, a `SAIL3112`
+  note, and currentness `unknown`; it is never `current` and nothing reuses
+  it. MCP summaries add a `No proof reuse (SAIL3112)` line and the agent view
+  a `no_reuse` field; `sail jobs result` names the missing reuse; `sail watch
+  --output jsonl` emits a `no-reuse` event and no longer restarts on writes
+  to an explicit `--target-dir`. A loader-variable run (`LD_LIBRARY_PATH` and
+  the like) also reports `no_reuse`, with `verified_as` `managed`. Comparisons
+  involving these results remain `incomparable`, including saved baselines.
+- Unselected frontend research includes an offline ordinary-AST difference
+  analyzer and a bounded capture plan. It preserves original fields and raw
+  byte failures; it does not enable frontend reuse or change the runtime.
+- The native read-only pruning research controller records cold and edited
+  compiler runs, restores pristine manifests/lockfiles between arms, and
+  fails on verification or exact SMT-stream differences. Its initial
+  Vest/IronKV comparison leaves the compiler candidate unselected; no default
+  runtime or verification behavior changes.
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);
@@ -83,6 +130,13 @@ semantic versioning once the API is published.
   `build.rs` 22.2 s → 2.1 s (plain: 0.8 s); the unchanged run after a
   profile change 22.1 s → 0.5 s; the first `-p a` run of the #121 workspace
   28.9 s → 1.3 s. Run currentness still binds every manifest and lockfile.
+- The real-project performance harness has an explicit `fork-shim` arm for
+  focused Cargo-Verus runs through Sail's solver shim and an owned daemon.
+  It does not claim managed CLI support for partial verification. The
+  frontend stage report counts failed samples and distinguishes missing
+  instrumentation from zero work. Unknown modes and fork modes without a
+  selected fork are refused before source preparation.
+
 - **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).
   Per-obligation detail (op kinds, spans, per-check answers and cache
   provenance, counterexample models) needs Verus's AIR and SMT transcript

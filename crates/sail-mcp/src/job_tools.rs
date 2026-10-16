@@ -515,16 +515,39 @@ fn missing_obligation(
 
 /// One line per requested target whose report was reused, naming the run that
 /// established it (charter rule 7: confirmed results record their provenance).
+/// A run without proof reuse (`SAIL3112`) says so first, with its reason.
 pub(super) fn reuse_lines(result: &sail_api::project::ProjectResult) -> Vec<String> {
     result
-        .targets
+        .no_reuse
         .iter()
-        .filter(|target| target.requested && target.reused)
-        .map(|target| {
-            format!(
-                "{}: reused the complete report established by run {} for unchanged inputs.",
-                target.target, target.establishing_run
-            )
-        })
+        .map(no_reuse_line)
+        .chain(
+            result
+                .targets
+                .iter()
+                .filter(|target| target.requested && target.reused)
+                .map(|target| {
+                    format!(
+                        "{}: reused the complete report established by run {} for unchanged inputs.",
+                        target.target, target.establishing_run
+                    )
+                }),
+        )
         .collect()
+}
+
+/// The provenance line of a run without proof reuse.
+fn no_reuse_line(no_reuse: &sail_api::project::NoReuse) -> String {
+    let how = match no_reuse.verified_as {
+        sail_api::project::VerifiedAs::PlainCargoVerus => {
+            "verified as `cargo verus verify` does, in the project's own Cargo target, with Sail's solver cache; crates Cargo found up to date were not verified again and have no report"
+        }
+        sail_api::project::VerifiedAs::Managed => {
+            "verified what Cargo rebuilt in Sail's target; targets Cargo found up to date have no report"
+        }
+    };
+    format!(
+        "No proof reuse ({}): {}; {how}. No proof receipt was reused or recorded, so this result is never current.",
+        no_reuse.code, no_reuse.reason
+    )
 }

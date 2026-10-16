@@ -11,9 +11,9 @@ import sys
 COLS = ["round", "mode", "phase", "secs", "exit", "sessions", "started", "served",
         "hellos", "gets", "hits", "puts", "total_ms", "rust_ms", "vir_ms",
         "vcrate_ms", "vsum_ms", "smt_ms", "load"]
-MODE_ORDER = ["plain", "sail", "incremental", "fork-plain", "fork-sail"]
+MODE_ORDER = ["plain", "sail", "incremental", "fork-plain", "fork-sail", "fork-shim"]
 LABEL = {"plain": "plain", "sail": "sail", "incremental": "sail --incr",
-         "fork-plain": "fork plain", "fork-sail": "fork sail"}
+         "fork-plain": "fork plain", "fork-sail": "fork sail", "fork-shim": "fork shim"}
 
 
 def fmt(x):
@@ -69,7 +69,7 @@ def report(out):
             cells.append(f"{a / b:.2f}x" if a and b else "-")
         print(f"| {p} | " + " | ".join(cells) + " |")
 
-    cached = [m for m in modes if m in ("sail", "incremental", "fork-sail")]
+    cached = [m for m in modes if m in ("sail", "incremental", "fork-sail", "fork-shim")]
     if cached:
         print("\nCache, median per run: solver sessions (Z3 processes) through the cache /"
               " sessions that started a solver (a miss), checks served from the cache (daemon"

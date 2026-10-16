@@ -141,7 +141,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3107` | Verification produced no complete proof receipt for a target | Re-run; the result is not reused |
 | `SAIL3108` | No Current run is recorded for this project and settings | Verify once; later reads can then be Current |
 | `SAIL3111` | The managed adapter failed (solver capture, receipts or Cargo wrapper) | Read the message; re-run |
-| `SAIL3112` | A setup managed verification cannot bind to a proof receipt: `--target-dir`, Verus `--log` options, `--no-verify`, `-v`, `--message-format`, `--sysroot`, tests, benches or examples, Cargo `--config` or configuration Sail cannot identify, `RUSTC_WORKSPACE_WRAPPER`, a loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_*`), or no target with `verify = true`. As a `note` from `sail verify`: the run is verified as plain `cargo verus verify` verifies it, without proof reuse. As an error from a job, `watch` or MCP: the setup is not supported there | Nothing for the note. For the error, run `sail verify` from the command line, or remove the setting to get proof reuse |
+| `SAIL3112` | A setup managed verification cannot bind to a proof receipt: `--target-dir`, Verus `--log` options, `--no-verify`, `-v`, `--message-format`, `--sysroot`, tests, benches or examples, Cargo `--config` or configuration Sail cannot identify, `RUSTC_WORKSPACE_WRAPPER`, a loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_*`), or no target with `verify = true`. A `note` from `sail verify`, a job, `watch` or MCP: the run is verified as plain `cargo verus verify` verifies it, without proof reuse; a job's project result carries `no_reuse` and a `SAIL3112:` note and is never `current`. Still an error from `--engine interactive` | Nothing. Remove the setting to get proof reuse |
 | `SAIL3114` | Inputs could not be confirmed unchanged; the result is not Current | Re-run for a current result |
 
 ## Interactive engine (`--engine interactive`)
@@ -181,3 +181,9 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL7108` | Repair gate: too few complete rounds | Run more rounds |
 | `SAIL7109` | Repair gate: median speed-up below the target | A failing result; record it |
 | `SAIL7110` | Repair gate: invalid M6 baseline sample | Read the baseline's stderr |
+
+## Native benchmark host helper
+
+| Code | Meaning | What to do |
+|---|---|---|
+| `SAIL9001` | `scripts/perf-host.sh down` could not verify termination or complete resource cleanup; recorded lane files are retained | Read the AWS error, refresh authentication or permissions as needed, then retry the same `down LANE`. A successful waiter must also be followed by a confirmed terminated/absent instance before resource deletion |

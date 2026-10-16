@@ -224,7 +224,21 @@ solver-side remainder. Edit loops agree.
 
 The levers that matter now:
 - **The warm Verus frontend** (the charter roadmap item).
-  - The M8.0 gate failed on the reference host. Unchanged-bucket work is
+  - The [larger-project profile](reports/2026-10-16-warm-frontend.md) is recorded.
+    A read-only pruning candidate passes a bounded native A/B query comparison;
+    its overall edit gain is inconclusive and runtime qualification is pending.
+    The raw memo key misses ordinary edits,
+    so persistent reuse remains unimplemented (proposed ADR 0052).
+    A disabled observer on combined `8a373f81` builds, but the first native
+    capture refuses truncated SST. The single bounded capacity revision
+    completes the selected captures; complete-key and diagnostic boundaries
+    remain unqualified. Lossless analysis finds packed span-position changes
+    across edits and an unchanged IronKV external-function order reversal.
+    A dependency-patcher no-op means original project macros were used;
+    corrected full-source/actual-resolution project captures await native
+    execution. The Sail research harness passes its native workspace gate and
+    all command/capture/analysis controls; this does not qualify frontend reuse.
+  - The earlier M8.0 gate failed on the reference host. Unchanged-bucket work is
     9–12% of the median edit cycle (gate: 25%), so the hermetic bucket memo
     (M8.1) does not proceed.
   - With 7 Verus threads it is 18–27%.
@@ -294,9 +308,13 @@ oyster and such." This supersedes the parallel tracks of
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
       real projects caps every other lever.
-   8. Jobs, watch and MCP fall back like `sail verify` (`SAIL3112`), #165.
+   8. Jobs, watch and MCP fall back like `sail verify` (`SAIL3112`), #165:
+      implemented; native gates and full fast/standard pass; required PR
+      checks are enforced separately ([validation](validation/fallback-parity.md)).
    9. B2, single-file `verus file.rs` projects, #164.
-   10. deep-rvt against the fork, #124.
+   10. deep-rvt against the fork, #124: exact fork and retained stock
+       control arms implemented; native acceptance pending
+       ([guide](deep-verus-tests.md)).
    11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.
 
    B1 (a verified vstd shared across projects and worktrees, beyond the

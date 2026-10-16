@@ -40,6 +40,8 @@ exactness experiment; no continuation implementation is selected.
 The [source-suite integrity record](validation/source-suite-integrity.md) tracks
 executable digests, legacy-manifest migration and native rebuild controls.
 
+[Deep Verus checks](deep-verus-tests.md) explains the fork and stock source
+variants, exact shim comparisons and the independent stock test-program oracle.
 [Releasing](releasing.md) gives the release procedure, the archive names and
 layout, and how `sail` finds the bundled engine.
 [Managed runs](managed-cold-start.md) explains what the first managed run costs
@@ -85,7 +87,11 @@ M7 rescue's decisions; the rescue review and lane reports are kept in the tag
 `archive/rescue-m7-98f6292`. The
 [new-user walkthrough](reports/2026-10-13-new-user-walkthrough.md) and
 [roadmap review](reports/2026-10-13-roadmap-review.md) are the current inputs
-to planning. The [verification runtime scope](scope/verification-runtime.md)
+to planning. The [warm frontend profile](reports/2026-10-16-warm-frontend.md)
+records the current floor, failed Anvil scope and bounded native compiler
+comparison; its [qualification record](validation/warm-frontend.md)
+distinguishes the research checks from pending runtime acceptance.
+The [verification runtime scope](scope/verification-runtime.md)
 records the owner's direction for releases after 0.1.0.
 
 [Verus issues](verus-issues/README.md) contain local reproductions and workarounds.
@@ -96,7 +102,9 @@ record discoveries in this repository.
 [Dependency-store stdout validation](validation/dependency-store-output.md) records the rc.5 output defect and its correction.
 
 [Native source-sync validation](validation/host-source-sync.md) records source
-content and timestamp controls for the EC2 host helpers.
+content and timestamp controls for the EC2 host helpers. The
+[Linux teardown record](validation/perf-host-teardown.md) covers retained
+recovery state and termination-before-cleanup controls.
 
 The [Cargo target-context record](validation/cargo-target-context.md) covers
 owned metadata selection, source-directory coverage, and declared environment
