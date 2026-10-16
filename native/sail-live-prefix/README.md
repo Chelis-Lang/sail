@@ -236,3 +236,10 @@ window is an explicit failed control. Kernel identity, actual task flags,
 all attempts and the original read errors are retained. Linux v6.8 source
 explains the ordering; it is not asserted to be the actual host kernel. No
 corrected trace result or acceptance follows before native qualification.
+
+Every native lifecycle-control attempt retains bounded raw stdout/stderr,
+including consumed readiness bytes, startup failures, negative controls and
+actual post-cleanup status. Each stream is capped at 64 KiB; overflow/read
+failure/EOF timeout is explicit and fails that control. Actual owned-child
+startup/post-readiness diagnostic fixtures exercise this capture locally,
+with the Linux image guard and worker explicitly doubled.

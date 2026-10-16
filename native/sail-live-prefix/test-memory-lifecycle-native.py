@@ -61,6 +61,23 @@ def main():
             records=records, checks=checks,
             all_pass=bool(checks) and all(row['passed'] for row in checks)), indent=2) + '\n')
 
+    def drain_tail(stream):
+        """Bound post-cleanup capture; never wait indefinitely on inherited pipes."""
+        data = bytearray()
+        deadline = time.monotonic() + 2
+        os.set_blocking(stream.fileno(), False)
+        while len(data) <= 65536 and time.monotonic() < deadline:
+            try:
+                block = os.read(stream.fileno(), min(65537 - len(data), 65536))
+            except BlockingIOError:
+                select.select([stream], [], [], max(0, deadline - time.monotonic()))
+                continue
+            if not block:
+                return bytes(data), None
+            data.extend(block)
+        return bytes(data[:65536]), ('capture exceeded65536bytes' if len(data) > 65536
+                                    else 'capture EOF deadline exceeded')
+
     def one(case, progressing=False):
         if time.monotonic() >= control_deadline:
             row = dict(case=case, control_error='whole-control90second deadline exceeded')
@@ -70,18 +87,21 @@ def main():
                                  stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         pidfd = image = held = None
         row = dict(case=case, pid=child.pid)
+        ready = bytearray()
+        stdout_tail = stderr_tail = None
         records.append(row)
         try:
-            ready = bytearray()
             ready_deadline = min(control_deadline, time.monotonic() + 10)
             while b'\n' not in ready:
                 remaining = ready_deadline - time.monotonic()
                 if remaining <= 0 or not select.select([child.stdout], [], [], max(0, remaining))[0]:
                     raise TimeoutError('owned child readiness deadline')
                 block = os.read(child.stdout.fileno(), 32)
-                if not block or len(ready) + len(block) > 32:
+                if not block:
                     raise ValueError('invalid owned child readiness output')
                 ready.extend(block)
+                if len(ready) > 32:
+                    raise ValueError('invalid owned child readiness output')
             assert bytes(ready) == b'ready\n'
             pidfd, image, stamp = capture_running_image(child.pid, expected)
             identity = lifecycle.bind_task_identity(child.pid, pidfd)
@@ -132,17 +152,45 @@ def main():
             if case.startswith('live-'):
                 row['alive_after_refusal'] = child.poll() is None
             if row['observation']['terminal_race']:
-                row['stdout_remainder'], row['stderr'] = [data.decode('utf-8') for data in child.communicate(timeout=2)]
+                stdout_tail, stderr_tail = child.communicate(timeout=2)
+                row['stdout_remainder'], row['stderr'] = stdout_tail.decode('utf-8'), stderr_tail.decode('utf-8')
                 assert not row['stdout_remainder'] and not row['stderr'] and child.returncode == 0
                 row.update(complete_io=True, actual_exit=child.returncode)
             return row
         except BaseException as error:
+            if isinstance(error, subprocess.TimeoutExpired):
+                stdout_tail, stderr_tail = error.output, error.stderr
             row['control_error'] = type(error).__name__ + ': ' + str(error)
             return row
         finally:
-            if child.poll() is None:
-                child.kill()
-            child.wait(timeout=2)
+            try:
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=2)
+            except (OSError, subprocess.SubprocessError) as error:
+                row['control_error'] = row.get('control_error', '') + '; owned cleanup: ' + type(error).__name__ + ': ' + str(error)
+            row['cleanup_actual_exit'] = child.returncode
+            for name, stream, consumed in [('stdout', child.stdout, bytes(ready) + (stdout_tail or b'')),
+                                           ('stderr', child.stderr, stderr_tail or b'')]:
+                errors = []
+                tail = b''
+                if not stream.closed:
+                    try:
+                        tail, error = drain_tail(stream)
+                        if error:
+                            errors.append(error)
+                    except (OSError, ValueError) as error:
+                        errors.append(type(error).__name__ + ': ' + str(error))
+                data = consumed + tail
+                if len(data) > 65536:
+                    errors.append('capture exceeded65536bytes')
+                    data = data[:65536]
+                target = args.out / (case + '.' + name)
+                target.write_bytes(data)
+                row[name + '_capture'] = dict(path=target.name, bytes=len(data),
+                    sha256=hashlib.sha256(data).hexdigest(), errors=errors)
+                if errors:
+                    row['control_error'] = row.get('control_error', '') + '; ' + name + ' capture: ' + '; '.join(errors)
             for stream in [child.stdin, child.stdout, child.stderr]:
                 stream.close()
             for fd in [held, image, pidfd]:
