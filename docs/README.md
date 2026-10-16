@@ -123,3 +123,5 @@ main checks.
 
 - [Managed Cargo selection qualification](validation/managed-selection-family.md):
   candidate dependency-artifact sharing, observations and pending native gates.
+[Unscheduled-script validation](validation/unscheduled-script-cleaning.md) records
+exact-input scheduling memo controls, native fixture measurements and remaining tiers.

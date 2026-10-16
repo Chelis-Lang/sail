@@ -31,7 +31,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   baseline-must-pass check remain unchanged. See the
   [validation record](validation/rvt-progress-option.md).
 
-- **A combined-output disagreement remains unresolved** ([#174](https://github.com/Chelis-Lang/sail/issues/174)).
+- **A combined-output disagreement remains unresolved** ([#215](https://github.com/Chelis-Lang/sail/issues/215)).
   The native memo candidate's original E2E run reordered the project summary
   and Cargo error relative to plain Verus. Cause unknown; the old trap removed
   the complete temporary streams. A bounded three-arm reproduction matched
@@ -80,6 +80,16 @@ are in the `archive/m7-contracts-f7103bf` tag.
   draft asset is unchanged. Cache/package overlap in either direction remains
   an unsupported setup, taking SAIL3112 fallback without Current proof state.
   See the [validation record](validation/cargo-target-context.md).
+
+- **Unscheduled script cleaning can rebuild a same-name version** (#174).
+  The held PR #197 candidate memoizes only successful Current scheduling under
+  identical full inputs. Older Mac/native checks and a targeted 0.94 s to
+  0.20 s unchanged fixture gain remain historical scope; a later native E2E
+  ordering failure stays unresolved. The current-main rebase is source-only,
+  with current gates and full FAST/STANDARD pending ([record](validation/unscheduled-script-cleaning.md)). Source edits and unknown selection closures
+  (including `--workspace`) still take conservative cleaning. Cargo
+  1.99 also cleans both versions when given an exact version/package ID
+  ([reproduction](../corpus/repros/cargo-clean-package-versions/README.md)).
 
 - **Vest repair is about 1.8× M6, below the 2× figure.** The owner accepted
   M7's speed as measured (ADR 0038 amendment 2026-10-13). On the `13a1176c`
