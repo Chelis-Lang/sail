@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Solver-side edit cost through sail-z3, with and without solver snapshots.
 
-Prototype evidence for ADR 0049 (draft). Replays Verus solver transcripts
+Prototype evidence for ADR 0051 (draft). Replays Verus solver transcripts
 (`<id>.in.smt2` from SAIL_TRACE_DIR) through `sail-z3` against a fresh cache
 daemon, the way an edit loop does:
 
@@ -97,7 +97,8 @@ def main():
     env.update(SAIL_Z3_PATH=a.z3, SAIL_DAEMON_SOCKET=sock, SAIL_PROVENANCE_DIR=prov)
     if a.lib:
         env.update(SAIL_SNAPSHOT_LIB=a.lib, SAIL_SNAPSHOT_DIR=snapdir, SAIL_SNAPSHOT_GAP_MS=a.gap_ms,
-                   SAIL_SNAPSHOT_TTL_S="3600", SAIL_SNAPSHOT_MAX_PARKED="100000")
+                   SAIL_SNAPSHOT_TTL_S="3600", SAIL_SNAPSHOT_MAX_PARKED="256",
+                   SAIL_SNAPSHOT_MAX_BYTES="536870912")
     shim = os.path.join(a.sail, "sail-z3")
 
     def through_shim(data):

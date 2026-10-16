@@ -12,8 +12,9 @@
 use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::net::Shutdown;
+use std::os::fd::OwnedFd;
 use std::os::unix::net::UnixStream;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Child, ChildStdin, Command, ExitCode, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -299,7 +300,7 @@ impl Pairer {
 /// Where the solver's input goes.
 enum Feed {
     Pipe(ChildStdin),
-    /// A resumed snapshot's connection (prototype, ADR 0049 draft).
+    /// A resumed snapshot's connection (prototype, ADR 0051 draft).
     Sock(UnixStream),
 }
 
@@ -340,11 +341,6 @@ impl Proc {
 /// Whether snapshot markers may be sent to this solver.
 enum Marking {
     Off,
-    /// Until the library confirms it loaded (it creates `ready`).
-    Pending {
-        ready: PathBuf,
-        deadline: Instant,
-    },
     On,
 }
 
@@ -358,7 +354,7 @@ struct Candidate {
     name: String,
 }
 
-/// Snapshot state of a session (prototype, ADR 0049 draft).
+/// Snapshot state of a session (prototype, ADR 0051 draft).
 struct Snap {
     cfg: sail_api::snapshot::Config,
     candidates: Vec<Candidate>,
@@ -621,9 +617,19 @@ fn start_solver(
 ) -> Option<Solving> {
     // Observation failure must not prevent replay: inherit solver stderr and
     // disable publication when its silence cannot be established.
-    let (stderr, child_stderr) = crate::cached_stderr::Monitor::new()
-        .map_or_else(|_| (None, Stdio::inherit()), |(m, io)| (Some(m), io));
-    let client = stderr.as_ref().and(client);
+    // Preload loader failures belong to the abandoned setup attempt. Defer
+    // forwarding its stderr until the framing handshake has succeeded.
+    let (mut stderr, child_stderr, pending_stderr) = if snap.is_some() {
+        let Ok((reader, writer)) = UnixStream::pair() else {
+            return start_solver(solver, args, skip, first, client, None);
+        };
+        (None, Stdio::from(OwnedFd::from(writer)), Some(reader))
+    } else {
+        crate::cached_stderr::Monitor::new().map_or_else(
+            |_| (None, Stdio::inherit(), None),
+            |(monitor, io)| (Some(monitor), io, None),
+        )
+    };
     let mut cmd = Command::new(solver);
     cmd.args(args)
         .stdin(Stdio::piped())
@@ -638,17 +644,41 @@ fn start_solver(
                 .dir
                 .join(format!(".ready-{}-{nanos}", std::process::id()));
             cmd.envs(cfg.solver_env(&ready));
-            (
-                Marking::Pending {
-                    ready,
-                    deadline: Instant::now() + Duration::from_millis(300),
-                },
-                marks,
-            )
+            (Some(ready), marks)
         }
-        None => (Marking::Off, VecDeque::new()),
+        None => (None, VecDeque::new()),
     };
     let mut child = cmd.spawn().ok()?;
+    // Never send escaped input to an uninstrumented or incompatible solver,
+    // nor raw input to an armed library. Restart plainly before any input if
+    // the versioned handshake is unavailable.
+    let marking = if let Some(ready) = marking {
+        let deadline = Instant::now() + Duration::from_millis(300);
+        while std::fs::read(&ready).ok().as_deref() != Some(sail_api::snapshot::READY)
+            && Instant::now() < deadline
+        {
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let loaded = std::fs::read(&ready).ok().as_deref() == Some(sail_api::snapshot::READY);
+        let _ = std::fs::remove_file(ready);
+        if !loaded {
+            let _ = child.kill();
+            let _ = child.wait();
+            return start_solver(solver, args, skip, first, client, None);
+        }
+        Marking::On
+    } else {
+        Marking::Off
+    };
+    if let Some(reader) = pending_stderr {
+        let Ok(monitor) = crate::cached_stderr::Monitor::from_stream(reader) else {
+            let _ = child.kill();
+            let _ = child.wait();
+            return start_solver(solver, args, skip, first, client, None);
+        };
+        stderr = Some(monitor);
+    }
+    let client = stderr.as_ref().and(client);
     let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
         let _ = child.kill();
         let _ = child.wait();
@@ -816,22 +846,7 @@ impl Solving {
     /// Whether markers may be sent; waits briefly for the library to confirm
     /// that it loaded, since an unstripped marker would reach the solver.
     fn marking_on(&mut self) -> bool {
-        loop {
-            match &self.marking {
-                Marking::On => return true,
-                Marking::Off => return false,
-                Marking::Pending { ready, deadline } => {
-                    if ready.exists() {
-                        let _ = std::fs::remove_file(ready);
-                        self.marking = Marking::On;
-                    } else if Instant::now() >= *deadline {
-                        self.marking = Marking::Off;
-                    } else {
-                        std::thread::sleep(Duration::from_millis(1));
-                    }
-                }
-            }
-        }
+        matches!(self.marking, Marking::On)
     }
 
     /// Writes `raw[written..end]`, with a snapshot marker before each point.
@@ -846,7 +861,11 @@ impl Solving {
             };
             if stop > self.written {
                 let bytes = raw.get(self.written..stop).unwrap_or_default().to_vec();
-                self.send(&bytes);
+                if self.marking_on() {
+                    self.send(&sail_api::snapshot::frame(&bytes));
+                } else {
+                    self.send(&bytes);
+                }
                 self.written = stop;
             }
             match self.marks.front() {
@@ -867,9 +886,6 @@ impl Solving {
         let _ = self.expects.send(Expect::Terminal(terminal));
         if let Some(feed) = self.stdin.take() {
             feed.close();
-        }
-        if let Marking::Pending { ready, .. } = &self.marking {
-            let _ = std::fs::remove_file(ready);
         }
         drop(self.expects);
         ExitCode::from(self.output.join().unwrap_or(1))

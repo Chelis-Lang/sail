@@ -1,6 +1,6 @@
 //! `sail-bench snapshot-exactness`: is a resumed solver snapshot exact?
 //!
-//! Prototype evidence for ADR 0049 (draft). For each solver input transcript
+//! Prototype evidence for ADR 0051 (draft). For each solver input transcript
 //! (`<id>.in.smt2` from a shim trace, `SAIL_TRACE_DIR`), it runs the pinned
 //! Z3:
 //! 1. **fresh**: unmodified, on the whole input (the reference);
@@ -73,10 +73,11 @@ pub struct Cmp {
 }
 
 impl Cmp {
-    /// True when every reply matched once masked, and the counts agree.
+    /// True only when every reply is byte-identical and the counts agree.
+    /// Masked statistics are exploratory evidence, never exact acceptance.
     #[must_use]
     pub fn exact(&self) -> bool {
-        self.same_count && self.differ == 0
+        self.same_count && self.differ == 0 && self.masked_identical == 0
     }
 }
 
@@ -422,7 +423,8 @@ fn one(o: &Options, file: &Path, tag: usize) -> FileReport {
     marked
         .args(&args)
         .env(preload, &o.lib)
-        .env("SAIL_SNAP_DIR", &o.dir)
+        .env("SAIL_SNAP_DIR_V2", &o.dir)
+        .env("SAIL_SNAP_FRAMING", "2")
         .env("SAIL_SNAP_TTL_S", "900");
     let (marked_out, secs) = match run(marked, marked_input) {
         Ok(v) => v,
@@ -461,11 +463,15 @@ fn with_markers(input: &[u8], pts: &[(usize, usize)], names: &[String]) -> Vec<u
     let mut marked = Vec::with_capacity(input.len() + 16 * pts.len());
     let mut from = 0;
     for ((at, _), name) in pts.iter().zip(names) {
-        marked.extend_from_slice(input.get(from..*at).unwrap_or_default());
+        marked.extend_from_slice(&sail_api::snapshot::frame(
+            input.get(from..*at).unwrap_or_default(),
+        ));
         marked.extend_from_slice(&sail_api::snapshot::marker(name));
         from = *at;
     }
-    marked.extend_from_slice(input.get(from..).unwrap_or_default());
+    marked.extend_from_slice(&sail_api::snapshot::frame(
+        input.get(from..).unwrap_or_default(),
+    ));
     marked
 }
 
@@ -499,7 +505,7 @@ fn parked(dir: &Path, names: &[String]) -> (usize, Option<(u64, u64, u64)>) {
 fn resume_rest(dir: &Path, name: &str, rest: &[u8]) -> Result<(Vec<u8>, Option<i32>, f64), String> {
     let t = Instant::now();
     let resumed = sail_api::snapshot::resume(dir, name).map_err(|e| e.to_string())?;
-    let rest = rest.to_vec();
+    let rest = sail_api::snapshot::frame(rest);
     let mut w = resumed.io.try_clone().map_err(|e| e.to_string())?;
     let writer = std::thread::spawn(move || {
         let _ = w.write_all(&rest);
@@ -619,7 +625,7 @@ pub fn summary(reports: &[FileReport]) -> String {
     }
     let line = |label: &str, a: (usize, usize, usize, usize, usize, usize)| {
         format!(
-            "{label}: {} of {} runs exact; replies {} compared, {} identical, {} identical when masked, {} different\n",
+            "{label}: {} of {} runs byte-exact; replies {} compared, {} identical, {} identical when masked, {} different\n",
             a.1, a.0, a.2, a.3, a.4, a.5
         )
     };
@@ -643,7 +649,18 @@ pub fn summary(reports: &[FileReport]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{chosen, mask, points, replies};
+    use super::{chosen, compare, mask, points, replies};
+
+    #[test]
+    fn masked_statistics_never_establish_byte_exactness() {
+        let compared = compare(
+            &[b"(:num-allocs 1)\n".to_vec()],
+            &[b"(:num-allocs 2)\n".to_vec()],
+        );
+        assert_eq!(compared.masked_identical, 1);
+        assert!(!compared.exact());
+        assert!(compare(&[b"unsat\n".to_vec()], &[b"unsat\n".to_vec()]).exact());
+    }
 
     #[test]
     fn masks_only_time_and_memory() {

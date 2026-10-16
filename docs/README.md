@@ -79,3 +79,7 @@ records the owner's direction for releases after 0.1.0.
 [Survey documents](survey/README.md) retain Verus/Z3 protocol, solver behavior,
 corpus and prior-art research. Upstream reports are a human decision; agents
 record discoveries in this repository.
+
+The [solver snapshot prototype](reports/2026-10-16-solver-snapshots.md) and
+[validation record](validation/solver-snapshots.md) distinguish exploratory
+edit-cost results from the still-pending raw-output qualification (ADR 0051).

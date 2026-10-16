@@ -32,7 +32,7 @@
 #   sail         sail verify
 #   incremental  sail verify --incremental
 #   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK first on PATH
-#   snap         sail verify with exact solver snapshots (prototype, ADR 0049
+#   snap         sail verify with exact solver snapshots (prototype, ADR 0051
 #                draft): SAIL_PERF_SNAPSHOT_LIB names the sail-snap library;
 #                SAIL_PERF_SNAPSHOT_GAP_MS (default 1000) the solver time
 #                between snapshots. Parked snapshots and their memory (Linux
@@ -449,7 +449,8 @@ run_mode() { # ROUND MODE
     : "${SAIL_PERF_SNAPSHOT_LIB:?snap mode needs SAIL_PERF_SNAPSHOT_LIB}"
     export SAIL_SNAPSHOT_LIB="$SAIL_PERF_SNAPSHOT_LIB" SAIL_SNAPSHOT_DIR="$out/r$round/sn"
     export SAIL_SNAPSHOT_GAP_MS="${SAIL_PERF_SNAPSHOT_GAP_MS:-1000}" SAIL_SNAPSHOT_TTL_S=7200
-    export SAIL_SNAPSHOT_MAX_PARKED="${SAIL_PERF_SNAPSHOT_MAX_PARKED:-100000}"
+    export SAIL_SNAPSHOT_MAX_PARKED="${SAIL_PERF_SNAPSHOT_MAX_PARKED:-256}"
+    export SAIL_SNAPSHOT_MAX_BYTES="${SAIL_PERF_SNAPSHOT_MAX_BYTES:-536870912}"
     rm -rf "$SAIL_SNAPSHOT_DIR"; mkdir -p "$SAIL_SNAPSHOT_DIR"
   fi
   run_one "$round" "$mode" "$dir" cold
@@ -470,7 +471,7 @@ run_mode() { # ROUND MODE
   if [ -n "${SAIL_SNAPSHOT_DIR:-}" ]; then
     # Removing the sockets evicts every parked snapshot.
     rm -rf "$SAIL_SNAPSHOT_DIR"
-    unset SAIL_SNAPSHOT_LIB SAIL_SNAPSHOT_DIR SAIL_SNAPSHOT_GAP_MS SAIL_SNAPSHOT_TTL_S SAIL_SNAPSHOT_MAX_PARKED
+    unset SAIL_SNAPSHOT_LIB SAIL_SNAPSHOT_DIR SAIL_SNAPSHOT_GAP_MS SAIL_SNAPSHOT_TTL_S SAIL_SNAPSHOT_MAX_PARKED SAIL_SNAPSHOT_MAX_BYTES
   fi
   sleep 1
   unset SAIL_CACHE_DIR

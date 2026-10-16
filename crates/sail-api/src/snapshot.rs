@@ -1,4 +1,4 @@
-//! Client side of exact solver snapshots (prototype, ADR 0049 draft).
+//! Client side of exact solver snapshots (prototype, ADR 0051 draft).
 //!
 //! A snapshot is a parked copy of a pinned Z3 process, forked by the
 //! `sail-snap` preload library (`native/sail-snap/sail_snap.c`) at the moment
@@ -9,7 +9,7 @@
 //!
 //! The wire protocol is the library's: three connections to the snapshot's
 //! Unix socket, each starting with a fixed 29-byte header
-//! `SAILSNAP1 <role> <16 hex nonce>\n` (roles `i` for stdin and stdout, `e`
+//! `SAILSNAP2 <role> <16 hex nonce>\n` (roles `i` for stdin and stdout, `e`
 //! for stderr, `s` for the exit status).
 //!
 //! Status: prototype on branch `perf/solver-snapshots`; off unless
@@ -38,7 +38,13 @@ pub const ENV_SNAPSHOT_TTL_S: &str = "SAIL_SNAPSHOT_TTL_S";
 pub const ENV_SNAPSHOT_MAX_PARKED: &str = "SAIL_SNAPSHOT_MAX_PARKED";
 
 /// Version of the snapshot naming and protocol, bound into every name.
-const VERSION: &[u8] = b"sail-snapshot/v1";
+const VERSION: &[u8] = b"sail-snapshot/v2";
+
+/// The preload library must acknowledge this framing before receiving input.
+pub const READY: &[u8] = b"sail-snap/2\n";
+
+/// Upper bound on the aggregate resident bytes reserved for parked snapshots.
+pub const ENV_SNAPSHOT_MAX_BYTES: &str = "SAIL_SNAPSHOT_MAX_BYTES";
 
 /// Snapshot configuration from the environment.
 #[derive(Debug, Clone)]
@@ -53,6 +59,8 @@ pub struct Config {
     pub ttl_s: Option<String>,
     /// Parked snapshots kept.
     pub max_parked: usize,
+    /// Aggregate parked resident-byte limit (a conservative RSS budget).
+    pub max_bytes: u64,
 }
 
 impl Config {
@@ -88,6 +96,9 @@ impl Config {
             max_parked: var(ENV_SNAPSHOT_MAX_PARKED)
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(256),
+            max_bytes: var(ENV_SNAPSHOT_MAX_BYTES)
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(512 * 1024 * 1024),
         })
     }
 
@@ -103,10 +114,19 @@ impl Config {
         let mut env = vec![
             (preload.to_owned(), self.lib.clone().into_os_string()),
             (
-                "SAIL_SNAP_DIR".to_owned(),
+                "SAIL_SNAP_DIR_V2".to_owned(),
                 self.dir.clone().into_os_string(),
             ),
             ("SAIL_SNAP_READY".to_owned(), ready.as_os_str().to_owned()),
+            ("SAIL_SNAP_FRAMING".to_owned(), "2".into()),
+            (
+                "SAIL_SNAP_MAX_PARKED".to_owned(),
+                self.max_parked.to_string().into(),
+            ),
+            (
+                "SAIL_SNAP_MAX_BYTES".to_owned(),
+                self.max_bytes.to_string().into(),
+            ),
         ];
         if let Some(g) = &self.gap_ms {
             env.push(("SAIL_SNAP_GAP_MS".to_owned(), g.into()));
@@ -140,9 +160,8 @@ impl Config {
         let excess = socks.len() - self.max_parked;
         for (_, path) in socks.into_iter().take(excess) {
             let _ = std::fs::remove_file(&path);
-            let mut pid = path.into_os_string();
-            pid.push(".pid");
-            let _ = std::fs::remove_file(pid);
+            // The parked process may still be alive (or serving a resume).
+            // Keep its pid record until the admission guard observes death.
         }
     }
 }
@@ -171,6 +190,15 @@ pub fn marker(name: &str) -> Vec<u8> {
     m.extend_from_slice(name.as_bytes());
     m.push(0);
     m
+}
+
+/// Lossless data framing: a genuine NUL is doubled, distinct from a marker.
+#[must_use]
+pub fn frame(bytes: &[u8]) -> Vec<u8> {
+    bytes
+        .iter()
+        .flat_map(|&byte| std::iter::once(byte).chain((byte == 0).then_some(0)))
+        .collect()
 }
 
 /// How long a parked snapshot may take to acknowledge a resume.
@@ -217,7 +245,7 @@ pub fn resume(dir: &Path, name: &str) -> std::io::Result<Resumed> {
     let n = nonce();
     let open = |role: char| -> std::io::Result<UnixStream> {
         let mut s = UnixStream::connect(&path)?;
-        s.write_all(format!("SAILSNAP1 {role} {n}\n").as_bytes())?;
+        s.write_all(format!("SAILSNAP2 {role} {n}\n").as_bytes())?;
         Ok(s)
     };
     let io = open('i')?;
@@ -248,7 +276,7 @@ pub fn read_status(mut status: UnixStream) -> Option<i32> {
 
 #[cfg(test)]
 mod tests {
-    use super::{marker, name};
+    use super::{frame, marker, name};
     use sail_key::QueryKey;
 
     #[test]
@@ -267,5 +295,15 @@ mod tests {
     #[test]
     fn markers_are_nul_delimited() {
         assert_eq!(marker("sab"), b"\0sab\0");
+    }
+
+    #[test]
+    fn framing_preserves_every_byte_and_distinguishes_marker_shaped_data() {
+        let raw: Vec<u8> = (0..=255).collect();
+        let encoded = frame(&raw);
+        assert_eq!(&encoded[..3], &[0, 0, 1]);
+        assert_eq!(&encoded[3..], &raw[2..]);
+        assert_eq!(frame(b"\0sab\0"), b"\0\0sab\0\0");
+        assert_eq!(frame(b"\0\0"), b"\0\0\0\0");
     }
 }

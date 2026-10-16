@@ -1,7 +1,7 @@
 /*
  * sail-snap: exact solver snapshots by fork, without changing the solver.
  *
- * PROTOTYPE (lane M11-2, ADR 0049 draft). Loaded into the pinned, unmodified
+ * PROTOTYPE (lane M11-2, ADR 0051 draft). Loaded into the pinned, unmodified
  * Z3 with LD_PRELOAD (Linux) or DYLD_INSERT_LIBRARIES (macOS). Z3 reads its
  * `-smt2 -in` input one character at a time through `getc(stdin)` (libstdc++
  * `stdio_sync_filebuf`, libc++ `__stdinbuf`); this library interposes
@@ -16,7 +16,7 @@
  * `$SAIL_SNAP_DIR/<name>` and parks.
  *
  * Resume. A client connects three times to the socket, each connection
- * starting with a fixed 29-byte header `SAILSNAP1 <role> <16 hex nonce>\n`,
+ * starting with a fixed 29-byte header `SAILSNAP2 <role> <16 hex nonce>\n`,
  * roles `i` (stdin and stdout), `e` (stderr) and `s` (status). The parked
  * process forks again: the new child takes the connections as fds 0, 1 and 2,
  * drops the stdio read-ahead it inherited, and returns from `getc` with the
@@ -30,7 +30,7 @@
  * seconds idle, or when their socket file is removed or replaced (eviction).
  *
  * Environment (read once, at load):
- *   SAIL_SNAP_DIR     directory for snapshot sockets; unset: inert (no
+ *   SAIL_SNAP_DIR_V2  directory for snapshot sockets; unset: inert (no
  *                     marker is ever expected)
  *   SAIL_SNAP_READY   file created at load, so the client knows markers will
  *                     be stripped before it sends any
@@ -41,6 +41,7 @@
  */
 #define _GNU_SOURCE
 #include <dlfcn.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -50,6 +51,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -59,6 +61,8 @@
 #include <unistd.h>
 #ifdef __linux__
 #include <stdio_ext.h>
+#else
+#include <libproc.h>
 #endif
 
 #define NAME_MAX_LEN 96
@@ -71,7 +75,11 @@ static char snap_dir[512];
 static long gap_ms;
 static long ttl_s = 1800;
 static long max_snaps = 4096;
+static long max_parked = 256;
+static uint64_t max_bytes = 512ULL * 1024 * 1024;
 static long taken;
+static pid_t owned_snapshots[4096];
+static size_t owned_count;
 static int64_t last_mark_ms;
 static int pushed = -1; /* one character of ungetc pushback on stdin */
 
@@ -100,18 +108,26 @@ __attribute__((constructor)) static void sail_snap_init(void) {
     real_getc = getc; /* not interposed inside the interposing image */
     real_ungetc = ungetc;
 #endif
-    const char *dir = getenv("SAIL_SNAP_DIR");
+    const char *framing = getenv("SAIL_SNAP_FRAMING");
+    const char *dir = getenv("SAIL_SNAP_DIR_V2");
+    if (!framing || strcmp(framing, "2") != 0) return;
     if (!real_getc || !real_ungetc || !dir || !*dir || strlen(dir) >= sizeof snap_dir) return;
     strcpy(snap_dir, dir);
     gap_ms = env_long("SAIL_SNAP_GAP_MS", 0);
     ttl_s = env_long("SAIL_SNAP_TTL_S", 1800);
     max_snaps = env_long("SAIL_SNAP_MAX", 4096);
+    max_parked = env_long("SAIL_SNAP_MAX_PARKED", 256);
+    max_bytes = (uint64_t)env_long("SAIL_SNAP_MAX_BYTES", 512L * 1024 * 1024);
     last_mark_ms = now_ms();
     armed = 1;
     const char *ready = getenv("SAIL_SNAP_READY");
     if (ready && *ready) {
         int fd = open(ready, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
-        if (fd >= 0) close(fd);
+        if (fd >= 0) {
+            const char signature[] = "sail-snap/2\n";
+            (void)write(fd, signature, sizeof signature - 1);
+            close(fd);
+        }
     }
 }
 
@@ -145,7 +161,7 @@ static int read_header(int fd, char *role, char nonce[17]) {
     }
     struct timeval zero = {0, 0};
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &zero, sizeof zero);
-    if (memcmp(h, "SAILSNAP1 ", 10) != 0 || h[11] != ' ' || h[28] != '\n') return -1;
+    if (memcmp(h, "SAILSNAP2 ", 10) != 0 || h[11] != ' ' || h[28] != '\n') return -1;
     if (h[10] != 'i' && h[10] != 'e' && h[10] != 's') return -1;
     *role = h[10];
     memcpy(nonce, h + 12, 16);
@@ -193,7 +209,7 @@ static void become_resumed(int listen_fd, struct group *g, struct group *groups,
 }
 
 /* Runs in the snapshot (the forked child). Returns only in a resumed solver. */
-static void park(const char *name) {
+static void park(const char *name, int budget_fd, int ready_fd) {
     sigaction(SIGINT, NULL, &saved_int);
     sigaction(SIGTERM, NULL, &saved_term);
     sigaction(SIGHUP, NULL, &saved_hup);
@@ -214,7 +230,8 @@ static void park(const char *name) {
     int null = open("/dev/null", O_RDWR);
     if (null < 0) _exit(0);
     dup2(null, 0); dup2(null, 1); dup2(null, 2);
-    for (int fd = 3; fd < 1024; fd++) close(fd);
+    for (int fd = 3; fd < 1024; fd++)
+        if (fd != budget_fd && fd != ready_fd) close(fd);
     /* Output written before P has already been flushed by the parent. */
 #ifdef __linux__
     __fpurge(stdout);
@@ -246,7 +263,12 @@ static void park(const char *name) {
         int pn = snprintf(pidtext, sizeof pidtext, "%ld\n", (long)getpid());
         write_all(pfd, pidtext, (size_t)pn);
         close(pfd);
-    }
+    } else { unlink(path); _exit(0); }
+    /* Publication and the pid file are serialized across every solver in
+       this directory. The parent releases the lock only after this ack. */
+    write_all(ready_fd, "1", 1);
+    close(ready_fd);
+    close(budget_fd);
     ino_t ino = st.st_ino;
     dev_t dev = st.st_dev;
 
@@ -280,7 +302,6 @@ static void park(const char *name) {
         if ((evicted || expired) && nrun == 0) {
             if (!evicted) {
                 unlink(path);
-                unlink(pidpath);
             }
             _exit(0);
         }
@@ -341,19 +362,110 @@ static void park(const char *name) {
     }
 }
 
+/* RSS is deliberately more conservative than PSS: each parked process is
+   charged its entire resident image even when copy-on-write pages are shared.
+   A one-MiB reserve covers the bounded socket/control bookkeeping. Unreadable
+   process state refuses a fork, rather than treating it as zero memory. */
+static int resident_bytes(pid_t pid, uint64_t *bytes) {
+#ifdef __linux__
+    char path[64];
+    snprintf(path, sizeof path, "/proc/%ld/statm", (long)pid);
+    FILE *f = fopen(path, "r");
+    if (!f) return -1;
+    unsigned long long size, pages;
+    int ok = fscanf(f, "%llu %llu", &size, &pages) == 2;
+    fclose(f);
+    long page_size = sysconf(_SC_PAGESIZE);
+    if (!ok || page_size <= 0 || pages > UINT64_MAX / (uint64_t)page_size) return -1;
+    *bytes = pages * (uint64_t)page_size;
+#else
+    struct proc_taskinfo info;
+    if (proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &info, sizeof info) != (int)sizeof info) return -1;
+    *bytes = info.pti_resident_size;
+#endif
+    return 0;
+}
+
+static int within_budget(void) {
+    uint64_t proposed;
+    const uint64_t reserve = 1024 * 1024;
+    if (resident_bytes(getpid(), &proposed) != 0 || proposed > UINT64_MAX - reserve) return 0;
+    proposed += reserve;
+    long count = 0;
+    DIR *d = opendir(snap_dir);
+    if (!d) return 0;
+    struct dirent *entry;
+    int ok = 1;
+    while ((entry = readdir(d))) {
+        size_t n = strlen(entry->d_name);
+        if (n < 5 || strcmp(entry->d_name + n - 4, ".pid") != 0) continue;
+        char path[sizeof snap_dir + NAME_MAX_LEN + 8];
+        if (snprintf(path, sizeof path, "%s/%s", snap_dir, entry->d_name) >= (int)sizeof path) { ok = 0; break; }
+        FILE *f = fopen(path, "r");
+        long value = 0;
+        if (!f) { ok = 0; break; }
+        int parsed = fscanf(f, "%ld", &value) == 1 && value > 0 && value <= INT32_MAX;
+        fclose(f);
+        if (!parsed) { ok = 0; break; }
+        pid_t pid = (pid_t)value;
+        if (kill(pid, 0) < 0 && errno == ESRCH) { unlink(path); continue; }
+        uint64_t bytes;
+        if (resident_bytes(pid, &bytes) != 0 || bytes > UINT64_MAX - reserve || proposed > UINT64_MAX - bytes - reserve) { ok = 0; break; }
+        proposed += bytes + reserve;
+        count++;
+    }
+    closedir(d);
+    return ok && count < max_parked && proposed <= max_bytes;
+}
+
 static void snapshot(const char *name) {
     if (taken >= max_snaps) return;
+    for (size_t i = 0; i < owned_count;) {
+        pid_t got = waitpid(owned_snapshots[i], NULL, WNOHANG);
+        if (got > 0 || (got < 0 && errno == ECHILD)) owned_snapshots[i] = owned_snapshots[--owned_count];
+        else i++;
+    }
+    if (owned_count == sizeof owned_snapshots / sizeof owned_snapshots[0]) return;
     int64_t now = now_ms();
     if (gap_ms > 0 && now - last_mark_ms < gap_ms) return;
+    char lock_path[sizeof snap_dir + 32];
+    snprintf(lock_path, sizeof lock_path, "%s/.budget-lock", snap_dir);
+    int lock_fd = open(lock_path, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+    if (lock_fd < 0) return;
+    if (flock(lock_fd, LOCK_EX | LOCK_NB) != 0) { close(lock_fd); return; }
+    /* Never overwrite a live generation's pid record, even after eviction.
+       It remains charged until its process actually exits. */
+    char pid_path[sizeof snap_dir + NAME_MAX_LEN + 8];
+    snprintf(pid_path, sizeof pid_path, "%s/%s.pid", snap_dir, name);
+    FILE *existing = fopen(pid_path, "r");
+    if (existing) {
+        long pid = 0;
+        int parsed = fscanf(existing, "%ld", &pid) == 1 && pid > 0 && pid <= INT32_MAX;
+        fclose(existing);
+        if (!parsed || kill((pid_t)pid, 0) == 0 || errno != ESRCH) { close(lock_fd); return; }
+    } else if (errno != ENOENT) { close(lock_fd); return; }
+    if (!within_budget()) { close(lock_fd); return; }
+    int ready[2];
+    if (pipe(ready) != 0) { close(lock_fd); return; }
     fflush(stdout);
     pid_t pid = fork();
-    if (pid < 0) return;
+    if (pid < 0) { close(ready[0]); close(ready[1]); close(lock_fd); return; }
     if (pid > 0) {
+        close(ready[1]);
+        struct pollfd pfd = {ready[0], POLLIN, 0};
+        char ack;
+        int published = poll(&pfd, 1, 2000) > 0 && read(ready[0], &ack, 1) == 1 && ack == '1';
+        close(ready[0]);
+        if (!published) { kill(pid, SIGKILL); while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {} }
+        else owned_snapshots[owned_count++] = pid;
+        flock(lock_fd, LOCK_UN);
+        close(lock_fd);
         taken++;
         last_mark_ms = now;
         return;
     }
-    park(name); /* returns in a resumed solver */
+    close(ready[0]);
+    park(name, lock_fd, ready[1]); /* returns in a resumed solver */
 }
 
 /* ---- interposed stdin reads ---------------------------------------------- */
@@ -384,6 +496,7 @@ static int sail_getc(FILE *f) {
             else ok = 0;
         }
         name[n] = 0;
+        if (n == 0 && ok) return 0; /* escaped data NUL */
         if (ok && n > 0) snapshot(name);
     }
 }

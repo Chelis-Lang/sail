@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep the experimental solver-snapshot transport lossless for NUL input and
+  bound parked-process admission by count and resident memory. Missing preload
+  handshakes fall back before sending input. Masked statistics no longer count
+  as byte-exact comparisons. The prototype stays disabled by default.
+
 - **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).
   Per-obligation detail (op kinds, spans, per-check answers and cache
   provenance, counterexample models) needs Verus's AIR and SMT transcript
