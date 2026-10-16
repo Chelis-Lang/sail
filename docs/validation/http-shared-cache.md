@@ -72,6 +72,31 @@ evidence, not substitutes for the complete concurrent lookup checks.
 negative small-response TCP control and a fixed strict-signature CPU control.
 Neither establishes the cause of the preserved full-gate failures.
 
+### Setup-owner fixture (#102)
+
+The constructor/reload tests now configure their loopback endpoint explicitly.
+Their old automatic-discovery fixture could correctly return no setup owner
+when presence discovery exceeded its 100 ms bound; `wait_finished` then
+unwrapped `None`. This explains the setup-owner flake, independently of the
+unresolved HTTP serving timings below. Production discovery, constructor and
+serving deadlines are unchanged.
+
+A regression holds the real presence-read hook while preparing the fixture.
+The preceding fixture fails the owner assertion; the explicit fixture starts
+its constructor without entering discovery. All five constructor tests pass
+on macOS with the correction, preserving reload counts, zero requests,
+cancellation and the original bounds. The full macOS host check also passes
+(613 tests, 35 solver tests skipped); log SHA-256
+`e927dc092faeb696fb9e9520060f359bc4a6f3ebb22012f6432e3ea276cba829`.
+Native Linux qualification is pending.
+There is no verifier, solver, cache-key or corpus behavior change.
+
+Retained attempt: `0a7c1d0d` plus the regression, 2026-10-16, failed the
+owner assertion with discovery paused; raw log SHA-256
+`fca2764d7d2283d119a16d0da7ebe820d92886d6f731ff9c7cb0825946f38b18`.
+Corrected five-test log SHA-256:
+`0407208c222650b06281045c9124a91a2b813817de585270943c09db9cb0816c`.
+
 ## Current integration evidence
 
 Local HTTP controls and signature regressions retain the same 250 ms lookup
