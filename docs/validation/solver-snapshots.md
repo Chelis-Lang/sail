@@ -1,7 +1,9 @@
 # Solver snapshot prototype
 
-Status: local hardening checks pass; native Linux and raw-output acceptance
-pending. Disabled by default. No release uses this candidate.
+Status: disabled research prototypes, with no accepted implementation. The
+separately authorized timing-only one-use experiment has partial native
+evidence for IronKV and a retained Anvil RSS-observer refusal. No release uses
+these candidates. Historical C-snapshot checks below retain their original scope.
 
 Source: hardening immediately after `88076b62`, with native source
 `native/sail-snap/sail_snap.c` SHA-256
@@ -308,7 +310,7 @@ External driver-control manifests: corrected
 archived negative control
 `d6cf9f75774e5ce51b2233af2259d57279ce598b92b89045979f045205eba797`.
 
-### Numeric-time-only experiment: implemented, native pending
+### Numeric-time-only experiment: partial native evidence, pair blocked
 
 A separate opt-in research policy now permits differences only in numeric
 `:time` value tokens in complete top-level flat numeric statistics replies.
@@ -321,7 +323,7 @@ a default correctness claim or a shipped optimization.
 
 Local controls pass: 31 structural/streaming comparison cases, nine actual
 owned-child driver/core experiment cases, all eight original driver cases,
-ten whole real-trace parent-entry controls and two actual Entry readiness
+twelve whole real-trace parent-entry controls and two actual Entry readiness
 barriers. The initial experimental checkpoint incorrectly latched readiness
 when extra incomplete bytes arrived before claim; the owned-child barrier
 fails that checkpoint and passes after readiness is invalidated on every
@@ -332,6 +334,53 @@ other-statistic, verdict, model and stderr changes, equal nonzero exits,
 offline comparison of the preserved three-fresh-run bytes finds only permitted
 time-token differences for both selected projects. The original IronKV
 `ESRCH` and both original strict raw failures remain failures; this offline
-comparison is not a rerun or native qualification. Actual new-policy native
-fresh/live samples, latency/CPU measurements and source/runtime checks remain
-pending. No performance or issue-completion claim is made.
+comparison is not a rerun or native qualification. The subsequent native
+experiment below is separate evidence; it does not replace either failure.
+
+The first timing-only packet also omitted the fresh child process exit/error
+from its parent eligibility predicate. A true-looking child manifest followed
+by actual exit7 reproduced a false parent success in a controlled-child test.
+The corrected parent requires fresh exit0 and no retained process error before
+any live attempt. A second actual-child control retains exit0 plus a timeout
+observation and refuses it too. Native aggregate admission independently
+requires the recorded fresh process outcome. The original packet is rejected,
+and no native run used it.
+
+
+The native attempt used source `133b4721`, the fixed IronKV/Anvil trace pairs,
+and pinned Z3 4.16.0 (`e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765`)
+on one quiet `c7i.4xlarge` in `us-east-1`. The immutable payload SHA-256 is
+`3bced99d81c12aa1f23f9cab2f2ce87d398d0de25fb58e627a694c6d621b0caf`.
+All 28 native process/image/resource controls and the 31/8/9/12/2 parser,
+original-driver, experimental-driver, parent and readiness controls pass.
+Source, executable and runtime checks pass before and after execution.
+
+| Dataset | Actual result | Cost and limits |
+|---|---|---|
+| IronKV | Three fresh runs and one live continuation pass the named experimental policy; each returns 24 `unsat`, zero `sat`/`unknown` | One sample: 2.132 s preparation, 0.322 s foreground versus 2.196 s guarded fresh reference (6.83× foreground ratio); 2.171 s total solver CPU versus 2.167 s fresh CPU |
+| Anvil | Three fresh runs each return 9 `unsat`; non-time stdout bytes, stderr and exit status agree, but fresh run 0 records RSS-observer `ESRCH` on `smaps_rollup` | All three fresh runs remain retained, at 54.203/53.700/54.105 s; the error refuses eligibility and no live sample runs |
+
+IronKV's prepared and serving PID is identical, with native image guards,
+no fallback and no refusal. Its foreground reduction spends real preparation
+work and demonstrates no CPU saving, application speedup or achievable hit
+rate. Original exact-byte gate fields remain false when clock bytes differ.
+The selected-pair aggregate exits 1, with `qualified=false` and
+`selected=false`; Anvil's observer error remains a failure despite its exit 0
+and matching non-time responses. No selection, integration or shipping follows.
+
+External evidence in the timing-only native experiment set:
+
+| Artifact | SHA-256 |
+|---|---|
+| Native controls archive | `c8b8e768a6a756a5d235450b6eab261cb94eb9f21121fe319855424bb2654902` |
+| IronKV archive | `06fd98dad93fb47f1b514d6d5ca2cf95f890f2e1db4e3da0db8f5e82d0cbf70e` |
+| Anvil archive, refused | `243dbc83efb5401d5efe10c9c9a39a22cfa0dac54c171a4d9063e948cbee2606` |
+| Final archive, aggregate failed | `59fff5bb03ae54fda0a4b0b60aeb5e8ff1767a837d132f6c66b199137dff6938` |
+| Actual outcomes and cost summary | `7a00d113e3eb8073d2d75c1f47d4181853a2c9417504333843bbdea16e28ccf4` |
+
+Failed attempts remain indexed: `6001346c`, 2026-10-16, local owned-child
+readiness control fails on additional partial output; corrected by `ebbf09a5`.
+The `c3c99584` packet is rejected before native execution after an actual-child
+exit7 fixture exposes parent admission that trusted its manifest; corrected by
+`133b4721`. The native `133b4721` pair fails on the Anvil observer error above;
+no replacement fresh sample or Anvil continuation is substituted.

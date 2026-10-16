@@ -39,24 +39,28 @@ def main():
    common=['python3',str(src/'run.py'),'--z3',str(z3),'--solver-sha256',SOLVER,'--prefix',str(data/'prefix.smt2'),'--prefix-stdout',str(data/'prefix.stdout'),'--suffix',str(data/'suffix.smt2'),'--native-metrics','--preparation-window','300','--ttl','600','--run-timeout','300','--oracle-timeout','300','--fallback-timeout','300','--max-bytes',str(1024**3),'--max-input-bytes',str(16*1024**2)]
    if a.experiment_numeric_time_only:common+=['--experiment-numeric-time-only']
    freshout=a.out/(project+'-fresh');row=run(project+'-fresh',common+['--out',str(freshout),'--fresh-only','--fresh-runs','3']);fm=json.loads((freshout/'manifest.json').read_text());m['projects'][project]['fresh_exit']=row['exit'];m['projects'][project]['fresh_control_pass']=fm.get('fresh_control_pass',False)
-   strict_compatible=(fm.get('fresh_control_pass',False) and (freshout/'fresh-0.stdout').read_bytes().startswith((data/'prefix.stdout').read_bytes()))
+   fresh_process_pass=(row['exit']==0 and not row.get('error'))
+   m['projects'][project]['fresh_error']=row.get('error')
+   m['projects'][project]['fresh_process_pass']=fresh_process_pass
+   m['projects'][project]['fresh_control_pass']=fresh_process_pass and fm.get('fresh_control_pass',False)
+   strict_compatible=(m['projects'][project]['fresh_control_pass'] and (freshout/'fresh-0.stdout').read_bytes().startswith((data/'prefix.stdout').read_bytes()))
    m['projects'][project]['historical_prefix_compatible_strict']=strict_compatible
    if a.experiment_numeric_time_only:
     comparison=response_policy.compare_prefix((data/'prefix.stdout').read_bytes(),(freshout/'fresh-0.stdout').read_bytes())
     m['projects'][project]['historical_prefix_comparison']=comparison
-    eligible=fm.get('experiment_fresh_control_pass',False)
+    eligible=fresh_process_pass and fm.get('experiment_fresh_control_pass',False)
     compatible=eligible and comparison['prefix_equal_except_numeric_time']
     m['projects'][project]['experiment_fresh_control_pass']=eligible
    else:
-    eligible=fm.get('fresh_control_pass',False)
+    eligible=fresh_process_pass and fm.get('fresh_control_pass',False)
     compatible=strict_compatible
    m['projects'][project]['historical_prefix_compatible']=compatible
    if compatible:
-    liveout=a.out/(project+'-one-use');lr=run(project+'-one-use',common+['--out',str(liveout)]);lm=json.loads((liveout/'manifest.json').read_text());m['projects'][project]['one_use_exit']=lr['exit'];m['projects'][project]['candidate_gate_pass']=lm.get('candidate_gate_pass',False)
+    liveout=a.out/(project+'-one-use');lr=run(project+'-one-use',common+['--out',str(liveout)]);lm=json.loads((liveout/'manifest.json').read_text());m['projects'][project]['one_use_exit']=lr['exit'];m['projects'][project]['one_use_error']=lr.get('error');m['projects'][project]['candidate_gate_pass']=lm.get('candidate_gate_pass',False)
     experiment_pass=lm.get('experiment_candidate_gate_pass',False)
     m['projects'][project]['experiment_candidate_gate_pass']=experiment_pass
     gate=experiment_pass if a.experiment_numeric_time_only else lm.get('candidate_gate_pass',False)
-    if lr['exit'] or not gate:m['errors'].append(project+' one-use selected-policy gate failed')
+    if lr['exit'] or lr.get('error') or not gate:m['errors'].append(project+' one-use selected-policy gate failed')
    else:
     reason='selected-policy fresh/fresh gate failed (including any retained error)' if not eligible else 'historical expected prefix differs from complete guarded fresh output under selected policy'
     m['projects'][project]['one_use_skipped']=reason;m['errors'].append(project+' '+reason)

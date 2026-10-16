@@ -181,7 +181,9 @@ any skipped/refused project remains an explicit overall failure. Preparation,
 foreground latency, total/background CPU, RSS/PSS and all raw failures remain
 visible. This selected-pair experiment cannot establish a real application hit
 rate, default-mode equivalence, shipped acceptance or a performance win by
-itself. Native execution of this new policy remains pending.
+itself. The first native pair remains failed: IronKV has one successful guarded
+continuation, while Anvil records a fresh-run RSS-observer `ESRCH` and attempts
+no continuation. See the [actual scope and costs](../../docs/validation/solver-snapshots.md#numeric-time-only-experiment-partial-native-evidence-pair-blocked).
 
 The readiness regression drives an actual child through exact-prefix ready,
 extra incomplete output and a claim attempt; the claim must refuse before
@@ -194,3 +196,8 @@ image/RSS checks explicitly doubled.
 durable per-project checkpoint. Omission runs both. The aggregate native
 record must identify both datasets, every fresh/live refusal and any deferred
 scope; selection cannot silently turn a partial run into a completed pair.
+
+A child manifest never overrides its actual process outcome: fresh eligibility
+also requires recorded exit0 and no process error. The parent refuses a true
+manifest followed by actual exit7, or exit0 with a retained timeout observation,
+and preserves that failure before skipping live continuation.

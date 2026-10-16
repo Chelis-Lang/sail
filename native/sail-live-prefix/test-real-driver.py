@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+import subprocess
 from unittest.mock import patch
 
 sys.dont_write_bytecode = True
@@ -23,12 +24,12 @@ else:
  if case=='source-change':pathlib.Path('prefix-marker').write_text('changed')
  if case=='solver-change':pathlib.Path(os.environ['SAIL_TIME_TEST_SOLVER']).write_bytes(b'changed')
 (out/'manifest.json').write_text(json.dumps(m))
-raise SystemExit(7 if case=='live-exit' and not fresh else 0)
+raise SystemExit(7 if case=='live-exit' and not fresh or case=='fresh-nonzero' and fresh else 0)
 '''
 rows = []
 for case in ['experiment-pass', 'strict-default', 'fresh-error', 'wrong-prefix',
              'live-refused', 'live-exit', 'missing-experiment-field',
-             'source-change', 'solver-change', 'project-one']:
+             'source-change', 'solver-change', 'project-one', 'fresh-nonzero', 'fresh-timeout-exit0']:
     with tempfile.TemporaryDirectory(prefix='live real driver ') as td:
         root = Path(td)
         src = root / 'owned source'
@@ -68,6 +69,18 @@ for case in ['experiment-pass', 'strict-default', 'fresh-error', 'wrong-prefix',
             stack.enter_context(patch.object(module.platform, 'machine', lambda: 'x86_64'))
             stack.enter_context(patch.dict(module.os.environ, SAIL_TIME_TEST_CASE=case,
                                            SAIL_TIME_TEST_SOLVER=str(z3)))
+            if case == 'fresh-timeout-exit0':
+                original_wait = subprocess.Popen.wait
+                observed = set()
+
+                def wait(process, *args, **kwargs):
+                    value = original_wait(process, *args, **kwargs)
+                    if '--fresh-only' in process.args and process.pid not in observed:
+                        observed.add(process.pid)
+                        raise subprocess.TimeoutExpired(process.args, kwargs.get('timeout', 1100))
+                    return value
+
+                stack.enter_context(patch.object(subprocess.Popen, 'wait', wait))
             try:
                 code = module.main()
             except BaseException as error:
@@ -78,8 +91,14 @@ for case in ['experiment-pass', 'strict-default', 'fresh-error', 'wrong-prefix',
         assert (code == 0) is wanted, (case, m)
         assert not m['qualified'] and not m['selected']
         assert bool(m['errors']) is not wanted
-        if case in ['fresh-error', 'strict-default', 'wrong-prefix', 'missing-experiment-field']:
+        if case in ['fresh-error', 'strict-default', 'wrong-prefix', 'missing-experiment-field',
+                    'fresh-nonzero', 'fresh-timeout-exit0']:
             assert all('one_use_skipped' in row for row in m['projects'].values())
+        if case == 'fresh-nonzero':
+            assert all(row['fresh_exit'] == 7 and not row['fresh_process_pass'] for row in m['projects'].values())
+        if case == 'fresh-timeout-exit0':
+            assert all(row['fresh_exit'] == 0 and row['fresh_error'] == 'TimeoutExpired' and
+                       not row['fresh_process_pass'] for row in m['projects'].values())
         if case in ['source-change', 'solver-change']:
             assert raised == 'AssertionError'
             assert not m['final_source_identity_stable'] if case == 'source-change' else not m['final_solver_identity_stable']

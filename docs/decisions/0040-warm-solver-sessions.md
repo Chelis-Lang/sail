@@ -219,3 +219,10 @@ all actual time tokens. Executable/input/environment guards, exit-zero
 requirements, memory refusals (including `ESRCH`), timeout/fallback semantics
 and final cleanup checks are unchanged. No production integration or new
 native result is implied by the local comparator/driver fixture controls.
+
+The first native timing-only pair remains blocked: IronKV completes one guarded
+continuation with lower foreground latency and no CPU saving; Anvil's fresh RSS
+observation fails, so no continuation is attempted. The
+[validation record](../validation/solver-snapshots.md#numeric-time-only-experiment-partial-native-evidence-pair-blocked)
+preserves costs, exact source/runtime scope and all failed attempts. This is
+partial research evidence, not selection or production qualification.
