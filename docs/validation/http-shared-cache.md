@@ -88,7 +88,9 @@ on macOS with the correction, preserving reload counts, zero requests,
 cancellation and the original bounds. The full macOS host check also passes
 (613 tests, 35 solver tests skipped); log SHA-256
 `e927dc092faeb696fb9e9520060f359bc4a6f3ebb22012f6432e3ea276cba829`.
-Native Linux qualification is pending.
+The combined native Linux workspace gate also passes at `f9e33238`, joined
+with `c96fdbec`: 633 tests, 35 skipped. Its complete source manifest and raw
+archive are indexed in the [MCP fixture record](mcp-fixture-retirement.md).
 There is no verifier, solver, cache-key or corpus behavior change.
 
 Retained attempt: `0a7c1d0d` plus the regression, 2026-10-16, failed the
@@ -100,10 +102,11 @@ Corrected five-test log SHA-256:
 ## Current integration evidence
 
 Local HTTP controls and signature regressions retain the same 250 ms lookup
-bound and every trust check. The latest `749255e` full workspace attempt failed
-two HTTP elapsed/serving cases; separate passing frozen controls do not qualify
-the complete gate. [The phase record](m7.md)
-separates those facts and retains the unresolved cause. An unavailable or slow
+bound and every trust check. The `f9e33238` native workspace gate passes,
+including these controls. The earlier `749255e` workspace attempt failed
+two HTTP elapsed/serving cases; those failures remain in [the phase record](m7.md)
+with their unresolved cause. A later passing gate does not establish a stable
+performance gain or explain those earlier delays. An unavailable or slow
 shared store still falls back to local verification; no timeout, unsigned reply
 or diagnostic timing authorizes a cached proof.
 
@@ -128,6 +131,7 @@ existing 8 KiB application buffer, avoiding the extra read used only to observe
 EOF. Larger and unknown bodies keep capped streaming. All 38 affected controls
 and strict checks passed, along with the read-count counterfactual/restored
 control and both original eight-reader comparison arms at the unchanged 250 ms
-deadline. Complete workspace and installed-product acceptance remain pending.
+deadline. The current workspace gate passes as recorded above; the isolated
+comparison does not qualify installed-product performance.
 The single observed pair supplies no stable speedup or historical failure cause;
 see the [actual controls](m7.md).
