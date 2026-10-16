@@ -1,30 +1,100 @@
 //! Owned, bounded Unix socket fixtures; failed assertions retire their actors.
-use std::io;
-use std::net::Shutdown;
+use std::cell::Cell;
+use std::io::{self, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+/// Fixture I/O has an owned cancellation flag and a finite deadline. Keeping
+/// the socket nonblocking avoids relying on cross-thread shutdown to wake a
+/// Darwin recv call; that call has remained blocked despite `SO_RCVTIMEO`.
+pub(crate) struct Connection {
+    stream: UnixStream,
+    stop: Arc<AtomicBool>,
+    read_timeout: Cell<Option<Duration>>,
+    write_timeout: Option<Duration>,
+}
+impl Connection {
+    pub(crate) fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
+        if timeout == Some(Duration::ZERO) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "zero socket timeout",
+            ));
+        }
+        self.read_timeout.set(timeout);
+        Ok(())
+    }
+
+    fn transfer(
+        &self,
+        timeout: Option<Duration>,
+        retiring: impl FnOnce() -> io::Result<usize>,
+        mut operation: impl FnMut(&UnixStream) -> io::Result<usize>,
+    ) -> io::Result<usize> {
+        let started = Instant::now();
+        loop {
+            if self.stop.load(Ordering::SeqCst) {
+                return retiring();
+            }
+            match operation(&self.stream) {
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                    let remaining = timeout
+                        .unwrap_or(Duration::from_secs(2))
+                        .saturating_sub(started.elapsed());
+                    if remaining.is_zero() {
+                        return Err(io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            "fixture I/O expired",
+                        ));
+                    }
+                    std::thread::sleep(remaining.min(Duration::from_millis(5)));
+                }
+                result => return result,
+            }
+        }
+    }
+}
+impl Read for Connection {
+    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+        self.transfer(
+            self.read_timeout.get(),
+            || Ok(0),
+            |mut stream| stream.read(bytes),
+        )
+    }
+}
+impl Write for Connection {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        self.transfer(
+            self.write_timeout,
+            || Err(io::Error::new(io::ErrorKind::BrokenPipe, "fixture retired")),
+            |mut stream| stream.write(bytes),
+        )
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 
 pub(crate) struct Server {
     stop: Arc<AtomicBool>,
-    active: Arc<Mutex<Option<UnixStream>>>,
     worker: Option<std::thread::JoinHandle<()>>,
 }
 impl Server {
     pub(crate) fn spawn(
         listener: UnixListener,
         requests: usize,
-        mut handle: impl FnMut(&mut UnixStream) + Send + 'static,
+        mut handle: impl FnMut(&mut Connection) + Send + 'static,
     ) -> io::Result<Self> {
         listener.set_nonblocking(true)?;
         let stop = Arc::new(AtomicBool::new(false));
-        let active = Arc::new(Mutex::new(None));
-        let (worker_stop, worker_active) = (Arc::clone(&stop), Arc::clone(&active));
+        let worker_stop = Arc::clone(&stop);
         let worker = std::thread::spawn(move || {
             for _ in 0..requests {
                 let started = Instant::now();
-                let mut stream = loop {
+                let stream = loop {
                     if worker_stop.load(Ordering::SeqCst) {
                         return;
                     }
@@ -40,46 +110,26 @@ impl Server {
                         Err(error) => unreachable!("fixture accept failed: {error}"),
                     }
                 };
-                assert!(stream.set_nonblocking(false).is_ok());
-                assert!(
-                    stream
-                        .set_read_timeout(Some(Duration::from_secs(2)))
-                        .is_ok()
-                );
-                assert!(
-                    stream
-                        .set_write_timeout(Some(Duration::from_secs(2)))
-                        .is_ok()
-                );
-                let copy = stream
-                    .try_clone()
-                    .unwrap_or_else(|error| unreachable!("{error}"));
-                *worker_active
-                    .lock()
-                    .unwrap_or_else(|error| unreachable!("{error}")) = Some(copy);
+                assert!(stream.set_nonblocking(true).is_ok());
+                let mut stream = Connection {
+                    stream,
+                    stop: Arc::clone(&worker_stop),
+                    read_timeout: Cell::new(Some(Duration::from_secs(2))),
+                    write_timeout: Some(Duration::from_secs(2)),
+                };
                 if worker_stop.load(Ordering::SeqCst) {
-                    let _ = stream.shutdown(Shutdown::Both);
                     return;
                 }
                 handle(&mut stream);
-                if let Ok(mut active) = worker_active.lock() {
-                    *active = None;
-                }
             }
         });
         Ok(Self {
             stop,
-            active,
             worker: Some(worker),
         })
     }
     fn retire(&mut self) -> bool {
         self.stop.store(true, Ordering::SeqCst);
-        if let Ok(mut active) = self.active.lock()
-            && let Some(stream) = active.take()
-        {
-            let _ = stream.shutdown(Shutdown::Both);
-        }
         self.worker
             .take()
             .is_none_or(|worker| worker.join().is_ok())
@@ -129,7 +179,33 @@ impl Drop for Thread {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Read as _;
+    #[test]
+    fn an_open_silent_peer_times_out_and_retired_io_returns_without_peer_shutdown() {
+        let (stream, mut peer) = UnixStream::pair().unwrap_or_else(|error| unreachable!("{error}"));
+        assert!(stream.set_nonblocking(true).is_ok());
+        let stop = Arc::new(AtomicBool::new(false));
+        let mut connection = Connection {
+            stream,
+            stop: Arc::clone(&stop),
+            read_timeout: Cell::new(Some(Duration::from_millis(20))),
+            write_timeout: Some(Duration::from_millis(20)),
+        };
+        let started = Instant::now();
+        assert_eq!(
+            connection.read(&mut [0]).map_err(|error| error.kind()),
+            Err(io::ErrorKind::TimedOut)
+        );
+        assert!(started.elapsed() < Duration::from_secs(1));
+        stop.store(true, Ordering::SeqCst);
+        assert_eq!(connection.read(&mut [0]).ok(), Some(0));
+        assert_eq!(
+            connection.write(b"retired").map_err(|error| error.kind()),
+            Err(io::ErrorKind::BrokenPipe)
+        );
+        drop(connection);
+        assert_eq!(peer.read(&mut [0]).ok(), Some(0));
+    }
+
     #[test]
     fn early_fixture_retirement_closes_accept_and_active_reads_before_join() {
         static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
