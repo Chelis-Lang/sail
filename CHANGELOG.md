@@ -46,6 +46,9 @@ semantic versioning once the API is published.
   diagnostic messages. Fork-only regression tests remain in the exact arm.
   `cargo xtask build-verus-source --fork` builds an isolated test variant,
   without replacing the installed runtime.
+  An explicit `SAIL_VERUS_SOURCE_BUILD` fork suite is checked by the suite
+  loader, separately from the pinned release lookup; it is no longer refused
+  by the ordinary stock-source installer before testing.
 
 - **Real-project benchmarks avoid duplicate managed runs** (#167).
   `scripts/perf-real.sh` now defaults to `plain sail`; `--incremental`
