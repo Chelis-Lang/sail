@@ -174,6 +174,17 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Product limitations
 
+- **An edit ends cache reuse for the rest of its solver session.** Keys bind
+  the session's whole input so far
+  ([ADR 0008](decisions/0008-default-mode-keys-bind-the-process-prefix.md)),
+  and the first miss hands the session to the solver
+  ([ADR 0011](decisions/0011-local-cache-and-lazy-solver-sessions.md)), so
+  after an edit every later query in the same session is solved again. In the FPBench
+  pilot, where each crate is one module, 21% of replies were served after
+  115 mutants and none after a rare-region mutant, for 0.99× overall
+  ([ADR 0053](decisions/0053-verus-mutation-corpus.md)). Work on these
+  misses: [ADR 0040](decisions/0040-warm-solver-sessions.md),
+  [ADR 0051](decisions/0051-exact-solver-snapshots.md).
 - **Repair selector inventories have a bounded source scope.** Compiler-family
   imports cover package sources and generated inputs with validated build-script
   contracts. An arbitrary external include may require a full run in a new
@@ -210,6 +221,9 @@ diagnostics and refuses uncertain attribution or coverage. Z3 4.16.0 can vary
 nonlinear rlimit consumption on identical input; see the
 [reproduction](../corpus/repros/z3-nla-rlimit-nondeterminism/README.md) and the
 [determinism policy](decisions/0009-solver-nondeterminism-and-unstable-results.md).
+An outcome near the rlimit can also differ between macOS arm64 and Linux
+x86-64 with the same Verus and Z3 versions; see the
+[platform reproduction](../corpus/repros/z3-rlimit-platform-difference/README.md).
 Seed-dependent proof discovery is available only through named opt-in
 portfolios, with separate keys.
 
