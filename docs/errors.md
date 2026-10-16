@@ -181,3 +181,9 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL7108` | Repair gate: too few complete rounds | Run more rounds |
 | `SAIL7109` | Repair gate: median speed-up below the target | A failing result; record it |
 | `SAIL7110` | Repair gate: invalid M6 baseline sample | Read the baseline's stderr |
+
+## Native benchmark host helper
+
+| Code | Meaning | What to do |
+|---|---|---|
+| `SAIL9001` | `scripts/perf-host.sh down` could not verify termination or complete resource cleanup; recorded lane files are retained | Read the AWS error, refresh authentication or permissions as needed, then retry the same `down LANE`. A successful waiter must also be followed by a confirmed terminated/absent instance before resource deletion |

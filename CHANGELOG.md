@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Linux benchmark host teardown retains connection state on AWS errors and
+  confirms termination before deleting cloud resources (#201). Refresh
+  credentials or fix `SAIL9001`, then retry `scripts/perf-host.sh down LANE`.
+
+
 - **CI image packaging candidate** (#195): checks share a core image with
   every pinned toolchain/runtime; only managed e2e adds the pinned external
   MCP client. Local checks select the same targets. Actual startup improvement
