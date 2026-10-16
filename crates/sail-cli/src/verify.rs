@@ -358,10 +358,12 @@ pub fn verify(
 /// receipts (ADR 0046). One `note[SAIL3112]` line on stderr says why; the
 /// rest of the output, the verdicts and the exit code are Cargo-Verus's.
 /// With `--output json`, stdout is one schema-v2 report, as for the explicit
-/// experiments.
+/// experiments. A job's worker (`project`), which must return a project
+/// result, prints one `sail-project-result` instead: see [`unbound_project`].
 pub(crate) fn unbound(
     args: &[String],
     json: bool,
+    project: bool,
     why: &str,
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
@@ -371,6 +373,9 @@ pub(crate) fn unbound(
         "note[SAIL3112]: {why}; verifying as `cargo verus verify` does, with Sail's solver cache and without proof reuse"
     );
     let _ = err.flush();
+    if project {
+        return unbound_project(args, why, out, err);
+    }
     let setup = match setup() {
         Ok(s) => s,
         Err(e) if json => return json_failure(args, &e, out, err),
@@ -394,6 +399,97 @@ pub(crate) fn unbound(
             ExitCode::from(EXIT_SETUP)
         }
     }
+}
+
+/// The job worker's form of [`unbound`] (jobs, `watch` and MCP): the same
+/// plain Cargo-Verus run, reported as one `sail-project-result` whose
+/// `no_reuse` says why and how it was verified. Its one requested target,
+/// [`sail_api::project::PLAIN_TARGET`], holds the run's schema-v2 report and
+/// is neither reused nor complete; the result is `unknown`, never `current`,
+/// and binds no context or input revision, so nothing can reuse it.
+fn unbound_project(
+    args: &[String],
+    why: &str,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+) -> ExitCode {
+    use sail_api::project::{
+        Currentness, Execution, NoReuse, PLAIN_TARGET, ProjectResult, SCHEMA_VERSION, TargetResult,
+        VerifiedAs,
+    };
+    let started = Instant::now();
+    let run_id = format!(
+        "{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos())
+    );
+    let outcome = setup().and_then(|setup| plain_report(&setup, args, err));
+    let (targets, exit, error) = match outcome {
+        Ok((report, status)) => {
+            let error = report.error.clone();
+            let target = TargetResult {
+                package_id: String::new(),
+                target: PLAIN_TARGET.to_owned(),
+                kind: Vec::new(),
+                establishing_run: run_id.clone(),
+                reused: false,
+                requested: true,
+                // Cargo-Verus skips crates it finds up to date, so the report
+                // need not cover every selected target.
+                complete: false,
+                report,
+                dependency_store: None,
+            };
+            (vec![target], status, error)
+        }
+        Err(SetupError(code, message)) => {
+            let _ = writeln!(err, "error[{code}]: sail verify: {message}");
+            (
+                Vec::new(),
+                Some(i32::from(EXIT_SETUP)),
+                Some(sail_api::output::ErrorInfo {
+                    code: code.to_owned(),
+                    message,
+                }),
+            )
+        }
+    };
+    let result = ProjectResult {
+        kind: "sail-project-result".to_owned(),
+        schema_version: SCHEMA_VERSION,
+        run_id,
+        workspace: std::env::current_dir()
+            .map_or_else(|_| String::new(), |p| p.to_string_lossy().into_owned()),
+        context_sha256: String::new(),
+        input_revision: String::new(),
+        currentness: Currentness::Unknown,
+        exit_code: exit,
+        execution: Execution {
+            verifier_invocations: u64::from(!targets.is_empty()),
+            reused_targets: 0,
+            wall_ms: started.elapsed().as_secs_f64() * 1000.0,
+        },
+        targets,
+        notes: vec![format!(
+            "SAIL3112: {why}; verified as `cargo verus verify` does, in the invocation's own Cargo target, with Sail's solver cache; no proof receipt was reused or recorded"
+        )],
+        error,
+        engine: None,
+        no_reuse: Some(NoReuse {
+            code: "SAIL3112".to_owned(),
+            reason: why.to_owned(),
+            verified_as: VerifiedAs::PlainCargoVerus,
+        }),
+    };
+    let _ = writeln!(
+        out,
+        "{}",
+        serde_json::to_string(&result).unwrap_or_default()
+    );
+    let _ = out.flush();
+    exit_code(exit)
 }
 
 /// `cargo verus verify <args>` with Sail's Verus and nothing changed, for
@@ -737,16 +833,34 @@ fn verify_json(
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
 ) -> ExitCode {
-    let scratch = match scratch() {
-        Ok(s) => s,
-        Err(e) => {
-            let e = SetupError(
-                "SAIL0107",
-                format!("cannot create a scratch directory: {e}"),
+    match plain_report(setup, args, err) {
+        Ok((report, status)) => {
+            let _ = writeln!(
+                out,
+                "{}",
+                serde_json::to_string_pretty(&report).unwrap_or_default()
             );
-            return json_failure(args, &e, out, err);
+            let _ = out.flush();
+            exit_code(status)
         }
-    };
+        Err(e) => json_failure(args, &e, out, err),
+    }
+}
+
+/// Runs `cargo verus verify` with the extra Verus flags, relays stderr
+/// verbatim while keeping a copy, and returns the schema-v2 report and
+/// Cargo-Verus's exit code.
+fn plain_report(
+    setup: &Setup,
+    args: &[String],
+    err: &mut dyn std::io::Write,
+) -> Result<(sail_api::output::Report, Option<i32>), SetupError> {
+    let scratch = scratch().map_err(|e| {
+        SetupError(
+            "SAIL0107",
+            format!("cannot create a scratch directory: {e}"),
+        )
+    })?;
     let logs_dir = scratch.0.join("logs");
     let unavailable = if direct_source(args).is_some() {
         None
@@ -761,16 +875,12 @@ fn verify_json(
     if setup.measure.is_some() {
         cmd.env("SAIL_TRACE_DIR", scratch.0.join("traces"));
     }
-    let mut child = match cmd.spawn() {
-        Ok(c) => c,
-        Err(e) => {
-            let e = SetupError(
-                "SAIL0105",
-                format!("cannot run {}: {e}", setup.cargo_verus.display()),
-            );
-            return json_failure(args, &e, out, err);
-        }
-    };
+    let mut child = cmd.spawn().map_err(|e| {
+        SetupError(
+            "SAIL0105",
+            format!("cannot run {}: {e}", setup.cargo_verus.display()),
+        )
+    })?;
     let stdout = child.stdout.take().map(|mut s| {
         std::thread::spawn(move || {
             let mut buf = Vec::new();
@@ -829,13 +939,7 @@ fn verify_json(
             seeds,
         );
     }
-    let _ = writeln!(
-        out,
-        "{}",
-        serde_json::to_string_pretty(&report).unwrap_or_default()
-    );
-    let _ = out.flush();
-    exit_code(status)
+    Ok((report, status))
 }
 
 #[cfg(test)]

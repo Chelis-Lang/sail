@@ -255,6 +255,13 @@ fn response_text(response: &Response) -> String {
                     serde_json::from_value::<sail_api::project::ProjectResult>(result.clone())
             {
                 use std::fmt::Write as _;
+                if let Some(no_reuse) = &result.no_reuse {
+                    let _ = write!(
+                        text,
+                        "\n  no proof reuse ({}): {}; nothing was reused or recorded",
+                        no_reuse.code, no_reuse.reason
+                    );
+                }
                 for target in result.targets.iter().filter(|target| target.requested) {
                     let _ = write!(
                         text,

@@ -157,6 +157,34 @@ unbound_case() { # label; rest = the arguments for both sides
 }
 unbound_case config --config build.jobs=2
 unbound_case tests --tests
+# The same setup as a background job, as jobs, `watch` and MCP run it
+# (#165): verified as plain Cargo-Verus verifies it, in its own target, and
+# reported as one project result marked `no_reuse`, never current.
+touch src/lib.rs
+job="$(CARGO_TARGET_DIR="$work/target-sail" "$sail" verify --background --output json --tests \
+  | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')"
+for _ in $(seq 1500); do
+  "$sail" jobs result "$job" --output json > "$work/tests-job.json"
+  python3 -c 'import json, sys; sys.exit(json.load(open(sys.argv[1]))["value"]["job"]["state"] in ("queued", "running"))' \
+    "$work/tests-job.json" && break
+  sleep 0.2
+done
+python3 - "$work/tests-job.json" "$(cat "$work/tests-plain.rc")" <<'PY'
+import json, sys
+value = json.load(open(sys.argv[1]))["value"]
+job, result = value["job"], value["result"]
+assert job["state"] == "completed", job
+assert job["currentness"] == "unknown", job
+assert result["no_reuse"]["code"] == "SAIL3112", result.get("no_reuse")
+assert result["no_reuse"]["verified_as"] == "plain-cargo-verus", result["no_reuse"]
+assert "--tests" in result["no_reuse"]["reason"], result["no_reuse"]
+assert result["currentness"] == "unknown" and result["exit_code"] == int(sys.argv[2]), result["exit_code"]
+[target] = result["targets"]
+assert target["requested"] and not target["reused"], target
+failed = [f["function"] for c in target["report"]["crates"] for f in c["functions"] if f["verdict"] == "failed"]
+assert any(name.endswith("bad") for name in failed), failed
+PY
+echo "e2e: a --tests job verified as plain cargo verus verify, without proof reuse"
 # An explicit target directory: each side its own, already built by the
 # cases above (a fresh one would add two cold builds to this job).
 run target-dir-plain cargo verus verify --target-dir "$work/target-plain"
