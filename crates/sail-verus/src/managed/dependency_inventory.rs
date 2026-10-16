@@ -5,7 +5,7 @@
 //! also retains local identities through compilation or restoration. Unsupported
 //! inputs decline replay; no partial inventory can authorize reuse.
 
-use super::dependency_resolution::Resolution;
+use super::dependency_resolution::{Resolution, Stamp, stamp};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -42,9 +42,6 @@ enum Entry {
         sha256: String,
     },
 }
-
-#[derive(Eq, PartialEq)]
-pub(super) struct Stamp(String);
 
 /// A portable inventory bracketed by exact local file and directory identities.
 pub(super) struct Observation {
@@ -255,37 +252,9 @@ fn read_file(path: &Path, before: &Stamp, size: u64) -> Option<String> {
     clippy::unnecessary_wraps,
     reason = "The same interface conservatively refuses unsupported non-Unix hosts."
 )]
-pub(super) fn stamp(metadata: &Metadata) -> Option<Stamp> {
-    use std::os::unix::fs::MetadataExt as _;
-    Some(Stamp(format!(
-        "{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
-        metadata.dev(),
-        metadata.ino(),
-        metadata.mode(),
-        metadata.nlink(),
-        metadata.uid(),
-        metadata.gid(),
-        metadata.size(),
-        metadata.mtime(),
-        metadata.mtime_nsec(),
-        metadata.ctime(),
-        metadata.ctime_nsec()
-    )))
-}
-
-#[cfg(unix)]
-#[allow(
-    clippy::unnecessary_wraps,
-    reason = "The same interface conservatively refuses unsupported non-Unix hosts."
-)]
 fn mode(metadata: &Metadata) -> Option<u32> {
     use std::os::unix::fs::MetadataExt as _;
     Some(metadata.mode())
-}
-
-#[cfg(not(unix))]
-pub(super) fn stamp(_: &Metadata) -> Option<Stamp> {
-    None
 }
 
 #[cfg(not(unix))]

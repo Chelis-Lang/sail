@@ -1,6 +1,5 @@
 //! Bracket pathname resolution without confusing sibling output writes with renames.
 
-use super::dependency_inventory::{Stamp, stamp};
 use std::collections::{BTreeMap, VecDeque};
 use std::fs::Metadata;
 use std::path::{Component, Path, PathBuf};
@@ -8,6 +7,38 @@ use std::sync::Mutex;
 
 const MAX_PATHS: usize = 4096;
 const MAX_LINKS: usize = 40;
+
+/// One exact local file or directory mutation identity.
+#[derive(Eq, PartialEq)]
+pub(super) struct Stamp(String);
+
+#[cfg(unix)]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "The same interface conservatively refuses unsupported non-Unix hosts."
+)]
+pub(super) fn stamp(metadata: &Metadata) -> Option<Stamp> {
+    use std::os::unix::fs::MetadataExt as _;
+    Some(Stamp(format!(
+        "{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+        metadata.dev(),
+        metadata.ino(),
+        metadata.mode(),
+        metadata.nlink(),
+        metadata.uid(),
+        metadata.gid(),
+        metadata.size(),
+        metadata.mtime(),
+        metadata.mtime_nsec(),
+        metadata.ctime(),
+        metadata.ctime_nsec()
+    )))
+}
+
+#[cfg(not(unix))]
+pub(super) fn stamp(_: &Metadata) -> Option<Stamp> {
+    None
+}
 
 #[derive(Eq, PartialEq)]
 struct Identity(String);
