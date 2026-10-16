@@ -348,7 +348,8 @@ struct Tally {
     repeated_incomparable: usize,
 }
 
-/// Compares recorded evidence only when exact requested contexts/scopes agree.
+/// Compares recorded evidence only when bound requested contexts/scopes agree.
+/// Runs without proof reuse do not establish a comparable runtime context.
 /// Absent functions remain unobserved; a partial run never proves their removal.
 ///
 /// A function reported `unknown` that passed by Verus's totals
@@ -358,8 +359,11 @@ struct Tally {
 /// difference says the class relied on the totals.
 #[must_use]
 pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
-    let compatible =
-        before.context_sha256 == after.context_sha256 && scopes(before) == scopes(after);
+    let compatible = before.no_reuse.is_none()
+        && after.no_reuse.is_none()
+        && !before.context_sha256.is_empty()
+        && before.context_sha256 == after.context_sha256
+        && scopes(before) == scopes(after);
     let after_project = after;
     let left = functions(before);
     let right = functions(after);

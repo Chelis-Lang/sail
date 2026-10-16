@@ -295,7 +295,8 @@ oyster and such." This supersedes the parallel tracks of
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
       real projects caps every other lever.
    8. Jobs, watch and MCP fall back like `sail verify` (`SAIL3112`), #165:
-      implemented (PR pending review).
+      implemented; native gates and full fast/standard pass; required PR
+      checks are enforced separately ([validation](validation/fallback-parity.md)).
    9. B2, single-file `verus file.rs` projects, #164.
    10. deep-rvt against the fork, #124.
    11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.
