@@ -2,10 +2,10 @@
 
 | Field | Value |
 |---|---|
-| Status | Genuine Linux engine and fork-suite builds plus private packaging pass. **Not accepted or selected for release**; actual default Sail/corpus/determinism/performance qualification remains. |
+| Status | Genuine Linux builds/private packaging and earlier-source native BASIC/full fast pass. **Not accepted or selected for release**; corrected source-suite, deeper corpus, determinism and performance qualification remain. |
 | Fork | `8a373f81a507b7ef4f144767ccd237d3d3de6c48`: closure identity, source mapping and deterministic proof-note JSON changes; no M8 pruning or telemetry. |
 | Build source | Sail `b9816738a3114cf9f14400b0dd75f1215ebabf69`, exact builder/harness source `9fa6c9d2` plus its isolated fork selection. This source predates #196 and is **not** the source for subsequent default CLI/corpus/performance checks. |
-| Qualification source | Current main `1060a8ec` (#196 metadata/runner, #199 incidental-work harness and #198 CI packaging), with reviewed #124 source-suite machinery, is joined separately. Only its private Linux fork/artifact selections change; accepted main/macOS pins and public assets stay unchanged. |
+| Qualification source | Current main `4b0f265f` (including #196 metadata/runner, #199 incidental-work harness, #198 CI packaging and #200 blocked-continuation record), reviewed #124 machinery and the explicit-suite selector correction are joined privately. Accepted main/macOS pins and public assets stay unchanged. |
 | Environment | Native c7i.8xlarge, us-east-1; existing `3c02e445e25df766` CI image used only as an environment, Rust 1.99.0/1.98.1, eight build jobs. Its installed old runtime is not the candidate. |
 | Source lock / solver | Lock `80c71fdd00ef5073cd93edf6b5e37a635f7b4114fba8f6553ba2125eecb1395e`; pinned Z3 `e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765`. |
 
@@ -53,7 +53,7 @@ determinism; repeated actual proof-note JSON and existing multi-note
 unchanged stock control. Measured #118 solver work and edit cost must retain
 an independent accepted old-fork/stock baseline. macOS qualification remains
 separate. No static review, successful build or fixture substitutes for these
-checks, and no new corpus/performance result is claimed here.
+checks, and no deeper-tier, corrected source-suite or performance result is claimed here. Earlier-source BASIC/full fast results below retain their actual source scope.
 
 The existing local-store native-linker defect [#187](https://github.com/Chelis-Lang/sail/issues/187)
 remains open; these builds neither fix it nor broaden its acceptance.
@@ -64,3 +64,15 @@ remains open; these builds neither fix it nor broaden its acceptance.
 | 2026-10-16, initial archive collector | Refused by Git ownership check, exit 128 | Host user could not inspect root-owned container checkout; no build/source/ref changed. Exact-path per-command read-only Git admission allowed the retained retry; no global trust setting was changed. |
 | 2026-10-16, qualification `05674c60`, first BASIC attempt | Gate failed: 642 passed, two fixture failures | Explicit runtime overrides bypassed two synthetic fixture caches; no assertion was changed. Raw failed-attempt archive SHA-256 `b7983611d6ef77191a50d26cf8c14dd64afce1dce89e5c6d01fecf798643070a`. |
 | 2026-10-16, qualification `05674c60`, corrected BASIC attempt | Interrupted/unqualified after the host expiry window | Last observed controller output had gate and solver exit zero, then e2e active. Final BASIC status/full logs were not collected before access was lost; FAST and later phases were not launched. The interruption record SHA-256 is `05a0e31b89616d7b9fa5e6be58f977f16432c020ca6ee7d14762c9600df1713a`. No completed BASIC/corpus acceptance is inferred. |
+| 2026-10-16, qualification `6880cb9b` | Native BASIC pass | Workspace gate 644 passed/35 skipped, solver 35 passed, all seven e2e phases plus extra, PR four arms each 33 Same/311 functions, and eight exact proof-note JSON repetitions. Source/runtime/test identities checked before/after each stage. Final raw archive SHA-256 `0966182f9920a2ab0e39bba9f139e7dbc105f5d7b7b0fd0fbb278b8c640806c3`. |
+| 2026-10-16, qualification `6880cb9b` | Full fast pass | Four arms each 147 Same/3,450 functions, zero Different/Unstable/infrastructure errors/drift/skips; 465.4 s. Final raw archive SHA-256 `1fc047a94bebc33b44d063c593d044815da646df1ca28c5533af43f0b9c79fd6`. This is not a full-fast run of the subsequent selector correction. |
+| 2026-10-16, qualification `6880cb9b`, source-JSON | Refused before any source tests | Generic stock installation lookup consumed the explicit fork suite, then refused its fork features with `SAIL3040`. Final raw archive SHA-256 `6fbbb1f78bd96633654e40f7e40be20247590ceea6d767b4208062a67714962a`; chain stopped and shut down. No determinism/standard/deep ran. The correction separates release/Z3 lookup from the unchanged strict suite admission. |
+| 2026-10-16, independent stock `c0e7e0f5` | Full stock control failed strictly | 4,695 tests selected (58 ignored), 4,691 Same/3 Unstable/1 Different/0 infrastructure errors in 1,174 s. The unmatched proof-note JSON run remains Different; no normalization or reclassification. This is not a qualified stock control. Full scope and raw hash are in the [deep-tier record](deep-tier.md). |
+
+The next frozen source must run its own native BASIC and the 18 list-only
+selector controls before genuine fork source-JSON/full-suite, exact fast
+three-run determinism, standard and deep. Selector fixtures are admission
+controls, not proof verification. Prior `6880cb9b` full fast may supply only
+its explicitly identified 147-unit selection and observed exit/proof-count
+reference when runtime/corpus/oracle bytes match; it does not establish a
+new-source full-fast pass. Every stage is durably archived before advancing.
