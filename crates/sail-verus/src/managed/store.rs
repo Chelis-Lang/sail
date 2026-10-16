@@ -19,6 +19,11 @@
 //! evicted or mismatched one is a silent miss. Store problems never change a
 //! run's result. The store never changes a solver query, a verdict or a
 //! diagnostic: it only lets Cargo find a dependency fresh.
+//!
+//! The v1 native-artifact path is currently disabled in this candidate. Its
+//! identity does not establish the native compiler/linker inputs that fresh
+//! Cargo would read (#187). The format below remains available for investigation;
+//! managed runs neither seed nor publish entries until that path is qualified.
 
 use super::files::{digest, json};
 use super::receipts::{RECEIPT_VERSION, Receipt, complete, digests_match};
@@ -49,15 +54,17 @@ fn capacity() -> usize {
         .unwrap_or(DEFAULT_ENTRIES)
 }
 
-/// Whether the store is enabled at all. A dynamic-loader variable
-/// (`LD_*`, `DYLD_*`) can change what the compiler driver and the solver
-/// load without changing any file Sail identifies, so with one set the store
-/// is neither read nor written (the keys bind their values, but bound
-/// equality cannot certify what was loaded).
+/// Whether native-artifact store reuse is qualified for managed runs.
+///
+/// V1 can suppress a native compilation failure after the linker changes at
+/// an unchanged `PATH` (#187). Disable both reading and publication regardless
+/// of the capacity setting until complete native input identity is qualified.
 pub(super) fn enabled() -> bool {
-    capacity() > 0 && !loader_variables(std::env::vars_os().map(|(key, _)| key))
+    false
 }
 
+// Retain the loader-input controls while the native-artifact path is disabled.
+#[cfg(test)]
 fn loader_variables(keys: impl IntoIterator<Item = std::ffi::OsString>) -> bool {
     keys.into_iter().any(|key| {
         let key = key.as_encoded_bytes();
