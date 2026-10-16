@@ -858,23 +858,9 @@ fn same_file(_: &std::fs::Metadata, _: &std::fs::Metadata) -> bool {
     false
 }
 
-#[cfg(unix)]
 fn regular_file(path: &Path) -> Option<std::fs::File> {
-    let fd = rustix::fs::open(
-        path,
-        rustix::fs::OFlags::RDONLY
-            | rustix::fs::OFlags::NONBLOCK
-            | rustix::fs::OFlags::NOFOLLOW
-            | rustix::fs::OFlags::CLOEXEC,
-        rustix::fs::Mode::empty(),
-    )
-    .ok()?;
-    let file = std::fs::File::from(fd);
+    let file = super::dependency_resolution::open_input(path)?;
     file.metadata().ok()?.is_file().then_some(file)
-}
-#[cfg(not(unix))]
-fn regular_file(_: &Path) -> Option<std::fs::File> {
-    None
 }
 
 fn regular_digest(path: &Path) -> Option<String> {

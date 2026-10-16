@@ -179,3 +179,6 @@ helper and cache-failure caller changes (log SHA-256 `85eac8e8d84f3a2fbc3f7e9b04
 Strict direct clippy passes; the complete release integration typecheck also
 passes. These checks do not replace the pending actual Verus store-hit and
 native Linux gates.
+
+The cache, dep-info and extern-byte readers also share the filesystem-admitted
+nonblocking opener. The resulting 26-case run passes (log SHA-256 `15901e570a9e64fd810ec9aabc49d66de9e99bdd7725705d6c593bdce7b1e730`); strict direct clippy passes.
