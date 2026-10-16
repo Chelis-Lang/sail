@@ -10,11 +10,13 @@ semantic versioning once the API is published.
   and at the same points around Cargo, but overlaps the reads with Cargo's
   metadata and the receipt checks, reads each artifact once per check, and
   no longer re-validates a dependency the store already holds. On a native
-  c7i.4xlarge an unchanged vest re-run takes 0.59 s (before: 1.04 s; plain
-  Verus: 0.23 s), MCP `verify` 1.02 s, a vest edit 28.6 s (before: 29.1 s;
-  the removed pass-through: 27.8 s; plain: 43.2 s), and a small project's
-  edit 1.08 s (before: 1.19 s; plain: 0.85 s). Sail keeps a few kilobytes
-  per invocation in `<cache>/snapshot-hints/`, safe to delete.
+  c7i.8xlarge, final-head unchanged medians are 0.54 s for vest
+  (rc.5: 1.01 s) and 0.21 s for a small project (rc.5: 0.39 s), with
+  three interleaved rounds. Small-project edits fall from 1.15 to 0.96 s;
+  vest edit ranges overlap, so that gain is inconclusive. See the
+  [validation record](docs/validation/managed-overhead.md) for scope and
+  evidence. Sail keeps a few kilobytes per invocation in
+  `<cache>/snapshot-hints/`, safe to delete.
 - **Reports state the release version** (#180). A release build's reports
   (`sail_version`), daemon status and MCP server info now state the same
   version as `sail --version`, suffix included (for example `0.1.0-rc.5`);

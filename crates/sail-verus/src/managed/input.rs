@@ -204,17 +204,25 @@ fn collect_directory(
 /// comparisons with byte comparisons; equal keys are equal paths.
 pub(super) fn path_set(paths: Vec<PathBuf>) -> BTreeSet<PathBuf> {
     let mut keyed: Vec<(Vec<u8>, PathBuf)> = Vec::with_capacity(paths.len());
-    for path in paths {
+    let mut paths = paths.into_iter();
+    while let Some(path) = paths.next() {
         let Some(key) = order_key(&path) else {
             return keyed
                 .into_iter()
                 .map(|(_, path)| path)
                 .chain(std::iter::once(path))
-                .collect();
+                .chain(paths)
+                .fold(BTreeSet::new(), |mut set, path| {
+                    set.insert(path);
+                    set
+                });
         };
         keyed.push((key, path));
     }
-    keyed.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    // Path equality ignores some spelling differences (`a//b`, `a/b/`).
+    // Keep the first raw spelling, as repeated BTreeSet::insert did: the
+    // revision hashes its original OsStr bytes, not normalized components.
+    keyed.sort_by(|a, b| a.0.cmp(&b.0));
     keyed.dedup_by(|a, b| a.0 == b.0);
     // Already sorted and unique: the set is built without comparing again
     // beyond one check per element.
@@ -687,18 +695,28 @@ mod tests {
             "/z/e",
             "/z/E",
         ];
-        let paths: Vec<PathBuf> = spellings.iter().map(PathBuf::from).collect();
-        let expected: BTreeSet<PathBuf> = paths.iter().cloned().collect();
-        let built = super::path_set(paths.clone());
-        assert_eq!(
-            built.iter().collect::<Vec<_>>(),
-            expected.iter().collect::<Vec<_>>()
-        );
-        let reversed = super::path_set(paths.into_iter().rev().collect());
-        assert_eq!(
-            reversed.iter().collect::<Vec<_>>(),
-            expected.iter().collect::<Vec<_>>()
-        );
+        // Repetition also exercises duplicate partitioning in an unstable sort.
+        let paths: Vec<PathBuf> = spellings
+            .iter()
+            .cycle()
+            .take(spellings.len() * 3)
+            .map(PathBuf::from)
+            .collect();
+        let raw = |set: &BTreeSet<PathBuf>| {
+            set.iter()
+                .map(|path| path.as_os_str().as_encoded_bytes().to_vec())
+                .collect::<Vec<_>>()
+        };
+        for paths in [paths.clone(), paths.into_iter().rev().collect()] {
+            // FromIterator may choose another equal representative; the
+            // pre-optimization implementation inserted each path in order.
+            let mut expected = BTreeSet::new();
+            for path in &paths {
+                expected.insert(path.clone());
+            }
+            let built = super::path_set(paths);
+            assert_eq!(raw(&built), raw(&expected));
+        }
     }
 
     /// Scope membership by ancestor sets is the original definition: inside
