@@ -102,6 +102,12 @@ semantic versioning once the API is published.
   `build.rs` 22.2 s → 2.1 s (plain: 0.8 s); the unchanged run after a
   profile change 22.1 s → 0.5 s; the first `-p a` run of the #121 workspace
   28.9 s → 1.3 s. Run currentness still binds every manifest and lockfile.
+- The real-project performance harness has an explicit `fork-shim` arm for
+  focused Cargo-Verus runs through Sail's solver shim and an owned daemon.
+  It does not claim managed CLI support for partial verification. The
+  frontend stage report counts failed samples and distinguishes missing
+  instrumentation from zero work.
+
 - **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).
   Per-obligation detail (op kinds, spans, per-check answers and cache
   provenance, counterexample models) needs Verus's AIR and SMT transcript
