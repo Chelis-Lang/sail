@@ -95,7 +95,8 @@ pub fn classify_tests(plains: &[TestRecord], sail: &TestRecord) -> TestClassific
     classify_tests_with(plains, sail, false)
 }
 
-/// Classifies deterministic fork runs with an ordered, exact stderr check.
+/// Classifies deterministic fork runs with ordered, exact stderr and passing
+/// libtest outcomes. Identical failed tests cannot qualify the fork.
 #[must_use]
 pub fn classify_tests_exact(plains: &[TestRecord], sail: &TestRecord) -> TestClassification {
     classify_tests_with(plains, sail, true)
@@ -115,7 +116,14 @@ fn classify_tests_with(
             matches_a_plain_run: false,
         };
     };
-    let differences = compare_tests_with(first, sail, exact);
+    let mut differences = compare_tests_with(first, sail, exact);
+    if exact
+        && plains.iter().chain(std::iter::once(sail)).any(|record| {
+            record.outcome != sail_verus::rvt::Outcome::Ok || record.exit_code != Some(0)
+        })
+    {
+        differences.push("a nonignored fork test did not pass".to_owned());
+    }
     let plain_varies = plains
         .iter()
         .skip(1)
@@ -143,6 +151,19 @@ fn classify_tests_with(
 mod tests {
     use super::*;
     use sail_verus::rvt::Outcome;
+
+    #[test]
+    fn exact_fork_never_accepts_identical_failed_tests() {
+        let failed = rec(Outcome::Failed, "the same failed assertion");
+        assert_eq!(
+            classify_tests(std::slice::from_ref(&failed), &failed).verdict,
+            Verdict::Same
+        );
+        assert_eq!(
+            classify_tests_exact(std::slice::from_ref(&failed), &failed).verdict,
+            Verdict::Different
+        );
+    }
 
     fn rec(outcome: Outcome, stderr: &str) -> TestRecord {
         TestRecord {
