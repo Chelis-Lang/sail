@@ -41,6 +41,26 @@ inconclusive. No frontend performance change is selected or shipped.
   IronKV 8.863 to 8.887 s. This does not establish a useful overall gain.
   Direct-Z3 timings include solving; no all-cache-hit scope is claimed.
   IronKV's generated member lock was not retained, limiting cold attribution.
+- A disabled observer is built on combined `8a373f81`,
+  without pruning or span projection. It captures bounded ordinary AST JSON
+  and explicitly incomplete context/fresh-SST observations. It has not been
+  qualified for reuse. Source `80a19b1a` builds on native c7i.4xlarge,
+  us-east-1; vstd explicitly verifies (2,060/0), and both unit tests pass.
+  Seven offline Python controls pass for lossless positional
+  analysis, original span fields and strict raw-byte exit statuses. This does
+  not establish a complete key or diagnostic rebinding. Independent review
+  and complete native capture remain separate; see the report's bounded plan.
+  Five capture-controller controls also pass, including observed default-off
+  emptiness and refusal of incomplete/modified evidence. The first direct-runtime
+  capture fails on incomplete SST Debug in both edited buckets.
+  Source `7812863f` raises only the bounded record capacity to 256 MiB,
+  retaining the separate 64 MiB raw-hash cap and all completion/equality
+  checks. It also builds, explicitly verifies vstd (2,060/0), and passes both
+  unit tests. All ten project control/capture runs verify and all 16 bucket
+  manifests complete. Same-source raw SMT and verification/proof-note checks
+  pass in both projects. Comment SMT also matches; both body edits differ
+  and remain recorded. This passes only the limited capture gate: default
+  acceptance is false, and offline AST field analysis remains pending.
 
 Raw logs are in the external `frontend-review-2026-10-16` evidence set:
 
@@ -50,6 +70,8 @@ Raw logs are in the external `frontend-review-2026-10-16` evidence set:
 | `build-compare/profile-attempt1-results.tgz` | `867c51156034f4d041ccad2d7406ec2052ede9783c423e01ef6e639de0047ee3` |
 | `build-compare/native-profile-v2/manifest.json` | `bc2f1f7426108b22d61494a7aeefd142a6ac2a86faed643bc0d2255fa0181d15` |
 | `build-compare/m8-native-build-profile-v2.tgz` | `3aa85479b6d3bce3320a0ef4853611058d4b8794b7d2eeaa66b10e08b4a686e2` |
+| `raw-input-probe/m8-observer-attempt1-complete.tgz` (first runtime, complete raw refused captures/source) | `1e63601527929baa602212b86303ba331d5d8155ca99b5ce6556fcefb0ed42a1` |
+| `raw-input-probe/m8-observer-attempt2-complete.tgz` (revised runtime, source and every raw capture) | `ec08c6220ce5a4717dd89ba94b713f920878d3794b0d28166793e20f7785f0a5` |
 | `readonly-walk-test.log` | `d81f488c81e29e7d99eea3820c890651e96deb8b24f5715a5f63428d90d6b969` |
 | `readonly-walk-clippy.log` | `a2db7a82dd2f91484b2976605b34d3f8a3421b54e72cb806cf4121e09eadabbf` |
 | `key-projection-test.log` | `20ca1717e589501587d25697e33c53fc662ed5e08c5cfe547cae1bf5edafcb77` |
@@ -79,6 +101,10 @@ independent cache coverage counters.
   and interrupted-source cleanup. Raw results and the original controller
   remain preserved; no acceptance is inferred. The corrected controller is
   a separate attempt.
+- `80a19b1a`, 2026-10-16: first observer runtime builds and project
+  verification passes, but both edited buckets' SST Debug exceeds the
+  63 MiB payload bound. Both captures refuse; controller exits 1 and later
+  edits do not run. Control buckets fit. Raw partial files remain incomplete.
 
 ## Remaining gates
 

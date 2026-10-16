@@ -37,6 +37,9 @@ semantic versioning once the API is published.
   Cargo target (#166), avoiding a redundant cold context. Declared source
   and build-script reads still invalidate proof receipts when its value changes.
 
+- Unselected frontend research includes an offline ordinary-AST difference
+  analyzer and a bounded capture plan. It preserves original fields and raw
+  byte failures; it does not enable frontend reuse or change the runtime.
 - The native read-only pruning research controller records cold and edited
   compiler runs, restores pristine manifests/lockfiles between arms, and
   fails on verification or exact SMT-stream differences. Its initial

@@ -1,11 +1,12 @@
-# Warm frontend: recovered profile and first implementation (#162)
+# Warm frontend: profiles, traversal experiment and input diagnosis (#162)
 
 The remaining floor is real. A comment-only edit still takes 25.33 s on
 Vest, 24.03 s on Verismo and 4.79 s on IronKV through managed Sail. The
 first implementation candidate removes unused AST reconstruction during
 Verus reachability pruning. [Qualification](../validation/warm-frontend.md)
-records the current checks and remaining gates. Persistent frontend reuse remains unimplemented;
-the measured raw bucket key does not survive ordinary edits.
+records the current checks and remaining gates. Its overall edit gain is
+inconclusive and it stays unselected. Persistent frontend reuse remains
+unimplemented; the recovered raw bucket key does not survive ordinary edits.
 
 ## Environment and limits
 
@@ -232,7 +233,9 @@ an incomplete experiment, not an accepted default or a cross-corpus claim.
 The separate measurement-only candidate `2371ca51` extends the original
 timing branch. With `SAIL_M8_KEY_PROXY=relocated` and `--time-expanded`, its
 JSON identifies `key-policy=span-relocated-v1-unqualified`. Span identifiers
-are mapped bijectively in encounter order and location fields are separated;
+are mapped bijectively in encounter order; the projected serialization writes
+empty packed-position and display-string fields instead of their real values.
+Their irrelevance and a current-diagnostic mapping have not been proved;
 no cached artifact is loaded and fresh lowering/verification always run.
 Four focused serialization/isolation tests and a `rust_verify` check pass.
 Native key hit rates, exact fresh outputs and diagnostic rebinding remain
@@ -242,6 +245,113 @@ does not change the selected runtime.
 After these cheap measurements, the across-edit prototype must demonstrate
 stable complete keys and current-source diagnostics before skipping work.
 A raw key that misses every body edit cannot establish a performance gain.
+
+## Next measurement: explain raw input misses
+
+Prepared source on combined fork `8a373f81` adds a disabled observer, without
+the pruning optimization or the `2371ca51` span projection. Source `80a19b1a`
+builds natively, explicitly verifies vstd (2,060 verified, zero errors), and
+passes both observer unit tests. Its first project capture refuses incomplete
+SST output, so no key-stability result is established. At most two exact
+buckets in one named crate are captured per compiler process. Capacity
+revision `7812863f` reserves 255 MiB for
+artifacts and 1 MiB for a manifest per record; raw bincode hashing retains
+its separate 64 MiB work ceiling. Failed/truncated representations remain marked incomplete;
+all fresh lowering and verification still run.
+
+The observer writes ordinary pruned-AST JSON, a bounded raw bincode digest,
+available lowering/context Debug observations and fresh SST Debug. The AST
+retains `Span.id`, `Span.data` and `Span.as_string`. Existing serialization
+omits opaque `RawSpan`. Packed span data contains crate identity and source
+positions, not a source-file digest. The lowering call also reads selected
+functions, pruning results and `GlobalCtx`; some private maps, warning state,
+graphs, counters, rustc callbacks and imported-source mappings are not fully
+represented. Existing Spanned-node Debug in SST prints display locations
+instead of their packed positions and span IDs. These are incomplete
+observations, never sufficient keys or
+reusable lowering artifacts. Diagnostic rebinding remains unproved.
+
+Offline analysis uses:
+
+```sh
+python3 scripts/frontend-input-diff.py before-pruned-ast.json after-pruned-ast.json
+python3 scripts/test-frontend-input-diff.py
+```
+
+The analyzer preserves object-pair order and duplicate occurrences, array
+positions, numeric tokens, and every ordinary span field. It counts
+positional differences, with at most 256 detail entries; original raw files
+remain the evidence. Exit 0 means raw bytes match, 1 means they differ and
+2 means analysis refused. Equal parsed values do not excuse byte differences.
+Seven Python controls pass, including command exit statuses. Five separate
+capture-controller controls reject missing buckets, incomplete or modified
+payloads, failed verification and any observer artifact in the disabled
+control. The larger-cap revision also builds and passes its two native unit
+tests; its completed capture is described below.
+
+The proposed native capture is bounded to one 16-CPU Linux host for at most
+120 minutes, allocated only after independent patch review. Build the exact
+committed observer candidate with Rust 1.98.1 and the retained source lock;
+record all source, runtime, toolchain and pinned-Z3 hashes. Do not present a
+direct research runtime as a qualified Sail runtime. For pinned Vest and
+IronKV, retain the actual generated member lock and pristine manifests, then
+select the edited bucket plus one unchanged control bucket. Capture two
+identical-source fresh compilations, a comment insertion and one body edit.
+Force the primary crate to compile using package-scoped Cargo cleaning in an
+owned target directory; keep dependencies warm and record preparation cost.
+Restore edited source in a final cleanup, including interruption. A comment
+can affect `line!()` expansion and is not assumed to preserve input.
+
+Every process must preserve complete raw stdout/stderr and status. Check
+expected bucket count, manifest completion and every artifact digest; a
+missing bucket or capped artifact is a failed capture. Retain independent
+full SMT streams and verification/proof-note JSON. Byte inequality stays a
+failure, not a normalized match. Use the ordinary fresh path with the observer
+disabled as a control. This is input diagnosis, not a latency claim or frontend
+reuse acceptance; coverage remains unqualified even when observations match.
+
+`scripts/build-frontend-observer.py` builds that exact observer commit from
+the two retained bundles in a new owned native checkout, with eight build
+jobs and per-command deadlines. It verifies bundle, dependency lock and Z3
+identities, captures the full build and two observer unit tests, copies the
+direct runtime and hashes all its files. Generated versioned toolchain
+manifests are retained as build inputs; unexpected source changes fail.
+`scripts/capture-frontend-inputs.py` consumes the resulting runtime file map
+plus an independently built, hashed project-manifest patcher. It refuses an
+existing output directory and records every subprocess failure. The exact
+selected buckets are Vest's `asn1::der_ord`/`asn1::boolean` and IronKV's
+`host_impl_v`/`verus_extra::clone_v`; missing selections fail rather than
+silently changing the scope. Its research gate compares same-source raw SMT
+multisets and verification/proof-note JSON, observes that disabled output is
+empty, and validates all captured artifact hashes and completion flags.
+Edited-source raw SMT comparisons remain separate recorded observations;
+no equality is assumed. The default candidate gate always remains false.
+
+The first native capture on a c7i.4xlarge in us-east-1 verifies each project
+during preparation, the disabled control and the first enabled sample. Both
+enabled samples then fail the strict artifact-completion check: Vest's
+`der_ord` has complete AST/context but truncated SST at the original 63 MiB
+payload ceiling; IronKV's `host_impl_v` does too. Both unchanged control
+buckets fit. The controller retains the refusals and exits 1 without running
+later edit samples. A single bounded 256 MiB record-cap revision follows;
+it changes no field, input projection, raw-hash ceiling or correctness gate.
+The original runtime, source and raw captures remain preserved in compressed
+`raw-input-probe/m8-observer-attempt1-complete.tgz`, SHA-256
+`1e63601527929baa602212b86303ba331d5d8155ca99b5ce6556fcefb0ed42a1`.
+
+The second source (`7812863f`) explicitly verifies vstd again (2,060 verified,
+zero errors) and passes both observer unit tests. All ten project control/
+capture runs verify, with all 16 selected bucket manifests complete. Both
+research capture gates pass: the disabled observer emits nothing, exact
+same-source SMT multisets match, and verification/proof-note JSON matches
+across each project's five samples. Comment-edit SMT multisets also match;
+body-edit streams differ in both projects and remain recorded as different
+inputs. The default candidate gate remains false. This is complete capture
+of the stated, incomplete observations, not complete-key/output qualification
+or a latency measurement. Offline field analysis remains pending.
+The compressed complete attempt, including actual runtime/source and every
+raw artifact, is `raw-input-probe/m8-observer-attempt2-complete.tgz`, SHA-256
+`ec08c6220ce5a4717dd89ba94b713f920878d3794b0d28166793e20f7785f0a5`.
 
 ## Evidence
 
