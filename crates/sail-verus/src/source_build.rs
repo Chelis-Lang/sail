@@ -83,6 +83,10 @@ pub fn variant_dir(cache: &Path, commit: &str, toolchain: &str, features: &[Stri
 #[must_use]
 pub fn fork_test_features() -> Vec<String> {
     let mut features = crate::engine::features();
+    // The suite uses vargo's vstd layout, not the release runtime's separately
+    // rebuilt vstd. Both its namespace and provenance must state that layout.
+    features.retain(|feature| feature != crate::engine::VSTD_BUILD);
+    features.push("vstd-build:vargo".to_owned());
     features.push("suite:rust-verify-test+toolchain-manifest".to_owned());
     features
 }
@@ -307,6 +311,33 @@ mod tests {
         assert_ne!(
             variant_dir(cache, "commit", "1", &features),
             variant_dir(cache, "commit", "2", &features)
+        );
+    }
+
+    #[test]
+    fn fork_suite_identity_binds_its_actual_vstd_layout() {
+        let suite = fork_test_features();
+        let engine = crate::engine::features();
+        assert!(suite.iter().any(|feature| feature == "vstd-build:vargo"));
+        assert!(
+            !suite
+                .iter()
+                .any(|feature| feature == crate::engine::VSTD_BUILD)
+        );
+        assert!(
+            suite
+                .iter()
+                .any(|feature| feature.starts_with("sail-fork:"))
+        );
+        assert!(
+            suite
+                .iter()
+                .any(|feature| feature.starts_with("source-lock:"))
+        );
+        assert!(suite.iter().any(|feature| feature.starts_with("host:")));
+        assert_ne!(
+            variant_dir(Path::new("cache"), "commit", "toolchain", &suite),
+            variant_dir(Path::new("cache"), "commit", "toolchain", &engine)
         );
     }
 
