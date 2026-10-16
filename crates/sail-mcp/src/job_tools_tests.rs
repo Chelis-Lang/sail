@@ -226,6 +226,7 @@ fn project(root: &Path) -> ProjectResult {
         notes: vec![],
         error: None,
         engine: None,
+        no_reuse: None,
     }
 }
 

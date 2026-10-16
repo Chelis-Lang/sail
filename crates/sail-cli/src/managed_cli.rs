@@ -138,6 +138,7 @@ fn failure(
                 message: message.into(),
             }),
             engine: None,
+            no_reuse: None,
         };
         let _ = writeln!(
             out,
@@ -221,13 +222,19 @@ pub(crate) fn verify(
             )
         }
         // A setup managed verification cannot bind to a receipt (SAIL3112)
-        // is refused before anything runs. From the command line it is then
-        // verified as plain Cargo-Verus verifies it (ADR 0046); a job's
-        // worker, which must return a project result, and the opt-in engine
-        // still report it.
-        Err(error) if error.code == "SAIL3112" && !worker && !interactive => {
-            crate::verify::unbound(&config.args, options.json, &error.message, out, err)
-        }
+        // is refused before anything runs. It is then verified as plain
+        // Cargo-Verus verifies it (ADR 0046): from the command line with
+        // Cargo-Verus's output, and in a job's worker (jobs, `watch`, MCP)
+        // as a project result marked `no_reuse` (#165). The opt-in engine
+        // still reports it.
+        Err(error) if error.code == "SAIL3112" && !interactive => crate::verify::unbound(
+            &config.args,
+            options.json,
+            worker && options.json,
+            &error.message,
+            out,
+            err,
+        ),
         Err(error) => failure(&error.to_string(), out, err, options.json),
     }
 }

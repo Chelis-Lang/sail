@@ -183,6 +183,10 @@ as `sail verify --background` and `sail watch`. Read `cached_result` and
 older MCP records remain historical evidence and cannot establish complete
 workspace/runtime freshness.
 
+A job for a setup that cannot be bound to a proof receipt completes with a
+result marked `no_reuse` instead of failing; see
+[setups without proof reuse](#verify).
+
 After submission returns, use `cancel_verification` with its durable ID to stop
 the job. A cancelled read request or MCP disconnect does not cancel a submitted
 background job.
@@ -329,6 +333,7 @@ The default `structuredContent` (the agent view) holds:
 - `targets`: each requested target's identity, reuse, establishing run,
   attribution status, counts and Verus totals;
 - `dependencies`: the dependency target names and their counts;
+- `no_reuse`, present only for a run without proof reuse (see below);
 - `job`, `exit_code`, `currentness`, `input_revision`, `notes`, `error`,
   `project_dir`, `sail_args`, `duration_ms` and `sources` (`input_revision`,
   `currentness` and `changed_during_run`; the last is `false` for current
@@ -357,6 +362,28 @@ not a proof input, so MCP and the CLI share results. Partial
 requests preserve their explicit scope. Explicit portfolio/fragility requests
 use their established paths. Builds that fail before verification report their
 diagnostics without inventing per-function verdicts.
+
+**Setups without proof reuse.** `cargo_args` or `verus_args` that managed
+verification cannot bind to a proof receipt (`--tests` and other test, bench
+or example selections, `--target-dir`, Verus `--log`, `--no-verify`,
+`--sysroot`, `-v`, `--message-format`, Cargo `--config`, and the other
+[`SAIL3112` setups](workspace-verification.md#setups-verified-without-proof-reuse))
+are verified as `sail verify` verifies them: exactly as `cargo verus verify`
+does, in the project's own Cargo target, with Sail's solver cache. `verify`,
+`start_verification` and `verification_result` return the result as usual,
+marked so an agent cannot mistake it for reusable evidence:
+- the summary has a line `No proof reuse (SAIL3112): <reason>; …` saying the
+  result is never current, and its outcome line is the usual one (`FAILED`,
+  `VERIFIED`, …), or `NO RESULT` when Cargo found everything up to date and
+  Verus verified no function;
+- `no_reuse` is `{"code": "SAIL3112", "reason": …, "verified_as":
+  "plain-cargo-verus"}` (`managed` for a process-loader variable);
+- `execution.verifier_invocations` counts the aggregate Cargo-Verus driver
+  result (one), including zero or several verified crates; setup/driver failure
+  without that result counts zero. It is not a per-crate Verus work count;
+- the one target is named `cargo verus verify`, with `reused` false; its
+  report covers every crate Verus verified in the run;
+- `currentness` is `unknown`, and `notes` has a `SAIL3112:` entry.
 
 If `sail verify` could not run Verus at all (the report's `error` is set), or
 printed no report, the result has `isError: true` and the end of its stderr.

@@ -499,6 +499,7 @@ mod currentness_note_tests {
             ],
             error: None,
             engine: None,
+            no_reuse: None,
         }
     }
 

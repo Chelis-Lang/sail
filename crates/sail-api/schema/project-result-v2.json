@@ -99,6 +99,30 @@
         }
       }
     },
+    "no_reuse": {
+      "description": "Present when the setup could not be bound to a proof receipt (SAIL3112, ADR 0046): nothing was reused or recorded, and the result is never current",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "reason",
+        "verified_as"
+      ],
+      "properties": {
+        "code": {
+          "const": "SAIL3112"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "verified_as": {
+          "enum": [
+            "plain-cargo-verus",
+            "managed"
+          ]
+        }
+      }
+    },
     "error": {
       "type": [
         "object",

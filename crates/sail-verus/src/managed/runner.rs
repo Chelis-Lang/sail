@@ -10,7 +10,9 @@ use super::receipts::{
     Invocation, PhaseDigests, RECEIPT_VERSION, Receipt, Runtime, complete, read,
 };
 use crate::{Error, Result};
-use sail_api::project::{Currentness, Execution, ProjectResult, SCHEMA_VERSION, TargetResult};
+use sail_api::project::{
+    Currentness, Execution, NoReuse, ProjectResult, SCHEMA_VERSION, TargetResult, VerifiedAs,
+};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
@@ -2599,6 +2601,11 @@ pub(crate) fn run_engine_held(
             .engine
             .as_ref()
             .map(crate::engine::Request::identity),
+        no_reuse: loader.as_ref().map(|variable| NoReuse {
+            code: "SAIL3112".to_owned(),
+            reason: format!("{variable} is set"),
+            verified_as: VerifiedAs::Managed,
+        }),
     };
     let publication = diagnostics.phase(Phase::Publication);
     if result.currentness == Currentness::Current
@@ -3286,6 +3293,7 @@ mod tests {
                 notes: Vec::new(),
                 error: None,
                 engine: None,
+                no_reuse: None,
             };
             let fixture = Self {
                 root,

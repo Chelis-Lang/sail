@@ -91,6 +91,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         ],
         error: None,
         engine: None,
+        no_reuse: None,
     };
     let mut focus = full.clone();
     for f in focus.targets[0]

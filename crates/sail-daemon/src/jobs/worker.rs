@@ -45,7 +45,12 @@ pub(super) fn run(state: &State) {
         let Ok(job) = get(state, &id) else { continue };
         if !job.status.state.terminal() {
             let result = execute(state, &id);
-            if result.is_ok() {
+            // A run without proof reuse (SAIL3112) binds no context or
+            // input revision, so it establishes no freshness record.
+            if result
+                .as_ref()
+                .is_ok_and(|(_, document, _)| document.no_reuse.is_none())
+            {
                 store::establish_freshness(state, &job);
             }
             if let Ok(mut jobs) = state.jobs.lock()
