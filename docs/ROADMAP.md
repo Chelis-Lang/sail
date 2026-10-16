@@ -294,6 +294,10 @@ oyster and such." This supersedes the parallel tracks of
    9. B2, single-file `verus file.rs` projects, #164.
    10. deep-rvt against the fork, #124.
    11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.
+       Unscheduled-script cleanup (#174) has an implemented exact-input
+       scheduling memo with Mac and native required gates passing; the targeted
+       unchanged fixture falls from 0.94 s to 0.20 s. Full fast/standard
+       qualification remains pending; [record](validation/unscheduled-script-cleaning.md).
 
    B1 (a verified vstd shared across projects and worktrees, beyond the
    0.1.0 pre-verified vstd) is not yet ordered.

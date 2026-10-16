@@ -2166,6 +2166,29 @@ pub(crate) fn run_engine_held(
         )
     });
     let before_run = without_generated(&before, generated.as_deref());
+    let schedule_path = paths
+        .build_inputs
+        .with_file_name("unscheduled-scripts.json");
+    let schedule_before = super::build_inputs::family::schedule::Scope {
+        data: &data,
+        snapshot: &before_run,
+        context: &hash,
+        compiler: &compiler_hash,
+    };
+    let skipped_scripts = if paths.reuse {
+        super::build_inputs::family::schedule::load(&schedule_path, &schedule_before)
+    } else {
+        BTreeSet::new()
+    };
+    let (stale_scripts, script_coverage) = if skipped_scripts.is_empty() {
+        (stale_scripts, script_coverage)
+    } else {
+        // Only unobserved scripts may be exempted. Every recorded script's
+        // declared paths/environment and the late family recheck still run.
+        let (stale, _, coverage) =
+            super::build_inputs::stale_after(&paths.build_inputs, &data, &skipped_scripts);
+        (stale, coverage)
+    };
     // Sail's targeted cleans exist to observe what a receipt binds. A run
     // without reuse records no receipt, so Cargo's own freshness decides, as
     // for plain Cargo-Verus.
@@ -2491,6 +2514,23 @@ pub(crate) fn run_engine_held(
     // pre-invocation target revision contained that particular include.
     let pending = completed_receipts(&paths.run, &after_data)?;
     let after_run = without_generated(&after, generated.as_deref());
+    let schedule_after = super::build_inputs::family::schedule::Scope {
+        data: &after_data,
+        snapshot: &after_run,
+        context: &hash,
+        compiler: &compiler_hash,
+    };
+    let scheduling_confirmed = super::build_inputs::family::schedule::confirmed(
+        &skipped_scripts,
+        &schedule_before,
+        &schedule_after,
+        &unscheduled,
+    );
+    if !scheduling_confirmed {
+        // Withhold Current now, and restore original cleanup next time even
+        // if an unexpectedly scheduled unit left the same input bytes.
+        let _ = std::fs::remove_file(&schedule_path);
+    }
     let stamp_after = super::input::mutation_stamp(&after_run);
     let absent = absent.finish();
     let currentness = if !paths.reuse
@@ -2500,6 +2540,7 @@ pub(crate) fn run_engine_held(
         || !source_coverage
         || !absent.complete
         || outside_scope
+        || !scheduling_confirmed
         || !runtime_current(&config.cache, &hash)
         || stamp_before.is_none()
         || stamp_after.is_none()
@@ -2621,6 +2662,21 @@ pub(crate) fn run_engine_held(
     }
     json(&paths.run.join("result.json"), &result)?;
     if result.currentness == Currentness::Current {
+        if exit == Some(0) {
+            super::build_inputs::family::schedule::publish(
+                &schedule_path,
+                &super::build_inputs::family::schedule::Scope {
+                    data: &after_data,
+                    snapshot: &after_run,
+                    context: &result.context_sha256,
+                    compiler: &compiler_hash,
+                },
+                &result.run_id,
+                result.currentness,
+                result.exit_code,
+                &unscheduled,
+            );
+        }
         for (path, receipt) in pending {
             json(&path, &receipt)?;
         }

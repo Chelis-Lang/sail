@@ -96,3 +96,6 @@ The [Cargo target-context record](validation/cargo-target-context.md) covers
 owned metadata selection, source-directory coverage, and declared environment
 reads (#166 and #189), with native full fast/standard and separate joined
 main checks.
+
+[Unscheduled-script validation](validation/unscheduled-script-cleaning.md) records
+exact-input scheduling memo controls, native fixture measurements and remaining tiers.
