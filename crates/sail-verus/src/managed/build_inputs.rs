@@ -395,6 +395,18 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
         });
         previous.push(record);
     }
+    // A record whose unit directory is gone describes no output Cargo can
+    // use: Sail's targeted `cargo clean -p` removes every unit of a package,
+    // and a changed profile gives the rebuilt unit another directory, so
+    // Cargo reruns such a script before anything consumes it. Kept, the
+    // record could never match again and cleaned its package, and every
+    // package depending on it, on the next run: after a profile change that
+    // was vstd once more (#177). Observation roots (no output) stay.
+    previous.retain(|r| {
+        r.output
+            .as_ref()
+            .is_none_or(|(output, _)| output.parent().is_some_and(Path::is_dir))
+    });
     super::files::json(path, &previous)
 }
 
@@ -699,5 +711,80 @@ mod tests {
         );
         assert_eq!(stale(&state, &data).0, vec!["pkg"]);
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    /// Issue #177: after a profile change Sail cleans vstd, and Cargo reruns
+    /// its script in a new unit directory. The record of the removed unit
+    /// is dropped, so the next run does not clean and verify vstd again; a
+    /// unit whose directory is still there keeps its record.
+    #[test]
+    fn records_of_removed_script_units_are_dropped()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-removed-script-unit-{}", std::process::id()));
+        let package = root.join("vstd");
+        let build = root.join("target/debug/build");
+        for unit in ["vstd-new", "proc-macro2-old", "proc-macro2-new"] {
+            std::fs::create_dir_all(build.join(unit).join("out"))?;
+            std::fs::write(
+                build.join(unit).join("output"),
+                "cargo:rerun-if-env-changed=RUST_MIN_STACK\n",
+            )?;
+        }
+        std::fs::create_dir_all(&package)?;
+        std::fs::write(package.join("Cargo.toml"), "[package]\n")?;
+        let script = |id: &str| {
+            serde_json::json!({"id": id, "name": id, "manifest_path": package.join("Cargo.toml"),
+                "targets": [{"kind": ["custom-build"]}]})
+        };
+        let data = serde_json::json!({"packages": [script("vstd"), script("proc-macro2")]});
+        let executed = |unit: &str, id: &str| {
+            serde_json::json!({"reason": "build-script-executed", "package_id": id,
+                "out_dir": build.join(unit).join("out")})
+            .to_string()
+        };
+        let state = root.join("build-inputs.json");
+        let artifacts = root.join("artifacts.jsonl");
+        // The earlier run's units, then the run after the profile change: a
+        // targeted clean removed vstd's old unit; proc-macro2's old one stays.
+        std::fs::create_dir_all(build.join("vstd-old"))?;
+        std::fs::write(
+            build.join("vstd-old/output"),
+            "cargo:rerun-if-env-changed=RUST_MIN_STACK\n",
+        )?;
+        std::fs::write(
+            &artifacts,
+            [
+                executed("vstd-old", "vstd"),
+                executed("proc-macro2-old", "proc-macro2"),
+            ]
+            .join("\n"),
+        )?;
+        update(&state, &artifacts, &data)?;
+        std::fs::remove_dir_all(build.join("vstd-old"))?;
+        std::fs::write(
+            &artifacts,
+            [
+                executed("vstd-new", "vstd"),
+                executed("proc-macro2-new", "proc-macro2"),
+            ]
+            .join("\n"),
+        )?;
+        update(&state, &artifacts, &data)?;
+        let records = read::<Vec<BuildInput>>(&state).ok_or("records")?;
+        let units: BTreeSet<_> = records
+            .iter()
+            .filter_map(|r| Some(r.output.as_ref()?.0.parent()?.file_name()?.to_owned()))
+            .collect();
+        assert_eq!(
+            units,
+            ["proc-macro2-new", "proc-macro2-old", "vstd-new"]
+                .into_iter()
+                .map(std::ffi::OsString::from)
+                .collect()
+        );
+        assert_eq!(stale(&state, &data).0, Vec::<String>::new());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 }

@@ -503,6 +503,13 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             (project / "build.rs").write_text("fn main() {}\n")
             scripts_run, scripts, scripts_target = managed()
             assert scripts_run.returncode == 0 and scripts_target["complete"], diagnostic(scripts)
+            # Issue #177: as for plain Cargo-Verus, the new dependencies leave
+            # vstd's closure as it was, so vstd keeps its receipt and only the
+            # crate is verified again.
+            assert scripts["execution"]["verifier_invocations"] == 1, diagnostic(scripts)
+            assert not scripts_target["reused"], diagnostic(scripts)
+            assert vstd(scripts)["reused"], diagnostic(scripts)
+            assert b"Compiling vstd" not in scripts_run.stderr, scripts_run.stderr.decode()
             # Issues #120 and #121: the cold run is Current (the generated include
             # and the unbuilt dev-dependency script no longer withhold it), and the
             # unchanged run after it verifies nothing.
