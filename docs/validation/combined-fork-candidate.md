@@ -5,7 +5,7 @@
 | Status | Genuine Linux engine and fork-suite builds plus private packaging pass. **Not accepted or selected for release**; actual default Sail/corpus/determinism/performance qualification remains. |
 | Fork | `8a373f81a507b7ef4f144767ccd237d3d3de6c48`: closure identity, source mapping and deterministic proof-note JSON changes; no M8 pruning or telemetry. |
 | Build source | Sail `b9816738a3114cf9f14400b0dd75f1215ebabf69`, exact builder/harness source `9fa6c9d2` plus its isolated fork selection. This source predates #196 and is **not** the source for subsequent default CLI/corpus/performance checks. |
-| Qualification source | Current #196 metadata/runner behavior, reviewed #124 source-suite machinery and the merged #118 incidental-work harness are joined separately. Only its private Linux fork/artifact selections change; accepted main/macOS pins and public assets stay unchanged. |
+| Qualification source | Current main `1060a8ec` (#196 metadata/runner, #199 incidental-work harness and #198 CI packaging), with reviewed #124 source-suite machinery, is joined separately. Only its private Linux fork/artifact selections change; accepted main/macOS pins and public assets stay unchanged. |
 | Environment | Native c7i.8xlarge, us-east-1; existing `3c02e445e25df766` CI image used only as an environment, Rust 1.99.0/1.98.1, eight build jobs. Its installed old runtime is not the candidate. |
 | Source lock / solver | Lock `80c71fdd00ef5073cd93edf6b5e37a635f7b4114fba8f6553ba2125eecb1395e`; pinned Z3 `e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765`. |
 
@@ -32,7 +32,10 @@ not edited to manufacture a runtime identity. Its SHA-256 is
 Its release URL names a **not-published candidate**; this record does not
 authorize installation from that URL or publication. Candidate execution must
 explicitly bind both `SAIL_ENGINE_BUILD` and `SAIL_VERUS_BUILD` to the real
-engine variant. Source-suite execution must use the proper separate suite.
+engine variant. The general workspace gate unsets those overrides so its
+isolated runtime-lookup fixtures can use their own test caches; the candidate
+still occupies its genuine content-derived cache namespace. Source-suite
+execution must use the proper separate suite.
 
 | Preserved artifact | SHA-256 |
 |---|---|
@@ -59,3 +62,5 @@ remains open; these builds neither fix it nor broaden its acceptance.
 |---|---|---|
 | 2026-10-16, `b9816738` | Both genuine builders/private pack pass | Build and artifact identity only. |
 | 2026-10-16, initial archive collector | Refused by Git ownership check, exit 128 | Host user could not inspect root-owned container checkout; no build/source/ref changed. Exact-path per-command read-only Git admission allowed the retained retry; no global trust setting was changed. |
+| 2026-10-16, qualification `05674c60`, first BASIC attempt | Gate failed: 642 passed, two fixture failures | Explicit runtime overrides bypassed two synthetic fixture caches; no assertion was changed. Raw failed-attempt archive SHA-256 `b7983611d6ef77191a50d26cf8c14dd64afce1dce89e5c6d01fecf798643070a`. |
+| 2026-10-16, qualification `05674c60`, corrected BASIC attempt | Interrupted/unqualified after the host expiry window | Last observed controller output had gate and solver exit zero, then e2e active. Final BASIC status/full logs were not collected before access was lost; FAST and later phases were not launched. The interruption record SHA-256 is `05a0e31b89616d7b9fa5e6be58f977f16432c020ca6ee7d14762c9600df1713a`. No completed BASIC/corpus acceptance is inferred. |
