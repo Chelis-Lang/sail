@@ -122,11 +122,12 @@ same output, with the same exit code; a few arguments Sail cannot bind to a
 proof receipt run without proof reuse, with one note line
 ([details](docs/workspace-verification.md#setups-verified-without-proof-reuse)).
 It builds in its own Cargo target under
-the Sail cache and never touches your `target/`. The first run on a machine
-compiles the dependencies and verifies `vstd`, which takes about half a
-minute; later new projects and worktrees that resolve the same `vstd` start
-from the verified copy the first one stored
-([ADR 0045](docs/decisions/0045-dependency-store.md)). It starts the Sail
+the Sail cache and never touches your `target/`. Each fresh project or worktree
+compiles its dependencies and verifies `vstd`. Compiled dependencies are
+temporarily no longer shared between projects: v1 reuse could hide a native
+compiler failure ([ADR 0053](docs/decisions/0053-disable-unqualified-native-store.md)).
+In the bounded Linux assessment, a fresh small project took 32.6 seconds;
+this first-run performance remains work to recover safely. It starts the Sail
 cache daemon on demand; you never need to start it yourself. Run it again
 after an edit: targets whose inputs are unchanged keep their proof receipts
 and are not verified again, and solver queries Verus has seen before are

@@ -46,12 +46,15 @@ are in the `archive/m7-contracts-f7103bf` tag.
   On source `0a7c1d0d` plus stdout fix `2f7102c4` (macOS 26.5, Apple M3,
   pinned fork `73dea021`), replacing private `cc` bytes at unchanged `PATH`
   after a successful donor made fresh stock exit 101 with a linker error,
-  while store-seeded Sail exited 0 without that diagnostic. Current main
-  still uses v1 native-artifact seeding by source inspection; today's exact
-  main was not rerun. Raw archive SHA-256
+  while store-seeded Sail exited 0 without that diagnostic. Three native Linux
+  rounds reproduced the mismatch on `3c0498c3`. The
+  [ADR 0053 containment](validation/dependency-store-fail-closed.md) disables
+  v1 consumption and publication; its integrated ordinary gates remain pending,
+  and the original draft asset is unchanged. Raw macOS archive SHA-256
   `7bea96ebf3bd10a292ec6508bb7322a8a799fbc25ef024a89cf256d90783f51c`.
   The unmerged #187 replacement has a separate APFS mmap guard blocker;
-  the #166/#189 metadata correction fixes neither defect.
+  the #166/#189 metadata correction fixes neither defect. Recovering the lost
+  first-run speed with a sound replacement remains required work.
 - **Draft rc.5 can hide source inputs through output-directory exclusions (#189).**
   Adding an alternative module under a configured Cargo target or Sail cache
   can reuse an old proof although fresh compilation rejects it with E0761.
