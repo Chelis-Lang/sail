@@ -41,6 +41,17 @@ Native workspace-gate attempts, 2026-10-16:
   `SAIL0930` code was missing from the error-code registry. The code is now
   documented; the registry check is unchanged. Raw archive SHA-256
   `7c857ef4786a03bf669348fe3c35e6a107adb772ceb291da2837d44eeb614cbb`.
+- `644e1c0f`: workspace gate passed (633 tests, 35 solver tests excluded),
+  solver passed (35 tests), every end-to-end phase plus local `extra` passed,
+  and all four PR conformance arms matched stock (33 units and 311 functions
+  per arm; no differences, unstable units, infrastructure errors, skips or
+  resource-limit drift). All four explicit observer controls passed. This
+  ran on native Linux, c7i.8xlarge, us-east-1, with the existing pinned runtime;
+  the container used 16 CPUs and 26 GiB. Twelve before/after source manifests
+  verified the same 517 tracked files. Raw archive SHA-256
+  `3648f582073201c90ae0647b99c5e6880b87111ad42cef905e6ae9486b35f7e9`.
+  These checks qualify the harness and observer; final-runtime performance
+  and broader corpus acceptance remain pending.
 
 ## Exact solver-work capture design
 
