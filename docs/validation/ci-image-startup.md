@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Native parity and first actual CI run pass; published core is 9.024% smaller. **No latency gain established.** Final current-main checks and lead acceptance remain; #195 stays open. |
+| Status | Packaging and correctness accepted after native parity and two complete actual CI runs; published core is 9.024% smaller. **No latency gain established.** #195 stays open. |
 | Tracking | [#195](https://github.com/Chelis-Lang/sail/issues/195), [ADR 0013 candidate](../decisions/0013-ci-image.md#candidate-2026-10-16-share-the-core-image-without-the-optional-mcp-client) |
 | Scope | One Dockerfile, a shared `core` target and its complete `mcp` extension. Every existing toolchain, verifier, solver and runtime digest check remains. Only the existing pinned MCP client layer is excluded from jobs that do not invoke it. |
 | Current checks | Native Linux gate, solver, all seven e2e phases plus extra, and PR conformance pass. Mac host checks pass on the earlier prototype source, as scoped below. No startup performance claim follows from these checks. |
@@ -116,7 +116,7 @@ gate, not another solver/e2e/corpus run or a startup measurement.
 
 Joined raw archive SHA-256:
 `02688a75effbd2380cb73ddf7d036b9c0b5cf7b16c22c3da90b7c301ecc44ffd`.
-Required GitHub checks must still pass on the final PR head.
+The subsequent current-main checks are recorded below.
 
 ## Reproducing the packaging selection
 
@@ -186,9 +186,19 @@ existing image inventories still match except the client, and no image was
 rebuilt. Final native raw archive SHA-256:
 `807bd890871f687648eb5b8fe48767d077430a19b7c64c21f27fa68aab112585`.
 
-Every required GitHub check must pass on the final source before lead
-acceptance. This record qualifies packaging and correctness; no latency
-performance gain is claimed.
+[Final current-main run 38869064211](https://github.com/Chelis-Lang/sail/actions/runs/38869064211),
+source `cc83fcc21a9cb5e8373912a5271c2d3a2e85687f`, passes all 15 jobs,
+including every required check and the complete client smoke. Both images
+retain the published manifests above. All ten core startup samples are
+retained: initialization median 67s, mean 103.4s, range 41–255s. Solver
+initialization takes 247s and workspace initialization 255s; the smaller
+image has not resolved the slow tail. The managed full-image job initializes
+in 43s. Full source/job/step/raw-log summary SHA-256:
+`5dd62c1d89db0406c1875a1d2c0cc1755bd68fd54a8389442093225a57f43820`.
+Complete second-cohort comparison SHA-256:
+`e7a188c05ce88dc7db2c4fccf3368de7cacaa9350f2b9a2d74af121a8619d8f8`.
 
-No candidate build, static review or layer-size estimate authorizes a merge or
-closes the issue. Required checks must all pass on the final source.
+The lead accepts the packaging and correctness result. No latency performance
+gain is claimed, and #195 remains unresolved. This final documentation update
+does not change the qualified code, image inputs or measurements; normal
+required CI still applies to its final PR head.
