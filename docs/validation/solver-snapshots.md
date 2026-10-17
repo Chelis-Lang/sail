@@ -186,7 +186,7 @@ The next source-only candidate uses the separately named
 `--experiment-kernel-accounting-owner` alongside the numeric-time-only research
 comparison. It replaces sampling only in that opt-in path; the default and
 terminal-only classifier above are unchanged. All earlier failed native and
-workload attempts remain failed. No new native execution, real-trace pass,
+workload attempts remain failed. No passing native aggregate, real-trace pass,
 performance gain, selection or default integration is claimed.
 
 The assigned owner defers the sole `wait4` until actual executable/pidfd
@@ -205,7 +205,7 @@ all worker-start positions, complete raw I/O/status, timeout, peak refusal,
 read/descriptor errors, per-child CPU and actual driver/parent entry. Linux
 image/pidfd guards are explicit doubles in these portable controls. Original
 owner controls and the unchanged exact/timing-policy/readiness/legacy-driver
-controls are also retained. The mandatory eleven native controls and fixed
+controls are also retained. The corrected mandatory twelve native controls and fixed
 IronKV/Anvil three-fresh/one-eligible evaluation remain pending and must block
 on every error. See the [research commands](../../native/sail-live-prefix/README.md#prospective-kernel-accounting-owner).
 
@@ -217,3 +217,17 @@ held-descriptor kill/reap in the correction. Native image/pidfd/waitid APIs are
 explicit doubles in these local controls. Missing rusage remains a refusal;
 no accounting is reconstructed from termination alone. Actual native controls
 and the new workload experiment are still pending.
+
+| Failed kernel-owner attempt | Result and limit |
+|---|---|
+| `0f59b3a4`, 2026-10-17, native source and runtime controls | 10/11 new native cases pass; mandatory nonzero-exit fixture fails because an unsupported command actually exits zero. Native core 28 and all other required control commands pass. Both real traces are unrun; strict aggregate FAIL remains. Final archive SHA-256 `bb9e1a650af99190fa7b80e47517dfde0db7739dff5e182692af9299771c4ed3`; complete native report `7bd1d67758419227a123d9c37d65c946a8c2092374a9c2349221f63288dda1e6`. |
+
+The [solver reproduction](../../corpus/repros/z3-unsupported-command-exit/README.md)
+precedes the fixture correction. It preserves Linux's actual exit-zero streams
+and a direct pinned macOS API probe demonstrating a real parse-error exit one.
+The corrected fixture keeps both observations distinct and strengthens its
+nonzero check to actual exit one, complete kernel accounting and exact retained
+parse diagnostics. This changes no resource or verdict admission policy. The
+outer native container remains 28 GiB; the original 1 GiB per-child kernel peak
+is a final admission criterion, not a live OS memory limit. Corrected native
+qualification remains pending.

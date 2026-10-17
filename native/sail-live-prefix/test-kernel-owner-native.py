@@ -49,7 +49,7 @@ def main():
         starts.append(owner.pid)
         return start(owner)
     def save():
-        data=dict(passed=len(rows)==11 and all(r['passed'] for r in rows),cases=rows,
+        data=dict(passed=len(rows)==12 and all(r['passed'] for r in rows),cases=rows,
                   source_sha256={n:hashlib.sha256(Path(__file__).with_name(n).read_bytes()).hexdigest() for n in ['test-kernel-owner-native.py','owned_wait4.py','kernel_accounting.py','live_prefix.py']},
                   platform=list(os.uname()),solver_sha256=SOLVER,owner_releases=starts,
                   scope=__doc__)
@@ -101,10 +101,21 @@ def main():
             assert not r['kernel_resource_gate_pass'] and not r['image_verified']
             assert r['input_bytes_written']==0 and r['stdout']==b'' and r['error']
         one('actual-held-image-mismatch-before-input',image)
+        def unsupported(row):
+            r=kernel_accounting.fresh(z3,SOLVER,b'(definitely-not-an-smt-command)\n',10,1024**3);retain('unsupported',r,row)
+            assert r['exit']==0 and r['error'] is None and r['kernel_resource_gate_pass']
+            assert r['stdout']==b'unsupported\n'
+            assert r['stderr']==b'; definitely-not-an-smt-command line: 1 position: 31\n'
+            row['scope']='Resource completion only; unsupported is not a satisfiability verdict or trace admission.'
+        one('actual-unsupported-exit-zero-is-not-a-verdict',unsupported)
         def malformed(row):
-            r=kernel_accounting.fresh(z3,SOLVER,b'(definitely-not-an-smt-command)\n',10,1024**3);retain('nonzero',r,row)
-            assert r['exit']!=0 and r['error'] and not r['kernel_resource_gate_pass']
-            assert b'error' in r['stdout']+r['stderr']
+            # Tested with the pinned solver; an unknown command is not a
+            # nonzero-exit fixture. Preserve that separate observation above.
+            r=kernel_accounting.fresh(z3,SOLVER,b')\n',10,1024**3);retain('nonzero',r,row)
+            assert r['exit']==1 and r['error'] and not r['kernel_resource_gate_pass']
+            assert r['kernel_accounting']['exit']==1
+            assert r['stdout']==b"(error \"line 1 column 1: invalid command, '(' expected\")\n"
+            assert r['stderr']==b''
         one('actual-solver-nonzero-retains-diagnostic',malformed)
         def helper(row,kill=False):
             code='import os,sys\na=bytearray(64*1024*1024);a[::4096]=b"x"*16384;del a;print("released",flush=True);sys.stdin.buffer.read();os._exit(0)'
@@ -236,13 +247,13 @@ def main():
                     if fd is not None:os.close(fd)
         one('actual-closed-original-pidfd-refuses',invalid_fd)
         def stable(row):
-            assert len(starts)==9
+            assert len(starts)==10
             assert live_prefix.path_digest(z3)==SOLVER
             row['every_reaper_released_after_actual_capture']=True
             row['final_solver_sha256']=SOLVER
         one('all-starts-follow-unreaped-image-capture-final-identity',stable)
     save()
-    return 0 if len(rows)==11 and all(r['passed'] for r in rows) else 1
+    return 0 if len(rows)==12 and all(r['passed'] for r in rows) else 1
 
 
 if __name__=='__main__':raise SystemExit(main())
