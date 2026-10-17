@@ -365,7 +365,8 @@ failed attempts stay failed. See the [native evidence](../../docs/validation/sol
 The separate streaming prototype fixes donor session ordinal0, future session
 ordinal0 and the first complete donor check batch before examining an edit's
 solver input. Its [contract](edit-workflow-contract.json) freezes readiness at
-edit invocation start: later readiness cannot turn a miss into a hit. Literal
+the explicit edit-start default or first-session-claim boundary: later readiness
+cannot turn a miss into a hit. Literal
 command framing handles the pinned Verus writer's complete DONE batches,
 including early version replies that the compiler needs before producing its
 first check input. It never rewrites queries or responses.
@@ -406,11 +407,11 @@ The private start/finish records, Linux peer credentials and broker completion
 must agree, independently of compiler exit. A late child failure still refuses
 an attempt when its caller returns zero. Nonselected sessions run fresh and
 every created solver, including cancelled preparation, retains actual kernel
-accounting and raw streams. Each stream/input is bounded at 16MiB, at most 32
+accounting and raw streams. Each stream/input is bounded at 16MiB, at most 512 total
 registered sessions and sixteen active sessions are supported, and the workflow
 raw budget is 1GiB. Refusals remain failures.
 
-Readiness uses nonblocking pool/entry locks at the single edit-start snapshot.
+Readiness uses nonblocking pool/entry locks at the single selected snapshot.
 A preparation still starting or holding either lock cannot become a later hit.
 Original and edited source bytes, raw compiler streams, literal session streams,
 actual child status/CPU/peak, failed attempts and whole retries remain separate.
@@ -476,3 +477,14 @@ budgets. The parser is iterative; it never recursively traverses the query.
 The next level, incomplete inputs and all byte/resource/identity violations
 still refuse. The failed pilot remains failed; project edit qualification
 remains pending.
+
+A prospective `--readiness-at-session-claim` scheduling variant takes its single
+nonblocking snapshot at the authenticated fixed ordinal0 claim, before that
+session's request batch is read or any reply exposed. Actual compiler work
+between edit launch and solver invocation can overlap preparation. It adds no
+readiness wait and never promotes a miss at any later session or input batch.
+The original edit-start boundary remains available and its results stay indexed.
+Total application sessions are capped at 512; active sessions remain capped at
+16, plus the one prepared child. Global raw, memory, wall and per-child limits
+remain unchanged. Actual boundary controls use owned Unix connections and
+explicit prior-row/thread fixtures, not a claim of 512 native solver runs.

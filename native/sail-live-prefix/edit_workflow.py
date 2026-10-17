@@ -1,8 +1,9 @@
 """Disabled edit-loop research driver, not a verifier or exhaustive spawn census.
 
 One fixed donor session0 supplies the first check prefix. Preparation runs in
-the background; readiness is snapshotted before the scheduled edited compiler
-launch. All other sessions run fresh. Registered session accounting is joined
+the background; readiness is snapshotted at the explicit edit-start default or
+prospective first-session-claim boundary, before request reads/replies. All other
+sessions run fresh. Registered session accounting is joined
 independently of compiler exit. The pre-first-wrapper-record/exec gap remains
 PENDING: a successful controlled run never establishes application acceptance.
 """
@@ -107,9 +108,11 @@ def compiler(argv, cwd, environment, timeout):
 class Workflow:
     """One donor, one scheduled edit and at most one whole fresh retry."""
     def __init__(self, output, solver, solver_sha256, argv, cwd, *,
-                 edit_delay=0, attempt_timeout=120, rustup_loader_target=None):
+                 edit_delay=0, attempt_timeout=120, rustup_loader_target=None,
+                 readiness_boundary='edit-start'):
         if (not 0 <= edit_delay <= 60 or not 0 < attempt_timeout <= 270 or
-                not argv or not all(isinstance(x, str) for x in argv)):
+                not argv or not all(isinstance(x, str) for x in argv) or
+                readiness_boundary not in ('edit-start', 'first-session-claim')):
             raise ProtocolRefusal('fixed bounded workflow required')
         self.output = Path(output).absolute()
         self.output.mkdir(mode=0o700, exist_ok=False)
@@ -119,6 +122,7 @@ class Workflow:
         self.sha256 = solver_sha256
         self.argv, self.cwd = list(argv), str(Path(cwd).resolve(strict=True))
         self.delay, self.timeout = edit_delay, attempt_timeout
+        self.readiness_boundary = readiness_boundary
         self.config = self.output / 'wrapper.json'
         self.environment = dict(os.environ, VERUS_Z3_PATH=str(HERE / 'edit-interposer.py'),
                                 SAIL_LIVE_PREFIX_EDIT_CONFIG=str(self.config))
@@ -155,12 +159,17 @@ class Workflow:
         return dict(path=str(path.relative_to(self.output)), bytes=len(data),
                     sha256=hashlib.sha256(data).hexdigest())
 
-    def attempt(self, name, selected=None, selected_binding=None):
+    def attempt(self, name, selected=None, selected_binding=None, *, selected_factory=None):
         """Assign ordinal0 at accept, never by retrospectively inspecting input."""
         claims = []
         def factory(ordinal, binding):
-            if ordinal == 0 and selected is not None and binding == selected_binding:
-                claim, fallback = selected, lambda: self.direct(binding, name + '-pre-reply-fallback')
+            candidate = selected
+            if ordinal == 0 and binding == selected_binding and selected_factory is not None:
+                # Broker calls this after authenticating the header, before
+                # receiving any request batch. Never inspect future input.
+                candidate = selected_factory()
+            if ordinal == 0 and candidate is not None and binding == selected_binding:
+                claim, fallback = candidate, lambda: self.direct(binding, name + '-pre-reply-fallback')
                 self.claimed_preparation = True
             else:
                 claim, fallback = self.direct(binding, name), None
@@ -272,7 +281,9 @@ class Workflow:
                 for index, claim in enumerate(row.get('claims', [])):
                     entry = claim.entry
                     child = dict(errors=list(claim.errors), completed=claim.completed,
-                                 ready_at_edit_start=claim.snapshot_ready)
+                                 ready_at_snapshot=claim.snapshot_ready,
+                                 readiness_boundary=self.readiness_boundary,
+                                 readiness_snapshot_time=claim.snapshot_time)
                     if entry is not None:
                         child.update(pid=entry.process.pid, accounting=entry.kernel_accounting,
                                      cleanup_errors=entry.cleanup_errors)
@@ -356,15 +367,37 @@ class Workflow:
             thread.start()
             path.write_bytes(edited_bytes)
             time.sleep(max(0, launch_at - time.monotonic()))
-            # No wait_ready or readiness lock wait. A still-running seed is
-            # unready; the edited compiler receives a fresh session instead.
-            key = prepared.get('key')
-            if key is not None:
-                snapshot = StreamingClaim(pool, key)
-            result['preparation'] = dict(ready_at_edit_start=bool(snapshot and snapshot.snapshot_ready),
-                                         scheduled_launch=launch_at, snapshot=time.monotonic())
-            selected = snapshot if snapshot and snapshot.snapshot_ready else None
-            edited = self.attempt('edited', selected, binding)
+            # Neither boundary waits for readiness or examines future input.
+            # The prospective claim boundary overlaps only real compiler work;
+            # ordinal0 is assigned at owned accept before its request is read.
+            if self.readiness_boundary == 'edit-start':
+                key = prepared.get('key')
+                if key is not None:
+                    snapshot = StreamingClaim(pool, key)
+                result['preparation'] = dict(boundary='edit-start',
+                    ready_at_edit_start=bool(snapshot and snapshot.snapshot_ready),
+                    scheduled_launch=launch_at, snapshot=time.monotonic())
+                selected = snapshot if snapshot and snapshot.snapshot_ready else None
+                edited = self.attempt('edited', selected, binding)
+            else:
+                result['preparation'] = dict(boundary='first-session-claim',
+                    scheduled_launch=launch_at, edited_attempt_start=time.monotonic(),
+                    ready_at_session_claim=None, claim_observations=[])
+                def at_first_claim():
+                    nonlocal snapshot
+                    observed = dict(snapshot=time.monotonic(), ordinal=0)
+                    result['preparation']['claim_observations'].append(observed)
+                    key = prepared.get('key')
+                    if key is not None:
+                        snapshot = StreamingClaim(pool, key)
+                        observed.update(snapshot=snapshot.snapshot_time,
+                            ready=snapshot.snapshot_ready, errors=list(snapshot.errors))
+                    else:
+                        observed.update(ready=False, errors=['preparation key unavailable at claim'])
+                    result['preparation']['ready_at_session_claim'] = observed['ready']
+                    return snapshot if snapshot and snapshot.snapshot_ready else None
+                edited = self.attempt('edited', selected_binding=binding,
+                                      selected_factory=at_first_claim)
             if edited['compiler']['errors']:
                 # A timed-out/failed compiler owner cannot certify descendant
                 # completion. The native caller must remove its owned Docker

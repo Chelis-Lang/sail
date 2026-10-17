@@ -36,9 +36,10 @@ for line in sys.stdin.buffer:
 if 'LATE7' in open('project.rs').read():
  os.write(2,b'actual controlled late exit7\\n');raise SystemExit(7)
 '''
-CALLER = '''import json,os,subprocess,sys
+CALLER = '''import json,os,subprocess,sys,time
 source=open('project.rs').read()
 mode=os.environ['SAIL_TEST_EDIT_CASE']
+if mode=='claim-ready-during-frontend' and source!='BASE\\n':time.sleep(.7)
 if mode=='pre-first-record':
  try:subprocess.run(['/definitely/missing/research-wrapper'],capture_output=True)
  except FileNotFoundError as error:print(str(error))
@@ -49,7 +50,7 @@ arguments=['-bad'] if mode=='wrapper-wrong-args' else ['-smt2','-in']
 child=subprocess.Popen([os.environ['VERUS_Z3_PATH'],*arguments],env=environment,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 version=b'(get-info :version)\\n(echo "<<DONE>>")\\n'
 check=b'(assert false)\\n' if 'DIVERGE' in source else b'(assert true)\\n'
-if mode=='unready':check+=b';SLOW\\n'
+if mode=='unready' or mode.startswith('claim-'):check+=b';SLOW\\n'
 check+=b'(check-sat)\\n(echo "<<DONE>>")\\n'
 requests=[version,check,b'(get-info :all-statistics)\\n(echo "<<DONE>>")\\n']
 actual=[]
@@ -67,7 +68,11 @@ try:child.stdin.close()
 except BrokenPipeError:pass
 code=child.wait(timeout=8);error=child.stderr.read()
 child.stdout.close();child.stderr.close()
-print(json.dumps({'interposer_exit':code,'replies':actual,'stderr_hex':error.hex()}))
+extra=None
+if mode=='claim-unready-no-promotion':
+ second=subprocess.run([os.environ['VERUS_Z3_PATH'],'-smt2','-in'],env=environment,input=b''.join(requests),capture_output=True,timeout=8)
+ extra={'exit':second.returncode,'stdout':second.stdout.hex(),'stderr':second.stderr.hex()}
+print(json.dumps({'interposer_exit':code,'replies':actual,'stderr_hex':error.hex(),'extra':extra}))
 # Deliberately ignore the real nonzero interposer exit, as the audited caller
 # can. The independent broker/accounting gate must reject this compiler0.
 raise SystemExit(0)
@@ -111,7 +116,8 @@ def explicit_native_doubles(root):
 
 rows = []
 for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
-             'pre-first-record', 'context-miss', 'wrapper-wrong-args'):
+             'pre-first-record', 'context-miss', 'wrapper-wrong-args',
+             'claim-ready-during-frontend', 'claim-unready-no-promotion'):
     with tempfile.TemporaryDirectory(prefix='sle-', dir='/tmp') as td:
         root = Path(td)
         solver, caller, source = [root / name for name in ('solver', 'caller.py', 'project.rs')]
@@ -124,12 +130,15 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
                   'unready': b'BASE\n// fixed immediate edit\n',
                   'diverge-after-reply': b'DIVERGE\n', 'late-exit7': b'LATE7\n',
                   'pre-first-record': b'BASE\n', 'context-miss': b'BASE\n// context change\n',
-                  'wrapper-wrong-args': b'BASE\n'}[case]
+                  'wrapper-wrong-args': b'BASE\n',
+                  'claim-ready-during-frontend': b'BASE\n// actual caller frontend delay\n',
+                  'claim-unready-no-promotion': b'BASE\n// two actual caller sessions\n'}[case]
         with patch.dict(os.environ, {'SAIL_TEST_EDIT_CASE': case}), explicit_native_doubles(root):
             workflow = edit_workflow.Workflow(root / 'out', solver,
                 hashlib.sha256(solver.read_bytes()).hexdigest(),
                 [sys.executable, '-B', str(caller)], root,
-                edit_delay=0 if case == 'unready' else .2, attempt_timeout=5)
+                edit_delay=0 if case == 'unready' or case.startswith('claim-') else .2, attempt_timeout=5,
+                readiness_boundary='first-session-claim' if case.startswith('claim-') else 'edit-start')
             result = workflow.run(source, hashlib.sha256(original).hexdigest(), edited)
         assert source.read_bytes() == original and result['source_restored'], result
         actual = json.loads((root / 'out/result.json').read_bytes())
@@ -153,6 +162,17 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
             if case in ('same-prefix', 'diverge-after-reply', 'late-exit7'):
                 assert result['preparation']['ready_at_edit_start'] is True, result
                 assert result['preparation_claimed'], result
+            if case.startswith('claim-'):
+                observation = result['preparation']
+                assert observation['boundary'] == 'first-session-claim'
+                assert len(observation['claim_observations']) == 1
+                expected_ready = case == 'claim-ready-during-frontend'
+                assert observation['ready_at_session_claim'] == expected_ready, result
+                assert result['preparation_claimed'] == expected_ready, result
+                if not expected_ready:
+                    # Preparation completes during the first fresh session;
+                    # actual second session still cannot acquire it.
+                    assert len(attempts[1]['sessions']) == 2
             if case == 'context-miss':
                 assert result['preparation']['ready_at_edit_start'] is True
                 assert not result['preparation_claimed']
@@ -177,4 +197,54 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
         rows.append(dict(name=case, passed=True, driver_exit=result['driver_exit'],
                          attempt_count=len(attempts), raw_bytes=result['raw_bytes'],
                          children=len(result.get('owned_children', []))))
+# Real Unix accepts exercise the exact cumulative boundary with prior rows
+# explicitly supplied as a counter fixture, not 512 claimed solver executions.
+import socket
+import time
+with tempfile.TemporaryDirectory(prefix='sle-cap-', dir='/tmp') as td:
+    def accepted_fixture(self, connection, row):
+        row['admission_fixture'] = True
+        connection.close()
+    with patch.object(edit_transport.Broker, '_session', accepted_fixture):
+        broker = edit_transport.Broker(Path(td) / 'broker', 'capacity', 'x' * 32,
+                                      lambda *_: None, time.time() + 5)
+        try:
+            with broker.lock:
+                broker.rows.extend(dict(ordinal=n, identity=None) for n in range(511))
+            for expected_count in (512, 513):
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+                    connection.connect(str(broker.path))
+                deadline = time.monotonic() + 2
+                while len(broker.rows) < expected_count and time.monotonic() < deadline:
+                    time.sleep(.001)
+                assert len(broker.rows) == expected_count
+            assert broker.rows[511].get('error') is None
+            assert broker.rows[512]['error'] == 'session/concurrency budget refused'
+        finally:
+            outcome = broker.finish()
+        assert outcome['socket_removed'] and not outcome['passed']
+        assert broker.rows[511]['admission_fixture']
+rows.append(dict(name='actual-accept-total512-next-refused', passed=True,
+                 scope='511 counter-fixture rows + two real Unix accepts; no solver qualification'))
+with tempfile.TemporaryDirectory(prefix='sle-active-', dir='/tmp') as td:
+    release = threading.Event()
+    broker = edit_transport.Broker(Path(td) / 'broker', 'active', 'x' * 32,
+                                  lambda *_: None, time.time() + 5)
+    try:
+        for _ in range(16):
+            worker = threading.Thread(target=release.wait)
+            broker.workers.append(worker)
+            worker.start()
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.connect(str(broker.path))
+        deadline = time.monotonic() + 2
+        while not broker.rows and time.monotonic() < deadline:
+            time.sleep(.001)
+        assert broker.rows[0]['error'] == 'session/concurrency budget refused'
+    finally:
+        release.set()
+        outcome = broker.finish()
+    assert outcome['socket_removed'] and not outcome['passed']
+rows.append(dict(name='actual-accept-active16-next-refused', passed=True,
+                 scope='16 owned blocked thread fixtures + one real Unix accept; no solver qualification'))
 print(json.dumps(dict(passed=True, scope=__doc__, rows=rows), indent=2))

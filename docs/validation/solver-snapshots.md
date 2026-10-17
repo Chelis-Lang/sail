@@ -299,3 +299,17 @@ loader refusal, reply policy and resource limits remain unchanged.
   Prospective application framing permits 1,024 iterative levels, preserving
   the 16 MiB input/reply budgets and all literal, resource and caller gates.
   This is workload capacity, not application acceptance.
+
+- 2026-10-17, `7985b4e3`: Tiny and all fault gates passed; IronKV completed
+  donor, edited and independent fresh-control runs, each 313 verified / 0 errors,
+  with literal compiler streams and complete census/accounting gates passing.
+  All 75 retained session inputs finish (maximum depth 154). The fixed one-second
+  edit-start snapshot was unready, so no continuation was claimed: edited wall
+  50.128 s versus fresh control 45.336 s. Anvil then refused the total-session
+  admission at ordinal32 during its donor; no Anvil edit ran. Whole pilot FAIL,
+  raw final SHA-256
+  `cda4b37bacd2832c922195a8847f3d78199e1cd40c3d8b977a264887fb7d1cef`.
+  Prospective changes move readiness to the first fixed session claim and raise
+  only total-session capacity to 512; active16 and all resource, reply, verdict,
+  diagnostic, input/output and census gates remain. Neither change qualifies
+  a continuation or application result before actual execution.

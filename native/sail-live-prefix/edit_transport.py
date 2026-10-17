@@ -20,7 +20,7 @@ import time
 from edit_stream import ProtocolRefusal
 from edit_wire import interpose, receive, serve
 
-MAX_SESSIONS = 32
+MAX_SESSIONS = 512
 MAX_ACTIVE = 16
 
 
@@ -112,7 +112,8 @@ class Broker:
 
     claim_factory(ordinal, actual_context) must return an actual owned claim and
     optional fresh factory. It cannot inspect future query input. The enclosing
-    driver snapshots the selected preparation BEFORE compiler launch, not here.
+    driver chooses its explicit edit-start or first-session-claim readiness
+    boundary. This authority fixes ordinal0 before reading request bytes.
     """
     def __init__(self, root, attempt, token, claim_factory, deadline_unix):
         if (not re.fullmatch('[a-z0-9-]{1,64}', attempt) or len(token) < 32 or

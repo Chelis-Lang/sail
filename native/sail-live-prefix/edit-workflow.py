@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--timeout', type=float, default=120)
     parser.add_argument('--out', required=True)
     parser.add_argument('--experiment-rustup-loader-target', help='explicit actual Cargo target directory for the named Rustup mapped-file context')
+    parser.add_argument('--readiness-at-session-claim', action='store_true',
+                        help='snapshot once at fixed session0 claim before its request; never wait')
     parser.add_argument('--strace', help='explicit native strace binary; retain per-process exec/exit census')
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -32,7 +34,8 @@ def main():
         parser.error('explicit source edit exceeds the bounded input size')
     workflow = Workflow(args.out, args.solver, args.solver_sha256, command, args.cwd,
                         edit_delay=args.delay, attempt_timeout=args.timeout,
-                        rustup_loader_target=args.experiment_rustup_loader_target)
+                        rustup_loader_target=args.experiment_rustup_loader_target,
+                        readiness_boundary='first-session-claim' if args.readiness_at_session_claim else 'edit-start')
     if args.strace:
         workflow.trace_program = str(Path(args.strace).resolve(strict=True))
     result = workflow.run(args.source, args.source_sha256, edited)

@@ -7,7 +7,7 @@
     "prepared_boundary": "first complete batch containing exact (check-sat), including its literal writer DONE command and newline"
   },
   "selection_inputs": "Completed donor session only. Never inspect future query bytes/LCP or select successful edits/sessions.",
-  "readiness": "Snapshot once at edit invocation start, before compiler launch. A queued/incomplete preparation is a miss even if it becomes ready later. No waiting for readiness.",
+  "readiness": "Explicit default edit-start snapshot before compiler launch, or prospective first-session-claim snapshot at authenticated fixed ordinal0 before request reads/replies. Exactly once at the chosen boundary; never wait, inspect future input, or promote a miss later.",
   "early_replies": "Forward only actual prepared-child raw replies for already fully matched literal input batches. Version/DONE can be required before the compiler produces the first check input; never withhold all replies until the entire prepared prefix matches.",
   "divergence_before_any_reply": "Cancel/discard preparation and run the pinned solver fresh with the exact retained caller input. Retain both costs and miss reason.",
   "divergence_after_any_reply": "Abort the entire compiler attempt nonzero, retaining partial streams. No child swap or reply skipping theorem is assumed. An explicitly recorded whole-verification fresh retry may supply a final result; the failed continuation and retry costs both remain.",
@@ -16,7 +16,7 @@
     "claims": 1,
     "input_bytes": 16777216,
     "reply_bytes": 16777216,
-    "command_depth": 128,
+    "command_depth": 1024,
     "commands": 100000,
     "kernel_peak_bytes": 1073741824,
     "preparation_seconds": 300,
@@ -32,7 +32,7 @@
   "driver_bounds": {
     "attempt_seconds": 270,
     "fixed_edit_delay_seconds": 60,
-    "maximum_registered_sessions": 32,
+    "maximum_registered_sessions": 512,
     "maximum_active_sessions": 16,
     "raw_bytes": 1073741824,
     "whole_fresh_retries": 1
