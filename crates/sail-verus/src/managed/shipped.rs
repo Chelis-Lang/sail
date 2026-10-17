@@ -9,7 +9,7 @@
 //! This reuses the original shipped-build serializer and source-path mapping;
 //! schema 2 cannot accept the old all-unit native-artifact bundles. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
-//! SAIL_VSTD_BOUNDARY_RESEARCH=1. Fresh dependency-byte equality, complete native
+//! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
 
 use super::files::digest;
@@ -106,6 +106,8 @@ struct Unit {
     /// The keyed arguments and environment, for inspection.
     args: Vec<String>,
     environment: BTreeMap<String, String>,
+    /// Complete vstd package file set observed before compilation.
+    source_tree: BTreeMap<String, String>,
     /// Compiler outputs, stored under `files/`; the dep-info is stored with
     /// placeholders.
     files: Vec<StoredFile>,
@@ -613,6 +615,7 @@ fn bound_name(name: &str, package: &str) -> Option<String> {
 /// One compiler invocation of a registry package under a plan.
 pub(crate) struct Call<'a> {
     plan: &'a Plan,
+    arguments: &'a [OsString],
     normalizer: Normalizer,
     key: String,
     /// The invocation's whole environment (UTF-8 variables).
@@ -624,6 +627,42 @@ pub(crate) struct Call<'a> {
     out_dir: PathBuf,
     stem: String,
     verifying: bool,
+    externs: Vec<(String, String, Option<String>)>,
+    source_tree: Option<BTreeMap<String, String>>,
+}
+
+/// Observe every package file, including files that dep-info does not yet
+/// name. Added/removed modules must also invalidate a recorded compilation.
+fn package_tree(root: &Path) -> Option<BTreeMap<String, String>> {
+    fn visit(
+        root: &Path,
+        directory: &Path,
+        files: &mut BTreeMap<String, String>,
+        bytes: &mut u64,
+    ) -> Option<()> {
+        for entry in std::fs::read_dir(directory).ok()? {
+            let entry = entry.ok()?;
+            let kind = entry.file_type().ok()?;
+            if kind.is_dir() {
+                visit(root, &entry.path(), files, bytes)?;
+            } else if kind.is_file() {
+                *bytes = bytes.checked_add(entry.metadata().ok()?.len())?;
+                if *bytes > 64 * 1024 * 1024 || files.len() >= 16_384 {
+                    return None;
+                }
+                files.insert(
+                    entry.path().strip_prefix(root).ok()?.to_str()?.to_owned(),
+                    sha256_file(&entry.path())?.0,
+                );
+            } else {
+                return None;
+            }
+        }
+        Some(())
+    }
+    let mut files = BTreeMap::new();
+    visit(root, root, &mut files, &mut 0)?;
+    Some(files)
 }
 
 /// The keyed arguments of an invocation (this machine's directories as
@@ -749,11 +788,17 @@ impl<'a> Call<'a> {
         {
             return None;
         }
-        let call = Self::new(plan, args, true, vars.into_iter())?;
+        let root = PathBuf::from(lookup("CARGO_MANIFEST_DIR")?);
+        let source_tree = package_tree(&root)?;
+        let mut call = Self::new(plan, args, true, vars.into_iter())?;
+        call.source_tree = Some(source_tree);
         (call.crate_name == "vstd"
             && argument_value(&call.keyed_args, "--crate-type")
                 .is_some_and(|kind| matches!(kind.as_str(), "lib" | "rlib")))
-        .then_some(call)
+        .then(|| {
+            call.trace("native-prerequisites-observed");
+            call
+        })
     }
 
     /// The invocation, if it compiles a crates.io package under `plan` and
@@ -838,6 +883,7 @@ impl<'a> Call<'a> {
         );
         Ok(Self {
             plan,
+            arguments: args,
             normalizer,
             key,
             vars,
@@ -848,6 +894,8 @@ impl<'a> Call<'a> {
             out_dir,
             stem,
             verifying,
+            externs,
+            source_tree: None,
         })
     }
 
@@ -996,6 +1044,22 @@ impl<'a> Call<'a> {
 
     /// Writes the entry into `staging`.
     fn stage(&self, staging: &Path, stdout: &str, stderr: &str) -> std::result::Result<(), String> {
+        if let Some(before) = &self.source_tree {
+            let root = Path::new(self.vars.get("CARGO_MANIFEST_DIR").ok_or("no manifest")?);
+            if package_tree(root).as_ref() != Some(before) {
+                return Err("vstd source tree changed during compilation".to_owned());
+            }
+            let current = Self::new(
+                self.plan,
+                self.arguments,
+                self.verifying,
+                self.vars.clone().into_iter(),
+            )
+            .ok_or("cannot recheck compiler inputs")?;
+            if current.key != self.key || current.externs != self.externs {
+                return Err("native dependency bytes changed during compilation".to_owned());
+            }
+        }
         let (files, dep_info, text) = self.stage_outputs(staging)?;
         let mut sources = Vec::new();
         let manifest =
@@ -1030,6 +1094,7 @@ impl<'a> Call<'a> {
             verifying: self.verifying,
             args: self.keyed_args.clone(),
             environment: self.environment.clone(),
+            source_tree: self.source_tree.clone().unwrap_or_default(),
             files,
             dep_info,
             sources,
@@ -1087,6 +1152,7 @@ impl<'a> Call<'a> {
                 "outcome": outcome,
                 "args": self.keyed_args,
                 "environment": self.environment,
+                "externs": self.externs,
             }))
             .unwrap_or_default(),
         );
@@ -1100,6 +1166,15 @@ impl<'a> Call<'a> {
             .map_err(|e| Refusal::Damaged(format!("unreadable entry: {e}")))?;
         if unit.schema != SCHEMA || unit.key != self.key || unit.verifying != self.verifying {
             return Err(Refusal::Damaged("entry of another key".to_owned()));
+        }
+        if self
+            .source_tree
+            .as_ref()
+            .is_some_and(|tree| *tree != unit.source_tree)
+        {
+            return Err(Refusal::Miss(
+                "vstd package file set or bytes differ".to_owned(),
+            ));
         }
         // Validate every destination before placing any output. A malformed
         // later filename must not leave earlier copied artifacts behind.
@@ -1777,6 +1852,56 @@ mod tests {
             key,
             Call::new(&plan, &args, true, vars(root, &[]).into_iter()).map(|call| call.key)
         );
+    }
+
+    #[test]
+    fn publication_refuses_changed_sources_or_native_dependencies()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let machine = Machine::new("boundary-publication", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let package = machine.plan.registry.join("demo-0.1.0");
+        let mut call = machine.call(false).ok_or("no compiler call")?;
+        call.source_tree = Some(package_tree(&package).ok_or("no package snapshot")?);
+        machine.compile()?;
+        let out = machine.out().ok_or("not recording")?;
+        let entry = out.join(UNITS).join(&call.key);
+        let added = package.join("new_module.rs");
+        std::fs::write(&added, "pub fn changed() {}")?;
+        call.record(b"", machine.stderr().as_bytes(), Some(0));
+        assert!(
+            !entry.exists(),
+            "a newly added module must refuse publication"
+        );
+        std::fs::remove_file(added)?;
+        let dependency = machine.plan.target.join("debug/deps/libdep-1.rlib");
+        std::fs::write(&dependency, b"changed while the verifier ran")?;
+        call.record(b"", machine.stderr().as_bytes(), Some(0));
+        assert!(
+            !entry.exists(),
+            "a changed native input must refuse publication"
+        );
+        std::fs::write(dependency, b"dependency bytes")?;
+        call.record(b"", machine.stderr().as_bytes(), Some(0));
+        assert!(
+            entry.join(UNIT).is_file(),
+            "unchanged inputs can be recorded"
+        );
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn package_snapshot_refuses_redirected_inputs()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let machine = Machine::new("boundary-source-alias", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let package = machine.plan.registry.join("demo-0.1.0");
+        assert!(package_tree(&package).is_some());
+        std::os::unix::fs::symlink(package.join("src/lib.rs"), package.join("alias.rs"))?;
+        assert!(package_tree(&package).is_none());
+        Ok(())
     }
 
     impl Drop for Machine {
