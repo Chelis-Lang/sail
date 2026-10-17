@@ -45,6 +45,16 @@ no corpus entries, runtime pins, deadlines or assertions change.
   now supplies its already-captured original streams. Failed job log SHA-256
   `872796e94327042f3262563c4ceba16cadb26904315135fb18760b9cc33082ca`.
 
+The corrected source `38927ad1` then passed the complete native workspace
+gate (655 tests, 35 solver tests skipped, 2 doctests) and all nine E2E phases
+plus local extra on c7i.4xlarge in us-east-1. All 57 verifier operations
+finished; all 114 original stream files match their completion-record byte
+counts, including the concurrent fresh copies. No verification timed out or
+was cancelled. Native log SHA-256
+`419d2519049c1995fc3e0b441af9020cb8d06fb6c8a05faaafb5cf8458124f70`;
+retained managed evidence archive SHA-256
+`2f5aca9b7b4a4490f8b3125bdc4f5597d67ffe2a32948ab05482d6e51c484556`.
+
 ## Native feature checkpoint
 
 Source `b0ddd460` on main `3c0498c3`, native c7i.4xlarge in us-east-1,
