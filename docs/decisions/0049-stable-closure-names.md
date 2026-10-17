@@ -1,6 +1,6 @@
 # 0049: The fork names closure types by definition path
 
-- **Status:** proposed
+- **Status:** proposed; composite implementation privately built and qualified, current-main delivery/selection pending
 - **Date:** 2026-10-16
 
 ## Context
@@ -34,8 +34,12 @@ and how it is validated.
    a closure type by the local half of the closure's `DefPathHash` instead
    of its `DefIndex`. That hash depends only on the closure's own definition
    path: its enclosing items' names and rustc's per-parent disambiguators.
-   rustc guarantees it is unique within a crate (it aborts compilation on a
-   collision), so two closures never share a name. Closure declarations keep
+   Exact rustc 1.98.1 seeds the local hash with `StableCrateId`, then hashes
+   each definition's parent path; it aborts on a collision within the crate.
+   This does not give the local 64-bit half the full `DefPathHash`'s global
+   128-bit guarantee. A genuine two-crate fixture imports identical trait-default
+   closures and checks distinct identities and stable tie ordering in 16 fresh
+   clients; it passes in the composite's full source suite. Closure declarations keep
    stock's order by `DefIndex`, with the stable name breaking ties across
    imported crates (`3f7f6c51`). Equality and hashing of closure types use
    the new number alone.
@@ -45,9 +49,10 @@ and how it is validated.
    printer moves because names got longer. No declaration, assertion or
    check is added or removed. Declarations with distinct original indices
    retain their order; imported closures with equal indices now use a stable
-   tie-break instead of hash iteration order. Verdicts and diagnostics do not
-   change, because closure-type names never reach a diagnostic and the
-   solver sees an alpha-renamed problem.
+   tie-break instead of hash iteration order. The required default contract
+   remains equal verdicts and diagnostics. Alpha-renaming preserves the logical
+   problem, but it is not by itself a guarantee of identical Z3 heuristic
+   behavior; the actual conformance gates below remain necessary.
 3. **Why this is acceptable under ADR 0039.** Solver input that differs only
    by consistent symbol renaming is the same logical problem. Z3 could still
    behave differently on it (symbol names can affect hashing inside the
@@ -70,8 +75,16 @@ and how it is validated.
    Issue #118 also requires the broader frozen incidental-edit catalogue:
    comments, blank lines, helper insertion/relocation and local renames on
    three pinned projects. The [acceptance record](../validation/incidental-edits.md)
-   distinguishes the prepared harness from outstanding final-runtime timing,
-   solver-work and correctness gates.
+   distinguishes the wider catalogue and solver-work deliverables from the
+   measured compiler change. The combined candidate's repeated Vest helper-insert
+   median is 36.217 s on accepted fork 73 versus 25.811 s on 8a (28.7% lower),
+   with three rounds and every actual sample retained. This gain belongs to the
+   composite, not an isolated closure-only attribution. Its completed Linux
+   source-suite/determinism/STANDARD/default DEEP and matching macOS delivery
+   scopes, earlier failures and remaining current-main re-pin gates are in the
+   [combined qualification record](../validation/combined-fork-candidate.md).
+   The broader three-project catalogue and exact re-solved-check counts remain
+   open; no all-hit or unmeasured-project gain is claimed.
 
 ## Consequences
 

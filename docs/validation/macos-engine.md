@@ -1,5 +1,11 @@
 # macOS engine qualification
 
+The matching `8a373f81` candidate has a normal build, engine/cancellation,
+four-arm PR and empty-cache bundled demo/edit/repair smoke in the
+[combined-fork record](combined-fork-candidate.md). Its current-main
+integration and selection remain pending. The record below retains the
+earlier `73dea021` qualification.
+
 The macOS release archive bundles a repair engine runtime built locally from
 the pinned fork commit ([releasing](../releasing.md)). There is no CI coverage
 on macOS, so this record is the qualification for that runtime. It uses the

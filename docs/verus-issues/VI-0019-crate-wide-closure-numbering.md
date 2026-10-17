@@ -121,10 +121,28 @@ verdict equivalence.
 
 The imported-closure ordering regression passes on macOS; its test log is
 SHA-256 `18b1cfa6f2ea7e3cfb02cdc4a0bea63c3604abf97795a50206d7702c3df13937`.
-The combined source candidate `8a373f81` passes the fork CI and the selected
-macOS runtime tests, including all nine `output_json` tests. Full native
-corpus conformance, determinism, the full source suite, and renewed measured
-gain on the final runtime remain gates. Sail's runtime pin is unchanged.
+The combined source candidate `8a373f81` subsequently passes the genuine full
+Linux source suite (4,709 Same, 58 ignored, all 4,651 nonignored tests actually
+pass), three-run FAST determinism (147 units/577 buckets, zero variation),
+STANDARD (four arms each 159 Same/12,726 functions) and default non-Singular
+DEEP. DEEP skips the same two optional Singular-required projects per arm;
+rlimit drift remains recorded under the existing policy. Earlier separate
+full FAST source, all BASIC/E2E checks, source-suite failures and later corrected
+passes retain their actual source scopes in the
+[combined qualification record](../validation/combined-fork-candidate.md).
+Matching normal macOS build, engine/cancellation, four-arm PR correctness and
+private empty-cache bundled-install/default CLI smoke also pass; these shared
+Mac checks make no performance claim.
+
+The final composite's three-round Vest helper-insert median is 36.217 s with
+accepted fork 73 versus 25.811 s with 8a (28.7% lower); unchanged cases remain
+near 25.3–25.6 s, local rename 25.982/26.131 s and cold 72.407/72.839 s.
+All 90 timing rows and 45 edit/restoration events are retained. These are
+composite measurements, not isolated closure-only attribution. The independent
+60-row actual-work stage refuses markerless empty logs, so exact re-solved-check
+counts and all-hit acceptance remain unqualified. The accepted Sail runtime pin
+is unchanged; prospective private pins still need current-main joined delivery,
+conformance and required checks before selection.
 
 The broader #118 [incidental-edit acceptance](../validation/incidental-edits.md)
 has a frozen 15-case catalogue over Vest, CapybaraKV and IronKV, including
