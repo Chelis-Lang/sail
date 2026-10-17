@@ -21,7 +21,7 @@ from edit_stream import ProtocolRefusal
 from edit_wire import interpose, receive, serve
 
 MAX_SESSIONS = 32
-MAX_ACTIVE = 4
+MAX_ACTIVE = 16
 
 
 def canonical(value):
@@ -246,5 +246,6 @@ class Broker:
         except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
             errors.append(type(error).__name__ + ': ' + str(error))
         return dict(passed=not errors, complete=not errors, errors=errors,
-                    sessions=self.rows, qualified=False, selected=False,
+                    sessions=self.rows, starts=starts, finishes=finishes,
+                    qualified=False, selected=False,
                     coverage='all registered starts/finishes/connections joined; pre-first-record/exec gap PENDING, not exhaustive spawn proof')

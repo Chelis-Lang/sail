@@ -407,7 +407,7 @@ must agree, independently of compiler exit. A late child failure still refuses
 an attempt when its caller returns zero. Nonselected sessions run fresh and
 every created solver, including cancelled preparation, retains actual kernel
 accounting and raw streams. Each stream/input is bounded at 16MiB, at most 32
-registered sessions and four active sessions are supported, and the workflow
+registered sessions and sixteen active sessions are supported, and the workflow
 raw budget is 1GiB. Refusals remain failures.
 
 Readiness uses nonblocking pool/entry locks at the single edit-start snapshot.
@@ -416,6 +416,9 @@ Original and edited source bytes, raw compiler streams, literal session streams,
 actual child status/CPU/peak, failed attempts and whole retries remain separate.
 Compiler `wait4` can include waited descendants: it must not be added to the
 separately reported solver/preparation CPU as though disjoint.
+An independent fresh edited control always runs after the edited attempt (and
+any required whole fresh retry). Compiler stdout/stderr stay literal; cancelled
+background preparation is completed before the independent fresh control.
 
 Seven local workflow controls use real processes, wait4, sockets and the
 executable wrapper. They cover ready reuse, unready preparation, context miss,
@@ -430,3 +433,12 @@ trace are still needed. Therefore the executable always exits nonzero with
 `application_acceptance=false`, even if its separately recorded registered
 protocol `driver_exit` is zero. No result is reported verified or selected.
 These source-only components do not change ordinary Sail or its default oracle.
+
+An explicit `--strace /usr/bin/strace` records the owned compiler tree using
+`-ff -q -ttt -xx -s 65536 -e trace=%process`. The narrow parser joins each
+source-bound wrapper exec and actual terminal status to its broker/start/finish
+PID, refusing missing, duplicate, partial or failed executions and late nonzero
+exits. Raw trace files and compiler stderr remain intact. Parser fixtures do not
+qualify actual strace coverage; the application acceptance gate remains blocked.
+The prospective native driver permits at most 270 seconds per compiler attempt,
+inside the unchanged 300-second serving guard. No launched lease is extended.

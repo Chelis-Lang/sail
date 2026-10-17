@@ -13,11 +13,13 @@ from pathlib import Path
 import secrets
 import selectors
 import signal
+import stat
 import subprocess
 import threading
 import time
 
 from edit_claim import DirectClaim, StreamingClaim
+from edit_census import census
 from edit_stream import Commands, Replies, ProtocolRefusal, donor_prefix, MAX_BYTES
 from edit_transport import Broker, canonical, create_record
 from edit_wire import attempt_status
@@ -106,7 +108,7 @@ class Workflow:
     """One donor, one scheduled edit and at most one whole fresh retry."""
     def __init__(self, output, solver, solver_sha256, argv, cwd, *,
                  edit_delay=0, attempt_timeout=120):
-        if (not 0 <= edit_delay <= 60 or not 0 < attempt_timeout <= 120 or
+        if (not 0 <= edit_delay <= 60 or not 0 < attempt_timeout <= 270 or
                 not argv or not all(isinstance(x, str) for x in argv)):
             raise ProtocolRefusal('fixed bounded workflow required')
         self.output = Path(output).absolute()
@@ -124,8 +126,9 @@ class Workflow:
         self.pools = []
         self.attempts = []
         self.claimed_preparation = False
+        self.trace_program = None
 
-    def pool(self, binding):
+    def pool(self, binding, role='fresh-session'):
         if binding['argv'] != [self.solver, '-smt2', '-in']:
             raise ProtocolRefusal('actual solver argv differs')
         pool = OneUsePool(self.solver, self.sha256, slots=1, max_bytes=1024**3,
@@ -134,10 +137,11 @@ class Workflow:
                           experiment_numeric_time_only=True,
                           experiment_kernel_accounting_owner=True)
         self.pools.append(pool)
+        pool.edit_workflow_role = role
         return pool
 
-    def direct(self, binding):
-        return DirectClaim(self.pool(binding))
+    def direct(self, binding, role='fresh-session'):
+        return DirectClaim(self.pool(binding, role))
 
     def raw(self, directory, name, data):
         if not isinstance(data, bytes) or len(data) > MAX_RAW - self.copied:
@@ -154,10 +158,10 @@ class Workflow:
         claims = []
         def factory(ordinal, binding):
             if ordinal == 0 and selected is not None and binding == selected_binding:
-                claim, fallback = selected, lambda: self.direct(binding)
+                claim, fallback = selected, lambda: self.direct(binding, name + '-pre-reply-fallback')
                 self.claimed_preparation = True
             else:
-                claim, fallback = self.direct(binding), None
+                claim, fallback = self.direct(binding, name), None
             claims.append(claim)
             return claim, fallback
         token = secrets.token_hex(32)
@@ -172,17 +176,75 @@ class Workflow:
             temporary = self.output / 'wrapper-new.json'
             create_record(temporary, config)
             os.replace(temporary, self.config)
-            execution = compiler(self.argv, self.cwd, self.environment, self.timeout)
+            argv = self.argv
+            if self.trace_program is not None:
+                traces = broker.root / 'traces'
+                traces.mkdir(mode=0o700)
+                argv = [self.trace_program, '-ff', '-q', '-ttt', '-xx', '-s', '65536',
+                        '-e', 'trace=%process', '-o', str(traces / 'process'), '--', *argv]
+            execution = compiler(argv, self.cwd, self.environment, self.timeout)
         except (OSError, ValueError, RuntimeError) as error:
             execution['errors'].append('attempt startup: ' + str(error))
         finally:
             outcome = broker.finish()
         gate = attempt_status(execution['exit'], outcome['sessions'])
+        trace = None
+        if self.trace_program is not None:
+            trace = self.trace(broker.root, outcome)
+            if not trace['passed']:
+                gate.update(driver_exit=1, broker_gate=False, whole_fresh_retry_required=True)
         if execution['errors'] or not outcome['passed']:
             gate.update(driver_exit=1, broker_gate=False, whole_fresh_retry_required=True)
-        record = dict(name=name, compiler=execution, broker=outcome, gate=gate)
+        if any(b'strace:' in line for line in execution['stderr'].splitlines()):
+            execution['errors'].append('tracing diagnostic; raw stderr retained')
+            gate.update(driver_exit=1, broker_gate=False, whole_fresh_retry_required=True)
+        record = dict(name=name, compiler=execution, broker=outcome, gate=gate, census=trace)
         self.attempts.append(record)
         return record
+
+    def trace(self, directory, outcome):
+        """Read bounded ordinary process trace files before parsing/admitting."""
+        traces, records, errors = {}, [], []
+        try:
+            paths = sorted((directory / 'traces').iterdir())
+        except OSError as error:
+            paths = []
+            errors.append('process trace directory: ' + str(error))
+        for path in paths:
+            row = dict(name=path.name)
+            records.append(row)
+            try:
+                import re
+                match = re.fullmatch(r'process\.([1-9][0-9]*)', path.name)
+                if match is None:
+                    raise ProtocolRefusal('unknown process trace path')
+                fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                with os.fdopen(fd, 'rb') as stream:
+                    before = os.fstat(stream.fileno())
+                    row.update(mode=before.st_mode, size=before.st_size)
+                    if not stat.S_ISREG(before.st_mode):
+                        raise ProtocolRefusal('nonregular process trace')
+                    available = min(MAX_BYTES, MAX_RAW - self.copied)
+                    raw = stream.read(available + 1)
+                    # Reserve the full observation before another independent
+                    # trace, even if the following identity/size check refuses.
+                    self.copied += min(available, len(raw))
+                    row.update(bytes_observed=len(raw), sha256=hashlib.sha256(raw[:available]).hexdigest())
+                    after = os.fstat(stream.fileno())
+                    if (len(raw) > available or len(raw) != before.st_size or
+                            (before.st_dev, before.st_ino, before.st_size, before.st_ctime_ns, before.st_mtime_ns) !=
+                            (after.st_dev, after.st_ino, after.st_size, after.st_ctime_ns, after.st_mtime_ns)):
+                        raise ProtocolRefusal('process trace cap/change; original file retained')
+                traces[int(match[1])] = raw
+            except (OSError, ValueError, RuntimeError) as error:
+                row['error'] = type(error).__name__ + ': ' + str(error)
+                errors.append(row['error'])
+        result = census(traces, self.environment['VERUS_Z3_PATH'], outcome['sessions'],
+                        outcome['starts'], outcome['finishes'])
+        result['files'] = records
+        result['errors'].extend(errors)
+        result['passed'] = not result['errors']
+        return result
 
     def persist(self):
         """Retain raw per-session and child streams; no private environment dump."""
@@ -190,7 +252,7 @@ class Workflow:
         for attempt in self.attempts:
             directory = self.output / attempt['name']
             execution = attempt['compiler']
-            rendered = dict(name=attempt['name'], gate=attempt['gate'],
+            rendered = dict(name=attempt['name'], gate=attempt['gate'], census=attempt['census'],
                             compiler={k: v for k, v in execution.items()
                                       if k not in ('stdout', 'stderr')},
                             sessions=[], errors=attempt['broker']['errors'])
@@ -237,6 +299,7 @@ class Workflow:
                 elif not 0 < accounting['accounting']['peak_rss_bytes'] <= 1024**3:
                     errors.append('positive complete child peak bound refused')
                 record = dict(pool=index, entry=number, pid=getattr(entry, 'pid', None),
+                              role=pool.edit_workflow_role,
                               solver_sha256=pool.identity, context=pool.binding,
                               accounting=accounting, errors=errors,
                               failure=getattr(entry, 'failure', None),
@@ -277,7 +340,7 @@ class Workflow:
             count = len(Commands().feed(prefix))
             if len(replies) != len(batches):
                 raise ProtocolRefusal('donor literal batch/reply cardinality differs')
-            pool = self.pool(binding)
+            pool = self.pool(binding, 'background-preparation')
             launch_at = time.monotonic() + self.delay
             def prepare():
                 try:
@@ -299,11 +362,36 @@ class Workflow:
                                          scheduled_launch=launch_at, snapshot=time.monotonic())
             selected = snapshot if snapshot and snapshot.snapshot_ready else None
             edited = self.attempt('edited', selected, binding)
+            if edited['compiler']['errors']:
+                # A timed-out/failed compiler owner cannot certify descendant
+                # completion. The native caller must remove its owned Docker
+                # container; do not start another compiler in that namespace.
+                result['external_descendant_cleanup_required'] = True
+                raise ProtocolRefusal('compiler I/O/owner incomplete; owned container cleanup required')
+            # Cancel unused background work after the real edited attempt,
+            # before either a retry or the independent fresh timing control.
+            # This completion wait cannot promote edit-start readiness.
+            thread.join(timeout=3)
+            if thread.is_alive():
+                raise ProtocolRefusal('preparation startup incomplete after edited attempt')
+            pool.close()
             if edited['gate']['driver_exit'] != 0:
                 # Whole new compiler process, new broker and all new children.
                 # The failed attempt's replies/output/status are never reused.
                 self.attempt('fresh-retry')
-            result['driver_exit'] = self.attempts[-1]['gate']['driver_exit']
+            final = self.attempts[-1]
+            if final['compiler']['errors']:
+                result['external_descendant_cleanup_required'] = True
+                raise ProtocolRefusal('fresh retry compiler incomplete; owned container cleanup required')
+            # Always execute a separate full fresh edited control, even after
+            # a successful continuation. Never choose whether to measure it
+            # from the observed gain or prefix match.
+            control = self.attempt('fresh-control')
+            same_output = all(final['compiler'][name] == control['compiler'][name]
+                              for name in ('stdout', 'stderr'))
+            result['literal_compiler_streams_equal'] = same_output
+            result['driver_exit'] = (0 if final['gate']['driver_exit'] == 0 and
+                                     control['gate']['driver_exit'] == 0 and same_output else 1)
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
             result['errors'].append(type(error).__name__ + ': ' + str(error))
             result['driver_exit'] = 1

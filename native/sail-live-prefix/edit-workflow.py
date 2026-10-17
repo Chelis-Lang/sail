@@ -21,6 +21,7 @@ def main():
     parser.add_argument('--delay', type=float, default=0)
     parser.add_argument('--timeout', type=float, default=120)
     parser.add_argument('--out', required=True)
+    parser.add_argument('--strace', help='explicit native strace binary; retain per-process exec/exit census')
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ['--'] else args.command
@@ -30,6 +31,8 @@ def main():
         parser.error('explicit source edit exceeds the bounded input size')
     workflow = Workflow(args.out, args.solver, args.solver_sha256, command, args.cwd,
                         edit_delay=args.delay, attempt_timeout=args.timeout)
+    if args.strace:
+        workflow.trace_program = str(Path(args.strace).resolve(strict=True))
     result = workflow.run(args.source, args.source_sha256, edited)
     print(json.dumps({key: result[key] for key in (
         'driver_exit', 'application_exit', 'application_acceptance', 'qualified',

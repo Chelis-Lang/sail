@@ -159,12 +159,14 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
                 assert not result['preparation']['ready_at_edit_start']
                 assert not result['preparation_claimed']
             if case in ('diverge-after-reply', 'late-exit7'):
-                assert len(attempts) == 3
+                assert len(attempts) == 4
                 assert attempts[1]['compiler']['exit'] == 0
                 assert attempts[1]['gate']['driver_exit'] == 1
                 assert attempts[2]['name'] == 'fresh-retry'
             else:
-                assert len(attempts) == 2
+                assert len(attempts) == 3
+            assert attempts[-1]['name'] == 'fresh-control'
+            assert result['literal_compiler_streams_equal']
             assert result['owned_children']
             assert all(row['accounting'] is not None and not row['errors']
                        for row in result['owned_children'])
