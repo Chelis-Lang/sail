@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Prepare a full crate-qualified closure-identity runtime candidate on Linux
+  and macOS. Its concrete private pins and remaining acceptance gates are
+  recorded separately; it is not selected or published.
+
 - Recompute solver identity at every daemon handshake: equal executable path,
   length and mtime no longer retain a stale binary hash (#213). Native
   qualification and measurement of the added handshake cost are pending.
