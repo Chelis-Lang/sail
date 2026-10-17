@@ -124,3 +124,5 @@ main checks.
 - [Managed Cargo selection qualification](validation/managed-selection-family.md):
   candidate dependency-artifact sharing, observations and pending native gates.
 - [vstd compiler-boundary replacement](validation/vstd-compile-boundary.md): unselected first-project performance prototype and remaining correctness gates.
+
+- [Native producer input controls](validation/native-producer-controls.md): isolated source A→B→A and private transitive dependency consumption controls; native execution pending.
