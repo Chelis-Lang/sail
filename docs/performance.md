@@ -9,6 +9,15 @@ frontend still run every time, so Sail helps only where the solver is a large
 share of the work. On a small project or a first run, expect about the same
 time as plain Verus.
 
+The v1 compiled-dependency store is disabled after a native compiler-input
+mismatch ([ADR 0053](decisions/0053-disable-unqualified-native-store.md)). The
+store-enabled figures below describe the stated historical builds, including
+rc.5, and do not apply to fresh targets with the quarantine. In three native
+Linux rounds, a fresh small project had a median of 32.57 s, versus 1.28 s with
+v1 seeding and 34.36 s for fresh stock. This is a safety containment cost, with
+first-run performance still to recover; see the
+[assessment](validation/dependency-store-fail-closed.md) for scope and raw evidence.
+
 ## Claims
 
 | # | Claim | Linux (EC2 c7i.4xlarge, idle) | macOS (EC2 mac-m4.metal (Apple M4), idle) |
@@ -20,7 +29,7 @@ time as plain Verus.
 | 5 | Cold first run: a few seconds slower than plain Verus | demo 36.6 s against 35.0 s; vest 80.5 s against 77.9 s | 15–18% slower: demo 18.7 s against 16.3 s; vest 43.5 s against 36.8 s |
 | 6 | Repair loops with the engine are faster than verifying the function, then the crate | HumanEval 2.14×, Vest 1.82× (c7i.8xlarge) | not measured |
 | 7 | Several agents on one daemon do not wait for each other | 4 vest agents finish 2.2× sooner (47 s against 105 s) | 4 vest agents (2 workers) finish 1.3× sooner (51 s against 67 s) |
-| 8 | A new project or worktree's first run skips vstd once the machine has verified it | demo 1.4 s against plain 39.0 s; vest worktree 33.1 s against plain 89.1 s; first on the machine 40.1 s and 89.8 s | demo 3.2 s against plain 67 s (Apple M3 under load 15–23; not measured idle) |
+| 8 | Historical v1 store: first runs shared compiled vstd; disabled under ADR 0053 | historical demo 1.4 s against plain 39.0 s; vest worktree 33.1 s against plain 89.1 s; first on the machine 40.1 s and 89.8 s | historical demo 3.2 s against plain 67 s (Apple M3 under load 15–23; not measured idle) |
 
 Ratios are plain Verus time divided by Sail time (for claim 7, one job at a
 time divided by concurrent jobs), from medians of three rounds.
@@ -38,8 +47,8 @@ time divided by concurrent jobs), from medians of three rounds.
 - **Cold runs.** The first verification on a machine compiles dependencies
   and verifies vstd in Sail's own target, all of it new to the cache: 1–3 s
   slower than plain Verus on Linux, 15–18% on the Mac. Later new projects
-  and worktrees that resolve the same vstd skip it (claim 8); a new set of
-  Verus arguments is a new context. A warm [team cache](http-shared-cache.md)
+  and worktrees compile and verify vstd again while v1 reuse is quarantined;
+  claim 8 is historical. A new set of Verus arguments is a new context. A warm [team cache](http-shared-cache.md)
   does not change this: the compile and frontend dominate.
 - **The Rust and Verus frontend.** On vest, an edit with every unchanged solver
   answer cached still takes about 29 s on Linux. Nearly all of it is Cargo,

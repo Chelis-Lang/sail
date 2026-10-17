@@ -35,8 +35,8 @@ finished; until then it is listed by key, and `--missing` never selects it.
 
 Pruning costs only time. The next managed run of a pruned workspace is a cold
 run: it compiles its dependencies, verifies them and the workspace again, and
-records new receipts. A verified registry dependency such as vstd comes back
-from the dependency store (below) instead of being verified again. A pruned receipt is never reused, and a job or MCP result
+records new receipts. Vstd is compiled and verified again while native-artifact
+store reuse is disabled (below). A pruned receipt is never reused, and a job or MCP result
 that was Current before the prune can no longer be confirmed unchanged, so it
 reads back Unknown ("inputs could not be confirmed unchanged; re-run") until
 you verify again.
@@ -53,15 +53,18 @@ touch these directories.
 
 ## Dependency store
 
-`dependency-store/v1/<key>/` holds verified registry dependencies, such as
-vstd with its compiled dependencies, for new projects and worktrees to start
-from ([ADR 0045](decisions/0045-dependency-store.md)). An entry for vstd takes
-about 120 MB. Sail keeps the four most recently used entries and deletes older
-ones itself; set `SAIL_DEPENDENCY_STORE_ENTRIES` to keep another number, or to
-`0` to turn the store off. Deleting `dependency-store/` is safe at any time:
-the next new project verifies vstd again and stores it. A run that was copying
-from a deleted entry verifies vstd itself. Directories left by a run killed
-while storing or deleting an entry are removed once they are an hour old.
+Older builds populated `dependency-store/v1/<key>/` with compiled registry
+dependencies such as vstd ([ADR 0045](decisions/0045-dependency-store.md)); a vstd
+entry takes about 120 MB. V1 consumption and publication are now disabled
+([ADR 0053](decisions/0053-disable-unqualified-native-store.md)): its identity
+could miss native compiler inputs and hide a fresh compilation failure.
+`SAIL_DEPENDENCY_STORE_ENTRIES`, including a positive value, cannot re-enable it.
+Existing entries stay intact and can be deleted safely. Fresh projects and
+pruned targets compile and verify normally, then keep their own proof receipts.
+Exact solver caching remains available. The
+[assessment](validation/dependency-store-fail-closed.md) records the safety
+reproduction, measured first-run cost and remaining performance work. A sound,
+fast replacement is still required.
 
 ## Snapshot hints
 

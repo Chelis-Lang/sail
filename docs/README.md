@@ -24,7 +24,8 @@ experimental features and validation limits are identified explicitly.
 ## Developing and validating Sail
 
 [AGENTS.md](../AGENTS.md) defines the workflow, Rust conventions, documentation
-requirements and gates. The [charter](CHARTER.md) and its corrections define
+requirements and gates. [Testing](testing.md) lists the parallel end-to-end
+phases and their local entry points. The [charter](CHARTER.md) and its corrections define
 the correctness contract. [ADRs](decisions/README.md) explain implementation
 decisions; proposed candidates are distinguished from accepted decisions.
 
@@ -74,6 +75,8 @@ compares Sail on its Verus with plain stock Verus, and the
 run-to-run differences, and the
 [dependency store record](validation/dependency-store.md) checks new projects
 that start from a stored vstd against plain stock Verus. The
+[fallback assessment](validation/dependency-store-fail-closed.md) records the
+native-input mismatch, temporary v1 quarantine, its cost and qualification. The
 [incidental-edit record](validation/incidental-edits.md) tracks the frozen
 three-project edit catalogue and the combined runtime's remaining gates.
 Raw logs stay outside the
