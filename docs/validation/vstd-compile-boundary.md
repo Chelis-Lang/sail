@@ -124,3 +124,21 @@ they are not advertised as immutable execution or protection against arbitrary
 host changes. The new revision has passed shared macOS workspace clippy,
 23 focused tests and the existing proof-origin/receipt test. No Mac performance
 measurement or default enablement follows.
+
+- `b3f23535`, 2026-10-17, first closed-source/native-provenance screen:
+  workspace lint and 23 focused tests pass; baseline 39.095 s and fill 40.625 s
+  both verify completely, but no entry is published. Seventeen native library
+  observations refuse the presumed sysroot executable identity. The driver source
+  shows Cargo's leading rustc argument is discarded: native units execute
+  `rustc_driver` inside Verus's `rust_verify` through its launcher. Remaining
+  fresh-pair/compiler-replacement cases were not run. Screen completion is not
+  reuse qualification. The next source binds the actual launcher and embedded
+  compiler driver, with a regression checking their changed bytes.
+
+Native argument admission also confines dependency-search and incremental paths
+to the owned target, rejecting parent-directory escapes. Each research native
+trace now retains the actual argument vector alongside per-output provenance;
+this is diagnostic evidence, not a replacement for execution. The final source
+continues to pass workspace lint, 23 focused tests and receipt-origin coverage.
+Its repeated native measurements and full host/workspace qualification are
+pending.

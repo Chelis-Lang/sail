@@ -51,7 +51,7 @@ impl<'a> Observation<'a> {
         if !closure.native_unit(&call.vars, args) {
             return Err("foreign native source, version or compiler feature");
         }
-        if !compiler_matches(plan, args) {
+        if !compiler_matches(&call) {
             return Err("native compiler is not the admitted sysroot compiler");
         }
         if !externs_are_fresh(&call) {
@@ -81,7 +81,7 @@ impl<'a> Observation<'a> {
             .closure
             .as_ref()?
             .native_unit(&self.call.vars, self.call.arguments)
-            || !compiler_matches(plan, self.call.arguments)
+            || !compiler_matches(&self.call)
             || generated(&self.call).ok()? != self.generated
             || !externs_are_fresh(&self.call)
         {
@@ -134,7 +134,7 @@ fn emitted_outputs(call: &Call<'_>) -> Option<Vec<PathBuf>> {
         .iter()
         .map(|arg| arg.to_str())
         .collect::<Option<_>>()?;
-    let source = native_source(&text)?;
+    let source = native_source(&text, &call.plan.target)?;
     let root = Path::new(call.vars.get("CARGO_MANIFEST_DIR")?);
     let manifest: toml::Value =
         toml::from_str(&std::fs::read_to_string(root.join("Cargo.toml")).ok()?).ok()?;
@@ -192,7 +192,7 @@ fn emitted_outputs(call: &Call<'_>) -> Option<Vec<PathBuf>> {
 
 /// Only the ordinary native Cargo library flags are observed. Unsupported
 /// backend/linker/sysroot/source overrides still compile, but establish no reuse.
-fn native_source<'a>(args: &'a [&str]) -> Option<&'a str> {
+fn native_source<'a>(args: &'a [&str], target: &Path) -> Option<&'a str> {
     let mut source = None;
     let mut index = 1;
     while let Some(argument) = args.get(index) {
@@ -204,7 +204,7 @@ fn native_source<'a>(args: &'a [&str]) -> Option<&'a str> {
                 index += 2;
             }
             "-C" => {
-                if !safe_codegen(args.get(index + 1)?) {
+                if !safe_codegen(args.get(index + 1)?, target) {
                     return None;
                 }
                 index += 2;
@@ -216,13 +216,14 @@ fn native_source<'a>(args: &'a [&str]) -> Option<&'a str> {
                 index += 2;
             }
             "-L" => {
-                if !args.get(index + 1)?.starts_with("dependency=") {
+                let directory = args.get(index + 1)?.strip_prefix("dependency=")?;
+                if !within_target(Path::new(directory), target) {
                     return None;
                 }
                 index += 2;
             }
             flag if flag.starts_with("-C") => {
-                if !safe_codegen(flag.strip_prefix("-C")?) {
+                if !safe_codegen(flag.strip_prefix("-C")?, target) {
                     return None;
                 }
                 index += 1;
@@ -260,8 +261,19 @@ fn native_source<'a>(args: &'a [&str]) -> Option<&'a str> {
     source
 }
 
-fn safe_codegen(value: &str) -> bool {
-    value.split_once('=').is_some_and(|(name, _)| {
+fn within_target(path: &Path, target: &Path) -> bool {
+    path.strip_prefix(target).is_ok_and(|relative| {
+        relative
+            .components()
+            .all(|component| matches!(component, std::path::Component::Normal(_)))
+    })
+}
+
+fn safe_codegen(value: &str, target: &Path) -> bool {
+    value.split_once('=').is_some_and(|(name, argument)| {
+        if name == "incremental" {
+            return within_target(Path::new(argument), target);
+        }
         [
             "metadata",
             "extra-filename",
@@ -293,10 +305,27 @@ fn generated(call: &Call<'_>) -> Result<Option<BTreeMap<String, String>>, &'stat
         .ok_or("unreadable or redirected generated inputs")
 }
 
-fn compiler_matches(plan: &Plan, args: &[OsString]) -> bool {
-    args.first()
-        .and_then(|path| sha256_file(Path::new(path)))
-        .is_some_and(|(sha256, _)| sha256 == plan.native_compiler_sha256)
+pub(super) fn compiler_matches(call: &Call<'_>) -> bool {
+    if call
+        .vars
+        .get("__VERUS_DRIVER_VIA_CARGO__")
+        .map(String::as_str)
+        != Some("1")
+    {
+        return false;
+    }
+    call.vars
+        .get("SAIL_MANAGED_WRAPPER")
+        .is_some_and(|wrapper| launcher_matches(call.plan, Path::new(wrapper)))
+}
+
+fn launcher_matches(plan: &Plan, wrapper: &Path) -> bool {
+    // Verus consumes Cargo's first rustc-path argument as a compatibility hint;
+    // native units run rustc_driver in rust_verify, not that executable.
+    wrapper.canonicalize().ok().as_ref() == Some(&plan.native_launcher)
+        && sha256_file(wrapper).is_some_and(|(sha256, _)| sha256 == plan.native_launcher_sha256)
+        && sha256_file(&plan.native_launcher.with_file_name("rust_verify"))
+            .is_some_and(|(sha256, _)| sha256 == plan.native_compiler_sha256)
 }
 
 fn record_path(plan: &Plan, output: &Path) -> PathBuf {
@@ -355,7 +384,8 @@ fn trace(args: &[OsString], record: &serde_json::Value) {
         return;
     }
     let identity = super::digest(format!("{args:?}").as_bytes());
-    if let Ok(bytes) = serde_json::to_vec_pretty(record) {
+    let record = serde_json::json!({"observation":record,"actual_args":args.iter().map(|arg|arg.to_string_lossy()).collect::<Vec<_>>()});
+    if let Ok(bytes) = serde_json::to_vec_pretty(&record) {
         let event = super::digest(&bytes);
         let _ = std::fs::write(
             directory.join(format!(
@@ -386,7 +416,7 @@ mod tests {
             "metadata=abc",
         ];
         assert_eq!(
-            native_source(&ordinary),
+            native_source(&ordinary, Path::new("/owned-target")),
             Some("/registry/macros/src/lib.rs")
         );
         for override_args in [
@@ -395,12 +425,15 @@ mod tests {
             vec!["-C", "linker=/foreign/cc"],
             vec!["--emit=link=/foreign/output"],
             vec!["/foreign/second.rs"],
+            vec!["-L", "dependency=/foreign"],
+            vec!["-C", "incremental=/foreign"],
+            vec!["-L", "dependency=/owned-target/../foreign"],
         ] {
             let mut arguments = ordinary.to_vec();
             arguments.extend(override_args);
             // --emit path syntax is rejected when deriving actual output files.
             if arguments.last() != Some(&"--emit=link=/foreign/output") {
-                assert!(native_source(&arguments).is_none());
+                assert!(native_source(&arguments, Path::new("/owned-target")).is_none());
             }
         }
     }
@@ -413,7 +446,7 @@ mod tests {
         let output = root.join("macro.so");
         std::fs::write(&output, b"native compiler output")?;
         let sha256 = super::super::digest(b"native compiler output");
-        let plan = Plan {
+        let mut plan = Plan {
             mode: super::super::Mode::MachineLocal { out: root.clone() },
             identity: "runtime".into(),
             registry: root.clone(),
@@ -424,6 +457,8 @@ mod tests {
             closure: None,
             native_records: root.clone(),
             native_compiler_sha256: "compiler".into(),
+            native_launcher: root.join("verus"),
+            native_launcher_sha256: "launcher".into(),
         };
         let mut record = Record {
             runtime: "runtime".into(),
@@ -456,6 +491,25 @@ mod tests {
         let foreign = root.join("foreign.so");
         std::fs::write(&foreign, b"native compiler output")?;
         assert!(!established(&record, &plan, &foreign, &sha256, "policy"));
+        let launcher = root.join("verus");
+        let driver = root.join("rust_verify");
+        std::fs::write(&launcher, b"launcher")?;
+        std::fs::write(&driver, b"embedded rustc driver")?;
+        plan.native_launcher = launcher.canonicalize()?;
+        plan.native_launcher_sha256 = super::super::digest(b"launcher");
+        plan.native_compiler_sha256 = super::super::digest(b"embedded rustc driver");
+        assert!(launcher_matches(&plan, &launcher));
+        let cargo_hint = root.join("unexecuted-rustc");
+        std::fs::write(&cargo_hint, b"Cargo may select another rustc hint")?;
+        assert!(
+            launcher_matches(&plan, &launcher),
+            "Cargo's discarded rustc hint is not the executing compiler"
+        );
+        std::fs::write(&driver, b"changed compiler driver")?;
+        assert!(!launcher_matches(&plan, &launcher));
+        std::fs::write(&driver, b"embedded rustc driver")?;
+        std::fs::write(&launcher, b"changed launcher")?;
+        assert!(!launcher_matches(&plan, &launcher));
         std::fs::remove_dir_all(root)
     }
 }

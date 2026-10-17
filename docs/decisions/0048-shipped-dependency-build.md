@@ -33,7 +33,7 @@ release builds from machine-local verification through later receipt reuse. Nati
 path. The v1 machine-local store stays disabled.
 
 The prototype requires `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Engine, focused and
-loader-variable runs decline it. Schema 5 and a distinct bundle kind reject
+loader-variable runs decline it. Schema 6 and a distinct bundle kind reject
 the earlier all-unit bundles. Source-path remapping is confined to the named
 experiment and uses the previously built fork support; this change selects
 no runtime or release asset.
@@ -60,7 +60,11 @@ foreign sources, patches, versions, features and macro providers decline reuse.
 Optional native observations surround the real compiler, preserving inherited
 streams and its status. A successful admitted library invocation can establish
 only its declared, initially absent output files, bound to source/feature,
-compiler, generated inputs and this run's native dependency observations.
+actual Verus launcher/embedded compiler driver, generated inputs and this run's
+native dependency observations. Cargo's leading rustc path is a discarded
+compatibility argument, not the executing compiler. External dependency search
+and incremental directories decline observation; ordinary owned target paths
+remain supported.
 First-fill and serving both require those current-run output records. The key
 also hashes actual runtime artifacts, rather than trusting their manifest alone.
 Unsupported wrapper/compiler/backend/source shapes compile without establishing
