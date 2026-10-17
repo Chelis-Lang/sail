@@ -54,9 +54,9 @@ impl<'a> Observation<'a> {
         if !compiler_matches(&call) {
             return Err("native compiler is not the admitted sysroot compiler");
         }
-        if !externs_are_fresh(&call) {
-            return Err("native dependency lacks this run's successful compiler provenance");
-        }
+        // Cargo pipelines dependents after metadata emission, before the
+        // producer exits. Native units always compile; require successful
+        // dependency provenance when completing their observation instead.
         let generated = generated(&call)?;
         let outputs =
             emitted_outputs(&call).ok_or("unsupported native Cargo library invocation")?;
@@ -338,6 +338,45 @@ fn record_path(plan: &Plan, output: &Path) -> PathBuf {
 /// Every explicit library must have been emitted by a successful owned native
 /// unit in this run. Files with merely matching names/hashes do not establish it.
 pub(super) fn externs_are_fresh(call: &Call<'_>) -> bool {
+    if call.externs.iter().any(|(_, _, vir)| vir.is_some()) {
+        return false;
+    }
+    let Some(records) = call
+        .externs
+        .iter()
+        .map(|(argument, _, _)| {
+            let (_, path) = external(call, argument)?;
+            Some(record_path(call.plan, &path))
+        })
+        .collect::<Option<Vec<_>>>()
+    else {
+        return false;
+    };
+    let ready = await_records(
+        || records.iter().all(|path| path.is_file()),
+        std::time::Duration::from_secs(2),
+    );
+    // Hash actual libraries only once after the records arrive. A producer's
+    // metadata-ready notification must not cause a busy loop hashing libraries.
+    ready && externs_ready(call, true)
+}
+
+// Native successful observations can trail Cargo's metadata-ready message.
+// Waiting is optional and bounded; missing/invalid provenance always misses.
+fn await_records(mut ready: impl FnMut() -> bool, maximum: std::time::Duration) -> bool {
+    let started = std::time::Instant::now();
+    loop {
+        if ready() {
+            return true;
+        }
+        let Some(remaining) = maximum.checked_sub(started.elapsed()) else {
+            return false;
+        };
+        std::thread::sleep(remaining.min(std::time::Duration::from_millis(10)));
+    }
+}
+
+fn externs_ready(call: &Call<'_>, report: bool) -> bool {
     let Some(policy) = call
         .plan
         .closure
@@ -350,19 +389,17 @@ pub(super) fn externs_are_fresh(call: &Call<'_>) -> bool {
         if vir.is_some() {
             return false;
         }
-        let argument = call.normalizer.localize(argument);
-        let argument = argument.strip_prefix("--extern=").unwrap_or(&argument);
-        let Some((name, path)) = argument.split_once('=') else {
+        let Some((name, path)) = external(call, argument) else {
             return false;
         };
-        let path = Path::new(path);
+        let path = path.as_path();
         let record = std::fs::read(record_path(call.plan, path))
             .ok()
             .and_then(|bytes| serde_json::from_slice::<Record>(&bytes).ok());
         let valid = record.as_ref().is_some_and(|record| {
             record.crate_name == name && established(record, call.plan, path, sha256, policy)
         });
-        if !valid {
+        if !valid && report {
             trace(
                 call.arguments,
                 &serde_json::json!({
@@ -382,6 +419,13 @@ pub(super) fn externs_are_fresh(call: &Call<'_>) -> bool {
         }
         valid
     })
+}
+
+fn external(call: &Call<'_>, argument: &str) -> Option<(String, PathBuf)> {
+    let argument = call.normalizer.localize(argument);
+    let argument = argument.strip_prefix("--extern=").unwrap_or(&argument);
+    let (name, path) = argument.split_once('=')?;
+    Some((name.to_owned(), PathBuf::from(path)))
 }
 
 fn established(record: &Record, plan: &Plan, path: &Path, sha256: &str, policy: &str) -> bool {
@@ -420,6 +464,30 @@ fn trace(args: &[OsString], record: &serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn metadata_ready_can_precede_successful_producer_record() -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-native-pipeline-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let record = root.join("producer.json");
+        let producer_record = record.clone();
+        let producer = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(30));
+            std::fs::write(producer_record, b"compiler exited successfully")
+        });
+        assert!(await_records(
+            || std::fs::read(&record).is_ok_and(|bytes| bytes == b"compiler exited successfully"),
+            std::time::Duration::from_secs(2),
+        ));
+        assert!(producer.join().is_ok_and(|result| result.is_ok()));
+        std::fs::remove_file(&record)?;
+        assert!(!await_records(
+            || record.exists(),
+            std::time::Duration::ZERO,
+        ));
+        std::fs::remove_dir_all(root)
+    }
 
     #[test]
     fn native_shape_refuses_foreign_source_and_compiler_backends() {
