@@ -2,188 +2,106 @@
 
 | Gate | Current state |
 |---|---|
-| Implementation | Prototype wired into the real Cargo compiler wrapper; disabled unless `SAIL_VSTD_BOUNDARY_RESEARCH=1` |
-| Native prerequisites | Every nonverification invocation executes the original compiler with inherited streams; optional native observations may establish provenance but never substitute outputs |
-| Reuse scope | Pinned, nonprimary vstd library only; root outputs, no native units or Cargo fingerprints |
-| Identity | Fresh linked-library/VIR bytes, compiler options, runtime/sysroot, actual solver bytes, source and declared environment |
-| Proof provenance | Complete successful document required; typed release/machine-local origin and actual establishing invocation preserved through receipts |
-| Review | Initial static review confirms the structural boundary; macro input completeness and publication races remain unqualified |
-| Execution and performance | Unrestricted literal-local `dcc2bb9e` hit in 8.456 s versus 37.892 s baseline (single sample); native compiler replacement still failed. New closed-source/native-provenance revision passes macOS lint, 23 focused tests and origin test; its native screen refuses transitive provenance and remains unqualified |
-| Default/release selection | Neither selected nor qualified; v1 store remains quarantined |
+| Implementation | Real Cargo compiler-wrapper prototype; requires `SAIL_VSTD_BOUNDARY_RESEARCH=1` |
+| Native prerequisites | Every native compiler executes normally; current-run successful provenance and actual linked bytes required |
+| Reuse scope | Pinned, nonprimary vstd library only; no native units or Cargo fingerprints |
+| Identity | Literal flags, actual runtime/sysroot/solver bytes, linked libraries/VIR, official source/feature closure and environment |
+| Provenance | Complete successful proof required; typed origin and actual establishing invocation survive receipt reuse |
+| Native performance | `50b116bb`: three fresh-project pairs, median 37.871 s without reuse versus 8.954 s with reuse (4.23×); experimental |
+| Compiler-input boundary | New source checks compiler-retained vstd source checksums; full execution and macro/artifact mutation qualification remains open |
+| Literal query comparison | Unqualified: two control compilations completed, but the external collector captured no traces |
+| Selection | Disabled by default; neither release nor default replacement qualified; v1 remains quarantined |
 
-The prototype ports the original shipped-build serializer and proof-origin
-plumbing onto current Sail. Its schema and kind differ from all-unit shipped
-bundles. It explicitly binds the actual solver's bytes independently of the
-runtime's recorded manifest. Focused, engine and loader-variable setups keep
-the ordinary compiler path.
+## Product boundary
 
-The native experiment must record vstd once, then use a different fresh project
-whose native units are genuinely compiled. Compare the actual dependency bytes
-and every lookup outcome before attributing any saving to reuse. Repeat with
-the private native compiler replaced at the same path: fresh stock and Sail
-must both fail, and no vstd hit may hide that failure. Retain failures and
-misses. Compare complete per-function verdicts and diagnostics, including a
-failing precondition naming the user's actual registry source, against stock.
+`SAIL_SHIPPED_RECORD` records an experimental bundle; `SAIL_SHIPPED_DEPS`
+serves one. `SAIL_VSTD_BOUNDARY_LOCAL` instead uses a separate machine-local
+bundle bound to both literal and canonical registry roots. All require the
+research flag. Local mode never remaps VIR or source paths. Schema 6 and the
+bundle kind reject old all-unit bundles. Focused, engine and loader-variable
+setups use the ordinary compiler path. Changed, missing or unsupported inputs
+miss safely. No ordinary CLI, runtime pin or release asset is selected here.
 
-Research-only commands use `SAIL_SHIPPED_RECORD` for a recording directory,
-`SAIL_SHIPPED_DEPS` for a candidate bundle and `SAIL_SHIPPED_TRACE` for keyed
-lookup observations, together with the explicit research flag. A recording
-is not an accepted release artifact. No public asset, runtime pin, ordinary
-verification behavior or conformance comparator changes.
+The source policy admits 15 exact official packages, 662 archive file hashes
+and their exact feature sets, excluding external macro providers and patches.
+Each archive SHA-256 matches the retained resolution; source files are checked
+directly, independently of mutable Cargo checksum sidecars. Native observations
+bind the actual Verus launcher and embedded compiler driver, initially absent
+declared outputs, generated inputs and successful current-run dependencies.
+Cargo can pipeline a dependent after metadata emission, so observations require
+completed producer provenance at completion, with a two-second arrival bound.
+The compiler always runs; metadata readiness never establishes success.
 
-The environment allowlist and dep-info source model inherited from the older
-prototype do not prove arbitrary proc-macro input coverage. Publication also
-needs an execution input boundary. Those limitations remain blockers to default
-enablement even if a timing experiment succeeds.
+## Actual native result
 
-The first source run used a native c7i.4xlarge in us-east-1 with Rust 1.99.0.
-It compiled the actual product crate and passed all 15 serializer/boundary
-unit tests. The broader clippy run failed on `doc_markdown` for the research
-variable in module documentation; this attempt is not a passed gate. Raw logs
-remain outside the repository. Later source adds whole-package file-set
-before/after guards and rechecks linked dependency bytes before publication;
-these detect ordinary mutation, not an immutable execution or ABA proof.
-Actual linked-byte digests are retained in research traces for the first-project
-experiment. No timing or complete-native-input qualification follows from unit
-fixtures.
+On c7i.4xlarge, us-east-1, Sail source `50b116bb`, normal cc7 runtime archive
+`717680b4cb126f48397b02f32dcbf54e0f2a320fa0c16c86a97237a8c3eee8b1`,
+Rust 1.99.0 for Sail and 1.98.1 for Verus, independent physical projects used
+identical manifest, lock and source bytes with separate targets and proof caches.
+These are Sail-with-reuse versus Sail-without-boundary-reuse measurements,
+not a completed stock comparison.
 
-- `930dfea8`, 2026-10-17, native source attempt: failed compilation in the
-  new publication recheck (`String` environment pairs passed where `OsString`
-  pairs were required); application and timing stages unrun. Corrected next.
-- `930dfea8` plus the environment-pair correction, 2026-10-17, bounded macOS
-  source check: all 17 boundary/serializer tests pass. Workspace compilation
-  found a missing optional origin field in the existing fallback renderer;
-  corrected next. This was not a passed workspace gate.
+| Round | Without boundary reuse | Fresh project with boundary reuse |
+|---|---:|---:|
+| 1 | 37.871 s | 8.948 s |
+| 2 | 37.838 s | 8.954 s |
+| 3 | 38.163 s | 9.047 s |
 
-On native c7i.4xlarge in us-east-1, `05c4377e` completed the initial four
-application cases. Baseline took 41.388 s; recording failed with SAIL3134 after
-43.420 s because `libvstd-8c4d8ba33f7ad30d.vir` still named the registry
-directory. The fresh-project serving attempt therefore missed and took
-42.081 s. Replacing the same private `cc` path with an exit-42 wrapper caused
-actual native build scripts to fail (Cargo exit 101, 0.677 s, no verifier
-invocations). This establishes the failure boundary only. The bundle was never
-populated, so fresh dependency-byte equality remains unmeasured and no reuse
-speedup is claimed. Raw source, compiler streams, keyed extern digests and all
-cases are retained outside the repository in the application screen.
+The initial fill took 39.752 s. Each fresh project compiled native prerequisites
+and used one verifier invocation instead of two. Reused vstd retains actual fill
+invocation `15973-1792240532331088455` and machine-local provenance. Replacing
+the private native `cc` executable at the same path still failed with Cargo 101
+in 1.839 s, before any verifier invocation. Summary SHA-256:
+`eee54507754ad10346efbff41858bb5475c2f75d7f2ce25eedaf0194fd0a556d`.
 
-Literal-registry research now uses `SAIL_VSTD_BOUNDARY_LOCAL` together with the
-research flag. This fixes the specific path scope without rewriting VIR bytes:
-keys bind the registry root, and compiler inputs remain literal. Independent
-source review also confirms that existing exported `.vir` is not a complete
-proof-input key: Verus deliberately prunes restricted functions and proof/exec
-bodies. Comparing fresh exported files alone cannot qualify skipped verification.
-A complete compiler proof-input boundary or an audited complete input closure is
-still required. The local mode is not a replacement qualified for default use.
+The enclosing screen failed after all ten application rows: the two extra
+trace-control compilations completed, but the external collector found zero
+input files because the CLI sets its own trace directory. Query equality is
+therefore unqualified. Original failed output is preserved. Timing observations
+do not qualify the input model, stock verdict/diagnostic parity or default use.
 
-- `05c4377e`, 2026-10-17, native application screen: portable recording refused
-  registry-bearing VIR; fresh attempt missed; changed native compiler failed
-  before verification. Workspace lint and 17 focused tests passed.
-- Local-mode working source, 2026-10-17: first macOS lint stopped on the expanded
-  serving function's length; an unchanged retry also failed. Extracting proof
-  provenance into a helper corrected it. Final lint, 19 focused tests and the
-  receipt/store provenance test pass; private build target removed.
+## Compiler-read source checksums
 
-## Literal-local hit and next input boundary
+The pinned compiler is Rust commit `48a229ceaefd4985c50990b14116b6d856af0985`.
+Its [SourceFile constructor](https://github.com/rust-lang/rust/blob/48a229ceaefd4985c50990b14116b6d856af0985/compiler/rustc_span/src/lib.rs)
+hashes the loaded bytes before BOM/CRLF normalization and retains that checksum.
+Its [dep-info writer](https://github.com/rust-lang/rust/blob/48a229ceaefd4985c50990b14116b6d856af0985/compiler/rustc_interface/src/passes.rs)
+emits the retained checksum and original size for local source-map files.
+Cargo already requests BLAKE3 checksums; this change does not alter compiler
+arguments. Independent expected BLAKE3/size constants for 137 admitted vstd
+archive files are generated from the separately SHA-256-validated archive,
+using an offline generation tool, with no new product dependency.
 
-The second actual application screen, `dcc2bb9e`, used a fresh c7i.4xlarge in
-us-east-1 and normal cc7 runtime (`717680b4` archive) with Rust 1.99.0 for Sail
-and 1.98.1 for Verus. Four independent physical projects had identical source
-and lock bytes, separate Cargo targets and proof caches. Baseline was 37.892 s;
-local fill was 39.216 s; the next fresh project was 8.456 s with one verifier
-invocation rather than two. Its vstd result retains the fill invocation as
-`dependency_build.kind = machine-local`, not a release-built origin. Actual
-linked native bytes and compiler-boundary key agree between fill and serve.
-The compiler replacement still returns Cargo 101, no verifier invocations,
-in 1.599 s. This is one prototype observation, not a median or stock-parity
-qualification. Summary SHA-256:
-`0ac364feda5de2928f272249db2768d1395770cbb337acb9833af4b91817712e`.
+Publication now requires every listed compiler source to be an admitted vstd
+Rust file with exactly one matching compiler checksum and size. Missing,
+foreign, duplicate, malformed and differently hashed inputs refuse publication.
+Restoring a source file after the compiler read cannot restore the checksum
+retained by that compiler. The existing whole-source SHA-256 and file-set checks
+remain separate checks.
 
-That source could admit an arbitrary first-fill macro, so its speed alone does
-not justify default use. The next source binds the explicit 15-package,
-662-file source policy in `engine/verus/vstd-boundary-inputs.json`, generated
-from local crate archives whose full SHA-256 matches the retained resolution.
-The policy excludes `contrib-hooks` and its external provider, randomized case
-features, path patches and extra dependencies. Fresh Cargo extraction can omit
-`.cargo-checksum.json`; direct pinned source hashes remain authoritative in both
-layouts, and any present sidecar must agree. Actual vstd invocation must point
-at the specific admitted vstd directory, not a copied-identity sibling.
+This is a narrow source-input check. Rustc separately reopens extra tracked
+proc-macro, PGO and debugger files at dep-info emission; those checksums are
+not evidence of their earlier reads. The prototype must not generalize this
+source-map argument to arbitrary macro inputs, external artifacts or mapped
+native libraries. Complete native qualification, source mutation controls,
+macro/compiler builtin/span/diagnostic audit, full verdict and diagnostic parity,
+and both-platform checks remain required before selection. Exported VIR alone
+is not a complete proof-input key because Verus prunes private bodies.
 
-Optional native provenance now records actual successful library compiler
-invocations. It rejects foreign compiler hashes, source/crate shapes and
-backend/linker overrides, checks the actual compiler feature set (including
-features injected through rustflags), generated inputs and transitive current-run
-native output records. It observes only declared library outputs absent before
-that invocation, preventing a metadata-only compile from claiming an old matching
-library. The real compiler always executes with inherited output and status.
-First-fill and serving require current-run native provenance as well as actual
-linked bytes. Per-output records and separate research traces are retained.
+## Prior attempts
 
-The complete transitive macro/compiler builtin/span/diagnostic input audit and
-native qualification remain open. Before/after checks detect ordinary mutation;
-they are not advertised as immutable execution or protection against arbitrary
-host changes. The new revision has passed shared macOS workspace clippy,
-23 focused tests and the existing proof-origin/receipt test. No Mac performance
-measurement or default enablement follows.
+All entries below are on 2026-10-17; failed or interrupted attempts remain failed.
+Raw compiler streams, source packets, keyed observations and results are retained
+outside the repository. No unit fixture establishes real-project acceptance.
 
-- `b3f23535`, 2026-10-17, first closed-source/native-provenance screen:
-  workspace lint and 23 focused tests pass; baseline 39.095 s and fill 40.625 s
-  both verify completely, but no entry is published. Seventeen native library
-  observations refuse the presumed sysroot executable identity. The driver source
-  shows Cargo's leading rustc argument is discarded: native units execute
-  `rustc_driver` inside Verus's `rust_verify` through its launcher. Remaining
-  fresh-pair/compiler-replacement cases were not run. Screen completion is not
-  reuse qualification. The next source binds the actual launcher and embedded
-  compiler driver, with a regression checking their changed bytes.
-
-Native argument admission also confines dependency-search and incremental paths
-to the owned target, rejecting parent-directory escapes. Each research native
-trace now retains the actual argument vector alongside per-output provenance;
-this is diagnostic evidence, not a replacement for execution. The final source
-continues to pass workspace lint, 23 focused tests and receipt-origin coverage.
-Its repeated native measurements and full host/workspace qualification are
-pending.
-
-- `67c7d0ea`, 2026-10-17, complete shared macOS host check: clippy passes;
-  669 of 670 non-solver tests pass, 35 are skipped. The error-code registry test
-  fails because the new research codes were missing from `docs/errors.md`.
-  This is a documentation omission, corrected next; the original failed host
-  result remains retained. Private build intermediates are removed.
-
-- `67c7d0ea`, 2026-10-17, loaded-driver native screen: lint and all 23
-  focused tests pass. Baseline 42.220 s and fill 43.948 s both complete,
-  but dependent native units refuse fresh compiler provenance after the leaf
-  units establish records. No entry is published; remaining pairs are unrun.
-  The next source retains the exact failed record comparison and checks actual
-  vstd feature arguments against the admitted resolution.
-
-The corrected error-code registry test passes after the documentation fix; the
-original complete host attempt remains a failed attempt. Macro input admission
-also needs to account for helper emission from hash collections in the pinned
-registry macros. Source hashes alone do not prove emitted-order determinism.
-
-- `a9856b8f`, 2026-10-17, native screen: all 23 focused tests and lint
-  pass. Baseline 34.939 s, fill 36.226 s, no entry; remaining cases unrun.
-  A dependent's record lookup sees no record, while the exact matching producer
-  record exists after compilation. Cargo starts dependents after metadata is
-  emitted, before the producer completes. The prototype incorrectly required
-  completed transitive provenance before running those native dependents.
-
-Native dependents now execute immediately; their observation completes only
-after successful dependencies have established records. Waiting for record
-arrival is capped at two seconds, and actual library bytes are checked after
-arrival. This does not accept metadata-ready as compiler success or bypass
-any native compilation. Missing, changed or unsuccessful provenance still
-refuses reuse. The owned producer/consumer regression exercises delayed record
-arrival and absence; native application qualification remains required.
-
-The registry enum-helper ordering is already handled by the verifier-side
-VI-0001 fix `af212563`, present in the candidate runtime. Its shape check and
-source-order traversal also apply when Cargo compiles the registry macros.
-This source audit is narrower than a completed literal vstd-query comparison.
-
-The complete `def9c258` macOS host gate passes: clippy and all 671 enabled
-non-solver tests, 35 skipped, with unchanged source. A further ordinary Cargo
-proc-macro option, `-C prefer-dynamic`, is now admitted by the research native
-observer; its literal argument remains part of the key and the compiler still
-runs. The source-shape regression uses that actual option. This observer fix
-changes neither compiler options nor the default verification path.
+- Initial source: 15 native tests passed; workspace lint failed on documentation.
+- `930dfea8`: native compile failed on environment-pair types; application unrun.
+- `930dfea8` corrected: 17 Mac tests passed; workspace compile found missing origin field.
+- `05c4377e`: portable fill refused registry-bearing VIR; fresh attempt missed; changed native compiler failed before verification.
+- `dcc2bb9e`: unrestricted local hit 8.456 s versus 37.892 s, one sample; arbitrary first-fill macros remained admitted, so unqualified.
+- `b3f23535`: native provenance refused the presumed sysroot compiler identity; fill missed, later cases unrun.
+- `67c7d0ea`: Mac clippy and 669/670 tests passed; error-code registry failed. Documentation correction passed its targeted check.
+- `67c7d0ea`: native transitive provenance refused; fill missed, later cases unrun.
+- `a9856b8f`: native records demonstrated Cargo pipelining; fill missed, later cases unrun.
+- `def9c258`: native provenance reached proc-macro compilation but refused ordinary `-C prefer-dynamic`; fill missed. Complete Mac host check passed 671 tests, 35 skipped, plus clippy.
+- `50b116bb`: native lint and 24 focused tests passed; three actual reuse pairs completed; enclosing trace-collection gate failed as described above. Mac lint, 24 focused tests and receipt-origin test passed.

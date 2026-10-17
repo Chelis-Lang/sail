@@ -1158,6 +1158,14 @@ impl<'a> Call<'a> {
             }
         }
         let (files, dep_info, text) = self.stage_outputs(staging)?;
+        if self
+            .plan
+            .closure
+            .as_ref()
+            .is_some_and(|closure| !closure.compiler_sources(&text))
+        {
+            return Err("compiler-loaded vstd source checksums are not admitted".to_owned());
+        }
         let mut sources = Vec::new();
         let manifest =
             Path::new(self.vars.get("CARGO_MANIFEST_DIR").ok_or("no manifest")?).join("Cargo.toml");

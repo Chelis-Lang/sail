@@ -29,6 +29,14 @@ struct Package {
     archive_sha256: String,
     features: Vec<String>,
     files: BTreeMap<String, String>,
+    #[serde(default)]
+    compiler_checksums: BTreeMap<String, CompilerChecksum>,
+}
+
+#[derive(Deserialize, PartialEq, Eq)]
+struct CompilerChecksum {
+    blake3: String,
+    size: u64,
 }
 
 #[derive(Deserialize)]
@@ -49,7 +57,7 @@ impl Closure {
     /// Reject path patches, different versions/features and extra dependencies.
     pub(super) fn resolve(metadata: &Value, registry: &Path) -> Option<Self> {
         let policy: Policy = serde_json::from_str(POLICY).ok()?;
-        if policy.kind != "sail-vstd-boundary-source-policy" || policy.schema != 1 {
+        if policy.kind != "sail-vstd-boundary-source-policy" || policy.schema != 2 {
             return None;
         }
         let admitted = resolved_packages(metadata, registry, &policy)?;
@@ -148,6 +156,92 @@ impl Closure {
     pub(super) fn policy_sha256(&self) -> &str {
         &self.policy_sha256
     }
+
+    /// Check the compiler's hashes of the bytes it actually loaded, rather
+    /// than another filesystem read after compilation. This deliberately
+    /// admits only the closed vstd Rust source set, never arbitrary tracked
+    /// proc-macro files (rustc hashes those separately at the end).
+    pub(super) fn compiler_sources(&self, dep_info: &str) -> bool {
+        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+            return false;
+        };
+        let Some(package) = policy.packages.get(&policy.vstd) else {
+            return false;
+        };
+        compiler_sources(
+            dep_info,
+            &self.registry.join(&policy.vstd),
+            &package.compiler_checksums,
+        )
+    }
+}
+
+fn compiler_sources(
+    dep_info: &str,
+    root: &Path,
+    expected: &BTreeMap<String, CompilerChecksum>,
+) -> bool {
+    let mut sources = BTreeSet::new();
+    for source in super::dep_info_sources(dep_info) {
+        let Ok(relative) = Path::new(&source).strip_prefix(root) else {
+            return false;
+        };
+        if relative
+            .extension()
+            .is_none_or(|extension| extension != "rs")
+            || !relative
+                .components()
+                .all(|component| matches!(component, std::path::Component::Normal(_)))
+        {
+            return false;
+        }
+        let Some(relative) = relative.to_str() else {
+            return false;
+        };
+        if !expected.contains_key(relative) || !sources.insert(relative.to_owned()) {
+            return false;
+        }
+    }
+    if sources.is_empty() {
+        return false;
+    }
+    let mut observed = BTreeSet::new();
+    for line in dep_info
+        .lines()
+        .filter(|line| line.starts_with("# checksum"))
+    {
+        let Some((hash, rest)) = line
+            .strip_prefix("# checksum:blake3=")
+            .and_then(|rest| rest.split_once(" file_len:"))
+        else {
+            return false;
+        };
+        let Some((size, path)) = rest.split_once(' ') else {
+            return false;
+        };
+        let Ok(size) = size.parse::<u64>() else {
+            return false;
+        };
+        let path = super::unescape(path);
+        let Some(relative) = Path::new(&path)
+            .strip_prefix(root)
+            .ok()
+            .and_then(Path::to_str)
+        else {
+            return false;
+        };
+        let Some(expected) = expected.get(relative) else {
+            return false;
+        };
+        if !sources.contains(relative)
+            || !observed.insert(relative.to_owned())
+            || hash != expected.blake3
+            || size != expected.size
+        {
+            return false;
+        }
+    }
+    observed == sources
 }
 
 fn resolved_packages(
@@ -251,6 +345,60 @@ mod tests {
     use super::*;
 
     #[test]
+    fn compiler_loaded_checksums_refuse_restored_and_unattested_inputs()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let policy: Policy = serde_json::from_str(POLICY)?;
+        let package = policy.packages.get(&policy.vstd).ok_or("missing vstd")?;
+        let root = Path::new("/registry").join(&policy.vstd);
+        let path = root.join("vstd.rs").display().to_string();
+        let checksum = package
+            .compiler_checksums
+            .get("vstd.rs")
+            .ok_or("missing compiler checksum")?;
+        let sources = format!("{path}:\n");
+        let comment = format!(
+            "# checksum:blake3={} file_len:{} {path}\n",
+            checksum.blake3, checksum.size
+        );
+        let valid = format!("{sources}{comment}");
+        assert!(compiler_sources(&valid, &root, &package.compiler_checksums));
+        // Restoring the disk file after a different compiler read cannot
+        // restore the compiler's retained checksum. No disk reread is used.
+        let changed = valid.replace(&checksum.blake3, &"0".repeat(64));
+        assert!(!compiler_sources(
+            &changed,
+            &root,
+            &package.compiler_checksums
+        ));
+        assert!(!compiler_sources(
+            &sources,
+            &root,
+            &package.compiler_checksums
+        ));
+        assert!(!compiler_sources(
+            &comment,
+            &root,
+            &package.compiler_checksums
+        ));
+        for rejected in [
+            valid.replace("blake3=", "sha256="),
+            valid.replace("file_len:5040", "file_len:5041"),
+            valid.replace("vstd.rs", "../vstd.rs"),
+            valid.replace("vstd.rs", "foreign.rs"),
+            format!("{valid}{comment}"),
+            format!("{valid}{sources}"),
+            format!("{valid}# checksum:malformed\n"),
+            format!("{valid}/generated/macro-input.rs:\n"),
+        ] {
+            assert!(
+                !compiler_sources(&rejected, &root, &package.compiler_checksums),
+                "accepted unattested compiler input: {rejected}"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
     fn source_policy_refuses_changed_added_and_redirected_files() -> std::io::Result<()> {
         let root =
             std::env::temp_dir().join(format!("sail-boundary-admission-{}", std::process::id()));
@@ -263,6 +411,7 @@ mod tests {
             archive_sha256: "trusted-archive".into(),
             features: Vec::new(),
             files: BTreeMap::from([("lib.rs".into(), super::super::digest(body))]),
+            compiler_checksums: BTreeMap::new(),
         };
         std::fs::write(root.join("lib.rs"), body)?;
         std::fs::write(root.join(".cargo-ok"), b"{\"v\":1}")?;
