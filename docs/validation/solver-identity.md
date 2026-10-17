@@ -191,15 +191,36 @@ in both arms. Daemon RSS after observation rises by roughly 34 MiB in the
 active cases; this is an observed tradeoff, not an exact memo-allocation bound.
 Wall improvement is modest (about 1–3% for the active verification cases),
 while daemon self CPU falls about 34–37%. No full solver-output coverage is
-inferred from provenance records. Full native merge gates and FAST/STANDARD
-conformance remain required before selection; the current-main join is not
-qualified by these earlier-source results.
+inferred from provenance records. These earlier-source measurements qualify
+the cost screen; the separate current-main join below qualifies correctness.
+
+The current-main join `bdc6f39a` passed native x86-64 qualification on a
+c7i.8xlarge in us-east-1. Its four production Rust files, Cargo inputs and
+runtime pins are byte-identical to `fd31d747`; the earlier macOS host gate
+therefore covers the same implementation. The native queue passed the full
+workspace gate (662 tests, 35 solver tests skipped, two doctests), all 35
+solver tests, all seven E2E phases plus extra, and PR conformance. Full FAST
+passed all four arms, each 147 Same / 3,450 functions. Full STANDARD passed
+all four arms, each 159 Same / 12,726 functions, with no Different, Unstable,
+infrastructure errors or skipped projects. Rlimit drift was 0/0/0/1 in
+pass-through/cache-fill/cache-warm/engine order and remains recorded.
+
+Final guards confirmed all 591 tracked source files, the complete 3,886-file
+runtime map and identical initial/final byte, size and mode inventories for
+all five built executables. Their actual bodies are retained with source
+bindings. All 25 stage archives were strictly verified. This is local merge
+qualification, not lead selection or a new performance measurement. The
+qualification final archive SHA-256 is
+`77e923780b77eefd9c10b5c8cdc8ad1a45269e61513349e114aba0ac31a33fa9`;
+the STANDARD aggregate is
+`2c268aeedbd34ea9d2f6be94f1b48e70118ffaf049aaee692b5486ff9d88ee27`.
 
 Raw final archive SHA-256
 `e5ca4c9666c5ea1ffb597f21ec2201bd4d89476b90355ad4d6b3840df8a1c5be`;
 all-sample cost summary SHA-256
 `f1af9f9409b0cd54bd4c705fc2d8ee3ef5f80faab60e249296ee20a9507a7dd0`.
 Initial native attempts that never started the controller remain unrun and
-are not performance samples. Native binary inventories were preserved;
-executable bodies were not retained, so subsequent qualification requires
-a genuine rebuild.
+are not performance samples. The original screen preserved native binary
+inventories but not executable bodies. The later qualification above used a
+genuine rebuild and retained its five executables; it does not reconstruct the
+original measured binaries.
