@@ -142,3 +142,9 @@ this is diagnostic evidence, not a replacement for execution. The final source
 continues to pass workspace lint, 23 focused tests and receipt-origin coverage.
 Its repeated native measurements and full host/workspace qualification are
 pending.
+
+- `67c7d0ea`, 2026-10-17, complete shared macOS host check: clippy passes;
+  669 of 670 non-solver tests pass, 35 are skipped. The error-code registry test
+  fails because the new research codes were missing from `docs/errors.md`.
+  This is a documentation omission, corrected next; the original failed host
+  result remains retained. Private build intermediates are removed.
