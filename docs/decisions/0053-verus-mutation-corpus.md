@@ -89,8 +89,8 @@ verified. Findings that shape the decision below:
   900 s in others on identical input
   ([reproduction](../../corpus/repros/z3-nla-rlimit-enforcement/README.md)).
   These are excluded and listed rather than given a capped outcome.
-- **Near-limit mutants can be very slow.** One `int` mutant takes about
-  770 s per plain run, which dominates that catalogue's run time.
+- **Near-limit mutants can be very slow.** One `int` mutant takes
+  760–790 s per plain run, which dominates that catalogue's run time.
 
 ## Decision
 
