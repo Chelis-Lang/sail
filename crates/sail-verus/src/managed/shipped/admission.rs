@@ -85,6 +85,24 @@ impl Closure {
         vars: &BTreeMap<String, String>,
         args: &[std::ffi::OsString],
     ) -> bool {
+        self.unit(vars, args, false)
+    }
+
+    /// Bind the actual verified vstd feature arguments, not only Cargo metadata.
+    pub(super) fn vstd_unit(
+        &self,
+        vars: &BTreeMap<String, String>,
+        args: &[std::ffi::OsString],
+    ) -> bool {
+        self.unit(vars, args, true)
+    }
+
+    fn unit(
+        &self,
+        vars: &BTreeMap<String, String>,
+        args: &[std::ffi::OsString],
+        vstd: bool,
+    ) -> bool {
         let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
             return false;
         };
@@ -98,7 +116,7 @@ impl Closure {
         let Some(package) = policy.packages.get(&identity) else {
             return false;
         };
-        if name == "vstd"
+        if (name == "vstd") != vstd
             || !self.packages.contains(&identity)
             || vars.get("CARGO_MANIFEST_DIR").map(Path::new)
                 != Some(self.registry.join(&identity).as_path())
