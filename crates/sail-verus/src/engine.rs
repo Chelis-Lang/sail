@@ -1064,6 +1064,42 @@ mod tests {
     }
 
     #[test]
+    fn prebuilt_runtime_pins_install_where_default_discovery_looks()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let pins: Pins = toml::from_str(include_str!("../../../corpus/toolchain.toml"))?;
+        for (text, host) in [
+            (
+                include_str!("../../../engine/verus/artifact-linux.json"),
+                "x86_64-unknown-linux-gnu",
+            ),
+            (
+                include_str!("../../../engine/verus/artifact-macos.json"),
+                "aarch64-apple-darwin",
+            ),
+        ] {
+            let pin: serde_json::Value = serde_json::from_str(text)?;
+            let mut platform_features = features();
+            for feature in &mut platform_features {
+                if feature.starts_with("host:") {
+                    *feature = format!("host:{host}");
+                }
+            }
+            let expected = source_build::variant_dir(
+                Path::new("/cache"),
+                &pins.verus.commit,
+                &pins.verus.rust_toolchain,
+                &platform_features,
+            );
+            assert_eq!(
+                pin["variant"].as_str(),
+                expected.file_name().and_then(|name| name.to_str()),
+                "the installer and default engine discovery must agree for {host}"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
     fn a_bundled_runtime_is_found_beside_the_executable_only_when_the_cache_has_none()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let pins: Pins = toml::from_str(include_str!("../../../corpus/toolchain.toml"))?;
