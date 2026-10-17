@@ -9,7 +9,7 @@
 //! solver's output byte for byte. While the solver runs, replies are paired
 //! with their commands and stored in the cache.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, ExitCode, Stdio};
@@ -22,7 +22,6 @@ use std::time::Duration;
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
 use sail_key::{Mode, PrefixHasher, QueryKey, SolverIdentity};
-use sail_session::Session;
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter};
 
@@ -588,8 +587,41 @@ fn connect(socket: &Path, solver: &Path) -> Option<(Client, PrefixHasher)> {
     Some((client, prefix))
 }
 
+/// Output and option state only. Default keys bind the literal process prefix;
+/// this path never reads a model snapshot, assertion stack or model exactness.
+/// Keeping a second copy of every assertion cannot affect those keys or replies.
+#[derive(Default)]
+struct ResponseState {
+    options: BTreeMap<Vec<u8>, Vec<u8>>,
+}
+
+impl ResponseState {
+    fn option(&self, keyword: &[u8]) -> Option<&[u8]> {
+        self.options.get(keyword).map(Vec::as_slice)
+    }
+
+    fn expects_output(&self, command: &[u8]) -> Output {
+        if self.option(b":print-success") == Some(b"true") {
+            return Output::One;
+        }
+        classify(command).map_or(Output::Unknown, |c| c.kind.output())
+    }
+
+    fn apply(&mut self, command: &[u8]) {
+        if let Ok(parsed) = classify(command) {
+            match parsed.kind {
+                CommandKind::SetOption { keyword, value } => {
+                    self.options.insert(keyword.to_vec(), value.to_vec());
+                }
+                CommandKind::Reset => self.options.clear(),
+                _ => {}
+            }
+        }
+    }
+}
+
 fn observe(
-    session: &mut Session,
+    session: &mut ResponseState,
     item: &Item,
     prefix: &mut PrefixHasher,
     raw: &[u8],
@@ -641,7 +673,7 @@ fn observe(
 /// request.
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
     let (client, mut prefix) = connect(socket, solver)?;
-    let mut session = Session::new();
+    let mut session = ResponseState::default();
     let mut splitter = CommandSplitter::new();
     let mut raw: Vec<u8> = Vec::new();
     let mut served = 0u64;
@@ -847,6 +879,61 @@ fn record_provenance(input: &[u8], served: u64, solver_started: bool) {
 #[cfg(test)]
 mod tests {
     use super::{Expect, Pairer};
+
+    #[test]
+    fn response_state_matches_full_model_after_every_command_prefix() {
+        let commands: &[&[u8]] = &[
+            b"(set-logic ALL)",
+            b"(set-info :source |literal input|)",
+            b"(declare-const x Int)",
+            b"(define-fun f ((y Int)) Int (+ x y))",
+            b"(assert (> x 0))",
+            b"(push 2)",
+            b"(set-option :rlimit 1234)",
+            b"(set-option :produce-models true)",
+            b"(check-sat)",
+            b"(check-sat-assuming ((> x 1)))",
+            b"(check-sat-using smt)",
+            b"(get-info :all-statistics)",
+            b"(set-option :print-success true)",
+            b"(pop)",
+            b"(reset-assertions)",
+            b"(set-option :print-success false)",
+            b"(set-option :rlimit invalid)",
+            b"(set-option :unknown-option |literal value|)",
+            b"(set-option :print-success invalid)",
+            b"(reset)",
+            b"(pop 100)",
+            b"(assert true)",
+            b"(unknown-command)",
+            b"(set-option)",
+            b"malformed",
+            b"(exit)",
+        ];
+        let mut full = sail_session::Session::new();
+        let mut lean = super::ResponseState::default();
+        for command in commands {
+            full.apply(command);
+            lean.apply(command);
+            for keyword in [
+                b":print-success".as_slice(),
+                b":rlimit",
+                b":produce-models",
+                b":unknown-option",
+            ] {
+                assert_eq!(full.option(keyword), lean.option(keyword));
+            }
+            // Compare every subsequent command, including print-success's own
+            // response and malformed commands, after each state transition.
+            for next in commands {
+                assert_eq!(
+                    full.expects_output(next),
+                    lean.expects_output(next),
+                    "after {command:?}, before {next:?}"
+                );
+            }
+        }
+    }
     use proptest::prelude::*;
     use sail_key::QueryKey;
 

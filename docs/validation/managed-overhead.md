@@ -110,3 +110,21 @@ and recompiles an enabled type-error control (exit101/E0308). This is target
 selection evidence, with no SMT, performance or native-product claim.
 Archive `feature-alias-2026-10-16.tgz`, SHA-256
 `63b8d70de973695411972f6f434c45d9f1062cfec4ef859b4951a4ed62131374`.
+
+
+## Response observer candidate (#156)
+
+A separate unqualified candidate keeps only output and option state in the
+cached shim. That path previously retained a full `Session` model, including
+copies of assertion, declaration and definition bytes and discarded check
+snapshots. Its keys already bind the complete literal input prefix (ADR 0008);
+it reads only output expectations and options from the model. The replacement
+retains every parsed option, clears them on `reset`, and preserves them across
+`reset-assertions`, exactly as the existing model does. Trace snapshots and the
+full session model remain unchanged.
+
+The regression compares option values and every subsequent command's output
+expectation after each mixed command prefix, including invalid options, unknown
+commands, print-success, resets and stack underflow. Native focused tests,
+matched real-project timing and full correctness qualification remain pending.
+There is no measured gain or selection claim.
