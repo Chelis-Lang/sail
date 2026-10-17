@@ -7,12 +7,13 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 6 cannot accept the old all-unit native-artifact bundles. It neither
+//! schema 7 cannot accept the old all-unit native-artifact bundles. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
 //! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
 
 mod admission;
+mod compiler;
 pub(crate) mod native;
 
 use super::files::digest;
@@ -26,7 +27,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 6;
+const SCHEMA: u32 = 7;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";
@@ -127,6 +128,8 @@ struct Unit {
     source_tree: BTreeMap<String, String>,
     /// Full invocation which originally established this complete proof.
     establishing_run: String,
+    /// Separate successful verification and erased-compiler input records.
+    compiler_reads: Option<compiler::Document>,
     /// Compiler outputs, stored under `files/`; the dep-info is stored with
     /// placeholders.
     files: Vec<StoredFile>,
@@ -681,6 +684,8 @@ pub(crate) struct Call<'a> {
     verifying: bool,
     externs: Vec<(String, String, Option<String>)>,
     source_tree: Option<BTreeMap<String, String>>,
+    compiler_observation: Option<compiler::Observation>,
+    compiler_reads: Option<compiler::Document>,
 }
 
 /// Observe every package file, including files that dep-info does not yet
@@ -977,7 +982,32 @@ impl<'a> Call<'a> {
             verifying,
             externs,
             source_tree: None,
+            compiler_observation: None,
+            compiler_reads: None,
         })
+    }
+
+    /// Request observations only for this actual admitted compiler invocation.
+    pub(crate) fn observe_compiler(&mut self, command: &mut std::process::Command) {
+        self.compiler_observation = compiler::Observation::begin(self);
+        if let Some(observation) = &self.compiler_observation {
+            observation.configure(command);
+        }
+    }
+
+    /// Bind observations to the PID returned by the actual compiler spawn.
+    pub(crate) fn compiler_started(&mut self, pid: u32) {
+        if let Some(observation) = &mut self.compiler_observation {
+            observation.started(pid);
+        }
+    }
+
+    /// Read the fork's completion only after the real child has returned.
+    pub(crate) fn compiler_finished(&mut self) {
+        self.compiler_reads = self
+            .compiler_observation
+            .as_ref()
+            .and_then(|observation| observation.read(self));
     }
 
     /// Extra compiler arguments when recording: name registry sources by the
@@ -1180,7 +1210,10 @@ impl<'a> Call<'a> {
             let (sha256, _) = sha256_file(Path::new(&source)).ok_or("unreadable source")?;
             sources.push((normalized, sha256));
         }
-        let declared = dep_info_environment(&self.normalizer.normalize(&text));
+        let mut declared: BTreeMap<_, _> = dep_info_environment(&self.normalizer.normalize(&text))
+            .into_iter()
+            .collect();
+        let compiler_reads = compiler::publication(self, &mut declared)?;
         let text_file = |name: &str, text: &str| -> std::result::Result<StoredFile, String> {
             let bytes = self.normalizer.normalize(text).into_bytes();
             std::fs::write(staging.join(name), &bytes).map_err(|e| e.to_string())?;
@@ -1201,10 +1234,11 @@ impl<'a> Call<'a> {
             environment: self.environment.clone(),
             source_tree: self.source_tree.clone().unwrap_or_default(),
             establishing_run: self.plan.run_id.clone(),
+            compiler_reads,
             files,
             dep_info,
             sources,
-            declared,
+            declared: declared.into_iter().collect(),
             stdout: text_file("stdout", stdout)?,
             stderr: text_file("stderr", stderr)?,
         };
@@ -1307,6 +1341,12 @@ impl<'a> Call<'a> {
         {
             return Err(Refusal::Miss(
                 "vstd package file set or bytes differ".to_owned(),
+            ));
+        }
+        if !compiler::stored(self, &unit) {
+            return Err(Refusal::Miss(
+                "compiler-read verification and compilation observations are unavailable"
+                    .to_owned(),
             ));
         }
         let origin = self.proof_origin(&unit)?;

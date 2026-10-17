@@ -375,7 +375,7 @@ fn driver() -> Result<ExitCode> {
         return Ok(status(actual));
     }
     let plan = crate::managed::shipped::active();
-    let call = plan.as_ref().and_then(|plan| {
+    let mut call = plan.as_ref().and_then(|plan| {
         crate::managed::shipped::Call::vstd_boundary(plan, &args, std::env::vars_os())
     });
     if custom_compiler_context(&args) {
@@ -498,6 +498,11 @@ fn driver() -> Result<ExitCode> {
         )
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    cmd.env_remove("SAIL_COMPILER_INPUTS")
+        .env_remove("SAIL_COMPILER_INPUTS_BINDING");
+    if let Some(call) = &mut call {
+        call.observe_compiler(&mut cmd);
+    }
     // Session records join cached answers to transcripts; without logs there
     // is nothing to join them to.
     if logs.is_some() {
@@ -520,6 +525,9 @@ fn driver() -> Result<ExitCode> {
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    if let Some(call) = &mut call {
+        call.compiler_started(child.id());
+    }
     let invocation_log = InvocationLog {
         directory: &runtime.invocations,
         run_id: &runtime.run_id,
@@ -556,6 +564,9 @@ fn driver() -> Result<ExitCode> {
     let exit = child
         .wait()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    if let Some(call) = &mut call {
+        call.compiler_finished();
+    }
     let stdout = stdout
         .ok_or_else(|| Error::new("SAIL3111", "missing solver output pipe"))?
         .join()
