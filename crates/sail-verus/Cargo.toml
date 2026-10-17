@@ -8,6 +8,9 @@ publish.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+sail-boundary-input-fixture = []
+
 [dependencies]
 sail-api.workspace = true
 sail-ledger.workspace = true

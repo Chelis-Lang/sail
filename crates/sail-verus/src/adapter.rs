@@ -11,6 +11,10 @@ use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
+#[cfg(feature = "sail-boundary-input-fixture")]
+#[path = "adapter_boundary_fixture.rs"]
+mod boundary_fixture;
+
 /// Only Cargo-Verus's own metadata probe receives this private marker. The
 /// build subprocess removes it so nested user commands retain their environment.
 pub(crate) const CARGO_METADATA_ENV: &str = "SAIL_MANAGED_CARGO_METADATA";
@@ -359,6 +363,8 @@ fn driver() -> Result<ExitCode> {
     // Native prerequisites always execute through Cargo's real compiler. The
     // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
+        #[cfg(feature = "sail-boundary-input-fixture")]
+        boundary_fixture::native(&wrapper, &args)?;
         let plan = crate::managed::shipped::active();
         let observation = plan
             .as_ref()
@@ -520,6 +526,10 @@ fn driver() -> Result<ExitCode> {
         .engine
         .as_ref()
         .map(|_| crate::engine_events::Relay::start(source_events.clone(), &runtime, &identity));
+    #[cfg(feature = "sail-boundary-input-fixture")]
+    if call.is_some() {
+        boundary_fixture::before_spawn(&cmd)?;
+    }
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
