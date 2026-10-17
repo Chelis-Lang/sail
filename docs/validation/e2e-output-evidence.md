@@ -21,6 +21,40 @@ above 8 MiB, and retains only the remaining shared-budget prefix when the 32 MiB
 command-snapshot allowance is nearly exhausted. Refusal metadata stays in the
 outer log without printing payload bytes.
 
+## Managed background verifier streams
+
+The managed-harness extension at `1655edb5` retains each verification's
+stdout/stderr before writing its completion record, including a background
+stock result whose caller is interrupted by another verification's timeout.
+On 2026-10-17, native c7i.4xlarge in us-east-1 passed `ci/local.sh gate`
+(655 tests, 35 solver tests skipped, 2 doctests) and `ci/local.sh e2e managed`
+(43 verification calls and the actual MCP client exposing 15 tools).
+The native log SHA-256 is
+`77cd34398182ee5dc2868974308b4894fa5fd3ac9730e73691594924d38fe016`.
+Independent actual-child controls also confirmed retention when a background
+child exits unsuccessfully while a concurrent foreground child times out.
+These are harness checks, not full conformance or performance qualification;
+no corpus entries, runtime pins, deadlines or assertions change.
+
+- 2026-10-17, `1655edb5`: the first native bootstrap could not check out the
+  single-branch bundle's absent default HEAD. No gate ran; an explicit detached
+  checkout of the same commit corrected bootstrap before the checks above.
+- 2026-10-17, `d203b6db`: CI run 39001270003 failed managed-copies because
+  its concurrent-copy cleanup still called the old completion function
+  signature. Other required jobs passed. This was a harness defect; the caller
+  now supplies its already-captured original streams. Failed job log SHA-256
+  `872796e94327042f3262563c4ceba16cadb26904315135fb18760b9cc33082ca`.
+
+The corrected source `38927ad1` then passed the complete native workspace
+gate (655 tests, 35 solver tests skipped, 2 doctests) and all nine E2E phases
+plus local extra on c7i.4xlarge in us-east-1. All 57 verifier operations
+finished; all 114 original stream files match their completion-record byte
+counts, including the concurrent fresh copies. No verification timed out or
+was cancelled. Native log SHA-256
+`419d2519049c1995fc3e0b441af9020cb8d06fb6c8a05faaafb5cf8458124f70`;
+retained managed evidence archive SHA-256
+`2f5aca9b7b4a4490f8b3125bdc4f5597d67ffe2a32948ab05482d6e51c484556`.
+
 ## Native feature checkpoint
 
 Source `b0ddd460` on main `3c0498c3`, native c7i.4xlarge in us-east-1,
