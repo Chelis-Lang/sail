@@ -85,8 +85,8 @@ store quarantine remains in force.
 | Normal Linux producer | PASS: genuine normal runtime and release vstd, original measured build duration, 13 runtime files, unchanged packer, actual public Rust engine admission before corpus. No source-suite relabeling |
 | Normal Mac producer | PASS: genuine normal runtime, 17 compiler library tests, six VIR tests, five binder regressions with four workers, and release vstd (2,060 verified, zero errors) |
 | Mac artifact admission | PASS: unchanged archive installer followed by actual `sail engine status --output json`, full normal Manifest including measured build duration, exact fork/source-lock and all 14 runtime files |
-| Mac public edit loop | PASS: public default engine path, passing and unchanged reuse, failing assertion with Cargo exit 101, then fixed proof. Every call returns Current and 1,872 function records; successful maps agree |
-| Full Mac host check | PASS: all-target clippy and 654 tests, 35 solver tests skipped by the host profile; coherent Linux/Mac delivery pins, no runtime development override |
+| Mac public edit loop | PASS: public default engine discovery without runtime overrides, passing and unchanged reuse, failing assertion with Cargo exit 101, then fixed proof. Every call returns Current and 1,872 function records; successful maps agree |
+| Full Mac host check | PASS: all-target clippy and 655 tests, 35 solver tests skipped by the host profile; coherent Linux/Mac delivery pins, no runtime development override |
 | Final native qualification | Running on native c7i.8xlarge, us-east-1: fresh paired Capy/Anvil timings and matrices, solver, all end-to-end phases plus extra, four corpus arms, full fork source suite and determinism. No pending gate is inferred from earlier component evidence |
 | Selection | Pending full qualification, review and current required PR checks |
 
@@ -119,3 +119,13 @@ Full Mac host receipt SHA-256: `48b56acaddb1b97d88ee371c0c7a297038507639c5677d75
 failed two fixture-discovery tests because the runner set a global development
 runtime override. The complete unchanged host command passes with that override
 absent; the failed log remains indexed in this receipt. No test was changed.
+
+Corrected default-discovery acceptance SHA-256: `ebd748b914bcb5b5ad70b6f75cb2aa96d4cb51bd047e4c0e51c241e32a88d6d3`.
+The Mac installer now uses the exact feature-derived directory that Rust
+discovers, `426d8b01e7ffb910a36c15e1f870ff985bb61eef-d5d82a680cfe73f5`.
+An archive-derived directory in the superseded delivery commit `ff569dab`
+passed explicit-override admission but refused actual default discovery.
+The corrected installer, public status and complete edit loop pass without
+engine/source/compiler overrides. A new Rust contract test binds both platform
+pins to default discovery; the complete host rerun passes 655 tests. Runtime
+archive bodies and the failed discovery evidence remain unchanged.
