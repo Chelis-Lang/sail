@@ -50,6 +50,8 @@ fixtures are not claimed to pass until executed with the actual compiler.
 
 | 2026-10-17, aead21d2 / Sail4ce1f00e | Genuine normal candidate runtime/vstd and all three VIR plus five new RVT controls PASS, including the via regression. First Capy timing harness FAILS before any sample: its intentional selector cleanup exposes an absent default stock install (SAIL3003). Source/runtime final guards pass. A prospective remaining screen reuses this actual packed runtime and original test proof, installs stock at the real default cache path before the unchanged harness, and preserves its corpus across containers. No gain or whole-corpus acceptance. | `1b9518aa334eb558f2cb7e510d5f2f7318807a0e56d6e8a4ba5e21d951f24816` |
 
+| 2026-10-17, aead21d2 / Sail4ce1f00e, retained runtime | Stock-default setup and fresh Sail build PASS. Capy baseline cold67.57s and spec-wide56.97s exit0; observer FAILS before noopend because it expects the appended comment in the rename file rather than the committed recipe’s separate noop file. No candidate timings or gain. Runtime/source/Sail final guards PASS; prospective observer correction preserves every command and is exercised against both complete committed project edit/reset sequences. | `b0e6972da39dcec22e4277c5eab933bc001f213205b456f3a21f299b047446d5` |
+
 The compiler panic exposes an internal pairing requirement: vstd's
 `EndianNat::to_big(n)` uses `via Self::to_big_decreases`, whose special proof
 body is lowered in the spec function's parameter scope. Both must retain the
