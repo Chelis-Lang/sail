@@ -187,3 +187,20 @@ clippy and all 675 enabled tests, 35 skipped, with unchanged source and an owned
 private target removed afterward. This qualifies source compilation and tests,
 not complete runtime or default-mode acceptance; the separate native screen
 above covers the experimental fork API and actual reuse.
+
+Independent source review finds an extra diagnostic on damaged-entry fallback:
+the prototype prints `SAIL3133` before running the real compiler. The successor
+removes that output path and keeps refusal reasons in the optional trace.
+Its 19 focused Mac boundary tests and all-target `sail-verus` clippy pass,
+including damaged libraries, malformed destinations and unreadable manifests
+with preserved refusal reasons and no installed outputs. Actual byte-for-byte
+fallback output remains a native qualification gate.
+
+The same review finds no additional steady-state input omission within the
+closed official machine-local source/feature model. It does not attest native
+artifacts' mapped bytes: before/after pathname hashes alone cannot exclude a
+different macro library being consumed and then restored. A targeted actual
+consumption control remains required; unrestricted hostile local cache writers
+are outside the trusted machine-local cache model. This is an unresolved
+qualification boundary, not a demonstrated wrong verdict or a default-mode
+acceptance claim. Portable recording and serving remain separately unqualified.
