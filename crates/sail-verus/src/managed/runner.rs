@@ -381,14 +381,16 @@ fn context_hashes(
             .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     );
     let compiler_engine = engine.map(crate::engine::Request::artifact_identity);
-    // Only the driver-local focus selector is omitted. Compiler/solver bytes,
-    // arguments, configuration and byte-exact environment remain bound. Cargo
-    // freshness supplies ordinary artifacts; only exact proof receipts can
+    // Cargo package/target selection and the driver-local focus selector do
+    // not change the compiler family. Cargo fingerprints the selected units;
+    // proof contexts and requested-target receipts still bind the exact args.
+    // Compiler/solver bytes, other arguments and the exact environment stay
+    // bound. Cargo freshness supplies ordinary artifacts; exact proof receipts
     // authorize skipped verification targets.
     let compiler_hash = digest(
         &serde_json::to_vec(&(
             "sail-managed-compiler-artifacts-v1",
-            args,
+            without_selection(args),
             compiler_engine,
             identity,
             environment,
@@ -2911,7 +2913,7 @@ mod tests {
     }
 
     #[test]
-    fn compiler_artifact_identity_omits_only_the_engine_function()
+    fn compiler_artifact_identity_omits_selection_and_the_engine_function()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let args = vec!["-p".to_owned(), "input".to_owned()];
         let identity = vec![("compiler".to_owned(), "compiler-bytes".to_owned())];
@@ -2952,10 +2954,10 @@ mod tests {
         for request in variants {
             assert_ne!(compiler, hashes(Some(&request))?.1);
         }
-        assert_ne!(
-            compiler,
-            context_hashes(&[], Some(&selected), &identity, &environment)?.1
-        );
+        let (unselected_proof, unselected_compiler) =
+            context_hashes(&[], Some(&selected), &identity, &environment)?;
+        assert_ne!(proof, unselected_proof);
+        assert_eq!(compiler, unselected_compiler);
         assert_ne!(
             compiler,
             context_hashes(&args, Some(&selected), &[], &environment)?.1
@@ -2965,6 +2967,47 @@ mod tests {
             compiler,
             context_hashes(&args, Some(&selected), &identity, &changed)?.1
         );
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_family_selection_keeps_exact_proofs_and_other_inputs()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let identity = vec![("compiler".to_owned(), "bytes".to_owned())];
+        let environment = vec![(b"RUSTFLAGS".to_vec(), b"flags".to_vec())];
+        let request = compiler_request(None);
+        let hashes = |args: &[&str]| {
+            let args: Vec<String> = args.iter().map(|arg| (*arg).to_owned()).collect();
+            context_hashes(&args, Some(&request), &identity, &environment)
+        };
+        let (proof, family) = hashes(&["--package", "input"])?;
+        for selection in [
+            &["--package", "input", "--lib"][..],
+            &["-pother", "--bin=main"],
+            &["--workspace", "--exclude=other", "--bins"],
+        ] {
+            let (other_proof, other_family) = hashes(selection)?;
+            assert_ne!(proof, other_proof, "proof args stay exact: {selection:?}");
+            assert_eq!(family, other_family, "selection: {selection:?}");
+        }
+        for changed in [
+            &["--features", "extra"][..],
+            &["--no-default-features"],
+            &["--all-features"],
+            &["--profile", "test"],
+            &["--release"],
+            &["--target", "another-target"],
+            &["--config", "build.rustflags=['--cfg', 'changed']"],
+            &["--manifest-path", "other/Cargo.toml"],
+            &["--", "--lib"],
+            &["--", "-p", "input"],
+        ] {
+            assert_ne!(
+                family,
+                hashes(changed)?.1,
+                "input remains bound: {changed:?}"
+            );
+        }
         Ok(())
     }
 
