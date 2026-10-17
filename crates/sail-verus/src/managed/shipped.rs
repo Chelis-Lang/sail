@@ -1249,10 +1249,10 @@ impl<'a> Call<'a> {
         .map_err(|e| e.to_string())
     }
 
-    /// Serves this invocation from the shipped build: `None` for a miss, after
-    /// which the caller compiles as usual. A damaged entry prints one
-    /// `warning[SAIL3133]` on `err` and is a miss too.
-    pub(crate) fn serve(&self, err: &mut dyn Write) -> Option<Replay> {
+    /// Serves this invocation from the shipped build. Every refusal, including
+    /// damaged data, is a silent miss followed by normal compilation. The
+    /// optional research trace retains the reason without changing diagnostics.
+    pub(crate) fn serve(&self) -> Option<Replay> {
         let bundle = match &self.plan.mode {
             Mode::Serve { bundle } => bundle,
             Mode::MachineLocal { out } => out,
@@ -1264,18 +1264,7 @@ impl<'a> Call<'a> {
             Ok(_) => "served",
             Err(Refusal::Miss(reason) | Refusal::Damaged(reason)) => reason,
         });
-        match outcome {
-            Ok(replay) => Some(replay),
-            Err(Refusal::Miss(_)) => None,
-            Err(Refusal::Damaged(reason)) => {
-                let _ = writeln!(
-                    err,
-                    "warning[SAIL3133]: ignoring Sail's shipped build of {} ({}): {reason}; compiling it normally",
-                    self.crate_name, self.package
-                );
-                None
-            }
-        }
+        outcome.ok()
     }
 
     /// Writes this lookup's keyed inputs and outcome under [`TRACE_ENV`].
@@ -2060,7 +2049,7 @@ mod tests {
         for path in call.outputs() {
             std::fs::remove_file(path)?;
         }
-        let replay = call.serve(&mut Vec::new()).ok_or("no local replay")?;
+        let replay = call.serve().ok_or("no local replay")?;
         assert_eq!(
             replay.origin.kind,
             sail_api::project::DependencyBuildKind::MachineLocal
@@ -2086,7 +2075,7 @@ mod tests {
             changed.key, call.key,
             "literal registry root is a key input"
         );
-        assert!(changed.serve(&mut Vec::new()).is_none());
+        assert!(changed.serve().is_none());
         Ok(())
     }
 
@@ -2116,7 +2105,7 @@ mod tests {
         )?;
         let changed = machine.call(false).ok_or("no changed call")?;
         assert_ne!(changed.key, call.key);
-        assert!(changed.serve(&mut Vec::new()).is_none());
+        assert!(changed.serve().is_none());
         Ok(())
     }
 
@@ -2190,9 +2179,7 @@ mod tests {
         })?;
         let served = user.call(false).ok_or("no call")?;
         assert_eq!(served.key, call.key);
-        let mut err = Vec::new();
-        let replay = served.serve(&mut err).ok_or("not served")?;
-        assert_eq!(err, Vec::<u8>::new());
+        let replay = served.serve().ok_or("not served")?;
         assert_eq!(String::from_utf8(replay.stderr)?, user.stderr());
         assert_eq!(replay.stdout, Vec::<u8>::new());
         let deps = user.plan.target.join("debug/deps");
@@ -2246,7 +2233,7 @@ mod tests {
     }
 
     #[test]
-    fn mismatches_are_silent_misses_and_damage_warns() -> TestResult {
+    fn mismatches_and_damage_miss_with_trace_reasons() -> TestResult {
         let build = Machine::new("build2", |root| Mode::Record {
             out: root.join("bundle"),
         })?;
@@ -2261,11 +2248,22 @@ mod tests {
         let user = Machine::new("user2", |_| Mode::Serve {
             bundle: out.clone(),
         })?;
+        let refusal = |mut call: Call<'_>, expected: &str| -> TestResult {
+            let directory = user.root.join("lookup-trace");
+            call.vars.insert(
+                TRACE_ENV.to_owned(),
+                directory.to_str().ok_or("trace path")?.to_owned(),
+            );
+            assert!(call.serve().is_none());
+            let path = directory.join(format!("{}-{}.json", call.stem, &call.key[..12]));
+            let trace: Value = serde_json::from_slice(&std::fs::read(path)?)?;
+            let outcome = trace["outcome"].as_str().ok_or("missing refusal reason")?;
+            assert!(outcome.contains(expected), "{outcome}");
+            Ok(())
+        };
         let source = user.plan.registry.join("demo-0.1.0/src/lib.rs");
         std::fs::write(&source, "pub fn f() { /* edited */ }\n")?;
-        let mut err = Vec::new();
-        assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
-        assert_eq!(err, Vec::<u8>::new());
+        refusal(user.call(false).ok_or("no call")?, "differs")?;
         assert!(
             !user
                 .plan
@@ -2280,8 +2278,7 @@ mod tests {
             let redirected = user.root.join("redirected.rs");
             std::fs::rename(&source, &redirected)?;
             std::os::unix::fs::symlink(&redirected, &source)?;
-            assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
-            assert_eq!(err, Vec::<u8>::new());
+            refusal(user.call(false).ok_or("no call")?, "redirected")?;
             std::fs::remove_file(&source)?;
             std::fs::rename(redirected, &source)?;
         }
@@ -2289,8 +2286,7 @@ mod tests {
         let manifest = user.plan.registry.join("demo-0.1.0/Cargo.toml");
         let original_manifest = std::fs::read(&manifest)?;
         std::fs::write(&manifest, "[package]\nname = \"changed\"\n")?;
-        assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
-        assert_eq!(err, Vec::<u8>::new());
+        refusal(user.call(false).ok_or("no call")?, "differs")?;
         std::fs::write(manifest, original_manifest)?;
 
         // A dependency compiled here (other bytes) is another key: a miss.
@@ -2298,8 +2294,7 @@ mod tests {
         std::fs::write(&dependency, b"local bytes")?;
         let other = user.call(false).ok_or("no call")?;
         assert_ne!(other.key, call.key);
-        assert!(other.serve(&mut err).is_none());
-        assert_eq!(err, Vec::<u8>::new());
+        refusal(other, "no entry")?;
         std::fs::write(&dependency, b"dependency bytes")?;
 
         // Even a malformed final destination leaves no earlier outputs.
@@ -2307,19 +2302,15 @@ mod tests {
         let mut malformed: Unit = serde_json::from_slice(&original_unit)?;
         malformed.files.last_mut().ok_or("no files")?.name = "../redirected".into();
         std::fs::write(entry.join(UNIT), serde_json::to_vec(&malformed)?)?;
-        assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
-        assert!(String::from_utf8(std::mem::take(&mut err))?.starts_with("warning[SAIL3133]"));
+        refusal(user.call(false).ok_or("no call")?, "unsafe file name")?;
         for name in ["libdemo-abc.rlib", "libdemo-abc.rmeta", "demo-abc.d"] {
             assert!(!user.plan.target.join("debug/deps").join(name).exists());
         }
         std::fs::write(entry.join(UNIT), original_unit)?;
 
-        // A damaged stored file warns once, places nothing and is a miss.
+        // A damaged stored file records its reason, places nothing and is a miss.
         std::fs::write(entry.join("files/libdemo-abc.rlib"), b"corrupt")?;
-        assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
-        let warning = String::from_utf8(err)?;
-        assert!(warning.starts_with("warning[SAIL3133]"), "{warning}");
-        assert_eq!(warning.lines().count(), 1);
+        refusal(user.call(false).ok_or("no call")?, "has another digest")?;
         for name in ["libdemo-abc.rlib", "libdemo-abc.rmeta", "demo-abc.d"] {
             assert!(
                 !user.plan.target.join("debug/deps").join(name).exists(),
@@ -2327,15 +2318,11 @@ mod tests {
             );
         }
 
-        // An unreadable entry is damaged too; a missing one is silent.
+        // Both unreadable and missing entries remain traceable misses.
         std::fs::write(entry.join(UNIT), b"{")?;
-        let mut err = Vec::new();
-        assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
-        assert!(String::from_utf8(err)?.starts_with("warning[SAIL3133]"));
+        refusal(user.call(false).ok_or("no call")?, "unreadable entry")?;
         std::fs::remove_dir_all(&entry)?;
-        let mut err = Vec::new();
-        assert!(user.call(false).ok_or("no call")?.serve(&mut err).is_none());
-        assert_eq!(err, Vec::<u8>::new());
+        refusal(user.call(false).ok_or("no call")?, "no entry")?;
         Ok(())
     }
 

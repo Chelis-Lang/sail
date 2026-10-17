@@ -456,9 +456,7 @@ fn driver() -> Result<ExitCode> {
     // The engine runs its own phases; a shipped dependency is never the
     // engine's selected crate, and the engine is not asked to replay one.
     if runtime.engine.is_none()
-        && let Some(replay) = call
-            .as_ref()
-            .and_then(|call| call.serve(&mut std::io::stderr()))
+        && let Some(replay) = call.as_ref().and_then(crate::managed::shipped::Call::serve)
     {
         event(
             &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),

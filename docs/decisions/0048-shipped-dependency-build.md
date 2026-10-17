@@ -71,6 +71,11 @@ Unsupported wrapper/compiler/backend/source shapes compile without establishing
 reuse. These checks are necessary input provenance, not a completed audit of
 all compiler builtin, span, macro or diagnostic inputs.
 
+Every cache refusal, including corruption, must leave ordinary compiler output
+unchanged. The optional research trace retains the reason; the prototype's
+earlier extra corruption warning is removed. Normal compilation and verification
+still decide the result after the refusal.
+
 This is not a correctness qualification. The remaining questions are whether
 fresh native prerequisites have repeatable bytes, whether the pinned macro
 and compiler input model is complete, and whether source/artifact mutation
