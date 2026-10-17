@@ -263,3 +263,59 @@ and Anvil refuses a nonterminal fresh RSS observation. The earlier single
 IronKV success remains separate evidence. See the validation record for all
 raw hashes and preparation, foreground, total CPU and fallback costs. No
 continuation implementation is selected; no more lifecycle retries are planned.
+
+
+## Prospective kernel accounting owner
+
+`--experiment-kernel-accounting-owner` is a separate research resource policy,
+requiring `--experiment-numeric-time-only` and `--native-metrics`. Both drivers
+accept it; default behavior and the old sampled-memory classifier remain as
+recorded above. Its pool key additionally binds
+`owned-wait4-lifetime-peak-v1`. This is implemented source, with local controls;
+native guards and real-trace evaluation are pending. No old failed sample is
+reclassified, and no performance gain is accepted.
+
+The deferred owner is assigned before executable capture or worker startup.
+It retains the raw `Popen` and releases exactly one `wait4` reaper only after
+acquiring the continuously held pidfd and actual executable descriptor, while
+the child is still unreaped. The existing image check still runs at claim.
+No other poll, wait or communicate path reaps the underlying `Popen`.
+Cancellation uses the held pidfd; an unreleased child is killed and reaped by
+its already assigned owner. Missing accounting, a competing waiter, startup,
+I/O, descriptor or cleanup errors refuse and retain the available raw facts.
+The owner never converts missing usage into zero or eventual success.
+
+Admission requires complete original input delivery, bounded complete stdout
+and stderr, actual exit zero, and a strictly positive kernel lifetime peak at
+most the same configured byte limit (1GiB in the retained workload plan).
+Linux `ru_maxrss` is converted from KiB; macOS local controls use bytes. This
+post-completion peak gate is **not an OS hard live memory cap**. No `/proc`
+RSS sample, terminal-race exception or `PF_EXITING` rule is used in this named
+path. The direct pinned Z3/shared-library/process-tree assumptions remain;
+this does not establish a portable arbitrary-child resource authority.
+
+Complete per-child user and system CPU are retained for preparation plus
+serving, discarded preparation, any fallback, and the independent fresh
+reference. Preparation and serving CPU are combined because no exact
+claim-time split is observed. An absent fallback is explicitly zero work;
+missing accounting remains unknown and refuses. All preparation and fallback
+costs remain part of the candidate total.
+
+```sh
+python3 -B native/sail-live-prefix/test-owned-wait4.py
+python3 -B native/sail-live-prefix/test-kernel-owner.py
+python3 -B native/sail-live-prefix/test-kernel-real-driver.py
+# Native Linux only; all eight controls must pass before either real dataset:
+python3 -B native/sail-live-prefix/test-kernel-owner-native.py \
+  --z3 PINNED_Z3 --out NEW_NATIVE_CONTROLS
+python3 -B native/sail-live-prefix/run-real.py \
+  --source IMMUTABLE_DATASET_DIRECTORY --out NEW_RESULTS --z3 PINNED_Z3 \
+  --experiment-numeric-time-only --experiment-kernel-accounting-owner
+```
+
+The immutable dataset must also bind `owned_wait4.py` and
+`kernel_accounting.py`. The same fixed IronKV and Anvil inputs, three fresh
+controls, one eligible continuation, exact executable/input identity, strict
+non-time response bytes and all original errors remain mandatory. Native
+control or fresh-control failure blocks the real continuation. No experimental
+host or result follows from the local controls alone.

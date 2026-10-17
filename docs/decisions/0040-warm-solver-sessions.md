@@ -202,3 +202,19 @@ Anvil's fresh observer refuses before live serving. Native lifecycle controls
 pass but do not override workload refusals. This closes the bounded measurement
 loop as blocked research; no implementation is selected and default/corpus
 qualification remains required.
+
+## Prospective complete kernel accounting, 2026-10-17 (#158)
+
+The next disabled research candidate may opt into a separately keyed resource
+policy, `owned-wait4-lifetime-peak-v1`, alongside the named timing comparator.
+An assigned deferred owner captures the actual executable and pidfd before
+releasing the sole reaper. Only complete actual `wait4` status, CPU and a
+strictly positive lifetime peak within the original workload bound can pass,
+with complete input/output and all existing identity/response guards. A final
+peak is not a live OS memory limit. Default sampling and all old failed
+classifiers/results remain unchanged.
+
+This is source implementation for a prospective measured experiment, not
+selection or a successful continuation result. Mandatory native controls must
+precede the same fixed datasets; resource/startup/accounting errors refuse.
+No dependency, product integration, runtime pin or corpus oracle changes.

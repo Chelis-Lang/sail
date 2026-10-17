@@ -115,26 +115,39 @@ class Entry:
         self.prefix_output_bytes = 0
         self.deadline = time.monotonic() + pool.ttl
         self.peak_rss = self.peak_pss = 0
-        self.process = subprocess.Popen(pool.argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE, env=pool.environment, cwd=pool.cwd)
-        self.pid = self.process.pid
         self.pidfd = self.image_fd = None
         self.threads = []
+        self.kernel_accounting = None
+        self.kernel_accounting_error = None
+        self.cleanup_errors = []
+        self.pid = None
+        if pool.experiment_kernel_accounting_owner:
+            from owned_wait4 import OwnedWait4
+            # Assignment precedes binding/startup: finally always owns this child.
+            self.process = OwnedWait4(pool.argv, deferred=True, stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                      env=pool.environment, cwd=pool.cwd)
+        else:
+            self.process = subprocess.Popen(pool.argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                            stderr=subprocess.PIPE, env=pool.environment, cwd=pool.cwd)
+        self.pid = self.process.pid
         try:
             self.pidfd, self.image_fd, self.image_stamp = capture_running_image(self.pid, pool.identity)
             if not self._image_ok():
                 raise ValueError("actual running executable image mismatch")
-        except (OSError, ValueError):
+            if pool.experiment_kernel_accounting_owner:
+                self.process.start_reaper()
+        except (OSError, ValueError, RuntimeError):
             self.close(cancel=True)
             raise
-        self.threads = [threading.Thread(target=self._write_prefix),
-                        threading.Thread(target=self._drain, args=(self.process.stdout, self.stdout)),
-                        threading.Thread(target=self._drain, args=(self.process.stderr, self.stderr)),
-                        threading.Thread(target=self._monitor)]
         try:
+            self.threads = [threading.Thread(target=self._write_prefix),
+                            threading.Thread(target=self._drain, args=(self.process.stdout, self.stdout)),
+                            threading.Thread(target=self._drain, args=(self.process.stderr, self.stderr)),
+                            threading.Thread(target=self._monitor)]
             for thread in self.threads:
                 thread.start()
-        except RuntimeError:
+        except (OSError, ValueError, RuntimeError):
             self.close(cancel=True)
             raise
 
@@ -169,6 +182,8 @@ class Entry:
                     signal.pidfd_send_signal(self.pidfd, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+            elif self.pool.experiment_kernel_accounting_owner:
+                self.process.cancel_unstarted()
             elif self.process.poll() is None:
                 # Only constructor failure before threads or a waiter exist.
                 self.process.kill()
@@ -178,7 +193,12 @@ class Entry:
             self.failure = self.failure or message
             self.ready = False
             self.changed.notify_all()
-        self._kill_owned()
+        try:
+            self._kill_owned()
+        except (OSError, ValueError) as error:
+            if not self.pool.experiment_kernel_accounting_owner:
+                raise
+            self.cleanup_errors.append("owned signal refusal: " + str(error))
 
     def _ready(self):
         if self.failure or self.claimed:
@@ -198,14 +218,16 @@ class Entry:
             equal = self.stdout == self.expected
         if self.stderr or mismatch:
             self.fail("unexpected prefix output")
-        elif self.written and self.observed and equal:
+        elif self.written and (self.observed or self.pool.experiment_kernel_accounting_owner) and equal:
             self.prefix_output_bytes = len(self.stdout)
             self.ready = True
             self.changed.notify_all()
 
     def _write_prefix(self):
         try:
-            self.process.stdin.write(self.prefix)
+            written = self.process.stdin.write(self.prefix)
+            if self.pool.experiment_kernel_accounting_owner and written != len(self.prefix):
+                raise OSError("incomplete prefix write")
             self.process.stdin.flush()
             with self.changed:
                 self.written = True
@@ -218,6 +240,8 @@ class Entry:
             while block := os.read(stream.fileno(), 65536):
                 with self.changed:
                     if len(output) + len(block) > MAX_OUTPUT:
+                        if self.pool.experiment_kernel_accounting_owner:
+                            output.extend(block[:max(0, MAX_OUTPUT - len(output))])
                         self.fail("output budget exceeded")
                         return
                     output.extend(block)
@@ -231,13 +255,25 @@ class Entry:
             with self.changed:
                 if self.failure:
                     return
-                if self.process.poll() is not None:
+                try:
+                    exited = self.process.poll() is not None
+                except (OSError, ValueError) as error:
+                    self.fail("owned status observation: " + str(error))
+                    return
+                if exited:
                     if not self.claimed:
                         self.fail("solver exited before claim")
                     return
                 if time.monotonic() >= self.deadline:
                     self.fail("preparation/idle/run deadline exceeded")
                     return
+            if self.pool.experiment_kernel_accounting_owner:
+                # No /proc sampling or terminal-race classifier in this named
+                # path. Complete lifetime peak is required after actual wait4.
+                with self.changed:
+                    self._ready()
+                time.sleep(0.01)
+                continue
             try:
                 rss, pss = resident_bytes(self.pid)
             except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
@@ -274,20 +310,27 @@ class Entry:
                 if not self._image_ok():
                     self.fail("claim executable image mismatch")
                     return None
-                rss, pss = resident_bytes(self.pid)
+                if not self.pool.experiment_kernel_accounting_owner:
+                    rss, pss = resident_bytes(self.pid)
+                else:
+                    rss = pss = None
             except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
                 self.fail("claim image/memory observation: " + str(error))
                 return None
-            if rss > self.pool.bytes_per_slot or time.monotonic() >= self.deadline:
+            if (rss is not None and rss > self.pool.bytes_per_slot) or time.monotonic() >= self.deadline:
                 self.fail("claim budget or deadline exceeded")
                 return None
-            self.peak_rss = max(self.peak_rss, rss)
-            self.peak_pss = max(self.peak_pss, pss or 0)
+            if rss is not None:
+                self.peak_rss = max(self.peak_rss, rss)
+                self.peak_pss = max(self.peak_pss, pss or 0)
             self.claimed = True
             self.ready = False
             self.deadline = time.monotonic() + self.pool.run_timeout
         try:
-            self.process.stdin.write(whole_input[len(self.prefix):])
+            suffix = whole_input[len(self.prefix):]
+            written = self.process.stdin.write(suffix)
+            if self.pool.experiment_kernel_accounting_owner and written != len(suffix):
+                raise OSError("incomplete suffix write")
             self.process.stdin.close()
             code = self.process.wait(timeout=self.pool.run_timeout + 2)
             for thread in self.threads:
@@ -295,11 +338,19 @@ class Entry:
             with self.changed:
                 if self.failure or any(thread.is_alive() for thread in self.threads):
                     return None
-                return dict(stdout=bytes(self.stdout), stderr=bytes(self.stderr), exit=code,
+                if self.pool.experiment_kernel_accounting_owner:
+                    from owned_wait4 import positive_accounting
+                    self.kernel_accounting = self.process.accounting()
+                    positive_accounting(self.process, self.pool.bytes_per_slot)
+                result = dict(stdout=bytes(self.stdout), stderr=bytes(self.stderr), exit=code,
                             pid=self.pid, prefix_stdout=bytes(self.stdout[:self.prefix_output_bytes]),
                             suffix_stdout=bytes(self.stdout[self.prefix_output_bytes:]),
                             prefix_sha256=sha(self.prefix), key=self.key,
                             sampled_peak_rss=self.peak_rss, sampled_peak_pss=self.peak_pss)
+                if self.pool.experiment_kernel_accounting_owner:
+                    result.update(kernel_accounting=self.kernel_accounting,
+                                  sampled_peak_rss=None, sampled_peak_pss=None)
+                return result
         except (OSError, ValueError, subprocess.TimeoutExpired) as error:
             self.fail("consume: " + str(error))
             return None
@@ -307,7 +358,66 @@ class Entry:
             self.close()
             self.finalized = True
 
+    def _close_kernel(self, cancel):
+        from owned_wait4 import drain_unstarted
+        if getattr(self, 'kernel_closed', False):
+            return
+        errors = []
+        with self.changed:
+            if cancel and not self.finalized:
+                self.failure = self.failure or "pool closed or entry reclaimed"
+            self.closed = True
+            self.ready = False
+            self.changed.notify_all()
+        try:
+            self.process.cancel_unstarted()
+            if self.process.poll() is None:
+                self._kill_owned()
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            errors.append('owned cancellation: ' + str(error))
+        try:
+            self.process.wait(timeout=2)
+            self.kernel_accounting = self.process.accounting()
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            self.kernel_accounting_error = str(error)
+            errors.append('owned completion/accounting: ' + str(error))
+        for thread in self.threads:
+            if thread is not threading.current_thread() and thread.ident is not None:
+                thread.join(timeout=2)
+                if thread.is_alive():
+                    errors.append('owned I/O worker did not finish')
+        for index, stream, output in [(1, self.process.stdout, self.stdout),
+                                       (2, self.process.stderr, self.stderr)]:
+            if index >= len(self.threads) or self.threads[index].ident is None:
+                errors.extend(drain_unstarted(stream, output, MAX_OUTPUT))
+        for stream in (self.process.stdin, self.process.stdout, self.process.stderr):
+            try:
+                stream.close()
+            except (OSError, ValueError) as error:
+                errors.append('stream close: ' + str(error))
+        for thread in self.threads:
+            if thread is not threading.current_thread() and thread.ident is not None:
+                thread.join(timeout=2)
+                if thread.is_alive():
+                    errors.append('owned worker remained after stream close')
+        with self.changed:
+            for name in ('image_fd', 'pidfd'):
+                descriptor = getattr(self, name)
+                if descriptor is not None:
+                    try:
+                        os.close(descriptor)
+                    except OSError as error:
+                        errors.append(name + ' close: ' + str(error))
+                    setattr(self, name, None)
+        self.cleanup_errors.extend(errors)
+        self.kernel_closed = True
+        if errors:
+            self.failure = self.failure or '; '.join(errors)
+            raise OSError('; '.join(errors))
+
     def close(self, cancel=False):
+        if self.pool.experiment_kernel_accounting_owner:
+            return self._close_kernel(cancel)
         if cancel and not self.finalized:
             self.fail("pool closed or entry reclaimed")
         with self.changed:
@@ -343,7 +453,7 @@ class OneUsePool:
     """
     def __init__(self, z3, expected_sha256, *, slots=1, max_bytes=128 * 1024 * 1024,
                  ttl=5, run_timeout=5, environment=None, cwd=None, max_input_bytes=MAX_INPUT,
-                 experiment_numeric_time_only=False):
+                 experiment_numeric_time_only=False, experiment_kernel_accounting_owner=False):
         if (os.uname().sysname != "Linux" or not hasattr(os, "pidfd_open") or
                 not hasattr(signal, "pidfd_send_signal")):
             raise ValueError("live reuse requires Linux held-executable and pidfd guards; use fresh fallback")
@@ -355,6 +465,9 @@ class OneUsePool:
             raise ValueError("input budget exceeds the 16MiB prototype ceiling")
         if type(experiment_numeric_time_only) is not bool:
             raise ValueError("experimental policy requires explicit boolean")
+        if type(experiment_kernel_accounting_owner) is not bool or (experiment_kernel_accounting_owner and not experiment_numeric_time_only):
+            raise ValueError('kernel accounting requires the named response experiment')
+        self.experiment_kernel_accounting_owner = experiment_kernel_accounting_owner
         self.experiment_numeric_time_only = experiment_numeric_time_only
         self.z3 = Path(z3).resolve()
         if path_digest(self.z3) != expected_sha256:
@@ -374,11 +487,14 @@ class OneUsePool:
         self.lock = threading.Lock()
         self.closed = False
         self.last_refusal = None
+        self.last_attempt = None
         self.binding = dict(solver_sha256=self.identity, argv=self.argv, cwd=self.cwd,
                             environment_sha256=sha(json.dumps(sorted(self.environment.items()),
                                                              ensure_ascii=True).encode()))
         if self.experiment_numeric_time_only:
             self.binding["response_experiment"] = response_policy.EXPERIMENT
+        if self.experiment_kernel_accounting_owner:
+            self.binding["resource_experiment"] = "owned-wait4-lifetime-peak-v1"
 
     def _identity_unchanged(self):
         try:
@@ -419,7 +535,14 @@ class OneUsePool:
             if not self._identity_unchanged():
                 return None
             try:
-                entry = Entry(self, key, prefix, expected_stdout)
+                if self.experiment_kernel_accounting_owner:
+                    # Retain even a partially initialized failed startup for raw
+                    # stream/accounting/error evidence; never a reusable entry.
+                    entry = Entry.__new__(Entry)
+                    self.last_attempt = entry
+                    entry.__init__(self, key, prefix, expected_stdout)
+                else:
+                    entry = Entry(self, key, prefix, expected_stdout)
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
                 self.last_refusal = str(error)
                 return None

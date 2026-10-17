@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add a disabled, opt-in kernel-accounting research path for the one-use
+  continuation driver (#158). It requires complete sole-`wait4` accounting
+  and the original resource bound; native guards and workload results are
+  pending. Default behavior and prior failed experiments stay unchanged.
+
 - Retain the disabled one-use solver-continuation research driver and its
   strict failure evidence (#158). A separate opt-in timing-token comparator
   does not change Sail verification, default cache keys or shipped behavior.
