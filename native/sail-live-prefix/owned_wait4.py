@@ -192,7 +192,14 @@ class OwnedWait4:
                 # that the old child is no longer live/waitable by this owner.
                 import select
                 poll = select.poll();poll.register(pidfd, select.POLLIN)
-                terminal = bool(poll.poll(0))
+                events = poll.poll(0)
+                record['terminal_poll_events'] = [list(event) for event in events]
+                # A pidfd becomes readable on termination; HUP may accompany
+                # reaping. ERR/NVAL or any unrequested event is not evidence
+                # of original-child termination.
+                terminal = (len(events) == 1 and events[0][0] == pidfd and
+                            bool(events[0][1] & select.POLLIN) and
+                            not events[0][1] & ~(select.POLLIN | select.POLLHUP))
                 record.update(waitid_error=str(error), terminal_pidfd=terminal,
                               no_longer_waitable=True)
                 if not terminal:

@@ -347,6 +347,41 @@ class Controls(unittest.TestCase):
             self.assertTrue(all(r['exit']==0 and not r['error'] for r in m['fresh_samples']))
             self.assertEqual((root/'out/fresh-0.stdout').read_bytes(),b'unsat\n')
 
+    def test_error_cleanup_requires_readable_terminal_events(self):
+        # Event-policy doubles only. A real closed local descriptor supplies
+        # the invalid-fd negative; actual Linux P_PIDFD is tested separately.
+        import select
+        from types import SimpleNamespace
+        read,write=os.pipe()
+        try:
+            for name,events,wanted in [('readable',[(read,select.POLLIN)],True),('readable-hup',[(read,select.POLLIN|select.POLLHUP)],True),('hup-only',[(read,select.POLLHUP)],False),('invalid',[(read,select.POLLNVAL)],False),('error',[(read,select.POLLERR)],False),('readable-error',[(read,select.POLLIN|select.POLLERR)],False),('writable',[(read,select.POLLOUT)],False),('empty',[],False),('wrong-fd',[(write,select.POLLIN)],False),('duplicate',[(read,select.POLLIN),(read,select.POLLIN)],False)]:
+                with self.subTest(name=name):
+                    owner=owned_wait4.OwnedWait4.__new__(owned_wait4.OwnedWait4)
+                    owner._reaping_started=True;owner._done=threading.Event();owner._done.set();owner._error=ChildProcessError('fixture missing accounting');owner._reaper=SimpleNamespace(ident=None);owner.pid=17;owner._cleanup_observed=None
+                    class Poll:
+                        def register(self,fd,mask):self.fd=fd
+                        def poll(self,timeout=0):return events
+                    with patch.object(os,'P_PIDFD',4242,create=True),patch.object(os,'waitid',side_effect=ChildProcessError('fixture ECHILD'),create=True),patch.object(signal,'pidfd_send_signal',return_value=None,create=True),patch.object(select,'poll',Poll,create=True):
+                        if wanted:record=owner.cleanup_failed_accounting(read)
+                        else:
+                            with self.assertRaises(ChildProcessError):owner.cleanup_failed_accounting(read)
+                            record=owner.cleanup_observation()
+                    self.assertEqual(record['terminal_pidfd'],wanted)
+                    self.assertEqual(record['terminal_poll_events'],[list(x) for x in events])
+                    self.assertFalse(record['accounting_available'])
+                    self.assertNotIn('actual_exit',record)
+            os.close(read)
+            owner._cleanup_observed=None
+            # Actual invalid FD cannot become terminal through NVAL.
+            with patch.object(os,'P_PIDFD',4242,create=True),patch.object(os,'waitid',side_effect=ChildProcessError('fixture ECHILD'),create=True),patch.object(signal,'pidfd_send_signal',side_effect=OSError('actual closed descriptor'),create=True),patch.object(select,'poll',Poll,create=True):
+                events=[(read,select.POLLNVAL)]
+                with self.assertRaises(ChildProcessError):owner.cleanup_failed_accounting(read)
+            self.assertFalse(owner.cleanup_observation()['terminal_pidfd'])
+        finally:
+            try:os.close(read)
+            except OSError:pass
+            os.close(write)
+
     def test_default_key_does_not_gain_resource_label(self):
         with tempfile.TemporaryDirectory() as temp:
             worker = Path(temp) / 'worker';worker.write_bytes(b'not executed');worker.chmod(0o700)

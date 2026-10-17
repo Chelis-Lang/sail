@@ -49,7 +49,7 @@ def main():
         starts.append(owner.pid)
         return start(owner)
     def save():
-        data=dict(passed=len(rows)==10 and all(r['passed'] for r in rows),cases=rows,
+        data=dict(passed=len(rows)==11 and all(r['passed'] for r in rows),cases=rows,
                   source_sha256={n:hashlib.sha256(Path(__file__).with_name(n).read_bytes()).hexdigest() for n in ['test-kernel-owner-native.py','owned_wait4.py','kernel_accounting.py','live_prefix.py']},
                   platform=list(os.uname()),solver_sha256=SOLVER,owner_releases=starts,
                   scope=__doc__)
@@ -197,14 +197,52 @@ def main():
                     for fd in held:os.close(fd)
         one('actual-P_PIDFD-cleanup-after-wait4-error',failed_wait4)
         one('actual-already-reaped-error-retains-unknown-status',lambda row:failed_wait4(row,True))
+        def invalid_fd(row):
+            expected=live_prefix.path_digest(str(Path(sys.executable).resolve(strict=True)))
+            owner=OwnedWait4([sys.executable,'-B','-c','import sys;sys.stdin.buffer.read()'],deferred=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            pidfd=imagefd=duplicate=None
+            def broken(*args):raise ChildProcessError('injected native accounting error for invalid-fd control')
+            raw={'stdout':bytearray(),'stderr':bytearray()}
+            try:
+                pidfd,imagefd,_=capture(owner.pid,expected);duplicate=os.dup(pidfd)
+                with patch.object(owned_wait4.os,'wait4',broken):
+                    owner.start_reaper();assert owner._done.wait(2)
+                os.close(pidfd);invalid=pidfd;pidfd=None
+                try:owner.cleanup_failed_accounting(invalid)
+                except OSError as error:row['actual_invalid_fd_refusal']=repr(error)
+                else:raise AssertionError('closed held descriptor accepted')
+                row['cleanup_observation']=owner.cleanup_observation()
+                assert row['cleanup_observation']['errors'] and 'actual_exit' not in row['cleanup_observation']
+            finally:
+                if duplicate is not None:
+                    try:signal.pidfd_send_signal(duplicate,signal.SIGKILL)
+                    except ProcessLookupError:pass
+                    deadline=time.monotonic()+2
+                    while True:
+                        value=os.waitid(os.P_PIDFD,duplicate,os.WEXITED|os.WNOHANG)
+                        if value is not None:break
+                        if time.monotonic()>deadline:raise subprocess.TimeoutExpired(owner.args,2)
+                        time.sleep(.005)
+                    assert value.si_pid==owner.pid and value.si_code==os.CLD_KILLED and value.si_status==signal.SIGKILL
+                    row['fixture_owned_duplicate_cleanup']=dict(si_pid=value.si_pid,si_code=value.si_code,si_status=value.si_status)
+                    owner._child.returncode=-value.si_status
+                errors=[]
+                for stream in ('stdout','stderr'):
+                    errors+=drain_unstarted(getattr(owner,stream),raw[stream],16*1024**2)
+                    (a.out/('invalid-fd.'+stream)).write_bytes(raw[stream])
+                row['stream_errors']=errors;assert not errors
+                for stream in (owner.stdin,owner.stdout,owner.stderr):stream.close()
+                for fd in (pidfd,imagefd,duplicate):
+                    if fd is not None:os.close(fd)
+        one('actual-closed-original-pidfd-refuses',invalid_fd)
         def stable(row):
-            assert len(starts)==8
+            assert len(starts)==9
             assert live_prefix.path_digest(z3)==SOLVER
             row['every_reaper_released_after_actual_capture']=True
             row['final_solver_sha256']=SOLVER
         one('all-starts-follow-unreaped-image-capture-final-identity',stable)
     save()
-    return 0 if len(rows)==10 and all(r['passed'] for r in rows) else 1
+    return 0 if len(rows)==11 and all(r['passed'] for r in rows) else 1
 
 
 if __name__=='__main__':raise SystemExit(main())

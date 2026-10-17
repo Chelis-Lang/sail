@@ -205,11 +205,11 @@ all worker-start positions, complete raw I/O/status, timeout, peak refusal,
 read/descriptor errors, per-child CPU and actual driver/parent entry. Linux
 image/pidfd guards are explicit doubles in these portable controls. Original
 owner controls and the unchanged exact/timing-policy/readiness/legacy-driver
-controls are also retained. The mandatory ten native controls and fixed
+controls are also retained. The mandatory eleven native controls and fixed
 IronKV/Anvil three-fresh/one-eligible evaluation remain pending and must block
 on every error. See the [research commands](../../native/sail-live-prefix/README.md#prospective-kernel-accounting-owner).
 
-The first source checkpoint `fba9a417` is superseded before native use: independent
+The first source checkpoint `fba9a417` is superseded before Linux qualification: independent
 review found that saved accounting failure could interrupt cancellation and
 safe reaping. Actual full-caller controls retain a live sleeping startup child
 and an unreaped fresh child in that original source, then demonstrate bounded
