@@ -115,3 +115,7 @@ The [Cargo target-context record](validation/cargo-target-context.md) covers
 owned metadata selection, source-directory coverage, and declared environment
 reads (#166 and #189), with native full fast/standard and separate joined
 main checks.
+
+The [combined deterministic fork candidate](validation/combined-fork-candidate.md)
+records the measured Vest gain, completed Linux/macOS qualification, retained
+failures and remaining current-main delivery gates before any re-pin.

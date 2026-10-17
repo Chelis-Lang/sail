@@ -12,6 +12,12 @@ semantic versioning once the API is published.
 - Split fresh managed-workspace and native-compiler checks into separate CI
   phases, preserving every assertion and the complete local end-to-end run.
 
+- Prepare matching Linux and macOS fork runtimes with stable closure names,
+  deterministic imported-closure ordering and ordered proof-note JSON. The
+  composite reduces the measured Vest helper-insertion edit cost; wider
+  incidental-edit acceptance remains open. Current-main integration and
+  selection are tracked in the combined-fork validation record.
+
 - Retain bounded original output E2E failure streams, command/source snapshots
   and producer records without changing comparisons or the original exit code.
 
