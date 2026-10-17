@@ -537,3 +537,22 @@ on Linux, bounded `/proc/self/statm` current resident bytes immediately before
 creation. These parent observations remain separate from the child's complete
 `wait4` result. They neither subtract inherited memory nor exempt a child peak;
 the prior unrecorded parent memory and spawn mechanism cannot be reconstructed.
+
+The `340a698d` native pilot reached a ready claim in both real projects.
+IronKV passed its strict protocol/stream/resource checks, but whole-attempt wall
+was 35.746 seconds against a separate fresh control's 35.716 seconds. Its fixed
+session-zero prepared child used only 0.026 CPU-seconds over its whole lifetime;
+this is no application latency win. Anvil retained a strict failure: 99 of 152
+complete child peaks exceeded 1 GiB. The first rejected child's 1,135,771,648
+byte peak equalled the recorded parent high-water RSS before that spawn. This
+observation does not exempt inherited memory or establish a kernel-cause theorem.
+All original failed attempts and this failure remain unselected.
+
+The prospective application driver removes one concrete live input duplicate:
+`child_input` uses a private temporary file. Caller-versus-child equality is
+still checked literally in bounded chunks, with the same 16 MiB input bound.
+Closed inputs are captured/read back before clearing, or can alias the retained
+caller file only after exact literal equality. Failed/partial captures still
+refuse; global raw reservation and complete wait4 accounting are unchanged.
+Actual local file and controlled-caller tests cover this code, with Linux APIs
+explicitly doubled on macOS; native memory/performance outcomes are pending.

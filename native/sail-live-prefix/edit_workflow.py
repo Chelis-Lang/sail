@@ -20,7 +20,7 @@ import subprocess
 import threading
 import time
 
-from edit_claim import DirectClaim, StreamingClaim
+from edit_claim import DirectClaim, StreamingClaim, LiteralInputFile
 from edit_census import census
 from edit_stream import Commands, Replies, ProtocolRefusal, donor_prefix, MAX_BYTES
 from edit_transport import Broker, canonical, create_record
@@ -128,6 +128,9 @@ class Workflow:
             raise ProtocolRefusal('fixed bounded workflow required')
         self.output = Path(output).absolute()
         self.output.mkdir(mode=0o700, exist_ok=False)
+        self.input_directory = self.output / 'input-spool'
+        self.input_directory.mkdir(mode=0o700)
+        self.input_files = []
         self.solver = str(Path(solver).resolve(strict=True))
         if hashlib.sha256(Path(self.solver).read_bytes()).hexdigest() != solver_sha256:
             raise ProtocolRefusal('actual solver bytes differ')
@@ -157,6 +160,8 @@ class Workflow:
                           experiment_kernel_accounting_owner=True,
                           experiment_rustup_loader_target=self.rustup_loader_target)
         self.pools.append(pool)
+        pool.edit_workflow_input_directory = self.input_directory
+        pool.edit_workflow_input_files = self.input_files
         pool.edit_workflow_role = role
         return pool
 
@@ -193,6 +198,32 @@ class Workflow:
                 raise ProtocolRefusal('retained stream changed')
         return data
 
+    def raw_input_file(self, directory, name, source):
+        """Retain literal owned child bytes with bounded copy and readback."""
+        with self.raw_lock:
+            if len(source) > MAX_RAW - self.copied:
+                raise ProtocolRefusal('whole workflow raw cap; no successful report')
+            self.copied += len(source)  # No refund on failed/partial writes.
+        path = directory / name
+        digest = hashlib.sha256()
+        size = 0
+        with path.open('xb') as stream:
+            for chunk in source.chunks():
+                if stream.write(chunk) != len(chunk):
+                    raise ProtocolRefusal('incomplete owned child input capture')
+                digest.update(chunk)
+                size += len(chunk)
+        if size != len(source):
+            raise ProtocolRefusal('owned child input capture length differs')
+        with path.open('rb') as stream:
+            for chunk in source.chunks():
+                if stream.read(len(chunk)) != chunk:
+                    raise ProtocolRefusal('literal child input capture readback differs')
+            if stream.read(1):
+                raise ProtocolRefusal('child input capture extra bytes')
+        return dict(path=str(path.relative_to(self.output)), bytes=size,
+                    sha256=digest.hexdigest())
+
     def spill_session(self, directory, row):
         """Save closed session buffers before releasing their duplicate memory."""
         stored = row.setdefault('_stored_streams', {})
@@ -215,8 +246,12 @@ class Workflow:
             claim.retained_inputs = {}
             for field in ('input', 'child_input'):
                 data = getattr(claim, field)
-                if 'input' in stored and data == row.get('input'):
+                equal = (data.matches(row['input']) if isinstance(data, LiteralInputFile)
+                         else data == row.get('input')) if 'input' in stored else False
+                if equal:
                     record = dict(stored['input'], alias='exact bytes equal to completed caller input')
+                elif isinstance(data, LiteralInputFile):
+                    record = self.raw_input_file(directory, prefix + '-' + str(index) + '.' + field, data)
                 else:
                     record = self.raw(directory, prefix + '-' + str(index) + '.' + field, bytes(data))
                 claim.retained_inputs[field] = record
@@ -380,9 +415,11 @@ class Workflow:
                     child['inputs'] = dict(getattr(claim, 'retained_inputs', {}))
                     for field in ('input', 'child_input'):
                         if field not in child['inputs']:
-                            child['inputs'][field] = self.raw(directory,
-                                prefix + '-' + str(index) + '.unspilled-' + field,
-                                bytes(getattr(claim, field)))
+                            data = getattr(claim, field)
+                            name = prefix + '-' + str(index) + '.unspilled-' + field
+                            child['inputs'][field] = (self.raw_input_file(directory, name, data)
+                                if isinstance(data, LiteralInputFile)
+                                else self.raw(directory, name, bytes(data)))
                     for retained in child['inputs'].values():
                         verify_retained(retained)
                     if entry is not None:
@@ -568,6 +605,11 @@ class Workflow:
                     result['errors'].append('final solver bytes differ')
             except (OSError, ValueError, RuntimeError) as error:
                 result['errors'].append('bounded evidence/final identity: ' + str(error))
+            for stored_input in self.input_files:
+                try:
+                    stored_input.close()
+                except (OSError, ValueError) as error:
+                    result['errors'].append('owned child input file cleanup: ' + str(error))
             if prepared:
                 result['preparation_startup'] = prepared
             result['raw_bytes'] = self.copied

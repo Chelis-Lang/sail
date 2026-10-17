@@ -374,7 +374,8 @@ with tempfile.TemporaryDirectory(prefix='sle-prefix-', dir='/tmp') as td:
             assert claim.batch(prefix)['action'] == 'prepared-reply'
             assert claim.batch(check)['action'] == 'prepared-reply'
             assert claim.finish(), claim.errors
-            assert bytes(claim.input) == bytes(claim.child_input) == prefix + check
+            assert bytes(claim.input) == prefix + check
+            assert claim.child_input.matches(prefix + check)
         finally:
             if claim is not None: claim.close()
             pool.close()

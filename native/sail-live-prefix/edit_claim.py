@@ -8,10 +8,70 @@ import os
 from contextlib import ExitStack
 import select
 import subprocess
+import tempfile
 import time
 
 from edit_stream import Commands, Replies, PrefixReplay, ProtocolRefusal, MAX_BYTES
 from owned_wait4 import positive_accounting
+
+
+class LiteralInputFile:
+    """Owned temporary child input, retained before close by the workflow."""
+
+    def __init__(self, directory):
+        self.stream = tempfile.TemporaryFile(mode='w+b', dir=directory)
+        self.size = 0
+
+    def __len__(self):
+        return self.size
+
+    def extend(self, data):
+        if len(data) > MAX_BYTES - self.size:
+            raise ProtocolRefusal('complete file-backed child input budget')
+        self.stream.seek(0, os.SEEK_END)
+        try:
+            written = self.stream.write(data)
+        except OSError:
+            # Retain the actual partial stream for failed-attempt capture.
+            self.stream.flush()
+            self.size = os.fstat(self.stream.fileno()).st_size
+            raise
+        self.size += written
+        if written != len(data):
+            raise ProtocolRefusal('incomplete file-backed child input write')
+
+    def chunks(self):
+        self.stream.flush()
+        if os.fstat(self.stream.fileno()).st_size != self.size:
+            raise ProtocolRefusal('file-backed child input size differs')
+        self.stream.seek(0)
+        left = self.size
+        while left:
+            chunk = self.stream.read(min(65536, left))
+            if not chunk:
+                raise ProtocolRefusal('file-backed child input ended early')
+            left -= len(chunk)
+            yield chunk
+        if self.stream.read(1):
+            raise ProtocolRefusal('file-backed child input grew')
+
+    def matches(self, data):
+        if len(data) != self.size:
+            return False
+        offset = 0
+        for chunk in self.chunks():
+            if chunk != data[offset:offset + len(chunk)]:
+                return False
+            offset += len(chunk)
+        return True
+
+    def clear(self):
+        self.stream.seek(0)
+        self.stream.truncate(0)
+        self.size = 0
+
+    def close(self):
+        self.stream.close()
 
 
 class StreamingClaim:
@@ -27,7 +87,11 @@ class StreamingClaim:
         self.entry = None
         self.replay = None
         self.input = bytearray()
-        self.child_input = bytearray()
+        directory = getattr(pool, 'edit_workflow_input_directory', None)
+        self.child_input = (LiteralInputFile(directory) if directory is not None
+                            else bytearray())
+        if isinstance(self.child_input, LiteralInputFile):
+            pool.edit_workflow_input_files.append(self.child_input)
         self.reply_parser = Replies()
         self.input_parser = Commands()
         self.output_offset = 0
@@ -201,7 +265,10 @@ class StreamingClaim:
                 raise ProtocolRefusal('caller input budget')
             self.input.extend(trailing)
             self._write(trailing)
-            if self.input != self.child_input:
+            equal = (self.child_input.matches(self.input)
+                     if isinstance(self.child_input, LiteralInputFile)
+                     else self.input == self.child_input)
+            if not equal:
                 raise ProtocolRefusal('actual child and caller input differ')
             self.entry.process.stdin.close()
             self.entry.process.wait(timeout=max(0, self.entry.deadline - time.monotonic()))
