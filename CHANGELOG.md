@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Recompute solver identity at every daemon handshake: equal executable path,
+  length and mtime no longer retain a stale binary hash (#213). Native
+  correctness checks pass; the matched native screen records slower edit
+  workloads, with performance recovery and final current-head CI pending.
+
 - Add a disabled, opt-in kernel-accounting research path for the one-use
   continuation driver (#158). It requires complete sole-`wait4` accounting
   and the original resource bound. Twelve native controls and the two fixed

@@ -130,9 +130,12 @@ gives each gate's evidence and its indexed failed attempts, and
 Sail stays private until the owner orchestrates the open-source rollout;
 nothing is published to crates.io before then. It is then released as open
 source under the MIT License, with macOS and Linux binaries on GitHub releases.
-rc.4 goes to testers once its validation passes, and 0.1.0 is cut from rc.5,
-with managed-by-default mode and pre-verified vstd as the headline speed story
-([question 29](open-questions.md)).
+The owner has kept rc.5 as a draft and has not authorized 0.1.0 publication
+or a repository-visibility change. Draft rc.5's native-artifact store is now
+quarantined on main after a compiler-input mismatch; its historical first-run
+speed gain is not current-main behavior. Sound first-run recovery and the
+remaining core/performance acceptance gates must stay visible before a later
+candidate is considered ([question 29](open-questions.md)).
 Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md).
 
 | In the release | Status |
@@ -151,7 +154,7 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
 | `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Implemented ([#148](https://github.com/Chelis-Lang/sail/issues/148)): `sail new` runs Sail's Verus's `cargo verus new`; e2e checks it matches stock and verifies. Clean-install acceptance follows the managed-by-default and pre-verified vstd work |
 | Output schema v2: establishment and evidence-tier axes (question 22) | Implemented ([#149](https://github.com/Chelis-Lang/sail/issues/149), ADR 0044): `establishment`, `evidence_tier` and ITF counterexample values in `--output json`, the project envelope and MCP; gate, solver, e2e and PR conformance pass on native Linux; macOS host checks pass |
-| Pre-verified vstd for new projects and worktrees (owner direction 2026-10-15; review B1) | V1 is quarantined under [ADR 0053](decisions/0053-disable-unqualified-native-store.md) after the native compiler-input mismatch (#187). Three-round containment cost: fresh demo 32.57 s versus seeded 1.28 s and stock 34.36 s; [native integration qualified; final CI pending](validation/dependency-store-fail-closed.md). Historical v1 gains remain in the [original record](validation/dependency-store.md). A sound fast replacement and first-run speed recovery are required; no prebuilt archive support is selected. |
+| Pre-verified vstd for new projects and worktrees (owner direction 2026-10-15; review B1) | V1 is quarantined under [ADR 0053](decisions/0053-disable-unqualified-native-store.md) after the native compiler-input mismatch (#187). Three-round containment cost: fresh demo 32.57 s versus seeded 1.28 s and stock 34.36 s; [quarantine merged; native integration and required CI pass](validation/dependency-store-fail-closed.md). Historical v1 gains remain in the [original record](validation/dependency-store.md). A sound fast replacement and first-run speed recovery are required; no prebuilt archive support is selected. |
 | Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Done: draft `v0.1.0-rc.5` (`c3687990`: managed by default, pre-verified vstd from the dependency store, `sail new`, schema v2; Sail's Verus, fork `73dea021`) passed the gate, e2e, every conformance tier with 0 Different, one `deep-rvt` round with 0 Different, both smoke tests and the README walkthrough on Linux and macOS; the repair benchmark showed no regression, but its outcome check needs updating for schema v2 (#179) ([release candidate](validation/release-candidate.md), [clean macOS](validation/clean-macos.md), rc.1); the owner reviews it and decides when to publish |
 
 Out of the release: B2 (single-file
