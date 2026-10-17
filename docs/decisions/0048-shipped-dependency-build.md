@@ -28,15 +28,24 @@ all compiler options, runtime and installed sysroot identity, actual solver
 SHA-256, source files and declared compiler environment.
 
 Only a complete successful verification document can publish a vstd entry.
-Replayed proofs keep their nonlocal establishing identity through later receipt
-reuse. Native output files and Cargo fingerprints are never placed by this
+Replayed proofs keep their original establishing invocation and distinguish
+release builds from machine-local verification through later receipt reuse. Native output files and Cargo fingerprints are never placed by this
 path. The v1 machine-local store stays disabled.
 
 The prototype requires `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Engine, focused and
-loader-variable runs decline it. Schema 2 and a distinct bundle kind reject
+loader-variable runs decline it. Schema 3 and a distinct bundle kind reject
 the earlier all-unit bundles. Source-path remapping is confined to the named
 experiment and uses the previously built fork support; this change selects
 no runtime or release asset.
+
+A separate `SAIL_VSTD_BOUNDARY_LOCAL=<directory>` research mode binds both the
+literal and canonical registry root into each key. It never remaps registry
+sources and may retain those literal paths in outputs because reuse cannot
+cross registry roots. It still rejects outputs naming the old target directory,
+executes native prerequisites and requires a complete successful proof before
+publication. Misses compile and may populate this separate cache; an absent
+release manifest does not disable observation. Local entries report the actual
+original invocation, never a fictitious release-built proof.
 
 This is not a correctness qualification. The remaining questions are whether
 fresh native prerequisites have repeatable bytes, whether the pinned macro

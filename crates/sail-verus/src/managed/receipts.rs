@@ -50,19 +50,19 @@ pub(crate) struct Invocation {
     pub report: Report,
     pub success: bool,
     pub dependencies: BTreeMap<PathBuf, String>,
-    /// Set when the verifier's output was replayed from Sail's shipped
-    /// dependency build (ADR 0048): `<build identity>/<entry key>`.
+    /// Original proof provenance for compiler-boundary dependency replay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub shipped: Option<String>,
+    pub dependency_build: Option<sail_api::project::DependencyBuildOrigin>,
 }
 
 impl Invocation {
     /// Proof origin exposed to clients. `run_id` remains the local invocation
     /// used to seal and publish the receipt, even when it replayed a proof.
     pub(crate) fn establishing_run(&self) -> String {
-        self.shipped
-            .as_ref()
-            .map_or_else(|| self.run_id.clone(), |unit| format!("shipped:{unit}"))
+        self.dependency_build.as_ref().map_or_else(
+            || self.run_id.clone(),
+            |origin| origin.establishing_run.clone(),
+        )
     }
 }
 
@@ -355,7 +355,7 @@ mod tests {
                 report,
                 success: true,
                 dependencies: BTreeMap::new(),
-                shipped: None,
+                dependency_build: None,
             },
             artifact_hashes: artifact_hashes(&[path.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),

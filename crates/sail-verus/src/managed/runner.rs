@@ -1093,7 +1093,7 @@ fn negative_compiler_generation(
         // no verifier process.
         let mut names: Vec<_> = calls
             .values()
-            .filter(|call| call.shipped.is_none())
+            .filter(|call| call.dependency_build.is_none())
             .map(|call| call.identity.name.clone())
             .collect();
         names.sort();
@@ -1435,7 +1435,7 @@ fn target_records(
             }
             results.push(TargetResult {
                 dependency_store: None,
-                shipped: call.shipped.clone(),
+                dependency_build: call.dependency_build.clone(),
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
@@ -1528,7 +1528,7 @@ fn target_records(
             );
             results.push(TargetResult {
                 dependency_store: store_key,
-                shipped: receipt.invocation.shipped.clone(),
+                dependency_build: receipt.invocation.dependency_build.clone(),
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
@@ -1568,7 +1568,7 @@ fn target_records(
             let establishing_run = call.establishing_run();
             results.push(TargetResult {
                 dependency_store: None,
-                shipped: call.shipped.clone(),
+                dependency_build: call.dependency_build.clone(),
                 package_id: package
                     .and_then(|p| p["id"].as_str())
                     .unwrap_or_default()
@@ -2136,6 +2136,7 @@ pub(crate) fn run_engine_held(
     paths.source_base = registry
         .as_deref()
         .filter(|_| super::shipped::research_enabled())
+        .filter(|_| std::env::var_os(super::shipped::LOCAL_ENV).is_none())
         .and_then(|registry| {
             Some(super::shipped::source_base(
                 &super::shipped::virtual_base()?,
@@ -2151,6 +2152,7 @@ pub(crate) fn run_engine_held(
             registry.as_deref(),
             new_target,
             &config.z3,
+            &run_id,
         )
     };
     if let Some(plan) = &shipped_plan {
@@ -2623,10 +2625,10 @@ pub(crate) fn run_engine_held(
             "Requested function/module scope is partial; whole-target reuse is disabled".to_owned(),
         );
     }
-    for target in targets.iter().filter(|t| t.shipped.is_some()) {
+    for target in targets.iter().filter(|t| t.dependency_build.is_some()) {
         notes.push(format!(
-            "SAIL3132: {} was verified when this Sail release was built and replayed from its shipped dependency build",
-            target.package_id
+            "SAIL3132: {} replays its complete dependency proof established by {}",
+            target.package_id, target.establishing_run
         ));
     }
     for target in targets.iter().filter(|t| t.dependency_store.is_some()) {
@@ -3293,7 +3295,7 @@ mod tests {
                 report,
                 success: true,
                 dependencies: BTreeMap::new(),
-                shipped: None,
+                dependency_build: None,
             },
             artifact_hashes: artifact_hashes(&[artifact.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),
@@ -4207,7 +4209,11 @@ mod tests {
         };
         json(&paths.run.join("artifacts.jsonl"), &artifact_record(false))?;
         let mut call = compiler_receipt(&paths, &data, &artifact).invocation;
-        call.shipped = Some("build/entry".to_owned());
+        call.dependency_build = Some(sail_api::project::DependencyBuildOrigin {
+            kind: sail_api::project::DependencyBuildKind::Release,
+            identity: "build/entry".to_owned(),
+            establishing_run: "shipped:build/entry".to_owned(),
+        });
         let invocation = paths.run.join("invocations/call.json");
         json(&invocation, &call)?;
         let empty = BTreeSet::new();
@@ -4216,7 +4222,7 @@ mod tests {
         assert_eq!(first.len(), 1);
         assert!(!first[0].reused);
         assert_eq!(first[0].establishing_run, "shipped:build/entry");
-        assert_eq!(first[0].shipped.as_deref(), Some("build/entry"));
+        assert_eq!(first[0].dependency_build, call.dependency_build);
         super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
         std::fs::remove_file(invocation)?;
         json(&paths.run.join("artifacts.jsonl"), &artifact_record(true))?;
@@ -4225,7 +4231,7 @@ mod tests {
         assert_eq!(reused.len(), 1);
         assert!(reused[0].reused);
         assert_eq!(reused[0].establishing_run, first[0].establishing_run);
-        assert_eq!(reused[0].shipped, first[0].shipped);
+        assert_eq!(reused[0].dependency_build, first[0].dependency_build);
         let path = receipt_path(&paths, "input", "input", &["lib".to_owned()]);
         let receipt: Receipt = read(&path).ok_or("missing receipt")?;
         assert_eq!(receipt.invocation.run_id, "run");
@@ -4242,7 +4248,7 @@ mod tests {
         assert_eq!(stored.len(), 1);
         assert_eq!(stored[0].dependency_store.as_deref(), Some("store-key"));
         assert_eq!(stored[0].establishing_run, first[0].establishing_run);
-        assert_eq!(stored[0].shipped, first[0].shipped);
+        assert_eq!(stored[0].dependency_build, first[0].dependency_build);
         assert_eq!(
             seeds[0].receipt.invocation.establishing_run(),
             stored[0].establishing_run
@@ -4258,7 +4264,7 @@ mod tests {
         let (adopted, _) = target_records(&paths, &data, "other", false, &empty, &[])?;
         assert_eq!(adopted.len(), 1);
         assert_eq!(adopted[0].establishing_run, first[0].establishing_run);
-        assert_eq!(adopted[0].shipped, first[0].shipped);
+        assert_eq!(adopted[0].dependency_build, first[0].dependency_build);
         drop(ownership);
         std::fs::remove_dir_all(root)?;
         Ok(())
@@ -4420,7 +4426,7 @@ mod tests {
                 report: crate::report::setup_failure(&[], "SAIL3100", "fixture"),
                 success: true,
                 dependencies: BTreeMap::new(),
-                shipped: None,
+                dependency_build: None,
             },
             artifact_hashes: BTreeMap::new(),
             committed: run.join("committed.json"),

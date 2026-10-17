@@ -467,7 +467,7 @@ fn driver() -> Result<ExitCode> {
                 exit: Some(0),
             },
             None,
-            Some(&replay.unit),
+            Some(&replay.origin),
         )?;
         let shown_stdout = crate::verus_stdout::rebuild(&replay.stdout, flags);
         std::fs::write(dir.join("verus.shown-stdout"), &shown_stdout)
@@ -647,7 +647,7 @@ fn observation_args(flags: crate::verus_stdout::UserFlags, logs: Option<&Path>) 
 /// The attribution note of a report replayed from Sail's shipped dependency
 /// build (ADR 0048). Its functions' verdicts, rlimit and time are Verus's own,
 /// from the release build that verified the dependency.
-pub const SHIPPED_NOT_RECORDED: &str = "obligation detail not recorded: this dependency's report comes from Sail's shipped dependency build, verified when the Sail release was built";
+pub const SHIPPED_NOT_RECORDED: &str = "obligation detail not recorded: this dependency's complete report comes from an earlier compiler-boundary verification";
 
 /// The attribution note of a report whose run asked Verus for no logs
 /// (ADR 0047). Its functions' verdicts, rlimit and time are Verus's own.
@@ -754,7 +754,7 @@ fn finish(
     dir: &Path,
     captured: &Captured<'_>,
     engine: Option<&sail_api::output::EngineProvenance>,
-    shipped: Option<&str>,
+    dependency_build: Option<&sail_api::project::DependencyBuildOrigin>,
 ) -> Result<()> {
     let Captured {
         stdout,
@@ -765,7 +765,7 @@ fn finish(
         .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let (docs, _) = crate::attribution::json_documents(stdout);
-    let attr = if shipped.is_some() {
+    let attr = if dependency_build.is_some() {
         // Replayed from Sail's shipped dependency build, which records no
         // attribution logs.
         crate::attribution::attribute(
@@ -830,7 +830,7 @@ fn finish(
         report,
         success,
         dependencies,
-        shipped: shipped.map(str::to_owned),
+        dependency_build: dependency_build.cloned(),
     };
     json(
         &runtime

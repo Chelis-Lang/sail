@@ -18,7 +18,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
         exit_code: Some(0),
         targets: vec![TargetResult {
             dependency_store: None,
-            shipped: None,
+            dependency_build: None,
             package_id: "demo".into(),
             target: "demo".into(),
             kind: vec!["lib".into()],

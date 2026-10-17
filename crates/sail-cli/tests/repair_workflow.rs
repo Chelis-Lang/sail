@@ -76,7 +76,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         exit_code: Some(1),
         targets: vec![TargetResult {
             dependency_store: None,
-            shipped: None,
+            dependency_build: None,
             package_id: target.package_id.clone(),
             target: target.name.clone(),
             kind: target.kind.clone(),
