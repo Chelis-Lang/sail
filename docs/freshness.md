@@ -129,6 +129,20 @@ nothing. Ordinary editors, formatters and agents write files, which
 these checks do catch. If you run a tool that edits sources through shared
 mappings during verification, re-run after it finishes.
 
+## Cargo selection and compiled artifacts
+
+Changing Cargo package or target selection, such as adding `--lib` to an
+interactive repair after a full package verification, shares the same owned
+Cargo artifact directory. Cargo still decides which units are fresh. Features,
+profiles, target triples, compiler configuration, runtime files and environment
+remain compiler-family inputs; ordinary and interactive engine requests stay
+separate. Proof contexts still bind every original argument and focus selector.
+A requested target cannot use a sibling context's proof receipt. Dependency
+reuse still checks the complete source revision, declared environment and exact
+artifact bytes against an established receipt. The candidate's
+[qualification record](validation/managed-selection-family.md) identifies the
+remaining gates and the original failed diagnostic.
+
 ## Which environment variables are proof inputs
 
 A managed proof follows the input model of plain `cargo verus`, which is

@@ -83,6 +83,16 @@ exec "$@"
         selector: &str,
         clean: bool,
     ) -> std::result::Result<Vec<Value>, Box<dyn std::error::Error>> {
+        self.cargo_selected(paths, selector, clean, &[])
+    }
+
+    fn cargo_selected(
+        &self,
+        paths: &Paths,
+        selector: &str,
+        clean: bool,
+        selection: &[&str],
+    ) -> std::result::Result<Vec<Value>, Box<dyn std::error::Error>> {
         use std::ffi::OsStr;
         let mut arguments: Vec<std::ffi::OsString> = if clean {
             ["clean", "--offline", "-p", "application"]
@@ -93,6 +103,7 @@ exec "$@"
                 .map(Into::into)
                 .into()
         };
+        arguments.extend(selection.iter().map(|arg| std::ffi::OsString::from(*arg)));
         arguments.extend(["--target-dir".into(), paths.target.as_os_str().to_owned()]);
         let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
         let result = std::process::Command::new(&cargo)
@@ -309,5 +320,80 @@ fn sibling_dependency_receipt_needs_identical_fresh_bytes_and_never_covers_a_sel
     assert_eq!(targets, Vec::<TargetResult>::new());
     assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
     drop(owner);
+    Ok(())
+}
+
+/// The real Cargo transition that made the first repair rebuild vstd: the
+/// same package changes from default selection to explicit `--lib`.
+#[test]
+fn adding_lib_selection_keeps_real_dependency_artifacts() -> IsolationResult {
+    let fixture = IsolationFixture::new()?;
+    let request = compiler_request(None);
+    let identity = vec![("compiler".to_owned(), "bytes".to_owned())];
+    let selected = compiler_request(Some("application"));
+    let first_args = vec!["--package".to_owned(), "application".to_owned()];
+    let mut next_args = first_args.clone();
+    next_args.push("--lib".to_owned());
+    let (first_context, first_family) = context_hashes(&first_args, Some(&request), &identity, &[])?;
+    let (next_context, next_family) = context_hashes(&next_args, Some(&selected), &identity, &[])?;
+    assert_ne!(first_context, next_context);
+    assert_eq!(first_family, next_family);
+    let (first, owner) = prepare(&fixture.config, &fixture.root, &first_context, &first_family, "first")?;
+    fixture.cargo_selected(&first, "same", false, &["--package", "application"])?;
+    assert!(std::fs::read_to_string(&fixture.calls)?.contains("input"));
+    drop(owner);
+    let (next, owner) = prepare(&fixture.config, &fixture.root, &next_context, &next_family, "next")?;
+    assert_eq!(first.target, next.target);
+    assert_ne!(first.receipts, next.receipts);
+    std::fs::write(&fixture.calls, [])?;
+    let artifacts = fixture.cargo_selected(&next, "same", false, &["--package", "application", "--lib"])?;
+    let dependency = artifacts.iter().find(|row| row["target"]["name"] == "input")
+        .ok_or("dependency artifact absent")?;
+    assert_eq!(dependency["fresh"], true);
+    assert_eq!(std::fs::read_to_string(&fixture.calls)?, "");
+    // Sharing a directory cannot conceal changed dependency source bytes.
+    let dependency_source = fixture.root.join("input/src/lib.rs");
+    let original = std::fs::read_to_string(&dependency_source)?;
+    std::fs::write(&dependency_source, format!("{original}\n// dependency changed\n"))?;
+    let changed = fixture.cargo_selected(
+        &next, "same", false, &["--package", "application", "--lib"],
+    )?;
+    let dependency = changed.iter().find(|row| row["target"]["name"] == "input")
+        .ok_or("changed dependency artifact absent")?;
+    assert_eq!(dependency["fresh"], false);
+    assert!(std::fs::read_to_string(&fixture.calls)?.contains("input"));
+    drop(owner);
+    Ok(())
+}
+
+#[test]
+fn selection_sharing_keeps_real_feature_profile_and_config_builds_separate() -> IsolationResult {
+    let fixture = IsolationFixture::new()?;
+    let manifest = fixture.root.join("input/Cargo.toml");
+    let original = std::fs::read_to_string(&manifest)?;
+    std::fs::write(&manifest, format!("{original}[features]\nextra=[]\n"))?;
+    let identity = vec![("compiler".to_owned(), "bytes".to_owned())];
+    let request = compiler_request(None);
+    let mut families = BTreeSet::new();
+    for extra in [
+        &[][..],
+        &["--features", "input/extra"],
+        &["--release"],
+        &["--config", "build.rustflags=['--cfg', 'sail_family_control']"],
+    ] {
+        let mut args = vec!["--package", "application", "--lib"];
+        args.extend(extra);
+        let arguments: Vec<String> = args.iter().map(|arg| (*arg).to_owned()).collect();
+        let (context, family) = context_hashes(&arguments, Some(&request), &identity, &[])?;
+        assert!(families.insert(family.clone()), "compiler input was merged: {extra:?}");
+        let (paths, owner) = prepare(&fixture.config, &fixture.root, &context, &family, "run")?;
+        std::fs::write(&fixture.calls, [])?;
+        let artifacts = fixture.cargo_selected(&paths, "same", false, &args)?;
+        let dependency = artifacts.iter().find(|row| row["target"]["name"] == "input")
+            .ok_or("dependency artifact absent")?;
+        assert_eq!(dependency["fresh"], false);
+        assert!(std::fs::read_to_string(&fixture.calls)?.contains("input"));
+        drop(owner);
+    }
     Ok(())
 }

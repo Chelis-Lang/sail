@@ -298,8 +298,13 @@ oyster and such." This supersedes the parallel tracks of
    4. Remaining managed overhead against the removed pass-through, #156:
       cheaper checks qualify against rc.5 on unchanged vest/demo runs
       (1.01/0.39 s to 0.54/0.21 s); the final vest edit gain is
-      inconclusive. See the [validation record](validation/managed-overhead.md).
-      A cheaper per-function report in the fork remains a separate lever.
+      inconclusive. The merged #219 fresh-byte digest memo keeps full reads and
+      fresh version execution on every handshake; its matched native active
+      cases improve wall medians about 1–3% and daemon self CPU about 35%, with
+      about 34 MiB higher observed RSS. These are scoped gains, not whole-pipeline
+      CPU savings. See the [overhead record](validation/managed-overhead.md) and
+      [identity record](validation/solver-identity.md). A cheaper per-function
+      report in the fork remains a separate lever.
    5. Cache robustness to incidental edits: stable crate-wide numbering in
       the fork, [#118](https://github.com/Chelis-Lang/sail/issues/118); any
       key change is an ADR under charter rules 5 and 6. The only crate-wide
@@ -316,7 +321,15 @@ oyster and such." This supersedes the parallel tracks of
    6. B4, instant revert: receipts beyond the latest revision, #163.
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
-      real projects caps every other lever.
+      real projects caps every other lever. A narrow Cargo-selection correction
+      measures the first repair transition at 67.868 to 32.732 seconds (2.07×)
+      on the same cc7 runtime; later warm repair remains about 33 seconds.
+      Native and Mac gates, full FAST/STANDARD and final guards pass; selection
+      takes effect only with the implementation PR's current green CI and merge
+      ([record](validation/managed-selection-family.md)).
+      Larger callback-local frontend/lowering reuse remains an unselected
+      candidate. This first-transition gain does not establish the overall
+      25% M8 gate or close #162.
    8. Jobs, watch and MCP fall back like `sail verify` (`SAIL3112`), #165:
       implemented; native gates and full fast/standard pass; required PR
       checks are enforced separately ([validation](validation/fallback-parity.md)).
