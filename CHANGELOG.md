@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep Cargo dependency artifacts when package/target selection changes, such
+  as adding `--lib` for interactive repair. Exact proof contexts and dependency
+  receipt checks remain separate; native performance qualification is pending.
+
 - Add a disabled, opt-in kernel-accounting research path for the one-use
   continuation driver (#158). It requires complete sole-`wait4` accounting
   and the original resource bound. Twelve native controls and the two fixed
