@@ -134,6 +134,28 @@ not algorithm qualification. Raw attempt archive SHA-256
 
 ## Unresolved original disagreement
 
+The separate [#215](https://github.com/Chelis-Lang/sail/issues/215) witness
+demonstrates an ordering defect in `managed::runner::relay`
+(`crates/sail-verus/src/managed/runner.rs`): its stdout line reader and stderr
+chunk reader send through independent threads, and the consumer emits queue
+arrival order. On main `72acf29b`, 44 of 96 controlled, causally ordered writes
+were reversed; all individual stream bytes were complete. Observation SHA-256
+`145ac95ef790cbea0ee9b17e6e73f5f4d15b692b897999ae1d560c22955a3377`.
+This controlled producer is not real-Verus acceptance and does not establish
+the cause of #174's historical disagreement below.
+
+Once both pipes contain bytes, the consumer cannot distinguish opposite
+cross-stream write histories. Partial-line drains, polling priority and flushes
+cannot recover that missing order. Merging the pipes preserves combined order
+but loses stream identity needed for split output and Cargo JSON filtering
+(`cargo_message` and `seeded_stdout` in the same module). A complete solution
+therefore needs a producer-side ordered transport that retains stream and
+internal-message identity across Cargo and compiler output; a Verus-only
+sequence number would omit Cargo's own status and error writes. No such
+transport is implemented or qualified. PR #197 remains held; the exact combined
+byte oracle and existing assertions remain unchanged. No Cargo fork or output
+normalization is selected.
+
 On 2026-10-16, candidate `9341e827` passed the native workspace gate (642 tests,
 35 skipped, 2 doctests) and solver tests (35), then failed the original output
 E2E check: the failing proof's project summary appeared before Cargo's error in
