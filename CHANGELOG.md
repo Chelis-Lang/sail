@@ -9,6 +9,12 @@ semantic versioning once the API is published.
   length and mtime no longer retain a stale binary hash (#213). Native
   qualification and measurement of the added handshake cost are pending.
 
+- Add a disabled, opt-in kernel-accounting research path for the one-use
+  continuation driver (#158). It requires complete sole-`wait4` accounting
+  and the original resource bound. Twelve native controls and the two fixed
+  solver traces pass its named policy; application/default acceptance and
+  selection remain open. Preparation costs and all earlier failures stay visible.
+
 - Retain the disabled one-use solver-continuation research driver and its
   strict failure evidence (#158). A separate opt-in timing-token comparator
   does not change Sail verification, default cache keys or shipped behavior.
