@@ -33,3 +33,13 @@ controls. Require unchanged verdicts/diagnostics, original establishing run,
 zero new verifier invocations only for restored A, and all ordinary final guards.
 
 External local check logs: clippy SHA-256 `0df906bc004c45e0d41f15c6b9a52e62a19ee3f6e498746b8bfd1967070b6702`; focused tests SHA-256 `53858e75e8fe02d7c8a9537e88dce6b4fdaccbc9b2be52e33d5365ff8705fe01`.
+
+The readiness successor imports the reviewed shared `capture_ready` algorithm:
+bounded compiler scratch-directory drain, at most two complete capture
+attempts, no ignored directories or special entries. Persistent graph storage
+is not yet globally capped; this blocks default selection independently of
+the few-run pilot (ADR 0050).
+
+The readiness import also passes all-target sail-verus clippy, eight actual
+filesystem graph tests and all 15 retained tests locally on macOS. It does not
+qualify Linux ABI or real Vest. Test stdout SHA-256: `c22265839f2055dbabe361c01486f0d5b1bcb27a4880d0b3a11954a2abe35d0f` (graph) and `6f4e32fba5299c4579737fbc62c6f3c2a44d52a4217b7d1fe5385c87ac0ca624` (retained).

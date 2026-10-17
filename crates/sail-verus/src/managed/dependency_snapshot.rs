@@ -2,8 +2,9 @@
 //!
 //! This is a byte-placement boundary, not a macro-eligibility proof. Its caller
 //! must separately admit the official source/features, pinned sysroot, effective
-//! Verus options and compiler-read observations. Copying alone never attests
-//! a successful producer or authorizes reuse.
+//! Verus options and compiler-read observations. Native callers hold each graph
+//! through compiler completion; retained proofs also need it to survive for
+//! their artifact generation and archive lifetime.
 
 use super::files::digest;
 use serde::{Deserialize, Serialize};
@@ -260,6 +261,25 @@ pub(super) struct Snapshot {
 }
 
 impl Snapshot {
+    /// Wait briefly for compiler scratch directories to disappear, then
+    /// run the complete capture. Any failed capture permits one fresh attempt
+    /// within the same deadline; no directory is excluded or admitted.
+    pub(super) fn capture_ready(
+        owned_target: &Path,
+        root: &Path,
+        args: &[OsString],
+    ) -> Option<Self> {
+        let target = owned_target.canonicalize().ok()?;
+        let unit = Unit::parse(args)?;
+        let (directories, _) = lookups(&target, &unit, args)?;
+        if directories.is_empty() || directories.len() > 8 {
+            return None;
+        }
+        capture_after_directory_work(&directories, &unit, || {
+            Self::capture(owned_target, root, args)
+        })
+    }
+
     /// Reuse a graph only after full new reads of the actual mutable dependency
     /// inventory and all private bodies. There is no metadata-freshness memo.
     pub(super) fn reuse(owned_target: &Path, graphs: &Path, args: &[OsString]) -> Option<Self> {
@@ -548,6 +568,60 @@ impl Snapshot {
     }
 }
 
+fn capture_after_directory_work<T>(
+    directories: &BTreeSet<PathBuf>,
+    unit: &Unit,
+    mut capture: impl FnMut() -> Option<T>,
+) -> Option<T> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    for attempt in 0..2 {
+        if attempt > 0 && std::time::Instant::now() >= deadline {
+            return None;
+        }
+        while !lookup_ready(directories, unit)? {
+            let remaining = deadline.checked_duration_since(std::time::Instant::now())?;
+            std::thread::sleep(remaining.min(std::time::Duration::from_millis(10)));
+        }
+        // All path, shape, membership and byte checks still run on every
+        // capture. The first failure may be a transient already gone before
+        // another scan; at most one fresh complete attempt is allowed.
+        if let Some(snapshot) = capture() {
+            return Some(snapshot);
+        }
+    }
+    None
+}
+
+/// Compiler metadata, codegen and archive writers create temporary directories
+/// beside their outputs. Wait for directories rather than guessing their names.
+/// Persistent directories time out; aliases and special files refuse immediately.
+/// This scan reads no artifact bodies and creates none.
+fn lookup_ready(directories: &BTreeSet<PathBuf>, unit: &Unit) -> Option<bool> {
+    let mut ready = true;
+    for directory in directories {
+        let mut count = 0usize;
+        for entry in std::fs::read_dir(directory).ok()? {
+            let entry = entry.ok()?;
+            if unit.owns(&entry.path()) {
+                continue;
+            }
+            count += 1;
+            if count > ENTRY_LIMIT {
+                return None;
+            }
+            let kind = entry.file_type().ok()?;
+            if kind.is_file() {
+                continue;
+            }
+            if !kind.is_dir() {
+                return None;
+            }
+            ready = false;
+        }
+    }
+    Some(ready)
+}
+
 impl Drop for Snapshot {
     fn drop(&mut self) {
         if !self.published {
@@ -647,6 +721,201 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn mixed_compiler_directories_disappear_before_any_graph_copy()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("metadata-ready")?;
+        let deps = root.0.join("target/debug/deps");
+        let scratches =
+            ["rmeta4RA3xP", "rustcihBLIO", ".tmp1YZxfY.temp-archive"].map(|name| deps.join(name));
+        let destination = root.0.join("snapshot");
+        std::fs::write(deps.join("libvstd-abcd.rmeta"), b"before producer exit")?;
+        for scratch in &scratches {
+            std::fs::create_dir(scratch)?;
+            std::fs::write(scratch.join("incomplete"), b"incomplete")?;
+        }
+        let producer_destination = destination.clone();
+        let producer_deps = deps.clone();
+        let producer = std::thread::spawn(move || -> std::io::Result<()> {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            assert!(!producer_destination.exists(), "no graph copy while busy");
+            std::fs::write(
+                producer_deps.join("libvstd-abcd.rmeta"),
+                b"completed metadata",
+            )?;
+            for scratch in scratches {
+                std::fs::remove_dir_all(scratch)?;
+            }
+            Ok(())
+        });
+        let captured = Snapshot::capture_ready(&root.0.join("target"), &destination, &root.args());
+        producer.join().map_err(|_| "producer fixture panicked")??;
+        let snapshot = captured.ok_or("ready graph")?;
+        assert!(snapshot.intact());
+        assert_eq!(snapshot.original_inputs().len(), 1);
+        assert_eq!(
+            std::fs::read(destination.join("0/libvstd-abcd.rmeta"))?,
+            b"completed metadata"
+        );
+        assert_eq!(
+            snapshot.inventory.directories[&deps],
+            BTreeSet::from([OsString::from("libvstd-abcd.rmeta")])
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn persistent_unknown_directory_refuses_without_partial_copies()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("metadata-persistent")?;
+        let deps = root.0.join("target/debug/deps");
+        std::fs::write(deps.join("libvstd-abcd.rmeta"), b"A")?;
+        std::fs::create_dir(deps.join("unknown-persistent-directory"))?;
+        let destination = root.0.join("snapshot");
+        assert!(
+            Snapshot::capture_ready(&root.0.join("target"), &destination, &root.args()).is_none()
+        );
+        assert!(!destination.exists());
+        Ok(())
+    }
+
+    #[test]
+    fn metadata_directory_racing_capture_permits_at_most_one_complete_retry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for fail_again in [false, true] {
+            let root = Root::new(if fail_again {
+                "metadata-races-twice"
+            } else {
+                "metadata-race"
+            })?;
+            let deps = root.0.join("target/debug/deps");
+            let scratch = deps.join("rmeta4RA3xP");
+            let destination = root.0.join("snapshot");
+            std::fs::write(deps.join("libvstd-abcd.rmeta"), b"metadata")?;
+            let mut captures = 0;
+            let mut producer = None;
+            let result = capture_after_directory_work(
+                &BTreeSet::from([deps]),
+                &Unit::parse(&root.args()).ok_or("unit")?,
+                || {
+                    captures += 1;
+                    if captures == 1 || fail_again {
+                        // Inject the real unsupported directory after the
+                        // readiness scan, before the unchanged full capture.
+                        std::fs::create_dir(&scratch).ok()?;
+                    }
+                    let result =
+                        Snapshot::capture(&root.0.join("target"), &destination, &root.args());
+                    if captures == 1 {
+                        assert!(result.is_none());
+                        assert!(!destination.exists(), "partial copy removed");
+                        let scratch = scratch.clone();
+                        producer = Some(std::thread::spawn(move || {
+                            std::thread::sleep(std::time::Duration::from_millis(30));
+                            std::fs::remove_dir(scratch)
+                        }));
+                    }
+                    result
+                },
+            );
+            producer
+                .ok_or("producer")?
+                .join()
+                .map_err(|_| "producer fixture panicked")??;
+            assert_eq!(captures, 2);
+            if fail_again {
+                assert!(result.is_none());
+                assert!(!destination.exists());
+            } else {
+                assert!(result.is_some_and(|snapshot| snapshot.intact()));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn directory_gone_before_post_failure_scan_still_gets_one_full_retry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for fail_again in [false, true] {
+            let root = Root::new(if fail_again {
+                "gone-twice"
+            } else {
+                "gone-once"
+            })?;
+            let deps = root.0.join("target/debug/deps");
+            let scratch = deps.join("rustcihBLIO");
+            let destination = root.0.join("snapshot");
+            std::fs::write(deps.join("libvstd-abcd.rmeta"), b"metadata")?;
+            let directories = BTreeSet::from([deps]);
+            let unit = Unit::parse(&root.args()).ok_or("unit")?;
+            let mut captures = 0;
+            let result = capture_after_directory_work(&directories, &unit, || {
+                captures += 1;
+                if captures == 1 || fail_again {
+                    std::fs::create_dir(&scratch).ok()?;
+                }
+                let result = Snapshot::capture(&root.0.join("target"), &destination, &root.args());
+                if scratch.exists() {
+                    assert!(result.is_none());
+                    assert!(!destination.exists(), "partial copy removed");
+                    std::fs::remove_dir(&scratch).ok()?;
+                }
+                assert_eq!(lookup_ready(&directories, &unit), Some(true));
+                result
+            });
+            assert_eq!(captures, 2);
+            if fail_again {
+                assert!(result.is_none());
+                assert!(!destination.exists());
+            } else {
+                assert!(result.is_some_and(|snapshot| snapshot.intact()));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn directory_readiness_refuses_aliases_and_special_files_immediately()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("metadata-shapes")?;
+        let deps = root.0.join("target/debug/deps");
+        std::fs::write(deps.join("libvstd-abcd.rmeta"), b"A")?;
+        std::fs::create_dir(root.0.join("elsewhere"))?;
+        let alias = deps.join("rmeta4RA3xP");
+        std::os::unix::fs::symlink(root.0.join("elsewhere"), &alias)?;
+        let directories = BTreeSet::from([deps.clone()]);
+        let unit = Unit::parse(&root.args()).ok_or("unit")?;
+        assert!(lookup_ready(&directories, &unit).is_none());
+        assert!(
+            Snapshot::capture_ready(
+                &root.0.join("target"),
+                &root.0.join("snapshot"),
+                &root.args()
+            )
+            .is_none()
+        );
+        std::fs::remove_file(alias)?;
+        // The pinned rustix has no mkfifoat on macOS. Exercise the same real
+        // filesystem shape through the host utility, as other FIFO tests do.
+        let fifo = std::process::Command::new("mkfifo")
+            .args(["-m", "600"])
+            .arg(deps.join("compiler-pipe"))
+            .status()?;
+        assert!(fifo.success());
+        assert!(lookup_ready(&directories, &unit).is_none());
+        assert!(
+            Snapshot::capture_ready(
+                &root.0.join("target"),
+                &root.0.join("snapshot"),
+                &root.args()
+            )
+            .is_none()
+        );
+        assert!(!root.0.join("snapshot").exists());
+        Ok(())
     }
 
     #[test]

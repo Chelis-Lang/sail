@@ -1,8 +1,8 @@
 //! Content-bound retained-proof building blocks (proposed ADR 0050).
 //!
-//! The explicit driver request stages only a source-read witness. Native
-//! producer joining, archive publication and replay remain disconnected until
-//! the closed input boundary qualifies. No old event observer is imported.
+//! The explicit research request joins native certificates, archive publication
+//! and checked replay. Native qualification remains pending. No old event
+//! observer is imported.
 
 mod archive;
 mod compiler;

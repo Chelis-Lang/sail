@@ -222,14 +222,15 @@ impl Plan {
         // Cargo may invoke this verifier as soon as dependency metadata is
         // ready. Wait for those actual successful producers, discard the first
         // view, then capture the complete final directory (including rlibs).
-        let first = Snapshot::capture(&self.target, &directory.join("dependency-first"), args)?;
+        let first =
+            Snapshot::capture_ready(&self.target, &directory.join("dependency-first"), args)?;
         if !super::producers::ready(self, &first) {
             return None;
         }
         drop(first);
         let graph =
             Snapshot::reuse(&self.target, &self.root.join("graphs"), args).or_else(|| {
-                Snapshot::capture(
+                Snapshot::capture_ready(
                     &self.target,
                     &self
                         .root

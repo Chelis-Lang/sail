@@ -339,12 +339,12 @@ impl Native {
             .join(&runtime.run_id)
             .join(format!("{key}-{}", std::process::id()));
         std::fs::create_dir_all(&directory).ok()?;
-        let first = Snapshot::capture(&plan.target, &directory.join("first"), args)?;
+        let first = Snapshot::capture_ready(&plan.target, &directory.join("first"), args)?;
         if !ready(plan, &first) {
             return None;
         }
         drop(first);
-        let graph = Snapshot::capture(&plan.target, &directory.join("graph"), args)?
+        let graph = Snapshot::capture_ready(&plan.target, &directory.join("graph"), args)?
             .publish(&plan.root.join("graphs"), args)?;
         if !ready(plan, &graph) || !established(plan, &runtime.context_sha256, &graph) {
             return None;

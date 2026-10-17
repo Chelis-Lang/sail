@@ -221,3 +221,14 @@ claim that endpoint hashes certify arbitrary compiler reads.
 
 See the [source checkpoint record](../validation/instant-revert.md) for the
 executed checks and pending real-project gates.
+
+## Graph storage qualification limit
+
+The current prototype retains every published live-graph marker to preserve
+private paths that Cargo dep-info may still reference. Four proofs per target
+and the per-entry byte limit do not bound the sum of historical graphs. This
+is an explicit default-selection blocker. Producer certificates and native-read
+history likewise have no aggregate admission cap yet. A bounded few-run native pilot must
+retain its own work/disk limits; before default use, refuse new graph admission
+at a prospective total count/byte cap and run the genuine compiler instead.
+Do not delete unknown live generations or rewrite dep-info to reclaim space.
