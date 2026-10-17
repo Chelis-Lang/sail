@@ -356,3 +356,11 @@ misses when they are absent. Unsupported inputs run the genuine compiler. A
 failed restoration rollback refuses with `SAIL3134`. This is not a supported
 instant-revert speed guarantee; see [ADR 0050](decisions/0050-retained-proofs-instant-revert.md)
 and the [pending native gate](validation/instant-revert.md).
+
+The experimental retained arena refuses new admission at 8 GiB of file data or
+65,536 entries, including failed writes and lifetime markers. It preserves
+potentially live compiler generations and falls back to compilation on fullness
+or unsupported inventory. Existing graph reuse can also refuse near capacity
+because admission conservatively reserves a full graph. These limits cover the
+retained arena, not ordinary managed-run sidecars or every Sail cache. The
+aggregate scan's native performance is not yet qualified.

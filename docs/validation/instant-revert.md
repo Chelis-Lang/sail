@@ -36,10 +36,25 @@ External local check logs: clippy SHA-256 `0df906bc004c45e0d41f15c6b9a52e62a19ee
 
 The readiness successor imports the reviewed shared `capture_ready` algorithm:
 bounded compiler scratch-directory drain, at most two complete capture
-attempts, no ignored directories or special entries. Persistent graph storage
-is not yet globally capped; this blocks default selection independently of
-the few-run pilot (ADR 0050).
+attempts, no ignored directories or special entries. The storage successor adds aggregate retained-arena admission;
+its native behavior and performance remain unqualified (ADR 0050).
 
 The readiness import also passes all-target sail-verus clippy, eight actual
 filesystem graph tests and all 15 retained tests locally on macOS. It does not
 qualify Linux ABI or real Vest. Test stdout SHA-256: `c22265839f2055dbabe361c01486f0d5b1bcb27a4880d0b3a11954a2abe35d0f` (graph) and `6f4e32fba5299c4579737fbc62c6f3c2a44d52a4217b7d1fe5385c87ac0ca624` (retained).
+
+The storage successor bounds the durable retained arena at 8 GiB / 65,536
+entries using serialized prospective admission for graphs and lifetime markers,
+certificates and producer records, and archived proof bodies. Failed writes
+remain counted; unknown live generations are preserved. Native compiler request
+scratch stays in ordinary managed-run sidecars, so this is not a global bound
+on all run logs or caches. Five additional owned-filesystem controls pass,
+including actual graph publication/deduplication and concurrent admission;
+all 21 retained library tests pass. Native qualification and performance remain
+pending, including the scan/lock overhead.
+
+The aggregate-admission successor also passes the complete macOS host check:
+workspace clippy and 684 tests, with 35 solver/platform skips. This is a host
+correctness gate, not Linux ABI or timing acceptance. Host stderr SHA-256:
+`cb6d867932791be039e682df839ae39308c5756f2726816b03ee309097c6547e`; focused stdout SHA-256:
+`ba9015c88d6ead3ab0c515a342413934ac3e74296228086663ff509d9882aea1`.

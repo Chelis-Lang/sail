@@ -401,6 +401,23 @@ pub(super) fn retain(
     {
         return None;
     }
+    let encoded = serde_json::to_vec(entry).ok()?;
+    if encoded.len() as u64 > ENTRY_LIMIT {
+        return None;
+    }
+    let incoming = entry
+        .outputs
+        .iter()
+        .map(|output| &output.content)
+        .chain([&entry.stdout, &entry.stderr, &entry.compiler_reads])
+        .try_fold(u64::try_from(encoded.len()).ok()?, |total, content| {
+            total.checked_add(content.size)
+        })?;
+    let _admission = super::budget::admit(
+        root,
+        incoming,
+        u64::try_from(entry.outputs.len()).ok()?.checked_add(10)?,
+    )?;
     let blobs = root.join("blobs");
     std::fs::create_dir_all(&blobs).ok()?;
     for (source, content) in entry

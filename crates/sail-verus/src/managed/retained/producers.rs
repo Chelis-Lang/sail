@@ -16,7 +16,7 @@ use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Record {
     version: u32,
@@ -140,10 +140,39 @@ fn publish(
     template: &Record,
     outputs: impl Iterator<Item = (PathBuf, Content)>,
 ) -> Option<()> {
-    std::fs::create_dir_all(plan.root.join("producers")).ok()?;
     let certificates = plan.root.join("certificates");
-    std::fs::create_dir_all(&certificates).ok()?;
     let retained_document = certificates.join(&template.document_content.sha256);
+    // Materialize the bounded record payloads before the lock. Reserve their
+    // full additional size, including replacements, plus the checked document.
+    let records = outputs
+        .take(33)
+        .map(|(path, body)| {
+            (
+                record_path(plan, &path),
+                Record {
+                    output: path,
+                    body,
+                    document: retained_document.clone(),
+                    ..template.clone()
+                },
+            )
+        })
+        .collect::<Vec<_>>();
+    if records.len() > 32 || template.document_content.size > 8 * 1024 * 1024 {
+        return None;
+    }
+    let bytes = records
+        .iter()
+        .try_fold(8 * 1024 * 1024 + 1u64, |total, (_, record)| {
+            total.checked_add(u64::try_from(serde_json::to_vec(record).ok()?.len()).ok()?)
+        })?;
+    let _admission = super::budget::admit(
+        &plan.root,
+        bytes,
+        u64::try_from(records.len()).ok()?.checked_add(4)?,
+    )?;
+    std::fs::create_dir_all(plan.root.join("producers")).ok()?;
+    std::fs::create_dir_all(&certificates).ok()?;
     if read_content(&retained_document, 8 * 1024 * 1024).as_ref()
         != Some(&template.document_content)
     {
@@ -162,28 +191,8 @@ fn publish(
             return None;
         }
     }
-    for (path, body) in outputs {
-        let record = Record {
-            output: path.clone(),
-            body,
-            ..Record {
-                version: template.version,
-                context: template.context.clone(),
-                compiler: template.compiler.clone(),
-                policy: template.policy.clone(),
-                establishing_run: template.establishing_run.clone(),
-                key: template.key.clone(),
-                native: template.native,
-                official: template.official,
-                crate_name: template.crate_name.clone(),
-                pid: template.pid,
-                document: retained_document.clone(),
-                document_content: template.document_content.clone(),
-                output: PathBuf::new(),
-                body: template.body.clone(),
-            }
-        };
-        files::json(&record_path(plan, &path), &record).ok()?;
+    for (path, record) in records {
+        files::json(&path, &record).ok()?;
     }
     Some(())
 }
@@ -333,31 +342,30 @@ impl Native {
         let key = files::digest(
             &serde_json::to_vec(&(args, &environment, &runtime.context_sha256)).ok()?,
         );
-        let directory = plan
-            .root
-            .join("native-reads")
-            .join(&runtime.run_id)
-            .join(format!("{key}-{}", std::process::id()));
+        // Temporary compiler observations belong to the managed run, which
+        // already owns their lifecycle. Only checked certificates and graphs
+        // enter the separately capped durable retained arena.
+        let directory = runtime
+            .sidecars
+            .join(format!("retained-native-{key}-{}", std::process::id()));
         std::fs::create_dir_all(&directory).ok()?;
         let first = Snapshot::capture_ready(&plan.target, &directory.join("first"), args)?;
         if !ready(plan, &first) {
             return None;
         }
         drop(first);
-        let graph = Snapshot::capture_ready(&plan.target, &directory.join("graph"), args)?
-            .publish(&plan.root.join("graphs"), args)?;
+        let graph = driver::publish_graph(
+            &plan.root,
+            Snapshot::capture_ready(&plan.target, &directory.join("graph"), args)?,
+            args,
+        )?;
         if !ready(plan, &graph) || !established(plan, &runtime.context_sha256, &graph) {
             return None;
         }
         if !named_externs(plan, args) {
             return None;
         }
-        // Persist before spawn: compiler dep-info may retain these paths.
-        files::json(
-            &plan.root.join("live-graphs").join(format!("native-{key}")),
-            &graph.key()?,
-        )
-        .ok()?;
+        // publish_graph persists the shared graph marker before spawn.
         let reads = native::Observation::begin(&directory.join("read"), &runtime.run_id, &key)?;
         Some(Self {
             plan: plan.clone(),

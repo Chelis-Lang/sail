@@ -222,16 +222,34 @@ claim that endpoint hashes certify arbitrary compiler reads.
 See the [source checkpoint record](../validation/instant-revert.md) for the
 executed checks and pending real-project gates.
 
-## Graph storage qualification limit
+## Aggregate retained-arena admission
 
-The current prototype retains every published live-graph marker to preserve
-private paths that Cargo dep-info may still reference. Four proofs per target
-and the per-entry byte limit do not bound the sum of historical graphs. This
-is an explicit default-selection blocker. Producer certificates and native-read
-history likewise have no aggregate admission cap yet. A bounded few-run native pilot must
-retain its own work/disk limits; before default use, refuse new graph admission
-at a prospective total count/byte cap and run the genuine compiler instead.
-Do not delete unknown live generations or rewrite dep-info to reclaim space.
+The arena has prospective limits of 8 GiB of regular-file data and 65,536
+filesystem entries, including directories, failed writes and lifetime markers.
+A bounded scan refuses symlinks, special files, excess depth and incomplete
+inventory. One short filesystem lock covers each graph-plus-marker,
+certificate-plus-producer or archive publication. Admission reserves the entire
+additional write peak, including replacements and JSON temporaries, before
+writing; children compile without that lock. Concurrent publishers cannot
+independently spend the same remaining capacity. Contention or fullness takes
+the genuine compiler path; no old proof is accepted to escape the limit.
+
+Lifetime markers are deduplicated by graph content rather than native run key.
+They still preserve every potentially live compiler generation. No unknown
+live graph is deleted and no dep-info is rewritten to reclaim space. Full graph
+size is reserved even for an identical existing graph, so a near-full arena can
+conservatively refuse an otherwise reusable proof.
+
+Native compiler request scratch and initial private copies belong to the
+existing managed run's sidecars; only published graphs, checked certificates,
+producer records and archived proof bodies enter this arena. These limits do
+not cap all ordinary managed-run logs or other Sail caches. Existing managed
+project pruning continues to own those lifecycles.
+
+The source controls exercise actual graph publication and marker deduplication,
+concurrent admission, failed/partial writes, count/byte/overflow limits and real
+symlink/FIFO refusal. Native ABI, real-project performance and the cost of the
+aggregate scan/serialization remain unqualified; this is not default acceptance.
 
 ## Pinned Cargo routing
 
