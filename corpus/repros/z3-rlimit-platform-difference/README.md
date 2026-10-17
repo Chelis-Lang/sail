@@ -2,7 +2,7 @@
 
 **Found:** 2026-10-16, running FPBench `f64` kernels through conformance and
 the edit workload
-([ADR 0053](../../../docs/decisions/0053-verus-mutation-corpus.md)).
+([ADR 0054](../../../docs/decisions/0054-verus-mutation-corpus.md)).
 
 **Pinned versions:** Verus `0.2026.10.04.426d8b0`, Z3 4.16.0
 (`corpus/toolchain.toml`).
@@ -45,6 +45,6 @@ counts resources differently for the same bytes, was not established.
 An outcome near the rlimit measured on one platform does not hold on the
 other. Sail's verdicts are unaffected: Sail matched plain Verus on the same
 platform every time. Expected outcomes for mutant catalogues are measured on
-the reference platform only (ADR 0053). See also the
+the reference platform only (ADR 0054). See also the
 [nonlinear rlimit reproduction](../z3-nla-rlimit-nondeterminism/README.md),
 which varies within one platform.

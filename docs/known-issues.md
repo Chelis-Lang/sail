@@ -183,7 +183,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   FPBench pilot's edit workload, one module per crate served 21% of replies
   (none after a rare-region mutant) for 0.99×; one module per kernel served
   72% for 1.81× (2.63× on the integer translation) ([record](validation/mutation-corpus.md),
-  [ADR 0053](decisions/0053-verus-mutation-corpus.md)). A session whose check
+  [ADR 0054](decisions/0054-verus-mutation-corpus.md)). A session whose check
   returns `unknown` is likewise solved live from that check on, so a crate
   with an rlimit failure gains nothing warm. Work on these
   misses: [ADR 0040](decisions/0040-warm-solver-sessions.md),
