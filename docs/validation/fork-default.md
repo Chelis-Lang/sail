@@ -1,5 +1,11 @@
 # Default mode on Sail's Verus (ADR 0043)
 
+The matching `8a373f81` candidate's source-suite, full-tier, determinism,
+performance and macOS evidence are in the
+[combined-fork record](combined-fork-candidate.md), with its remaining
+current-main integration gates. The qualification below is the historical
+`73dea021` runtime; it does not qualify the later candidate by itself.
+
 Sail runs its own Verus, the runtime built from the pinned fork commit, for
 every verification ([ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)).
 Charter rule 1 is read against plain stock Verus with the pinned Z3. This

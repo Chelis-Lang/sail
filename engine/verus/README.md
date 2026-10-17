@@ -161,9 +161,12 @@ and the fork's regression tests (`vargo test --release -p rust_verify_test
 --test sail_vi...`).
 Final performance acceptance uses the frozen repair catalogue and the complete
 focused-plus-full loop ([product acceptance](../../docs/bench/m7-repair-acceptance.md)).
-The checks of the runtime currently pinned (`73dea021`) are recorded in
+The `8a373f81` candidate's build, conformance, determinism, measured composite
+gain and remaining integration gates are recorded in the
+[combined-fork record](../../docs/validation/combined-fork-candidate.md).
+The earlier `73dea021` checks remain in
 [the fork-default record](../../docs/validation/fork-default.md#runtime-qualification);
-those of earlier pins in [the M7 validation record](../../docs/validation/m7.md)
+older pins are in [the M7 validation record](../../docs/validation/m7.md)
 (Gate 1, engine build and qualification). A new fork commit needs its own
 run, including the determinism check
 ([determinism record](../../docs/validation/determinism.md)).
@@ -195,11 +198,11 @@ these exact prebuilt bytes; it never compiles the engine.
 
 Runtimes are GitHub release assets on the public fork,
 [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus/releases): one
-prerelease per pinned fork commit, tagged `engine-runtime-<short sha>-linux`
-and targeting that commit. The asset is the packed archive,
-`engine-runtime.tar.gz`. The pinned runtime is
-`https://github.com/Chelis-Lang/verus/releases/download/engine-runtime-73dea021-linux/engine-runtime.tar.gz`
-(SHA-256 `713375636be7551acb298aaa4675331ecae16d6c0410c021b04f9e90605daf41`).
+prerelease per runtime commit, tagged `engine-runtime-<short sha>-linux`
+and targeting that commit. The committed pin names the packed archive asset.
+The `8a373f81` Linux archive is
+`https://github.com/Chelis-Lang/verus/releases/download/engine-runtime-8a373f81-linux/engine-runtime-8a373f81-linux.tar.gz`
+(SHA-256 `6f7b30091efb80185fe2b2af15bbb3f4faf25f6daaafd7da59f59384adfa736c`).
 
 Fetching needs no token: the CI image build, `ci/local.sh`, native hosts and
 `ci/engine-artifact.py fetch` download anonymously. `fetch` builds the URL
