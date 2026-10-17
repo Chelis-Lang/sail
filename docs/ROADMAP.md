@@ -334,9 +334,11 @@ oyster and such." This supersedes the parallel tracks of
       implemented; native gates and full fast/standard pass; required PR
       checks are enforced separately ([validation](validation/fallback-parity.md)).
    9. B2, single-file `verus file.rs` projects, #164.
-   10. deep-rvt against the fork, #124: exact fork and retained stock
-       control arms implemented; native acceptance pending
-       ([guide](deep-verus-tests.md)).
+   10. deep-rvt against the fork, #124: implemented; selected cc7 full
+       fork suite passes 4,709 Same (58 ignored), with every nonignored test
+       passing. The separate stock control remains strict and its historical
+       JSON-order failure remains recorded ([guide](deep-verus-tests.md),
+       [qualification](validation/deep-tier.md#fork-source-suite-gate-124)).
    11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.
 
    B1 (a verified vstd shared across projects and worktrees, beyond the

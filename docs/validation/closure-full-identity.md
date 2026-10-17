@@ -1,6 +1,6 @@
 # Full closure-identity runtime qualification
 
-**Qualified runtime pin update; selection takes effect when the PR merges.**
+**Qualified runtime selected by merged PR #221.**
 The pin binds fork
 `cc7bbce4fdc8cf7e4256668b3ee8431343bdb6b9` to genuine normal Linux/macOS runtime
 archives. It retains both halves of Rust's stable crate-qualified closure

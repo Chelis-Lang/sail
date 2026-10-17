@@ -128,20 +128,15 @@ are in the `archive/m7-contracts-f7103bf` tag.
   finding 11. The new [deep fork gate](deep-verus-tests.md) compares the fork
   with and without the shim exactly, and retains the original stock-with-and-
   without-shim control with ADR 0042's diagnostic-message comparison.
-  JSON output from stock is not normalized. The corrected private `8a373f81`
-  source-suite run passes all 4,709 tests (58 ignored), with all 4,651
-  nonignored plain tests passing. That qualifies the recorded source-suite
-  scope, not an installed bundle or the subsequent full-identity fork source.
+  JSON output from stock is not normalized. The selected `cc7bbce4` fork
+  source suite passes 4,709 Same (58 ignored), with all 4,651 nonignored plain
+  tests passing. This is the runtime-local fork gate, not a claim that the
+  separate stock control is now green; stock-versus-fork equivalence remains
+  covered by corpus FAST, STANDARD and DEEP.
   The original native `c0e7e0f5` stock control remains failed: 4,691 Same,
   3 Unstable, 1 Different, 0 infrastructure errors; its Different JSON proof-note
   output matched none of 11 plain runs. See the
   [deep-tier record](validation/deep-tier.md).
-- **Fork JSON proof-note arrays are not deterministic.** Eight repeated
-  runs of the same failing proof emit both note orders; the exact source-suite
-  sample has three Differences. No verdict or rendered-diagnostic difference
-  was observed. A reviewed fork correction is pending runtime qualification
-  ([VI-0021](verus-issues/VI-0021-proof-note-json-order.md),
-  [#185](https://github.com/Chelis-Lang/sail/issues/185)).
 - **Default and engine runs each verify vstd once in their own target.** That
   was about 30 s on HumanEval for the first default `sail verify` and again
   for the first engine run (`sail verify --engine interactive` or
@@ -171,6 +166,15 @@ are in the `archive/m7-contracts-f7103bf` tag.
   the README's Install assumes `curl` and apt package lists, which a minimal
   container lacks. Findings 5, 8 and 9 of the
   [release-candidate record](validation/release-candidate.md#rc1-findings).
+
+## Resolved defects
+
+- **Fork JSON proof-note order (#185).** The selected `cc7bbce4` runtime
+  contains producer fix `5793253c`, which serializes both arrays lexically
+  without changing internal membership, verdicts or diagnostic bytes. The full
+  fork suite passes, including all nine source-JSON tests. The original failing
+  sample remains in [VI-0021](verus-issues/VI-0021-proof-note-json-order.md);
+  [qualification](validation/deep-tier.md#fork-source-suite-gate-124).
 
 ## Product limitations
 

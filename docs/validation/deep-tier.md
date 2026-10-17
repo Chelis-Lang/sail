@@ -2,12 +2,36 @@
 
 ## Fork source-suite gate (#124)
 
-**Candidate; complete corrected fork source suite passes on private source.** The revised harness adds an exact
-fork-with-and-without-shim arm and retains the original stock-with-and-without-
-shim control. Stock-versus-fork equivalence remains the mandatory corpus gate.
-Nonignored fork tests must pass, including their assertions; matching failed
-libtests cannot qualify the fork. The source-build variant also generates its
-own Cargo toolchain manifest. This does not qualify an installed release bundle.
+**Implemented and selected; the complete cc7 fork source suite passes.**
+Current main `2936ead2` selects fork `cc7bbce4` through merged PR #221. The
+harness runs an exact fork-with-and-without-shim arm and retains the separate
+stock-with-and-without-shim control using ADR 0042's complete diagnostic-message
+multiset comparison. Stock stdout, message bytes/multiplicities, outcomes and
+exit codes remain exact. Fork stderr order stays exact, and every nonignored
+fork libtest must pass; two matching failures cannot qualify it. These are
+runtime-local arms. Stock-versus-fork equivalence remains the mandatory corpus
+gate, not a relocated cross-runtime RVT comparison.
+
+The unfiltered native cc7 run on Sail harness `d422adf0` reports **4,709 Same,
+58 ignored, all 4,651 nonignored plain tests passed**, zero Different, Unstable,
+infrastructure errors, failed or unknown plain tests, in 1,293.36 seconds.
+All nine `output_json` tests passed on both arms. The six relevant RVT runner,
+source-build, CLI, builder and CI-dispatch files are byte-identical on current
+main; this is source-scoped qualification, not a rerun at the composed head.
+The complete original 154 executables and source/runtime inventories remain
+bound to that run. Full-suite archive SHA-256:
+`4e5698ce37b3d4c3b61aa9c91ad052635c1f152c55b9f115f039cd04dc7519dd`;
+report SHA-256:
+`36978d5069b7ce82ef68a7372b7c7141e8ac74183b3bae0691a446178399e6cf`;
+final archive SHA-256:
+`aa558a7df2a0e0f248adc545b2f8ebb65b22c893a48221d7d459eafa0b3c2755`.
+
+The separate historical stock control below remains failed; neither it nor a
+cached RVT round is relabeled as passing. The source-suite gate alone does not
+qualify installed packaging. Normal Linux/macOS runtime and corpus acceptance
+are recorded separately in the [selected-runtime record](closure-full-identity.md).
+
+### Earlier source-suite attempts
 
 On macOS arm64, the first fork-test build from `73dea021` completed with 153
 test binaries. A 244-test selection (`modes::` and `output_json::`, 3 ignored)
@@ -17,7 +41,8 @@ defect [VI-0021](../verus-issues/VI-0021-proof-note-json-order.md), with raw
 reports/logs archived at SHA-256
 `475aa777b9e0ebd98f0ab1b3498d453d3803091aeef54c1d8f2927d43e103444`.
 That failed sample is not whole-suite acceptance. The corrected combined runtime later passed its full native source suite,
-as recorded below; broader runtime acceptance remains pending.
+as recorded below. The later selected-runtime result above supersedes the
+then-pending fork acceptance.
 
 Native source `84ca8c18305628fa18ef9e39ac7f6b9299c3c917` passed the workspace
 gate (636 tests, 35 skipped), solver tests (35), all seven end-to-end phases
@@ -42,9 +67,9 @@ The subsequent `9fa6c9d2` candidate corrects the fork suite's identity to
 describe its actual Vargo-built vstd layout, rather than the installed engine's
 release layout. Its complete fork/stock source-suite outcome was not retrieved
 before the host's shutdown deadline. It remains unqualified; the corpus result
-above does not stand in for that source-suite gate. The current-main rebase
-retains the reviewed implementation. Replacement gates must qualify the stock
-control separately from the corrected combined-fork candidate.
+above does not stand in for that source-suite gate. The subsequent main-based
+rebase retained the implementation. The stock control and corrected fork
+candidate retained separate qualification scopes.
 
 The explicit fork selector now bypasses only the generic stock-source
 installation lookup: its pinned solver comes from the release, and the suite's
@@ -65,8 +90,8 @@ workspace gate and controls in the main `c89e29d3` image `08bd13d8` on a
 c7i.4xlarge/us-east-1; raw archive SHA-256
 `9d417731ece59058f380072fb9171fb54c8120c2c76cd646c47cc5689fbc65cf`.
 This is workspace qualification only, not a fork source-suite run or acceptance
-of the combined runtime. Its broader acceptance remains separate; accepted
-pins are unchanged.
+of the combined runtime at that earlier source. The later selected cc7
+qualification is stated above; these earlier results are not relabeled.
 
 Failed/interrupted attempts, 2026-10-16:
 
