@@ -7,10 +7,13 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 3 cannot accept the old all-unit native-artifact bundles. It neither
+//! schema 5 cannot accept the old all-unit native-artifact bundles. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
 //! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
+
+mod admission;
+pub(crate) mod native;
 
 use super::files::digest;
 use crate::{Error, Result};
@@ -23,7 +26,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 3;
+const SCHEMA: u32 = 5;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";
@@ -80,6 +83,12 @@ pub(crate) struct Plan {
     pub solver_sha256: String,
     /// Current full verification, used as provenance when publishing a miss.
     pub run_id: String,
+    /// Closed official source/feature policy; independent of stored cache data.
+    closure: Option<admission::Closure>,
+    /// Per-run successful native compiler observations, never a shared cache.
+    native_records: PathBuf,
+    /// Actual compiler in the admitted installed sysroot.
+    native_compiler_sha256: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -263,13 +272,15 @@ fn identity(root: &Path, virtual_base: &str) -> Option<String> {
         return None;
     }
     let manifest = std::fs::read(root.join(crate::source_build::MANIFEST)).ok()?;
+    let runtime = crate::source_build::artifact_hashes(root).ok()?;
     let wrapper = root.join("verus/source/target-verus/release/verus");
     let sysroot = super::runner::verifier_sysroot(&wrapper, Path::new(".")).ok()?;
     let compiler = sysroot_identity(&sysroot)?;
     Some(digest(
         format!(
-            "{KIND}-v{SCHEMA}\n{}\n{virtual_base}\n{compiler}\n",
-            digest(&manifest)
+            "{KIND}-v{SCHEMA}\n{}\n{}\n{virtual_base}\n{compiler}\n",
+            digest(&manifest),
+            digest(&serde_json::to_vec(&runtime).ok()?)
         )
         .as_bytes(),
     ))
@@ -372,8 +383,19 @@ pub(crate) fn plan(
     new_target: bool,
     solver: &Path,
     run_id: &str,
+    metadata: &Value,
 ) -> Option<Plan> {
     if !research_enabled() {
+        return None;
+    }
+    if [
+        "RUSTC_WRAPPER",
+        "RUSTC_WORKSPACE_WRAPPER",
+        "VERUS_CONTRIB_HOOKS_FILE",
+    ]
+    .iter()
+    .any(|name| std::env::var_os(name).is_some())
+    {
         return None;
     }
     let recording = std::env::var_os(RECORD_ENV).filter(|v| !v.is_empty());
@@ -418,6 +440,17 @@ pub(crate) fn plan(
         virtual_base,
         solver_sha256: sha256_file(solver)?.0,
         run_id: run_id.to_owned(),
+        closure: Some(admission::Closure::resolve(metadata, registry)?),
+        native_records: target.join(".sail-boundary-native").join(run_id),
+        native_compiler_sha256: sha256_file(
+            &super::runner::verifier_sysroot(
+                &root.join("verus/source/target-verus/release/verus"),
+                Path::new("."),
+            )
+            .ok()?
+            .join("bin/rustc"),
+        )?
+        .0,
     })
 }
 
@@ -784,6 +817,22 @@ impl<'a> Call<'a> {
         args: &'a [OsString],
         vars: impl Iterator<Item = (OsString, OsString)>,
     ) -> Option<Self> {
+        if !plan.closure.as_ref()?.check_sources() {
+            return None;
+        }
+        let call = Self::vstd_invocation(plan, args, vars)?;
+        if !native::externs_are_fresh(&call) {
+            call.trace("native dependencies lack this run's successful compiler provenance");
+            return None;
+        }
+        Some(call)
+    }
+
+    fn vstd_invocation(
+        plan: &'a Plan,
+        args: &'a [OsString],
+        vars: impl Iterator<Item = (OsString, OsString)>,
+    ) -> Option<Self> {
         let vars: Vec<_> = vars.collect();
         let lookup = |key: &str| {
             vars.iter()
@@ -793,6 +842,8 @@ impl<'a> Call<'a> {
         if lookup("CARGO_PKG_NAME")? != "vstd"
             || lookup("CARGO_PKG_VERSION")? != "0.0.0-2026-10-04-0306"
             || lookup("CARGO_PRIMARY_PACKAGE").is_some()
+            || Path::new(lookup("CARGO_MANIFEST_DIR")?)
+                != plan.registry.join("vstd-0.0.0-2026-10-04-0306")
         {
             return None;
         }
@@ -894,6 +945,7 @@ impl<'a> Call<'a> {
                 "identity": plan.identity,
                 "solver_sha256": plan.solver_sha256,
                 "literal_registry_scope": registry_scope,
+                "source_policy": plan.closure.as_ref().map(admission::Closure::policy_sha256),
                 "verifying": verifying,
                 "args": &keyed_args,
                 "environment": &environment,
@@ -1070,6 +1122,19 @@ impl<'a> Call<'a> {
 
     /// Writes the entry into `staging`.
     fn stage(&self, staging: &Path, stdout: &str, stderr: &str) -> std::result::Result<(), String> {
+        if self.plan.closure.is_some() && !native::externs_are_fresh(self) {
+            return Err("native compiler provenance changed before publication".to_owned());
+        }
+        if self
+            .plan
+            .closure
+            .as_ref()
+            .is_some_and(|closure| !closure.check_sources())
+        {
+            return Err(
+                "official dependency source closure changed during verification".to_owned(),
+            );
+        }
         if let Some(before) = &self.source_tree {
             let root = Path::new(self.vars.get("CARGO_MANIFEST_DIR").ok_or("no manifest")?);
             if package_tree(root).as_ref() != Some(before) {
@@ -1471,6 +1536,9 @@ mod tests {
             virtual_base: "/rustc-dev/0123".into(),
             solver_sha256: "solver-bytes".into(),
             run_id: "original-verification".into(),
+            closure: None,
+            native_records: root.join("native-observations"),
+            native_compiler_sha256: "compiler-bytes".into(),
         }
     }
 
@@ -1838,7 +1906,8 @@ mod tests {
         })?;
         let ordinary_vars = vars(&machine.root, &[]);
         assert!(
-            Call::vstd_boundary(&machine.plan, &machine.args, ordinary_vars.into_iter()).is_none()
+            Call::vstd_invocation(&machine.plan, &machine.args, ordinary_vars.into_iter())
+                .is_none()
         );
         let package = machine.plan.registry.join("vstd-0.0.0-2026-10-04-0306");
         std::fs::create_dir_all(package.join("src"))?;
@@ -1856,7 +1925,7 @@ mod tests {
             ("CARGO_MANIFEST_DIR".into(), package.into_os_string()),
         ];
         let key = || {
-            Call::vstd_boundary(
+            Call::vstd_invocation(
                 &machine.plan,
                 &machine.args,
                 invocation_vars.clone().into_iter(),
@@ -1877,6 +1946,13 @@ mod tests {
         );
         std::fs::write(&dependency, b"dependency bytes")?;
         assert_eq!(key(), Some(original));
+        let mut sibling = invocation_vars.clone();
+        sibling.retain(|(name, _)| name != "CARGO_MANIFEST_DIR");
+        sibling.push((
+            "CARGO_MANIFEST_DIR".into(),
+            machine.plan.registry.join("foreign-vstd").into_os_string(),
+        ));
+        assert!(Call::vstd_invocation(&machine.plan, &machine.args, sibling.into_iter()).is_none());
         for (name, value) in [
             ("CARGO_PRIMARY_PACKAGE", "1"),
             ("CARGO_PKG_VERSION", "other"),
@@ -1886,7 +1962,7 @@ mod tests {
             changed.retain(|(key, _)| key != name);
             changed.push((name.into(), value.into()));
             assert!(
-                Call::vstd_boundary(&machine.plan, &machine.args, changed.into_iter()).is_none(),
+                Call::vstd_invocation(&machine.plan, &machine.args, changed.into_iter()).is_none(),
                 "{name}"
             );
         }

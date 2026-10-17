@@ -3,12 +3,12 @@
 | Gate | Current state |
 |---|---|
 | Implementation | Prototype wired into the real Cargo compiler wrapper; disabled unless `SAIL_VSTD_BOUNDARY_RESEARCH=1` |
-| Native prerequisites | Nonverification invocations return directly through the original compiler before plan loading or lookup |
+| Native prerequisites | Every nonverification invocation executes the original compiler with inherited streams; optional native observations may establish provenance but never substitute outputs |
 | Reuse scope | Pinned, nonprimary vstd library only; root outputs, no native units or Cargo fingerprints |
 | Identity | Fresh linked-library/VIR bytes, compiler options, runtime/sysroot, actual solver bytes, source and declared environment |
 | Proof provenance | Complete successful document required; typed release/machine-local origin and actual establishing invocation preserved through receipts |
 | Review | Initial static review confirms the structural boundary; macro input completeness and publication races remain unqualified |
-| Execution and performance | `05c4377e`: native and macOS workspace lint and 17 focused tests pass. First native portable recording refused literal registry paths; no reuse or speedup established. Literal-registry mode: macOS lint, 19 focused tests and origin/receipt test pass; native screen pending |
+| Execution and performance | Unrestricted literal-local `dcc2bb9e` hit in 8.456 s versus 37.892 s baseline (single sample); native compiler replacement still failed. New closed-source/native-provenance revision passes macOS lint, 23 focused tests and origin test; its native run remains pending |
 | Default/release selection | Neither selected nor qualified; v1 store remains quarantined |
 
 The prototype ports the original shipped-build serializer and proof-origin
@@ -82,3 +82,45 @@ still required. The local mode is not a replacement qualified for default use.
   serving function's length; an unchanged retry also failed. Extracting proof
   provenance into a helper corrected it. Final lint, 19 focused tests and the
   receipt/store provenance test pass; private build target removed.
+
+## Literal-local hit and next input boundary
+
+The second actual application screen, `dcc2bb9e`, used a fresh c7i.4xlarge in
+us-east-1 and normal cc7 runtime (`717680b4` archive) with Rust 1.99.0 for Sail
+and 1.98.1 for Verus. Four independent physical projects had identical source
+and lock bytes, separate Cargo targets and proof caches. Baseline was 37.892 s;
+local fill was 39.216 s; the next fresh project was 8.456 s with one verifier
+invocation rather than two. Its vstd result retains the fill invocation as
+`dependency_build.kind = machine-local`, not a release-built origin. Actual
+linked native bytes and compiler-boundary key agree between fill and serve.
+The compiler replacement still returns Cargo 101, no verifier invocations,
+in 1.599 s. This is one prototype observation, not a median or stock-parity
+qualification. Summary SHA-256:
+`0ac364feda5de2928f272249db2768d1395770cbb337acb9833af4b91817712e`.
+
+That source could admit an arbitrary first-fill macro, so its speed alone does
+not justify default use. The next source binds the explicit 15-package,
+662-file source policy in `engine/verus/vstd-boundary-inputs.json`, generated
+from local crate archives whose full SHA-256 matches the retained resolution.
+The policy excludes `contrib-hooks` and its external provider, randomized case
+features, path patches and extra dependencies. Fresh Cargo extraction can omit
+`.cargo-checksum.json`; direct pinned source hashes remain authoritative in both
+layouts, and any present sidecar must agree. Actual vstd invocation must point
+at the specific admitted vstd directory, not a copied-identity sibling.
+
+Optional native provenance now records actual successful library compiler
+invocations. It rejects foreign compiler hashes, source/crate shapes and
+backend/linker overrides, checks the actual compiler feature set (including
+features injected through rustflags), generated inputs and transitive current-run
+native output records. It observes only declared library outputs absent before
+that invocation, preventing a metadata-only compile from claiming an old matching
+library. The real compiler always executes with inherited output and status.
+First-fill and serving require current-run native provenance as well as actual
+linked bytes. Per-output records and separate research traces are retained.
+
+The complete transitive macro/compiler builtin/span/diagnostic input audit and
+native qualification remain open. Before/after checks detect ordinary mutation;
+they are not advertised as immutable execution or protection against arbitrary
+host changes. The new revision has passed shared macOS workspace clippy,
+23 focused tests and the existing proof-origin/receipt test. No Mac performance
+measurement or default enablement follows.
