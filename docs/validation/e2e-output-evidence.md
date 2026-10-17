@@ -21,6 +21,25 @@ above 8 MiB, and retains only the remaining shared-budget prefix when the 32 MiB
 command-snapshot allowance is nearly exhausted. Refusal metadata stays in the
 outer log without printing payload bytes.
 
+## Managed background verifier streams
+
+The managed-harness extension at `1655edb5` retains each verification's
+stdout/stderr before writing its completion record, including a background
+stock result whose caller is interrupted by another verification's timeout.
+On 2026-10-17, native c7i.4xlarge in us-east-1 passed `ci/local.sh gate`
+(655 tests, 35 solver tests skipped, 2 doctests) and `ci/local.sh e2e managed`
+(43 verification calls and the actual MCP client exposing 15 tools).
+The native log SHA-256 is
+`77cd34398182ee5dc2868974308b4894fa5fd3ac9730e73691594924d38fe016`.
+Independent actual-child controls also confirmed retention when a background
+child exits unsuccessfully while a concurrent foreground child times out.
+These are harness checks, not full conformance or performance qualification;
+no corpus entries, runtime pins, deadlines or assertions change.
+
+- 2026-10-17, `1655edb5`: the first native bootstrap could not check out the
+  single-branch bundle's absent default HEAD. No gate ran; an explicit detached
+  checkout of the same commit corrected bootstrap before the checks above.
+
 ## Native feature checkpoint
 
 Source `b0ddd460` on main `3c0498c3`, native c7i.4xlarge in us-east-1,
