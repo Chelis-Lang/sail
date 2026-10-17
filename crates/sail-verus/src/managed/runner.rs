@@ -2153,6 +2153,7 @@ pub(crate) fn run_engine_held(
             new_target,
             &config.z3,
             &run_id,
+            &data,
         )
     };
     if let Some(plan) = &shipped_plan {

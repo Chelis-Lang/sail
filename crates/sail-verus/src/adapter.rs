@@ -359,11 +359,20 @@ fn driver() -> Result<ExitCode> {
     // Native prerequisites always execute through Cargo's real compiler. The
     // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
-        return Command::new(wrapper)
-            .args(args)
+        let plan = crate::managed::shipped::active();
+        let observation = plan
+            .as_ref()
+            .and_then(|plan| crate::managed::shipped::native::Observation::begin(plan, &args));
+        let actual = Command::new(wrapper)
+            .args(&args)
             .status()
-            .map(status)
-            .map_err(|e| Error::new("SAIL3111", e.to_string()));
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        if actual.success()
+            && let Some(observation) = observation
+        {
+            observation.complete();
+        }
+        return Ok(status(actual));
     }
     let plan = crate::managed::shipped::active();
     let call = plan.as_ref().and_then(|plan| {

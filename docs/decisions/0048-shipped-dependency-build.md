@@ -33,7 +33,7 @@ release builds from machine-local verification through later receipt reuse. Nati
 path. The v1 machine-local store stays disabled.
 
 The prototype requires `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Engine, focused and
-loader-variable runs decline it. Schema 3 and a distinct bundle kind reject
+loader-variable runs decline it. Schema 5 and a distinct bundle kind reject
 the earlier all-unit bundles. Source-path remapping is confined to the named
 experiment and uses the previously built fork support; this change selects
 no runtime or release asset.
@@ -46,6 +46,26 @@ executes native prerequisites and requires a complete successful proof before
 publication. Misses compile and may populate this separate cache; an absent
 release manifest does not disable observation. Local entries report the actual
 original invocation, never a fictitious release-built proof.
+
+The first native local screen established an actual hit: 8.456 s against
+37.892 s without the boundary cache, with fresh native prerequisites in both
+projects. Replacing the private native compiler still failed before verification.
+This single observation motivates the narrower source/provenance work below;
+it is not qualification of that earlier unrestricted first-fill model.
+
+The next source requires an explicit embedded policy for the 15 official
+resolved packages and 662 archive file hashes, plus their exact default feature
+sets. It checks actual sources independently of mutable Cargo checksum metadata;
+foreign sources, patches, versions, features and macro providers decline reuse.
+Optional native observations surround the real compiler, preserving inherited
+streams and its status. A successful admitted library invocation can establish
+only its declared, initially absent output files, bound to source/feature,
+compiler, generated inputs and this run's native dependency observations.
+First-fill and serving both require those current-run output records. The key
+also hashes actual runtime artifacts, rather than trusting their manifest alone.
+Unsupported wrapper/compiler/backend/source shapes compile without establishing
+reuse. These checks are necessary input provenance, not a completed audit of
+all compiler builtin, span, macro or diagnostic inputs.
 
 This is not a correctness qualification. The remaining questions are whether
 fresh native prerequisites have repeatable bytes, whether the pinned macro
