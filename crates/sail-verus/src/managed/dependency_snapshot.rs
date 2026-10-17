@@ -262,8 +262,8 @@ pub(super) struct Snapshot {
 
 impl Snapshot {
     /// Wait briefly for compiler scratch directories to disappear, then
-    /// run the complete capture. A scratch directory racing the first capture
-    /// permits one retry within the same deadline; no directory is excluded.
+    /// run the complete capture. Any failed capture permits one fresh attempt
+    /// within the same deadline; no directory is excluded or admitted.
     pub(super) fn capture_ready(
         owned_target: &Path,
         root: &Path,
@@ -583,13 +583,10 @@ fn capture_after_directory_work<T>(
             std::thread::sleep(remaining.min(std::time::Duration::from_millis(10)));
         }
         // All path, shape, membership and byte checks still run on every
-        // capture. Unsupported shapes never cause repeated large copies.
+        // capture. The first failure may be a transient already gone before
+        // another scan; at most one fresh complete attempt is allowed.
         if let Some(snapshot) = capture() {
             return Some(snapshot);
-        }
-        if attempt == 1 || lookup_ready(directories, unit)? || std::time::Instant::now() >= deadline
-        {
-            return None;
         }
     }
     None
@@ -827,6 +824,47 @@ mod tests {
                 .ok_or("producer")?
                 .join()
                 .map_err(|_| "producer fixture panicked")??;
+            assert_eq!(captures, 2);
+            if fail_again {
+                assert!(result.is_none());
+                assert!(!destination.exists());
+            } else {
+                assert!(result.is_some_and(|snapshot| snapshot.intact()));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn directory_gone_before_post_failure_scan_still_gets_one_full_retry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for fail_again in [false, true] {
+            let root = Root::new(if fail_again {
+                "gone-twice"
+            } else {
+                "gone-once"
+            })?;
+            let deps = root.0.join("target/debug/deps");
+            let scratch = deps.join("rustcihBLIO");
+            let destination = root.0.join("snapshot");
+            std::fs::write(deps.join("libvstd-abcd.rmeta"), b"metadata")?;
+            let directories = BTreeSet::from([deps]);
+            let unit = Unit::parse(&root.args()).ok_or("unit")?;
+            let mut captures = 0;
+            let result = capture_after_directory_work(&directories, &unit, || {
+                captures += 1;
+                if captures == 1 || fail_again {
+                    std::fs::create_dir(&scratch).ok()?;
+                }
+                let result = Snapshot::capture(&root.0.join("target"), &destination, &root.args());
+                if scratch.exists() {
+                    assert!(result.is_none());
+                    assert!(!destination.exists(), "partial copy removed");
+                    std::fs::remove_dir(&scratch).ok()?;
+                }
+                assert_eq!(lookup_ready(&directories, &unit), Some(true));
+                result
+            });
             assert_eq!(captures, 2);
             if fail_again {
                 assert!(result.is_none());
