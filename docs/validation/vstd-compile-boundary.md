@@ -35,9 +35,10 @@ The compiler always runs; metadata readiness never establishes success.
 Native graph capture also waits up to two seconds for directories to disappear
 from an owned dependency lookup directory. Actual compiler work uses metadata,
 codegen and archive scratch directories with different names; none is admitted.
-It scans directory entries before copying; a scratch directory that races the
-first full capture permits only one additional capture within that same wait
-deadline. Every capture retains the complete original membership, file-shape,
+It scans directory entries before copying; a failed first full capture permits
+only one additional capture within that same wait deadline, including when a
+transient is already gone before the failure is inspected. Every capture
+retains the complete original membership, file-shape,
 path and byte checks. No directory is ignored: aliases and special files refuse
 immediately, and all persistent directories time out. Slow or
 continuously changing builds can still refuse reuse. The new real-filesystem
