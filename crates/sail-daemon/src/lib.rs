@@ -11,6 +11,8 @@
 #![forbid(unsafe_code)]
 
 #[cfg(unix)]
+mod digest_memo;
+#[cfg(unix)]
 pub mod jobs;
 #[cfg(unix)]
 mod log;
