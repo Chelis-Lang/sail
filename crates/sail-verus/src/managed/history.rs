@@ -198,7 +198,8 @@ impl SourceGuard {
 fn source_revision(snapshot: &super::input::InputSnapshot) -> Option<(String, Vec<PathBuf>)> {
     // Timestamp equality does not establish an unchanged compiler epoch.
     // Observe every positive file before the second snapshot, in addition to
-    // directory/alias topology. This also covers coarse Linux timestamps.
+    // directory/alias topology. This covers ordinary writes even with coarse
+    // Linux timestamps; it does not establish mapped-write coverage.
     let mut resolution_paths: BTreeSet<_> = snapshot.digests.keys().cloned().collect();
     for root in &snapshot.roots {
         // Cargo configuration roots may be absent. Keep the existing absence
