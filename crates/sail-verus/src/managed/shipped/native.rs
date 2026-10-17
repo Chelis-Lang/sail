@@ -35,6 +35,8 @@ pub(crate) struct Observation<'a> {
     graph: Snapshot,
     reads: native_reads::Observation,
     cwd: PathBuf,
+    arguments: Vec<OsString>,
+    compiler_options: Vec<String>,
 }
 
 impl<'a> Observation<'a> {
@@ -50,7 +52,7 @@ impl<'a> Observation<'a> {
     }
 
     fn try_begin(plan: &'a Plan, args: &'a [OsString]) -> Result<Self, &'static str> {
-        let call =
+        let mut call =
             Call::new(plan, args, false, std::env::vars_os()).ok_or("unkeyed native unit")?;
         if !call.out_dir.starts_with(&plan.target) {
             return Err("foreign native output directory");
@@ -71,6 +73,8 @@ impl<'a> Observation<'a> {
         if outputs.iter().any(|path| path.try_exists().unwrap_or(true)) {
             return Err("native output already exists before this compiler invocation");
         }
+        let compiler_options =
+            bind_compiler_options(&mut call).ok_or("native compiler options could not be bound")?;
         let base = plan
             .target
             .join(".sail-boundary-native-reads")
@@ -111,6 +115,8 @@ impl<'a> Observation<'a> {
         }
         let reads = native_reads::Observation::begin(&base.join("read"), &plan.run_id, &call.key)
             .ok_or("native read request unavailable")?;
+        let mut arguments = graph.arguments().to_vec();
+        arguments.extend(compiler_options.iter().map(OsString::from));
         Ok(Self {
             call,
             generated,
@@ -118,11 +124,13 @@ impl<'a> Observation<'a> {
             graph,
             reads,
             cwd: std::env::current_dir().map_err(|_| "native cwd unavailable")?,
+            arguments,
+            compiler_options,
         })
     }
 
     pub(crate) fn arguments(&self) -> &[OsString] {
-        self.graph.arguments()
+        &self.arguments
     }
 
     pub(crate) fn configure(&self, command: &mut std::process::Command) {
@@ -160,7 +168,7 @@ impl<'a> Observation<'a> {
         {
             return None;
         }
-        let current = Call::new(
+        let mut current = Call::new(
             plan,
             self.call.arguments,
             false,
@@ -169,7 +177,9 @@ impl<'a> Observation<'a> {
                 .iter()
                 .map(|(key, value)| (key.into(), value.into())),
         )?;
-        if current.key != self.call.key {
+        if bind_compiler_options(&mut current)? != self.compiler_options
+            || current.key != self.call.key
+        {
             return None;
         }
         std::fs::create_dir_all(&plan.native_records).ok()?;
@@ -202,6 +212,45 @@ impl<'a> Observation<'a> {
             );
         }
         Some(())
+    }
+}
+
+/// macOS otherwise records the absolute output path as `LC_ID_DYLIB`. Give
+/// admitted proc macros their exact Cargo output basename as the install name
+/// at compilation, before hashing any artifact. No stored byte is rewritten.
+fn bind_compiler_options(call: &mut Call<'_>) -> Option<Vec<String>> {
+    let options = compiler_options(
+        std::env::consts::OS,
+        &super::argument_value(&call.keyed_args, "--crate-type")?,
+        &call.stem,
+    )?;
+    call.key = compiler_option_key(&call.key, &options)?;
+    Some(options)
+}
+
+fn compiler_options(platform: &str, kind: &str, stem: &str) -> Option<Vec<String>> {
+    if platform == "macos" && kind == "proc-macro" {
+        if stem.is_empty()
+            || !stem
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+        {
+            return None;
+        }
+        Some(vec![
+            "-C".to_owned(),
+            format!("link-arg=-Wl,-install_name,@rpath/lib{stem}.dylib"),
+        ])
+    } else {
+        Some(Vec::new())
+    }
+}
+
+fn compiler_option_key(base: &str, options: &[String]) -> Option<String> {
+    if options.is_empty() {
+        Some(base.to_owned())
+    } else {
+        Some(super::digest(&serde_json::to_vec(&(base, options)).ok()?))
     }
 }
 
@@ -628,6 +677,48 @@ fn trace(args: &[OsString], record: &serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_install_names_are_scoped_and_bound_to_literal_compiler_options()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let options = compiler_options("macos", "proc-macro", "example-abcd")
+            .ok_or("ordinary macro basename")?;
+        assert_eq!(
+            options,
+            [
+                "-C",
+                "link-arg=-Wl,-install_name,@rpath/libexample-abcd.dylib"
+            ]
+        );
+        for (platform, kind) in [("linux", "proc-macro"), ("macos", "lib"), ("macos", "rlib")] {
+            let unchanged = compiler_options(platform, kind, "example-abcd")
+                .ok_or("ordinary non-dylib invocation")?;
+            assert_eq!(unchanged, Vec::<String>::new());
+            assert_eq!(
+                compiler_option_key("original", &unchanged).as_deref(),
+                Some("original")
+            );
+        }
+        for stem in [
+            "",
+            "../other",
+            "example,other",
+            "example.dylib",
+            "example/other",
+        ] {
+            assert!(compiler_options("macos", "proc-macro", stem).is_none());
+        }
+        let key = compiler_option_key("original", &options).ok_or("bound options")?;
+        assert_ne!(key, "original");
+        assert_ne!(
+            Some(key.clone()),
+            compiler_option_key("other compiler inputs", &options)
+        );
+        let changed = compiler_options("macos", "proc-macro", "different-abcd")
+            .ok_or("different macro basename")?;
+        assert_ne!(Some(key), compiler_option_key("original", &changed));
+        Ok(())
+    }
 
     #[test]
     fn metadata_ready_can_precede_successful_producer_record() -> std::io::Result<()> {

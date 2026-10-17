@@ -309,9 +309,20 @@ fresh-project pairs on c7i.4xlarge in us-east-1: without reuse
 1.171538 s with every receipt reused. All pairs have matching complete current
 function verdicts and empty diagnostics, retaining the actual establishing run.
 These compare experimental Sail with and without boundary reuse, not stock.
-Workspace, solver, all local E2E phases, PR conformance and FAST complete with
-zero differences; STANDARD and final source/runtime checks are still running.
-No final archive or complete acceptance claim follows yet.
+The same source completes the native workspace gate (698 tests plus doctests),
+solver tests (35), all local E2E phases plus extra, PR conformance (33 units),
+FAST (147 units / 3,450 functions) and STANDARD (159 units / 12,726 functions).
+Every corpus tier passes in pass-through, fill, warm and engine modes with zero
+Different, Unstable, infrastructure errors or skipped projects. STANDARD records
+one resource-limit drift unit in each arm, with no verdict difference. Tracked
+source checks pass after every step and the final worktree is clean.
+
+These regression gates use the selected cc7 runtime and unchanged stock oracle;
+the paired experimental performance control alone uses observer fork `0fe2bfb3`.
+They do not qualify the observer runtime over the corpus or supersede the native
+producer gaps below. The final raw archive is
+`157f4084b6774190dc8af7bf431a05843051fc7ea33b0205947bad64131e352c`.
+The schema-9 successor remains independently unqualified and disabled by default.
 
 A subsequent combined source review finds two remaining producer boundaries:
 a native source or transitive native library can be replaced during compilation
@@ -398,3 +409,30 @@ controls are unrun. The generalized wait leaves full graph admission unchanged.
 Its first Mac test build at `cbf8c71d` fails because the pinned rustix has no
 `mkfifoat`; the FIFO test now uses the existing host-utility pattern on both
 platforms. This build failure provides no runtime qualification.
+
+The portable successor at `e8b0399f` passes all 697 enabled Mac host tests and
+publishes a real vstd unit with 1,872 function verdicts after 24 native output
+records. Collection then fails while copying an IPC socket; this does not
+qualify the unrun fresh-consumer or unchanged steps. A separate continuation
+uses that exact retained fill, but its fresh consumer misses: a transient
+first capture refuses and the freshly compiled macro bodies also differ.
+The bounded retry successor passes eight graph filesystem tests and all 698
+enabled Mac host tests (35 skipped). Its Linux acceptance is separate.
+
+The retained Mac load commands expose the absolute target path in
+`LC_ID_DYLIB`; [VI-0026](../verus-issues/VI-0026-macos-native-install-name.md)
+records a minimal pinned-compiler reproduction and the stable install-name
+control. The experimental Mac successor `8423f803` binds the additional compiler
+tokens and still compares full native artifact bytes. Its actual public fill,
+fresh consumer, unchanged and loader checks pass with genuine fork `067d0d7c`.
+Each returns the same 1,872 function verdicts, also matching the earlier `067`
+fill without the install-name option. The fresh consumer reports machine-local
+reuse with the actual fill's establishing invocation; the unchanged run reuses
+every target receipt. Both complete native macro bodies are byte-identical
+between the two projects. Runtime and executable inventories remain unchanged;
+all 699 enabled Mac host tests and clippy pass, with 35 tests skipped.
+Acceptance-index SHA-256:
+`f43a196eb76f343c3f7a182307fff14e960e21ac3cc9e486fcbf2fa1d53cbebb`.
+This is a positive public-API, native-input and loader control, not stock
+conformance, an adversarial mutation check, default selection or a Mac timing
+claim. Linux qualification remains separate.
