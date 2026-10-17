@@ -202,3 +202,32 @@ Anvil's fresh observer refuses before live serving. Native lifecycle controls
 pass but do not override workload refusals. This closes the bounded measurement
 loop as blocked research; no implementation is selected and default/corpus
 qualification remains required.
+
+## Named complete kernel accounting, 2026-10-17 (#158)
+
+The disabled research candidate can opt into a separately keyed resource
+policy, `owned-wait4-lifetime-peak-v1`, alongside the named timing comparator.
+An assigned deferred owner captures the actual executable and pidfd before
+releasing the sole reaper. Only complete actual `wait4` status, CPU and a
+strictly positive lifetime peak within the original workload bound can pass,
+with complete input/output and all existing identity/response guards. A final
+peak is not a live OS memory limit. Default sampling and all old failed
+classifiers/results remain unchanged.
+
+The fixed native twelve-control gate and both retained datasets pass the named
+policy at `10b96ed1`, with three fresh controls and one continuation per dataset.
+Default exact-byte comparisons still fail on numeric time variation. This is
+solver-trace feasibility, not application acceptance or selection: preparation
+costs real work, and Anvil total solver CPU exceeds its fresh reference. Every
+future evaluation still requires the mandatory native controls; resource,
+startup and accounting errors refuse.
+No dependency, product integration, runtime pin or corpus oracle changes.
+The [validation record](../validation/solver-snapshots.md#named-kernel-owner-resource-experiment)
+retains the successful named scope, full costs and all earlier failures.
+
+If normal accounting fails, cleanup must still signal the continuously held
+original pidfd independently of a refused `poll()`. After the original waiter
+stops, bounded `waitid(P_PIDFD)` may safely consume original termination;
+missing rusage remains unknown and refuses. No implicit `Popen` destructor or
+bare-PID waiter may substitute after an error. This is a cleanup boundary,
+not an additional successful-accounting path.
