@@ -41,8 +41,14 @@ def begin_verification(timeout):
     return path, operation, time.monotonic()
 
 
-def finish_verification(observation, returncode, timed_out=False, cancelled=False):
+def finish_verification(observation, returncode, stdout, stderr, timed_out=False, cancelled=False):
     path, operation, started = observation
+    # Preserve the background oracle's streams even if a concurrent managed
+    # verification fails before the caller consumes the oracle's result.
+    for name, data in (("stdout", stdout), ("stderr", stderr)):
+        stream_path = path.with_name(operation["operation"] + "." + name)
+        stream_path.write_bytes(data)
+        operation[name] = {"file": stream_path.name, "bytes": len(data)}
     operation.update(state="finished", returncode=returncode, timed_out=timed_out,
                      cancelled=cancelled,
                      duration_s=time.monotonic() - started)
@@ -66,9 +72,10 @@ def bounded_verification(arguments, cwd, env, timeout):
         except ProcessLookupError:
             pass
         failure.stdout, failure.stderr = process.communicate(timeout=10)
-        finish_verification(observation, process.returncode, timed_out=True)
+        finish_verification(observation, process.returncode,
+                            failure.stdout, failure.stderr, timed_out=True)
         raise
-    finish_verification(observation, process.returncode)
+    finish_verification(observation, process.returncode, stdout, stderr)
     return subprocess.CompletedProcess(arguments, process.returncode, stdout, stderr)
 
 with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary:
