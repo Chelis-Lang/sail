@@ -342,3 +342,42 @@ loader refusal, reply policy and resource limits remain unchanged.
   `e14dc542c614aec3a0decdffe4243032cefa63c5492e71767f9437b8068c642a`.
   File-backed child-input retention and fixed historical bucket/check selection
   are prospective source changes, with no native gain/acceptance claim.
+
+### Historical critical-prefix cost assessment
+
+On 2026-10-17, Sail `329017ad` and a genuine normal `vargo build --release`
+of research fork `efeaf48a` passed the bounded IronKV donor/prefix assessment
+on native x86-64 EC2 `c7i.4xlarge`, us-east-1. This is a cost diagnostic,
+unselected and unqualified for application continuation. No edited compiler or
+Anvil workload ran. The ordinary accepted `73dea021` runtime remained the
+independent baseline; the new runtime has real source/runtime file inventories,
+not an invented Sail build manifest.
+
+Both donor calls pass complete ownership, census, literal compiler-output and
+resource guards with 25 solver sessions. Baseline and research solver-input SHA
+multiplicities are identical. The source-owned transcript marker identifies
+`ironsht::host_impl_v::HostState::real_next_impl` uniquely in session 14. The
+last completed check before that function freezes 114 request batches,
+2,417,872 input bytes and 23 of the session's 24 checks. Its input SHA-256 is
+`cc16f858e632e475d153f384c7cad25525e21c65586ccd71bef934891dcd9cf6`.
+
+The exact prefix reaches readiness in 2.180 seconds. Its actual sole-wait4
+child lifetime uses 2.051 CPU-seconds and peaks at 76,599,296 bytes, below the
+unchanged 1 GiB bound; complete I/O and exit 0 pass. Reply bytes differ only in
+the named experimental numeric `:time` fields. The whole measurement window
+takes 2.340 seconds and separately records 0.591 driver SELF CPU-seconds.
+These are whole-lifetime/window observations, not a preparation/foreground
+split. The full donor session uses 2.522 CPU-seconds. Its wrapper finishes
+10.337 seconds before the final wrapper; wrapper timing alone does not prove
+a dependency critical path or a possible application latency improvement.
+
+All final 609 Sail and 1,477 fork source identities and runtime guards pass.
+The 12 actual normal runtime bodies are retained for later reuse. The earlier
+0.026-second session-zero result and strict Anvil failures remain unchanged.
+
+| Artifact under external `live-prefix-edit-provenance-2026-10-17/native-critical-prefix-bounded-eof/attempt1` | SHA-256 |
+| --- | --- |
+| `actual-cost-summary.json` | `d07445e23e7ab45bc631b92294ec1f0135933703a8f072242bdc1f769c35820e` |
+| `native-results/donor-research.tgz` | `6200976c92e1ac02285d31a0e43fbfd1d5cfe339ef54cc1134fed95bbdbfb452` |
+| `native-results/prefix.tgz` | `7a390174727fecf138b4fd9c67aba61a0d8fa9b53559b77818893692f4b30e76` |
+| `native-results/final.tgz` | `a4df28580ccbb350f22b5f448cf8ad10ed9c23344624f82684642de98a0d4727` |

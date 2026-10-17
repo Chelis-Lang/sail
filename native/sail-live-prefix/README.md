@@ -576,11 +576,17 @@ fixtures reverse target accept order and cover absent/duplicate tags and a
 longer explicitly frozen ledger; their tags simulate the compiler field and
 are not native compiler provenance qualification.
 
-The compiler field, exact donor transcript-to-session mapping, and an expensive
-cut before the known edited function still need source review and actual
-runtime validation. No useful critical-prefix cost or application gain is
-established by the selection implementation alone; no new native run is
-authorized by these commands.
+The bounded native assessment on Sail `329017ad` and a genuine normal compiler
+build at fork `efeaf48a` binds the historical `host_impl_v` context and the
+unique `real_next_impl` marker to donor session 14. The fixed cut contains 23
+checks in 114 complete request batches (2,417,872 bytes). Preparing that exact
+prefix took 2.180 seconds to readiness and 2.051 solver CPU-seconds; the complete
+window also used 0.591 driver SELF CPU-seconds. Accepted-runtime and research
+donors have identical literal solver-input multiplicities and compiler streams.
+The selected donor wrapper finished 10.337 seconds before the last wrapper,
+so these costs do not establish a dependency critical path or application gain.
+No edited application ran in this assessment. See the
+[validation record](../../docs/validation/solver-snapshots.md#historical-critical-prefix-cost-assessment).
 
 `edit_donor.historical_cut` accepts only the recorded donor input/output and
 its research transcript. It consumes every transcript query and reply by exact
@@ -594,5 +600,5 @@ helper does not certify provenance or prefix cost alone.
 Use the separate SMT transcript, not `--log smt`: actual AIR reproduction
 [VI-0024](../../docs/verus-issues/VI-0024-smt-log-pipe-indentation.md) shows
 that attaching an SMT file log changes literal multiline solver input. The
-proposed compiler marker writes only to the existing transcript and does not
+research compiler marker writes only to the existing transcript and does not
 attach an emitter file log or write to solver stdin.
