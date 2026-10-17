@@ -13,6 +13,12 @@ semantic versioning once the API is published.
   34 MiB higher observed daemon RSS; these are scoped observations, not
   whole-pipeline CPU or default cold-start claims.
 
+- Pin the full crate-qualified closure-identity runtime (#118): matched native
+  helper edits fall from 34.682 s to 25.107 s (27.6%), while body edits regress
+  from 25.130 s to 25.437 s (1.2%). The [qualification record](docs/validation/closure-full-identity.md)
+  includes both platform bindings, all correctness gates and the Mac inventory
+  guard's enclosing failure. Selection takes effect with this pin change.
+
 - Recompute solver identity at every daemon handshake: equal executable path,
   length and mtime no longer retain a stale binary hash (#213). Native
   correctness checks pass. The original matched native screen records slower

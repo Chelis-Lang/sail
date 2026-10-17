@@ -1,6 +1,6 @@
 # 0049: The fork names closure types by definition path
 
-- **Status:** proposed
+- **Status:** accepted with the matching full-identity runtime pin
 - **Date:** 2026-10-16
 
 ## Context
@@ -30,15 +30,19 @@ and how it is validated.
 
 ## Decision
 
-1. **Closure types are named by a stable number.** The fork (VI-0019) names
-   a closure type by the local half of the closure's `DefPathHash` instead
-   of its `DefIndex`. That hash depends only on the closure's own definition
-   path: its enclosing items' names and rustc's per-parent disambiguators.
-   rustc guarantees it is unique within a crate (it aborts compilation on a
-   collision), so two closures never share a name. Closure declarations keep
-   stock's order by `DefIndex`, with the stable name breaking ties across
-   imported crates (`3f7f6c51`). Equality and hashing of closure types use
-   the new number alone.
+1. **Closure types retain the complete stable definition identity.** The
+   fork (VI-0019, `cc7bbce4`) uses both halves of rustc's `DefPathHash`
+   instead of its `DefIndex`: the stable crate ID and the local definition
+   hash. The local half depends on enclosing items' names and rustc's
+   per-parent disambiguators. Rustc checks its uniqueness within a crate
+   and checks the stable crate ID when loading a crate graph. Keeping both
+   halves preserves that crate-qualified identity; the earlier local-half
+   proposal did not. SMT names encode the pair as `<crate>_<local>`.
+   Closure declarations keep stock's order by `DefIndex`, with the complete
+   pair breaking ties across imported crates. Equality and hashing use both
+   identity halves and ignore the ordering index. The
+   [qualification record](../validation/closure-full-identity.md) identifies
+   the exact source, runtime and qualification results.
 2. **What may change, exactly.** For any input, the fork's SMT output equals
    the previous fork's output after a one-to-one renaming of closure-type
    numbers, consistent within each solver session, plus the line breaks the
@@ -77,8 +81,9 @@ and how it is validated.
 
 - An inserted item no longer invalidates unrelated modules that use
   closures. The edited module itself still changes, as before.
-- Closure names are longer (up to 20 digits instead of about 4), which adds a
-  few bytes per mention to the SMT input.
+- Closure names are longer (two numbers of up to 20 digits, separated by an
+  underscore, instead of one index of about 4 digits), increasing SMT input
+  size per mention.
 - The number depends on the crate's `StableCrateId` (crate name and Cargo's
   `-C metadata`). It is fixed for a project's configuration, and it changes
   together with other crate-identity inputs when that configuration

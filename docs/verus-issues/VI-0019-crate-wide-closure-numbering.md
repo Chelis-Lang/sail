@@ -1,9 +1,10 @@
 # VI-0019: Inserting an item renames closure types crate-wide
 
 - **Status:** open in stock Verus (tracked here; not filed upstream); fixed
-  on Sail's Verus fork branch `m11-5/stable-closure-ids` by `8d03ab54` (fix:
-  name closure types by definition path, not crate-wide index); not yet in
-  Sail's pin. The fix renames symbols, so it is governed by
+  in the qualified full crate-identity runtime `cc7bbce4`, selected by the
+  matching Sail pin update. The initial naming fix was `8d03ab54`; cc7
+  retains both halves of the definition-path identity. The fix renames symbols,
+  so it is governed by
   [ADR 0049](../decisions/0049-stable-closure-names.md) rather than ADR
   0039's order rule.
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
@@ -56,9 +57,9 @@ and their only differing tokens are closure-type numbers
 diffs) treat unrelated modules as changed after an edit elsewhere.
 
 **Suggested fix:** name a closure type by something that depends only on its
-own definition, for example the local half of its `DefPathHash`, which rustc
-already keeps unique within a crate; keep sorting the declarations by
-`DefIndex` so the output order does not change.
+own definition, using the complete crate-qualified `DefPathHash`, whose two
+halves distinguish both the crate and the local definition. Keep sorting local
+declarations by `DefIndex`, with the full stable pair breaking imported ties.
 
 ## Which counters change
 
@@ -86,12 +87,14 @@ crates in one test: module `m2`'s SMT, without comments, must not change
 when an item is added to `m1`). The test fails with stock numbering
 (`anonymous_closure%11` becoming `%14`) and passes with the fix.
 
-The closure's identity becomes `vir::ast::ClosureId { name, order }`: `name`
-is `tcx.def_path_hash(def).local_hash()`, used in every SMT name and for
-equality and hashing; `order` is the old `DefIndex`, used only to sort the
-closure declarations. Imported closures can have equal indices; follow-up
-`3f7f6c51` uses the stable name to break those ties, removing a separately
-reproduced run-to-run ordering defect. The regression exercises two imported
+The qualified identity is
+`vir::ast::ClosureId { stable_crate_id, name, order }`. The first two fields
+retain both halves of `tcx.def_path_hash(def)` and enter every SMT name,
+equality and hashing; `order` is the old `DefIndex`, used only to sort closure
+declarations. The initial `8d03ab54` used only the local half; `cc7bbce4`
+retains the complete crate-qualified identity. Imported closures can have equal
+indices; `3f7f6c51` introduced a stable tie-break, extended to the complete pair
+by cc7, removing a separately reproduced run-to-run ordering defect. The regression exercises two imported
 closures with the same original index in 16 fresh processes. For the same input the fixed fork's SMT
 equals the previous fork's up to a one-to-one renaming of closure numbers and
 line wrapping (`renaming-equal.py` in the repro: vest, all 298 logs).
@@ -121,10 +124,16 @@ verdict equivalence.
 
 The imported-closure ordering regression passes on macOS; its test log is
 SHA-256 `18b1cfa6f2ea7e3cfb02cdc4a0bea63c3604abf97795a50206d7702c3df13937`.
-The combined source candidate `8a373f81` passes the fork CI and the selected
-macOS runtime tests, including all nine `output_json` tests. Full native
-corpus conformance, determinism, the full source suite, and renewed measured
-gain on the final runtime remain gates. Sail's runtime pin is unchanged.
+The earlier combined source `8a373f81` passed the fork CI and selected macOS
+runtime tests, including all nine `output_json` tests; those results do not
+qualify the later identity layout. The
+[full closure-identity record](../validation/closure-full-identity.md) now records
+cc7's matching native builds, full source suite, FAST/STANDARD/default DEEP,
+147-input three-run determinism, literal recipe verdict/diagnostic matrices and
+renewed 54-row measurement. Helper insertion improves 27.6% over `73dea021`;
+body edits are 1.2% slower. The Mac delivery components pass while their enclosing
+global-cache inventory guard remains FAIL, with its limit and raw evidence
+preserved. Selection takes effect with the matching runtime pin.
 
 The broader #118 [incidental-edit acceptance](../validation/incidental-edits.md)
 has a frozen 15-case catalogue over Vest, CapybaraKV and IronKV, including

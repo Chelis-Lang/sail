@@ -81,6 +81,9 @@ that start from a stored vstd against plain stock Verus. The
 native-input mismatch, temporary v1 quarantine, its cost and qualification. The
 [incidental-edit record](validation/incidental-edits.md) tracks the frozen
 three-project edit catalogue and the combined runtime's remaining gates.
+The [full closure-identity record](validation/closure-full-identity.md) tracks the
+subsequent runtime, its matched edit measurements and completed qualification
+with platform/scope limits.
 Raw logs stay outside the
 repository and are cited by SHA-256. Earlier per-run records and unselected
 engine candidates are preserved in the `archive/m7-contracts-f7103bf` tag.
