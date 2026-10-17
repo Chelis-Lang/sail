@@ -58,7 +58,10 @@ That limitation cannot authorize a new persisted verdict-reuse decision.
    Copy checked retained outputs into Sail's owned target, then repeat the
    input and dependency checks before replaying the stored diagnostics and
    publishing the ordinary staged receipt. A mismatch removes placed outputs
-   and runs the real verifier. There is no intermediate compiler read to
+   and runs the real verifier. A failed removal is an explicit fatal cleanup
+   result: invalidate the receipt and refuse the attempt or force a genuinely
+   fresh compilation; never hide it as a cache miss. There is no intermediate
+   compiler read to
    certify during restoration; final exact content is what selects the proof.
 6. Keep four proofs per logical target, with exact compiler variants remaining
    distinct, and preserve the establishing run. A restored proof is reported

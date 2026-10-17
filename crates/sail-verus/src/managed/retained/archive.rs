@@ -78,6 +78,54 @@ impl Entry {
             && self.compiler_reads.size <= ENTRY_LIMIT
             && !self.outputs.is_empty()
             && self.outputs.len() <= 32
+            && within_budget(self)
+    }
+}
+
+fn within_budget(entry: &Entry) -> bool {
+    entry.stdout.size <= OUTPUT_LIMIT
+        && entry.stderr.size <= OUTPUT_LIMIT
+        && entry.compiler_reads.size <= ENTRY_LIMIT
+        && entry
+            .outputs
+            .iter()
+            .all(|output| output.content.size <= FILE_LIMIT)
+        && entry
+            .outputs
+            .iter()
+            .map(|output| &output.content)
+            .chain([&entry.stdout, &entry.stderr, &entry.compiler_reads])
+            .try_fold(0u64, |total, content| total.checked_add(content.size))
+            .is_some_and(|total| total <= TOTAL_LIMIT)
+}
+
+/// A partial placement could not be removed. The eventual driver caller must
+/// invalidate the unit's receipt and refuse this attempt or force a genuinely
+/// fresh compilation; this is never an ordinary cache miss.
+#[derive(Debug)]
+struct RollbackFailure {
+    paths: Vec<(PathBuf, String)>,
+}
+
+struct Restored {
+    receipt: Receipt,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+}
+
+fn rollback(written: Vec<PathBuf>) -> std::result::Result<(), RollbackFailure> {
+    let mut failures = Vec::new();
+    for path in written {
+        if let Err(error) = std::fs::remove_file(&path)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            failures.push((path, error.to_string()));
+        }
+    }
+    if failures.is_empty() {
+        Ok(())
+    } else {
+        Err(RollbackFailure { paths: failures })
     }
 }
 
@@ -209,8 +257,11 @@ fn restore(
     output_directory: &Path,
     output_names: &BTreeSet<std::ffi::OsString>,
     after: impl Fn() -> bool,
-) -> Option<(Receipt, Vec<u8>, Vec<u8>)> {
-    for path in entries(&target(root, &basis.identity)?) {
+) -> std::result::Result<Option<Restored>, RollbackFailure> {
+    let Some(directory) = target(root, &basis.identity) else {
+        return Ok(None);
+    };
+    for path in entries(&directory) {
         let Some(raw) = bytes(&path, ENTRY_LIMIT) else {
             continue;
         };
@@ -294,14 +345,16 @@ fn restore(
                 .append(true)
                 .open(&path)
                 .and_then(|file| file.set_modified(SystemTime::now()));
-            return Some((entry.receipt, stdout, stderr));
+            return Ok(Some(Restored {
+                receipt: entry.receipt,
+                stdout,
+                stderr,
+            }));
         }
-        for path in written {
-            let _ = std::fs::remove_file(path);
-        }
-        return None;
+        rollback(written)?;
+        return Ok(None);
     }
-    None
+    Ok(None)
 }
 
 /// Ported retention I/O. Not called until compiler-read admission is connected.
@@ -323,17 +376,6 @@ fn retain(
         || entry.stderr.size > OUTPUT_LIMIT
     {
         return None;
-    }
-    let mut size = 0u64;
-    for content in entry.outputs.iter().map(|output| &output.content).chain([
-        &entry.stdout,
-        &entry.stderr,
-        &entry.compiler_reads,
-    ]) {
-        size = size.checked_add(content.size)?;
-        if size > TOTAL_LIMIT {
-            return None;
-        }
     }
     let blobs = root.join("blobs");
     std::fs::create_dir_all(&blobs).ok()?;
@@ -577,6 +619,48 @@ mod tests {
         Ok(receipt)
     }
 
+    fn aggregate_refusal(entry: &Entry) -> Result<(), Box<dyn std::error::Error>> {
+        let mut oversized = entry.clone();
+        oversized.outputs = (0..5)
+            .map(|index| {
+                let mut output = entry.outputs[0].clone();
+                output.path = output.path.with_file_name(format!("large-{index}.rmeta"));
+                output.content.size = FILE_LIMIT;
+                output
+            })
+            .collect();
+        let oversized = oversized.seal().ok_or("oversized seal")?;
+        assert!(
+            oversized
+                .outputs
+                .iter()
+                .all(|output| output.content.size <= FILE_LIMIT)
+        );
+        assert!(!within_budget(&oversized));
+        assert!(!oversized.intact());
+        Ok(())
+    }
+
+    fn late_cleanup_refusal(
+        root: &Root,
+        basis: &Basis,
+        names: &BTreeSet<OsString>,
+        artifact: &Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        std::fs::write(artifact, b"artifact B")?;
+        let result = restore(&root.0, basis, &root.0, names, || {
+            assert!(std::fs::remove_file(artifact).is_ok());
+            assert!(std::fs::create_dir(artifact).is_ok());
+            false
+        });
+        let error = result.err().ok_or("rollback failure was hidden")?;
+        assert_eq!(error.paths.len(), 1);
+        assert_eq!(error.paths[0].0, artifact);
+        assert_ne!(error.paths[0].1, "");
+        assert!(artifact.is_dir());
+        Ok(())
+    }
+
     #[test]
     fn actual_archive_restores_establishing_receipt_and_rolls_back_a_late_mismatch()
     -> Result<(), Box<dyn std::error::Error>> {
@@ -639,6 +723,7 @@ mod tests {
         }
         .seal()
         .ok_or("seal")?;
+        aggregate_refusal(&entry)?;
         retain(
             &root.0,
             &entry,
@@ -648,15 +733,19 @@ mod tests {
         .ok_or("retain")?;
         std::fs::write(&artifact, b"artifact B")?;
         let names = BTreeSet::from([OsString::from("libunit-abcd.rmeta")]);
-        let (restored, out, err) =
-            restore(&root.0, &basis, &root.0, &names, || true).ok_or("restore")?;
-        assert_eq!(restored.invocation.run_id, "establishing-A");
+        let restored = restore(&root.0, &basis, &root.0, &names, || true)
+            .map_err(|error| format!("rollback: {:?}", error.paths))?
+            .ok_or("restore")?;
+        assert_eq!(restored.receipt.invocation.run_id, "establishing-A");
         assert_eq!(std::fs::read(&artifact)?, b"artifact A");
-        assert_eq!(out, b"literal stdout");
-        assert_eq!(err, b"literal diagnostics");
+        assert_eq!(restored.stdout, b"literal stdout");
+        assert_eq!(restored.stderr, b"literal diagnostics");
         std::fs::write(&artifact, b"artifact B")?;
-        assert!(restore(&root.0, &basis, &root.0, &names, || false).is_none());
+        assert!(
+            restore(&root.0, &basis, &root.0, &names, || false).is_ok_and(|value| value.is_none())
+        );
         assert!(!artifact.exists());
+        late_cleanup_refusal(&root, &basis, &names, &artifact)?;
         Ok(())
     }
 }
