@@ -38,6 +38,19 @@ the earlier all-unit bundles. Source-path remapping is confined to the named
 experiment and uses the previously built fork support; this change selects
 no runtime or release asset.
 
+On macOS, admitted native proc macros in the experiment receive one explicit
+linker option to set `LC_ID_DYLIB` to `@rpath/` plus their exact Cargo output
+basename. Ordinary linking embeds the absolute target directory, preventing
+strict fresh-project artifact equality ([VI-0026](../verus-issues/VI-0026-macos-native-install-name.md)).
+The additional literal compiler tokens enter the native input key before the
+actual child observation and are rechecked at completion. Source, library,
+solver and output bytes remain exact; no existing binary, query or response
+is normalized. Linux and nonexperimental builds receive no option. A minimal
+pinned-compiler control establishes identical native bodies and working macro
+consumers. Actual Mac fill, fresh consumer, unchanged receipts and loader
+controls pass with complete native-body equality. Adversarial and wider runtime
+qualification remain required before selection; no Mac timing is claimed.
+
 A separate `SAIL_VSTD_BOUNDARY_LOCAL=<directory>` research mode binds both the
 literal and canonical registry root into each key. It never remaps registry
 sources and may retain those literal paths in outputs because reuse cannot

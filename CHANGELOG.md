@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Experimental vstd reuse: compile admitted macOS proc macros with a stable,
+  explicitly keyed install name; native artifact comparisons remain exact.
+
 - Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;
   version execution and full reads still occur on every handshake. All 50

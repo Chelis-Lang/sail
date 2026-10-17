@@ -309,9 +309,20 @@ fresh-project pairs on c7i.4xlarge in us-east-1: without reuse
 1.171538 s with every receipt reused. All pairs have matching complete current
 function verdicts and empty diagnostics, retaining the actual establishing run.
 These compare experimental Sail with and without boundary reuse, not stock.
-Workspace, solver, all local E2E phases, PR conformance and FAST complete with
-zero differences; STANDARD and final source/runtime checks are still running.
-No final archive or complete acceptance claim follows yet.
+The same source completes the native workspace gate (698 tests plus doctests),
+solver tests (35), all local E2E phases plus extra, PR conformance (33 units),
+FAST (147 units / 3,450 functions) and STANDARD (159 units / 12,726 functions).
+Every corpus tier passes in pass-through, fill, warm and engine modes with zero
+Different, Unstable, infrastructure errors or skipped projects. STANDARD records
+one resource-limit drift unit in each arm, with no verdict difference. Tracked
+source checks pass after every step and the final worktree is clean.
+
+These regression gates use the selected cc7 runtime and unchanged stock oracle;
+the paired experimental performance control alone uses observer fork `0fe2bfb3`.
+They do not qualify the observer runtime over the corpus or supersede the native
+producer gaps below. The final raw archive is
+`157f4084b6774190dc8af7bf431a05843051fc7ea33b0205947bad64131e352c`.
+The schema-9 successor remains independently unqualified and disabled by default.
 
 A subsequent combined source review finds two remaining producer boundaries:
 a native source or transitive native library can be replaced during compilation
@@ -398,3 +409,97 @@ controls are unrun. The generalized wait leaves full graph admission unchanged.
 Its first Mac test build at `cbf8c71d` fails because the pinned rustix has no
 `mkfifoat`; the FIFO test now uses the existing host-utility pattern on both
 platforms. This build failure provides no runtime qualification.
+
+The portable successor at `e8b0399f` passes all 697 enabled Mac host tests and
+publishes a real vstd unit with 1,872 function verdicts after 24 native output
+records. Collection then fails while copying an IPC socket; this does not
+qualify the unrun fresh-consumer or unchanged steps. A separate continuation
+uses that exact retained fill, but its fresh consumer misses: a transient
+first capture refuses and the freshly compiled macro bodies also differ.
+The bounded retry successor passes eight graph filesystem tests and all 698
+enabled Mac host tests (35 skipped). Its Linux acceptance is separate.
+
+The retained Mac load commands expose the absolute target path in
+`LC_ID_DYLIB`; [VI-0026](../verus-issues/VI-0026-macos-native-install-name.md)
+records a minimal pinned-compiler reproduction and the stable install-name
+control. The experimental Mac successor `8423f803` binds the additional compiler
+tokens and still compares full native artifact bytes. Its actual public fill,
+fresh consumer, unchanged and loader checks pass with genuine fork `067d0d7c`.
+Each returns the same 1,872 function verdicts, also matching the earlier `067`
+fill without the install-name option. The fresh consumer reports machine-local
+reuse with the actual fill's establishing invocation; the unchanged run reuses
+every target receipt. Both complete native macro bodies are byte-identical
+between the two projects. Runtime and executable inventories remain unchanged;
+all 699 enabled Mac host tests and clippy pass, with 35 tests skipped.
+Acceptance-index SHA-256:
+`f43a196eb76f343c3f7a182307fff14e960e21ac3cc9e486fcbf2fa1d53cbebb`.
+This is a positive public-API, native-input and loader control, not stock
+conformance, an adversarial mutation check, default selection or a Mac timing
+claim. Linux qualification remains separate.
+
+### Linux schema-9 controls and remaining runtime qualification
+
+Exact Sail `3c151304` and its fixture-only derivative `842e86fe` run against
+retained observer-runtime bytes from fork `067d0d7c` on a native
+c7i.4xlarge (16 CPUs), us-east-1. Selected-cc7 workspace checks pass 709 tests
+plus two doctests (35 skipped), solver checks pass 35 tests, and all local
+E2E phases plus extra pass. These regression checks do not qualify the observer
+runtime's corpus behavior. Their retained archive is
+`e11d2de4fb1869d1f9e2e6c763486da188b5ce7f9c34d150df18d83683775d58`.
+
+The eight-call experimental cost screen retains every sample. Baseline
+fresh-project times are 35.889799 / 35.720165 / 36.214330 seconds; reuse times
+are 10.083949 / 9.969854 / 10.327060 seconds. Median time falls from
+35.889799 to 10.083949 seconds (3.559×). Fill takes 38.935973 seconds and the
+unchanged run takes 1.328956 seconds. Every call is Current with the same
+1,872 complete function verdicts and diagnostics; fresh consumers retain the
+actual fill's establishing run. This compares opt-in experimental Sail with
+and without boundary reuse, not stock or default-mode performance.
+
+The actual native-source A→B→A control records the compiler's B source reads,
+rejects the producer, and returns Historical with zero committed receipts and
+zero published units. The later remaining-only transitive A→B→A control passes
+in 68.764 seconds: the native child and actual CLI root exit zero, three
+successful opens use the private A graph and none use the mutated public B
+paths. All 366 complete literal solver-input stream multiplicities and every
+function verdict and diagnostic match the retained clean-A control. All 5,271
+regular per-thread trace files (16,444,939 bytes) are retained and checked under
+the prospectively declared 8,192-file / 64 MiB bounds. Its owned daemon starts
+outside tracing and is reaped; the trace adapter is restored. Final checks pass
+for all three Sail source maps, all fourteen original runtime-package members
+and all four retained Sail binaries. The final raw archive is
+`b969e8cfdf773eaaa8b3a6ec0e0aa4ca7e3cee55f165dc843c24e4c50099e235`;
+independent full-member and semantic review is
+`358bc6422217f3c6d6dd92029642d9326bbad6e935b8c136f097cebfed4b7000`.
+
+The enclosing run remains **FAIL**. After the control passes, the real corpus
+entry rejects the packaged runtime with `SAIL3120`, missing required
+`build_seconds`. Python archive installation had accepted its minimal manifest;
+Rust `Installed::at` requires the complete normal build manifest. FAST executes
+no corpus cases and STANDARD is unrun. No old timing or manifest field is
+invented to repair this record. The original fork postbuild source guard also
+remains failed/unproven: it ran from `source/` rather than the repository root.
+The genuine compiler/vstd build is scoped evidence, not a successful final
+source guard or a qualified installable runtime.
+
+The next supplier combines the reviewed binder/test-isolation and compiler
+observation sources at fork `e5365c05`. Source review establishes an exact
+production union, not runtime acceptance. A genuine normal build must retain
+its actual complete manifest, matching vstd/exports and correct-root source
+checks, then pass the actual Rust runtime admission before corpus execution.
+Same-source full RVT, determinism, four-arm FAST/STANDARD/DEEP and matching Mac
+runtime/delivery gates remain required for final selection. Completed component
+CI, cost and mutation controls keep their original source/runtime scope; no
+combined result, public pin or default enablement follows from them.
+
+Failed native attempts remain indexed without replacing their scope:
+
+- 2026-10-17, fork `067d0d7c`: build succeeds, enclosing final source guard FAIL
+  from the wrong cwd; archive `e02f0eeed94a21a700cb6a1af901e261d97eaa7446f824d1526337cd01b8948c`.
+- 2026-10-17, Sail `3c151304`: selected-runtime CI passes, later host build FAIL
+  from a Docker-owned conventional target; archive `e11d2de4fb1869d1f9e2e6c763486da188b5ce7f9c34d150df18d83683775d58`.
+- 2026-10-17, Sail `3c151304`: cost and source controls pass, enclosing
+  transitive-control timeout FAIL (cause unknown); 5,281 trace files also exceed
+  its frozen 4,096-file bound. Archive `f91ba8386558649b8af7efc0992b99a88498057671e96be6a3c5cdfb8572c7c7`.
+- 2026-10-17, Sail `3c151304`: remaining transitive control PASS, enclosing
+  corpus-startup manifest FAIL; archive `b969e8cfdf773eaaa8b3a6ec0e0aa4ca7e3cee55f165dc843c24e4c50099e235`.
