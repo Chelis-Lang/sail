@@ -155,7 +155,6 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3130` | Note: a dependency (such as vstd) was verified by a run in another workspace and placed in this new project from Sail's [dependency store](decisions/0045-dependency-store.md) | None; plain Cargo-Verus would have verified it in this run, and its recorded report is the one shown |
 | `SAIL3131` | Warning: a dependency store entry is damaged (its checksums or digests fail), so it was ignored | None; the dependency is verified normally. Delete `<cache>/dependency-store/` if the warning repeats |
 | `SAIL3132` | Research note: a complete dependency proof was replayed at the vstd compiler boundary, with its original establishing invocation | The unselected [compiler-boundary experiment](validation/vstd-compile-boundary.md) records whether the proof was established locally or in a release build; this does not enable the quarantined native-artifact store |
-| `SAIL3133` | Reserved: the unselected compiler-boundary prototype previously emitted a damaged-entry warning | Damaged entries now miss silently and run normal compilation; the optional research trace retains the refusal reason |
 | `SAIL3134` | Research dependency recording could not finish, or recorded no complete verified dependency | Inspect the retained skipped-entry reason and compiler output; do not treat the incomplete directory as a usable release bundle |
 
 ## Portfolio and solver libraries

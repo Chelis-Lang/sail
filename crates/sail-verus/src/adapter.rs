@@ -486,7 +486,11 @@ fn driver() -> Result<ExitCode> {
         return Ok(ExitCode::SUCCESS);
     }
     let mut cmd = Command::new(&wrapper);
-    cmd.args(&launcher_args)
+    let compiler_args = call.as_ref().map_or(
+        launcher_args.as_slice(),
+        crate::managed::shipped::Call::compiler_arguments,
+    );
+    cmd.args(compiler_args)
         .envs(&launcher_environment)
         .args(observation_args(flags, logs.as_deref()))
         .args(

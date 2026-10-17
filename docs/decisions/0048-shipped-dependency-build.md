@@ -33,7 +33,7 @@ release builds from machine-local verification through later receipt reuse. Nati
 path. The v1 machine-local store stays disabled.
 
 The prototype requires `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Engine, focused and
-loader-variable runs decline it. Schema 7 and a distinct bundle kind reject
+loader-variable runs decline it. Schema 8 and a distinct bundle kind reject
 the earlier all-unit bundles. Source-path remapping is confined to the named
 experiment and uses the previously built fork support; this change selects
 no runtime or release asset.
@@ -89,8 +89,19 @@ BLAKE3/size constants. Dep-info alone can describe a later compiler phase or
 replace a source-map hash with an extra tracked-file reread. This does not change
 compiler options or add a product dependency. It rejects changed compiler reads
 even if the filesystem is restored before publication, but it does not attest
-arbitrary proc-macro tracked files or mapped native artifacts. Those remaining
-input boundaries still block default selection.
+arbitrary proc-macro tracked files or mapped native artifacts.
+
+A controlled native-library substitution subsequently produces a different
+vstd metadata/VIR pair under the original key and a requested-project metadata
+import error (#222). Its proof-canary control remains failed. The successor
+therefore binds consumption by copying exactly builtin metadata and the two
+admitted macro libraries into a fresh private directory, verifying those bytes
+against current-run native provenance and forwarding those exact paths to the
+compiler. No hardlinks or native Cargo output replay are used. Copies remain
+intact through publication; old schema-7 records are rejected. Additional native
+graphs and adjacent VIR still decline. The actual Linux dylibs depend only on
+platform runtime libraries. Both-platform loader checks, literal parity and
+protected mutation controls still block default selection.
 
 ## Consequences
 

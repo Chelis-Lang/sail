@@ -1,5 +1,13 @@
 # Known issues and acceptance limits
 
+The disabled compiler-boundary research prototype can publish incompatible vstd
+metadata after a native input is substituted and restored
+([#222](https://github.com/Chelis-Lang/sail/issues/222)). Private verified native
+copies and schema 8 pass the controlled Linux substitution and fresh-consumer
+check on the research branch; both-platform and full parity remain unqualified. Default mode does not use
+this prototype; the native-artifact store remains quarantined. See
+[the implementation record](validation/vstd-compile-boundary.md#private-native-inputs-implementation-native-qualification-pending).
+
 This page lists the defects and validation failures that are open on the M7
 development branch, with one pointer each. Each gate's status, best evidence
 and indexed failed attempts are in [M7 validation](validation/m7.md); the
