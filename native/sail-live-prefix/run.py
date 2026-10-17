@@ -49,6 +49,8 @@ def main():
     parser.add_argument('--fresh-only', action='store_true')
     parser.add_argument('--experiment-numeric-time-only', action='store_true',
                         help='Research only: only numeric :time response values may vary; raw bytes retained')
+    parser.add_argument('--experiment-kernel-accounting-owner', action='store_true',
+                        help='Research only: sole wait4 owner and complete kernel lifetime peak/CPU')
     parser.add_argument('--fresh-runs', type=int, default=3)
     args = parser.parse_args()
     if not 0 <= args.preparation_window <= 3600 or any(
@@ -60,6 +62,8 @@ def main():
         parser.error('resident memory budget must be positive')
     if args.native_metrics and (os.uname().sysname, os.uname().machine) != ('Linux', 'x86_64'):
         parser.error('performance metrics require native x86-64 Linux')
+    if args.experiment_kernel_accounting_owner and not (args.experiment_numeric_time_only and args.native_metrics):
+        parser.error('kernel owner requires native metrics and named numeric-time experiment')
     args.out.mkdir(parents=True, exist_ok=False)
     z3 = str(Path(args.z3).resolve())
     manifest = dict(solver_sha256=args.solver_sha256, argv=[z3, '-smt2', '-in'], platform=list(os.uname()),
@@ -72,6 +76,11 @@ def main():
                                    for name in ['run.py', 'live_prefix.py', 'response_policy.py', 'memory_lifecycle.py']})
     manifest["response_policy"] = response_policy.EXPERIMENT if args.experiment_numeric_time_only else "exact-bytes"
     manifest["experiment_only"] = args.experiment_numeric_time_only
+    if args.experiment_kernel_accounting_owner:
+        import kernel_accounting
+        manifest['resource_policy'] = kernel_accounting.EXPERIMENT
+        manifest['source_sha256'].update({name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
+                                         for name in ['owned_wait4.py', 'kernel_accounting.py']})
     pool = None
 
     def write_streams(name, result):
@@ -79,6 +88,10 @@ def main():
             (args.out / (name + '.' + stream)).write_bytes(result[stream])
 
     def fresh(name, timeout, data):
+        if args.experiment_kernel_accounting_owner:
+            result = kernel_accounting.fresh(z3, args.solver_sha256, data, timeout, args.max_bytes)
+            write_streams(name, result)
+            return result
         process = subprocess.Popen([z3, '-smt2', '-in'], stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         buffers = [bytearray(), bytearray()]
@@ -222,9 +235,13 @@ def main():
                               equal_to_first=equal, sampled_peak_rss=result['sampled_peak_rss'],
                               sampled_peak_pss=result['sampled_peak_pss'], rss_samples=result['rss_samples'],
                               memory_observations=result['memory_observations'])
+                if args.experiment_kernel_accounting_owner:
+                    record.update({key: result[key] for key in ['kernel_accounting', 'kernel_raw_observation',
+                                  'kernel_resource_gate_pass', 'resource_policy', 'input_bytes_written']})
                 if args.native_metrics:
                     record.update(guarded_wall=time.monotonic() - started,
-                                  solver_cpu=cpu_children() - before_cpu)
+                                  solver_cpu=(kernel_accounting.cpu(result['kernel_accounting']) if args.experiment_kernel_accounting_owner
+                                              else cpu_children() - before_cpu))
                 if args.experiment_numeric_time_only:
                     comparison = response_policy.compare((first or result)["stdout"], result["stdout"])
                     record["experiment_comparison"] = comparison
@@ -253,15 +270,18 @@ def main():
             try:
                 pool = OneUsePool(z3, args.solver_sha256, slots=1, max_bytes=args.max_bytes,
                                   ttl=args.ttl, run_timeout=args.run_timeout, max_input_bytes=args.max_input_bytes,
-                                  experiment_numeric_time_only=args.experiment_numeric_time_only)
+                                  experiment_numeric_time_only=args.experiment_numeric_time_only,
+                                  experiment_kernel_accounting_owner=args.experiment_kernel_accounting_owner)
                 key = pool.seed(prefix, expected)
                 ready = pool.wait_ready(key, args.preparation_window)
                 manifest.update(prefix_key=key, ready=ready)
                 entry = pool.entries.get(key)
+                if args.experiment_kernel_accounting_owner and entry is None:
+                    entry = pool.last_attempt
                 if entry is not None:
                     manifest['prepared_pid'] = entry.pid
                 preparation_completed = time.monotonic()
-                warm_cpu = proc_cpu(entry.pid) if args.native_metrics and ready else None
+                warm_cpu = proc_cpu(entry.pid) if args.native_metrics and ready and not args.experiment_kernel_accounting_owner else None
                 attached = time.monotonic()
                 result = pool.consume(key, data) if ready else None
                 manifest['refusal'] = entry.failure if entry else pool.last_refusal
@@ -270,11 +290,29 @@ def main():
                 manifest['refusal'] = str(error)
             finally:
                 if pool is not None:
-                    pool.close()
+                    try:
+                        pool.close()
+                    finally:
+                        if args.experiment_kernel_accounting_owner:
+                            entry = entry or pool.last_attempt
+                            if entry is not None:
+                                # Retain the failed owned attempt even when
+                                # completion/FD cleanup itself raises. No later
+                                # fallback can turn that refusal into success.
+                                with entry.changed:
+                                    write_streams('preparation-attempt', dict(stdout=bytes(entry.stdout), stderr=bytes(entry.stderr)))
+                                    manifest['preparation_attempt'] = dict(
+                                        claimed=entry.claimed, wrote_prefix=entry.written,
+                                        exit=entry.kernel_accounting['exit'] if entry.kernel_accounting else None,
+                                        failure=entry.failure, kernel_accounting=entry.kernel_accounting,
+                                        kernel_raw_observation=entry.process.raw_observation() if hasattr(entry, 'process') else None,
+                                        kernel_accounting_error=entry.kernel_accounting_error,
+                                        cleanup_errors=entry.cleanup_errors)
             if entry is not None:
-                write_streams('preparation-attempt', dict(stdout=bytes(entry.stdout), stderr=bytes(entry.stderr)))
-                manifest['preparation_attempt'] = dict(claimed=entry.claimed, wrote_prefix=entry.written,
-                                                       exit=entry.process.returncode, failure=entry.failure)
+                if not args.experiment_kernel_accounting_owner:
+                    write_streams('preparation-attempt', dict(stdout=bytes(entry.stdout), stderr=bytes(entry.stderr)))
+                    manifest['preparation_attempt'] = dict(claimed=entry.claimed, wrote_prefix=entry.written,
+                                                           exit=entry.process.returncode, failure=entry.failure)
                 if not manifest.get('ready') and not manifest.get('refusal'):
                     manifest['refusal'] = 'not ready at request time'
             prepared_cpu = cpu_children() - children_before
@@ -312,6 +350,16 @@ def main():
                     manifest['stderr_equal'] and manifest['exit_equal'] and manifest['identity_stable'] and
                     manifest['mode'] == 'one-use-live-prefix' and manifest['native_images_verified'] and
                     not result['error'] and not reference['error'] and result['exit'] == 0 and reference['exit'] == 0)
+            if args.experiment_kernel_accounting_owner:
+                prepared_record = entry.kernel_accounting if entry is not None else None
+                manifest['kernel_resource_records'] = dict(prepared=prepared_record,
+                    fallback=result.get('kernel_accounting') if manifest['mode'] == 'fresh-fallback' else None,
+                    fresh_reference=reference.get('kernel_accounting'))
+                manifest['candidate_kernel_resource_gate_pass'] = (manifest['mode'] == 'one-use-live-prefix' and
+                    result.get('kernel_accounting') is not None and not (entry.cleanup_errors if entry else True))
+                manifest['fresh_kernel_resource_gate_pass'] = reference.get('kernel_resource_gate_pass', False)
+                if not (manifest['candidate_kernel_resource_gate_pass'] and manifest['fresh_kernel_resource_gate_pass']):
+                    manifest.update(candidate_gate_pass=False, experiment_candidate_gate_pass=False)
             if args.native_metrics:
                 manifest['native_metrics'] = dict(background_and_serving_cpu=prepared_cpu,
                     candidate_total_solver_cpu=prepared_cpu + fallback_cpu, fallback_solver_cpu=fallback_cpu,
@@ -320,6 +368,14 @@ def main():
                     guarded_fresh_reference_wall=reference_completed - reference_started,
                     fresh_reference_cpu=cpu_children() - reference_cpu_start,
                     scope='one guarded sample; real background CPU and validation overhead are included')
+                if args.experiment_kernel_accounting_owner:
+                    prepared_cpu = kernel_accounting.cpu(prepared_record)
+                    fallback_cpu = kernel_accounting.cpu(result.get('kernel_accounting')) if manifest['mode'] == 'fresh-fallback' else 0
+                    manifest['native_metrics'].update(background_and_serving_cpu=prepared_cpu,
+                        candidate_total_solver_cpu=(prepared_cpu + fallback_cpu if prepared_cpu is not None and fallback_cpu is not None else None),
+                        fallback_solver_cpu=fallback_cpu, fresh_reference_cpu=kernel_accounting.cpu(reference.get('kernel_accounting')),
+                        prefix_cpu_observed_at_claim=None,
+                        scope='complete sole-wait4 per-child CPU; preparation+serving combined, no exact claim-time split; explicit no fallback process gives fallback CPU0')
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         manifest.update(error=str(error), candidate_gate_pass=False, experiment_candidate_gate_pass=False,
                         experiment_fresh_control_pass=False)

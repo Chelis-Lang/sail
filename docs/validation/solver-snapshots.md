@@ -177,3 +177,34 @@ following records are separate from the workload evidence above:
 | Native research workspace gate, `store-containment-integration-joined-2026-10-16/native-results/research-gate.tgz` | `339db7b82064f408cbaf9ae643da91757764d972a56ace0f233504720f1bbf39` |
 | Joined final source/runtime guards, same evidence set `final.tgz` | `85a913c6a411fd2f06570b83004c0085cfe7743075c196280abde6c995bd7314` |
 | macOS research host log, `live-prefix-research-macos-2026-10-16/host.log` | `7a397619c25714f91010f632fe49651658427543f8b98bb34e70b13548f34156` |
+
+
+## Prospective kernel-owner resource experiment
+
+The next source-only candidate uses the separately named
+`owned-wait4-lifetime-peak-v1` resource policy, selected explicitly with
+`--experiment-kernel-accounting-owner` alongside the numeric-time-only research
+comparison. It replaces sampling only in that opt-in path; the default and
+terminal-only classifier above are unchanged. All earlier failed native and
+workload attempts remain failed. No new native execution, real-trace pass,
+performance gain, selection or default integration is claimed.
+
+The assigned owner defers the sole `wait4` until actual executable/pidfd
+capture while unreaped, retains complete status/user/system/peak records, and
+requires exit zero, complete input and output, and a strictly positive kernel
+lifetime peak within the original 1GiB workload bound. The peak is a final
+admission criterion, not a live OS memory cap. No terminal-race inference or
+missing-data zero can pass. Actual held-descriptor lifetime is required;
+there is no theorem about foreign replacement descriptors or arbitrary
+process trees/shared libraries. Preparation, fallback and reference CPU are
+separately retained, with preparation and serving combined rather than an
+invented exact claim-time split.
+
+Local actual-child controls cover deferred ownership, startup cancellation,
+all worker-start positions, complete raw I/O/status, timeout, peak refusal,
+read/descriptor errors, per-child CPU and actual driver/parent entry. Linux
+image/pidfd guards are explicit doubles in these portable controls. Original
+owner controls and the unchanged exact/timing-policy/readiness/legacy-driver
+controls are also retained. The mandatory eight native controls and fixed
+IronKV/Anvil three-fresh/one-eligible evaluation remain pending and must block
+on every error. See the [research commands](../../native/sail-live-prefix/README.md#prospective-kernel-accounting-owner).
