@@ -1,5 +1,22 @@
 # One-use exact-prefix research prototype
 
+An isolated accounting-owner candidate, `owned_wait4.py`, is currently unused
+by the pool and drivers. It retains one child's actual exit status and kernel
+resource usage through a sole `wait4` reaper instead of losing accounting in
+competing `Popen.poll`/`wait` calls. Its bounded local controls exercise byte
+forwarding, nonzero/signal exits, simultaneous waiters, independent children,
+post-exit peak retention and missing-accounting refusal:
+
+```sh
+python3 -B native/sail-live-prefix/test-owned-wait4.py
+```
+
+These controls do not qualify Linux lifetime-memory accounting, executable
+identity, pool integration or a real solver performance result. Existing
+memory-observation failures remain failures; no current acceptance predicate
+or default changes. Linux qualification and independent ownership review are
+required before considering an explicitly bounded accounting experiment.
+
 This is a disabled, solver-only prototype for #158 and ADR 0040 option A. It
 is not integrated into Sail, does not cache a proof, and has no accepted
 performance result. It keeps the original pinned process alive, including its
