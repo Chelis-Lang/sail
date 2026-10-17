@@ -49,3 +49,12 @@ before drawing conclusions from an artifact.
 The original #174 combined-output failure remains unresolved. Its controlled
 three-arm reproduction did not reproduce the disagreement and did not qualify
 the memo candidate. See the [validation record](validation/e2e-output-evidence.md).
+
+The managed CI phases separately retain a `managed-acceptance` artifact on
+failure. Every bounded verification writes its original `verification-NN.stdout`
+and `.stderr` before its completion metadata. The operation JSON links these
+streams and records their sizes, status and duration. This also preserves the
+background stock oracle's diagnostics when a concurrent managed timeout prevents
+the test from consuming the oracle's result. Existing deadlines, assertions and
+process-group termination are unchanged; the separate streams do not establish
+their combined write order.

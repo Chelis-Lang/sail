@@ -12,8 +12,12 @@ are in the `archive/m7-contracts-f7103bf` tag.
   Changing executable bytes at fixed path, length and restored mtime returned
   the preceding SHA in two real HELLO connections on the retained private
   Mac CLI. No wrong proof was tested. A candidate removes the metadata memo;
-  native gate, solver, full E2E and four-mode FAST checks pass; STANDARD,
-  final integrity and performance qualification remain pending. See the
+  native gate, solver, full E2E, four-mode FAST and STANDARD checks, and
+  final source/runtime/binary integrity checks pass. Exact-source macOS host
+  checks and the real HELLO reproduction also pass. The complete matched 50-sample cost screen records 4.73% / 8.03%
+  slower Vest body / comment edits and an 11.26% slower quiet fresh-project
+  case on the earlier fork composition. Performance recovery and final
+  current-head CI remain pending. See the
   [identity validation record](validation/solver-identity.md).
 
 - **The original VI-0012 fork regression receives a duplicate progress flag**
@@ -60,7 +64,8 @@ are in the `archive/m7-contracts-f7103bf` tag.
   v1 consumption and publication; its native ordinary, FAST and STANDARD checks
   pass at their recorded sources. The revised nine-phase layout also passes
   its native gate, solver, full local union, independent managed entries and
-  PR subset; final CI remains pending and the original draft asset is unchanged.
+  PR subset. Containment is merged, with all required CI checks green;
+  the original draft asset is unchanged.
   Raw macOS archive SHA-256
   `7bea96ebf3bd10a292ec6508bb7322a8a799fbc25ef024a89cf256d90783f51c`.
   The unmerged #187 replacement has a separate APFS mmap guard blocker;
@@ -102,25 +107,17 @@ are in the `archive/m7-contracts-f7103bf` tag.
   but nothing is reused or recorded. Jobs, `watch` and MCP verify them the
   same way and mark the result `no_reuse`, never `current`
   ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)).
-- **The first project on a machine verifies vstd.** As with plain `cargo
-  verus verify` on a fresh target, the first `sail verify` on a machine
-  verifies vstd (about 33–40 s natively). Later new projects and worktrees
-  that resolve the same vstd start from Sail's dependency store
-  ([ADR 0045](decisions/0045-dependency-store.md); 1.4 s for a new demo
-  project on rc.5). Some workspaces get a store key of their own and verify
-  vstd once more on their first run: on rc.5 the workspace of issue #121
-  did (release-candidate finding 15; which key input differed was not
-  checked; see also [#177](https://github.com/Chelis-Lang/sail/issues/177)). Shipping a
-  pre-verified vstd in the archive is
-  [#161](https://github.com/Chelis-Lang/sail/issues/161).
-- **The repair benchmark's outcome check fails on output schema v2.** It
-  hashes the per-function `tier` that schema v2 renamed, so every M6/M7 pair
-  reports `SAIL7107` although verdicts and diagnostics match. Harness only;
-  release-candidate finding 13,
-  [#179](https://github.com/Chelis-Lang/sail/issues/179).
-- **Reports omit the release suffix (low).** `sail_version` in reports is
-  the workspace version (`0.1.0`), not the build's `sail --version`
-  (`0.1.0-rc.5`). [#180](https://github.com/Chelis-Lang/sail/issues/180).
+- **Fresh projects verify vstd again while the native-artifact store is
+  quarantined.** Current main disables cross-project compiled-dependency reuse
+  under [ADR 0053](decisions/0053-disable-unqualified-native-store.md), because
+  seeding can hide a native compiler failure. A fresh small project's median
+  is 32.57 s in three native Linux rounds, versus seeded v1's 1.28 s and
+  fresh stock's 34.36 s. Same-project proof receipts and exact solver caching
+  remain available. The draft rc.5 archive still contains the older store;
+  its approximately 1.4 s second-project result is historical, not current-main
+  performance. Sound first-run recovery remains open in
+  [#187](https://github.com/Chelis-Lang/sail/issues/187), and shipped verified
+  vstd in [#161](https://github.com/Chelis-Lang/sail/issues/161).
 - **The deep stock oracle can report unseen JSON output-order variants as Different.** The
   `output_json` tests print `func-details` in stock Verus's hash order
   ([VI-0008](verus-issues/VI-0008-func-details-hash-order.md)); with 3–6
@@ -131,12 +128,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   finding 11. The new [deep fork gate](deep-verus-tests.md) compares the fork
   with and without the shim exactly, and retains the original stock-with-and-
   without-shim control with ADR 0042's diagnostic-message comparison.
-  JSON output from stock is not normalized. Native acceptance of that new
-  gate is pending; the historical stock-only results do not qualify it.
-  The current native `c0e7e0f5` stock control still fails strictly: 4,691 Same,
-  3 Unstable, 1 Different, 0 infrastructure errors; the Different JSON proof-note
-  output matched none of 11 plain runs. The explicit fork-selector routing
-  correction awaits native validation; see the [deep-tier record](validation/deep-tier.md).
+  JSON output from stock is not normalized. The corrected private `8a373f81`
+  source-suite run passes all 4,709 tests (58 ignored), with all 4,651
+  nonignored plain tests passing. That qualifies the recorded source-suite
+  scope, not an installed bundle or the subsequent full-identity fork source.
+  The original native `c0e7e0f5` stock control remains failed: 4,691 Same,
+  3 Unstable, 1 Different, 0 infrastructure errors; its Different JSON proof-note
+  output matched none of 11 plain runs. See the
+  [deep-tier record](validation/deep-tier.md).
 - **Fork JSON proof-note arrays are not deterministic.** Eight repeated
   runs of the same failing proof emit both note orders; the exact source-suite
   sample has three Differences. No verdict or rendered-diagnostic difference
