@@ -305,7 +305,7 @@ costs remain part of the candidate total.
 python3 -B native/sail-live-prefix/test-owned-wait4.py
 python3 -B native/sail-live-prefix/test-kernel-owner.py
 python3 -B native/sail-live-prefix/test-kernel-real-driver.py
-# Native Linux only; all eleven controls must pass before either real dataset:
+# Native Linux only; all twelve controls must pass before either real dataset:
 python3 -B native/sail-live-prefix/test-kernel-owner-native.py \
   --z3 PINNED_Z3 --out NEW_NATIVE_CONTROLS
 python3 -B native/sail-live-prefix/run-real.py \
@@ -338,3 +338,13 @@ refuses `POLLERR`, `POLLNVAL`, other events or ambiguous event sets. Native
 closed-descriptor refusal is mandatory alongside the already-reaped positive.
 The API boundary is the documented [Python waitid interface](https://docs.python.org/3.12/library/os.html#os.waitid)
 and [Linux process-descriptor wait](https://man7.org/linux/man-pages/man2/waitpid.2.html).
+
+The first kernel-owner native run passed ten of eleven mandatory controls and
+failed the remaining fixture: an unknown SMT command returned `unsupported`
+and exit zero, contrary to that fixture's nonzero assumption. Both real datasets
+remained unrun. The [minimal solver reproduction](../../corpus/repros/z3-unsupported-command-exit/README.md)
+records that distinction. The corrected controls retain it as a separate exact
+exit-zero observation and use a tested parse error for actual nonzero status,
+complete accounting, retained diagnostic and resource refusal. A successful
+resource-completion gate alone is not verification. The corrected twelve-case
+native run and both real traces remain pending; no old failure becomes a pass.
