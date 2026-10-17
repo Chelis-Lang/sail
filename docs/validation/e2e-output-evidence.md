@@ -39,6 +39,11 @@ no corpus entries, runtime pins, deadlines or assertions change.
 - 2026-10-17, `1655edb5`: the first native bootstrap could not check out the
   single-branch bundle's absent default HEAD. No gate ran; an explicit detached
   checkout of the same commit corrected bootstrap before the checks above.
+- 2026-10-17, `d203b6db`: CI run 39001270003 failed managed-copies because
+  its concurrent-copy cleanup still called the old completion function
+  signature. Other required jobs passed. This was a harness defect; the caller
+  now supplies its already-captured original streams. Failed job log SHA-256
+  `872796e94327042f3262563c4ceba16cadb26904315135fb18760b9cc33082ca`.
 
 ## Native feature checkpoint
 

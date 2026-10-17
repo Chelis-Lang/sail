@@ -258,7 +258,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                     if copy not in fresh_outputs:
                         fresh_outputs[copy] = process.communicate(timeout=10)
                     out, err = fresh_outputs[copy]
-                    finish_verification(fresh_observations[copy], process.returncode,
+                    finish_verification(fresh_observations[copy], process.returncode, out, err,
                                         timed_out=copy in fresh_timed_out,
                                         cancelled=copy in fresh_cancelled)
                     (evidence / (copy.parent.name + ".stdout.json")).write_bytes(out)
