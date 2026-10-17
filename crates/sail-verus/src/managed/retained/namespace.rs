@@ -8,6 +8,20 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read as _;
 use std::path::PathBuf;
 
+// Keep the whole workspace in the content key, but absence/syntax admission
+// and actual compiler source authority cover the same closed compile roots.
+// Uncompiled workspace tools cannot add source authority to the selected lib.
+pub(super) fn closed_inventory(
+    files: &BTreeMap<PathBuf, String>,
+    roots: &BTreeSet<PathBuf>,
+) -> BTreeMap<PathBuf, String> {
+    files
+        .iter()
+        .filter(|(path, _)| roots.iter().any(|root| path.starts_with(root)))
+        .map(|(path, sha)| (path.clone(), sha.clone()))
+        .collect()
+}
+
 pub(super) fn admit(
     files: &BTreeMap<PathBuf, String>,
     fixed_provider_roots: &BTreeSet<PathBuf>,
@@ -191,6 +205,80 @@ fn forbidden(token: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn uncompiled_workspace_syntax_cannot_expand_the_closed_source_authority()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "sail-retained-closed-namespace-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir(&root)?;
+        let root = root.canonicalize()?;
+        let selected = root.join("selected");
+        let tool = root.join("uncompiled-tool");
+        let provider = root.join("provider");
+        for directory in [&selected, &tool, &provider] {
+            std::fs::create_dir(directory)?;
+        }
+        let ordinary = selected.join("lib.rs");
+        let unsupported = tool.join("tool.rs");
+        std::fs::write(&ordinary, b"mod ordinary;\n")?;
+        // The real Vest guide has ordinary `path` identifiers too. The
+        // conservative syntax exclusion stays unchanged within compile roots.
+        std::fs::write(&unsupported, b"#[path=\"other.rs\"] mod ordinary;\n")?;
+        let mut files = BTreeMap::new();
+        for path in [&ordinary, &unsupported] {
+            files.insert(
+                path.clone(),
+                super::super::super::files::digest(&std::fs::read(path)?),
+            );
+        }
+        let original = files.clone();
+        let fixed = BTreeSet::from([provider.clone()]);
+        let roots = BTreeSet::from([selected.clone(), provider.clone()]);
+        assert!(
+            admit(&files, &fixed).is_none(),
+            "old whole-workspace admission refuses"
+        );
+        let closed = closed_inventory(&files, &roots);
+        assert!(admit(&closed, &fixed).is_some());
+        assert!(
+            !closed.contains_key(&unsupported),
+            "unknown source is not authorized"
+        );
+        assert_eq!(
+            files, original,
+            "the complete content key inventory is untouched"
+        );
+        std::fs::write(&ordinary, std::fs::read(&unsupported)?)?;
+        files.insert(
+            ordinary.clone(),
+            super::super::super::files::digest(&std::fs::read(&ordinary)?),
+        );
+        assert!(admit(&closed_inventory(&files, &roots), &fixed).is_none());
+        std::fs::write(&ordinary, b"mod ordinary;\n")?;
+        files.insert(
+            ordinary.clone(),
+            super::super::super::files::digest(&std::fs::read(&ordinary)?),
+        );
+        let first = provider.join("foo.rs");
+        let second = provider.join("foo/mod.rs");
+        std::fs::create_dir(provider.join("foo"))?;
+        for path in [&first, &second] {
+            std::fs::write(path, b"// competing candidates\n")?;
+            files.insert(
+                path.clone(),
+                super::super::super::files::digest(&std::fs::read(path)?),
+            );
+        }
+        assert!(
+            admit(&closed_inventory(&files, &roots), &fixed).is_none(),
+            "provider ambiguity still refuses"
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[test]
     fn unsupported_namespace_tokens_refuse_even_when_split_across_macro_fragments() {
         for raw in [

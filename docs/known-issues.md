@@ -8,12 +8,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
-- **Instant-revert research has not qualified restored A** (#163). The actual
-  strict ABI gate passes, but the small A → B → A pilot reran verification on
-  returned A; Vest remained unrun. A source/filesystem regression identifies a
-  caller-versus-managed-child environment mismatch and qualifies its narrow
-  source correction. Native ABA and ordinary merge gates remain pending;
-  default behavior is unchanged. See [instant-revert validation](validation/instant-revert.md).
+- **Instant-revert research has not qualified real Vest reuse** (#163). The
+  corrected native ABI and small A → B → A pass, including zero new verifier
+  calls and the original establishing run on returned A. Vest returns Current/0
+  but reruns verification: no retained candidate or archive was created.
+  Its namespace admission includes uncompiled workspace siblings; a narrow
+  closed-source-scope correction is source-qualified only. Native Vest ABA,
+  ordinary merge gates and latency qualification remain pending; default
+  behavior is unchanged. See [instant-revert validation](validation/instant-revert.md).
 
 - **The daemon can retain a stale solver hash** ([#213](https://github.com/Chelis-Lang/sail/issues/213)).
   Changing executable bytes at fixed path, length and restored mtime returned

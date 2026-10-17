@@ -209,6 +209,25 @@ impl Observation {
 mod tests {
     use super::*;
 
+    fn assert_unknown_source_refuses(
+        request: &Observation,
+        raw: &serde_json::Value,
+        root: &Path,
+        expected: &BTreeMap<PathBuf, Content>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut extra = raw.clone();
+        extra["phases"]["verification"]["sources"]["uncompiled-tool/source.rs"] =
+            serde_json::json!({"checksum":format!("sha256={}",digest(b"source A")),"size":8});
+        let outside: Document = serde_json::from_value(extra)?;
+        assert!(
+            request
+                .admit(&outside, root, expected, &BTreeMap::new(), &BTreeMap::new())
+                .is_none(),
+            "an observed source outside the closed compile roots cannot borrow workspace membership"
+        );
+        Ok(())
+    }
+
     #[test]
     fn ghost_b_exec_a_and_final_disk_a_cannot_create_an_a_proof()
     -> Result<(), Box<dyn std::error::Error>> {
@@ -271,6 +290,7 @@ mod tests {
                     )
                     .is_none()
             );
+            assert_unknown_source_refuses(&request, &raw, &root, &expected)?;
             let mut extra = raw.clone();
             extra["phases"]["verification"]["extra_tracked_files"] = serde_json::json!([source]);
             let extra: Document = serde_json::from_value(extra)?;

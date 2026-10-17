@@ -173,10 +173,21 @@ impl Plan {
         if !snapshot.complete || !self.closure.check_sources() {
             return None;
         }
-        super::namespace::admit(&snapshot.digests, &self.closure.source_roots())?;
+        super::namespace::admit(
+            &super::namespace::closed_inventory(&snapshot.digests, &self.compile_source_roots()?),
+            &self.closure.source_roots(),
+        )?;
         snapshot.revision =
             files::digest(&serde_json::to_vec(&(&snapshot.revision, namespace(&snapshot)?)).ok()?);
         Some(snapshot)
+    }
+
+    fn compile_source_roots(&self) -> Option<BTreeSet<PathBuf>> {
+        let mut roots = self.closure.source_roots();
+        for manifest in &self.roots {
+            roots.insert(manifest.parent()?.canonicalize().ok()?);
+        }
+        Some(roots)
     }
 
     #[allow(
@@ -288,7 +299,7 @@ impl Plan {
         };
         // Whole-directory source coverage, not a dep-info-only foreign leaf:
         // adding a sibling module must change the namespace/content key too.
-        let whole_roots: Vec<_> = sources.roots.iter().filter(|root| root.is_dir()).collect();
+        let compile_roots = self.compile_source_roots()?;
         let excluded: Vec<_> = sources
             .excluded
             .iter()
@@ -298,7 +309,7 @@ impl Plan {
             .digests
             .iter()
             .filter(|(path, _)| {
-                whole_roots.iter().any(|root| path.starts_with(root))
+                compile_roots.iter().any(|root| path.starts_with(root))
                     && !excluded.iter().any(|root| path.starts_with(root))
             })
             .map(|(path, sha)| {

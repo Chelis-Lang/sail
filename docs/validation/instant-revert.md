@@ -70,6 +70,7 @@ A → B → A, and neither qualifies retained reuse.
 | `b6d58f1e`, 2026-10-17 | Preparation FAIL; CLI/ABA unrun | Small vstd had alloc/default/std instead of the unchanged alloc/std policy. Final archive SHA-256 `c3f8da18da98a56230f117491042d8cb69e8f86dc4f34ea62e151f82c84b3f25`. |
 | `b6d58f1e`, 2026-10-17 | Strict ABI FAIL; ABA unrun | Explicit small features and real Vest metadata matched all 15 vectors/718 source hashes each. Actual public CLI returned Current/0 with 1,871 vstd and one workspace function verified, two verifier calls, six native output certificates from three native documents, but no verified certificate or archive. Final archive SHA-256 `d3aa2262687b50ec9e1aea33567d7a1b6b24b5abb6c35ff35395cc41c685e547`. |
 | `be2fd563`, 2026-10-17 | Strict ABI PASS; small ABA FAIL; Vest unrun | Genuine native and GHOST/EXEC official certificates and an archive were present. Public CLI A, B and returned-source A2 all returned Current/0, but A2 ran one new verifier and kept its new establishing run, so the unchanged strict ABA check refused. Final archive SHA-256 `4a89218d9ec7594d9c0751fc5578cbc5429b9e4da791b6869f8e800e25cf77b7`. Diagnostic Cargo verbosity was fixed throughout; no performance acceptance. |
+| `015b2937`, 2026-10-17 | Strict ABI and small ABA PASS; Vest ABA FAIL | Genuine final `e5365c05` runtime; returned small A2 and unchanged A3 use zero new verifiers and original establishing run `7854-1792273478656931181`. Vest A1/B/A2 return Current/0, but A2 runs one verifier in 28.419 seconds and has a new establishing run. No Vest candidate or archive exists. Final archive SHA-256 `bccd90bf497ba32882b9880a1e655e39da1a9799dc0dc15ed2b56a6e03c7c4b7`. Diagnostic Cargo verbosity was fixed throughout; these times are not performance qualification. |
 
 For the second attempt, the actual failed admission point was not logged. A separate genuine Cargo
 1.98.1 argument-generation control proves that the pinned workspace manifest
@@ -140,3 +141,32 @@ The policy parser and every source/feature/graph check remain unchanged.
 Actual macOS Cargo fetch and locked metadata checks match all 15 vectors and
 718 files for both small and Vest, without compiling or measuring performance.
 Native ABI/ABA on this corrected source/runtime combination remains pending.
+
+## Closed compile-source namespace correction
+
+The final-runtime native attempt qualifies the public ABI and small restored A,
+including its original establishment and zero new verifier calls. Real Vest
+reuse still fails. The captured Vest plan is present and its selected target
+is `lib`; there is no verified compiler-read document, retained candidate or
+archive entry. Investigation therefore precedes archive lookup.
+
+The plan snapshots all 216 metadata packages. Namespace admission consequently
+checks uncompiled workspace siblings: an exact production lexical check rejects
+26 of the pinned Vest archive's 261 Rust sources, while all 139 `vest_lib`
+sources pass. The complete namespace function, with real SHA-256 reads, refuses
+the whole Vest source inventory and accepts the selected-library inventory.
+This is an offline source/filesystem witness, not a native corrected run or
+proof that every other admission gate passes.
+
+The correction keeps the complete snapshot, revision and content key unchanged.
+It applies namespace exclusions and actual GHOST/EXEC source authority to the
+same closed roots: selected package directories and all admitted provider
+directories. A compiler reading any excluded sibling still fails actual
+SourceMap admission. Selected-source custom path/include syntax, provider
+candidate ambiguity, unknown sources, aliases and special entries retain their
+existing refusal checks. The 26 retained tests include real filesystem
+old-refusal/new-admission, selected-source and provider negatives; all-target
+sail-verus clippy passes on macOS. Native Vest reuse and performance remain
+pending.
+
+External source-check index SHA-256: `fbebf6df6a935fddb08ec882178b473feae4dfb13f9be3f41889f5295e0c4b1b`.
