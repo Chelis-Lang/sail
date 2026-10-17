@@ -2,7 +2,7 @@
 
 **Found:** 2026-10-16, generating the FPBench integer translation for the
 mutation corpus pilot
-([ADR 0053](../../../docs/decisions/0053-verus-mutation-corpus.md)).
+([ADR 0054](../../../docs/decisions/0054-verus-mutation-corpus.md)).
 
 **Pinned versions:** Verus `0.2026.10.04.426d8b0`, Z3 4.16.0
 (`corpus/toolchain.toml`).
@@ -65,7 +65,7 @@ macOS.
 - **A cap can be mistaken for a verdict.** A harness must report a run it
   killed as "did not finish", never as an rlimit error or a failure. The
   mutation corpus leaves such lemmas and mutants out of its catalogues and
-  lists them (ADR 0053).
+  lists them (ADR 0054).
 - **Expected outcomes and run times near the rlimit are platform-specific.**
   The same crate stops after 19 s on macOS and after 280 s on Linux, or not
   at all; see also the

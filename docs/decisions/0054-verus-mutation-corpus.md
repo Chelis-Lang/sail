@@ -1,4 +1,4 @@
-# 0053: A seeded mutation corpus for Verus programs
+# 0054: A seeded mutation corpus for Verus programs
 
 - **Status:** proposed
 - **Date:** 2026-10-16
