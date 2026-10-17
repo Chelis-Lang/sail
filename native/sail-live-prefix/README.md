@@ -263,3 +263,99 @@ and Anvil refuses a nonterminal fresh RSS observation. The earlier single
 IronKV success remains separate evidence. See the validation record for all
 raw hashes and preparation, foreground, total CPU and fallback costs. No
 continuation implementation is selected; no more lifecycle retries are planned.
+
+
+## Named kernel accounting owner
+
+`--experiment-kernel-accounting-owner` is a separate research resource policy,
+requiring `--experiment-numeric-time-only` and `--native-metrics`. Both drivers
+accept it; default behavior and the old sampled-memory classifier remain as
+recorded above. Its pool key additionally binds
+`owned-wait4-lifetime-peak-v1`. The fixed native twelve-control gate and both retained traces pass this named
+policy at `10b96ed1`. Default exact-byte gates still fail on numeric time
+variation. No old failure is reclassified, and no application gain, default
+integration or selection is accepted.
+
+The deferred owner is assigned before executable capture or worker startup.
+It retains the raw `Popen` and releases exactly one `wait4` reaper only after
+acquiring the continuously held pidfd and actual executable descriptor, while
+the child is still unreaped. The existing image check still runs at claim.
+No other poll, wait or communicate path reaps the underlying `Popen`.
+Cancellation uses the held pidfd; an unreleased child is killed and reaped by
+its already assigned owner. Missing accounting, a competing waiter, startup,
+I/O, descriptor or cleanup errors refuse and retain the available raw facts.
+The owner never converts missing usage into zero or eventual success.
+
+Admission requires complete original input delivery, bounded complete stdout
+and stderr, actual exit zero, and a strictly positive kernel lifetime peak at
+most the same configured byte limit (1GiB in the retained workload plan).
+Linux `ru_maxrss` is converted from KiB; macOS local controls use bytes. This
+post-completion peak gate is **not an OS hard live memory cap**. No `/proc`
+RSS sample, terminal-race exception or `PF_EXITING` rule is used in this named
+path. The direct pinned Z3/shared-library/process-tree assumptions remain;
+this does not establish a portable arbitrary-child resource authority.
+
+Complete per-child user and system CPU are retained for preparation plus
+serving, discarded preparation, any fallback, and the independent fresh
+reference. Preparation and serving CPU are combined because no exact
+claim-time split is observed. An absent fallback is explicitly zero work;
+missing accounting remains unknown and refuses. All preparation and fallback
+costs remain part of the candidate total.
+
+```sh
+python3 -B native/sail-live-prefix/test-owned-wait4.py
+python3 -B native/sail-live-prefix/test-kernel-owner.py
+python3 -B native/sail-live-prefix/test-kernel-real-driver.py
+# Native Linux only; all twelve controls must pass before either real dataset:
+python3 -B native/sail-live-prefix/test-kernel-owner-native.py \
+  --z3 PINNED_Z3 --out NEW_NATIVE_CONTROLS
+python3 -B native/sail-live-prefix/run-real.py \
+  --source IMMUTABLE_DATASET_DIRECTORY --out NEW_RESULTS --z3 PINNED_Z3 \
+  --experiment-numeric-time-only --experiment-kernel-accounting-owner
+```
+
+The immutable dataset must also bind `owned_wait4.py` and
+`kernel_accounting.py`. The same fixed IronKV and Anvil inputs, three fresh
+controls, one eligible continuation, exact executable/input identity, strict
+non-time response bytes and all original errors remain mandatory. Native
+control or fresh-control failure blocks the real continuation. The local controls alone do not qualify a native result; the separate actual
+native scope and costs are recorded below.
+
+
+A failed sole `wait4` never skips cancellation because `poll()` also refuses.
+Error cleanup signals only the continuously held original pidfd, then uses
+bounded `waitid(P_PIDFD, WEXITED | WNOHANG)` after the original reaper stops.
+This may retain actual termination status, but supplies no replacement CPU or
+peak record: the sample stays refused. An already-reaped `ECHILD` also needs
+an independently terminal held pidfd and cannot invent exit zero. No bare-PID
+signal/wait or automatic `Popen` destructor waiter is used in this error path.
+The mandatory native controls include both an actual descriptor-based reap
+and an already-reaped error. Actual old/new caller controls retain the initial
+refusal and the corrected cleanup scope separately.
+
+The error-only terminal check retains its actual poll event mask. It requires
+`POLLIN` for the same held descriptor, permits accompanying `POLLHUP`, and
+refuses `POLLERR`, `POLLNVAL`, other events or ambiguous event sets. Native
+closed-descriptor refusal is mandatory alongside the already-reaped positive.
+The API boundary is the documented [Python waitid interface](https://docs.python.org/3.12/library/os.html#os.waitid)
+and [Linux process-descriptor wait](https://man7.org/linux/man-pages/man2/waitpid.2.html).
+
+The first kernel-owner native run passed ten of eleven mandatory controls and
+failed the remaining fixture: an unknown SMT command returned `unsupported`
+and exit zero, contrary to that fixture's nonzero assumption. Both real datasets
+remained unrun. The [minimal solver reproduction](../../corpus/repros/z3-unsupported-command-exit/README.md)
+records that distinction. The corrected controls retain it as a separate exact
+exit-zero observation and use a tested parse error for actual nonzero status,
+complete accounting, retained diagnostic and resource refusal. A successful
+resource-completion gate alone is not verification. The corrected twelve-case native gate passes before both fixed real traces.
+Each dataset passes three fresh controls and one eligible continuation under
+the named response/resource policies, with the same prepared/serving PID and
+no fallback. IronKV preparation is 2.242s and foreground 0.294s versus guarded
+fresh 2.419s; total solver CPU is 2.282s versus 2.394s. Anvil preparation is
+53.867s and foreground 6.212s versus fresh 59.610s; total CPU is 59.848s
+versus 59.577s, so it saves no CPU. Preparation is real work, and the driver
+waits for readiness: these selected traces do not measure an actual editing
+schedule, predictor hit rate or application speedup. Complete preparation plus
+foreground wall is not improved. The enclosing native container is capped at
+28GiB; the 1GiB per-child kernel peak is a final admission check. All earlier
+failed attempts stay failed. See the [native evidence](../../docs/validation/solver-snapshots.md#named-kernel-owner-resource-experiment).
