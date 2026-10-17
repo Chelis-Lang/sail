@@ -18,10 +18,10 @@ if bash ci/check-completion.sh success 2>/dev/null; then
 fi
 
 # Keep the End to end aggregate fail-closed independently of CI completion.
-bash ci/check-e2e.sh success success success success success success success
+bash ci/check-e2e.sh success success success success success success success success success
 for result in failure cancelled skipped '' pending Success; do
-  for index in 0 1 2 3 4 5 6; do
-    phases=(success success success success success success success)
+  for index in 0 1 2 3 4 5 6 7 8; do
+    phases=(success success success success success success success success success)
     phases[$index]="$result"
     if bash ci/check-e2e.sh "${phases[@]}" 2>/dev/null; then
       echo "e2e aggregate incorrectly accepted '$result' at $index" >&2
@@ -29,7 +29,7 @@ for result in failure cancelled skipped '' pending Success; do
     fi
   done
 done
-for count in 0 1 6 8; do
+for count in 0 1 7 8 10; do
   phases=()
   for ((index=0; index<count; index++)); do phases+=(success); done
   # Portable to macOS Bash 3.2, where an empty array is unset under nounset.
