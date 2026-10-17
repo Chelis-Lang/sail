@@ -58,3 +58,29 @@ workspace clippy and 684 tests, with 35 solver/platform skips. This is a host
 correctness gate, not Linux ABI or timing acceptance. Host stderr SHA-256:
 `cb6d867932791be039e682df839ae39308c5756f2726816b03ee309097c6547e`; focused stdout SHA-256:
 `ba9015c88d6ead3ab0c515a342413934ac3e74296228086663ff509d9882aea1`.
+
+## Native ABI attempts
+
+Both attempts used source `b6d58f1e` and the genuine retained observer runtime
+`067d0d7c`; runtime and policy checks stayed strict. Neither ran small or Vest
+A → B → A, and neither qualifies retained reuse.
+
+| Source/date | Result | Evidence and limit |
+| --- | --- | --- |
+| `b6d58f1e`, 2026-10-17 | Preparation FAIL; CLI/ABA unrun | Small vstd had alloc/default/std instead of the unchanged alloc/std policy. Final archive SHA-256 `c3f8da18da98a56230f117491042d8cb69e8f86dc4f34ea62e151f82c84b3f25`. |
+| `b6d58f1e`, 2026-10-17 | Strict ABI FAIL; ABA unrun | Explicit small features and real Vest metadata matched all 15 vectors/718 source hashes each. Actual public CLI returned Current/0 with 1,871 vstd and one workspace function verified, two verifier calls, six native output certificates from three native documents, but no verified certificate or archive. Final archive SHA-256 `d3aa2262687b50ec9e1aea33567d7a1b6b24b5abb6c35ff35395cc41c685e547`. |
+
+The actual failed admission point was not logged. A separate genuine Cargo
+1.98.1 argument-generation control proves that the pinned workspace manifest
+produces 90 long diagnostic lint flags, including `--warn=unexpected_cfgs` and
+`--allow=clippy::…`, which the previous argument policy rejects. The controlled
+wrapper exits before compiling the crate; this is an ABI witness, not Verus
+acceptance or proof of the original refusal's precise cause.
+
+The source successor admits only tightly parsed long Rust/Clippy lint forms.
+It preserves every argument byte, order and valid repetition in the actual
+compiler target identity. Unknown forms, imports, loaders and compiler routes
+still decline. All-target sail-verus clippy, 22 retained tests and the 15-test
+Cargo-filter check pass on macOS (the test sets overlap), including actual
+identity changes for lint bytes/order/repetitions. Full native ABI and merge
+gates remain pending; no latency or default-selection result is claimed.

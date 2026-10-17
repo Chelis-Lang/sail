@@ -11,6 +11,7 @@ semantic versioning once the API is published.
   default verification and pins are unchanged. Its retained arena uses
   prospective aggregate byte/count admission, preserving unknown live graphs
   and taking the compiler path on fullness; native cap performance is pending.
+  Normal Cargo manifest lint arguments remain literal and keyed in the research path.
 
 - Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;

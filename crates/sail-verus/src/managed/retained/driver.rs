@@ -778,6 +778,9 @@ pub(super) fn ordinary_source<'a>(args: &'a [OsString], target: &Path) -> Option
             value if value.starts_with("-Ldependency=") => {
                 index += 1;
             }
+            value if cargo_diagnostic_lint(value) => {
+                index += 1;
+            }
             value if value.starts_with("--") => {
                 let (name, _) = value.split_once('=')?;
                 if ![
@@ -809,6 +812,34 @@ pub(super) fn ordinary_source<'a>(args: &'a [OsString], target: &Path) -> Option
         }
     }
     source
+}
+
+// Cargo emits these long forms for manifest lints, including inherited Clippy
+// lints during ordinary rustc builds. They neither select inputs nor change
+// lookup. Every literal argument remains in the compiler/retained identity.
+fn cargo_diagnostic_lint(argument: &str) -> bool {
+    let Some(name) = ["--allow=", "--warn=", "--deny=", "--forbid="]
+        .iter()
+        .find_map(|prefix| argument.strip_prefix(prefix))
+    else {
+        return false;
+    };
+    let identifier = |part: &str| {
+        part.as_bytes().split_first().is_some_and(|(first, rest)| {
+            (first.is_ascii_alphabetic() || *first == b'_')
+                && rest
+                    .iter()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(*byte, b'_' | b'-'))
+        })
+    };
+    let mut parts = name.split("::");
+    let Some(first) = parts.next() else {
+        return false;
+    };
+    match parts.next() {
+        None => identifier(first),
+        Some(second) => first == "clippy" && identifier(second) && parts.next().is_none(),
+    }
 }
 
 fn codegen(value: &str, target: &Path) -> bool {
@@ -899,6 +930,65 @@ fn output_paths(args: &[OsString], target: &Path) -> Option<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn actual_cargo_manifest_lints_are_admitted_without_hiding_other_arguments()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/retained-cargo-lints.json"
+        ))?;
+        let mut args: Vec<OsString> = [
+            "/rustc-hint",
+            "--crate-name",
+            "sample",
+            "--crate-type",
+            "lib",
+            "src/lib.rs",
+        ]
+        .into_iter()
+        .map(OsString::from)
+        .collect();
+        for value in fixture["lint_arguments"]
+            .as_array()
+            .ok_or("lint arguments")?
+        {
+            let value = value.as_str().ok_or("lint argument")?;
+            assert!(cargo_diagnostic_lint(value));
+            args.push(value.into());
+        }
+        let target = Path::new("/owned/target");
+        assert_eq!(ordinary_source(&args, target), Some("src/lib.rs"));
+        // Repeated valid Rust flags are preserved, not removed or reordered.
+        args.push("--warn=unexpected_cfgs".into());
+        assert_eq!(ordinary_source(&args, target), Some("src/lib.rs"));
+        for argument in [
+            "--warn=",
+            "--warn=clippy::",
+            "--allow=foreign::lint",
+            "--warn=clippy::a::b",
+            "--warn=foo,bar",
+            "--warn=foo bar",
+            "--warn=@response",
+            "--warn=--sysroot=x",
+            "--force-warn=unexpected_cfgs",
+            "-Aunexpected_cfgs",
+            "--sysroot=/foreign",
+        ] {
+            assert!(!cargo_diagnostic_lint(argument));
+            let mut changed = args.clone();
+            changed.push(argument.into());
+            assert!(ordinary_source(&changed, target).is_none(), "{argument}");
+        }
+        for flag in [
+            "--allow=dead_code",
+            "--warn=unexpected_cfgs",
+            "--deny=unsafe_code",
+            "--forbid=clippy::all",
+        ] {
+            assert!(cargo_diagnostic_lint(flag));
+        }
+        Ok(())
+    }
 
     #[test]
     fn source_and_proof_mode_overrides_cannot_hide_in_cargo_effective_options() {

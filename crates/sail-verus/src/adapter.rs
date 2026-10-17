@@ -414,17 +414,10 @@ fn driver() -> Result<ExitCode> {
         &std::fs::read(runtime_path).map_err(|e| Error::new("SAIL3111", e.to_string()))?,
     )
     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let identity = TargetIdentity {
-        manifest: PathBuf::from(required("CARGO_MANIFEST_DIR")?).join("Cargo.toml"),
-        name: argument(&args, "--crate-name").unwrap_or_default(),
-        crate_type: argument(&args, "--crate-type").unwrap_or_default(),
-        rustc_args_sha256: digest(
-            &args
-                .iter()
-                .flat_map(|s| s.as_encoded_bytes().iter().copied().chain([0]))
-                .collect::<Vec<_>>(),
-        ),
-    };
+    let identity = target_identity(
+        &args,
+        PathBuf::from(required("CARGO_MANIFEST_DIR")?).join("Cargo.toml"),
+    );
     crate::managed::retire_receipts(&runtime, &identity)?;
     let dir = runtime.sidecars.join(identity.key());
     std::fs::create_dir_all(dir.join("provenance"))
@@ -1039,8 +1032,67 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
     )
 }
 
+fn target_identity(args: &[OsString], manifest: PathBuf) -> TargetIdentity {
+    TargetIdentity {
+        manifest,
+        name: argument(args, "--crate-name").unwrap_or_default(),
+        crate_type: argument(args, "--crate-type").unwrap_or_default(),
+        rustc_args_sha256: digest(
+            &args
+                .iter()
+                .flat_map(|s| s.as_encoded_bytes().iter().copied().chain([0]))
+                .collect::<Vec<_>>(),
+        ),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn cargo_lint_bytes_order_and_repetitions_remain_in_the_actual_target_identity()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../tests/fixtures/retained-cargo-lints.json"))?;
+        let mut args: Vec<std::ffi::OsString> = [
+            "/rustc",
+            "--crate-name",
+            "sample",
+            "--crate-type",
+            "lib",
+            "src/lib.rs",
+        ]
+        .into_iter()
+        .map(Into::into)
+        .collect();
+        let lint_start = args.len();
+        for value in fixture["lint_arguments"]
+            .as_array()
+            .ok_or("lint arguments")?
+        {
+            args.push(value.as_str().ok_or("lint argument")?.into());
+        }
+        let manifest = std::path::PathBuf::from("/owned/Cargo.toml");
+        let original = super::target_identity(&args, manifest.clone());
+        let mut repeated = args.clone();
+        repeated.push("--warn=unexpected_cfgs".into());
+        assert_ne!(
+            original.key(),
+            super::target_identity(&repeated, manifest.clone()).key()
+        );
+        let mut reversed = args.clone();
+        reversed[lint_start..].reverse();
+        assert_ne!(
+            original.key(),
+            super::target_identity(&reversed, manifest.clone()).key()
+        );
+        args.push("--deny=unexpected_cfgs".into());
+        assert_ne!(
+            original.key(),
+            super::target_identity(&args, manifest).key()
+        );
+        Ok(())
+    }
+
     #[test]
     fn retained_routing_fixture_uses_the_real_effective_driver_decoder()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
