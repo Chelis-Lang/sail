@@ -15,7 +15,7 @@ semantic versioning once the API is published.
   native source certificates, private dependency graphs and checked output
   restoration. Native small/Vest ABA pass; performance and default qualification
   remain pending. An isolated candidate selects the exact admitted Linux runtime
-  and closed provider graph without requiring a user research flag, falling back
+  and exact path/public provider graphs without requiring a user research flag, falling back
   to fresh verification for unsupported contexts. It remains unselected.
   Retained restoration preserves the fresh outer caller environment boundary,
   original establishing provenance and bounded durable-arena admission; the

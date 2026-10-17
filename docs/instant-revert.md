@@ -15,8 +15,12 @@ Automatic eligibility is restricted to x86-64 Linux and the exact qualified
 normal runtime manifest. Every invocation uses the existing complete runtime
 validator on fresh file bytes before admitting a plan. Source, features, native
 compiler-read certificates and complete private dependency graphs must also
-satisfy the existing closed policy. This currently covers the qualified patched
-provider graph, not arbitrary unmodified public Cargo resolution. macOS, other
+satisfy a complete closed policy. The source candidate has separate exact public
+registry profiles for a current-pin new library and current-pin Vest, plus the
+unchanged 718-file path-provider profile. Public profiles bind all 15 archive
+identities, 662 file/checksum entries and exact feature/dependency vectors; they
+still need native automatic qualification. Other Cargo resolutions remain fresh.
+macOS, other
 runtimes, unsupported macro/generated inputs, foreign imports and unsupported
 source namespaces remain fresh. Loader, engine and focused contexts keep their
 existing refusal rules.

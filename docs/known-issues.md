@@ -23,7 +23,8 @@ are in the `archive/m7-contracts-f7103bf` tag.
   The first genuine-stock 72-row cost cohort failed in growth inventory after
   four stock calls; 68 rows are unrun. An isolated automatic Linux-selection
   candidate still needs native default/runtime and performance qualification.
-  macOS reuse and general public provider resolution are unsupported.
+  Two exact current-pin public graphs are source-admitted candidates only;
+  macOS reuse and other public resolutions remain unsupported.
   See [instant-revert validation](validation/instant-revert.md).
 
 - **The daemon can retain a stale solver hash** ([#213](https://github.com/Chelis-Lang/sail/issues/213)).

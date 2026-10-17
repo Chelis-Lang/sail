@@ -17,6 +17,70 @@ const POLICY: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../engine/verus/retained-vest-inputs.json"
 ));
+const PUBLIC_POLICY: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../engine/verus/retained-public-inputs.json"
+));
+
+const PUBLIC_VEST_POLICY: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../engine/verus/retained-public-vest-inputs.json"
+));
+
+/// Each profile is independently closed; path provenance never substitutes for
+/// the public archive body map or vice versa.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+enum Authority {
+    #[default]
+    OfficialVest,
+    PublicRegistry,
+    PublicRegistryVest,
+}
+
+impl Authority {
+    fn select(vstd: &Value, node: &Value) -> Option<Self> {
+        if vstd["source"].is_null() {
+            Some(Self::OfficialVest)
+        } else if vstd["source"] == "registry+https://github.com/rust-lang/crates.io-index" {
+            let features = node["features"]
+                .as_array()?
+                .iter()
+                .map(|v| v.as_str())
+                .collect::<Option<BTreeSet<_>>>()?;
+            if features == BTreeSet::from(["alloc", "default", "std"]) {
+                Some(Self::PublicRegistry)
+            } else if features == BTreeSet::from(["alloc", "std"]) {
+                Some(Self::PublicRegistryVest)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    fn bytes(self) -> &'static str {
+        match self {
+            Self::OfficialVest => POLICY,
+            Self::PublicRegistry => PUBLIC_POLICY,
+            Self::PublicRegistryVest => PUBLIC_VEST_POLICY,
+        }
+    }
+
+    fn policy(self) -> Option<Policy> {
+        let policy: Policy = serde_json::from_str(self.bytes()).ok()?;
+        let kind = match self {
+            Self::OfficialVest => "sail-retained-vest-official-inputs",
+            Self::PublicRegistry => "sail-retained-public-registry-inputs",
+            Self::PublicRegistryVest => "sail-retained-public-vest-inputs",
+        };
+        (policy.kind == kind
+            && policy.schema == 1
+            && policy.verus_source_commit == crate::toolchain::Pins::embedded().ok()?.verus.commit)
+            .then_some(policy)
+    }
+}
+
 const VSTD: &str = "vstd-0.0.0-2026-10-04-0306";
 
 #[derive(Deserialize)]
@@ -55,6 +119,8 @@ enum Origin {
 /// Literal provider directories, never inferred from a basename in `-L`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(super) struct Closure {
+    #[serde(default)]
+    authority: Authority,
     directories: BTreeMap<String, PathBuf>,
 }
 
@@ -68,13 +134,6 @@ impl Closure {
         verus_source: &Path,
         registry: &Path,
     ) -> Option<Self> {
-        let policy: Policy = serde_json::from_str(POLICY).ok()?;
-        if policy.kind != "sail-retained-vest-official-inputs"
-            || policy.schema != 1
-            || policy.verus_source_commit != crate::toolchain::Pins::embedded().ok()?.verus.commit
-        {
-            return None;
-        }
         let packages: BTreeMap<_, _> = metadata["packages"]
             .as_array()?
             .iter()
@@ -104,6 +163,11 @@ impl Closure {
         {
             return None;
         }
+        let vstd = packages.values().find(|package| {
+            package["name"] == "vstd" && package["version"] == "0.0.0-2026-10-04-0306"
+        })?;
+        let authority = Authority::select(vstd, nodes.get(vstd["id"].as_str()?)?)?;
+        let policy = authority.policy()?;
         let root_deps = normal_dependencies(nodes.get(root_id)?)?;
         if root_deps.len() != 1 {
             return None;
@@ -159,7 +223,10 @@ impl Closure {
         if directories.keys().ne(policy.packages.keys()) {
             return None;
         }
-        let closure = Self { directories };
+        let closure = Self {
+            authority,
+            directories,
+        };
         closure.check_sources().then_some(closure)
     }
 
@@ -169,7 +236,7 @@ impl Closure {
         &self,
         sources: impl Iterator<Item = (&'a Path, &'a str, u64)>,
     ) -> bool {
-        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+        let Some(policy) = self.authority.policy() else {
             return false;
         };
         let mut count = 0;
@@ -201,12 +268,16 @@ impl Closure {
         count > 0
     }
 
+    pub(super) fn policy_digest(&self) -> String {
+        super::super::files::digest(self.authority.bytes().as_bytes())
+    }
+
     pub(super) fn source_roots(&self) -> BTreeSet<PathBuf> {
         self.directories.values().cloned().collect()
     }
 
     pub(super) fn check_sources(&self) -> bool {
-        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+        let Some(policy) = self.authority.policy() else {
             return false;
         };
         self.directories.keys().eq(policy.packages.keys())
@@ -228,7 +299,7 @@ impl Closure {
             return false;
         };
         let key = format!("{name}-{version}");
-        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+        let Some(policy) = self.authority.policy() else {
             return false;
         };
         let Some(expected) = policy.packages.get(&key) else {
@@ -389,6 +460,128 @@ mod tests {
     use super::*;
 
     #[test]
+    fn public_profiles_are_separate_complete_archive_authorities()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for authority in [Authority::PublicRegistry, Authority::PublicRegistryVest] {
+            let policy = authority.policy().ok_or("public policy")?;
+            assert_eq!(policy.packages.len(), 15);
+            assert_eq!(
+                policy
+                    .packages
+                    .values()
+                    .map(|p| p.files.len())
+                    .sum::<usize>(),
+                662
+            );
+            assert!(policy.packages.values().all(|p| {
+                matches!(p.origin, Origin::Registry { .. })
+                    && p.files.keys().eq(p.compiler_files.keys())
+            }));
+            assert_ne!(
+                super::super::super::files::digest(authority.bytes().as_bytes()),
+                super::super::super::files::digest(POLICY.as_bytes())
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn actual_public_metadata_source_admission() -> Result<(), Box<dyn std::error::Error>> {
+        let Some(path) = std::env::var_os("SAIL_RETAINED_PUBLIC_METADATA") else {
+            return Ok(());
+        };
+        // External local correctness control supplies actual Cargo metadata
+        // and cached SHA-authorized public packages. No compiler is doubled
+        // into a successful certificate or proof by this source-only check.
+        let metadata: Value = serde_json::from_slice(&std::fs::read(path)?)?;
+        let manifest =
+            PathBuf::from(std::env::var_os("SAIL_RETAINED_PUBLIC_MANIFEST").ok_or("manifest")?);
+        let registry = metadata["packages"]
+            .as_array()
+            .ok_or("packages")?
+            .iter()
+            .find(|p| p["name"] == "proc-macro2")
+            .ok_or("proc macro")?["manifest_path"]
+            .as_str()
+            .map(PathBuf::from)
+            .ok_or("provider manifest")?;
+        let registry = registry.parent().and_then(Path::parent).ok_or("registry")?;
+        let admit = |data: &Value| {
+            Closure::admit(
+                data,
+                &manifest,
+                Path::new("/not-an-official-source-tree"),
+                registry,
+            )
+        };
+        let closure = admit(&metadata).ok_or("actual public admission")?;
+        assert!(closure.check_sources());
+        let policy = closure.authority.policy().ok_or("selected policy")?;
+        for (key, provider) in &closure.directories {
+            let package = &policy.packages[key];
+            let variables = BTreeMap::from([
+                ("CARGO_PKG_NAME".into(), package.name.clone()),
+                ("CARGO_PKG_VERSION".into(), package.version.clone()),
+                (
+                    "CARGO_MANIFEST_DIR".into(),
+                    provider.to_str().ok_or("UTF8 provider")?.into(),
+                ),
+            ]);
+            let args = package
+                .features
+                .iter()
+                .flat_map(|feature| {
+                    [
+                        OsString::from("--cfg"),
+                        format!("feature=\"{feature}\"").into(),
+                    ]
+                })
+                .collect::<Vec<_>>();
+            assert!(closure.unit(&variables, &args));
+        }
+        let mut changed = metadata.clone();
+        let node = changed["resolve"]["nodes"]
+            .as_array_mut()
+            .ok_or("nodes")?
+            .iter_mut()
+            .find(|n| {
+                metadata["packages"]
+                    .as_array()
+                    .is_some_and(|ps| ps.iter().any(|p| p["name"] == "vstd" && p["id"] == n["id"]))
+            })
+            .ok_or("vstd")?;
+        node["features"]
+            .as_array_mut()
+            .ok_or("features")?
+            .push(Value::String("foreign".into()));
+        assert!(admit(&changed).is_none());
+        let mut changed = metadata.clone();
+        let provider = changed["packages"]
+            .as_array_mut()
+            .ok_or("packages")?
+            .iter_mut()
+            .find(|p| p["name"] == "vstd")
+            .ok_or("vstd")?;
+        provider["source"] = Value::String("git+https://foreign.invalid/custom".into());
+        assert!(admit(&changed).is_none());
+        let mut changed = metadata.clone();
+        let provider = changed["packages"]
+            .as_array_mut()
+            .ok_or("packages")?
+            .iter_mut()
+            .find(|p| p["name"] == "verus_builtin_macros")
+            .ok_or("macros")?;
+        provider["manifest_path"] = Value::String("/foreign/provider/Cargo.toml".into());
+        assert!(admit(&changed).is_none());
+        assert!(!closure.native_sources(std::iter::once((
+            Path::new("/unknown/read.rs"),
+            "blake3=foreign",
+            1
+        ))));
+        Ok(())
+    }
+
+    #[test]
     fn exact_pinned_vest_policy_has_only_the_declared_official_closure()
     -> Result<(), Box<dyn std::error::Error>> {
         let policy: Policy = serde_json::from_str(POLICY)?;
@@ -510,6 +703,7 @@ mod tests {
             let (relative, source) = authority.compiler_files.iter().next().ok_or("source")?;
             let source_root = root.join("provider");
             let closure = Closure {
+                authority: Authority::OfficialVest,
                 directories: BTreeMap::from([(package.clone(), source_root.clone())]),
             };
             let mut child = std::process::Command::new("/usr/bin/true").spawn()?;

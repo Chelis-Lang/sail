@@ -41,12 +41,6 @@ pub(super) fn environment() -> Option<BTreeMap<String, String>> {
         .collect()
 }
 
-fn policy() -> String {
-    files::digest(include_bytes!(
-        "../../../../../engine/verus/retained-vest-inputs.json"
-    ))
-}
-
 fn record_path(plan: &Plan, output: &Path) -> PathBuf {
     plan.root
         .join("producers")
@@ -64,7 +58,7 @@ pub(super) fn established(plan: &Plan, context: &str, graph: &Snapshot) -> bool 
         record.version == 1
             && record.context == context
             && record.compiler == plan.compiler_identity()
-            && record.policy == policy()
+            && record.policy == plan.closure.policy_digest()
             && record.official
             && record.output == *path
             && record.body == *content
@@ -224,7 +218,7 @@ pub(super) fn publish_verified(
         version: 1,
         context: context.to_owned(),
         compiler: plan.compiler_identity().to_owned(),
-        policy: policy(),
+        policy: plan.closure.policy_digest(),
         establishing_run: run.to_owned(),
         key: key.to_owned(),
         native: false,
@@ -416,7 +410,7 @@ impl Native {
             version: 1,
             context: self.context.clone(),
             compiler: self.plan.compiler_identity().to_owned(),
-            policy: policy(),
+            policy: self.plan.closure.policy_digest(),
             establishing_run: self.run.clone(),
             key: self.key.clone(),
             native: true,

@@ -197,3 +197,11 @@ existing-runtime-plan propagation. Local source checks exercise real owned
 managed child transport without an explicit research flag and retain the
 outer-absent/child-bootstrap environment boundary. These controls do not
 qualify automatic native compiler admission, macOS reuse or default activation.
+
+The public-provider source successor closes the ordinary-resolution gap with
+two exact 15-package/662-file profiles: current-pin new library (vstd default
+features) and current-pin Vest (alloc/std and its locked registry versions).
+Actual offline Cargo metadata uses no provider patches. Independent checks
+match every real archive member SHA-256 and compiler BLAKE3/size. These are
+source authority checks, not real native compiler-read or restored-proof
+acceptance; the earlier 446 functional results remain path-provider scope.

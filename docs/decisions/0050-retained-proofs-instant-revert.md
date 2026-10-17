@@ -279,3 +279,23 @@ automatic retention, both explicit requests still refuse, and force-fresh
 remains fresh. macOS and unknown runtime/source contexts compile normally.
 This candidate remains unselected until the 72-row native cost/storage gate,
 combined-runtime/default gates and ordinary-resolution scope qualify.
+
+## Separate public-provider authorities
+
+The automatic successor retains the existing 718-file path policy byte for byte
+and adds two closed public registry profiles. Each binds 15 genuine `.crate`
+archive SHA-256 values, every archive member and compiler checksum/size (662
+files), exact package versions, source identities and features. One matches
+ordinary current-pin new libraries; the other matches current-pin Vest's locked
+versions and alloc/std features. They are not a Cartesian allowance of versions
+or features. Unknown graphs still compile fresh. Producer certificates bind
+the selected policy digest; no certificate from the path profile or other
+public profile can establish a different authority. The actual GHOST/EXEC and
+native-read checks, private graph, namespace exclusions and Current checks remain
+mandatory. No observer protocol or query bytes change.
+
+Current-pin Vest changes only its vstd Cargo version and resulting lock entries
+to Sail's current pin. It does not use path-provider patches or change proof
+source. It is a separate scenario from the historical unmodified Vest pin.
+Actual offline Cargo metadata and all archive/compiler checksums pass locally;
+these source-admission controls are not native automatic reuse qualification.
