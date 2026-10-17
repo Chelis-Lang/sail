@@ -39,11 +39,21 @@ fn write(root: &Path, name: &str, value: &serde_json::Value) -> Result<()> {
         use std::os::unix::fs::OpenOptionsExt as _;
         options.mode(0o600);
     }
+    let destination = root.join(name);
+    if destination
+        .try_exists()
+        .map_err(|failure| error(failure.to_string()))?
+    {
+        return Err(error("fixture record already exists"));
+    }
+    let temporary = root.join(format!(".{name}.temporary"));
     let mut file = options
-        .open(root.join(name))
+        .open(&temporary)
         .map_err(|failure| error(failure.to_string()))?;
     file.write_all(&bytes)
-        .map_err(|failure| error(failure.to_string()))
+        .map_err(|failure| error(failure.to_string()))?;
+    drop(file);
+    std::fs::rename(temporary, destination).map_err(|failure| error(failure.to_string()))
 }
 
 /// Retain the genuine native compiler invocation for an isolated fixture replay.
@@ -97,9 +107,34 @@ pub(super) fn before_spawn(command: &Command) -> Result<()> {
             "environment_overrides":command.get_envs().collect::<Vec<_>>(),
         }),
     )?;
+    await_continuation(&proceed)
+}
+
+/// Retain the completed child's status before cache publication rechecks inputs.
+pub(super) fn after_completion(exit: Option<i32>) -> Result<()> {
+    let Some(root) = directory()? else {
+        return Ok(());
+    };
+    let pid = std::process::id();
+    let proceed = root.join(format!("publish-{pid}"));
+    if proceed
+        .try_exists()
+        .map_err(|failure| error(failure.to_string()))?
+    {
+        return Err(error("fixture publication continuation already exists"));
+    }
+    write(
+        &root,
+        &format!("completed-{pid}.json"),
+        &serde_json::json!({"kind":"sail-boundary-completed-fixture", "pid":pid, "exit":exit}),
+    )?;
+    await_continuation(&proceed)
+}
+
+fn await_continuation(proceed: &Path) -> Result<()> {
     let started = Instant::now();
     while started.elapsed() < Duration::from_secs(180) {
-        match std::fs::read(&proceed) {
+        match std::fs::read(proceed) {
             Ok(bytes) if bytes == b"continue\n" => return Ok(()),
             Ok(_) => return Err(error("fixture continuation bytes differ")),
             Err(failure) if failure.kind() == std::io::ErrorKind::NotFound => {
