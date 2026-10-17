@@ -2,8 +2,9 @@
 
 **Status: catalogue and harness prepared; final-runtime acceptance pending.**
 The isolated closure-numbering experiment remains evidence for that candidate
-only. It does not accept the combined runtime, and it does not cover all
-incidental edits. See [VI-0019](../verus-issues/VI-0019-crate-wide-closure-numbering.md)
+only. It does not cover all incidental edits. The separately qualified
+[full closure-identity runtime](closure-full-identity.md) establishes a narrow
+helper-insertion gain; the broader catalogue below remains pending. See [VI-0019](../verus-issues/VI-0019-crate-wide-closure-numbering.md)
 and [ADR 0049](../decisions/0049-stable-closure-names.md).
 
 | Gate | Current scope and result |
@@ -14,7 +15,7 @@ and [ADR 0049](../decisions/0049-stable-closure-names.md).
 | Native timing | Pending: old fork, combined candidate and plain stock, three rounds, quiet host, every sample retained |
 | Solver work | Observer controls pass on macOS and native Linux; a two-proof native project distinguishes unchanged reuse, cached answers and prefix replay. Final-runtime corpus observations remain pending. Existing daemon `puts` must not be reported as a count of checks |
 | SMT characterization | Pending: unchanged repetitions and every edit on each runtime. The `det` table counts checks after the first byte divergence (with log-only comments omitted), not actual solver executions |
-| Correctness | Pending final runtime's full fast/standard conformance, source suite and determinism gates; matching benchmark exit codes alone is insufficient |
+| Correctness | The separately qualified cc7 runtime passes full FAST/STANDARD/default DEEP, the full fork source suite and 147-input three-run determinism ([record](closure-full-identity.md)). The two literal Vest recipes pass full per-function verdict/diagnostic matrices; all 15 catalogue edits still need their own final-runtime measurements and observations. Matching benchmark exit codes alone is insufficient |
 
 The catalogue moves existing module-level helpers within their original
 module. Local renames cover a quantified variable (Vest), a proof-local
