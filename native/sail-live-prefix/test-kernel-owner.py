@@ -337,8 +337,9 @@ class Controls(unittest.TestCase):
                 shutil.copyfile(Path(__file__).with_name(name),root/name)
             worker=root/'worker';worker.write_text('#!'+sys.executable+'\nimport sys\nsys.stdin.buffer.read();print("unsat")\n');worker.chmod(0o700)
             for name,value in [('prefix',b'prefix\n'),('expected',b''),('suffix',b'suffix\n')]: (root/name).write_bytes(value)
-            launcher="import os,runpy,sys;os.uname=lambda:os.uname_result(('Darwin','','','','arm64'));p=sys.argv.pop(1);sys.argv[0]=p;runpy.run_path(p,run_name='__main__')"
+            launcher="import os,runpy,sys;os.uname=lambda:os.uname_result(('Darwin','','','','arm64'));p=sys.argv.pop(1);sys.path.insert(0,os.path.dirname(p));sys.argv[0]=p;runpy.run_path(p,run_name='__main__')"
             p=subprocess.run([sys.executable,'-B','-c',launcher,str(root/'run.py'),'--z3',str(worker),'--solver-sha256',hashlib.sha256(worker.read_bytes()).hexdigest(),'--prefix',str(root/'prefix'),'--prefix-stdout',str(root/'expected'),'--suffix',str(root/'suffix'),'--fresh-only','--fresh-runs','2','--out',str(root/'out')],capture_output=True,timeout=10)
+            self.assertTrue((root/'out/manifest.json').is_file(),(p.returncode,p.stdout,p.stderr))
             m=json.loads((root/'out/manifest.json').read_text())
             # Explicit Darwin/fresh-only guard double makes this source-copy
             # compatibility check portable; no native image admission is given.
