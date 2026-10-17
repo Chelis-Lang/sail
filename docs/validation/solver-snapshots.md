@@ -1,11 +1,13 @@
 # Solver-continuation investigation (#158)
 
-**Status: blocked and unselected.** The standalone one-use Python research
+**Status: research feasibility demonstrated; default/application acceptance blocked and unselected.** The standalone one-use Python research
 prototype is available under `native/sail-live-prefix`; no product path uses it.
 The original exact-byte experiment fails. A separately authorized numeric-time
-experiment has one historical IronKV success, then strict workload refusals;
-Anvil never reaches live serving. No application gain or issue completion is
-qualified. The earlier C/Rust snapshot integration stays archived.
+experiment first records strict resource refusals; its later separately keyed
+sole-wait4 owner passes the fixed IronKV and Anvil traces. Preparation costs
+real work, Anvil saves no CPU, and no application gain or issue completion is
+qualified. Default behavior and all earlier failures remain unchanged. The
+earlier C/Rust snapshot integration stays archived.
 
 ## Best evidence and actual scope
 
@@ -179,55 +181,75 @@ following records are separate from the workload evidence above:
 | macOS research host log, `live-prefix-research-macos-2026-10-16/host.log` | `7a397619c25714f91010f632fe49651658427543f8b98bb34e70b13548f34156` |
 
 
-## Prospective kernel-owner resource experiment
+## Named kernel-owner resource experiment
 
-The next source-only candidate uses the separately named
-`owned-wait4-lifetime-peak-v1` resource policy, selected explicitly with
-`--experiment-kernel-accounting-owner` alongside the numeric-time-only research
-comparison. It replaces sampling only in that opt-in path; the default and
-terminal-only classifier above are unchanged. All earlier failed native and
-workload attempts remain failed. No passing native aggregate, real-trace pass,
-performance gain, selection or default integration is claimed.
+**Actual named research PASS; default/application qualification and selection
+remain false.** Source `10b96ed19ff04d23a005c6f23ce8b692ee45c6bc` on native
+c7i.4xlarge, us-east-1, Linux `7.0.0-1014-aws` uses the same pinned Z3
+`e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765`.
+The CI context is `44261d52f2b2ff03`; all source, image/runtime and final cleanup
+guards pass. No compiler, solver, input or default serving implementation changes.
 
-The assigned owner defers the sole `wait4` until actual executable/pidfd
-capture while unreaped, retains complete status/user/system/peak records, and
-requires exit zero, complete input and output, and a strictly positive kernel
-lifetime peak within the original 1GiB workload bound. The peak is a final
-admission criterion, not a live OS memory cap. No terminal-race inference or
-missing-data zero can pass. Actual held-descriptor lifetime is required;
-there is no theorem about foreign replacement descriptors or arbitrary
-process trees/shared libraries. Preparation, fallback and reference CPU are
-separately retained, with preparation and serving combined rather than an
-invented exact claim-time split.
+`--experiment-kernel-accounting-owner` selects the separate
+`owned-wait4-lifetime-peak-v1` resource binding alongside the numeric-time-only
+research policy. The assigned owner defers its sole `wait4` until actual
+executable/pidfd capture while unreaped. Admission requires complete input and
+bounded complete output, actual exit zero, complete user/system accounting and
+a strictly positive kernel lifetime peak within the original 1GiB bound.
+The enclosing Docker cap is 28GiB; the final per-child peak criterion is not a
+live 1GiB OS limit. Default sampling and the terminal-only classifier are
+unchanged. Missing rusage never becomes zero or success. Error cleanup signals
+only the held pidfd and may safely reap with bounded `P_PIDFD` waiting, without
+inventing replacement CPU/peak data. This does not qualify arbitrary process
+trees, mutable shared libraries or foreign descriptor replacement.
 
-Local actual-child controls cover deferred ownership, startup cancellation,
-all worker-start positions, complete raw I/O/status, timeout, peak refusal,
-read/descriptor errors, per-child CPU and actual driver/parent entry. Linux
-image/pidfd guards are explicit doubles in these portable controls. Original
-owner controls and the unchanged exact/timing-policy/readiness/legacy-driver
-controls are also retained. The corrected mandatory twelve native controls and fixed
-IronKV/Anvil three-fresh/one-eligible evaluation remain pending and must block
-on every error. See the [research commands](../../native/sail-live-prefix/README.md#prospective-kernel-accounting-owner).
+The original native core 28 controls, functional policy/driver/parent/readiness
+controls and all twelve new genuine native owner cases pass before either
+trace. Local owner8/kernel17/caller2 checks also pass with actual owned children
+and explicitly doubled Linux APIs; they are not native Linux qualification or
+a full macOS host gate. Both fixed datasets then pass three complete fresh
+runs and one eligible same-process continuation under the named policies.
+All check replies, non-time response bytes, stderr and statuses stay strict;
+the original exact-byte fresh/candidate gates remain false. No response bytes
+are rewritten. The independent raw review checks actual allowed numeric spans,
+full prefix plus suffix input hashes, accounting and final guards.
 
-The first source checkpoint `fba9a417` is superseded before Linux qualification: independent
-review found that saved accounting failure could interrupt cancellation and
-safe reaping. Actual full-caller controls retain a live sleeping startup child
-and an unreaped fresh child in that original source, then demonstrate bounded
-held-descriptor kill/reap in the correction. Native image/pidfd/waitid APIs are
-explicit doubles in these local controls. Missing rusage remains a refusal;
-no accounting is reconstructed from termination alone. Actual native controls
-and the new workload experiment are still pending.
+| Dataset | Preparation wall | Foreground wall | Guarded fresh wall | Complete preparation + serving CPU | Fresh-reference CPU | Prepared peak |
+|---|---:|---:|---:|---:|---:|---:|
+| IronKV | 2.242s | 0.294s | 2.419s | 2.282s | 2.394s | 76,431,360B |
+| Anvil | 53.867s | 6.212s | 59.610s | 59.848s | 59.577s | 221,106,176B |
 
-| Failed kernel-owner attempt | Result and limit |
+Each continuation uses its original prepared PID, with no fallback. Fresh
+three-run CPU is 2.289/2.309/2.308s for IronKV and 59.321/59.044/59.303s for
+Anvil. Preparation and serving CPU are combined; no exact claim-time CPU split
+is observed. Anvil saves no CPU, and complete preparation plus foreground wall
+is not improved. The driver waits for readiness before claim. These selected
+solver traces do not measure an actual edit workflow, readiness hit rate,
+full Verus diagnostics or application speedup. No default policy or corpus gate
+is weakened, and no implementation is selected.
+
+| Artifact under external `live-prefix-kernel-owner-native-2026-10-17/corrected-solver-exit` | SHA-256 |
 |---|---|
-| `0f59b3a4`, 2026-10-17, native source and runtime controls | 10/11 new native cases pass; mandatory nonzero-exit fixture fails because an unsupported command actually exits zero. Native core 28 and all other required control commands pass. Both real traces are unrun; strict aggregate FAIL remains. Final archive SHA-256 `bb9e1a650af99190fa7b80e47517dfde0db7739dff5e182692af9299771c4ed3`; complete native report `7bd1d67758419227a123d9c37d65c946a8c2092374a9c2349221f63288dda1e6`. |
+| Native controls archive | `9698995ac3605b8ed9c60c3a42b41fd2386da4c1df09a64503736b31b23bf77a` |
+| IronKV complete fresh/live archive | `26cae600425564f33a210eb1ebd77803c07cfe0b63e0aac0fe3e289b46e626b9` |
+| Anvil complete fresh/live archive | `fbb44b333682a5aa30ed12cef3185f904381213733da7253694046cc2fea0648` |
+| Final source/runtime/aggregate archive | `9fc4472a2f8111796312e69095ac7ba500c125b517ac94bbfd45b78f83e23a6f` |
+| Actual cost/outcome summary | `7a25719b9b3de68369e36b0a0bde560d0ec9c9f1db90499b839291a3528edd12` |
+| Independent actual raw/accounting review | `f9f1ca516fbfe23c30d339db1279acce80420e0d6f7aac42379397b3c18679eb` |
 
-The [solver reproduction](../../corpus/repros/z3-unsupported-command-exit/README.md)
-precedes the fixture correction. It preserves Linux's actual exit-zero streams
-and a direct pinned macOS API probe demonstrating a real parse-error exit one.
-The corrected fixture keeps both observations distinct and strengthens its
-nonzero check to actual exit one, complete kernel accounting and exact retained
-parse diagnostics. This changes no resource or verdict admission policy. The
-outer native container remains 28 GiB; the original 1 GiB per-child kernel peak
-is a final admission criterion, not a live OS memory limit. Corrected native
-qualification remains pending.
+| Earlier kernel-owner attempt | Preserved result |
+|---|---|
+| `fba9a417`, local source review | Saved accounting error could skip cancellation/reaping; actual old/new owned-child controls reproduce it and qualify the held-pidfd cleanup correction. Missing rusage still refuses. |
+| `b3f43d56`, local standalone fixture | Import-path setup refused; corrected before native evaluation, with no result inferred. |
+| `0f59b3a4`, 2026-10-17 native | 10/11 new native cases pass; an unsupported command actually exits zero, violating the fixture's nonzero assumption. Original core28 and other controls pass; both traces are unrun, strict aggregate FAIL. Final SHA `bb9e1a650af99190fa7b80e47517dfde0db7739dff5e182692af9299771c4ed3`; native report `7bd1d67758419227a123d9c37d65c946a8c2092374a9c2349221f63288dda1e6`. |
+
+The [minimal solver reproduction](../../corpus/repros/z3-unsupported-command-exit/README.md)
+was recorded before the fixture correction. Corrected native controls preserve
+the unsupported exit-zero case separately and require an actual parse-error exit
+one, exact retained diagnostics and complete accounting. Resource completion
+alone is not a verification verdict. No old failure is reclassified.
+
+The new research packaging's complete native workspace and macOS host gates
+remain pending at this documentation checkpoint. The older `fee8abff` packaging
+gates above do not qualify the new owner implementation. See the
+[commands and remaining integration boundaries](../../native/sail-live-prefix/README.md#named-kernel-accounting-owner).

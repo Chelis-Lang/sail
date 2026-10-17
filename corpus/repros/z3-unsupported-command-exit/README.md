@@ -42,5 +42,9 @@ That probe binds the actual macOS solver SHA-256
 `edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb`.
 Its complete five-input API probe report has SHA-256 `41338122f738cf803bc7238a5555d8d2e39a0cf8059b5e9a3884857d8b4e4efb`.
 This is an API behavior check, not Linux qualification or a performance sample.
-A corrected native control must still demonstrate a genuine nonzero exit and
-retained diagnostics with the actual Linux solver before either trace runs.
+The later corrected Linux twelve-case gate at `10b96ed1` demonstrates both
+this genuine parse-error exit one with exact retained diagnostics and the
+separate unsupported exit-zero behavior before either trace runs. Its native
+controls archive SHA-256 is
+`9698995ac3605b8ed9c60c3a42b41fd2386da4c1df09a64503736b31b23bf77a`.
+The original failed eleven-case attempt remains failed.
