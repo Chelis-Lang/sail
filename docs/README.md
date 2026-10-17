@@ -125,3 +125,6 @@ main checks.
 
 - [Managed Cargo selection qualification](validation/managed-selection-family.md):
   candidate dependency-artifact sharing, observations and pending native gates.
+
+The [spec formal naming qualification](validation/spec-parameter-names.md) records
+the candidate binder fix, both platform artifacts and remaining native gates.

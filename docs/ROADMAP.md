@@ -318,6 +318,10 @@ oyster and such." This supersedes the parallel tracks of
       completed runtime gates and exact platform/scope limits. The three-project
       [incidental-edit catalogue](validation/incidental-edits.md) is prepared;
       its final-runtime measurements and exact solver-work counts are pending.
+      A further positional spec-formal naming candidate has both platform
+      runtimes built and Mac component checks passing; final native timings,
+      corpus, source-suite and determinism gates are running. It is not selected
+      ([qualification](validation/spec-parameter-names.md)).
    6. B4, instant revert: receipts beyond the latest revision, #163.
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
