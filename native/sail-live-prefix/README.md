@@ -265,15 +265,16 @@ raw hashes and preparation, foreground, total CPU and fallback costs. No
 continuation implementation is selected; no more lifecycle retries are planned.
 
 
-## Prospective kernel accounting owner
+## Named kernel accounting owner
 
 `--experiment-kernel-accounting-owner` is a separate research resource policy,
 requiring `--experiment-numeric-time-only` and `--native-metrics`. Both drivers
 accept it; default behavior and the old sampled-memory classifier remain as
 recorded above. Its pool key additionally binds
-`owned-wait4-lifetime-peak-v1`. This is implemented source, with local controls;
-native guards and real-trace evaluation are pending. No old failed sample is
-reclassified, and no performance gain is accepted.
+`owned-wait4-lifetime-peak-v1`. The fixed native twelve-control gate and both retained traces pass this named
+policy at `10b96ed1`. Default exact-byte gates still fail on numeric time
+variation. No old failure is reclassified, and no application gain, default
+integration or selection is accepted.
 
 The deferred owner is assigned before executable capture or worker startup.
 It retains the raw `Popen` and releases exactly one `wait4` reaper only after
@@ -317,8 +318,8 @@ The immutable dataset must also bind `owned_wait4.py` and
 `kernel_accounting.py`. The same fixed IronKV and Anvil inputs, three fresh
 controls, one eligible continuation, exact executable/input identity, strict
 non-time response bytes and all original errors remain mandatory. Native
-control or fresh-control failure blocks the real continuation. No experimental
-host or result follows from the local controls alone.
+control or fresh-control failure blocks the real continuation. The local controls alone do not qualify a native result; the separate actual
+native scope and costs are recorded below.
 
 
 A failed sole `wait4` never skips cancellation because `poll()` also refuses.
@@ -346,5 +347,15 @@ remained unrun. The [minimal solver reproduction](../../corpus/repros/z3-unsuppo
 records that distinction. The corrected controls retain it as a separate exact
 exit-zero observation and use a tested parse error for actual nonzero status,
 complete accounting, retained diagnostic and resource refusal. A successful
-resource-completion gate alone is not verification. The corrected twelve-case
-native run and both real traces remain pending; no old failure becomes a pass.
+resource-completion gate alone is not verification. The corrected twelve-case native gate passes before both fixed real traces.
+Each dataset passes three fresh controls and one eligible continuation under
+the named response/resource policies, with the same prepared/serving PID and
+no fallback. IronKV preparation is 2.242s and foreground 0.294s versus guarded
+fresh 2.419s; total solver CPU is 2.282s versus 2.394s. Anvil preparation is
+53.867s and foreground 6.212s versus fresh 59.610s; total CPU is 59.848s
+versus 59.577s, so it saves no CPU. Preparation is real work, and the driver
+waits for readiness: these selected traces do not measure an actual editing
+schedule, predictor hit rate or application speedup. Complete preparation plus
+foreground wall is not improved. The enclosing native container is capped at
+28GiB; the 1GiB per-child kernel peak is a final admission check. All earlier
+failed attempts stay failed. See the [native evidence](../../docs/validation/solver-snapshots.md#named-kernel-owner-resource-experiment).
