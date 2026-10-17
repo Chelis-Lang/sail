@@ -1041,6 +1041,28 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn retained_routing_fixture_uses_the_real_effective_driver_decoder()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../tests/fixtures/retained-cargo-routing.json"
+        ))?;
+        for row in fixture["rows"].as_array().ok_or("rows")? {
+            let id = row["id"].as_str().ok_or("id")?;
+            let decoded = super::cargo_driver_options_with(id, |name| {
+                Ok(if name == " __VERUS_DRIVER_ARGS__" {
+                    row["common"].as_str().map(str::to_owned)
+                } else if name == format!(" __VERUS_DRIVER_ARGS_FOR_{id}") {
+                    row["package"].as_str().map(str::to_owned)
+                } else {
+                    None
+                })
+            })?;
+            assert_eq!(serde_json::to_value(decoded.arguments)?, row["tokens"]);
+        }
+        Ok(())
+    }
+
     use super::*;
 
     #[test]

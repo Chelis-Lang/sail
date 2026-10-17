@@ -232,3 +232,13 @@ history likewise have no aggregate admission cap yet. A bounded few-run native p
 retain its own work/disk limits; before default use, refuse new graph admission
 at a prospective total count/byte cap and run the genuine compiler instead.
 Do not delete unknown live generations or rewrite dep-info to reclaim space.
+
+## Pinned Cargo routing
+
+The actual Cargo-Verus driver decoder includes internal routing tokens. The
+closed option policy admits exactly one pinned dependency-compilation mode,
+checked primary/dependency identity, the official vstd mode only for that
+admitted unit, and the exact declared verified imports. Cargo also emits a
+self-lib if-present import for packages with auxiliary targets; explicit self
+externs remain forbidden. Foreign, duplicated or malformed modes/imports and
+Rust tails refuse. Literal argument/environment bytes remain bound in keys.

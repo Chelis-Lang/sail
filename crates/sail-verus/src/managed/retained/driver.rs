@@ -188,11 +188,12 @@ impl Plan {
         {
             return None;
         }
-        if !closed_verus_options(&crate::adapter::effective_verus_arguments()?) {
-            return None;
-        }
         let variables = super::producers::environment()?;
-        if !self.roots.contains(&identity.manifest) && !self.closure.unit(&variables, args) {
+        let official = self.closure.unit(&variables, args);
+        let primary = self.roots.contains(&identity.manifest);
+        if (!primary && !official)
+            || variables.get("CARGO_PRIMARY_PACKAGE").map(String::as_str) != primary.then_some("1")
+        {
             return None;
         }
         let source_argument = ordinary_source(args, &self.target)?;
@@ -206,6 +207,19 @@ impl Plan {
                     == Some(identity.manifest.as_path())
             })?;
         if !direct_externs(&self.metadata, package["id"].as_str()?, args, false) {
+            return None;
+        }
+        let is_vstd = official
+            && package["name"] == "vstd"
+            && package
+                .pointer("/metadata/verus/is-vstd")
+                .and_then(Value::as_bool)
+                == Some(true);
+        if !closed_verus_options(
+            &crate::adapter::effective_verus_arguments()?,
+            is_vstd,
+            &cargo_imports(&self.metadata, package)?,
+        ) {
             return None;
         }
         let actual_source = package["targets"].as_array()?.iter().find_map(|target| {
@@ -600,10 +614,34 @@ fn direct_externs(
 
 /// A custom import, skipped proof mode or hidden Rust tail cannot borrow the
 /// normal Cargo dependency-DAG assumption. Literal tokens remain in the key.
-fn closed_verus_options(arguments: &[String]) -> bool {
+fn closed_verus_options(arguments: &[String], is_vstd: bool, imports: &BTreeSet<String>) -> bool {
     let mut index = 0;
+    let mut compile_dependencies = false;
+    let mut vstd = false;
+    let mut actual_imports = BTreeSet::new();
     while let Some(argument) = arguments.get(index) {
         match argument.as_str() {
+            "--is-vstd" if is_vstd && !vstd => {
+                vstd = true;
+                index += 1;
+            }
+            "--VIA-CARGO" => {
+                let Some(mode) = arguments.get(index + 1) else {
+                    return false;
+                };
+                if mode == "compile-when-not-primary-package" && !compile_dependencies {
+                    // This pinned global mode is present for primary units too;
+                    // Verus applies it only when Cargo's bound primary flag is absent.
+                    compile_dependencies = true;
+                } else if let Some(name) = mode.strip_prefix("import-dep-if-present=") {
+                    if !imports.contains(name) || !actual_imports.insert(name.to_owned()) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+                index += 2;
+            }
             "--output-json" | "--time" | "--time-expanded" => index += 1,
             "--rlimit" | "--multiple-errors" | "--num-threads" => {
                 if arguments
@@ -617,7 +655,49 @@ fn closed_verus_options(arguments: &[String]) -> bool {
             _ => return false,
         }
     }
-    true
+    compile_dependencies && vstd == is_vstd && actual_imports == *imports
+}
+
+/// The initial closed graph has only vstd as a verified dependency. Cargo also
+/// names a package's own lib when it has auxiliary targets; the lib invocation
+/// has no self extern, so the pinned if-present route cannot import itself.
+fn cargo_imports(metadata: &Value, package: &Value) -> Option<BTreeSet<String>> {
+    let node = metadata["resolve"]["nodes"]
+        .as_array()?
+        .iter()
+        .find(|node| node["id"] == package["id"])?;
+    let mut imports = BTreeSet::new();
+    for dependency in node["deps"].as_array()? {
+        if !dependency["dep_kinds"]
+            .as_array()?
+            .iter()
+            .any(|kind| kind["kind"].is_null())
+        {
+            continue;
+        }
+        let target = metadata["packages"]
+            .as_array()?
+            .iter()
+            .find(|target| target["id"] == dependency["pkg"])?;
+        if target
+            .pointer("/metadata/verus/verify")
+            .and_then(Value::as_bool)
+            == Some(true)
+        {
+            imports.insert(dependency["name"].as_str()?.to_owned());
+        }
+    }
+    let targets = package["targets"].as_array()?;
+    if targets
+        .iter()
+        .any(|target| target["kind"] != serde_json::json!(["lib"]))
+    {
+        let library = targets
+            .iter()
+            .find(|target| target["kind"] == serde_json::json!(["lib"]))?;
+        imports.insert(library["name"].as_str()?.to_owned());
+    }
+    Some(imports)
 }
 
 fn keyed_environment(name: &str) -> bool {
@@ -805,12 +885,18 @@ mod tests {
 
     #[test]
     fn source_and_proof_mode_overrides_cannot_hide_in_cargo_effective_options() {
-        assert!(closed_verus_options(&[]));
-        assert!(closed_verus_options(&[
-            "--output-json".into(),
-            "--rlimit".into(),
-            "10".into()
-        ]));
+        assert!(!closed_verus_options(&[], false, &BTreeSet::new()));
+        assert!(closed_verus_options(
+            &[
+                "--VIA-CARGO".into(),
+                "compile-when-not-primary-package".into(),
+                "--output-json".into(),
+                "--rlimit".into(),
+                "10".into()
+            ],
+            false,
+            &BTreeSet::new()
+        ));
         for option in [
             "--import",
             "--no-verify",
@@ -819,7 +905,11 @@ mod tests {
             "--",
             "--compile",
         ] {
-            assert!(!closed_verus_options(&[option.into()]));
+            assert!(!closed_verus_options(
+                &[option.into()],
+                false,
+                &BTreeSet::new()
+            ));
         }
         let metadata = serde_json::json!({"resolve":{"nodes":[{"id":"root","deps":[{
             "name":"vstd","dep_kinds":[{"kind":null}]}]}]}});
@@ -834,6 +924,46 @@ mod tests {
         let mut duplicate = args.clone();
         duplicate.extend(args.into_iter().skip(1));
         assert!(!direct_externs(&metadata, "root", &duplicate, false));
+    }
+
+    #[test]
+    fn pinned_cargo_routing_is_exact_and_tied_to_real_metadata_imports()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/retained-cargo-routing.json"
+        ))?;
+        for row in fixture["rows"].as_array().ok_or("rows")? {
+            let tokens: Vec<String> = serde_json::from_value(row["tokens"].clone())?;
+            let imports: BTreeSet<String> = serde_json::from_value(row["imports"].clone())?;
+            let vstd = row["is_vstd"].as_bool().ok_or("vstd")?;
+            assert!(closed_verus_options(&tokens, vstd, &imports));
+            assert!(!closed_verus_options(&tokens, !vstd, &imports));
+            for suffix in [
+                vec!["--VIA-CARGO", "compile-when-not-primary-package"],
+                vec!["--VIA-CARGO", "compile-when-primary-package"],
+                vec!["--VIA-CARGO", "import-dep-if-present=foreign"],
+                vec!["--VIA-CARGO", "import-dep-if-present=vstd"],
+                vec!["--VIA-CARGO"],
+                vec!["--"],
+                vec!["--is-core"],
+            ] {
+                let mut changed = tokens.clone();
+                changed.extend(suffix.into_iter().map(str::to_owned));
+                assert!(!closed_verus_options(&changed, vstd, &imports));
+            }
+        }
+        let metadata = &fixture["metadata"];
+        for package in metadata["packages"].as_array().ok_or("packages")? {
+            let expected: Option<BTreeSet<String>> = match package["name"].as_str() {
+                Some("vest_lib") => Some(["vest_lib".into(), "vstd".into()].into()),
+                Some("vstd") => Some(["vstd".into()].into()),
+                _ => None,
+            };
+            if let Some(expected) = expected {
+                assert_eq!(cargo_imports(metadata, package), Some(expected));
+            }
+        }
+        Ok(())
     }
 
     #[test]
