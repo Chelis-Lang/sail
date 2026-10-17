@@ -7,7 +7,7 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 5 cannot accept the old all-unit native-artifact bundles. It neither
+//! schema 6 cannot accept the old all-unit native-artifact bundles. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
 //! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
@@ -26,7 +26,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 5;
+const SCHEMA: u32 = 6;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";
@@ -87,8 +87,10 @@ pub(crate) struct Plan {
     closure: Option<admission::Closure>,
     /// Per-run successful native compiler observations, never a shared cache.
     native_records: PathBuf,
-    /// Actual compiler in the admitted installed sysroot.
+    /// Actual compiler driver, which embeds rustc and ignores Cargo's hint.
     native_compiler_sha256: String,
+    native_launcher: PathBuf,
+    native_launcher_sha256: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -443,14 +445,12 @@ pub(crate) fn plan(
         closure: Some(admission::Closure::resolve(metadata, registry)?),
         native_records: target.join(".sail-boundary-native").join(run_id),
         native_compiler_sha256: sha256_file(
-            &super::runner::verifier_sysroot(
-                &root.join("verus/source/target-verus/release/verus"),
-                Path::new("."),
-            )
-            .ok()?
-            .join("bin/rustc"),
+            &root.join("verus/source/target-verus/release/rust_verify"),
         )?
         .0,
+        native_launcher: root.join("verus/source/target-verus/release/verus"),
+        native_launcher_sha256: sha256_file(&root.join("verus/source/target-verus/release/verus"))?
+            .0,
     })
 }
 
@@ -821,7 +821,7 @@ impl<'a> Call<'a> {
             return None;
         }
         let call = Self::vstd_invocation(plan, args, vars)?;
-        if !native::externs_are_fresh(&call) {
+        if !native::compiler_matches(&call) || !native::externs_are_fresh(&call) {
             call.trace("native dependencies lack this run's successful compiler provenance");
             return None;
         }
@@ -1539,6 +1539,8 @@ mod tests {
             closure: None,
             native_records: root.join("native-observations"),
             native_compiler_sha256: "compiler-bytes".into(),
+            native_launcher: root.join("verus"),
+            native_launcher_sha256: "launcher-bytes".into(),
         }
     }
 
