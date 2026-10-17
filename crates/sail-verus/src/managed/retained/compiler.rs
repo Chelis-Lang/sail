@@ -173,7 +173,9 @@ impl Observation {
             for (name, loaded) in &phase.sources {
                 let path = directory.join(name).canonicalize().ok()?;
                 let expected = sources.get(&path)?;
-                if loaded.checksum != expected.sha256 || loaded.size != expected.size {
+                if loaded.checksum != format!("sha256={}", expected.sha256)
+                    || loaded.size != expected.size
+                {
                     return None;
                 }
             }
@@ -224,7 +226,7 @@ mod tests {
             let mut request =
                 Observation::begin(&root.join("request"), "run", "key").ok_or("request")?;
             request.started(123);
-            let phase = serde_json::json!({"sources":{source.to_string_lossy():{"checksum":digest(b"source A"),"size":8}},
+            let phase = serde_json::json!({"sources":{source.to_string_lossy():{"checksum":format!("sha256={}",digest(b"source A")),"size":8}},
                 "extra_tracked_files":[],"tracked_environment":{}});
             let raw = serde_json::json!({"kind":"sail-compiler-read-inputs","schema":1,"binding":request.binding,
                 "pid":123,"complete":true,"phases":{"verification":phase,"compilation":phase}});
@@ -236,12 +238,27 @@ mod tests {
             );
             let mut changed = raw.clone();
             changed["phases"]["verification"]["sources"][source.to_string_lossy().as_ref()]["checksum"] =
-                digest(b"source B").into();
+                format!("sha256={}", digest(b"source B")).into();
             let ghost_b: Document = serde_json::from_value(changed)?;
             assert!(
                 request
                     .admit(
                         &ghost_b,
+                        &root,
+                        &expected,
+                        &BTreeMap::new(),
+                        &BTreeMap::new()
+                    )
+                    .is_none()
+            );
+            let mut unprefixed = raw.clone();
+            unprefixed["phases"]["verification"]["sources"][source.to_string_lossy().as_ref()]["checksum"] =
+                digest(b"source A").into();
+            let unprefixed: Document = serde_json::from_value(unprefixed)?;
+            assert!(
+                request
+                    .admit(
+                        &unprefixed,
                         &root,
                         &expected,
                         &BTreeMap::new(),

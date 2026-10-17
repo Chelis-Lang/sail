@@ -603,7 +603,7 @@ mod tests {
             directory: root.0.clone(),
             environment: BTreeMap::new(),
         };
-        let phase = serde_json::json!({"sources":{"lib.rs":{"checksum":digest(b"A"),"size":1}},
+        let phase = serde_json::json!({"sources":{"lib.rs":{"checksum":format!("sha256={}",digest(b"A")),"size":1}},
             "extra_tracked_files":[],"tracked_environment":{}});
         let raw = serde_json::to_vec(&serde_json::json!({"kind":"sail-compiler-read-inputs",
             "schema":1,"complete":true,"pid":123,
