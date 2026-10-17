@@ -6,7 +6,7 @@ Vest A → B → A controls. Matched performance and final default qualification
 remain pending; see the [validation record](validation/instant-revert.md).
 
 The candidate needs no extra workflow command: `sail verify` can restore an
-already verified workspace revision after an A → B → A edit. `--force-fresh`
+already verified workspace revision after an A → B → A edit. `SAIL_MANAGED_FORCE=1 sail verify`
 continues to require fresh verification. Restored results keep the original
 establishing run, while the current invocation separately checks currentness.
 An unsupported context runs the genuine compiler instead.
