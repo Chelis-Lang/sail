@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Record the proposed spec-formal binder stability experiment (#118), with
+  corrected historical trace provenance and unexecuted reduced regressions.
+  No selected runtime, cache key or conformance expectation changes.
+
 - Recompute solver identity at every daemon handshake: equal executable path,
   length and mtime no longer retain a stale binary hash (#213). Native
   correctness checks pass; the matched native screen records slower edit

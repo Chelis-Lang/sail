@@ -44,6 +44,8 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0019](VI-0019-crate-wide-closure-numbering.md) | Inserting an item renames closure types crate-wide | open in stock Verus; fixed on a fork branch, not yet pinned | fixed on `m11-5/stable-closure-ids`: `8d03ab54` fix: name closure types by definition path, not crate-wide index (a renaming, under [ADR 0049](../decisions/0049-stable-closure-names.md)) | `corpus/repros/verus-closure-renumbering/` |
 | [VI-0021](VI-0021-proof-note-json-order.md) | JSON proof-note arrays follow hash-set order | reproduced in the pinned fork; correction pending | — | `corpus/repros/verus-proof-note-order/` |
 
+| [VI-0023](VI-0023-spec-parameter-names.md) | Spec formal spelling changes untouched caller axioms | historical captures reproduced; new reduction unexecuted | source-only positional binder candidate, unbuilt and unqualified | `corpus/repros/verus-spec-parameter-renaming/` |
+
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The
 [unsupported-command exit reproduction](../../corpus/repros/z3-unsupported-command-exit/README.md)
