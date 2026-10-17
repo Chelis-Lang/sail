@@ -178,7 +178,7 @@ fn content(path: &Path, expected: &Content) -> bool {
     size == expected.size && format!("{:x}", hasher.finalize()) == expected.sha256
 }
 
-fn read_content(path: &Path, maximum: u64) -> Option<Content> {
+pub(super) fn read_content(path: &Path, maximum: u64) -> Option<Content> {
     let input = open(path)?;
     if input.metadata().ok()?.len() > maximum {
         return None;
@@ -445,6 +445,11 @@ impl Snapshot {
             .collect()
     }
 
+    /// Original artifact names and bytes independently copied for this invocation.
+    pub(super) fn original_inputs(&self) -> &BTreeMap<PathBuf, Content> {
+        &self.inventory.artifacts
+    }
+
     pub(super) fn arguments(&self) -> &[OsString] {
         &self.arguments
     }
@@ -659,7 +664,7 @@ mod tests {
         }
         let first = Snapshot::capture(&root.0.join("target"), &root.0.join("one"), &root.args())
             .ok_or("snapshot")?;
-        assert_eq!(first.inventory.artifacts.len(), 3);
+        assert_eq!(first.original_inputs().len(), 3);
         assert!(first.intact());
         // The output directory is intentionally unchanged. Only the lookup
         // directory and explicit input path must leave mutable Cargo outputs.
