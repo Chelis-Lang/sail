@@ -493,3 +493,25 @@ fn hello_keeps_unchanged_identity_and_refuses_missing_or_unlaunchable_solver()
     r.stop();
     Ok(())
 }
+
+#[test]
+fn equal_executable_bytes_never_memoize_version_output() -> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let dir = Scratch::new("fresh-version");
+    let solver = dir.0.join("solver");
+    let body = b"#!/bin/sh\nread version < \"${0%/*}/version\"\nprintf 'Z3 version %s\\n' \"$version\"\nprintf '.' >> \"${0%/*}/called\"\n";
+    std::fs::write(&solver, body)?;
+    std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o700))?;
+    std::fs::write(dir.0.join("version"), b"4.16.0\n")?;
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    let first = r.client().hello(&solver.to_string_lossy())?;
+    std::fs::write(dir.0.join("version"), b"4.17.0\n")?;
+    let second = r.client().hello(&solver.to_string_lossy())?;
+    assert_eq!(first.version, "4.16.0");
+    assert_eq!(second.version, "4.17.0");
+    assert_eq!(first.binary_sha256, second.binary_sha256);
+    assert_eq!(std::fs::read(dir.0.join("called"))?, b"..");
+    r.stop();
+    Ok(())
+}

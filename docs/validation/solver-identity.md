@@ -151,3 +151,55 @@ Failed attempts remain indexed here:
 - 2026-10-17, the same pair, second cost attempt: donor output-order
   mismatch before timed samples (0 / 50); failed, no samples replaced.
   The later quiet fresh-project variant is a separate prospective cohort.
+
+## Fresh-byte digest memo candidate
+
+A separate unselected implementation retains one immutable executable body
+and its SHA-256. Every HELLO still launches the version command and reads the
+complete executable anew. A digest is reused only after literal equality of
+all freshly read bytes; path, metadata and previous version output never
+substitute for that comparison. A poisoned memo falls back to hashing the
+fresh bytes. Bodies larger than 64 MiB are hashed without retention. The
+one-entry limit is not a process-wide memory bound: concurrent readers can
+retain older snapshots, and every handshake still allocates its fresh body.
+
+On 2026-10-17, candidate `fd31d747` passed the full shared macOS arm64
+host gate: clippy and 651 tests, with 35 solver tests skipped, plus the real
+HELLO reproduction. Targeted controls also cover unchanged bytes with changing
+version output. The initial clippy failure remains retained. These are
+correctness checks, not full conformance or performance acceptance.
+
+The matched native c7i.4xlarge screen in us-east-1 compares accepted-runtime
+sources `4ee320a5` and `fd31d747`: all 50 fixed samples pass, five rotated
+pairs per case. Source, runtime, executable and final guards agree. Complete
+verdict/diagnostic fields and literal solver-input multiplicities agree;
+stdout is literal, and stderr uses only the inherited E2E `Finished`
+numeric-time allowance with all raw bytes retained.
+
+| Workload | Baseline wall seconds | Memo wall seconds | Baseline daemon self CPU seconds | Memo daemon self CPU seconds |
+|---|---:|---:|---:|---:|
+| Fresh project, warm solver cache, quiet and one Cargo job | 46.4141 | 44.8362 | 14.54 | 9.16 |
+| Vest proof-body edit | 26.4238 | 26.1265 | 11.18 | 7.33 |
+| Vest comment edit | 26.0934 | 25.3924 | 11.19 | 7.32 |
+| Small project unchanged | 0.4166 | 0.4168 | 0 | 0 |
+| Small project helper insertion | 1.1944 | 1.1821 | 0.04 | 0.03 |
+
+These are medians over observation windows, not whole-pipeline CPU or default
+cold-start performance. Waited-child CPU is reported separately: fresh-project
+medians are 0.53 and 0.54 seconds; Vest body and comment medians are 0.43 seconds
+in both arms. Daemon RSS after observation rises by roughly 34 MiB in the
+active cases; this is an observed tradeoff, not an exact memo-allocation bound.
+Wall improvement is modest (about 1–3% for the active verification cases),
+while daemon self CPU falls about 34–37%. No full solver-output coverage is
+inferred from provenance records. Full native merge gates and FAST/STANDARD
+conformance remain required before selection; the current-main join is not
+qualified by these earlier-source results.
+
+Raw final archive SHA-256
+`e5ca4c9666c5ea1ffb597f21ec2201bd4d89476b90355ad4d6b3840df8a1c5be`;
+all-sample cost summary SHA-256
+`f1af9f9409b0cd54bd4c705fc2d8ee3ef5f80faab60e249296ee20a9507a7dd0`.
+Initial native attempts that never started the controller remain unrun and
+are not performance samples. Native binary inventories were preserved;
+executable bodies were not retained, so subsequent qualification requires
+a genuine rebuild.
