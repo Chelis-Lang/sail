@@ -16,7 +16,7 @@ from owned_wait4 import positive_accounting
 
 
 class LiteralInputFile:
-    """Owned temporary child input, retained before close by the workflow."""
+    """Owned temporary input, retained before close by the workflow."""
 
     def __init__(self, directory):
         self.stream = tempfile.TemporaryFile(mode='w+b', dir=directory)
@@ -58,6 +58,14 @@ class LiteralInputFile:
     def matches(self, data):
         if len(data) != self.size:
             return False
+        if isinstance(data, LiteralInputFile):
+            if data is self:
+                raise ProtocolRefusal('independent input files required')
+            other = data.chunks()
+            for chunk in self.chunks():
+                if chunk != next(other, b''):
+                    return False
+            return next(other, b'') == b''
         offset = 0
         for chunk in self.chunks():
             if chunk != data[offset:offset + len(chunk)]:
@@ -86,8 +94,11 @@ class StreamingClaim:
         self.pool = pool
         self.entry = None
         self.replay = None
-        self.input = bytearray()
         directory = getattr(pool, 'edit_workflow_input_directory', None)
+        self.input = (LiteralInputFile(directory) if directory is not None
+                      else bytearray())
+        if isinstance(self.input, LiteralInputFile):
+            pool.edit_workflow_input_files.append(self.input)
         self.child_input = (LiteralInputFile(directory) if directory is not None
                             else bytearray())
         if isinstance(self.child_input, LiteralInputFile):

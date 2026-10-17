@@ -401,7 +401,8 @@ with tempfile.TemporaryDirectory(prefix='sle-prefix-', dir='/tmp') as td:
             assert claim.batch(prefix)['action'] == 'prepared-reply'
             assert claim.batch(check)['action'] == 'prepared-reply'
             assert claim.finish(), claim.errors
-            assert bytes(claim.input) == prefix + check
+            assert claim.input.matches(prefix + check)
+            assert claim.input.matches(claim.child_input)
             assert claim.child_input.matches(prefix + check)
         finally:
             if claim is not None: claim.close()

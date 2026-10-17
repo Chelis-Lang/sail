@@ -548,14 +548,21 @@ byte peak equalled the recorded parent high-water RSS before that spawn. This
 observation does not exempt inherited memory or establish a kernel-cause theorem.
 All original failed attempts and this failure remain unselected.
 
-The prospective application driver removes one concrete live input duplicate:
-`child_input` uses a private temporary file. Caller-versus-child equality is
-still checked literally in bounded chunks, with the same 16 MiB input bound.
+The prospective application driver stores both the claim's caller input and
+`child_input` in separate private temporary files. The wire journal remains
+independent. Caller-versus-child equality is still checked literally in bounded
+chunks between the two files, with the same 16 MiB input bound.
 Closed inputs are captured/read back before clearing, or can alias the retained
 caller file only after exact literal equality. Failed/partial captures still
 refuse; global raw reservation and complete wait4 accounting are unchanged.
 Actual local file and controlled-caller tests cover this code, with Linux APIs
 explicitly doubled on macOS; native memory/performance outcomes are pending.
+A fresh Mac parent process also completed three rounds of 16 concurrent
+controlled sessions using the largest retained Anvil donor inputs, including
+final-reply barriers, actual framing, capture and cleanup. Its observed parent
+high-water RSS was 405,536,768 bytes. This is controlled storage/caller evidence,
+not real Anvil, pinned-Z3 or Linux memory qualification; the original resource
+failures remain failures.
 
 Prospective critical-prefix selection accepts `--donor-context TAG` together
 with `--donor-prefix-batches N`. Both must be frozen from historical donor

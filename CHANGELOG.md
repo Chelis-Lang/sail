@@ -11,6 +11,8 @@ semantic versioning once the API is published.
   actual Verus controls; ordinary verification and default policies are unchanged.
   An explicit edit-only Rustup loader context binds actual owned solver mappings
   and held library bytes without changing the caller environment.
+  Claim and child inputs use separate bounded temporary files with literal
+  readback; controlled parent-memory evidence does not qualify Anvil or Linux.
 
 - Add a disabled, opt-in kernel-accounting research path for the one-use
   continuation driver (#158). It requires complete sole-`wait4` accounting

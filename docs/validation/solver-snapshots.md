@@ -381,3 +381,37 @@ The 12 actual normal runtime bodies are retained for later reuse. The earlier
 | `native-results/donor-research.tgz` | `6200976c92e1ac02285d31a0e43fbfd1d5cfe339ef54cc1134fed95bbdbfb452` |
 | `native-results/prefix.tgz` | `7a390174727fecf138b4fd9c67aba61a0d8fa9b53559b77818893692f4b30e76` |
 | `native-results/final.tgz` | `a4df28580ccbb350f22b5f448cf8ad10ed9c23344624f82684642de98a0d4727` |
+
+Offline exact transcript/request/reply joins cover all 25 tagged IronKV donor
+sessions. The last-finishing wrapper belongs to `marshal_ironsht_specific_v`
+(4.706 solver CPU-seconds); the next wrappers finish 2.473 and 3.603 seconds
+earlier. Existing frozen IronKV edits target other buckets. This gives no
+positive critical-path result for those edits.
+
+The earlier Anvil donor has a larger solver cost, but its last-finishing
+session 32 contains only one `check-sat`, reporting `:time 60.36` and using
+60.740 actual child CPU-seconds. It finishes 22.625 seconds after session 7.
+There is no earlier checked prefix in session 32 to reuse before changing its
+proof. Replaying its entire unchanged check would duplicate the existing exact
+response cache, rather than establish a new live-state benefit. The old donor
+has no compiler-owned function marker, so symbol occurrences do not qualify a
+new function/bucket selection. No further application run follows from this
+offline analysis.
+
+The successor source removes another live claim-input copy by using two
+independent owned files, retaining literal comparisons, capture and cleanup.
+Nine actual file controls and 22 caller/workflow controls pass. A fresh Mac
+parent stress process completes three rounds of 16 concurrent controlled
+sessions over 91,359,115 retained input bytes per round, with final-reply
+barriers and all 48 input SHA records matching. Actual whole-parent high-water
+RSS reaches 405,536,768 bytes, below 1 GiB. Real pipes, sockets, wait4, framing,
+files and cleanup execute; Linux peer/pidfd/image APIs are explicitly doubled,
+and the solver children are controlled fixtures. This does not qualify real
+Anvil, Linux memory, solver answers or a performance gain. The earlier 2.2 GB
+peak is not explained or reclassified by this control.
+
+The external `critical-bucket-offline/checkpoint.json` indexes all analysis,
+controls and retained local fixture refusals, SHA-256
+`14a9206536e61c46fd6fd4086068612174004782c8814c7cbcd9b3f38a6c0ff4`.
+The actual stress result SHA-256 is
+`22bdfb5137ab541f5f9c4f36229c519a56e38de228266aa990ff8883c2a2bd7f`.

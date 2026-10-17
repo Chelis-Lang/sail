@@ -32,6 +32,26 @@ with tempfile.TemporaryDirectory(prefix='sail-input-', dir='/tmp') as directory:
             pass
     assert owned.matches(data)
     rows.append(dict(name='same-input-cap-refuses-before-write', passed=True))
+    caller = LiteralInputFile(root)
+    caller.extend(data[:65537])
+    caller.extend(data[65537:])
+    assert owned.matches(caller) and caller.matches(owned)
+    rows.append(dict(name='two-owned-files-compare-complete-literal-chunks', passed=True))
+    caller.stream.seek(65536)
+    caller.stream.write(b'X')
+    assert not owned.matches(caller) and not caller.matches(owned)
+    caller.stream.seek(65536)
+    caller.stream.write(data[65536:65537])
+    assert caller.matches(owned)
+    rows.append(dict(name='two-owned-files-differing-byte-refuses', passed=True))
+    caller.stream.truncate(4)
+    try:
+        owned.matches(caller)
+        raise AssertionError('truncated caller file accepted')
+    except ProtocolRefusal:
+        pass
+    caller.close()
+    rows.append(dict(name='two-owned-files-truncation-refuses-and-closes', passed=True))
     workflow = Workflow(root / 'out', __file__, hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                         ['unused'], root)
     record = workflow.raw_input_file(workflow.output, 'child', owned)
