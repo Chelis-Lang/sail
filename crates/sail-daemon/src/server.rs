@@ -1,6 +1,5 @@
 //! The Unix-socket server.
 
-use std::collections::HashMap;
 use std::io::{BufReader, BufWriter};
 use std::os::unix::fs::PermissionsExt as _;
 use std::os::unix::net::{UnixListener, UnixStream};
@@ -8,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
 use sail_api::protocol::{
     Identity, Info, MemoryInfo, QueueInfo, Request, StatsSnapshot, write_get_response,
@@ -131,13 +130,10 @@ impl Stats {
     }
 }
 
-type IdentityCache = Mutex<HashMap<(PathBuf, u64, Option<SystemTime>), Identity>>;
-
 struct State {
     disk: DiskCache,
     memory: MemoryTier,
     writer: Writer,
-    identities: IdentityCache,
     stats: Arc<Stats>,
     shared: Option<SharedTier>,
     /// Shared-tier rejections and timeouts logged so far (the first few
@@ -162,6 +158,9 @@ fn hex(bytes: &[u8]) -> String {
     })
 }
 
+// Equal path, length and mtime do not establish equal executable bytes (#213).
+// Identify every handshake afresh; any read or launch failure rejects the
+// handshake so the shim takes its fail-safe path.
 fn identify(path: &Path) -> Result<Identity, String> {
     let out = std::process::Command::new(path)
         .arg("--version")
@@ -205,26 +204,6 @@ fn to_wire(e: &sail_cache::Effort) -> sail_api::protocol::Effort {
 }
 
 impl State {
-    fn hello(&self, path: &str) -> Result<Identity, String> {
-        let path = PathBuf::from(path);
-        let meta =
-            std::fs::metadata(&path).map_err(|e| format!("cannot stat {}: {e}", path.display()))?;
-        let id = (path.clone(), meta.len(), meta.modified().ok());
-        if let Some(found) = self
-            .identities
-            .lock()
-            .ok()
-            .and_then(|m| m.get(&id).cloned())
-        {
-            return Ok(found);
-        }
-        let identity = identify(&path)?;
-        if let Ok(mut m) = self.identities.lock() {
-            m.insert(id, identity.clone());
-        }
-        Ok(identity)
-    }
-
     /// The reply for `key`, and which tier it came from.
     ///
     /// A memory slot is served only if it is pending (its write is still
@@ -466,7 +445,7 @@ impl State {
                 Request::Hello(hello) => {
                     mode = hello.mode;
                     self.stats.hellos.fetch_add(1, Ordering::Relaxed);
-                    let r = self.hello(&hello.solver_path);
+                    let r = identify(Path::new(&hello.solver_path));
                     solver = r.as_ref().ok().map(|id| Solver {
                         name: id.name.clone(),
                         version: id.version.clone(),
@@ -608,7 +587,6 @@ pub fn bind(
         disk: DiskCache::new(cache_root),
         memory: MemoryTier::new(config.memory_bytes),
         writer: Writer::new(config.queue_bytes),
-        identities: Mutex::new(HashMap::new()),
         stats: counters,
         shared: Some(SharedTier::auto(config.shared.clone(), cache_root)),
         shared_logged: AtomicU64::new(0),
