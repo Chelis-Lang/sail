@@ -23,7 +23,7 @@ pub(crate) struct Runtime {
     pub packages: BTreeMap<PathBuf, String>,
     pub target_kinds: BTreeMap<PathBuf, BTreeMap<String, Vec<String>>>,
     pub engine: Option<crate::engine::Request>,
-    /// Explicit, unqualified content-replay research request.
+    /// Per-run content-restoration plan admitted by the managed caller.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retained: Option<super::retained::Plan>,
     /// Whether the driver asks Verus for attribution logs ([`super::Config`]'s

@@ -260,3 +260,22 @@ admitted unit, and the exact declared verified imports. Cargo also emits a
 self-lib if-present import for packages with auxiliary targets; explicit self
 externs remain forbidden. Foreign, duplicated or malformed modes/imports and
 Rust tails refuse. Literal argument/environment bytes remain bound in keys.
+
+## Automatic-selection candidate
+
+An isolated source successor selects a retained plan without a user flag only
+on x86-64 Linux with exact normal-runtime manifest
+`a845cd2fcba411148566d8214c1285f083689df6a8ffa5479afcf3845382b033`.
+It calls existing `Installed::at` with fresh complete artifact reads and binds
+the actual selected launcher and Z3. Config currently has no held fresh
+`Installed` authority to reuse, so this validation adds an invocation cost; no
+metadata memo substitutes for it. The same 718-file provider/native/source
+policy, observer schemas, keys and final Current checks remain in force.
+
+The existing serialized runtime plan reaches both native observation and
+verified restoration without adding an environment switch. The outer caller's
+absence semantics remain unchanged. Explicit vstd-boundary mode suppresses
+automatic retention, both explicit requests still refuse, and force-fresh
+remains fresh. macOS and unknown runtime/source contexts compile normally.
+This candidate remains unselected until the 72-row native cost/storage gate,
+combined-runtime/default gates and ordinary-resolution scope qualify.

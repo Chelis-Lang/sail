@@ -2367,6 +2367,7 @@ pub(crate) fn run_engine_held(
                 &paths.target,
                 &expected,
                 &actual_wrapper(&config.cargo_verus)?,
+                &config.z3,
                 &run_id,
             )
         } else {

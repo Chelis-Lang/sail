@@ -1,4 +1,4 @@
-//! Explicit managed-driver join for the named, default-off content experiment.
+//! Managed-driver join for content restoration with closed source authority.
 //!
 //! The normal compiler remains the miss path. Native producer admission is
 //! independent of the verifier's final source snapshot and proof receipt.
@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
-/// A per-compiler-family request, selected only by the explicit research switch.
+/// A per-compiler-family request with explicit source and runtime admission.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Plan {
     pub(super) root: PathBuf,
@@ -33,9 +33,11 @@ impl Plan {
         target: &Path,
         selected: &BTreeSet<(String, String, String)>,
         launcher: &Path,
+        z3: &Path,
         run: &str,
     ) -> Option<Self> {
-        if std::env::var("SAIL_RETAINED_CONTENT_RESEARCH").as_deref() != Ok("1") {
+        let mode = super::super::research::selected().ok()?;
+        if !super::selection::requested(mode) {
             return None;
         }
         let packages = metadata["packages"].as_array()?;
@@ -60,10 +62,13 @@ impl Plan {
             roots.insert(manifest);
             closure = Some(admitted);
         }
+        let launcher = launcher.canonicalize().ok()?;
+        if !super::selection::admitted(mode, &launcher, z3) {
+            return None;
+        }
         let root = target.parent()?.join("retained-content-v1");
         std::fs::create_dir_all(root.join("graphs")).ok()?;
         std::fs::create_dir_all(root.join("live-graphs")).ok()?;
-        let launcher = launcher.canonicalize().ok()?;
         let compiler = launcher.with_file_name("rust_verify");
         Some(Self {
             launcher_sha256: files::file_digest(&launcher).ok()?,

@@ -12,6 +12,7 @@ mod eligibility;
 mod namespace;
 mod native;
 mod producers;
+mod selection;
 pub(crate) use driver::Plan;
 pub(crate) use producers::Native;
 

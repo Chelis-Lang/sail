@@ -321,11 +321,12 @@ oyster and such." This supersedes the parallel tracks of
       [incidental-edit catalogue](validation/incidental-edits.md) is prepared;
       its final-runtime measurements and exact solver-work counts are pending.
    6. B4, instant revert: receipts beyond the latest revision, #163. The
-      default-off content-bound driver join and aggregate retained-arena
-      admission are implemented. Native ABI and corrected small ABA pass. Vest
-      reruns verification because namespace admission includes uncompiled
-      siblings; the closed-source correction is source-qualified. Native Vest
-      ABA and latency qualification remain pending ([record](validation/instant-revert.md)).
+      content-bound driver join and bounded retained arena pass native ABI and
+      small/Vest ABA with original provenance and zero new verifier on restored A.
+      The first 72-row cost cohort failed after four stock calls; 68 rows remain
+      unrun. Automatic Linux selection is an isolated source candidate; default,
+      ordinary-resolution and performance gates remain pending
+      ([record](validation/instant-revert.md)).
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
       real projects caps every other lever. A narrow Cargo-selection correction

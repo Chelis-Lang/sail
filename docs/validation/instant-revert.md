@@ -1,8 +1,9 @@
 # Instant revert: content-bound source checkpoint
 
-Status: implemented behind `SAIL_RETAINED_CONTENT_RESEARCH=1`, unselected;
-native real-Vest A → B → A qualification and latency measurements pending.
-Default behavior and runtime pins are unchanged.
+Status: the research implementation passes native small and real-Vest A → B → A
+on source `446385e9` and the genuine final `e5365c05` runtime. It is unselected.
+An isolated automatic-selection source candidate targets the integrated runtime;
+performance, default behavior and ordinary-resolution qualification remain pending.
 
 The driver joins exact source/provider eligibility, owned complete dependency
 snapshots, actual native and GHOST/EXEC compiler-read certificates, bounded
@@ -175,3 +176,24 @@ External source-check index SHA-256: `fbebf6df6a935fddb08ec882178b473feae4dfb13f
 The [source integration](proof-reuse-integration.md) preserves this path as a
 separate default-off experiment. Enabling both research switches refuses with
 `SAIL3135`; no integrated native acceptance is inferred from this record.
+
+## Latest functional and source-candidate scope
+
+Source `446385e9` passes native ABI, small and Vest A → B → A. Returned A2 and
+unchanged A3 use zero new verifier invocations and retain the original A1
+establishing run. Vest A2 took 2.420 seconds versus B at 28.512 seconds, but this
+is one diagnostic-verbosity cycle, not performance acceptance. Final archive
+SHA-256: `33221697927fc74c47f8b72615ae29f4d1e1caabc541cfc5db5607b6ca5d6abc`.
+
+The first genuine-stock 72-row quiet cohort passes four stock small calls, then
+refuses before Sail OFF's first command: `unknown special entry`. Its remaining
+68 rows are unrun. A separate actual owned macOS daemon reproduces two socket
+endpoints while the growth inventory admits only `daemon.sock`; the native
+exception itself did not retain the path. This failure supplies no performance
+acceptance and remains preserved.
+
+The automatic-selection successor adds only platform/runtime selection and
+existing-runtime-plan propagation. Local source checks exercise real owned
+managed child transport without an explicit research flag and retain the
+outer-absent/child-bootstrap environment boundary. These controls do not
+qualify automatic native compiler admission, macOS reuse or default activation.

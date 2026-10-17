@@ -125,8 +125,9 @@ main checks.
   candidate dependency-artifact sharing, observations and pending native gates.
 - [vstd compiler-boundary replacement](validation/vstd-compile-boundary.md): unselected first-project performance prototype and remaining correctness gates.
 
-The [instant-revert record](validation/instant-revert.md) tracks the disabled
-content-bound archive implementation and its pending native ABA gate.
+The [instant-revert guide](instant-revert.md) describes the automatic-selection
+candidate and its conservative fallback scope. The [validation record](validation/instant-revert.md)
+separates native functional qualification from pending performance/default gates.
 
 The [compiler-reuse integration record](validation/proof-reuse-integration.md)
 describes the mutually exclusive research switches, shared snapshots and

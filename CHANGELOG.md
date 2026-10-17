@@ -11,17 +11,15 @@ semantic versioning once the API is published.
 
 - Experimental vstd reuse: compile admitted macOS proc macros with a stable,
   explicitly keyed install name; native artifact comparisons remain exact.
-- Add a disabled content-bound instant-revert research path (#163), joining
+- Add a content-bound instant-revert implementation (#163), joining actual
   native source certificates, private dependency graphs and checked output
-  restoration. Native Vest ABA qualification and performance remain pending;
-  default verification and pins are unchanged. Its retained arena uses
-  prospective aggregate byte/count admission, preserving unknown live graphs
-  and taking the compiler path on fullness; native cap performance is pending.
-  Normal Cargo manifest lint arguments remain literal and keyed in the research path.
-  Retained restoration compares declared environment values at the fresh outer
-  caller boundary, preserving the separately keyed managed-child environment.
-  Namespace admission and compiler source authority use the same closed compile
-  roots; unrelated workspace files remain in the content key.
+  restoration. Native small/Vest ABA pass; performance and default qualification
+  remain pending. An isolated candidate selects the exact admitted Linux runtime
+  and closed provider graph without requiring a user research flag, falling back
+  to fresh verification for unsupported contexts. It remains unselected.
+  Retained restoration preserves the fresh outer caller environment boundary,
+  original establishing provenance and bounded durable-arena admission; the
+  arena limit does not cover all managed-run logs and targets.
 
 - Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;

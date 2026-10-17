@@ -1,11 +1,11 @@
-//! Mutually exclusive, default-off compiler-reuse research paths.
+//! Mutually exclusive explicit compiler-reuse research requests.
 
 use crate::{Error, Result};
 
 /// The one research authority allowed to configure this compiler family.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Mode {
-    /// Ordinary verification, without either experimental reuse path.
+    /// No explicit research request; ordinary retained eligibility is separate.
     Off,
     /// Cross-project vstd compiler-boundary experiment (ADR 0048).
     VstdBoundary,

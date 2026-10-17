@@ -357,6 +357,19 @@ fn custom_compiler_context(args: &[OsString]) -> bool {
     })
 }
 
+// The runner serializes its admitted plan before applying managed child
+// environment overrides. Do not synthesize a public research switch here:
+// the outer caller's absence is part of the archive restore contract.
+fn retained_runtime(mode: crate::managed::research::Mode) -> Option<Runtime> {
+    if mode == crate::managed::research::Mode::VstdBoundary {
+        return None;
+    }
+    let path = std::env::var_os("SAIL_MANAGED_RUNTIME")?;
+    let runtime: Runtime = serde_json::from_slice(&std::fs::read(path).ok()?).ok()?;
+    runtime.retained.as_ref()?;
+    Some(runtime)
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "Engine fallback is kept alongside the owned subprocess drain and seal check."
@@ -368,7 +381,8 @@ fn driver() -> Result<ExitCode> {
     // Native prerequisites always execute through Cargo's real compiler. The
     // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
-        if research == crate::managed::research::Mode::Off {
+        let runtime = retained_runtime(research);
+        if research == crate::managed::research::Mode::Off && runtime.is_none() {
             return Command::new(wrapper)
                 .args(args)
                 .status()
@@ -381,14 +395,6 @@ fn driver() -> Result<ExitCode> {
         let mut observation = plan
             .as_ref()
             .and_then(|plan| crate::managed::shipped::native::Observation::begin(plan, &args));
-        let runtime = (research == crate::managed::research::Mode::RetainedContent)
-            .then(|| std::env::var_os("SAIL_MANAGED_RUNTIME"))
-            .flatten()
-            .and_then(|path| {
-                std::fs::read(path)
-                    .ok()
-                    .and_then(|raw| serde_json::from_slice::<Runtime>(&raw).ok())
-            });
         let mut retained = runtime
             .as_ref()
             .and_then(|runtime| crate::managed::retained::Native::begin(runtime, &args, &wrapper));
@@ -538,7 +544,7 @@ fn driver() -> Result<ExitCode> {
     let mut retained = runtime
         .retained
         .as_ref()
-        .filter(|_| research == crate::managed::research::Mode::RetainedContent)
+        .filter(|_| research != crate::managed::research::Mode::VstdBoundary)
         .and_then(|plan| {
             (wrapper.canonicalize().ok()? == runtime.original_wrapper.canonicalize().ok()?)
                 .then(|| plan.begin(&runtime, &identity, &launcher_args, &dir))
@@ -1168,6 +1174,77 @@ fn target_identity(args: &[OsString], manifest: PathBuf) -> TargetIdentity {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn automatic_retained_plan_reaches_owned_managed_child()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        const CHILD: &str = "SAIL_RETAINED_ADAPTER_CHILD";
+        if std::env::var_os(CHILD).is_some() {
+            assert_eq!(std::env::var("RUSTC_BOOTSTRAP")?, "1");
+            assert!(std::env::var_os("SAIL_RETAINED_CONTENT_RESEARCH").is_none());
+            let mode = crate::managed::research::selected()?;
+            assert_eq!(mode, crate::managed::research::Mode::Off);
+            let runtime = super::retained_runtime(mode).ok_or("automatic plan lost")?;
+            let wire = serde_json::to_value(&runtime)?;
+            assert_eq!(runtime.run_id, "owned-outer-run");
+            assert!(
+                wire["retained"]["caller_environment"]["values"]
+                    .get("RUSTC_BOOTSTRAP")
+                    .is_none()
+            );
+            assert!(
+                super::retained_runtime(crate::managed::research::Mode::VstdBoundary).is_none()
+            );
+            let path = std::env::var_os("SAIL_MANAGED_RUNTIME").ok_or("runtime path")?;
+            let mut malformed = wire;
+            malformed["retained"]
+                .as_object_mut()
+                .ok_or("plan")?
+                .remove("caller_environment");
+            std::fs::write(&path, serde_json::to_vec(&malformed)?)?;
+            assert!(super::retained_runtime(mode).is_none());
+            malformed["retained"] = serde_json::Value::Null;
+            std::fs::write(&path, serde_json::to_vec(&malformed)?)?;
+            assert!(super::retained_runtime(mode).is_none());
+            return Ok(());
+        }
+        let root = std::env::temp_dir().join(format!("sail-auto-adapter-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let path = root.join("runtime.json");
+        // An actual Runtime/Plan wire file exercises the existing managed
+        // child transport. This fixture is not compiler/source admission.
+        let wire = serde_json::json!({
+            "run_id":"owned-outer-run", "args":[], "z3":"/pinned/z3",
+            "z3_sha256":"solver", "daemon":false, "sidecars":root,
+            "invocations":root, "original_wrapper":"/pinned/verus", "receipts":root,
+            "context_sha256":"context", "input_revision":"revision",
+            "packages":{}, "target_kinds":{}, "engine":null,
+            "retained":{"root":root,"target":root,"metadata":null,"roots":[],
+                "closure":{"directories":{}},"launcher":"/pinned/verus",
+                "launcher_sha256":"launcher","compiler_sha256":"compiler",
+                "caller_environment":{"version":1,"run":"owned-outer-run","values":{}}}
+        });
+        let _: super::Runtime = serde_json::from_value(wire.clone())?;
+        std::fs::write(&path, serde_json::to_vec(&wire)?)?;
+        let output = std::process::Command::new(std::env::current_exe()?)
+            .args([
+                "--exact",
+                "adapter::tests::automatic_retained_plan_reaches_owned_managed_child",
+            ])
+            .env(CHILD, "1")
+            .env("SAIL_MANAGED_RUNTIME", &path)
+            .env("RUSTC_BOOTSTRAP", "1")
+            .env_remove("SAIL_RETAINED_CONTENT_RESEARCH")
+            .env_remove("SAIL_VSTD_BOUNDARY_RESEARCH")
+            .output()?;
+        std::fs::remove_dir_all(root)?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        Ok(())
+    }
+
     #[test]
     fn conflicting_research_refuses_before_adapter_setup()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
