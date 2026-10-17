@@ -33,6 +33,30 @@ each solver-session handshake. Measure that cost against the preceding build
 on native hosts, including the warm-cache fresh-project workload, before
 acceptance; no negligible-overhead claim is made.
 
+## Accepted-runtime native checkpoint
+
+Standalone source `51649fc2` keeps main `72acf29b`'s accepted runtime pins.
+On 2026-10-17, native c7i.8xlarge in us-east-1 passed the real HELLO
+reproduction, workspace gate (657 tests, 35 solver tests skipped, 2 doctests),
+all 35 solver tests, all nine E2E phases plus local extra, and the PR
+conformance subset. Full FAST then matched stock in every mode:
+
+| Modes | Units matching stock per mode | Functions per mode | Differences / unstable / infrastructure / skipped |
+|---|---|---|---|
+| Pass-through, cache fill, cache warm, engine | 147 / 147 | 3,450 | 0 / 0 / 0 / 0 |
+
+The HELLO reproduction returns the new executable SHA despite the unchanged
+path, length and restored mtime; it exercises identity, not proof verdicts.
+Per-arm barriers recheck all 579 source files, the five actual executables and
+the runtime/client identities. Full STANDARD, final integrity barriers, native
+performance cost and final PR checks remain pending. This is separate from
+the combined fork candidate; no runtime selection follows from these results.
+
+Raw E2E archive SHA-256
+`a68bc44d075b6dacac5c26e5f4e6ea16e31673cb3611d59700660f9e943ef8cd`;
+full FAST archive SHA-256
+`36eb43b6f083ea51929262e02693a572c8f0f39cfc4df291af17616c6d696bce`.
+
 Failed attempts remain indexed here:
 
 - 2026-10-17, `af339f8a` private Mac CLI / daemon source equal to `79e26818`:
