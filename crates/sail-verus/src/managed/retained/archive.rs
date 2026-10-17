@@ -1,9 +1,9 @@
 //! Bounded archive/checked placement ported from the unmerged ADR 0050 work.
 //!
-//! Admission is intentionally not wired to a compiler or driver yet. `Basis`
-//! must eventually be constructed only after the two-phase source-read and
-//! closed-input policy pass; matching these serializable fields alone is not
-//! such a proof.
+//! The disabled research driver constructs `Basis` only after fresh closed-input
+//! admission; publication additionally requires two-phase compiler reads and
+//! the ordinary committed Current result. Matching these serializable fields
+//! alone does not establish that admission.
 
 use super::super::dependency_snapshot::{Content, open};
 use super::super::{

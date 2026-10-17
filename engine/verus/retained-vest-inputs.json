@@ -1815,8 +1815,8 @@
           "size": 21473
         },
         "src/enum_synthesize.rs": {
-          "checksum": "blake3=c2b066fb69b339ebb16960d0911d9728e118e3b094cc2e450d70bd8a671eca5e",
-          "size": 10296
+          "checksum": "blake3=fc866bd8bfe84b4ea9f16591b81edcfbf283681bf6889bb7dcd7eb70cb8d9345",
+          "size": 11208
         },
         "src/fndecl.rs": {
           "checksum": "blake3=381ad3ee55256b8d9f9e5b74f6f7bd8c6556b72c2c1689cdfffda8a91a25259a",
@@ -1872,7 +1872,7 @@
         "src/contrib/mod.rs": "81ca1752441848172d9dd797856c0dbca3ed84c3b4e15afb92b01056b75eb452",
         "src/contrib/set_build.rs": "74519b1949aff41ec53a8375e752f156f71d261aa0b3d402688957d7fc240a69",
         "src/contrib/spec_derive.rs": "c665223a9c4292f374c44453e84544687066acbf055e5bd9682a7f613718c490",
-        "src/enum_synthesize.rs": "2beba2b7bb4f1ecc5333f50004dda2a9d9a04a366d8ad6ef075081d22f2a28f6",
+        "src/enum_synthesize.rs": "8e5ea94bd0ae4dab2034305cd44209ef0bf3b1d5f5c5097507b9f9b94a0ceeb6",
         "src/fndecl.rs": "abe5187ba2c2084f270be986ada0b6a8949e801455bc3351d84543bb721ca522",
         "src/is_variant.rs": "2947e850f0b0754da6b50f51d388c3c433bc332a452181c7a224ff7f6e726ec8",
         "src/lib.rs": "b6650b8b354bb47dddb0fd4d315f341f01918e882aea273d7e8ef352ffc4d5ce",
@@ -3850,5 +3850,6 @@
   },
   "schema": 1,
   "scope": "Pinned source/feature authority for the disabled workspace retained-proof prototype; native provenance and actual compiler observations remain separately mandatory.",
-  "verus_source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+  "verus_source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "verus_source_fork_commit": "e5365c05d0a9f8c8cb655edc035ce9a2f6dde482"
 }

@@ -102,7 +102,7 @@ regression, not real-project reuse qualification.
 
 The successor captures only outer-caller value digests before Cargo starts,
 with actual absence and a required current-run binding. Restore checks every
-archived declared variable against that fresh caller snapshot. The complete
+archived declared variable against that fresh caller snapshot. The existing keyed
 adapter environment remains part of the exact archive basis; post-placement
 source/graph/environment checks and the outer runner's ordinary Current gates
 remain. Missing snapshots, stale runs and changed/present/absent declared
@@ -120,3 +120,23 @@ snapshot, preserving the original establishing run. This does not supersede
 the native small ABA failure: the correction still requires a native repeat.
 
 External regression index SHA-256: `8c223b087d1d75269b78b1f4ba745035878db8db3e83524de3133528b6547f45`; corrected retained-test stdout: `9a0d3548401d4c966631baa9fd99c1fc60f7fd51353c760b5faac9009ada9f2e`; clippy stderr: `687abac1d888da9b5c4f8526bb63a4f13410417b50f9ed026176d6c14b6b97d2`.
+
+## Final-runtime provider compatibility
+
+The next prospective pilot uses the genuine normal `e5365c05` runtime archive
+SHA-256 `689004c074aca8883e225a2b89efebc137f3e563f24df2abd398516112b13928`,
+including its original full Manifest and 168-second build record. It does not
+rebuild Verus or relabel the earlier `067d0d7c` attempts. That earlier component
+had a genuine build but a failed post-build source guard caused by the wrong
+working directory; it was not full runtime qualification.
+
+Final-fork source differs from the previous closed provider authority in one
+of 400 official provider files: `builtin_macros/src/enum_synthesize.rs` has the
+recorded VI-0001 source-order fix. The prospective policy updates that file's
+exact SHA-256, compiler BLAKE3 and size; all other 717 provider files and all
+15 feature vectors are unchanged. Release-base identity remains `426d8b01`;
+`verus_source_fork_commit` records the actual `e5365c05` provider source.
+The policy parser and every source/feature/graph check remain unchanged.
+Actual macOS Cargo fetch and locked metadata checks match all 15 vectors and
+718 files for both small and Vest, without compiling or measuring performance.
+Native ABI/ABA on this corrected source/runtime combination remains pending.
