@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Stage a combined Verus runtime with positional spec-formal solver names and
+  request-driven native compiler observations. Both platform archives are built;
+  final qualification and selection remain pending. Native-artifact store
+  reuse remains disabled. See the [qualification record](docs/validation/spec-parameter-names.md).
+
 - Route partial real-project benchmark arms through the public JSON verification
   API, preserving the requested module. Missing compiler-stage timings are
   reported as unavailable; whole-project benchmark commands stay unchanged.

@@ -254,3 +254,8 @@ Apple silicon from the same fork commit, published as the fork's prerelease
 the steps above apply), and qualified separately in the
 [macOS engine record](../../docs/validation/macos-engine.md). CI never builds,
 installs or runs the macOS runtime.
+
+The [combined binder/runtime candidate](../../docs/validation/spec-parameter-names.md)
+has both platform archives built and remains under qualification. Its native
+compiler observations run only when explicitly requested; the quarantined v1
+dependency store remains disabled.
