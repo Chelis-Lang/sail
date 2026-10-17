@@ -4896,4 +4896,87 @@ mod tests {
         );
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
+
+    // Standalone research probe: passing this observer does not qualify relay
+    // transparency. Every mismatching combined stream is retained as a failure.
+    #[test]
+    fn record_actual_relay_causal_order() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use std::sync::{Arc, Mutex};
+        #[derive(Clone)]
+        struct Combined(Arc<Mutex<Vec<u8>>>);
+        impl std::io::Write for Combined {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                self.0
+                    .lock()
+                    .map_err(|_| std::io::Error::other("probe sink poisoned"))?
+                    .extend_from_slice(bytes);
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let destination = std::env::var_os("SAIL_RELAY_REPRO_OUT")
+            .ok_or_else(|| std::io::Error::other("private research destination required"))?;
+        let summary = b"verification results:: 1 verified, 1 errors\n";
+        let error = b"error: could not compile `probe` (lib)\n";
+        let expected = [summary.as_slice(), error.as_slice()].concat();
+        let program = r#"import os,sys
+prefix=b'{"reason":"compiler-artifact","padding":"'+b'x'*65536+b'"}\n'
+if sys.argv[1]=='managed':
+ while prefix:
+  n=os.write(1,prefix);prefix=prefix[n:]
+os.write(1,b'verification results:: 1 verified, 1 errors\n')
+os.write(2,b'error: could not compile `probe` (lib)\n')
+"#;
+        // First retain the same child with stdout/stderr genuinely sharing one
+        // open file description, as the shell's 2>&1 does. No reader scheduling.
+        let parent = std::path::Path::new(&destination)
+            .parent()
+            .ok_or_else(|| std::io::Error::other("missing parent"))?;
+        let direct_path = parent.join("direct-combined.bin");
+        let direct = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&direct_path)?;
+        let status = std::process::Command::new("python3")
+            .args(["-B", "-c", program, "plain"])
+            .stdout(direct.try_clone()?)
+            .stderr(direct)
+            .status()?;
+        assert!(status.success());
+        assert_eq!(std::fs::read(&direct_path)?, expected);
+        let mut rows = Vec::new();
+        for index in 0..96 {
+            let mut child = std::process::Command::new("python3")
+                .args(["-B", "-c", program, "managed"])
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()?;
+            let sink = Arc::new(Mutex::new(Vec::new()));
+            let mut shown = Combined(Arc::clone(&sink));
+            let mut diagnostics = Combined(Arc::clone(&sink));
+            let mut output: Option<&mut dyn std::io::Write> = Some(&mut shown);
+            let (stdout, stderr) = super::relay(&mut child, &mut output, &mut diagnostics, &[])?;
+            assert!(child.wait()?.success());
+            assert!(stdout.ends_with(summary));
+            assert_eq!(stderr, error);
+            let combined = sink
+                .lock()
+                .map_err(|_| std::io::Error::other("probe sink poisoned"))?
+                .clone();
+            rows.push(serde_json::json!({"index":index,"combined":String::from_utf8(combined.clone())?,"matches_causal_order":combined==expected,"stdout_capture_bytes":stdout.len(),"stderr_capture_bytes":stderr.len()}));
+        }
+        let mismatches = rows
+            .iter()
+            .filter(|row| row["matches_causal_order"] == false)
+            .count();
+        std::fs::write(
+            destination,
+            serde_json::to_vec_pretty(
+                &serde_json::json!({"scope":"Actual unmodified main relay; controlled Python producer, not Verus or original failure attribution","attempts":rows.len(),"mismatches":mismatches,"relay_transparency_qualified":false,"rows":rows}),
+            )?,
+        )?;
+        Ok(())
+    }
 }
