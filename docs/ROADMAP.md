@@ -316,7 +316,12 @@ oyster and such." This supersedes the parallel tracks of
    6. B4, instant revert: receipts beyond the latest revision, #163.
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
-      real projects caps every other lever.
+      real projects caps every other lever. A narrow Cargo-selection correction
+      measures the first repair transition at 67.87 to 32.73 seconds on the same
+      cc7 runtime; later warm repair remains about 33 seconds. Current-source
+      STANDARD/final qualification is pending
+      ([record](validation/managed-selection-family.md));
+      this does not accept M8 or close #162.
    8. Jobs, watch and MCP fall back like `sail verify` (`SAIL3112`), #165:
       implemented; native gates and full fast/standard pass; required PR
       checks are enforced separately ([validation](validation/fallback-parity.md)).
