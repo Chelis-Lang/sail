@@ -186,6 +186,7 @@ class Broker:
             if start != dict(identity=identity, context_sha256=digest(binding)):
                 raise ProtocolRefusal('actual start record differs')
             row['context_sha256'] = digest(binding)
+            row['environment_names'] = sorted(binding['environment'])
             # Actual context is needed by the enclosing donor/preparation
             # owner. It stays in memory; evidence exposes only its digest.
             row['_binding'] = binding
