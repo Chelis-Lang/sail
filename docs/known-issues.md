@@ -12,7 +12,10 @@ are in the `archive/m7-contracts-f7103bf` tag.
   Changing executable bytes at fixed path, length and restored mtime returned
   the preceding SHA in two real HELLO connections on the retained private
   Mac CLI. No wrong proof was tested. A candidate removes the metadata memo;
-  native correctness and performance qualification remain pending. See the
+  the actual macOS reproduction, native workspace and solver checks, and all
+  four full FAST and four STANDARD conformance arms pass at the recorded
+  candidate source.
+  The isolated performance comparison remains pending. See the
   [identity validation record](validation/solver-identity.md).
 
 - **The original VI-0012 fork regression receives a duplicate progress flag**
@@ -34,6 +37,21 @@ are in the `archive/m7-contracts-f7103bf` tag.
   automatic-daemon loop also matched with complete retained observations;
   neither accepts the memo candidate. The [failure observer](e2e-output-evidence.md)
   preserves bounded original bytes; [evidence and limits](validation/e2e-output-evidence.md).
+
+- **The managed relay can reorder causally ordered output**
+  ([#215](https://github.com/Chelis-Lang/sail/issues/215)). A controlled child
+  writing a summary to stdout and then a Cargo error to stderr was relayed in
+  reverse order in 44 of 96 fixed attempts on the shared developer Mac.
+  Both individual streams retained their complete bytes in every attempt;
+  a reference child sharing one output file description preserved the order.
+  This exercised the actual main relay, not a real Verus acceptance case.
+  Both the Cargo adapter and outer relay forward stdout independently of
+  stderr. No correction is qualified. This separate witness does not explain
+  the lost original #174 streams or qualify its held optimization. Raw
+  observations SHA-256:
+  `145ac95ef790cbea0ee9b17e6e73f5f4d15b692b897999ae1d560c22955a3377`;
+  complete reproduction source bundle SHA-256:
+  `9744b53b692bf61dc32d5dc0d473baee5b48e2fca8d4e953bfd421f7bf49ffce`.
 
 - **Changed-check continuation remains unqualified** ([#158](https://github.com/Chelis-Lang/sail/issues/158)).
   Historical fork continuations have raw statistics differences. Three fresh
@@ -59,7 +77,8 @@ are in the `archive/m7-contracts-f7103bf` tag.
   v1 consumption and publication; its native ordinary, FAST and STANDARD checks
   pass at their recorded sources. The revised nine-phase layout also passes
   its native gate, solver, full local union, independent managed entries and
-  PR subset; final CI remains pending and the original draft asset is unchanged.
+  PR subset. Containment is merged in #212 and all 17 checks pass on the
+  resulting main commit `72acf29b`; the original draft asset is unchanged.
   Raw macOS archive SHA-256
   `7bea96ebf3bd10a292ec6508bb7322a8a799fbc25ef024a89cf256d90783f51c`.
   The unmerged #187 replacement has a separate APFS mmap guard blocker;
@@ -101,15 +120,17 @@ are in the `archive/m7-contracts-f7103bf` tag.
   but nothing is reused or recorded. Jobs, `watch` and MCP verify them the
   same way and mark the result `no_reuse`, never `current`
   ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)).
-- **The first project on a machine verifies vstd.** As with plain `cargo
-  verus verify` on a fresh target, the first `sail verify` on a machine
-  verifies vstd (about 33–40 s natively). Later new projects and worktrees
-  that resolve the same vstd start from Sail's dependency store
-  ([ADR 0045](decisions/0045-dependency-store.md); 1.4 s for a new demo
-  project on rc.5). Some workspaces get a store key of their own and verify
-  vstd once more on their first run: on rc.5 the workspace of issue #121
-  did (release-candidate finding 15; which key input differed was not
-  checked; see also [#177](https://github.com/Chelis-Lang/sail/issues/177)). Shipping a
+- **Every fresh project verifies vstd while v1 store reuse is quarantined.**
+  Current development builds do not seed native artifacts from the dependency
+  store ([ADR 0053](decisions/0053-disable-unqualified-native-store.md)).
+  The three-round fresh-demo median is 32.57 s, versus 34.36 s for stock and
+  the historical seeded 1.28 s; same-project receipts and exact solver caching
+  remain available. The original rc.5 archive still has the earlier store
+  behavior, including its #187 defect. Its historical new-demo gain and
+  additional workspace miss are recorded in
+  [ADR 0045](decisions/0045-dependency-store.md) and
+  [release-candidate finding 15](validation/release-candidate.md).
+  Recovering sound first-run reuse and shipping a
   pre-verified vstd in the archive is
   [#161](https://github.com/Chelis-Lang/sail/issues/161).
 - **The repair benchmark's outcome check fails on output schema v2.** It
