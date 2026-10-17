@@ -380,11 +380,26 @@ attempt and both costs. A duplicate claimant cannot cancel the first claimant.
 ```sh
 python3 -B native/sail-live-prefix/test-edit-stream.py
 python3 -B native/sail-live-prefix/test-edit-claim.py
+python3 -B native/sail-live-prefix/test-edit-wire.py
 ```
 
 These local controls exercise literal all-split framing, a real owned caller
 waiting for its version reply, and interactive owned children with actual
 `wait4` accounting. Linux image/pidfd APIs are explicitly doubled on the Mac.
-The IPC broker, explicit `VERUS_Z3_PATH` interposer and real application edit
-driver remain unimplemented. These components supply no genuine solver,
-application, native or default qualification and no performance result.
+The bounded single-connection IPC component retains raw SMT reads before
+parsing, including a partial frame. Its actual owned caller/grandchild control
+demonstrates compiler exit0 after ignoring interposer exit1/backend exit7;
+the separate outer attempt gate correctly fails. A separately executed whole
+fresh retry has its own completed child/I/O/accounting record. A compiler's
+exit0 alone never qualifies a result. The direct fresh streaming path also
+uses the same owner and complete final resource admission; it waits for fresh
+startup only, without waiting for speculative readiness.
+
+The private listener/session-selection driver, executable `VERUS_Z3_PATH`
+entry point and real application edit driver remain unimplemented. The enclosing
+driver must authenticate its private connection, bind actual child context,
+join every selected session to the current compiler attempt and require all
+completions before publishing a result. Selected-child `wait4` is not complete
+compiler/native/nonselected-child pipeline accounting. These components supply
+no genuine solver, application, native or default qualification and no
+performance result.

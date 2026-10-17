@@ -21,7 +21,7 @@ class StreamingClaim:
     never waits for an entry to become ready and never accepts another child.
     """
 
-    def __init__(self, pool, key):
+    def _initialize(self, pool):
         self.pool = pool
         self.entry = None
         self.replay = None
@@ -35,12 +35,19 @@ class StreamingClaim:
         self.snapshot_ready = False
         self.completed = False
         self.closed = False
+
+    @staticmethod
+    def _policy(pool):
+        if not pool.experiment_kernel_accounting_owner or not pool.experiment_numeric_time_only:
+            raise ProtocolRefusal('named response and kernel-owner policies required')
+        if (pool.slots != 1 or pool.bytes_per_slot != 1024**3 or
+                pool.ttl > 600 or pool.run_timeout > 300):
+            raise ProtocolRefusal('fixed one-child resource/wall bounds required')
+
+    def __init__(self, pool, key):
+        self._initialize(pool)
         try:
-            if not pool.experiment_kernel_accounting_owner or not pool.experiment_numeric_time_only:
-                raise ProtocolRefusal('named response and kernel-owner policies required')
-            if (pool.slots != 1 or pool.bytes_per_slot != 1024**3 or
-                    pool.ttl > 600 or pool.run_timeout > 300):
-                raise ProtocolRefusal('fixed one-child resource/wall bounds required')
+            self._policy(pool)
             with pool.lock:
                 entry = pool.entries.get(key)
                 if pool.closed or entry is None or not pool._identity_unchanged():
@@ -146,7 +153,9 @@ class StreamingClaim:
             decision = self.replay.consume(raw)
             if decision['action'] == 'continue-original-child':
                 self._write(raw)
-                return {'action': 'original-child-reply', 'reply': self._reply()}
+                reply = self._reply()
+                self.replay.emitted = True
+                return {'action': 'original-child-reply', 'reply': reply}
             if decision['action'] != 'prepared-reply':
                 self._fail_entry(decision['reason'])
                 self.errors.append(decision['reason'])
@@ -215,3 +224,54 @@ class StreamingClaim:
                 self.entry.close(cancel=not self.completed)
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
                 self.errors.append('owned cleanup: ' + str(error))
+
+
+class _DirectRoute:
+    """No stored response: every batch runs on this fresh original child."""
+    commands = ()
+    index = 0
+    emitted = False
+
+    def consume(self, batch):
+        return {'action': 'continue-original-child', 'input': batch}
+
+    def fail(self, reason):
+        return {'action': 'abort-whole-attempt' if self.emitted else 'fresh-before-reply',
+                'reason': reason}
+
+
+class DirectClaim(StreamingClaim):
+    """Fresh interactive child for donor capture or a pre-reply miss.
+
+    This waits only for the newly launched child's startup/binding, never for
+    speculative preparation. No command or cached reply exists at startup.
+    The same owned wait4 and complete final resource admission remain required.
+    """
+
+    def __init__(self, pool):
+        self._initialize(pool)
+        self.direct_startup = True
+        try:
+            self._policy(pool)
+            key = pool.seed(b'', b'')
+            if key is None:
+                raise ProtocolRefusal('fresh startup refused: ' + str(pool.last_refusal))
+            self.entry = pool.entries[key]
+            if not pool.wait_ready(key, min(2, pool.run_timeout)):
+                raise ProtocolRefusal('fresh child startup incomplete/refused')
+            with pool.lock, self.entry.changed:
+                entry = self.entry
+                if (entry.claimed or entry.closed or entry.failure or not entry.ready or
+                        entry.stdout or entry.stderr or not pool._identity_unchanged() or
+                        not entry._image_ok()):
+                    raise ProtocolRefusal('fresh original child binding refused')
+                self.replay = _DirectRoute()
+                entry.claimed = True
+                entry.ready = False
+                entry.deadline = time.monotonic() + pool.run_timeout
+                self.snapshot_ready = True
+                os.set_blocking(entry.process.stdin.fileno(), False)
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            self.errors.append(str(error))
+            if self.entry is not None:
+                self._fail_entry('fresh streaming refusal: ' + str(error))

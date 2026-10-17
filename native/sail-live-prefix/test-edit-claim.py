@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 import kernel_accounting
 import live_prefix
-from edit_claim import StreamingClaim
+from edit_claim import StreamingClaim, DirectClaim
 
 VERSION = b'(get-info :version)\n(echo "<<DONE>>")\n'
 CHECK = b'(assert true)\n(check-sat)\n(echo "<<DONE>>")\n'
@@ -64,7 +64,7 @@ if os.environ.get('SAIL_TEST_HANG_EOF')=='1':time.sleep(2)
 
 for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate-claim',
              'ipc-after-reply', 'child-after-reply', 'missing-accounting',
-             'stderr-after-reply', 'timeout-after-eof'):
+             'stderr-after-reply', 'timeout-after-eof', 'direct-success', 'direct-ipc'):
     with tempfile.TemporaryDirectory() as td, native_doubles():
         worker = Path(td) / 'solver-fixture'
         worker.write_text('#!' + sys.executable + '\n' + WORKER)
@@ -82,7 +82,22 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
                                      experiment_numeric_time_only=True,
                                      experiment_kernel_accounting_owner=True)
         claim = None
+        entry = None
         try:
+            if case.startswith('direct-'):
+                claim = DirectClaim(pool)
+                assert claim.snapshot_ready, claim.errors
+                entry = claim.entry
+                assert entry.prefix == b''
+                assert claim.batch(VERSION) == {'action': 'original-child-reply', 'reply': VR}
+                if case == 'direct-ipc':
+                    assert claim.abort('controlled direct IPC disconnect')['action'] == 'abort-whole-attempt'
+                else:
+                    assert claim.batch(CHECK) == {'action': 'original-child-reply', 'reply': CR}
+                    assert claim.batch(STATS) == {'action': 'original-child-reply', 'reply': SR}
+                    assert claim.finish(), claim.errors
+                    assert bytes(claim.input) == bytes(claim.child_input) == VERSION + CHECK + STATS
+                continue
             key = pool.seed(VERSION + CHECK, VR + CR)
             assert key is not None, pool.last_refusal
             entry = pool.entries[key]
@@ -154,6 +169,15 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
             if claim is not None:
                 claim.close()
             pool.close()
+            if case.startswith('direct-') and entry is not None:
+                record = entry.process.accounting()
+                assert entry.kernel_closed and not any(t.is_alive() for t in entry.threads)
+                assert all(s.closed for s in (entry.process.stdin, entry.process.stdout, entry.process.stderr))
+                assert entry.pidfd is None and entry.image_fd is None
+                assert claim.completed == (case == 'direct-success')
+                rows.append({'name': case, 'passed': True, 'actual_exit': record['exit'],
+                             'complete_cpu': record['accounting']['user_seconds'] + record['accounting']['system_seconds'],
+                             'retained_stdout_bytes': len(entry.stdout)})
         record = entry.process.accounting()
         assert entry.kernel_closed and not any(t.is_alive() for t in entry.threads)
         assert all(s.closed for s in (entry.process.stdin, entry.process.stdout, entry.process.stderr))

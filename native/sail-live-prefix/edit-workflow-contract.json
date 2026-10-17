@@ -1,5 +1,6 @@
 {
   "status": "source-only streaming research prototype; no application or default qualification",
+  "policy": "donor-first-check-stream-v1",
   "session_selection": {"donor_ordinal": 0, "future_ordinal": 0, "prepared_boundary": "first complete batch containing exact (check-sat), including its literal writer DONE command and newline"},
   "selection_inputs": "Completed donor session only. Never inspect future query bytes/LCP or select successful edits/sessions.",
   "readiness": "Snapshot once at edit invocation start, before compiler launch. A queued/incomplete preparation is a miss even if it becomes ready later. No waiting for readiness.",
