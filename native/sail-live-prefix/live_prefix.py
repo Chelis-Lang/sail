@@ -381,6 +381,11 @@ class Entry:
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
             self.kernel_accounting_error = str(error)
             errors.append('owned completion/accounting: ' + str(error))
+            if self.pidfd is not None:
+                try:
+                    self.process.cleanup_failed_accounting(self.pidfd)
+                except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as cleanup_error:
+                    errors.append('held-pidfd error cleanup: ' + str(cleanup_error))
         for thread in self.threads:
             if thread is not threading.current_thread() and thread.ident is not None:
                 thread.join(timeout=2)

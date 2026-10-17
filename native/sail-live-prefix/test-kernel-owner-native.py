@@ -20,6 +20,7 @@ from unittest.mock import patch
 from owned_wait4 import OwnedWait4, positive_accounting, drain_unstarted
 import kernel_accounting
 import live_prefix
+import owned_wait4
 
 SOLVER = 'e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765'
 PREFIX = b'(set-logic QF_UF)\n(assert false)\n(check-sat)\n'
@@ -48,7 +49,7 @@ def main():
         starts.append(owner.pid)
         return start(owner)
     def save():
-        data=dict(passed=len(rows)==8 and all(r['passed'] for r in rows),cases=rows,
+        data=dict(passed=len(rows)==10 and all(r['passed'] for r in rows),cases=rows,
                   source_sha256={n:hashlib.sha256(Path(__file__).with_name(n).read_bytes()).hexdigest() for n in ['test-kernel-owner-native.py','owned_wait4.py','kernel_accounting.py','live_prefix.py']},
                   platform=list(os.uname()),solver_sha256=SOLVER,owner_releases=starts,
                   scope=__doc__)
@@ -153,14 +154,57 @@ def main():
                 else:raise AssertionError('competing/uncompleted child reap')
         one('actual-released-allocation-kernel-lifetime-peak',helper)
         one('actual-held-pidfd-cancel-and-complete-accounting',lambda row:helper(row,True))
+        def failed_wait4(row, already_reaped=False):
+            import tempfile
+            with tempfile.TemporaryDirectory() as td:
+                ready=Path(td)/'ready';worker=Path(td)/'worker'
+                worker.write_text('#!'+sys.executable+'\nimport os,pathlib,time\nos.write(1,b"startup-out");os.write(2,b"startup-err");pathlib.Path('+repr(str(ready))+').touch();'+('os.read(0,1);os._exit(0)' if already_reaped else 'time.sleep(30)')+'\n')
+                worker.chmod(0o700)
+                expected=live_prefix.path_digest(str(Path(sys.executable).resolve(strict=True)))
+                actual_wait4=os.wait4;held=[];wait4_observed=[]
+                def captured(pid, identity):
+                    value=capture(pid,identity)
+                    held.append(os.dup(value[0]))
+                    deadline=time.monotonic()+3
+                    while not ready.exists():
+                        if time.monotonic()>deadline:raise OSError('native helper startup deadline')
+                        time.sleep(.005)
+                    return value
+                def broken(pid,flags):
+                    if already_reaped:
+                        actual_pid,status,usage=actual_wait4(pid,flags)
+                        wait4_observed.append(dict(pid=actual_pid,status=status,actual_exit=os.waitstatus_to_exitcode(status)))
+                    raise ChildProcessError('injected native sole-wait4 accounting failure')
+                try:
+                    with patch.object(kernel_accounting,'capture_running_image',captured),patch.object(owned_wait4.os,'wait4',broken):
+                        result=kernel_accounting.fresh(str(worker),expected,b'',.2,1024**3)
+                    retain('failed-wait4-'+str(already_reaped),result,row)
+                    row['helper_sha256']=hashlib.sha256(worker.read_bytes()).hexdigest()
+                    row['helper_image_sha256']=expected;row['original_wait4_observed']=wait4_observed
+                    assert result['error'] and not result['kernel_resource_gate_pass'] and result['kernel_accounting'] is None
+                    assert result['stdout']==b'startup-out' and result['stderr']==b'startup-err'
+                    cleanup=result['kernel_error_cleanup'];assert cleanup['accounting_available'] is False
+                    if already_reaped:
+                        assert cleanup['terminal_pidfd'] is True and cleanup['no_longer_waitable'] is True
+                        assert result['exit'] is None and len(wait4_observed)==1
+                    else:assert cleanup['actual_exit']==-signal.SIGKILL and result['exit']==-signal.SIGKILL
+                    assert len(held)==1
+                    observer=select.poll();observer.register(held[0],select.POLLIN);assert observer.poll(0)
+                    try:os.waitid(os.P_PIDFD,held[0],os.WEXITED|os.WNOHANG)
+                    except ChildProcessError:row['native_original_pidfd_no_longer_waitable']=True
+                    else:raise AssertionError('original child still waitable after caller cleanup')
+                finally:
+                    for fd in held:os.close(fd)
+        one('actual-P_PIDFD-cleanup-after-wait4-error',failed_wait4)
+        one('actual-already-reaped-error-retains-unknown-status',lambda row:failed_wait4(row,True))
         def stable(row):
-            assert len(starts)==6
+            assert len(starts)==8
             assert live_prefix.path_digest(z3)==SOLVER
             row['every_reaper_released_after_actual_capture']=True
             row['final_solver_sha256']=SOLVER
         one('all-starts-follow-unreaped-image-capture-final-identity',stable)
     save()
-    return 0 if len(rows)==8 and all(r['passed'] for r in rows) else 1
+    return 0 if len(rows)==10 and all(r['passed'] for r in rows) else 1
 
 
 if __name__=='__main__':raise SystemExit(main())
