@@ -1,12 +1,13 @@
 # VI-0023: Spec formal spelling changes untouched callers' solver inputs
 
-- **Status:** reproduced in historical captures; source-only fork candidate,
-  unbuilt and unqualified. No upstream issue filed.
+- **Status:** reproduced in historical captures; candidate normal runtime/vstd and eight
+  focused native controls pass. Real-project gain and wider qualification remain
+  pending. No upstream issue filed.
 - **Found:** 2026-10-17 while assessing the residual #118 incidental-edit scope.
 - **Original runtime:** fork `13a1176c`, native c7i.4xlarge / 16 vCPU,
   us-east-1; this is not a current cc7 measurement.
 - **Reproduction:** `corpus/repros/verus-spec-parameter-renaming/` (new reduced
-  sources unexecuted); fork regression `sail_vi0023_spec_parameter_names`.
+  sources executed on genuine cc7); fork regression `sail_vi0023_spec_parameter_names`.
 - **Decision:** [ADR 0054](../decisions/0054-stable-spec-parameter-names.md), proposed.
 
 A spec formal rename changes binder declarations and references in its defining
@@ -47,6 +48,8 @@ fixtures are not claimed to pass until executed with the actual compiler.
 | 2026-10-17, 0a691d04 / Sail1d3af06d | Native baseline ten-source preflight and Sail release build PASS; checker-example build FAIL because its package is sail-cli, not sail-conformance. Candidate Verus build, eight native regressions and timings UNRUN. Prospective package-only command correction preserves source, assertions and caps. | `cd3439cdc3bd8b8bc18b454501505660106cd4999caa770627f22cd290c00240` |
 | 2026-10-17, 0a691d04 / Sail1d3af06d, corrected checker command | Ten native baseline sources and Sail/checker builds PASS; genuine candidate vstd compilation FAIL with `unknown variable: VarIdent("n", VirParam)` at `poly.rs:466`. No candidate runtime, eight native regression controls or timings qualified. The source audit identifies the spec/decreases-proof shared parameter scope; the prospective fix and reduced via fixture still require candidate-native execution. | `74765136ff9b5ff67ba1ef9ce6917060b5af21691365df4f1d0ccef880944030` |
 
+| 2026-10-17, aead21d2 / Sail4ce1f00e | Genuine normal candidate runtime/vstd and all three VIR plus five new RVT controls PASS, including the via regression. First Capy timing harness FAILS before any sample: its intentional selector cleanup exposes an absent default stock install (SAIL3003). Source/runtime final guards pass. A prospective remaining screen reuses this actual packed runtime and original test proof, installs stock at the real default cache path before the unchanged harness, and preserves its corpus across containers. No gain or whole-corpus acceptance. | `1b9518aa334eb558f2cb7e510d5f2f7318807a0e56d6e8a4ba5e21d951f24816` |
+
 The compiler panic exposes an internal pairing requirement: vstd's
 `EndianNat::to_big(n)` uses `via Self::to_big_decreases`, whose special proof
 body is lowered in the spec function's parameter scope. Both must retain the
@@ -55,6 +58,6 @@ proof functions. The prospective correction also positions their corresponding
 formals; ordinary proof/exec formals remain unchanged. The reduced
 [`termination-via.rs`](../../corpus/repros/verus-spec-parameter-renaming/termination-via.rs)
 passes on genuine cc7 macOS, including its explicit fuel and termination proof;
-it has not yet been executed by the corrected candidate. All ten derived
+the corrected candidate also passes the native via regression. All ten derived
 baseline sources pass expected outcomes on genuine cc7 macOS, with unchanged
 runtime bytes/modes. This is fixture correctness, not candidate qualification.
