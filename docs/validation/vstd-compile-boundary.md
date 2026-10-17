@@ -180,3 +180,10 @@ The registry enum-helper ordering is already handled by the verifier-side
 VI-0001 fix `af212563`, present in the candidate runtime. Its shape check and
 source-order traversal also apply when Cargo compiles the registry macros.
 This source audit is narrower than a completed literal vstd-query comparison.
+
+The complete `def9c258` macOS host gate passes: clippy and all 671 enabled
+non-solver tests, 35 skipped, with unchanged source. A further ordinary Cargo
+proc-macro option, `-C prefer-dynamic`, is now admitted by the research native
+observer; its literal argument remains part of the key and the compiler still
+runs. The source-shape regression uses that actual option. This observer fix
+changes neither compiler options nor the default verification path.
