@@ -12,30 +12,33 @@ are in the `archive/m7-contracts-f7103bf` tag.
   18 retained Sail rows used non-JSON `sail verify` with `--verify-module`,
   which intentionally refuses partial verification. The benchmark correction
   uses the supported public JSON route and records unavailable stage timings
-  explicitly. Native Anvil acceptance remains pending; the original failed
+  explicitly. The current candidate now passes the focused Anvil stock comparison;
+  three-run FAST determinism, all four DEEP modes and final guards also pass. The original failed
   rows remain indexed in the [entrypoint record](validation/perf-real-partial.md).
 
-- **The daemon can retain a stale solver hash** ([#213](https://github.com/Chelis-Lang/sail/issues/213)).
-  Changing executable bytes at fixed path, length and restored mtime returned
-  the preceding SHA in two real HELLO connections on the retained private
-  Mac CLI. No wrong proof was tested. A candidate removes the metadata memo;
-  native gate, solver, full E2E, four-mode FAST and STANDARD checks, and
-  final source/runtime/binary integrity checks pass. Exact-source macOS host
-  checks and the real HELLO reproduction also pass. The complete matched 50-sample cost screen records 4.73% / 8.03%
-  slower Vest body / comment edits and an 11.26% slower quiet fresh-project
-  case on the earlier fork composition. Performance recovery and final
-  current-head CI remain pending. See the
-  [identity validation record](validation/solver-identity.md).
+- **The earlier combined-runtime inventory failure remains recorded.** The native
+  source suite observes 4,714 matching cases, but the enclosing run stops at
+  its post-test inventory with 199 fully captured extra files. Original source,
+  runtime and command/checker bytes remain unchanged. The independent complete
+  final audit accounts for all extras without changing the original failed
+  cohort. The later focused Anvil stock comparison and three-run FAST
+  determinism, all four DEEP modes and final guards pass. The matching runtime
+  pins are qualified; required PR checks gate their merge. See the
+  [qualification record](validation/spec-parameter-names.md).
 
-- **The original VI-0012 fork regression receives a duplicate progress flag**
-  ([#203](https://github.com/Chelis-Lang/sail/issues/203)). On private source
-  `168ab7ab`, the full genuine `8a373f81` suite retained one Different among
-  4,709 selected tests: both arms rejected the duplicate before verification.
-  A narrow runner correction binds the original source SHA, binary and case;
-  the original corrected test and complete suite now pass strictly on private
-  `af339f8a` (4,709 Same, 58 ignored). The main-based harness join remains
-  pending. The original test and strict
-  baseline-must-pass check remain unchanged. See the
+- **The stale solver-hash defect is fixed on main**
+  ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads
+  the complete current executable bytes. A saved SHA is reused only after
+  complete fresh-byte equality. Required CI and native acceptance pass; the
+  matched 50-sample recovery screen measures about 1–3% lower active-case wall
+  time and 34–37% lower daemon self CPU. The original same-size/restored-mtime
+  failure remains in the [identity record](validation/solver-identity.md).
+
+- **The duplicated source-suite progress flag is fixed on main**
+  ([#203](https://github.com/Chelis-Lang/sail/issues/203)). The runner correction
+  binds the original case and executable and keeps the strict baseline-must-pass
+  check. The selected cc7 suite passes 4,709 Same with 58 ignored. The original
+  rejection and its corrected private run remain in the
   [validation record](validation/rvt-progress-option.md).
 
 - **A combined-output disagreement remains unresolved** ([#174](https://github.com/Chelis-Lang/sail/issues/174)).
@@ -135,20 +138,15 @@ are in the `archive/m7-contracts-f7103bf` tag.
   finding 11. The new [deep fork gate](deep-verus-tests.md) compares the fork
   with and without the shim exactly, and retains the original stock-with-and-
   without-shim control with ADR 0042's diagnostic-message comparison.
-  JSON output from stock is not normalized. The corrected private `8a373f81`
-  source-suite run passes all 4,709 tests (58 ignored), with all 4,651
-  nonignored plain tests passing. That qualifies the recorded source-suite
-  scope, not an installed bundle or the subsequent full-identity fork source.
+  JSON output from stock is not normalized. The selected `cc7bbce4` fork
+  source suite passes 4,709 Same (58 ignored), with all 4,651 nonignored plain
+  tests passing. This is the runtime-local fork gate, not a claim that the
+  separate stock control is now green; stock-versus-fork equivalence remains
+  covered by corpus FAST, STANDARD and DEEP.
   The original native `c0e7e0f5` stock control remains failed: 4,691 Same,
   3 Unstable, 1 Different, 0 infrastructure errors; its Different JSON proof-note
   output matched none of 11 plain runs. See the
   [deep-tier record](validation/deep-tier.md).
-- **Fork JSON proof-note arrays are not deterministic.** Eight repeated
-  runs of the same failing proof emit both note orders; the exact source-suite
-  sample has three Differences. No verdict or rendered-diagnostic difference
-  was observed. A reviewed fork correction is pending runtime qualification
-  ([VI-0021](verus-issues/VI-0021-proof-note-json-order.md),
-  [#185](https://github.com/Chelis-Lang/sail/issues/185)).
 - **Default and engine runs each verify vstd once in their own target.** That
   was about 30 s on HumanEval for the first default `sail verify` and again
   for the first engine run (`sail verify --engine interactive` or
@@ -178,6 +176,15 @@ are in the `archive/m7-contracts-f7103bf` tag.
   the README's Install assumes `curl` and apt package lists, which a minimal
   container lacks. Findings 5, 8 and 9 of the
   [release-candidate record](validation/release-candidate.md#rc1-findings).
+
+## Resolved defects
+
+- **Fork JSON proof-note order (#185).** The selected `cc7bbce4` runtime
+  contains producer fix `5793253c`, which serializes both arrays lexically
+  without changing internal membership, verdicts or diagnostic bytes. The full
+  fork suite passes, including all nine source-JSON tests. The original failing
+  sample remains in [VI-0021](verus-issues/VI-0021-proof-note-json-order.md);
+  [qualification](validation/deep-tier.md#fork-source-suite-gate-124).
 
 ## Product limitations
 

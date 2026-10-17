@@ -127,4 +127,5 @@ main checks.
   candidate dependency-artifact sharing, observations and pending native gates.
 
 The [spec formal naming qualification](validation/spec-parameter-names.md) records
-the candidate binder fix, both platform artifacts and remaining native gates.
+the qualified binder fix, both platform artifacts, completed native gates and
+preserved earlier failures.

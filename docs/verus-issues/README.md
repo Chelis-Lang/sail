@@ -42,9 +42,9 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0017](VI-0017-timing-json-order.md) | `--output-json --time` lists modules and functions in a run-dependent order | open in stock Verus; fixed in the fork | fixed: `9e32601e` fix: list output-json timing modules and functions by name (pinned in `73dea021`) | `corpus/repros/verus-timing-json-order/` |
 | [VI-0018](VI-0018-source-build-cargo-verus-new.md) | A source-built `cargo verus new` knows no vstd for its own version | fixed in Sail's runtime (from `73dea021`) | not a source change: `cargo xtask build-verus-engine` writes the toolchain manifest, as the release workflow does | described (steps) |
 | [VI-0019](VI-0019-crate-wide-closure-numbering.md) | Inserting an item renames closure types crate-wide | open in stock Verus; fixed on a fork branch, not yet pinned | fixed on `m11-5/stable-closure-ids`: `8d03ab54` fix: name closure types by definition path, not crate-wide index (a renaming, under [ADR 0049](../decisions/0049-stable-closure-names.md)) | `corpus/repros/verus-closure-renumbering/` |
-| [VI-0021](VI-0021-proof-note-json-order.md) | JSON proof-note arrays follow hash-set order | reproduced in the pinned fork; correction pending | — | `corpus/repros/verus-proof-note-order/` |
+| [VI-0021](VI-0021-proof-note-json-order.md) | JSON proof-note arrays follow hash-set order | fixed and qualified in selected `cc7bbce4` | `5793253c` (producer lexical serialization) | `corpus/repros/verus-proof-note-order/` |
 
-| [VI-0023](VI-0023-spec-parameter-names.md) | Spec formal spelling changes untouched callers' solver inputs | reproduced; candidate built, final qualification pending | proposed: `aead21d2`, included in combined `e5365c05`; not selected | `corpus/repros/verus-spec-parameter-renaming/` |
+| [VI-0023](VI-0023-spec-parameter-names.md) | Spec formal spelling changes untouched callers' solver inputs | fixed; combined runtime qualified | accepted ADR 0054: `aead21d2`, included in qualified `e5365c05` platform pins | `corpus/repros/verus-spec-parameter-renaming/` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The

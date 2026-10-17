@@ -1,15 +1,16 @@
 # VI-0023: Spec formal spelling changes untouched callers' solver inputs
 
-- **Status:** reproduced in historical captures; candidate normal runtime/vstd and eight
-  focused native controls pass. A targeted Capy screen observes a 24.61% rename
-  saving; the Capy matrix passes. Both final combined platform runtimes are built; native
-  broader qualification remains pending. No upstream issue filed.
+- **Status:** fixed by the qualified combined `e5365c05` runtime. Three paired
+  native rounds lower CapybaraKV/Anvil rename medians by 22.63%/59.49%; stock
+  verdict/diagnostic comparisons, full source suite, determinism, all four DEEP
+  modes and final guards pass. Matching platform pins are selected by the
+  runtime delivery change, subject to required PR checks. No upstream issue filed.
 - **Found:** 2026-10-17 while assessing the residual #118 incidental-edit scope.
 - **Original runtime:** fork `13a1176c`, native c7i.4xlarge / 16 vCPU,
   us-east-1; this is not a current cc7 measurement.
 - **Reproduction:** `corpus/repros/verus-spec-parameter-renaming/` (new reduced
   sources executed on genuine cc7); fork regression `sail_vi0023_spec_parameter_names`.
-- **Decision:** [ADR 0054](../decisions/0054-stable-spec-parameter-names.md), proposed.
+- **Decision:** [ADR 0054](../decisions/0054-stable-spec-parameter-names.md), accepted.
 
 A spec formal rename changes binder declarations and references in its defining
 axiom, even when the importing caller is unchanged. CapybaraKV's
@@ -35,15 +36,15 @@ Its corrected tables/diffs are under
 `l40/anvil-det-fork-spec-wide/det/`. Full solver streams were not retained in
 those historical records; the new native screen must retain them.
 
-The [current native screen](../validation/spec-parameter-names.md) retains all
-18 Capy timing rows and the enclosing matrix setup failure separately.
+The [qualification record](../validation/spec-parameter-names.md) retains the
+completed combined-runtime gates, literal caller-input observations and matching
+normal platform archives. The earlier standalone 24.61% Capy screen and every
+failed or deferred enclosing attempt below remain their original scopes.
 
-The candidate changes only spec formal lowering, preserving source names/spans
-and the existing scope-aware rewrite. It must first prove literal caller-input
-stability and unchanged native verdicts/diagnostics, then demonstrate a useful
-paired gain before any wider qualification. No Sail workaround or normalization
-is selected. The reduced positive, shadowing, recursive and generic-default
-fixtures are not claimed to pass until executed with the actual compiler.
+The compiler change preserves source names/spans and the existing scope-aware
+rewrite. The reduced positive, shadowing, recursive and generic-default
+controls pass with the actual compiler, as do the completed wider gates in the
+qualification record. No Sail workaround or query normalization is selected.
 
 | Date/source | Failed or interrupted gate | Raw SHA-256 |
 |---|---|---|
