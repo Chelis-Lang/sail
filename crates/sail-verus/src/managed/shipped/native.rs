@@ -270,6 +270,9 @@ fn within_target(path: &Path, target: &Path) -> bool {
 }
 
 fn safe_codegen(value: &str, target: &Path) -> bool {
+    if value == "prefer-dynamic" {
+        return true;
+    }
     value.split_once('=').is_some_and(|(name, argument)| {
         if name == "incremental" {
             return within_target(Path::new(argument), target);
@@ -283,6 +286,7 @@ fn safe_codegen(value: &str, target: &Path) -> bool {
             "debug-assertions",
             "overflow-checks",
             "panic",
+            "prefer-dynamic",
             "strip",
             "lto",
             "codegen-units",
@@ -501,6 +505,8 @@ mod tests {
             "--emit=dep-info,link",
             "-C",
             "metadata=abc",
+            "-C",
+            "prefer-dynamic",
         ];
         assert_eq!(
             native_source(&ordinary, Path::new("/owned-target")),
