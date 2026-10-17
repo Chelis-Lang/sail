@@ -1,7 +1,8 @@
 # Native-artifact store quarantine
 
 **Status:** containment policy accepted. Native integrated gate, solver,
-end-to-end, PR conformance and full FAST pass; STANDARD is still in progress.
+end-to-end, PR conformance, full FAST and STANDARD pass at their stated sources.
+The revised nine-phase CI layout still requires native validation and CI.
 No release or runtime pin changes.
 
 [ADR 0053](../decisions/0053-disable-unqualified-native-store.md) disables
@@ -58,14 +59,14 @@ EC2 c7i.8xlarge hosts in us-east-1:
 
 | Source | Actual completed scope | Result |
 |---|---|---|
-| `7b0908bd` | Workspace gate, solver, all seven end-to-end phases plus extra, changed native compiler, PR subset, full FAST | 655 unit tests and two doctests pass; 35 solver tests pass. Each PR arm has 33 Same / 311 functions; each full FAST arm has 147 Same / 3,450 functions. Zero differences, instability, infrastructure errors or skipped projects. STANDARD remains in progress. |
+| `7b0908bd` | Workspace gate, solver, all seven end-to-end phases plus extra, changed native compiler, PR subset, full FAST and STANDARD | 655 unit tests and two doctests pass; 35 solver tests pass. Each PR arm has 33 Same / 311 functions; each full FAST arm has 147 Same / 3,450 functions. Zero differences, instability, infrastructure errors or skipped projects. Each STANDARD arm has 159 Same / 12,726 functions, with zero differences, instability, infrastructure errors or skipped projects. The first three STANDARD arms report one rlimit drift each; the engine arm reports zero. |
 | `eae5c4d2`, based on main `3dd4e28e` | Workspace gate, solver, all seven end-to-end phases plus extra, changed native compiler, PR subset | Same gate and solver counts; all four PR arms have 33 Same / 311 functions and zero differences, instability, infrastructure errors or skipped projects. Final source, runtime and binary guards pass. |
 
 The current-main integration changes only the failure-evidence harness and
 documentation relative to `7b0908bd`; the Rust and managed acceptance source
 are identical. Independently compiled `sail`, `sail-z3` and
 `sail-conformance` are byte-identical, including the current-main final guard.
-Full FAST and the ongoing STANDARD run belong to `7b0908bd`; they are not
+Full FAST and STANDARD belong to `7b0908bd`; they are not
 described as current-head tier runs. The current-head queue also ran a separate
 workspace gate for research source `fee8abff`, with its own target and cache;
 that result does not qualify the research experiment itself.
@@ -80,11 +81,22 @@ Mac host log SHA-256
 `6ef9acb4ffb029c2c20f520bf0b7a94488645b731ce6e28e877dd480af155107`.
 All archive members, sizes, modes and digests were independently checked.
 
-STANDARD completion and final independent integration review remain required
-before merging. A sound fast replacement and first-run speed recovery remain
+The original `7b0908bd` initial/final and current-main `eae5c4d2` initial/final
+compiled binary maps are byte-identical for all three binaries. Its final full-tier
+archive has SHA-256
+`a57b8a0ec8439a5c7181110e583c77f4f8dc73b03fdce676d80d84236f767786`.
+
+The original combined managed CI job was cancelled at its ten-minute hard limit
+on `50c78190`. No assertion failure was visible, and the exact captured command
+was unknown. The revised [nine-phase layout](../testing.md) retains every
+assertion, gives the two new fresh-project groups independent passing donors
+and keeps the complete local union. Native workspace, standalone new phases,
+all end-to-end phases and the full local union remain pending for that layout.
+Final CI and independent integration review remain required before merging. A sound fast replacement and first-run speed recovery remain
 open work; containment alone does not complete them.
 
 | Source / date | Attempt | Result and limit |
 |---|---|---|
 | `19034f8d`, 2026-10-16 | Initial native assessment | Default-enabled unit test red; controller refused its actual indented failure format before any cost probe. Raw gate SHA-256 `a642953da8426972bc6def7d2e369bda0cbed9db7c65081e94208c905ea2ad3c`. |
 | `19034f8d`, 2026-10-16 | Corrected assessment controller | Same gate remained red; all three reproduction/cost rounds completed, with final identity guards. No merge qualification. |
+| `50c78190`, 2026-10-17 | Original managed CI job | Cancelled after ten minutes; no visible assertion failure and exact in-fixture point unknown. Failure upload did not run. Literal job-log SHA-256 `58f5fabf7733015d2df54a0f1d33ac8a1e78e925e06e048fb966f903167351d4`. |

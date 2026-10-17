@@ -24,7 +24,8 @@ experimental features and validation limits are identified explicitly.
 ## Developing and validating Sail
 
 [AGENTS.md](../AGENTS.md) defines the workflow, Rust conventions, documentation
-requirements and gates. The [charter](CHARTER.md) and its corrections define
+requirements and gates. [Testing](testing.md) lists the parallel end-to-end
+phases and their local entry points. The [charter](CHARTER.md) and its corrections define
 the correctness contract. [ADRs](decisions/README.md) explain implementation
 decisions; proposed candidates are distinguished from accepted decisions.
 

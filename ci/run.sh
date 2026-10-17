@@ -11,7 +11,7 @@
 #                        sail-z3, sail-conformance, check_output, check_mcp)
 #                        into DIR/e2e-bin.tar, which every e2e phase job
 #                        unpacks (SAIL_E2E_PREBUILT) instead of building
-#   e2e [legacy|managed|scripts|repair|output|loader|flags|extra] Run all phases by default; CI runs them in parallel.
+#   e2e [legacy|managed|managed-copies|managed-native|scripts|repair|output|loader|flags|extra] Run all phases by default; CI runs them in parallel.
 #                        `sail new` writes what stock `cargo verus new`
 #                        writes, and its lib and bin projects verify;
 #                        `sail verify` (managed verification, the default,
@@ -162,12 +162,12 @@ case "$step" in
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed|scripts|repair|output|loader|flags|extra' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|managed-copies|managed-native|scripts|repair|output|loader|flags|extra' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed|scripts|repair|output|loader|flags|extra) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|scripts|repair|output|loader|flags|extra" >&2; exit 2 ;;
+      full|legacy|managed|managed-copies|managed-native|scripts|repair|output|loader|flags|extra) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|managed-copies|managed-native|scripts|repair|output|loader|flags|extra" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
     sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_checkout/target/e2e-output-evidence}"
@@ -311,18 +311,24 @@ RS
       local_only e2e extra
       (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" extra)
     fi
-    if [ "$phase" = full ] || [ "$phase" = managed ] || [ "$phase" = scripts ]; then
+    if [ "$phase" = full ] || [ "$phase" = managed ] || [ "$phase" = managed-copies ] || [ "$phase" = managed-native ] || [ "$phase" = scripts ]; then
       sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"
       # Bounded complete-report receipts: reuse, missing evidence and a failing
       # proof edit with restored timestamps, compared with the pinned Verus.
-      # The build-script cases (`scripts`) run as a phase of their own in CI;
-      # the full run checks every case on one project.
+      # Fresh copies, native compilation and build-script cases run in their
+      # own CI phases; the full local run checks every case on one project.
       # Keep timeout/error output outside the fixture's TemporaryDirectory.
       # Use the checkout path because the full legacy phase changes cwd.
-      case "$phase" in full) managed_part=all ;; managed) managed_part=core ;; *) managed_part=scripts ;; esac
+      case "$phase" in
+        full) managed_part=all ;;
+        managed) managed_part=core ;;
+        managed-copies) managed_part=copies ;;
+        managed-native) managed_part=native ;;
+        scripts) managed_part=scripts ;;
+      esac
       SAIL_MANAGED_ACCEPTANCE_OUT="$sail_managed_evidence" \
         python3 "$sail_managed_test" "$sail" "$managed_part"
-      if [ "$phase" != scripts ]; then
+      if [ "$phase" = full ] || [ "$phase" = managed ]; then
         # A real MCP client (pinned Claude Code) must list sail's tools.
         bash "$sail_checkout/ci/test-claude-code.sh" "$sail"
       fi

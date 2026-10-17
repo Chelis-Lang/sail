@@ -9,6 +9,9 @@ semantic versioning once the API is published.
   strict failure evidence (#158). A separate opt-in timing-token comparator
   does not change Sail verification, default cache keys or shipped behavior.
 
+- Split fresh managed-workspace and native-compiler checks into separate CI
+  phases, preserving every assertion and the complete local end-to-end run.
+
 - Retain bounded original output E2E failure streams, command/source snapshots
   and producer records without changing comparisons or the original exit code.
 
