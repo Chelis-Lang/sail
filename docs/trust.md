@@ -16,6 +16,11 @@ sits behind them (ADR 0017).
 
 ## Solver identity
 
+A daemon handshake recomputes the executable hash and version. The former
+path/length/mtime memo could retain an old hash after changed bytes and restored
+mtime; its replacement and remaining qualification are recorded in the
+[identity validation record](validation/solver-identity.md).
+
 A result is only as reusable as the identity it was produced under.
 Identity binds:
 - the solver name and the version string it reports;

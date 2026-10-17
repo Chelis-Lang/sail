@@ -142,3 +142,26 @@ containment must be composed explicitly, not assumed from old runtime evidence.
 | `168ab7ab`, Vest solver-work stage | Markerless empty logs refused; all-hit solver-work acceptance remains pending despite separate successful timing rows |
 | macOS delivery checker, 2026-10-17, first diagnostic attempt | Local checker expected exit 1 while actual Cargo failure is 101; no product disagreement. Actual smoke script/log and repair JSON retained; initial passing snapshot overwritten by the next checker is not a separate passing capture |
 | macOS delivery checker, next attempt | Incorrect stock path refused locally; corrected final diagnostic check matches actual stock bytes and exit 101 |
+
+
+## Current integration checkpoint (2026-10-17)
+
+Frozen native source `dfafffcf` combines the pins with the
+[solver-identity correction](solver-identity.md) and the native-store quarantine.
+Its native c7i.8xlarge workspace gate passes 657 tests (35 skipped), two
+doctests and all lint/policy checks; solver passes 35 tests. The actual
+restored-mtime solver reproduction also passes. Shared-Mac host checks pass
+646 tests and clippy on that same source; the actual standalone reproduction
+passes there too. Every source byte and mode was checked before and after
+that completed Mac run. No Mac performance measurement is claimed.
+
+The long native queue still owes full end-to-end, full FAST/STANDARD, ordinary
+empty-cache bundled install, both literal Vest edit recipes (54 rows), and the
+unchanged repair benchmark's two-catalogue judge. Passing checkpoints do not
+select the pin or waive the repair bar. A separate main-based review composition
+retains identical non-documentation Git blobs and modes; results remain scoped
+to the actual frozen source above. The first native launch refused before any
+compiler or product gate because an external import created Python bytecode
+inside the sealed payload. Its complete six failure/final receipts remain
+indexed externally. The corrected external `-B` invocation preserves the
+original payload, source, runtime, budgets and checks.

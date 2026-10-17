@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Recompute solver identity at every daemon handshake: equal executable path,
+  length and mtime no longer retain a stale binary hash (#213). Native
+  qualification and measurement of the added handshake cost are pending.
+
 - Retain the disabled one-use solver-continuation research driver and its
   strict failure evidence (#158). A separate opt-in timing-token comparator
   does not change Sail verification, default cache keys or shipped behavior.
