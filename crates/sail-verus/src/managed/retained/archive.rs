@@ -24,6 +24,51 @@ const ENTRY_LIMIT: u64 = 8 * 1024 * 1024;
 const TOTAL_LIMIT: u64 = 1024 * 1024 * 1024;
 const CAPACITY: usize = 4;
 
+/// Fresh outer-caller values, captured before Cargo applies its managed child
+/// overrides. Only digests are serialized; a missing name means actual absence.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct CallerEnvironment {
+    version: u32,
+    run: String,
+    values: BTreeMap<String, String>,
+}
+
+impl CallerEnvironment {
+    pub(super) fn capture(run: &str) -> Option<Self> {
+        Self::from_values(run, std::env::vars_os())
+    }
+
+    fn from_values(
+        run: &str,
+        values: impl IntoIterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
+    ) -> Option<Self> {
+        if run.is_empty() {
+            return None;
+        }
+        let values = values
+            .into_iter()
+            .map(|(name, value)| Some((name.into_string().ok()?, digest(value.as_encoded_bytes()))))
+            .collect::<Option<_>>()?;
+        Some(Self {
+            version: 1,
+            run: run.to_owned(),
+            values,
+        })
+    }
+
+    pub(super) fn for_run(&self, run: &str) -> bool {
+        self.version == 1 && !run.is_empty() && self.run == run
+    }
+
+    fn matches(&self, run: &str, recorded: &BTreeMap<String, Option<Vec<u8>>>) -> bool {
+        self.for_run(run)
+            && recorded.iter().all(|(name, value)| {
+                self.values.get(name) == value.as_ref().map(|value| digest(value)).as_ref()
+            })
+    }
+}
+
 /// Exact same-workspace content context; no registry/path normalization.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct Basis {
@@ -277,6 +322,8 @@ pub(super) fn restore(
     basis: &Basis,
     output_directory: &Path,
     output_names: &BTreeSet<std::ffi::OsString>,
+    caller: &CallerEnvironment,
+    run: &str,
     after: impl Fn() -> bool,
 ) -> std::result::Result<Option<Restored>, RollbackFailure> {
     let Some(directory) = target(root, &basis.identity) else {
@@ -291,7 +338,7 @@ pub(super) fn restore(
         };
         if !entry.intact()
             || entry.basis != *basis
-            || !super::super::environment::unchanged(&entry.receipt.declared_environment)
+            || !caller.matches(run, &entry.receipt.declared_environment)
         {
             continue;
         }
@@ -556,6 +603,195 @@ mod tests {
     }
 
     #[test]
+    fn caller_environment_keeps_absence_values_and_run_binding_exact()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let empty = CallerEnvironment::from_values("current", []).ok_or("empty capture")?;
+        let named = |value: &[u8]| {
+            BTreeMap::from([("SAIL_DECLARED_FIXTURE".to_owned(), Some(value.to_vec()))])
+        };
+        let absent = BTreeMap::from([("SAIL_DECLARED_FIXTURE".to_owned(), None)]);
+        let present = CallerEnvironment::from_values(
+            "current",
+            [(
+                OsString::from("SAIL_DECLARED_FIXTURE"),
+                OsString::from("literal A"),
+            )],
+        )
+        .ok_or("present capture")?;
+        assert!(empty.matches("current", &absent));
+        assert!(!empty.matches("current", &named(b"literal A")));
+        assert!(present.matches("current", &named(b"literal A")));
+        assert!(!present.matches("current", &named(b"literal B")));
+        assert!(!present.matches("current", &absent));
+        assert!(!present.matches("stale-run", &named(b"literal A")));
+        let mut stale = present.clone();
+        stale.version = 0;
+        assert!(!stale.matches("current", &named(b"literal A")));
+        let wire = serde_json::to_value(&present)?;
+        assert_eq!(
+            wire["values"]["SAIL_DECLARED_FIXTURE"],
+            digest(b"literal A")
+        );
+        for missing in ["run", "version", "values"] {
+            let mut missing_wire = wire.clone();
+            missing_wire
+                .as_object_mut()
+                .ok_or("object")?
+                .remove(missing);
+            assert!(serde_json::from_value::<CallerEnvironment>(missing_wire).is_err());
+        }
+        Ok(())
+    }
+
+    fn owned_environment_child(
+        mode: &str,
+        snapshot: Option<&Path>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut child = std::process::Command::new(std::env::current_exe()?);
+        child
+            .args([
+                "--exact",
+                "managed::retained::archive::tests::owned_child_uses_outer_declared_environment",
+                "--nocapture",
+            ])
+            .env("SAIL_RETAINED_CALLER_TEST", mode);
+        if let Some(path) = snapshot {
+            child
+                .env("SAIL_RETAINED_CALLER_TEST_FILE", path)
+                .env("RUSTC_BOOTSTRAP", "1")
+                .env("SAIL_DECLARED_FIXTURE", "child-only");
+        } else {
+            child
+                .env_remove("RUSTC_BOOTSTRAP")
+                .env("SAIL_DECLARED_FIXTURE", "outer-A")
+                .env_remove("SAIL_DECLARED_ABSENT_FIXTURE");
+        }
+        let output = child.output()?;
+        assert!(
+            output.status.success(),
+            "owned environment child: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Ok(())
+    }
+
+    fn changed_caller_never_places(
+        root: &Path,
+        basis: &Basis,
+        names: &BTreeSet<OsString>,
+        caller: &CallerEnvironment,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        for variant in ["changed", "absent", "present", "stale"] {
+            let mut other = caller.clone();
+            match variant {
+                "changed" => {
+                    other
+                        .values
+                        .insert("SAIL_DECLARED_FIXTURE".into(), digest(b"outer-B"));
+                }
+                "absent" => {
+                    other.values.remove("SAIL_DECLARED_FIXTURE");
+                }
+                "present" => {
+                    other
+                        .values
+                        .insert("SAIL_DECLARED_ABSENT_FIXTURE".into(), digest(b"present"));
+                }
+                _ => {
+                    other.run = "stale-run".into();
+                }
+            }
+            std::fs::write(root.join("libunit-abcd.rmeta"), b"artifact B")?;
+            let placed = std::cell::Cell::new(false);
+            assert!(
+                restore(root, basis, root, names, &other, "actual-owned-run", || {
+                    placed.set(true);
+                    true
+                })
+                .is_ok_and(|value| value.is_none())
+            );
+            assert!(!placed.get());
+            assert_eq!(
+                std::fs::read(root.join("libunit-abcd.rmeta"))?,
+                b"artifact B"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn owned_child_uses_outer_declared_environment() -> Result<(), Box<dyn std::error::Error>> {
+        match std::env::var("SAIL_RETAINED_CALLER_TEST").ok().as_deref() {
+            None => owned_environment_child("outer", None),
+            Some("outer") => {
+                assert!(std::env::var_os("RUSTC_BOOTSTRAP").is_none());
+                assert_eq!(std::env::var("SAIL_DECLARED_FIXTURE")?, "outer-A");
+                assert!(std::env::var_os("SAIL_DECLARED_ABSENT_FIXTURE").is_none());
+                let root = Root::new("caller-environment")?;
+                let snapshot = root.0.join("caller.json");
+                let caller = CallerEnvironment::capture("actual-owned-run").ok_or("capture")?;
+                super::super::super::files::json(&snapshot, &caller)?;
+                let declared = BTreeMap::from([
+                    ("RUSTC_BOOTSTRAP".into(), None),
+                    ("SAIL_DECLARED_FIXTURE".into(), Some(b"outer-A".to_vec())),
+                    ("SAIL_DECLARED_ABSENT_FIXTURE".into(), None),
+                ]);
+                let entry = archive_fixture(&root, declared)?;
+                retain(
+                    &root.0,
+                    &entry,
+                    [
+                        &root.0.join("stdout"),
+                        &root.0.join("stderr"),
+                        &root.0.join("inputs.json"),
+                    ],
+                    &BTreeSet::new(),
+                )
+                .ok_or("outer fixture publication")?;
+                super::super::super::files::json(&root.0.join("basis.json"), &entry.basis)?;
+                std::fs::write(root.0.join("libunit-abcd.rmeta"), b"artifact B")?;
+                owned_environment_child("managed", Some(&snapshot))
+            }
+            Some("managed") => {
+                assert_eq!(std::env::var("RUSTC_BOOTSTRAP")?, "1");
+                let snapshot = PathBuf::from(std::env::var("SAIL_RETAINED_CALLER_TEST_FILE")?);
+                let root = snapshot.parent().ok_or("snapshot parent")?;
+                let caller: CallerEnvironment = serde_json::from_slice(&std::fs::read(&snapshot)?)?;
+                let basis: Basis =
+                    serde_json::from_slice(&std::fs::read(root.join("basis.json"))?)?;
+                let declared = BTreeMap::from([
+                    ("RUSTC_BOOTSTRAP".into(), None),
+                    ("SAIL_DECLARED_FIXTURE".into(), Some(b"outer-A".to_vec())),
+                    ("SAIL_DECLARED_ABSENT_FIXTURE".into(), None),
+                ]);
+                assert!(!super::super::super::environment::unchanged(&declared));
+                let names = BTreeSet::from([OsString::from("libunit-abcd.rmeta")]);
+                let restored = restore(
+                    root,
+                    &basis,
+                    root,
+                    &names,
+                    &caller,
+                    "actual-owned-run",
+                    || true,
+                )
+                .map_err(|failure| format!("rollback: {:?}", failure.paths))?
+                .ok_or("managed child restore")?;
+                assert_eq!(restored.receipt.invocation.run_id, "establishing-A");
+                assert_eq!(restored.stdout, b"literal stdout");
+                assert_eq!(restored.stderr, b"literal diagnostics");
+                assert_eq!(
+                    std::fs::read(root.join("libunit-abcd.rmeta"))?,
+                    b"artifact A"
+                );
+                changed_caller_never_places(root, &basis, &names, &caller)?;
+                Ok(())
+            }
+            Some(_) => Err("unknown controlled environment mode".into()),
+        }
+    }
+
+    #[test]
     fn damaged_blob_never_replaces_output_and_checked_copy_preserves_literal_bytes()
     -> Result<(), Box<dyn std::error::Error>> {
         let root = Root::new("placement")?;
@@ -617,6 +853,7 @@ mod tests {
         root: &Root,
         artifact: &Path,
         identity: TargetIdentity,
+        declared: BTreeMap<String, Option<Vec<u8>>>,
     ) -> Result<Receipt, Box<dyn std::error::Error>> {
         let mut report = crate::report::setup_failure(&[], "SAIL3100", "fixture");
         report.error = None;
@@ -649,7 +886,7 @@ mod tests {
             },
             artifact_hashes: BTreeMap::from([(artifact.to_owned(), digest(b"artifact A"))]),
             committed: root.0.join("committed.json"),
-            declared_environment: BTreeMap::new(),
+            declared_environment: declared,
         }
         .seal();
         super::super::super::files::json(
@@ -690,11 +927,19 @@ mod tests {
         artifact: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
         std::fs::write(artifact, b"artifact B")?;
-        let result = restore(&root.0, basis, &root.0, names, || {
-            assert!(std::fs::remove_file(artifact).is_ok());
-            assert!(std::fs::create_dir(artifact).is_ok());
-            false
-        });
+        let result = restore(
+            &root.0,
+            basis,
+            &root.0,
+            names,
+            &CallerEnvironment::capture("test-current").ok_or("caller snapshot")?,
+            "test-current",
+            || {
+                assert!(std::fs::remove_file(artifact).is_ok());
+                assert!(std::fs::create_dir(artifact).is_ok());
+                false
+            },
+        );
         let error = result.err().ok_or("rollback failure was hidden")?;
         assert_eq!(error.paths.len(), 1);
         assert_eq!(error.paths[0].0, artifact);
@@ -703,10 +948,10 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn actual_archive_restores_establishing_receipt_and_rolls_back_a_late_mismatch()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let root = Root::new("roundtrip")?;
+    fn archive_fixture(
+        root: &Root,
+        declared: BTreeMap<String, Option<Vec<u8>>>,
+    ) -> Result<Entry, Box<dyn std::error::Error>> {
         let artifact = root.0.join("libunit-abcd.rmeta");
         std::fs::write(&artifact, b"artifact A")?;
         let stdout = root.0.join("stdout");
@@ -720,7 +965,7 @@ mod tests {
             crate_type: "lib".into(),
             rustc_args_sha256: digest(b"actual argv fixture"),
         };
-        let receipt = receipt_fixture(&root, &artifact, identity.clone())?;
+        let receipt = receipt_fixture(root, &artifact, identity.clone(), declared)?;
         let basis = Basis {
             identity,
             context: "context".into(),
@@ -765,6 +1010,19 @@ mod tests {
         }
         .seal()
         .ok_or("seal")?;
+        Ok(entry)
+    }
+
+    #[test]
+    fn actual_archive_restores_establishing_receipt_and_rolls_back_a_late_mismatch()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("roundtrip")?;
+        let entry = archive_fixture(&root, BTreeMap::new())?;
+        let basis = entry.basis.clone();
+        let artifact = root.0.join("libunit-abcd.rmeta");
+        let stdout = root.0.join("stdout");
+        let stderr = root.0.join("stderr");
+        let reads = root.0.join("inputs.json");
         aggregate_refusal(&entry)?;
         retain(
             &root.0,
@@ -775,16 +1033,33 @@ mod tests {
         .ok_or("retain")?;
         std::fs::write(&artifact, b"artifact B")?;
         let names = BTreeSet::from([OsString::from("libunit-abcd.rmeta")]);
-        let restored = restore(&root.0, &basis, &root.0, &names, || true)
-            .map_err(|error| format!("rollback: {:?}", error.paths))?
-            .ok_or("restore")?;
+        let restored = restore(
+            &root.0,
+            &basis,
+            &root.0,
+            &names,
+            &CallerEnvironment::capture("test-current").ok_or("caller snapshot")?,
+            "test-current",
+            || true,
+        )
+        .map_err(|error| format!("rollback: {:?}", error.paths))?
+        .ok_or("restore")?;
         assert_eq!(restored.receipt.invocation.run_id, "establishing-A");
         assert_eq!(std::fs::read(&artifact)?, b"artifact A");
         assert_eq!(restored.stdout, b"literal stdout");
         assert_eq!(restored.stderr, b"literal diagnostics");
         std::fs::write(&artifact, b"artifact B")?;
         assert!(
-            restore(&root.0, &basis, &root.0, &names, || false).is_ok_and(|value| value.is_none())
+            restore(
+                &root.0,
+                &basis,
+                &root.0,
+                &names,
+                &CallerEnvironment::capture("test-current").ok_or("caller snapshot")?,
+                "test-current",
+                || false
+            )
+            .is_ok_and(|value| value.is_none())
         );
         assert!(!artifact.exists());
         late_cleanup_refusal(&root, &basis, &names, &artifact)?;

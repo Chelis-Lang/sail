@@ -2314,6 +2314,7 @@ pub(crate) fn run_engine_held(
                 &paths.target,
                 &expected,
                 &actual_wrapper(&config.cargo_verus)?,
+                &run_id,
             )
         } else {
             None

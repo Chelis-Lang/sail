@@ -24,6 +24,7 @@ pub(crate) struct Plan {
     launcher: PathBuf,
     launcher_sha256: String,
     compiler_sha256: String,
+    caller_environment: archive::CallerEnvironment,
 }
 
 impl Plan {
@@ -32,6 +33,7 @@ impl Plan {
         target: &Path,
         selected: &BTreeSet<(String, String, String)>,
         launcher: &Path,
+        run: &str,
     ) -> Option<Self> {
         if std::env::var("SAIL_RETAINED_CONTENT_RESEARCH").as_deref() != Ok("1") {
             return None;
@@ -72,6 +74,7 @@ impl Plan {
             metadata: metadata.clone(),
             roots,
             closure: closure?,
+            caller_environment: archive::CallerEnvironment::capture(run)?,
         })
     }
 
@@ -102,6 +105,9 @@ impl Plan {
 
     /// Called only after ordinary whole-run Current and receipt commit.
     pub(crate) fn publish(&self, runtime: &receipts::Runtime) -> Option<()> {
+        if !self.caller_environment.for_run(&runtime.run_id) {
+            return None;
+        }
         let snapshot = self.snapshot()?;
         let live = std::fs::read_dir(self.root.join("live-graphs"))
             .ok()?
@@ -184,7 +190,9 @@ impl Plan {
         args: &[OsString],
         directory: &Path,
     ) -> Option<Attempt> {
-        if runtime.engine.is_some() || identity.crate_type != "lib" && identity.crate_type != "rlib"
+        if !self.caller_environment.for_run(&runtime.run_id)
+            || runtime.engine.is_some()
+            || identity.crate_type != "lib" && identity.crate_type != "rlib"
         {
             return None;
         }
@@ -358,7 +366,7 @@ pub(crate) struct Attempt {
 }
 
 impl Attempt {
-    pub(crate) fn restore(&self) -> crate::Result<Option<Restored>> {
+    pub(crate) fn restore(&self, runtime: &receipts::Runtime) -> crate::Result<Option<Restored>> {
         if !self.plan.roots.contains(&self.basis.identity.manifest) {
             return Ok(None);
         }
@@ -372,9 +380,15 @@ impl Attempt {
             .iter()
             .filter_map(|path| path.file_name().map(std::ffi::OsStr::to_owned))
             .collect();
-        archive::restore(&self.plan.root, &self.basis, directory, &names, || {
-            self.unchanged()
-        })
+        archive::restore(
+            &self.plan.root,
+            &self.basis,
+            directory,
+            &names,
+            &self.plan.caller_environment,
+            &runtime.run_id,
+            || self.unchanged(),
+        )
         .map(|restored| {
             restored.map(|restored| Restored {
                 establishing_run: restored.receipt.invocation.establishing_run().to_owned(),
@@ -930,6 +944,26 @@ fn output_paths(args: &[OsString], target: &Path) -> Option<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn caller_environment_is_required_and_bound_to_the_actual_run()
+    -> Result<(), Box<dyn std::error::Error>> {
+        // Deserialization alone is not source admission; this isolates the
+        // required per-run wire field from filesystem/provider eligibility.
+        let caller = archive::CallerEnvironment::capture("current-run").ok_or("capture")?;
+        let mut wire = serde_json::json!({"root":"/owned","target":"/owned/target",
+            "metadata":null,"roots":[],"closure":{"directories":{}},
+            "launcher":"/pinned/verus","launcher_sha256":"literal-launcher",
+            "compiler_sha256":"literal-compiler","caller_environment":caller});
+        let plan: Plan = serde_json::from_value(wire.clone())?;
+        assert!(plan.caller_environment.for_run("current-run"));
+        assert!(!plan.caller_environment.for_run("different-run"));
+        wire.as_object_mut()
+            .ok_or("object")?
+            .remove("caller_environment");
+        assert!(serde_json::from_value::<Plan>(wire).is_err());
+        Ok(())
+    }
 
     #[test]
     fn actual_cargo_manifest_lints_are_admitted_without_hiding_other_arguments()

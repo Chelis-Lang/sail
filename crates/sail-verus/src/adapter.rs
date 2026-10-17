@@ -477,7 +477,7 @@ fn driver() -> Result<ExitCode> {
             .flatten()
     });
     if let Some(attempt) = &retained
-        && let Some(restored) = attempt.restore()?
+        && let Some(restored) = attempt.restore(&runtime)?
     {
         finish(
             &runtime,
