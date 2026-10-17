@@ -1,8 +1,9 @@
 # Solver executable identity (#213)
 
-**Correctness checks pass; final current-head CI pending.** The daemon now computes solver identity for every
+**Native and macOS correctness checks complete; digest memo selected by PR #219.** The daemon computes solver identity for every
 HELLO instead of retaining it under `(path, length, mtime)`. Each handshake
-runs the version command and reads and hashes the executable bytes. A launch,
+runs the version command and reads the complete executable bytes, reusing a
+digest only after full fresh-byte equality as described below. A launch,
 version-parse or read error refuses the handshake; the shim's existing fallback
 is unchanged. This removes the demonstrated stale-metadata memo, not every
 possible concurrent executable-mutation race.
@@ -151,3 +152,85 @@ Failed attempts remain indexed here:
 - 2026-10-17, the same pair, second cost attempt: donor output-order
   mismatch before timed samples (0 / 50); failed, no samples replaced.
   The later quiet fresh-project variant is a separate prospective cohort.
+
+## Fresh-byte digest memo
+
+The implementation selected by PR #219 retains one immutable executable body
+and its SHA-256. Every HELLO still launches the version command and reads the
+complete executable anew. A digest is reused only after literal equality of
+all freshly read bytes; path, metadata and previous version output never
+substitute for that comparison. A poisoned memo falls back to hashing the
+fresh bytes. Bodies larger than 64 MiB are hashed without retention. The
+one-entry limit is not a process-wide memory bound: concurrent readers can
+retain older snapshots, and every handshake still allocates its fresh body.
+
+On 2026-10-17, candidate `fd31d747` passed the full shared macOS arm64
+host gate: clippy and 651 tests, with 35 solver tests skipped, plus the real
+HELLO reproduction. Targeted controls also cover unchanged bytes with changing
+version output. The initial clippy failure remains retained. These are
+correctness checks, not full conformance or performance acceptance.
+
+The matched native c7i.4xlarge screen in us-east-1 compares accepted-runtime
+sources `4ee320a5` and `fd31d747`: all 50 fixed samples pass, five rotated
+pairs per case. Source, runtime, executable and final guards agree. Complete
+verdict/diagnostic fields and literal solver-input multiplicities agree;
+stdout is literal, and stderr uses only the inherited E2E `Finished`
+numeric-time allowance with all raw bytes retained.
+
+| Workload | Baseline wall seconds | Memo wall seconds | Baseline daemon self CPU seconds | Memo daemon self CPU seconds |
+|---|---:|---:|---:|---:|
+| Fresh project, warm solver cache, quiet and one Cargo job | 46.4141 | 44.8362 | 14.54 | 9.16 |
+| Vest proof-body edit | 26.4238 | 26.1265 | 11.18 | 7.33 |
+| Vest comment edit | 26.0934 | 25.3924 | 11.19 | 7.32 |
+| Small project unchanged | 0.4166 | 0.4168 | 0 | 0 |
+| Small project helper insertion | 1.1944 | 1.1821 | 0.04 | 0.03 |
+
+These are medians over observation windows, not whole-pipeline CPU or default
+cold-start performance. Waited-child CPU is reported separately: fresh-project
+medians are 0.53 and 0.54 seconds; Vest body and comment medians are 0.43 seconds
+in both arms. Daemon RSS after observation rises by roughly 34 MiB in the
+active cases; this is an observed tradeoff, not an exact memo-allocation bound.
+Wall improvement is modest (about 1–3% for the active verification cases),
+while daemon self CPU falls about 34–37%. No full solver-output coverage is
+inferred from provenance records. These earlier-source measurements qualify
+the cost screen; the separate current-main join below qualifies correctness.
+
+The current-main join `bdc6f39a` passed native x86-64 qualification on a
+c7i.8xlarge in us-east-1. Its four production Rust files, Cargo inputs and
+runtime pins are byte-identical to `fd31d747`; the earlier macOS host gate
+therefore covers the same implementation. The native queue passed the full
+workspace gate (662 tests, 35 solver tests skipped, two doctests), all 35
+solver tests, all nine E2E phases plus extra, and PR conformance. Full FAST
+passed all four arms, each 147 Same / 3,450 functions. Full STANDARD passed
+all four arms, each 159 Same / 12,726 functions, with no Different, Unstable,
+infrastructure errors or skipped projects. Rlimit drift was 0/0/0/1 in
+pass-through/cache-fill/cache-warm/engine order and remains recorded.
+
+Final guards confirmed all 591 tracked source files, the complete 3,886-file
+runtime map and identical initial/final byte, size and mode inventories for
+all five built executables. Their actual bodies are retained with source
+bindings. All 25 stage archives were strictly verified. Local merge
+qualification is complete; lead review selected the change for PR #219,
+subject to its final current-head CI. This is not a new performance measurement. The
+raw controller's inherited `qualification_for_digest_memo` field remains
+`false`: it is initialized once and never updated. Its actual success fields
+are `status = selected-queue-pass`, `passed = true` and exit 0, backed by the
+executed command results and final guards above. Tiny transport markers,
+including `after/status.json`, always retain `diagnostic_only = true` and
+`qualification = false`; their context reports the queue result. Those
+transport fields supply no independent qualification or selection decision.
+The frozen records are unchanged. The
+qualification final archive SHA-256 is
+`77e923780b77eefd9c10b5c8cdc8ad1a45269e61513349e114aba0ac31a33fa9`;
+the STANDARD aggregate is
+`2c268aeedbd34ea9d2f6be94f1b48e70118ffaf049aaee692b5486ff9d88ee27`.
+
+Raw final archive SHA-256
+`e5ca4c9666c5ea1ffb597f21ec2201bd4d89476b90355ad4d6b3840df8a1c5be`;
+all-sample cost summary SHA-256
+`f1af9f9409b0cd54bd4c705fc2d8ee3ef5f80faab60e249296ee20a9507a7dd0`.
+Initial native attempts that never started the controller remain unrun and
+are not performance samples. The original screen preserved native binary
+inventories but not executable bodies. The later qualification above used a
+genuine rebuild and retained its five executables; it does not reconstruct the
+original measured binaries.
