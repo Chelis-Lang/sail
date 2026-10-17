@@ -48,3 +48,9 @@ off and identical default macro/library origins. Include cold cost and warm
 forced-frontend controls, cache observations and every failed sample. Proceed to
 full qualification only if the targeted gain exceeds variation. This proposal
 changes no selected pin, default or conformance expectation.
+
+The [targeted native screen](../validation/spec-parameter-names.md) now observes
+a 24.61% Capy rename median saving across all 18 rows. Its enclosing correctness
+matrix fails in an unrelated, mismatched Cargo feature setup before verification;
+that failure remains visible. The proposal is not selected, and the remaining
+stock comparison and wider qualification gates still apply.

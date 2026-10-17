@@ -1,8 +1,8 @@
 # VI-0023: Spec formal spelling changes untouched callers' solver inputs
 
 - **Status:** reproduced in historical captures; candidate normal runtime/vstd and eight
-  focused native controls pass. Real-project gain and wider qualification remain
-  pending. No upstream issue filed.
+  focused native controls pass. A targeted Capy screen observes a 24.61% rename
+  saving; its required correctness matrix and wider qualification remain pending. No upstream issue filed.
 - **Found:** 2026-10-17 while assessing the residual #118 incidental-edit scope.
 - **Original runtime:** fork `13a1176c`, native c7i.4xlarge / 16 vCPU,
   us-east-1; this is not a current cc7 measurement.
@@ -34,6 +34,9 @@ Its corrected tables/diffs are under
 `l40/anvil-det-fork-spec-wide/det/`. Full solver streams were not retained in
 those historical records; the new native screen must retain them.
 
+The [current native screen](../validation/spec-parameter-names.md) retains all
+18 Capy timing rows and the enclosing matrix setup failure separately.
+
 The candidate changes only spec formal lowering, preserving source names/spans
 and the existing scope-aware rewrite. It must first prove literal caller-input
 stability and unchanged native verdicts/diagnostics, then demonstrate a useful
@@ -48,9 +51,11 @@ fixtures are not claimed to pass until executed with the actual compiler.
 | 2026-10-17, 0a691d04 / Sail1d3af06d | Native baseline ten-source preflight and Sail release build PASS; checker-example build FAIL because its package is sail-cli, not sail-conformance. Candidate Verus build, eight native regressions and timings UNRUN. Prospective package-only command correction preserves source, assertions and caps. | `cd3439cdc3bd8b8bc18b454501505660106cd4999caa770627f22cd290c00240` |
 | 2026-10-17, 0a691d04 / Sail1d3af06d, corrected checker command | Ten native baseline sources and Sail/checker builds PASS; genuine candidate vstd compilation FAIL with `unknown variable: VarIdent("n", VirParam)` at `poly.rs:466`. No candidate runtime, eight native regression controls or timings qualified. The source audit identifies the spec/decreases-proof shared parameter scope; the prospective fix and reduced via fixture still require candidate-native execution. | `74765136ff9b5ff67ba1ef9ce6917060b5af21691365df4f1d0ccef880944030` |
 
-| 2026-10-17, aead21d2 / Sail4ce1f00e | Genuine normal candidate runtime/vstd and all three VIR plus five new RVT controls PASS, including the via regression. First Capy timing harness FAILS before any sample: its intentional selector cleanup exposes an absent default stock install (SAIL3003). Source/runtime final guards pass. A prospective remaining screen reuses this actual packed runtime and original test proof, installs stock at the real default cache path before the unchanged harness, and preserves its corpus across containers. No gain or whole-corpus acceptance. | `1b9518aa334eb558f2cb7e510d5f2f7318807a0e56d6e8a4ba5e21d951f24816` |
+| 2026-10-17, aead21d2 / Sail 4ce1f00e | Genuine normal candidate runtime/vstd and all three VIR plus five new RVT controls PASS, including the via regression. First Capy timing harness FAILS before any sample: its intentional selector cleanup exposes an absent default stock install (SAIL3003). Source/runtime final guards pass. A prospective remaining screen reuses this actual packed runtime and original test proof, installs stock at the real default cache path before the unchanged harness, and preserves its corpus across containers. No gain or whole-corpus acceptance. | `1b9518aa334eb558f2cb7e510d5f2f7318807a0e56d6e8a4ba5e21d951f24816` |
 
-| 2026-10-17, aead21d2 / Sail4ce1f00e, retained runtime | Stock-default setup and fresh Sail build PASS. Capy baseline cold67.57s and spec-wide56.97s exit0; observer FAILS before noopend because it expects the appended comment in the rename file rather than the committed recipe’s separate noop file. No candidate timings or gain. Runtime/source/Sail final guards PASS; prospective observer correction preserves every command and is exercised against both complete committed project edit/reset sequences. | `b0e6972da39dcec22e4277c5eab933bc001f213205b456f3a21f299b047446d5` |
+| 2026-10-17, aead21d2 / Sail 4ce1f00e, retained runtime | Stock-default setup and fresh Sail build PASS. Capy baseline cold67.57s and spec-wide56.97s exit0; observer FAILS before noopend because it expects the appended comment in the rename file rather than the committed recipe’s separate noop file. No candidate timings or gain. Runtime/source/Sail final guards PASS; prospective observer correction preserves every command and is exercised against both complete committed project edit/reset sequences. | `b0e6972da39dcec22e4277c5eab933bc001f213205b456f3a21f299b047446d5` |
+
+| 2026-10-17, aead21d2 / Sail 4ce1f00e, exact recipe observations | All 18 Capy timing rows PASS; rename median 51.990→39.194s (24.61%), solver processes 25→0. Enclosing plain matrix FAILS before verification because it omits the exact timed `--no-default-features` and enters unavailable libclang/PMEM setup. Anvil UNRUN; source/runtime/Sail final guards PASS. No correctness or selection claim. | `00b4e545740d053f37cc3a1a7b0619444938c4a46e099104081b023efcc9192d` |
 
 The compiler panic exposes an internal pairing requirement: vstd's
 `EndianNat::to_big(n)` uses `via Self::to_big_decreases`, whose special proof
