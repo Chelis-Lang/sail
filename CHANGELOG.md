@@ -7,7 +7,14 @@ semantic versioning once the API is published.
 
 - Recompute solver identity at every daemon handshake: equal executable path,
   length and mtime no longer retain a stale binary hash (#213). Native
-  qualification and measurement of the added handshake cost are pending.
+  correctness checks pass; the matched native screen records slower edit
+  workloads, with performance recovery and final current-head CI pending.
+
+- Add a disabled, opt-in kernel-accounting research path for the one-use
+  continuation driver (#158). It requires complete sole-`wait4` accounting
+  and the original resource bound. Twelve native controls and the two fixed
+  solver traces pass its named policy; application/default acceptance and
+  selection remain open. Preparation costs and all earlier failures stay visible.
 
 - Retain the disabled one-use solver-continuation research driver and its
   strict failure evidence (#158). A separate opt-in timing-token comparator
