@@ -331,3 +331,11 @@ unknown; no check or expected output was weakened. The retained source-check
 index SHA-256 is `b9526835096e8facffb6c5840b8ff04df7fdaa4a646c9f2a727cde4db73fd6f9`.
 Full runtime/native mutation controls, default parity and both-platform runtime
 qualification remain open.
+
+Independent combined source review finds no additional unsafe-serving issue.
+It finds a fail-closed arrival race: recapture can discover an rlib after its
+producer's metadata record appears but before the library record is written.
+The final inventory now gets its own bounded record-arrival wait before body
+validation, without repeatedly hashing libraries. The successor's complete
+Mac host rerun passes clippy and all 693 enabled tests, with 35 skipped.
+Final source-check index SHA-256: `5e7770398583b2d7660ef5b51fbc4a33ccee35ec8dc0d032d92727f073e58747`.

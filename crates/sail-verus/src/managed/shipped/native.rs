@@ -97,7 +97,10 @@ impl<'a> Observation<'a> {
         drop(first);
         let graph = Snapshot::capture(&plan.target, &base.join("graph"), args)
             .ok_or("native graph recapture refused")?;
-        if !graph_established(&call, &graph) {
+        // Completion emits a separate record for each output. Recapture can
+        // discover an rlib after its rmeta record but before its own record.
+        // Wait on the final inventory too; hash each body only after arrival.
+        if !await_graph_records(&call, &graph) || !graph_established(&call, &graph) {
             return Err("native graph lacks consumed-input provenance");
         }
         let reads = native_reads::Observation::begin(&base.join("read"), &plan.run_id, &call.key)
