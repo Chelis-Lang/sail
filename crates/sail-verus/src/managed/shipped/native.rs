@@ -359,9 +359,28 @@ pub(super) fn externs_are_fresh(call: &Call<'_>) -> bool {
         let record = std::fs::read(record_path(call.plan, path))
             .ok()
             .and_then(|bytes| serde_json::from_slice::<Record>(&bytes).ok());
-        record.is_some_and(|record| {
-            record.crate_name == name && established(&record, call.plan, path, sha256, policy)
-        })
+        let valid = record.as_ref().is_some_and(|record| {
+            record.crate_name == name && established(record, call.plan, path, sha256, policy)
+        });
+        if !valid {
+            trace(
+                call.arguments,
+                &serde_json::json!({
+                    "event": "native-extern-refused",
+                    "name": name,
+                    "output": path,
+                    "record_path": record_path(call.plan, path),
+                    "expected_sha256": sha256,
+                    "actual_sha256": sha256_file(path).map(|(sha, _)| sha),
+                    "expected_run": call.plan.run_id,
+                    "expected_runtime": call.plan.identity,
+                    "expected_compiler": call.plan.native_compiler_sha256,
+                    "expected_policy": policy,
+                    "record": record,
+                }),
+            );
+        }
+        valid
     })
 }
 

@@ -821,6 +821,10 @@ impl<'a> Call<'a> {
             return None;
         }
         let call = Self::vstd_invocation(plan, args, vars)?;
+        if !plan.closure.as_ref()?.vstd_unit(&call.vars, args) {
+            call.trace("actual vstd compiler features differ from the admitted source closure");
+            return None;
+        }
         if !native::compiler_matches(&call) || !native::externs_are_fresh(&call) {
             call.trace("native dependencies lack this run's successful compiler provenance");
             return None;

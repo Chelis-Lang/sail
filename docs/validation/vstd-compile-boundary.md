@@ -8,7 +8,7 @@
 | Identity | Fresh linked-library/VIR bytes, compiler options, runtime/sysroot, actual solver bytes, source and declared environment |
 | Proof provenance | Complete successful document required; typed release/machine-local origin and actual establishing invocation preserved through receipts |
 | Review | Initial static review confirms the structural boundary; macro input completeness and publication races remain unqualified |
-| Execution and performance | Unrestricted literal-local `dcc2bb9e` hit in 8.456 s versus 37.892 s baseline (single sample); native compiler replacement still failed. New closed-source/native-provenance revision passes macOS lint, 23 focused tests and origin test; its native run remains pending |
+| Execution and performance | Unrestricted literal-local `dcc2bb9e` hit in 8.456 s versus 37.892 s baseline (single sample); native compiler replacement still failed. New closed-source/native-provenance revision passes macOS lint, 23 focused tests and origin test; its native screen refuses transitive provenance and remains unqualified |
 | Default/release selection | Neither selected nor qualified; v1 store remains quarantined |
 
 The prototype ports the original shipped-build serializer and proof-origin
@@ -148,3 +148,15 @@ pending.
   fails because the new research codes were missing from `docs/errors.md`.
   This is a documentation omission, corrected next; the original failed host
   result remains retained. Private build intermediates are removed.
+
+- `67c7d0ea`, 2026-10-17, loaded-driver native screen: lint and all 23
+  focused tests pass. Baseline 42.220 s and fill 43.948 s both complete,
+  but dependent native units refuse fresh compiler provenance after the leaf
+  units establish records. No entry is published; remaining pairs are unrun.
+  The next source retains the exact failed record comparison and checks actual
+  vstd feature arguments against the admitted resolution.
+
+The corrected error-code registry test passes after the documentation fix; the
+original complete host attempt remains a failed attempt. Macro input admission
+also needs to account for helper emission from hash collections in the pinned
+registry macros. Source hashes alone do not prove emitted-order determinism.
