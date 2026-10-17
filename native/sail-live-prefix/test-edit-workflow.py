@@ -136,6 +136,7 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
         assert edit_transport.canonical(actual) == edit_transport.canonical(result)
         assert result['qualified'] is result['selected'] is False
         assert result['application_exit'] == 1 and not result['application_acceptance']
+        assert not list((root/'out').rglob('*.sock')), 'owned sockets must not survive archival'
         assert 'PENDING' in result['coverage']
         attempts = result['attempts']
         if case in ('pre-first-record', 'wrapper-wrong-args'):

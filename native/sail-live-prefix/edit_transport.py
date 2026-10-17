@@ -131,6 +131,7 @@ class Broker:
         self.listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.listener.bind(str(self.path))
         self.path.chmod(0o600)
+        self.socket_stamp = self.path.lstat()
         self.listener.listen(MAX_ACTIVE)
         self.listener.settimeout(.05)
         self.thread = threading.Thread(target=self._listen)
@@ -222,6 +223,17 @@ class Broker:
             for worker in alive:
                 worker.join(timeout=3)
         errors = []
+        socket_removed = False
+        try:
+            current = self.path.lstat()
+            if (not stat.S_ISSOCK(current.st_mode) or current.st_uid != os.getuid() or
+                    (current.st_dev, current.st_ino) !=
+                    (self.socket_stamp.st_dev, self.socket_stamp.st_ino)):
+                raise ProtocolRefusal('owned broker socket path changed')
+            self.path.unlink()
+            socket_removed = True
+        except (OSError, ValueError) as error:
+            errors.append('owned socket cleanup: ' + str(error))
         if self.thread.is_alive() or any(worker.is_alive() for worker in self.workers):
             errors.append('owned broker threads incomplete')
         try:
@@ -248,4 +260,5 @@ class Broker:
         return dict(passed=not errors, complete=not errors, errors=errors,
                     sessions=self.rows, starts=starts, finishes=finishes,
                     qualified=False, selected=False,
+                    socket_removed=socket_removed,
                     coverage='all registered starts/finishes/connections joined; pre-first-record/exec gap PENDING, not exhaustive spawn proof')
