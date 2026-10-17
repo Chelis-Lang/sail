@@ -1,7 +1,7 @@
 //! The long-lived S.A.I.L. service.
 //!
 //! Status: serves the local cache over the daemon protocol (ADR 0011). It
-//! answers `HELLO` (solver identity, computed once per binary), `GET`, `PUT`,
+//! answers `HELLO` (solver identity, recomputed for each handshake), `GET`, `PUT`,
 //! `STATS` (counters) and `INFO` (configuration and state). An in-memory
 //! tier sits in front of the disk tier, and `PUT`s are written behind
 //! (ADR 0015). On a local miss it can consult a shared tier of signed
