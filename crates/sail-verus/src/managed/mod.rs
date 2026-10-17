@@ -12,6 +12,7 @@ pub mod projects;
 mod read_check;
 mod receipts;
 mod runner;
+pub(crate) mod shipped;
 mod source_inputs;
 mod store;
 
@@ -21,6 +22,7 @@ pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
 pub use runner::{Config, refresh_context, refresh_result, run, run_showing_output};
 pub(crate) use runner::{run_engine, run_engine_held};
+pub use shipped::new_project_lockfile;
 
 pub(crate) use receipts::complete as receipt_complete;
 

@@ -117,3 +117,5 @@ The [Cargo target-context record](validation/cargo-target-context.md) covers
 owned metadata selection, source-directory coverage, and declared environment
 reads (#166 and #189), with native full fast/standard and separate joined
 main checks.
+
+- [vstd compiler-boundary replacement](validation/vstd-compile-boundary.md): unselected first-project performance prototype and remaining correctness gates.

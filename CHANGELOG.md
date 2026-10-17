@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Prototype vstd-only compiler-boundary reuse after genuine native prerequisite
+  compilation (#161). This is explicitly enabled research, remains unqualified,
+  and does not reenable the native-artifact dependency store.
+
 - Recompute solver identity at every daemon handshake: equal executable path,
   length and mtime no longer retain a stale binary hash (#213). Native
   correctness checks pass; the matched native screen records slower edit

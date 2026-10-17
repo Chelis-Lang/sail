@@ -213,6 +213,7 @@ fn project(root: &Path) -> ProjectResult {
         exit_code: Some(1),
         targets: vec![TargetResult {
             dependency_store: None,
+            shipped: None,
             package_id: "demo".to_owned(),
             target: "demo".to_owned(),
             kind: vec!["lib".to_owned()],
