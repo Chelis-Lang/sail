@@ -34,10 +34,10 @@ pub(super) fn payload<'a>(bytes: &'a [u8], kind: &str) -> io::Result<(&'a [u8], 
     }
     for (name, mode) in [("zero-process", Mode::Zero), ("process-used", Mode::Used)] {
         let footer = format!(";; SAIL-COMPLETE 1 {kind} {name}\n");
-        if let Some(body) = bytes.strip_suffix(footer.as_bytes()) {
-            if body.is_empty() || body.ends_with(b"\n") {
-                return Ok((body, mode));
-            }
+        if let Some(body) = bytes.strip_suffix(footer.as_bytes())
+            && (body.is_empty() || body.ends_with(b"\n"))
+        {
+            return Ok((body, mode));
         }
     }
     Err(invalid("unsupported or misplaced completion marker"))
@@ -255,20 +255,22 @@ fn invoke(program: &Path, expected: &str, air: &[u8]) -> io::Result<()> {
                 out.bytes, err.bytes
             )));
         }
-        if let Some(status) = child.0.try_wait()? {
-            if out.done && err.done && input.is_some() {
-                return if status.success()
-                    && out.bytes == b"SAIL-AIR-NO-QUERY 1\n"
-                    && err.bytes.is_empty()
-                {
-                    Ok(())
-                } else {
-                    Err(invalid(format!(
-                        "validator refused AIR: exit={status}; stdout={:?}; stderr={:?}",
-                        out.bytes, err.bytes
-                    )))
-                };
-            }
+        if let Some(status) = child.0.try_wait()?
+            && out.done
+            && err.done
+            && input.is_some()
+        {
+            return if status.success()
+                && out.bytes == b"SAIL-AIR-NO-QUERY 1\n"
+                && err.bytes.is_empty()
+            {
+                Ok(())
+            } else {
+                Err(invalid(format!(
+                    "validator refused AIR: exit={status}; stdout={:?}; stderr={:?}",
+                    out.bytes, err.bytes
+                )))
+            };
         }
         if Instant::now() >= deadline {
             return Err(invalid(format!(

@@ -10,6 +10,7 @@
 use sail_api::project::{Currentness, ProjectResult, SCHEMA_VERSION};
 use sail_verus::attribution::{LogFile, SessionRecord, Transcript};
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -307,6 +308,38 @@ fn join(mut logs: BTreeMap<String, Vec<Counts>>, records: Vec<SessionRecord>) ->
     Ok(work)
 }
 
+fn completed_log(
+    path: &Path,
+    validator: &completion::Validator,
+    zero_contexts: &mut Vec<serde_json::Value>,
+    used_contexts: &mut u64,
+) -> io::Result<Option<(String, Counts)>> {
+    let transcript = read(path)?;
+    let air = read(&path.with_extension("air"))?;
+    let (transcript_body, mode) = completion::payload(&transcript, "transcript")?;
+    let (air_body, air_mode) = completion::payload(&air, "air")?;
+    if mode != air_mode {
+        return Err(invalid("AIR/transcript completion modes differ"));
+    }
+    if mode == completion::Mode::Zero {
+        if !transcript_body.is_empty() {
+            return Err(invalid("zero-process transcript contains solver bytes"));
+        }
+        validator.validate(air_body)?;
+        let log_path = path
+            .to_str()
+            .ok_or_else(|| invalid("non-UTF8 completed log path"))?;
+        zero_contexts.push(serde_json::json!({
+            "transcript": log_path,
+            "transcript_sha256": format!("{:x}", Sha256::digest(&transcript)),
+            "air_sha256": format!("{:x}", Sha256::digest(&air)),
+        }));
+        return Ok(None);
+    }
+    *used_contexts += 1;
+    log_counts_payload(path, transcript_body, Some(air_body)).map(Some)
+}
+
 fn observe(result_path: &Path, run: &Path) -> io::Result<serde_json::Value> {
     observe_with_completion(result_path, run, None)
 }
@@ -364,31 +397,16 @@ fn observe_with_completion(
                 return Err(invalid("too many evidence files"));
             }
             let (hash, counts) = if let Some(validator) = validator {
-                let transcript = read(&path)?;
-                let air = read(&path.with_extension("air"))?;
-                let (transcript_body, mode) = completion::payload(&transcript, "transcript")?;
-                let (air_body, air_mode) = completion::payload(&air, "air")?;
-                if mode != air_mode {
-                    return Err(invalid("AIR/transcript completion modes differ"));
-                }
-                if mode == completion::Mode::Zero {
-                    if !transcript_body.is_empty() {
-                        return Err(invalid("zero-process transcript contains solver bytes"));
-                    }
-                    validator.validate(air_body)?;
-                    use sha2::{Digest, Sha256};
-                    let log_path = path
-                        .to_str()
-                        .ok_or_else(|| invalid("non-UTF8 completed log path"))?;
-                    completed_zero_contexts.push(serde_json::json!({
-                        "transcript": log_path,
-                        "transcript_sha256": format!("{:x}", Sha256::digest(&transcript)),
-                        "air_sha256": format!("{:x}", Sha256::digest(&air)),
-                    }));
+                let Some(counts) = completed_log(
+                    &path,
+                    validator,
+                    &mut completed_zero_contexts,
+                    &mut completed_used_contexts,
+                )?
+                else {
                     continue;
-                }
-                completed_used_contexts += 1;
-                log_counts_payload(&path, transcript_body, Some(air_body))?
+                };
+                counts
             } else {
                 log_counts(&path)?
             };
