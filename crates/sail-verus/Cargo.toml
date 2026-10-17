@@ -8,6 +8,10 @@ publish.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Isolated native producer consumption controls; never enabled by default.
+sail-boundary-input-fixture = []
+
 [dependencies]
 sail-api.workspace = true
 sail-ledger.workspace = true
