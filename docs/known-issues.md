@@ -8,6 +8,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **The original focused Anvil benchmark never reached verification.** All
+  18 retained Sail rows used non-JSON `sail verify` with `--verify-module`,
+  which intentionally refuses partial verification. The benchmark correction
+  uses the supported public JSON route and records unavailable stage timings
+  explicitly. Native Anvil acceptance remains pending; the original failed
+  rows remain indexed in the [entrypoint record](validation/perf-real-partial.md).
+
 - **The daemon can retain a stale solver hash** ([#213](https://github.com/Chelis-Lang/sail/issues/213)).
   Changing executable bytes at fixed path, length and restored mtime returned
   the preceding SHA in two real HELLO connections on the retained private
