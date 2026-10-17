@@ -8,7 +8,9 @@ semantic versioning once the API is published.
 - Add a disabled content-bound instant-revert research path (#163), joining
   native source certificates, private dependency graphs and checked output
   restoration. Native Vest ABA qualification and performance remain pending;
-  default verification and pins are unchanged.
+  default verification and pins are unchanged. Its retained arena uses
+  prospective aggregate byte/count admission, preserving unknown live graphs
+  and taking the compiler path on fullness; native cap performance is pending.
 
 - Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;

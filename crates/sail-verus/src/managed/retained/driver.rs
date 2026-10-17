@@ -242,17 +242,17 @@ impl Plan {
             return None;
         }
         drop(first);
-        let graph =
-            Snapshot::reuse(&self.target, &self.root.join("graphs"), args).or_else(|| {
-                Snapshot::capture_ready(
-                    &self.target,
-                    &self
-                        .root
-                        .join(format!("copy-{}-{}", runtime.run_id, std::process::id())),
-                    args,
-                )?
-                .publish(&self.root.join("graphs"), args)
-            })?;
+        let graph = if let Some(graph) =
+            Snapshot::reuse(&self.target, &self.root.join("graphs"), args)
+        {
+            publish_graph(&self.root, graph, args)?
+        } else {
+            publish_graph(
+                &self.root,
+                Snapshot::capture_ready(&self.target, &directory.join("dependency-final"), args)?,
+                args,
+            )?
+        };
         if !super::producers::ready(self, &graph)
             || !super::producers::established(self, &runtime.context_sha256, &graph)
             || !super::producers::named_externs(self, args)
@@ -260,10 +260,7 @@ impl Plan {
             return None;
         }
         let graph_key = graph.key()?;
-        // Register before any archive eviction can collect a graph named by
-        // this compiler generation's future dep-info. Publication is not a
-        // temporary driver lease: the generation owns it after the child exits.
-        files::json(&self.root.join("live-graphs").join(&graph_key), &graph_key).ok()?;
+        // publish_graph already registered the generation's durable paths.
         let basis = archive::Basis {
             identity: identity.clone(),
             context: runtime.context_sha256.clone(),
@@ -318,6 +315,26 @@ impl Plan {
             directory: directory.to_owned(),
         })
     }
+}
+
+/// Publish one complete graph and its deduplicated lifetime marker together.
+/// The caller owns the temporary snapshot outside the durable arena.
+pub(super) fn publish_graph(root: &Path, graph: Snapshot, args: &[OsString]) -> Option<Snapshot> {
+    let key = graph.key()?;
+    let incoming = graph.storage()?;
+    // Reserve the entire graph even when an identical one already exists.
+    // This deliberately conservative peak remains valid across publication/GC.
+    let _admission = super::budget::admit(
+        root,
+        incoming.0.checked_add(66)?,
+        incoming.1.checked_add(2)?,
+    )?;
+    let graph = graph.publish(&root.join("graphs"), args)?;
+    if !graph.intact() {
+        return None;
+    }
+    files::json(&root.join("live-graphs").join(key.clone()), &key).ok()?;
+    Some(graph)
 }
 
 /// A checked older proof; compiler invocations remain zero for this restore.

@@ -5,6 +5,7 @@
 //! observer is imported.
 
 mod archive;
+mod budget;
 mod compiler;
 mod driver;
 mod eligibility;
