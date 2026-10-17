@@ -146,7 +146,7 @@ Failed attempts remain indexed here:
   temporary path. A later run used the equivalent owned `/tmp` alias with
   every assertion unchanged. Both failed attempts remain failed.
 - 2026-10-17, matched `36f39a79` / `dfafffcf`, first cost attempt:
-  interrupted before the full 50-sample cohort; retained as failed, with no
+  failed before the full 50-sample cohort; retained as failed, with no
   complete performance acceptance.
 - 2026-10-17, the same pair, second cost attempt: donor output-order
   mismatch before timed samples (0 / 50); failed, no samples replaced.

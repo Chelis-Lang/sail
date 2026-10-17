@@ -290,10 +290,10 @@ oyster and such." This supersedes the parallel tracks of
    2. A miss costs only the changed check, #158 (the largest edit-loop lever).
       Fork/live-prefix investigation is recorded in the
       [report](reports/2026-10-16-solver-snapshots.md). Strict raw acceptance
-      fails. A separate named timing-only prototype has one historical IronKV
-      foreground success without CPU saving; its final pair fails on resource
-      observations, with costly fallback and no Anvil live sample. The disabled
-      Python research source and all failures are recorded; #158 stays open.
+      fails. The named timing-only prototype preserves its earlier resource
+      refusals; a separate sole-wait4 owner passes both fixed solver traces.
+      Preparation remains real work and Anvil saves no total CPU. Actual edit
+      workflow/default acceptance is unbuilt and unselected; #158 stays open.
    3. vstd pre-verified in the release archive, #161.
    4. Remaining managed overhead against the removed pass-through, #156:
       cheaper checks qualify against rc.5 on unchanged vest/demo runs
