@@ -199,7 +199,7 @@ release-style checks belong in the local tiers below, never in CI.
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
 gate, including image creation, to have succeeded. Branches must be current
-with `main` before merging. The `End to end` check aggregates seven parallel
+with `main` before merging. The `End to end` check aggregates nine parallel
 phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
   warm, `--output json`, one MCP `verify` call and the portfolio;
@@ -207,20 +207,26 @@ phases and succeeds only when all complete successfully:
   partial verification);
 - `flags`: the setups verified as plain Cargo-Verus verifies them;
 - `loader`: a loader variable (no proof reuse, one note);
-- `managed`: managed receipts, the dependency store, durable jobs, MCP and
-  Claude Code's tool listing;
+- `managed`: managed receipts, failing-first reuse, prune, durable jobs, MCP
+  and Claude Code's tool listing;
+- `managed-copies`: two fresh member workspaces establish their own vstd and
+  requested-target proofs, then reuse only their own receipts;
+- `managed-native`: fresh plain output and an actual native compiler replacement
+  at unchanged `PATH`, rejected by both stock and Sail;
 - `scripts`: managed reuse across build scripts and generated includes;
 - `repair`: the repair CLI/MCP against the prebuilt engine.
 
 CI builds the release binaries once per run (`End to end (build)`,
 `ci/run.sh e2e-build`) and every phase job unpacks them; a failed build
 skips the phases, and a skipped phase fails the aggregate. `ci/local.sh e2e`
-builds, then runs every phase (`managed` and `scripts` on one project) plus `extra` (`-- --output-json --time` and a
+builds, then runs every phase (all managed cases on one project) plus `extra` (`-- --output-json --time` and a
 `-p`/`--features` workspace, four cold builds, local-only);
 `ci/local.sh e2e PHASE` runs one phase (or `extra`) for diagnosis. No phase
 may be skipped to authorize a merge.
 Evidence directories and conformance reports are uploaded only when a job
-fails.
+fails (managed phases also request upload on cancellation). A hard job timeout
+can prevent the upload step from running. See [testing](docs/testing.md) for
+phase entry points and timeout diagnosis.
 The optional repair engine is a locally qualified prebuilt runtime pinned in
 `engine/verus/artifact-linux.json`. The CI image validates its archive, source
 patch, source lock and every runtime file; CI never compiles Verus from source.

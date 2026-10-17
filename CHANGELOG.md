@@ -9,8 +9,19 @@ semantic versioning once the API is published.
   strict failure evidence (#158). A separate opt-in timing-token comparator
   does not change Sail verification, default cache keys or shipped behavior.
 
+- Split fresh managed-workspace and native-compiler checks into separate CI
+  phases, preserving every assertion and the complete local end-to-end run.
+
 - Retain bounded original output E2E failure streams, command/source snapshots
   and producer records without changing comparisons or the original exit code.
+
+- Disable v1 compiled-dependency store consumption and publication: it could
+  suppress a fresh native compilation failure after the compiler changed at
+  an unchanged `PATH` (#187, ADR 0053). Positive
+  `SAIL_DEPENDENCY_STORE_ENTRIES` settings cannot re-enable it. Fresh projects
+  lose the former first-run speedup; same-project proof receipts and exact
+  solver caching remain. A sound replacement and first-run performance
+  recovery are still required.
 
 - Linux benchmark host teardown retains connection state on AWS errors and
   confirms termination before deleting cloud resources (#201). Refresh
