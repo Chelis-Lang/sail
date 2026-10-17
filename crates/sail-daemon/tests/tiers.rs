@@ -425,3 +425,71 @@ fn mode_isolation_survives_memory_and_disk_restarts() {
     );
     r.stop();
 }
+
+#[test]
+fn hello_rehashes_same_size_executables_with_restored_mtime()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let dir = Scratch::new("identity-bytes");
+    let solver = dir.0.join("solver");
+    let old = b"#!/bin/sh\necho 'Z3 version 4.16.0'\n# A\n";
+    let new = b"#!/bin/sh\necho 'Z3 version 4.16.0'\n# B\n";
+    std::fs::write(&solver, old)?;
+    std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o700))?;
+    let modified = solver.metadata()?.modified()?;
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    let first = r.client().hello(&solver.to_string_lossy())?;
+    assert_eq!(
+        first.binary_sha256,
+        QueryKey(sail_key::sha256(old)).to_string()
+    );
+
+    // Change the existing inode; the old memo's entire metadata key survives.
+    std::fs::write(&solver, new)?;
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&solver)?
+        .set_times(std::fs::FileTimes::new().set_modified(modified))?;
+    assert_eq!(solver.metadata()?.modified()?, modified);
+    assert_eq!(solver.metadata()?.len(), old.len() as u64);
+    let changed = r.client().hello(&solver.to_string_lossy())?;
+    assert_eq!(
+        changed.binary_sha256,
+        QueryKey(sail_key::sha256(new)).to_string()
+    );
+    assert_ne!(changed, first);
+
+    // An atomic same-path replacement also needs its actual byte identity.
+    let replacement = dir.0.join("replacement");
+    std::fs::write(&replacement, old)?;
+    std::fs::set_permissions(&replacement, std::fs::Permissions::from_mode(0o700))?;
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&replacement)?
+        .set_times(std::fs::FileTimes::new().set_modified(modified))?;
+    std::fs::rename(&replacement, &solver)?;
+    assert_eq!(r.client().hello(&solver.to_string_lossy())?, first);
+    r.stop();
+    Ok(())
+}
+
+#[test]
+fn hello_keeps_unchanged_identity_and_refuses_missing_or_unlaunchable_solver()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let dir = Scratch::new("identity-failure");
+    let solver = dir.0.join("solver");
+    std::fs::write(&solver, b"#!/bin/sh\necho 'Z3 version 4.16.0'\n")?;
+    std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o700))?;
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    let first = r.client().hello(&solver.to_string_lossy())?;
+    assert_eq!(r.client().hello(&solver.to_string_lossy())?, first);
+    std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o600))?;
+    assert!(r.client().hello(&solver.to_string_lossy()).is_err());
+    std::fs::remove_file(&solver)?;
+    assert!(r.client().hello(&solver.to_string_lossy()).is_err());
+    r.stop();
+    Ok(())
+}

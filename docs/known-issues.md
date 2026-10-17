@@ -8,6 +8,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **The daemon can retain a stale solver hash** ([#213](https://github.com/Chelis-Lang/sail/issues/213)).
+  Changing executable bytes at fixed path, length and restored mtime returned
+  the preceding SHA in two real HELLO connections on the retained private
+  Mac CLI. No wrong proof was tested. A candidate removes the metadata memo;
+  native correctness and performance qualification remain pending. See the
+  [identity validation record](validation/solver-identity.md).
+
 - **The original VI-0012 fork regression receives a duplicate progress flag**
   ([#203](https://github.com/Chelis-Lang/sail/issues/203)). On private source
   `168ab7ab`, the full genuine `8a373f81` suite retained one Different among
