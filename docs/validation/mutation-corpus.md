@@ -48,7 +48,7 @@ across runs and none reached the cap.
   `f64_split`, `delta` has `rlimit(30)` and verifies on both platforms; the
   one difference, `daisy-matrix_determinant-arith-4`, is marked
   layout-sensitive by the generator.
-- `fptaylor_real2float-kepler0-arith-4` (int) takes about 770 s per plain
+- `fptaylor_real2float-kepler0-arith-4` (int) takes 760–790 s per plain
   run on both platforms and ends with an rlimit error. The seven excluded
   lemmas include two with a standalone
   [reproduction](../../corpus/repros/z3-nla-rlimit-enforcement/README.md).
@@ -95,7 +95,7 @@ edit leaves the other kernels' replies servable. In the int crates the
 kernels are `spec fn` definitions, emitted before any check, so a body edit
 (`arith`, `constant`, `rare-region`) changes the session from its start;
 per kernel, those classes are served 66–70%. `int`'s plain time is
-dominated by `kepler0-arith-4` (about 790 s per run), which is not in
+dominated by `kepler0-arith-4` (785–790 s per plain run here), which is not in
 `int_split` because it runs past 900 s there.
 
 ## Cold and warm (nothing changed)
