@@ -11,6 +11,10 @@ use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
+#[cfg(feature = "sail-boundary-input-fixture")]
+#[path = "adapter_boundary_fixture.rs"]
+mod boundary_fixture;
+
 /// Only Cargo-Verus's own metadata probe receives this private marker. The
 /// build subprocess removes it so nested user commands retain their environment.
 pub(crate) const CARGO_METADATA_ENV: &str = "SAIL_MANAGED_CARGO_METADATA";
@@ -407,6 +411,12 @@ fn driver() -> Result<ExitCode> {
         if let Some(attempt) = &retained {
             attempt.configure(&mut command);
         }
+        #[cfg(feature = "sail-boundary-input-fixture")]
+        let native_fixture = if observation.is_some() {
+            boundary_fixture::native_before_spawn(&command, &args)?
+        } else {
+            None
+        };
         let mut child = command
             .spawn()
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -416,9 +426,15 @@ fn driver() -> Result<ExitCode> {
         if let Some(attempt) = &mut retained {
             attempt.started(child.id());
         }
+        #[cfg(feature = "sail-boundary-input-fixture")]
+        let native_pid = child.id();
         let actual = child
             .wait()
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        #[cfg(feature = "sail-boundary-input-fixture")]
+        if let Some(fixture) = native_fixture {
+            fixture.after_completion(native_pid, actual.code())?;
+        }
         if actual.success()
             && let Some(observation) = observation
         {
