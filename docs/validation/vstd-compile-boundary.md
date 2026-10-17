@@ -32,6 +32,16 @@ Cargo can pipeline a dependent after metadata emission, so observations require
 completed producer provenance at completion, with a two-second arrival bound.
 The compiler always runs; metadata readiness never establishes success.
 
+Native graph capture also waits up to two seconds for pinned rustc's temporary
+`rmeta` directories to disappear from an owned dependency lookup directory.
+It scans directory entries before copying; a scratch directory that races the
+first full capture permits only one additional capture within that same wait
+deadline. Every capture retains the complete original membership, file-shape,
+path and byte checks. No directory is ignored: unknown directories, aliases and
+special files refuse, and persistent scratch directories time out. Slow or
+continuously changing builds can still refuse reuse. The new real-filesystem
+controls are source tests pending execution; this is not native qualification.
+
 ## Actual native result
 
 On native c7i.4xlarge in us-east-1, Sail source `6ea94c8d` and experimental

@@ -90,7 +90,7 @@ impl<'a> Observation<'a> {
         // qualified producers, then take a new complete snapshot so the child
         // never receives a graph missing that producer's later output.
         let first =
-            Snapshot::capture(&plan.target, &base.join("first"), args).ok_or_else(|| {
+            Snapshot::capture_ready(&plan.target, &base.join("first"), args).ok_or_else(|| {
                 trace_inventory(&call, "first");
                 "native graph capture refused"
             })?;
@@ -99,7 +99,7 @@ impl<'a> Observation<'a> {
         }
         drop(first);
         let graph =
-            Snapshot::capture(&plan.target, &base.join("graph"), args).ok_or_else(|| {
+            Snapshot::capture_ready(&plan.target, &base.join("graph"), args).ok_or_else(|| {
                 trace_inventory(&call, "final");
                 "native graph recapture refused"
             })?;
