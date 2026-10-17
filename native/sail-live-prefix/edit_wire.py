@@ -1,4 +1,4 @@
-"""Bounded single-connection research IPC; no listener or application driver.
+"""Bounded single-connection research IPC for the disabled edit driver.
 
 The enclosing driver must own a private authenticated connection, the compiler
 attempt and all resources. This module's completion is not a verification
@@ -48,7 +48,7 @@ def attempt_status(compiler_exit, sessions):
             'whole_fresh_retry_required': not valid}
 
 
-def serve(connection, claim, binding, token, *, fresh_factory=None):
+def serve(connection, claim, binding, token, *, fresh_factory=None, identity=None, initial_header=None):
     """Serve one already assigned claim, with at most one pre-reply fallback.
 
     `claim` and fresh_factory own actual bound children; no received metadata
@@ -70,13 +70,16 @@ def serve(connection, claim, binding, token, *, fresh_factory=None):
             if len(raw) > available:
                 raise ProtocolRefusal('whole IPC input budget; prefix retained')
     try:
-        kind, raw = receive(connection)
+        kind, raw = receive(connection) if initial_header is None else (ord('H'), initial_header)
         result['header_sha256'] = hashlib.sha256(raw).hexdigest()
         if kind != ord('H') or len(raw) > 65536:
             raise ProtocolRefusal('bounded initial IPC header required')
         header = json.loads(raw)
-        if set(header) != {'binding', 'token'} or header['token'] != token:
+        expected_keys = {'binding', 'token'} | ({'identity'} if identity is not None else set())
+        if set(header) != expected_keys or header['token'] != token:
             raise ProtocolRefusal('IPC authentication refused')
+        if identity is not None and header['identity'] != identity:
+            raise ProtocolRefusal('owned attempt/session identity refused')
         if header['binding'] != binding:
             raise ProtocolRefusal('exact caller context binding refused')
         while True:
@@ -138,7 +141,7 @@ def serve(connection, claim, binding, token, *, fresh_factory=None):
     return result
 
 
-def interpose(connection, binding, token, source, sink):
+def interpose(connection, binding, token, source, sink, *, identity=None):
     """Sequential Verus writer protocol over an already private connection.
 
     No complete-session buffering: version/DONE is forwarded before asking the
@@ -147,7 +150,10 @@ def interpose(connection, binding, token, source, sink):
     """
     parser = Commands()
     try:
-        header = json.dumps({'binding': binding, 'token': token}, sort_keys=True).encode()
+        metadata = {'binding': binding, 'token': token}
+        if identity is not None:
+            metadata['identity'] = identity
+        header = json.dumps(metadata, sort_keys=True).encode()
         if len(header) > 65536:
             raise ProtocolRefusal('IPC header budget')
         send(connection, ord('H'), header)

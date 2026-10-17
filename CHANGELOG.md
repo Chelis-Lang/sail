@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add disabled streaming edit-workflow research components (#158), retaining
+  donor preparation, actual compiler/session failures and whole fresh retries.
+  Application acceptance remains blocked on independent spawn coverage and
+  actual Verus controls; ordinary verification and default policies are unchanged.
+
 - Add a disabled, opt-in kernel-accounting research path for the one-use
   continuation driver (#158). It requires complete sole-`wait4` accounting
   and the original resource bound. Twelve native controls and the two fixed

@@ -381,6 +381,7 @@ attempt and both costs. A duplicate claimant cannot cancel the first claimant.
 python3 -B native/sail-live-prefix/test-edit-stream.py
 python3 -B native/sail-live-prefix/test-edit-claim.py
 python3 -B native/sail-live-prefix/test-edit-wire.py
+python3 -B native/sail-live-prefix/test-edit-workflow.py
 ```
 
 These local controls exercise literal all-split framing, a real owned caller
@@ -395,11 +396,37 @@ exit0 alone never qualifies a result. The direct fresh streaming path also
 uses the same owner and complete final resource admission; it waits for fresh
 startup only, without waiting for speculative readiness.
 
-The private listener/session-selection driver, executable `VERUS_Z3_PATH`
-entry point and real application edit driver remain unimplemented. The enclosing
-driver must authenticate its private connection, bind actual child context,
-join every selected session to the current compiler attempt and require all
-completions before publishing a result. Selected-child `wait4` is not complete
-compiler/native/nonselected-child pipeline accounting. These components supply
-no genuine solver, application, native or default qualification and no
-performance result.
+The disabled `edit-workflow.py` entry point now owns a private Unix listener,
+an executable `VERUS_Z3_PATH` interposer, a donor compiler invocation, background
+preparation, a fixed-delay edited invocation and at most one whole fresh retry.
+Session ordinals are assigned at socket accept before inspecting solver input.
+Actual caller argv, cwd and the full environment bind each child; a context
+miss runs fresh. The wrapper is recorded separately from the genuine solver.
+The private start/finish records, Linux peer credentials and broker completion
+must agree, independently of compiler exit. A late child failure still refuses
+an attempt when its caller returns zero. Nonselected sessions run fresh and
+every created solver, including cancelled preparation, retains actual kernel
+accounting and raw streams. Each stream/input is bounded at 16MiB, at most 32
+registered sessions and four active sessions are supported, and the workflow
+raw budget is 1GiB. Refusals remain failures.
+
+Readiness uses nonblocking pool/entry locks at the single edit-start snapshot.
+A preparation still starting or holding either lock cannot become a later hit.
+Original and edited source bytes, raw compiler streams, literal session streams,
+actual child status/CPU/peak, failed attempts and whole retries remain separate.
+Compiler `wait4` can include waited descendants: it must not be added to the
+separately reported solver/preparation CPU as though disjoint.
+
+Seven local workflow controls use real processes, wait4, sockets and the
+executable wrapper. They cover ready reuse, unready preparation, context miss,
+post-reply divergence, ignored late exit7, missing wrapper startup and unsupported
+wrapper arguments. Linux image/pidfd/peer APIs are explicitly doubled on macOS.
+They provide no actual Verus, Z3, native or performance qualification.
+
+The start/finish/connection join is **not an exhaustive spawn census**. An
+unrecorded wrapper failure before its first record remains a pending boundary;
+an actual Verus early-failure control and an independently observed process
+trace are still needed. Therefore the executable always exits nonzero with
+`application_acceptance=false`, even if its separately recorded registered
+protocol `driver_exit` is zero. No result is reported verified or selected.
+These source-only components do not change ordinary Sail or its default oracle.

@@ -2,9 +2,10 @@
 
 No default entry or resource classifier changes. The external research driver
 must own the whole compiler attempt: an abort after a reply cannot be repaired
-by swapping children. No IPC/interposer or application acceptance exists here.
+by swapping children. The disabled interposer supplies no application acceptance.
 """
 import os
+from contextlib import ExitStack
 import select
 import subprocess
 import time
@@ -48,39 +49,45 @@ class StreamingClaim:
         self._initialize(pool)
         try:
             self._policy(pool)
-            with pool.lock:
+            with ExitStack() as held:
+                if not pool.lock.acquire(blocking=False):
+                    raise ProtocolRefusal('pool-busy-at-edit-start')
+                held.callback(pool.lock.release)
                 entry = pool.entries.get(key)
-                if pool.closed or entry is None or not pool._identity_unchanged():
+                if pool.closed or entry is None:
                     raise ProtocolRefusal('missing or unbound preparation')
-                with entry.changed:
-                    # A second caller must not cancel the first caller's owned
-                    # child. Assign cleanup only for this unclaimed entry.
-                    if entry.claimed or entry.closed:
-                        raise ProtocolRefusal('preparation already consumed')
-                    self.entry = entry
-                    if (not entry.ready or entry.failure or
-                            time.monotonic() >= entry.deadline or entry.process.poll() is not None):
-                        raise ProtocolRefusal('not-ready-at-edit-start')
-                    if not entry._image_ok():
-                        raise ProtocolRefusal('edit-start executable identity refused')
-                    parser = Commands()
-                    commands = parser.feed(entry.prefix)
-                    if parser.finish():
-                        raise ProtocolRefusal('unmatched prepared prefix trivia')
-                    actual = bytes(entry.stdout)
-                    replies = self.reply_parser.feed(actual)
-                    self.reply_parser.finish()
-                    self.replay = PrefixReplay([x['raw'] for x in commands], replies,
-                                               ready_at_edit_start=True)
-                    entry.claimed = True
-                    entry.ready = False
-                    entry.deadline = time.monotonic() + pool.run_timeout
-                    self.snapshot_ready = True
-                    self.output_offset = len(actual)
-                    self.child_input.extend(entry.prefix)
-                    # Prefix submission completed before readiness. Only this
-                    # adapter writes suffix input, bypassing an empty buffer.
-                    os.set_blocking(entry.process.stdin.fileno(), False)
+                if not entry.changed.acquire(blocking=False):
+                    raise ProtocolRefusal('entry-busy-at-edit-start')
+                held.callback(entry.changed.release)
+                self.snapshot_time = time.monotonic()
+                # A second caller must not cancel the first caller's owned
+                # child. Assign cleanup only for this unclaimed entry.
+                if entry.claimed or entry.closed:
+                    raise ProtocolRefusal('preparation already consumed')
+                self.entry = entry
+                if (not entry.ready or entry.failure or
+                        time.monotonic() >= entry.deadline or entry.process.poll() is not None):
+                    raise ProtocolRefusal('not-ready-at-edit-start')
+                if not pool._identity_unchanged() or not entry._image_ok():
+                    raise ProtocolRefusal('edit-start executable identity refused')
+                parser = Commands()
+                commands = parser.feed(entry.prefix)
+                if parser.finish():
+                    raise ProtocolRefusal('unmatched prepared prefix trivia')
+                actual = bytes(entry.stdout)
+                replies = self.reply_parser.feed(actual)
+                self.reply_parser.finish()
+                self.replay = PrefixReplay([x['raw'] for x in commands], replies,
+                                           ready_at_edit_start=True)
+                entry.claimed = True
+                entry.ready = False
+                entry.deadline = time.monotonic() + pool.run_timeout
+                self.snapshot_ready = True
+                self.output_offset = len(actual)
+                self.child_input.extend(entry.prefix)
+                # Prefix submission completed before readiness. Only this
+                # adapter writes suffix input, bypassing an empty buffer.
+                os.set_blocking(entry.process.stdin.fileno(), False)
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
             self.errors.append(str(error))
             if self.entry is not None:

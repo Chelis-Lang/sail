@@ -12,6 +12,8 @@ from pathlib import Path
 import signal
 import sys
 import tempfile
+import threading
+import time
 from unittest.mock import patch
 
 import kernel_accounting
@@ -64,7 +66,8 @@ if os.environ.get('SAIL_TEST_HANG_EOF')=='1':time.sleep(2)
 
 for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate-claim',
              'ipc-after-reply', 'child-after-reply', 'missing-accounting',
-             'stderr-after-reply', 'timeout-after-eof', 'direct-success', 'direct-ipc'):
+             'stderr-after-reply', 'timeout-after-eof', 'direct-success', 'direct-ipc',
+             'pool-busy-at-edit-start', 'entry-busy-at-edit-start'):
     with tempfile.TemporaryDirectory() as td, native_doubles():
         worker = Path(td) / 'solver-fixture'
         worker.write_text('#!' + sys.executable + '\n' + WORKER)
@@ -105,8 +108,32 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
                 # Fixture synchronization BEFORE edit start; the adapter never
                 # waits for preparation, and the unready case does not do this.
                 assert pool.wait_ready(key, 3), entry.failure
-            claim = StreamingClaim(pool, key)
-            if case == 'unready':
+            if case.endswith('-busy-at-edit-start'):
+                entered, release = threading.Event(), threading.Event()
+                lock = pool.lock if case.startswith('pool-') else entry.changed
+                def hold():
+                    with lock:
+                        entered.set()
+                        assert release.wait(2)
+                holder = threading.Thread(target=hold)
+                holder.start()
+                assert entered.wait(1)
+                start = time.monotonic()
+                try:
+                    claim = StreamingClaim(pool, key)
+                    assert time.monotonic() - start < .2
+                    assert not claim.snapshot_ready and claim.entry is None
+                    assert case in claim.errors
+                    assert entry.process.poll() is None
+                finally:
+                    release.set()
+                    holder.join(timeout=2)
+                assert not holder.is_alive()
+            else:
+                claim = StreamingClaim(pool, key)
+            if case.endswith('-busy-at-edit-start'):
+                assert not entry.claimed
+            elif case == 'unready':
                 assert not claim.snapshot_ready
                 assert claim.batch(VERSION)['action'] == 'fresh-before-reply'
             else:
