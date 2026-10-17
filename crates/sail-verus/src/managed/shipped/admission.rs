@@ -174,6 +174,43 @@ impl Closure {
             &package.compiler_checksums,
         )
     }
+
+    /// Validate hashes retained directly by each actual compiler phase.
+    pub(super) fn loaded_sources<'a>(
+        &self,
+        sources: impl Iterator<Item = (&'a str, &'a str, u64)>,
+    ) -> bool {
+        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+            return false;
+        };
+        let Some(package) = policy.packages.get(&policy.vstd) else {
+            return false;
+        };
+        let root = self.registry.join(&policy.vstd);
+        let mut count = 0;
+        for (path, checksum, size) in sources {
+            let Some(relative) = Path::new(path)
+                .strip_prefix(&root)
+                .ok()
+                .and_then(Path::to_str)
+            else {
+                return false;
+            };
+            let Some(expected) = package.compiler_checksums.get(relative) else {
+                return false;
+            };
+            if Path::new(relative)
+                .extension()
+                .is_none_or(|extension| extension != "rs")
+                || checksum.strip_prefix("blake3=") != Some(expected.blake3.as_str())
+                || size != expected.size
+            {
+                return false;
+            }
+            count += 1;
+        }
+        count > 0
+    }
 }
 
 fn compiler_sources(
@@ -343,6 +380,26 @@ fn check_package(root: &Path, expected: &Package) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn direct_compiler_source_maps_require_exact_admitted_read_bytes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let policy: Policy = serde_json::from_str(POLICY)?;
+        let closure = Closure {
+            policy_sha256: super::super::digest(POLICY.as_bytes()),
+            registry: "/registry".into(),
+            packages: policy.packages.keys().cloned().collect(),
+        };
+        let path = closure.registry.join(&policy.vstd).join("vstd.rs");
+        let path = path.to_str().ok_or("path")?;
+        let checksum = "blake3=835f517957115052871472aac54967dad2706e21d67ffa5c5d7014e489c5507d";
+        assert!(closure.loaded_sources([(path, checksum, 5040)].into_iter()));
+        assert!(!closure.loaded_sources([(path, checksum, 5041)].into_iter()));
+        assert!(!closure.loaded_sources([(path, "blake3=changed", 5040)].into_iter()));
+        assert!(!closure.loaded_sources([("/foreign/vstd.rs", checksum, 5040)].into_iter()));
+        assert!(!closure.loaded_sources(std::iter::empty()));
+        Ok(())
+    }
 
     #[test]
     fn compiler_loaded_checksums_refuse_restored_and_unattested_inputs()

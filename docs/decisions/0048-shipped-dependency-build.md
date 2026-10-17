@@ -33,7 +33,7 @@ release builds from machine-local verification through later receipt reuse. Nati
 path. The v1 machine-local store stays disabled.
 
 The prototype requires `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Engine, focused and
-loader-variable runs decline it. Schema 6 and a distinct bundle kind reject
+loader-variable runs decline it. Schema 7 and a distinct bundle kind reject
 the earlier all-unit bundles. Source-path remapping is confined to the named
 experiment and uses the previously built fork support; this change selects
 no runtime or release asset.
@@ -78,8 +78,10 @@ during compilation can invalidate publication. No source-level key is assumed
 equivalent to exact solver input without qualification. Missing, changed or
 damaged inputs must run the actual compiler and verifier.
 
-The next publication check compares compiler-retained source-map checksums
-against independent official vstd BLAKE3/size constants. This does not change
+The publication check requires distinct GHOST and EXEC source-map
+observations from the real compiler, compared against independent official vstd
+BLAKE3/size constants. Dep-info alone can describe a later compiler phase or
+replace a source-map hash with an extra tracked-file reread. This does not change
 compiler options or add a product dependency. It rejects changed compiler reads
 even if the filesystem is restored before publication, but it does not attest
 arbitrary proc-macro tracked files or mapped native artifacts. Those remaining
@@ -90,8 +92,10 @@ input boundaries still block default selection.
 A successful replacement would retain fresh native compilation failures while
 avoiding vstd's repeated verification. Native prerequisite compilation remains
 part of the first-project cost. If fresh dependency bytes differ, the lookup
-must miss. Three experimental fresh-project pairs now show a 4.23× median gain,
-but the compiler-input boundary and full parity remain unqualified. The native changed-compiler reproduction,
+must miss. The direct-observation native prototype measures three fresh-project pairs at
+39.840 s versus 9.336 s (4.27×), with separate compiler-read records for both
+phases and complete paired literal cold controls. Its enclosing final retention
+step remains failed; the compiler-input boundary and full parity remain unqualified. The native changed-compiler reproduction,
 per-function verdict and diagnostic parity, corruption and mutation refusals,
 both platforms and measured first-project cost gate any default enablement.
 
