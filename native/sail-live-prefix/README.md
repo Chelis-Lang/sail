@@ -305,7 +305,7 @@ costs remain part of the candidate total.
 python3 -B native/sail-live-prefix/test-owned-wait4.py
 python3 -B native/sail-live-prefix/test-kernel-owner.py
 python3 -B native/sail-live-prefix/test-kernel-real-driver.py
-# Native Linux only; all eight controls must pass before either real dataset:
+# Native Linux only; all ten controls must pass before either real dataset:
 python3 -B native/sail-live-prefix/test-kernel-owner-native.py \
   --z3 PINNED_Z3 --out NEW_NATIVE_CONTROLS
 python3 -B native/sail-live-prefix/run-real.py \
@@ -319,3 +319,15 @@ controls, one eligible continuation, exact executable/input identity, strict
 non-time response bytes and all original errors remain mandatory. Native
 control or fresh-control failure blocks the real continuation. No experimental
 host or result follows from the local controls alone.
+
+
+A failed sole `wait4` never skips cancellation because `poll()` also refuses.
+Error cleanup signals only the continuously held original pidfd, then uses
+bounded `waitid(P_PIDFD, WEXITED | WNOHANG)` after the original reaper stops.
+This may retain actual termination status, but supplies no replacement CPU or
+peak record: the sample stays refused. An already-reaped `ECHILD` also needs
+an independently terminal held pidfd and cannot invent exit zero. No bare-PID
+signal/wait or automatic `Popen` destructor waiter is used in this error path.
+The mandatory native controls include both an actual descriptor-based reap
+and an already-reaped error. Actual old/new caller controls retain the initial
+refusal and the corrected cleanup scope separately.

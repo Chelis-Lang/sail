@@ -110,7 +110,7 @@ class Controls(unittest.TestCase):
             stream.close()
 
     def test_thread_start_failure_reaps_and_closes_owned_child(self):
-        original = subprocess.Popen
+        original = __import__('owned_wait4')._OwnedChild
         created = []
 
         def spawn(*args, **kwargs):
@@ -118,7 +118,7 @@ class Controls(unittest.TestCase):
             created.append(child)
             return child
 
-        with patch('owned_wait4.subprocess.Popen', side_effect=spawn), patch(
+        with patch('owned_wait4._OwnedChild', side_effect=spawn), patch(
                 'owned_wait4.threading.Thread.start', side_effect=RuntimeError('no thread')):
             with self.assertRaises(RuntimeError):
                 self.child('import time; time.sleep(20)')

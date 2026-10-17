@@ -218,3 +218,10 @@ This is source implementation for a prospective measured experiment, not
 selection or a successful continuation result. Mandatory native controls must
 precede the same fixed datasets; resource/startup/accounting errors refuse.
 No dependency, product integration, runtime pin or corpus oracle changes.
+
+If normal accounting fails, cleanup must still signal the continuously held
+original pidfd independently of a refused `poll()`. After the original waiter
+stops, bounded `waitid(P_PIDFD)` may safely consume original termination;
+missing rusage remains unknown and refuses. No implicit `Popen` destructor or
+bare-PID waiter may substitute after an error. This is a cleanup boundary,
+not an additional successful-accounting path.

@@ -1,7 +1,7 @@
 """Research-only, single-reaper child accounting; never a proof authority.
 
 Popen.poll()/wait() reap a child without retaining its wait4 resource usage.
-This owner instead keeps Popen alive and delegates the sole reap to one thread.
+This owner instead keeps Popen alive and delegates normal reaping to one thread.
 It does not validate an executable, enforce a memory limit, or authorize reuse.
 Callers still need the existing image/pidfd, complete I/O and status guards.
 """
@@ -11,6 +11,7 @@ import subprocess
 import signal
 import sys
 import threading
+import time
 
 
 def usage_record(usage, platform):
@@ -31,11 +32,22 @@ def usage_record(usage, platform):
                 user_seconds=cpu[0], system_seconds=cpu[1], platform=platform)
 
 
+class _OwnedChild(subprocess.Popen):
+    """No implicit bare-PID destructor waiter; the assigned owner reaps.
+
+    This POSIX research owner explicitly closes all streams and reaps through
+    wait4 or its error-only held-pidfd cleanup. Missing accounting must not let
+    Popen.__del__ silently wait against an old PID after ownership is lost.
+    """
+    def __del__(self):
+        pass
+
+
 class OwnedWait4:
     """Own a child and its sole wait4; never call the underlying Popen waiters.
 
-    The raw Popen remains strongly held until the reaper sets returncode, so
-    Popen's destructor cannot become a competing waiter. No global SIGCHLD
+    The raw Popen stays strongly held and its automatic destructor waiter is
+    disabled, including when accounting fails and status remains unknown. No global SIGCHLD
     handler or process-wide wait(-1) is installed. Unexpected ECHILD refuses;
     it is never interpreted as successful exit with zero memory.
     """
@@ -46,10 +58,11 @@ class OwnedWait4:
         self._error = None
         self._result = None
         self._observed = None
+        self._cleanup_observed = None
         # Construct every thread primitive before creating a child. A failed
         # Thread constructor must not leave an ownerless live process/pipes.
         self._reaper = threading.Thread(target=self._reap, name='sail-owned-wait4')
-        self._child = subprocess.Popen(argv, **kwargs)
+        self._child = _OwnedChild(argv, **kwargs)
         self.pid, self.args = self._child.pid, self._child.args
         self.stdin, self.stdout, self.stderr = (
             self._child.stdin, self._child.stdout, self._child.stderr)
@@ -139,6 +152,77 @@ class OwnedWait4:
         if self._reaper.ident is not None:
             self._reaper.join()
         return self._checked()['exit']
+
+    def cleanup_failed_accounting(self, pidfd, timeout=2):
+        """Kill/reap only the held original pidfd after the sole waiter failed.
+
+        waitid supplies actual termination status, not rusage. Accounting stays
+        refused, even with actual exit0. Never wait or signal a bare possibly
+        reused PID, and never compete with an unfinished wait4 owner.
+        """
+        if (not self._reaping_started or not self._done.is_set() or
+                self._error is None or type(pidfd) is not int or pidfd < 0 or
+                not 0 < timeout <= 2):
+            raise ChildProcessError('failed-accounting cleanup preconditions refused')
+        if self._reaper.ident is not None:
+            self._reaper.join(timeout=timeout)
+            if self._reaper.is_alive():
+                raise ChildProcessError('sole reaper still active')
+        record = dict(accounting_available=False, pid=self.pid, errors=[])
+        self._cleanup_observed = record
+        # Even poll() raises on the saved accounting error. Signal this held
+        # original descriptor independently of poll/returncode.
+        try:
+            signal.pidfd_send_signal(pidfd, signal.SIGKILL)
+            record['signal'] = 'sent-held-pidfd-SIGKILL'
+        except ProcessLookupError:
+            record['signal'] = 'held-pidfd-already-terminated'
+        except OSError as error:
+            record['errors'].append('held-pidfd signal: ' + str(error))
+        if not hasattr(os, 'P_PIDFD') or not hasattr(os, 'waitid'):
+            record['errors'].append('native P_PIDFD waitid unavailable')
+            raise ChildProcessError('safe descriptor reap unavailable')
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                observed = os.waitid(os.P_PIDFD, pidfd, os.WEXITED | os.WNOHANG)
+            except ChildProcessError as error:
+                # ECHILD alone is not a successful status. This originally
+                # bound descriptor must separately be terminal to establish
+                # that the old child is no longer live/waitable by this owner.
+                import select
+                poll = select.poll();poll.register(pidfd, select.POLLIN)
+                terminal = bool(poll.poll(0))
+                record.update(waitid_error=str(error), terminal_pidfd=terminal,
+                              no_longer_waitable=True)
+                if not terminal:
+                    record['errors'].append('nonterminal held pidfd with ECHILD')
+                    raise ChildProcessError('accounting error cleanup incomplete') from error
+                return dict(record)
+            if observed is not None:
+                record['waitid'] = dict(si_pid=observed.si_pid, si_status=observed.si_status,
+                                        si_code=observed.si_code, si_signo=observed.si_signo)
+                if observed.si_pid != self.pid:
+                    record['errors'].append('held pidfd wait returned unexpected original PID')
+                    raise ChildProcessError('descriptor termination identity refused')
+                if observed.si_code == os.CLD_EXITED:
+                    code = observed.si_status
+                elif observed.si_code in (os.CLD_KILLED, os.CLD_DUMPED):
+                    code = -observed.si_status
+                else:
+                    record['errors'].append('waitid did not return termination')
+                    raise ChildProcessError('descriptor termination status refused')
+                self._child.returncode = code
+                record['actual_exit'] = code
+                return dict(record)
+            if time.monotonic() >= deadline:
+                record['errors'].append('held-pidfd reap deadline exceeded')
+                raise subprocess.TimeoutExpired(self.args, timeout)
+            time.sleep(.005)
+
+    def cleanup_observation(self):
+        """Return error-only reap facts; they never substitute for rusage."""
+        return self._cleanup_observed
 
     def raw_observation(self):
         """Retain native returned facts even when their validation refuses."""

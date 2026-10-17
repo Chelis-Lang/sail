@@ -112,6 +112,12 @@ def fresh(z3, identity, data, timeout, maximum):
                 exit_code = accounting['exit']
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
                 errors.append('owned completion/accounting: ' + str(error))
+                if pidfd is not None:
+                    try:
+                        observed = owner.cleanup_failed_accounting(pidfd)
+                        exit_code = observed.get('actual_exit')
+                    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as cleanup_error:
+                        errors.append('held-pidfd error cleanup: ' + str(cleanup_error))
             # One I/O owner exists; after producer completion retain even failed
             # startup/nonzero/timeout streams before closing their descriptors.
             for name in ('stdout', 'stderr'):
@@ -131,6 +137,7 @@ def fresh(z3, identity, data, timeout, maximum):
                 exit=exit_code, error='; '.join(errors) if errors else None,
                 image_verified=verified, kernel_accounting=accounting,
                 kernel_raw_observation=owner.raw_observation() if owner else None,
+                kernel_error_cleanup=owner.cleanup_observation() if owner else None,
                 resource_policy=EXPERIMENT,
                 sampled_peak_rss=None, sampled_peak_pss=None, rss_samples=0,
                 memory_observations=[], input_bytes_written=offset,

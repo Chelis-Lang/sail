@@ -237,7 +237,7 @@ def main():
                               memory_observations=result['memory_observations'])
                 if args.experiment_kernel_accounting_owner:
                     record.update({key: result[key] for key in ['kernel_accounting', 'kernel_raw_observation',
-                                  'kernel_resource_gate_pass', 'resource_policy', 'input_bytes_written']})
+                                  'kernel_resource_gate_pass', 'resource_policy', 'input_bytes_written', 'kernel_error_cleanup']})
                 if args.native_metrics:
                     record.update(guarded_wall=time.monotonic() - started,
                                   solver_cpu=(kernel_accounting.cpu(result['kernel_accounting']) if args.experiment_kernel_accounting_owner
@@ -307,6 +307,7 @@ def main():
                                         failure=entry.failure, kernel_accounting=entry.kernel_accounting,
                                         kernel_raw_observation=entry.process.raw_observation() if hasattr(entry, 'process') else None,
                                         kernel_accounting_error=entry.kernel_accounting_error,
+                                        kernel_error_cleanup=entry.process.cleanup_observation() if hasattr(entry,'process') else None,
                                         cleanup_errors=entry.cleanup_errors)
             if entry is not None:
                 if not args.experiment_kernel_accounting_owner:
