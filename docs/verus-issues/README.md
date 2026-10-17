@@ -45,6 +45,8 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0021](VI-0021-proof-note-json-order.md) | JSON proof-note arrays follow hash-set order | reproduced in the pinned fork; correction pending | — | `corpus/repros/verus-proof-note-order/` |
 | [VI-0026](VI-0026-macos-native-install-name.md) | macOS native proc macros contain their absolute output path | reproduced; experimental compiler-option correction unqualified | no fork change | `corpus/repros/rust-macos-dylib-install-name/` |
 
+| [VI-0025](VI-0025-module-candidate-absence.md) | Loaded source records omit absent module candidates | reproduced; retained-proof namespace eligibility is conservative | — | `corpus/repros/rust-module-candidate-absence/` |
+
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The
 [unsupported-command exit reproduction](../../corpus/repros/z3-unsupported-command-exit/README.md)

@@ -124,3 +124,10 @@ main checks.
 - [Managed Cargo selection qualification](validation/managed-selection-family.md):
   candidate dependency-artifact sharing, observations and pending native gates.
 - [vstd compiler-boundary replacement](validation/vstd-compile-boundary.md): unselected first-project performance prototype and remaining correctness gates.
+
+The [instant-revert record](validation/instant-revert.md) tracks the disabled
+content-bound archive implementation and its pending native ABA gate.
+
+The [compiler-reuse integration record](validation/proof-reuse-integration.md)
+describes the mutually exclusive research switches, shared snapshots and
+separate source authorities; integrated native qualification remains pending.

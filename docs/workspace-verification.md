@@ -346,3 +346,27 @@ same results. An explicit `SAIL_DAEMON_SOCKET` is used as given, so keep it
 short.
 An explicitly selected older cache daemon can keep running: Sail starts a
 private jobs-only sidecar alongside it instead of terminating it.
+
+## Instant-revert research scope
+
+`SAIL_RETAINED_CONTENT_RESEARCH=1` enables an unselected, same-workspace
+content-bound archive experiment for the initial closed Vest provider policy.
+It requires source-observer runtime documents; the accepted runtime safely
+misses when they are absent. Unsupported inputs run the genuine compiler. A
+failed restoration rollback refuses with `SAIL3134`. This is not a supported
+instant-revert speed guarantee; see [ADR 0050](decisions/0050-retained-proofs-instant-revert.md)
+and the [pending native gate](validation/instant-revert.md).
+
+The experimental retained arena refuses new admission at 8 GiB of file data or
+65,536 entries, including failed writes and lifetime markers. It preserves
+potentially live compiler generations and falls back to compilation on fullness
+or unsupported inventory. Existing graph reuse can also refuse near capacity
+because admission conservatively reserves a full graph. These limits cover the
+retained arena, not ordinary managed-run sidecars or every Sail cache. The
+aggregate scan's native performance is not yet qualified.
+
+The two compiler-reuse research switches are mutually exclusive. Setting both
+`SAIL_VSTD_BOUNDARY_RESEARCH=1` and `SAIL_RETAINED_CONTENT_RESEARCH=1`
+returns `SAIL3135` before compiler setup; unset either switch. Their
+[source integration](validation/proof-reuse-integration.md) is not native-qualified
+and preserves each experiment's separate source authority and remaining gates.

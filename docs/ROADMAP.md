@@ -294,7 +294,9 @@ oyster and such." This supersedes the parallel tracks of
       refusals; a separate sole-wait4 owner passes both fixed solver traces.
       Preparation remains real work and Anvil saves no total CPU. Actual edit
       workflow/default acceptance is unbuilt and unselected; #158 stays open.
-   3. vstd pre-verified in the release archive, #161.
+   3. vstd pre-verified in the release archive, #161. The default-off boundary
+      and retained-content paths have a mutually exclusive source integration;
+      integrated native qualification remains pending ([record](validation/proof-reuse-integration.md)).
    4. Remaining managed overhead against the removed pass-through, #156:
       cheaper checks qualify against rc.5 on unchanged vest/demo runs
       (1.01/0.39 s to 0.54/0.21 s); the final vest edit gain is
@@ -318,7 +320,12 @@ oyster and such." This supersedes the parallel tracks of
       completed runtime gates and exact platform/scope limits. The three-project
       [incidental-edit catalogue](validation/incidental-edits.md) is prepared;
       its final-runtime measurements and exact solver-work counts are pending.
-   6. B4, instant revert: receipts beyond the latest revision, #163.
+   6. B4, instant revert: receipts beyond the latest revision, #163. The
+      default-off content-bound driver join and aggregate retained-arena
+      admission are implemented. Native ABI and corrected small ABA pass. Vest
+      reruns verification because namespace admission includes uncompiled
+      siblings; the closed-source correction is source-qualified. Native Vest
+      ABA and latency qualification remain pending ([record](validation/instant-revert.md)).
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
       real projects caps every other lever. A narrow Cargo-selection correction

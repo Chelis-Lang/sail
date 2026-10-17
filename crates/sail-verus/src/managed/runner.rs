@@ -1439,8 +1439,8 @@ fn target_records(
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: call.establishing_run(),
-                reused: false,
+                establishing_run: call.establishing_run().to_owned(),
+                reused: call.retained_from.is_some(),
                 requested,
                 complete: call.success && complete(&call.report),
                 report: call.report.clone(),
@@ -1532,7 +1532,7 @@ fn target_records(
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: receipt.invocation.establishing_run(),
+                establishing_run: receipt.invocation.establishing_run().to_owned(),
                 reused: true,
                 requested,
                 complete: true,
@@ -1565,7 +1565,6 @@ fn target_records(
                             || (kind == "lib" && call.identity.crate_type == "rlib"))
                 })
             });
-            let establishing_run = call.establishing_run();
             results.push(TargetResult {
                 dependency_store: None,
                 dependency_build: call.dependency_build.clone(),
@@ -1573,10 +1572,10 @@ fn target_records(
                     .and_then(|p| p["id"].as_str())
                     .unwrap_or_default()
                     .to_owned(),
+                establishing_run: call.establishing_run().to_owned(),
+                reused: call.retained_from.is_some(),
                 target: call.identity.name,
                 kind: vec![call.identity.crate_type],
-                establishing_run,
-                reused: false,
                 requested,
                 complete: call.success && complete(&call.report),
                 report: call.report,
@@ -1984,6 +1983,7 @@ pub(crate) fn run_engine_held(
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<(ProjectResult, File)> {
+    let _research = super::research::selected()?;
     let mut owned = config.clone();
     owned.workspace =
         std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
@@ -2361,6 +2361,17 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
+        retained: if !forced && !source_engine && paths.reuse {
+            super::retained::Plan::prepare(
+                &data,
+                &paths.target,
+                &expected,
+                &actual_wrapper(&config.cargo_verus)?,
+                &run_id,
+            )
+        } else {
+            None
+        },
         attribution_logs: config.attribution_logs || engine.is_some(),
         engine,
     };
@@ -2726,6 +2737,11 @@ pub(crate) fn run_engine_held(
             }
         }
         store_dependencies(config, &paths, &store_candidates, &result, &after_data);
+        if result.exit_code == Some(0)
+            && let Some(plan) = &runtime.retained
+        {
+            let _ = plan.publish(&runtime);
+        }
     }
     publish_compiler_generation(
         &paths,
@@ -2921,6 +2937,32 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn conflicting_research_refuses_before_runner_setup()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        if std::env::var("SAIL_RESEARCH_SELECTION_EXPECTED").as_deref() == Ok("conflict") {
+            let absent = std::path::PathBuf::from("/not-a-research-fixture");
+            let config = super::Config {
+                workspace: absent.clone(),
+                cache: absent.clone(),
+                sail: absent.clone(),
+                cargo_verus: absent.clone(),
+                cargo: absent.clone(),
+                shim: absent.clone(),
+                z3: absent,
+                socket: None,
+                args: Vec::new(),
+                force: false,
+                attribution_logs: false,
+            };
+            let error = super::run_engine_held(&config, None, &mut Vec::new(), None)
+                .err()
+                .ok_or("expected refusal")?;
+            assert_eq!(error.code, "SAIL3135");
+        }
+        Ok(())
+    }
+
     use super::*;
 
     /// Colour is requested only on a terminal, and never over the user's
@@ -3282,6 +3324,7 @@ mod tests {
             context: "selected".to_owned(),
             input_revision: target_revision(data, "input"),
             invocation: Invocation {
+                retained_from: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: PathBuf::from(
                         data["packages"][0]["manifest_path"]
@@ -4417,6 +4460,7 @@ mod tests {
             context: "context".to_owned(),
             input_revision: target_revision(&data, "vstd"),
             invocation: Invocation {
+                retained_from: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: dependency.join("Cargo.toml"),
                     name: "vstd".to_owned(),

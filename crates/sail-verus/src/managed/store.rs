@@ -1363,6 +1363,7 @@ mod tests {
                 context: "establishing".to_owned(),
                 input_revision: "workspace-specific".to_owned(),
                 invocation: super::super::receipts::Invocation {
+                    retained_from: None,
                     identity: super::super::receipts::TargetIdentity {
                         manifest: self.root.join("reg/vstd/Cargo.toml"),
                         name: "vstd".to_owned(),

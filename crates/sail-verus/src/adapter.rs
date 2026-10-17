@@ -196,6 +196,14 @@ fn cargo_driver_options(id: &str) -> Result<DriverOptions> {
     })
 }
 
+/// Exact effective per-package Verus tokens, using the shipped decoder.
+/// Experimental reuse declines an invalid decoder result instead of guessing.
+pub(crate) fn effective_verus_arguments() -> Option<Vec<String>> {
+    cargo_driver_options(&cargo_package_id()?)
+        .ok()
+        .map(|options| options.arguments)
+}
+
 struct DriverOptions {
     arguments: Vec<String>,
     environment: std::collections::BTreeMap<String, String>,
@@ -354,29 +362,59 @@ fn custom_compiler_context(args: &[OsString]) -> bool {
     reason = "Engine fallback is kept alongside the owned subprocess drain and seal check."
 )]
 fn driver() -> Result<ExitCode> {
+    let research = crate::managed::research::selected()?;
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
     // Native prerequisites always execute through Cargo's real compiler. The
     // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
-        let plan = crate::managed::shipped::active();
+        if research == crate::managed::research::Mode::Off {
+            return Command::new(wrapper)
+                .args(args)
+                .status()
+                .map(status)
+                .map_err(|e| Error::new("SAIL3111", e.to_string()));
+        }
+        let plan = (research == crate::managed::research::Mode::VstdBoundary)
+            .then(crate::managed::shipped::active)
+            .flatten();
         let mut observation = plan
             .as_ref()
             .and_then(|plan| crate::managed::shipped::native::Observation::begin(plan, &args));
-        let mut command = Command::new(wrapper);
-        command.args(
-            observation
-                .as_ref()
-                .map_or(args.as_slice(), |call| call.arguments()),
-        );
+        let runtime = (research == crate::managed::research::Mode::RetainedContent)
+            .then(|| std::env::var_os("SAIL_MANAGED_RUNTIME"))
+            .flatten()
+            .and_then(|path| {
+                std::fs::read(path)
+                    .ok()
+                    .and_then(|raw| serde_json::from_slice::<Runtime>(&raw).ok())
+            });
+        let mut retained = runtime
+            .as_ref()
+            .and_then(|runtime| crate::managed::retained::Native::begin(runtime, &args, &wrapper));
+        let mut command = Command::new(&wrapper);
+        let native_args = if let Some(call) = &observation {
+            call.arguments()
+        } else if let Some(attempt) = &retained {
+            attempt.arguments()
+        } else {
+            args.as_slice()
+        };
+        command.args(native_args);
         if let Some(call) = &observation {
             call.configure(&mut command);
+        }
+        if let Some(attempt) = &retained {
+            attempt.configure(&mut command);
         }
         let mut child = command
             .spawn()
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         if let Some(call) = &mut observation {
             call.started(child.id());
+        }
+        if let Some(attempt) = &mut retained {
+            attempt.started(child.id());
         }
         let actual = child
             .wait()
@@ -386,9 +424,14 @@ fn driver() -> Result<ExitCode> {
         {
             observation.complete();
         }
+        if let Some(attempt) = &retained {
+            let _ = attempt.finish(actual.success());
+        }
         return Ok(status(actual));
     }
-    let plan = crate::managed::shipped::active();
+    let plan = (research == crate::managed::research::Mode::VstdBoundary)
+        .then(crate::managed::shipped::active)
+        .flatten();
     let mut call = plan.as_ref().and_then(|plan| {
         crate::managed::shipped::Call::vstd_boundary(plan, &args, std::env::vars_os())
     });
@@ -403,17 +446,10 @@ fn driver() -> Result<ExitCode> {
         &std::fs::read(runtime_path).map_err(|e| Error::new("SAIL3111", e.to_string()))?,
     )
     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let identity = TargetIdentity {
-        manifest: PathBuf::from(required("CARGO_MANIFEST_DIR")?).join("Cargo.toml"),
-        name: argument(&args, "--crate-name").unwrap_or_default(),
-        crate_type: argument(&args, "--crate-type").unwrap_or_default(),
-        rustc_args_sha256: digest(
-            &args
-                .iter()
-                .flat_map(|s| s.as_encoded_bytes().iter().copied().chain([0]))
-                .collect::<Vec<_>>(),
-        ),
-    };
+    let identity = target_identity(
+        &args,
+        PathBuf::from(required("CARGO_MANIFEST_DIR")?).join("Cargo.toml"),
+    );
     crate::managed::retire_receipts(&runtime, &identity)?;
     let dir = runtime.sidecars.join(identity.key());
     std::fs::create_dir_all(dir.join("provenance"))
@@ -499,11 +535,53 @@ fn driver() -> Result<ExitCode> {
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         return Ok(ExitCode::SUCCESS);
     }
+    let mut retained = runtime
+        .retained
+        .as_ref()
+        .filter(|_| research == crate::managed::research::Mode::RetainedContent)
+        .and_then(|plan| {
+            (wrapper.canonicalize().ok()? == runtime.original_wrapper.canonicalize().ok()?)
+                .then(|| plan.begin(&runtime, &identity, &launcher_args, &dir))
+                .flatten()
+        });
+    if let Some(attempt) = &retained
+        && let Some(restored) = attempt.restore(&runtime)?
+    {
+        finish(
+            &runtime,
+            identity.clone(),
+            &dir,
+            &Captured {
+                stdout: &restored.stdout,
+                stderr: &restored.stderr,
+                exit: Some(0),
+            },
+            None,
+            None,
+        )?;
+        let path = runtime.invocations.join(format!("{}.json", identity.key()));
+        let mut invocation: Invocation = serde_json::from_slice(
+            &std::fs::read(&path).map_err(|e| Error::new("SAIL3111", e.to_string()))?,
+        )
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        invocation.retained_from = Some(restored.establishing_run);
+        json(&path, &invocation)?;
+        std::io::stderr()
+            .write_all(&restored.stderr)
+            .and_then(|()| {
+                std::io::stdout().write_all(&crate::verus_stdout::rebuild(&restored.stdout, flags))
+            })
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let mut cmd = Command::new(&wrapper);
-    let compiler_args = call.as_ref().map_or(
-        launcher_args.as_slice(),
-        crate::managed::shipped::Call::compiler_arguments,
-    );
+    let compiler_args = if let Some(call) = &call {
+        call.compiler_arguments()
+    } else if let Some(attempt) = &retained {
+        attempt.arguments()
+    } else {
+        launcher_args.as_slice()
+    };
     cmd.args(compiler_args)
         .envs(&launcher_environment)
         .args(observation_args(flags, logs.as_deref()))
@@ -518,6 +596,9 @@ fn driver() -> Result<ExitCode> {
         .env_remove("SAIL_COMPILER_INPUTS_BINDING");
     if let Some(call) = &mut call {
         call.observe_compiler(&mut cmd);
+    }
+    if let Some(attempt) = &retained {
+        attempt.configure(&mut cmd);
     }
     // Session records join cached answers to transcripts; without logs there
     // is nothing to join them to.
@@ -543,6 +624,9 @@ fn driver() -> Result<ExitCode> {
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     if let Some(call) = &mut call {
         call.compiler_started(child.id());
+    }
+    if let Some(attempt) = &mut retained {
+        attempt.started(child.id());
     }
     let invocation_log = InvocationLog {
         directory: &runtime.invocations,
@@ -647,6 +731,9 @@ fn driver() -> Result<ExitCode> {
         if completed {
             call.record(&stdout, &stderr, exit.code());
         }
+    }
+    if let Some(attempt) = &retained {
+        let _ = attempt.finish(exit.success());
     }
     let shown = crate::verus_stdout::rebuild(&stdout, flags);
     // The dependency store must replay exactly what this target displayed,
@@ -861,6 +948,7 @@ fn finish(
     });
     let dependencies = dependencies?;
     let invocation = Invocation {
+        retained_from: None,
         identity,
         run_id: runtime.run_id.clone(),
         report,
@@ -1064,8 +1152,101 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
     )
 }
 
+fn target_identity(args: &[OsString], manifest: PathBuf) -> TargetIdentity {
+    TargetIdentity {
+        manifest,
+        name: argument(args, "--crate-name").unwrap_or_default(),
+        crate_type: argument(args, "--crate-type").unwrap_or_default(),
+        rustc_args_sha256: digest(
+            &args
+                .iter()
+                .flat_map(|s| s.as_encoded_bytes().iter().copied().chain([0]))
+                .collect::<Vec<_>>(),
+        ),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn conflicting_research_refuses_before_adapter_setup()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        if std::env::var("SAIL_RESEARCH_SELECTION_EXPECTED").as_deref() == Ok("conflict") {
+            assert_eq!(
+                super::driver().err().ok_or("expected refusal")?.code,
+                "SAIL3135"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn cargo_lint_bytes_order_and_repetitions_remain_in_the_actual_target_identity()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../tests/fixtures/retained-cargo-lints.json"))?;
+        let mut args: Vec<std::ffi::OsString> = [
+            "/rustc",
+            "--crate-name",
+            "sample",
+            "--crate-type",
+            "lib",
+            "src/lib.rs",
+        ]
+        .into_iter()
+        .map(Into::into)
+        .collect();
+        let lint_start = args.len();
+        for value in fixture["lint_arguments"]
+            .as_array()
+            .ok_or("lint arguments")?
+        {
+            args.push(value.as_str().ok_or("lint argument")?.into());
+        }
+        let manifest = std::path::PathBuf::from("/owned/Cargo.toml");
+        let original = super::target_identity(&args, manifest.clone());
+        let mut repeated = args.clone();
+        repeated.push("--warn=unexpected_cfgs".into());
+        assert_ne!(
+            original.key(),
+            super::target_identity(&repeated, manifest.clone()).key()
+        );
+        let mut reversed = args.clone();
+        reversed[lint_start..].reverse();
+        assert_ne!(
+            original.key(),
+            super::target_identity(&reversed, manifest.clone()).key()
+        );
+        args.push("--deny=unexpected_cfgs".into());
+        assert_ne!(
+            original.key(),
+            super::target_identity(&args, manifest).key()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn retained_routing_fixture_uses_the_real_effective_driver_decoder()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../tests/fixtures/retained-cargo-routing.json"
+        ))?;
+        for row in fixture["rows"].as_array().ok_or("rows")? {
+            let id = row["id"].as_str().ok_or("id")?;
+            let decoded = super::cargo_driver_options_with(id, |name| {
+                Ok(if name == " __VERUS_DRIVER_ARGS__" {
+                    row["common"].as_str().map(str::to_owned)
+                } else if name == format!(" __VERUS_DRIVER_ARGS_FOR_{id}") {
+                    row["package"].as_str().map(str::to_owned)
+                } else {
+                    None
+                })
+            })?;
+            assert_eq!(serde_json::to_value(decoded.arguments)?, row["tokens"]);
+        }
+        Ok(())
+    }
+
     use super::*;
 
     #[test]

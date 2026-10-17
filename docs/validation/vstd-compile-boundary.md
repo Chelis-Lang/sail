@@ -503,3 +503,7 @@ Failed native attempts remain indexed without replacing their scope:
   its frozen 4,096-file bound. Archive `f91ba8386558649b8af7efc0992b99a88498057671e96be6a3c5cdfb8572c7c7`.
 - 2026-10-17, Sail `3c151304`: remaining transitive control PASS, enclosing
   corpus-startup manifest FAIL; archive `b969e8cfdf773eaaa8b3a6ec0e0aa4ca7e3cee55f165dc843c24e4c50099e235`.
+
+The [source integration](proof-reuse-integration.md) preserves this path as a
+separate default-off experiment. Enabling both research switches refuses with
+`SAIL3135`; no integrated native acceptance is inferred from this record.

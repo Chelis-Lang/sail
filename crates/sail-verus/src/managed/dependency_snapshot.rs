@@ -474,6 +474,22 @@ impl Snapshot {
         &self.arguments
     }
 
+    /// Additional durable bytes and entries for publishing this full graph.
+    pub(super) fn storage(&self) -> Option<(u64, u64)> {
+        let bytes = self
+            .inventory
+            .artifacts
+            .values()
+            .try_fold(0u64, |total, body| total.checked_add(body.size))?;
+        let entries = self
+            .inventory
+            .artifacts
+            .len()
+            .checked_add(self.inventory.directories.len())?
+            .checked_add(1)?;
+        Some((bytes, u64::try_from(entries).ok()?))
+    }
+
     /// Keep the graph at its content address through the owning artifact and
     /// retained-entry lifetime. Dep-info may name these literal paths; never
     /// rewrite it to pretend the mutable originals were consumed instead.
@@ -481,6 +497,9 @@ impl Snapshot {
     pub(super) fn publish(mut self, graphs: &Path, original_args: &[OsString]) -> Option<Self> {
         let key = self.key()?;
         let destination = graphs.join(&key);
+        if self.published {
+            return (self.root == destination && self.intact()).then_some(self);
+        }
         if graphs.canonicalize().ok()? != graphs
             || destination == self.root
             || self

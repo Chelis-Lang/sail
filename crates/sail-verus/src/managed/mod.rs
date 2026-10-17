@@ -3,13 +3,6 @@
 mod absent;
 mod build_inputs;
 mod configuration;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "Persistent graph APIs await retained-proof integration."
-    )
-)]
 mod dependency_snapshot;
 mod diagnostics;
 mod environment;
@@ -19,6 +12,12 @@ mod input;
 pub mod projects;
 mod read_check;
 mod receipts;
+pub(crate) mod research;
+#[expect(
+    dead_code,
+    reason = "ADR 0050's content-bound successor is source-only until its two-phase compiler admission and real Vest ABA gate qualify."
+)]
+pub(crate) mod retained;
 mod runner;
 pub(crate) mod shipped;
 mod source_inputs;

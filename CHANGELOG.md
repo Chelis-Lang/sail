@@ -5,8 +5,23 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Integrate the two disabled compiler-reuse research paths around their shared
+  owned dependency snapshots. Simultaneous research switches refuse with
+  `SAIL3135`; this does not select reuse or change the runtime pins.
+
 - Experimental vstd reuse: compile admitted macOS proc macros with a stable,
   explicitly keyed install name; native artifact comparisons remain exact.
+- Add a disabled content-bound instant-revert research path (#163), joining
+  native source certificates, private dependency graphs and checked output
+  restoration. Native Vest ABA qualification and performance remain pending;
+  default verification and pins are unchanged. Its retained arena uses
+  prospective aggregate byte/count admission, preserving unknown live graphs
+  and taking the compiler path on fullness; native cap performance is pending.
+  Normal Cargo manifest lint arguments remain literal and keyed in the research path.
+  Retained restoration compares declared environment values at the fresh outer
+  caller boundary, preserving the separately keyed managed-child environment.
+  Namespace admission and compiler source authority use the same closed compile
+  roots; unrelated workspace files remain in the content key.
 
 - Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;
