@@ -3,9 +3,9 @@
 # builds exactly `commit`. Changing it is an engine upgrade: rebuild, run the
 # qualification steps, then pack and re-pin artifact-linux.json.
 [fork]
-repo = "https://github.com/Chelis-Lang/verus"
-branch = "sail"
-commit = "73dea02112d730e7ab52f58158012d440fb89512"
+repo = "/research-fork"
+branch = "experiment/log-completion-baseline"
+commit = "0455c42a12511d9d7d72c1593a47c7fe0982b06d"
 # The upstream Verus commit the `sail` branch is rebased on. It must equal
 # corpus/toolchain.toml's [verus] commit.
 upstream = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
