@@ -37,40 +37,60 @@ then the edited copy, with every sail run compared with plain Verus. It
 copies and refills the project for every edit, which does not scale to
 hundreds of mutants.
 
-### Pilot: FPBench f64 kernels
+### Pilot: FPBench
 
 A pilot ran the method on FPBench (commit `d7ade34e`, MIT), translated to
-Verus by a generator outside this repository. The pinned Verus ships no
-floating-point axioms (`examples/float.rs`: projects define their own), so
-the translation carries a small axiom set over the biased binary exponent
-`ex(x)` of a finite `f64` (sum, difference, product and quotient upper
-bounds, and a product lower bound for divisors). Each axiom follows from
-round-to-nearest; one million random IEEE-754 samples, including subnormals
-and values near overflow, found no counterexample. Each kernel `ensures`
-that its result is finite and below a bound the generator derives with the
-same rules, so every emitted kernel is provable by construction.
+Verus by a generator outside this repository, in two translations and two
+layouts each ([record](../validation/mutation-corpus.md)):
 
-- Scope: 23 of FPBench's 136 kernels in 5 crates. The rest need `sqrt` or
-  transcendental functions, loops, single precision, an input without a
-  finite range, or a divisor without a lower bound; unary float negation is
-  unsupported and is emitted as `-1.0 * x`.
-- 115 mutants in five classes (`arith`, `constant`, `spec-weaken`,
-  `spec-strengthen`, `rare-region`), at most five per kernel.
-- Native EC2 c7i.4xlarge, us-east-1, Sail `8bd4aed` with runtime
-  `73dea021`: conformance 5 of 5 units and 28 of 28 functions Same in
-  pass-through, fill, warm and the engine arm; the edit workload over all
-  115 mutants, three rounds, 115 Same with no false verified (81 mutants
-  fail under plain Verus). Raw log sha256 `942efc3c…93a5`, results
-  `85432309…554`, kept outside the repository (ADR 0038).
-- Speed: 0.99× (277.6 s plain against 280.4 s Sail). Each crate verifies in
-  1.5–2.5 s and runs as one solver session. Keys bind the session's whole
-  input so far (ADR 0008) and the first miss hands the session to the
-  solver (ADR 0011), so 21% of replies were served overall and none after a
-  rare-region mutant.
-- Five mutants that plain Verus verified on macOS arm64 fail on Linux
-  x86-64 with an rlimit error in every round, with Z3 4.16.0 on both
-  ([reproduction](../../corpus/repros/z3-rlimit-platform-difference/README.md)).
-  Expected outcomes near the rlimit are therefore platform-specific.
+- `f64`: 23 of FPBench's 136 kernels in 5 crates. The pinned Verus ships no
+  floating-point axioms (`examples/float.rs`: projects define their own), so
+  the translation carries a small axiom set over the biased binary exponent
+  `ex(x)` of a finite `f64` (sum, difference, product and quotient upper
+  bounds, and a product lower bound for divisors). Each axiom follows from
+  round-to-nearest; one million random IEEE-754 samples, including subnormals
+  and values near overflow, found no counterexample. Each kernel `ensures`
+  that its result is finite and below a bound derived with the same rules.
+  The rest of FPBench needs `sqrt` or transcendental functions, loops,
+  single precision, an input without a finite range, or a divisor without a
+  lower bound.
+- `int`: 20 kernels evaluated exactly over `int` at a scale `10^k`, with
+  interval bounds proved by `nonlinear_arith`. Seven lemmas that never
+  finish are excluded; four that end with an rlimit error sit in a crate
+  without mutants.
+- Each translation also comes split, with one module per kernel and the
+  same mutants.
+
+379 mutants in five classes (`arith`, `constant`, `spec-weaken`,
+`spec-strengthen`, `rare-region`). On native Linux (Sail `c848259`),
+conformance was `same` for every unit and function in all four arms, and
+the edit workload was `same` for every mutant in every round, with no false
+verified. Findings that shape the decision below:
+
+- **Edit-loop gain depends on module structure.** Keys bind the session's
+  whole input so far (ADR 0008) and the first miss hands the session to the
+  solver (ADR 0011). With one module per crate the edit workload ran at
+  0.99× (`f64`, 21% of replies served; none after a `rare-region` mutant)
+  and 1.03× (`int`, 17%). With one module per kernel, `f64` ran at 1.81×
+  and `int` at 2.63×, each with 72% served. The runner therefore reports served share per class.
+- **Expected outcomes are platform- and layout-specific near the rlimit.**
+  The unmodified `f64/fptaylor_extra` crate verifies on macOS arm64 and
+  fails at one function on Linux x86-64 with the same Z3 4.16.0
+  ([reproduction](../../corpus/repros/z3-rlimit-platform-difference/README.md)),
+  so five `f64` mutants have different expected outcomes on the two
+  platforms. On Linux, nine `f64` mutants fail in the per-crate layout and
+  verify in the per-kernel layout, which also raises two kernels' rlimits;
+  one `int` mutant finishes per crate and runs past 900 s per kernel.
+  Expected outcomes are therefore measured on the reference platform for
+  each catalogue.
+- **A run that does not finish is not an outcome.** Some nonlinear lemmas
+  neither finish within 900 s at the default rlimit nor stop at it, yet stop
+  at `--rlimit 1`; one ended with an rlimit error in some runs and ran past
+  900 s in others on identical input
+  ([reproduction](../../corpus/repros/z3-nla-rlimit-enforcement/README.md)).
+  These are excluded and listed rather than given a capped outcome.
+- **Near-limit mutants can be very slow.** One `int` mutant takes about
+  770 s per plain run, which dominates that catalogue's run time.
 
 ## Decision
 

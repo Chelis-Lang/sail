@@ -81,6 +81,8 @@ that start from a stored vstd against plain stock Verus. The
 native-input mismatch, temporary v1 quarantine, its cost and qualification. The
 [incidental-edit record](validation/incidental-edits.md) tracks the frozen
 three-project edit catalogue and the combined runtime's remaining gates.
+The [mutation-corpus record](validation/mutation-corpus.md) gives the FPBench
+mutation pilot's conformance and edit-loop results (ADR 0053).
 Raw logs stay outside the
 repository and are cited by SHA-256. Earlier per-run records and unselected
 engine candidates are preserved in the `archive/m7-contracts-f7103bf` tag.

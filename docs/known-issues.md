@@ -179,10 +179,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
   ([ADR 0008](decisions/0008-default-mode-keys-bind-the-process-prefix.md)),
   and the first miss hands the session to the solver
   ([ADR 0011](decisions/0011-local-cache-and-lazy-solver-sessions.md)), so
-  after an edit every later query in the same session is solved again. In the FPBench
-  pilot, where each crate is one module, 21% of replies were served after
-  115 mutants and none after a rare-region mutant, for 0.99× overall
-  ([ADR 0053](decisions/0053-verus-mutation-corpus.md)). Work on these
+  after an edit every later query in the same session is solved again. In the
+  FPBench pilot's edit workload, one module per crate served 21% of replies
+  (none after a rare-region mutant) for 0.99×; one module per kernel served
+  72% for 1.81× (2.63× on the integer translation) ([record](validation/mutation-corpus.md),
+  [ADR 0053](decisions/0053-verus-mutation-corpus.md)). A session whose check
+  returns `unknown` is likewise solved live from that check on, so a crate
+  with an rlimit failure gains nothing warm. Work on these
   misses: [ADR 0040](decisions/0040-warm-solver-sessions.md),
   [ADR 0051](decisions/0051-exact-solver-snapshots.md).
 - **Repair selector inventories have a bounded source scope.** Compiler-family
@@ -224,6 +227,9 @@ nonlinear rlimit consumption on identical input; see the
 An outcome near the rlimit can also differ between macOS arm64 and Linux
 x86-64 with the same Verus and Z3 versions; see the
 [platform reproduction](../corpus/repros/z3-rlimit-platform-difference/README.md).
+Some nonlinear queries take minutes to stop at their rlimit, or do not stop
+within 900 s; see the
+[enforcement reproduction](../corpus/repros/z3-nla-rlimit-enforcement/README.md).
 Seed-dependent proof discovery is available only through named opt-in
 portfolios, with separate keys.
 
