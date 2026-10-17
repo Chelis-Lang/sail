@@ -30,6 +30,7 @@ from owned_wait4 import OwnedWait4, drain_unstarted
 
 HERE = Path(__file__).resolve().parent
 MAX_RAW = 1024 ** 3
+CONTEXT_ENV = 'SAIL_LIVE_PREFIX_SOLVER_CONTEXT'
 
 
 def compiler(argv, cwd, environment, timeout):
@@ -121,11 +122,18 @@ class Workflow:
     """One donor, one scheduled edit and at most one whole fresh retry."""
     def __init__(self, output, solver, solver_sha256, argv, cwd, *,
                  edit_delay=0, attempt_timeout=120, rustup_loader_target=None,
-                 readiness_boundary='edit-start'):
+                 readiness_boundary='edit-start', donor_context=None, donor_prefix_batches=None):
         if (not 0 <= edit_delay <= 60 or not 0 < attempt_timeout <= 480 or
                 not argv or not all(isinstance(x, str) for x in argv) or
                 readiness_boundary not in ('edit-start', 'first-session-claim')):
             raise ProtocolRefusal('fixed bounded workflow required')
+        if (donor_context is None) != (donor_prefix_batches is None):
+            raise ProtocolRefusal('frozen historical context and cut required together')
+        if donor_context is not None and (not isinstance(donor_context, str)
+                or not donor_context.startswith('v1:') or len(donor_context) > 4096
+                or any(c in donor_context for c in '\n\r\0')
+                or type(donor_prefix_batches) is not int or not 1 <= donor_prefix_batches <= 100000):
+            raise ProtocolRefusal('bounded frozen historical context/cut refused')
         self.output = Path(output).absolute()
         self.output.mkdir(mode=0o700, exist_ok=False)
         self.input_directory = self.output / 'input-spool'
@@ -138,9 +146,14 @@ class Workflow:
         self.argv, self.cwd = list(argv), str(Path(cwd).resolve(strict=True))
         self.delay, self.timeout = edit_delay, attempt_timeout
         self.readiness_boundary = readiness_boundary
+        self.donor_context, self.donor_prefix_batches = donor_context, donor_prefix_batches
         self.config = self.output / 'wrapper.json'
         self.environment = dict(os.environ, VERUS_Z3_PATH=str(HERE / 'edit-interposer.py'),
                                 SAIL_LIVE_PREFIX_EDIT_CONFIG=str(self.config))
+        if donor_context is not None:
+            # Only the source-bound compiler child Command may assign the tag.
+            self.environment.pop(CONTEXT_ENV, None)
+            self.environment['SAIL_LIVE_PREFIX_CONTEXT_RESEARCH'] = '1'
         self.copied = 0
         self.raw_lock = threading.Lock()
         self.pools = []
@@ -162,6 +175,7 @@ class Workflow:
         self.pools.append(pool)
         pool.edit_workflow_input_directory = self.input_directory
         pool.edit_workflow_input_files = self.input_files
+        pool.edit_workflow_prefix_batches = self.donor_prefix_batches
         pool.edit_workflow_role = role
         return pool
 
@@ -275,13 +289,20 @@ class Workflow:
         started = time.monotonic()
         cpu_started = cpu_snapshot()
         claims = []
+        selected_occurrences = []
         def factory(ordinal, binding):
             candidate = selected
-            if ordinal == 0 and binding == selected_binding and selected_factory is not None:
+            eligible = (ordinal == 0 if self.donor_context is None else
+                        binding['environment'].get(CONTEXT_ENV) == self.donor_context)
+            if eligible and selected_binding is not None:
+                selected_occurrences.append(ordinal)
+                if len(selected_occurrences) != 1:
+                    raise ProtocolRefusal('duplicate historical solver context')
+            if eligible and binding == selected_binding and selected_factory is not None:
                 # Broker calls this after authenticating the header, before
                 # receiving any request batch. Never inspect future input.
-                candidate = selected_factory()
-            if ordinal == 0 and candidate is not None and binding == selected_binding:
+                candidate = selected_factory(ordinal)
+            if eligible and candidate is not None and binding == selected_binding:
                 claim, fallback = candidate, lambda: self.direct(binding, name + '-pre-reply-fallback')
                 self.claimed_preparation = True
             else:
@@ -313,6 +334,9 @@ class Workflow:
         finally:
             outcome = broker.finish()
         gate = attempt_status(execution['exit'], outcome['sessions'])
+        if self.donor_context is not None and selected_binding is not None and len(selected_occurrences) != 1:
+            outcome['passed'] = False
+            outcome['errors'].append('frozen historical solver context missing or ambiguous')
         trace = None
         if self.trace_program is not None:
             trace = self.trace(broker.root, outcome)
@@ -324,6 +348,7 @@ class Workflow:
             execution['errors'].append('tracing diagnostic; raw stderr retained')
             gate.update(driver_exit=1, broker_gate=False, whole_fresh_retry_required=True)
         record = dict(name=name, compiler=execution, broker=outcome, gate=gate, census=trace,
+                      selected_context_occurrences=selected_occurrences,
                       whole_attempt_wall_seconds=time.monotonic() - started,
                       cpu_observation=cpu_delta(cpu_started))
         self.attempts.append(record)
@@ -480,13 +505,22 @@ class Workflow:
             donor = self.attempt('donor')
             if donor['gate']['driver_exit'] != 0:
                 raise ProtocolRefusal('whole donor attempt refused')
-            row = donor['broker']['sessions'][0]
+            rows = donor['broker']['sessions']
+            if self.donor_context is None:
+                row = rows[0]
+            else:
+                matching = [r for r in rows if r['_binding']['environment'].get(CONTEXT_ENV) == self.donor_context]
+                if len(matching) != 1:
+                    raise ProtocolRefusal('unique frozen historical donor context required')
+                row = matching[0]
+            result['donor_selection'] = dict(context=self.donor_context,
+                ordinal=row['ordinal'], frozen_prefix_batches=self.donor_prefix_batches)
             binding = row['_binding']
             parser = Commands()
             donor_input = self.retained(row['_stored_streams']['input'])
             batches = parser.feed(donor_input)
             parser.finish()
-            prefix = donor_prefix(batches)
+            prefix = donor_prefix(batches, frozen_batch_count=self.donor_prefix_batches)
             reply_parser = Replies()
             replies = reply_parser.feed(self.retained(row['_stored_streams']['output']))
             reply_parser.finish()
@@ -525,9 +559,9 @@ class Workflow:
                 result['preparation'] = dict(boundary='first-session-claim',
                     scheduled_launch=launch_at, edited_attempt_start=time.monotonic(),
                     ready_at_session_claim=None, claim_observations=[])
-                def at_first_claim():
+                def at_first_claim(ordinal):
                     nonlocal snapshot
-                    observed = dict(snapshot=time.monotonic(), ordinal=0)
+                    observed = dict(snapshot=time.monotonic(), ordinal=ordinal)
                     result['preparation']['claim_observations'].append(observed)
                     key = prepared.get('key')
                     if key is not None:

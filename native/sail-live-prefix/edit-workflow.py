@@ -25,6 +25,8 @@ def main():
     parser.add_argument('--readiness-at-session-claim', action='store_true',
                         help='snapshot once at fixed session0 claim before its request; never wait')
     parser.add_argument('--strace', help='explicit native strace binary; retain per-process exec/exit census')
+    parser.add_argument('--donor-context', help='fixed compiler-owned historical context, never selected by future queries')
+    parser.add_argument('--donor-prefix-batches', type=int, help='fixed historical complete check boundary; requires --donor-context')
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ['--'] else args.command
@@ -35,6 +37,7 @@ def main():
     workflow = Workflow(args.out, args.solver, args.solver_sha256, command, args.cwd,
                         edit_delay=args.delay, attempt_timeout=args.timeout,
                         rustup_loader_target=args.experiment_rustup_loader_target,
+                        donor_context=args.donor_context, donor_prefix_batches=args.donor_prefix_batches,
                         readiness_boundary='first-session-claim' if args.readiness_at_session_claim else 'edit-start')
     if args.strace:
         workflow.trace_program = str(Path(args.strace).resolve(strict=True))

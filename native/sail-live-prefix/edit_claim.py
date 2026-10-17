@@ -144,7 +144,8 @@ class StreamingClaim:
                 replies = self.reply_parser.feed(actual)
                 self.reply_parser.finish()
                 self.replay = PrefixReplay([x['raw'] for x in commands], replies,
-                                           ready_at_edit_start=True)
+                    ready_at_edit_start=True,
+                    frozen_batch_count=getattr(pool, 'edit_workflow_prefix_batches', None))
                 entry.claimed = True
                 entry.ready = False
                 entry.deadline = time.monotonic() + pool.run_timeout

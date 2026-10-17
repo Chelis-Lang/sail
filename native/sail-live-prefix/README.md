@@ -556,3 +556,43 @@ caller file only after exact literal equality. Failed/partial captures still
 refuse; global raw reservation and complete wait4 accounting are unchanged.
 Actual local file and controlled-caller tests cover this code, with Linux APIs
 explicitly doubled on macOS; native memory/performance outcomes are pending.
+
+Prospective critical-prefix selection accepts `--donor-context TAG` together
+with `--donor-prefix-batches N`. Both must be frozen from historical donor
+evidence before an edited attempt. A separately built, source-bound compiler
+must assign the context to each solver child before it starts; an inherited
+parent tag is removed. The donor must contain exactly one matching context.
+The count cuts literal donor bytes at a complete check batch, and the same
+literal batch/reply ledger is required during replay. Default selection still
+uses session zero's first check when these arguments are absent.
+
+At future authenticated connection admission, only the fixed tag and complete
+actual context can select the prepared child, before any caller request is
+read. Thread-dependent spawn ordinal does not select the bucket. Missing or
+duplicate target contexts refuse the attempt; divergence after a reply still
+aborts the entire attempt and requires a whole fresh retry. There is no search
+of future queries or later promotion of an unready claim. Local real-caller
+fixtures reverse target accept order and cover absent/duplicate tags and a
+longer explicitly frozen ledger; their tags simulate the compiler field and
+are not native compiler provenance qualification.
+
+The compiler field, exact donor transcript-to-session mapping, and an expensive
+cut before the known edited function still need source review and actual
+runtime validation. No useful critical-prefix cost or application gain is
+established by the selection implementation alone; no new native run is
+authorized by these commands.
+
+`edit_donor.historical_cut` accepts only the recorded donor input/output and
+its research transcript. It consumes every transcript query and reply by exact
+captured byte length, so marker lookalikes inside strings cannot select a
+function. It requires one compiler function marker with the actual request
+counter, then chooses the last completed check before that function. CR-bearing
+replies refuse this metadata audit rather than being normalized. The caller
+must still bind the real compiler/runtime, unique context and log path; the
+helper does not certify provenance or prefix cost alone.
+
+Use the separate SMT transcript, not `--log smt`: actual AIR reproduction
+[VI-0024](../../docs/verus-issues/VI-0024-smt-log-pipe-indentation.md) shows
+that attaching an SMT file log changes literal multiline solver input. The
+proposed compiler marker writes only to the existing transcript and does not
+attach an emitter file log or write to solver stdin.

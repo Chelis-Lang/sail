@@ -45,6 +45,17 @@ if mode=='pre-first-record':
  except FileNotFoundError as error:print(str(error))
  raise SystemExit(0)
 environment=dict(os.environ)
+if mode.startswith('tag-'):
+ environment['SAIL_LIVE_PREFIX_SOLVER_CONTEXT']='v1:test:target' if mode!='tag-missing' else 'v1:test:other'
+ helper=dict(environment)
+ helper['SAIL_LIVE_PREFIX_SOLVER_CONTEXT']='v1:test:target' if mode=='tag-duplicate' else 'v1:test:helper'
+ # Simulate a compiler-owned bucket tag, not a genuine Verus field. Reverse
+ # accept order after the edit to prove selection does not follow ordinal0.
+ def helper_session():
+  data=b'(get-info :version)\\n(echo "<<DONE>>")\\n(assert true)\\n(check-sat)\\n(echo "<<DONE>>")\\n'
+  r=subprocess.run([os.environ['VERUS_Z3_PATH'],'-smt2','-in'],env=helper,input=data,capture_output=True,timeout=8)
+  assert r.returncode==0 and r.stdout.endswith(b'<<DONE>>\\n')
+ if source=='BASE\\n':helper_session()
 if mode=='context-miss' and source!='BASE\\n':environment['SAIL_TEST_CHANGED_CONTEXT']='edited-only'
 arguments=['-bad'] if mode=='wrapper-wrong-args' else ['-smt2','-in']
 child=subprocess.Popen([os.environ['VERUS_Z3_PATH'],*arguments],env=environment,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -53,6 +64,7 @@ check=b'(assert false)\\n' if 'DIVERGE' in source else b'(assert true)\\n'
 if mode=='unready' or mode.startswith('claim-'):check+=b';SLOW\\n'
 check+=b'(check-sat)\\n(echo "<<DONE>>")\\n'
 requests=[version,check,b'(get-info :all-statistics)\\n(echo "<<DONE>>")\\n']
+if mode=='tag-long-prefix':requests.insert(2,check)
 actual=[]
 for request in requests:
  try:child.stdin.write(request);child.stdin.flush()
@@ -68,6 +80,7 @@ try:child.stdin.close()
 except BrokenPipeError:pass
 code=child.wait(timeout=8);error=child.stderr.read()
 child.stdout.close();child.stderr.close()
+if mode.startswith('tag-') and source!='BASE\\n':helper_session()
 extra=None
 if mode=='claim-unready-no-promotion':
  second=subprocess.run([os.environ['VERUS_Z3_PATH'],'-smt2','-in'],env=environment,input=b''.join(requests),capture_output=True,timeout=8)
@@ -118,7 +131,8 @@ rows = []
 for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
              'pre-first-record', 'context-miss', 'wrapper-wrong-args',
              'claim-ready-during-frontend', 'claim-unready-no-promotion',
-             'spill-write-failure', 'spill-mutation', 'spill-unclosed'):
+             'spill-write-failure', 'spill-mutation', 'spill-unclosed',
+             'tag-target', 'tag-long-prefix', 'tag-missing', 'tag-duplicate'):
     with tempfile.TemporaryDirectory(prefix='sle-', dir='/tmp') as td:
         root = Path(td)
         solver, caller, source = [root / name for name in ('solver', 'caller.py', 'project.rs')]
@@ -136,12 +150,16 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
                   'claim-unready-no-promotion': b'BASE\n// two actual caller sessions\n',
                   'spill-write-failure': b'BASE\n// spill failure\n',
                   'spill-mutation': b'BASE\n// spill mutation\n',
-                  'spill-unclosed': b'BASE\n// unclosed spill\n'}[case]
+                  'spill-unclosed': b'BASE\n// unclosed spill\n',
+                  **{name: b'BASE\n// fixed historical target edit\n' for name in
+                     ('tag-target', 'tag-long-prefix', 'tag-missing', 'tag-duplicate')}}[case]
         with patch.dict(os.environ, {'SAIL_TEST_EDIT_CASE': case}), explicit_native_doubles(root):
             workflow = edit_workflow.Workflow(root / 'out', solver,
                 hashlib.sha256(solver.read_bytes()).hexdigest(),
                 [sys.executable, '-B', str(caller)], root,
                 edit_delay=0 if case == 'unready' or case.startswith('claim-') else .2, attempt_timeout=5,
+                donor_context='v1:test:target' if case.startswith('tag-') else None,
+                donor_prefix_batches=(3 if case=='tag-long-prefix' else 2) if case.startswith('tag-') else None,
                 readiness_boundary='first-session-claim' if case.startswith('claim-') else 'edit-start')
             original_spill = workflow.spill_session
             spill_observations = []
@@ -187,7 +205,11 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
         assert 'PENDING' in result['coverage']
         attempts = result['attempts']
         assert all(a['whole_attempt_wall_seconds'] >= a['compiler']['wall_seconds'] for a in attempts)
-        if case in ('pre-first-record', 'wrapper-wrong-args') or case.startswith('spill-'):
+        if case in ('tag-missing', 'tag-duplicate'):
+            assert result['driver_exit']==1 and len(attempts)==1 and result['errors']
+            assert not result['preparation_claimed']
+            assert 'unique frozen historical donor context required' in str(result['errors'])
+        elif case in ('pre-first-record', 'wrapper-wrong-args') or case.startswith('spill-'):
             assert len(attempts) == 1 and result['driver_exit'] == 1
             assert attempts[0]['compiler']['exit'] == 0
             assert result['errors']
@@ -224,6 +246,11 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
             if case == 'context-miss':
                 assert result['preparation']['ready_at_edit_start'] is True
                 assert not result['preparation_claimed']
+            if case in ('tag-target', 'tag-long-prefix'):
+                assert result['donor_selection']['ordinal']==1
+                assert result['preparation_claimed']
+                # The same frozen target moved to ordinal0 in edited/control.
+                assert attempts[1]['sessions'][0]['context_sha256'] != attempts[0]['sessions'][0]['context_sha256']
             if case == 'unready':
                 assert not result['preparation']['ready_at_edit_start']
                 assert not result['preparation_claimed']

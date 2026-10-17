@@ -155,12 +155,22 @@ class Replies:
             raise ProtocolRefusal('unmatched or incomplete reply bytes')
 
 
-def donor_prefix(batches):
-    """Choose the first complete check batch of fixed donor session ordinal0.
+def donor_prefix(batches, *, frozen_batch_count=None):
+    """Choose the default first check or an explicit frozen historical cut.
 
     No future input is accepted by this function. Unrecognized check spelling,
     absent checks or incomplete batches cannot produce a preparation prefix.
+    A non-default count comes from a separately audited historical donor,
+    never from the later edited request stream.
     """
+    if frozen_batch_count is not None:
+        if (type(frozen_batch_count) is not int or
+                not 1 <= frozen_batch_count <= len(batches)):
+            raise ProtocolRefusal('frozen historical batch count refused')
+        chosen = batches[:frozen_batch_count]
+        if b'(check-sat)' not in chosen[-1]['commands']:
+            raise ProtocolRefusal('frozen historical cut must end at a complete check')
+        return b''.join(batch['raw'] for batch in chosen)
     prefix = []
     for batch in batches:
         prefix.append(batch['raw'])
@@ -178,7 +188,7 @@ class PrefixReplay:
     boundary explicit; there is no later readiness setter or child swap.
     """
 
-    def __init__(self, commands, replies, *, ready_at_edit_start):
+    def __init__(self, commands, replies, *, ready_at_edit_start, frozen_batch_count=None):
         if type(ready_at_edit_start) is not bool:
             raise ProtocolRefusal('explicit readiness snapshot required')
         if not commands or len(commands) != len(replies):
@@ -198,8 +208,10 @@ class PrefixReplay:
                 raise ProtocolRefusal('prepared reply boundary')
             reply_parser.finish()
             parsed.extend(framed)
-        if donor_prefix(parsed) != b''.join(commands):
-            raise ProtocolRefusal('prepared prefix exceeds fixed first check batch')
+        if (frozen_batch_count is not None and frozen_batch_count != len(commands)):
+            raise ProtocolRefusal('prepared ledger differs from frozen historical cut')
+        if donor_prefix(parsed, frozen_batch_count=frozen_batch_count) != b''.join(commands):
+            raise ProtocolRefusal('prepared prefix differs from fixed check boundary')
         self.commands = tuple(commands)
         self.replies = tuple(replies)
         self._ready_at_edit_start = ready_at_edit_start

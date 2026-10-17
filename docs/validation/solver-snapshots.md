@@ -327,3 +327,18 @@ loader refusal, reply policy and resource limits remain unchanged.
   Prospective idle-monitor, parser-buffer and explicit application 16 MiB
   capacity changes preserve every resource and literal-output guard; they
   have no native continuation or gain qualification yet.
+
+- 2026-10-17, `340a698d`: actual ready claims in both projects. IronKV's
+  donor/edit/fresh control each pass the strict registered-caller, output and
+  resource checks with 313 verified / 0 errors; whole-attempt edited wall
+  35.746 s versus fresh control 35.716 s gives no useful application gain.
+  The selected prepared child's complete lifetime CPU is only 0.026 s, not a
+  preparation/serving split. Anvil donor passes, but edit/retry/control fail:
+  99 of 152 complete child peaks exceed 1 GiB (largest 2,206,679,040 bytes).
+  The first rejected peak equals its recorded parent's pre-spawn high-water
+  RSS at 1,135,771,648 bytes; no inherited-memory exemption is applied.
+  Literal compiler streams match and sources are restored. Whole pilot FAIL;
+  raw final SHA-256
+  `e14dc542c614aec3a0decdffe4243032cefa63c5492e71767f9437b8068c642a`.
+  File-backed child-input retention and fixed historical bucket/check selection
+  are prospective source changes, with no native gain/acceptance claim.

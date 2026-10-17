@@ -72,6 +72,18 @@ refuse('unmatched-reply', lambda: (lambda p: (p.feed(b'unsat\n'), p.finish()))(R
 refuse('future-prefix-expansion', lambda: PrefixReplay([VERSION, CHECK, LATER], [VR, CR, VR], ready_at_edit_start=True))
 refuse('reply-count', lambda: PrefixReplay([VERSION, CHECK], [VR], ready_at_edit_start=True))
 
+historical = [VERSION, CHECK, CHECK]
+parsed = Commands().feed(b''.join(historical))
+assert donor_prefix(parsed, frozen_batch_count=3) == b''.join(historical)
+frozen = PrefixReplay(historical, [VR, CR, CR], ready_at_edit_start=True, frozen_batch_count=3)
+for request, expected in zip(historical, [VR, CR, CR]):
+    assert frozen.consume(request) == dict(action='prepared-reply', reply=expected)
+refuse('historical-cut-not-complete-check', lambda: donor_prefix(Commands().feed(VERSION + CHECK + LATER), frozen_batch_count=3))
+refuse('historical-cut-missing-batches', lambda: donor_prefix(parsed, frozen_batch_count=4))
+refuse('historical-cut-zero', lambda: donor_prefix(parsed, frozen_batch_count=0))
+refuse('historical-ledger-count-differs', lambda: PrefixReplay(historical, [VR, CR, CR], ready_at_edit_start=True, frozen_batch_count=2))
+rows.append(dict(name='explicit-historical-cut-only-no-default-expansion', passed=True))
+
 unready = PrefixReplay([VERSION, CHECK], [VR, CR], ready_at_edit_start=False)
 assert unready.consume(VERSION)['action'] == 'fresh-before-reply'
 refuse('late-ready-cannot-resurrect-attempt', lambda: unready.consume(VERSION))
