@@ -7,7 +7,7 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 2 cannot accept the old all-unit native-artifact bundles. It neither
+//! schema 3 cannot accept the old all-unit native-artifact bundles. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
 //! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
@@ -23,7 +23,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 2;
+const SCHEMA: u32 = 3;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";
@@ -33,6 +33,8 @@ const UNIT: &str = "unit.json";
 pub(crate) const RECORD_ENV: &str = "SAIL_SHIPPED_RECORD";
 /// An explicit shipped build directory, instead of the one beside `sail`.
 pub(crate) const BUNDLE_ENV: &str = "SAIL_SHIPPED_DEPS";
+/// Unselected machine-local boundary cache, bound to the literal registry root.
+pub(crate) const LOCAL_ENV: &str = "SAIL_VSTD_BOUNDARY_LOCAL";
 /// Sail's Verus: `<virtual base>=<registry source directory>`.
 pub(crate) const SOURCE_BASE_ENV: &str = "SAIL_RUSTC_DEV_SOURCE_BASE";
 /// Private plumbing: the run's [`Plan`] for its driver proxies.
@@ -58,6 +60,8 @@ pub(crate) enum Mode {
     Serve { bundle: PathBuf },
     /// Record every registry invocation into `out` (release tooling).
     Record { out: PathBuf },
+    /// Reuse only within this exact registry root, after native compilation.
+    MachineLocal { out: PathBuf },
 }
 
 /// The run's shipped-dependency plan, read by every driver proxy.
@@ -74,6 +78,8 @@ pub(crate) struct Plan {
     pub virtual_base: String,
     /// Actual solver bytes used by this run, independently of the runtime bundle.
     pub solver_sha256: String,
+    /// Current full verification, used as provenance when publishing a miss.
+    pub run_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -108,6 +114,8 @@ struct Unit {
     environment: BTreeMap<String, String>,
     /// Complete vstd package file set observed before compilation.
     source_tree: BTreeMap<String, String>,
+    /// Full invocation which originally established this complete proof.
+    establishing_run: String,
     /// Compiler outputs, stored under `files/`; the dep-info is stored with
     /// placeholders.
     files: Vec<StoredFile>,
@@ -363,14 +371,20 @@ pub(crate) fn plan(
     registry: Option<&Path>,
     new_target: bool,
     solver: &Path,
+    run_id: &str,
 ) -> Option<Plan> {
     if !research_enabled() {
         return None;
     }
     let recording = std::env::var_os(RECORD_ENV).filter(|v| !v.is_empty());
+    let local = std::env::var_os(LOCAL_ENV).filter(|value| !value.is_empty());
+    // Do not silently reinterpret conflicting research modes.
+    if recording.is_some() && local.is_some() {
+        return None;
+    }
     // Ordinary unchanged runs do not use a shipped build and must not probe
     // or hash a toolchain solely for an unused shipped-dependency identity.
-    if recording.is_none() && !new_target {
+    if recording.is_none() && local.is_none() && !new_target {
         return None;
     }
     let virtual_base = virtual_base()?;
@@ -379,11 +393,15 @@ pub(crate) fn plan(
         return None;
     }
     let root = runtime_root(cargo_verus)?;
-    if recording.is_none() {
+    if recording.is_none() && local.is_none() {
         read_manifest(&bundle_dir(root.file_name()?)?)?;
     }
     let identity = identity(&root, &virtual_base)?;
-    let mode = if let Some(out) = recording {
+    let mode = if let Some(out) = local {
+        Mode::MachineLocal {
+            out: std::path::absolute(out).ok()?,
+        }
+    } else if let Some(out) = recording {
         Mode::Record {
             out: std::path::absolute(out).ok()?,
         }
@@ -399,6 +417,7 @@ pub(crate) fn plan(
         target: target.to_owned(),
         virtual_base,
         solver_sha256: sha256_file(solver)?.0,
+        run_id: run_id.to_owned(),
     })
 }
 
@@ -822,7 +841,7 @@ impl<'a> Call<'a> {
         match Self::keyed(plan, args, verifying, vars) {
             Ok(call) => Some(call),
             Err(reason) => {
-                if let Mode::Record { out } = &plan.mode {
+                if let Mode::Record { out } | Mode::MachineLocal { out } = &plan.mode {
                     let skipped = out.join("skipped");
                     let _ = std::fs::create_dir_all(&skipped);
                     let name = manifest.file_name().unwrap_or_default().to_string_lossy();
@@ -863,12 +882,18 @@ impl<'a> Call<'a> {
                 environment.insert(bound, normalizer.normalize(value));
             }
         }
+        let registry_scope = if matches!(plan.mode, Mode::MachineLocal { .. }) {
+            Some(registry_forms(&plan.registry))
+        } else {
+            None
+        };
         let key = digest(
             &serde_json::to_vec(&serde_json::json!({
                 "kind": KIND,
                 "schema": SCHEMA,
                 "identity": plan.identity,
                 "solver_sha256": plan.solver_sha256,
+                "literal_registry_scope": registry_scope,
                 "verifying": verifying,
                 "args": &keyed_args,
                 "environment": &environment,
@@ -941,7 +966,7 @@ impl<'a> Call<'a> {
     /// unexpected, or whose outputs still name this machine's registry are
     /// not recorded; the reason is kept beside the entries.
     pub(crate) fn record(&self, stdout: &[u8], stderr: &[u8], exit: Option<i32>) {
-        let Mode::Record { out } = &self.plan.mode else {
+        let (Mode::Record { out } | Mode::MachineLocal { out }) = &self.plan.mode else {
             return;
         };
         if let Err(reason) = self.try_record(out, stdout, stderr, exit) {
@@ -1015,9 +1040,10 @@ impl<'a> Call<'a> {
                 dep_info = Some((name.clone(), text.clone()));
                 self.normalizer.normalize(&text).into_bytes()
             } else {
-                if registries
-                    .iter()
-                    .any(|registry| contains(&bytes, registry.as_bytes()))
+                if !matches!(self.plan.mode, Mode::MachineLocal { .. })
+                    && registries
+                        .iter()
+                        .any(|registry| contains(&bytes, registry.as_bytes()))
                 {
                     return Err(format!("{name} names the registry directory"));
                 }
@@ -1097,6 +1123,7 @@ impl<'a> Call<'a> {
             args: self.keyed_args.clone(),
             environment: self.environment.clone(),
             source_tree: self.source_tree.clone().unwrap_or_default(),
+            establishing_run: self.plan.run_id.clone(),
             files,
             dep_info,
             sources,
@@ -1115,8 +1142,10 @@ impl<'a> Call<'a> {
     /// which the caller compiles as usual. A damaged entry prints one
     /// `warning[SAIL3133]` on `err` and is a miss too.
     pub(crate) fn serve(&self, err: &mut dyn Write) -> Option<Replay> {
-        let Mode::Serve { bundle } = &self.plan.mode else {
-            return None;
+        let bundle = match &self.plan.mode {
+            Mode::Serve { bundle } => bundle,
+            Mode::MachineLocal { out } => out,
+            Mode::Record { .. } => return None,
         };
         let entry = bundle.join(UNITS).join(&self.key);
         let outcome = self.try_serve(&entry);
@@ -1160,6 +1189,31 @@ impl<'a> Call<'a> {
         );
     }
 
+    fn proof_origin(
+        &self,
+        unit: &Unit,
+    ) -> std::result::Result<sail_api::project::DependencyBuildOrigin, Refusal> {
+        let local = matches!(self.plan.mode, Mode::MachineLocal { .. });
+        if local && unit.establishing_run.is_empty() {
+            return Err(Refusal::Damaged(
+                "missing establishing invocation".to_owned(),
+            ));
+        }
+        Ok(sail_api::project::DependencyBuildOrigin {
+            kind: if local {
+                sail_api::project::DependencyBuildKind::MachineLocal
+            } else {
+                sail_api::project::DependencyBuildKind::Release
+            },
+            identity: format!("{}/{}", self.plan.identity, self.key),
+            establishing_run: if local {
+                unit.establishing_run.clone()
+            } else {
+                format!("shipped:{}/{}", self.plan.identity, self.key)
+            },
+        })
+    }
+
     fn try_serve(&self, entry: &Path) -> std::result::Result<Replay, Refusal> {
         let Ok(bytes) = std::fs::read(entry.join(UNIT)) else {
             return Err(Refusal::Miss("no entry for this key".to_owned()));
@@ -1178,6 +1232,7 @@ impl<'a> Call<'a> {
                 "vstd package file set or bytes differ".to_owned(),
             ));
         }
+        let origin = self.proof_origin(&unit)?;
         // Validate every destination before placing any output. A malformed
         // later filename must not leave earlier copied artifacts behind.
         if let Some(file) = unit
@@ -1258,7 +1313,7 @@ impl<'a> Call<'a> {
         Ok(Replay {
             stdout: stdout.into_bytes(),
             stderr: stderr.into_bytes(),
-            unit: format!("{}/{}", self.plan.identity, self.key),
+            origin,
         })
     }
 }
@@ -1267,8 +1322,8 @@ impl<'a> Call<'a> {
 pub(crate) struct Replay {
     pub stdout: Vec<u8>,
     pub stderr: Vec<u8>,
-    /// `<shipped build identity>/<key>`, the target's provenance.
-    pub unit: String,
+    /// Scope and establishing invocation, preserved through later reuse.
+    pub origin: sail_api::project::DependencyBuildOrigin,
 }
 
 enum Refusal {
@@ -1415,6 +1470,7 @@ mod tests {
             target: root.join("target"),
             virtual_base: "/rustc-dev/0123".into(),
             solver_sha256: "solver-bytes".into(),
+            run_id: "original-verification".into(),
         }
     }
 
@@ -1768,7 +1824,7 @@ mod tests {
 
         fn out(&self) -> Option<PathBuf> {
             match &self.plan.mode {
-                Mode::Record { out } => Some(out.clone()),
+                Mode::Record { out } | Mode::MachineLocal { out } => Some(out.clone()),
                 Mode::Serve { .. } => None,
             }
         }
@@ -1854,6 +1910,84 @@ mod tests {
             key,
             Call::new(&plan, &args, true, vars(root, &[]).into_iter()).map(|call| call.key)
         );
+    }
+
+    #[test]
+    fn local_boundary_preserves_registry_bytes_and_actual_proof_origin() -> TestResult {
+        let machine = Machine::new("local-boundary", |root| Mode::MachineLocal {
+            out: root.join("local-cache"),
+        })?;
+        let call = machine.call(false).ok_or("no boundary call")?;
+        assert!(
+            call.record_args().is_empty(),
+            "local sources are never remapped"
+        );
+        machine.compile()?;
+        let output = machine.plan.target.join("debug/deps/libdemo-abc.rmeta");
+        let registry_bytes = machine.plan.registry.to_string_lossy().as_bytes().to_vec();
+        std::fs::write(&output, &registry_bytes)?;
+        call.record(b"", machine.stderr().as_bytes(), Some(0));
+        for path in call.outputs() {
+            std::fs::remove_file(path)?;
+        }
+        let replay = call.serve(&mut Vec::new()).ok_or("no local replay")?;
+        assert_eq!(
+            replay.origin.kind,
+            sail_api::project::DependencyBuildKind::MachineLocal
+        );
+        assert_eq!(replay.origin.establishing_run, "original-verification");
+        assert_eq!(std::fs::read(output)?, registry_bytes);
+        let mut changed_plan = machine.plan.clone();
+        changed_plan.registry = machine.root.join("another-registry");
+        std::fs::create_dir_all(&changed_plan.registry)?;
+        let changed_vars = vars(&machine.root, &[]).into_iter().map(|(name, value)| {
+            if name == "CARGO_MANIFEST_DIR" {
+                (
+                    name,
+                    changed_plan.registry.join("demo-0.1.0").into_os_string(),
+                )
+            } else {
+                (name, value)
+            }
+        });
+        let changed = Call::new(&changed_plan, &machine.args, false, changed_vars)
+            .ok_or("no changed call")?;
+        assert_ne!(
+            changed.key, call.key,
+            "literal registry root is a key input"
+        );
+        assert!(changed.serve(&mut Vec::new()).is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn local_boundary_refuses_changed_native_bytes_and_target_paths() -> TestResult {
+        let machine = Machine::new("local-inputs", |root| Mode::MachineLocal {
+            out: root.join("local-cache"),
+        })?;
+        let call = machine.call(false).ok_or("no call")?;
+        machine.compile()?;
+        let output = machine.plan.target.join("debug/deps/libdemo-abc.rmeta");
+        std::fs::write(&output, machine.plan.target.to_string_lossy().as_bytes())?;
+        call.record(b"", machine.stderr().as_bytes(), Some(0));
+        assert!(
+            !machine
+                .out()
+                .ok_or("no cache")?
+                .join(UNITS)
+                .join(&call.key)
+                .exists()
+        );
+        machine.compile()?;
+        call.record(b"", machine.stderr().as_bytes(), Some(0));
+        std::fs::write(
+            machine.plan.target.join("debug/deps/libdep-1.rlib"),
+            b"different native bytes",
+        )?;
+        let changed = machine.call(false).ok_or("no changed call")?;
+        assert_ne!(changed.key, call.key);
+        assert!(changed.serve(&mut Vec::new()).is_none());
+        Ok(())
     }
 
     #[test]

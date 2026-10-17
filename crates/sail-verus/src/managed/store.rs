@@ -1370,7 +1370,7 @@ mod tests {
                         rustc_args_sha256: "args".to_owned(),
                     },
                     run_id: "establishing-run".to_owned(),
-                    shipped: None,
+                    dependency_build: None,
                     report,
                     success: true,
                     dependencies: super::super::receipts::artifact_hashes(&[dep])

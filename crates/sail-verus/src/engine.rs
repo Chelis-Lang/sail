@@ -1287,7 +1287,7 @@ mod tests {
             report,
             success: true,
             dependencies: std::collections::BTreeMap::new(),
-            shipped: None,
+            dependency_build: None,
         };
         std::fs::write(
             root.join("invocations")

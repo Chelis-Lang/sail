@@ -6,9 +6,9 @@
 | Native prerequisites | Nonverification invocations return directly through the original compiler before plan loading or lookup |
 | Reuse scope | Pinned, nonprimary vstd library only; root outputs, no native units or Cargo fingerprints |
 | Identity | Fresh linked-library/VIR bytes, compiler options, runtime/sysroot, actual solver bytes, source and declared environment |
-| Proof provenance | Complete successful document required before recording; nonlocal origin preserved in reports and receipts |
+| Proof provenance | Complete successful document required; typed release/machine-local origin and actual establishing invocation preserved through receipts |
 | Review | Initial static review confirms the structural boundary; macro input completeness and publication races remain unqualified |
-| Execution and performance | Initial native source compiles and all 15 shipped/boundary tests pass on `f6fdb636`; full clippy stopped on one documentation backtick lint, corrected next. Actual first-project reuse/performance remains unrun |
+| Execution and performance | `05c4377e`: native and macOS workspace lint and 17 focused tests pass. First native portable recording refused literal registry paths; no reuse or speedup established. Literal-registry mode: macOS lint, 19 focused tests and origin/receipt test pass; native screen pending |
 | Default/release selection | Neither selected nor qualified; v1 store remains quarantined |
 
 The prototype ports the original shipped-build serializer and proof-origin
@@ -54,3 +54,31 @@ fixtures.
   source check: all 17 boundary/serializer tests pass. Workspace compilation
   found a missing optional origin field in the existing fallback renderer;
   corrected next. This was not a passed workspace gate.
+
+On native c7i.4xlarge in us-east-1, `05c4377e` completed the initial four
+application cases. Baseline took 41.388 s; recording failed with SAIL3134 after
+43.420 s because `libvstd-8c4d8ba33f7ad30d.vir` still named the registry
+directory. The fresh-project serving attempt therefore missed and took
+42.081 s. Replacing the same private `cc` path with an exit-42 wrapper caused
+actual native build scripts to fail (Cargo exit 101, 0.677 s, no verifier
+invocations). This establishes the failure boundary only. The bundle was never
+populated, so fresh dependency-byte equality remains unmeasured and no reuse
+speedup is claimed. Raw source, compiler streams, keyed extern digests and all
+cases are retained outside the repository in the application screen.
+
+Literal-registry research now uses `SAIL_VSTD_BOUNDARY_LOCAL` together with the
+research flag. This fixes the specific path scope without rewriting VIR bytes:
+keys bind the registry root, and compiler inputs remain literal. Independent
+source review also confirms that existing exported `.vir` is not a complete
+proof-input key: Verus deliberately prunes restricted functions and proof/exec
+bodies. Comparing fresh exported files alone cannot qualify skipped verification.
+A complete compiler proof-input boundary or an audited complete input closure is
+still required. The local mode is not a replacement qualified for default use.
+
+- `05c4377e`, 2026-10-17, native application screen: portable recording refused
+  registry-bearing VIR; fresh attempt missed; changed native compiler failed
+  before verification. Workspace lint and 17 focused tests passed.
+- Local-mode working source, 2026-10-17: first macOS lint stopped on the expanded
+  serving function's length; an unchanged retry also failed. Extracting proof
+  provenance into a helper corrected it. Final lint, 19 focused tests and the
+  receipt/store provenance test pass; private build target removed.
