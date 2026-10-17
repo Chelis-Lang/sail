@@ -532,3 +532,8 @@ owned-child control serves a prefix above 2 MiB and refuses the next byte above
 copies before blocking on child I/O; literal batch bytes and complete raw
 records remain. This reduces unnecessary live copies without changing the
 1 GiB final kernel-peak guard or establishing native memory/performance gains.
+Every actual owned spawn now records the parent's kernel high-water RSS and,
+on Linux, bounded `/proc/self/statm` current resident bytes immediately before
+creation. These parent observations remain separate from the child's complete
+`wait4` result. They neither subtract inherited memory nor exempt a child peak;
+the prior unrecorded parent memory and spawn mechanism cannot be reconstructed.

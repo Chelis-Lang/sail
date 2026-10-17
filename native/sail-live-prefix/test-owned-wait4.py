@@ -40,6 +40,13 @@ class Controls(unittest.TestCase):
             self.assertEqual(record['pid'], child.pid)
             self.assertEqual(record['exit'], 7)
             self.assertGreater(record['accounting']['peak_rss_bytes'], 0)
+            self.assertEqual(record['parent_before_spawn'], child.parent_before_spawn)
+            self.assertGreater(record['parent_before_spawn']['peak_rss_bytes'], 0)
+            if sys.platform == 'linux':
+                self.assertGreater(record['parent_before_spawn']['resident_bytes'], 0)
+                self.assertEqual(record['parent_before_spawn']['resident_source'], '/proc/self/statm')
+            else:
+                self.assertIsNone(record['parent_before_spawn']['resident_bytes'])
             with self.assertRaises(ChildProcessError):
                 os.wait4(child.pid, os.WNOHANG)
         finally:

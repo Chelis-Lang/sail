@@ -7,6 +7,7 @@ Callers still need the existing image/pidfd, complete I/O and status guards.
 """
 import math
 import os
+import resource
 import subprocess
 import signal
 import sys
@@ -62,6 +63,22 @@ class OwnedWait4:
         # Construct every thread primitive before creating a child. A failed
         # Thread constructor must not leave an ownerless live process/pipes.
         self._reaper = threading.Thread(target=self._reap, name='sail-owned-wait4')
+        # Observe the actual spawning process without changing the child's
+        # complete-lifetime resource criterion or the spawn mechanism.
+        parent = usage_record(resource.getrusage(resource.RUSAGE_SELF), sys.platform)
+        self.parent_before_spawn = dict(peak_rss_bytes=parent['peak_rss_bytes'],
+                                        resident_bytes=None, resident_source=None)
+        if sys.platform == 'linux':
+            with open('/proc/self/statm', 'rb') as stream:
+                raw = stream.read(4097)
+            fields = raw.split()
+            if len(raw) > 4096 or len(fields) < 2 or not fields[1].isdigit():
+                raise ValueError('bounded parent statm observation refused')
+            resident = int(fields[1]) * os.sysconf('SC_PAGE_SIZE')
+            if resident <= 0:
+                raise ValueError('positive parent resident observation required')
+            self.parent_before_spawn.update(resident_bytes=resident,
+                                            resident_source='/proc/self/statm')
         self._child = _OwnedChild(argv, **kwargs)
         self.pid, self.args = self._child.pid, self._child.args
         self.stdin, self.stdout, self.stderr = (
@@ -121,7 +138,8 @@ class OwnedWait4:
             # Prevent Popen's destructor from attempting a second wait.
             self._child.returncode = code
             accounting = usage_record(usage, sys.platform)
-            self._result = dict(pid=pid, status=status, exit=code, accounting=accounting)
+            self._result = dict(pid=pid, status=status, exit=code, accounting=accounting,
+                                parent_before_spawn=self.parent_before_spawn)
         except (OSError, ValueError) as error:
             self._error = error
         finally:
