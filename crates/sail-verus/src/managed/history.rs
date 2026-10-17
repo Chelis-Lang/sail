@@ -196,7 +196,10 @@ impl SourceGuard {
 /// directories. Canonical file deduplication alone misses new symlink aliases
 /// and empty directories, either of which a compiler or macro can inspect.
 fn source_revision(snapshot: &super::input::InputSnapshot) -> Option<(String, Vec<PathBuf>)> {
-    let mut resolution_paths = BTreeSet::new();
+    // Timestamp equality does not establish an unchanged compiler epoch.
+    // Observe every positive file before the second snapshot, in addition to
+    // directory/alias topology. This also covers coarse Linux timestamps.
+    let mut resolution_paths: BTreeSet<_> = snapshot.digests.keys().cloned().collect();
     for root in &snapshot.roots {
         // Cargo configuration roots may be absent. Keep the existing absence
         // checks, and observe resolution through their nearest existing parent.

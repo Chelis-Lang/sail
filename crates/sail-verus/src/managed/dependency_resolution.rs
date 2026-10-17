@@ -363,14 +363,17 @@ fn walk(
 #[cfg(target_os = "macos")]
 mod platform {
     use super::{Identity, identity, open_input};
-    use kqueue::{EventData, EventFilter, FilterFlag, Vnode, Watcher};
+    use kqueue::{EventData, EventFilter, FilterFlag, Ident, Vnode, Watcher};
+    use std::collections::BTreeSet;
     use std::fs::File;
+    use std::os::fd::{AsRawFd, RawFd};
     use std::path::Path;
 
     pub(super) struct Observer {
         // Queue drops before its borrowed descriptors, per kqueue's contract.
         watcher: Watcher,
         files: Vec<File>,
+        directories: BTreeSet<RawFd>,
     }
     impl Observer {
         pub(super) fn new() -> Option<Self> {
@@ -389,6 +392,7 @@ mod platform {
             Some(Self {
                 watcher,
                 files: Vec::new(),
+                directories: BTreeSet::new(),
             })
         }
         pub(super) fn add(&mut self, path: &Path, expected: &Identity) -> Option<()> {
@@ -396,15 +400,17 @@ mod platform {
             if identity(&file.metadata().ok()?).as_ref() != Some(expected) {
                 return None;
             }
+            let mut flags = FilterFlag::NOTE_RENAME
+                | FilterFlag::NOTE_DELETE
+                | FilterFlag::NOTE_REVOKE
+                | FilterFlag::NOTE_ATTRIB;
+            if file.metadata().ok()?.is_file() {
+                flags |= FilterFlag::NOTE_WRITE | FilterFlag::NOTE_EXTEND;
+            } else {
+                self.directories.insert(file.as_raw_fd());
+            }
             self.watcher
-                .add_file(
-                    &file,
-                    EventFilter::EVFILT_VNODE,
-                    FilterFlag::NOTE_RENAME
-                        | FilterFlag::NOTE_DELETE
-                        | FilterFlag::NOTE_REVOKE
-                        | FilterFlag::NOTE_ATTRIB,
-                )
+                .add_file(&file, EventFilter::EVFILT_VNODE, flags)
                 .ok()?;
             self.files.push(file);
             Some(())
@@ -418,10 +424,19 @@ mod platform {
                 let Some(event) = self.watcher.poll(None) else {
                     return true;
                 };
-                if !matches!(
-                    event.data,
-                    EventData::Vnode(Vnode::Write | Vnode::Extend | Vnode::Link)
-                ) {
+                // XNU may report unrequested directory writes from sibling
+                // outputs. Only those directory events may be ignored; a
+                // regular input file's content event must refuse permanently.
+                let directory = match event.ident {
+                    Ident::Fd(fd) | Ident::Filename(fd, _) => self.directories.contains(&fd),
+                    _ => false,
+                };
+                if !directory
+                    || !matches!(
+                        event.data,
+                        EventData::Vnode(Vnode::Write | Vnode::Extend | Vnode::Link)
+                    )
+                {
                     return false;
                 }
             }
@@ -463,12 +478,13 @@ mod platform {
             // Follow this held descriptor, not a second lookup of the original
             // pathname which could briefly name a different inode. Missing
             // procfs or unsupported watching refuses registration.
+            let mut flags = WatchMask::MOVE_SELF | WatchMask::DELETE_SELF | WatchMask::ATTRIB;
+            if file.metadata().ok()?.is_file() {
+                flags |= WatchMask::MODIFY | WatchMask::CLOSE_WRITE;
+            }
             self.queue
                 .watches()
-                .add(
-                    format!("/proc/self/fd/{}", file.as_raw_fd()),
-                    WatchMask::MOVE_SELF | WatchMask::DELETE_SELF | WatchMask::ATTRIB,
-                )
+                .add(format!("/proc/self/fd/{}", file.as_raw_fd()), flags)
                 .ok()?;
             self.files.push(file);
             Some(())
@@ -605,6 +621,37 @@ mod tests {
             let expected = identity(&std::fs::metadata(first)?).ok_or("identity")?;
             let mut observer = platform::Observer::new().ok_or("native observer")?;
             assert!(observer.add(&second, &expected).is_none());
+            Ok::<_, Box<dyn Error>>(())
+        })();
+        std::fs::remove_dir_all(root)?;
+        result
+    }
+
+    #[test]
+    fn native_file_write_events_latch_after_bytes_are_restored() -> Result<(), Box<dyn Error>> {
+        use std::io::{Seek, Write};
+        let root = std::env::temp_dir().join(format!(
+            "sail-dependency-resolution-content-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir(&root)?;
+        let file = root.join("input.rs");
+        std::fs::write(&file, b"original")?;
+        let result = (|| {
+            let observed = Resolution::capture(std::slice::from_ref(&file)).ok_or("capture")?;
+            assert!(observed.unchanged());
+            let mut writer = std::fs::OpenOptions::new().write(true).open(&file)?;
+            writer.write_all(b"modified")?;
+            assert_eq!(std::fs::read(&file)?, b"modified");
+            writer.rewind()?;
+            writer.write_all(b"original")?;
+            drop(writer);
+            assert_eq!(std::fs::read(&file)?, b"original");
+            assert!(
+                !observed.unchanged(),
+                "native content events must refuse even when final bytes and inode agree"
+            );
+            assert!(!observed.unchanged(), "refusal remains latched");
             Ok::<_, Box<dyn Error>>(())
         })();
         std::fs::remove_dir_all(root)?;

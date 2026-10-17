@@ -230,3 +230,13 @@ qualify this candidate. Scope and remaining gates are in
 - **Not covered.** Content verified in another proof context (other
   arguments, toolchain or environment) or another workspace is not restored,
   and neither are registry dependencies (ADR 0045 covers new targets).
+
+### Positive input events (unqualified follow-up)
+
+The observer now includes every positive source-inventory file and requests
+regular-file content events. Mac descriptor-kind handling distinguishes these
+from harmless unrequested ancestor-directory writes; the direct in-place
+write/restore regression fails on the old source and passes with the change.
+Mac lint and managed tests pass. Linux mapped writes are explicitly outside
+inotify's reported event set, so this is an ordinary-write correction, not
+complete input-epoch qualification or a change to the integration decision.

@@ -228,3 +228,36 @@ gates remain pending for this correction.
 - `f608cad7` plus regressions, 2026-10-16: failed three external input
   resolution ABA controls; canonical target membership omitted literal path
   components that the compiler could traverse during the epoch.
+
+## Positive-file content events
+
+The next source adds every positively inventoried file to the existing
+resolution observer, retaining the ancestor, alias and mount guards. Regular
+files request inotify modify/close-write or kqueue write/extend events. On Mac,
+unrequested write/extend/link events from ancestor directories remain ignored;
+those events on a regular input now permanently refuse reuse. No timestamp
+resolution assumption replaces the input hashes. HFS+ remains refused.
+
+An actual APFS regression opens one input in place, writes and reads different
+bytes, then restores the original bytes without resetting timestamps. Calling
+the native resolution observer directly isolates event coverage from the
+outer timestamp comparison. At `ac1e3c74` plus this regression, the test fails
+with exit 101: unchanged final inode identity wrongly authorizes the epoch.
+The first file-event patch also fails because the Mac consumer still discarded
+all write/extend/link events. After distinguishing held directory descriptors
+from regular input descriptors, the unchanged regression passes. Shared Mac
+workspace clippy and all 121 managed tests pass; this is not a Linux gate or
+complete retained-proof qualification.
+
+| Attempt | Result | Raw summary SHA-256 |
+|---|---|---|
+| `ac1e3c74` plus direct content regression | FAIL, expected old defect | `3de39b825acb3c5cffd18901da1390a3a7ba89a935c883408f29972cf2eea3aa` |
+| First content-event patch | FAIL, regular-file events discarded | `f199289b62be92684e682e9015e3a292d68d5112d7b9673677ee9ef404f3f975` |
+| File events plus descriptor-kind handling | PASS, Mac lint and 121 managed tests | `3f1ecfaa9ff9177fe52f1255f942c5187dce36f42e38069fdd78837b3872a0b3` |
+
+Linux input-epoch completeness remains open. The Linux manual explicitly says
+[inotify does not report mmap/msync/munmap modifications](https://man7.org/linux/man-pages/man7/inotify.7.html).
+The new ordinary-write controls do not prove coverage of that path, including
+pre-existing writable mappings. Native Linux/coarse-filesystem controls and
+a complete proof-input boundary remain required before integration. This
+change does not select or qualify retained proofs for default use.
