@@ -313,3 +313,17 @@ loader refusal, reply policy and resource limits remain unchanged.
   only total-session capacity to 512; active16 and all resource, reply, verdict,
   diagnostic, input/output and census gates remain. Neither change qualifies
   a continuation or application result before actual execution.
+
+- 2026-10-17, `9e7ec66c`: IronKV donor/edit/fresh control each report 313
+  verified / 0 errors with literal output and strict caller gates passing;
+  its claim misses with `entry-busy-at-edit-start`, so no continuation serves.
+  Anvil retains four 38-session attempts: donor passes, while edit/retry/control
+  fail strict resource/census gates despite compiler exit 0. Exactly 99 of 152
+  children exceed the unchanged 1 GiB kernel-peak bound (largest 2,683,916,288
+  bytes). No Anvil preparation starts: the fixed 2,350,811-byte prefix exceeds
+  the application's inherited 2 MiB pool default. Source is restored; whole
+  pilot FAIL. Raw final SHA-256
+  `cacac77152530f6f0bdc76bd7a8f3db85bdde8bd5f054ff63d72da9ab73e6bc1`.
+  Prospective idle-monitor, parser-buffer and explicit application 16 MiB
+  capacity changes preserve every resource and literal-output guard; they
+  have no native continuation or gain qualification yet.

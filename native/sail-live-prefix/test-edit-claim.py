@@ -14,6 +14,7 @@ import sys
 import tempfile
 import threading
 import time
+import tracemalloc
 from unittest.mock import patch
 
 import kernel_accounting
@@ -67,6 +68,7 @@ if os.environ.get('SAIL_TEST_HANG_EOF')=='1':time.sleep(2)
 for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate-claim',
              'ipc-after-reply', 'child-after-reply', 'missing-accounting',
              'stderr-after-reply', 'timeout-after-eof', 'direct-success', 'direct-ipc',
+             'direct-parser-retention',
              'pool-busy-at-edit-start', 'entry-busy-at-edit-start',
              'direct-loader-before', 'direct-loader-after',
              'prepared-loader-before', 'prepared-loader-after', 'prepared-loader-idle',
@@ -127,10 +129,32 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
                 if case == 'direct-ipc':
                     assert claim.abort('controlled direct IPC disconnect')['action'] == 'abort-whole-attempt'
                 else:
-                    assert claim.batch(CHECK) == {'action': 'original-child-reply', 'reply': CR}
+                    check = CHECK
+                    if case == 'direct-parser-retention':
+                        check = b';' + b'x' * 65536 + b'\n' + CHECK
+                        original_write = claim._write
+                        retained = []
+                        def observed_write(raw):
+                            snapshot = tracemalloc.take_snapshot()
+                            retained.append(sum(statistic.size for statistic in snapshot.statistics('filename')
+                                if statistic.traceback[0].filename.endswith('/edit_stream.py')))
+                            assert retained[-1] < 4096, retained
+                            return original_write(raw)
+                        claim._write = observed_write
+                        tracemalloc.start()
+                    try:
+                        assert claim.batch(check) == {'action': 'original-child-reply', 'reply': CR}
+                    finally:
+                        if case == 'direct-parser-retention':
+                            tracemalloc.stop()
+                            claim._write = original_write
+                    if case == 'direct-parser-retention':
+                        assert len(retained) == 1
+                        rows.append(dict(name='parsed-input-live-bytes-before-owned-write', passed=True,
+                                         input_bytes=len(check), retained_parser_bytes=retained[0]))
                     assert claim.batch(STATS) == {'action': 'original-child-reply', 'reply': SR}
                     assert claim.finish(), claim.errors
-                    assert bytes(claim.input) == bytes(claim.child_input) == VERSION + CHECK + STATS
+                    assert bytes(claim.input) == bytes(claim.child_input) == VERSION + check + STATS
                 continue
             key = pool.seed(VERSION + CHECK, VR + CR)
             assert key is not None, pool.last_refusal
@@ -264,7 +288,7 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
                 assert entry.kernel_closed and not any(t.is_alive() for t in entry.threads)
                 assert all(s.closed for s in (entry.process.stdin, entry.process.stdout, entry.process.stderr))
                 assert entry.pidfd is None and entry.image_fd is None
-                assert claim.completed == (case == 'direct-success')
+                assert claim.completed == (case in ('direct-success', 'direct-parser-retention'))
                 rows.append({'name': case, 'passed': True, 'actual_exit': record['exit'],
                              'complete_cpu': record['accounting']['user_seconds'] + record['accounting']['system_seconds'],
                              'retained_stdout_bytes': len(entry.stdout)})

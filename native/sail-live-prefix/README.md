@@ -523,3 +523,12 @@ live reply still require fresh library binding checks before exposure. This
 removes redundant idle work; it does not make a busy or unready claim wait, and
 does not change the default RSS observer. Native cost and continuation outcomes
 for this scheduling change remain pending.
+
+The application pool explicitly uses the existing 16 MiB command-stream bound;
+the general pool's 2 MiB default is unchanged. The retained Anvil session0
+prefix is 2,350,811 bytes and could not enter that default pool. A prospective
+owned-child control serves a prefix above 2 MiB and refuses the next byte above
+16 MiB before spawning. Completed framing checks also release temporary command
+copies before blocking on child I/O; literal batch bytes and complete raw
+records remain. This reduces unnecessary live copies without changing the
+1 GiB final kernel-peak guard or establishing native memory/performance gains.

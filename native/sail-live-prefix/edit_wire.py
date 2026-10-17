@@ -85,15 +85,18 @@ def serve(connection, claim, binding, token, *, fresh_factory=None, identity=Non
         while True:
             kind, raw = receive(connection, capture)
             if kind == ord('I'):
-                for batch in parser.feed(raw):
-                    decision = current.batch(batch['raw'])
+                # Keep exact batch bytes, releasing parsed command copies
+                # before blocking on a child. The full framing checks ran.
+                batches = tuple(batch['raw'] for batch in parser.feed(raw))
+                for batch in batches:
+                    decision = current.batch(batch)
                     if decision['action'] == 'fresh-before-reply' and not emitted and fresh_factory is not None:
                         current.close()
                         result['fallback'] = True
                         current = fresh_factory()
                         result['claims'].append(current)
                         fresh_factory = None
-                        decision = current.batch(batch['raw'])
+                        decision = current.batch(batch)
                     if decision['action'] not in ('prepared-reply', 'original-child-reply'):
                         raise ProtocolRefusal(decision['reason'])
                     reply = decision['reply']

@@ -151,6 +151,7 @@ class Workflow:
             raise ProtocolRefusal('actual solver argv differs')
         pool = OneUsePool(self.solver, self.sha256, slots=1, max_bytes=1024**3,
                           ttl=300, run_timeout=min(self.timeout, 270),
+                          max_input_bytes=MAX_BYTES,
                           environment=binding['environment'], cwd=binding['cwd'],
                           experiment_numeric_time_only=True,
                           experiment_kernel_accounting_owner=True,

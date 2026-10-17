@@ -158,6 +158,9 @@ class StreamingClaim:
             batches = self.input_parser.feed(raw)
             if len(batches) != 1 or self.input_parser.finish():
                 raise ProtocolRefusal('complete single caller batch required')
+            # The complete literal boundary is checked. Do not hold the extra
+            # parsed command copies while this owned child's reply is pending.
+            del batches
             if not self.snapshot_ready:
                 return {'action': 'fresh-before-reply', 'reason': self.errors[0]}
             self._check()

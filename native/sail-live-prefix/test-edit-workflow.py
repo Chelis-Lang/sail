@@ -307,6 +307,7 @@ with tempfile.TemporaryDirectory(prefix='sle-raw-', dir='/tmp') as td:
         pool = workflow.pool(dict(argv=[workflow.solver, '-smt2', '-in'], cwd=str(root.resolve()), environment={}))
         try:
             assert pool.run_timeout == 270 and workflow.timeout == 480
+            assert pool.max_input_bytes == edit_workflow.MAX_BYTES == 16 * 1024**2
         finally:
             pool.close()
     rows.append(dict(name='compiler480-independent-solver270', passed=True))
@@ -348,4 +349,35 @@ with tempfile.TemporaryDirectory(prefix='sle-raw-', dir='/tmp') as td:
     assert (workflow.output / 'partial').stat().st_size == 3
     assert not (workflow.output / 'next').exists()
     rows.append(dict(name='actual-partial-save-reservation-not-refunded', passed=True, bytes_reserved=10))
+with tempfile.TemporaryDirectory(prefix='sle-prefix-', dir='/tmp') as td:
+    from edit_claim import StreamingClaim
+    root = Path(td)
+    solver = root / 'solver'
+    solver.write_text('#!' + sys.executable + '\n' + SOLVER)
+    solver.chmod(0o700)
+    (root / 'project.rs').write_bytes(b'BASE\n')
+    workflow = edit_workflow.Workflow(root / 'out', solver,
+        hashlib.sha256(solver.read_bytes()).hexdigest(), [str(solver)], root,
+        attempt_timeout=480)
+    with explicit_native_doubles(root):
+        pool = workflow.pool(dict(argv=[workflow.solver, '-smt2', '-in'], cwd=str(root.resolve()), environment={}))
+        claim = None
+        try:
+            assert pool.seed(b'x' * (16 * 1024**2 + 1), b'') is None
+            assert pool.last_attempt is None and not pool.entries
+            prefix = b';' + b'x' * (2 * 1024**2 + 128) + b'\n(get-info :version)\n(echo "<<DONE>>")\n'
+            check = b'(assert true)\n(check-sat)\n(echo "<<DONE>>")\n'
+            key = pool.seed(prefix + check, b'(:version "4.16.0")\n<<DONE>>\nunsat\n<<DONE>>\n')
+            assert key is not None and pool.wait_ready(key, 5), pool.last_refusal
+            claim = StreamingClaim(pool, key)
+            assert claim.snapshot_ready, claim.errors
+            assert claim.batch(prefix)['action'] == 'prepared-reply'
+            assert claim.batch(check)['action'] == 'prepared-reply'
+            assert claim.finish(), claim.errors
+            assert bytes(claim.input) == bytes(claim.child_input) == prefix + check
+        finally:
+            if claim is not None: claim.close()
+            pool.close()
+    rows.append(dict(name='actual-app-prefix-above2MiB-with16MiB-bound', passed=True,
+                     prefix_bytes=len(prefix + check), next_over16MiB_refused_before_spawn=True))
 print(json.dumps(dict(passed=True, scope=__doc__, rows=rows), indent=2))
