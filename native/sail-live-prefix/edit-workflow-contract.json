@@ -1,0 +1,14 @@
+{
+  "status": "source-only streaming research prototype; no application or default qualification",
+  "session_selection": {"donor_ordinal": 0, "future_ordinal": 0, "prepared_boundary": "first complete batch containing exact (check-sat), including its literal writer DONE command and newline"},
+  "selection_inputs": "Completed donor session only. Never inspect future query bytes/LCP or select successful edits/sessions.",
+  "readiness": "Snapshot once at edit invocation start, before compiler launch. A queued/incomplete preparation is a miss even if it becomes ready later. No waiting for readiness.",
+  "early_replies": "Forward only actual prepared-child raw replies for already fully matched literal input batches. Version/DONE can be required before the compiler produces the first check input; never withhold all replies until the entire prepared prefix matches.",
+  "divergence_before_any_reply": "Cancel/discard preparation and run the pinned solver fresh with the exact retained caller input. Retain both costs and miss reason.",
+  "divergence_after_any_reply": "Abort the entire compiler attempt nonzero, retaining partial streams. No child swap or reply skipping theorem is assumed. An explicitly recorded whole-verification fresh retry may supply a final result; the failed continuation and retry costs both remain.",
+  "limits": {"prepared_children": 1, "claims": 1, "input_bytes": 16777216, "reply_bytes": 16777216, "command_depth": 128, "commands": 100000, "kernel_peak_bytes": 1073741824, "preparation_seconds": 300, "ttl_seconds": 600, "serving_seconds": 300},
+  "resource_boundary": "Use existing deferred sole wait4 owner, held pidfd/actual child-image binding, complete zero exit/I/O and full lifetime CPU/positive kernel peak. No new sampling exception or default policy.",
+  "identity": "Record the explicit VERUS_Z3_PATH research interposer separately from the genuine pinned child. Bind argv, cwd, environment, exact command/reply history and named policies. Never call the wrapper the pinned solver.",
+  "comparison": "Keep the original exact-byte gate and named numeric-time-only gate separate. Never rewrite emitted/raw responses, model/error/other statistics, source or queries.",
+  "publication": "No provisional attempt is verified. Actual compiler verdicts/diagnostics, complete child/resource/identity checks and all retained failures are mandatory. No build, host, timing or default integration is authorized by this file."
+}

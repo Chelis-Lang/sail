@@ -359,3 +359,32 @@ schedule, predictor hit rate or application speedup. Complete preparation plus
 foreground wall is not improved. The enclosing native container is capped at
 28GiB; the 1GiB per-child kernel peak is a final admission check. All earlier
 failed attempts stay failed. See the [native evidence](../../docs/validation/solver-snapshots.md#named-kernel-owner-resource-experiment).
+
+### Source-only edit workflow components
+
+The separate streaming prototype fixes donor session ordinal0, future session
+ordinal0 and the first complete donor check batch before examining an edit's
+solver input. Its [contract](edit-workflow-contract.json) freezes readiness at
+edit invocation start: later readiness cannot turn a miss into a hit. Literal
+command framing handles the pinned Verus writer's complete DONE batches,
+including early version replies that the compiler needs before producing its
+first check input. It never rewrites queries or responses.
+
+`StreamingClaim` reuses the named owner's actual prepared replies and child,
+with complete final accounting and the same positive kernel peak bound. A
+divergence before any reply requests a fresh attempt. After a reply, divergence
+or infrastructure failure aborts the whole compiler attempt; there is no child
+swap or replacement-stream splice. A whole fresh retry must retain the failed
+attempt and both costs. A duplicate claimant cannot cancel the first claimant.
+
+```sh
+python3 -B native/sail-live-prefix/test-edit-stream.py
+python3 -B native/sail-live-prefix/test-edit-claim.py
+```
+
+These local controls exercise literal all-split framing, a real owned caller
+waiting for its version reply, and interactive owned children with actual
+`wait4` accounting. Linux image/pidfd APIs are explicitly doubled on the Mac.
+The IPC broker, explicit `VERUS_Z3_PATH` interposer and real application edit
+driver remain unimplemented. These components supply no genuine solver,
+application, native or default qualification and no performance result.
