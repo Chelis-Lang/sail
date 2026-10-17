@@ -5,7 +5,7 @@
 //! Verus options and compiler-read observations. No compiler invocation uses
 //! these helpers yet.
 
-use super::super::files::digest;
+use super::files::digest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use std::collections::{BTreeMap, BTreeSet};

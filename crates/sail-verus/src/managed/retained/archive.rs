@@ -5,11 +5,11 @@
 //! closed-input policy pass; matching these serializable fields alone is not
 //! such a proof.
 
+use super::super::dependency_snapshot::{Content, open};
 use super::super::{
     files::digest,
     receipts::{RECEIPT_VERSION, Receipt, TargetIdentity, complete},
 };
-use super::dependencies::{Content, open};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use std::collections::{BTreeMap, BTreeSet};

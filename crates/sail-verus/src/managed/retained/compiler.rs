@@ -4,8 +4,8 @@
 //! boundary consumer. Workspace sources keep literal paths and compare actual
 //! SHA-256 source bytes; no dep-info observation substitutes for either phase.
 
+use super::super::dependency_snapshot::{Content, open};
 use super::super::files::digest;
-use super::dependencies::{Content, open};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::Read as _;

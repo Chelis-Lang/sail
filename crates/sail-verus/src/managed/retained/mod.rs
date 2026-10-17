@@ -6,4 +6,3 @@
 
 mod archive;
 mod compiler;
-mod dependencies;
