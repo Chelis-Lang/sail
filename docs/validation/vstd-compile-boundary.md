@@ -160,3 +160,23 @@ The corrected error-code registry test passes after the documentation fix; the
 original complete host attempt remains a failed attempt. Macro input admission
 also needs to account for helper emission from hash collections in the pinned
 registry macros. Source hashes alone do not prove emitted-order determinism.
+
+- `a9856b8f`, 2026-10-17, native screen: all 23 focused tests and lint
+  pass. Baseline 34.939 s, fill 36.226 s, no entry; remaining cases unrun.
+  A dependent's record lookup sees no record, while the exact matching producer
+  record exists after compilation. Cargo starts dependents after metadata is
+  emitted, before the producer completes. The prototype incorrectly required
+  completed transitive provenance before running those native dependents.
+
+Native dependents now execute immediately; their observation completes only
+after successful dependencies have established records. Waiting for record
+arrival is capped at two seconds, and actual library bytes are checked after
+arrival. This does not accept metadata-ready as compiler success or bypass
+any native compilation. Missing, changed or unsuccessful provenance still
+refuses reuse. The owned producer/consumer regression exercises delayed record
+arrival and absence; native application qualification remains required.
+
+The registry enum-helper ordering is already handled by the verifier-side
+VI-0001 fix `af212563`, present in the candidate runtime. Its shape check and
+source-order traversal also apply when Cargo compiles the registry macros.
+This source audit is narrower than a completed literal vstd-query comparison.
