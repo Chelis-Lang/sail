@@ -107,7 +107,7 @@ def compiler(argv, cwd, environment, timeout):
 class Workflow:
     """One donor, one scheduled edit and at most one whole fresh retry."""
     def __init__(self, output, solver, solver_sha256, argv, cwd, *,
-                 edit_delay=0, attempt_timeout=120):
+                 edit_delay=0, attempt_timeout=120, rustup_loader_target=None):
         if (not 0 <= edit_delay <= 60 or not 0 < attempt_timeout <= 270 or
                 not argv or not all(isinstance(x, str) for x in argv)):
             raise ProtocolRefusal('fixed bounded workflow required')
@@ -127,6 +127,7 @@ class Workflow:
         self.attempts = []
         self.claimed_preparation = False
         self.trace_program = None
+        self.rustup_loader_target = rustup_loader_target
 
     def pool(self, binding, role='fresh-session'):
         if binding['argv'] != [self.solver, '-smt2', '-in']:
@@ -135,7 +136,8 @@ class Workflow:
                           ttl=300, run_timeout=self.timeout,
                           environment=binding['environment'], cwd=binding['cwd'],
                           experiment_numeric_time_only=True,
-                          experiment_kernel_accounting_owner=True)
+                          experiment_kernel_accounting_owner=True,
+                          experiment_rustup_loader_target=self.rustup_loader_target)
         self.pools.append(pool)
         pool.edit_workflow_role = role
         return pool
@@ -303,7 +305,8 @@ class Workflow:
                               solver_sha256=pool.identity, context=pool.binding,
                               accounting=accounting, errors=errors,
                               failure=getattr(entry, 'failure', None),
-                              accounting_error=getattr(entry, 'kernel_accounting_error', None))
+                              accounting_error=getattr(entry, 'kernel_accounting_error', None),
+                              loader_context=(entry.loader.record if getattr(entry, 'loader', None) is not None else None))
                 for field in ('stdout', 'stderr', 'prefix', 'expected'):
                     record[field] = self.raw(directory, f'{index}-{number}.{field}',
                                              bytes(getattr(entry, field, b'')))

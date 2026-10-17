@@ -9,6 +9,8 @@ semantic versioning once the API is published.
   donor preparation, actual compiler/session failures and whole fresh retries.
   Application acceptance remains blocked on independent spawn coverage and
   actual Verus controls; ordinary verification and default policies are unchanged.
+  An explicit edit-only Rustup loader context binds actual owned solver mappings
+  and held library bytes without changing the caller environment.
 
 - Add a disabled, opt-in kernel-accounting research path for the one-use
   continuation driver (#158). It requires complete sole-`wait4` accounting

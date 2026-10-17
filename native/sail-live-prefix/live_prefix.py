@@ -117,6 +117,7 @@ class Entry:
         self.peak_rss = self.peak_pss = 0
         self.pidfd = self.image_fd = None
         self.threads = []
+        self.loader = None
         self.kernel_accounting = None
         self.kernel_accounting_error = None
         self.cleanup_errors = []
@@ -137,6 +138,9 @@ class Entry:
                 raise ValueError("actual running executable image mismatch")
             if pool.experiment_kernel_accounting_owner:
                 self.process.start_reaper()
+            if pool.rustup_loader_target is not None:
+                from edit_loader import RustupLoader
+                self.loader = RustupLoader(pool.environment, pool.rustup_loader_target, pool.z3)
         except (OSError, ValueError, RuntimeError):
             self.close(cancel=True)
             raise
@@ -219,6 +223,12 @@ class Entry:
         if self.stderr or mismatch:
             self.fail("unexpected prefix output")
         elif self.written and (self.observed or self.pool.experiment_kernel_accounting_owner) and equal:
+            if self.loader is not None and self.prefix:
+                try:
+                    self.loader.observe(self.pid, self.pidfd)
+                except (OSError, ValueError) as error:
+                    self.fail('Rustup library binding: ' + str(error))
+                    return
             self.prefix_output_bytes = len(self.stdout)
             self.ready = True
             self.changed.notify_all()
@@ -405,6 +415,11 @@ class Entry:
                 thread.join(timeout=2)
                 if thread.is_alive():
                     errors.append('owned worker remained after stream close')
+        if self.loader is not None:
+            try:
+                self.loader.close()
+            except (OSError, ValueError) as error:
+                errors.append('final Rustup library binding: ' + str(error))
         with self.changed:
             for name in ('image_fd', 'pidfd'):
                 descriptor = getattr(self, name)
@@ -458,7 +473,8 @@ class OneUsePool:
     """
     def __init__(self, z3, expected_sha256, *, slots=1, max_bytes=128 * 1024 * 1024,
                  ttl=5, run_timeout=5, environment=None, cwd=None, max_input_bytes=MAX_INPUT,
-                 experiment_numeric_time_only=False, experiment_kernel_accounting_owner=False):
+                 experiment_numeric_time_only=False, experiment_kernel_accounting_owner=False,
+                 experiment_rustup_loader_target=None):
         if (os.uname().sysname != "Linux" or not hasattr(os, "pidfd_open") or
                 not hasattr(signal, "pidfd_send_signal")):
             raise ValueError("live reuse requires Linux held-executable and pidfd guards; use fresh fallback")
@@ -479,8 +495,16 @@ class OneUsePool:
             raise ValueError("pinned solver digest mismatch")
         self.identity = expected_sha256
         self.environment = MappingProxyType(dict(os.environ if environment is None else environment))
+        self.rustup_loader_target = None
+        if experiment_rustup_loader_target is not None and not experiment_kernel_accounting_owner:
+            raise ValueError('Rustup context requires named owned edit experiment')
         if any(name.startswith(("LD_", "DYLD_")) for name in self.environment):
-            raise ValueError("loader environment is unsupported")
+            if experiment_rustup_loader_target is None:
+                raise ValueError("loader environment is unsupported")
+            from edit_loader import RustupLoader
+            # Validate before allocating a child; retain the exact environment.
+            RustupLoader(self.environment, experiment_rustup_loader_target, self.z3)
+            self.rustup_loader_target = str(Path(experiment_rustup_loader_target).resolve(strict=True))
         if any(value != resource.RLIM_INFINITY for value in resource.getrlimit(resource.RLIMIT_CPU)):
             raise ValueError("finite CPU budget is unsupported")
         self.cwd = str(Path(cwd or os.getcwd()).resolve())
@@ -496,6 +520,9 @@ class OneUsePool:
         self.binding = dict(solver_sha256=self.identity, argv=self.argv, cwd=self.cwd,
                             environment_sha256=sha(json.dumps(sorted(self.environment.items()),
                                                              ensure_ascii=True).encode()))
+        if self.rustup_loader_target is not None:
+            self.binding['loader_experiment'] = 'edit-rustup-mapped-files-v1'
+            self.binding['loader_target'] = self.rustup_loader_target
         if self.experiment_numeric_time_only:
             self.binding["response_experiment"] = response_policy.EXPERIMENT
         if self.experiment_kernel_accounting_owner:

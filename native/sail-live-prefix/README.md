@@ -442,3 +442,26 @@ exits. Raw trace files and compiler stderr remain intact. Parser fixtures do not
 qualify actual strace coverage; the application acceptance gate remains blocked.
 The prospective native driver permits at most 270 seconds per compiler attempt,
 inside the unchanged 300-second serving guard. No launched lease is extended.
+
+The explicit edit-only `--experiment-rustup-loader-target` binds the actual
+Cargo target directory when Verus inherits Rustup's `LD_LIBRARY_PATH`. It never
+removes or rewrites the caller environment. Other loader variables still refuse.
+Only ordinary Rustup toolchain library directories, that target's debug/deps
+paths and the pinned runtime directory are admitted. Before a reply, actual
+file-backed mappings of the held owned solver are read through `/proc`, joined
+to regular held file descriptors and hashed. Later replies must retain those
+mappings and bytes; final held-file hashes are checked before descriptor release.
+The default prototype still refuses loader variables. This named context relies
+on the owned native image/toolchain remaining unchanged; it is not a general
+immutable-memory or shared-library mutation theorem. All context/hash work is
+part of the research cost, outside the solver child's own CPU accounting.
+
+The first actual Tiny pilot on `e3a55f0f` correctly refused a repeated Cargo-fresh
+no-op with no wrapper executions. A prospective root-package-only clean forced
+real frontend work, but the next pilot refused inherited `LD_LIBRARY_PATH` before
+any reply. Both failed attempts leave application and project-edit acceptance
+blocked; neither ran the early/late fault controls or IronKV/Anvil edits. Those
+pilots also selected the engine frontend rather than the intended normal
+accepted runtime, so they do not qualify the accepted fork's application path.
+The next caller must select the normal frontend explicitly and include any
+forced root-only clean in its measured work and literal streams.

@@ -268,3 +268,23 @@ historical and separate.
 | macOS independent source/host review, same evidence set `root-independent-host-review.json` | `eccd4c6b9058012ece4562ec71a1052ddade1b739ada0d61b75512f39d13fa8e` |
 
 See the [commands and remaining integration boundaries](../../native/sail-live-prefix/README.md#named-kernel-accounting-owner).
+
+
+### Actual edit-caller integration (pending)
+
+The disabled listener/interposer implementation has not qualified an application
+edit workflow. Two native attempts on source `e3a55f0f` passed the genuine 28
+core and 12 kernel-owner controls, then failed their Tiny positive gate. The
+engine frontend was selected accidentally in both; no normal accepted-runtime
+application or IronKV/Anvil edit result follows. Both early/late-failure controls
+and project edits remain unrun. Source-only Rustup context integration retains
+the complete caller environment and maps actual owned solver libraries; default
+loader refusal, reply policy and resource limits remain unchanged.
+
+- 2026-10-17, `e3a55f0f`: repeated Cargo-fresh Tiny call returned zero without
+  any wrapper execution; strict census refusal. Raw final SHA-256
+  `9afc438ffce61ca21f3aa57d021a922a59e9be6c344ec4670887c1f14a1adabb`.
+- 2026-10-17, `e3a55f0f`, prospective forced-frontend caller: root-only clean
+  produced a real wrapper execution, then inherited loader context was refused;
+  compiler 101, wrapper 1, no reply. Raw final SHA-256
+  `aa316df4289c02fd90d1b3a9266fb753e7e6224c9e0f014151a763fe18581955`.

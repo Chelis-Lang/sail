@@ -70,6 +70,8 @@ class StreamingClaim:
                     raise ProtocolRefusal('not-ready-at-edit-start')
                 if not pool._identity_unchanged() or not entry._image_ok():
                     raise ProtocolRefusal('edit-start executable identity refused')
+                if entry.loader is not None:
+                    entry.loader.observe(entry.pid, entry.pidfd)
                 parser = Commands()
                 commands = parser.feed(entry.prefix)
                 if parser.finish():
@@ -138,6 +140,8 @@ class StreamingClaim:
                     if len(replies) != 1:
                         raise ProtocolRefusal('unsolicited extra reply batch')
                     self.reply_parser.finish()
+                    if self.entry.loader is not None:
+                        self.entry.loader.observe(self.entry.pid, self.entry.pidfd)
                     return replies[0]
                 if self.entry.process.poll() is not None:
                     raise ProtocolRefusal('child exited before complete reply batch')
@@ -157,6 +161,11 @@ class StreamingClaim:
             if not self.snapshot_ready:
                 return {'action': 'fresh-before-reply', 'reason': self.errors[0]}
             self._check()
+            # Observe before consume can mark a prepared reply as emitted.
+            # A refusal on the first reply must still permit fresh-before-reply.
+            if (self.entry.loader is not None and
+                    self.replay.index < len(self.replay.commands)):
+                self.entry.loader.observe(self.entry.pid, self.entry.pidfd)
             decision = self.replay.consume(raw)
             if decision['action'] == 'continue-original-child':
                 self._write(raw)

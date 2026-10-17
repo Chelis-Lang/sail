@@ -67,8 +67,10 @@ if os.environ.get('SAIL_TEST_HANG_EOF')=='1':time.sleep(2)
 for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate-claim',
              'ipc-after-reply', 'child-after-reply', 'missing-accounting',
              'stderr-after-reply', 'timeout-after-eof', 'direct-success', 'direct-ipc',
-             'pool-busy-at-edit-start', 'entry-busy-at-edit-start'):
-    with tempfile.TemporaryDirectory() as td, native_doubles():
+             'pool-busy-at-edit-start', 'entry-busy-at-edit-start',
+             'direct-loader-before', 'direct-loader-after',
+             'prepared-loader-before', 'prepared-loader-after'):
+    with tempfile.TemporaryDirectory() as td, native_doubles(), contextlib.ExitStack() as local:
         worker = Path(td) / 'solver-fixture'
         worker.write_text('#!' + sys.executable + '\n' + WORKER)
         worker.chmod(0o700)
@@ -80,10 +82,22 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
             env['SAIL_TEST_STDERR_STATS'] = '1'
         if case == 'timeout-after-eof':
             env['SAIL_TEST_HANG_EOF'] = '1'
+        loader_target = None
+        if '-loader-' in case:
+            if case.startswith('prepared-'):
+                from edit_loader import RustupLoader
+                local.enter_context(patch.object(RustupLoader, 'observe'))
+            home = Path(td).resolve() / 'rustup'
+            lib = home / 'toolchains' / 'fixture' / 'lib'
+            lib.mkdir(parents=True)
+            loader_target = Path(td).resolve() / 'target'
+            (loader_target / 'debug' / 'deps').mkdir(parents=True)
+            env.update(RUSTUP_HOME=str(home), LD_LIBRARY_PATH=str(lib))
         pool = live_prefix.OneUsePool(str(worker), digest, max_bytes=1024**3,
                                      ttl=10, run_timeout=.3 if case == 'timeout-after-eof' else 5, environment=env,
                                      experiment_numeric_time_only=True,
-                                     experiment_kernel_accounting_owner=True)
+                                     experiment_kernel_accounting_owner=True,
+                                     experiment_rustup_loader_target=loader_target)
         claim = None
         entry = None
         try:
@@ -92,6 +106,22 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
                 assert claim.snapshot_ready, claim.errors
                 entry = claim.entry
                 assert entry.prefix == b''
+                if case.startswith('direct-loader-'):
+                    assert dict(pool.environment) == env  # No loader stripping.
+                    observed = []
+                    def observe(pid, fd):
+                        observed.append((pid, fd))
+                        if case == 'direct-loader-before' or len(observed) > 1:
+                            raise ValueError('controlled actual caller library refusal')
+                    entry.loader.observe = observe
+                    first = claim.batch(VERSION)
+                    if case == 'direct-loader-before':
+                        assert first['action'] == 'fresh-before-reply' and bytes(entry.stdout) == VR
+                    else:
+                        assert first == {'action': 'original-child-reply', 'reply': VR}
+                        assert claim.batch(CHECK)['action'] == 'abort-whole-attempt'
+                    assert observed and not claim.completed
+                    continue
                 assert claim.batch(VERSION) == {'action': 'original-child-reply', 'reply': VR}
                 if case == 'direct-ipc':
                     assert claim.abort('controlled direct IPC disconnect')['action'] == 'abort-whole-attempt'
@@ -138,7 +168,21 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
                 assert claim.batch(VERSION)['action'] == 'fresh-before-reply'
             else:
                 assert claim.snapshot_ready, claim.errors
-                if case == 'diverge-before':
+                if case.startswith('prepared-loader-'):
+                    observed = []
+                    def observe(pid, fd):
+                        observed.append((pid, fd))
+                        if case == 'prepared-loader-before' or len(observed) > 1:
+                            raise ValueError('controlled prepared caller library refusal')
+                    entry.loader.observe = observe
+                    first = claim.batch(VERSION)
+                    if case == 'prepared-loader-before':
+                        assert first['action'] == 'fresh-before-reply'
+                    else:
+                        assert first == {'action': 'prepared-reply', 'reply': VR}
+                        assert claim.batch(CHECK)['action'] == 'abort-whole-attempt'
+                    assert observed and not claim.completed
+                elif case == 'diverge-before':
                     assert claim.batch(VERSION.replace(b':version', b':name'))['action'] == 'fresh-before-reply'
                 else:
                     assert claim.batch(VERSION) == {'action': 'prepared-reply', 'reply': VR}
