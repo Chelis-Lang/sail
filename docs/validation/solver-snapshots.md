@@ -249,7 +249,22 @@ the unsupported exit-zero case separately and require an actual parse-error exit
 one, exact retained diagnostics and complete accounting. Resource completion
 alone is not a verification verdict. No old failure is reclassified.
 
-The new research packaging's complete native workspace and macOS host gates
-remain pending at this documentation checkpoint. The older `fee8abff` packaging
-gates above do not qualify the new owner implementation. See the
-[commands and remaining integration boundaries](../../native/sail-live-prefix/README.md#named-kernel-accounting-owner).
+Research source `3622777b8eefab9c171d4f87e7c89735e040c5ee` passes the
+native Linux workspace gate (655 tests, 35 skips, two doctests) and the macOS
+host gate (644 tests, 35 skips, clippy). The Mac run also passes the portable
+owner8/kernel17/caller2 controls with actual owned children and explicit Linux
+API doubles. All 587 tracked source entries match before and after both runs;
+production Python matches the measured `10b96ed1` source, and Rust, Cargo and
+runtime pins are unchanged from the branch's main base. These gates qualify
+the research implementation's packaging; they do not qualify default serving,
+application performance or selection. The earlier `fee8abff` gates above remain
+historical and separate.
+
+| Packaging artifact | SHA-256 |
+|---|---|
+| Native workspace gate, external `live-prefix-kernel-owner-native-2026-10-17/research-gate-3622777b/native-results/gate.tgz` | `0566da8e055c9f7d9ae9c0145525df620b9f6f53af18d1e0fa9c113c5dae227c` |
+| Native final source/runtime guards, same evidence set `final.tgz` | `1078da6c5203b6b595b472e24ffdfa94338a17907d7e12c72c61e53f5b1c040d` |
+| macOS host stderr, external `kernel-owner-host-3622777b-macos-2026-10-17/host-gate.stderr` | `ad5d01802df3c98bcea27c9ec5137dc667eecd8184718d9cdf9c5a0bf6bff58b` |
+| macOS independent source/host review, same evidence set `root-independent-host-review.json` | `eccd4c6b9058012ece4562ec71a1052ddade1b739ada0d61b75512f39d13fa8e` |
+
+See the [commands and remaining integration boundaries](../../native/sail-live-prefix/README.md#named-kernel-accounting-owner).
