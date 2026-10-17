@@ -602,7 +602,10 @@ fn observe(
     } else {
         Output::Unknown
     };
-    session.apply(&item.bytes);
+    // Default keys bind the literal process prefix, not a model snapshot.
+    // Keep the same complete session state without cloning a discarded stack
+    // at every check; tracing still uses `Session::apply` for its snapshots.
+    session.advance(&item.bytes);
     // print-success changes the option command's own output as well as later
     // replies. Its non-default protocol always replays live, without recording.
     if session

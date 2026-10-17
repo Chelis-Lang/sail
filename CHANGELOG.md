@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Prepare a cached-shim optimization that avoids copying session snapshots
+  which the literal-prefix cache does not read. State tracking and trace
+  snapshots remain complete; native qualification and measured gains are
+  pending.
+
 - Retain the disabled one-use solver-continuation research driver and its
   strict failure evidence (#158). A separate opt-in timing-token comparator
   does not change Sail verification, default cache keys or shipped behavior.

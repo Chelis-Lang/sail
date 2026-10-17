@@ -193,7 +193,22 @@ impl Session {
     /// Applies one complete top-level command (as split by
     /// [`sail_smtlib::split::CommandSplitter`]).
     pub fn apply(&mut self, command: &[u8]) -> Event {
-        let event = self.apply_inner(command);
+        self.advance_inner(command, true)
+    }
+
+    /// Applies a command without copying the state into a check snapshot.
+    ///
+    /// All session state and counters advance exactly as for [`Self::apply`].
+    /// Consumers that identify queries from the complete literal input prefix
+    /// can use this when they need options and output classification but never
+    /// inspect the returned snapshot. A later [`Self::apply`] still observes
+    /// the complete state, including commands advanced this way.
+    pub fn advance(&mut self, command: &[u8]) {
+        self.advance_inner(command, false);
+    }
+
+    fn advance_inner(&mut self, command: &[u8], capture: bool) -> Event {
+        let event = self.apply_inner(command, capture);
         // A reset starts the count again at zero; it is not part of the new
         // history.
         if !matches!(classify(command).map(|c| c.kind), Ok(CommandKind::Reset)) {
@@ -202,7 +217,7 @@ impl Session {
         event
     }
 
-    fn apply_inner(&mut self, command: &[u8]) -> Event {
+    fn apply_inner(&mut self, command: &[u8], capture: bool) -> Event {
         let Ok(parsed) = classify(command) else {
             self.mark(Inexact::Malformed);
             return Event::Command;
@@ -230,16 +245,20 @@ impl Session {
             }
             CommandKind::SetInfo | CommandKind::SetLogic => self.globals.push(command.into()),
             kind if kind.is_check() => {
+                let prior_checks = self.checks;
+                self.checks += 1;
+                if !capture {
+                    return Event::Command;
+                }
                 let snapshot = Snapshot {
                     levels: self.levels.clone(),
                     options: self.options.clone(),
                     globals: self.globals.clone(),
                     check: command.into(),
                     position: self.position,
-                    prior_checks: self.checks,
+                    prior_checks,
                     inexact: self.inexact,
                 };
-                self.checks += 1;
                 return Event::Check(Box::new(snapshot));
             }
             CommandKind::GetInfo { .. }
@@ -359,5 +378,55 @@ mod tests {
         assert_eq!(session.expects_output(b"(assert true)"), Output::None);
         session.apply(b"(set-option :print-success true)");
         assert_eq!(session.expects_output(b"(assert true)"), Output::One);
+    }
+
+    #[test]
+    fn advancing_without_snapshots_preserves_every_subsequent_observation() {
+        let commands = [
+            "(set-logic ALL)",
+            "(set-info :source |literal input|)",
+            "(declare-const x Int)",
+            "(define-fun f ((y Int)) Int (+ x y))",
+            "(assert (> x 0))",
+            "(push 2)",
+            "(set-option :rlimit 1234)",
+            "(check-sat)",
+            "(check-sat-assuming ((> x 1)))",
+            "(check-sat-using smt)",
+            "(get-info :all-statistics)",
+            "(set-option :print-success true)",
+            "(pop)",
+            "(set-option :print-success false)",
+            "(reset-assertions)",
+            "(check-sat)",
+            "(reset)",
+            "(check-sat)",
+            "(pop)",
+            "(reset)",
+            "(assert true)",
+            "(unknown-command)",
+            "malformed",
+            "(check-sat)",
+            "(exit)",
+        ];
+        let mut capturing = Session::new();
+        let mut advancing = Session::new();
+        for command in commands {
+            let command = command.as_bytes();
+            assert_eq!(
+                capturing.expects_output(command),
+                advancing.expects_output(command)
+            );
+            capturing.apply(command);
+            advancing.advance(command);
+            assert_eq!(capturing.depth(), advancing.depth());
+            assert_eq!(capturing.inexact(), advancing.inexact());
+            assert_eq!(capturing.option(b":rlimit"), advancing.option(b":rlimit"));
+            assert_eq!(
+                capturing.clone().apply(b"(check-sat)"),
+                advancing.clone().apply(b"(check-sat)"),
+                "all stack bytes, options, globals and counters after {command:?}"
+            );
+        }
     }
 }

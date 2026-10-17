@@ -110,3 +110,20 @@ and recompiles an enabled type-error control (exit101/E0308). This is target
 selection evidence, with no SMT, performance or native-product claim.
 Archive `feature-alias-2026-10-16.tgz`, SHA-256
 `63b8d70de973695411972f6f434c45d9f1062cfec4ef859b4951a4ed62131374`.
+
+## Discarded shim snapshots: candidate, unqualified
+
+The default cached shim identifies queries from their complete literal input
+prefix. It previously called `Session::apply` and discarded the resulting
+check snapshot, copying the assertion-stack pointer vectors on every check.
+The candidate uses `Session::advance`, which maintains the same complete
+session state and counters without producing that unused snapshot. Trace
+recording still requests snapshots through `Session::apply`.
+
+Exact input hashing, cache keys, response bytes, effort checks and fallback
+behavior are unchanged. A mixed-command regression compares every subsequent
+snapshot, option and output expectation with the original capturing path,
+including resets, malformed input and stack underflow. Native tests,
+independent review, full fast/standard conformance and measurements against
+the preceding build and plain stock remain pending. No speedup or merge
+acceptance is claimed.
