@@ -245,8 +245,17 @@ a supplied source-commit string is not independent build provenance.
 Direct Rust test sources cover the marker protocol, explicit helper identity,
 bounded child failures and zero-mode/session rejection. The fork has genuine
 AIR-parser grammar controls and minimal Verus zero/query/spinoff regression
-sources. **These additions have not been compiled or executed.** Original
-observer controls are preserved. Native qualification, deterministic direct-SMT
+sources. The first native observer workspace gate at `cd708f7f` stopped at
+six denied Clippy diagnostics (two nested conditions, an oversized function and
+three import-placement diagnostics), before any fork build or producer/helper
+qualification. The failed final archive is SHA-256
+`882b2c3c30d19ffdd5e63c1ede64ff89e3a4c90a380b0c0df5b8f34b6d32ff08`;
+all actual raw output remains external. The observer is subsequently split
+into a focused paired-log helper and uses the lint-prescribed conditions/import
+placement, with no assertion or lint allowance changes. That correction still
+needs actual strict Clippy and existing focused tests before a producer build.
+The fork additions remain uncompiled/unexecuted. Original observer controls
+are preserved. Native qualification, deterministic direct-SMT
 byte comparisons, full raw Verus results and normal unchanged conformance
 checks remain required before any new actual-work measurement or adoption.
 Paired comments are completion witnesses, not cryptographic authentication;
