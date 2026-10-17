@@ -576,6 +576,10 @@ fn driver() -> Result<ExitCode> {
     let exit = child
         .wait()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    #[cfg(feature = "sail-boundary-input-fixture")]
+    if call.is_some() {
+        boundary_fixture::after_completion(exit.code())?;
+    }
     if let Some(call) = &mut call {
         call.compiler_finished();
     }

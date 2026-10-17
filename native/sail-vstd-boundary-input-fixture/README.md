@@ -10,7 +10,10 @@ compiler invocations retain their actual arguments, environment and working
 directory in owner-only files. An admitted vstd cache miss records its final
 child command after keying, then waits at most 180 seconds for the exact bytes
 `continue\n` in `continue-<wrapper-pid>` before spawning the unchanged compiler.
-The fixture changes no compiler argument, solver command, diagnostic or verdict.
+After actual child completion, a second bounded coordination point retains its
+status and waits for `continue\n` in `publish-<wrapper-pid>` before publication
+rechecks inputs. Successful coordination changes no compiler argument, solver
+command, diagnostic or verdict.
 
 The bounded integration control uses two separately retained macro-library
 fixtures. The second expands one additional harmless proof function and records
