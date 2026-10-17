@@ -305,8 +305,12 @@ oyster and such." This supersedes the parallel tracks of
       key change is an ADR under charter rules 5 and 6. The only crate-wide
       counter found is the closure-type number (VI-0019); its fork fix
       (`8d03ab54`, [ADR 0049](decisions/0049-stable-closure-names.md),
-      proposed) is independently reviewed and measured in isolation; the combined runtime
-      still needs full qualification before a re-pin. The three-project
+      accepted with the matching runtime pin) is independently reviewed and measured in isolation; the combined runtime
+      now has a qualified full crate-qualified runtime selected by the matching
+      pin change, with a measured 27.6% helper-edit gain and 1.2% body-edit
+      regression against the previous runtime. Its
+      [qualification record](validation/closure-full-identity.md) records
+      completed runtime gates and exact platform/scope limits. The three-project
       [incidental-edit catalogue](validation/incidental-edits.md) is prepared;
       its final-runtime measurements and exact solver-work counts are pending.
    6. B4, instant revert: receipts beyond the latest revision, #163.
