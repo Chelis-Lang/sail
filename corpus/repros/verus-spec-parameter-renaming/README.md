@@ -22,3 +22,9 @@ required before a real-project timing screen.
 Historical evidence and qualification limits are recorded in
 [VI-0023](../../../docs/verus-issues/VI-0023-spec-parameter-names.md) and
 [ADR 0054](../../../docs/decisions/0054-stable-spec-parameter-names.md).
+
+`termination-via.rs` retains the recursive/fuel case and a separate `#[via_fn]`
+termination proof whose formals share the spec function's scope. It is a reduced
+source control for the candidate vstd panic; genuine cc7 macOS verifies it. The
+corrected candidate still needs native execution. No assertion or termination
+obligation is removed.

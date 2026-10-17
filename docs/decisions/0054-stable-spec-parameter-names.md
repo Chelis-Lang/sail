@@ -26,6 +26,9 @@ the original source name and span in VIR for diagnostics and the existing
 capture-aware parameter-reference rewrite. Preserve ordinary proof/exec formal
 names, nested binders, return names and function identities. Recursive formal
 copies retain both the original position and their existing recursion depth.
+Special `decreases_by`/`recommends_by` proof bodies are inserted into the spec
+function's scope; their matching formals use the same positions. This does not
+change ordinary callable proof/exec parameter lowering.
 
 Append the new VIR disambiguation variants. Build a matching compiler, vstd,
 exports and runtime; do not mix their serialized artifacts with older runtimes.
