@@ -1053,7 +1053,9 @@ impl<'a> Call<'a> {
                 self.plan,
                 self.arguments,
                 self.verifying,
-                self.vars.clone().into_iter(),
+                self.vars
+                    .iter()
+                    .map(|(key, value)| (key.into(), value.into())),
             )
             .ok_or("cannot recheck compiler inputs")?;
             if current.key != self.key || current.externs != self.externs {
