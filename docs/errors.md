@@ -154,6 +154,9 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3124` | A target needs a Verus feature the engine is built without (for example `singular` for `by(integer_ring)`); it was verified by the configured stock Verus and accepts no repair | Use the stock result, or stock `sail verify`; see [Verus features the engine lacks](proof-repair.md#verus-features-the-engine-lacks) |
 | `SAIL3130` | Note: a dependency (such as vstd) was verified by a run in another workspace and placed in this new project from Sail's [dependency store](decisions/0045-dependency-store.md) | None; plain Cargo-Verus would have verified it in this run, and its recorded report is the one shown |
 | `SAIL3131` | Warning: a dependency store entry is damaged (its checksums or digests fail), so it was ignored | None; the dependency is verified normally. Delete `<cache>/dependency-store/` if the warning repeats |
+| `SAIL3132` | Research note: a complete dependency proof was replayed at the vstd compiler boundary, with its original establishing invocation | The unselected [compiler-boundary experiment](validation/vstd-compile-boundary.md) records whether the proof was established locally or in a release build; this does not enable the quarantined native-artifact store |
+| `SAIL3133` | Research warning: a compiler-boundary dependency entry is damaged and was ignored | The actual compiler and verifier run normally; retain the warning and trace when diagnosing the experiment |
+| `SAIL3134` | Research dependency recording could not finish, or recorded no complete verified dependency | Inspect the retained skipped-entry reason and compiler output; do not treat the incomplete directory as a usable release bundle |
 
 ## Portfolio and solver libraries
 
