@@ -45,7 +45,10 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0021](VI-0021-proof-note-json-order.md) | JSON proof-note arrays follow hash-set order | reproduced in the pinned fork; correction pending | — | `corpus/repros/verus-proof-note-order/` |
 
 Z3 behaviour is recorded the same way, as reproductions under
-`corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`).
+`corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The
+[unsupported-command exit reproduction](../../corpus/repros/z3-unsupported-command-exit/README.md)
+records a successful solver process exit without a satisfiability verdict and
+the resulting failed research-fixture assumption.
 
 ## Adding an entry
 
