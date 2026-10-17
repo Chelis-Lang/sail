@@ -514,3 +514,12 @@ background cancellation/completion and any required whole retry. Process self
 and waited-child CPU observations are separate window counters; overlapping
 preparation can contribute, and these counters must not be added to the
 individual child accounting as disjoint whole-pipeline CPU.
+
+In the named kernel-owner path, completed-prefix readiness refreshes when the
+prefix write or either output buffer changes. The idle monitor keeps polling
+actual status and deadlines without repeatedly hashing the same mapped libraries
+under the claim lock. Initial readiness, claim admission and every prepared or
+live reply still require fresh library binding checks before exposure. This
+removes redundant idle work; it does not make a busy or unready claim wait, and
+does not change the default RSS observer. Native cost and continuation outcomes
+for this scheduling change remain pending.

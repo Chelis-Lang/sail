@@ -280,8 +280,10 @@ class Entry:
             if self.pool.experiment_kernel_accounting_owner:
                 # No /proc sampling or terminal-race classifier in this named
                 # path. Complete lifetime peak is required after actual wait4.
-                with self.changed:
-                    self._ready()
+                # Writes and drains already refresh readiness on every changed
+                # buffer. Repeating it here rehashes idle mapped libraries under
+                # the claim lock; claim and each exposed reply validate them
+                # afresh. Status/deadline monitoring above remains continuous.
                 time.sleep(0.01)
                 continue
             try:

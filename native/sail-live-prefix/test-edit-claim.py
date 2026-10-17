@@ -69,7 +69,8 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
              'stderr-after-reply', 'timeout-after-eof', 'direct-success', 'direct-ipc',
              'pool-busy-at-edit-start', 'entry-busy-at-edit-start',
              'direct-loader-before', 'direct-loader-after',
-             'prepared-loader-before', 'prepared-loader-after'):
+             'prepared-loader-before', 'prepared-loader-after', 'prepared-loader-idle',
+             'prepared-loader-idle-expired'):
     with tempfile.TemporaryDirectory() as td, native_doubles(), contextlib.ExitStack() as local:
         worker = Path(td) / 'solver-fixture'
         worker.write_text('#!' + sys.executable + '\n' + WORKER)
@@ -138,6 +139,20 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
                 # Fixture synchronization BEFORE edit start; the adapter never
                 # waits for preparation, and the unready case does not do this.
                 assert pool.wait_ready(key, 3), entry.failure
+            if case.startswith('prepared-loader-idle'):
+                observed = []
+                entry.loader.observe = lambda pid, fd: observed.append((pid, fd))
+                # Actual idle owned child and monitor threads: no new input or
+                # output can justify repeating the completed-prefix hash.
+                time.sleep(.12)
+                assert observed == [], observed
+                if case.endswith('-expired'):
+                    with entry.changed:
+                        entry.deadline = time.monotonic() + .05
+                    until = time.monotonic() + 2
+                    while not entry.failure and time.monotonic() < until:
+                        time.sleep(.01)
+                    assert entry.failure == 'preparation/idle/run deadline exceeded', entry.failure
             if case.endswith('-busy-at-edit-start'):
                 entered, release = threading.Event(), threading.Event()
                 lock = pool.lock if case.startswith('pool-') else entry.changed
@@ -163,12 +178,12 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
                 claim = StreamingClaim(pool, key)
             if case.endswith('-busy-at-edit-start'):
                 assert not entry.claimed
-            elif case == 'unready':
+            elif case in ('unready', 'prepared-loader-idle-expired'):
                 assert not claim.snapshot_ready
                 assert claim.batch(VERSION)['action'] == 'fresh-before-reply'
             else:
                 assert claim.snapshot_ready, claim.errors
-                if case.startswith('prepared-loader-'):
+                if case in ('prepared-loader-before', 'prepared-loader-after'):
                     observed = []
                     def observe(pid, fd):
                         observed.append((pid, fd))
@@ -234,7 +249,11 @@ for case in ('success', 'unready', 'diverge-before', 'diverge-after', 'duplicate
                             assert entry.kernel_accounting['exit'] == 0
                             assert entry.kernel_accounting['accounting']['peak_rss_bytes'] > 0
                             assert bytes(claim.input) == bytes(claim.child_input) == VERSION + CHECK + STATS
-            if case not in ('success', 'duplicate-claim'):
+                            if case == 'prepared-loader-idle':
+                                # One claim validation plus a fresh validation
+                                # before each of two prepared and one live replies.
+                                assert len(observed) == 4, observed
+            if case not in ('success', 'duplicate-claim', 'prepared-loader-idle'):
                 assert not claim.completed
         finally:
             if claim is not None:
