@@ -61,3 +61,24 @@ Failed attempts remain indexed here:
 
 - 2026-10-17, `af339f8a` private Mac CLI / daemon source equal to `79e26818`:
   actual stale identity reproduced; original outcome remains failed.
+
+## Fresh-byte digest memo candidate
+
+A separate unselected implementation retains one immutable executable body
+and its SHA-256. Every HELLO still launches the version command and reads the
+complete executable anew. A digest is reused only after literal equality of
+all freshly read bytes; path, metadata and previous version output never
+substitute for that comparison. A poisoned memo falls back to hashing the
+fresh bytes. Bodies larger than 64 MiB are hashed without retention. The
+one-entry limit is not a process-wide memory bound: concurrent readers can
+retain older snapshots, and every handshake still allocates its fresh body.
+
+Shared macOS arm64 correctness checks passed four memo tests, two existing
+HELLO regressions and a new real-client test proving unchanged executable
+bytes do not memoize changing version output. Clippy passed after correcting
+a boolean-expression lint; the initial lint failure remains retained. These
+are targeted correctness checks, not the full host gate or performance
+acceptance. Native comparison against the same source without this memo,
+full Linux gates, FAST/STANDARD conformance and the full macOS host gate
+remain required before selection. The preceding fresh-identity correction
+and its measured overhead remain separate evidence.

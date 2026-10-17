@@ -16,8 +16,9 @@ use sail_api::protocol::{
 use sail_cache::memory::{MemoryTier, State as Slot, Value};
 use sail_cache::shared::{Rejection, Solver};
 use sail_cache::{DiskCache, FileStamp};
-use sail_key::{QueryKey, SolverIdentity, sha256};
+use sail_key::{QueryKey, SolverIdentity};
 
+use crate::digest_memo::{DigestMemo, MAX_RETAINED_BYTES};
 use crate::log::Log;
 use crate::shared::{Lookup, SharedConfig, SharedTier};
 use crate::writer::{Job, Submitted, Writer};
@@ -148,6 +149,8 @@ struct State {
     active: AtomicU64,
     /// When a connection last opened or closed.
     last_activity: Mutex<Instant>,
+    /// Digest reuse requires equality of the entire freshly read executable.
+    binary_digests: DigestMemo,
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -161,7 +164,7 @@ fn hex(bytes: &[u8]) -> String {
 // Equal path, length and mtime do not establish equal executable bytes (#213).
 // Identify every handshake afresh; any read or launch failure rejects the
 // handshake so the shim takes its fail-safe path.
-fn identify(path: &Path) -> Result<Identity, String> {
+fn identify(path: &Path, digests: &DigestMemo) -> Result<Identity, String> {
     let out = std::process::Command::new(path)
         .arg("--version")
         .output()
@@ -181,7 +184,7 @@ fn identify(path: &Path) -> Result<Identity, String> {
     Ok(Identity {
         name: "z3".to_owned(),
         version,
-        binary_sha256: hex(&sha256(&binary)),
+        binary_sha256: hex(&digests.digest(binary)),
         platform: SolverIdentity::host_platform(),
         protocol_version: sail_api::protocol::PROTOCOL_VERSION,
     })
@@ -445,7 +448,7 @@ impl State {
                 Request::Hello(hello) => {
                     mode = hello.mode;
                     self.stats.hellos.fetch_add(1, Ordering::Relaxed);
-                    let r = identify(Path::new(&hello.solver_path));
+                    let r = identify(Path::new(&hello.solver_path), &self.binary_digests);
                     solver = r.as_ref().ok().map(|id| Solver {
                         name: id.name.clone(),
                         version: id.version.clone(),
@@ -597,6 +600,7 @@ pub fn bind(
         queue_wait: config.queue_wait,
         active: AtomicU64::new(0),
         last_activity: Mutex::new(Instant::now()),
+        binary_digests: DigestMemo::new(MAX_RETAINED_BYTES),
     });
     if let Some(shared) = &state.shared {
         shared.prepare();

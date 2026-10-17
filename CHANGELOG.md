@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add a candidate single-entry digest memo for solver handshakes (#213).
+  It reuses SHA-256 only after comparing every freshly read executable byte;
+  version execution and full reads still occur on every handshake. Native
+  performance and full qualification remain pending.
+
 - Recompute solver identity at every daemon handshake: equal executable path,
   length and mtime no longer retain a stale binary hash (#213). Native
   qualification and measurement of the added handshake cost are pending.
