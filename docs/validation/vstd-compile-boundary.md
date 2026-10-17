@@ -362,3 +362,17 @@ The original run remains FAIL; fresh-consumer and unchanged controls are unrun
 in that attempt. Full Mac host checks on the flag-admission successor pass
 clippy and all 693 enabled tests, with 35 skipped. Build/first-integration index
 SHA-256: `c8d66561601000eadf72e2b1411871afd01a3eaa60d6d2996e13365156b38c0d`.
+
+The canonical-path Mac successor still completes ordinary verification but
+misses publication: ten actual native completion documents establish nineteen
+outputs, while one native graph capture refuses and three later macro units
+lack completed graph producers. The first capture's cause remains unknown.
+The optional research trace now records a bounded directory inventory on graph
+capture refusal, without changing admission or ignoring any entry. The original
+miss remains failed; fresh-consumer and unchanged controls are unrun.
+
+An intervening copied-executable launch exits with SIGKILL before any compiler
+work. Both copies have identical bytes and pass on-disk signature verification;
+the build-cache original and an atomic new-inode copy launch successfully.
+This is retained separately and does not qualify the integration. Failed-control
+index SHA-256: `7121900c124784c5632f2f754ab441c1ccd816f9b9bc81a38359cf551b42c05b`.

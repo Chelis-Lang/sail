@@ -89,14 +89,20 @@ impl<'a> Observation<'a> {
         // A metadata-ready producer can still be linking its rlib. Wait for
         // qualified producers, then take a new complete snapshot so the child
         // never receives a graph missing that producer's later output.
-        let first = Snapshot::capture(&plan.target, &base.join("first"), args)
-            .ok_or("native graph capture refused")?;
+        let first =
+            Snapshot::capture(&plan.target, &base.join("first"), args).ok_or_else(|| {
+                trace_inventory(&call, "first");
+                "native graph capture refused"
+            })?;
         if !await_graph_records(&call, &first) {
             return Err("native graph producer did not complete");
         }
         drop(first);
-        let graph = Snapshot::capture(&plan.target, &base.join("graph"), args)
-            .ok_or("native graph recapture refused")?;
+        let graph =
+            Snapshot::capture(&plan.target, &base.join("graph"), args).ok_or_else(|| {
+                trace_inventory(&call, "final");
+                "native graph recapture refused"
+            })?;
         // Completion emits a separate record for each output. Recapture can
         // discover an rlib after its rmeta record but before its own record.
         // Wait on the final inventory too; hash each body only after arrival.
@@ -197,6 +203,38 @@ impl<'a> Observation<'a> {
         }
         Some(())
     }
+}
+
+// Optional bounded evidence for refused lookups, never an admission check.
+// In particular, recording a transient entry cannot authorize ignoring it.
+fn trace_inventory(call: &Call<'_>, phase: &str) {
+    if std::env::var_os("SAIL_SHIPPED_TRACE").is_none() {
+        return;
+    }
+    let entries: Vec<_> = std::fs::read_dir(&call.out_dir)
+        .into_iter()
+        .flatten()
+        .take(256)
+        .map(|entry| match entry {
+            Ok(entry) => serde_json::json!({
+                "name": entry.file_name(),
+                "regular": entry.file_type().ok().map(|kind|kind.is_file()),
+                "directory": entry.file_type().ok().map(|kind|kind.is_dir()),
+                "symlink": entry.file_type().ok().map(|kind|kind.is_symlink()),
+                "size": entry.metadata().ok().map(|metadata|metadata.len()),
+            }),
+            Err(error) => serde_json::json!({"error":error.to_string()}),
+        })
+        .collect();
+    trace(
+        call.arguments,
+        &serde_json::json!({
+            "event":"native-snapshot-refusal-inventory", "phase":phase,
+            "directory":call.out_dir,
+            "canonical":call.out_dir.canonicalize().ok(),
+            "entries":entries,"entry_limit":256,
+        }),
+    );
 }
 
 fn await_graph_records(call: &Call<'_>, graph: &Snapshot) -> bool {
