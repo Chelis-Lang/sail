@@ -305,7 +305,7 @@ costs remain part of the candidate total.
 python3 -B native/sail-live-prefix/test-owned-wait4.py
 python3 -B native/sail-live-prefix/test-kernel-owner.py
 python3 -B native/sail-live-prefix/test-kernel-real-driver.py
-# Native Linux only; all ten controls must pass before either real dataset:
+# Native Linux only; all eleven controls must pass before either real dataset:
 python3 -B native/sail-live-prefix/test-kernel-owner-native.py \
   --z3 PINNED_Z3 --out NEW_NATIVE_CONTROLS
 python3 -B native/sail-live-prefix/run-real.py \
@@ -331,3 +331,10 @@ signal/wait or automatic `Popen` destructor waiter is used in this error path.
 The mandatory native controls include both an actual descriptor-based reap
 and an already-reaped error. Actual old/new caller controls retain the initial
 refusal and the corrected cleanup scope separately.
+
+The error-only terminal check retains its actual poll event mask. It requires
+`POLLIN` for the same held descriptor, permits accompanying `POLLHUP`, and
+refuses `POLLERR`, `POLLNVAL`, other events or ambiguous event sets. Native
+closed-descriptor refusal is mandatory alongside the already-reaped positive.
+The API boundary is the documented [Python waitid interface](https://docs.python.org/3.12/library/os.html#os.waitid)
+and [Linux process-descriptor wait](https://man7.org/linux/man-pages/man2/waitpid.2.html).
