@@ -7,7 +7,7 @@ import subprocess
 import sys
 import time
 
-from edit_stream import Commands, Replies, PrefixReplay, ProtocolRefusal, donor_prefix
+from edit_stream import Commands, Replies, PrefixReplay, ProtocolRefusal, donor_prefix, MAX_DEPTH
 
 
 VERSION = b'; donor trivia with (echo "<<DONE>>")\n(get-info :version)\n(echo "<<DONE>>")\n'
@@ -34,6 +34,16 @@ for cut in range(len(data) + 1):
     assert [b['raw'] for b in batches] == [VERSION, CHECK, LATER]
     assert parser.finish() == b''
     assert donor_prefix(batches) == VERSION + CHECK
+# The application framer supports deeply nested literal solver commands without
+# recursive parsing. The prospective cap is finite; the next level still refuses.
+nested = b'(assert ' + b'(' * (MAX_DEPTH - 1) + b'x' + b')' * MAX_DEPTH + b'\n(echo "<<DONE>>")\n'
+for cut in (0, 1, len(nested) // 2, len(nested)):
+    bounded = Commands()
+    framed = bounded.feed(nested[:cut]) + bounded.feed(nested[cut:])
+    assert [batch['raw'] for batch in framed] == [nested]
+    assert bounded.finish() == b''
+refuse('next-application-depth-refuses', lambda: Commands().feed(b'(' * (MAX_DEPTH + 1)))
+rows.append({'name': 'application-depth-exact-boundary', 'maximum_depth': MAX_DEPTH})
 parser = Commands()
 one_byte = [batch for byte in data for batch in parser.feed(bytes([byte]))]
 assert b''.join(b['raw'] for b in one_byte) == data

@@ -276,8 +276,8 @@ The disabled listener/interposer implementation has not qualified an application
 edit workflow. Two native attempts on source `e3a55f0f` passed the genuine 28
 core and 12 kernel-owner controls, then failed their Tiny positive gate. The
 engine frontend was selected accidentally in both; no normal accepted-runtime
-application or IronKV/Anvil edit result follows. Both early/late-failure controls
-and project edits remain unrun. Source-only Rustup context integration retains
+application or IronKV/Anvil edit result follows. Those two attempts ran no early/late-failure controls or project edits.
+The later normal-runtime attempt is indexed below. Rustup context integration retains
 the complete caller environment and maps actual owned solver libraries; default
 loader refusal, reply policy and resource limits remain unchanged.
 
@@ -288,3 +288,14 @@ loader refusal, reply policy and resource limits remain unchanged.
   produced a real wrapper execution, then inherited loader context was refused;
   compiler 101, wrapper 1, no reply. Raw final SHA-256
   `aa316df4289c02fd90d1b3a9266fb753e7e6224c9e0f014151a763fe18581955`.
+
+- 2026-10-17, `bf92e5eb`: normal accepted-runtime Tiny positive, early-failure
+  and late-failure controls passed. A late wrapper exit 7 with compiler exit 0
+  was independently refused. IronKV's ordinary warmup passed, then the donor
+  interposer refused its 128-level command-depth budget; no edit or Anvil ran.
+  The retained partial input reaches depth 132. Earlier complete exact traces
+  reach depth 154 (IronKV) and 90 (Anvil). Raw final SHA-256
+  `d39783ecf6e9bd6ba7b4d37332aa4881b13d6d78d82498c541cd32bfd476ad82`.
+  Prospective application framing permits 1,024 iterative levels, preserving
+  the 16 MiB input/reply budgets and all literal, resource and caller gates.
+  This is workload capacity, not application acceptance.

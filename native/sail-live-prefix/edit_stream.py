@@ -10,7 +10,9 @@ reads that make that parser refuse.
 DONE_COMMAND = b'(echo "<<DONE>>")'
 DONE_REPLY = b'<<DONE>>\n'
 MAX_BYTES = 16 * 1024 * 1024
-MAX_DEPTH = 128
+# Application-only iterative framing: retained IronKV reaches depth 154.
+# This bounds a counter, not Python recursion; byte/command limits still apply.
+MAX_DEPTH = 1024
 MAX_COMMANDS = 100000
 
 

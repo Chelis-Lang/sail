@@ -465,3 +465,14 @@ pilots also selected the engine frontend rather than the intended normal
 accepted runtime, so they do not qualify the accepted fork's application path.
 The next caller must select the normal frontend explicitly and include any
 forced root-only clean in its measured work and literal streams.
+
+The normal-runtime `bf92e5eb` pilot subsequently passed Tiny and its actual
+early/late fault controls. IronKV warmed up normally, then its donor refused
+the application's former depth-128 parser cap before any edited attempt;
+Anvil did not run. Retained exact complete traces reach depths 154 and 90 for
+IronKV and Anvil respectively. Application framing now has an explicit
+1,024-level counter cap, still with 16 MiB input/reply and 100,000-command
+budgets. The parser is iterative; it never recursively traverses the query.
+The next level, incomplete inputs and all byte/resource/identity violations
+still refuse. The failed pilot remains failed; project edit qualification
+remains pending.
