@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Route partial real-project benchmark arms through the public JSON verification
+  API, preserving the requested module. Missing compiler-stage timings are
+  reported as unavailable; whole-project benchmark commands stay unchanged.
+
 - Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;
   version execution and full reads still occur on every handshake. All 50

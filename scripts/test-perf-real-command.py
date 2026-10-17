@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """Check performance harness command selection without building or solving."""
+import contextlib
+import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -80,6 +83,55 @@ class Commands(unittest.TestCase):
         result, output, _, _ = self.run_command("plain", "", "/owned/baseline")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIsNone(output["runtime"])
+
+    def test_partial_sail_modes_use_public_json_before_separator(self):
+        for mode in ["sail", "fork-sail", "incremental"]:
+            with self.subTest(mode=mode):
+                result, output, _, _ = self.run_command(mode, "--verify-module=selected")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                expected = ["verify"] + (["--incremental"] if mode == "incremental" else [])
+                self.assertEqual(output["args"], expected + ["--output", "json", "--lib", "--",
+                                                            "--verify-module=selected", "--time-expanded"])
+
+    def test_whole_sail_modes_keep_original_output_scope(self):
+        for mode in ["sail", "fork-sail", "incremental"]:
+            with self.subTest(mode=mode):
+                result, output, _, _ = self.run_command(mode, "")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("--output", output["args"])
+
+    def test_partial_stage_totals_are_unavailable_instead_of_zero(self):
+        text = Path(__file__).with_name("perf-real.sh").read_text()
+        function = "times_of()" + text.split("times_of()", 1)[1].split("\nresults=", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="sail-perf-times-") as tmp:
+            log = Path(tmp) / "raw.log"
+            log.write_text("total-time: 17 ms\n")
+            for partial, mode, expected in [(1, "sail", ["NA"] * 6),
+                                            (1, "fork-sail", ["NA"] * 6),
+                                            (1, "incremental", ["NA"] * 6),
+                                            (1, "plain", ["17", "0", "0", "0", "0", "0"]),
+                                            (0, "sail", ["17", "0", "0", "0", "0", "0"])]:
+                command = function + '\npartial="$1"; times_of "$2" "$3"'
+                result = subprocess.run(["bash", "-c", command, "bash", str(partial), str(log), mode],
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.split("\t"), expected)
+
+    def test_report_reader_retains_unavailable_stage_values(self):
+        path = Path(__file__).with_name("perf-real-report.py")
+        spec = importlib.util.spec_from_file_location("perf_real_report", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory(prefix="sail-perf-report-") as tmp:
+            row = ["1", "sail", "cold", "1.5", "0", "1", "0", "1", "1", "1", "1", "0"] + ["NA"] * 6 + ["0/0"]
+            (Path(tmp) / "results.tsv").write_text("\t".join(row) + "\n")
+            actual = module.load(tmp)[0]
+            self.assertTrue(all(actual[key] is None for key in module.STAGE_COLS))
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                module.report(tmp)
+            self.assertIn("unavailable", output.getvalue())
+            self.assertIn("1.50", output.getvalue())
 
     def modes(self, catalogue="", explicit="", fork="/owned/fork"):
         text = Path(__file__).with_name("perf-real.sh").read_text()

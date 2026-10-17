@@ -11,6 +11,7 @@ import sys
 COLS = ["round", "mode", "phase", "secs", "exit", "sessions", "started", "served",
         "hellos", "gets", "hits", "puts", "total_ms", "rust_ms", "vir_ms",
         "vcrate_ms", "vsum_ms", "smt_ms", "load"]
+STAGE_COLS = COLS[12:18]
 MODE_ORDER = ["plain", "sail", "incremental", "fork-plain", "fork-sail", "fork-shim"]
 LABEL = {"plain": "plain", "sail": "sail", "incremental": "sail --incr",
          "fork-plain": "fork plain", "fork-sail": "fork sail", "fork-shim": "fork shim"}
@@ -33,7 +34,7 @@ def load(out):
                 continue
             r = dict(zip(COLS, parts))
             for k in COLS[3:-1]:
-                r[k] = float(r[k])
+                r[k] = None if k in STAGE_COLS and r[k] == "NA" else float(r[k])
             rows.append(r)
     return rows
 
@@ -93,6 +94,8 @@ def report(out):
                 cells.append(f"{med([r['puts'] for r in rs]):.0f}")
             print(f"| {p} | " + " | ".join(cells) + " |")
 
+    if any(r[k] is None for r in rows for k in STAGE_COLS):
+        print("\nPartial Sail JSON reports omit compiler-stage totals; unavailable fields are not zero timings.")
     print("\nVerus's own time (--time-expanded), median, summed over the crates verified in"
           " the run. Solver share = smt-run / verify-time (both summed over threads);"
           " solver wall is verify-crate wall times that share; ceiling = wall / (wall -"
@@ -102,7 +105,13 @@ def report(out):
     for m in modes:
         for p in phases:
             rs = by.get((m, p), [])
-            if not rs or not any(r["total_ms"] for r in rs):
+            if not rs:
+                continue
+            if any(r[k] is None for r in rs for k in STAGE_COLS):
+                wall = med([r["secs"] for r in rs])
+                print(f"| {LABEL[m]} | {p} | {fmt(wall)} | " + " | ".join(["unavailable"] * 7) + " |")
+                continue
+            if not any(r["total_ms"] for r in rs):
                 continue
             g = lambda k: med([r[k] for r in rs]) / 1000.0
             share = med([r["smt_ms"] / r["vsum_ms"] for r in rs if r["vsum_ms"]] or [0])
