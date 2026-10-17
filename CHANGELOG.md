@@ -11,6 +11,10 @@ semantic versioning once the API is published.
 
 - Experimental vstd reuse: compile admitted macOS proc macros with a stable,
   explicitly keyed install name; native artifact comparisons remain exact.
+- Experimental portable vstd recording/serving also remaps freshly compiled
+  registry prerequisites to the existing virtual source base. This prevents
+  imported builtin definition spans from retaining the recording machine's
+  registry path; machine-local reuse and default verification are unchanged.
 - Add a content-bound instant-revert implementation (#163), joining actual
   native source certificates, private dependency graphs and checked output
   restoration. Native small/Vest ABA pass; performance and default qualification

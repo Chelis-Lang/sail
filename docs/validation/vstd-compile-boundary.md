@@ -12,6 +12,40 @@
 | Literal query comparison | Two separate cold controls match all 366 literal input streams / 2,061 checks each; this is not reuse or stock acceptance |
 | Selection | Disabled by default; neither release nor default replacement qualified; v1 remains quarantined |
 
+## Portable prerequisite source names
+
+Portable Record/Serve now passes the existing registry-to-virtual source mapping
+to each freshly compiled admitted native prerequisite as well as the recording
+vstd invocation. The native key binds the added options using the existing
+physical-root substitution; the compiler receives the literal mapping. The
+successful compiler observation still requires actual local source bytes and
+checksums, not a virtual filename. Machine-local mode adds no remap, and
+user-supplied remap flags remain unsupported for native provenance. No saved VIR,
+library or solver input is rewritten.
+
+The preceding changed-root Mac probe refused recording because vstd VIR retained
+the physical registry name. A bounded genuine `e5365c05` export reproduction
+isolated 366 imported `verus_builtin` definition-span names. Remapping only the
+vstd consumer left all 366 unchanged. Freshly compiling builtin with the mapping,
+then exporting the same vstd source, reduced physical registry occurrences to
+zero (139,078 virtual occurrences became 139,444). Both native compiles and both
+exports succeeded; actual runtime files were unchanged. These `--no-verify`
+controls establish filename behavior only, not proof reuse or portable first-use
+acceptance. Record/Serve still needs a successful changed-root whole-project
+probe, source authority and exact native-byte checks; default selection remains
+unqualified.
+
+The external native/export result SHA-256 is
+`380b37f97acdcc56694373d7adf8294a2e23fe5349e42f49785f1fcf6cea4d21`;
+the actual remapped native SourceMap/local-byte audit is
+`c5f91cbdbd9f444bb64d7123cb72ca3fbf411f017d913d10c649769ba472abbb`.
+All 37 shipped-boundary unit tests and workspace all-target clippy pass on Mac;
+this is not a full host or native integration gate for the source successor.
+
+Earlier attempts remain failures: the first Mac probe stopped on an unsupported
+stock-reader field, and its corrected successor refused registry-bearing VIR
+before any Serve invocation. Neither establishes a portable hit or safe miss.
+
 ## Product boundary
 
 `SAIL_SHIPPED_RECORD` records an experimental bundle; `SAIL_SHIPPED_DEPS`

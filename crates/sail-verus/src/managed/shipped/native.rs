@@ -217,14 +217,47 @@ impl<'a> Observation<'a> {
 
 /// macOS otherwise records the absolute output path as `LC_ID_DYLIB`. Give
 /// admitted proc macros their exact Cargo output basename as the install name
-/// at compilation, before hashing any artifact. No stored byte is rewritten.
+/// at compilation, before hashing any artifact. Portable recording and serving
+/// also name freshly compiled registry sources by the existing virtual base:
+/// rustc otherwise exports definition spans from builtin metadata with physical
+/// registry filenames. No stored byte is rewritten.
 fn bind_compiler_options(call: &mut Call<'_>) -> Option<Vec<String>> {
-    let options = compiler_options(
+    let mut options = compiler_options(
         std::env::consts::OS,
         &super::argument_value(&call.keyed_args, "--crate-type")?,
         &call.stem,
     )?;
-    call.key = compiler_option_key(&call.key, &options)?;
+    options.extend(registry_source_options(
+        &call.plan.mode,
+        &call.plan.registry,
+        &call.plan.virtual_base,
+    )?);
+    // Bind every added option, with the same physical-root substitution used
+    // by the rest of this portable invocation key. The actual child receives
+    // the literal options above. Machine-local options and keys are unchanged.
+    let keyed_options: Vec<_> = options
+        .iter()
+        .map(|option| call.normalizer.normalize(option))
+        .collect();
+    call.key = compiler_option_key(&call.key, &keyed_options)?;
+    Some(options)
+}
+
+fn registry_source_options(
+    mode: &super::Mode,
+    registry: &Path,
+    virtual_base: &str,
+) -> Option<Vec<String>> {
+    if matches!(mode, super::Mode::MachineLocal { .. }) {
+        return Some(Vec::new());
+    }
+    let mut options = Vec::new();
+    for directory in super::registry_forms(registry) {
+        options.extend([
+            "--remap-path-prefix".to_owned(),
+            format!("{}={virtual_base}", directory.to_str()?),
+        ]);
+    }
     Some(options)
 }
 
@@ -679,6 +712,61 @@ mod tests {
     use super::*;
 
     #[test]
+    fn portable_native_remap_is_mode_scoped_and_part_of_the_key()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let first = Path::new("/sail-first-registry");
+        let second = Path::new("/sail-second-registry");
+        let options = |mode, root| {
+            registry_source_options(mode, root, "/rustc-dev/pinned")
+                .ok_or("UTF-8 portable source options")
+        };
+        let record = super::super::Mode::Record {
+            out: "record".into(),
+        };
+        let serve = super::super::Mode::Serve {
+            bundle: "serve".into(),
+        };
+        let local = super::super::Mode::MachineLocal {
+            out: "local".into(),
+        };
+        let first_options = options(&record, first)?;
+        assert_eq!(first_options, options(&serve, first)?);
+        assert_eq!(
+            first_options,
+            [
+                "--remap-path-prefix",
+                "/sail-first-registry=/rustc-dev/pinned"
+            ]
+        );
+        assert_eq!(options(&local, first)?, Vec::<String>::new());
+        let keyed = |root: &Path, values: &[String]| {
+            let normalizer = super::super::Normalizer {
+                pairs: vec![(root.to_string_lossy().into_owned(), super::super::REGISTRY)],
+            };
+            values
+                .iter()
+                .map(|value| normalizer.normalize(value))
+                .collect::<Vec<_>>()
+        };
+        let normalized = keyed(first, &first_options);
+        assert_eq!(normalized, keyed(second, &options(&serve, second)?));
+        let key = compiler_option_key("inputs", &normalized).ok_or("option key")?;
+        assert_ne!(key, "inputs");
+        assert_ne!(
+            Some(key),
+            compiler_option_key(
+                "inputs",
+                &keyed(
+                    first,
+                    &registry_source_options(&record, first, "/rustc-dev/other",)
+                        .ok_or("other virtual base")?
+                )
+            )
+        );
+        Ok(())
+    }
+
+    #[test]
     fn native_install_names_are_scoped_and_bound_to_literal_compiler_options()
     -> Result<(), Box<dyn std::error::Error>> {
         let options = compiler_options("macos", "proc-macro", "example-abcd")
@@ -774,6 +862,8 @@ mod tests {
         }
         for override_args in [
             vec!["--sysroot", "/foreign"],
+            vec!["--remap-path-prefix", "/registry=/foreign"],
+            vec!["--remap-path-prefix=/registry=/foreign"],
             vec!["-Z", "codegen-backend=/foreign/backend.so"],
             vec!["-C", "linker=/foreign/cc"],
             vec!["--emit=link=/foreign/output"],
