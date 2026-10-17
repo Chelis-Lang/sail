@@ -20,7 +20,8 @@ semantic versioning once the API is published.
   guard's enclosing failure. Selection takes effect with this pin change.
 - Prototype vstd-only compiler-boundary reuse after genuine native prerequisite
   compilation (#161). This is explicitly enabled research, remains unqualified,
-  and does not reenable the native-artifact dependency store. Damaged entries
+  and does not reenable the native-artifact dependency store. Native inputs use
+  verified private copies; older unsnapshotted entries are refused. Damaged entries
   fall back silently; the optional research trace retains the refusal reason.
 
 - Recompute solver identity at every daemon handshake: equal executable path,

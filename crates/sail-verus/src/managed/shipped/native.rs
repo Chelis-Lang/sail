@@ -425,7 +425,7 @@ fn externs_ready(call: &Call<'_>, report: bool) -> bool {
     })
 }
 
-fn external(call: &Call<'_>, argument: &str) -> Option<(String, PathBuf)> {
+pub(super) fn external(call: &Call<'_>, argument: &str) -> Option<(String, PathBuf)> {
     let argument = call.normalizer.localize(argument);
     let argument = argument.strip_prefix("--extern=").unwrap_or(&argument);
     let (name, path) = argument.split_once('=')?;

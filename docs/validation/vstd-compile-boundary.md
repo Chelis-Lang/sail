@@ -17,7 +17,7 @@
 `SAIL_SHIPPED_RECORD` records an experimental bundle; `SAIL_SHIPPED_DEPS`
 serves one. `SAIL_VSTD_BOUNDARY_LOCAL` instead uses a separate machine-local
 bundle bound to both literal and canonical registry roots. All require the
-research flag. Local mode never remaps VIR or source paths. Schema 7 and the
+research flag. Local mode never remaps VIR or source paths. Schema 8 and the
 bundle kind reject old all-unit bundles. Focused, engine and loader-variable
 setups use the ordinary compiler path. Changed, missing or unsupported inputs
 miss safely. No ordinary CLI, runtime pin or release asset is selected here.
@@ -204,3 +204,46 @@ consumption control remains required; unrestricted hostile local cache writers
 are outside the trusted machine-local cache model. This is an unresolved
 qualification boundary, not a demonstrated wrong verdict or a default-mode
 acceptance claim. Portable recording and serving remain separately unqualified.
+
+
+## Private native inputs: implementation, native qualification pending
+
+The native substitution control in [#222](https://github.com/Chelis-Lang/sail/issues/222)
+uses Sail fixture `c0cb340b` (product `5bd9ca39`) and the genuine `0fe2bfb3`
+runtime. Clean A completes with 1,871 vstd function records. Replacing the
+builtin-macro output after keying and restoring A after the child exits produces
+a different vstd metadata/VIR pair under the same schema-7 key. The vstd child
+exits zero and publishes complete separate compiler-read phases; the unchanged
+requested project then fails to import vstd with E0463. The complete units and
+all artifact digests verify. The raw archive is
+`5ee394306cac9f9c11f9e90deb8ff8a1010ea5eb61e9aa62c123dac83ae1dd39`.
+
+The extra proof-canary assertion did not fire: the fixture instrumented
+`verus_keep_ghost`, while this source uses the ordinary `verus` entry. That
+control remains failed, and no clean consumer or wrong-verdict claim follows.
+Independent review treats the controlled metadata failure as sufficient reason
+for protective copies and a differential repeat, not as successful canary or
+replay qualification. The preceding coordination attempt stopped before input
+mutation on the actual Unix argument encoding; archive
+`45ce80508a452fe9f267516c60c04222458347c35acc2f58dcb0e4c70ed00fca`.
+
+The successor copies exactly the three admitted direct native artifacts into a
+fresh owner-only per-invocation directory, checks their bytes against successful
+producer provenance, and gives the actual compiler those private paths. It keeps
+basenames, source paths and all other compiler arguments. Copies survive through
+publication and are removed with the call. Original source/provenance rechecks
+remain; copy failures decline the cache silently. Schema 8 rejects earlier
+unsnapshotted records. Additional externs, adjacent VIR and foreign native
+metadata graphs remain refused.
+
+The actual Linux macro libraries import only libgcc, libc and the ELF loader,
+with no target-library dynamic dependencies or search paths; builtin has no
+non-sysroot dependencies. This closes the recorded three-input shape, not
+arbitrary native graphs. macOS loader coverage, protected substitution, literal
+output/query parity and full native acceptance remain pending. The earlier
+4.27× measurement does not qualify this successor's performance.
+
+The private-copy successor passes 32 focused boundary tests and all-target
+`sail-verus` clippy on macOS. These include original-path substitution, private
+copy damage, missing input binding, symlink refusal and rejection of the older
+schema without placing outputs. They are source checks, not native acceptance.

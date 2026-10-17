@@ -7,7 +7,7 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 7 cannot accept the old all-unit native-artifact bundles. It neither
+//! schema 8 cannot accept earlier entries without private native inputs. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
 //! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
@@ -15,6 +15,7 @@
 mod admission;
 mod compiler;
 pub(crate) mod native;
+mod snapshot;
 
 use super::files::digest;
 use crate::{Error, Result};
@@ -27,7 +28,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 7;
+const SCHEMA: u32 = 8;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";
@@ -686,6 +687,7 @@ pub(crate) struct Call<'a> {
     source_tree: Option<BTreeMap<String, String>>,
     compiler_observation: Option<compiler::Observation>,
     compiler_reads: Option<compiler::Document>,
+    native_snapshot: Option<snapshot::Snapshot>,
 }
 
 /// Observe every package file, including files that dep-info does not yet
@@ -825,7 +827,7 @@ impl<'a> Call<'a> {
         if !plan.closure.as_ref()?.check_sources() {
             return None;
         }
-        let call = Self::vstd_invocation(plan, args, vars)?;
+        let mut call = Self::vstd_invocation(plan, args, vars)?;
         if !plan.closure.as_ref()?.vstd_unit(&call.vars, args) {
             call.trace("actual vstd compiler features differ from the admitted source closure");
             return None;
@@ -834,6 +836,11 @@ impl<'a> Call<'a> {
             call.trace("native dependencies lack this run's successful compiler provenance");
             return None;
         }
+        let Some(snapshot) = snapshot::Snapshot::capture(&call) else {
+            call.trace("native input bytes could not be privately captured");
+            return None;
+        };
+        call.native_snapshot = Some(snapshot);
         Some(call)
     }
 
@@ -984,7 +991,23 @@ impl<'a> Call<'a> {
             source_tree: None,
             compiler_observation: None,
             compiler_reads: None,
+            native_snapshot: None,
         })
+    }
+
+    /// Actual compiler arguments use the already verified private input bytes.
+    pub(crate) fn compiler_arguments(&self) -> &[OsString] {
+        self.native_snapshot
+            .as_ref()
+            .map_or(self.arguments, snapshot::Snapshot::arguments)
+    }
+
+    fn snapshot_intact(&self) -> bool {
+        self.plan.closure.is_none()
+            || self
+                .native_snapshot
+                .as_ref()
+                .is_some_and(snapshot::Snapshot::intact)
     }
 
     /// Request observations only for this actual admitted compiler invocation.
@@ -1156,6 +1179,9 @@ impl<'a> Call<'a> {
 
     /// Writes the entry into `staging`.
     fn stage(&self, staging: &Path, stdout: &str, stderr: &str) -> std::result::Result<(), String> {
+        if !self.snapshot_intact() {
+            return Err("private native inputs changed before publication".to_owned());
+        }
         if self.plan.closure.is_some() && !native::externs_are_fresh(self) {
             return Err("native compiler provenance changed before publication".to_owned());
         }
@@ -1253,6 +1279,10 @@ impl<'a> Call<'a> {
     /// damaged data, is a silent miss followed by normal compilation. The
     /// optional research trace retains the reason without changing diagnostics.
     pub(crate) fn serve(&self) -> Option<Replay> {
+        if !self.snapshot_intact() {
+            self.trace("private native inputs unavailable");
+            return None;
+        }
         let bundle = match &self.plan.mode {
             Mode::Serve { bundle } => bundle,
             Mode::MachineLocal { out } => out,
@@ -2229,6 +2259,31 @@ mod tests {
         // Cargo's implicit proc_macro is provided by the pinned compiler.
         machine.args.push("--extern=proc_macro".into());
         assert!(machine.call(false).is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn unsnapshotted_schema_entries_never_place_outputs() -> TestResult {
+        let build = Machine::new("old-schema-build", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let call = build.call(false).ok_or("no call")?;
+        build.compile()?;
+        call.record(b"", build.stderr().as_bytes(), Some(0));
+        let out = build.out().ok_or("mode")?;
+        let path = out.join(UNITS).join(&call.key).join(UNIT);
+        let mut document: Value = serde_json::from_slice(&std::fs::read(&path)?)?;
+        document["schema"] = Value::from(SCHEMA - 1);
+        std::fs::write(path, serde_json::to_vec(&document)?)?;
+        let user = Machine::new("old-schema-user", |_| Mode::Serve { bundle: out })?;
+        assert!(user.call(false).ok_or("no call")?.serve().is_none());
+        assert!(
+            !user
+                .plan
+                .target
+                .join("debug/deps/libdemo-abc.rlib")
+                .exists()
+        );
         Ok(())
     }
 
