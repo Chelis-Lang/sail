@@ -115,9 +115,9 @@ class Broker:
     driver chooses its explicit edit-start or first-session-claim readiness
     boundary. This authority fixes ordinal0 before reading request bytes.
     """
-    def __init__(self, root, attempt, token, claim_factory, deadline_unix):
+    def __init__(self, root, attempt, token, claim_factory, deadline_unix, *, session_completed=None):
         if (not re.fullmatch('[a-z0-9-]{1,64}', attempt) or len(token) < 32 or
-                not 0 < deadline_unix - time.time() <= 300):
+                not 0 < deadline_unix - time.time() <= 485):
             raise ProtocolRefusal('bounded private attempt required')
         self.root = Path(root)
         self.root.mkdir(mode=0o700, exist_ok=False)
@@ -126,6 +126,7 @@ class Broker:
         self.path = self.root / 'broker.sock'
         self.attempt, self.token = attempt, token
         self.factory, self.deadline = claim_factory, deadline_unix
+        self.session_completed = session_completed
         self.rows, self.workers, self.connections = [], [], []
         self.lock = threading.Lock()
         self.stopping = threading.Event()
@@ -163,7 +164,7 @@ class Broker:
     def _session(self, connection, row):
         owned = None
         try:
-            connection.settimeout(max(.001, self.deadline - time.time()))
+            connection.settimeout(min(300, max(.001, self.deadline - time.time())))
             actual_peer = peer(connection)
             row['peer'] = actual_peer
             kind, raw = receive(connection)
@@ -206,6 +207,13 @@ class Broker:
                 owned.close()
         finally:
             connection.close()
+            if self.session_completed is not None:
+                try:
+                    self.session_completed(row)
+                except (OSError, ValueError, RuntimeError) as error:
+                    row['passed'] = False
+                    row['error'] = 'completed-session retention: ' + str(error)
+                    row['_spill_error'] = row['error']
 
     def finish(self):
         """Stop accepts, join all known starts/finishes/brokers, never verify."""

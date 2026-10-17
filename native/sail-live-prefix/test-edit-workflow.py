@@ -117,7 +117,8 @@ def explicit_native_doubles(root):
 rows = []
 for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
              'pre-first-record', 'context-miss', 'wrapper-wrong-args',
-             'claim-ready-during-frontend', 'claim-unready-no-promotion'):
+             'claim-ready-during-frontend', 'claim-unready-no-promotion',
+             'spill-write-failure', 'spill-mutation', 'spill-unclosed'):
     with tempfile.TemporaryDirectory(prefix='sle-', dir='/tmp') as td:
         root = Path(td)
         solver, caller, source = [root / name for name in ('solver', 'caller.py', 'project.rs')]
@@ -132,14 +133,51 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
                   'pre-first-record': b'BASE\n', 'context-miss': b'BASE\n// context change\n',
                   'wrapper-wrong-args': b'BASE\n',
                   'claim-ready-during-frontend': b'BASE\n// actual caller frontend delay\n',
-                  'claim-unready-no-promotion': b'BASE\n// two actual caller sessions\n'}[case]
+                  'claim-unready-no-promotion': b'BASE\n// two actual caller sessions\n',
+                  'spill-write-failure': b'BASE\n// spill failure\n',
+                  'spill-mutation': b'BASE\n// spill mutation\n',
+                  'spill-unclosed': b'BASE\n// unclosed spill\n'}[case]
         with patch.dict(os.environ, {'SAIL_TEST_EDIT_CASE': case}), explicit_native_doubles(root):
             workflow = edit_workflow.Workflow(root / 'out', solver,
                 hashlib.sha256(solver.read_bytes()).hexdigest(),
                 [sys.executable, '-B', str(caller)], root,
                 edit_delay=0 if case == 'unready' or case.startswith('claim-') else .2, attempt_timeout=5,
                 readiness_boundary='first-session-claim' if case.startswith('claim-') else 'edit-start')
-            result = workflow.run(source, hashlib.sha256(original).hexdigest(), edited)
+            original_spill = workflow.spill_session
+            spill_observations = []
+            def observed_spill(directory, row):
+                claims = row.get('claims', [])
+                if case == 'spill-unclosed' and claims:
+                    claims[0].closed = False
+                    try:
+                        original_spill(directory, row)
+                    finally:
+                        claims[0].closed = True
+                    raise AssertionError('unclosed claim was accepted')
+                original_spill(directory, row)
+                assert 'input' not in row and 'output' not in row
+                assert all(not c.input and not c.child_input for c in claims)
+                spill_observations.append(row['ordinal'])
+                if case == 'spill-mutation' and 'input' in row['_stored_streams']:
+                    path = workflow.output / row['_stored_streams']['input']['path']
+                    raw = path.read_bytes()
+                    path.write_bytes(bytes([raw[0] ^ 1]) + raw[1:])
+            workflow.spill_session = observed_spill
+            real_open = Path.open
+            class PartialWrite:
+                def __init__(self, stream): self.stream = stream
+                def __enter__(self): return self
+                def __exit__(self, *args): return self.stream.__exit__(*args)
+                def write(self, data):
+                    self.stream.write(data[:3])
+                    raise OSError('actual controlled partial save')
+            def controlled_open(path, *args, **kwargs):
+                actual = real_open(path, *args, **kwargs)
+                if case == 'spill-write-failure' and path.name == 'session-0.input' and args == ('xb',):
+                    return PartialWrite(actual)
+                return actual
+            with patch.object(Path, 'open', controlled_open):
+                result = workflow.run(source, hashlib.sha256(original).hexdigest(), edited)
         assert source.read_bytes() == original and result['source_restored'], result
         actual = json.loads((root / 'out/result.json').read_bytes())
         assert edit_transport.canonical(actual) == edit_transport.canonical(result)
@@ -148,11 +186,21 @@ for case in ('same-prefix', 'unready', 'diverge-after-reply', 'late-exit7',
         assert not list((root/'out').rglob('*.sock')), 'owned sockets must not survive archival'
         assert 'PENDING' in result['coverage']
         attempts = result['attempts']
-        if case in ('pre-first-record', 'wrapper-wrong-args'):
+        assert all(a['whole_attempt_wall_seconds'] >= a['compiler']['wall_seconds'] for a in attempts)
+        if case in ('pre-first-record', 'wrapper-wrong-args') or case.startswith('spill-'):
             assert len(attempts) == 1 and result['driver_exit'] == 1
             assert attempts[0]['compiler']['exit'] == 0
             assert result['errors']
-            assert not attempts[0]['sessions']
+            if case.startswith('spill-'):
+                assert attempts[0]['sessions']
+                assert result['errors']
+                if case == 'spill-write-failure':
+                    assert (root / 'out/donor/session-0.input').stat().st_size == 3
+                    assert (root / 'out/donor/session-0.unspilled-input').stat().st_size > 3
+                if case == 'spill-mutation':
+                    assert any('retained stream' in e for e in result['errors'])
+            else:
+                assert not attempts[0]['sessions']
             # Caller actually throws before record; no absence==success claim.
         else:
             assert not result['errors'], result
@@ -247,4 +295,57 @@ with tempfile.TemporaryDirectory(prefix='sle-active-', dir='/tmp') as td:
     assert outcome['socket_removed'] and not outcome['passed']
 rows.append(dict(name='actual-accept-active16-next-refused', passed=True,
                  scope='16 owned blocked thread fixtures + one real Unix accept; no solver qualification'))
+with tempfile.TemporaryDirectory(prefix='sle-raw-', dir='/tmp') as td:
+    root = Path(td)
+    solver = root / 'solver'
+    solver.write_text('#!' + sys.executable + '\nraise SystemExit(0)\n')
+    solver.chmod(0o700)
+    workflow = edit_workflow.Workflow(root / 'out', solver,
+        hashlib.sha256(solver.read_bytes()).hexdigest(), [str(solver)], root,
+        attempt_timeout=480)
+    with explicit_native_doubles(root):
+        pool = workflow.pool(dict(argv=[workflow.solver, '-smt2', '-in'], cwd=str(root.resolve()), environment={}))
+        try:
+            assert pool.run_timeout == 270 and workflow.timeout == 480
+        finally:
+            pool.close()
+    rows.append(dict(name='compiler480-independent-solver270', passed=True))
+    barrier = threading.Barrier(3)
+    failures, captures = [], []
+    def write_raw(name):
+        barrier.wait(timeout=2)
+        try:
+            captures.append(workflow.raw(workflow.output, name, b'x' * 10))
+        except ValueError as error:
+            failures.append(str(error))
+    with patch.object(edit_workflow, 'MAX_RAW', 15):
+        workers = [threading.Thread(target=write_raw, args=(str(i),)) for i in range(2)]
+        for worker in workers: worker.start()
+        barrier.wait(timeout=2)
+        for worker in workers: worker.join(timeout=2)
+        assert all(not worker.is_alive() for worker in workers)
+        assert len(captures) == len(failures) == 1 and workflow.copied == 10
+    rows.append(dict(name='two-owned-thread-raw-reservation', passed=True, bytes_reserved=workflow.copied))
+    workflow.copied = 0  # Explicit isolated accounting fixture, not a production refund.
+    real_open = Path.open
+    def partial_open(path, *args, **kwargs):
+        actual = real_open(path, *args, **kwargs)
+        return PartialWrite(actual) if path.name == 'partial' and args == ('xb',) else actual
+    with patch.object(edit_workflow, 'MAX_RAW', 15), patch.object(Path, 'open', partial_open):
+        try:
+            workflow.raw(workflow.output, 'partial', b'x' * 10)
+        except OSError:
+            pass
+        else:
+            raise AssertionError('partial save unexpectedly passed')
+        assert workflow.copied == 10
+        try:
+            workflow.raw(workflow.output, 'next', b'y' * 10)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('failed save reservation was refunded')
+    assert (workflow.output / 'partial').stat().st_size == 3
+    assert not (workflow.output / 'next').exists()
+    rows.append(dict(name='actual-partial-save-reservation-not-refunded', passed=True, bytes_reserved=10))
 print(json.dumps(dict(passed=True, scope=__doc__, rows=rows), indent=2))

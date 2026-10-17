@@ -488,3 +488,29 @@ Total application sessions are capped at 512; active sessions remain capped at
 16, plus the one prepared child. Global raw, memory, wall and per-child limits
 remain unchanged. Actual boundary controls use owned Unix connections and
 explicit prior-row/thread fixtures, not a claim of 512 native solver runs.
+
+The prospective application budget permits up to 480 seconds for one whole
+compiler attempt, enclosing many sequential sessions. Each actual solver keeps
+its existing run bound of at most 270 seconds and the existing preparation/TTL
+rules; each broker connection is at most 300 seconds. A larger compiler bound
+never extends a child. Native project phases reserve 2,700 seconds each:
+600 for ordinary warmup, four possible 480-second compiler attempts, and 180
+for bookkeeping. Both remaining phases plus final reserve must fit the original
+parent work deadline before either starts; otherwise the queue refuses.
+
+Completed-session caller and actual child inputs are saved to owned SHA-bound
+files, read back and checked before their duplicate buffers are released. Exact
+byte-equal inputs can reference one retained file; differing or failed inputs
+keep separate records. The global raw reservation is locked across workers and
+is charged before writes, including failed partial writes. Live/unclosed claims
+cannot release their buffers, and changed retained files refuse the workflow.
+The donor prefix is read from its verified retained bytes. No captured input is
+silently dropped to fit the total-session capacity.
+
+`whole_attempt_wall_seconds` includes broker completion, retention and census
+work beyond the compiler's own wall timer. `edited_to_result_wall_seconds`
+starts at the actual source write and includes the fixed launch schedule,
+background cancellation/completion and any required whole retry. Process self
+and waited-child CPU observations are separate window counters; overlapping
+preparation can contribute, and these counters must not be added to the
+individual child accounting as disjoint whole-pipeline CPU.

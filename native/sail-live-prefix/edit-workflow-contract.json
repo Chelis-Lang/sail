@@ -30,12 +30,15 @@
   "coverage": "Private start/finish records join actual peer-authenticated broker sessions. Not an exhaustive spawn census: pre-first-record/exec failure remains PENDING until actual Verus controls and independent owned process tracing qualify it.",
   "application_entry": "edit-workflow.py always returns nonzero application_exit=1/application_acceptance=false while coverage is pending. Separate registered-protocol driver_exit may pass; neither result is verified or selected.",
   "driver_bounds": {
-    "attempt_seconds": 270,
+    "attempt_seconds": 480,
     "fixed_edit_delay_seconds": 60,
     "maximum_registered_sessions": 512,
     "maximum_active_sessions": 16,
     "raw_bytes": 1073741824,
-    "whole_fresh_retries": 1
+    "whole_fresh_retries": 1,
+    "connection_seconds": 300,
+    "solver_run_seconds": 270,
+    "scope": "Compiler/broker attempts enclose multiple sequential sessions. Solver startup/run/TTL bounds remain independently enforced; no live extension."
   },
   "fresh_control": "Always run a separate whole fresh edited compiler invocation after any required whole fresh retry, completing cancelled background work first. Retain both raw compiler streams literally and refuse mismatches."
 }

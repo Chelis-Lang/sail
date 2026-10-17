@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import resource
 import selectors
 import signal
 import stat
@@ -105,12 +106,23 @@ def compiler(argv, cwd, environment, timeout):
                 accounting=accounting, **{k: bytes(v) for k, v in streams.items()})
 
 
+def cpu_snapshot():
+    return (resource.getrusage(resource.RUSAGE_SELF), resource.getrusage(resource.RUSAGE_CHILDREN))
+
+
+def cpu_delta(before):
+    after = cpu_snapshot()
+    return {name: dict(user_seconds=end.ru_utime - start.ru_utime,
+                      system_seconds=end.ru_stime - start.ru_stime)
+            for name, start, end in zip(('driver_self', 'driver_waited_children'), before, after)}
+
+
 class Workflow:
     """One donor, one scheduled edit and at most one whole fresh retry."""
     def __init__(self, output, solver, solver_sha256, argv, cwd, *,
                  edit_delay=0, attempt_timeout=120, rustup_loader_target=None,
                  readiness_boundary='edit-start'):
-        if (not 0 <= edit_delay <= 60 or not 0 < attempt_timeout <= 270 or
+        if (not 0 <= edit_delay <= 60 or not 0 < attempt_timeout <= 480 or
                 not argv or not all(isinstance(x, str) for x in argv) or
                 readiness_boundary not in ('edit-start', 'first-session-claim')):
             raise ProtocolRefusal('fixed bounded workflow required')
@@ -127,6 +139,7 @@ class Workflow:
         self.environment = dict(os.environ, VERUS_Z3_PATH=str(HERE / 'edit-interposer.py'),
                                 SAIL_LIVE_PREFIX_EDIT_CONFIG=str(self.config))
         self.copied = 0
+        self.raw_lock = threading.Lock()
         self.pools = []
         self.attempts = []
         self.claimed_preparation = False
@@ -137,7 +150,7 @@ class Workflow:
         if binding['argv'] != [self.solver, '-smt2', '-in']:
             raise ProtocolRefusal('actual solver argv differs')
         pool = OneUsePool(self.solver, self.sha256, slots=1, max_bytes=1024**3,
-                          ttl=300, run_timeout=self.timeout,
+                          ttl=300, run_timeout=min(self.timeout, 270),
                           environment=binding['environment'], cwd=binding['cwd'],
                           experiment_numeric_time_only=True,
                           experiment_kernel_accounting_owner=True,
@@ -150,17 +163,81 @@ class Workflow:
         return DirectClaim(self.pool(binding, role))
 
     def raw(self, directory, name, data):
-        if not isinstance(data, bytes) or len(data) > MAX_RAW - self.copied:
-            raise ProtocolRefusal('whole workflow raw cap; no successful report')
-        self.copied += len(data)  # Reserve before write; no refund on failure.
+        with self.raw_lock:
+            if not isinstance(data, bytes) or len(data) > MAX_RAW - self.copied:
+                raise ProtocolRefusal('whole workflow raw cap; no successful report')
+            self.copied += len(data)  # Reserve before write; no refund on failure.
         path = directory / name
         with path.open('xb') as stream:
-            stream.write(data)
+            if stream.write(data) != len(data):
+                raise ProtocolRefusal('incomplete owned raw write')
         return dict(path=str(path.relative_to(self.output)), bytes=len(data),
                     sha256=hashlib.sha256(data).hexdigest())
 
+    def retained(self, record):
+        """Read an owned retained stream with its exact bytes/size/hash binding."""
+        path = self.output / record['path']
+        if not path.resolve().is_relative_to(self.output.resolve(strict=True)) or record['bytes'] > MAX_BYTES:
+            raise ProtocolRefusal('retained stream path/size refused')
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, 'rb') as stream:
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode) or before.st_size != record['bytes']:
+                raise ProtocolRefusal('retained stream identity/size refused')
+            data = stream.read(MAX_BYTES + 1)
+            after = os.fstat(stream.fileno())
+            if (len(data) != record['bytes'] or hashlib.sha256(data).hexdigest() != record['sha256']
+                    or (before.st_dev, before.st_ino, before.st_size, before.st_ctime_ns, before.st_mtime_ns)
+                    != (after.st_dev, after.st_ino, after.st_size, after.st_ctime_ns, after.st_mtime_ns)):
+                raise ProtocolRefusal('retained stream changed')
+        return data
+
+    def spill_session(self, directory, row):
+        """Save closed session buffers before releasing their duplicate memory."""
+        stored = row.setdefault('_stored_streams', {})
+        prefix = 'session-' + str(row['ordinal'])
+        for field in ('input', 'output'):
+            if field in row and field not in stored:
+                stored[field] = self.raw(directory, prefix + '.' + field, bytes(row[field]))
+        claims = row.get('claims', [])
+        # The current worker owns these references after serve()/close(). Never
+        # clear an active stream or an entry owned by another/prepared session.
+        for claim in claims:
+            if not isinstance(claim, StreamingClaim) or not claim.closed or claim.pool not in self.pools:
+                raise ProtocolRefusal('closed owned claim required before buffer release')
+            entry = claim.entry
+            if entry is not None and (any(t.is_alive() for t in entry.threads)
+                    or entry.kernel_accounting is None
+                    or not (entry is claim.pool.last_attempt or entry in claim.pool.entries.values())):
+                raise ProtocolRefusal('owned child I/O/accounting must finish before buffer release')
+        for index, claim in enumerate(claims):
+            claim.retained_inputs = {}
+            for field in ('input', 'child_input'):
+                data = getattr(claim, field)
+                if 'input' in stored and data == row.get('input'):
+                    record = dict(stored['input'], alias='exact bytes equal to completed caller input')
+                else:
+                    record = self.raw(directory, prefix + '-' + str(index) + '.' + field, bytes(data))
+                claim.retained_inputs[field] = record
+        verified = set()
+        records = list(stored.values()) + [r for c in claims for r in c.retained_inputs.values()]
+        for record in records:
+            identity = (record['path'], record['bytes'], record['sha256'])
+            if identity not in verified:
+                self.retained(record)
+                verified.add(identity)
+        # All saves succeeded. Preserve every stream via its bound record;
+        # failed writes leave all still-owned buffers in memory for failure capture.
+        for field in stored:
+            row.pop(field, None)
+        for claim in claims:
+            claim.input.clear()
+            claim.child_input.clear()
+
     def attempt(self, name, selected=None, selected_binding=None, *, selected_factory=None):
         """Assign ordinal0 at accept, never by retrospectively inspecting input."""
+        started = time.monotonic()
+        cpu_started = cpu_snapshot()
         claims = []
         def factory(ordinal, binding):
             candidate = selected
@@ -177,7 +254,8 @@ class Workflow:
             return claim, fallback
         token = secrets.token_hex(32)
         broker = Broker(self.output / name, name, token, factory,
-                        time.time() + self.timeout + 5)
+                        time.time() + self.timeout + 5,
+                        session_completed=lambda row: self.spill_session(self.output / name, row))
         config = dict(directory=str(broker.records), socket=str(broker.path),
                       attempt=name, token=token, solver=self.solver,
                       deadline_unix=broker.deadline)
@@ -209,7 +287,9 @@ class Workflow:
         if any(b'strace:' in line for line in execution['stderr'].splitlines()):
             execution['errors'].append('tracing diagnostic; raw stderr retained')
             gate.update(driver_exit=1, broker_gate=False, whole_fresh_retry_required=True)
-        record = dict(name=name, compiler=execution, broker=outcome, gate=gate, census=trace)
+        record = dict(name=name, compiler=execution, broker=outcome, gate=gate, census=trace,
+                      whole_attempt_wall_seconds=time.monotonic() - started,
+                      cpu_observation=cpu_delta(cpu_started))
         self.attempts.append(record)
         return record
 
@@ -260,10 +340,18 @@ class Workflow:
     def persist(self):
         """Retain raw per-session and child streams; no private environment dump."""
         records = []
+        self.persistence_errors = []
+        def verify_retained(record):
+            try:
+                self.retained(record)
+            except (OSError, ValueError, RuntimeError) as error:
+                self.persistence_errors.append(dict(path=record['path'], error=str(error)))
         for attempt in self.attempts:
             directory = self.output / attempt['name']
             execution = attempt['compiler']
             rendered = dict(name=attempt['name'], gate=attempt['gate'], census=attempt['census'],
+                            whole_attempt_wall_seconds=attempt['whole_attempt_wall_seconds'],
+                            cpu_observation=attempt['cpu_observation'],
                             compiler={k: v for k, v in execution.items()
                                       if k not in ('stdout', 'stderr')},
                             sessions=[], errors=attempt['broker']['errors'])
@@ -272,11 +360,15 @@ class Workflow:
                                                        execution[stream])
             for row in attempt['broker']['sessions']:
                 result = {k: v for k, v in row.items()
-                          if k not in ('claims', 'input', 'output', '_binding')}
+                          if k not in ('claims', 'input', 'output', '_binding', '_stored_streams')}
                 prefix = 'session-' + str(row['ordinal'])
                 for field in ('input', 'output'):
-                    if field in row:
-                        result[field] = self.raw(directory, prefix + '.' + field, bytes(row[field]))
+                    if field in row.get('_stored_streams', {}):
+                        result[field] = row['_stored_streams'][field]
+                        verify_retained(result[field])
+                    elif field in row:
+                        suffix = '.unspilled-' if '_stored_streams' in row else '.'
+                        result[field] = self.raw(directory, prefix + suffix + field, bytes(row[field]))
                 result['children'] = []
                 for index, claim in enumerate(row.get('claims', [])):
                     entry = claim.entry
@@ -284,6 +376,14 @@ class Workflow:
                                  ready_at_snapshot=claim.snapshot_ready,
                                  readiness_boundary=self.readiness_boundary,
                                  readiness_snapshot_time=claim.snapshot_time)
+                    child['inputs'] = dict(getattr(claim, 'retained_inputs', {}))
+                    for field in ('input', 'child_input'):
+                        if field not in child['inputs']:
+                            child['inputs'][field] = self.raw(directory,
+                                prefix + '-' + str(index) + '.unspilled-' + field,
+                                bytes(getattr(claim, field)))
+                    for retained in child['inputs'].values():
+                        verify_retained(retained)
                     if entry is not None:
                         child.update(pid=entry.process.pid, accounting=entry.kernel_accounting,
                                      cleanup_errors=entry.cleanup_errors)
@@ -345,11 +445,12 @@ class Workflow:
             row = donor['broker']['sessions'][0]
             binding = row['_binding']
             parser = Commands()
-            batches = parser.feed(row['input'])
+            donor_input = self.retained(row['_stored_streams']['input'])
+            batches = parser.feed(donor_input)
             parser.finish()
             prefix = donor_prefix(batches)
             reply_parser = Replies()
-            replies = reply_parser.feed(row['output'])
+            replies = reply_parser.feed(self.retained(row['_stored_streams']['output']))
             reply_parser.finish()
             count = len(Commands().feed(prefix))
             if len(replies) != len(batches):
@@ -365,6 +466,9 @@ class Workflow:
                     prepared['error'] = type(error).__name__ + ': ' + str(error)
             thread = threading.Thread(target=prepare)
             thread.start()
+            edited_started = time.monotonic()
+            edited_cpu_started = cpu_snapshot()
+            result['source_edit_monotonic'] = edited_started
             path.write_bytes(edited_bytes)
             time.sleep(max(0, launch_at - time.monotonic()))
             # Neither boundary waits for readiness or examines future input.
@@ -419,6 +523,8 @@ class Workflow:
             if final['compiler']['errors']:
                 result['external_descendant_cleanup_required'] = True
                 raise ProtocolRefusal('fresh retry compiler incomplete; owned container cleanup required')
+            result['edited_to_result_wall_seconds'] = time.monotonic() - edited_started
+            result['edited_to_result_cpu_observation'] = cpu_delta(edited_cpu_started)
             # Always execute a separate full fresh edited control, even after
             # a successful continuation. Never choose whether to measure it
             # from the observed gain or prefix match.
@@ -452,6 +558,8 @@ class Workflow:
                     result['errors'].append('complete pool cleanup: ' + str(error))
             try:
                 result['attempts'] = self.persist()
+                if self.persistence_errors:
+                    result['errors'].append('retained stream verification: ' + repr(self.persistence_errors))
                 result['owned_children'] = self.pool_records()
                 if any(row['errors'] for row in result['owned_children']):
                     result['errors'].append('complete accounting for every created child refused')
