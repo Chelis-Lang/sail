@@ -9,6 +9,10 @@ semantic versioning once the API is published.
   length and mtime no longer retain a stale binary hash (#213). Native
   correctness checks pass; the matched native screen records slower edit
   workloads, with performance recovery and final current-head CI pending.
+- Keep Cargo dependency artifacts when package/target selection changes, such
+  as adding `--lib` for interactive repair. The matched cc7-runtime screen
+  reduces the first-repair median from 67.87 to 32.73 seconds; later warm repair
+  is unchanged. Exact proof contexts and dependency receipt checks stay separate.
 
 - Add a disabled, opt-in kernel-accounting research path for the one-use
   continuation driver (#158). It requires complete sole-`wait4` accounting

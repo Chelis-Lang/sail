@@ -117,3 +117,6 @@ The [Cargo target-context record](validation/cargo-target-context.md) covers
 owned metadata selection, source-directory coverage, and declared environment
 reads (#166 and #189), with native full fast/standard and separate joined
 main checks.
+
+- [Managed Cargo selection qualification](validation/managed-selection-family.md):
+  candidate dependency-artifact sharing, observations and pending native gates.
