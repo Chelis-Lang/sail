@@ -12,7 +12,8 @@ are in the `archive/m7-contracts-f7103bf` tag.
   Changing executable bytes at fixed path, length and restored mtime returned
   the preceding SHA in two real HELLO connections on the retained private
   Mac CLI. No wrong proof was tested. A candidate removes the metadata memo;
-  native correctness and performance qualification remain pending. See the
+  native gate, solver, full E2E and four-mode FAST checks pass; STANDARD,
+  final integrity and performance qualification remain pending. See the
   [identity validation record](validation/solver-identity.md).
 
 - **The original VI-0012 fork regression receives a duplicate progress flag**
