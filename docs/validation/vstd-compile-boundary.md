@@ -46,3 +46,11 @@ these detect ordinary mutation, not an immutable execution or ABA proof.
 Actual linked-byte digests are retained in research traces for the first-project
 experiment. No timing or complete-native-input qualification follows from unit
 fixtures.
+
+- `930dfea8`, 2026-10-17, native source attempt: failed compilation in the
+  new publication recheck (`String` environment pairs passed where `OsString`
+  pairs were required); application and timing stages unrun. Corrected next.
+- `930dfea8` plus the environment-pair correction, 2026-10-17, bounded macOS
+  source check: all 17 boundary/serializer tests pass. Workspace compilation
+  found a missing optional origin field in the existing fallback renderer;
+  corrected next. This was not a passed workspace gate.
