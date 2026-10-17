@@ -26,37 +26,58 @@ const CAPACITY: usize = 4;
 
 /// Exact same-workspace content context; no registry/path normalization.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct Basis {
-    identity: TargetIdentity,
-    context: String,
-    source_revision: String,
-    dependency_inventory: String,
-    directory: PathBuf,
-    environment: BTreeMap<String, Option<Vec<u8>>>,
+pub(super) struct Basis {
+    pub(super) identity: TargetIdentity,
+    pub(super) context: String,
+    pub(super) source_revision: String,
+    pub(super) dependency_inventory: String,
+    pub(super) directory: PathBuf,
+    pub(super) environment: BTreeMap<String, Option<Vec<u8>>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Output {
-    path: PathBuf,
-    content: Content,
-    executable: bool,
+pub(super) struct Output {
+    pub(super) path: PathBuf,
+    pub(super) content: Content,
+    pub(super) executable: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Entry {
-    version: u32,
-    basis: Basis,
-    receipt: Receipt,
+pub(super) struct Entry {
+    pub(super) version: u32,
+    pub(super) basis: Basis,
+    pub(super) receipt: Receipt,
     /// Complete accepted GHOST/EXEC wire document, stored as a checked blob.
-    compiler_reads: Content,
-    outputs: Vec<Output>,
-    stdout: Content,
-    stderr: Content,
-    checksum: String,
+    pub(super) compiler_reads: Content,
+    pub(super) outputs: Vec<Output>,
+    pub(super) stdout: Content,
+    pub(super) stderr: Content,
+    pub(super) checksum: String,
 }
 
 impl Entry {
-    fn seal(mut self) -> Option<Self> {
+    pub(super) fn new(
+        basis: Basis,
+        receipt: Receipt,
+        compiler_reads: Content,
+        outputs: Vec<Output>,
+        stdout: Content,
+        stderr: Content,
+    ) -> Option<Self> {
+        Self {
+            version: VERSION,
+            basis,
+            receipt,
+            compiler_reads,
+            outputs,
+            stdout,
+            stderr,
+            checksum: String::new(),
+        }
+        .seal()
+    }
+
+    pub(super) fn seal(mut self) -> Option<Self> {
         self.checksum.clear();
         self.checksum = digest(&serde_json::to_vec(&self).ok()?);
         Some(self)
@@ -103,14 +124,14 @@ fn within_budget(entry: &Entry) -> bool {
 /// invalidate the unit's receipt and refuse this attempt or force a genuinely
 /// fresh compilation; this is never an ordinary cache miss.
 #[derive(Debug)]
-struct RollbackFailure {
-    paths: Vec<(PathBuf, String)>,
+pub(super) struct RollbackFailure {
+    pub(super) paths: Vec<(PathBuf, String)>,
 }
 
-struct Restored {
-    receipt: Receipt,
-    stdout: Vec<u8>,
-    stderr: Vec<u8>,
+pub(super) struct Restored {
+    pub(super) receipt: Receipt,
+    pub(super) stdout: Vec<u8>,
+    pub(super) stderr: Vec<u8>,
 }
 
 fn rollback(written: Vec<PathBuf>) -> std::result::Result<(), RollbackFailure> {
@@ -251,7 +272,7 @@ fn installed(output: &Output, directory: &Path, names: &BTreeSet<std::ffi::OsStr
 /// Restore only the exact caller-admitted output family and complete basis.
 /// The caller must freshly recheck source/dependency/environment state in
 /// `after`, before exposing any saved reply. Failure removes every placed file.
-fn restore(
+pub(super) fn restore(
     root: &Path,
     basis: &Basis,
     output_directory: &Path,
@@ -268,7 +289,10 @@ fn restore(
         let Ok(entry) = serde_json::from_slice::<Entry>(&raw) else {
             continue;
         };
-        if !entry.intact() || entry.basis != *basis {
+        if !entry.intact()
+            || entry.basis != *basis
+            || !super::super::environment::unchanged(&entry.receipt.declared_environment)
+        {
             continue;
         }
         let unique: BTreeSet<_> = entry.outputs.iter().map(|output| &output.path).collect();
@@ -358,7 +382,7 @@ fn restore(
 }
 
 /// Ported retention I/O. Not called until compiler-read admission is connected.
-fn retain(
+pub(super) fn retain(
     root: &Path,
     entry: &Entry,
     streams: [&Path; 3],
@@ -599,6 +623,7 @@ mod tests {
             context: "context".into(),
             input_revision: "A".into(),
             invocation: super::super::super::receipts::Invocation {
+                retained_from: None,
                 identity,
                 run_id: "establishing-A".into(),
                 report,

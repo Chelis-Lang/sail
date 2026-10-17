@@ -196,6 +196,14 @@ fn cargo_driver_options(id: &str) -> Result<DriverOptions> {
     })
 }
 
+/// Exact effective per-package Verus tokens, using the shipped decoder.
+/// Experimental reuse declines an invalid decoder result instead of guessing.
+pub(crate) fn effective_verus_arguments() -> Option<Vec<String>> {
+    cargo_driver_options(&cargo_package_id()?)
+        .ok()
+        .map(|options| options.arguments)
+}
+
 struct DriverOptions {
     arguments: Vec<String>,
     environment: std::collections::BTreeMap<String, String>,
@@ -357,11 +365,43 @@ fn driver() -> Result<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
     if !verifying(&args) {
-        return Command::new(wrapper)
-            .args(args)
-            .status()
-            .map(status)
-            .map_err(|e| Error::new("SAIL3111", e.to_string()));
+        if std::env::var("SAIL_RETAINED_CONTENT_RESEARCH").as_deref() != Ok("1") {
+            return Command::new(wrapper)
+                .args(args)
+                .status()
+                .map(status)
+                .map_err(|e| Error::new("SAIL3111", e.to_string()));
+        }
+        let runtime = std::env::var_os("SAIL_MANAGED_RUNTIME").and_then(|path| {
+            std::fs::read(path)
+                .ok()
+                .and_then(|raw| serde_json::from_slice::<Runtime>(&raw).ok())
+        });
+        let mut retained = runtime
+            .as_ref()
+            .and_then(|runtime| crate::managed::retained::Native::begin(runtime, &args, &wrapper));
+        let mut command = Command::new(&wrapper);
+        command.args(
+            retained
+                .as_ref()
+                .map_or(args.as_slice(), |attempt| attempt.arguments()),
+        );
+        if let Some(attempt) = &retained {
+            attempt.configure(&mut command);
+        }
+        let mut child = command
+            .spawn()
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        if let Some(attempt) = &mut retained {
+            attempt.started(child.id());
+        }
+        let exit = child
+            .wait()
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        if let Some(attempt) = &retained {
+            let _ = attempt.finish(exit.success());
+        }
+        return Ok(status(exit));
     }
     if custom_compiler_context(&args) {
         return Err(Error::new(
@@ -438,12 +478,53 @@ fn driver() -> Result<ExitCode> {
             || crate::verus_stdout::UserFlags::of(&runtime.args),
             |effective| crate::verus_stdout::UserFlags::of_verus(effective.arguments.iter()),
         );
+    let mut retained = runtime.retained.as_ref().and_then(|plan| {
+        (wrapper.canonicalize().ok()? == runtime.original_wrapper.canonicalize().ok()?)
+            .then(|| plan.begin(&runtime, &identity, &launcher_args, &dir))
+            .flatten()
+    });
+    if let Some(attempt) = &retained
+        && let Some(restored) = attempt.restore()?
+    {
+        finish(
+            &runtime,
+            identity.clone(),
+            &dir,
+            &Captured {
+                stdout: &restored.stdout,
+                stderr: &restored.stderr,
+                exit: Some(0),
+            },
+            None,
+        )?;
+        let path = runtime.invocations.join(format!("{}.json", identity.key()));
+        let mut invocation: Invocation = serde_json::from_slice(
+            &std::fs::read(&path).map_err(|e| Error::new("SAIL3111", e.to_string()))?,
+        )
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        invocation.retained_from = Some(restored.establishing_run);
+        json(&path, &invocation)?;
+        std::io::stderr()
+            .write_all(&restored.stderr)
+            .and_then(|()| {
+                std::io::stdout().write_all(&crate::verus_stdout::rebuild(&restored.stdout, flags))
+            })
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let mut cmd = Command::new(&wrapper);
-    cmd.args(&launcher_args)
-        .envs(&launcher_environment)
-        .args(observation_args(flags, logs.as_deref()))
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+    cmd.args(
+        retained
+            .as_ref()
+            .map_or(launcher_args.as_slice(), |attempt| attempt.arguments()),
+    )
+    .envs(&launcher_environment)
+    .args(observation_args(flags, logs.as_deref()))
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped());
+    if let Some(attempt) = &retained {
+        attempt.configure(&mut cmd);
+    }
     // Session records join cached answers to transcripts; without logs there
     // is nothing to join them to.
     if logs.is_some() {
@@ -466,6 +547,9 @@ fn driver() -> Result<ExitCode> {
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    if let Some(attempt) = &mut retained {
+        attempt.started(child.id());
+    }
     let invocation_log = InvocationLog {
         directory: &runtime.invocations,
         run_id: &runtime.run_id,
@@ -551,6 +635,9 @@ fn driver() -> Result<ExitCode> {
         },
         established.as_ref(),
     )?;
+    if let Some(attempt) = &retained {
+        let _ = attempt.finish(exit.success());
+    }
     let shown = crate::verus_stdout::rebuild(&stdout, flags);
     // The dependency store must replay exactly what this target displayed,
     // including effective per-package output flags, when it seeds a new target.
@@ -749,6 +836,7 @@ fn finish(
     });
     let dependencies = dependencies?;
     let invocation = Invocation {
+        retained_from: None,
         identity,
         run_id: runtime.run_id.clone(),
         report,

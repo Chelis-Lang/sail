@@ -1421,8 +1421,8 @@ fn target_records(
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: call.run_id.clone(),
-                reused: false,
+                establishing_run: call.establishing_run().to_owned(),
+                reused: call.retained_from.is_some(),
                 requested,
                 complete: call.success && complete(&call.report),
                 report: call.report.clone(),
@@ -1506,14 +1506,14 @@ fn target_records(
                 })
         } {
             event(
-                &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.run_id}),
+                &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.establishing_run()}),
             );
             results.push(TargetResult {
                 dependency_store: store_key,
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: receipt.invocation.run_id,
+                establishing_run: receipt.invocation.establishing_run().to_owned(),
                 reused: true,
                 requested,
                 complete: true,
@@ -1526,7 +1526,7 @@ fn target_records(
     // A failing compiler may not emit an artifact; preserve its observed target report.
     for call in calls {
         if !results.iter().any(|r| {
-            r.establishing_run == call.run_id
+            r.establishing_run == call.establishing_run()
                 && r.target.replace('-', "_") == call.identity.name
                 && r.kind.iter().any(|k| {
                     k == &call.identity.crate_type
@@ -1552,10 +1552,10 @@ fn target_records(
                     .and_then(|p| p["id"].as_str())
                     .unwrap_or_default()
                     .to_owned(),
+                establishing_run: call.establishing_run().to_owned(),
+                reused: call.retained_from.is_some(),
                 target: call.identity.name,
                 kind: vec![call.identity.crate_type],
-                establishing_run: call.run_id,
-                reused: false,
                 requested,
                 complete: call.success && complete(&call.report),
                 report: call.report,
@@ -2308,6 +2308,16 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
+        retained: if !forced && !source_engine && paths.reuse {
+            super::retained::Plan::prepare(
+                &data,
+                &paths.target,
+                &expected,
+                &actual_wrapper(&config.cargo_verus)?,
+            )
+        } else {
+            None
+        },
         attribution_logs: config.attribution_logs || engine.is_some(),
         engine,
     };
@@ -2664,6 +2674,11 @@ pub(crate) fn run_engine_held(
             }
         }
         store_dependencies(config, &paths, &store_candidates, &result, &after_data);
+        if result.exit_code == Some(0)
+            && let Some(plan) = &runtime.retained
+        {
+            let _ = plan.publish(&runtime);
+        }
     }
     publish_compiler_generation(
         &paths,
@@ -3220,6 +3235,7 @@ mod tests {
             context: "selected".to_owned(),
             input_revision: target_revision(data, "input"),
             invocation: Invocation {
+                retained_from: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: PathBuf::from(
                         data["packages"][0]["manifest_path"]
@@ -4264,6 +4280,7 @@ mod tests {
             context: "context".to_owned(),
             input_revision: target_revision(&data, "vstd"),
             invocation: Invocation {
+                retained_from: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: dependency.join("Cargo.toml"),
                     name: "vstd".to_owned(),

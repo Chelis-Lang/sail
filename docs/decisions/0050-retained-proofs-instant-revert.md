@@ -6,11 +6,16 @@
   [ADR 0036](0036-managed-compiler-artifact-families.md) and
   [ADR 0041](0041-content-and-stat-currentness.md)
 
-The source prototype now contains dependency snapshot, compiler-document and
-archive/checked-placement modules. They have no driver caller and enable no
-reuse mode. The closed official macro/native policy and managed source/receipt
-join remain unfinished; actual runtime, real Vest and ABA qualification are
-pending. Local source checks are not real-project acceptance.
+The source prototype contains shared bounded dependency snapshots, exact provider
+source/feature authority, distinct native and GHOST/EXEC compiler-document
+consumers, and archive/checked-placement modules. An explicit research request
+can stage the workspace driver's source-read witness against its published
+owned graph. The default-off `SAIL_RETAINED_CONTENT_RESEARCH=1` path now joins
+source-qualified native producers, archive publication and checked workspace
+restoration. Same-workspace native certificates retain their original run, PID
+and compiler-read document; they never become synthetic current-run evidence.
+Actual runtime, real Vest and ABA qualification remain pending. Local source checks and owned-child wire
+fixtures are not real-project acceptance.
 
 ## Problem
 
@@ -144,9 +149,9 @@ The optimization targets the roughly 30-second fresh frontend/verification
 path after an undo. Full relevant-content hashing is paid instead of assuming
 mtime freshness; its actual latency must be measured. The old file-event
 attempts and their failed controls remain evidence against that earlier
-approach. The disconnected source prototype establishes no gain or acceptance.
+approach. The connected source prototype establishes no gain or acceptance.
 
-Before implementation, review the initial eligible macro/native-input closure
+Before native qualification, review the initial eligible macro/native-input closure
 and the exact shared observer consumer with the vstd-boundary work. The same
 observer should be reused, not independently reimplemented from dep-info.
 
@@ -179,3 +184,40 @@ Its [dep-info writer](https://github.com/rust-lang/rust/blob/1.98.0/compiler/rus
 also reopens explicitly tracked extra files to hash them. Consequently the
 two-phase observer's loaded-source records are required, and an extra-file
 dep-info checksum alone remains insufficient.
+
+## Initial provider scope
+
+`engine/verus/retained-vest-inputs.json` is the complete selected normal/build
+closure from the retained real Vest metadata: fifteen exact official providers,
+718 ordinary source files and their literal features. Six provider subtrees
+come from the primary pinned Verus source; nine registry packages bind their
+real crate archives. The full file inventory and SHA-256 checks remain the
+source authority. Independently derived BLAKE3 checksums and unnormalized sizes
+let the native consumer check actual loaded `SourceMap` records without changing
+native compiler arguments. README and other non-Rust source files are included.
+Custom providers, unknown features, extra files and symlinks refuse admission.
+This policy does not attest a native compilation by itself.
+
+The native observer's document is distinct from the verification/compilation
+pair. Its actual successful child, request binding, PID, complete loaded-source
+checksums, tracked environment and private extra inputs must qualify separately.
+Reopening a generated file or a mutable source path after the native compiler
+returns cannot substitute for a consumed-input observation.
+
+## Namespace and initial source scope
+
+The initial policy closes 15 pinned provider packages and 718 literal files.
+Unknown providers, features, compiler options and opaque macro inputs miss.
+Actual native SourceMap checksums cover loaded sources, including literal
+`include_str!` files; an extra tracked path is admitted only when the same
+qualified SourceMap entry or a private immutable graph copy covers it.
+
+Loaded source checksums alone do not prove negative module lookup. The
+[VI-0025 reproduction](../verus-issues/VI-0025-module-candidate-absence.md)
+therefore accompanies a conservative namespace guard: ambiguous `foo.rs` /
+`foo/mod.rs` candidates and unsupported path/include syntax outside the fixed
+provider closure refuse retention. This is an eligibility restriction, not a
+claim that endpoint hashes certify arbitrary compiler reads.
+
+See the [source checkpoint record](../validation/instant-revert.md) for the
+executed checks and pending real-project gates.

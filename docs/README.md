@@ -123,3 +123,6 @@ main checks.
 
 - [Managed Cargo selection qualification](validation/managed-selection-family.md):
   candidate dependency-artifact sharing, observations and pending native gates.
+
+The [instant-revert record](validation/instant-revert.md) tracks the disabled
+content-bound archive implementation and its pending native ABA gate.

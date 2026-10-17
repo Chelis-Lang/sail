@@ -2,8 +2,8 @@
 //!
 //! This is a byte-placement boundary, not a macro-eligibility proof. Its caller
 //! must separately admit the official source/features, pinned sysroot, effective
-//! Verus options and compiler-read observations. No compiler invocation uses
-//! these helpers yet.
+//! Verus options and compiler-read observations. Copying alone never attests
+//! a successful producer or authorizes reuse.
 
 use super::files::digest;
 use serde::{Deserialize, Serialize};

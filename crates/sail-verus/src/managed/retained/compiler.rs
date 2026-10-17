@@ -91,6 +91,10 @@ impl Observation {
         })
     }
 
+    pub(super) fn document(&self) -> PathBuf {
+        self.directory.join("inputs.json")
+    }
+
     /// SHA-256 is explicitly requested in both real compiler phases; a
     /// runtime that does not honor it cannot match the complete source basis.
     pub(super) fn configure(&self, command: &mut std::process::Command) {
@@ -171,7 +175,7 @@ impl Observation {
                 return None;
             }
             for (name, loaded) in &phase.sources {
-                let path = directory.join(name).canonicalize().ok()?;
+                let path = super::lexical(&directory.join(name))?;
                 let expected = sources.get(&path)?;
                 if loaded.checksum != format!("sha256={}", expected.sha256)
                     || loaded.size != expected.size
@@ -182,7 +186,8 @@ impl Observation {
             for name in &phase.extra_tracked_files {
                 // The compiler saw this exact private file, not a mutable
                 // original that merely happens to have matching bytes now.
-                if !copies.contains_key(&PathBuf::from(name)) {
+                let path = super::lexical(&directory.join(name))?;
+                if !copies.contains_key(&path) {
                     return None;
                 }
             }

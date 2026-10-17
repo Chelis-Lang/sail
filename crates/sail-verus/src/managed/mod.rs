@@ -3,13 +3,6 @@
 mod absent;
 mod build_inputs;
 mod configuration;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "Shared owned-input snapshots remain experimental until their actual compiler callers qualify."
-    )
-)]
 mod dependency_snapshot;
 mod diagnostics;
 mod environment;
@@ -23,7 +16,7 @@ mod receipts;
     dead_code,
     reason = "ADR 0050's content-bound successor is source-only until its two-phase compiler admission and real Vest ABA gate qualify."
 )]
-mod retained;
+pub(crate) mod retained;
 mod runner;
 mod source_inputs;
 mod store;

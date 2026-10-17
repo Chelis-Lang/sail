@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add a disabled content-bound instant-revert research path (#163), joining
+  native source certificates, private dependency graphs and checked output
+  restoration. Native Vest ABA qualification and performance remain pending;
+  default verification and pins are unchanged.
+
 - Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;
   version execution and full reads still occur on every handshake. All 50

@@ -23,6 +23,9 @@ pub(crate) struct Runtime {
     pub packages: BTreeMap<PathBuf, String>,
     pub target_kinds: BTreeMap<PathBuf, BTreeMap<String, Vec<String>>>,
     pub engine: Option<crate::engine::Request>,
+    /// Explicit, unqualified content-replay research request.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retained: Option<super::retained::Plan>,
     /// Whether the driver asks Verus for attribution logs ([`super::Config`]'s
     /// `attribution_logs`; always for an interactive-engine run).
     #[serde(default)]
@@ -45,11 +48,20 @@ impl TargetIdentity {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Invocation {
+    /// Original proof run for the named same-workspace content experiment.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retained_from: Option<String>,
     pub identity: TargetIdentity,
     pub run_id: String,
     pub report: Report,
     pub success: bool,
     pub dependencies: BTreeMap<PathBuf, String>,
+}
+
+impl Invocation {
+    pub(crate) fn establishing_run(&self) -> &str {
+        self.retained_from.as_deref().unwrap_or(&self.run_id)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -331,6 +343,7 @@ mod tests {
             context: "ctx".to_owned(),
             input_revision: "inputs".to_owned(),
             invocation: Invocation {
+                retained_from: None,
                 identity: TargetIdentity {
                     manifest: PathBuf::from("Cargo.toml"),
                     name: "input".to_owned(),

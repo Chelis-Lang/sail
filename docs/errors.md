@@ -187,3 +187,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | Code | Meaning | What to do |
 |---|---|---|
 | `SAIL9001` | `scripts/perf-host.sh down` could not verify termination or complete resource cleanup; recorded lane files are retained | Read the AWS error, refresh authentication or permissions as needed, then retry the same `down LANE`. A successful waiter must also be followed by a confirmed terminated/absent instance before resource deletion |
+
+`SAIL3134`: the disabled retained-content experiment could not remove a
+partially restored output. The attempt refuses; do not treat it as a cache miss
+or reuse a receipt. A fresh owned target is required before retrying.

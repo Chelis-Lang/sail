@@ -1,0 +1,35 @@
+# Instant revert: content-bound source checkpoint
+
+Status: implemented behind `SAIL_RETAINED_CONTENT_RESEARCH=1`, unselected;
+native real-Vest A → B → A qualification and latency measurements pending.
+Default behavior and runtime pins are unchanged.
+
+The driver joins exact source/provider eligibility, owned complete dependency
+snapshots, actual native and GHOST/EXEC compiler-read certificates, bounded
+output archives and checked restoration. Publication additionally requires the
+ordinary successful Current result and committed receipt. A reused native
+certificate preserves its original establishing run and PID. It does not
+attest a newly executed compiler. Unknown contexts take the genuine compiler
+path; failed restoration cleanup refuses with `SAIL3134`.
+
+The local macOS source checkpoint passes `cargo clippy -p sail-verus
+--all-targets --offline -j 2` and 15 `managed::retained` library tests. They
+exercise checksum/source ABA, policy/feature refusal, protocol/PID binding,
+namespace ambiguity and literal content, late producer record arrival,
+archive corruption and failed placement cleanup. These are source and owned
+filesystem/wire controls, not actual Verus or real-project acceptance.
+[VI-0025](../verus-issues/VI-0025-module-candidate-absence.md) records the actual
+three-command rustc namespace reproduction.
+
+The earlier unmerged filesystem-event candidate remains blocked by mapped-write
+and coarse-timestamp ABA counterexamples. A source-only archive checkpoint and
+its corrected algorithm-prefixed checksum / aggregate-restoration controls do
+not supersede those failures. No native performance result is claimed.
+
+Before selection: qualify the observer runtime, complete native producer and
+namespace closure review, then execute real Vest A → B → A plus GHOST B / EXEC A,
+private-graph mutation, one-byte/namespace/environment misses and damaged-output
+controls. Require unchanged verdicts/diagnostics, original establishing run,
+zero new verifier invocations only for restored A, and all ordinary final guards.
+
+External local check logs: clippy SHA-256 `0df906bc004c45e0d41f15c6b9a52e62a19ee3f6e498746b8bfd1967070b6702`; focused tests SHA-256 `53858e75e8fe02d7c8a9537e88dce6b4fdaccbc9b2be52e33d5365ff8705fe01`.
