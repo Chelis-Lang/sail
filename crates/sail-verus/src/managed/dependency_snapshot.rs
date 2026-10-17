@@ -860,11 +860,13 @@ mod tests {
             .is_none()
         );
         std::fs::remove_file(alias)?;
-        rustix::fs::mkfifoat(
-            rustix::fs::CWD,
-            deps.join("compiler-pipe"),
-            rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
-        )?;
+        // The pinned rustix has no mkfifoat on macOS. Exercise the same real
+        // filesystem shape through the host utility, as other FIFO tests do.
+        let fifo = std::process::Command::new("mkfifo")
+            .args(["-m", "600"])
+            .arg(deps.join("compiler-pipe"))
+            .status()?;
+        assert!(fifo.success());
         assert!(lookup_ready(&directories, &unit).is_none());
         assert!(
             Snapshot::capture_ready(

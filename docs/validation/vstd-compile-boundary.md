@@ -387,3 +387,13 @@ work. Both copies have identical bytes and pass on-disk signature verification;
 the build-cache original and an atomic new-inode copy launch successfully.
 This is retained separately and does not qualify the integration. Failed-control
 index SHA-256: `7121900c124784c5632f2f754ab441c1ccd816f9b9bc81a38359cf551b42c05b`.
+
+The diagnostic successor `2d264485` identifies a real temporary `rmeta` directory
+at refusal. The metadata-only wait at `e304d162` passes all 697 enabled Mac host
+tests (35 skipped), but its actual compiler control still misses publication:
+the refused graph also contains temporary `rustc` and archive directories.
+Both integration attempts remain FAIL; their fresh-consumer and unchanged
+controls are unrun. The generalized wait leaves full graph admission unchanged.
+Its first Mac test build at `cbf8c71d` fails because the pinned rustix has no
+`mkfifoat`; the FIFO test now uses the existing host-utility pattern on both
+platforms. This build failure provides no runtime qualification.
