@@ -39,12 +39,16 @@ draft. No release acceptance follows from the candidate fix's checks.
 macOS reproduction replaced private `cc` bytes at unchanged `PATH`: fresh
 stock failed with a linker error while dependency-store-seeded Sail succeeded
 without it. The [known-issues entry](../known-issues.md) identifies the actual
-source/runtime and raw checksum. Source inspection finds v1 native-artifact
-seeding still on main; today's exact main and this draft asset were not rerun
-for that case. The historical tables do not qualify this mutation. The
-unmerged replacement has its own APFS mmap guard blocker. The #166/#189
-metadata correction fixes neither, and the draft remains unchanged and
-unaccepted.
+source/runtime and raw checksum. The historical tables do not qualify this
+mutation, and this draft asset has not been rerun for that case. Main now
+quarantines v1 native-artifact reuse (#212, `72acf29b`); three native mutation
+rounds match stock, the joined gates and conformance pass, and all 17
+post-merge CI checks pass. See the
+[containment record](dependency-store-fail-closed.md) for its scope and the
+fresh-project cost (32.57 s versus the historical seeded 1.28 s). The unmerged
+replacement retains its APFS mmap guard blocker; the #166/#189 metadata
+correction does not solve that boundary. The draft has not been rebuilt and
+remains unaccepted.
 
 The 0.1.0 candidate. `main` changed materially after rc.4: every
 `sail verify` is managed verification (#155, ADR 0046); new projects and

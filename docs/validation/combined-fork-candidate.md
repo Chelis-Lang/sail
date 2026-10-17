@@ -102,6 +102,17 @@ and `combined-8a-macos-2026-10-16`:
 
 ## Remaining delivery and selection gates
 
+Before selection, a separate full-identity hardening candidate must qualify.
+Source audit confirms that `8a373f81` uses the local 64-bit half alone for
+closure equality, hashing and internal names, without a crate qualifier.
+Candidate `cc7bbce4` retains both rustc identity halves in those operations and
+the declaration-order tie-break. Two focused VIR tests pass on shared macOS,
+including forced equal-local/different-crate controls. Native compilation and
+the strengthened genuine two-crate fixture remain pending. No actual cross-crate collision or wrong verdict has been
+observed. Its additional serialized VIR field requires freshly matching vstd
+and dependency exports. Every completed result in this record remains scoped to `8a373f81`;
+it does not qualify the new source or select either runtime.
+
 1. Bind a current-main implementation candidate to this exact reviewed fork,
    source lock and both actual runtime archives. Review both prospective pins,
    source/release metadata, ADR 0049 status and source-mapping scope together;
@@ -155,10 +166,46 @@ restored-mtime solver reproduction also passes. Shared-Mac host checks pass
 passes there too. Every source byte and mode was checked before and after
 that completed Mac run. No Mac performance measurement is claimed.
 
-The long native queue still owes full end-to-end, full FAST/STANDARD, ordinary
-empty-cache bundled install, both literal Vest edit recipes (54 rows), and the
-unchanged repair benchmark's two-catalogue judge. Passing checkpoints do not
-select the pin or waive the repair bar. A separate main-based review composition
+The same frozen source now passes all nine end-to-end phases plus extra
+(615.35 s), separate managed, workspace-copy and changed-native-linker entries,
+and the full FAST tier: four arms, each 147 Same / 3,450 functions, with zero
+Different, Unstable, infrastructure errors, skips or rlimit drift. The changed
+compiler control retains actual stock/Sail exit 101 and raw diagnostics.
+All four STANDARD arms, pass-through, cache-fill, cache-warm and engine, each pass 159 Same /
+12,726 functions with no verdict or diagnostic disagreement. Pass-through
+records one rlimit-only drift on Vest `FixWith::serialize_gas`
+(56,256 to 56,250); cache-fill records that drift and VNR
+`log_entry_alive_value_wrap_around` (51,948 to 51,945). These are the actual
+observations under the unchanged conformance policy. Cache-warm records the
+same Vest drift. The engine arm also passes, with one recorded rlimit-only drift.
+
+Checkpoint archives under
+`combined-8a-current-integration-native-results-r2-2026-10-17`:
+end-to-end SHA-256
+`bde9b0b263041dc923983c7fa23854954f55e53bc3b20c4b26301ceb3ed11851`,
+full FAST aggregate
+`575e1a5449b23fdc2ea89c45201e27636f9d399e1be22f42b362063f5a44a52d`,
+STANDARD cache-fill
+`3475ed7c0916dc203c740962af7aa3ef8360a8a86bbc28d999aa30c9db3d8ebb`,
+STANDARD aggregate
+`2524ab5eea436883af6399291e4c4c6a188cd84257d3cd787785fbcf3c67bd3e`,
+ordinary bundled delivery
+`04cd0f2da4bb3026951258a40d9c0a7afefa4bf28ea1574e73413a3ae289ce2d`,
+final failed performance preparation
+`3a99a4576a0dcc319cc952aba49f2363b24330c2e682344ca8969c09d8f2f3be`.
+Every member of these and the individual FAST/standalone archives was
+independently checked for bytes, type, mode and complete membership.
+
+The ordinary empty-cache bundled install subsequently passes (82.94 s).
+The performance queue then stops before timing: its Vest fetch exits 2 with
+`SAIL3003` because that container lacks the pinned stock toolchain at the
+expected cache path. The downloaded historical fork runtime is present; this
+is a toolchain-location failure, not evidence of a failed network download.
+Both literal Vest edit recipes (54 rows) and the unchanged repair benchmark's
+two-catalogue judge remain unrun. The failed attempt stays indexed by its
+final archive above; a performance-only continuation must admit the actual
+stock executable before preparation. Passing checkpoints do not select the pin
+or supply missing performance evidence. A separate main-based review composition
 retains identical non-documentation Git blobs and modes; results remain scoped
 to the actual frozen source above. The first native launch refused before any
 compiler or product gate because an external import created Python bytecode

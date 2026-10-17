@@ -32,8 +32,17 @@ and the actual standalone reproduction passes. The corresponding native Linux
 checkpoint passes the workspace gate (657 tests, 35 skipped, two doctests),
 all 35 solver tests and the actual standalone reproduction. The two native
 HELLOs return the distinct expected hashes above. These are the stated source's
-checkpoints, not full acceptance of its rebased review branch. Full end-to-end,
-fast/standard conformance and normal PR checks remain pending. Fresh version processes and full binary reads add work to
+checkpoints, not full acceptance of its rebased review branch. The exact frozen
+source subsequently passes all nine end-to-end phases plus extra and four full
+FAST arms (147 Same / 3,450 functions each, zero disagreements, instability,
+infrastructure errors, skips or rlimit drift). All four STANDARD arms pass
+159 Same / 12,726 functions each, with recorded rlimit-only drift. Ordinary
+empty-cache bundled delivery also passes; performance acceptance is pending. All 17 required and
+supporting PR checks pass on review head `1ec72807`, whose non-documentation
+Git blobs and modes match the frozen source; later documentation changes still
+require their own exact-head checks. See the
+[integration checkpoint](combined-fork-candidate.md#current-integration-checkpoint-2026-10-17).
+Fresh version processes and full binary reads add work to
 each solver-session handshake. Measure that cost against the preceding build
 on native hosts, including the warm-cache fresh-project workload, before
 acceptance; no negligible-overhead claim is made.
@@ -52,3 +61,25 @@ Failed attempts remain indexed here:
 
 - 2026-10-17, `af339f8a` private Mac CLI / daemon source equal to `79e26818`:
   actual stale identity reproduced; original outcome remains failed.
+- 2026-10-17, isolated cost screen `658961e2` / source `36f39a79`:
+  stopped at the before-fix workspace gate, before any of the 110 planned
+  timed rows. The external controller injected `SAIL_VERUS_BUILD` and
+  `SAIL_ENGINE_BUILD` into that gate; two runtime-location tests selected the
+  forced runtime instead of their isolated temporary fixtures (653 passed,
+  two failed, 35 skipped). Both assertions remain unchanged. This is failed
+  setup evidence, not a measured identity overhead or a conformance pass.
+  Final archive SHA-256
+  `8665fc8816d35986348ddff7572edc0877481c7173436b611cc0aed50d52bb37`;
+  actual gate log
+  `ca5506463353cc0d6d28ed1fda4982ac2f9de735ba2534bd7d7547f3b4afa100`.
+
+- 2026-10-17, isolated cost screen `86083` / five unchanged source arms:
+  all five workspace gates and releases pass, including both original failing
+  runtime-location tests with unchanged assertions. After genuine runtime and
+  changed-compiler controls pass, the Ubuntu controller cannot create a derived
+  spec inside Docker-root-owned mode-0755 `specs`. The mode-0644 producer JSON
+  is readable; creating its sibling fails with `PermissionError(13)`. Zero of
+  110 planned timing rows ran. A prospective correction separates host-owned
+  derived specs and requires an actual native ownership control before builds.
+  Final archive SHA-256
+  `2e8cf7388384e13f7302d0a56a912e9141569b85b140606de642f5277eb57f1d`.
