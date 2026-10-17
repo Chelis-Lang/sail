@@ -39,3 +39,7 @@ stability and unchanged native verdicts/diagnostics, then demonstrate a useful
 paired gain before any wider qualification. No Sail workaround or normalization
 is selected. The reduced positive, shadowing, recursive and generic-default
 fixtures are not claimed to pass until executed with the actual compiler.
+
+| Date/source | Failed or interrupted gate | Raw SHA-256 |
+|---|---|---|
+| 2026-10-17, fd26 / Sail4b32 | Native baseline preflight FAIL: the first reduced source lacks module-local imports and reports six E0425 errors; candidate build, eight new controls and timing rows UNRUN. Final external-input inventory also fails on numeric permission-mode parsing. Prospective fixture-import and typed-mode corrections preserve every assertion; no result is reclassified. | `2d0db249de21ecab81ce765f0a22df570ad8a95ef31bcb323122ae1e9dc75c6d` |
