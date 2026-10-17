@@ -161,7 +161,7 @@ and the fork's regression tests (`vargo test --release -p rust_verify_test
 --test sail_vi...`).
 Final performance acceptance uses the frozen repair catalogue and the complete
 focused-plus-full loop ([product acceptance](../../docs/bench/m7-repair-acceptance.md)).
-The checks of the runtime currently pinned (`73dea021`) are recorded in
+The earlier accepted `73dea021` runtime checks are recorded in
 [the fork-default record](../../docs/validation/fork-default.md#runtime-qualification);
 those of earlier pins in [the M7 validation record](../../docs/validation/m7.md)
 (Gate 1, engine build and qualification). A new fork commit needs its own
@@ -197,9 +197,11 @@ Runtimes are GitHub release assets on the public fork,
 [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus/releases): one
 prerelease per pinned fork commit, tagged `engine-runtime-<short sha>-linux`
 and targeting that commit. The asset is the packed archive,
-`engine-runtime.tar.gz`. The pinned runtime is
-`https://github.com/Chelis-Lang/verus/releases/download/engine-runtime-73dea021-linux/engine-runtime.tar.gz`
-(SHA-256 `713375636be7551acb298aaa4675331ecae16d6c0410c021b04f9e90605daf41`).
+`engine-runtime.tar.gz`. The exact selected commit, release tag, asset name and
+archive checksum are recorded in [artifact-linux.json](artifact-linux.json).
+The [full closure-identity record](../../docs/validation/closure-full-identity.md)
+tracks the selected full-identity runtime's platform bindings, measured scope and
+qualification limits.
 
 Fetching needs no token: the CI image build, `ci/local.sh`, native hosts and
 `ci/engine-artifact.py fetch` download anonymously. `fetch` builds the URL
@@ -235,8 +237,8 @@ with Sail on the new runtime against plain stock Verus
    `pinned/<sha>`. Never replace or delete the asset of a release a pin has
    named: older Sail commits still fetch it.
 
-This selection is on the in-progress M7 branch. The prerelease artifact is a
-runtime prerequisite, not M7 product acceptance.
+A runtime prerelease is a prerequisite, not acceptance of the broader repair
+benchmark or three-project edit catalogue.
 
 ## Release archives
 
