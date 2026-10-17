@@ -11,6 +11,11 @@ mod input;
 pub mod projects;
 mod read_check;
 mod receipts;
+#[expect(
+    dead_code,
+    reason = "ADR 0050's content-bound successor is source-only until its two-phase compiler admission and real Vest ABA gate qualify."
+)]
+mod retained;
 mod runner;
 mod source_inputs;
 mod store;
