@@ -675,6 +675,556 @@
     },
     "vstd-0.0.0-2026-10-04-0306": {
       "archive_sha256": "f22e1cad7b5f35642a5a020b25e9b49915066d836bab77f8431bbc80228290a7",
+      "compiler_checksums": {
+        ".cargo_vcs_info.json": {
+          "blake3": "4a8a364ef8028298e8c6c3be41f7c38003534a4c12f12a5c31c1fa91517b9fec",
+          "size": 105
+        },
+        "Cargo.lock": {
+          "blake3": "279cb7fea9f79838b8a9f428901fad47e2265e7b9b71c3db388dd7145ddd626e",
+          "size": 3637
+        },
+        "Cargo.toml": {
+          "blake3": "ccc6806cdf9b1dcf22a4487b01d4bf6aa9125b9ef179871d79de8e3a8cb50f54",
+          "size": 1681
+        },
+        "Cargo.toml.orig": {
+          "blake3": "fc9a4310aef67b722f3875b4507365f7cfb212378536d5d3f92f918506f932f0",
+          "size": 1404
+        },
+        "README.md": {
+          "blake3": "63235c45b9022fde931d1a5490a3a9be7627b56155f07930378a04792f1a9728",
+          "size": 5826
+        },
+        "SOURCES.md": {
+          "blake3": "1922a04fe21dc259cb27b614db03bec23483964c887f70e3a3eca50f111b2e6f",
+          "size": 613
+        },
+        "arithmetic/README.md": {
+          "blake3": "e1da4e8fdd01051b42234d4489c503dd3642e026268c6125144ed25cdb8bdfc6",
+          "size": 2971
+        },
+        "arithmetic/div_mod.rs": {
+          "blake3": "ccbd832c9874e3a9fb769576f6f9054076bcab8b5cd435389880bf745f59262d",
+          "size": 50886
+        },
+        "arithmetic/internals/div_internals.rs": {
+          "blake3": "f6f861b10d8f339ef4fb34ab2a79d341e13bcb6f4a910016bb943242cedb554f",
+          "size": 13624
+        },
+        "arithmetic/internals/div_internals_nonlinear.rs": {
+          "blake3": "3edf73791741a12057c9ac67b5f0ffcbce1711c3a3bb0a4d6805f3c7e9d46de3",
+          "size": 1484
+        },
+        "arithmetic/internals/general_internals.rs": {
+          "blake3": "dda5cf75ec2c2312d50700148ffe94ec19ad84df5837869dfaa384f518c62166",
+          "size": 4395
+        },
+        "arithmetic/internals/mod.rs": {
+          "blake3": "644a49d027bcf22a4eb9b427ccf51429772816460a1f63fabc00b14cf33cc9a5",
+          "size": 196
+        },
+        "arithmetic/internals/mod_internals.rs": {
+          "blake3": "06835bec8aa916a3297146a0929f1d26806769ad70694d3f7079888c0a81e3d2",
+          "size": 18613
+        },
+        "arithmetic/internals/mod_internals_nonlinear.rs": {
+          "blake3": "f95e1555912f64c0242199cc765e2ce2674e99e12f7303f50e8912e25cf213e1",
+          "size": 2404
+        },
+        "arithmetic/internals/mul_internals.rs": {
+          "blake3": "e791831bc79d0be8ea41af9d191a8c4209956242a5cff4c52314e38ab131fb00",
+          "size": 8762
+        },
+        "arithmetic/internals/mul_internals_nonlinear.rs": {
+          "blake3": "499dd30c6e25ffa2230b61e1d3036a8733ed5ea78b966ad77e38955682542ddf",
+          "size": 2735
+        },
+        "arithmetic/logarithm.rs": {
+          "blake3": "275e7ecdd7d75e1af4fb0cae54d6487071a4cc292842d5f920ef3a9f05685dcd",
+          "size": 4927
+        },
+        "arithmetic/mod.rs": {
+          "blake3": "bf8eb0cf951b70ad602eff3125ad9f57b4328d5a0505c1510d1db1a0a2276683",
+          "size": 145
+        },
+        "arithmetic/mul.rs": {
+          "blake3": "28592f0cde9430ea1c6acfd70e7890108d291f6ea5e3ee80ac5b9fa50c895a8a",
+          "size": 15541
+        },
+        "arithmetic/overflow.rs": {
+          "blake3": "fe8551d5504a73751d75bc514aaaa2af5fea7c487472d79e972bd93553fac69d",
+          "size": 12403
+        },
+        "arithmetic/power.rs": {
+          "blake3": "47b3b91d953e6f48c7d8bd2541ad44f98095367728f5d70a8b5d2586ff03661a",
+          "size": 17392
+        },
+        "arithmetic/power2.rs": {
+          "blake3": "fd9acc7c7d414f13b53af68bf25b753ac09bbbad82bc9c79b53db5e07851ed97",
+          "size": 9689
+        },
+        "array.rs": {
+          "blake3": "f4cb98799b84692461ed81e44e9260b24ba2f9555ed41ee4d4dab8f7c51f2069",
+          "size": 6342
+        },
+        "atomic.rs": {
+          "blake3": "c99e304ae476e9cc740466d934977b47dfcfce3570cb15002172e6846e387fa1",
+          "size": 43661
+        },
+        "atomic_ghost.rs": {
+          "blake3": "f3cd7fab54f5936cc59019339c36da7d1bd7cb75a9b4b3b9bbf92e08ac738cbb",
+          "size": 26069
+        },
+        "bits.rs": {
+          "blake3": "fa324236d94ddb38a4a6e3f55f93eac86ba79fefb49ddfb41a84064f5565c057",
+          "size": 17133
+        },
+        "build.rs": {
+          "blake3": "be70291c429e92c5dbd21cb7741fe00d30a81c09a7a4849f56a16fa46fb4bb99",
+          "size": 452
+        },
+        "bytes.rs": {
+          "blake3": "5b0b74c2211db64e1acb472b684fb8c1970c212711107e5680e7ab7a77e2919b",
+          "size": 15946
+        },
+        "calc_macro.rs": {
+          "blake3": "a64edf7474f41198253dbb89511ac50a6f6ea6b730f4244dda74c5bc421dea5e",
+          "size": 1787
+        },
+        "cell.rs": {
+          "blake3": "fbbacbc6fc1bc6bfa7b9bf85b59682c636b9c464288167d53fe70ac5e324a5eb",
+          "size": 12590
+        },
+        "cell/invcell.rs": {
+          "blake3": "055850c7e1685c6b29e0a63ae02776fba3b3423cca4acce1074609060f609925",
+          "size": 4385
+        },
+        "cell/pcell.rs": {
+          "blake3": "a6f42a92e24baa09f008334676b94636af8bf64b827f4d3551aa7443fc740945",
+          "size": 8204
+        },
+        "cell/pcell_maybe_uninit.rs": {
+          "blake3": "17cff73ff775b72205300ff6fdb65992d03272ec716681909c3a27ea6e09fbf8",
+          "size": 6958
+        },
+        "compute.rs": {
+          "blake3": "3373b98a28178aee75ff168cadc69515802e94e26de910909c153ed2899a7a46",
+          "size": 1105
+        },
+        "contrib/exec_spec/map.rs": {
+          "blake3": "d8774bdfa2695a240a7088cf25c52dd3cad5aaea40b45362299b370f1b04294e",
+          "size": 7341
+        },
+        "contrib/exec_spec/mod.rs": {
+          "blake3": "015efb3523dccbc7ee244e15e1b453e24540de770e5bec2f5f07c8fc801c73f5",
+          "size": 5701
+        },
+        "contrib/exec_spec/multiset.rs": {
+          "blake3": "7784e16c2f4a2c1e0458040fee90e7cb591228c1cf19b6c5921c00b069ee519b",
+          "size": 6998
+        },
+        "contrib/exec_spec/option.rs": {
+          "blake3": "6c7083a11088194bb6d8fcb96fc140882bc1b903949a7752b2196f5aa2ab06f9",
+          "size": 1804
+        },
+        "contrib/exec_spec/seq.rs": {
+          "blake3": "c0882acd2470b4d3544ae2059bf002d70b915171009c6157dab01ee655fdf3ce",
+          "size": 14566
+        },
+        "contrib/exec_spec/set.rs": {
+          "blake3": "4509d46ce1661532ebe8ab3261cd9c33b9d21ae8c3576845b6a2047e53587055",
+          "size": 6850
+        },
+        "contrib/exec_spec/string.rs": {
+          "blake3": "9e836b23f741d21e20a4bcec4cd8cf539352162c1ab60639cc7c34ed43a478ec",
+          "size": 1792
+        },
+        "contrib/mod.rs": {
+          "blake3": "e06045eb5fc6697492e4138001d3822ce6b2244b5d2b76288511ead0b59cdb3f",
+          "size": 179
+        },
+        "endian.rs": {
+          "blake3": "cda9e2fa958d78f0fd98a0db02c3e159d12e8129dd430bc1e56b54caa3745931",
+          "size": 45012
+        },
+        "float.rs": {
+          "blake3": "3ad1766eb7ca107eab64e17e1f6d3d49b5383d9fd8d793606edb53528a760b9d",
+          "size": 3682
+        },
+        "function.rs": {
+          "blake3": "af0e94aa174ed4c2ef7d5aec51844ebf9da7c495580ef7c94b9b282e16a12189",
+          "size": 4598
+        },
+        "future.rs": {
+          "blake3": "625315a30c5ca2f236c95fc0278a78c0e0757901ba9a8e38e7962864acbdb4d3",
+          "size": 974
+        },
+        "hash_map.rs": {
+          "blake3": "279843e429cf7fae0f219d2b6f1ff821b6f0c4c10a7f03d6f8e245f0fa0e7bc2",
+          "size": 12840
+        },
+        "hash_set.rs": {
+          "blake3": "0428a17310bedc12d9901ef68263619c229c94f7f6863333e633632bc991e79a",
+          "size": 11821
+        },
+        "imap.rs": {
+          "blake3": "93b69c675f600b8064e38c3db63efd6a4f777a0f3202cd6c71e6e9c3bc2bbcca",
+          "size": 17546
+        },
+        "imap_lib.rs": {
+          "blake3": "1054cb9fcccee9c8ad2ea53a7a375f50aa0596b0864eb925e0fd10e12ffd48d3",
+          "size": 29497
+        },
+        "invariant.rs": {
+          "blake3": "c05ab6875a1de18cb7f9d28e337d8ef5f783aced2c9ae90f9dc3112238288cf5",
+          "size": 27547
+        },
+        "iset.rs": {
+          "blake3": "371eb813ba5b8842dc7a9a55a5fd531c1618bf4f944aef6b96a048d1f983b622",
+          "size": 34731
+        },
+        "iset_lib.rs": {
+          "blake3": "4ca010d32fe90978c5ea2425fba83aeed70f4863d3512e9ab280333a6c4209b6",
+          "size": 58093
+        },
+        "laws_cmp.rs": {
+          "blake3": "098d14e6b0e8729479e4d9fe3846b3ff05e42c330f4c83fcfb7521350d0e3bae",
+          "size": 8836
+        },
+        "laws_eq.rs": {
+          "blake3": "de4ba3296e092da3f5b5d89c780a3488e58ec9da6b632c2d71e2704acbb4a7df",
+          "size": 11842
+        },
+        "layout.rs": {
+          "blake3": "6a83511bbafc2accce98be7ed41c24a4118d1665c118e94aa31ba5b0150688ab",
+          "size": 16057
+        },
+        "logatom.rs": {
+          "blake3": "2a487e4aaf54521c35942c68ac7a74fcc307299bd9d3ccbea33882cb56793c43",
+          "size": 3306
+        },
+        "map.rs": {
+          "blake3": "d33a2e3603310fdd04da14f285c44b5e1414463790b6116bd97df4c55bbbbfe1",
+          "size": 18255
+        },
+        "map_lib.rs": {
+          "blake3": "a7cbfb08a4393f544d1faf795bb58162d130500ada75fdfbf232c250418f72a7",
+          "size": 29851
+        },
+        "math.rs": {
+          "blake3": "f350506d4c452ce29c501078885de9a0d600956edd3f93c031aff1059c1068c5",
+          "size": 1871
+        },
+        "modes.rs": {
+          "blake3": "f8457a38ccad23acbf9e433273154a7de8a51489bb3034fbe804e6ba609b2ed6",
+          "size": 868
+        },
+        "multiset.rs": {
+          "blake3": "cdf95a8222e0407b94061262c03a19a189651d6252e9532f0cf290eca161ac43",
+          "size": 27241
+        },
+        "multiset_lib.rs": {
+          "blake3": "e2e96128742d4fc48ac6a4ac8434bbfa55605b2465e27b12a3dc2a87da736672",
+          "size": 2215
+        },
+        "mut_ref.rs": {
+          "blake3": "aebbbce8a9b90fda641dff2d7f7d17c4d84358d33866f9fdf6ad7ce662fd89f7",
+          "size": 1377
+        },
+        "pervasive.rs": {
+          "blake3": "e7a8f66fbf4b5d6ed46686cea5487979e1c7356cc37de8f89cfb823166ea4326",
+          "size": 16546
+        },
+        "predicate.rs": {
+          "blake3": "b14aa011844b564057819320f38469cc78a5e3ee630acd3f6a06aaf5a0015915",
+          "size": 291
+        },
+        "prelude.rs": {
+          "blake3": "fa324c8f22280e525b476d8afeb4a552d050120f36a385485c28891f4a9c37e9",
+          "size": 3245
+        },
+        "proph.rs": {
+          "blake3": "3f531770715c6d119b2fef57915a245400cc95521a5c2b3bb5edec80f61f5302",
+          "size": 11648
+        },
+        "raw_ptr.rs": {
+          "blake3": "29b7e6d9cc54897f3d7cf44e2a723ae8f989972131c5016379184ae0dc0cc23d",
+          "size": 37223
+        },
+        "relations.rs": {
+          "blake3": "2013798573c6d9ab1c2b3a15ac032ab4e39f2483b6b0eb4fbb63c72d64c07062",
+          "size": 3316
+        },
+        "resource/algebra.rs": {
+          "blake3": "92f58257fe55f4673807a33ba8bbca0f6920b946a1156b7d6ddecc978b9b5770",
+          "size": 12830
+        },
+        "resource/combinators/agree.rs": {
+          "blake3": "14eaed3cdf42fa53e6a8848736265fe3bf892b865f3512edf79648cfec0f899f",
+          "size": 1387
+        },
+        "resource/combinators/auth.rs": {
+          "blake3": "5674bd3b5a0c2c7de07fa4596dcce7a145d0cf93aedd44fb3dd1bd343875616f",
+          "size": 2604
+        },
+        "resource/combinators/exclusive.rs": {
+          "blake3": "a40936945457a46ae046e2acbfdc6fe91bb5c088ca0be14419d08bdfcd589a4a",
+          "size": 600
+        },
+        "resource/combinators/frac.rs": {
+          "blake3": "4048b4e832772872ec9143f53c4292eb2320479a209b951fac7f573420f19497",
+          "size": 10568
+        },
+        "resource/combinators/mod.rs": {
+          "blake3": "c257936575f704344237fa03c70f7255a7878ca971e27c7eb1bfc41d87ab045f",
+          "size": 108
+        },
+        "resource/combinators/option.rs": {
+          "blake3": "577144741e6ce16ee5b7a8b2596a0dd8ee1be7ffac5d9e085be2abc36d0a1e6a",
+          "size": 3079
+        },
+        "resource/combinators/product.rs": {
+          "blake3": "0b2a851f81b349443817b3eaf791066d863761901387388479f527f874090f26",
+          "size": 1418
+        },
+        "resource/combinators/sum.rs": {
+          "blake3": "9a7d3f5530dfd874facdd7e5aaf75d2539f53da8ca4302f980afbb0ec94f28ff",
+          "size": 1672
+        },
+        "resource/impls/frac_opt.rs": {
+          "blake3": "86fcc3bebb5d2397e13ebae8530f0252342ccd11ff0c9f7167c5222a832bc036",
+          "size": 12966
+        },
+        "resource/impls/ghost_var.rs": {
+          "blake3": "0bcad1d968f527a78890d155929596b89d1b43d3010b4d275bf6997cf4a7e31a",
+          "size": 3606
+        },
+        "resource/impls/imap.rs": {
+          "blake3": "98c41ec386191de36d0cfbd8e63b595437bda72dfc03946c5ace19d9df142c96",
+          "size": 59908
+        },
+        "resource/impls/iset.rs": {
+          "blake3": "c4e01509a2d8fb15fd4571df3ffd6705901428dae5937eb7f5e9f4f2e8b17523",
+          "size": 31127
+        },
+        "resource/impls/map.rs": {
+          "blake3": "63d41b2dbb91aae9f59f2ccb56fe3f339183588b769a7d5f390263970de04f01",
+          "size": 59480
+        },
+        "resource/impls/mod.rs": {
+          "blake3": "78e1dec49a79f3fcb8b4a1487f679340713975c331337e412b25187b8f43aa7e",
+          "size": 104
+        },
+        "resource/impls/seq.rs": {
+          "blake3": "90345a2563f640ac6f5fe3a63525562bb17ee72d5a5f9c9116f975d510204cb8",
+          "size": 13538
+        },
+        "resource/impls/set.rs": {
+          "blake3": "08ac0f15017d9951013a41bd384e813c11a716b28fe67fab46ed862554a09028",
+          "size": 30792
+        },
+        "resource/lib.rs": {
+          "blake3": "2e38fcbc3493d7b10b025b9ac650e20016f776a26eb56edffed3c13aa53aa116",
+          "size": 19058
+        },
+        "resource/mod.rs": {
+          "blake3": "c0900d88b2e0e5b62bf6cd7f7f3688ea9d65f1260a020bdd9d16c66f20f90ba4",
+          "size": 577
+        },
+        "resource/pcm.rs": {
+          "blake3": "d3be70ff5f5bad637d9335268ee93b31e54ada690287e8e45b400df4de8f184f",
+          "size": 12182
+        },
+        "resource/relations.rs": {
+          "blake3": "58206593108162c3c745e1dd4d3727d4a3fe2da57892b631a16b1f79a0b48af7",
+          "size": 3603
+        },
+        "resource/storage_protocol.rs": {
+          "blake3": "e73995249b1818ded239d1ef9a9aee027c12131d0000c343b9f3c9d1f73ab21f",
+          "size": 13552
+        },
+        "rwlock.rs": {
+          "blake3": "4bac3d69aa9f17066344761555d9c3a9d787ad98782f9f1116d5dce5539a3b67",
+          "size": 23027
+        },
+        "seq.rs": {
+          "blake3": "9d132c410de79cd6160ad05b48af84929ce64debd4f35e1eb592508d33c05307",
+          "size": 59246
+        },
+        "seq_lib.rs": {
+          "blake3": "efb595717f8d3625a59596736fc788bc60e4b702a6a77b819ad1c271e836a243",
+          "size": 142568
+        },
+        "set.rs": {
+          "blake3": "4af96a42ade9f69c132f101cbf9743ce90424685719f0a602988e569e8d06880",
+          "size": 20299
+        },
+        "set_lib.rs": {
+          "blake3": "b61629267cadf57b60e60bb1a152589ab06234aec3684f9d3225bbcfb512ccdd",
+          "size": 55155
+        },
+        "shared.rs": {
+          "blake3": "951f15191a768ccb1862abe69fd49007de31096b47f53fb49fabce698c4f1741",
+          "size": 1644
+        },
+        "simple_pptr.rs": {
+          "blake3": "4354e2f5884e07c9c579e3b7e3e4dcc3ab1eb1995db2951ca288615cb888b731",
+          "size": 21023
+        },
+        "slice.rs": {
+          "blake3": "9f5455a7f64fb2ccfad87074000ff02408fcd189d11f823478b0abeade8149ab",
+          "size": 7076
+        },
+        "state_machine_internal.rs": {
+          "blake3": "6208a95ca3239b87813d512580cf0048dece9fa368af0ecfc5758a758983196d",
+          "size": 14405
+        },
+        "std_specs/alloc.rs": {
+          "blake3": "80f181bd9cc4d72e7df8543bd968b6d7a819f0216e9525e158163e8ca23b89c3",
+          "size": 1272
+        },
+        "std_specs/array.rs": {
+          "blake3": "875339167dc53b3f83b054223f378eb308fa1561c7059116abe0b6e501450204",
+          "size": 3587
+        },
+        "std_specs/atomic.rs": {
+          "blake3": "1387d4791838f589575849719c48a57a95f7d6e27f53be48896aa38d852f4e8f",
+          "size": 3236
+        },
+        "std_specs/bits.rs": {
+          "blake3": "138c74b22715ffa0302dd54fe47f984711846c2ad96c27572264d6ba59010ac2",
+          "size": 26717
+        },
+        "std_specs/borrow.rs": {
+          "blake3": "40657e4d81a3ec55e21ca63bb6f77929789ea4f211eaed2080255c861c92b3b2",
+          "size": 2692
+        },
+        "std_specs/btree.rs": {
+          "blake3": "c6eeee3b2deee2be8e6bc9618076ec94abc8e7155cf99ff9ccebeb90e8c43916",
+          "size": 49717
+        },
+        "std_specs/char.rs": {
+          "blake3": "ec80515856c127e8db84df1982874f4ec7a4a11b09ad56eec1c040a53dbe47da",
+          "size": 1137
+        },
+        "std_specs/clone.rs": {
+          "blake3": "40ee3d7b89b638435f39818fe1fb2a912e2d8e7d4120183a2caf1ca69a7234bc",
+          "size": 1620
+        },
+        "std_specs/cmp.rs": {
+          "blake3": "fd51392930eb4837eb3420ec581aa91cbb0c3f08472ac07c02b1c0be93a2c77b",
+          "size": 16288
+        },
+        "std_specs/control_flow.rs": {
+          "blake3": "68ea695a5cf15ae4231f81f1d32388fd7ffa3fc5b6c34e79e77fe705bf3fa215",
+          "size": 1935
+        },
+        "std_specs/convert.rs": {
+          "blake3": "9f7e2f3b025d67a13046c222ebd6e6c69e07c69d9643cb5e6019c00df066a78d",
+          "size": 5377
+        },
+        "std_specs/core.rs": {
+          "blake3": "385594e39153e57ae49003d0075ddca9a1355b9fe66dcafe15f73521cec4e50a",
+          "size": 5874
+        },
+        "std_specs/default.rs": {
+          "blake3": "cd3d2c58b62fe592fc1c0f9558512976b115166af267572a6f09dfc107ca194e",
+          "size": 2313
+        },
+        "std_specs/fmt.rs": {
+          "blake3": "c0dd111849e8725b8d33e369eeea9d1694efeac3d725caa6224894230ab4f0bf",
+          "size": 9852
+        },
+        "std_specs/hash.rs": {
+          "blake3": "f0f20d394263cfd2492fb40253676e6fe1aceb050a9fc33393da97a73035c392",
+          "size": 51449
+        },
+        "std_specs/iter.rs": {
+          "blake3": "a8c8191c34184358f92522471c293db541281155cfcf11818fea833b865c80ae",
+          "size": 39744
+        },
+        "std_specs/manually_drop.rs": {
+          "blake3": "2a370649da7e840f3f0e88f4cec51d8f840546e9281f2492bd3baccd06d50dcf",
+          "size": 1533
+        },
+        "std_specs/maybe_uninit.rs": {
+          "blake3": "8ce3ee5e46218493e6d8b6163e4735b85840ed61af7b3365d9f739d526c3fd28",
+          "size": 1898
+        },
+        "std_specs/mod.rs": {
+          "blake3": "821cd6a03079248304a62239f6ba910264d309dec3b3c9b627e494ddd71a2dd9",
+          "size": 819
+        },
+        "std_specs/nonzero.rs": {
+          "blake3": "00f589c79a0aa371d4454c46769251ef916b76b95815ef6fe31a960034da869b",
+          "size": 4762
+        },
+        "std_specs/num.rs": {
+          "blake3": "308b2a9a4e546d6c71b8d795b1266926004bd747f13dda5cf7916be46774662d",
+          "size": 19136
+        },
+        "std_specs/ops.rs": {
+          "blake3": "b543cefea3fa2bb1fbb5f428bb0662568dbd5a8b2bb850de07c372570b7931d4",
+          "size": 24344
+        },
+        "std_specs/option.rs": {
+          "blake3": "24ad71c8f6297ce7bcbaa27f24dcb2c27f944a245a07ad16ba01b50e3868ddf6",
+          "size": 11332
+        },
+        "std_specs/range.rs": {
+          "blake3": "0e5fb0a1303363a500176598cb162d7747845dab6444b76b4059f28003231ef4",
+          "size": 18719
+        },
+        "std_specs/result.rs": {
+          "blake3": "d6cb49633c8c00a2d227b41e2fecaa4daf635e538588a85646eb5f6ae2373669",
+          "size": 7411
+        },
+        "std_specs/slice.rs": {
+          "blake3": "5bdcebb6fffb34bba39f42bddb6d23c34eca3fb9115e47b86b0df80d535d38ef",
+          "size": 22199
+        },
+        "std_specs/smart_ptrs.rs": {
+          "blake3": "39b38b94711234305cdd1cd8a12be1971419d4183508310eb74443baad77dc17",
+          "size": 1708
+        },
+        "std_specs/vec.rs": {
+          "blake3": "0ba29b89dc465575d7b5ec6ca71301f3fa61f1ea407602ebc46b747ce01da3b3",
+          "size": 15474
+        },
+        "std_specs/vecdeque.rs": {
+          "blake3": "595f9487c79b61ab2a61216e8602bf1790f2bc929d9ab16916b7314eb9fa304d",
+          "size": 9104
+        },
+        "string.rs": {
+          "blake3": "c0570780d255b47a29558253e8f83ff90e1745fe5c987bf9d94fdcc6a01e491a",
+          "size": 28948
+        },
+        "thread.rs": {
+          "blake3": "f9d96e6f180b16e2b36dbeb54ceaf5f9d6ca1b433fc19a73f1367c88643c92dd",
+          "size": 7930
+        },
+        "tokens.rs": {
+          "blake3": "de06ed9ac218c3cc0f679d241b93902075cc5eea221aec4ae5a68391f5e79dd7",
+          "size": 31190
+        },
+        "utf8.rs": {
+          "blake3": "c63a889b96f5b0cffe8004d39838dbf78cf87277ab54354a09debb0e3ae27fba",
+          "size": 43786
+        },
+        "view.rs": {
+          "blake3": "0dc1b5af9e9d5cc52950e332e58cf6b52faf18ab2c0e978dd8ded16b95816e38",
+          "size": 8850
+        },
+        "vstd.rs": {
+          "blake3": "835f517957115052871472aac54967dad2706e21d67ffa5c5d7014e489c5507d",
+          "size": 5040
+        },
+        "wrapping.rs": {
+          "blake3": "1356cc28b76db848b2b9035b7ead88433c798bc79ae11bba1d6bce3a5122ee43",
+          "size": 4222
+        }
+      },
       "features": [
         "alloc",
         "default",
@@ -823,6 +1373,6 @@
       "version": "0.0.0-2026-10-04-0306"
     }
   },
-  "schema": 1,
+  "schema": 2,
   "vstd": "vstd-0.0.0-2026-10-04-0306"
 }
