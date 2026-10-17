@@ -25,7 +25,7 @@ semantic versioning once the API is published.
   entries lacking native consumption evidence are refused. The withdrawn
   prototype warning `SAIL3133` is removed; refusals remain silent. Damaged entries
   fall back silently; the optional research trace retains the refusal reason.
-  Experimental graph capture briefly waits for rustc metadata scratch
+  Experimental graph capture briefly waits for compiler scratch
   directories, with at most two complete captures and all refusal checks intact.
 
 - Recompute solver identity at every daemon handshake: equal executable path,
