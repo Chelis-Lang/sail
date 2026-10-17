@@ -1,8 +1,9 @@
 # Solver executable identity (#213)
 
-**Correctness checks pass; final current-head CI pending.** The daemon now computes solver identity for every
+**Native and macOS correctness checks complete; digest memo selected by PR #219.** The daemon computes solver identity for every
 HELLO instead of retaining it under `(path, length, mtime)`. Each handshake
-runs the version command and reads and hashes the executable bytes. A launch,
+runs the version command and reads the complete executable bytes, reusing a
+digest only after full fresh-byte equality as described below. A launch,
 version-parse or read error refuses the handshake; the shim's existing fallback
 is unchanged. This removes the demonstrated stale-metadata memo, not every
 possible concurrent executable-mutation race.
@@ -152,9 +153,9 @@ Failed attempts remain indexed here:
   mismatch before timed samples (0 / 50); failed, no samples replaced.
   The later quiet fresh-project variant is a separate prospective cohort.
 
-## Fresh-byte digest memo candidate
+## Fresh-byte digest memo
 
-A separate unselected implementation retains one immutable executable body
+The implementation selected by PR #219 retains one immutable executable body
 and its SHA-256. Every HELLO still launches the version command and reads the
 complete executable anew. A digest is reused only after literal equality of
 all freshly read bytes; path, metadata and previous version output never
@@ -199,7 +200,7 @@ c7i.8xlarge in us-east-1. Its four production Rust files, Cargo inputs and
 runtime pins are byte-identical to `fd31d747`; the earlier macOS host gate
 therefore covers the same implementation. The native queue passed the full
 workspace gate (662 tests, 35 solver tests skipped, two doctests), all 35
-solver tests, all seven E2E phases plus extra, and PR conformance. Full FAST
+solver tests, all nine E2E phases plus extra, and PR conformance. Full FAST
 passed all four arms, each 147 Same / 3,450 functions. Full STANDARD passed
 all four arms, each 159 Same / 12,726 functions, with no Different, Unstable,
 infrastructure errors or skipped projects. Rlimit drift was 0/0/0/1 in
@@ -208,8 +209,9 @@ pass-through/cache-fill/cache-warm/engine order and remains recorded.
 Final guards confirmed all 591 tracked source files, the complete 3,886-file
 runtime map and identical initial/final byte, size and mode inventories for
 all five built executables. Their actual bodies are retained with source
-bindings. All 25 stage archives were strictly verified. This is local merge
-qualification, not lead selection or a new performance measurement. The
+bindings. All 25 stage archives were strictly verified. Local merge
+qualification is complete; lead review selected the change for PR #219,
+subject to its final current-head CI. This is not a new performance measurement. The
 raw controller's inherited `qualification_for_digest_memo` field remains
 `false`: it is initialized once and never updated. Its actual success fields
 are `status = selected-queue-pass`, `passed = true` and exit 0, backed by the

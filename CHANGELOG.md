@@ -5,15 +5,19 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- Add a candidate single-entry digest memo for solver handshakes (#213).
+- Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;
-  version execution and full reads still occur on every handshake. Native
-  performance and full qualification remain pending.
+  version execution and full reads still occur on every handshake. All 50
+  matched native samples and the full local merge gates pass. Active-case wall
+  medians improve about 1–3% and daemon self CPU falls 34–37%, with roughly
+  34 MiB higher observed daemon RSS; these are scoped observations, not
+  whole-pipeline CPU or default cold-start claims.
 
 - Recompute solver identity at every daemon handshake: equal executable path,
   length and mtime no longer retain a stale binary hash (#213). Native
-  correctness checks pass; the matched native screen records slower edit
-  workloads, with performance recovery and final current-head CI pending.
+  correctness checks pass. The original matched native screen records slower
+  edit workloads; the fresh-byte digest memo above recovers hashing CPU while
+  preserving the identity correction.
 
 - Add a disabled, opt-in kernel-accounting research path for the one-use
   continuation driver (#158). It requires complete sole-`wait4` accounting
