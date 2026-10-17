@@ -602,7 +602,7 @@ fn observe(
     } else {
         Output::Unknown
     };
-    session.apply(&item.bytes);
+    session.advance(&item.bytes);
     // print-success changes the option command's own output as well as later
     // replies. Its non-default protocol always replays live, without recording.
     if session

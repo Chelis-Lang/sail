@@ -5,8 +5,9 @@
 //! - the solver options in effect, which `push` and `pop` do not scope;
 //! - where the session is in its history.
 //!
-//! At each satisfiability check it produces a [`Snapshot`] of exactly that
-//! state. The model is conservative. Anything it cannot follow exactly (an
+//! [`Session::apply`] produces a [`Snapshot`] at each satisfiability check;
+//! [`Session::advance`] updates the same state without capturing a snapshot.
+//! The model is conservative. Anything it cannot follow exactly (an
 //! unrecognised command, a malformed command, a `pop` below the base level)
 //! marks the session *inexact*, and snapshots taken afterwards say so.
 //! Consumers such as the cache must then treat those snapshots as
@@ -193,7 +194,20 @@ impl Session {
     /// Applies one complete top-level command (as split by
     /// [`sail_smtlib::split::CommandSplitter`]).
     pub fn apply(&mut self, command: &[u8]) -> Event {
-        let event = self.apply_inner(command);
+        self.apply_with_snapshot(command, true)
+    }
+
+    /// Applies a command without constructing a satisfiability-check snapshot.
+    ///
+    /// State, output expectations and check/history counters advance exactly as
+    /// in [`Self::apply`]. Prefix-keyed consumers that do not inspect snapshots
+    /// can avoid copying the assertion stack at every check.
+    pub fn advance(&mut self, command: &[u8]) {
+        self.apply_with_snapshot(command, false);
+    }
+
+    fn apply_with_snapshot(&mut self, command: &[u8], capture: bool) -> Event {
+        let event = self.apply_inner(command, capture);
         // A reset starts the count again at zero; it is not part of the new
         // history.
         if !matches!(classify(command).map(|c| c.kind), Ok(CommandKind::Reset)) {
@@ -202,7 +216,7 @@ impl Session {
         event
     }
 
-    fn apply_inner(&mut self, command: &[u8]) -> Event {
+    fn apply_inner(&mut self, command: &[u8], capture: bool) -> Event {
         let Ok(parsed) = classify(command) else {
             self.mark(Inexact::Malformed);
             return Event::Command;
@@ -230,17 +244,21 @@ impl Session {
             }
             CommandKind::SetInfo | CommandKind::SetLogic => self.globals.push(command.into()),
             kind if kind.is_check() => {
-                let snapshot = Snapshot {
-                    levels: self.levels.clone(),
-                    options: self.options.clone(),
-                    globals: self.globals.clone(),
-                    check: command.into(),
-                    position: self.position,
-                    prior_checks: self.checks,
-                    inexact: self.inexact,
+                let event = if capture {
+                    Event::Check(Box::new(Snapshot {
+                        levels: self.levels.clone(),
+                        options: self.options.clone(),
+                        globals: self.globals.clone(),
+                        check: command.into(),
+                        position: self.position,
+                        prior_checks: self.checks,
+                        inexact: self.inexact,
+                    }))
+                } else {
+                    Event::Command
                 };
                 self.checks += 1;
-                return Event::Check(Box::new(snapshot));
+                return event;
             }
             CommandKind::GetInfo { .. }
             | CommandKind::Get
@@ -271,6 +289,47 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn advancing_preserves_every_later_snapshot(
+            commands in proptest::collection::vec(0usize..17, 0..96)
+        ) {
+            let inputs: &[&[u8]] = &[
+                b"(set-logic ALL)",
+                b"(set-info :source |a source|)",
+                b"(declare-const x Int)",
+                b"(define-fun p () Bool true)",
+                b"(assert (> x 0))",
+                b"(push 2)",
+                b"(pop)",
+                b"(check-sat)",
+                b"(check-sat-assuming (p))",
+                b"(set-option :print-success true)",
+                b"(set-option :print-success false)",
+                b"(set-option :rlimit 100)",
+                b"(get-info :all-statistics)",
+                b"(reset-assertions)",
+                b"(reset)",
+                b"(apply simplify)",
+                b"malformed",
+            ];
+            let mut full = Session::new();
+            let mut observed = Session::new();
+            for index in commands {
+                let command = inputs[index];
+                prop_assert_eq!(full.expects_output(command), observed.expects_output(command));
+                full.apply(command);
+                observed.advance(command);
+                prop_assert_eq!(full.depth(), observed.depth());
+                prop_assert_eq!(full.inexact(), observed.inexact());
+                // Capturing a later check compares every state field, including
+                // options, globals, position and the number of prior checks.
+                prop_assert_eq!(full.apply(b"(check-sat)"), observed.apply(b"(check-sat)"));
+            }
+        }
+    }
 
     fn run(commands: &[&str]) -> (Session, Vec<Snapshot>) {
         let mut session = Session::new();

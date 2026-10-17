@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Avoid constructing unused assertion-stack snapshots in cached solver sessions.
+  The session model still tracks the complete state and history, and tracing
+  still captures snapshots. Exact prefix keys and solver forwarding are unchanged.
+  Native performance and conformance qualification remain pending.
+
 - Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;
   version execution and full reads still occur on every handshake. All 50
