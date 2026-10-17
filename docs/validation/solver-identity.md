@@ -210,6 +210,14 @@ runtime map and identical initial/final byte, size and mode inventories for
 all five built executables. Their actual bodies are retained with source
 bindings. All 25 stage archives were strictly verified. This is local merge
 qualification, not lead selection or a new performance measurement. The
+raw controller's inherited `qualification_for_digest_memo` field remains
+`false`: it is initialized once and never updated. Its actual success fields
+are `status = selected-queue-pass`, `passed = true` and exit 0, backed by the
+executed command results and final guards above. Tiny transport markers,
+including `after/status.json`, always retain `diagnostic_only = true` and
+`qualification = false`; their context reports the queue result. Those
+transport fields supply no independent qualification or selection decision.
+The frozen records are unchanged. The
 qualification final archive SHA-256 is
 `77e923780b77eefd9c10b5c8cdc8ad1a45269e61513349e114aba0ac31a33fa9`;
 the STANDARD aggregate is
