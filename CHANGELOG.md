@@ -18,6 +18,9 @@ semantic versioning once the API is published.
   from 25.130 s to 25.437 s (1.2%). The [qualification record](docs/validation/closure-full-identity.md)
   includes both platform bindings, all correctness gates and the Mac inventory
   guard's enclosing failure. Selection takes effect with this pin change.
+- Prototype vstd-only compiler-boundary reuse after genuine native prerequisite
+  compilation (#161). This is explicitly enabled research, remains unqualified,
+  and does not reenable the native-artifact dependency store.
 
 - Recompute solver identity at every daemon handshake: equal executable path,
   length and mtime no longer retain a stale binary hash (#213). Native

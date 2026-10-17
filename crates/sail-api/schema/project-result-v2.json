@@ -161,6 +161,7 @@
           "type": "string"
         },
         "establishing_run": {
+          "description": "Proof-establishing invocation; shipped:<build identity>/<entry key> names a nonlocal shipped proof, never its local replay run",
           "type": "string"
         },
         "kind": {
@@ -180,6 +181,10 @@
         },
         "dependency_store": {
           "description": "Key of the dependency store entry this run placed in a new Cargo target (ADR 0045); absent otherwise",
+          "type": "string"
+        },
+        "shipped": {
+          "description": "Proof originated in the Sail release's shipped dependency build (ADR 0048): <build identity>/<entry key>, preserved through receipt and store reuse; absent otherwise",
           "type": "string"
         },
         "report": {

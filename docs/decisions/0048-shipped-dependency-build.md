@@ -1,0 +1,57 @@
+# 0048: Reuse vstd at its compiler boundary after native prerequisites
+
+- **Status:** proposed; implementation prototype, disabled by default
+- **Date:** 2026-10-17
+- **Issue:** [#161](https://github.com/Chelis-Lang/sail/issues/161)
+- **Extends:** [ADR 0053](0053-disable-unqualified-native-store.md)
+
+## Context
+
+The owner requires recovery of the first-project speed lost when the native
+artifact store was quarantined. Copying native Cargo units before a build can
+hide a changed native compiler's failure (#187). Hashing a few tool names does
+not establish every input to arbitrary native compilation.
+
+The earlier shipped-vstd implementation already records compiler outputs,
+source bindings, exact linked-library bytes and nonlocal proof provenance.
+Its replay of native libraries, proc macros and build-script executables has
+the same unresolved boundary. That path must not be enabled.
+
+## Decision
+
+Prototype a narrower path in the Cargo compiler wrapper. Every ordinary Rust
+crate, proc macro and build script runs through the actual compiler before any
+cache lookup. Only the pinned, nonprimary vstd library dependency may look up
+its own recorded outputs, after Cargo has finished its native prerequisites.
+The lookup binds the actual fresh `--extern` libraries and adjacent VIR files,
+all compiler options, runtime and installed sysroot identity, actual solver
+SHA-256, source files and declared compiler environment.
+
+Only a complete successful verification document can publish a vstd entry.
+Replayed proofs keep their nonlocal establishing identity through later receipt
+reuse. Native output files and Cargo fingerprints are never placed by this
+path. The v1 machine-local store stays disabled.
+
+The prototype requires `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Engine, focused and
+loader-variable runs decline it. Schema 2 and a distinct bundle kind reject
+the earlier all-unit bundles. Source-path remapping is confined to the named
+experiment and uses the previously built fork support; this change selects
+no runtime or release asset.
+
+This is not a correctness qualification. The remaining questions are whether
+fresh native prerequisites have repeatable bytes, whether the pinned macro
+and compiler input model is complete, and whether source/artifact mutation
+during compilation can invalidate publication. No source-level key is assumed
+equivalent to exact solver input without qualification. Missing, changed or
+damaged inputs must run the actual compiler and verifier.
+
+## Consequences
+
+A successful replacement would retain fresh native compilation failures while
+avoiding vstd's repeated verification. Native prerequisite compilation remains
+part of the first-project cost. If fresh dependency bytes differ, the lookup
+must miss; the useful gain is unproven. The native changed-compiler reproduction,
+per-function verdict and diagnostic parity, corruption and mutation refusals,
+both platforms and measured first-project cost gate any default enablement.
+
+See [the implementation record](../validation/vstd-compile-boundary.md).

@@ -356,6 +356,8 @@ fn custom_compiler_context(args: &[OsString]) -> bool {
 fn driver() -> Result<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
+    // Native prerequisites always execute through Cargo's real compiler. The
+    // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
         return Command::new(wrapper)
             .args(args)
@@ -363,6 +365,10 @@ fn driver() -> Result<ExitCode> {
             .map(status)
             .map_err(|e| Error::new("SAIL3111", e.to_string()));
     }
+    let plan = crate::managed::shipped::active();
+    let call = plan.as_ref().and_then(|plan| {
+        crate::managed::shipped::Call::vstd_boundary(plan, &args, std::env::vars_os())
+    });
     if custom_compiler_context(&args) {
         return Err(Error::new(
             "SAIL3111",
@@ -438,10 +444,49 @@ fn driver() -> Result<ExitCode> {
             || crate::verus_stdout::UserFlags::of(&runtime.args),
             |effective| crate::verus_stdout::UserFlags::of_verus(effective.arguments.iter()),
         );
+    // The engine runs its own phases; a shipped dependency is never the
+    // engine's selected crate, and the engine is not asked to replay one.
+    if runtime.engine.is_none()
+        && let Some(replay) = call
+            .as_ref()
+            .and_then(|call| call.serve(&mut std::io::stderr()))
+    {
+        event(
+            &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),
+        );
+        std::io::stderr()
+            .write_all(&replay.stderr)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        finish(
+            &runtime,
+            identity,
+            &dir,
+            &Captured {
+                stdout: &replay.stdout,
+                stderr: &replay.stderr,
+                exit: Some(0),
+            },
+            None,
+            Some(&replay.unit),
+        )?;
+        let shown_stdout = crate::verus_stdout::rebuild(&replay.stdout, flags);
+        std::fs::write(dir.join("verus.shown-stdout"), &shown_stdout)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        std::io::stdout()
+            .write_all(&shown_stdout)
+            .and_then(|()| std::io::stdout().flush())
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let mut cmd = Command::new(&wrapper);
     cmd.args(&launcher_args)
         .envs(&launcher_environment)
         .args(observation_args(flags, logs.as_deref()))
+        .args(
+            call.as_ref()
+                .map(crate::managed::shipped::Call::record_args)
+                .unwrap_or_default(),
+        )
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     // Session records join cached answers to transcripts; without logs there
@@ -540,6 +585,7 @@ fn driver() -> Result<ExitCode> {
             .write_all(&stderr)
             .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
+    let invocation_key = identity.key();
     finish(
         &runtime,
         identity,
@@ -550,7 +596,22 @@ fn driver() -> Result<ExitCode> {
             exit: exit.code(),
         },
         established.as_ref(),
+        None,
     )?;
+    // A successful process alone is insufficient: partial/no-verify output
+    // must never become a reusable proof. Reuse only the complete successful
+    // invocation that finish just established from Verus's full document.
+    if let Some(call) = &call {
+        let completed = std::fs::read(runtime.invocations.join(format!("{invocation_key}.json")))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<Invocation>(&bytes).ok())
+            .is_some_and(|invocation| {
+                invocation.success && crate::managed::receipt_complete(&invocation.report)
+            });
+        if completed {
+            call.record(&stdout, &stderr, exit.code());
+        }
+    }
     let shown = crate::verus_stdout::rebuild(&stdout, flags);
     // The dependency store must replay exactly what this target displayed,
     // including effective per-package output flags, when it seeds a new target.
@@ -582,6 +643,11 @@ fn observation_args(flags: crate::verus_stdout::UserFlags, logs: Option<&Path>) 
     }
     args
 }
+
+/// The attribution note of a report replayed from Sail's shipped dependency
+/// build (ADR 0048). Its functions' verdicts, rlimit and time are Verus's own,
+/// from the release build that verified the dependency.
+pub const SHIPPED_NOT_RECORDED: &str = "obligation detail not recorded: this dependency's report comes from Sail's shipped dependency build, verified when the Sail release was built";
 
 /// The attribution note of a report whose run asked Verus for no logs
 /// (ADR 0047). Its functions' verdicts, rlimit and time are Verus's own.
@@ -688,6 +754,7 @@ fn finish(
     dir: &Path,
     captured: &Captured<'_>,
     engine: Option<&sail_api::output::EngineProvenance>,
+    shipped: Option<&str>,
 ) -> Result<()> {
     let Captured {
         stdout,
@@ -698,7 +765,16 @@ fn finish(
         .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let (docs, _) = crate::attribution::json_documents(stdout);
-    let attr = if runtime.attribution_logs {
+    let attr = if shipped.is_some() {
+        // Replayed from Sail's shipped dependency build, which records no
+        // attribution logs.
+        crate::attribution::attribute(
+            &docs,
+            None,
+            &crate::attribution::Provenance::NoCache,
+            Some(SHIPPED_NOT_RECORDED),
+        )
+    } else if runtime.attribution_logs {
         let logs = crate::attribution::read_logs(&full_log_dir(&dir.join("logs"), engine))
             .unwrap_or_default();
         let provenance = if runtime.daemon {
@@ -754,6 +830,7 @@ fn finish(
         report,
         success,
         dependencies,
+        shipped: shipped.map(str::to_owned),
     };
     json(
         &runtime

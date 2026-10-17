@@ -54,3 +54,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0051: Solver continuation for changed-check misses (proposed, blocked and unselected)](0051-exact-solver-snapshots.md)
 - [0052: Complete frontend inputs and current-source diagnostic binding (proposed)](0052-warm-frontend-reuse.md)
 - [0053: Disable unqualified native-artifact seeding (proposed, unselected)](0053-disable-unqualified-native-store.md)
+
+- [0048: vstd compiler-boundary reuse prototype](0048-shipped-dependency-build.md) — proposed, disabled by default.

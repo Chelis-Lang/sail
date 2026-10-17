@@ -107,7 +107,9 @@ pub struct TargetResult {
     pub target: String,
     /// Target kind (`lib`, `bin`, and so on).
     pub kind: Vec<String>,
-    /// Invocation which actually established the embedded report.
+    /// Invocation which actually established the embedded report. A shipped
+    /// proof uses the nonlocal namespace `shipped:<build identity>/<entry key>`;
+    /// it does not name a local replay run.
     pub establishing_run: String,
     /// True when Cargo's fresh artifact and its complete proof receipt matched.
     pub reused: bool,
@@ -126,6 +128,14 @@ pub struct TargetResult {
     /// workspace, that verified it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dependency_store: Option<String>,
+    /// Set when the target's proof originated in the Sail release's shipped
+    /// dependency build (ADR 0048), including later receipt/store reuse:
+    /// `<build identity>/<entry key>`. The release build compiled and
+    /// verified the target with the same Verus runtime from the same sources,
+    /// arguments and environment; plain Cargo-Verus would have verified it in
+    /// this invocation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shipped: Option<String>,
 }
 
 /// Current invocation's execution counters.
