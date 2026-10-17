@@ -339,3 +339,26 @@ The final inventory now gets its own bounded record-arrival wait before body
 validation, without repeatedly hashing libraries. The successor's complete
 Mac host rerun passes clippy and all 693 enabled tests, with 35 skipped.
 Final source-check index SHA-256: `5e7770398583b2d7660ef5b51fbc4a33ccee35ec8dc0d032d92727f073e58747`.
+
+### Genuine Mac runtime and initial integration
+
+Fork `067d0d7c` now has a genuine normal aarch64-apple-darwin build: all
+17 compiler library tests pass and vstd verifies 2,060 checks with zero errors.
+The runtime archive SHA-256 is
+`3509fedca54c04c585f12773c01a4c600f19254fa5d04ad6f8618b1b255c9a1d`.
+The first build attempt stopped before compilation because a nested checkout
+inherited Sail's Cargo workspace. An independent clone outside that workspace
+builds without source changes. No Mac performance claim follows.
+
+The first actual Mac integration completes ordinary verification but publishes
+no cache entry. Its cache path uses `/tmp`, a system alias: the graph boundary
+intentionally requires canonical owned target paths and refuses those lookups.
+The test setup now uses `/private/tmp`; the guard is unchanged. The actual
+native builtin command also uses Cargo's ordinary macOS
+`-C split-debuginfo=unpacked`. Native admission now accepts only the compiler's
+`off`, `packed` and `unpacked` enum values, retaining the literal option in the
+key and rejecting other values. No compiler option is added or rewritten.
+The original run remains FAIL; fresh-consumer and unchanged controls are unrun
+in that attempt. Full Mac host checks on the flag-admission successor pass
+clippy and all 693 enabled tests, with 35 skipped. Build/first-integration index
+SHA-256: `c8d66561601000eadf72e2b1411871afd01a3eaa60d6d2996e13365156b38c0d`.

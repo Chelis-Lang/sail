@@ -380,6 +380,12 @@ fn safe_codegen(value: &str, target: &Path) -> bool {
         if name == "incremental" {
             return within_target(Path::new(argument), target);
         }
+        // Cargo's ordinary macOS debug profile supplies this for metadata
+        // units. It selects a compiler enum, never an external input path;
+        // the literal option remains bound in the native invocation key.
+        if name == "split-debuginfo" {
+            return matches!(argument, "off" | "packed" | "unpacked");
+        }
         [
             "metadata",
             "extra-filename",
@@ -628,6 +634,15 @@ mod tests {
             native_source(&ordinary, Path::new("/owned-target")),
             Some("/registry/macros/src/lib.rs")
         );
+        for mode in ["off", "packed", "unpacked"] {
+            let option = format!("split-debuginfo={mode}");
+            let mut arguments = ordinary.to_vec();
+            arguments.extend(["-C", &option]);
+            assert_eq!(
+                native_source(&arguments, Path::new("/owned-target")),
+                Some("/registry/macros/src/lib.rs")
+            );
+        }
         for override_args in [
             vec!["--sysroot", "/foreign"],
             vec!["-Z", "codegen-backend=/foreign/backend.so"],
@@ -636,6 +651,7 @@ mod tests {
             vec!["/foreign/second.rs"],
             vec!["-L", "dependency=/foreign"],
             vec!["-C", "incremental=/foreign"],
+            vec!["-C", "split-debuginfo=/foreign"],
             vec!["-L", "dependency=/owned-target/../foreign"],
         ] {
             let mut arguments = ordinary.to_vec();

@@ -130,7 +130,9 @@ files require an owned immutable graph input; unknown inputs refuse reuse.
 Lexical path lookup resolves ordinary `src/../README.md` against the policy;
 raw compiler paths, diagnostics, arguments and solver streams are unchanged.
 Feature admission accepts exact Cargo spellings and refuses alternate Rust
-spellings rather than overlooking them. All unsupported shapes compile normally.
+spellings rather than overlooking them. All unsupported shapes compile normally. Native lookup graphs require canonical
+owned target paths; cache paths through system aliases decline this research
+path. Ordinary macOS split-debug enum values remain literal keyed options.
 
 Fork `067d0d7c` implements this native protocol. Pinned compiler API controls
 prove retained source checksums survive restoration and no-request output bytes
