@@ -1,6 +1,6 @@
 # 0053: Disable unqualified native-artifact seeding
 
-- **Status:** accepted containment policy; revised CI layout qualification pending
+- **Status:** accepted containment policy; revised native CI layout qualified, final CI pending
 - **Date:** 2026-10-16
 - **Amends:** [ADR 0045](0045-dependency-store.md)
 
@@ -49,6 +49,7 @@ round, v1 incorrectly succeeded while containment and fresh stock failed with
 the replacement compiler's diagnostic. The
 [validation record](../validation/dependency-store-fail-closed.md) gives source,
 raw evidence and limits. Native ordinary gates, full FAST and STANDARD pass
-at the stated source identities; the revised parallel CI layout and final CI
-remain pending. No runtime
-pin or release asset changes.
+at the stated source identities. The revised parallel CI layout also passes
+its exact-source native gate, solver, complete local union, independent phase
+entries and PR subset on `6713c491`; final CI remains pending. No runtime pin
+or release asset changes.

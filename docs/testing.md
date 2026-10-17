@@ -48,5 +48,5 @@ Partial producer output is drained after owned process groups are killed.
 Managed jobs request bounded fixture evidence on failure or cancellation.
 GitHub's hard job timeout can bypass that upload step, so a missing artifact
 does not locate the blocked command or establish a product failure. The original
-containment cancellation and the revised layout's pending native scope are in
+containment cancellation and the revised layout's completed native scope are in
 the [containment record](validation/dependency-store-fail-closed.md).

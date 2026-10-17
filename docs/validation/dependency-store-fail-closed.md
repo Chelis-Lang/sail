@@ -2,7 +2,8 @@
 
 **Status:** containment policy accepted. Native integrated gate, solver,
 end-to-end, PR conformance, full FAST and STANDARD pass at their stated sources.
-The revised nine-phase CI layout still requires native validation and CI.
+The revised nine-phase CI layout passes its exact-source native checks; final CI
+remains required.
 No release or runtime pin changes.
 
 [ADR 0053](../decisions/0053-disable-unqualified-native-store.md) disables
@@ -90,10 +91,24 @@ The original combined managed CI job was cancelled at its ten-minute hard limit
 on `50c78190`. No assertion failure was visible, and the exact captured command
 was unknown. The revised [nine-phase layout](../testing.md) retains every
 assertion, gives the two new fresh-project groups independent passing donors
-and keeps the complete local union. Native workspace, standalone new phases,
-all end-to-end phases and the full local union remain pending for that layout.
-Final CI and independent integration review remain required before merging. A sound fast replacement and first-run speed recovery remain
-open work; containment alone does not complete them.
+and keeps the complete local union. Exact `6713c491` then passed on a native
+EC2 c7i.4xlarge (16 vCPUs,
+us-east-1): workspace gate (655 tests, 35 skipped, plus two doctests), all
+35 solver tests, the full local nine-group end-to-end union plus extra, and
+separate `managed`, `managed-copies` and `managed-native` entry points. The
+standalone groups took 116.3 s, 71.0 s and 67.5 s respectively; these are
+correctness-job durations, not performance acceptance measurements. The full
+local union took 580.0 s. The retained changed-compiler evidence and all four
+PR conformance arms pass (33 Same / 311 functions each). All 576 source files,
+index and untracked-input guards match; initial/final hashes of all three
+compiled binaries and the final pinned runtime/MCP guards pass. This validates
+the revised test layout, without relabeling the earlier full-tier runs as
+`6713c491` runs. Final archive SHA-256:
+`d53ed2c9b1c062821111dc43f607f5eb200b2af36d8029b666cbacaf55ad91e7`.
+
+Final CI and independent integration review remain required before merging.
+A sound fast replacement and first-run speed recovery remain open work;
+containment alone does not complete them.
 
 | Source / date | Attempt | Result and limit |
 |---|---|---|

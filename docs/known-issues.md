@@ -50,8 +50,10 @@ are in the `archive/m7-contracts-f7103bf` tag.
   rounds reproduced the mismatch on `3c0498c3`. The
   [ADR 0053 containment](validation/dependency-store-fail-closed.md) disables
   v1 consumption and publication; its native ordinary, FAST and STANDARD checks
-  pass at their recorded sources, while the revised CI layout remains pending,
-  and the original draft asset is unchanged. Raw macOS archive SHA-256
+  pass at their recorded sources. The revised nine-phase layout also passes
+  its native gate, solver, full local union, independent managed entries and
+  PR subset; final CI remains pending and the original draft asset is unchanged.
+  Raw macOS archive SHA-256
   `7bea96ebf3bd10a292ec6508bb7322a8a799fbc25ef024a89cf256d90783f51c`.
   The unmerged #187 replacement has a separate APFS mmap guard blocker;
   the #166/#189 metadata correction fixes neither defect. Recovering the lost
