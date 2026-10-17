@@ -17,7 +17,7 @@
 `SAIL_SHIPPED_RECORD` records an experimental bundle; `SAIL_SHIPPED_DEPS`
 serves one. `SAIL_VSTD_BOUNDARY_LOCAL` instead uses a separate machine-local
 bundle bound to both literal and canonical registry roots. All require the
-research flag. Local mode never remaps VIR or source paths. Schema 8 and the
+research flag. Local mode never remaps VIR or source paths. Schema 9 and the
 bundle kind reject old all-unit bundles. Focused, engine and loader-variable
 setups use the ordinary compiler path. Changed, missing or unsupported inputs
 miss safely. No ordinary CLI, runtime pin or release asset is selected here.
@@ -286,3 +286,48 @@ canary and argument-format attempts above remain failed.
   fails because the removed corruption warning remains in the active error-code
   registry. The successor removes that unused registry entry and records its
   retirement in the changelog; the registry check remains strict.
+
+## Native producer consumption: successor, unqualified
+
+The schema-8 private-copy implementation at `ef918024` completes three native
+fresh-project pairs on c7i.4xlarge in us-east-1: without reuse
+38.462449 / 38.296493 / 38.229097 s; with reuse
+9.349908 / 9.368559 / 9.307884 s. Medians are 38.296493 s and 9.349908 s
+(4.096×). The fill takes 39.521885 s; an unchanged same-project run takes
+1.171538 s with every receipt reused. All pairs have matching complete current
+function verdicts and empty diagnostics, retaining the actual establishing run.
+These compare experimental Sail with and without boundary reuse, not stock.
+Workspace, solver, all local E2E phases, PR conformance and FAST complete with
+zero differences; STANDARD and final source/runtime checks are still running.
+No final archive or complete acceptance claim follows yet.
+
+A subsequent combined source review finds two remaining producer boundaries:
+a native source or transitive native library can be replaced during compilation
+and restored before endpoint checks. This is distinct from the passing direct
+vstd input-substitution control. Schema 9 requires the new native compiler
+protocol from fork `067d0d7c`, independently copied complete native dependency
+graphs and qualified current-run producer records. It remains disabled by
+default; the preceding measurements do not qualify this successor.
+
+The pinned Rust compiler API witness compiles the exact observer modules and
+ordinary callback wrapper, with only the unrelated source-base configurator
+stubbed. Four module tests pass. Four actual compiler controls show unchanged
+unobserved/observed library bytes, retained source B checksums after restoration
+to A, actual child-PID binding, and no completed document after a failed compile.
+A separate actual `include_str!` control shows README in both source-map and
+extra-tracked-file inventories with its retained checksum. Three equivalent
+Rust feature-cfg spellings really select the same branch; admission now refuses
+noncanonical spellings instead of ignoring them. These are API/source controls,
+not a genuine full-fork build or real-project acceptance.
+
+Failed source attempts remain visible: the first API witness build omitted
+`rustc_private` and its dependent launch was unrun; the first expanded consumer
+clippy run failed the test-length lint; an all-tests-in-one-process Mac run
+passed 227 tests but the interrupted-engine fallback test returned ENOENT with
+unknown cause. That exact fallback test passes separately under both original
+and short temporary paths. The complete Mac host gate then passes clippy and all 693 enabled tests,
+with 35 skipped, using short `TMPDIR`. The isolated failure's cause remains
+unknown; no check or expected output was weakened. The retained source-check
+index SHA-256 is `b9526835096e8facffb6c5840b8ff04df7fdaa4a646c9f2a727cde4db73fd6f9`.
+Full runtime/native mutation controls, default parity and both-platform runtime
+qualification remain open.

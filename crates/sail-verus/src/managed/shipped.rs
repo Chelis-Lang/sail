@@ -7,7 +7,7 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 8 cannot accept earlier entries without private native inputs. It neither
+//! schema 9 cannot accept earlier entries without native consumed-input evidence. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
 //! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
@@ -15,6 +15,7 @@
 mod admission;
 mod compiler;
 pub(crate) mod native;
+mod native_reads;
 mod snapshot;
 
 use super::files::digest;
@@ -28,7 +29,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 8;
+const SCHEMA: u32 = 9;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";

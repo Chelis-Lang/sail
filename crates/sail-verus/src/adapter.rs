@@ -360,12 +360,26 @@ fn driver() -> Result<ExitCode> {
     // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
         let plan = crate::managed::shipped::active();
-        let observation = plan
+        let mut observation = plan
             .as_ref()
             .and_then(|plan| crate::managed::shipped::native::Observation::begin(plan, &args));
-        let actual = Command::new(wrapper)
-            .args(&args)
-            .status()
+        let mut command = Command::new(wrapper);
+        command.args(
+            observation
+                .as_ref()
+                .map_or(args.as_slice(), |call| call.arguments()),
+        );
+        if let Some(call) = &observation {
+            call.configure(&mut command);
+        }
+        let mut child = command
+            .spawn()
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        if let Some(call) = &mut observation {
+            call.started(child.id());
+        }
+        let actual = child
+            .wait()
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         if actual.success()
             && let Some(observation) = observation

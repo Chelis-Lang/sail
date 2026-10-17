@@ -3,6 +3,14 @@
 mod absent;
 mod build_inputs;
 mod configuration;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "Persistent graph APIs await retained-proof integration."
+    )
+)]
+mod dependency_snapshot;
 mod diagnostics;
 mod environment;
 mod files;

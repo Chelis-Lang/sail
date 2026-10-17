@@ -3,6 +3,40 @@
   "packages": {
     "convert_case-0.4.0": {
       "archive_sha256": "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=b9fc57c4fe580dade15b75d251305d84cc1d286f2f01b6a2e22c122eb68ff6c5",
+          "size": 74
+        },
+        ".gitignore": {
+          "checksum": "blake3=cb43051e103f43408ad06fe1c44cea0492f41d473265615ec4cede6939a4f7e0",
+          "size": 8
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=cc1f4a8bfd833e1276d78e2c86bf84177f7595690c5fca2d31f5568a3de94cc0",
+          "size": 1092
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=a15d1eb338acd5867c1a87aacaf26dc1bd0c16e62ddac6bf7b157b7e97276748",
+          "size": 677
+        },
+        "README.md": {
+          "checksum": "blake3=39747fc91c78343ac35354687b52560f862cceb2428283d8dff724abcbb8c9c3",
+          "size": 2349
+        },
+        "src/case.rs": {
+          "checksum": "blake3=c579e259614046335d46aeb238d6c5a55ab5f773c204eb6949003f15d5a9000f",
+          "size": 6588
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=aec267a423ecb9bc214a42fc6fe5516553f1cfe6a30629251c8ec0ea5ecdccb9",
+          "size": 10393
+        },
+        "src/words.rs": {
+          "checksum": "blake3=28b31279d64a4e5f0ff56c4a6798c5b170c33684452c08c31df8d345b175f0bf",
+          "size": 12257
+        }
+      },
       "features": [],
       "files": {
         ".cargo_vcs_info.json": "6767418947faf807ea6d3c9be160eb052da1d035f4d0d86fe8d2285e491083a3",
@@ -19,6 +53,48 @@
     },
     "equivalent-1.0.3": {
       "archive_sha256": "00d174d5400e5e8fd687ad1049e2f578285fa914201b1af7e8b112a4546bd826",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=fd108e476dd7e43caa3ebcc47c38e9e47c842d4d84519dffca63086afab0e892",
+          "size": 94
+        },
+        ".github/workflows/ci.yml": {
+          "checksum": "blake3=bf18f01c50105c805383f8e37e29864a939821f3a420ba1913fc4c3de635987b",
+          "size": 1330
+        },
+        ".gitignore": {
+          "checksum": "blake3=97fbaf846e216d4c4bb0d50b28fdc46501dea4a4cbe3e8e0632e7e2216ac6c15",
+          "size": 20
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=b4421e33906e009c8f6f925454b9c3bd4b0e2c40ab9337e0dd39b7c9be81be34",
+          "size": 142
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=697ccd51769fe2b626693ab1940cc1336ebc76b0e32c6c03ce9eef6b0f71e1d9",
+          "size": 946
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=acddc1360c8095a974cb51d446f6381fbec92b47ad4efbc27155438fee0c477f",
+          "size": 283
+        },
+        "LICENSE-APACHE": {
+          "checksum": "blake3=bc9b8879cf5978632a7be06ee591f28247b4c78fbc0adf6ac40e2d097063c32a",
+          "size": 10847
+        },
+        "LICENSE-MIT": {
+          "checksum": "blake3=558fe09ff8e74b2b435b1f2f4be2cf704aa9c9609a7f1c88632e48f901cf1f34",
+          "size": 1049
+        },
+        "README.md": {
+          "checksum": "blake3=f9ae14987cec19a59d79960692a00a33ea54413096fa9a7389ad2556d6809a0c",
+          "size": 1108
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=3f7a83215b150112d51f641a5f0256f16eb7e39241a68a4c126a46af8d8c8a0d",
+          "size": 3642
+        }
+      },
       "features": [],
       "files": {
         ".cargo_vcs_info.json": "29cdbb2d62932bc9be0d82b024efff0ca4767c7c1bb063f4bedae423113e2382",
@@ -37,6 +113,208 @@
     },
     "hashbrown-0.17.1": {
       "archive_sha256": "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=c62ec47a2018eb035fa8a686cd4d6fe3673a66f3080ce43f33903294126f5256",
+          "size": 94
+        },
+        ".gitignore": {
+          "checksum": "blake3=277f1e24b74b9003068bfa85be01ff3c7c819c73a5335d24dde2c3c01f237940",
+          "size": 30
+        },
+        "CHANGELOG.md": {
+          "checksum": "blake3=39109fe9f3d33793c94285e0906252df7961266c32f3dbac8dc0b8811bf2301d",
+          "size": 23915
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=078e18ea0f780da906938964d416d0f22802bb881eea5fe29ad7f115c0913248",
+          "size": 18493
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=6492ba24d8490d5f33af36960b3e8ade009696d7ee96aef0062728afd319d975",
+          "size": 3847
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=0ce678c5ec3335ba08e5bc9078fdc1340f5be155baa1274c8c6bda9657baec67",
+          "size": 3896
+        },
+        "Cross.toml": {
+          "checksum": "blake3=9c03ef5d8762c6403d93b81baaf3d1b1a8f41f96a54fd73fc5898bf4e0025a39",
+          "size": 182
+        },
+        "LICENSE-APACHE": {
+          "checksum": "blake3=bc9b8879cf5978632a7be06ee591f28247b4c78fbc0adf6ac40e2d097063c32a",
+          "size": 10847
+        },
+        "LICENSE-MIT": {
+          "checksum": "blake3=d73b6615c0f35773e7252a777972c1d56de35fd7c63df16c028a746e4fe06761",
+          "size": 1060
+        },
+        "README.md": {
+          "checksum": "blake3=57c855f52591de929ab4f88b8b3d6ca8e949adf868db5ff09e44ad4d5690d4ee",
+          "size": 3482
+        },
+        "benches/bench.rs": {
+          "checksum": "blake3=638fd49a94ba27c25e1a1646d94240146e8ca11d86355af28ff898f80a84fd26",
+          "size": 421
+        },
+        "benches/general_ops.rs": {
+          "checksum": "blake3=a48ff0ce0e96b9f353ef883fe65a66ccb9d3255cf7af45272d2449cec5481a00",
+          "size": 12115
+        },
+        "benches/insert_unique_unchecked.rs": {
+          "checksum": "blake3=dd0d201034a107c1e2b9248573b4bd2761fbd5baa4e5d1745134352d477995ec",
+          "size": 882
+        },
+        "benches/set_ops.rs": {
+          "checksum": "blake3=153c005a40d20de73e5f215e634ee8feb1a62248274cd08b42ec50de14c0bf60",
+          "size": 2683
+        },
+        "benches/with_capacity.rs": {
+          "checksum": "blake3=277b13f203b2d72264ca5f5e705edd6537c4bceae2c35159d78f0ceb49fa142a",
+          "size": 1467
+        },
+        "clippy.toml": {
+          "checksum": "blake3=1043a938f1f67892c016d738eca2621fc93684e3eb278e35bb5eacf9f8c3e3a1",
+          "size": 66
+        },
+        "src/alloc.rs": {
+          "checksum": "blake3=5955105c6d899b250ce2f4c6529ebfe0c35bb194b4ff5d08ecb6332e82c62a7f",
+          "size": 3401
+        },
+        "src/control/bitmask.rs": {
+          "checksum": "blake3=7e2218c484fc544afec44cfe3e592c01b359fa77790f331ee0fdfdc3764533b7",
+          "size": 3896
+        },
+        "src/control/group/generic.rs": {
+          "checksum": "blake3=65b29b50debcc4968809927189a4bda7e3b1c3cf6afaec00cac88f4ac75477f6",
+          "size": 5700
+        },
+        "src/control/group/lsx.rs": {
+          "checksum": "blake3=6c15f693a78df4a5071a0e5d2637ae6e9b2a9a4438bdaee5df68790f6506647d",
+          "size": 4214
+        },
+        "src/control/group/mod.rs": {
+          "checksum": "blake3=56ba6bf4d152f5f9d7fd81aae128b51dc70cbeddf0b73928e1a856ce6b8bdc0b",
+          "size": 1776
+        },
+        "src/control/group/neon.rs": {
+          "checksum": "blake3=e403f0d8fea944c83657e8e8ede207238f14426f1554b2b6ba0f832e41ff523e",
+          "size": 4088
+        },
+        "src/control/group/sse2.rs": {
+          "checksum": "blake3=7d27bccf9f54394d0d5ce083257469598341b5ae03cf36f5f41f8971357867ed",
+          "size": 4875
+        },
+        "src/control/mod.rs": {
+          "checksum": "blake3=6bc2db16db2d6e864a2111c115b970f6cf4c47042be2e1b148327d7ff1b87829",
+          "size": 161
+        },
+        "src/control/tag.rs": {
+          "checksum": "blake3=c26debb5b18a198b34b2996bacff9a43fdbd5b1196a5db77dabb545fe1701147",
+          "size": 2668
+        },
+        "src/external_trait_impls/mod.rs": {
+          "checksum": "blake3=9ee2cc39aa681abab7871cb8a1180f196f43dafac1ba24aa308a938b770126f6",
+          "size": 85
+        },
+        "src/external_trait_impls/rayon/helpers.rs": {
+          "checksum": "blake3=196d87eb8a84468700f427f6e93c955d287751cb9cc335f4c634f2d95c3a18a9",
+          "size": 493
+        },
+        "src/external_trait_impls/rayon/map.rs": {
+          "checksum": "blake3=20b55581dce94c4157bc5a1c7ceee525d2f313ffe3a05b5d5e4aba0a2ce14c68",
+          "size": 20738
+        },
+        "src/external_trait_impls/rayon/mod.rs": {
+          "checksum": "blake3=19b27090c9e493ddce6b33fa5e4595cd0ba89565dad0698f5b70d675b77ba1c9",
+          "size": 95
+        },
+        "src/external_trait_impls/rayon/raw.rs": {
+          "checksum": "blake3=d6b50d7eb358c0e48347b36bfea65d83070d5058d85057df897cba1719e34cc8",
+          "size": 6844
+        },
+        "src/external_trait_impls/rayon/set.rs": {
+          "checksum": "blake3=ebf3861228d0caaf0c0abd5c706359980327b28c4caf3f9c73cee3af94191b8b",
+          "size": 18122
+        },
+        "src/external_trait_impls/rayon/table.rs": {
+          "checksum": "blake3=90dcb2fb36504733622f40e8a1123969385dea9c9b8998a17e83c59875db0d81",
+          "size": 7184
+        },
+        "src/external_trait_impls/serde.rs": {
+          "checksum": "blake3=bcb0ca15824879b6603a37ec2934c9f1f0b38888ac081e2d2b4c785f53ff351a",
+          "size": 6651
+        },
+        "src/hasher.rs": {
+          "checksum": "blake3=be5921777d10e5a2827aa8a89cf6026d897716aff291b954b149205d5778a70e",
+          "size": 1981
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=252722d12eb1c398dc905746c8e342440828d775556fa5f01e8c402419e94beb",
+          "size": 5578
+        },
+        "src/macros.rs": {
+          "checksum": "blake3=60d788d7e4a0640c6622f8550f41add70799dd9e40ca6bb0512a83bb64d2f021",
+          "size": 2183
+        },
+        "src/map.rs": {
+          "checksum": "blake3=261f7056c9456d06046758dc1d35c39d4564dbebcd560dc152ceaf550e80981e",
+          "size": 216071
+        },
+        "src/raw.rs": {
+          "checksum": "blake3=c59900ae484eb129a2b28a1ae42b48b0ec8e28a111ba1439c2a46fb15e7ea2e4",
+          "size": 197141
+        },
+        "src/raw_entry.rs": {
+          "checksum": "blake3=37d0a29ce6585ec7f9f58b17daca48c23281b9dd5aef146c849dace2a2184daf",
+          "size": 57075
+        },
+        "src/rustc_entry.rs": {
+          "checksum": "blake3=79a5736ed3f63e5774b4b2d6e53c42eb5684c0effbe5c2b2f9389f849810d2e6",
+          "size": 18598
+        },
+        "src/scopeguard.rs": {
+          "checksum": "blake3=300cbf2e3b7a785084c931058ee9a5f47bddc59ca34c902339a13bb45f3a10af",
+          "size": 1398
+        },
+        "src/set.rs": {
+          "checksum": "blake3=de69c9c99bcf0f27d3aa8413151788e4091dcfee27c45745a931505b8a760aa6",
+          "size": 88194
+        },
+        "src/table.rs": {
+          "checksum": "blake3=6bf36ceb926ae34db67d03564f386fba3510eb822d800a4681c5734017872c24",
+          "size": 100960
+        },
+        "src/util.rs": {
+          "checksum": "blake3=ac280e52427caba3e0eb1a48117ebbe178d7e95e8d808270cad7e413b6cbfdca",
+          "size": 806
+        },
+        "tests/equivalent_trait.rs": {
+          "checksum": "blake3=6d5ac9c75e49122ec03750c9164511708730c1d7af60a8a796cc5f5be616ec81",
+          "size": 1180
+        },
+        "tests/hasher.rs": {
+          "checksum": "blake3=19bb1c16cfa0156b6a4ab2c979d8608cd6e9151d7e69e9b6400b421b49a113fb",
+          "size": 1369
+        },
+        "tests/hasher_unwind.rs": {
+          "checksum": "blake3=c4a70cee6ddffcce49d64103eb9b4f4c9693152b2150ab4edd23f8b411dd293c",
+          "size": 5142
+        },
+        "tests/rayon.rs": {
+          "checksum": "blake3=b45d45786dcd6945939dce4e46d5598719fe9220656c83d17497f84545161181",
+          "size": 14911
+        },
+        "tests/serde.rs": {
+          "checksum": "blake3=13285db4ced69686625b8165ee5f8836a49f3b3813f3c927e9f363ae21ba37ae",
+          "size": 1563
+        },
+        "tests/set.rs": {
+          "checksum": "blake3=f7257571983289769310035457b96cc41ecd416192294788b5e70a48444534b7",
+          "size": 1027
+        }
+      },
       "features": [],
       "files": {
         ".cargo_vcs_info.json": "b41a5623404ae232c5432fb7dfeb74f93c40f532ae057179b9a8b00982a006d4",
@@ -95,6 +373,180 @@
     },
     "indexmap-2.14.2": {
       "archive_sha256": "cc4e190f5d26ca7051642629da2c52fc03bde85a03197c99408dcd291734c855",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=fa11d5b24954acd9b6f149be92057b443a98ba3f7f1776873987a597e109d6e7",
+          "size": 94
+        },
+        ".github/workflows/ci.yml": {
+          "checksum": "blake3=d160f3db2c5b1c7824b71a5385943d9a10c0adcb1bbd511752560d53ead4ed9e",
+          "size": 4252
+        },
+        ".gitignore": {
+          "checksum": "blake3=c1a134533c4dfb1b522234651d50d4c561ae25cff22c2a986dafe8e302bda7f7",
+          "size": 18
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=c075fb0679f8627c9d9d04eccea60a3af33c4a70b03432673b38d610284c14d8",
+          "size": 6597
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=7dcef020e9f124df4d2e914245281893b1de175b52f1df640cc9705004983897",
+          "size": 3041
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=f8a8bb726b3717947cba55d10e534ce4868281ae985a0402e0d7294fa562845c",
+          "size": 2266
+        },
+        "LICENSE-APACHE": {
+          "checksum": "blake3=bc9b8879cf5978632a7be06ee591f28247b4c78fbc0adf6ac40e2d097063c32a",
+          "size": 10847
+        },
+        "LICENSE-MIT": {
+          "checksum": "blake3=c19f4593de90e6fc8f24f2ca1d95b847df357e92b4ee73c1896ffc3ffdf8a967",
+          "size": 1049
+        },
+        "README.md": {
+          "checksum": "blake3=801416ee9ddf2b8a389037bab9bea1741cb593865a24d2ae834864054b789bc1",
+          "size": 2818
+        },
+        "RELEASES.md": {
+          "checksum": "blake3=8a52e75598c207e7e5651d146656603fda4bdb4dcdfae50716de5f5ab7d22422",
+          "size": 22871
+        },
+        "benches/bench.rs": {
+          "checksum": "blake3=fe6c6aae4d5aece574631970f706326eccc9cdb3fbcbde351df75924a5c04bc4",
+          "size": 17153
+        },
+        "benches/faststring.rs": {
+          "checksum": "blake3=a4a52515fa8dcb3006cd4bad37f1dfdb7220ef83d5cba06c710262182cd1ee86",
+          "size": 4249
+        },
+        "src/arbitrary.rs": {
+          "checksum": "blake3=dd67014a2ebac220237159fae201b9cbbc9e39fba1b03459a2ca44d0d771cba6",
+          "size": 2238
+        },
+        "src/borsh.rs": {
+          "checksum": "blake3=4c1c9f8104c7c2bdcaefc872c70b7121349ba48d421c1530f37d02c44dcf138a",
+          "size": 3860
+        },
+        "src/inner.rs": {
+          "checksum": "blake3=7084a17f36a501e5258ee53bc583333ca87838438988304ef47f1f5992561976",
+          "size": 25052
+        },
+        "src/inner/entry.rs": {
+          "checksum": "blake3=d1a7dc0036f44ee568583b1c4996c5e554c75d32ea529aa905408b0bcd7803b2",
+          "size": 14931
+        },
+        "src/inner/extract.rs": {
+          "checksum": "blake3=f42453b092769c0d9e3dc1fbeaa9db6fa0f1d26d12df3e3effcc3d8a9c007c07",
+          "size": 3670
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=e11c9e07c4082e5a5631f7fed3c5cf72ad9e99b77e8fd1b59c59eb12675956ae",
+          "size": 9430
+        },
+        "src/macros.rs": {
+          "checksum": "blake3=7a66e7a3eb65aef60648ccb0cf31548ffe7e46b5566e8a17a7a4f3ce1ac847e9",
+          "size": 9579
+        },
+        "src/map.rs": {
+          "checksum": "blake3=ad0d1898afaaed7393c859942598992fca56d56855e941f7dda05bcec8cb65ef",
+          "size": 64208
+        },
+        "src/map/disjoint.rs": {
+          "checksum": "blake3=70305b4f7bd48eb5280fb9b534997980f5dfab1efecf3ccc6b11d803d18d1780",
+          "size": 2202
+        },
+        "src/map/entry.rs": {
+          "checksum": "blake3=58e917bbf9011533df528ebd02969fe4f659fa87b6339d749b12b4ba63befa4e",
+          "size": 10634
+        },
+        "src/map/iter.rs": {
+          "checksum": "blake3=3e0fbb75e516db62cba6c2a83c4c9a3f3ac42a1041c355761782c6629d627bc9",
+          "size": 23455
+        },
+        "src/map/mutable.rs": {
+          "checksum": "blake3=0f25cadc99ccfacf204bb76cbe687a5d4ad229ad6b246c9c73414a4c46c7b318",
+          "size": 5194
+        },
+        "src/map/raw_entry_v1.rs": {
+          "checksum": "blake3=8efab6f35322ebdbb5b08b18775731b1ddfe0d946e91b6cdc1e71119b421d0b2",
+          "size": 23587
+        },
+        "src/map/serde_seq.rs": {
+          "checksum": "blake3=93e65c149875265e5f624f05aff52c2a1dbb39ac5aafa531119cf18f21f18850",
+          "size": 3896
+        },
+        "src/map/slice.rs": {
+          "checksum": "blake3=2aea71262cfecf4c2d042bdd446e7685719870fee81cce4f913417ea2f857f98",
+          "size": 24394
+        },
+        "src/map/tests.rs": {
+          "checksum": "blake3=59b91976badbce525e647772a333662f9ec619056fdb9d05e2111abc26cce0e4",
+          "size": 37137
+        },
+        "src/rayon/map.rs": {
+          "checksum": "blake3=a64dda88461583cf85ab1a2b7e000e64184aa000315a1836baf94fe8a212d359",
+          "size": 19751
+        },
+        "src/rayon/mod.rs": {
+          "checksum": "blake3=6210090fb7e96696499ad39b13a5d69e7f2bece93c8a67784f14d1624afac48b",
+          "size": 406
+        },
+        "src/rayon/set.rs": {
+          "checksum": "blake3=cba14964c759b2bf6093b910b71c2398221925695a492d5e234d3253f24daa5f",
+          "size": 22293
+        },
+        "src/serde.rs": {
+          "checksum": "blake3=23434149e03638fc67c283a1319e0cd434a5251d9f6ca8a91a755a997b82081e",
+          "size": 4441
+        },
+        "src/set.rs": {
+          "checksum": "blake3=8949219a04f0a27b0b053737d43f3efc96e5bc33ff276eff6c9df5d3caa70e06",
+          "size": 49482
+        },
+        "src/set/iter.rs": {
+          "checksum": "blake3=851e97c8f3e50c848cefe6a8dc060f68439a0084b6b9f5c7486b7046aaafc89a",
+          "size": 15121
+        },
+        "src/set/mutable.rs": {
+          "checksum": "blake3=f293f7e43055d349d36fcca0cf039f191de949827088dd0941dd3ebc985c7ab7",
+          "size": 2560
+        },
+        "src/set/slice.rs": {
+          "checksum": "blake3=a97187031fcf795fd750d1853f6b7a2af0b0303fa3ef812faccbc51e82c81293",
+          "size": 12144
+        },
+        "src/set/tests.rs": {
+          "checksum": "blake3=88f0481ce5be36700d7ef05fb5cd379ba6d79740d36a4804c1fdd3c9a25c0dbb",
+          "size": 30318
+        },
+        "src/sval.rs": {
+          "checksum": "blake3=eff33c2a171b3d6e78306ab9106c1d18f66b70ebf1be6dc02d9bd5446228f3ee",
+          "size": 965
+        },
+        "src/util.rs": {
+          "checksum": "blake3=b200ab815fa13366d6d544e7dfd719218c3e8aa7e6dce5378cef4c8e94c151b1",
+          "size": 2734
+        },
+        "tests/equivalent_trait.rs": {
+          "checksum": "blake3=5da94a78b78f6e2facbd9fbfe9fd3b5b7ff078ed45b3d749193f8073e50d8d39",
+          "size": 1057
+        },
+        "tests/macros_full_path.rs": {
+          "checksum": "blake3=e084b8015b5dc692b1bb8a45e33d7254f0eb7d99162e216ddd2f49c661294a91",
+          "size": 1223
+        },
+        "tests/quick.rs": {
+          "checksum": "blake3=885e2b6bf47867da0b4e62e3eff27e58d31074000de1d9b0dd90dff85a0c29ce",
+          "size": 28406
+        },
+        "tests/tests.rs": {
+          "checksum": "blake3=833f2335477255d79eb00e945a3f7bec8a75cf7ca2956d19d504a07f3795e44a",
+          "size": 483
+        }
+      },
       "features": [
         "default",
         "std"
@@ -149,6 +601,140 @@
     },
     "proc-macro2-1.0.107": {
       "archive_sha256": "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=c9cbcbc8498c399cfe33a2fad5f961b97ac518df4646c8d45446fcd3ddcea03f",
+          "size": 94
+        },
+        ".github/FUNDING.yml": {
+          "checksum": "blake3=19cb734de845d0503b38ca770b349fbefd121f9ca0f1b11b225c6d95b4ec2361",
+          "size": 16
+        },
+        ".github/workflows/ci.yml": {
+          "checksum": "blake3=829f99d861678bf65427ba9582b83602f8bcf12fcea47c424d48bab0079b7454",
+          "size": 7371
+        },
+        ".gitignore": {
+          "checksum": "blake3=b851a10debd95a92f650a527bca4b2054808897692c959ee7b1ba557e1dde484",
+          "size": 21
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=a6eec835fbcc37f9dd762fbc0844149c33ac55f5e0178536a6b144dc6a86af03",
+          "size": 5985
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=a1f2c21016203e0a17149c42afec06564f2845d93e2a9a63470d010660a4be12",
+          "size": 2460
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=ad69ac0d36a4fc8c79de6312c51242af9aea07209cebca59860289c22d85d099",
+          "size": 2340
+        },
+        "LICENSE-APACHE": {
+          "checksum": "blake3=27ad817f884bbec3ebc921ad0dafa8c2a56effce574e043451f4db5178611e62",
+          "size": 9723
+        },
+        "LICENSE-MIT": {
+          "checksum": "blake3=e236a4d5f14aab8594aa14bb1c7e535f9531925b1fc21d4ab21d322da13cd108",
+          "size": 1023
+        },
+        "README.md": {
+          "checksum": "blake3=980e5e3e65dcbbf1d586fa693663f27f723c582e3196e88c115319764b18a06e",
+          "size": 3864
+        },
+        "build.rs": {
+          "checksum": "blake3=bb0118d9d5df5a083845164b1b22dac8bf1dd90cb329a0139b3f20006dc0bde1",
+          "size": 10277
+        },
+        "rust-toolchain.toml": {
+          "checksum": "blake3=1e52df4d1f008349ec078cc26b0808f2732b703679a20b622c97e47bd3ba119d",
+          "size": 38
+        },
+        "src/detection.rs": {
+          "checksum": "blake3=900d701ac0636c421496f011c3d05a0b2bbd8cceef1eae3e6809136075894009",
+          "size": 2703
+        },
+        "src/extra.rs": {
+          "checksum": "blake3=d4acc775472d697d02e7bd2f20cd15163adf2b0782d9f5042f2f505578376f3b",
+          "size": 5164
+        },
+        "src/fallback.rs": {
+          "checksum": "blake3=14f61088e99a9c7d270ec77f6157756cd74662e9c08eab02aba854d23af95a29",
+          "size": 35014
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=8d00967dcfcbc50577e47ecedb77a4f62243ee8e6fd21ef4023e63513094de71",
+          "size": 51164
+        },
+        "src/location.rs": {
+          "checksum": "blake3=ba9c3f103501b2ef89c6c91c0fb522f2854bc078ee8b427c3aec6b4e84572b52",
+          "size": 871
+        },
+        "src/marker.rs": {
+          "checksum": "blake3=5056806f41fff556e07abdf2d5b72d3c3a0568ba9d889b78c31beff7cda3144e",
+          "size": 573
+        },
+        "src/num.rs": {
+          "checksum": "blake3=f3e467ae47fad6335d8fa9c1a004f23dbdac45cdcd34df86a68f1eb6541b7722",
+          "size": 342
+        },
+        "src/parse.rs": {
+          "checksum": "blake3=c4274f4cec4530cddeb31f4f575b2b73ba865289960fac139e4bd181b5a3b17d",
+          "size": 28680
+        },
+        "src/probe.rs": {
+          "checksum": "blake3=26e6f1a94ffac44cd87568da5d912aff15bb6794c661f673a8ff5dbd865852ff",
+          "size": 220
+        },
+        "src/probe/proc_macro_span.rs": {
+          "checksum": "blake3=5101aa4df06915cf79aa03e43faa72fc20f6c668a873a6713f635215792a3903",
+          "size": 1217
+        },
+        "src/probe/proc_macro_span_file.rs": {
+          "checksum": "blake3=0e89698dd3bb8a8d95a8c9c59d7062b8a0f67e57e6df11768578417bbfccbe66",
+          "size": 370
+        },
+        "src/probe/proc_macro_span_location.rs": {
+          "checksum": "blake3=60a7fa9fa409299f93313feff55b61eb12a93d6e28cbc8977fd01da9fc42e3ed",
+          "size": 408
+        },
+        "src/rcvec.rs": {
+          "checksum": "blake3=fdebca1badf8b9fd1e2e4735d293db0def34cc9bc4d7887c50b4087eb1efb311",
+          "size": 3080
+        },
+        "src/rustc_literal_escaper.rs": {
+          "checksum": "blake3=eab0e2cb5f676c27439edd2d9475b4b3778fc919fe5b12fc2948239e5930615a",
+          "size": 22380
+        },
+        "src/wrapper.rs": {
+          "checksum": "blake3=263746c055c499b936e8a6f5aaa2766970ac7393accb7d9f28b60fc3e8ff1693",
+          "size": 31198
+        },
+        "tests/comments.rs": {
+          "checksum": "blake3=0225dd53cec3a0c5c3ed3ce6b6909c68391909d66514fd6367f2b9c8b455deb7",
+          "size": 3456
+        },
+        "tests/features.rs": {
+          "checksum": "blake3=79915e0bb43fec6608b2edeb4c57bcb67a282e1366a8b57abfe0e358aeb1e129",
+          "size": 227
+        },
+        "tests/marker.rs": {
+          "checksum": "blake3=374c5f0d498ecd0149e8da77bdc46910d0d1368708368217c1c9d3ccd2c5bbdd",
+          "size": 2647
+        },
+        "tests/test.rs": {
+          "checksum": "blake3=5119e732f1ed93e776fef36dda9075457908c96c5128ddb3fce221b399ed1254",
+          "size": 32289
+        },
+        "tests/test_fmt.rs": {
+          "checksum": "blake3=afaac75c96bdd0555765ecb0b8e3f4ca716898c1bac9a147509ebd15b2a27fc1",
+          "size": 1263
+        },
+        "tests/test_size.rs": {
+          "checksum": "blake3=10f978248ea65b110f3e7d64da0bd2ab6ef46d4e987b35a14d590c7a96c69e5c",
+          "size": 3805
+        }
+      },
       "features": [
         "default",
         "proc-macro",
@@ -194,6 +780,148 @@
     },
     "quote-1.0.47": {
       "archive_sha256": "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=c880d2ead584d831fc2e9b04bb4542d9cf29c28f166587861de1c7d76e272d8c",
+          "size": 94
+        },
+        ".github/FUNDING.yml": {
+          "checksum": "blake3=19cb734de845d0503b38ca770b349fbefd121f9ca0f1b11b225c6d95b4ec2361",
+          "size": 16
+        },
+        ".github/workflows/ci.yml": {
+          "checksum": "blake3=0f3461b16b00825c018440b2917832ea705930b1095ff3a62e2b41b32bd3cd5c",
+          "size": 2861
+        },
+        ".gitignore": {
+          "checksum": "blake3=b851a10debd95a92f650a527bca4b2054808897692c959ee7b1ba557e1dde484",
+          "size": 21
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=b8186d2ac255b7c6ea8a32426876fe7c3a2c978a7a1d13947a757a529e8d7937",
+          "size": 6722
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=913ef17c97c34ecd1bf20bb21be9ebe9a8a5995970976d0887b1efbb35a4d09f",
+          "size": 1753
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=96b9fe46fab880f8ab64fca667868bd395ce587fb80258d33be94b783ccef93b",
+          "size": 1150
+        },
+        "LICENSE-APACHE": {
+          "checksum": "blake3=27ad817f884bbec3ebc921ad0dafa8c2a56effce574e043451f4db5178611e62",
+          "size": 9723
+        },
+        "LICENSE-MIT": {
+          "checksum": "blake3=e236a4d5f14aab8594aa14bb1c7e535f9531925b1fc21d4ab21d322da13cd108",
+          "size": 1023
+        },
+        "README.md": {
+          "checksum": "blake3=1b5684cf93e6fa27b227b03c877c5bce238f8062b03a1cbe04477fb7cfdd6cc8",
+          "size": 9203
+        },
+        "build.rs": {
+          "checksum": "blake3=37ec6d7a00a6de1a175c3dd9cfaf829c4b2d74a9e64aa45b93d9e4c1a290b996",
+          "size": 882
+        },
+        "rust-toolchain.toml": {
+          "checksum": "blake3=1e52df4d1f008349ec078cc26b0808f2732b703679a20b622c97e47bd3ba119d",
+          "size": 38
+        },
+        "src/ext.rs": {
+          "checksum": "blake3=fc5edb5fbf8b2ff3580afad99aeca653e21b30097b2cb713cf0de7506edd02bf",
+          "size": 3549
+        },
+        "src/format.rs": {
+          "checksum": "blake3=3d8f115eaafd171a98cda1a3ac36431dbe784a34efd21c25e7bc71e564473814",
+          "size": 4816
+        },
+        "src/ident_fragment.rs": {
+          "checksum": "blake3=221109939d23c9dd04010c2a775b0a8b2a4e952d4a7f849eb112a1ec261579b6",
+          "size": 2359
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=3331170a86f0581df362a2204e2747894158822b7f114ecafe1314f172c32352",
+          "size": 47968
+        },
+        "src/runtime.rs": {
+          "checksum": "blake3=1b25208e4bde2f485342f1c1f80cf126171d046030c1801f5ce8a7767e2e99da",
+          "size": 15848
+        },
+        "src/spanned.rs": {
+          "checksum": "blake3=f9565cb145434a2a7f13d2c6f8ba046b6849efd7cddc9433dbb97b9076024981",
+          "size": 1081
+        },
+        "src/to_tokens.rs": {
+          "checksum": "blake3=bb80948745a99ddea407718c7cb21281c0fb69bca07ec9e64d8fbc96ff48e740",
+          "size": 7185
+        },
+        "tests/compiletest.rs": {
+          "checksum": "blake3=47e684f38c26ef300c70fa22c35444d085d15720ff57d51c19f4e969ec87f3fa",
+          "size": 214
+        },
+        "tests/test.rs": {
+          "checksum": "blake3=b36e885fd2deb3bd4dbad4875a493d58b18145c54bb2932935bf1a2d5c5636c9",
+          "size": 13694
+        },
+        "tests/ui/does-not-have-iter-interpolated-dup.rs": {
+          "checksum": "blake3=01ecc8be9bebcc029724dbc3f2911d7a250a474c0079ac8a75f69cd2b34765c7",
+          "size": 209
+        },
+        "tests/ui/does-not-have-iter-interpolated-dup.stderr": {
+          "checksum": "blake3=fe99191bedecba3e76dc78295ec907c7fa3d0bba3aec66f6c663cfd803f1872a",
+          "size": 767
+        },
+        "tests/ui/does-not-have-iter-interpolated.rs": {
+          "checksum": "blake3=a5cdeafb4c56ee405f6ce95aa8ed15cb5c9b9ac0f28dd86f0e97051aa1110fef",
+          "size": 201
+        },
+        "tests/ui/does-not-have-iter-interpolated.stderr": {
+          "checksum": "blake3=e050bcb605f5f9dcb9d411412f24eeff48c3d2cf0bfa9ee543df643ce84367da",
+          "size": 747
+        },
+        "tests/ui/does-not-have-iter-separated.rs": {
+          "checksum": "blake3=c9462f9f2cc264e30e12782e019e17f4f2cf4ec079cc093ca2c4f8a5f2a44984",
+          "size": 55
+        },
+        "tests/ui/does-not-have-iter-separated.stderr": {
+          "checksum": "blake3=acbcd999cba4cddfa536ebbeb7177efa31579aa7db8ef4db470edd327a25a33c",
+          "size": 738
+        },
+        "tests/ui/does-not-have-iter.rs": {
+          "checksum": "blake3=8e0350156341cec84661c13433d5b162ad40ee13c81e45e599725f2572e45ce2",
+          "size": 54
+        },
+        "tests/ui/does-not-have-iter.stderr": {
+          "checksum": "blake3=0d59a4622532eb18eab4724dedd3b0d6d50b9b1e4b5936b64eaadfec281f0da3",
+          "size": 726
+        },
+        "tests/ui/not-quotable.rs": {
+          "checksum": "blake3=3a87e66eb2cef25cfa391c56da322f6e134279712759044c49ce084a364907c3",
+          "size": 119
+        },
+        "tests/ui/not-quotable.stderr": {
+          "checksum": "blake3=93d1fffc4522adca4caaf5dcde386d8b4cc38749eca4c21874dbba7bafbfb807",
+          "size": 681
+        },
+        "tests/ui/not-repeatable.rs": {
+          "checksum": "blake3=1e5e72dcae2b937d040474d42a6162081bcebf58ddc8d594c5b0c5b835d06480",
+          "size": 106
+        },
+        "tests/ui/not-repeatable.stderr": {
+          "checksum": "blake3=02f1dc49ec6c036479eab46f353f564f77dcfd18287e369f79579c3498a507d0",
+          "size": 1802
+        },
+        "tests/ui/wrong-type-span.rs": {
+          "checksum": "blake3=0c47181e4d9c1242f75d67c12fe1cc5ba16c1a19c024d379dddb9d9792126367",
+          "size": 109
+        },
+        "tests/ui/wrong-type-span.stderr": {
+          "checksum": "blake3=1715e57add1c70c0d33380e49c6195f597e040112172f1782f06099dc4913c27",
+          "size": 346
+        }
+      },
       "features": [
         "default",
         "proc-macro"
@@ -240,6 +968,428 @@
     },
     "syn-2.0.119": {
       "archive_sha256": "872831b642d1a07999a962a351ed35b955ea2cfc8f3862091e2a240a84f17297",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=44c8878d9b0fb349f33c0aa218e9bab1e2ab54bd72916d7e48ccd805682ba967",
+          "size": 94
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=9eefed1324f471f1a2fcdf3622af0684201511af2d94ede4d756a7c06b56da0b",
+          "size": 48143
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=e46190176cff48fb368ed375f32f97b14d6995ab58eb3dfc9f62e22a40b10a87",
+          "size": 5007
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=bec843e92afa8cecbbed0ad9d486ccf6559186621104b0ca9fd1ddc70e8d5234",
+          "size": 2413
+        },
+        "LICENSE-APACHE": {
+          "checksum": "blake3=27ad817f884bbec3ebc921ad0dafa8c2a56effce574e043451f4db5178611e62",
+          "size": 9723
+        },
+        "LICENSE-MIT": {
+          "checksum": "blake3=e236a4d5f14aab8594aa14bb1c7e535f9531925b1fc21d4ab21d322da13cd108",
+          "size": 1023
+        },
+        "README.md": {
+          "checksum": "blake3=09773c7e24dbc41caf629c08ee4b0cc4f4a115a7305d3993e59278866bc704a1",
+          "size": 10342
+        },
+        "benches/file.rs": {
+          "checksum": "blake3=4bf8136b931bf01c1a3f450afc4585bfc97d94ff2eb35cf06a3c82dfa3ff4d2e",
+          "size": 1400
+        },
+        "benches/rust.rs": {
+          "checksum": "blake3=846269d5fbe36918bfb836d294f9af65bf091041dcc1554bcbb82b94d0691330",
+          "size": 5126
+        },
+        "src/attr.rs": {
+          "checksum": "blake3=2321f6ef7e731a00f9246a1c94fef3d98c825ace4c0c8cad9fbb7b3ae5b0f817",
+          "size": 28537
+        },
+        "src/bigint.rs": {
+          "checksum": "blake3=4945b7ad568a1585111ff0934743ff8ff2e139c1d1ec5b0728884a04b9b7997f",
+          "size": 1659
+        },
+        "src/buffer.rs": {
+          "checksum": "blake3=dc31cbbba28465b74171e692513ee68d6a3112f87d1604d4b5d8de86f365bc03",
+          "size": 16192
+        },
+        "src/classify.rs": {
+          "checksum": "blake3=c21fa4296ba021d9d20a18b124687b2864d20a48fd49a0c602f0782b59cdbafb",
+          "size": 10719
+        },
+        "src/custom_keyword.rs": {
+          "checksum": "blake3=1af796abfc2a93601ffeddff1473ffc6d1281de8918485b43a1fb66d9ecb6435",
+          "size": 7862
+        },
+        "src/custom_punctuation.rs": {
+          "checksum": "blake3=ad14d1cb7820419ec29077f14959dc49923333d829a10df4bf8b3506555927c6",
+          "size": 9158
+        },
+        "src/data.rs": {
+          "checksum": "blake3=e46572e1ada3831648be10532d9502cf5807ac4f8a2d61546fae7e8f901f8614",
+          "size": 13793
+        },
+        "src/derive.rs": {
+          "checksum": "blake3=1113c4e7aad1caad1cedce91cc882c04138dc493fb87ec9d7a07ee8c6e68e147",
+          "size": 8864
+        },
+        "src/discouraged.rs": {
+          "checksum": "blake3=e42cf563baeb7029b0214041bc222a1b116409322f6344ad916920c10e894936",
+          "size": 9238
+        },
+        "src/drops.rs": {
+          "checksum": "blake3=9eb2d08c37643fac1ec73c359d1cc8d0aad391d4c87cb762d9863babff86a1d2",
+          "size": 1414
+        },
+        "src/error.rs": {
+          "checksum": "blake3=cdab864cdce00cabd7b5571b78a12e4525e0ea66f752bdce8cf9679d390f105d",
+          "size": 14167
+        },
+        "src/export.rs": {
+          "checksum": "blake3=10739797c897299694bf7f7395383d5196f11fba35a86e2dbbee775cb390dd9c",
+          "size": 1686
+        },
+        "src/expr.rs": {
+          "checksum": "blake3=f5fce7210f0247327ebf811e06dfd1b7352850712de92e2f3e6b9a723dea65c6",
+          "size": 141993
+        },
+        "src/ext.rs": {
+          "checksum": "blake3=f62e48c740d3d1270c99dfaad5e10fc0085ea68a1cb27b375a0df4be7d62811c",
+          "size": 5092
+        },
+        "src/file.rs": {
+          "checksum": "blake3=37c6a01eb37f2c4a900af7e88f90fa35ef7a1fbd29c571ad330c93ca4e13d656",
+          "size": 3823
+        },
+        "src/fixup.rs": {
+          "checksum": "blake3=dc7eddef243d64cf29a664ce8300f5f79c418c803c0abfb3aca189ffb98b812b",
+          "size": 27676
+        },
+        "src/gen/clone.rs": {
+          "checksum": "blake3=c44e6cda22679fe3e62970196b57244525103822f17d9de4337862a7002687af",
+          "size": 76352
+        },
+        "src/gen/debug.rs": {
+          "checksum": "blake3=321e3c6f98e48aca3b562ac0e5adba2649358cf959fb019bfac450011c8ff3ee",
+          "size": 127382
+        },
+        "src/gen/eq.rs": {
+          "checksum": "blake3=efe829fa3ddd0bd4890af82511a4c561189dc8d60d6cb2177e34a29817eda6ec",
+          "size": 93214
+        },
+        "src/gen/fold.rs": {
+          "checksum": "blake3=dc60d00a4576b972a5574ac8adaeb5f578d5155205bf1a0c8166712427b074c5",
+          "size": 137148
+        },
+        "src/gen/hash.rs": {
+          "checksum": "blake3=abb7c878694f03d61e82fda3b731da1fde5e2392068faa9490f55ec9f3805224",
+          "size": 77001
+        },
+        "src/gen/token.css": {
+          "checksum": "blake3=778e785d862f30636cb530279636e556e298b9ba3fd7afdfdf93e37061d5c364",
+          "size": 23132
+        },
+        "src/gen/visit.rs": {
+          "checksum": "blake3=2685a70795e47da99a0e9c3b32824b6da481be3ea98b2a27b2d37873173a31a9",
+          "size": 125396
+        },
+        "src/gen/visit_mut.rs": {
+          "checksum": "blake3=8c0fb775c4d570250593e4dbd80a3d324f784f39efa2fd24be8302050f4c8742",
+          "size": 127654
+        },
+        "src/generics.rs": {
+          "checksum": "blake3=09e2f72cd3a77bdc0cc6e6f0e96a07c03d93f03e1331b61a8908f8e6cc0f7957",
+          "size": 51910
+        },
+        "src/group.rs": {
+          "checksum": "blake3=ccc589bfc138187e7a716afbf0c9e263e03011e71cf86002790d4c56fd49cd1f",
+          "size": 7978
+        },
+        "src/ident.rs": {
+          "checksum": "blake3=738ef35a6006e265a16e096bcd7297dbef72c1ed0065b5dbd173d99da5fef66d",
+          "size": 3176
+        },
+        "src/item.rs": {
+          "checksum": "blake3=39a7a8d4c9eba448315645db64cc1da4ac909861c0758fbd730abbc9b3735b54",
+          "size": 122882
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=2fd11bce162f9c7ae824e107b7b7ef55dedc95bd0649b68b7595dd036a3c783a",
+          "size": 33943
+        },
+        "src/lifetime.rs": {
+          "checksum": "blake3=e92708dcded893041ec86f44d0a4a9ca86861cdf5f8c4056090aeae4deacbd67",
+          "size": 3851
+        },
+        "src/lit.rs": {
+          "checksum": "blake3=0158312ea6bef4b1929834b2fa4c736d7547a93053980394ff5bdc8098e4e541",
+          "size": 57447
+        },
+        "src/lookahead.rs": {
+          "checksum": "blake3=5bd87d36afbbc1bf4a131964560f4a050d051492d4e69b0b974bba2e713eb564",
+          "size": 10412
+        },
+        "src/mac.rs": {
+          "checksum": "blake3=46c9d1a04ebb515abcd3a6d3695db5c0049dff3e5127f233524a8641e8c7491a",
+          "size": 8007
+        },
+        "src/macros.rs": {
+          "checksum": "blake3=738ab4761f18e3823f35aad8195f2e195a4c7fef7a526c9579bea5560660ac15",
+          "size": 4694
+        },
+        "src/meta.rs": {
+          "checksum": "blake3=db87bb53f8949391af2564de342101abb0ce0fea68370fccdb5c91a8e65e1614",
+          "size": 14138
+        },
+        "src/op.rs": {
+          "checksum": "blake3=3c360a7921b15db2b489d80d564bb3b8a63334af689b651d579ac5e35effd1dd",
+          "size": 8337
+        },
+        "src/parse.rs": {
+          "checksum": "blake3=7fbf0cdeed2560f5f62aff5fa22f11658e20ec0d0188c9dff3c9ad4a8f9a2243",
+          "size": 47710
+        },
+        "src/parse_macro_input.rs": {
+          "checksum": "blake3=20b36448df192e29ee532db8fd6433a505eaac330269e866743ed5f17cc553e4",
+          "size": 3496
+        },
+        "src/parse_quote.rs": {
+          "checksum": "blake3=332e4dea5ebc74581021db73e2ec0fc12b53eca9c6f904c8f85a0bef7f5650b9",
+          "size": 7402
+        },
+        "src/pat.rs": {
+          "checksum": "blake3=33068e227a48679b979860ad3f4a865c8bf64bc25dc91b948b0c6ae8b82896a0",
+          "size": 32148
+        },
+        "src/path.rs": {
+          "checksum": "blake3=27765a19dc70ce787df4b2d750dbb28f0656b76f15dd435c42d14ce072746410",
+          "size": 33460
+        },
+        "src/precedence.rs": {
+          "checksum": "blake3=5ea2e9a484c3ec9781e4e6d60187e6f494da2222e5dd4bda8a5c0b17e4058cab",
+          "size": 6818
+        },
+        "src/print.rs": {
+          "checksum": "blake3=184762e8af22e2a258808a4a6a7f79ec9d4dd1cf85ec398b71e4f4bd81e00f32",
+          "size": 390
+        },
+        "src/punctuated.rs": {
+          "checksum": "blake3=bb7e969199f82928c6efd0ebcc8e9647d64bbaa6f20f40e1fa3385d405a2523a",
+          "size": 31718
+        },
+        "src/restriction.rs": {
+          "checksum": "blake3=ca70757af08e098f62fcf65750ee9dbd7c6f56a548566b637195e319db140379",
+          "size": 6185
+        },
+        "src/scan_expr.rs": {
+          "checksum": "blake3=ab13cdba5f668489a59dab3f5bbf81131e3a0f12f636ac39f3605c0f37622647",
+          "size": 9440
+        },
+        "src/sealed.rs": {
+          "checksum": "blake3=795047446519172562b87ed51c355912e7ac5ec6e26dae3a2e8422884677a226",
+          "size": 87
+        },
+        "src/span.rs": {
+          "checksum": "blake3=2933d81c4d647e554c0fcad0d2074849f9363aaca746dd0fd3f73072b6c8f325",
+          "size": 1197
+        },
+        "src/spanned.rs": {
+          "checksum": "blake3=1349c00f1aed039b231cb731c09ebc1ad6bf2e126cfb26fba47438ebdbcde794",
+          "size": 3781
+        },
+        "src/stmt.rs": {
+          "checksum": "blake3=7ec19156e7f6dab8eb544730401ccb180a3d79ad5890c9b97ebdeeaa8ef0e20d",
+          "size": 17435
+        },
+        "src/thread.rs": {
+          "checksum": "blake3=716e4ea90df5cda1fef82065d75d3a048288200bd530f1c307f655330859a037",
+          "size": 1906
+        },
+        "src/token.rs": {
+          "checksum": "blake3=785c03eb87a9b08cbd784e175c4c7eabfc790f8ba2f54301574f1257d6461c5c",
+          "size": 36492
+        },
+        "src/tt.rs": {
+          "checksum": "blake3=9b4b38523b78ff9d91dd105901cd590f6b32a15fb489f5aab4c8ed5690ce834b",
+          "size": 3315
+        },
+        "src/ty.rs": {
+          "checksum": "blake3=2763b8d4a09634f271a2051a20e55c6d7ef6dc415b4b00be76b50233e1fc1a99",
+          "size": 45339
+        },
+        "src/verbatim.rs": {
+          "checksum": "blake3=3ed4987be0b34a16b89bb34c8a94d0158b8c04f4374a25930405b0e2440fa994",
+          "size": 1164
+        },
+        "src/whitespace.rs": {
+          "checksum": "blake3=bb4becfd455394a7026486415b275722c02b1dab7323ee053ab6c1ba11682a20",
+          "size": 2103
+        },
+        "tests/common/eq.rs": {
+          "checksum": "blake3=2fb04e79c2bbba52cbd5ea2591d0be96c5c5a0076420a36bb7ef3bb13dcdd18c",
+          "size": 34209
+        },
+        "tests/common/mod.rs": {
+          "checksum": "blake3=861d4b9b22f3d851e6a4a225c39b47bb6a0a811bada117c6f4073c4ce4eb7775",
+          "size": 133
+        },
+        "tests/common/parse.rs": {
+          "checksum": "blake3=bb8934260024cd81cc2e4d73495a400a79bad4f556c182a500ce24916e8d6b8d",
+          "size": 1317
+        },
+        "tests/common/visit.rs": {
+          "checksum": "blake3=fb1f5f49baa870399192d76bc280001f996c693ea292a3d7436eea4baa2420b4",
+          "size": 3894
+        },
+        "tests/debug/gen.rs": {
+          "checksum": "blake3=d80fb3dd3d30172f214cf9600000f73610435eeb9b6b2de2d55075c11d3fdcd1",
+          "size": 207534
+        },
+        "tests/debug/mod.rs": {
+          "checksum": "blake3=4c1ff00105c781ce714ee3236fd826c02133877f7dc1e67be1ca9ed7ae446472",
+          "size": 3340
+        },
+        "tests/macros/mod.rs": {
+          "checksum": "blake3=e48e94d169635505ac6da540ea465e3fddeffc1810bb896f98459a0c6b4c0d38",
+          "size": 176
+        },
+        "tests/regression.rs": {
+          "checksum": "blake3=1441cc97cee547ced5db635b4d162b4278a83ee3b18f549c4720426f8f5f2efc",
+          "size": 132
+        },
+        "tests/regression/issue1108.rs": {
+          "checksum": "blake3=ce79389270282d3fc25f497ef76f44d007f96c342a2bb93065adfeee3e45081a",
+          "size": 97
+        },
+        "tests/regression/issue1235.rs": {
+          "checksum": "blake3=0513448539147d043a3ac8530ac2b1f2156327ebaa36ec4ca433d0461e45415f",
+          "size": 932
+        },
+        "tests/repo/mod.rs": {
+          "checksum": "blake3=688a2580702d10985cfbb18104e7755353f6c39c3fd5d3d3b434f5dca4d91b0c",
+          "size": 50798
+        },
+        "tests/repo/progress.rs": {
+          "checksum": "blake3=4cfbaec9ea62cfa11cf552b9c9a0bc047ed4b71159031a07d4170efe4599972a",
+          "size": 839
+        },
+        "tests/snapshot/mod.rs": {
+          "checksum": "blake3=92068063942f4fd025f927de04dacbc81062ddf01ec3e0640283db691eb6a066",
+          "size": 2085
+        },
+        "tests/test_asyncness.rs": {
+          "checksum": "blake3=8ea0bcfc48d5bed99abb68e8c25a984b403d8bceaff49800d09e08b2c4114559",
+          "size": 887
+        },
+        "tests/test_attribute.rs": {
+          "checksum": "blake3=65bdc063ffea1267b11314a377c82052bbb156701446e94cfb5ff0fe15dbd5b6",
+          "size": 4474
+        },
+        "tests/test_derive_input.rs": {
+          "checksum": "blake3=c3ac4a7e6cdb62c3b3b1bf48376e4bf7326beda49cf36b4e9bb716a1cae3aa20",
+          "size": 21857
+        },
+        "tests/test_expr.rs": {
+          "checksum": "blake3=26714aca89c28c9cde9433e6909ac629e5c8b6da15b83becb30e14e32e2640dc",
+          "size": 52454
+        },
+        "tests/test_generics.rs": {
+          "checksum": "blake3=98c56aa65e482e14eb9c84453c39121e4e529686b401a573124a8574e9163300",
+          "size": 10996
+        },
+        "tests/test_grouping.rs": {
+          "checksum": "blake3=3c61955ae948ed544d021bf6f51a6e73a885124cfa5fd0023310517fafee8e0a",
+          "size": 1595
+        },
+        "tests/test_ident.rs": {
+          "checksum": "blake3=3572f649dc6dcc2c3fb7ac20bffd870088d43f0fbd2aeb120be886f2757fef18",
+          "size": 1320
+        },
+        "tests/test_item.rs": {
+          "checksum": "blake3=de9364d029f80f72c58643e3a7df01549256a4d20a9777a836965698cc8d3212",
+          "size": 10754
+        },
+        "tests/test_lit.rs": {
+          "checksum": "blake3=5ddf940c1197878fa7192cf5f3d3e588757a7985bcb5b8a206f4b84431c7a3ac",
+          "size": 10560
+        },
+        "tests/test_meta.rs": {
+          "checksum": "blake3=550da287e4d6556f5604d6da7e21f2ed4d4ce5ec2bd7b130f5a5539046b30654",
+          "size": 3737
+        },
+        "tests/test_parse_buffer.rs": {
+          "checksum": "blake3=ac8be048680b1f71a61b8059985e9c37e6f122326793ffe11629fccb160b373c",
+          "size": 3036
+        },
+        "tests/test_parse_quote.rs": {
+          "checksum": "blake3=22291857ad6764cdaceb113ee3a9475956b42061c536f8ddbd327d26299eab91",
+          "size": 3629
+        },
+        "tests/test_parse_stream.rs": {
+          "checksum": "blake3=6305dbcf34274f7dea17225adafa919644170f5f616a375fb7a1fa1ea5f42a3c",
+          "size": 5524
+        },
+        "tests/test_pat.rs": {
+          "checksum": "blake3=c813621c2208e7893d7ac2461c3254297b972b3bdb5bdba95115dd99dc6415ab",
+          "size": 4575
+        },
+        "tests/test_path.rs": {
+          "checksum": "blake3=f97c97511304e32eb78ea0a6983519b606176dc722c499a1e7ce7aaf6c67dc32",
+          "size": 3659
+        },
+        "tests/test_precedence.rs": {
+          "checksum": "blake3=57078299911c0057538deaee3e24e39dfa3d4d617796fca83d44d3f27213d56e",
+          "size": 18193
+        },
+        "tests/test_punctuated.rs": {
+          "checksum": "blake3=e96c95ec5b7a77a5a2a76c2bef1cdb8c9dc241d0feb28362b38aa9686b4ea90c",
+          "size": 2259
+        },
+        "tests/test_receiver.rs": {
+          "checksum": "blake3=bb1701787bbf07de0aa8f93dea5f1ec8aa212323433259146bca118791e20526",
+          "size": 8331
+        },
+        "tests/test_round_trip.rs": {
+          "checksum": "blake3=853c1cd9f091ead0de0bee6f4394d92865511d4c2dcc975ca713f637b487733e",
+          "size": 7140
+        },
+        "tests/test_shebang.rs": {
+          "checksum": "blake3=c16b4b1ecf019d18c3e002a247ca6f6c334d8415905f2593b653e1630e93f760",
+          "size": 1840
+        },
+        "tests/test_size.rs": {
+          "checksum": "blake3=d416aca6fe7de38128318d4cac0348dfd3938b3225f34929f9008b14e31e3fa4",
+          "size": 1607
+        },
+        "tests/test_stmt.rs": {
+          "checksum": "blake3=e49f01b6e50db6d4df9a06a32962bbec64fa0d5a3881aac7e7be05975674da54",
+          "size": 8772
+        },
+        "tests/test_token_trees.rs": {
+          "checksum": "blake3=375bc050e7317da7d592e199bcc25d3e417b9d4c0ffd97529f031c3e01d637cb",
+          "size": 762
+        },
+        "tests/test_ty.rs": {
+          "checksum": "blake3=57d9027702c2085335a1734cb7c289c0d9b65e2151f1a9e74dfc4f3a0114eb4a",
+          "size": 14160
+        },
+        "tests/test_unparenthesize.rs": {
+          "checksum": "blake3=1ba4c12ef7aaf28a13b8a7d7378e50d5103543c0e8f8ca0b133d14df55debf85",
+          "size": 1985
+        },
+        "tests/test_visibility.rs": {
+          "checksum": "blake3=66a33a0172566b9f8f56fa14a2660ef58da3fb875485ad077cc07754896876de",
+          "size": 5149
+        },
+        "tests/zzz_stable.rs": {
+          "checksum": "blake3=7b0f24be155c63bfd51f6a917938aaab270320b30c4dd59af3410bae452fc9e9",
+          "size": 1098
+        }
+      },
       "features": [
         "clone-impls",
         "default",
@@ -364,6 +1514,40 @@
     },
     "synstructure-0.13.2": {
       "archive_sha256": "728a70f3dbaf5bab7f0c4b1ac8d7ae5ea60a4b5549c8a5914361c99147a709d2",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=84a004a9de4f5b6261d2154b35f6888ecc2652a26ee6c219071562444ab8f55f",
+          "size": 94
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=5e515097616cd6e60a3911b7f89e6bce3cea21d6e33921f86f865bcb5dc828d8",
+          "size": 1352
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=1aa137749961c4a6c94f169d5d3f88d2d89d92d3bfeca463ec0f89638ff13d05",
+          "size": 1607
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=35cd3e31082585f2a7aa54500827d7c9f00657906f1bc68ad280490514232a7d",
+          "size": 1158
+        },
+        "LICENSE": {
+          "checksum": "blake3=95af78a73ec58fed3feaecaaadec6fb5ec9f1285e1c3e55d77530d099698c995",
+          "size": 1052
+        },
+        "README.md": {
+          "checksum": "blake3=bfcefdcc18405f8f0fcb21c8deeee8083b21cce03317abf4cf088ca14f51d80c",
+          "size": 4695
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=38ca0ec42ffd6987f418ee1567a4daf58024df24c6b9b2c837b3513de316cfb8",
+          "size": 83141
+        },
+        "src/macros.rs": {
+          "checksum": "blake3=e722ce628722aebe1c6c649378a3872a6707ca7a94ab1eff23f86172bf086123",
+          "size": 8324
+        }
+      },
       "features": [
         "default",
         "proc-macro"
@@ -383,6 +1567,112 @@
     },
     "unicode-ident-1.0.27": {
       "archive_sha256": "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=2bec5f394d92abf38eba448859f05b53b45af1eef5d66476891c7b701332250e",
+          "size": 94
+        },
+        ".gitattributes": {
+          "checksum": "blake3=3b01fbd8e610dfa7bfd8875da4512bf46becb0cd38ddc5b770f9248d004cf9ae",
+          "size": 207
+        },
+        ".github/FUNDING.yml": {
+          "checksum": "blake3=19cb734de845d0503b38ca770b349fbefd121f9ca0f1b11b225c6d95b4ec2361",
+          "size": 16
+        },
+        ".github/workflows/ci.yml": {
+          "checksum": "blake3=a11f04a0d68f731d7fe70466ded553af6c8ad4eb9c0a68b38bf9ff1be4673862",
+          "size": 3418
+        },
+        ".gitignore": {
+          "checksum": "blake3=99bd69ff854a03125d64c6fd4cc00f58addd6c43ef4f290785c585f9ddac16f3",
+          "size": 36
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=b08e49e92c560293f7b2bdb462a092226116966ab709bd1140078fca9eadcdb3",
+          "size": 14537
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=abf64b838491b40f89d793e5961811b43e73a249d36607de387b4650a8380650",
+          "size": 2072
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=79d5804adf287bba368aeb38944c053b51f8294dec3d420911be67c081c5b9af",
+          "size": 1331
+        },
+        "LICENSE-APACHE": {
+          "checksum": "blake3=27ad817f884bbec3ebc921ad0dafa8c2a56effce574e043451f4db5178611e62",
+          "size": 9723
+        },
+        "LICENSE-MIT": {
+          "checksum": "blake3=e236a4d5f14aab8594aa14bb1c7e535f9531925b1fc21d4ab21d322da13cd108",
+          "size": 1023
+        },
+        "LICENSE-UNICODE": {
+          "checksum": "blake3=87206454bdbd867b8dc2e05b2a52be506b1326525e7b0ca2259b1d7e826c6d4c",
+          "size": 1995
+        },
+        "README.md": {
+          "checksum": "blake3=71be520ee5da37b947f5a6689f34f36e710c7f797c5368053dc85ee19463840a",
+          "size": 12773
+        },
+        "benches/xid.rs": {
+          "checksum": "blake3=5c7e034a91888d97001b8706a585e1b8a644689f8c28ab4e1bb7dee85f4423b9",
+          "size": 4097
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=b4fcd6b06a1d66019ea3e6cdf7940f045708107639ca5f5ba597062192047498",
+          "size": 13463
+        },
+        "src/tables.rs": {
+          "checksum": "blake3=e9876ad2a4305a2b607bd83e9773f0135446ab1271cb4814240d7a0fc78857bd",
+          "size": 65932
+        },
+        "tests/compare.rs": {
+          "checksum": "blake3=c08b5853e5b42b70285e47a553674f554430cb368961ffdea48b02361ceb468f",
+          "size": 1803
+        },
+        "tests/fst/.gitignore": {
+          "checksum": "blake3=235f14b6ca260a0faf8b3422b8d80042a226049e4f687b2fccf5a43ea524cf4d",
+          "size": 14
+        },
+        "tests/fst/mod.rs": {
+          "checksum": "blake3=8e1ef53fd27d00443b9bace7c25757434377fede6a2bed4d9cfc4d08f417ba1a",
+          "size": 385
+        },
+        "tests/fst/xid_continue.fst": {
+          "checksum": "blake3=a4ac3dc02e29fac950adee1dd88e2995c366beb0b77c2ffd32acaa8a968716ef",
+          "size": 78779
+        },
+        "tests/fst/xid_start.fst": {
+          "checksum": "blake3=d54f87044e747887c29076b5e3d3ea360960f3d6694c277f6756c2c82229536c",
+          "size": 69927
+        },
+        "tests/roaring/mod.rs": {
+          "checksum": "blake3=a20b79c9f61b513693bacc3e04f25abd7a450db4c2069c5a3d556c5e83300fbf",
+          "size": 540
+        },
+        "tests/static_size.rs": {
+          "checksum": "blake3=5976e4e88a99f89445501e3b44e812a0a85010ed272133eabbcb8c04f900cbea",
+          "size": 2456
+        },
+        "tests/tables/mod.rs": {
+          "checksum": "blake3=cd4ba4447b06eacec5f9dd29901d320cc5c9ed4f77cc37e6d7cacd88bb9786ad",
+          "size": 144
+        },
+        "tests/tables/tables.rs": {
+          "checksum": "blake3=c73c8a506be2e892a64df923803aad9bed208955d20d33e8d60c01a257fc9c52",
+          "size": 24762
+        },
+        "tests/trie/mod.rs": {
+          "checksum": "blake3=0320e11ff850d785bdfd5a9e2233154bb8ca2b414d3ba5426221672b060482fa",
+          "size": 179
+        },
+        "tests/trie/trie.rs": {
+          "checksum": "blake3=1fa490154d3d55972398c56e0b61dcf3aa0e79054aded1984c1e8a8a9f8a6847",
+          "size": 31894
+        }
+      },
       "features": [],
       "files": {
         ".cargo_vcs_info.json": "68a4d49004541c1a4bfe6564b7c8e9853de2c3a5fa528c98cc6017e6103c146b",
@@ -417,6 +1707,32 @@
     },
     "verus_builtin-0.0.0-2026-09-16-0054": {
       "archive_sha256": "5e4a9e69d45ddbe303075756d3fc2fcc965eb9dc70c80651d0e4458a6af1ed83",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=967ec1cb26a0e7d43b77e80079d0264d35b6ef4d1a5a23565cd567404bd197f2",
+          "size": 108
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=3fabaa20d04e858c4fa8f4763cfb9bd656bf60f36c7af130e00ec7f8f61d54d7",
+          "size": 173
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=75d322b4cec58394b462f69b0f7fdc80f3636b4c42f624100b20c827fc563ff5",
+          "size": 3850
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=d6f977126cd1e363a77f80bb0fc441843a0b4a480817896ccd620e328cd34bf3",
+          "size": 638
+        },
+        "README.md": {
+          "checksum": "blake3=63235c45b9022fde931d1a5490a3a9be7627b56155f07930378a04792f1a9728",
+          "size": 5826
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=a706ee69ad40fa39449aa615cf1bd0ae2e88dfe3d15c43b5d5c040eebd02a660",
+          "size": 74135
+        }
+      },
       "features": [],
       "files": {
         ".cargo_vcs_info.json": "b035105fb8eb8895ba69c4ea85150d5b618d6f8cfbebedb9957443e451f93632",
@@ -431,6 +1747,112 @@
     },
     "verus_builtin_macros-0.0.0-2026-09-20-0158": {
       "archive_sha256": "213ca3e8a80925aec251d3f1952a213d6090156b58ad81dccc3a2f1fed77c99f",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=a35a17b9d8e4230ed8e76bc94dce2c66d33925c18879ec742f984288018f5a2a",
+          "size": 115
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=b2928830d3c27bf4d7db3ea86809d5fdf4b573c5a0375051b6d2dc19b4fafcab",
+          "size": 2198
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=29025fda5db1d3944bb4bff47723d357ff8c047f82cdb982a2a178f65340149f",
+          "size": 4344
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=4d2710311db98926cedb47a18cdd79f867389309d0bfeda6cf67995b9b8a4ec3",
+          "size": 789
+        },
+        "README.md": {
+          "checksum": "blake3=63235c45b9022fde931d1a5490a3a9be7627b56155f07930378a04792f1a9728",
+          "size": 5826
+        },
+        "src/atomic_ghost.rs": {
+          "checksum": "blake3=de32aa613d18383e4c30d264e485e3d8c9f6cd1bc4cd6b7c78fdd52e103726a3",
+          "size": 5542
+        },
+        "src/attr_block_trait.rs": {
+          "checksum": "blake3=12c71e6922900b029e07c447e4164e79b0b80f4c841956d93e83143e1a2f0f27",
+          "size": 4094
+        },
+        "src/attr_rewrite.rs": {
+          "checksum": "blake3=175d2ad0c71dde5b7f29b4bd6c409f05eee0e8061d46d267848c56f5dbcfd378",
+          "size": 52423
+        },
+        "src/calc_macro.rs": {
+          "checksum": "blake3=40b774cc1fea405787323b843f9375f5e4358be88d391eb10489fbed43522fc8",
+          "size": 7591
+        },
+        "src/contrib/auto_spec.rs": {
+          "checksum": "blake3=6cbbd7649695c31eedc1765db0e4c2adc9dc752f98d29855e734c6e08b21662d",
+          "size": 2663
+        },
+        "src/contrib/exec_spec.rs": {
+          "checksum": "blake3=be555f6697ad4191584023923805a632996f2acd9f264460a098771abb62d4c4",
+          "size": 128211
+        },
+        "src/contrib/hooks.rs": {
+          "checksum": "blake3=45ff80c9cc18043a2092152963a57b37c3a0ac56768a66995ce66de7be73006b",
+          "size": 5218
+        },
+        "src/contrib/mod.rs": {
+          "checksum": "blake3=68c17f413ca58467a47f8dbdbecae11e475d4327fef6569841d21e8aa3f9e51b",
+          "size": 5217
+        },
+        "src/contrib/set_build.rs": {
+          "checksum": "blake3=cc2f1138128661f5b598b9e457da5a58b90c71ae3f86c1ab8882fe68010f6a91",
+          "size": 19320
+        },
+        "src/contrib/spec_derive.rs": {
+          "checksum": "blake3=90ac810caab9f9adb58761545cf4fe14fbcf973c9a1691bc373aef40c39d1491",
+          "size": 21473
+        },
+        "src/enum_synthesize.rs": {
+          "checksum": "blake3=c2b066fb69b339ebb16960d0911d9728e118e3b094cc2e450d70bd8a671eca5e",
+          "size": 10296
+        },
+        "src/fndecl.rs": {
+          "checksum": "blake3=381ad3ee55256b8d9f9e5b74f6f7bd8c6556b72c2c1689cdfffda8a91a25259a",
+          "size": 232
+        },
+        "src/is_variant.rs": {
+          "checksum": "blake3=24062193484488fd8fe78929e50b84a37e80b16c35f2cf42b5645e1fbba3baf1",
+          "size": 5990
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=06b8cf36469a3448a1642ea07a6b169744aaff1f62ec1bd06d40b0eddd44e0d9",
+          "size": 26315
+        },
+        "src/rustdoc.rs": {
+          "checksum": "blake3=e130b98cbfc8bed4b140bd87853fd87e034e4059ad5dfcffde45ad4682ef6b12",
+          "size": 14314
+        },
+        "src/struct_decl_inv.rs": {
+          "checksum": "blake3=751a38f4c776d69390da0333eb51aee1bf612115b53db175de23719a2285facb",
+          "size": 48420
+        },
+        "src/structural.rs": {
+          "checksum": "blake3=d0d25ac51e3c334548e4ae5dd397dd0ccd44f09fae9ac18c04b498de0391612b",
+          "size": 2239
+        },
+        "src/syntax.rs": {
+          "checksum": "blake3=602256370aff93aabb65b110830994fb14416e569e0c00c6df59a648c5e21836",
+          "size": 256279
+        },
+        "src/syntax_trait.rs": {
+          "checksum": "blake3=41509eb4fa19a1fda834452cb258bda1e9e8a247d88a116bc410f49f6d9af9c5",
+          "size": 14388
+        },
+        "src/topological_sort.rs": {
+          "checksum": "blake3=148b54e935b2861015b97704aee493ab098543d395665fc1dd8ddae1abe1880f",
+          "size": 1826
+        },
+        "src/unerased_proxies.rs": {
+          "checksum": "blake3=6a946ee96c2e38943edfc533b81f4d62f430522cecf257f0814451632d77d346",
+          "size": 21842
+        }
+      },
       "features": [],
       "files": {
         ".cargo_vcs_info.json": "8c205e693568f71cd96239d7f0c363c9b2170297698f80bd324f8bc064b0a942",
@@ -465,6 +1887,172 @@
     },
     "verus_prettyplease-0.0.0-2026-09-06-0133": {
       "archive_sha256": "71956c0dcf55f57fd5a5335fff16981f7e0912d2e887914518c5a64fe36c063c",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=c906890c445b0201ae7a33bf17cc53629b4ccad55148a41611b0d5b7b798cd13",
+          "size": 119
+        },
+        ".gitattributes": {
+          "checksum": "blake3=6ab50849e956f64893c5885345caf31dd3fcf6b0088c1518b91bb27d89d034de",
+          "size": 72
+        },
+        ".github/FUNDING.yml": {
+          "checksum": "blake3=19cb734de845d0503b38ca770b349fbefd121f9ca0f1b11b225c6d95b4ec2361",
+          "size": 16
+        },
+        ".github/workflows/ci.yml": {
+          "checksum": "blake3=7966b6772c1ca38e7b366c236696a9100cb2284ccb2b385efc746ef5f5b17cdc",
+          "size": 3285
+        },
+        ".gitignore": {
+          "checksum": "blake3=b851a10debd95a92f650a527bca4b2054808897692c959ee7b1ba557e1dde484",
+          "size": 21
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=eec7eb07895d7418bc4ebc52986037680f36f31ce313b5b0bf89b7d8c0e36ecc",
+          "size": 1596
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=f69905c66380c8c2caa1fb525cf79ffc0c1290b62210cee993fddde5ed7f98a1",
+          "size": 2576
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=3252e48127dfe53451f32fe45d9d6ee60692eadb9034e398d072ada7f164dec6",
+          "size": 1801
+        },
+        "LICENSE-APACHE": {
+          "checksum": "blake3=27ad817f884bbec3ebc921ad0dafa8c2a56effce574e043451f4db5178611e62",
+          "size": 9723
+        },
+        "LICENSE-MIT": {
+          "checksum": "blake3=e236a4d5f14aab8594aa14bb1c7e535f9531925b1fc21d4ab21d322da13cd108",
+          "size": 1023
+        },
+        "README.md": {
+          "checksum": "blake3=ad177945832fe63f5597e7146a1cf22a61f84ccc5de6475b056ef1cb94c6a92b",
+          "size": 14791
+        },
+        "build.rs": {
+          "checksum": "blake3=f0eb09f289c299f386e99c798bb0fd91f3e3236e0d1bde2003609bb7269fd772",
+          "size": 1073
+        },
+        "examples/.tokeignore": {
+          "checksum": "blake3=a8b4257d546b434666a9f3cb23969961fb6be0ab85cab14f3477c2a200478d91",
+          "size": 5
+        },
+        "examples/input.rs": {
+          "checksum": "blake3=a6145f264a1eb4e136e8b3b6504d28fbaa3895cc865b0c2a0f8ba9c927f9a3f5",
+          "size": 15767
+        },
+        "examples/output.prettyplease.rs": {
+          "checksum": "blake3=5c6aad50617702e7ef29b720ab9e2f9386ec2bc03843d52185e61636a07d2b3c",
+          "size": 18438
+        },
+        "examples/output.rustc.rs": {
+          "checksum": "blake3=bf84419365cfe305c8eeb79dc834c4954a6a01252849322fd03b87b8a7e3cfe5",
+          "size": 17799
+        },
+        "examples/output.rustfmt.rs": {
+          "checksum": "blake3=f394adab4d73372ef56a40d15527f464583483a96a07f4eef45cc715d2fdbe73",
+          "size": 17698
+        },
+        "src/algorithm.rs": {
+          "checksum": "blake3=122247acebc495e455c7c5e84ec65612b48ebf3ce970485aef3dc2c4201ce015",
+          "size": 12478
+        },
+        "src/attr.rs": {
+          "checksum": "blake3=d8d57b06ed28e44604ea1c2a66ce09a52d07e261190ce8a3ffc3d6a8faa7bc7f",
+          "size": 9566
+        },
+        "src/classify.rs": {
+          "checksum": "blake3=f412c918a2b8091af8e02858d20241f419099ebb3cdd31730f0230efdf510a3e",
+          "size": 11577
+        },
+        "src/convenience.rs": {
+          "checksum": "blake3=56968070d8d776d7fc1dd5f8d65f96bfe06e293636ecbf0f647b1752a17a2ffc",
+          "size": 2294
+        },
+        "src/data.rs": {
+          "checksum": "blake3=b16e9fac08951329f626d66a3108997458c39dc533595c5972917e4e9f832927",
+          "size": 2489
+        },
+        "src/expr.rs": {
+          "checksum": "blake3=45256e2ff399a4f84670889c192c58b78302e64abc50e2853b73c5a7c276a4b3",
+          "size": 55219
+        },
+        "src/file.rs": {
+          "checksum": "blake3=a1e5ad2cdb8fa762792dcaa9a3c30996d874a4ce2e9a1000935170d585336ec4",
+          "size": 399
+        },
+        "src/fixup.rs": {
+          "checksum": "blake3=a1b0f5d1f1b961f90cf37e8af6f866b93a42bbc801e0dbb051335c1229edc3d6",
+          "size": 24871
+        },
+        "src/generics.rs": {
+          "checksum": "blake3=fa030bf922d31e81905842727a564e241c948b6b88a7ed75c1344a0d94ce28cc",
+          "size": 14429
+        },
+        "src/item.rs": {
+          "checksum": "blake3=3ce2278b6016e0f8c0f64f6bdf11280e7136dd23642d2c58e2901ed51a621577",
+          "size": 66940
+        },
+        "src/iter.rs": {
+          "checksum": "blake3=1c67c1753d8adb5a85b558cfd3d0b4004014b1c3bfc07007ee72aa1e18c978b7",
+          "size": 940
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=7f97beb72037d18937e88a359c47602205a4e9620269f701b01d9672eacfd531",
+          "size": 17494
+        },
+        "src/lifetime.rs": {
+          "checksum": "blake3=57a71f2965743e3e04c244e0611b19fdbaa7162c58c3558425db3e3c1dcf2778",
+          "size": 195
+        },
+        "src/lit.rs": {
+          "checksum": "blake3=ba8d0d0e29610c6939c73dbeba042deeaa8caec35ee83d9eb5402b326aa7d1ec",
+          "size": 1727
+        },
+        "src/mac.rs": {
+          "checksum": "blake3=062b396f0fe42c26de81bcf6992a50c811b36c4d2d4c03b047055ecc2367c3ba",
+          "size": 26419
+        },
+        "src/pat.rs": {
+          "checksum": "blake3=74de6686e9fe210334fa6f0faab6195593a9883a4aab879089a5838565b9451e",
+          "size": 7853
+        },
+        "src/path.rs": {
+          "checksum": "blake3=6b9f63cfd3697c87a7cb22d4240e8c0fe323af24d80e811a9ce7318b53d64e70",
+          "size": 6247
+        },
+        "src/precedence.rs": {
+          "checksum": "blake3=4766a16b13ef9716c571a6bc347f63645eb09daa6263a03830b1cc4f3164ee78",
+          "size": 5123
+        },
+        "src/ring.rs": {
+          "checksum": "blake3=f8c98b1ff083cf2c2ba03aad3dd4e3247f51e25d04d4876dcb8db2cc8523c2c8",
+          "size": 1754
+        },
+        "src/stmt.rs": {
+          "checksum": "blake3=2a29bfb49a959dd1eaaaae5c70230091f68d52ac63b552f36fb669c0a440ae32",
+          "size": 7837
+        },
+        "src/token.rs": {
+          "checksum": "blake3=2f85b74daf6aa1704c07b737289d322bc66d543fbaaecdc71818d062f3b6b3ea",
+          "size": 2424
+        },
+        "src/ty.rs": {
+          "checksum": "blake3=0fb687225ed33e949b19cc748b144436fd6e8384d61f54a3693b95c490e38f6c",
+          "size": 10830
+        },
+        "tests/test.rs": {
+          "checksum": "blake3=3a006316e40cfafd7882e55f256ceb4eb5bf67bbb3d6c5b27134430fde4d9da1",
+          "size": 1280
+        },
+        "tests/test_precedence.rs": {
+          "checksum": "blake3=9574fbf8c656d50a4f6eb8fd5c67743c0467269b2db707257bae43516a92fe2f",
+          "size": 31916
+        }
+      },
       "features": [],
       "files": {
         ".cargo_vcs_info.json": "89fb7edf8265e4a72090b05a64758414dcfc57200e4c9f7df8f23e4b84d95ea2",
@@ -514,6 +2102,116 @@
     },
     "verus_state_machines_macros-0.0.0-2026-09-06-0133": {
       "archive_sha256": "5f78ea16629331605a440e9e0a259dd3492a78212186ba82253ad0988127407f",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=f2e3cc0bc02ee96e92c109694468385fa9a77486895096be56e27fcbf22be980",
+          "size": 122
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=697030c8a791b3c79b410ebdb02f0c51a44fe3c3d3a9ee1521b4f620d3d7dbfc",
+          "size": 1817
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=aecc8eda93981742ffc7af606c59a1c6fd9b8f055c18db6ae5937d7eeb788a4c",
+          "size": 4163
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=2575bac0f5773636cad6c2a1490afd9e44bfc9ce98503afaaed749d908e20e53",
+          "size": 827
+        },
+        "README.md": {
+          "checksum": "blake3=63235c45b9022fde931d1a5490a3a9be7627b56155f07930378a04792f1a9728",
+          "size": 5826
+        },
+        "src/ast.rs": {
+          "checksum": "blake3=ae94d36ca3168e96e641943bd896694a9ace79bcacb264e5b8313b451680f1c2",
+          "size": 19625
+        },
+        "src/case_macro.rs": {
+          "checksum": "blake3=163686a66edc94edec5613bfd9dfa1ba69d641d8cfc6b71e5d27e39d8c0fdcc3",
+          "size": 7718
+        },
+        "src/check_bind_stmts.rs": {
+          "checksum": "blake3=6bb61141627d0eaa1acc398dc915b84ca1e85683672ab9b087d6de3eb2bbb6a2",
+          "size": 2947
+        },
+        "src/check_birds_eye.rs": {
+          "checksum": "blake3=70baada2ed1f47b1b0e61cac27fc5b9327b6ed0e1b51bbff54cad4e569d965dd",
+          "size": 9453
+        },
+        "src/concurrency_tokens.rs": {
+          "checksum": "blake3=e4adb277e7564f387a699092eb2763bb3c7a4e06c84631fad25c6ba0a585cc4d",
+          "size": 108499
+        },
+        "src/field_access_visitor.rs": {
+          "checksum": "blake3=2f2f4a76cb817002f1e290179efe9eaee5b9492f6b112dc3a152bf03373a3e54",
+          "size": 13139
+        },
+        "src/ident_visitor.rs": {
+          "checksum": "blake3=075984979f61395c1cfa34faec95cf1aeb930bd044b70e01eba6ff3fd79b8b55",
+          "size": 12706
+        },
+        "src/inherent_safety_conditions.rs": {
+          "checksum": "blake3=8d3c64eda42424a0290badcfaea5a127f1c80a6a6efe604e0d53aa2391351ecf",
+          "size": 8249
+        },
+        "src/lemmas.rs": {
+          "checksum": "blake3=60605fabd73692ba7bad59f3d374a408e4c08120952c810a04cf4f3ad3e701e8",
+          "size": 11987
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=5f4f7f7c77ffbbb0056449e41b3523455f5dff3e581a5599e02f6ba80349579e",
+          "size": 3322
+        },
+        "src/parse_token_stream.rs": {
+          "checksum": "blake3=d0545126d417ced2a1904f295884220804888b0f860ff269a5c3b5efa6934875",
+          "size": 33378
+        },
+        "src/parse_transition.rs": {
+          "checksum": "blake3=f3280e3ccb68b73b68d114a3be2b90cde3266f5cffa4056418c91fad7bc32a9a",
+          "size": 27037
+        },
+        "src/safety_conditions.rs": {
+          "checksum": "blake3=840edfbccf2064757e797bc8a20904057e7795480e98436661094010f374e965",
+          "size": 6377
+        },
+        "src/self_type_visitor.rs": {
+          "checksum": "blake3=108d48fb1885910c58e587e0910153f891b7493d808b130a2692323249718638",
+          "size": 7045
+        },
+        "src/simplification.rs": {
+          "checksum": "blake3=06dc1c2277fee27b03436b03076b35c173d4095b653cec6d658186971efee4c4",
+          "size": 33272
+        },
+        "src/simplify_asserts.rs": {
+          "checksum": "blake3=ea07d2bcf31b8de0bf10406f60a3dfca067f136447bd816114814749b0b44a38",
+          "size": 3062
+        },
+        "src/to_relation.rs": {
+          "checksum": "blake3=2d9fcf1c60850dd969843f5a7e149a2f8aaa0cecf2554bb735808a4445b66e25",
+          "size": 19136
+        },
+        "src/to_token_stream.rs": {
+          "checksum": "blake3=8e5e66bc4b2f2a2880372cdfa3a3e6b16cab79d6b93f98656b0d57faa8ffafdd",
+          "size": 42265
+        },
+        "src/token_transition_checks.rs": {
+          "checksum": "blake3=8c67e41e96f2a5e99e3749dbf0706083ec29e13cde6f28d37535d611906282df",
+          "size": 7023
+        },
+        "src/transitions.rs": {
+          "checksum": "blake3=2489330c528a1cf07d8e73ff057dd5b78dd68183d4ff905601e2cc8b4c245da4",
+          "size": 31736
+        },
+        "src/util.rs": {
+          "checksum": "blake3=87c9f573fde0b5cf7a607a7f194954ee00fc7da1523b55b49a29dc03786f7c75",
+          "size": 1828
+        },
+        "src/vstd_path.rs": {
+          "checksum": "blake3=37e24a9937ee69b5a10f1106b357cabe73e43085e8b4e645f1534eb3aeed86e2",
+          "size": 1320
+        }
+      },
       "features": [],
       "files": {
         ".cargo_vcs_info.json": "b4820d2ecc098cfbfcb3aefc4eee7fe72fbc94c91664bb27e18f658f3bec6fb5",
@@ -549,6 +2247,436 @@
     },
     "verus_syn-0.0.0-2026-09-06-0133": {
       "archive_sha256": "7d8b53574934e1f608dfccd809ce17f3733d6eb99c14ce8220326121929e1637",
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=2333108657261fd2c0f663e2235a8e3b8cf93252685cceb81329baed35ae9480",
+          "size": 110
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=69b5237921afbd7ede3d8e02b06c1a7db893992ee5c5f1f80bdf285b8274b169",
+          "size": 48407
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=cd450f584b26a7da2065b7737bf0a501fb42d66d09f2885ee401c7096089c44c",
+          "size": 5695
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=be56c1e3cdfe07950db95306f26cfb84b78bb8114dc386971be5967c34dfd33a",
+          "size": 4096
+        },
+        "LICENSE-APACHE": {
+          "checksum": "blake3=27ad817f884bbec3ebc921ad0dafa8c2a56effce574e043451f4db5178611e62",
+          "size": 9723
+        },
+        "LICENSE-MIT": {
+          "checksum": "blake3=e236a4d5f14aab8594aa14bb1c7e535f9531925b1fc21d4ab21d322da13cd108",
+          "size": 1023
+        },
+        "README.md": {
+          "checksum": "blake3=1dc3ce4bd461c5c0913b7ab7c922fdb0db016c7739a65c39a4cacbcd957a73b1",
+          "size": 10576
+        },
+        "benches/file.rs": {
+          "checksum": "blake3=4bf8136b931bf01c1a3f450afc4585bfc97d94ff2eb35cf06a3c82dfa3ff4d2e",
+          "size": 1400
+        },
+        "benches/rust.rs": {
+          "checksum": "blake3=45a0221933a46934b22eca77f322d3c55ab24847f28b2c9648c427b968f6dd63",
+          "size": 5127
+        },
+        "src/attr.rs": {
+          "checksum": "blake3=65341c05b54d452c5f1c6cdbf72e8f6d283c8903e0524dbbac22bcd1a809c040",
+          "size": 29493
+        },
+        "src/bigint.rs": {
+          "checksum": "blake3=4945b7ad568a1585111ff0934743ff8ff2e139c1d1ec5b0728884a04b9b7997f",
+          "size": 1659
+        },
+        "src/buffer.rs": {
+          "checksum": "blake3=dc31cbbba28465b74171e692513ee68d6a3112f87d1604d4b5d8de86f365bc03",
+          "size": 16192
+        },
+        "src/classify.rs": {
+          "checksum": "blake3=d9d2bce1ab1793b8df52e4ae7c2e8b5d3f42005e5cb6302bf81d6e34fa7617d3",
+          "size": 14449
+        },
+        "src/custom_keyword.rs": {
+          "checksum": "blake3=1af796abfc2a93601ffeddff1473ffc6d1281de8918485b43a1fb66d9ecb6435",
+          "size": 7862
+        },
+        "src/custom_punctuation.rs": {
+          "checksum": "blake3=ad14d1cb7820419ec29077f14959dc49923333d829a10df4bf8b3506555927c6",
+          "size": 9158
+        },
+        "src/data.rs": {
+          "checksum": "blake3=31595e0230ea02928f242f5c31369f7cadc4b9c3bec3a6141fd7aca526efb7d9",
+          "size": 13980
+        },
+        "src/derive.rs": {
+          "checksum": "blake3=d1a8e5b64bfbf2aa46a1a7aae2e2f0db2962a67336cae25e7a951bce71a2ba28",
+          "size": 9090
+        },
+        "src/discouraged.rs": {
+          "checksum": "blake3=e42cf563baeb7029b0214041bc222a1b116409322f6344ad916920c10e894936",
+          "size": 9238
+        },
+        "src/drops.rs": {
+          "checksum": "blake3=9eb2d08c37643fac1ec73c359d1cc8d0aad391d4c87cb762d9863babff86a1d2",
+          "size": 1414
+        },
+        "src/error.rs": {
+          "checksum": "blake3=cdab864cdce00cabd7b5571b78a12e4525e0ea66f752bdce8cf9679d390f105d",
+          "size": 14167
+        },
+        "src/export.rs": {
+          "checksum": "blake3=10739797c897299694bf7f7395383d5196f11fba35a86e2dbbee775cb390dd9c",
+          "size": 1686
+        },
+        "src/expr.rs": {
+          "checksum": "blake3=6cbb8fed15fa086de95195721ac9639311b48ffffd35761f9bd96bfc06511eed",
+          "size": 157866
+        },
+        "src/ext.rs": {
+          "checksum": "blake3=f62e48c740d3d1270c99dfaad5e10fc0085ea68a1cb27b375a0df4be7d62811c",
+          "size": 5092
+        },
+        "src/file.rs": {
+          "checksum": "blake3=37c6a01eb37f2c4a900af7e88f90fa35ef7a1fbd29c571ad330c93ca4e13d656",
+          "size": 3823
+        },
+        "src/fixup.rs": {
+          "checksum": "blake3=6c6c4b90e339c598533cf57e6b8ad74f6e0a7033046de8eb227cf852579462c9",
+          "size": 28060
+        },
+        "src/gen/clone.rs": {
+          "checksum": "blake3=8d37b2ea2558c01354ea8c4d65ba2819b1fb86f7e063535b881ee9fb94936673",
+          "size": 108097
+        },
+        "src/gen/debug.rs": {
+          "checksum": "blake3=c98dd507ca286549f865354ad9c025c570a466e0b38ec2d1ced97175cca42052",
+          "size": 177617
+        },
+        "src/gen/eq.rs": {
+          "checksum": "blake3=5cf18dbb2d295fe0056f3f7e4a8358be1152662f5aebdf87ff3a942b6e70dbab",
+          "size": 128911
+        },
+        "src/gen/fold.rs": {
+          "checksum": "blake3=735c8374082faf05d55dd739ac5cd95ae04cc009c6a543a2e5ee318fed47f703",
+          "size": 184202
+        },
+        "src/gen/hash.rs": {
+          "checksum": "blake3=ef16f17a2c46aa990b1a4cc9b3ba8643f2f87e3788a39cb8c7986639f4784103",
+          "size": 106664
+        },
+        "src/gen/token.css": {
+          "checksum": "blake3=d26eca28ae7aa058a95a5a8eb70c93b37b2c70724330324a7e8a8f5167a1f95e",
+          "size": 38453
+        },
+        "src/gen/visit.rs": {
+          "checksum": "blake3=f5319487ea676e0947dd31f23315ac626dd53ce329e4605691b3f9a3f11374a1",
+          "size": 167084
+        },
+        "src/gen/visit_mut.rs": {
+          "checksum": "blake3=e59730cece1c65d78ec50b6dd826751d20b69b5e6fbeb1a0856a7bee0a9a4f65",
+          "size": 170952
+        },
+        "src/gen_helper.rs": {
+          "checksum": "blake3=46feebf2b61ab74d7f9ce37a1f125eacfcf3696a011cd047a5449492ca6c925f",
+          "size": 5056
+        },
+        "src/generics.rs": {
+          "checksum": "blake3=f0f7443fbc9e59a6d460753aa54d4fe1def3c0a6011be21c9d6b194a0ddfa873",
+          "size": 52511
+        },
+        "src/group.rs": {
+          "checksum": "blake3=ccc589bfc138187e7a716afbf0c9e263e03011e71cf86002790d4c56fd49cd1f",
+          "size": 7978
+        },
+        "src/ident.rs": {
+          "checksum": "blake3=738ef35a6006e265a16e096bcd7297dbef72c1ed0065b5dbd173d99da5fef66d",
+          "size": 3176
+        },
+        "src/item.rs": {
+          "checksum": "blake3=3a55c5e45d16f8236de8bc7d56b12a3488a98b5a5d726905ea9cdb85c0397e11",
+          "size": 133783
+        },
+        "src/lib.rs": {
+          "checksum": "blake3=ff2057a0eaa609ec835de0151ea5edafff362c3583c147993beb40194f5b6d3b",
+          "size": 35139
+        },
+        "src/lifetime.rs": {
+          "checksum": "blake3=e92708dcded893041ec86f44d0a4a9ca86861cdf5f8c4056090aeae4deacbd67",
+          "size": 3851
+        },
+        "src/lit.rs": {
+          "checksum": "blake3=e8df40a05dbc765cb703dcb22ce9864a0bdbb70eb99b7edd5b9f35fa102c5fa9",
+          "size": 57446
+        },
+        "src/lookahead.rs": {
+          "checksum": "blake3=5bd87d36afbbc1bf4a131964560f4a050d051492d4e69b0b974bba2e713eb564",
+          "size": 10412
+        },
+        "src/mac.rs": {
+          "checksum": "blake3=46c9d1a04ebb515abcd3a6d3695db5c0049dff3e5127f233524a8641e8c7491a",
+          "size": 8007
+        },
+        "src/macros.rs": {
+          "checksum": "blake3=738ab4761f18e3823f35aad8195f2e195a4c7fef7a526c9579bea5560660ac15",
+          "size": 4694
+        },
+        "src/meta.rs": {
+          "checksum": "blake3=db87bb53f8949391af2564de342101abb0ce0fea68370fccdb5c91a8e65e1614",
+          "size": 14138
+        },
+        "src/op.rs": {
+          "checksum": "blake3=9ebd706fc6eeae5573d122c8671a8252c8efa098a11652970cd28389061559a3",
+          "size": 10834
+        },
+        "src/parse.rs": {
+          "checksum": "blake3=485c16c359b4d925cc0e6643f1910f2c7045e9bc0f945f86e7b735b903d56f75",
+          "size": 48158
+        },
+        "src/parse_macro_input.rs": {
+          "checksum": "blake3=20b36448df192e29ee532db8fd6433a505eaac330269e866743ed5f17cc553e4",
+          "size": 3496
+        },
+        "src/parse_quote.rs": {
+          "checksum": "blake3=5fda2aef3074764fb40afd9d2cfa109a05bd20d3c24893c9a3d8533a6e7935d3",
+          "size": 7479
+        },
+        "src/pat.rs": {
+          "checksum": "blake3=f0869c881a51f00ae5fcf052cafac8dd049904ff2f47fd1622cd1722a1b8be4e",
+          "size": 32105
+        },
+        "src/path.rs": {
+          "checksum": "blake3=c34e76a70a72455daeb75aecce5b29bce48b527a390d43226835dcbfadaa6b1f",
+          "size": 33450
+        },
+        "src/precedence.rs": {
+          "checksum": "blake3=d40e354a87a8abd35fd63123222f05368a3b6c82f4d15afdad05f9b3d8e3a1f1",
+          "size": 8859
+        },
+        "src/print.rs": {
+          "checksum": "blake3=184762e8af22e2a258808a4a6a7f79ec9d4dd1cf85ec398b71e4f4bd81e00f32",
+          "size": 390
+        },
+        "src/punctuated.rs": {
+          "checksum": "blake3=8c6ed261a73da16b65c8ea1cbbab3140c0f4d2fa7743fcd302e7fae34c1f60dc",
+          "size": 31981
+        },
+        "src/restriction.rs": {
+          "checksum": "blake3=d8102d62ad57d479f8da974da54a1cfbf354ad6473d65caa20ed75e3f6a47078",
+          "size": 6300
+        },
+        "src/scan_expr.rs": {
+          "checksum": "blake3=96810e16ca1ed4581036fea48e20e647709a391a414a703a57e87926d9a53996",
+          "size": 9357
+        },
+        "src/sealed.rs": {
+          "checksum": "blake3=795047446519172562b87ed51c355912e7ac5ec6e26dae3a2e8422884677a226",
+          "size": 87
+        },
+        "src/span.rs": {
+          "checksum": "blake3=7bb5051a2726ca9692026ee0007192caff5695d5daf0d68a5c3758ae5447f2fb",
+          "size": 1418
+        },
+        "src/spanned.rs": {
+          "checksum": "blake3=1349c00f1aed039b231cb731c09ebc1ad6bf2e126cfb26fba47438ebdbcde794",
+          "size": 3781
+        },
+        "src/stmt.rs": {
+          "checksum": "blake3=0f66d132269d2604e6e30ad4d139c4800ae58135fdfc927422edce3853b565d1",
+          "size": 18509
+        },
+        "src/thread.rs": {
+          "checksum": "blake3=716e4ea90df5cda1fef82065d75d3a048288200bd530f1c307f655330859a037",
+          "size": 1906
+        },
+        "src/token.rs": {
+          "checksum": "blake3=316d9d64ae3a79c1d931801a3bd402d7d159ebcecb4576202d4fab0485c041cc",
+          "size": 41920
+        },
+        "src/tt.rs": {
+          "checksum": "blake3=9b4b38523b78ff9d91dd105901cd590f6b32a15fb489f5aab4c8ed5690ce834b",
+          "size": 3315
+        },
+        "src/ty.rs": {
+          "checksum": "blake3=a7252af1eff72f5941f9d33cca4f7be81e4c237cdba3c029cf1a2dcd1cd9e755",
+          "size": 49035
+        },
+        "src/verbatim.rs": {
+          "checksum": "blake3=fe1bd17c8cf5a48306b5af1ad5e87813c26cfd94089251149f8f1a11c5523295",
+          "size": 1227
+        },
+        "src/verus.rs": {
+          "checksum": "blake3=df027b49c51ab37ee052b4a1b14903715f4a514ea0958896e04dcc74c8725ef7",
+          "size": 110632
+        },
+        "src/whitespace.rs": {
+          "checksum": "blake3=bb4becfd455394a7026486415b275722c02b1dab7323ee053ab6c1ba11682a20",
+          "size": 2103
+        },
+        "tests/common/eq.rs": {
+          "checksum": "blake3=6a3487ac2b96f198f32ba777ddb8cbcf278fd65ff96b237bcf14ca0da3ca2f19",
+          "size": 34104
+        },
+        "tests/common/mod.rs": {
+          "checksum": "blake3=861d4b9b22f3d851e6a4a225c39b47bb6a0a811bada117c6f4073c4ce4eb7775",
+          "size": 133
+        },
+        "tests/common/parse.rs": {
+          "checksum": "blake3=bb8934260024cd81cc2e4d73495a400a79bad4f556c182a500ce24916e8d6b8d",
+          "size": 1317
+        },
+        "tests/common/visit.rs": {
+          "checksum": "blake3=fb1f5f49baa870399192d76bc280001f996c693ea292a3d7436eea4baa2420b4",
+          "size": 3894
+        },
+        "tests/debug/gen.rs": {
+          "checksum": "blake3=d5184f82e9b300682e52ca69b54c26d59f3fcf5f4a892a31d54257d97216f771",
+          "size": 333852
+        },
+        "tests/debug/mod.rs": {
+          "checksum": "blake3=4c1ff00105c781ce714ee3236fd826c02133877f7dc1e67be1ca9ed7ae446472",
+          "size": 3340
+        },
+        "tests/macros/mod.rs": {
+          "checksum": "blake3=e48e94d169635505ac6da540ea465e3fddeffc1810bb896f98459a0c6b4c0d38",
+          "size": 176
+        },
+        "tests/regression.rs": {
+          "checksum": "blake3=1441cc97cee547ced5db635b4d162b4278a83ee3b18f549c4720426f8f5f2efc",
+          "size": 132
+        },
+        "tests/regression/issue1108.rs": {
+          "checksum": "blake3=ce79389270282d3fc25f497ef76f44d007f96c342a2bb93065adfeee3e45081a",
+          "size": 97
+        },
+        "tests/regression/issue1235.rs": {
+          "checksum": "blake3=0513448539147d043a3ac8530ac2b1f2156327ebaa36ec4ca433d0461e45415f",
+          "size": 932
+        },
+        "tests/repo/mod.rs": {
+          "checksum": "blake3=816a744ea2002a7bd6e2d0bafc1a6872416eb3d45f359b4581a5c1cfcb01aee2",
+          "size": 29271
+        },
+        "tests/repo/progress.rs": {
+          "checksum": "blake3=4cfbaec9ea62cfa11cf552b9c9a0bc047ed4b71159031a07d4170efe4599972a",
+          "size": 839
+        },
+        "tests/snapshot/mod.rs": {
+          "checksum": "blake3=92068063942f4fd025f927de04dacbc81062ddf01ec3e0640283db691eb6a066",
+          "size": 2085
+        },
+        "tests/test_asyncness.rs": {
+          "checksum": "blake3=8ea0bcfc48d5bed99abb68e8c25a984b403d8bceaff49800d09e08b2c4114559",
+          "size": 887
+        },
+        "tests/test_attribute.rs": {
+          "checksum": "blake3=65bdc063ffea1267b11314a377c82052bbb156701446e94cfb5ff0fe15dbd5b6",
+          "size": 4474
+        },
+        "tests/test_derive_input.rs": {
+          "checksum": "blake3=c3ac4a7e6cdb62c3b3b1bf48376e4bf7326beda49cf36b4e9bb716a1cae3aa20",
+          "size": 21857
+        },
+        "tests/test_expr.rs": {
+          "checksum": "blake3=26714aca89c28c9cde9433e6909ac629e5c8b6da15b83becb30e14e32e2640dc",
+          "size": 52454
+        },
+        "tests/test_generics.rs": {
+          "checksum": "blake3=98c56aa65e482e14eb9c84453c39121e4e529686b401a573124a8574e9163300",
+          "size": 10996
+        },
+        "tests/test_grouping.rs": {
+          "checksum": "blake3=3c61955ae948ed544d021bf6f51a6e73a885124cfa5fd0023310517fafee8e0a",
+          "size": 1595
+        },
+        "tests/test_ident.rs": {
+          "checksum": "blake3=3572f649dc6dcc2c3fb7ac20bffd870088d43f0fbd2aeb120be886f2757fef18",
+          "size": 1320
+        },
+        "tests/test_item.rs": {
+          "checksum": "blake3=de9364d029f80f72c58643e3a7df01549256a4d20a9777a836965698cc8d3212",
+          "size": 10754
+        },
+        "tests/test_lit.rs": {
+          "checksum": "blake3=5ddf940c1197878fa7192cf5f3d3e588757a7985bcb5b8a206f4b84431c7a3ac",
+          "size": 10560
+        },
+        "tests/test_meta.rs": {
+          "checksum": "blake3=550da287e4d6556f5604d6da7e21f2ed4d4ce5ec2bd7b130f5a5539046b30654",
+          "size": 3737
+        },
+        "tests/test_parse_buffer.rs": {
+          "checksum": "blake3=ac8be048680b1f71a61b8059985e9c37e6f122326793ffe11629fccb160b373c",
+          "size": 3036
+        },
+        "tests/test_parse_quote.rs": {
+          "checksum": "blake3=22291857ad6764cdaceb113ee3a9475956b42061c536f8ddbd327d26299eab91",
+          "size": 3629
+        },
+        "tests/test_parse_stream.rs": {
+          "checksum": "blake3=6305dbcf34274f7dea17225adafa919644170f5f616a375fb7a1fa1ea5f42a3c",
+          "size": 5524
+        },
+        "tests/test_pat.rs": {
+          "checksum": "blake3=c813621c2208e7893d7ac2461c3254297b972b3bdb5bdba95115dd99dc6415ab",
+          "size": 4575
+        },
+        "tests/test_path.rs": {
+          "checksum": "blake3=f97c97511304e32eb78ea0a6983519b606176dc722c499a1e7ce7aaf6c67dc32",
+          "size": 3659
+        },
+        "tests/test_precedence.rs": {
+          "checksum": "blake3=57078299911c0057538deaee3e24e39dfa3d4d617796fca83d44d3f27213d56e",
+          "size": 18193
+        },
+        "tests/test_punctuated.rs": {
+          "checksum": "blake3=e96c95ec5b7a77a5a2a76c2bef1cdb8c9dc241d0feb28362b38aa9686b4ea90c",
+          "size": 2259
+        },
+        "tests/test_receiver.rs": {
+          "checksum": "blake3=bb1701787bbf07de0aa8f93dea5f1ec8aa212323433259146bca118791e20526",
+          "size": 8331
+        },
+        "tests/test_round_trip.rs": {
+          "checksum": "blake3=853c1cd9f091ead0de0bee6f4394d92865511d4c2dcc975ca713f637b487733e",
+          "size": 7140
+        },
+        "tests/test_shebang.rs": {
+          "checksum": "blake3=c16b4b1ecf019d18c3e002a247ca6f6c334d8415905f2593b653e1630e93f760",
+          "size": 1840
+        },
+        "tests/test_size.rs": {
+          "checksum": "blake3=d416aca6fe7de38128318d4cac0348dfd3938b3225f34929f9008b14e31e3fa4",
+          "size": 1607
+        },
+        "tests/test_stmt.rs": {
+          "checksum": "blake3=e49f01b6e50db6d4df9a06a32962bbec64fa0d5a3881aac7e7be05975674da54",
+          "size": 8772
+        },
+        "tests/test_token_trees.rs": {
+          "checksum": "blake3=375bc050e7317da7d592e199bcc25d3e417b9d4c0ffd97529f031c3e01d637cb",
+          "size": 762
+        },
+        "tests/test_ty.rs": {
+          "checksum": "blake3=57d9027702c2085335a1734cb7c289c0d9b65e2151f1a9e74dfc4f3a0114eb4a",
+          "size": 14160
+        },
+        "tests/test_unparenthesize.rs": {
+          "checksum": "blake3=1ba4c12ef7aaf28a13b8a7d7378e50d5103543c0e8f8ca0b133d14df55debf85",
+          "size": 1985
+        },
+        "tests/test_visibility.rs": {
+          "checksum": "blake3=66a33a0172566b9f8f56fa14a2660ef58da3fb875485ad077cc07754896876de",
+          "size": 5149
+        },
+        "tests/zzz_stable.rs": {
+          "checksum": "blake3=7b0f24be155c63bfd51f6a917938aaab270320b30c4dd59af3410bae452fc9e9",
+          "size": 1098
+        }
+      },
       "features": [
         "clone-impls",
         "default",
@@ -1222,6 +3350,556 @@
         },
         "wrapping.rs": {
           "blake3": "1356cc28b76db848b2b9035b7ead88433c798bc79ae11bba1d6bce3a5122ee43",
+          "size": 4222
+        }
+      },
+      "compiler_files": {
+        ".cargo_vcs_info.json": {
+          "checksum": "blake3=4a8a364ef8028298e8c6c3be41f7c38003534a4c12f12a5c31c1fa91517b9fec",
+          "size": 105
+        },
+        "Cargo.lock": {
+          "checksum": "blake3=279cb7fea9f79838b8a9f428901fad47e2265e7b9b71c3db388dd7145ddd626e",
+          "size": 3637
+        },
+        "Cargo.toml": {
+          "checksum": "blake3=ccc6806cdf9b1dcf22a4487b01d4bf6aa9125b9ef179871d79de8e3a8cb50f54",
+          "size": 1681
+        },
+        "Cargo.toml.orig": {
+          "checksum": "blake3=fc9a4310aef67b722f3875b4507365f7cfb212378536d5d3f92f918506f932f0",
+          "size": 1404
+        },
+        "README.md": {
+          "checksum": "blake3=63235c45b9022fde931d1a5490a3a9be7627b56155f07930378a04792f1a9728",
+          "size": 5826
+        },
+        "SOURCES.md": {
+          "checksum": "blake3=1922a04fe21dc259cb27b614db03bec23483964c887f70e3a3eca50f111b2e6f",
+          "size": 613
+        },
+        "arithmetic/README.md": {
+          "checksum": "blake3=e1da4e8fdd01051b42234d4489c503dd3642e026268c6125144ed25cdb8bdfc6",
+          "size": 2971
+        },
+        "arithmetic/div_mod.rs": {
+          "checksum": "blake3=ccbd832c9874e3a9fb769576f6f9054076bcab8b5cd435389880bf745f59262d",
+          "size": 50886
+        },
+        "arithmetic/internals/div_internals.rs": {
+          "checksum": "blake3=f6f861b10d8f339ef4fb34ab2a79d341e13bcb6f4a910016bb943242cedb554f",
+          "size": 13624
+        },
+        "arithmetic/internals/div_internals_nonlinear.rs": {
+          "checksum": "blake3=3edf73791741a12057c9ac67b5f0ffcbce1711c3a3bb0a4d6805f3c7e9d46de3",
+          "size": 1484
+        },
+        "arithmetic/internals/general_internals.rs": {
+          "checksum": "blake3=dda5cf75ec2c2312d50700148ffe94ec19ad84df5837869dfaa384f518c62166",
+          "size": 4395
+        },
+        "arithmetic/internals/mod.rs": {
+          "checksum": "blake3=644a49d027bcf22a4eb9b427ccf51429772816460a1f63fabc00b14cf33cc9a5",
+          "size": 196
+        },
+        "arithmetic/internals/mod_internals.rs": {
+          "checksum": "blake3=06835bec8aa916a3297146a0929f1d26806769ad70694d3f7079888c0a81e3d2",
+          "size": 18613
+        },
+        "arithmetic/internals/mod_internals_nonlinear.rs": {
+          "checksum": "blake3=f95e1555912f64c0242199cc765e2ce2674e99e12f7303f50e8912e25cf213e1",
+          "size": 2404
+        },
+        "arithmetic/internals/mul_internals.rs": {
+          "checksum": "blake3=e791831bc79d0be8ea41af9d191a8c4209956242a5cff4c52314e38ab131fb00",
+          "size": 8762
+        },
+        "arithmetic/internals/mul_internals_nonlinear.rs": {
+          "checksum": "blake3=499dd30c6e25ffa2230b61e1d3036a8733ed5ea78b966ad77e38955682542ddf",
+          "size": 2735
+        },
+        "arithmetic/logarithm.rs": {
+          "checksum": "blake3=275e7ecdd7d75e1af4fb0cae54d6487071a4cc292842d5f920ef3a9f05685dcd",
+          "size": 4927
+        },
+        "arithmetic/mod.rs": {
+          "checksum": "blake3=bf8eb0cf951b70ad602eff3125ad9f57b4328d5a0505c1510d1db1a0a2276683",
+          "size": 145
+        },
+        "arithmetic/mul.rs": {
+          "checksum": "blake3=28592f0cde9430ea1c6acfd70e7890108d291f6ea5e3ee80ac5b9fa50c895a8a",
+          "size": 15541
+        },
+        "arithmetic/overflow.rs": {
+          "checksum": "blake3=fe8551d5504a73751d75bc514aaaa2af5fea7c487472d79e972bd93553fac69d",
+          "size": 12403
+        },
+        "arithmetic/power.rs": {
+          "checksum": "blake3=47b3b91d953e6f48c7d8bd2541ad44f98095367728f5d70a8b5d2586ff03661a",
+          "size": 17392
+        },
+        "arithmetic/power2.rs": {
+          "checksum": "blake3=fd9acc7c7d414f13b53af68bf25b753ac09bbbad82bc9c79b53db5e07851ed97",
+          "size": 9689
+        },
+        "array.rs": {
+          "checksum": "blake3=f4cb98799b84692461ed81e44e9260b24ba2f9555ed41ee4d4dab8f7c51f2069",
+          "size": 6342
+        },
+        "atomic.rs": {
+          "checksum": "blake3=c99e304ae476e9cc740466d934977b47dfcfce3570cb15002172e6846e387fa1",
+          "size": 43661
+        },
+        "atomic_ghost.rs": {
+          "checksum": "blake3=f3cd7fab54f5936cc59019339c36da7d1bd7cb75a9b4b3b9bbf92e08ac738cbb",
+          "size": 26069
+        },
+        "bits.rs": {
+          "checksum": "blake3=fa324236d94ddb38a4a6e3f55f93eac86ba79fefb49ddfb41a84064f5565c057",
+          "size": 17133
+        },
+        "build.rs": {
+          "checksum": "blake3=be70291c429e92c5dbd21cb7741fe00d30a81c09a7a4849f56a16fa46fb4bb99",
+          "size": 452
+        },
+        "bytes.rs": {
+          "checksum": "blake3=5b0b74c2211db64e1acb472b684fb8c1970c212711107e5680e7ab7a77e2919b",
+          "size": 15946
+        },
+        "calc_macro.rs": {
+          "checksum": "blake3=a64edf7474f41198253dbb89511ac50a6f6ea6b730f4244dda74c5bc421dea5e",
+          "size": 1787
+        },
+        "cell.rs": {
+          "checksum": "blake3=fbbacbc6fc1bc6bfa7b9bf85b59682c636b9c464288167d53fe70ac5e324a5eb",
+          "size": 12590
+        },
+        "cell/invcell.rs": {
+          "checksum": "blake3=055850c7e1685c6b29e0a63ae02776fba3b3423cca4acce1074609060f609925",
+          "size": 4385
+        },
+        "cell/pcell.rs": {
+          "checksum": "blake3=a6f42a92e24baa09f008334676b94636af8bf64b827f4d3551aa7443fc740945",
+          "size": 8204
+        },
+        "cell/pcell_maybe_uninit.rs": {
+          "checksum": "blake3=17cff73ff775b72205300ff6fdb65992d03272ec716681909c3a27ea6e09fbf8",
+          "size": 6958
+        },
+        "compute.rs": {
+          "checksum": "blake3=3373b98a28178aee75ff168cadc69515802e94e26de910909c153ed2899a7a46",
+          "size": 1105
+        },
+        "contrib/exec_spec/map.rs": {
+          "checksum": "blake3=d8774bdfa2695a240a7088cf25c52dd3cad5aaea40b45362299b370f1b04294e",
+          "size": 7341
+        },
+        "contrib/exec_spec/mod.rs": {
+          "checksum": "blake3=015efb3523dccbc7ee244e15e1b453e24540de770e5bec2f5f07c8fc801c73f5",
+          "size": 5701
+        },
+        "contrib/exec_spec/multiset.rs": {
+          "checksum": "blake3=7784e16c2f4a2c1e0458040fee90e7cb591228c1cf19b6c5921c00b069ee519b",
+          "size": 6998
+        },
+        "contrib/exec_spec/option.rs": {
+          "checksum": "blake3=6c7083a11088194bb6d8fcb96fc140882bc1b903949a7752b2196f5aa2ab06f9",
+          "size": 1804
+        },
+        "contrib/exec_spec/seq.rs": {
+          "checksum": "blake3=c0882acd2470b4d3544ae2059bf002d70b915171009c6157dab01ee655fdf3ce",
+          "size": 14566
+        },
+        "contrib/exec_spec/set.rs": {
+          "checksum": "blake3=4509d46ce1661532ebe8ab3261cd9c33b9d21ae8c3576845b6a2047e53587055",
+          "size": 6850
+        },
+        "contrib/exec_spec/string.rs": {
+          "checksum": "blake3=9e836b23f741d21e20a4bcec4cd8cf539352162c1ab60639cc7c34ed43a478ec",
+          "size": 1792
+        },
+        "contrib/mod.rs": {
+          "checksum": "blake3=e06045eb5fc6697492e4138001d3822ce6b2244b5d2b76288511ead0b59cdb3f",
+          "size": 179
+        },
+        "endian.rs": {
+          "checksum": "blake3=cda9e2fa958d78f0fd98a0db02c3e159d12e8129dd430bc1e56b54caa3745931",
+          "size": 45012
+        },
+        "float.rs": {
+          "checksum": "blake3=3ad1766eb7ca107eab64e17e1f6d3d49b5383d9fd8d793606edb53528a760b9d",
+          "size": 3682
+        },
+        "function.rs": {
+          "checksum": "blake3=af0e94aa174ed4c2ef7d5aec51844ebf9da7c495580ef7c94b9b282e16a12189",
+          "size": 4598
+        },
+        "future.rs": {
+          "checksum": "blake3=625315a30c5ca2f236c95fc0278a78c0e0757901ba9a8e38e7962864acbdb4d3",
+          "size": 974
+        },
+        "hash_map.rs": {
+          "checksum": "blake3=279843e429cf7fae0f219d2b6f1ff821b6f0c4c10a7f03d6f8e245f0fa0e7bc2",
+          "size": 12840
+        },
+        "hash_set.rs": {
+          "checksum": "blake3=0428a17310bedc12d9901ef68263619c229c94f7f6863333e633632bc991e79a",
+          "size": 11821
+        },
+        "imap.rs": {
+          "checksum": "blake3=93b69c675f600b8064e38c3db63efd6a4f777a0f3202cd6c71e6e9c3bc2bbcca",
+          "size": 17546
+        },
+        "imap_lib.rs": {
+          "checksum": "blake3=1054cb9fcccee9c8ad2ea53a7a375f50aa0596b0864eb925e0fd10e12ffd48d3",
+          "size": 29497
+        },
+        "invariant.rs": {
+          "checksum": "blake3=c05ab6875a1de18cb7f9d28e337d8ef5f783aced2c9ae90f9dc3112238288cf5",
+          "size": 27547
+        },
+        "iset.rs": {
+          "checksum": "blake3=371eb813ba5b8842dc7a9a55a5fd531c1618bf4f944aef6b96a048d1f983b622",
+          "size": 34731
+        },
+        "iset_lib.rs": {
+          "checksum": "blake3=4ca010d32fe90978c5ea2425fba83aeed70f4863d3512e9ab280333a6c4209b6",
+          "size": 58093
+        },
+        "laws_cmp.rs": {
+          "checksum": "blake3=098d14e6b0e8729479e4d9fe3846b3ff05e42c330f4c83fcfb7521350d0e3bae",
+          "size": 8836
+        },
+        "laws_eq.rs": {
+          "checksum": "blake3=de4ba3296e092da3f5b5d89c780a3488e58ec9da6b632c2d71e2704acbb4a7df",
+          "size": 11842
+        },
+        "layout.rs": {
+          "checksum": "blake3=6a83511bbafc2accce98be7ed41c24a4118d1665c118e94aa31ba5b0150688ab",
+          "size": 16057
+        },
+        "logatom.rs": {
+          "checksum": "blake3=2a487e4aaf54521c35942c68ac7a74fcc307299bd9d3ccbea33882cb56793c43",
+          "size": 3306
+        },
+        "map.rs": {
+          "checksum": "blake3=d33a2e3603310fdd04da14f285c44b5e1414463790b6116bd97df4c55bbbbfe1",
+          "size": 18255
+        },
+        "map_lib.rs": {
+          "checksum": "blake3=a7cbfb08a4393f544d1faf795bb58162d130500ada75fdfbf232c250418f72a7",
+          "size": 29851
+        },
+        "math.rs": {
+          "checksum": "blake3=f350506d4c452ce29c501078885de9a0d600956edd3f93c031aff1059c1068c5",
+          "size": 1871
+        },
+        "modes.rs": {
+          "checksum": "blake3=f8457a38ccad23acbf9e433273154a7de8a51489bb3034fbe804e6ba609b2ed6",
+          "size": 868
+        },
+        "multiset.rs": {
+          "checksum": "blake3=cdf95a8222e0407b94061262c03a19a189651d6252e9532f0cf290eca161ac43",
+          "size": 27241
+        },
+        "multiset_lib.rs": {
+          "checksum": "blake3=e2e96128742d4fc48ac6a4ac8434bbfa55605b2465e27b12a3dc2a87da736672",
+          "size": 2215
+        },
+        "mut_ref.rs": {
+          "checksum": "blake3=aebbbce8a9b90fda641dff2d7f7d17c4d84358d33866f9fdf6ad7ce662fd89f7",
+          "size": 1377
+        },
+        "pervasive.rs": {
+          "checksum": "blake3=e7a8f66fbf4b5d6ed46686cea5487979e1c7356cc37de8f89cfb823166ea4326",
+          "size": 16546
+        },
+        "predicate.rs": {
+          "checksum": "blake3=b14aa011844b564057819320f38469cc78a5e3ee630acd3f6a06aaf5a0015915",
+          "size": 291
+        },
+        "prelude.rs": {
+          "checksum": "blake3=fa324c8f22280e525b476d8afeb4a552d050120f36a385485c28891f4a9c37e9",
+          "size": 3245
+        },
+        "proph.rs": {
+          "checksum": "blake3=3f531770715c6d119b2fef57915a245400cc95521a5c2b3bb5edec80f61f5302",
+          "size": 11648
+        },
+        "raw_ptr.rs": {
+          "checksum": "blake3=29b7e6d9cc54897f3d7cf44e2a723ae8f989972131c5016379184ae0dc0cc23d",
+          "size": 37223
+        },
+        "relations.rs": {
+          "checksum": "blake3=2013798573c6d9ab1c2b3a15ac032ab4e39f2483b6b0eb4fbb63c72d64c07062",
+          "size": 3316
+        },
+        "resource/algebra.rs": {
+          "checksum": "blake3=92f58257fe55f4673807a33ba8bbca0f6920b946a1156b7d6ddecc978b9b5770",
+          "size": 12830
+        },
+        "resource/combinators/agree.rs": {
+          "checksum": "blake3=14eaed3cdf42fa53e6a8848736265fe3bf892b865f3512edf79648cfec0f899f",
+          "size": 1387
+        },
+        "resource/combinators/auth.rs": {
+          "checksum": "blake3=5674bd3b5a0c2c7de07fa4596dcce7a145d0cf93aedd44fb3dd1bd343875616f",
+          "size": 2604
+        },
+        "resource/combinators/exclusive.rs": {
+          "checksum": "blake3=a40936945457a46ae046e2acbfdc6fe91bb5c088ca0be14419d08bdfcd589a4a",
+          "size": 600
+        },
+        "resource/combinators/frac.rs": {
+          "checksum": "blake3=4048b4e832772872ec9143f53c4292eb2320479a209b951fac7f573420f19497",
+          "size": 10568
+        },
+        "resource/combinators/mod.rs": {
+          "checksum": "blake3=c257936575f704344237fa03c70f7255a7878ca971e27c7eb1bfc41d87ab045f",
+          "size": 108
+        },
+        "resource/combinators/option.rs": {
+          "checksum": "blake3=577144741e6ce16ee5b7a8b2596a0dd8ee1be7ffac5d9e085be2abc36d0a1e6a",
+          "size": 3079
+        },
+        "resource/combinators/product.rs": {
+          "checksum": "blake3=0b2a851f81b349443817b3eaf791066d863761901387388479f527f874090f26",
+          "size": 1418
+        },
+        "resource/combinators/sum.rs": {
+          "checksum": "blake3=9a7d3f5530dfd874facdd7e5aaf75d2539f53da8ca4302f980afbb0ec94f28ff",
+          "size": 1672
+        },
+        "resource/impls/frac_opt.rs": {
+          "checksum": "blake3=86fcc3bebb5d2397e13ebae8530f0252342ccd11ff0c9f7167c5222a832bc036",
+          "size": 12966
+        },
+        "resource/impls/ghost_var.rs": {
+          "checksum": "blake3=0bcad1d968f527a78890d155929596b89d1b43d3010b4d275bf6997cf4a7e31a",
+          "size": 3606
+        },
+        "resource/impls/imap.rs": {
+          "checksum": "blake3=98c41ec386191de36d0cfbd8e63b595437bda72dfc03946c5ace19d9df142c96",
+          "size": 59908
+        },
+        "resource/impls/iset.rs": {
+          "checksum": "blake3=c4e01509a2d8fb15fd4571df3ffd6705901428dae5937eb7f5e9f4f2e8b17523",
+          "size": 31127
+        },
+        "resource/impls/map.rs": {
+          "checksum": "blake3=63d41b2dbb91aae9f59f2ccb56fe3f339183588b769a7d5f390263970de04f01",
+          "size": 59480
+        },
+        "resource/impls/mod.rs": {
+          "checksum": "blake3=78e1dec49a79f3fcb8b4a1487f679340713975c331337e412b25187b8f43aa7e",
+          "size": 104
+        },
+        "resource/impls/seq.rs": {
+          "checksum": "blake3=90345a2563f640ac6f5fe3a63525562bb17ee72d5a5f9c9116f975d510204cb8",
+          "size": 13538
+        },
+        "resource/impls/set.rs": {
+          "checksum": "blake3=08ac0f15017d9951013a41bd384e813c11a716b28fe67fab46ed862554a09028",
+          "size": 30792
+        },
+        "resource/lib.rs": {
+          "checksum": "blake3=2e38fcbc3493d7b10b025b9ac650e20016f776a26eb56edffed3c13aa53aa116",
+          "size": 19058
+        },
+        "resource/mod.rs": {
+          "checksum": "blake3=c0900d88b2e0e5b62bf6cd7f7f3688ea9d65f1260a020bdd9d16c66f20f90ba4",
+          "size": 577
+        },
+        "resource/pcm.rs": {
+          "checksum": "blake3=d3be70ff5f5bad637d9335268ee93b31e54ada690287e8e45b400df4de8f184f",
+          "size": 12182
+        },
+        "resource/relations.rs": {
+          "checksum": "blake3=58206593108162c3c745e1dd4d3727d4a3fe2da57892b631a16b1f79a0b48af7",
+          "size": 3603
+        },
+        "resource/storage_protocol.rs": {
+          "checksum": "blake3=e73995249b1818ded239d1ef9a9aee027c12131d0000c343b9f3c9d1f73ab21f",
+          "size": 13552
+        },
+        "rwlock.rs": {
+          "checksum": "blake3=4bac3d69aa9f17066344761555d9c3a9d787ad98782f9f1116d5dce5539a3b67",
+          "size": 23027
+        },
+        "seq.rs": {
+          "checksum": "blake3=9d132c410de79cd6160ad05b48af84929ce64debd4f35e1eb592508d33c05307",
+          "size": 59246
+        },
+        "seq_lib.rs": {
+          "checksum": "blake3=efb595717f8d3625a59596736fc788bc60e4b702a6a77b819ad1c271e836a243",
+          "size": 142568
+        },
+        "set.rs": {
+          "checksum": "blake3=4af96a42ade9f69c132f101cbf9743ce90424685719f0a602988e569e8d06880",
+          "size": 20299
+        },
+        "set_lib.rs": {
+          "checksum": "blake3=b61629267cadf57b60e60bb1a152589ab06234aec3684f9d3225bbcfb512ccdd",
+          "size": 55155
+        },
+        "shared.rs": {
+          "checksum": "blake3=951f15191a768ccb1862abe69fd49007de31096b47f53fb49fabce698c4f1741",
+          "size": 1644
+        },
+        "simple_pptr.rs": {
+          "checksum": "blake3=4354e2f5884e07c9c579e3b7e3e4dcc3ab1eb1995db2951ca288615cb888b731",
+          "size": 21023
+        },
+        "slice.rs": {
+          "checksum": "blake3=9f5455a7f64fb2ccfad87074000ff02408fcd189d11f823478b0abeade8149ab",
+          "size": 7076
+        },
+        "state_machine_internal.rs": {
+          "checksum": "blake3=6208a95ca3239b87813d512580cf0048dece9fa368af0ecfc5758a758983196d",
+          "size": 14405
+        },
+        "std_specs/alloc.rs": {
+          "checksum": "blake3=80f181bd9cc4d72e7df8543bd968b6d7a819f0216e9525e158163e8ca23b89c3",
+          "size": 1272
+        },
+        "std_specs/array.rs": {
+          "checksum": "blake3=875339167dc53b3f83b054223f378eb308fa1561c7059116abe0b6e501450204",
+          "size": 3587
+        },
+        "std_specs/atomic.rs": {
+          "checksum": "blake3=1387d4791838f589575849719c48a57a95f7d6e27f53be48896aa38d852f4e8f",
+          "size": 3236
+        },
+        "std_specs/bits.rs": {
+          "checksum": "blake3=138c74b22715ffa0302dd54fe47f984711846c2ad96c27572264d6ba59010ac2",
+          "size": 26717
+        },
+        "std_specs/borrow.rs": {
+          "checksum": "blake3=40657e4d81a3ec55e21ca63bb6f77929789ea4f211eaed2080255c861c92b3b2",
+          "size": 2692
+        },
+        "std_specs/btree.rs": {
+          "checksum": "blake3=c6eeee3b2deee2be8e6bc9618076ec94abc8e7155cf99ff9ccebeb90e8c43916",
+          "size": 49717
+        },
+        "std_specs/char.rs": {
+          "checksum": "blake3=ec80515856c127e8db84df1982874f4ec7a4a11b09ad56eec1c040a53dbe47da",
+          "size": 1137
+        },
+        "std_specs/clone.rs": {
+          "checksum": "blake3=40ee3d7b89b638435f39818fe1fb2a912e2d8e7d4120183a2caf1ca69a7234bc",
+          "size": 1620
+        },
+        "std_specs/cmp.rs": {
+          "checksum": "blake3=fd51392930eb4837eb3420ec581aa91cbb0c3f08472ac07c02b1c0be93a2c77b",
+          "size": 16288
+        },
+        "std_specs/control_flow.rs": {
+          "checksum": "blake3=68ea695a5cf15ae4231f81f1d32388fd7ffa3fc5b6c34e79e77fe705bf3fa215",
+          "size": 1935
+        },
+        "std_specs/convert.rs": {
+          "checksum": "blake3=9f7e2f3b025d67a13046c222ebd6e6c69e07c69d9643cb5e6019c00df066a78d",
+          "size": 5377
+        },
+        "std_specs/core.rs": {
+          "checksum": "blake3=385594e39153e57ae49003d0075ddca9a1355b9fe66dcafe15f73521cec4e50a",
+          "size": 5874
+        },
+        "std_specs/default.rs": {
+          "checksum": "blake3=cd3d2c58b62fe592fc1c0f9558512976b115166af267572a6f09dfc107ca194e",
+          "size": 2313
+        },
+        "std_specs/fmt.rs": {
+          "checksum": "blake3=c0dd111849e8725b8d33e369eeea9d1694efeac3d725caa6224894230ab4f0bf",
+          "size": 9852
+        },
+        "std_specs/hash.rs": {
+          "checksum": "blake3=f0f20d394263cfd2492fb40253676e6fe1aceb050a9fc33393da97a73035c392",
+          "size": 51449
+        },
+        "std_specs/iter.rs": {
+          "checksum": "blake3=a8c8191c34184358f92522471c293db541281155cfcf11818fea833b865c80ae",
+          "size": 39744
+        },
+        "std_specs/manually_drop.rs": {
+          "checksum": "blake3=2a370649da7e840f3f0e88f4cec51d8f840546e9281f2492bd3baccd06d50dcf",
+          "size": 1533
+        },
+        "std_specs/maybe_uninit.rs": {
+          "checksum": "blake3=8ce3ee5e46218493e6d8b6163e4735b85840ed61af7b3365d9f739d526c3fd28",
+          "size": 1898
+        },
+        "std_specs/mod.rs": {
+          "checksum": "blake3=821cd6a03079248304a62239f6ba910264d309dec3b3c9b627e494ddd71a2dd9",
+          "size": 819
+        },
+        "std_specs/nonzero.rs": {
+          "checksum": "blake3=00f589c79a0aa371d4454c46769251ef916b76b95815ef6fe31a960034da869b",
+          "size": 4762
+        },
+        "std_specs/num.rs": {
+          "checksum": "blake3=308b2a9a4e546d6c71b8d795b1266926004bd747f13dda5cf7916be46774662d",
+          "size": 19136
+        },
+        "std_specs/ops.rs": {
+          "checksum": "blake3=b543cefea3fa2bb1fbb5f428bb0662568dbd5a8b2bb850de07c372570b7931d4",
+          "size": 24344
+        },
+        "std_specs/option.rs": {
+          "checksum": "blake3=24ad71c8f6297ce7bcbaa27f24dcb2c27f944a245a07ad16ba01b50e3868ddf6",
+          "size": 11332
+        },
+        "std_specs/range.rs": {
+          "checksum": "blake3=0e5fb0a1303363a500176598cb162d7747845dab6444b76b4059f28003231ef4",
+          "size": 18719
+        },
+        "std_specs/result.rs": {
+          "checksum": "blake3=d6cb49633c8c00a2d227b41e2fecaa4daf635e538588a85646eb5f6ae2373669",
+          "size": 7411
+        },
+        "std_specs/slice.rs": {
+          "checksum": "blake3=5bdcebb6fffb34bba39f42bddb6d23c34eca3fb9115e47b86b0df80d535d38ef",
+          "size": 22199
+        },
+        "std_specs/smart_ptrs.rs": {
+          "checksum": "blake3=39b38b94711234305cdd1cd8a12be1971419d4183508310eb74443baad77dc17",
+          "size": 1708
+        },
+        "std_specs/vec.rs": {
+          "checksum": "blake3=0ba29b89dc465575d7b5ec6ca71301f3fa61f1ea407602ebc46b747ce01da3b3",
+          "size": 15474
+        },
+        "std_specs/vecdeque.rs": {
+          "checksum": "blake3=595f9487c79b61ab2a61216e8602bf1790f2bc929d9ab16916b7314eb9fa304d",
+          "size": 9104
+        },
+        "string.rs": {
+          "checksum": "blake3=c0570780d255b47a29558253e8f83ff90e1745fe5c987bf9d94fdcc6a01e491a",
+          "size": 28948
+        },
+        "thread.rs": {
+          "checksum": "blake3=f9d96e6f180b16e2b36dbeb54ceaf5f9d6ca1b433fc19a73f1367c88643c92dd",
+          "size": 7930
+        },
+        "tokens.rs": {
+          "checksum": "blake3=de06ed9ac218c3cc0f679d241b93902075cc5eea221aec4ae5a68391f5e79dd7",
+          "size": 31190
+        },
+        "utf8.rs": {
+          "checksum": "blake3=c63a889b96f5b0cffe8004d39838dbf78cf87277ab54354a09debb0e3ae27fba",
+          "size": 43786
+        },
+        "view.rs": {
+          "checksum": "blake3=0dc1b5af9e9d5cc52950e332e58cf6b52faf18ab2c0e978dd8ded16b95816e38",
+          "size": 8850
+        },
+        "vstd.rs": {
+          "checksum": "blake3=835f517957115052871472aac54967dad2706e21d67ffa5c5d7014e489c5507d",
+          "size": 5040
+        },
+        "wrapping.rs": {
+          "checksum": "blake3=1356cc28b76db848b2b9035b7ead88433c798bc79ae11bba1d6bce3a5122ee43",
           "size": 4222
         }
       },

@@ -31,6 +31,14 @@ struct Package {
     files: BTreeMap<String, String>,
     #[serde(default)]
     compiler_checksums: BTreeMap<String, CompilerChecksum>,
+    #[serde(default)]
+    compiler_files: BTreeMap<String, CompilerFile>,
+}
+
+#[derive(Deserialize)]
+struct CompilerFile {
+    checksum: String,
+    size: u64,
 }
 
 #[derive(Deserialize, PartialEq, Eq)]
@@ -132,25 +140,49 @@ impl Closure {
         {
             return false;
         }
-        let Some(text) = args
-            .iter()
-            .map(|arg| arg.to_str())
-            .collect::<Option<Vec<_>>>()
-        else {
+        features(args).is_some_and(|actual| actual == package.features.iter().cloned().collect())
+    }
+
+    /// Admit actual native compiler source reads only from the complete exact
+    /// official closure. Non-Rust files such as included README text still
+    /// need their compiler-retained checksum; endpoint reads cannot attest it.
+    pub(super) fn native_sources<'a>(
+        &self,
+        sources: impl Iterator<Item = (&'a Path, &'a str, u64)>,
+    ) -> bool {
+        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
             return false;
         };
-        let mut features = BTreeSet::new();
-        for (index, arg) in text.iter().enumerate() {
-            let cfg = arg.strip_prefix("--cfg=").or_else(|| {
-                (*arg == "--cfg")
-                    .then(|| text.get(index + 1).copied())
-                    .flatten()
-            });
-            if let Some(feature) = cfg.and_then(|cfg| cfg.strip_prefix("feature=")) {
-                features.insert(feature.trim_matches('"'));
+        let mut count = 0;
+        for (path, checksum, size) in sources {
+            // Rust retains src/../README.md for include_str!. Resolve only
+            // the policy lookup; preserve literal documents and commands.
+            let Some(path) = local_path(path) else {
+                return false;
+            };
+            let Some((package, relative)) = self.packages.iter().find_map(|name| {
+                path.strip_prefix(self.registry.join(name))
+                    .ok()
+                    .map(|relative| (name, relative))
+            }) else {
+                return false;
+            };
+            let Some(relative) = relative.to_str() else {
+                return false;
+            };
+            let Some(expected) = policy
+                .packages
+                .get(package)
+                .and_then(|package| package.compiler_files.get(relative))
+            else {
+                return false;
+            };
+            if expected.checksum != checksum || expected.size != size {
+                return false;
             }
+            count += 1;
         }
-        features == package.features.iter().map(String::as_str).collect()
+        count > 0
     }
 
     pub(super) fn policy_sha256(&self) -> &str {
@@ -211,6 +243,58 @@ impl Closure {
         }
         count > 0
     }
+}
+
+fn features(args: &[std::ffi::OsString]) -> Option<BTreeSet<String>> {
+    let text = args
+        .iter()
+        .map(|arg| arg.to_str())
+        .collect::<Option<Vec<_>>>()?;
+    let mut features = BTreeSet::new();
+    for (index, arg) in text.iter().enumerate() {
+        let cfg = if *arg == "--cfg" {
+            Some(*text.get(index + 1)?)
+        } else {
+            arg.strip_prefix("--cfg=")
+        };
+        if let Some(cfg) = cfg.filter(|cfg| cfg.contains("feature")) {
+            // Cargo emits this exact spelling. Rust also accepts spaces and
+            // raw identifiers; silently ignoring those would omit an enabled
+            // feature from admission. Unsupported spellings simply miss.
+            let feature = cfg.strip_prefix("feature=\"")?.strip_suffix('"')?;
+            if feature.is_empty()
+                || feature
+                    .chars()
+                    .any(|c| c.is_whitespace() || matches!(c, '"' | '\\'))
+            {
+                return None;
+            }
+            features.insert(feature.to_owned());
+        }
+    }
+    Some(features)
+}
+
+fn local_path(path: &Path) -> Option<PathBuf> {
+    use std::path::Component;
+    if !path.is_absolute() {
+        return None;
+    }
+    let mut resolved = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::RootDir => resolved.push(component.as_os_str()),
+            Component::Normal(name) => resolved.push(name),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !resolved.pop() {
+                    return None;
+                }
+            }
+            Component::Prefix(_) => return None,
+        }
+    }
+    Some(resolved)
 }
 
 fn compiler_sources(
@@ -469,6 +553,7 @@ mod tests {
             features: Vec::new(),
             files: BTreeMap::from([("lib.rs".into(), super::super::digest(body))]),
             compiler_checksums: BTreeMap::new(),
+            compiler_files: BTreeMap::new(),
         };
         std::fs::write(root.join("lib.rs"), body)?;
         std::fs::write(root.join(".cargo-ok"), b"{\"v\":1}")?;
@@ -556,6 +641,80 @@ mod tests {
             .ok_or("missing dependencies")?
             .push(Value::String("foreign-macro".into()));
         assert!(resolved_packages(&foreign, registry, &policy).is_none());
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+pub(super) fn native_test_fixture(registry: &Path) -> Option<(Closure, PathBuf, String, u64)> {
+    let policy: Policy = serde_json::from_str(POLICY).ok()?;
+    let package = policy.packages.get("convert_case-0.4.0")?;
+    let source = package.compiler_files.get("src/lib.rs")?;
+    Some((
+        Closure {
+            policy_sha256: super::digest(POLICY.as_bytes()),
+            registry: registry.to_owned(),
+            packages: policy.packages.keys().cloned().collect(),
+        },
+        registry.join("convert_case-0.4.0/src/lib.rs"),
+        source.checksum.clone(),
+        source.size,
+    ))
+}
+
+#[cfg(test)]
+mod native_source_tests {
+    use super::*;
+
+    #[test]
+    fn feature_admission_refuses_alternate_rust_cfg_spellings() {
+        let args = [
+            "rustc",
+            "--cfg",
+            "feature=\"std\"",
+            "--cfg=feature=\"alloc\"",
+        ]
+        .map(std::ffi::OsString::from);
+        assert_eq!(
+            features(&args),
+            Some(BTreeSet::from(["std".to_owned(), "alloc".to_owned()]))
+        );
+        for flag in [
+            "feature = \"foreign\"",
+            "r#feature=\"foreign\"",
+            "feature=r#\"foreign\"#",
+        ] {
+            assert!(features(&["rustc".into(), "--cfg".into(), flag.into()]).is_none());
+        }
+    }
+
+    #[test]
+    fn native_consumed_source_requires_the_official_body_and_complete_size()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let (closure, path, checksum, size) =
+            native_test_fixture(Path::new("/registry")).ok_or("native policy fixture")?;
+        assert!(closure.native_sources(std::iter::once((path.as_path(), checksum.as_str(), size))));
+        assert!(!closure.native_sources(std::iter::once((path.as_path(), "blake3=foreign", size))));
+        assert!(!closure.native_sources(std::iter::once((
+            path.as_path(),
+            checksum.as_str(),
+            size + 1
+        ))));
+        assert!(!closure.native_sources(std::iter::once((
+            Path::new("/foreign/lib.rs"),
+            checksum.as_str(),
+            size
+        ))));
+        assert!(!closure.native_sources(std::iter::empty()));
+        // Included text is a real SourceMap input too, not an end-of-run hash.
+        let policy: Policy = serde_json::from_str(POLICY)?;
+        let package = policy.packages.get("hashbrown-0.17.1").ok_or("hashbrown")?;
+        let readme = package.compiler_files.get("README.md").ok_or("README")?;
+        assert!(closure.native_sources(std::iter::once((
+            Path::new("/registry/hashbrown-0.17.1/src/../README.md"),
+            readme.checksum.as_str(),
+            readme.size
+        ))));
         Ok(())
     }
 }

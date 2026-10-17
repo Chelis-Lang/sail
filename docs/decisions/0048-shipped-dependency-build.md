@@ -33,7 +33,7 @@ release builds from machine-local verification through later receipt reuse. Nati
 path. The v1 machine-local store stays disabled.
 
 The prototype requires `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Engine, focused and
-loader-variable runs decline it. Schema 8 and a distinct bundle kind reject
+loader-variable runs decline it. Schema 9 and a distinct bundle kind reject
 the earlier all-unit bundles. Source-path remapping is confined to the named
 experiment and uses the previously built fork support; this change selects
 no runtime or release asset.
@@ -102,6 +102,42 @@ intact through publication; old schema-7 records are rejected. Additional native
 graphs and adjacent VIR still decline. The actual Linux dylibs depend only on
 platform runtime libraries. Both-platform loader checks, literal parity and
 protected mutation controls still block default selection.
+
+## Native producer consumption: proposed successor
+
+Copying vstd's direct inputs does not establish how those inputs were built.
+An admitted macro source or transitive native library could be replaced during
+its compiler invocation and restored before an endpoint hash check. The
+schema-9 successor therefore requires successful compiler-owned source-map
+observations for each native producer as well. The separate native protocol
+binds the actual child PID, run/key nonce, source checksums and original sizes,
+and tracked environment. It writes only after ordinary compilation returns.
+The existing two-pass vstd protocol remains separate and unchanged.
+
+Native compilation receives independent private copies of the complete owned
+`-L dependency` artifact graph and explicit externs. Every copied input must
+match a qualified current-run producer. Cargo's metadata-ready pipeline can
+precede a producer's final output, so the observer waits for completion and
+recaptures the graph before starting the dependent. Copies remain owned until
+completion. Current-run producer records retain the exact completion document
+and its digest; legacy records cannot establish a successor input.
+
+The closed official policy now includes independently generated compiler
+BLAKE3/size constants for all 662 existing SHA-256-checked archive files.
+An `include_str!` input reported as both a source-map file and an extra tracked
+file is admitted only by its retained compiler source checksum. Other tracked
+files require an owned immutable graph input; unknown inputs refuse reuse.
+Lexical path lookup resolves ordinary `src/../README.md` against the policy;
+raw compiler paths, diagnostics, arguments and solver streams are unchanged.
+Feature admission accepts exact Cargo spellings and refuses alternate Rust
+spellings rather than overlooking them. All unsupported shapes compile normally.
+
+Fork `067d0d7c` implements this native protocol. Pinned compiler API controls
+prove retained source checksums survive restoration and no-request output bytes
+match, but they do not qualify the full fork or this Sail integration. A genuine
+runtime build, native source/transitive mutation controls, measured reuse and
+full acceptance remain required. No default activation follows from these
+source checks.
 
 ## Consequences
 

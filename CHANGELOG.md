@@ -21,7 +21,8 @@ semantic versioning once the API is published.
 - Prototype vstd-only compiler-boundary reuse after genuine native prerequisite
   compilation (#161). This is explicitly enabled research, remains unqualified,
   and does not reenable the native-artifact dependency store. Native inputs use
-  verified private copies; older unsnapshotted entries are refused. The withdrawn
+  verified private copies and compiler-owned native source observations; older
+  entries lacking native consumption evidence are refused. The withdrawn
   prototype warning `SAIL3133` is removed; refusals remain silent. Damaged entries
   fall back silently; the optional research trace retains the refusal reason.
 

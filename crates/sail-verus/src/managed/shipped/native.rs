@@ -3,7 +3,8 @@
 //! Observation never replaces, buffers or changes the native compiler's output.
 //! Missing provenance only disables the experimental vstd lookup.
 
-use super::{Call, Plan, sha256_file};
+use super::super::dependency_snapshot::Snapshot;
+use super::{Call, Plan, native_reads, sha256_file};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -20,6 +21,10 @@ struct Record {
     inputs: String,
     output: PathBuf,
     sha256: String,
+    compiler_pid: u32,
+    source_observation: PathBuf,
+    source_observation_sha256: String,
+    native_graph_sha256: String,
 }
 
 /// Optional observation around one actual native compiler subprocess.
@@ -27,6 +32,9 @@ pub(crate) struct Observation<'a> {
     call: Call<'a>,
     generated: Option<BTreeMap<String, String>>,
     outputs: Vec<PathBuf>,
+    graph: Snapshot,
+    reads: native_reads::Observation,
+    cwd: PathBuf,
 }
 
 impl<'a> Observation<'a> {
@@ -63,11 +71,57 @@ impl<'a> Observation<'a> {
         if outputs.iter().any(|path| path.try_exists().unwrap_or(true)) {
             return Err("native output already exists before this compiler invocation");
         }
+        let base = plan
+            .target
+            .join(".sail-boundary-native-reads")
+            .join(&plan.run_id)
+            .join(format!("{}-{}", call.key, std::process::id()));
+        let mut builder = std::fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt as _;
+            builder.mode(0o700);
+        }
+        builder
+            .recursive(true)
+            .create(&base)
+            .map_err(|_| "native observation directory unavailable")?;
+        // A metadata-ready producer can still be linking its rlib. Wait for
+        // qualified producers, then take a new complete snapshot so the child
+        // never receives a graph missing that producer's later output.
+        let first = Snapshot::capture(&plan.target, &base.join("first"), args)
+            .ok_or("native graph capture refused")?;
+        if !await_graph_records(&call, &first) {
+            return Err("native graph producer did not complete");
+        }
+        drop(first);
+        let graph = Snapshot::capture(&plan.target, &base.join("graph"), args)
+            .ok_or("native graph recapture refused")?;
+        if !graph_established(&call, &graph) {
+            return Err("native graph lacks consumed-input provenance");
+        }
+        let reads = native_reads::Observation::begin(&base.join("read"), &plan.run_id, &call.key)
+            .ok_or("native read request unavailable")?;
         Ok(Self {
             call,
             generated,
             outputs,
+            graph,
+            reads,
+            cwd: std::env::current_dir().map_err(|_| "native cwd unavailable")?,
         })
+    }
+
+    pub(crate) fn arguments(&self) -> &[OsString] {
+        self.graph.arguments()
+    }
+
+    pub(crate) fn configure(&self, command: &mut std::process::Command) {
+        self.reads.configure(command);
+    }
+
+    pub(crate) fn started(&mut self, pid: u32) {
+        self.reads.started(pid);
     }
 
     /// Called only after the real compiler returns successfully.
@@ -77,6 +131,16 @@ impl<'a> Observation<'a> {
 
     fn try_complete(&self) -> Option<()> {
         let plan = self.call.plan;
+        if !self.graph.intact() || !graph_established(&self.call, &self.graph) {
+            return None;
+        }
+        let source_observation_sha256 = self.reads.finish(
+            true,
+            &self.cwd,
+            plan.closure.as_ref()?,
+            &self.graph.copied_inputs()?,
+            &self.call.vars,
+        )?;
         if !plan
             .closure
             .as_ref()?
@@ -114,6 +178,10 @@ impl<'a> Observation<'a> {
                 inputs: self.call.key.clone(),
                 sha256: sha256_file(output)?.0,
                 output: output.clone(),
+                compiler_pid: self.reads.pid()?,
+                source_observation: self.reads.path().to_owned(),
+                source_observation_sha256: source_observation_sha256.clone(),
+                native_graph_sha256: self.graph.key()?,
             };
             let path = record_path(plan, output);
             let staging = path.with_extension(format!("{}.tmp", std::process::id()));
@@ -126,6 +194,38 @@ impl<'a> Observation<'a> {
         }
         Some(())
     }
+}
+
+fn await_graph_records(call: &Call<'_>, graph: &Snapshot) -> bool {
+    await_records(
+        || {
+            graph
+                .original_inputs()
+                .keys()
+                .all(|path| record_path(call.plan, path).is_file())
+        },
+        std::time::Duration::from_secs(2),
+    )
+}
+
+fn graph_established(call: &Call<'_>, graph: &Snapshot) -> bool {
+    let Some(closure) = &call.plan.closure else {
+        return false;
+    };
+    graph.original_inputs().iter().all(|(path, copied)| {
+        std::fs::read(record_path(call.plan, path))
+            .ok()
+            .and_then(|raw| serde_json::from_slice::<Record>(&raw).ok())
+            .is_some_and(|record| {
+                established(
+                    &record,
+                    call.plan,
+                    path,
+                    &copied.sha256,
+                    closure.policy_sha256(),
+                )
+            })
+    })
 }
 
 fn emitted_outputs(call: &Call<'_>) -> Option<Vec<PathBuf>> {
@@ -438,6 +538,19 @@ fn established(record: &Record, plan: &Plan, path: &Path, sha256: &str, policy: 
         && record.compiler == plan.native_compiler_sha256
         && record.policy == policy
         && record.output == path
+        && record.native_graph_sha256.len() == 64
+        && record.source_observation.starts_with(
+            plan.target
+                .join(".sail-boundary-native-reads")
+                .join(&plan.run_id),
+        )
+        && native_reads::intact(
+            &record.source_observation,
+            &record.source_observation_sha256,
+            record.compiler_pid,
+            &plan.run_id,
+            &record.inputs,
+        )
         && record.sha256 == sha256
         && sha256_file(path).is_some_and(|(actual, _)| actual == sha256)
 }
@@ -553,6 +666,18 @@ mod tests {
             native_launcher: root.join("verus"),
             native_launcher_sha256: "launcher".into(),
         };
+        let read_dir = root.join(".sail-boundary-native-reads/current-run/fixture");
+        std::fs::create_dir_all(&read_dir)?;
+        let source_observation = read_dir.join("inputs.json");
+        let observation = serde_json::to_vec(&serde_json::json!({
+            "kind":"sail-native-compiler-read-inputs","schema":1,
+            "binding":super::super::digest(b"current-run\0owned-inputs"),
+            "pid":42,"complete":true,"inputs":{
+                "sources":{"lib.rs":{"checksum":"blake3=fixture","size":1}},
+                "extra_tracked_files":[],"tracked_environment":{}
+            }
+        }))?;
+        std::fs::write(&source_observation, &observation)?;
         let mut record = Record {
             runtime: "runtime".into(),
             policy: "policy".into(),
@@ -563,8 +688,21 @@ mod tests {
             inputs: "owned-inputs".into(),
             output: output.clone(),
             sha256: sha256.clone(),
+            compiler_pid: 42,
+            source_observation,
+            source_observation_sha256: super::super::digest(&observation),
+            native_graph_sha256: "a".repeat(64),
         };
         assert!(established(&record, &plan, &output, &sha256, "policy"));
+        let mut legacy = serde_json::to_value(&record)?;
+        legacy
+            .as_object_mut()
+            .ok_or_else(|| std::io::Error::other("record object"))?
+            .remove("source_observation_sha256");
+        assert!(serde_json::from_value::<Record>(legacy).is_err());
+        std::fs::write(&record.source_observation, b"different compiler record")?;
+        assert!(!established(&record, &plan, &output, &sha256, "policy"));
+        std::fs::write(&record.source_observation, &observation)?;
         std::fs::write(&output, b"changed native output")?;
         assert!(!established(&record, &plan, &output, &sha256, "policy"));
         std::fs::write(&output, b"native compiler output")?;
