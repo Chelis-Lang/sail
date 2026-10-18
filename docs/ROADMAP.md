@@ -304,9 +304,13 @@ oyster and such." This supersedes the parallel tracks of
       Rustup/sysroot roots, full stock comparisons and unchanged/failing controls.
       A separate native-only component passes fresh compiler-record and
       same-path compiler-replacement checks. Six enclosing failures remain
-      failed; components are audited separately. Linux qualification, distinct
-      producer/clean-consumer acceptance and fresh-machine performance remain
-      pending. Earlier native ABI results retain their source scope;
+      failed; components are audited separately. Full Linux regression gates,
+      including FAST/STANDARD, pass. Nine distinct-root first-use rows with
+      Cargo 1.98 reduce median setup plus verification 36.289 → 14.233 s (2.550×),
+      with exact stock function/schema comparisons. Their enclosing consumer
+      attempt fails a cold-stock/warm-Sail diagnostic fixture; complete public
+      interaction, undo and Vest acceptance remain pending. Newer caller Cargo
+      versions can safely miss. Earlier native ABI results retain their scope;
       v1 stays quarantined
       ([record](validation/vstd-compile-boundary.md)).
    4. Remaining managed overhead against the removed pass-through, #156:
