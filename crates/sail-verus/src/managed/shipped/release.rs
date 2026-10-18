@@ -305,6 +305,20 @@ fn complete_shape(
 }
 
 impl Admission {
+    /// Bind the running cache alias to the admitted installation's Sail bytes.
+    pub(super) fn executable_matches(&self, bundle: &Path, executable: &Path) -> bool {
+        let check = || {
+            let root = bundle.parent()?.parent()?;
+            let raw = bytes(&root.join(INDEX))?;
+            if digest(&raw) != self.index_sha256 {
+                return None;
+            }
+            let index: Index = serde_json::from_slice(&raw).ok()?;
+            fresh_member(executable, index.files.get("bin/sail")?)
+        };
+        check().is_some()
+    }
+
     pub(super) fn intact(&self, bundle: &Path) -> bool {
         bundle
             .parent()
@@ -377,6 +391,7 @@ mod tests {
                 files: BTreeMap::new(),
                 directories: BTreeMap::new(),
             };
+            fixture.add("bin/sail", b"qualified Sail")?;
             fixture.add("engine/variant/sail-build.json", b"runtime manifest")?;
             let manifest = json!({
                 "schema":SCHEMA, "kind":super::super::KIND,
@@ -466,6 +481,27 @@ mod tests {
 
         fn admit(&self) -> Option<Admission> {
             admit(&self.bundle, &self.runtime, &manifest(&self.bundle)?)
+        }
+
+        fn child_plan(&self) -> Option<super::super::Plan> {
+            Some(super::super::Plan {
+                mode: super::super::Mode::Serve {
+                    bundle: self.bundle.clone(),
+                },
+                identity: "identity".into(),
+                registry: self.root.join("registry"),
+                target: self.root.join("target"),
+                virtual_base: "/rustc-dev/test".into(),
+                solver_sha256: "solver".into(),
+                solver_adapter: None,
+                run_id: "run".into(),
+                closure: None,
+                native_records: self.root.join("records"),
+                native_compiler_sha256: "compiler".into(),
+                native_launcher: self.runtime.join("verus/source/target-verus/release/verus"),
+                native_launcher_sha256: "launcher".into(),
+                release: Some(self.admit()?),
+            })
         }
     }
 
@@ -568,6 +604,103 @@ mod tests {
         index["files"]["../foreign"] = json!({"sha256":"x", "bytes":0, "mode":420});
         std::fs::write(&path, serde_json::to_vec(&index)?)?;
         assert!(fixture.admit().is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_alias_admission_uses_bound_runtime_instead_of_alias_parent() -> Result {
+        let fixture = Installation::new()?;
+        let plan = fixture.child_plan().ok_or("admitted child fixture")?;
+        let cache = fixture.root.join("cache/compiler-artifacts/family");
+        std::fs::create_dir_all(&cache)?;
+        let hard = cache.join("sail-verus-driver");
+        let copy = cache.join("sail-cargo");
+        std::fs::hard_link(fixture.root.join("bin/sail"), &hard)?;
+        std::fs::copy(fixture.root.join("bin/sail"), &copy)?;
+        for alias in [&hard, &copy] {
+            let named = alias.canonicalize()?;
+            assert_ne!(named, fixture.root.join("bin/sail"));
+            // The former current_exe-parent calculation selects this wrong root.
+            assert_ne!(
+                named
+                    .parent()
+                    .and_then(Path::parent)
+                    .ok_or("alias parents")?
+                    .join("deps/variant"),
+                fixture.bundle
+            );
+            assert!(super::super::ordinary_child(&plan, &fixture.runtime, alias));
+        }
+        let modified = std::fs::metadata(&copy)?.modified()?;
+        std::fs::write(&copy, b"Qualified Sail")?;
+        std::fs::File::options()
+            .write(true)
+            .open(&copy)?
+            .set_times(std::fs::FileTimes::new().set_modified(modified))?;
+        assert!(!super::super::ordinary_child(
+            &plan,
+            &fixture.runtime,
+            &copy
+        ));
+        assert!(super::super::ordinary_child(&plan, &fixture.runtime, &hard));
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_alias_admission_refuses_missing_foreign_roots_and_changed_index() -> Result {
+        let fixture = Installation::new()?;
+        let plan = fixture.child_plan().ok_or("admitted child fixture")?;
+        let executable = fixture.root.join("bin/sail");
+        assert!(super::super::ordinary_child(
+            &plan,
+            &fixture.runtime,
+            &executable
+        ));
+        let missing = fixture.runtime.with_file_name("missing");
+        assert!(!super::super::ordinary_child(&plan, &missing, &executable));
+        let foreign = fixture.root.join("foreign/engine/variant");
+        std::fs::create_dir_all(&foreign)?;
+        std::fs::write(foreign.join("sail-build.json"), b"runtime manifest")?;
+        assert!(!super::super::ordinary_child(&plan, &foreign, &executable));
+        let wrong_parent = fixture.root.join("other/variant");
+        std::fs::create_dir_all(&wrong_parent)?;
+        std::fs::write(wrong_parent.join("sail-build.json"), b"runtime manifest")?;
+        assert!(!super::super::ordinary_child(
+            &plan,
+            &wrong_parent,
+            &executable
+        ));
+        let path = fixture.root.join(INDEX);
+        let raw = std::fs::read(&path)?;
+        let modified = std::fs::metadata(&path)?.modified()?;
+        let mut changed = raw.clone();
+        let at = changed
+            .windows(b"\"schema\":1".len())
+            .position(|bytes| bytes == b"\"schema\":1")
+            .ok_or("schema field")?;
+        changed[at + b"\"schema\":".len()] = b'2';
+        std::fs::write(&path, changed)?;
+        std::fs::File::options()
+            .write(true)
+            .open(&path)?
+            .set_times(std::fs::FileTimes::new().set_modified(modified))?;
+        assert!(!super::super::ordinary_child(
+            &plan,
+            &fixture.runtime,
+            &executable
+        ));
+        std::fs::remove_file(&path)?;
+        assert!(!super::super::ordinary_child(
+            &plan,
+            &fixture.runtime,
+            &executable
+        ));
+        std::fs::write(&path, raw)?;
+        assert!(super::super::ordinary_child(
+            &plan,
+            &fixture.runtime,
+            &executable
+        ));
         Ok(())
     }
 }
