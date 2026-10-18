@@ -310,7 +310,10 @@ oyster and such." This supersedes the parallel tracks of
       about 34 MiB higher observed RSS. These are scoped gains, not whole-pipeline
       CPU savings. See the [overhead record](validation/managed-overhead.md) and
       [identity record](validation/solver-identity.md). A cheaper per-function
-      report in the fork remains a separate lever.
+      report in the fork remains a separate lever. The unselected optional-plan
+      candidate passes all 36 native Vest calls: unchanged falls 0.895 → 0.544 s
+      (39.29%), while the four-call sum improves 0.73%. Full delivery gates remain
+      pending ([paired record](validation/instant-revert.md#unchanged-run-optional-plan-candidate-156)).
    5. Cache robustness to incidental edits: stable crate-wide numbering in
       the fork, [#118](https://github.com/Chelis-Lang/sail/issues/118); any
       key change is an ADR under charter rules 5 and 6. The only crate-wide
@@ -334,8 +337,8 @@ oyster and such." This supersedes the parallel tracks of
       ([qualification](validation/spec-parameter-names.md)).
    6. B4, instant revert: receipts beyond the latest revision, #163.
       Implemented and native-qualified at `83128ad0` for the exact Linux/public
-      alloc/std profile; delivery PR/merge pending. All 72 fresh rows and the
-      genuinely bundled ordinary Vest ABA control pass, as do full default
+      alloc/std profile; delivery merged through #224 with required CI green. All
+      72 fresh rows and the genuinely bundled ordinary Vest ABA control pass, as do full default
       gates. The four-call Vest median improves 130.66 → 113.08 s (13.45%)
       against earlier Sail; returned A improves 26.54 → 2.51 s. Cold/edit/
       unchanged costs rise and cache grows about 519 MB; the small control is
