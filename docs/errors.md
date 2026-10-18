@@ -90,6 +90,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL0906` | Usage error in `explain`, `compare`, `baseline` or `--engine` | Fix the command line |
 | `SAIL0907` | An MCP proof tool failed | Read the message |
 | `SAIL0930` | The `actual_work` research observer cannot validate its arguments or complete current-run evidence | Pass a successful Current result and its matching retained run directory; missing or damaged evidence cannot count as zero solver work |
+| `SAIL0931` | The partial focused-module fixture reader cannot validate its frozen authority, oracle or complete session coverage | Supply an independently qualified exact fixture; missing or mismatched evidence cannot count as zero solver work |
 | `SAIL0944` | `ci/engine-artifact.py` rejected the engine pin or artifact | Fix `engine/verus/fork.toml` or the runtime artifact it names |
 | `SAIL0999` | Internal error in the proof stream | Report it with the message |
 

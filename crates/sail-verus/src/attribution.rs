@@ -24,6 +24,9 @@
 //! process to the shim's session record ([`SessionRecord`]), which says how
 //! many replies the cache served before a solver started.
 
+/// Pure counts for complete literal transcript/session observations.
+pub mod work;
+
 use std::collections::BTreeMap;
 use std::path::Path;
 

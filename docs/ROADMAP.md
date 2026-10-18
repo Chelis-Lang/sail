@@ -294,6 +294,8 @@ oyster and such." This supersedes the parallel tracks of
       refusals; a separate sole-wait4 owner passes both fixed solver traces.
       Preparation remains real work and Anvil saves no total CPU. Actual edit
       workflow/default acceptance is unbuilt and unselected; #158 stays open.
+      A separate [partial Anvil work reader](focused-module-work.md) is source-tested;
+      its frozen native catalogue and correctness gate remain unrun.
    3. vstd pre-verified in the release archive, #161. The default-off boundary
       and retained-content paths have a mutually exclusive source integration;
       integrated native qualification remains pending ([record](validation/proof-reuse-integration.md)).
