@@ -501,6 +501,11 @@ def record(root, evidence):
                 raw = command('record', [str(binaries/'sail'), 'verify', '--locked', '--output', 'json'])
                 outcome['server_pid'] = server_group.pid
                 run = complete_report(json.loads(raw))
+                # Cargo inherits the factory's umask. Bind the portable archive
+                # mode before checking and indexing the owned proof bundle.
+                lock = bundle/'Cargo.lock'
+                assert lock.is_file() and not lock.is_symlink()
+                lock.chmod(0o644)
                 proof = check_bundle(bundle, variant, selected['manifest_sha256'], run)
             finally:
                 stop_server()

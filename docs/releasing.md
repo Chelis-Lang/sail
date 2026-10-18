@@ -208,6 +208,10 @@ Rustup home with the pinned Sail toolchain and the verifier's minimal toolchain
 plus `rust-src`, and use it for the release command. Existing full-toolchain
 changed-root controls do not qualify a minimal installation.
 
+The factory sets its owned proof bundle's `Cargo.lock` to mode `0644` before
+binding the complete member index. This keeps archives portable across producer
+umasks and strict extraction without relaxing file-mode or content checks.
+
 `scripts/release-smoke.sh` verifies prerequisites after strict archive unpacking,
 then uses public `sail new` and a locked first verification. Its owned work
 directory is canonicalized before exporting the cache path, including macOS
