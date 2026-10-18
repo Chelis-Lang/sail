@@ -29,6 +29,8 @@ fi
 # A short path: the job socket lives under SAIL_CACHE_DIR, and macOS's
 # default TMPDIR makes it longer than a Unix socket path allows (SAIL0810).
 work="$(mktemp -d /tmp/sail-smoke.XXXXXX)"
+# Native dependency snapshots require canonical owned cache/output paths.
+work="$(cd "$work" && pwd -P)"
 echo "release-smoke: working in $work"
 
 (cd "$(dirname "$archive")" && shasum -a 256 -c "$(basename "$archive").sha256")

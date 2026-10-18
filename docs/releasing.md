@@ -186,9 +186,11 @@ independent guards. No component is downloaded automatically by the factory or
 installed Sail.
 
 `scripts/release-smoke.sh` verifies prerequisites after strict archive unpacking,
-then uses public `sail new` and a locked first verification. Success now requires
-Current complete reports, exactly one fresh requested-target invocation and the
-vstd target's exact `release` origin from this indexed bundle. An ordinary
+then uses public `sail new` and a locked first verification. Its owned work
+directory is canonicalized before exporting the cache path, including macOS
+`/tmp` aliases, so native dependency snapshots receive supported physical paths.
+Success now requires Current complete reports, exactly one fresh requested-target
+invocation and the vstd target's exact `release` origin from this indexed bundle. An ordinary
 successful full verification (SAFE_MISS), a machine-local/store proof or warm
 local receipt reuse does not pass this first-Serve smoke. The later edited
 verification and repair smoke remain. This stricter smoke does not enable the
