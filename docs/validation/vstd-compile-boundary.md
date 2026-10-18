@@ -73,6 +73,18 @@ changes do not create missing outputs or relax recording/Current admission.
 The failed result SHA-256 values are `ff57a516f8c056c66bb2f22f23612480f71291353a1a0629e09464f08698f4f4`
 and `ca9b8cc9526d83db644b1ab0dbb1ac1aa2564c4c5d202d9a33baa7fb7b538fb5`.
 
+The exact `25a89d0b` diagnostic (result SHA-256
+`7daecf17e9884d9a7e0ce42843fc8b1c3dee4c878c129a964aa53b3185da1379`)
+retains the source lock present and destination parent absent. Its existing trace
+shows the native parser rejecting Cargo's ordinary `--warn`/`--allow`/`--deny`
+flags in seven dependency libraries, including all three direct vstd inputs.
+Those missing producer records make vstd provenance refuse; individual compiler
+success does not qualify recording. The parser correction recognizes only the
+compiler's lint-level spellings and lint-name grammar. Every original argument
+remains in the existing key; unknown options, foreign source/lookup/backend
+paths, native bytes, compiler reads and complete graph provenance stay checked.
+Factory and public archive first-use have not passed this successor.
+
 Linux gates, real archive first-use on both platforms and changed Rustup/sysroot
 roots remain pending. Acceptance must
 also remove/change the index after a successful Serve, then check unchanged and
