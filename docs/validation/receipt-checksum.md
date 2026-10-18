@@ -4,7 +4,7 @@
 |---|---|
 | Issue | #156, remaining managed overhead |
 | Source | Original candidate `9d0a59d1`; production code ported as `0bc5724a` on optional-plan candidate `e130f632`, based on main `3892881a` |
-| Qualification | Source and compatibility controls prepared; build, tests, conformance and measurements pending |
+| Qualification | Mac focused compatibility/corruption/publication controls and all-target Clippy pass on `c66049a0`; full gates, conformance and measurements pending |
 | Selection | Unselected; useful matched real-project measurements are required before acceptance |
 | Scope | Receipt checksum serialization only; no dependency, schema, key or verdict-policy change |
 
@@ -38,6 +38,18 @@ The current stack keeps the optional-plan optimization's production source
 unchanged. Its measured unchanged-run gain does not qualify this additional
 checksum change: matched measurements must compare against `e130f632` as
 well as plain stock. Both candidates remain unselected until their gates pass.
+
+## Focused Mac checks
+
+On 2026-10-18, source `c66049a0` passed all five receipt compatibility,
+corruption and publication controls, followed by all-target Clippy with warnings
+denied, using Rust 1.99.0 on native macOS arm64. The complete bounded run took
+76.71 s. It used one compiler job, retained the original serialization oracle,
+and left source, protected runtime and evidence bodies unchanged. This is a
+focused correctness result, with no performance claim or full-gate acceptance.
+The exact command, actual unit-binary hash and complete logs are retained in
+external `receipt-checksum-current-2026-10-18/mac-focused-02/`; its result
+SHA-256 is `97f063c44a8f9aa655308a400b085d74adb3624106f08d451a35da110e328805`.
 
 ## Indexed interrupted attempts
 
