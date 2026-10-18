@@ -308,6 +308,9 @@ def unpack(archive, destination):
 
 
 def main():
+    def terminated(_signum, _frame):
+        raise KeyboardInterrupt('release recording terminated')
+    signal.signal(signal.SIGTERM, terminated)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=('record', 'verify', 'unpack'))
     parser.add_argument('stage', type=Path)

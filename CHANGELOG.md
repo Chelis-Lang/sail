@@ -10,6 +10,8 @@ semantic versioning once the API is published.
   from the matching adjacent bundle. Native prerequisites still compile and all
   compiler-input/byte checks remain required. Release first-use on both platforms
   and changed Rustup roots remains unqualified; no release is published here.
+  Cancelling release proof recording now reaps its owned commands and daemon
+  before removing private scratch.
 
 - Restore a previously verified workspace revision on ordinary Linux checks
   within the qualified public alloc/std dependency profile (#163). Restored

@@ -8,9 +8,10 @@
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
 //! schema 12 also refuses raw encoded environment-value collisions. It neither
-//! reads nor enables the quarantined machine-local v1 store. Activation requires
-//! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
-//! inputs, diagnostic parity and useful first-run gains are not yet qualified.
+//! reads nor enables the quarantined machine-local v1 store. Explicit recording,
+//! machine-local and alternate-bundle modes require `SAIL_VSTD_BOUNDARY_RESEARCH=1`.
+//! A valid adjacent release index permits normal serving. Fresh native inputs
+//! remain mandatory; staged first-use and its performance remain unqualified.
 
 mod admission;
 mod compiler;
