@@ -376,9 +376,26 @@ The complete ending inventory covers all nine actor/round trees, targets,
 sidecars, native graphs, certificates and caches: 7,263,140,779 logical bytes,
 7,347,056,640 allocated bytes, 325,379 files and 2,572 directories. This is the
 whole screen's footprint, not one project's cache requirement. These results
-qualify the measured optimization only; full native gate/solver/all nine E2E
-phases plus extra/PR conformance/full FAST and STANDARD and the full Mac host
-gate remain pending. The candidate is unselected and unpublished.
+qualify the measured optimization only. The production-identical, test-lint-only
+successor `e130f632` passes the full Mac host gate (744 tests, 35 skipped, plus
+clippy) and native Linux workspace gate (755 tests, 35 skipped), solver tests,
+all nine end-to-end phases plus extra, and PR conformance. Native full FAST
+and STANDARD pass all four arms: FAST 147/147 units and 3,450 functions,
+STANDARD 159/159 units and 12,726 functions. Every arm has zero differences,
+instability, infrastructure errors or skipped projects. The reports retain
+rlimit-only drift in 12 FAST and 18 STANDARD units per arm; those metric drifts
+are not verdict or diagnostic differences. Final source/runtime/product guards
+and the complete FAST/STANDARD evidence capture pass. The optimization is
+qualified for the existing default profile; no Mac performance or general CPU
+gain is claimed.
+
+The Linux gate commands completed successfully with unchanged source, runtime
+and built-product maps. Their enclosing evidence export failed because the
+unprivileged archive reader could not enter the repair fixture's root-owned
+directory. The complete top-level command logs were recovered and checked
+against their remote SHA-256 inventory; nested fixture files were not exported.
+This is scoped command evidence, not a successful complete archive. The
+original enclosing failure remains recorded below.
 
 External evidence under
 `retained-warm-skip-matched-native-2026-10-18/tight-caps-90/attempt01/`:
@@ -394,3 +411,60 @@ non-ancestor baseline ref. Original final archive SHA-256
 The successful sibling explicitly bundles both refs and checks every file/mode
 in isolated clones of both heads. It does not relabel the failed attempt or
 claim earlier `7090` qualification.
+
+Delivery-gate attempts remain separate from the completed screen: `cf1b6372`,
+2026-10-18, first native qualification FAIL before staging/checks because the
+watchdog timestamp was on stderr and actual launch missed the fixed cutoff;
+all checks UNRUN. The Mac host gate then FAILs at clippy's existing
+`assert_is_empty` lint in three new test assertions; full tests UNRUN (stderr
+SHA-256 `af55f9055a0795b5157fc162c7815caa70e2195b53a631bc51eaf71580aa6181`).
+The second native attempt is interrupted before checks on that known lint
+failure. A test-only successor uses equality against an empty vector, preserving
+the exact requirement and displaying the unexpected contents. Production code
+and the measured screen are unchanged.
+
+Delivery evidence for `e130f632`, external root
+`retained-warm-skip-qualification-native-2026-10-18/`:
+
+- `mac-host-03/result.json`: full host PASS in 124.91 s; SHA-256
+  `5ef3c2a588f60c623c3092f830ad05b50aeb25ceca449a4e52e08efff07ba3fd`.
+- `detached-gate-admission-attempt02/fallback-raw/status.json`: native command
+  results PASS; workspace gate 62.71 s, solver 9.35 s, full end-to-end 660.09 s
+  and PR conformance 57.38 s; SHA-256
+  `055c809e3e88dd2d9d118efd64e28a9467bccb204a9dae3c9b06833d9bd676e2`.
+  This status records both final source and runtime guards and unchanged
+  product hashes. The complete fallback logs have their own checked inventory.
+
+Additional failed or interrupted attempts, all on 2026-10-18, remain separate:
+
+| Source | Attempt | Result and scope |
+|---|---|---|
+| `e130f632` | Initial post-lint run | Interrupted transport; workspace gate and solver checkpoints passed, later commands unqualified. |
+| `e130f632` | Detached gate attempt 01 | Worker launch failed; product checks UNRUN. |
+| `e130f632` | Detached gate attempt 02 | All declared product commands and final guards PASS; enclosing complete export FAIL on fixture directory permissions, full top-level logs recovered. |
+| `e130f632` | Remaining FAST/STANDARD attempt 02 | Worker launch failed; product checks UNRUN. |
+| `e130f632` | Remaining FAST/STANDARD attempt 03 | Setup budget admission failed before image build; product checks UNRUN. |
+
+Remaining FAST/STANDARD attempt 04 passes on exact `e130f632`: FAST takes
+507.23 s and STANDARD 5,387.61 s. Both complete four-arm report checks pass,
+including the exact 159 STANDARD unit identities. All 640 tracked source
+bodies/modes, the normal runtime and freshly established binaries remain
+unchanged across the commands. The complete archive retains 777,346,531 raw
+bytes and passes its checked inventory. This successful capture covers this
+attempt's FAST/STANDARD scope; it does not replace the earlier gate attempt's
+explicit nested-export limitation or relabel any earlier failure.
+
+External evidence under the same delivery root:
+
+- `remaining-fast-standard-admission-attempt04/result.tgz`: SHA-256
+  `82d12e1ac4e7004245393939683dcb5025fb1fcf26c3f4025124cc6ebfe63a96`.
+- Its `evidence/status.json`: SHA-256
+  `344cddfbf84fbf2027b7c7e7b6ab26a185c3795ce8fed201c67d489287ce0b83`.
+- Its `evidence/fast-report-check.json`: SHA-256
+  `16d9204e866ef549723f87c44d83960a26e83fbe56f9d2ca3ac640d0d28d3328`.
+- Its `evidence/standard-report-check.json`: SHA-256
+  `5d00e5eb963b509b2edb937c159ce33df4f1d9fc558a7b031f62ab02d278143a`.
+
+The delivery documentation amendment preserves every executed Rust/Cargo body
+and mode. The measured production implementation, test-lint successor and
+current qualification scopes remain separately identified above.
