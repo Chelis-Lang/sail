@@ -112,7 +112,7 @@ def main():
         template = root/'proof-template'
         shutil.copytree(bundle, template)
         controlled = root/'controlled-bin';controlled.mkdir()
-        cargo = controlled/'cargo';cargo.write_text('#!/bin/sh\nexit 0\n');cargo.chmod(0o755)
+        cargo = controlled/'cargo';cargo.write_text('#!/bin/sh\n[ "$RUSTUP_TOOLCHAIN" = "1.98.1" ] || exit 87\nexit 0\n');cargo.chmod(0o755)
         sysroot = root/'fixture-sysroot';rustlib = sysroot/'lib/rustlib'
         source = rustlib/'src/rust/library/lib.rs';source.parent.mkdir(parents=True);source.write_text('owned rust source')
         (rustlib/'components').write_text('rust-src\n')
@@ -131,6 +131,7 @@ elif sys.argv[1]=='serve':
  Path(cfg['pid_record']).write_text(str(os.getpid()))
  while True:time.sleep(.05)
 elif sys.argv[1]=='verify':
+ assert os.environ['RUSTUP_TOOLCHAIN']=='1.98.1'
  trace=Path(os.environ['SAIL_SHIPPED_TRACE']);assert trace==Path(cfg['evidence'])/'boundary-trace'
  trace.mkdir();(trace/'fixture.json').write_text(json.dumps({'event':'actual-owned-mock-verify-entry'}))
  for directory in ('.sail-boundary-inputs','.sail-boundary-native-reads'):
@@ -235,6 +236,11 @@ else:raise SystemExit(3)
                 elif change=='wrong-count':wrong['execution']['verifier_invocations']=2
                 else:wrong['targets'][0]['report']['diagnostics']=[{'severity':'warning'}]
                 refuses(lambda:module.first_use(release,wrong))
+            # The factory must override the Sail builder's newer Cargo and bind
+            # portable lock permissions before indexing a group-writable input.
+            (template/'Cargo.lock').chmod(0o664)
+            builder_toolchain = os.environ.get('RUSTUP_TOOLCHAIN')
+            os.environ['RUSTUP_TOOLCHAIN'] = '1.99.0'
             for case in ('current','historical','capture-overflow','certificate-missing','scratch-cleanup-failure'):
                 stage=root/('producer-'+case)
                 (stage/'bin').mkdir(parents=True)
@@ -269,6 +275,8 @@ else:raise SystemExit(3)
                 assert json.loads((evidence/'boundary-trace/fixture.json').read_text())=={'event':'actual-owned-mock-verify-entry'}
                 assert result['server_reaped'] and result['original_stage_unchanged']
                 assert result['passed']==(case=='current')
+                if case=='current':
+                    assert module.verify(stage)['proof']['members']['Cargo.lock']['mode']==0o644
                 if case=='certificate-missing':retained(evidence)
                 if case=='scratch-cleanup-failure':
                     scratch=json.loads((evidence/'scratch-root.json').read_text())
@@ -279,7 +287,11 @@ else:raise SystemExit(3)
                     try:os.kill(int(pid_record.read_text()),0)
                     except ProcessLookupError:pass
                     else:raise AssertionError('owned producer server survived')
-        finally:os.environ['PATH']=path_before
+        finally:
+            os.environ['PATH']=path_before
+            if 'builder_toolchain' in locals():
+                if builder_toolchain is None:os.environ.pop('RUSTUP_TOOLCHAIN',None)
+                else:os.environ['RUSTUP_TOOLCHAIN']=builder_toolchain
     print('release source-prerequisite/origin/member/archive/source-report + actual owned producer-entry controls PASS (compiler/runtime doubled)')
 
 

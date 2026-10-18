@@ -199,6 +199,9 @@ independent guards. No component is downloaded automatically by the factory or
 installed Sail.
 
 Record release proofs with the verifier's minimal toolchain plus `rust-src`.
+The factory also pins Cargo itself to that toolchain. Cargo versions can add
+different compiler flags even when they invoke the same Rust compiler; using the
+Sail build toolchain's newer Cargo therefore produces a different exact proof key.
 The compiler identity conservatively includes all installed target libraries;
 an extra target therefore produces a different proof key even for a host build.
 The Linux `ci/local.sh release` recipe removes the CI image's bare-metal target

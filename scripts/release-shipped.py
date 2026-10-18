@@ -448,6 +448,9 @@ def record(root, evidence):
     try:
         process_census()
         prerequisite = rust_source(build, env)
+        # Cargo itself changes compiler arguments between versions. Record with
+        # the same pinned toolchain as a minimal installed-runtime consumer.
+        env['RUSTUP_TOOLCHAIN'] = prerequisite['toolchain']
         (evidence/'rust-source-prerequisite.json').write_text(json.dumps(prerequisite, indent=2)+'\n')
         with tempfile.TemporaryDirectory(prefix='sail-release-record-', dir='/tmp') as temporary, contextlib.ExitStack() as cleanup:
             owned = Path(temporary).resolve()
