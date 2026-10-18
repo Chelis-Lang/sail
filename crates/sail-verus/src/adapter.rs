@@ -64,6 +64,41 @@ impl InvocationLog<'_> {
     }
 }
 
+/// Own the compiler and its pipe reader across every streamed-output failure.
+struct CompilerOutput {
+    child: std::process::Child,
+    stdout: Option<std::thread::JoinHandle<std::io::Result<Vec<u8>>>>,
+}
+
+impl CompilerOutput {
+    fn stdout(&mut self) -> Result<Vec<u8>> {
+        self.stdout
+            .take()
+            .ok_or_else(|| Error::new("SAIL3111", "missing solver output pipe"))?
+            .join()
+            .map_err(|_| Error::new("SAIL3111", "solver output reader failed"))?
+            .map_err(|error| {
+                Error::new("SAIL3111", format!("cannot capture solver output: {error}"))
+            })
+    }
+
+    fn stop(&mut self) {
+        if !matches!(self.child.try_wait(), Ok(Some(_))) {
+            let _ = self.child.kill();
+            let _ = self.child.wait();
+        }
+        if let Some(reader) = self.stdout.take() {
+            let _ = reader.join();
+        }
+    }
+}
+
+impl Drop for CompilerOutput {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
 fn status(status: std::process::ExitStatus) -> ExitCode {
     ExitCode::from(
         status
@@ -385,6 +420,7 @@ fn driver() -> Result<ExitCode> {
         if research == crate::managed::research::Mode::Off && runtime.is_none() {
             return Command::new(wrapper)
                 .args(args)
+                .env_remove(crate::managed::visible_output::ENV)
                 .status()
                 .map(status)
                 .map_err(|e| Error::new("SAIL3111", e.to_string()));
@@ -406,7 +442,9 @@ fn driver() -> Result<ExitCode> {
         } else {
             args.as_slice()
         };
-        command.args(native_args);
+        command
+            .args(native_args)
+            .env_remove(crate::managed::visible_output::ENV);
         if let Some(call) = &observation {
             call.configure(&mut command);
         }
@@ -517,9 +555,11 @@ fn driver() -> Result<ExitCode> {
         event(
             &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),
         );
-        std::io::stderr()
-            .write_all(&replay.stderr)
-            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        crate::managed::visible_output::emit(
+            crate::managed::visible_output::Stream::Stderr,
+            &replay.stderr,
+        )
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         finish(
             &runtime,
             identity,
@@ -535,10 +575,11 @@ fn driver() -> Result<ExitCode> {
         let shown_stdout = crate::verus_stdout::rebuild(&replay.stdout, flags);
         std::fs::write(dir.join("verus.shown-stdout"), &shown_stdout)
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-        std::io::stdout()
-            .write_all(&shown_stdout)
-            .and_then(|()| std::io::stdout().flush())
-            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        crate::managed::visible_output::emit(
+            crate::managed::visible_output::Stream::Stdout,
+            &shown_stdout,
+        )
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         return Ok(ExitCode::SUCCESS);
     }
     let mut retained = runtime
@@ -572,12 +613,17 @@ fn driver() -> Result<ExitCode> {
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         invocation.retained_from = Some(restored.establishing_run);
         json(&path, &invocation)?;
-        std::io::stderr()
-            .write_all(&restored.stderr)
-            .and_then(|()| {
-                std::io::stdout().write_all(&crate::verus_stdout::rebuild(&restored.stdout, flags))
-            })
-            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        crate::managed::visible_output::emit(
+            crate::managed::visible_output::Stream::Stderr,
+            &restored.stderr,
+        )
+        .and_then(|()| {
+            crate::managed::visible_output::emit(
+                crate::managed::visible_output::Stream::Stdout,
+                &crate::verus_stdout::rebuild(&restored.stdout, flags),
+            )
+        })
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         return Ok(ExitCode::SUCCESS);
     }
     let mut cmd = Command::new(&wrapper);
@@ -598,7 +644,8 @@ fn driver() -> Result<ExitCode> {
         )
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    cmd.env_remove("SAIL_COMPILER_INPUTS")
+    cmd.env_remove(crate::managed::visible_output::ENV)
+        .env_remove("SAIL_COMPILER_INPUTS")
         .env_remove("SAIL_COMPILER_INPUTS_BINDING");
     if let Some(call) = &mut call {
         call.observe_compiler(&mut cmd);
@@ -649,8 +696,9 @@ fn driver() -> Result<ExitCode> {
             pipe.read_to_end(&mut bytes).map(|_| bytes)
         })
     });
+    let mut output = CompilerOutput { child, stdout };
     let mut stderr = Vec::new();
-    if let Some(mut pipe) = child.stderr.take() {
+    if let Some(mut pipe) = output.child.stderr.take() {
         let mut buf = vec![0; 65536];
         loop {
             let n = pipe
@@ -661,23 +709,22 @@ fn driver() -> Result<ExitCode> {
             }
             stderr.extend_from_slice(&buf[..n]);
             if runtime.engine.is_none() {
-                std::io::stderr()
-                    .write_all(&buf[..n])
-                    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+                crate::managed::visible_output::emit(
+                    crate::managed::visible_output::Stream::Stderr,
+                    &buf[..n],
+                )
+                .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             }
         }
     }
-    let exit = child
+    let exit = output
+        .child
         .wait()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     if let Some(call) = &mut call {
         call.compiler_finished();
     }
-    let stdout = stdout
-        .ok_or_else(|| Error::new("SAIL3111", "missing solver output pipe"))?
-        .join()
-        .map_err(|_| Error::new("SAIL3111", "solver output reader failed"))?
-        .map_err(|e| Error::new("SAIL3111", format!("cannot capture solver output: {e}")))?;
+    let stdout = output.stdout()?;
     if let Some(relay) = relay {
         relay.finish();
     }
@@ -686,6 +733,7 @@ fn driver() -> Result<ExitCode> {
         let mut stock = Command::new(&engine.stock_wrapper);
         stock
             .args(&launcher_args)
+            .env_remove(crate::managed::visible_output::ENV)
             .envs(&launcher_environment)
             .args(observation_args(flags, logs.as_deref()));
         let captured = std::process::Output {
@@ -707,9 +755,11 @@ fn driver() -> Result<ExitCode> {
         (stdout, stderr, exit)
     };
     if runtime.engine.is_some() {
-        std::io::stderr()
-            .write_all(&stderr)
-            .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+        crate::managed::visible_output::emit(
+            crate::managed::visible_output::Stream::Stderr,
+            &stderr,
+        )
+        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
     let invocation_key = identity.key();
     finish(
@@ -746,11 +796,9 @@ fn driver() -> Result<ExitCode> {
     // including effective per-package output flags, when it seeds a new target.
     std::fs::write(dir.join("verus.shown-stdout"), &shown)
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    // Plain Verus's stdout, rebuilt from the document Sail asked for; Cargo
-    // forwards it, and the managed runner shows it to the user.
-    std::io::stdout()
-        .write_all(&shown)
-        .and_then(|()| std::io::stdout().flush())
+    // Wait for the managed writer to deliver the rebuilt stdout before this
+    // driver exits: Cargo's subsequent diagnostics must not overtake it.
+    crate::managed::visible_output::emit(crate::managed::visible_output::Stream::Stdout, &shown)
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     Ok(status(exit))
 }
@@ -1174,6 +1222,45 @@ fn target_identity(args: &[OsString], manifest: PathBuf) -> TargetIdentity {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn failed_stream_cleanup_reaps_compiler_and_joins_stdout()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use std::io::Read as _;
+        let mut child = std::process::Command::new("python3")
+            .args(["-c", "import os,time; os.write(2,b'R'); time.sleep(30)"])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()?;
+        let stdout = child.stdout.take().map(|mut pipe| {
+            std::thread::spawn(move || {
+                let mut bytes = Vec::new();
+                pipe.read_to_end(&mut bytes).map(|_| bytes)
+            })
+        });
+        let mut output = super::CompilerOutput { child, stdout };
+        let mut ready = [0];
+        output
+            .child
+            .stderr
+            .as_mut()
+            .ok_or("missing stderr")?
+            .read_exact(&mut ready)?;
+        assert_eq!(ready, [b'R']);
+        assert!(output.child.try_wait()?.is_none());
+        // This is the same cleanup called by Drop after a refused ACK or write.
+        output.stop();
+        assert!(
+            output
+                .child
+                .try_wait()?
+                .is_some_and(|status| !status.success())
+        );
+        assert!(output.stdout.is_none(), "stdout reader must be joined");
+        // A second Drop cleanup must remain harmless.
+        Ok(())
+    }
+
     #[test]
     fn automatic_retained_plan_reaches_owned_managed_child()
     -> std::result::Result<(), Box<dyn std::error::Error>> {

@@ -12,6 +12,13 @@ semantic versioning once the API is published.
   gates remain pending; this candidate is unselected. See the
   [paired validation](docs/validation/instant-revert.md#unchanged-run-optional-plan-candidate-156).
 
+- Prepare a final-stdout completion barrier for managed drivers (#215). User
+  bytes stay on Cargo's original pipes, preserving diagnostic rendering; only
+  a private completion marker is removed. The source-only successor replaces
+  the rejected payload-IPC candidate. It is unselected, with real Verus and
+  both-platform gates pending. See the
+  [qualification record](docs/validation/managed-output-order.md).
+
 - Restore a previously verified workspace revision on ordinary Linux checks
   within the qualified public alloc/std dependency profile (#163). Restored
   results preserve their original establishing run and require fresh Current
