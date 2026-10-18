@@ -33,6 +33,14 @@ semantic versioning once the API is published.
   rename, preserving any generator-written lock. Compiler children locate the
   admitted bundle through the bound runtime and must match the indexed Sail
   executable even when running under a cache alias.
+  A further unqualified source candidate binds and remaps the verifier's exact
+  compiler-source tree for portable native builds; missing or changed sources
+  decline proof reuse. Portable native changes are further restricted to pinned
+  Cargo compiler shapes; unsupported warning/cfg/Rustflag contexts retain
+  original arguments and genuine verification. A further Mac-only candidate
+  removes native proc-macro debug maps at link time in portable modes, without
+  changing consumer arguments or rewriting artifacts. Literal panic/backtrace
+  and staged first-use acceptance remain required.
   Cancelling release proof recording now reaps its owned commands and daemon
   before removing private scratch.
 

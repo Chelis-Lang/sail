@@ -417,6 +417,10 @@ fn actual_wrapper(cargo_verus: &Path) -> Result<PathBuf> {
 pub(super) fn verifier_sysroot(wrapper: &Path, workspace: &Path) -> Result<PathBuf> {
     let output = Command::new(wrapper)
         .args(["--version", "--output-json"])
+        // This is verifier metadata, including when a native proxy asks for
+        // its current sysroot. Cargo mode requires a leading rustc argument
+        // and would reject this standalone version query instead.
+        .env_remove("__VERUS_DRIVER_VIA_CARGO__")
         .current_dir(workspace)
         .output()
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
@@ -2286,6 +2290,7 @@ pub(crate) fn run_engine_held(
             !super::shipped::research_enabled()
                 || std::env::var_os(super::shipped::LOCAL_ENV).is_none()
         })
+        .filter(|_| super::shipped::portable_context(&config.workspace, &config.args))
         .and_then(|registry| {
             Some(super::shipped::source_base(
                 &super::shipped::virtual_base()?,
@@ -2307,6 +2312,8 @@ pub(crate) fn run_engine_held(
             &config.z3,
             &config.shim,
             &run_id,
+            &config.workspace,
+            &config.args,
             &data,
         )
     };
