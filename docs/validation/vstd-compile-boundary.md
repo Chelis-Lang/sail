@@ -16,25 +16,60 @@
 
 ## Current composed release candidate
 
-The current Linux first-use component has nine valid rotated rows on a distinct
-clean consumer, all with Cargo `1.98.1`, genuine native compilation, full stock
+The latest distinct Linux consumer (R5, native c7i.4xlarge, us-east-1) passes
+first-use, public diagnostic/index controls and fresh native-input checks.
+All nine rotated rows use Cargo `1.98.1`, genuine native compilation, full stock
 function/scalar/schema comparisons, Current and the exact release origin.
-Median setup + new + lock + verification falls from 36.28905 s to 14.23317 s
-(2.550×; stock 31.78070 s). Candidate rows include actual 5,741,168-byte official
-`rust-src` download, installation and complete validation. Common minimal Rust
-installation takes 8.938 s and is recorded separately. The nine roots share one
-consumer host; this is not evidence for multiple independent machines or newer
-caller Cargo versions.
+Median setup + new + lock + verification falls from 37.318 s to 14.768 s
+(2.527×; stock 32.534 s). Candidate rows include each actual 5,741,168-byte
+official `rust-src` download, installation and complete validation. Common
+minimal Rust installation takes 8.884 s separately; adding it to both totals
+gives 46.202 → 23.652 s (1.953×). The nine roots share one consumer host;
+this does not qualify multiple machines or newer caller Cargo versions.
 
-The enclosing consumer attempt remains FAIL: its first literal negative check
-compares cold stock dependency progress with warm Sail progress. The actual
-requested-target error span/body matches, but the full stderr differs by fifteen
-dependency progress lines. No bytes are normalized or discarded. Subsequent
-index/native/undo checks were not reached; the successor must prime genuine stock
-positive work before making the same exact negative comparison. Complete failed
-capture SHA-256:
-`039fbdaffed81cb8966b41cd139f6692e08130c6c008b1e199688ce405cf215f`.
-The valid nine-row gain is a component result, not complete release acceptance.
+All 36 ordinary Vest calls also pass, retaining the existing qualified
+`alloc/std` profile and safe proof-bundle misses. Edit medians overlap:
+30.008 s before and 30.168 s with the candidate, so no Vest edit gain is claimed.
+
+The complete consumer cohort remains **FAIL** solely because its new default-
+profile coexistence gate requires requested-target instant revert. The existing
+automatic profile admits only public `alloc/std`, whose Vest checks pass above;
+public `alloc/default/std` was research-only before this candidate. B, returned A2 and
+unchanged A3 all match stock functions, totals, schema and provenance, but A2
+invokes the requested verifier once (0.904 s) instead of restoring A1's proof;
+A3 then reuses A2 with zero verifier invocations (0.205 s). The run-wide
+`shipped_plan.is_none()` condition suppresses retained planning for A1, and
+the automatic profile filter also excludes the default profile. Extending this
+scope requires explicit shipped-proof/native provenance coexistence; removing
+one condition alone is insufficient. The original reuse assertion remains mandatory.
+
+Complete source/runtime/product guards and all 1,519 captured file bodies,
+sizes and modes pass. Capture SHA-256:
+`4ef382e8679d45ec14fbd8fe2c5fdabc44bf70433c2710597049338d357cae8b`.
+The first-use gain and Vest regression results qualify this source component;
+they do not qualify the pending coexistence fix or complete release selection.
+
+The coexistence successor passes independent source review and fourteen focused
+Mac controls, including actual PID/run/key/read-document binding and indexed
+release unit/output mutation refusals. Its additional native late-guard case
+requires genuine first-Serve authority; compiling it is not a native pass. The
+bundled and unbundled default-profile cycles, first-use gain and existing Vest
+profile still require qualification on the final matching runtime.
+
+Earlier consumer failures remain indexed:
+
+- R2, 2026-10-18: nine valid timing rows; literal negative compares cold stock
+  dependency progress with warm Sail progress. Full stderr differs by fifteen
+  progress lines; no normalization. Capture
+  `039fbdaffed81cb8966b41cd139f6692e08130c6c008b1e199688ce405cf215f`.
+- R3, 2026-10-18: public negative controls pass; final tree equality fails after
+  the index-recreation fixture changes its mode. Capture
+  `21e304a1830f53f70bf5cef3daeeea50c6086d3232e443911fec7c9903d80478`.
+- R4, 2026-10-18: first-use/native passing checkpoint, then a control reader's
+  1 MiB bound rejects the 7,235,552-byte status. Both capture attempts refuse a
+  busy shared transfer lock; primary/Vest results and full raw evidence are lost.
+  R4 does not qualify those gates. R5 corrects only the reader projection and
+  bounded lock retry; all product, oracle and workload bytes remain unchanged.
 
 The Cargo-pinned producer correction is causally qualified: actual Record with
 helper `d751d1b1` produces the exact previous consumer unit key, arguments,
@@ -83,8 +118,8 @@ Its initial local comparison incorrectly demanded equality of entire factory
 and served report objects, including intentionally lazy obligation attribution
 and relocated solver paths; that failed assertion remains in the result index.
 The successful comparison uses the existing exact function, scalar, schema and
-release-origin checks. Linux clean-consumer performance and shipped-mode
-A/B/A interaction gates remain pending.
+release-origin checks. Linux clean-consumer performance is recorded above;
+shipped-mode A/B/A coexistence remains failed.
 
 The first distinct Linux consumer remains FAIL, capture SHA-256
 `a6d5c5ea511a2f313705f4ae72af810ee2ea6a80b93f6863f9142b80fdd086b4`.
