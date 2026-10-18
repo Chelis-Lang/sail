@@ -85,6 +85,8 @@ def case(root, helper):
             record=json.loads(ready.read_text());server=json.loads(server_path.read_text());owned=Path(record['owned'])
             assert owned.resolve()==owned and owned.parent==Path('/tmp').resolve() and owned.name.startswith('sail-release-record-')
             assert owned.stat().st_uid==os.getuid()
+            scratch=json.loads((root/'evidence/scratch-root.json').read_text())
+            assert scratch=={'pid':child.pid,'path':str(owned),'uid':os.getuid()}
             assert record['pgid']==record['pid'] and record['nested_pgid']==record['pgid']
             assert server['pgid']==server['pid'] and server['pgid'] not in (os.getpgrp(),child.pid,record['pgid'])
             assert all(alive(pid) for pid in (record['pid'],record['nested'],server['pid']))
