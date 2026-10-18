@@ -52,7 +52,10 @@ retains a complete, content-once certificate/skipped-record index before removin
 scratch. Actual small controls cover both certificate directories, deduplication,
 missing and oversized inputs, aliases and unreadable subtrees; a missing
 certificate after an otherwise successful mock record removes the installed
-proof/index and still reaps its server. An initial certificate-copy attempt
+proof/index and still reaps its server. Admitted certificate bodies also survive a
+later missing-kind or scan refusal. A separate scratch-exit interruption control
+proves that failure after provisional publication removes the proof/index and
+records failure after cleanup. An initial certificate-copy attempt
 refused after its own read updated access time; an owned-file control isolated
 that change. Content, inode, mode, size, mtime and ctime checks remain strict;
 read-induced access time is not an input. The failed attempt remains indexed

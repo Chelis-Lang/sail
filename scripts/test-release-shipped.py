@@ -121,8 +121,28 @@ else:raise SystemExit(3)
         captured_index=json.loads((captured/'compiler-inputs/index.json').read_text())
         assert captured_index['complete'] and len(captured_index['paths'])==3 and captured_index['unique_bytes']==17
         assert len(list((captured/'compiler-inputs/bodies').iterdir()))==2
+        def retained(failed):
+            folder=failed/'compiler-inputs'
+            value=json.loads((folder/'index.json').read_text())
+            assert not value['complete'] and value['paths']
+            for row in value['paths']:
+                body=folder/'bodies'/row['sha256']
+                assert body.stat().st_size==row['bytes'] and module.digest(body)==row['sha256']
+            return value
         missing=certs/'.sail-boundary-inputs/fixture/inputs.json';missing.unlink()
-        failed=root/'cert-missing';failed.mkdir();refuses(lambda:module.retain_compiler_inputs(certs,failed,True));missing.write_text('{}')
+        failed=root/'cert-missing';failed.mkdir();refuses(lambda:module.retain_compiler_inputs(certs,failed,True));retained(failed);missing.write_text('{}')
+        # Real admitted bytes must survive a later scan refusal as well.
+        original_walk=module.os.walk
+        def late_alias(*args,**kwargs):
+            yield str(certs/'.sail-boundary-native-reads/fixture'), [], ['inputs.json']
+            late=certs/'late-alias';late.symlink_to(certs/'.sail-boundary-native-reads')
+            try:yield str(certs), ['late-alias'], []
+            finally:late.unlink()
+        module.os.walk=late_alias
+        try:
+            failed=root/'cert-late-refusal';failed.mkdir()
+            refuses(lambda:module.retain_compiler_inputs(certs,failed,True));retained(failed)
+        finally:module.os.walk=original_walk
         limit=module.CAPTURE_LIMIT
         try:
             module.CAPTURE_LIMIT=1
@@ -141,7 +161,7 @@ else:raise SystemExit(3)
         path_before=os.environ['PATH']
         os.environ['PATH']=str(controlled)+os.pathsep+path_before
         try:
-            for case in ('current','historical','capture-overflow','certificate-missing'):
+            for case in ('current','historical','capture-overflow','certificate-missing','scratch-cleanup-failure'):
                 stage=root/('producer-'+case)
                 (stage/'bin').mkdir(parents=True)
                 shutil.copytree(runtime,stage/'engine/variant')
@@ -154,14 +174,31 @@ else:raise SystemExit(3)
                     'pid_record':str(pid_record),'missing_certificate':case=='certificate-missing'}))
                 evidence=root/(case+'-evidence')
                 previous_limit=module.CAPTURE_LIMIT
+                original_temporary=module.tempfile.TemporaryDirectory
+                class CleanupFailure(original_temporary):
+                    def __exit__(self,*args):
+                        super().__exit__(*args)
+                        raise KeyboardInterrupt('owned scratch exit injection')
                 try:
+                    if case=='scratch-cleanup-failure':module.tempfile.TemporaryDirectory=CleanupFailure
                     if case=='capture-overflow':module.CAPTURE_LIMIT=32
                     if case=='current':module.record(stage,evidence)
+                    elif case=='scratch-cleanup-failure':
+                        try:module.record(stage,evidence)
+                        except KeyboardInterrupt as error:assert str(error)=='owned scratch exit injection'
+                        else:raise AssertionError('scratch failure swallowed')
                     else:refuses(lambda:module.record(stage,evidence))
-                finally:module.CAPTURE_LIMIT=previous_limit
+                finally:
+                    module.CAPTURE_LIMIT=previous_limit
+                    module.tempfile.TemporaryDirectory=original_temporary
                 result=json.loads((evidence/'result.json').read_text())
                 assert result['server_reaped'] and result['original_stage_unchanged']
                 assert result['passed']==(case=='current')
+                if case=='certificate-missing':retained(evidence)
+                if case=='scratch-cleanup-failure':
+                    scratch=json.loads((evidence/'scratch-root.json').read_text())
+                    assert not Path(scratch['path']).exists()
+                    assert not (stage/module.INDEX).exists()
                 assert (stage/'deps').exists()==(case=='current')
                 if pid_record.exists():
                     try:os.kill(int(pid_record.read_text()),0)

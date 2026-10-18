@@ -105,7 +105,9 @@ Before deleting scratch, it also retains a bounded, content-once index of native
 and verification/compilation input certificates and skipped records. This
 evidence excludes full native compiler bodies; the staged unit keeps its vstd
 artifacts. Missing certificates in a successful record or failed capture stops
-packaging and still runs owned cleanup.
+packaging and still runs owned cleanup. Already admitted certificate bodies remain
+indexed on a later capture refusal. A failure while removing scratch also marks
+the record failed and removes its staged proof and index.
 
 Normal verification may serve only a matching adjacent `deps/<variant>` bundle
 whose complete proof members match its adjacent `release-files.json` index;
