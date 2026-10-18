@@ -22,6 +22,7 @@ mod runner;
 pub(crate) mod shipped;
 mod source_inputs;
 mod store;
+pub(crate) mod visible_output;
 
 pub(crate) use files::{digest, event, file_digest, json, stat_identity};
 pub use freshness::FreshnessIndex;
