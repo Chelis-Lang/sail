@@ -113,6 +113,10 @@ Verus's `verify` flag, and a `src/lib.rs` (or `src/main.rs`) with one
 verified function. It refuses a path that exists and is not an empty
 directory. Sail makes the project with its own Verus and never puts that
 Verus's `cargo-verus` on `PATH`, so your own `cargo verus` is unaffected.
+When a release includes an admitted adjacent proof bundle, a new project also
+gets that bundle's matching dependency lock. A lock already written by the
+generator is preserved; ordinary installs without an admitted bundle keep the
+generator's behavior.
 
 In a Cargo project that Verus already verifies, run `sail verify` instead of
 `cargo verus verify`; nothing needs to change in the project.

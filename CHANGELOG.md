@@ -10,6 +10,8 @@ semantic versioning once the API is published.
   from the matching adjacent bundle. Native prerequisites still compile and all
   compiler-input/byte checks remain required. Release first-use on both platforms
   and changed Rustup roots remains unqualified; no release is published here.
+  New projects seed the admitted bundle's dependency lock before their final
+  rename, preserving any generator-written lock.
   Cancelling release proof recording now reaps its owned commands and daemon
   before removing private scratch.
 
