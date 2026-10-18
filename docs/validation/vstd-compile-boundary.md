@@ -10,9 +10,31 @@
 | Native performance | Historical direct-observation source `6ea94c8d`: median 39.840 s versus 9.336 s over three pairs; not a final schema-12 or release-performance result |
 | Compiler-input boundary | Final-source functional probes retain real native and verified-input certificates under the closed source/feature policy; earlier native source/transitive controls keep their recorded source scope |
 | Literal query comparison | Two separate cold controls match all 366 literal input streams / 2,061 checks each; this is not reuse or stock acceptance |
-| Portable functionality | Linux `83128ad0` and the matching Mac component pass changed Cargo/project/install-root Record → Serve → unchanged; same-host/same-Rustup scope |
+| Portable functionality | Linux `83128ad0` and the earlier Mac component pass changed Cargo/project/install roots. The guarded Mac successor passes changed physical Rustup/sysroot roots, full Record → Serve → unchanged and both negative comparisons. A separate native-only successor passes all twelve consumer pairs; the original enclosing cohort stays FAIL |
 | Default regression gates | `83128ad0`: full Linux gate/solver/all E2E+extra/PR/FAST/STANDARD and final guards pass; Mac host clippy plus 742 tests pass |
 | Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
+
+## Packaging prerequisite and first-Serve source correction
+
+A separate packaging-only successor on `c4b1644f` checks the complete pinned
+`rust-src` component before factory recording and proof-bundle release smoke.
+It derives the toolchain from the admitted runtime, checks the installed source
+manifest against the exact regular-file set, and retains a hashed source
+inventory. This is prerequisite evidence; it neither changes nor replaces
+compiler-source keys/certificates or native admission. Ordinary minimal installs
+without a qualified proof bundle are unchanged.
+
+The strict first-use smoke additionally requires the indexed bundle's actual
+release origin and one fresh requested-target invocation. A successful full
+verification with no release origin (SAFE_MISS) now fails this smoke. Owned
+Python controls pass for component completeness/missing/extra/alias/content
+inventory, exact origin and SAFE_MISS/warm/store/foreign-origin refusals; the
+existing member/report/producer and parent-cancellation controls also pass with
+compiler/runtime doubles. No actual runtime, compiler or network operation was
+used by these controls. Real release first use and useful gain on both platforms
+remain unqualified; fresh setup must include the Rust-source component's
+download/verification time and bytes as described in the
+[release guide](../releasing.md#proof-bundle-prerequisites-and-first-use).
 
 ## Release activation candidate
 
@@ -863,7 +885,7 @@ first-use, portable dylib identity and performance remain pending. The earlier
 admitted-warning and direct-flag failures are not reclassified.
 
 
-A further source-only candidate adds the constructed Mac native proc-macro
+A further candidate adds the constructed Mac native proc-macro
 link option `-C link-arg=-Wl,-S` after the guarded admission above. The earlier
 tiny producer-only direct-compiler matrix passed library identity and all
 unmodified-consumer diagnostic cases, but did not establish the real closed
@@ -873,3 +895,69 @@ complete source-read certificates, exact full verdict/diagnostic comparisons,
 and release-origin/Current/unchanged provenance. The admitted-warning failure
 and older composed diagnostic failures remain indexed; no consumer remap or
 comparison relaxation follows from the direct-compiler result.
+
+### Guarded changed-Rustup Mac components
+
+On 2026-10-18, `c4b1644f` plus product patch SHA-256
+`1e0d2b4896dbabaaea1fe8ed3a2a1402a6ee6167d739c167c8190b9444104a39`
+passes the actual same-Mac changed-root Record → Serve → unchanged components.
+Cargo, project, installation, Rustup and sysroot paths differ physically. The
+three successful Current reports retain 1,872 functions each; verifier
+invocations are two, one and zero. Serve and unchanged retain the exact shipped
+release identity. All six positive stock comparisons pass. Both roots' negative
+JSON/full raw-child diagnostic comparisons and literal public text comparisons
+also pass. Direct native artifact bytes and complete compiler-source tree hashes
+match across roots. This establishes functional portability components, not
+fresh-machine or first-use performance acceptance.
+
+The enclosing full cohort remains **FAIL** after 199.34 seconds. Only two of
+twelve required native-consumer pairs pass: its purported public macro panic
+input emits an ordinary `unexpected token` error in both actors, so the strict
+genuine-panic prerequisite refuses. The remaining ten pairs are unqualified;
+identical syntax errors do not qualify panic/backtrace behavior. No threshold,
+diagnostic comparison or deadline is relaxed. Final source/runtime/product
+guards, complete metadata/compiler capture and owned-child cleanup pass.
+
+Result SHA-256:
+`d63c77fd30b07235c8af4ce8beedb42fd4e89000608767f0fbccbdbd878efa42`.
+An independent retained-component audit verifies all 703 metadata paths
+(615 distinct bodies, 21,693,796 bytes), all 71 compiler paths (61 distinct bodies,
+228,150,451 bytes), both literal negative streams and three Current reports:
+`6b39e8237e81e997f7315e988b70b61b605603af2bac7b2a06a84844fa143941`.
+Raw evidence is outside git under
+`shipped-proof-release-activation-plan-2026-10-18/compiler-source-paths/guarded-debug-map-source/full-cohort-02/`.
+
+Earlier attempts remain failed: the original full cohort stopped at a mismatched
+raw-child/public-diagnostic comparison layer; focused A01 lost Cargo's inherited
+jobserver descriptors, A02 refused disk admission before compiler work, and A03
+joined the compiler child's exit 1 as though it were outer Cargo exit 101. The
+corrected retained A03 comparison passes independently; its enclosing failure
+remains. None of those attempts qualifies the complete native matrix.
+
+The current-main composition preserves the independently qualified scheduling
+and output changes while restoring the release path. Its retained-plan condition
+keeps both receipt-coverage and shipped-plan exclusions. This source composition
+and the prerequisite/strict-origin packaging successor require their own complete
+platform gates and release first-use qualification; default eligibility remains
+held and v1 remains quarantined.
+
+The distinct native-only successor corrects the fixture using the admitted public
+`verus_keep_ghost!` macro's `open(crate) spec const` branch, which genuinely panics.
+All twelve original/candidate pairs pass: A/B × successful compile, panic and
+standard-library diagnostic × `RUST_BACKTRACE` unset/1. All 24 compiler calls retain
+exact exit status and complete stdout/stderr; every panic pair meets the unchanged
+genuine-panic prerequisite. It uses independently copied original/candidate macro
+bodies and producer provenance retained from the full cohort, without rebuilding
+Sail, its comparison core or the macro libraries. Source/runtime/product guards,
+complete capture and cleanup pass in 47.53 seconds. This is native-consumer
+qualification, not a new whole Record/Serve run or first-use performance result.
+The original full cohort's failure remains.
+
+Native result SHA-256:
+`c4ae9009265124016bccf1dc2302d3ce0b37d53e39bae7e1b9cffad1f06a0ca5`.
+Independent audit verifies all twelve pair streams/statuses and four actual panic
+prerequisites, 103 metadata paths and four compiler-artifact paths:
+`6393a43bd892fb50a5959c56fdf9cc3884cd2d6b9b0ba842dbf6efa1b0197f3b`.
+The raw directory is the sibling `native-matrix-03/`. Current-main composition,
+complete platform gates, public staged-archive first use and useful measured
+first-use gains remain pending.

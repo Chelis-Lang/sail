@@ -299,8 +299,11 @@ oyster and such." This supersedes the parallel tracks of
       research passes same-host Linux and Mac changed Cargo/project/install-root
       checks with Current/1,872 functions and full stock comparisons. Candidate
       release recording, complete member validation and adjacent-bundle serving
-      are implemented; actual staged first use on both platforms and changed
-      Rustup roots remain pending. Earlier results retain their source scope;
+      are implemented. The guarded Mac changed-Rustup component passes actual
+      Record/Serve/unchanged and both negative diagnostics; its full native matrix
+      remains FAIL at an invalid panic prerequisite. A separate native-only
+      successor passes all twelve strict consumer pairs. Staged first use on both
+      platforms and fresh-machine performance remain pending. Earlier results retain their source scope;
       v1 stays quarantined
       ([record](validation/vstd-compile-boundary.md)).
    4. Remaining managed overhead against the removed pass-through, #156:

@@ -35,22 +35,28 @@ are in the `archive/m7-contracts-f7103bf` tag.
   failure stays failed; see the [record](validation/instant-revert.md).
 
 - **Portable vstd functionality is not release first-use acceptance (#161).**
-  Same-host Linux and Mac changed-root Record/Serve/unchanged components pass;
-  the Mac enclosing diagnostic-capture failure stays visible. Distributed
-  packaging, another machine, changed Rustup roots and default fresh-project
-  first use remain pending. The v1 store stays quarantined. See the
+  Same-host Linux and Mac changed-root Record/Serve/unchanged components pass.
+  The guarded Mac successor also changes physical Rustup/sysroot roots and passes
+  both negative-diagnostic comparisons. Its enclosing full cohort remains FAIL:
+  the purported proc-macro panic fixture emits a syntax error, so only two of
+  twelve native-consumer pairs qualify in that attempt. A separate native-only
+  successor with a genuine panic fixture passes all twelve strict pairs.
+  Another machine and default fresh-project archive first use/performance remain pending.
+  The v1 store stays quarantined. See the
   [compiler-boundary record](validation/vstd-compile-boundary.md).
   The initial factory failures remain recorded. After admitting ordinary native
   lint flags without changing keys or provenance checks, actual Mac recording,
-  stripped staging, packaging and public archive smoke pass. Changed-Rustup
-  first-use is still blocked: the existing admitted-lock provider was never
+  stripped staging, packaging and an earlier public archive smoke pass.
+  Changed-Rustup first use was initially blocked: the admitted-lock provider was never
   called by `sail new`, so stock correctly refused `--locked` on the generated
   project. After wiring that provider only into the new private staged project,
   actual locked stock verification and full first-Serve comparisons pass; Serve
   safely reverified because compiler children derived the adjacent bundle from
-  a cache alias. The runtime-root/byte-bound alias correction is prepared;
-  actual release reuse remains pending. That whole cohort also refused its
-  diagnostic body cap; original failures remain visible. No lock is fabricated
+  a cache alias. The runtime-root/byte-bound alias correction is implemented;
+  the later guarded functional component above serves the original shipped proof.
+  A new archive first-use smoke requires actual indexed release origin, not
+  successful fallback; actual archive qualification remains pending. The earlier
+  diagnostic body-cap and lock/alias failures stay visible. No lock is fabricated
   in the oracle and no empty proof bundle is created to pass.
 
 - **The stale solver-hash defect is fixed on main**

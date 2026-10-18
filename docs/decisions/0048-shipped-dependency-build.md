@@ -56,8 +56,9 @@ builtin metadata matched, but the two fresh macro libraries differed and
 contained physical Rustup standard-library source locations. A source-only
 successor proposes mapping exactly the fresh verifier sysroot's
 `lib/rustlib/src/rust` prefix into `/rustc/<pinned compiler commit>` with a real
-compiler flag. It binds the complete local source tree (at most 64 MiB and
-16,384 files), virtual namespace and typed option into portable inputs, and
+compiler flag. It binds the complete local compiler-source tree (at most 128 MiB
+and 16,384 files; registry source admission retains its separate 64 MiB limit),
+virtual namespace and typed option into portable inputs, and
 rechecks them at native begin/completion and final Record/Serve boundaries.
 Aliases, source/target overlaps, foreign namespaces and incoming remap flags
 decline reuse. This does not rewrite saved artifacts. Imported standard-library
@@ -65,7 +66,13 @@ locations originate compiled sysroot metadata; they are not additional native
 `SourceMap` read claims. The observer still records actual local reads.
 Machine-local keys and options remain unchanged.
 
-This source proposal is not diagnostic or portability qualification. Compiler
+The guarded Mac candidate passes the changed-Rustup Record/Serve/unchanged and
+both negative-diagnostic components. Its enclosing native-consumer matrix remains
+failed because the supposed panic fixture produced a syntax error. A separate
+native-only successor with the genuine public-macro panic branch passes all
+twelve pairs, including both backtrace settings and literal diagnostics.
+These components do not qualify release first use.
+Compiler
 remapping can alter `file!`, panic, backtrace or source-quoting behavior. Actual
 two-root library equality, the old-flag negative, successful consumers and
 literal panic/compile-error diagnostics with and without `RUST_BACKTRACE` must

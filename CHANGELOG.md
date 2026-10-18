@@ -24,6 +24,12 @@ semantic versioning once the API is published.
   and STANDARD arms, final guards and complete capture, pass; the delivery head
   still requires its own CI. See [output](docs/validation/managed-output-order.md)
   and [scheduling](docs/validation/unscheduled-script-cleaning.md) records.
+- Require the complete pinned Rust-source component for candidate proof-bundle
+  recording and smoke tests, and require actual indexed release-proof origin
+  on the smoke's first verification. A successful full fallback no longer
+  passes that first-Serve smoke. Ordinary minimal installs remain unchanged;
+  proof-bundle eligibility and both-platform first-use gain remain unqualified.
+
 - Add candidate release-time recording of the vstd proof with the final staged
   binaries, complete release-member integrity checks, and automatic serving only
   from the matching adjacent bundle. Native prerequisites still compile and all
