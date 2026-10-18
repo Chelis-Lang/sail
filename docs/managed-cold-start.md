@@ -9,6 +9,15 @@ those receipts and starts no verifier. See
 [ADR 0023](decisions/0023-managed-incremental-workspace-verification.md) and
 [freshness](freshness.md) for what "unchanged" means.
 
+The [managed output completion barrier](decisions/0055-acknowledged-managed-output.md)
+keeps user bytes on Cargo's original pipes, preserving stderr diagnostic
+rendering. A private barrier confirms final driver stdout before driver exit
+and Cargo's subsequent error; structured callers still suppress human stdout.
+It joins optional relevant-script scheduling facts without changing proof
+receipts. Joined Mac and full native correctness checks pass. The affected
+script fixture is faster; Vest has no measured speed gain. See the
+[qualification and limits](validation/managed-output-order.md).
+
 Managed metadata probes, including Cargo-Verus's private metadata subprocess,
 select `cargo-metadata/` under the Sail cache with a highest-priority
 `build.target-dir` override. Neither caller environment nor Cargo configuration

@@ -5,12 +5,25 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- Prepare an unchanged-run optimization that skips optional proof-archive planning
+- Skip optional proof-archive planning on unchanged runs
   for already covered receipt revisions (#156). A 36-call native Vest screen
   lowers unchanged checks from 0.895 s to 0.544 s (39.29%) and the four-call sum
-  by 0.73%, with no observed cold/edit/revert median regression. Full delivery
-  gates remain pending; this candidate is unselected. See the
+  by 0.73%, with no observed cold/edit/revert median regression. The qualified
+  optimization is merged in #225; Mac performance is unmeasured. See the
   [paired validation](docs/validation/instant-revert.md#unchanged-run-optional-plan-candidate-156).
+
+- Correct final managed-output completion and build-script scheduling (#215,
+  #174). Final driver stdout stays on Cargo's original pipe and is acknowledged
+  before driver exit; stderr keeps Cargo's diagnostic handling. Optional facts
+  avoid cleaning scripts a successful Current build did not schedule, only under
+  identical inputs and the existing selected dependency closure. The current
+  affected fixture improves 0.896 s to 0.174 s (5.14×). Complete retained Vest
+  data shows no gain: changed-B median is 0.99% slower and unchanged timings
+  overlap; no CPU gain is claimed. Both earlier Vest capture failures remain
+  recorded. Joined Mac and full native qualification, including all four FAST
+  and STANDARD arms, final guards and complete capture, pass; the delivery head
+  still requires its own CI. See [output](docs/validation/managed-output-order.md)
+  and [scheduling](docs/validation/unscheduled-script-cleaning.md) records.
 
 - Restore a previously verified workspace revision on ordinary Linux checks
   within the qualified public alloc/std dependency profile (#163). Restored
@@ -108,6 +121,14 @@ semantic versioning once the API is published.
   every pinned toolchain/runtime; only managed e2e adds the pinned external
   MCP client. Local checks select the same targets. Actual startup improvement
   remains unqualified; required checks and timeouts are unchanged.
+- Avoid repeated conservative cleaning for scripts a successful Current Cargo
+  run did not schedule (#174), preserving observed contracts and all proof
+  checks. Optional facts cover only the existing selected dependency closure;
+  empty scheduling facts do not bind or publish a memo. On the pending #215
+  output correction, all nine native fixture samples
+  pass: unchanged median 1.098 s to 0.217 s (5.06×), versus stock 0.109 s.
+  The implementation remains unselected; real-Vest costs and current full gates
+  are pending. See the [scope and preserved histories](docs/validation/unscheduled-script-cleaning.md).
 
 - Solver-continuation research now records its failed exactness gates,
   preserved source/evidence and minimal timer-state reproduction. No solver

@@ -56,7 +56,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   rejection and its corrected private run remain in the
   [validation record](validation/rvt-progress-option.md).
 
-- **A combined-output disagreement remains unresolved** ([#174](https://github.com/Chelis-Lang/sail/issues/174)).
+- **Historical combined-output disagreement; final-stdout correction qualified** ([#215](https://github.com/Chelis-Lang/sail/issues/215)).
   The native memo candidate's original E2E run reordered the project summary
   and Cargo error relative to plain Verus. Cause unknown; the old trap removed
   the complete temporary streams. A bounded three-arm reproduction matched
@@ -64,6 +64,16 @@ are in the `archive/m7-contracts-f7103bf` tag.
   automatic-daemon loop also matched with complete retained observations;
   neither accepts the memo candidate. The [failure observer](e2e-output-evidence.md)
   preserves bounded original bytes; [evidence and limits](validation/e2e-output-evidence.md).
+  A separate actual-relay fixture demonstrates a causal output race (#215).
+  Its first payload-IPC candidate passed Cargo-like fixtures but bypassed real
+  Cargo diagnostic rendering. The original-pipe stdout-barrier successor passes
+  focused/full Mac checks. Joined Mac759/Clippy and native gate/solver/all E2E
+  plus extra/PR/full FAST and STANDARD, final guards and complete capture pass.
+  The delivery head still requires its own CI and review. Complete retained
+  Vest facts show no gain; both earlier capture failures and the unknown cause
+  of the original missing-stream disagreement remain visible. The barrier
+  guarantees final stdout completion, not a global cross-stream order;
+  [qualification and limits](validation/managed-output-order.md).
 
 - **Changed-check continuation remains unqualified** ([#158](https://github.com/Chelis-Lang/sail/issues/158)).
   Historical fork continuations have raw statistics differences. Three fresh
@@ -105,6 +115,21 @@ are in the `archive/m7-contracts-f7103bf` tag.
   draft asset is unchanged. Cache/package overlap in either direction remains
   an unsupported setup, taking SAIL3112 fallback without Current proof state.
   See the [validation record](validation/cargo-target-context.md).
+
+- **Same-name unscheduled-script cleaning: qualified correction** (#174).
+  The held PR #197 candidate memoizes only successful Current scheduling under
+  identical full inputs. Older Mac/native checks and the 0.94 s to 0.20 s fixture
+  remain historical; its later native E2E ordering failure has unknown cause.
+  The joined implementation passes Mac759/Clippy and full native qualification,
+  including all four FAST/STANDARD arms, final guards and complete capture.
+  Its current affected fixture improves 0.896 → 0.174 s (5.14×) across all nine
+  measured calls; final delivery CI and review remain pending
+  ([record](validation/unscheduled-script-cleaning.md)). The first Vest cohort
+  lost detailed rows; the second retains complete facts showing no speed/CPU
+  gain, while its capture-parent deadline failure stays failed. Source edits and
+  unknown selections, including `--workspace`, still take conservative cleaning.
+  Cargo 1.99 also cleans both versions for an exact package/version ID
+  ([reproduction](../corpus/repros/cargo-clean-package-versions/README.md)).
 
 - **Vest repair is about 1.8× M6, below the 2× figure.** The owner accepted
   M7's speed as measured (ADR 0038 amendment 2026-10-13). On the `13a1176c`

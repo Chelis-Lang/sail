@@ -16,7 +16,9 @@ use sail_api::project::{
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
-use std::io::{Read, Write};
+#[cfg(not(unix))]
+use std::io::Read;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -807,10 +809,23 @@ fn invoke(
     if let Some(base) = &paths.source_base {
         cmd.env(super::shipped::SOURCE_BASE_ENV, base);
     }
+    #[cfg(unix)]
+    let visible = super::visible_output::Receiver::bind()
+        .map_err(|error| Error::new("SAIL3106", error.to_string()))?;
+    cmd.env_remove(super::visible_output::ENV);
+    #[cfg(unix)]
+    cmd.env(super::visible_output::ENV, visible.path());
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-    let (stdout, captured) = match relay(&mut child, out, err, seeded) {
+    let (stdout, captured) = match relay(
+        &mut child,
+        out,
+        err,
+        seeded,
+        #[cfg(unix)]
+        Some(visible),
+    ) {
         Ok(output) => output,
         Err(error) => {
             // A closed stdout or stderr (`| head`) ends the run: stop Cargo.
@@ -848,30 +863,39 @@ fn colour_wanted(terminal: bool, colour_env: bool, cargo_args: &[String]) -> boo
             .any(|a| a == "--color" || a.starts_with("--color="))
 }
 
-/// One piece of Cargo-Verus output.
+/// One original Cargo-Verus pipe record.
 enum Output {
-    /// A line of stdout, with its newline.
     Line(Vec<u8>),
-    /// A chunk of stderr.
     Diagnostics(Vec<u8>),
+    Closed,
 }
 
-/// Relays Cargo-Verus's output as it arrives and returns copies of its
-/// stdout and stderr. Stderr goes to `err` verbatim (Cargo's status lines
-/// and Verus's diagnostics). Stdout carries Cargo's JSON messages, which
-/// Sail keeps, and Verus's own stdout as the driver rebuilt it, which goes
-/// to `out` when the caller shows Verus's output (`sail verify`). A JSON
-/// caller passes no `out`: its stdout holds only its document, and its
-/// stderr is what plain `cargo verus verify` prints there.
+#[cfg(unix)]
+#[path = "output_readers.rs"]
+mod output_readers;
+
+/// Preserve Cargo's original diagnostic rendering and stdout records. Only a
+/// fresh completion marker is removed, after earlier same-pipe records have
+/// been forwarded or intentionally suppressed for a structured caller. The ACK
+/// then allows that driver to exit; it does not order independent Cargo jobs.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Original reader setup, completion handling and unconditional owned cleanup stay together."
+)]
 fn relay(
     child: &mut std::process::Child,
     out: &mut Option<&mut dyn Write>,
     err: &mut dyn Write,
     seeded: &[super::store::Seeded],
+    #[cfg(unix)] visible: Option<super::visible_output::Receiver>,
 ) -> Result<(Vec<u8>, Vec<u8>)> {
+    #[cfg(not(unix))]
     use std::io::BufRead as _;
-    let failed = |e: std::io::Error| Error::new("SAIL3106", e.to_string());
+    let failed = |error: std::io::Error| Error::new("SAIL3106", error.to_string());
     let (tx, rx) = std::sync::mpsc::channel::<std::io::Result<Output>>();
+    #[cfg(unix)]
+    let readers = output_readers::Readers::start(child, &tx).map_err(failed)?;
+    #[cfg(not(unix))]
     let readers = [
         child.stdout.take().map(|pipe| {
             let tx = tx.clone();
@@ -886,77 +910,146 @@ fn relay(
                                 break;
                             }
                         }
-                        Err(e) => {
-                            let _ = tx.send(Err(e));
+                        Err(error) => {
+                            let _ = tx.send(Err(error));
                             break;
                         }
                     }
                 }
+                let _ = tx.send(Ok(Output::Closed));
             })
         }),
         child.stderr.take().map(|mut pipe| {
             let tx = tx.clone();
             std::thread::spawn(move || {
-                let mut buf = vec![0; 65536];
+                let mut buffer = vec![0; 65536];
                 loop {
-                    match pipe.read(&mut buf) {
+                    match pipe.read(&mut buffer) {
                         Ok(0) => break,
-                        Ok(n) => {
-                            if tx.send(Ok(Output::Diagnostics(buf[..n].to_vec()))).is_err() {
+                        Ok(count) => {
+                            if tx
+                                .send(Ok(Output::Diagnostics(buffer[..count].to_vec())))
+                                .is_err()
+                            {
                                 break;
                             }
                         }
-                        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                        Err(e) => {
-                            let _ = tx.send(Err(e));
+                        Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+                        Err(error) => {
+                            let _ = tx.send(Err(error));
                             break;
                         }
                     }
                 }
+                let _ = tx.send(Ok(Output::Closed));
             })
         }),
     ];
     drop(tx);
-    if readers.iter().any(Option::is_none) {
-        return Err(Error::new("SAIL3106", "missing Cargo output pipe"));
-    }
-    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
-    let mut emitted = BTreeSet::new();
-    for piece in rx {
-        match piece.map_err(failed)? {
-            Output::Diagnostics(bytes) => {
-                err.write_all(&bytes).map_err(failed)?;
-                stderr.extend_from_slice(&bytes);
-            }
-            Output::Line(line) => {
-                if let Ok(artifact) = serde_json::from_slice::<Value>(&line)
-                    && let Some(bytes) = seeded_stdout(&artifact, seeded, &mut emitted)
-                {
-                    if let Some(out) = out {
-                        out.write_all(bytes)
-                            .and_then(|()| out.flush())
-                            .map_err(failed)?;
-                    }
-                    stdout.extend_from_slice(bytes);
-                }
-                if let Some(out) = out
-                    && !cargo_message(&line)
-                {
-                    out.write_all(&line)
-                        .and_then(|()| out.flush())
+    let result = (|| {
+        #[cfg(not(unix))]
+        if readers.iter().any(Option::is_none) {
+            return Err(Error::new("SAIL3106", "missing Cargo output pipe"));
+        }
+        let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+        let mut emitted = BTreeSet::new();
+        let mut closed = 0;
+        while closed != 2 {
+            let piece = rx
+                .recv()
+                .map_err(|_| Error::new("SAIL3106", "Cargo output reader disconnected"))?;
+            match piece.map_err(failed)? {
+                Output::Closed => closed += 1,
+                Output::Diagnostics(bytes) => {
+                    err.write_all(&bytes)
+                        .and_then(|()| err.flush())
                         .map_err(failed)?;
+                    stderr.extend_from_slice(&bytes);
                 }
-                stdout.extend_from_slice(&line);
+                Output::Line(line) => {
+                    #[cfg(unix)]
+                    let decoded = visible
+                        .as_ref()
+                        .map(|receiver| receiver.decode(&line))
+                        .transpose()
+                        .map_err(failed)?;
+                    #[cfg(unix)]
+                    let original = decoded
+                        .as_ref()
+                        .map_or(line.as_slice(), |decoded| decoded.bytes.as_slice());
+                    #[cfg(not(unix))]
+                    let original = line.as_slice();
+                    relay_line(original, out, seeded, &mut emitted, &mut stdout)?;
+                    #[cfg(unix)]
+                    if let Some(completion) = decoded.and_then(|decoded| decoded.completion) {
+                        completion.acknowledge().map_err(failed)?;
+                    }
+                }
             }
         }
+        Ok((stdout, stderr))
+    })();
+    drop(rx);
+    // Reject waiting senders before stopping Cargo or joining its readers.
+    #[cfg(unix)]
+    let cleanup = visible.map_or(Ok(()), super::visible_output::Receiver::finish);
+    // Readers stop independently of EOF; invoke retains Cargo kill/wait ownership.
+    #[cfg(unix)]
+    let joined = readers.finish().map_err(failed);
+    // Preserve the previous non-Unix failure path; only Unix readers are cancellable.
+    #[cfg(not(unix))]
+    if result.is_err() {
+        return result;
     }
-    for reader in readers.into_iter().flatten() {
-        reader
-            .join()
-            .map_err(|_| Error::new("SAIL3106", "Cargo output reader failed"))?;
-    }
-    Ok((stdout, stderr))
+    #[cfg(not(unix))]
+    let joined = {
+        let mut result = Ok(());
+        for reader in readers.into_iter().flatten() {
+            if reader.join().is_err() {
+                result = Err(Error::new("SAIL3106", "Cargo output reader failed"));
+            }
+        }
+        result
+    };
+    let output = result?;
+    #[cfg(unix)]
+    cleanup.map_err(failed)?;
+    joined?;
+    Ok(output)
 }
+
+/// Process the exact original Cargo record after removing only its private marker.
+fn relay_line(
+    line: &[u8],
+    out: &mut Option<&mut dyn Write>,
+    seeded: &[super::store::Seeded],
+    emitted: &mut BTreeSet<usize>,
+    stdout: &mut Vec<u8>,
+) -> Result<()> {
+    let failed = |error: std::io::Error| Error::new("SAIL3106", error.to_string());
+    if let Ok(artifact) = serde_json::from_slice::<Value>(line)
+        && let Some(bytes) = seeded_stdout(&artifact, seeded, emitted)
+    {
+        relay_stdout(bytes, out).map_err(failed)?;
+        stdout.extend_from_slice(bytes);
+    }
+    if !cargo_message(line) {
+        relay_stdout(line, out).map_err(failed)?;
+    }
+    stdout.extend_from_slice(line);
+    Ok(())
+}
+
+fn relay_stdout(bytes: &[u8], out: &mut Option<&mut dyn Write>) -> std::io::Result<()> {
+    if let Some(out) = out {
+        out.write_all(bytes).and_then(|()| out.flush())?;
+    }
+    Ok(())
+}
+
+#[cfg(all(test, unix))]
+#[path = "visible_output_tests.rs"]
+mod visible_output_tests;
 
 /// Restores a seeded root's exact output at Cargo's fresh-artifact boundary,
 /// before a dependent target's output. Existing targets and rebuilt units do
@@ -2273,6 +2366,29 @@ pub(crate) fn run_engine_held(
         )
     });
     let before_run = without_generated(&before, generated.as_deref());
+    let schedule_path = paths
+        .build_inputs
+        .with_file_name("unscheduled-scripts.json");
+    let schedule_before = super::build_inputs::family::schedule::Scope {
+        data: &data,
+        snapshot: &before_run,
+        context: &hash,
+        compiler: &compiler_hash,
+    };
+    let skipped_scripts = if paths.reuse {
+        super::build_inputs::family::schedule::load(&schedule_path, &schedule_before)
+    } else {
+        BTreeSet::new()
+    };
+    let (stale_scripts, script_coverage) = if skipped_scripts.is_empty() {
+        (stale_scripts, script_coverage)
+    } else {
+        // Only unobserved scripts may be exempted. Every recorded script's
+        // declared paths/environment and the late family recheck still run.
+        let (stale, _, coverage) =
+            super::build_inputs::stale_after(&paths.build_inputs, &data, &skipped_scripts);
+        (stale, coverage)
+    };
     // Sail's targeted cleans exist to observe what a receipt binds. A run
     // without reuse records no receipt, so Cargo's own freshness decides, as
     // for plain Cargo-Verus.
@@ -2621,6 +2737,23 @@ pub(crate) fn run_engine_held(
     // pre-invocation target revision contained that particular include.
     let pending = completed_receipts(&paths.run, &after_data)?;
     let after_run = without_generated(&after, generated.as_deref());
+    let schedule_after = super::build_inputs::family::schedule::Scope {
+        data: &after_data,
+        snapshot: &after_run,
+        context: &hash,
+        compiler: &compiler_hash,
+    };
+    let scheduling_confirmed = super::build_inputs::family::schedule::confirmed(
+        &skipped_scripts,
+        &schedule_before,
+        &schedule_after,
+        &unscheduled,
+    );
+    if !scheduling_confirmed {
+        // Withhold Current now, and restore original cleanup next time even
+        // if an unexpectedly scheduled unit left the same input bytes.
+        let _ = std::fs::remove_file(&schedule_path);
+    }
     let stamp_after = super::input::mutation_stamp(&after_run);
     let absent = absent.finish();
     let currentness = if !paths.reuse
@@ -2630,6 +2763,7 @@ pub(crate) fn run_engine_held(
         || !source_coverage
         || !absent.complete
         || outside_scope
+        || !scheduling_confirmed
         || !runtime_current(&config.cache, &hash)
         || stamp_before.is_none()
         || stamp_after.is_none()
@@ -2762,6 +2896,21 @@ pub(crate) fn run_engine_held(
     }
     json(&paths.run.join("result.json"), &result)?;
     if result.currentness == Currentness::Current {
+        if exit == Some(0) {
+            super::build_inputs::family::schedule::publish(
+                &schedule_path,
+                &super::build_inputs::family::schedule::Scope {
+                    data: &after_data,
+                    snapshot: &after_run,
+                    context: &result.context_sha256,
+                    compiler: &compiler_hash,
+                },
+                &result.run_id,
+                result.currentness,
+                result.exit_code,
+                &unscheduled,
+            );
+        }
         for (path, receipt) in pending {
             json(&path, &receipt)?;
         }
