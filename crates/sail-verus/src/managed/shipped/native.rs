@@ -153,8 +153,22 @@ impl<'a> Observation<'a> {
     }
 
     /// Called only after the real compiler returns successfully.
-    pub(crate) fn complete(self) {
-        let _ = self.try_complete();
+    pub(crate) fn complete(self, runtime: Option<&super::super::receipts::Runtime>) {
+        if self.try_complete().is_some()
+            && let Some(runtime) = runtime
+            && let Some(pid) = self.reads.pid()
+        {
+            let _ = super::super::retained::publish_shipped_native(
+                runtime,
+                self.call.arguments,
+                &self.cwd,
+                &self.graph,
+                &self.outputs,
+                self.reads.path(),
+                pid,
+                &self.call.key,
+            );
+        }
     }
 
     fn try_complete(&self) -> Option<()> {
@@ -639,7 +653,7 @@ pub(super) fn compiler_matches(call: &Call<'_>) -> bool {
         .is_some_and(|wrapper| launcher_matches(call.plan, Path::new(wrapper)))
 }
 
-fn launcher_matches(plan: &Plan, wrapper: &Path) -> bool {
+pub(super) fn launcher_matches(plan: &Plan, wrapper: &Path) -> bool {
     // Verus consumes Cargo's first rustc-path argument as a compatibility hint;
     // native units run rustc_driver in rust_verify, not that executable.
     wrapper.canonicalize().ok().as_ref() == Some(&plan.native_launcher)

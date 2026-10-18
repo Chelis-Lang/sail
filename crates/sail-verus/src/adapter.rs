@@ -433,6 +433,10 @@ fn driver() -> Result<ExitCode> {
             .and_then(|plan| crate::managed::shipped::native::Observation::begin(plan, &args));
         let mut retained = runtime
             .as_ref()
+            // The shipped observer owns the one actual compiler read endpoint.
+            // It independently certifies the same completed child for retained
+            // use after its fresh native boundary checks succeed.
+            .filter(|_| observation.is_none())
             .and_then(|runtime| crate::managed::retained::Native::begin(runtime, &args, &wrapper));
         let mut command = Command::new(&wrapper);
         let native_args = if let Some(call) = &observation {
@@ -466,7 +470,7 @@ fn driver() -> Result<ExitCode> {
         if actual.success()
             && let Some(observation) = observation
         {
-            observation.complete();
+            observation.complete(runtime.as_ref());
         }
         if let Some(attempt) = &retained {
             let _ = attempt.finish(actual.success());
@@ -572,6 +576,9 @@ fn driver() -> Result<ExitCode> {
             None,
             Some(&replay.origin),
         )?;
+        if let Some(proof) = &replay.retained {
+            let _ = crate::managed::retained::publish_shipped(&runtime, proof);
+        }
         let shown_stdout = crate::verus_stdout::rebuild(&replay.stdout, flags);
         std::fs::write(dir.join("verus.shown-stdout"), &shown_stdout)
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -585,7 +592,10 @@ fn driver() -> Result<ExitCode> {
     let mut retained = runtime
         .retained
         .as_ref()
-        .filter(|_| research != crate::managed::research::Mode::VstdBoundary && plan.is_none())
+        .filter(|retained| {
+            research != crate::managed::research::Mode::VstdBoundary
+                && (plan.is_none() || retained.requested(&identity))
+        })
         .and_then(|plan| {
             (wrapper.canonicalize().ok()? == runtime.original_wrapper.canonicalize().ok()?)
                 .then(|| plan.begin(&runtime, &identity, &launcher_args, &dir))
