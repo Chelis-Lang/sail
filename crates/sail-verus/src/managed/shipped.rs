@@ -56,6 +56,80 @@ pub(crate) fn research_enabled() -> bool {
     std::env::var_os("SAIL_VSTD_BOUNDARY_RESEARCH").is_some_and(|value| value == "1")
 }
 
+/// Portable source names require ordinary Cargo compiler flags. Unsupported
+/// global selectors decline both a new plan and new source-name mapping;
+/// unchanged ordinary warm targets still retain their existing naming map.
+pub(super) fn portable_context(workspace: &Path, args: &[String]) -> bool {
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cargo")));
+    portable_context_inputs(workspace, home.as_deref(), args, std::env::vars_os())
+}
+
+fn portable_context_inputs(
+    workspace: &Path,
+    home: Option<&Path>,
+    args: &[String],
+    mut environment: impl Iterator<Item = (OsString, OsString)>,
+) -> bool {
+    if args
+        .iter()
+        .any(|arg| arg == "--config" || arg.starts_with("--config=") || arg.starts_with("-Z"))
+        || environment
+            .any(|(name, value)| rust_flag_selector(&name.to_string_lossy()) && !value.is_empty())
+    {
+        return false;
+    }
+    super::configuration::paths(workspace, home)
+        .into_iter()
+        .filter(|path| {
+            path.file_name()
+                .is_some_and(|name| name == "config" || name == "config.toml")
+        })
+        .all(|path| {
+            match std::fs::symlink_metadata(&path) {
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return true,
+                Ok(metadata) if metadata.is_file() => {}
+                _ => return false,
+            }
+            let Some(file) = super::dependency_snapshot::open(&path) else {
+                return false;
+            };
+            let mut text = String::new();
+            if file
+                .take(1024 * 1024 + 1)
+                .read_to_string(&mut text)
+                .is_err()
+                || text.len() > 1024 * 1024
+            {
+                return false;
+            }
+            let Ok(config) = toml::from_str::<toml::Value>(&text) else {
+                return false;
+            };
+            config
+                .get("env")
+                .and_then(toml::Value::as_table)
+                .is_none_or(|environment| environment.keys().all(|name| !rust_flag_selector(name)))
+                && config
+                    .get("build")
+                    .and_then(|build| build.get("rustflags"))
+                    .is_none()
+                && config
+                    .get("target")
+                    .and_then(toml::Value::as_table)
+                    .is_none_or(|targets| {
+                        targets
+                            .values()
+                            .all(|target| target.get("rustflags").is_none())
+                    })
+        })
+}
+
+fn rust_flag_selector(name: &str) -> bool {
+    name.ends_with("RUSTFLAGS") || name == "CARGO_ENCODED_RUSTFLAGS"
+}
+
 const TARGET: &str = "@@sail-target@@";
 const REGISTRY: &str = "@@sail-registry@@";
 const PACKAGE: &str = "@@sail-package@@";
@@ -99,6 +173,8 @@ pub(crate) struct Plan {
     native_compiler_sha256: String,
     native_launcher: PathBuf,
     native_launcher_sha256: String,
+    /// Portable compiler source names, independently rechecked before reuse.
+    compiler_source: Option<CompilerSource>,
     /// Per-run admission of a distributed release index, never a proof-key input.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     release: Option<release::Admission>,
@@ -108,6 +184,64 @@ pub(crate) struct Plan {
 struct SolverAdapter {
     path: PathBuf,
     sha256: String,
+}
+
+/// Imported standard-library locations come from compiled sysroot metadata;
+/// these are not additional claims about native `SourceMap` reads. The local
+/// source tree also binds diagnostic quoting and the exact added compiler flag.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct CompilerSource {
+    root: PathBuf,
+    virtual_root: String,
+    tree_sha256: String,
+}
+
+impl CompilerSource {
+    fn capture(sysroot: &Path, virtual_base: &str, registry: &Path, target: &Path) -> Option<Self> {
+        let commit = virtual_base.strip_prefix("/rustc-dev/")?;
+        if commit.len() != 40 || !commit.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return None;
+        }
+        let root = sysroot.join("lib/rustlib/src/rust");
+        if sysroot.canonicalize().ok()?.as_path() != sysroot
+            || root.canonicalize().ok()? != root
+            || root.starts_with(registry)
+            || registry.starts_with(&root)
+            || root.starts_with(target)
+            || target.starts_with(&root)
+            || root.to_str()?.contains(['=', '@'])
+            || root.starts_with("/rustc")
+            || root.starts_with("/rustc-dev")
+        {
+            return None;
+        }
+        // The pinned complete rust-src tree is larger than a registry crate.
+        // Keep that distinct domain bounded without broadening crate admission.
+        let files = bounded_source_tree(&root, 128 * 1024 * 1024)?;
+        if files.is_empty() {
+            return None;
+        }
+        Some(Self {
+            root,
+            virtual_root: format!("/rustc/{commit}"),
+            tree_sha256: digest(&serde_json::to_vec(&files).ok()?),
+        })
+    }
+
+    fn current(&self, plan: &Plan) -> Option<()> {
+        let sysroot =
+            super::runner::verifier_sysroot(&plan.native_launcher, Path::new(".")).ok()?;
+        self.current_at(&sysroot, plan)
+    }
+
+    fn current_at(&self, sysroot: &Path, plan: &Plan) -> Option<()> {
+        let current = Self::capture(sysroot, &plan.virtual_base, &plan.registry, &plan.target)?;
+        (current == *self).then_some(())
+    }
+
+    fn keyed(&self) -> (&str, &str) {
+        (&self.virtual_root, &self.tree_sha256)
+    }
 }
 
 impl SolverAdapter {
@@ -443,7 +577,8 @@ fn rename_root(lock: &str, from: &str, to: &str) -> Option<String> {
 /// identity exists, nothing otherwise.
 #[allow(
     clippy::too_many_arguments,
-    reason = "The actual solver and adapter are distinct byte-bound inputs to this run's existing plan."
+    clippy::too_many_lines,
+    reason = "Keep the complete sequential plan admission together; solver and adapter are distinct byte-bound inputs."
 )]
 pub(crate) fn plan(
     cargo_verus: &Path,
@@ -453,6 +588,8 @@ pub(crate) fn plan(
     solver: &Path,
     shim: &Path,
     run_id: &str,
+    workspace: &Path,
+    cargo_args: &[String],
     metadata: &Value,
 ) -> Option<Plan> {
     let research = research_enabled();
@@ -477,6 +614,9 @@ pub(crate) fn plan(
         .flatten();
     // Do not silently reinterpret conflicting research modes.
     if recording.is_some() && local.is_some() {
+        return None;
+    }
+    if local.is_none() && !portable_context(workspace, cargo_args) {
         return None;
     }
     // Ordinary unchanged runs do not use a shipped build and must not probe
@@ -520,6 +660,21 @@ pub(crate) fn plan(
             sha256: sha256_file(shim)?.0,
         })
     };
+    let compiler_source = if matches!(mode, Mode::MachineLocal { .. }) {
+        None
+    } else {
+        let sysroot = super::runner::verifier_sysroot(
+            &root.join("verus/source/target-verus/release/verus"),
+            Path::new("."),
+        )
+        .ok()?;
+        Some(CompilerSource::capture(
+            &sysroot,
+            &virtual_base,
+            registry,
+            target,
+        )?)
+    };
     Some(Plan {
         mode,
         release,
@@ -539,6 +694,7 @@ pub(crate) fn plan(
         native_launcher: root.join("verus/source/target-verus/release/verus"),
         native_launcher_sha256: sha256_file(&root.join("verus/source/target-verus/release/verus"))?
             .0,
+        compiler_source,
     })
 }
 
@@ -862,20 +1018,25 @@ pub(crate) struct Call<'a> {
 /// Observe every package file, including files that dep-info does not yet
 /// name. Added/removed modules must also invalidate a recorded compilation.
 fn package_tree(root: &Path) -> Option<BTreeMap<String, String>> {
+    bounded_source_tree(root, 64 * 1024 * 1024)
+}
+
+fn bounded_source_tree(root: &Path, byte_limit: u64) -> Option<BTreeMap<String, String>> {
     fn visit(
         root: &Path,
         directory: &Path,
         files: &mut BTreeMap<String, String>,
         bytes: &mut u64,
+        byte_limit: u64,
     ) -> Option<()> {
         for entry in std::fs::read_dir(directory).ok()? {
             let entry = entry.ok()?;
             let kind = entry.file_type().ok()?;
             if kind.is_dir() {
-                visit(root, &entry.path(), files, bytes)?;
+                visit(root, &entry.path(), files, bytes, byte_limit)?;
             } else if kind.is_file() {
                 *bytes = bytes.checked_add(entry.metadata().ok()?.len())?;
-                if *bytes > 64 * 1024 * 1024 || files.len() >= 16_384 {
+                if *bytes > byte_limit || files.len() >= 16_384 {
                     return None;
                 }
                 files.insert(
@@ -889,7 +1050,7 @@ fn package_tree(root: &Path) -> Option<BTreeMap<String, String>> {
         Some(())
     }
     let mut files = BTreeMap::new();
-    visit(root, root, &mut files, &mut 0)?;
+    visit(root, root, &mut files, &mut 0, byte_limit)?;
     Some(files)
 }
 
@@ -1150,6 +1311,9 @@ impl<'a> Call<'a> {
         if let Some(adapter) = &plan.solver_adapter {
             identity["solver_adapter_sha256"] = serde_json::json!(adapter.sha256);
         }
+        if let Some(source) = &plan.compiler_source {
+            identity["compiler_source"] = serde_json::json!(source.keyed());
+        }
         let key = digest(&serde_json::to_vec(&identity).map_err(|e| e.to_string())?);
         let package = format!(
             "{}-{}",
@@ -1333,11 +1497,19 @@ impl<'a> Call<'a> {
     }
 
     fn snapshot_intact(&self) -> bool {
-        self.plan.closure.is_none()
-            || self
-                .native_snapshot
-                .as_ref()
-                .is_some_and(snapshot::Snapshot::intact)
+        self.compiler_source_intact()
+            && (self.plan.closure.is_none()
+                || self
+                    .native_snapshot
+                    .as_ref()
+                    .is_some_and(snapshot::Snapshot::intact))
+    }
+
+    fn compiler_source_intact(&self) -> bool {
+        self.plan
+            .compiler_source
+            .as_ref()
+            .is_none_or(|source| source.current(self.plan).is_some())
     }
 
     /// Request observations only for this actual admitted compiler invocation.
@@ -1446,6 +1618,10 @@ impl<'a> Call<'a> {
         if let Err(reason) = staged {
             let _ = std::fs::remove_dir_all(&staging);
             return Err(reason);
+        }
+        if !self.compiler_source_intact() {
+            let _ = std::fs::remove_dir_all(&staging);
+            return Err("compiler source tree changed before publication".to_owned());
         }
         let entry = out.join(UNITS).join(&self.key);
         if entry.exists() {
@@ -1710,6 +1886,10 @@ impl<'a> Call<'a> {
         }
     }
 
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keep fresh compiler/source, unit, artifact and release admission in one ordered restore boundary."
+    )]
     fn try_serve(&self, entry: &Path) -> std::result::Result<Replay, Refusal> {
         let bytes = self.read_unit_bytes(entry)?;
         let unit: Unit = serde_json::from_slice(&bytes)
@@ -1806,6 +1986,14 @@ impl<'a> Call<'a> {
                 return Err(refusal);
             }
             placed.push(to);
+        }
+        if !self.compiler_source_intact() {
+            for path in &placed {
+                let _ = std::fs::remove_file(path);
+            }
+            return Err(Refusal::Miss(
+                "compiler source tree changed during restore".to_owned(),
+            ));
         }
         Ok(Replay {
             stdout: stdout.into_bytes(),
@@ -2018,6 +2206,71 @@ fn copy_checked(from: &Path, to: &Path, file: &StoredFile) -> std::result::Resul
 mod tests {
     use super::*;
 
+    #[test]
+    fn portable_context_refuses_rustflag_selectors_inline_overrides_and_config_aliases()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let machine = Machine::new("portable-context-guard", |root| Mode::MachineLocal {
+            out: root.join("local"),
+        })?;
+        let workspace = machine.root.join("workspace");
+        let home = machine.root.join("cargo-home");
+        std::fs::create_dir_all(workspace.join(".cargo"))?;
+        std::fs::create_dir_all(&home)?;
+        let check = |args: &[&str], vars: &[(&str, &str)]| {
+            portable_context_inputs(
+                &workspace,
+                Some(&home),
+                &args.iter().map(|arg| (*arg).to_owned()).collect::<Vec<_>>(),
+                vars.iter()
+                    .map(|(name, value)| ((*name).into(), (*value).into())),
+            )
+        };
+        assert!(check(&[], &[]));
+        assert!(check(&[], &[("RUSTFLAGS", "")]));
+        for name in [
+            "RUSTFLAGS",
+            "CARGO_ENCODED_RUSTFLAGS",
+            "CARGO_BUILD_RUSTFLAGS",
+            "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS",
+        ] {
+            assert!(!check(&[], &[(name, "--force-warn=missing_docs")]));
+        }
+        for args in [
+            vec!["--config", "build.rustflags=[]"],
+            vec!["--config=build.rustflags=[]"],
+            vec!["-Z", "config-include"],
+            vec!["-Zconfig-include"],
+        ] {
+            assert!(!check(&args, &[]));
+        }
+        let config = workspace.join(".cargo/config.toml");
+        std::fs::write(&config, "[build]\njobs=2\n")?;
+        assert!(check(&[], &[]));
+        for text in [
+            "[build]\nrustflags=[]\n",
+            "[target.aarch64-apple-darwin]\nrustflags=['--cfg=custom']\n",
+            "[env]\nRUSTFLAGS='--force-warn=missing_docs'\n",
+            "[env]\nCARGO_ENCODED_RUSTFLAGS={value='--cfg=custom',force=true}\n",
+            "[env]\nCARGO_BUILD_RUSTFLAGS={value='--cfg=custom',force=true}\n",
+            "[env]\nCARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS='--cfg=custom'\n",
+            "[build\n",
+        ] {
+            std::fs::write(&config, text)?;
+            assert!(!check(&[], &[]));
+        }
+        std::fs::File::create(&config)?.set_len(1024 * 1024 + 1)?;
+        assert!(!check(&[], &[]));
+        std::fs::remove_file(&config)?;
+        #[cfg(unix)]
+        {
+            let target = machine.root.join("ordinary-config");
+            std::fs::write(&target, "[build]\njobs=2\n")?;
+            std::os::unix::fs::symlink(target, &config)?;
+            assert!(!check(&[], &[]));
+        }
+        Ok(())
+    }
+
     fn plan(root: &Path, mode: Mode) -> Plan {
         Plan {
             mode,
@@ -2033,6 +2286,7 @@ mod tests {
             native_compiler_sha256: "compiler-bytes".into(),
             native_launcher: root.join("verus"),
             native_launcher_sha256: "launcher-bytes".into(),
+            compiler_source: None,
             release: None,
         }
     }
@@ -2725,6 +2979,112 @@ mod tests {
     }
 
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
+
+    #[test]
+    fn compiler_source_binding_is_portable_but_checks_every_fresh_byte() -> TestResult {
+        let mut a = Machine::new("compiler-source-a", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let mut b = Machine::new("compiler-source-b", |root| Mode::Serve {
+            bundle: root.join("bundle"),
+        })?;
+        for machine in [&mut a, &mut b] {
+            machine.plan.virtual_base = format!("/rustc-dev/{}", "1".repeat(40));
+            let root = machine
+                .root
+                .join("sysroot/lib/rustlib/src/rust/library/core/src");
+            std::fs::create_dir_all(&root)?;
+            std::fs::write(root.join("lib.rs"), b"original compiler source")?;
+            let sysroot = machine.root.join("sysroot").canonicalize()?;
+            machine.plan.compiler_source = CompilerSource::capture(
+                &sysroot,
+                &machine.plan.virtual_base,
+                &machine.plan.registry,
+                &machine.plan.target,
+            );
+            assert!(machine.plan.compiler_source.is_some());
+        }
+        assert_eq!(
+            a.plan.compiler_source.as_ref().map(CompilerSource::keyed),
+            b.plan.compiler_source.as_ref().map(CompilerSource::keyed)
+        );
+        let original = a.call(false).ok_or("A call")?.key;
+        assert_eq!(original, b.call(false).ok_or("B call")?.key);
+        let source = b.plan.compiler_source.as_ref().ok_or("B compiler source")?;
+        let sysroot = b.root.join("sysroot").canonicalize()?;
+        assert!(source.current_at(&sysroot, &b.plan).is_some());
+        assert!(
+            source
+                .current_at(&a.root.join("sysroot").canonicalize()?, &b.plan)
+                .is_none()
+        );
+        let file = source.root.join("library/core/src/lib.rs");
+        let modified = std::fs::metadata(&file)?.modified()?;
+        std::fs::write(&file, b"modified compiler source")?;
+        std::fs::File::open(&file)?.set_times(std::fs::FileTimes::new().set_modified(modified))?;
+        assert!(source.current_at(&sysroot, &b.plan).is_none());
+        b.plan.compiler_source = CompilerSource::capture(
+            &sysroot,
+            &b.plan.virtual_base,
+            &b.plan.registry,
+            &b.plan.target,
+        );
+        assert_ne!(original, b.call(false).ok_or("changed B call")?.key);
+        let local = Machine::new("compiler-source-local", |root| Mode::MachineLocal {
+            out: root.join("local"),
+        })?;
+        assert!(local.plan.compiler_source.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_source_binding_refuses_aliases_collisions_and_unknown_trees() -> TestResult {
+        let machine = Machine::new("compiler-source-refusals", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let sysroot = machine.root.canonicalize()?.join("sysroot");
+        let source = sysroot.join("lib/rustlib/src/rust");
+        std::fs::create_dir_all(&source)?;
+        let virtual_base = format!("/rustc-dev/{}", "1".repeat(40));
+        let capture = |base: &str, registry: &Path| {
+            CompilerSource::capture(&sysroot, base, registry, &machine.plan.target)
+        };
+        assert!(
+            capture(&virtual_base, &machine.plan.registry).is_none(),
+            "empty tree"
+        );
+        std::fs::write(source.join("source.rs"), b"compiler source")?;
+        assert!(capture(&virtual_base, &machine.plan.registry).is_some());
+        assert!(capture("/foreign/commit", &machine.plan.registry).is_none());
+        assert!(capture("/rustc-dev/short", &machine.plan.registry).is_none());
+        assert!(capture(&virtual_base, &source).is_none());
+        assert!(capture(&virtual_base, &source.join("nested-registry")).is_none());
+        assert!(
+            CompilerSource::capture(&sysroot, &virtual_base, &machine.plan.registry, &source)
+                .is_none()
+        );
+        #[cfg(unix)]
+        {
+            let alias = machine.root.join("sysroot-alias");
+            std::os::unix::fs::symlink(&sysroot, &alias)?;
+            assert!(
+                CompilerSource::capture(
+                    &alias,
+                    &virtual_base,
+                    &machine.plan.registry,
+                    &machine.plan.target
+                )
+                .is_none()
+            );
+            std::os::unix::fs::symlink("source.rs", source.join("alias.rs"))?;
+            assert!(capture(&virtual_base, &machine.plan.registry).is_none());
+            std::fs::remove_file(source.join("alias.rs"))?;
+        }
+        std::fs::remove_file(source.join("source.rs"))?;
+        std::fs::create_dir(source.join("unreadable-file-shape"))?;
+        assert!(capture(&virtual_base, &machine.plan.registry).is_none());
+        Ok(())
+    }
 
     #[test]
     fn installed_compiler_and_sysroot_bytes_are_portable_but_never_omitted() -> TestResult {

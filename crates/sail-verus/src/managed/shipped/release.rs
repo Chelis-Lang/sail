@@ -500,6 +500,7 @@ mod tests {
                 native_compiler_sha256: "compiler".into(),
                 native_launcher: self.runtime.join("verus/source/target-verus/release/verus"),
                 native_launcher_sha256: "launcher".into(),
+                compiler_source: None,
                 release: Some(self.admit()?),
             })
         }

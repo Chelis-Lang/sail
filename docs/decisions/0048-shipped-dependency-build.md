@@ -51,6 +51,26 @@ consumers. Actual Mac fill, fresh consumer, unchanged receipts and loader
 controls pass with complete native-body equality. Adversarial and wider runtime
 qualification remain required before selection; no Mac timing is claimed.
 
+The changed-Rustup release attempt on `c4b1644f` safely missed: its native
+builtin metadata matched, but the two fresh macro libraries differed and
+contained physical Rustup standard-library source locations. A source-only
+successor proposes mapping exactly the fresh verifier sysroot's
+`lib/rustlib/src/rust` prefix into `/rustc/<pinned compiler commit>` with a real
+compiler flag. It binds the complete local source tree (at most 64 MiB and
+16,384 files), virtual namespace and typed option into portable inputs, and
+rechecks them at native begin/completion and final Record/Serve boundaries.
+Aliases, source/target overlaps, foreign namespaces and incoming remap flags
+decline reuse. This does not rewrite saved artifacts. Imported standard-library
+locations originate compiled sysroot metadata; they are not additional native
+`SourceMap` read claims. The observer still records actual local reads.
+Machine-local keys and options remain unchanged.
+
+This source proposal is not diagnostic or portability qualification. Compiler
+remapping can alter `file!`, panic, backtrace or source-quoting behavior. Actual
+two-root library equality, the old-flag negative, successful consumers and
+literal panic/compile-error diagnostics with and without `RUST_BACKTRACE` must
+pass before another whole staged-archive attempt or selection.
+
 A separate `SAIL_VSTD_BOUNDARY_LOCAL=<directory>` research mode binds both the
 literal and canonical registry root into each key. It never remaps registry
 sources and may retain those literal paths in outputs because reuse cannot
@@ -182,3 +202,26 @@ keys, source/native/compiler-read authorities, literal bytes and safe misses are
 unchanged. One compiler family uses one reuse authority. This is a source-level
 integration decision, not fresh-machine or default-selection acceptance: staged
 first-use on both platforms and changed Rustup roots remains required.
+
+
+The portable native compiler-source candidate additionally limits option
+binding to recorded pinned Cargo compiler shapes. Exact source/feature
+admission and literal invocation keys alone do not establish diagnostic
+parity: a genuinely admitted forced-warning invocation exposed remapped
+registry filenames. Unsupported warning, cfg, codegen/link and global Cargo
+Rustflag contexts must decline portability before added options; their native
+children execute the original arguments. This restriction does not weaken
+fresh compiler-read, graph or final-byte checks and does not change the
+machine-local mode. The source-qualified Mac default/refusal witness passes
+with complete literal diagnostics, while dylib portability and staged release
+first-use acceptance remain pending.
+
+
+The next unqualified Mac-only candidate passes `-C link-arg=-Wl,-S` only to
+admitted portable native proc-macro producers. This prevents ld from recording
+physical Rustup and temporary output N_OSO debug-map paths at link time. The
+exact constructed option participates in the existing native option key;
+consumer arguments, source/read certificates and artifact byte checks remain
+unchanged. Machine-local and Linux options remain byte-identical. No artifact
+is edited after compilation. The guarded real two-root Record/Serve and
+literal diagnostic qualification remains required before use.

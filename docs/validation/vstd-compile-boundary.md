@@ -123,6 +123,23 @@ CLI/comparison results remain, and all final guards and owned cleanup passed.
 The archive and unit artifact bodies were deleted by that failed cohort, so
 no later acceptance may claim to consume that unavailable archive.
 
+The alias fix on `c4b1644f` passes its six selected release-admission filesystem
+tests, release clippy and product builds. Its next actual whole Mac cohort still
+fails safely: factory, archive/public smoke, changed Rustup selection, public
+lock creation, genuine stock and all first-Serve function/scalar/diagnostic
+comparisons pass, but release origin is absent. Factory and consumer keyed
+arguments/environment are identical; builtin metadata is byte-identical.
+The macro dylibs differ. Their consumer bodies contain 71 and 61 literal
+changed-Rustup standard-library source paths. This is a concrete relocation
+hazard, not complete byte-difference attribution: factory macro bodies were
+certificate-only. Whole-result SHA-256:
+`c726e3e5f99ad4f3e5e7797de00da325220a4f76a0b578727defea4321204544`.
+Complete metadata capture (1,092 paths, 26,591,430 unique bytes) and selected
+compiler capture (63 paths, 360,549,453 unique bytes), all final guards and owned
+cleanup pass. The actual archive remains retained. Warm index cases are unrun.
+The compiler-source prefix successor is source-only: no new build, actual
+two-root diagnostic control or whole acceptance is claimed.
+
 The shipped profile's exact `alloc/default/std` authority differs from ordinary
 retained restoration's Linux public `alloc/std` authority. A shipped plan
 suppresses the entire retained plan, including the requested target. A release
@@ -767,3 +784,92 @@ Failed native attempts remain indexed without replacing their scope:
 The [source integration](proof-reuse-integration.md) preserves this path as a
 separate default-off experiment. Enabling both research switches refuses with
 `SAIL3135`; no integrated native acceptance is inferred from this record.
+
+The portable compiler-source candidate also checks its current sysroot from
+native driver processes. Its standalone verifier version query now clears
+only `__VERUS_DRIVER_VIA_CARGO__` on that metadata subprocess; the actual
+native compiler keeps Cargo mode and every original argument. The original
+admission witness incorrectly resolved the outer plan in native mode and
+failed before native admission (result
+`2e2b96d18c5c17445ecb5829081f04d247b4c7d14403c7affdd60a27ea2b9cd6`).
+The later corrected outer-plan/native-child witness exercises this scoped
+query repair; its actual acceptance and limits are recorded below.
+The next witness also exposed the candidate's use of the registry-crate
+64 MiB source bound for the complete 71,933,732-byte pinned rust-src tree;
+it refused before native admission (result
+`d386b44c1055fbfc12412ccbeb9867928ca21b59da75a829e3a2c90fcda9ab0b`).
+The compiler-source domain now has its own 128 MiB bound with the unchanged
+16,384-file limit and full fresh file inventory. Registry admission retains
+its original 64 MiB bound. The actual native admission gate and diagnostic
+counterexample are recorded below.
+
+
+### Portable native diagnostic eligibility candidate
+
+The real outer-plan/native-child witness now reaches actual compiler
+observation with the unchanged official closure. Its default builtin case
+passes admission, exact original/candidate streams and the successful native
+output plus SourceMap certificate checks. Foreign and modified-source cases
+refuse before added options and retain literal original diagnostics. The whole
+witness nevertheless **fails**: an unchanged official builtin invocation with
+`--cap-lints allow --force-warn missing_docs` is admitted and emits different
+registry paths in its warning diagnostics. Result SHA-256:
+`1dea107f0d84bd7b274e87d7d41fb3bb417d9a30cb6c8b5ba413f1393bb1d7d7`.
+This is a source-qualified counterexample to the existing registry remap, not
+proof that the compiler-source remap alone caused it. The earlier direct-flag
+failure remains separate; no diagnostic is normalized or suppressed.
+
+A candidate successor restricts portable native option binding to the
+recorded pinned-package Cargo shapes. It requires capped lint reporting,
+known lint spellings, official feature admission and recorded non-feature cfg,
+check-cfg, codegen and driver-role shapes. Forced warnings, custom cfgs and
+unsupported tuples refuse before added options, observation directories or
+provenance, then compile through the existing original-argument fallback.
+The table comes from 25 successful native output observations across fourteen
+packages; it is an eligibility restriction, not a substitute for fresh source,
+private graph, runtime, compiler-read or output checks. The complete original
+arguments remain keyed. Machine-local behavior is unchanged.
+
+Portable planning and source naming also decline unsupported global Rustflag
+selectors in the environment, Cargo build/target/env configuration or inline
+`--config`/`-Z` contexts. Benign ordinary warm naming remains separate from
+bundle admission. The prospective witness retains the old foreign, modified,
+default and forced-warning cases and adds a custom-cfg case.
+
+That exact successor passes the five-case Mac witness with genuine e536 Verus
+and Rust 1.98.1. Its freshly compiled Sail test artifact also passes the three
+focused guard controls and the actual Rust predicate over all 25 retained
+Cargo tuples, including prettyplease's recorded check-cfg multiplicities.
+The official default compiles successfully and establishes the checked native
+output and actual SourceMap certificate. Both unchanged official unsafe
+invocations still pass source admission but refuse compiler observation before
+added options: forced warnings retain all 440,844 stderr bytes and exit zero;
+the custom cfg retains all 717,616 stderr bytes and exit 101. Foreign and
+modified sources refuse too. All five preserve the complete original exit,
+stdout and stderr. Fresh source/runtime/toolchain/shim guards and owned child
+cleanup pass. Result SHA-256:
+`e72fc30a53a7df226b4ea575578e197aaba7ead28e63a516c11b5b5c1b8ab628`;
+raw audit SHA-256:
+`1d895ab72801b2e446004f2271590fedd1b9a704717432afef56ada87095b22a`.
+The tested production/test patch is
+`6013e25c474f97705d5aebf5f3ff594cd80a2ca65f6d00b518746acce9c21412`
+on `c4b1644f`; the retained actual test binary is
+`1ad50aa700106bfcc16024d1f1cf7c0f8594bd9b21fcae7460575b00ac5a1502`.
+
+This qualifies these native admission/refusal and diagnostic controls only.
+The default output is an rmeta, not a portable native macro library; no
+`ld -S` option is integrated. Whole-host/lint validation, staged release
+first-use, portable dylib identity and performance remain pending. The earlier
+admitted-warning and direct-flag failures are not reclassified.
+
+
+A further source-only candidate adds the constructed Mac native proc-macro
+link option `-C link-arg=-Wl,-S` after the guarded admission above. The earlier
+tiny producer-only direct-compiler matrix passed library identity and all
+unmodified-consumer diagnostic cases, but did not establish the real closed
+Sail/native producer chain. The candidate therefore remains unqualified until
+an actual two-root Record/Serve run retains both roots' native libraries,
+complete source-read certificates, exact full verdict/diagnostic comparisons,
+and release-origin/Current/unchanged provenance. The admitted-warning failure
+and older composed diagnostic failures remain indexed; no consumer remap or
+comparison relaxation follows from the direct-compiler result.

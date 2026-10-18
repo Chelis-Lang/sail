@@ -10,6 +10,13 @@ use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+#[path = "native_shape.rs"]
+mod native_shape;
+
+#[cfg(test)]
+#[path = "admission_actual_tests.rs"]
+mod admission_actual_tests;
+
 #[derive(Serialize, Deserialize)]
 struct Record {
     runtime: String,
@@ -70,6 +77,10 @@ impl<'a> Observation<'a> {
         let generated = generated(&call)?;
         let outputs =
             emitted_outputs(&call).ok_or("unsupported native Cargo library invocation")?;
+        if !matches!(plan.mode, super::Mode::MachineLocal { .. }) && !native_shape::admitted(&call)
+        {
+            return Err("unsupported portable native compiler tuple");
+        }
         if outputs.iter().any(|path| path.try_exists().unwrap_or(true)) {
             return Err("native output already exists before this compiler invocation");
         }
@@ -232,15 +243,42 @@ fn bind_compiler_options(call: &mut Call<'_>) -> Option<Vec<String>> {
         &call.plan.registry,
         &call.plan.virtual_base,
     )?);
+    options.extend(portable_debug_map_options(
+        std::env::consts::OS,
+        &super::argument_value(&call.keyed_args, "--crate-type")?,
+        &call.plan.mode,
+    ));
     // Bind every added option, with the same physical-root substitution used
     // by the rest of this portable invocation key. The actual child receives
     // the literal options above. Machine-local options and keys are unchanged.
-    let keyed_options: Vec<_> = options
+    let mut keyed_options: Vec<_> = options
         .iter()
         .map(|option| call.normalizer.normalize(option))
         .collect();
+    if !matches!(call.plan.mode, super::Mode::MachineLocal { .. }) {
+        let source = call.plan.compiler_source.as_ref()?;
+        source.current(call.plan)?;
+        let (actual, keyed) = compiler_source_options(source)?;
+        options.extend(actual);
+        // This substitution applies only to the option constructed above,
+        // never to caller arguments, environment values or observed sources.
+        keyed_options.extend(keyed);
+    }
     call.key = compiler_option_key(&call.key, &keyed_options)?;
     Some(options)
+}
+
+fn compiler_source_options(source: &super::CompilerSource) -> Option<([String; 2], [String; 2])> {
+    Some((
+        [
+            "--remap-path-prefix".to_owned(),
+            format!("{}={}", source.root.to_str()?, source.virtual_root),
+        ],
+        [
+            "--remap-path-prefix".to_owned(),
+            format!("@@sail-compiler-source@@={}", source.virtual_root),
+        ],
+    ))
 }
 
 fn registry_source_options(
@@ -276,6 +314,20 @@ fn compiler_options(platform: &str, kind: &str, stem: &str) -> Option<Vec<String
         ])
     } else {
         Some(Vec::new())
+    }
+}
+
+// Native producer compilation only: ld otherwise embeds physical Rustup and
+// temporary output paths as N_OSO debug-map entries. This compile-time option
+// changes no consumer argument and is part of the existing literal option key.
+fn portable_debug_map_options(platform: &str, kind: &str, mode: &super::Mode) -> Vec<String> {
+    if platform == "macos"
+        && kind == "proc-macro"
+        && !matches!(mode, super::Mode::MachineLocal { .. })
+    {
+        vec!["-C".to_owned(), "link-arg=-Wl,-S".to_owned()]
+    } else {
+        Vec::new()
     }
 }
 
@@ -747,6 +799,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn compiler_source_options_keep_physical_paths_out_of_the_typed_key()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let first = super::super::CompilerSource {
+            root: "/owned-a/lib/rustlib/src/rust".into(),
+            virtual_root: format!("/rustc/{}", "1".repeat(40)),
+            tree_sha256: "same-source-bytes".into(),
+        };
+        let mut second = first.clone();
+        second.root = "/owned-b/lib/rustlib/src/rust".into();
+        let (actual_a, keyed_a) = compiler_source_options(&first).ok_or("A source options")?;
+        let (actual_b, keyed_b) = compiler_source_options(&second).ok_or("B source options")?;
+        assert_ne!(actual_a, actual_b);
+        assert_eq!(keyed_a, keyed_b);
+        assert!(actual_b[1].starts_with("/owned-b/lib/rustlib/src/rust=/rustc/"));
+        assert_eq!(
+            compiler_option_key("same-inputs", &keyed_a),
+            compiler_option_key("same-inputs", &keyed_b)
+        );
+        second.virtual_root = format!("/rustc/{}", "2".repeat(40));
+        assert_ne!(
+            compiler_option_key("same-inputs", &keyed_a),
+            compiler_option_key(
+                "same-inputs",
+                &compiler_source_options(&second)
+                    .ok_or("other source options")?
+                    .1
+            )
+        );
+        Ok(())
+    }
+
+    #[test]
     fn portable_native_remap_is_mode_scoped_and_part_of_the_key()
     -> Result<(), Box<dyn std::error::Error>> {
         let first = Path::new("/sail-first-registry");
@@ -799,6 +883,42 @@ mod tests {
             )
         );
         Ok(())
+    }
+
+    #[test]
+    fn native_debug_map_option_is_portable_mac_producer_only_and_keyed() {
+        let record = super::super::Mode::Record {
+            out: "record".into(),
+        };
+        let serve = super::super::Mode::Serve {
+            bundle: "serve".into(),
+        };
+        let local = super::super::Mode::MachineLocal {
+            out: "local".into(),
+        };
+        let options = portable_debug_map_options("macos", "proc-macro", &record);
+        assert_eq!(options, ["-C", "link-arg=-Wl,-S"]);
+        assert_eq!(
+            options,
+            portable_debug_map_options("macos", "proc-macro", &serve)
+        );
+        assert_ne!(
+            compiler_option_key("original", &options).as_deref(),
+            Some("original")
+        );
+        for (platform, kind, mode) in [
+            ("linux", "proc-macro", &record),
+            ("macos", "lib", &record),
+            ("macos", "rlib", &serve),
+            ("macos", "proc-macro", &local),
+        ] {
+            let unchanged = portable_debug_map_options(platform, kind, mode);
+            assert_eq!(unchanged, Vec::<String>::new());
+            assert_eq!(
+                compiler_option_key("original", &unchanged).as_deref(),
+                Some("original")
+            );
+        }
     }
 
     #[test]
@@ -897,10 +1017,23 @@ mod tests {
         }
         for override_args in [
             vec!["--sysroot", "/foreign"],
+            vec!["--sysroot", "/toolchain"],
+            vec!["--sysroot=/toolchain"],
             vec!["--remap-path-prefix", "/registry=/foreign"],
             vec!["--remap-path-prefix=/registry=/foreign"],
+            vec![
+                "--remap-path-prefix",
+                "/toolchain/lib/rustlib/src/rust=/rustc/48a229ceaefd4985c50990b14116b6d856af0985",
+            ],
+            vec![
+                "--remap-path-prefix=/toolchain/lib/rustlib/src/rust=/rustc/48a229ceaefd4985c50990b14116b6d856af0985",
+            ],
+            vec!["--remap-path-scope", "object"],
+            vec!["--remap-path-scope=all"],
             vec!["-Z", "codegen-backend=/foreign/backend.so"],
             vec!["-C", "linker=/foreign/cc"],
+            vec!["-C", "link-arg=-Wl,-S"],
+            vec!["-Clink-arg=-Wl,-S"],
             vec!["--emit=link=/foreign/output"],
             vec!["/foreign/second.rs"],
             vec!["-L", "dependency=/foreign"],
@@ -1005,6 +1138,7 @@ mod tests {
             native_compiler_sha256: "compiler".into(),
             native_launcher: root.join("verus"),
             native_launcher_sha256: "launcher".into(),
+            compiler_source: None,
             release: None,
         };
         let read_dir = root.join(".sail-boundary-native-reads/current-run/fixture");

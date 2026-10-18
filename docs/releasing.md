@@ -1,5 +1,13 @@
 # Releasing Sail
 
+The compiler-source portability successor is source-only. Its portable native
+path requires the pinned verifier toolchain's canonical `lib/rustlib/src/rust`
+tree; a missing, aliased or changed tree declines proof reuse and runs genuine
+verification. The candidate binds every source byte and the exact compiler
+remap option. It must still pass literal native panic/backtrace diagnostics and
+real staged first use before release selection. It does not change the
+machine-local research mode or permit user-supplied compiler remap flags.
+
 Sail ships prebuilt binaries for Linux and macOS as GitHub release assets on
 `Chelis-Lang/sail`. Each archive includes the repair engine runtime. Until
 the owner's open-source release, every release stays a **draft**: the release
@@ -275,3 +283,22 @@ whole run, including the requested target. No combined-provider authority or
 returned-A speedup is inferred for a newly distributed proof bundle; Linux
 release acceptance must check A/B/A and the existing qualified Vest profile
 under the installed bundle's source mapping.
+
+
+The unqualified compiler-source portability candidate also requires ordinary
+pinned Cargo native compiler shapes. Forced warnings, custom non-feature cfgs,
+unsupported compiler/codegen/linker inputs and global Rustflag overrides
+(including Cargo configuration and inline `--config`) decline portable
+recording/serving and use genuine verification. The real admitted
+forced-warning diagnostic mismatch remains indexed in the
+[boundary validation record](validation/vstd-compile-boundary.md); the
+eligibility repair passes its source-qualified Mac native admission/refusal
+controls, but has not yet qualified a release.
+
+
+The guarded Mac compiler-source candidate additionally proposes compile-time
+native proc-macro debug-map removal for portable Record/Serve only. This is not
+a selected release option: real closed-source producer provenance, literal
+library identity across two Rustup roots and unmodified consumer diagnostic
+checks remain pending. It changes neither consumer flags nor the Linux or
+machine-local modes, and never rewrites a compiled library.
