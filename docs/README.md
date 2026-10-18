@@ -38,6 +38,8 @@ The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 [Output failure evidence](e2e-output-evidence.md) describes bounded original
 E2E streams and producer records retained for diagnosis.
+[Managed output ordering](validation/managed-output-order.md) tracks the
+acknowledged-driver candidate and its remaining correctness and cost checks.
 [Socket fixture retirement](validation/mcp-fixture-retirement.md) records the
 MCP test-server cancellation regression and its remaining validation scope.
 [Solver-continuation findings](reports/2026-10-16-solver-snapshots.md) and their
@@ -134,3 +136,7 @@ main checks.
 The [spec formal naming qualification](validation/spec-parameter-names.md) records
 the qualified binder fix, both platform artifacts, completed native gates and
 preserved earlier failures.
+
+[Unscheduled-script validation](validation/unscheduled-script-cleaning.md) records
+the qualified #174/#215 implementation, its nine-sample targeted gain, complete
+native/Mac gates, unchanged Vest costs and preserved historical failures.
