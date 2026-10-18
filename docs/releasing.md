@@ -117,6 +117,14 @@ process census (`procps` on Linux). The CI image provides it and the pinned
 `rust-src` component needed by the proof-bundle factory. These producer
 prerequisites do not establish a fresh consumer installation measurement.
 A cancelled recording never installs a dependency bundle or release index.
+The ignored actual-compiler witness entrypoints are separate from the pinned-Z3
+solver suite. Their owning bounded acceptance runner invokes
+`ci/run.sh boundary-witness admission` with `SAIL_ACTUAL_ADMISSION_CONFIG`, or
+`ci/run.sh boundary-witness shapes` with `SAIL_ACTUAL_NATIVE_TUPLES`. These commands
+remain local-only and require the frozen actual inputs; missing inputs fail.
+The ordinary solver step runs the solver, cache and fault-injection tests and
+does not manufacture compiler-witness inputs. Passing that step does not qualify
+the separate compiler witnesses.
 The adjacent evidence also names the actual recorder PID, owned scratch root and
 UID for external resource accounting; this metadata is not proof authority.
 Before deleting scratch, it also retains a bounded, content-once index of native
