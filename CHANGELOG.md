@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Prepare an unchanged-run optimization that skips optional proof-archive planning
+  for already covered receipt revisions (#156). A 36-call native Vest screen
+  lowers unchanged checks from 0.895 s to 0.544 s (39.29%) and the four-call sum
+  by 0.73%, with no observed cold/edit/revert median regression. Full delivery
+  gates remain pending; this candidate is unselected. See the
+  [paired validation](docs/validation/instant-revert.md#unchanged-run-optional-plan-candidate-156).
+
 - Restore a previously verified workspace revision on ordinary Linux checks
   within the qualified public alloc/std dependency profile (#163). Restored
   results preserve their original establishing run and require fresh Current
