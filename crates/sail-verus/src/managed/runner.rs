@@ -861,55 +861,39 @@ fn colour_wanted(terminal: bool, colour_env: bool, cargo_args: &[String]) -> boo
             .any(|a| a == "--color" || a.starts_with("--color="))
 }
 
-/// One piece of Cargo-Verus output.
+/// One original Cargo-Verus pipe record.
 enum Output {
-    /// A line of stdout, with its newline.
     Line(Vec<u8>),
-    /// A chunk of stderr on platforms without acknowledged driver output.
-    #[cfg(not(unix))]
     Diagnostics(Vec<u8>),
-    #[cfg(unix)]
-    Visible(super::visible_output::Frame),
     Closed,
 }
 
-/// Relays Cargo-Verus's output as it arrives and returns its original pipe
-/// stdout and combined stderr. Acknowledged driver stdout stays in each
-/// invocation's `verus.shown-stdout`, separate from Cargo's JSON records.
-/// Stderr goes to `err` verbatim (Cargo's status lines
-/// and Verus's diagnostics). Stdout carries Cargo's JSON messages, which
-/// Sail keeps, and Verus's own stdout as the driver rebuilt it, which goes
-/// to `out` when the caller shows Verus's output (`sail verify`). A JSON
-/// caller passes no `out`: its stdout holds only its document, and its
-/// stderr is what plain `cargo verus verify` prints there.
+#[cfg(unix)]
+#[path = "output_readers.rs"]
+mod output_readers;
+
+/// Preserve Cargo's original diagnostic rendering and stdout records. Only a
+/// fresh completion marker is removed, after earlier same-pipe records have
+/// been forwarded or intentionally suppressed for a structured caller. The ACK
+/// then allows that driver to exit; it does not order independent Cargo jobs.
 #[allow(
     clippy::too_many_lines,
-    reason = "A single public writer serializes acknowledged frames and Cargo diagnostics."
+    reason = "Original reader setup, completion handling and unconditional owned cleanup stay together."
 )]
 fn relay(
     child: &mut std::process::Child,
     out: &mut Option<&mut dyn Write>,
     err: &mut dyn Write,
     seeded: &[super::store::Seeded],
-    #[cfg(unix)] mut visible: Option<super::visible_output::Receiver>,
+    #[cfg(unix)] visible: Option<super::visible_output::Receiver>,
 ) -> Result<(Vec<u8>, Vec<u8>)> {
+    #[cfg(not(unix))]
     use std::io::BufRead as _;
-    let failed = |e: std::io::Error| Error::new("SAIL3106", e.to_string());
-    #[cfg(unix)]
-    let mut diagnostics = child
-        .stderr
-        .take()
-        .ok_or_else(|| Error::new("SAIL3106", "missing Cargo diagnostic pipe"))?;
-    #[cfg(unix)]
-    {
-        let flags = rustix::fs::fcntl_getfl(&diagnostics)
-            .map_err(std::io::Error::from)
-            .map_err(failed)?;
-        rustix::fs::fcntl_setfl(&diagnostics, flags | rustix::fs::OFlags::NONBLOCK)
-            .map_err(std::io::Error::from)
-            .map_err(failed)?;
-    }
+    let failed = |error: std::io::Error| Error::new("SAIL3106", error.to_string());
     let (tx, rx) = std::sync::mpsc::channel::<std::io::Result<Output>>();
+    #[cfg(unix)]
+    let readers = output_readers::Readers::start(child, &tx).map_err(failed)?;
+    #[cfg(not(unix))]
     let readers = [
         child.stdout.take().map(|pipe| {
             let tx = tx.clone();
@@ -924,8 +908,8 @@ fn relay(
                                 break;
                             }
                         }
-                        Err(e) => {
-                            let _ = tx.send(Err(e));
+                        Err(error) => {
+                            let _ = tx.send(Err(error));
                             break;
                         }
                     }
@@ -933,22 +917,24 @@ fn relay(
                 let _ = tx.send(Ok(Output::Closed));
             })
         }),
-        #[cfg(not(unix))]
         child.stderr.take().map(|mut pipe| {
             let tx = tx.clone();
             std::thread::spawn(move || {
-                let mut buf = vec![0; 65536];
+                let mut buffer = vec![0; 65536];
                 loop {
-                    match pipe.read(&mut buf) {
+                    match pipe.read(&mut buffer) {
                         Ok(0) => break,
-                        Ok(n) => {
-                            if tx.send(Ok(Output::Diagnostics(buf[..n].to_vec()))).is_err() {
+                        Ok(count) => {
+                            if tx
+                                .send(Ok(Output::Diagnostics(buffer[..count].to_vec())))
+                                .is_err()
+                            {
                                 break;
                             }
                         }
-                        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                        Err(e) => {
-                            let _ = tx.send(Err(e));
+                        Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+                        Err(error) => {
+                            let _ = tx.send(Err(error));
                             break;
                         }
                     }
@@ -957,411 +943,111 @@ fn relay(
             })
         }),
     ];
-    #[cfg(unix)]
-    if let Some(visible) = &mut visible {
-        let tx = tx.clone();
-        visible
-            .start(move |frame| tx.send(frame.map(Output::Visible)).is_ok())
-            .map_err(failed)?;
-    }
     drop(tx);
-    if readers.iter().any(Option::is_none) {
-        return Err(Error::new("SAIL3106", "missing Cargo output pipe"));
-    }
-    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
-    let mut emitted = BTreeSet::new();
-    let mut closed = 0;
-    #[cfg(unix)]
-    let mut diagnostics_closed = false;
-    #[cfg(unix)]
-    let mut emitting: Option<(PathBuf, super::visible_output::Stream, Instant)> = None;
-    #[cfg(unix)]
-    let mut deferred_stdout: Vec<Vec<u8>> = Vec::new();
-    loop {
-        #[cfg(unix)]
-        {
-            if emitting
-                .as_ref()
-                .is_some_and(|(_, _, last)| last.elapsed() >= std::time::Duration::from_secs(30))
-            {
-                return Err(Error::new(
-                    "SAIL3106",
-                    "driver output stopped before its final chunk",
-                ));
-            }
-            if !diagnostics_closed && emitting.is_none() {
-                diagnostics_closed =
-                    drain_diagnostics(&mut diagnostics, err, &mut stderr).map_err(failed)?;
-            }
-            if closed == 1 && diagnostics_closed && emitting.is_none() {
-                break;
+    let result = (|| {
+        #[cfg(not(unix))]
+        if readers.iter().any(Option::is_none) {
+            return Err(Error::new("SAIL3106", "missing Cargo output pipe"));
+        }
+        let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+        let mut emitted = BTreeSet::new();
+        let mut closed = 0;
+        while closed != 2 {
+            let piece = rx
+                .recv()
+                .map_err(|_| Error::new("SAIL3106", "Cargo output reader disconnected"))?;
+            match piece.map_err(failed)? {
+                Output::Closed => closed += 1,
+                Output::Diagnostics(bytes) => {
+                    err.write_all(&bytes)
+                        .and_then(|()| err.flush())
+                        .map_err(failed)?;
+                    stderr.extend_from_slice(&bytes);
+                }
+                Output::Line(line) => {
+                    #[cfg(unix)]
+                    let decoded = visible
+                        .as_ref()
+                        .map(|receiver| receiver.decode(&line))
+                        .transpose()
+                        .map_err(failed)?;
+                    #[cfg(unix)]
+                    let original = decoded
+                        .as_ref()
+                        .map_or(line.as_slice(), |decoded| decoded.bytes.as_slice());
+                    #[cfg(not(unix))]
+                    let original = line.as_slice();
+                    relay_line(original, out, seeded, &mut emitted, &mut stdout)?;
+                    #[cfg(unix)]
+                    if let Some(completion) = decoded.and_then(|decoded| decoded.completion) {
+                        completion.acknowledge().map_err(failed)?;
+                    }
+                }
             }
         }
-        let piece = match rx.recv_timeout(std::time::Duration::from_millis(10)) {
-            Ok(piece) => piece,
-            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
-            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                #[cfg(unix)]
-                if closed == 1 {
-                    // A legacy caller may have no visible receiver; drain its
-                    // remaining diagnostic pipe without spinning on a closed queue.
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                    continue;
-                }
-                return Err(Error::new("SAIL3106", "Cargo output reader disconnected"));
-            }
-        };
-        match piece.map_err(failed)? {
-            Output::Closed => {
-                closed += 1;
-                // Every driver retains Cargo's pipes until exit; its final ACK
-                // precedes that exit. Both EOFs therefore imply no pending write.
-                #[cfg(not(unix))]
-                if closed == 2 {
-                    break;
-                }
-            }
-            #[cfg(unix)]
-            Output::Visible(frame) => {
-                // Cargo wrote its preceding status lines before starting the
-                // driver. Read that same pipe here rather than racing a second
-                // reader thread. Later Cargo errors cannot exist until this
-                // frame is delivered and acknowledged and the driver exits.
-                if let Some((peer, kind, _)) = &emitting {
-                    if peer != frame.sender() || *kind != frame.kind {
-                        return Err(Error::new(
-                            "SAIL3106",
-                            "driver output changed sender mid-write",
-                        ));
-                    }
-                } else {
-                    diagnostics_closed =
-                        drain_diagnostics(&mut diagnostics, err, &mut stderr).map_err(failed)?;
-                }
-                match frame.kind {
-                    super::visible_output::Stream::Stdout => {
-                        if let Some(out) = out {
-                            out.write_all(&frame.bytes)
-                                .and_then(|()| out.flush())
-                                .map_err(failed)?;
-                        }
-                    }
-                    super::visible_output::Stream::Stderr => {
-                        err.write_all(&frame.bytes)
-                            .and_then(|()| err.flush())
-                            .map_err(failed)?;
-                        stderr.extend_from_slice(&frame.bytes);
-                    }
-                }
-                emitting = (!frame.final_chunk)
-                    .then(|| (frame.sender().to_owned(), frame.kind, Instant::now()));
-                if frame.final_chunk {
-                    for bytes in deferred_stdout.drain(..) {
-                        relay_stdout(&bytes, out, None).map_err(failed)?;
-                    }
-                }
-                frame.acknowledge().map_err(failed)?;
-            }
-            #[cfg(not(unix))]
-            Output::Diagnostics(bytes) => {
-                err.write_all(&bytes).map_err(failed)?;
-                stderr.extend_from_slice(&bytes);
-            }
-            Output::Line(line) => {
-                if let Ok(artifact) = serde_json::from_slice::<Value>(&line)
-                    && let Some(bytes) = seeded_stdout(&artifact, seeded, &mut emitted)
-                {
-                    relay_stdout(
-                        bytes,
-                        out,
-                        #[cfg(unix)]
-                        emitting.is_some().then_some(&mut deferred_stdout),
-                    )
-                    .map_err(failed)?;
-                    stdout.extend_from_slice(bytes);
-                }
-                if !cargo_message(&line) {
-                    relay_stdout(
-                        &line,
-                        out,
-                        #[cfg(unix)]
-                        emitting.is_some().then_some(&mut deferred_stdout),
-                    )
-                    .map_err(failed)?;
-                }
-                stdout.extend_from_slice(&line);
-            }
-        }
-    }
+        Ok((stdout, stderr))
+    })();
     drop(rx);
+    // Reject waiting senders before stopping Cargo or joining its readers.
     #[cfg(unix)]
-    if let Some(visible) = visible {
-        visible.finish().map_err(failed)?;
+    let cleanup = visible.map_or(Ok(()), super::visible_output::Receiver::finish);
+    // Readers stop independently of EOF; invoke retains Cargo kill/wait ownership.
+    #[cfg(unix)]
+    let joined = readers.finish().map_err(failed);
+    // Preserve the previous non-Unix failure path; only Unix readers are cancellable.
+    #[cfg(not(unix))]
+    if result.is_err() {
+        return result;
     }
-    for reader in readers.into_iter().flatten() {
-        reader
-            .join()
-            .map_err(|_| Error::new("SAIL3106", "Cargo output reader failed"))?;
-    }
-    Ok((stdout, stderr))
+    #[cfg(not(unix))]
+    let joined = {
+        let mut result = Ok(());
+        for reader in readers.into_iter().flatten() {
+            if reader.join().is_err() {
+                result = Err(Error::new("SAIL3106", "Cargo output reader failed"));
+            }
+        }
+        result
+    };
+    let output = result?;
+    #[cfg(unix)]
+    cleanup.map_err(failed)?;
+    joined?;
+    Ok(output)
 }
 
-/// Keep preserved pipe stdout outside an acknowledged driver's whole write.
-fn relay_stdout(
-    bytes: &[u8],
+/// Process the exact original Cargo record after removing only its private marker.
+fn relay_line(
+    line: &[u8],
     out: &mut Option<&mut dyn Write>,
-    #[cfg(unix)] deferred: Option<&mut Vec<Vec<u8>>>,
-) -> std::io::Result<()> {
+    seeded: &[super::store::Seeded],
+    emitted: &mut BTreeSet<usize>,
+    stdout: &mut Vec<u8>,
+) -> Result<()> {
+    let failed = |error: std::io::Error| Error::new("SAIL3106", error.to_string());
+    if let Ok(artifact) = serde_json::from_slice::<Value>(line)
+        && let Some(bytes) = seeded_stdout(&artifact, seeded, emitted)
+    {
+        relay_stdout(bytes, out).map_err(failed)?;
+        stdout.extend_from_slice(bytes);
+    }
+    if !cargo_message(line) {
+        relay_stdout(line, out).map_err(failed)?;
+    }
+    stdout.extend_from_slice(line);
+    Ok(())
+}
+
+fn relay_stdout(bytes: &[u8], out: &mut Option<&mut dyn Write>) -> std::io::Result<()> {
     if let Some(out) = out {
-        #[cfg(unix)]
-        if let Some(deferred) = deferred {
-            deferred.push(bytes.to_vec());
-            return Ok(());
-        }
         out.write_all(bytes).and_then(|()| out.flush())?;
     }
     Ok(())
 }
 
-/// Drain already committed Cargo diagnostics before acknowledging driver output.
-#[cfg(unix)]
-fn drain_diagnostics(
-    pipe: &mut impl Read,
-    err: &mut dyn Write,
-    captured: &mut Vec<u8>,
-) -> std::io::Result<bool> {
-    let mut buffer = vec![0; 65536];
-    loop {
-        match pipe.read(&mut buffer) {
-            Ok(0) => return Ok(true),
-            Ok(count) => {
-                err.write_all(&buffer[..count])?;
-                err.flush()?;
-                captured.extend_from_slice(&buffer[..count]);
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
-            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => return Ok(false),
-            Err(error) => return Err(error),
-        }
-    }
-}
-
 #[cfg(all(test, unix))]
-#[path = "visible_concurrency_tests.rs"]
-mod visible_concurrency_tests;
-
-#[cfg(all(test, unix))]
-#[path = "visible_timeout_tests.rs"]
-mod visible_timeout_tests;
-
-#[cfg(all(test, unix))]
-mod visible_output_tests {
-    use super::*;
-    use std::sync::{Arc, Mutex};
-
-    struct Scratch(PathBuf);
-    impl Drop for Scratch {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
-
-    #[derive(Clone)]
-    struct Sink(Arc<Mutex<Vec<u8>>>);
-    impl Write for Sink {
-        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-            self.0
-                .lock()
-                .map_err(|_| std::io::Error::other("sink poisoned"))?
-                .extend_from_slice(bytes);
-            Ok(bytes.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
-
-    struct Broken;
-    impl Write for Broken {
-        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
-            Err(std::io::ErrorKind::BrokenPipe.into())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Err(std::io::ErrorKind::BrokenPipe.into())
-        }
-    }
-
-    #[derive(Clone, Copy)]
-    enum Destination {
-        Combined,
-        Split,
-    }
-
-    // A genuine Cargo-like producer writes its status and a large filtered
-    // JSON record before starting a driver, then waits for the driver's
-    // acknowledged visible writes before emitting its final error.
-    const PRODUCER: &str = r#"
-import os,pathlib,sys,time
-ready,done=map(pathlib.Path,sys.argv[1:])
-os.write(2,b'before\n')
-sys.stdout.buffer.write(b'{"reason":"compiler-artifact","padding":"'+b'x'*65536+b'"}\n')
-sys.stdout.buffer.flush()
-ready.write_bytes(b'ready')
-end=time.monotonic()+15
-while not done.exists():
-    if time.monotonic()>=end:raise SystemExit(9)
-    time.sleep(.001)
-os.write(2,b'after\n')
-"#;
-
-    #[allow(
-        clippy::too_many_lines,
-        reason = "Keep the actual child, production sender, public writer and cleanup in one regression."
-    )]
-    fn exercise(
-        destination: Destination,
-        reverse: bool,
-        hidden: bool,
-        broken: bool,
-    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
-        use super::super::visible_output::{Receiver, Stream, send_test};
-        let unique = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
-        let root = Scratch(
-            std::env::temp_dir().join(format!("sail-visible-test-{}-{unique}", std::process::id())),
-        );
-        std::fs::create_dir(&root.0)?;
-        let ready = root.0.join("ready");
-        let done = root.0.join("done");
-        let receiver = Receiver::bind()?;
-        let endpoint = receiver.path().to_owned();
-        let directory = endpoint
-            .parent()
-            .ok_or("missing receiver directory")?
-            .to_owned();
-        let mut child = Command::new("python3")
-            .args(["-c", PRODUCER])
-            .arg(&ready)
-            .arg(&done)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
-        // Cross several real datagram boundaries, including non-UTF-8 bytes.
-        let shown = [
-            b"verification results:: ".as_slice(),
-            &[0, 255],
-            &vec![b'v'; 3100],
-            b"\n",
-        ]
-        .concat();
-        let diagnostic = b"error: proof failed\n".to_vec();
-        let producer_shown = shown.clone();
-        let producer_diagnostic = diagnostic.clone();
-        let sender = std::thread::spawn(move || -> std::io::Result<bool> {
-            let deadline = Instant::now() + std::time::Duration::from_secs(15);
-            while !ready.exists() {
-                if Instant::now() >= deadline {
-                    return Err(std::io::Error::other("producer did not become ready"));
-                }
-                std::thread::sleep(std::time::Duration::from_millis(1));
-            }
-            let send = || {
-                if reverse {
-                    send_test(&endpoint, Stream::Stderr, &producer_diagnostic)?;
-                    send_test(&endpoint, Stream::Stdout, &producer_shown)
-                } else {
-                    send_test(&endpoint, Stream::Stdout, &producer_shown)?;
-                    send_test(&endpoint, Stream::Stderr, &producer_diagnostic)
-                }
-            };
-            let result = send();
-            std::fs::write(done, b"delivered-or-refused")?;
-            Ok(result.is_ok())
-        });
-        let output = Arc::new(Mutex::new(Vec::new()));
-        let combined = matches!(destination, Destination::Combined);
-        let errors = if combined {
-            Arc::clone(&output)
-        } else {
-            Arc::new(Mutex::new(Vec::new()))
-        };
-        let mut public_out = Sink(Arc::clone(&output));
-        let mut public_err = Sink(Arc::clone(&errors));
-        let mut broken_out = Broken;
-        let writer: &mut dyn Write = if broken {
-            &mut broken_out
-        } else {
-            &mut public_out
-        };
-        let mut selected = (!hidden).then_some(writer);
-        let observed = relay(
-            &mut child,
-            &mut selected,
-            &mut public_err,
-            &[],
-            Some(receiver),
-        );
-        let sent = sender.join().map_err(|_| "sender thread failed")??;
-        if observed.is_err() {
-            // Match invoke's failure path: a closed public pipe stops Cargo.
-            // Its own later write may already have received BrokenPipe.
-            let _ = child.kill();
-        }
-        let exit = child.wait()?;
-        assert!(!directory.exists(), "owned endpoint directory leaked");
-        if broken {
-            assert!(observed.is_err());
-            assert!(!sent, "failed public write must not receive ACK");
-            assert!(!exit.success(), "failed relay must stop its producer");
-            return Ok(());
-        }
-        assert!(exit.success(), "Cargo-like producer did not finish");
-        let (captured_out, captured_err) = observed?;
-        assert!(sent);
-        let mut expected_pipe = br#"{"reason":"compiler-artifact","padding":""#.to_vec();
-        expected_pipe.extend(std::iter::repeat_n(b'x', 65536));
-        expected_pipe.extend_from_slice(b"\"}\n");
-        assert_eq!(
-            captured_out, expected_pipe,
-            "visible chunks must not corrupt Cargo's JSON capture"
-        );
-        let expected_err = [b"before\n".as_slice(), &diagnostic, b"after\n"].concat();
-        assert_eq!(captured_err, expected_err);
-        let actual_out = output.lock().map_err(|_| "output poisoned")?.clone();
-        if combined {
-            let visible = if reverse {
-                [b"before\n".as_slice(), &diagnostic, &shown, b"after\n"].concat()
-            } else {
-                [b"before\n".as_slice(), &shown, &diagnostic, b"after\n"].concat()
-            };
-            assert_eq!(actual_out, visible);
-        } else {
-            assert_eq!(actual_out, if hidden { Vec::new() } else { shown });
-            assert_eq!(*errors.lock().map_err(|_| "errors poisoned")?, expected_err);
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn acknowledged_writes_preserve_both_causal_orders()
-    -> std::result::Result<(), Box<dyn std::error::Error>> {
-        exercise(Destination::Combined, false, false, false)?;
-        exercise(Destination::Combined, true, false, false)
-    }
-
-    #[test]
-    fn acknowledged_writes_preserve_split_bytes_and_json_suppression()
-    -> std::result::Result<(), Box<dyn std::error::Error>> {
-        exercise(Destination::Split, false, false, false)?;
-        exercise(Destination::Split, true, true, false)
-    }
-
-    #[test]
-    fn broken_public_sink_refuses_ack_and_cleans_endpoint()
-    -> std::result::Result<(), Box<dyn std::error::Error>> {
-        exercise(Destination::Split, false, false, true)
-    }
-}
+#[path = "visible_output_tests.rs"]
+mod visible_output_tests;
 
 /// Restores a seeded root's exact output at Cargo's fresh-artifact boundary,
 /// before a dependent target's output. Existing targets and rebuilt units do

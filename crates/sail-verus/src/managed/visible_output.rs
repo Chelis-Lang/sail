@@ -1,33 +1,33 @@
-//! Acknowledged visible driver output, separate from Cargo's JSON pipe.
+//! Complete final driver stdout through Cargo before allowing the driver to exit.
 //!
-//! Only the runner's public writer acknowledges delivery. A driver therefore
-//! cannot exit before its visible bytes, and subsequent Cargo errors cannot
-//! overtake them. A per-emit lock and final-chunk marker preserve whole writes
-//! across datagrams, including concurrent drivers. Frames never authorize
-//! metadata, verdicts or proof reuse.
+//! Stderr always uses its original pipe, including Cargo's diagnostic rendering.
+//! The private socket carries acknowledgments only; it never carries user bytes
+//! or authorizes metadata, verdicts, freshness or proof reuse.
 
 use std::io::{self, Write};
 
 /// Private managed plumbing, excluded from compiler/proof environment keys.
 pub(crate) const ENV: &str = "SAIL_MANAGED_VISIBLE_OUTPUT";
 
-/// The original public destination of an exact driver write.
+/// The original destination of a driver write.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Stream {
     Stdout,
     Stderr,
 }
 
-/// Write exact bytes, waiting for public delivery in a managed invocation.
+/// Preserve the original pipe, acknowledging only final driver stdout.
 pub(crate) fn emit(kind: Stream, bytes: &[u8]) -> io::Result<()> {
-    #[cfg(unix)]
-    if let Some(path) = std::env::var_os(ENV) {
-        return unix::send(std::path::Path::new(&path), kind, bytes);
-    }
     match kind {
-        Stream::Stdout => io::stdout()
-            .write_all(bytes)
-            .and_then(|()| io::stdout().flush()),
+        Stream::Stdout => {
+            #[cfg(unix)]
+            if let Some(path) = std::env::var_os(ENV) {
+                return unix::send(std::path::Path::new(&path), bytes, &mut io::stdout());
+            }
+            io::stdout()
+                .write_all(bytes)
+                .and_then(|()| io::stdout().flush())
+        }
         Stream::Stderr => io::stderr()
             .write_all(bytes)
             .and_then(|()| io::stderr().flush()),
@@ -35,32 +35,33 @@ pub(crate) fn emit(kind: Stream, bytes: &[u8]) -> io::Result<()> {
 }
 
 #[cfg(unix)]
-pub(crate) use unix::{Frame, Receiver};
+pub(crate) use unix::Receiver;
 
-/// Exercise the production sender without changing process-global environment.
+/// Exercise the complete production sender through an owned original-pipe writer.
 #[cfg(all(test, unix))]
-pub(crate) fn send_test(path: &std::path::Path, kind: Stream, bytes: &[u8]) -> io::Result<()> {
-    unix::send(path, kind, bytes)
+pub(crate) fn send_test(
+    path: &std::path::Path,
+    bytes: &[u8],
+    writer: &mut dyn Write,
+) -> io::Result<()> {
+    unix::send(path, bytes, writer)
 }
 
 #[cfg(unix)]
 mod unix {
-    use super::Stream;
     use std::fs::{File, OpenOptions, TryLockError};
-    use std::io;
+    use std::io::{self, Read, Write};
     use std::os::unix::fs::DirBuilderExt as _;
     use std::os::unix::fs::FileTypeExt as _;
-    use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _};
+    use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _, PermissionsExt as _};
     use std::os::unix::net::UnixDatagram;
     use std::path::{Path, PathBuf};
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-    use std::thread::JoinHandle;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{Duration, Instant};
 
-    const PAYLOAD: usize = 1024;
     const TIMEOUT: Duration = Duration::from_secs(30);
     const LOCK: &str = "writer.lock";
+    const CAPABILITY: &str = "capability";
     static NEXT: AtomicU64 = AtomicU64::new(0);
 
     struct Client(PathBuf);
@@ -70,21 +71,10 @@ mod unix {
         }
     }
 
-    fn configure(socket: &UnixDatagram) -> io::Result<()> {
-        socket.set_read_timeout(Some(TIMEOUT))?;
-        socket.set_write_timeout(Some(TIMEOUT))
-    }
-
-    pub(super) fn send(path: &Path, kind: Stream, bytes: &[u8]) -> io::Result<()> {
-        if bytes.is_empty() {
-            return Ok(());
-        }
-        let parent = path
-            .parent()
-            .ok_or_else(|| io::Error::other("missing output directory"))?;
-        let lock = File::from(
+    fn open_private(path: &Path) -> io::Result<File> {
+        let file = File::from(
             rustix::fs::open(
-                parent.join(LOCK),
+                path,
                 rustix::fs::OFlags::RDWR
                     | rustix::fs::OFlags::NOFOLLOW
                     | rustix::fs::OFlags::CLOEXEC,
@@ -92,11 +82,47 @@ mod unix {
             )
             .map_err(io::Error::from)?,
         );
-        if !lock.metadata()?.is_file() {
+        let metadata = file.metadata()?;
+        if !metadata.is_file()
+            || metadata.permissions().mode() & 0o777 != 0o600
+            || metadata.nlink() != 1
+        {
             return Err(io::Error::other(
-                "managed output lock is not a regular file",
+                "managed output file is not private and regular",
             ));
         }
+        Ok(file)
+    }
+
+    fn prefix(parent: &Path) -> io::Result<Vec<u8>> {
+        let mut capability = String::new();
+        open_private(&parent.join(CAPABILITY))?
+            .take(65)
+            .read_to_string(&mut capability)?;
+        if capability.len() != 64
+            || !capability
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+        {
+            return Err(io::Error::other("invalid managed output capability"));
+        }
+        Ok(format!("\u{1e}sail-stdout:{capability}:").into_bytes())
+    }
+
+    pub(super) fn send(path: &Path, bytes: &[u8], writer: &mut dyn Write) -> io::Result<()> {
+        if bytes.is_empty() {
+            return Ok(());
+        }
+        let parent = path
+            .parent()
+            .ok_or_else(|| io::Error::other("missing output directory"))?;
+        let prefix = prefix(parent)?;
+        if bytes.windows(prefix.len()).any(|window| window == prefix) {
+            return Err(io::Error::other(
+                "driver stdout contains its private completion marker",
+            ));
+        }
+        let lock = open_private(&parent.join(LOCK))?;
         let deadline = Instant::now() + TIMEOUT;
         loop {
             match lock.try_lock() {
@@ -113,56 +139,51 @@ mod unix {
                 Err(TryLockError::Error(error)) => return Err(error),
             }
         }
-        let client = Client(parent.join(format!(
+        let name = format!(
             "{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
-        )));
+        );
+        let client = Client(parent.join(&name));
         let socket = UnixDatagram::bind(&client.0)?;
-        configure(&socket)?;
         socket.connect(path)?;
-        let mut chunks = bytes.chunks(PAYLOAD).peekable();
-        while let Some(bytes) = chunks.next() {
-            let mut frame = Vec::with_capacity(bytes.len() + 1);
-            let stream = match kind {
-                Stream::Stdout => 1,
-                Stream::Stderr => 2,
-            };
-            frame.push(stream | if chunks.peek().is_none() { 0x80 } else { 0 });
-            frame.extend_from_slice(bytes);
-            if socket.send(&frame)? != frame.len() {
-                return Err(io::Error::other("partial managed output frame"));
-            }
-            let mut ack = [0; 2];
-            if socket.recv(&mut ack)? != 1 || ack[0] != 1 {
-                return Err(io::Error::other("managed output was not acknowledged"));
-            }
+        socket.set_write_timeout(Some(TIMEOUT))?;
+        let mut marker = prefix;
+        marker.extend_from_slice(name.as_bytes());
+        marker.extend_from_slice(b"\x1f\n");
+        // The bytes and completion travel through the SAME original Cargo pipe.
+        // A final unterminated prefix and the marker form one Cargo record.
+        writer.write_all(bytes)?;
+        writer.write_all(&marker)?;
+        writer.flush()?;
+        let remaining = deadline
+            .checked_duration_since(Instant::now())
+            .filter(|remaining| !remaining.is_zero())
+            .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "output delivery deadline"))?;
+        socket.set_read_timeout(Some(remaining))?;
+        let mut ack = [0; 2];
+        if socket.recv(&mut ack)? != 1 || ack[0] != 1 {
+            return Err(io::Error::other("managed stdout was not acknowledged"));
         }
         Ok(())
     }
 
-    /// Exact visible bytes and the private peer waiting for their delivery.
-    pub(crate) struct Frame {
-        pub kind: Stream,
-        pub bytes: Vec<u8>,
-        pub final_chunk: bool,
+    /// An acknowledgment is created only after Cargo forwards a complete marker.
+    pub(crate) struct Acknowledgment {
         peer: PathBuf,
         socket: UnixDatagram,
         acknowledged: bool,
     }
-    impl Frame {
-        pub(crate) fn sender(&self) -> &Path {
-            &self.peer
-        }
+    impl Acknowledgment {
         pub(crate) fn acknowledge(mut self) -> io::Result<()> {
             if self.socket.send_to(&[1], &self.peer)? != 1 {
-                return Err(io::Error::other("partial managed output acknowledgment"));
+                return Err(io::Error::other("partial stdout acknowledgment"));
             }
             self.acknowledged = true;
             Ok(())
         }
     }
-    impl Drop for Frame {
+    impl Drop for Acknowledgment {
         fn drop(&mut self) {
             if !self.acknowledged {
                 let _ = self.socket.send_to(&[0], &self.peer);
@@ -170,177 +191,144 @@ mod unix {
         }
     }
 
-    /// One owned endpoint; the receiver never writes public stdout or stderr.
+    /// One original Cargo stdout record with only this run's marker removed.
+    pub(crate) struct Decoded {
+        pub(crate) bytes: Vec<u8>,
+        pub(crate) completion: Option<Acknowledgment>,
+    }
+
+    /// Owned acknowledgment endpoint and fresh, private marker capability.
     pub(crate) struct Receiver {
         directory: PathBuf,
         path: PathBuf,
         socket: UnixDatagram,
         writer: File,
-        stopping: Arc<AtomicBool>,
-        thread: Option<JoinHandle<io::Result<()>>>,
+        capability: File,
+        prefix: Vec<u8>,
     }
     impl Receiver {
         pub(crate) fn bind() -> io::Result<Self> {
-            // Short even for deep caches; existing names grant no ownership.
+            use sha2::Digest as _;
             let directory = Path::new("/tmp").join(format!(
                 "sail-output-{}-{}",
                 std::process::id(),
                 NEXT.fetch_add(1, Ordering::Relaxed)
             ));
             std::fs::DirBuilder::new().mode(0o700).create(&directory)?;
-            let path = directory.join("output.sock");
-            let socket = match UnixDatagram::bind(&path) {
-                Ok(socket) => socket,
-                Err(error) => {
-                    let _ = std::fs::remove_dir(&directory);
-                    return Err(error);
+            let result = (|| {
+                let path = directory.join("output.sock");
+                let socket = UnixDatagram::bind(&path)?;
+                socket.set_write_timeout(Some(TIMEOUT))?;
+                let writer = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create_new(true)
+                    .mode(0o600)
+                    .open(directory.join(LOCK))?;
+                let mut capability = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create_new(true)
+                    .mode(0o600)
+                    .open(directory.join(CAPABILITY))?;
+                let mut entropy = [0; 32];
+                File::open("/dev/urandom")?.read_exact(&mut entropy)?;
+                write!(capability, "{:x}", sha2::Sha256::digest(entropy))?;
+                capability.flush()?;
+                let prefix = prefix(&directory)?;
+                Ok(Self {
+                    directory: directory.clone(),
+                    path,
+                    socket,
+                    writer,
+                    capability,
+                    prefix,
+                })
+            })();
+            if result.is_err() {
+                for name in ["output.sock", LOCK, CAPABILITY] {
+                    let _ = std::fs::remove_file(directory.join(name));
                 }
-            };
-            let writer = match OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create_new(true)
-                .mode(0o600)
-                .open(directory.join(LOCK))
-            {
-                Ok(writer) => writer,
-                Err(error) => {
-                    let _ = std::fs::remove_file(&path);
-                    let _ = std::fs::remove_dir(&directory);
-                    return Err(error);
-                }
-            };
-            let receiver = Self {
-                directory,
-                path,
-                socket,
-                writer,
-                stopping: Arc::new(AtomicBool::new(false)),
-                thread: None,
-            };
-            configure(&receiver.socket)?;
-            Ok(receiver)
+                let _ = std::fs::remove_dir(directory);
+            }
+            result
         }
         pub(crate) fn path(&self) -> &Path {
             &self.path
         }
-        pub(crate) fn start(
-            &mut self,
-            forward: impl Fn(io::Result<Frame>) -> bool + Send + 'static,
-        ) -> io::Result<()> {
-            if self.thread.is_some() {
-                return Err(io::Error::other("output receiver already started"));
+        pub(crate) fn decode(&self, line: &[u8]) -> io::Result<Decoded> {
+            let Some(start) = line
+                .windows(self.prefix.len())
+                .position(|window| window == self.prefix)
+            else {
+                return Ok(Decoded {
+                    bytes: line.to_vec(),
+                    completion: None,
+                });
+            };
+            let marker = &line[start + self.prefix.len()..];
+            let name = marker
+                .strip_suffix(b"\x1f\n")
+                .and_then(|bytes| std::str::from_utf8(bytes).ok())
+                .filter(|name| name.len() <= 41)
+                .and_then(|name| {
+                    let (pid, sequence) = name.split_once('-')?;
+                    (pid.parse::<u32>().ok()? != 0 && sequence.parse::<u64>().is_ok())
+                        .then_some(name)
+                })
+                .ok_or_else(|| io::Error::other("invalid driver stdout completion marker"))?;
+            let peer = self.directory.join(name);
+            if !std::fs::symlink_metadata(&peer)?.file_type().is_socket() {
+                return Err(io::Error::other("stdout completion peer is not a socket"));
             }
-            let socket = self.socket.try_clone()?;
-            socket.set_read_timeout(Some(Duration::from_millis(100)))?;
-            let stopping = Arc::clone(&self.stopping);
-            self.thread = Some(
-                std::thread::Builder::new()
-                    .name("sail-visible-output".into())
-                    .spawn(move || {
-                        let mut bytes = [0; PAYLOAD + 2];
-                        while !stopping.load(Ordering::Acquire) {
-                            let (count, peer) = match socket.recv_from(&mut bytes) {
-                                Ok(received) => received,
-                                Err(error)
-                                    if matches!(
-                                        error.kind(),
-                                        io::ErrorKind::WouldBlock
-                                            | io::ErrorKind::TimedOut
-                                            | io::ErrorKind::Interrupted
-                                    ) =>
-                                {
-                                    continue;
-                                }
-                                Err(error) => {
-                                    forward(Err(error));
-                                    break;
-                                }
-                            };
-                            if stopping.load(Ordering::Acquire) {
-                                break;
-                            }
-                            let received = (|| {
-                                if !(2..=PAYLOAD + 1).contains(&count) {
-                                    return Err(io::Error::other(
-                                        "invalid managed output frame length",
-                                    ));
-                                }
-                                let kind = match bytes[0] & 0x7f {
-                                    1 => Stream::Stdout,
-                                    2 => Stream::Stderr,
-                                    _ => {
-                                        return Err(io::Error::other(
-                                            "invalid managed output stream",
-                                        ));
-                                    }
-                                };
-                                Ok(Frame {
-                                    kind,
-                                    final_chunk: bytes[0] & 0x80 != 0,
-                                    bytes: bytes[1..count].to_vec(),
-                                    peer: peer
-                                        .as_pathname()
-                                        .ok_or_else(|| io::Error::other("unnamed output sender"))?
-                                        .to_owned(),
-                                    socket: socket.try_clone()?,
-                                    acknowledged: false,
-                                })
-                            })();
-                            let failed = received.is_err();
-                            if !forward(received) || failed {
-                                break;
-                            }
-                        }
-                        Ok(())
-                    })?,
-            );
-            Ok(())
+            let mut bytes = line[..start].to_vec();
+            if !bytes.is_empty() {
+                // Cargo adds a newline to a final unterminated stdout record.
+                // Preserve that observed original-pipe byte when removing the marker.
+                bytes.push(b'\n');
+            }
+            Ok(Decoded {
+                bytes,
+                completion: Some(Acknowledgment {
+                    peer,
+                    socket: self.socket.try_clone()?,
+                    acknowledged: false,
+                }),
+            })
+        }
+        fn remove_file(&self, name: &str, expected: &File) -> io::Result<()> {
+            let path = self.directory.join(name);
+            let actual = std::fs::symlink_metadata(&path)?;
+            let expected = expected.metadata()?;
+            if !actual.is_file() || actual.dev() != expected.dev() || actual.ino() != expected.ino()
+            {
+                return Err(io::Error::other("owned output file changed"));
+            }
+            std::fs::remove_file(path)
         }
         fn close(&mut self) -> io::Result<()> {
-            self.stopping.store(true, Ordering::Release);
-            // Wake a blocked receive. The 100ms receive bound also covers a full queue.
-            if let Ok(wake) = UnixDatagram::unbound() {
-                let _ = wake.set_write_timeout(Some(Duration::from_millis(100)));
-                let _ = wake.send_to(&[0], &self.path);
-            }
-            let joined = self.thread.take().map_or(Ok(()), |thread| {
-                thread
-                    .join()
-                    .map_err(|_| io::Error::other("output receiver failed"))?
-            });
-            let socket = std::fs::remove_file(&self.path);
-            // On a broken public sink, waiting senders receive NACK while the
-            // runner unwinds. Remove their socket names as well: a late client
-            // drop tolerates an already unlinked endpoint. Unknown files are
-            // left alone and make directory removal fail visibly.
+            // Refuse even clients whose marker never reached the original pipe.
+            // Unknown non-socket files are left in place and fail final removal.
             let clients = (|| {
                 for entry in std::fs::read_dir(&self.directory)? {
                     let entry = entry?;
-                    if entry.file_type()?.is_socket() {
-                        match std::fs::remove_file(entry.path()) {
-                            Ok(()) => {}
-                            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-                            Err(error) => return Err(error),
-                        }
+                    if entry.path() == self.path || !entry.file_type()?.is_socket() {
+                        continue;
+                    }
+                    let _ = self.socket.send_to(&[0], entry.path());
+                    match std::fs::remove_file(entry.path()) {
+                        Ok(()) => {}
+                        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                        Err(error) => return Err(error),
                     }
                 }
                 Ok(())
             })();
-            let lock = (|| {
-                let path = self.directory.join(LOCK);
-                let actual = std::fs::symlink_metadata(&path)?;
-                let expected = self.writer.metadata()?;
-                if !actual.is_file()
-                    || actual.dev() != expected.dev()
-                    || actual.ino() != expected.ino()
-                {
-                    return Err(io::Error::other("owned output lock changed"));
-                }
-                std::fs::remove_file(path)
-            })();
+            let socket = std::fs::remove_file(&self.path);
+            let lock = self.remove_file(LOCK, &self.writer);
+            let capability = self.remove_file(CAPABILITY, &self.capability);
             let directory = std::fs::remove_dir(&self.directory);
-            joined.and(socket).and(clients).and(lock).and(directory)
+            clients.and(socket).and(lock).and(capability).and(directory)
         }
         pub(crate) fn finish(mut self) -> io::Result<()> {
             let result = self.close();

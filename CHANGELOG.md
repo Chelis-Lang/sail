@@ -5,10 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- Prepare acknowledged managed-driver output to preserve causal summary/error
-  ordering (#215). The candidate keeps Cargo JSON metadata separate and
-  suppresses human stdout for structured callers. Focused macOS controls pass;
-  full host and native qualification remain pending. See the
+- Prepare a final-stdout completion barrier for managed drivers (#215). User
+  bytes stay on Cargo's original pipes, preserving diagnostic rendering; only
+  a private completion marker is removed. The source-only successor replaces
+  the rejected payload-IPC candidate. It is unselected, with real Verus and
+  both-platform gates pending. See the
   [qualification record](docs/validation/managed-output-order.md).
 
 - Restore a previously verified workspace revision on ordinary Linux checks

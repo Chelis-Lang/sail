@@ -65,7 +65,9 @@ are in the `archive/m7-contracts-f7103bf` tag.
   neither accepts the memo candidate. The [failure observer](e2e-output-evidence.md)
   preserves bounded original bytes; [evidence and limits](validation/e2e-output-evidence.md).
   A separate actual-relay fixture demonstrates a causal output race (#215).
-  Its acknowledged-output candidate passes focused macOS controls but is unselected;
+  Its first payload-IPC candidate passed Cargo-like fixtures but bypassed real
+  Cargo diagnostic rendering. The original-pipe stdout-barrier successor is
+  source-only and unselected;
   [qualification and remaining gates](validation/managed-output-order.md).
 
 - **Changed-check continuation remains unqualified** ([#158](https://github.com/Chelis-Lang/sail/issues/158)).
