@@ -20,11 +20,16 @@ body SHA-256 values must match. Individual files are limited to128MiB, and the
 input/session lists to16384 entries each; the eventual native caller must also
 bound total capture bytes and time. No native queue is authorized by this example.
 
-Both the observed invocation and genuine pinned stock oracle must use exactly the
-named partial module selector. A nonempty full function/module/mode multiset,
+Both the observed invocation and genuine pinned stock oracle must use exactly one
+literal `--verify-only-module MODULE` pair. Alternative selectors, equals forms,
+duplicate selectors and every recognized `--no-verify` form refuse. A nonempty full function/module/mode multiset,
 every verdict, exit, and complete diagnostics must agree through the existing
 conformance comparator. Failed `fail` cases remain failed compiler runs; matching
-failure is never a verified result. The canonical catalogue is A, body-early,
+failure is never a verified result. `fail` requires both nonzero exits, explicit
+failed verification with positive error counts, and an actual failed function.
+The other four cases require zero exits, successful verification with positive
+verified counts, no errors or internal-error flags, and no failed functions.
+Agreement on the wrong case outcome refuses. The canonical catalogue is A, body-early,
 body-late, fail, fix. The caller must supply the real frozen edits and stock
 expectations separately for every case; the local test fixtures are doubles.
 
@@ -48,8 +53,14 @@ review before execution. No native Anvil result, gain, public-runtime selection,
 full local gate or default adoption is claimed. The old real Iron finite-rlimit
 verdict disagreement remains a default-adoption blocker even if Anvil later wins.
 
-Local macOS source checks passed2 pure count tests,2 existing complete-observer
-guards,4 partial catalogue/refusal tests, and lint for the two exact examples.
-They executed no real Verus/Z3. Earlier rustdoc/extension lint failures are retained.
-The external source-check record is `spinoff-anvil-focused-source-2026-10-18/
-final-source-checks.json`, SHA-256 `734863c217a9c78b089b2ebcfd5a8145692d79eabdcde1fc637b4bf440757451`.
+The initial a5 source checks passed2 pure count tests,2 complete-observer guards,
+4 partial catalogue/refusal tests, and exact-example lint; their original record
+remains `spinoff-anvil-focused-source-2026-10-18/final-source-checks.json`, SHA-256
+`734863c217a9c78b089b2ebcfd5a8145692d79eabdcde1fc637b4bf440757451`.
+Independent review then found equals-selector and wrong-catalogue-outcome gaps.
+The correction passed the same2 pure/2 complete-observer tests,6 focused tests
+including both negative families, and lint for both exact examples. Its record is
+`spinoff-anvil-focused-source-2026-10-18/selector-outcome/final-source-checks.json`,
+SHA-256 `f3a6a7144f0c6c533708321e9e02c4a93af652c2501614489d50b757a9dc8ef4`.
+These macOS source checks executed no real Verus/Z3 and qualify no native result.
+Earlier lint failures remain preserved.

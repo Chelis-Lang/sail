@@ -6,8 +6,8 @@ semantic versioning once the API is published.
 ## 0.1.0 (unreleased)
 
 - Add an untimed partial Anvil fixture work reader for developer research. It
-  reuses pure transcript counting while preserving `actual_work` complete-run
-  admission; it does not select spinoff, produce Current, or publish proof.
+  reuses pure transcript counting and enforces exact selectors/case outcomes
+  while preserving `actual_work` complete-run admission; it does not select spinoff, produce Current, or publish proof.
 
 - Integrate the two disabled compiler-reuse research paths around their shared
   owned dependency snapshots. Simultaneous research switches refuse with

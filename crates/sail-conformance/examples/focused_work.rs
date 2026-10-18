@@ -125,11 +125,18 @@ fn invocation(root: &Path, item: &Invocation) -> io::Result<RunRecord> {
         .map(|pair| pair[1].as_str())
         .collect();
     if selectors != [MODULE]
+        || item
+            .argv
+            .iter()
+            .filter(|arg| arg.as_str() == "--verify-only-module")
+            .count()
+            != 1
         || item.argv.iter().any(|arg| {
+            let name = arg.split_once('=').map_or(arg.as_str(), |(name, _)| name);
             matches!(
-                arg.as_str(),
+                name,
                 "--verify-module" | "--verify-function" | "--verify-root" | "--no-verify"
-            )
+            ) || arg.starts_with("--verify-only-module=")
         })
     {
         return Err(invalid("focused selector differs"));
@@ -196,6 +203,34 @@ fn functions(run: &RunRecord) -> io::Result<Vec<Function>> {
     }
     result.sort();
     Ok(result)
+}
+
+fn catalogue_outcome(case: &str, run: &RunRecord, functions: &[Function]) -> io::Result<()> {
+    let results = &run.outputs[0]["verification-results"];
+    let errors = results["errors"]
+        .as_u64()
+        .ok_or_else(|| invalid("missing error count"))?;
+    let verified = results["verified"]
+        .as_u64()
+        .ok_or_else(|| invalid("missing verified count"))?;
+    let accepted = if case == "fail" {
+        run.exit_code.is_some_and(|code| code != 0)
+            && results["success"] == false
+            && errors > 0
+            && functions.iter().any(|function| function.3 == Some(false))
+    } else {
+        run.exit_code == Some(0)
+            && results["success"] == true
+            && errors == 0
+            && verified > 0
+            && results["encountered-error"] == false
+            && results["encountered-vir-error"] == false
+            && functions.iter().all(|function| function.3 != Some(false))
+    };
+    if !accepted {
+        return Err(invalid("catalogue case outcome differs"));
+    }
+    Ok(())
 }
 
 fn session(
@@ -297,6 +332,8 @@ fn observe(root: &Path, expected_sha256: &str) -> io::Result<Value> {
     let oracle = invocation(root, &authority.oracle)?;
     let actual_functions = functions(&actual)?;
     let oracle_functions = functions(&oracle)?;
+    catalogue_outcome(&authority.case, &actual, &actual_functions)?;
+    catalogue_outcome(&authority.case, &oracle, &oracle_functions)?;
     let mut expected = authority.expected_functions;
     expected.sort();
     let names = |items: &[Function]| {
@@ -514,6 +551,64 @@ mod tests {
         }
         let mut f = fixture("A")?;
         f.1["invocation"]["argv"] = serde_json::json!(["verus", "--verify-only-module", "foreign"]);
+        assert!(observe_fixture(&f).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn equals_and_duplicate_selector_variants_refuse() -> io::Result<()> {
+        for argument in [
+            "--verify-module",
+            "--verify-module=foreign",
+            "--verify-function",
+            "--verify-function=foreign",
+            "--verify-root",
+            "--verify-root=foreign",
+            "--no-verify",
+            "--no-verify=true",
+            "--verify-only-module=foreign",
+            "--verify-only-module",
+        ] {
+            for which in ["invocation", "oracle"] {
+                let mut f = fixture("A")?;
+                f.1[which]["argv"]
+                    .as_array_mut()
+                    .ok_or_else(|| invalid("fixture argv"))?
+                    .push(Value::String(argument.to_owned()));
+                assert!(observe_fixture(&f).is_err(), "selector variant {argument}");
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn matching_wrong_catalogue_outcomes_never_authorize_observation() -> io::Result<()> {
+        let mut f = fixture("A")?;
+        f.1["case"] = Value::String("fail".to_owned());
+        assert!(observe_fixture(&f).is_err());
+        for case in ["A", "body-early", "body-late", "fix"] {
+            let mut f = fixture("fail")?;
+            f.1["case"] = Value::String(case.to_owned());
+            assert!(observe_fixture(&f).is_err());
+        }
+        let mut f = fixture("fail")?;
+        f.1["invocation"]["exit_code"] = Value::from(0);
+        f.1["oracle"]["exit_code"] = Value::from(0);
+        assert!(observe_fixture(&f).is_err());
+        // Matching nonzero exit alone is not a genuine failed function.
+        let mut f = fixture("fail")?;
+        let raw = serde_json::to_vec(&document(true)).map_err(invalid)?;
+        let output = write(&f.0, "matching-success.json", &raw)?;
+        f.1["invocation"]["stdout"] = output.clone();
+        f.1["oracle"]["stdout"] = output;
+        assert!(observe_fixture(&f).is_err());
+        let mut f = fixture("fail")?;
+        let mut doc = document(false);
+        doc["verification-results"]["errors"] = Value::from(0);
+        let raw = serde_json::to_vec(&doc).map_err(invalid)?;
+        let output = write(&f.0, "matching-no-errors.json", &raw)?;
+        f.1["invocation"]["stdout"] = output.clone();
+        f.1["oracle"]["stdout"] = output;
         assert!(observe_fixture(&f).is_err());
         Ok(())
     }
