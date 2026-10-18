@@ -145,7 +145,7 @@ pub(crate) fn publish_shipped(
     clippy::too_many_arguments,
     reason = "The shared completed child binds its actual PID, raw read document, source closure and immutable graph independently for retained use."
 )]
-pub(crate) fn publish_shipped_native(
+pub(in crate::managed) fn publish_shipped_native(
     runtime: &receipts::Runtime,
     args: &[OsString],
     cwd: &Path,
