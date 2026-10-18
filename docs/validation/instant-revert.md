@@ -394,3 +394,14 @@ non-ancestor baseline ref. Original final archive SHA-256
 The successful sibling explicitly bundles both refs and checks every file/mode
 in isolated clones of both heads. It does not relabel the failed attempt or
 claim earlier `7090` qualification.
+
+Delivery-gate attempts remain separate from the completed screen: `cf1b6372`,
+2026-10-18, first native qualification FAIL before staging/checks because the
+watchdog timestamp was on stderr and actual launch missed the fixed cutoff;
+all checks UNRUN. The Mac host gate then FAILs at clippy's existing
+`assert_is_empty` lint in three new test assertions; full tests UNRUN (stderr
+SHA-256 `af55f9055a0795b5157fc162c7815caa70e2195b53a631bc51eaf71580aa6181`).
+The second native attempt is interrupted before checks on that known lint
+failure. A test-only successor uses equality against an empty vector, preserving
+the exact requirement and displaying the unexpected contents. Production code
+and the measured screen are unchanged; full delivery gates still need to pass.
