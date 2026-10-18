@@ -382,16 +382,16 @@ fn driver() -> Result<ExitCode> {
     // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
         let runtime = retained_runtime(research);
-        if research == crate::managed::research::Mode::Off && runtime.is_none() {
+        let plan = (research != crate::managed::research::Mode::RetainedContent)
+            .then(crate::managed::shipped::active)
+            .flatten();
+        if research == crate::managed::research::Mode::Off && runtime.is_none() && plan.is_none() {
             return Command::new(wrapper)
                 .args(args)
                 .status()
                 .map(status)
                 .map_err(|e| Error::new("SAIL3111", e.to_string()));
         }
-        let plan = (research == crate::managed::research::Mode::VstdBoundary)
-            .then(crate::managed::shipped::active)
-            .flatten();
         let mut observation = plan
             .as_ref()
             .and_then(|plan| crate::managed::shipped::native::Observation::begin(plan, &args));
@@ -435,7 +435,7 @@ fn driver() -> Result<ExitCode> {
         }
         return Ok(status(actual));
     }
-    let plan = (research == crate::managed::research::Mode::VstdBoundary)
+    let plan = (research != crate::managed::research::Mode::RetainedContent)
         .then(crate::managed::shipped::active)
         .flatten();
     let mut call = plan.as_ref().and_then(|plan| {
@@ -544,7 +544,7 @@ fn driver() -> Result<ExitCode> {
     let mut retained = runtime
         .retained
         .as_ref()
-        .filter(|_| research != crate::managed::research::Mode::VstdBoundary)
+        .filter(|_| research != crate::managed::research::Mode::VstdBoundary && plan.is_none())
         .and_then(|plan| {
             (wrapper.canonicalize().ok()? == runtime.original_wrapper.canonicalize().ok()?)
                 .then(|| plan.begin(&runtime, &identity, &launcher_args, &dir))

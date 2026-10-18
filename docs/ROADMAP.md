@@ -294,9 +294,11 @@ oyster and such." This supersedes the parallel tracks of
       refusals; a separate sole-wait4 owner passes both fixed solver traces.
       Preparation remains real work and Anvil saves no total CPU. Actual edit
       workflow/default acceptance is unbuilt and unselected; #158 stays open.
-   3. vstd pre-verified in the release archive, #161. The default-off boundary
-      and retained-content paths have a mutually exclusive source integration;
-      integrated native qualification remains pending ([record](validation/proof-reuse-integration.md)).
+   3. vstd pre-verified in the release archive, #161. Candidate release recording,
+      complete member validation and adjacent-bundle serving are implemented;
+      source review and real staged first-use on both platforms/changed Rustup
+      roots remain pending. Existing component results retain their source scope
+      ([record](validation/vstd-compile-boundary.md)).
    4. Remaining managed overhead against the removed pass-through, #156:
       cheaper checks qualify against rc.5 on unchanged vest/demo runs
       (1.01/0.39 s to 0.54/0.21 s); the final vest edit gain is

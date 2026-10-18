@@ -904,6 +904,7 @@ mod tests {
             native_compiler_sha256: "compiler".into(),
             native_launcher: root.join("verus"),
             native_launcher_sha256: "launcher".into(),
+            release: None,
         };
         let read_dir = root.join(".sail-boundary-native-reads/current-run/fixture");
         std::fs::create_dir_all(&read_dir)?;

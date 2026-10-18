@@ -77,13 +77,51 @@ README's [Install](../README.md#install) covers that, along with the archive
 download and checksum check. When the Verus pin changes, update the toolchain
 and the `vstd` version quoted there.
 
-The archive carries no prebuilt `vstd` for Cargo projects. A `vstd` compiled
-on the release host names its source by the release host's Cargo home in
-every diagnostic that points into it, and Cargo rebuilds a registry unit
-compiled under another Cargo home anyway. Instead, the first managed run on
-each machine stores the `vstd` it verified, and later new projects start from
-that copy ([ADR 0045](decisions/0045-dependency-store.md)). The runtime's own
-`libvstd.rlib` and `vstd.vir` serve direct `verus FILE` runs only.
+The release factory and smoke scripts require Python 3.12 or newer. Set
+`SAIL_RELEASE_PYTHON=python3.12` if the default `python3` is older. This is a
+packaging/test prerequisite, not a dependency of the installed Sail binaries.
+
+The candidate release stage additionally records one complete vstd proof with
+its final stripped Sail/shim binaries and installs it under `deps/<variant>`.
+`release-files.json` binds every regular file and directory mode, including the
+proof bundle. This source implementation is not yet a qualified release: actual
+staged first-use on both platforms and at different Rustup roots remains pending.
+The existing machine-local and changed-Cargo-home results do not establish that
+fresh-machine boundary.
+
+The record recipe is `scripts/shipped-deps`: exact vstd version, canonical
+Cargo-produced lock, one requested proof. `scripts/release-shipped.py record`
+uses a fresh private project/Cargo home and an owned daemon. Native prerequisites
+compile normally. It requires Current, complete verified targets and the original
+run before a complete dependency directory becomes discoverable. Refusals and
+failures stop release packaging. Evidence is retained beside the stage directory
+with `-proof-evidence` appended; it is not shipped or treated as proof authority.
+
+Normal verification may serve only a matching adjacent `deps/<variant>` bundle
+whose complete proof members match its adjacent `release-files.json` index;
+missing, old-schema, unindexed, changed or unsupported entries compile and verify
+normally. Full member admission runs for a new target; the per-run admission
+binds the exact unit bytes served and the unchanged index. Benign diagnostic
+source naming remains available for already-restored artifacts when the index
+is later removed; naming alone never authorizes proof reuse.
+The actual source/feature closure, successful current-run native records, native
+bytes, compiler SourceMap phases, solver and exact options remain bound. There
+is no self-declared qualification bit. Explicit Record, MachineLocal and alternate
+bundle directories remain research-only. A family using a shipped plan does not
+also acquire the retained-content authority. Without a shipped plan, ordinary
+retained eligibility is unchanged. `sail new` uses the accepted bundle's lock for
+its new project only; existing projects' lockfiles are never rewritten.
+
+`package` verifies all indexed release members before archiving. The smoke
+script first checks the entire archive checksum, rejects unsafe/duplicate/link
+members before extracting, then checks its complete file/mode/directory index and
+proof bundle. The archive checksum and qualified release producer are the trust
+boundary; an arbitrary self-authored manifest is not evidence of qualification.
+After source review, release acceptance must execute the staged archive with no
+engine/compiler/research override, compare its fresh Current results with plain
+Verus, and prove the second unchanged call invokes no verifier. A native-byte or
+key mismatch is a safe miss, not a first-use gain. See the
+[boundary record](validation/vstd-compile-boundary.md).
 
 ## How sail finds the bundled engine
 

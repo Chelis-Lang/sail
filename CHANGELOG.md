@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add candidate release-time recording of the vstd proof with the final staged
+  binaries, complete release-member integrity checks, and automatic serving only
+  from the matching adjacent bundle. Native prerequisites still compile and all
+  compiler-input/byte checks remain required. Release first-use on both platforms
+  and changed Rustup roots remains unqualified; no release is published here.
+
 - Integrate the two disabled compiler-reuse research paths around their shared
   owned dependency snapshots. Simultaneous research switches refuse with
   `SAIL3135`; this does not select reuse or change the runtime pins.

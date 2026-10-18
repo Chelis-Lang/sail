@@ -167,3 +167,15 @@ per-function verdict and diagnostic parity, corruption and mutation refusals,
 both platforms and measured first-project cost gate any default enablement.
 
 See [the implementation record](../validation/vstd-compile-boundary.md).
+
+## Candidate release integration
+
+The release-stage successor records only after its actual Sail/shim binaries have
+been copied and stripped. A normal consumer may use only the adjacent bundle
+admitted for its exact runtime/sysroot identity and schema; arbitrary recording,
+MachineLocal and alternate directories remain explicit experiments. Complete
+release archives bind all dependency members as well as the runtime. Existing
+keys, source/native/compiler-read authorities, literal bytes and safe misses are
+unchanged. One compiler family uses one reuse authority. This is a source-level
+integration decision, not fresh-machine or default-selection acceptance: staged
+first-use on both platforms and changed Rustup roots remains required.
