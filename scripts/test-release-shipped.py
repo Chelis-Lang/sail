@@ -105,14 +105,43 @@ elif sys.argv[1]=='serve':
  Path(cfg['pid_record']).write_text(str(os.getpid()))
  while True:time.sleep(.05)
 elif sys.argv[1]=='verify':
+ for directory in ('.sail-boundary-inputs','.sail-boundary-native-reads'):
+  if cfg.get('missing_certificate') and directory=='.sail-boundary-inputs':continue
+  observed=Path(os.environ['CARGO_HOME']).parent/directory/'fixture';observed.mkdir(parents=True);(observed/'inputs.json').write_text('{}')
  shutil.copytree(cfg['template'],os.environ['SAIL_SHIPPED_RECORD'])
  value=cfg['report'];value['currentness']=cfg['currentness'];print(json.dumps(value))
 else:raise SystemExit(3)
 '''
+        # Certificate-only retention has a complete per-path content-once index.
+        certs=root/'certs';certs.mkdir()
+        for kind in ('.sail-boundary-inputs','.sail-boundary-native-reads'):
+            path=certs/kind/'fixture';path.mkdir(parents=True);(path/'inputs.json').write_text('{}')
+        skipped=certs/'skipped';skipped.mkdir();(skipped/'reason').write_text('fixture refusal')
+        captured=root/'cert-captured';captured.mkdir();module.retain_compiler_inputs(certs,captured,True)
+        captured_index=json.loads((captured/'compiler-inputs/index.json').read_text())
+        assert captured_index['complete'] and len(captured_index['paths'])==3 and captured_index['unique_bytes']==17
+        assert len(list((captured/'compiler-inputs/bodies').iterdir()))==2
+        missing=certs/'.sail-boundary-inputs/fixture/inputs.json';missing.unlink()
+        failed=root/'cert-missing';failed.mkdir();refuses(lambda:module.retain_compiler_inputs(certs,failed,True));missing.write_text('{}')
+        limit=module.CAPTURE_LIMIT
+        try:
+            module.CAPTURE_LIMIT=1
+            failed=root/'cert-oversize';failed.mkdir();refuses(lambda:module.retain_compiler_inputs(certs,failed,True))
+        finally:module.CAPTURE_LIMIT=limit
+        missing.unlink();missing.symlink_to(certs/'.sail-boundary-native-reads/fixture/inputs.json')
+        failed=root/'cert-alias';failed.mkdir();refuses(lambda:module.retain_compiler_inputs(certs,failed,True));missing.unlink();missing.write_text('{}')
+        unreadable=certs/'unreadable';unreadable.mkdir();unreadable.chmod(0)
+        try:
+            failed=root/'cert-unreadable';failed.mkdir()
+            try:module.retain_compiler_inputs(certs,failed,False)
+            except PermissionError:pass
+            else:raise AssertionError('unreadable certificate subtree silently omitted')
+            assert json.loads((failed/'compiler-inputs/index.json').read_text())['complete'] is False
+        finally:unreadable.chmod(0o700)
         path_before=os.environ['PATH']
         os.environ['PATH']=str(controlled)+os.pathsep+path_before
         try:
-            for case in ('current','historical','capture-overflow'):
+            for case in ('current','historical','capture-overflow','certificate-missing'):
                 stage=root/('producer-'+case)
                 (stage/'bin').mkdir(parents=True)
                 shutil.copytree(runtime,stage/'engine/variant')
@@ -122,7 +151,7 @@ else:raise SystemExit(3)
                 (stage/'bin/fixture-config.json').write_text(json.dumps({'runtime':str(stage/'engine/variant'),
                     'runtime_hash':module.digest(stage/'engine/variant/sail-build.json'),
                     'template':str(template),'report':doc,'currentness':'historical' if case=='historical' else 'current',
-                    'pid_record':str(pid_record)}))
+                    'pid_record':str(pid_record),'missing_certificate':case=='certificate-missing'}))
                 evidence=root/(case+'-evidence')
                 previous_limit=module.CAPTURE_LIMIT
                 try:

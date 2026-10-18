@@ -180,6 +180,56 @@ def verify(root):
     return index
 
 
+def retain_compiler_inputs(owned, evidence, required):
+    """Retain certificates only; these diagnostics never authorize a proof."""
+    destination = evidence/'compiler-inputs'
+    destination.mkdir(mode=0o700)
+    index = {'complete': False, 'root': str(owned), 'limit': CAPTURE_LIMIT, 'paths': []}
+    def save():
+        (destination/'index.json').write_text(json.dumps(index, indent=2)+'\n')
+    def stamp(meta):
+        return (meta.st_dev, meta.st_ino, meta.st_mode, meta.st_size, meta.st_mtime_ns, meta.st_ctime_ns)
+    def unreadable(error):
+        raise error
+    try:
+        bodies = {}
+        kinds = set()
+        for parent, directories, files in os.walk(owned, onerror=unreadable):
+            assert all(not (Path(parent)/name).is_symlink() for name in directories), 'certificate directory alias'
+            for name in files:
+                path = Path(parent)/name
+                relative = path.relative_to(owned)
+                observed = {part for part in relative.parts if part in ('.sail-boundary-inputs', '.sail-boundary-native-reads')}
+                if not (name == 'inputs.json' and observed or 'skipped' in relative.parts):
+                    continue
+                before = path.lstat()
+                assert stat.S_ISREG(before.st_mode), 'certificate alias or special file'
+                assert before.st_size <= CAPTURE_LIMIT, 'certificate too large'
+                fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                with os.fdopen(fd, 'rb') as source:
+                    assert stamp(os.fstat(source.fileno())) == stamp(before)
+                    data = source.read(CAPTURE_LIMIT+1)
+                    assert len(data) == before.st_size and stamp(os.fstat(source.fileno())) == stamp(before) == stamp(path.lstat()), 'certificate changed'
+                value = hashlib.sha256(data).hexdigest()
+                bodies.setdefault(value, data)
+                assert sum(map(len, bodies.values())) <= CAPTURE_LIMIT, 'certificate capture limit'
+                assert len(index['paths']) < 16384, 'certificate entry limit'
+                index['paths'].append({'path': str(relative), 'sha256': value,
+                                       'bytes': len(data), 'mode': stat.S_IMODE(before.st_mode)})
+                if name == 'inputs.json':kinds.update(observed)
+        index['paths'].sort(key=lambda row: row['path'])
+        assert not required or kinds == {'.sail-boundary-inputs', '.sail-boundary-native-reads'}, 'required compiler certificates missing'
+        (destination/'bodies').mkdir(mode=0o700)
+        for value, data in bodies.items():
+            path = destination/'bodies'/value
+            with path.open('xb') as stream:
+                os.chmod(path, 0o600)
+                stream.write(data)
+        index.update(complete=True, unique_bytes=sum(map(len, bodies.values())))
+    finally:
+        save()
+
+
 def record(root, evidence):
     assert root.is_absolute() and not root.is_symlink() and not evidence.exists()
     evidence.mkdir(parents=True, mode=0o700)
@@ -209,8 +259,16 @@ def record(root, evidence):
         assert server is None or server.poll() is not None, 'owned server survived'
     try:
         with tempfile.TemporaryDirectory(prefix='sail-release-record-', dir='/tmp') as temporary, contextlib.ExitStack() as cleanup:
-            cleanup.callback(stop_server)
             owned = Path(temporary).resolve()
+            def preserve_inputs():
+                try:retain_compiler_inputs(owned, evidence, outcome['passed'])
+                except BaseException:
+                    outcome['passed'] = False
+                    raise
+            cleanup.callback(preserve_inputs)
+            cleanup.callback(stop_server)
+            (evidence/'scratch-root.json').write_text(json.dumps({
+                'pid': os.getpid(), 'path': str(owned), 'uid': os.getuid()})+'\n')
             project = owned/'project'
             shutil.copytree(ROOT/'scripts/shipped-deps', project)
             home = owned/'cargo-home';home.mkdir()
