@@ -78,6 +78,19 @@ rustup toolchain install 1.98.1 --profile minimal
 sail engine status                 # checks Sail's Verus against its pins
 ```
 
+A qualified release that includes a preverified dependency proof bundle also
+requires the same toolchain's complete Rust sources:
+
+```sh
+rustup component add rust-src --toolchain 1.98.1
+```
+
+The proof-bundle release path is still unqualified; this is not an additional
+requirement for ordinary releases without it. Keep the minimal installation
+above for those releases. Proof-bundle first-use qualification includes this
+component's download, verification and installation cost. See
+[release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use).
+
 **From source (contributors).** With rustup, a C toolchain and `git`:
 
 ```sh

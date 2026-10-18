@@ -152,6 +152,64 @@ Verus, and prove the second unchanged call invokes no verifier. A native-byte or
 key mismatch is a safe miss, not a first-use gain. See the
 [boundary record](validation/vstd-compile-boundary.md).
 
+## Proof-bundle prerequisites and first use
+
+Ordinary releases without a qualified dependency proof bundle keep the README's
+minimal Rust installation. A proof-bundle factory and its strict release smoke
+additionally require the complete `rust-src` component for the Rust version
+bound by the admitted runtime. The current pin is `1.98.1`:
+
+```sh
+rustup component add rust-src --toolchain 1.98.1
+```
+
+The factory derives that version from the validated runtime and checks it against
+Sail's pin. Its preflight resolves the actual pinned sysroot, requires the
+installed component's manifest, verifies the exact complete regular-file set
+and hashes every source body within the separate 128 MiB source bound. Missing,
+extra or aliased source members fail packaging; a directory alone is insufficient.
+The resulting prerequisite inventory is diagnostic evidence, not a proof key or
+certificate. Serving still requires the compiler-source tree/key and fresh
+compiler-read/native-byte admission implemented by the boundary guard. Changing
+a source body changes the prerequisite inventory and must still pass those
+independent guards. No component is downloaded automatically by the factory or
+installed Sail.
+
+`scripts/release-smoke.sh` verifies prerequisites after strict archive unpacking,
+then uses public `sail new` and a locked first verification. Success now requires
+Current complete reports, exactly one fresh requested-target invocation and the
+vstd target's exact `release` origin from this indexed bundle. An ordinary
+successful full verification (SAFE_MISS), a machine-local/store proof or warm
+local receipt reuse does not pass this first-Serve smoke. The later edited
+verification and repair smoke remain. This stricter smoke does not enable the
+currently unqualified release eligibility.
+
+Before first-use acceptance on each platform:
+
+1. Start with physically separate, empty Rustup/Cargo homes and project/cache/target
+   roots. Install the pinned minimal toolchain and, for the proof-bundle actor,
+   `rust-src`. Retain complete installer output, actual downloaded archive byte
+   counts/digests and checksum-verification results, installed source inventory
+   and elapsed setup time. Existing Mac sources or a cloned preinstalled toolchain
+   establish only a portability control, not fresh installation performance.
+2. Measure public project creation and verification separately and report their
+   sum. Also report setup plus creation plus verification, with equivalent stock
+   setup/project layout. Component download/verification time and bytes cannot
+   be hidden outside the first-use totals. Use three paired rounds and retain
+   every refusal/failure and all ordinary command output.
+3. Require actual release origin, all complete stock function/verdict/diagnostic
+   comparisons, missing/corrupt/index warm cases, failed requested target and
+   native-compiler replacement controls. Complete native Linux and Mac gates,
+   changed physical roots and a useful first-use gain remain prerequisites to
+   selection. Existing same-host factory or research-mode results are insufficient.
+
+The prerequisite/origin source controls use owned compiler/runtime doubles.
+They test complete, missing/extra/aliased component membership and content
+inventory changes, exact release origin, and SAFE_MISS/warm/store/foreign-origin
+refusals. They do not qualify an actual release or first-use performance.
+The helper refuses Python optimization (`-O`, `-OO` or `PYTHONOPTIMIZE`) because
+its required validation assertions must execute.
+
 ## How sail finds the bundled engine
 
 No setup is needed. `sail` looks for its Verus (the runtime, which is also

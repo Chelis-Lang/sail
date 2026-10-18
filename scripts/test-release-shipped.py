@@ -6,6 +6,8 @@ import io
 import json
 import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import tarfile
@@ -23,6 +25,13 @@ def refuses(call):
 
 def main():
     os.umask(0o022)
+    for optimization in ('-O', '-OO'):
+        refused = subprocess.run(
+            [sys.executable, optimization, '-B', str(Path(__file__).with_name('release-shipped.py')), 'verify', '/unused-stage'],
+            capture_output=True, check=False, timeout=10,
+        )
+        assert refused.returncode != 0
+        assert b'required validation needs Python without -O or PYTHONOPTIMIZE' in refused.stderr
     with tempfile.TemporaryDirectory(prefix='sail-release-members-', dir='/tmp') as temporary:
         root = Path(temporary).resolve()
         release = root/'sail-fixture';bundle = release/'deps/variant'
@@ -30,7 +39,7 @@ def main():
         for name in ('sail', 'sail-z3'):
             path = release/'bin'/name;path.write_bytes(b'fixture executable');path.chmod(0o755)
         runtime = release/'engine/variant';runtime.mkdir(parents=True)
-        (runtime/'sail-build.json').write_text('{}')
+        (runtime/'sail-build.json').write_text(json.dumps({'rust_toolchain':'1.98.1'}))
         key = 'a'*64;entry = bundle/'units'/key
         (entry/'files').mkdir(parents=True)
         (bundle/'Cargo.lock').write_text('fixture lock')
@@ -94,6 +103,13 @@ def main():
         shutil.copytree(bundle, template)
         controlled = root/'controlled-bin';controlled.mkdir()
         cargo = controlled/'cargo';cargo.write_text('#!/bin/sh\nexit 0\n');cargo.chmod(0o755)
+        sysroot = root/'fixture-sysroot';rustlib = sysroot/'lib/rustlib'
+        source = rustlib/'src/rust/library/lib.rs';source.parent.mkdir(parents=True);source.write_text('owned rust source')
+        (rustlib/'components').write_text('rust-src\n')
+        (rustlib/'manifest-rust-src').write_text('file:lib/rustlib/src/rust/library/lib.rs\n')
+        rustup = controlled/'rustup'
+        rustup.write_text('#!/bin/sh\n[ "$*" = "run 1.98.1 rustc --print sysroot" ] || exit 9\nprintf "%s\\n" '+str(sysroot)+'\n')
+        rustup.chmod(0o755)
         executable = r'''#!/usr/bin/env python3
 import json,os,shutil,signal,socket,sys,time
 from pathlib import Path
@@ -163,6 +179,52 @@ else:raise SystemExit(3)
         path_before=os.environ['PATH']
         os.environ['PATH']=str(controlled)+os.pathsep+path_before
         try:
+            # Complete owned source component, not a system-preinstalled source tree.
+            prerequisite = module.rust_source(runtime)
+            assert prerequisite['toolchain']=='1.98.1' and prerequisite['source_files']==1
+            assert prerequisite['source_bytes']==len(b'owned rust source')
+            previous_source_limit=module.SOURCE_LIMIT
+            try:
+                module.SOURCE_LIMIT=1
+                refuses(lambda:module.rust_source(runtime))
+            finally:module.SOURCE_LIMIT=previous_source_limit
+            held = source.read_bytes()
+            source.unlink();refuses(lambda:module.rust_source(runtime));source.write_bytes(held)
+            extra = source.parent/'extra.rs';extra.write_text('extra')
+            refuses(lambda:module.rust_source(runtime));extra.unlink()
+            alias = source.parent/'alias.rs';source.rename(alias);source.symlink_to(alias)
+            refuses(lambda:module.rust_source(runtime));source.unlink();alias.rename(source)
+            source.write_bytes(b'changed same component')
+            assert module.rust_source(runtime)['prerequisite_inventory_sha256'] != prerequisite['prerequisite_inventory_sha256']
+            source.write_bytes(held)
+            components = rustlib/'components';components.write_text('rustc\n')
+            refuses(lambda:module.rust_source(runtime));components.write_text('rust-src\n')
+            manifest = rustlib/'manifest-rust-src';text=manifest.read_text()
+            manifest.write_text(text+text);refuses(lambda:module.rust_source(runtime));manifest.write_text(text)
+            manifest.write_text('file:../outside\n');refuses(lambda:module.rust_source(runtime));manifest.write_text(text)
+            # Genuine release-origin shape is mandatory even after a successful
+            # full fallback. Warm local receipt reuse is not fresh first Serve.
+            served = copy.deepcopy(doc);served['run_id']='consumer'
+            served['execution']['verifier_invocations']=1
+            identity='b'*64+'/'+key
+            origin={'kind':'release','identity':identity,'establishing_run':'shipped:'+identity}
+            served['targets'][0]['dependency_build']=origin
+            served['targets'][0]['establishing_run']=origin['establishing_run']
+            served['targets'][1]['establishing_run']='consumer'
+            assert module.first_use(release,served)==identity
+            refuses(lambda:module.first_use(release,doc))  # Current full SAFE_MISS.
+            for field,value in [('kind','machine-local'),('identity','foreign'),('establishing_run','foreign')]:
+                wrong=copy.deepcopy(served);wrong['targets'][0]['dependency_build'][field]=value
+                refuses(lambda:module.first_use(release,wrong))
+            for change in ('warm','requested-origin','store','partial','wrong-count','diagnostic'):
+                wrong=copy.deepcopy(served)
+                if change=='warm':wrong['targets'][0]['reused']=True
+                elif change=='requested-origin':wrong['targets'][1]['dependency_build']=origin
+                elif change=='store':wrong['targets'][0]['dependency_store']={'key':'foreign'}
+                elif change=='partial':wrong['targets'][1]['complete']=False
+                elif change=='wrong-count':wrong['execution']['verifier_invocations']=2
+                else:wrong['targets'][0]['report']['diagnostics']=[{'severity':'warning'}]
+                refuses(lambda:module.first_use(release,wrong))
             for case in ('current','historical','capture-overflow','certificate-missing','scratch-cleanup-failure'):
                 stage=root/('producer-'+case)
                 (stage/'bin').mkdir(parents=True)
@@ -208,7 +270,7 @@ else:raise SystemExit(3)
                     except ProcessLookupError:pass
                     else:raise AssertionError('owned producer server survived')
         finally:os.environ['PATH']=path_before
-    print('release member/archive/source-report + actual owned producer-entry controls PASS (compiler/runtime doubled)')
+    print('release source-prerequisite/origin/member/archive/source-report + actual owned producer-entry controls PASS (compiler/runtime doubled)')
 
 
 if __name__=='__main__':main()
