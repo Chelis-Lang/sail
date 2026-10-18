@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add candidate coexistence between adjacent vstd release proofs and requested
+  target instant revert. A single actual native observation is independently
+  checked for each authority; served vstd has a distinct indexed-release
+  witness, and requested targets retain their own compiler-read checks.
+  The closed public default-feature profile joins the existing Vest profile.
+  Source review and 14 focused Mac controls pass; native combined-profile and
+  late-mutation qualification remain pending. No new release is selected.
+
 - Stop the release recorder's whole owned process group when a command or
   server leader exits early, including descendants that ignore termination.
   Cleanup outcomes remain visible on failure; these mock-qualified recorder

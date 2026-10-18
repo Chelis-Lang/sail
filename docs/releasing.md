@@ -1,8 +1,10 @@
 # Releasing Sail
 
 The compiler-source portability candidate has passing actual Mac staged
-first-use components; native Linux qualification and fresh-machine performance
-remain pending. Its portable native
+first-use components and full native Linux regression qualification. Its latest
+clean Linux consumer passes first-use, public/native controls and all 36 Vest
+calls, but fails requested-target instant revert. Release selection awaits the
+coexistence fix and requalification. Its portable native
 path requires the pinned verifier toolchain's canonical `lib/rustlib/src/rust`
 tree; a missing, aliased or changed tree declines proof reuse and runs genuine
 verification. The candidate binds every source byte and the exact compiler
