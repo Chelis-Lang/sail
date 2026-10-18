@@ -25,7 +25,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 pub(crate) const INPUTS_UNCONFIRMED: &str =
     "SAIL3114: inputs could not be confirmed unchanged; re-run for a current result";
 
-// Temporary diagnostic-only fork. Contract bytes are retained literally as hex,
+// Temporary diagnostic-only fork. Contract bytes are retained literally,
 // including an explicit absent/error state, never parsed into proof authority.
 fn currentness_contract(path: &Path) -> Value {
     const LIMIT: u64 = 2 * 1024 * 1024;
@@ -36,7 +36,7 @@ fn currentness_contract(path: &Path) -> Value {
     };
     match read() {
         Ok(bytes) if bytes.len() as u64 <= LIMIT => serde_json::json!({
-            "path": path, "bytes": bytes.len(), "sha256": digest(&bytes), "hex": hex::encode(bytes),
+            "path": path, "bytes": bytes.len(), "sha256": digest(&bytes), "raw_bytes": bytes,
         }),
         Ok(_) => serde_json::json!({"path": path, "error": "diagnostic contract byte cap"}),
         Err(error) => {
