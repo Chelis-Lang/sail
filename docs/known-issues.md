@@ -42,8 +42,11 @@ are in the `archive/m7-contracts-f7103bf` tag.
   [compiler-boundary record](validation/vstd-compile-boundary.md).
   The first actual staged factory remains blocked: its CLI exits with
   `SAIL3134` at the recording lock copy, before a Current report is returned.
-  Source/destination presence and the existing native-boundary trace now
-  distinguish refusal causes; no empty proof bundle is created to pass.
+  Source/destination diagnostics establish that the source lock exists and the
+  recording parent is absent. The native trace shows ordinary Cargo lint flags
+  being refused, leaving the direct vstd inputs without provenance. A narrow
+  lint-option parser correction is source-prepared; actual factory and first-use
+  acceptance are pending. No empty proof bundle is created to pass.
 
 - **The stale solver-hash defect is fixed on main**
   ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads
