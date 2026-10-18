@@ -339,6 +339,11 @@ oyster and such." This supersedes the parallel tracks of
       guards pass. Matching Linux/macOS pins are qualified and selected on main through
       merged #223, with all required CI checks green
       ([qualification](validation/spec-parameter-names.md)).
+      A further unselected function-spelling candidate is native-built and
+      passes focused controls. Its three-round Vest empty-impl edit screen
+      lowers the median 45.089 → 33.955 s (24.693%) and solver starts 30 → 24.
+      Whole-project/corpus, source-suite, controlled-root, determinism and Mac
+      gates remain open ([record](validation/smt-function-spellings.md)).
    6. B4, instant revert: receipts beyond the latest revision, #163.
       Implemented and native-qualified at `83128ad0` for the exact Linux/public
       alloc/std profile; delivery merged through #224 with required CI green. All
