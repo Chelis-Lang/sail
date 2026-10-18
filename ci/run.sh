@@ -7,6 +7,9 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
+#   boundary-witness admission|shapes
+#                        local-only external compiler witnesses; requires
+#                        frozen inputs and the owning bounded runner
 #   e2e-build DIR        CI only: build the e2e binaries once (release sail,
 #                        sail-z3, sail-conformance, check_output, check_mcp)
 #                        into DIR/e2e-bin.tar, which every e2e phase job
@@ -71,7 +74,7 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|e2e-build|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|boundary-witness|e2e-build|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
@@ -148,7 +151,32 @@ case "$step" in
 
   solver)
     : "${SAIL_TEST_Z3:?SAIL_TEST_Z3 must name the pinned z3 (set in the CI image)}"
-    cargo nextest run --workspace --locked --profile ci --run-ignored only
+    # These two ignored entrypoints require separately captured compiler inputs,
+    # not just Z3. Keep their strict missing-input failures in the local witness
+    # invocation rather than treating them as solver fixtures.
+    cargo nextest run --workspace --locked --profile ci --run-ignored only \
+      -E 'not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes))'
+    ;;
+
+  boundary-witness)
+    local_only boundary-witness
+    if [ "$#" -ne 1 ]; then
+      echo 'boundary-witness: expected admission|shapes' >&2
+      exit 2
+    fi
+    case "$1" in
+      admission)
+        : "${SAIL_ACTUAL_ADMISSION_CONFIG:?requires frozen actual compiler admission inputs}"
+        sail_witness_test='managed::shipped::native::admission_actual_tests::actual_native_admission_child'
+        ;;
+      shapes)
+        : "${SAIL_ACTUAL_NATIVE_TUPLES:?requires retained genuine Cargo tuple evidence}"
+        sail_witness_test='managed::shipped::native::native_shape::tests::actual_retained_native_shapes'
+        ;;
+      *) echo 'boundary-witness: expected admission|shapes' >&2; exit 2 ;;
+    esac
+    cargo nextest run -p sail-verus --lib --locked --profile ci --run-ignored only \
+      -E "test(=$sail_witness_test)"
     ;;
 
   e2e-build)
