@@ -83,7 +83,26 @@ success does not qualify recording. The parser correction recognizes only the
 compiler's lint-level spellings and lint-name grammar. Every original argument
 remains in the existing key; unknown options, foreign source/lookup/backend
 paths, native bytes, compiler reads and complete graph provenance stay checked.
-Factory and public archive first-use have not passed this successor.
+The exact parser successor `38943cf5` passed its three selected native
+parser/shape/key tests, release clippy and actual product/checker builds. Its
+separate real Mac factory passed with Current, all 1,872 functions, two verifier
+invocations, schema-12 unit and complete release index. Result SHA-256:
+`2f4edbcdcd3f5dde5a1b3c9e1d2da83d76474e2064092c6b5c5a4d641f6f6200`.
+
+The subsequent whole archive attempt failed in an external observer that rejected
+macOS's native `/tmp` alias; product staging, packaging and unpacking had passed.
+A known-system-alias-only observer successor passed those steps and public
+archive smoke, then established a genuinely separate physical Rustup root and
+created a public new project. Stock correctly refused `--locked`: the
+`new_project_lockfile` provider had no CLI caller, and the generated project had
+no lock. That is a missing product integration, not a proof-admission refusal.
+The correction calls the existing accepted-bundle provider before moving only
+that newly generated private project, preserves a generator's existing lock,
+and reports stable `SAIL0132` I/O failures with staging cleanup. Real first-use,
+stock comparisons and the warm-index matrix remain unrun on this correction.
+The two whole failures remain indexed by result SHA-256:
+`a2b4a08efa07bc4f1e3e7e169b64130581966ec0586369911145255e725db944`
+and `8f26ef3121ad8d2a015decf6fb18e50a3042d1760648bc25386abe933fb1cf6a`.
 
 Linux gates, real archive first-use on both platforms and changed Rustup/sysroot
 roots remain pending. Acceptance must

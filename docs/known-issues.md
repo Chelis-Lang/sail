@@ -40,13 +40,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   packaging, another machine, changed Rustup roots and default fresh-project
   first use remain pending. The v1 store stays quarantined. See the
   [compiler-boundary record](validation/vstd-compile-boundary.md).
-  The first actual staged factory remains blocked: its CLI exits with
-  `SAIL3134` at the recording lock copy, before a Current report is returned.
-  Source/destination diagnostics establish that the source lock exists and the
-  recording parent is absent. The native trace shows ordinary Cargo lint flags
-  being refused, leaving the direct vstd inputs without provenance. A narrow
-  lint-option parser correction is source-prepared; actual factory and first-use
-  acceptance are pending. No empty proof bundle is created to pass.
+  The initial factory failures remain recorded. After admitting ordinary native
+  lint flags without changing keys or provenance checks, actual Mac recording,
+  stripped staging, packaging and public archive smoke pass. Changed-Rustup
+  first-use is still blocked: the existing admitted-lock provider was never
+  called by `sail new`, so stock correctly refused `--locked` on the generated
+  project. The candidate now wires that provider only into a new private staged
+  project; actual first-use acceptance of this correction is pending. No lock
+  is fabricated in the oracle and no empty proof bundle is created to pass.
 
 - **The stale solver-hash defect is fixed on main**
   ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads
