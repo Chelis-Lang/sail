@@ -198,6 +198,16 @@ a source body changes the prerequisite inventory and must still pass those
 independent guards. No component is downloaded automatically by the factory or
 installed Sail.
 
+Record release proofs with the verifier's minimal toolchain plus `rust-src`.
+The compiler identity conservatively includes all installed target libraries;
+an extra target therefore produces a different proof key even for a host build.
+The Linux `ci/local.sh release` recipe removes the CI image's bare-metal target
+inside its disposable container before recording. The shared image and its
+conformance prerequisites remain intact. For macOS packaging, prepare a separate
+Rustup home with the pinned Sail toolchain and the verifier's minimal toolchain
+plus `rust-src`, and use it for the release command. Existing full-toolchain
+changed-root controls do not qualify a minimal installation.
+
 `scripts/release-smoke.sh` verifies prerequisites after strict archive unpacking,
 then uses public `sail new` and a locked first verification. Its owned work
 directory is canonicalized before exporting the cache path, including macOS

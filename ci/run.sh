@@ -434,6 +434,14 @@ RS
     # image's validated prebuilt engine, staged in $SAIL_RELEASE_OUT.
     local_only release "$@"
     release_build
+    # The disposable CI container also installs verismo's bare-metal target.
+    # A distributed proof uses the README's minimal verifier toolchain; its
+    # exact sysroot identity includes every installed target library.
+    # Keep the shared image and other CI steps intact.
+    if [ "${RUSTUP_HOME:-}" = /opt/rustup ] && [ -f /.dockerenv ]; then
+      sail_release_tc="$(python3 -c 'import json, os, pathlib; print(json.loads((pathlib.Path(os.environ["SAIL_ENGINE_BUILD"]) / "sail-build.json").read_text())["rust_toolchain"])')"
+      RUSTUP_PERMIT_COPY_RENAME=1 rustup target remove --toolchain "$sail_release_tc" x86_64-unknown-none
+    fi
     bash scripts/release.sh stage "${SAIL_RELEASE_OUT:?release needs SAIL_RELEASE_OUT}" "${SAIL_ENGINE_BUILD:?release needs the validated prebuilt engine}"
     ;;
 
