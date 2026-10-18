@@ -39,6 +39,19 @@ The successful comparison uses the existing exact function, scalar, schema and
 release-origin checks. Linux clean-consumer performance and shipped-mode
 A/B/A interaction gates remain pending.
 
+The first distinct Linux consumer remains FAIL, capture SHA-256
+`a6d5c5ea511a2f313705f4ae72af810ee2ea6a80b93f6863f9142b80fdd086b4`.
+Its candidate verifies correctly but misses the release bundle: the factory's
+vstd invocation lacks the consumer's unexpected-cfg lint/check flags, yielding
+a different exact unit key. Final source, package and runtime guards pass;
+the generic "release index or unit changed" refusal does not establish index
+corruption. Retained producer identity records Cargo 1.99.0, whereas the minimal
+consumer uses 1.98.1. The factory now explicitly selects the runtime's validated
+Cargo toolchain; native causal requalification is pending. Mock producer controls
+require 1.98.1 even with an inherited 1.99.0 builder selection, and strict archive
+controls require the owned lockfile's portable mode before indexing. No argument
+is ignored and no key or admission check changes.
+
 Source `356b7d0f` uses products built from `f7c540f4`: all compiled Rust,
 Cargo and admission-policy files are identical. The four subsequent changed
 files contain documentation, canonical physical-path handling in release smoke,
