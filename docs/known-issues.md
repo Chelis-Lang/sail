@@ -64,6 +64,12 @@ are in the `archive/m7-contracts-f7103bf` tag.
   automatic-daemon loop also matched with complete retained observations;
   neither accepts the memo candidate. The [failure observer](e2e-output-evidence.md)
   preserves bounded original bytes; [evidence and limits](validation/e2e-output-evidence.md).
+  A separate actual-relay fixture demonstrates a causal output race (#215).
+  Its first payload-IPC candidate passed Cargo-like fixtures but bypassed real
+  Cargo diagnostic rendering. The original-pipe stdout-barrier successor passes
+  focused/full Mac checks and native gate/solver/all E2E plus extra/PR commands;
+  full corpus, final native guards and cost checks remain open and unselected;
+  [qualification and remaining gates](validation/managed-output-order.md).
 
 - **Changed-check continuation remains unqualified** ([#158](https://github.com/Chelis-Lang/sail/issues/158)).
   Historical fork continuations have raw statistics differences. Three fresh
