@@ -184,7 +184,8 @@ def retain_compiler_inputs(owned, evidence, required):
     """Retain certificates only; these diagnostics never authorize a proof."""
     destination = evidence/'compiler-inputs'
     destination.mkdir(mode=0o700)
-    index = {'complete': False, 'root': str(owned), 'limit': CAPTURE_LIMIT, 'paths': []}
+    index = {'complete': False, 'root': str(owned), 'limit': CAPTURE_LIMIT, 'unique_bytes': 0, 'paths': []}
+    (destination/'bodies').mkdir(mode=0o700)
     def save():
         (destination/'index.json').write_text(json.dumps(index, indent=2)+'\n')
     def stamp(meta):
@@ -192,7 +193,7 @@ def retain_compiler_inputs(owned, evidence, required):
     def unreadable(error):
         raise error
     try:
-        bodies = {}
+        bodies = set()
         kinds = set()
         for parent, directories, files in os.walk(owned, onerror=unreadable):
             assert all(not (Path(parent)/name).is_symlink() for name in directories), 'certificate directory alias'
@@ -211,21 +212,22 @@ def retain_compiler_inputs(owned, evidence, required):
                     data = source.read(CAPTURE_LIMIT+1)
                     assert len(data) == before.st_size and stamp(os.fstat(source.fileno())) == stamp(before) == stamp(path.lstat()), 'certificate changed'
                 value = hashlib.sha256(data).hexdigest()
-                bodies.setdefault(value, data)
-                assert sum(map(len, bodies.values())) <= CAPTURE_LIMIT, 'certificate capture limit'
                 assert len(index['paths']) < 16384, 'certificate entry limit'
+                if value not in bodies:
+                    assert index['unique_bytes']+len(data) <= CAPTURE_LIMIT, 'certificate capture limit'
+                    # Reserve before writing, without refund on a failed write.
+                    index['unique_bytes'] += len(data)
+                    path = destination/'bodies'/value
+                    with path.open('xb') as stream:
+                        os.chmod(path, 0o600)
+                        stream.write(data)
+                    bodies.add(value)
                 index['paths'].append({'path': str(relative), 'sha256': value,
                                        'bytes': len(data), 'mode': stat.S_IMODE(before.st_mode)})
                 if name == 'inputs.json':kinds.update(observed)
         index['paths'].sort(key=lambda row: row['path'])
         assert not required or kinds == {'.sail-boundary-inputs', '.sail-boundary-native-reads'}, 'required compiler certificates missing'
-        (destination/'bodies').mkdir(mode=0o700)
-        for value, data in bodies.items():
-            path = destination/'bodies'/value
-            with path.open('xb') as stream:
-                os.chmod(path, 0o600)
-                stream.write(data)
-        index.update(complete=True, unique_bytes=sum(map(len, bodies.values())))
+        index['complete'] = True
     finally:
         save()
 
@@ -329,6 +331,9 @@ def record(root, evidence):
             (root/INDEX).write_text(json.dumps(index, indent=2)+'\n')
             verify(root)
             outcome.update(passed=True, establishing_run=run, proof=proof)
+    except BaseException:
+        outcome['passed'] = False
+        raise
     finally:
         try:
             try:
