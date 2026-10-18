@@ -96,6 +96,9 @@ compile normally. It requires Current, complete verified targets and the origina
 run before a complete dependency directory becomes discoverable. Refusals and
 failures stop release packaging. Evidence is retained beside the stage directory
 with `-proof-evidence` appended; it is not shipped or treated as proof authority.
+On termination, the recorder unwinds its existing cleanup before exiting: it
+stops and reaps its owned command/server groups, then removes its private scratch.
+A cancelled recording never installs a dependency bundle or release index.
 
 Normal verification may serve only a matching adjacent `deps/<variant>` bundle
 whose complete proof members match its adjacent `release-files.json` index;
