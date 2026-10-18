@@ -59,3 +59,5 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0054: Stable solver names for spec formal parameters (proposed)](0054-stable-spec-parameter-names.md)
 - [0055: Acknowledge visible managed-driver output (accepted)](0055-acknowledged-managed-output.md)
+
+- [0056: Stable SMT spellings for concrete trait functions (proposed, measured candidate)](0056-stable-smt-function-spellings.md)
