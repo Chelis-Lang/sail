@@ -3,9 +3,10 @@
 use super::super::research::Mode;
 use std::path::Path;
 
-// Exact manifest inside Linux archive 689004c074aca8883e225a2b89efebc137f3e563f24df2abd398516112b13928.
+// Exact manifest of the final cbb Linux runtime; ordinary reuse qualification
+// remains mandatory before this private integration candidate is selected.
 // Changing this authority requires new runtime and ordinary-reuse qualification.
-const LINUX_MANIFEST: &str = "a845cd2fcba411148566d8214c1285f083689df6a8ffa5479afcf3845382b033";
+const LINUX_MANIFEST: &str = "51370000d09691c391e59eefed2b58b07716cbba5b4db0b588a24d8a1cf71e25";
 
 pub(super) fn requested(mode: Mode) -> bool {
     choose(mode, crate::toolchain::host(), || true)
