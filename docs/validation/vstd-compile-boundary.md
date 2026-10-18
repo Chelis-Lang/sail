@@ -2,7 +2,7 @@
 
 | Gate | Current state |
 |---|---|
-| Implementation | Candidate adjacent release-bundle Serve activation; Mac source checks pass, real staged first-use pending; explicit Record/LOCAL/alternate modes remain research-only |
+| Implementation | Candidate adjacent release-bundle Serve activation; actual Mac staged first-use components pass; Linux qualification and fresh-machine performance pending; explicit Record/LOCAL/alternate modes remain research-only |
 | Native prerequisites | Every native compiler executes normally; current-run successful provenance and actual linked bytes required |
 | Reuse scope | Pinned, nonprimary vstd library only; no native units or Cargo fingerprints |
 | Identity | Literal flags, actual runtime/sysroot/solver bytes, linked libraries/VIR, official source/feature closure and environment |
@@ -11,8 +11,75 @@
 | Compiler-input boundary | Final-source functional probes retain real native and verified-input certificates under the closed source/feature policy; earlier native source/transitive controls keep their recorded source scope |
 | Literal query comparison | Two separate cold controls match all 366 literal input streams / 2,061 checks each; this is not reuse or stock acceptance |
 | Portable functionality | Linux `83128ad0` and the earlier Mac component pass changed Cargo/project/install roots. The guarded Mac successor passes changed physical Rustup/sysroot roots, full Record → Serve → unchanged and both negative comparisons. A separate native-only successor passes all twelve consumer pairs; the original enclosing cohort stays FAIL |
-| Default regression gates | `83128ad0`: full Linux gate/solver/all E2E+extra/PR/FAST/STANDARD and final guards pass; Mac host clippy plus 742 tests pass |
+| Default regression gates | Current candidate: Mac host clippy and 779 tests pass; native Linux qualification is running. Earlier `83128ad0` full Linux results retain their original source scope |
 | Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
+
+## Current composed release candidate
+
+Source `356b7d0f` uses products built from `f7c540f4`: all compiled Rust,
+Cargo and admission-policy files are identical. The four subsequent changed
+files contain documentation, canonical physical-path handling in release smoke,
+and the separation of two external compiler-witness entrypoints from the
+ordinary solver test inventory. Those witnesses still require their original
+external inputs; `ci/run.sh boundary-witness admission|shapes` runs them locally.
+The pinned-Z3 solver inventory retains all 35 original tests.
+
+The Mac evidence is a composition of retained successful components, not a
+successful enclosing run. It binds one actual 40,849,036-byte archive, SHA-256
+`f6c706ef8bcc522734b72780f6450c1ec3190e1a7d2ee93712704dd6b1354cff`,
+to the normal pinned `e536` runtime and final stripped binaries. All 25 indexed
+files have checked contents and modes. The components establish:
+
+- Fresh product builds, all 779 enabled Mac host tests and clippy, actual
+  factory recording, complete proof/index packaging and strict public smoke.
+- Public first use after changing physical Rustup/sysroot, Cargo, project and
+  installation roots: Current, all 1,872 stock function comparisons, one fresh
+  requested-target verifier invocation, no local target reuse and the exact
+  shipped release origin.
+- Unchanged runs with intact, missing and corrupt adjacent indexes: no verifier
+  invocation and both retained targets preserve their establishing origins.
+  The corresponding failing JSON and text runs match stock diagnostics; the
+  text stdout/stderr comparisons are literal.
+- A separate native-only successor: 25 fresh native output records covering
+  all 14 official packages, checked certificate bodies, and an actual
+  same-path compiler replacement which both stock and Sail reject with the
+  required diagnostic and no native publication.
+
+The composite index SHA-256 is
+`2b3d6019f35b3a86236ad1f87be95fd34f07d41a09121555d20d3382b8d3e276`;
+the independent archive/raw-stream/component audit is
+`d4c41f01592a7d876fa723eef68547b1b6f197ff862a2f2343573cbdb6a31b95`.
+The native-only successful result is
+`47d24b30b09f4e556d9df01a8a9cdbd154a47241fbfe7cc977b3c1b5b104f8fa`.
+Every contributing component retains final source/runtime guards and owned
+process cleanup. Earlier producer-negative and twelve-pair ABI results retain
+their earlier source scope. These Mac checks establish correctness components,
+not fresh-machine installation cost or a performance gain.
+
+All six enclosing Mac failures remain failed in the composite index:
+
+| Source / date | Result SHA-256 | Failure scope |
+|---|---|---|
+| `f7c540f4` / 2026-10-18 | `64e560683a71f3a0ac6bf13efe9ddbe68f506d9051d1ba961edc4d4486a4bfba` | Host tests: an assertion matched the canonical private temporary path; a separate mock deadline failed with initiating cause unknown |
+| `f7c540f4` / 2026-10-18 | `c0d9f864c46f9637f81df22ca47b148667e87575dea079b7b96db3dd51516905` | Strict smoke rejected SAFE_MISS through the `/tmp` alias; physical-path correction is in `f50862a6` |
+| `f50862a6` / 2026-10-18 | `b4b1bee0743e0e14b0a380aae69ac2687e2dad97950b5f7afaefcfc2d49fd9cc` | External observer attempted to unpack into a nonempty directory |
+| `f50862a6` / 2026-10-18 | `c68608447275112eb35c766107d2fc20bb443f54930a31ec85d356db6faa46bc` | External diagnostic fixture expected the factory crate name in a public-consumer diagnostic |
+| `f50862a6` / 2026-10-18 | `ac91d6391af06e032e754470f39f43718ed58d609b0728c3b8d9025dd575654d` | External observer lacked a retained factory sidecar after successful first Serve |
+| `356b7d0f` / 2026-10-18 | `61f94f58773e75ab1b77194df9f134cc393aeb9e4ca94fb2dafb401db2c8813e` | External native donor observer expected the local-reuse flag instead of the release origin |
+
+Current Linux qualification and the distinct producer/consumer performance gate
+are separate requirements. In particular, default selection must also retain
+the actual A/B/A and Vest checks after shipped Serve; earlier retained-mode
+speedups do not qualify the shipped mode.
+
+The native Linux attempts retain these failed capture archives. No later
+success changes their outcome:
+
+| Source / date | Capture SHA-256 | Failure scope |
+|---|---|---|
+| `f7c540f4` / 2026-10-18 | `e19b61b7adcca63cc9c98ad0d5d9aba2d21eab55229c1b980f05daadfe7b2448` | Unreadable-member fixture ran as root, invalidating its permission premise; subsequent test containers use UID 1000 |
+| `f7c540f4` / 2026-10-18 | `bbed764086e58f2a9b591acc3eb4f73df95318d53aaa26fded0146ad9c242ae0` | Added operator preflight tried to read a root-only runtime manifest as UID 1000 before tests using their own runtime fixtures |
+| `f50862a6` / 2026-10-18 | `349c5d3ffe3f26a721e0e5170b9fc643e6c144ddf681592d3020f964ae38cde0` | Workspace gate passed; solver inventory passed its original 35 tests but also selected two new external witnesses without their required inputs; `356b7d0f` supplies their separate local entrypoint |
 
 ## Packaging prerequisite and first-Serve source correction
 

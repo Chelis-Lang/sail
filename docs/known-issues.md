@@ -35,29 +35,19 @@ are in the `archive/m7-contracts-f7103bf` tag.
   failure stays failed; see the [record](validation/instant-revert.md).
 
 - **Portable vstd functionality is not release first-use acceptance (#161).**
-  Same-host Linux and Mac changed-root Record/Serve/unchanged components pass.
-  The guarded Mac successor also changes physical Rustup/sysroot roots and passes
-  both negative-diagnostic comparisons. Its enclosing full cohort remains FAIL:
-  the purported proc-macro panic fixture emits a syntax error, so only two of
-  twelve native-consumer pairs qualify in that attempt. A separate native-only
-  successor with a genuine panic fixture passes all twelve strict pairs.
-  Another machine and default fresh-project archive first use/performance remain pending.
-  The v1 store stays quarantined. See the
-  [compiler-boundary record](validation/vstd-compile-boundary.md).
-  The initial factory failures remain recorded. After admitting ordinary native
-  lint flags without changing keys or provenance checks, actual Mac recording,
-  stripped staging, packaging and an earlier public archive smoke pass.
-  Changed-Rustup first use was initially blocked: the admitted-lock provider was never
-  called by `sail new`, so stock correctly refused `--locked` on the generated
-  project. After wiring that provider only into the new private staged project,
-  actual locked stock verification and full first-Serve comparisons pass; Serve
-  safely reverified because compiler children derived the adjacent bundle from
-  a cache alias. The runtime-root/byte-bound alias correction is implemented;
-  the later guarded functional component above serves the original shipped proof.
-  A new archive first-use smoke requires actual indexed release origin, not
-  successful fallback; actual archive qualification remains pending. The earlier
-  diagnostic body-cap and lock/alias failures stay visible. No lock is fabricated
-  in the oracle and no empty proof bundle is created to pass.
+  Current composed Mac evidence passes actual stripped recording, archive
+  smoke and public first Serve with the shipped origin at changed physical
+  Rustup/sysroot, Cargo, project and installation roots. All 1,872 function
+  comparisons match stock; unchanged-index and failing-diagnostic controls
+  pass. A separate native-only component checks fresh native records and a
+  same-path compiler replacement. All six enclosing attempts remain failed;
+  their successful components are bound and audited separately. Linux native
+  qualification, a distinct producer/clean-consumer run and fresh-install
+  performance remain pending. Earlier twelve-pair native ABI results retain
+  their original source scope. The v1 store stays quarantined, and default
+  release selection remains unqualified. The
+  [compiler-boundary record](validation/vstd-compile-boundary.md) retains the
+  failed attempts and precise component limits.
 
 - **The stale solver-hash defect is fixed on main**
   ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads
@@ -87,7 +77,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   Cargo diagnostic rendering. The original-pipe stdout-barrier successor passes
   focused/full Mac checks. Joined Mac759/Clippy and native gate/solver/all E2E
   plus extra/PR/full FAST and STANDARD, final guards and complete capture pass.
-  The delivery head still requires its own CI and review. Complete retained
+  PR #226 is merged after delivery CI and review passed. Complete retained
   Vest facts show no gain; both earlier capture failures and the unknown cause
   of the original missing-stream disagreement remain visible. The barrier
   guarantees final stdout completion, not a global cross-stream order;
@@ -141,7 +131,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   The joined implementation passes Mac759/Clippy and full native qualification,
   including all four FAST/STANDARD arms, final guards and complete capture.
   Its current affected fixture improves 0.896 → 0.174 s (5.14×) across all nine
-  measured calls; final delivery CI and review remain pending
+  measured calls; PR #226 is merged after delivery CI and review passed
   ([record](validation/unscheduled-script-cleaning.md)). The first Vest cohort
   lost detailed rows; the second retains complete facts showing no speed/CPU
   gain, while its capture-parent deadline failure stays failed. Source edits and
