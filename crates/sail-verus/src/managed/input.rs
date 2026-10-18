@@ -580,6 +580,18 @@ fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool, BTreeMap<PathB
 // A run-local mutation stamp is separate from logical proof keys: reverting an
 // edit between completed runs may reuse a proof, reverting during a run may not.
 pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
+    stamp_paths(&mutation_paths(snapshot))
+}
+
+// Temporary diagnostic build only: these are the very metadata results folded
+// into the existing stamp, not a second scan after the observation boundary.
+pub(super) type MutationRows = BTreeMap<PathBuf, Value>;
+
+pub(super) fn observed_mutation_stamp(snapshot: &InputSnapshot) -> (Option<String>, MutationRows) {
+    stamp_paths_observed(&mutation_paths(snapshot), true)
+}
+
+fn mutation_paths(snapshot: &InputSnapshot) -> BTreeSet<PathBuf> {
     let mut paths = snapshot.observation_paths.clone();
     // Package roots share most ancestors (the registry source directory, the
     // home directory): each ancestor is examined once.
@@ -597,15 +609,24 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
             }
         }
     }
-    stamp_paths(&paths)
+    paths
 }
 
 // The `lstat` calls overlap (about 13,000 paths per vest snapshot); the stamp
 // folds their results in the original sorted order, exactly as one by one.
 #[cfg(unix)]
 fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
+    stamp_paths_observed(paths, false).0
+}
+
+#[cfg(unix)]
+fn stamp_paths_observed(
+    paths: &BTreeSet<PathBuf>,
+    capture: bool,
+) -> (Option<String>, MutationRows) {
     use std::os::unix::fs::MetadataExt as _;
     let mut stamp = Sha256::new();
+    let mut rows = BTreeMap::new();
     let paths: Vec<&PathBuf> = paths.iter().collect();
     let stats = crate::parallel::in_order(&paths, |path| std::fs::symlink_metadata(path));
     for (path, metadata) in paths.into_iter().zip(stats) {
@@ -616,10 +637,32 @@ fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
             Ok(metadata) => metadata,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 stamp.update(b"missing");
+                if capture {
+                    rows.insert(path.clone(), serde_json::json!({"missing": true}));
+                }
                 continue;
             }
-            Err(_) => return None,
+            Err(error) => {
+                if capture {
+                    rows.insert(
+                        path.clone(),
+                        serde_json::json!({"error": error.to_string()}),
+                    );
+                }
+                return (None, rows);
+            }
         };
+        if capture {
+            rows.insert(
+                path.clone(),
+                serde_json::json!({
+                    "dev": metadata.dev(), "ino": metadata.ino(),
+                    "size": metadata.size(), "mode": metadata.mode(),
+                    "mtime": metadata.mtime(), "mtime_nsec": metadata.mtime_nsec(),
+                    "ctime": metadata.ctime(), "ctime_nsec": metadata.ctime_nsec(),
+                }),
+            );
+        }
         for number in [
             metadata.dev(),
             metadata.ino(),
@@ -637,12 +680,20 @@ fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
             stamp.update(number.to_le_bytes());
         }
     }
-    Some(format!("{:x}", stamp.finalize()))
+    (Some(format!("{:x}", stamp.finalize())), rows)
 }
 
 #[cfg(not(unix))]
 fn stamp_paths(_paths: &BTreeSet<PathBuf>) -> Option<String> {
     None
+}
+
+#[cfg(not(unix))]
+fn stamp_paths_observed(
+    _paths: &BTreeSet<PathBuf>,
+    _capture: bool,
+) -> (Option<String>, MutationRows) {
+    (None, BTreeMap::new())
 }
 
 /// Hashes Cargo's declared workspace and resolved dependency inputs.
@@ -1076,6 +1127,35 @@ mod tests {
     }
 
     use std::fs::{File, FileTimes};
+
+    #[cfg(unix)]
+    #[test]
+    fn diagnostic_rows_preserve_the_actual_mutation_stamp() {
+        let root =
+            std::env::temp_dir().join(format!("sail-stamp-diagnostic-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let root = root
+            .canonicalize()
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let source = root.join("source.rs");
+        assert!(std::fs::write(&source, "original").is_ok());
+        let data = serde_json::json!({"workspace_root":root,"packages":[{"manifest_path":root.join("Cargo.toml")}]});
+        let mut before = snapshot_metadata(&data, &[]);
+        let missing = root.join("missing-config");
+        before.roots.push(missing.clone());
+        let (stamp, rows) = observed_mutation_stamp(&before);
+        assert_eq!(stamp, mutation_stamp(&before));
+        assert_eq!(
+            rows.get(&missing),
+            Some(&serde_json::json!({"missing":true}))
+        );
+        assert!(rows.get(&source).is_some_and(|row| row["size"] == 8));
+        assert!(std::fs::write(&source, "different").is_ok());
+        let (changed, changed_rows) = observed_mutation_stamp(&before);
+        assert_ne!(stamp, changed);
+        assert_ne!(rows.get(&source), changed_rows.get(&source));
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
 
     #[test]
     fn mutation_stamp_detects_restored_content_and_mtime_without_callbacks() {

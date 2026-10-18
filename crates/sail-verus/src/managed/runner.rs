@@ -25,6 +25,46 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 pub(crate) const INPUTS_UNCONFIRMED: &str =
     "SAIL3114: inputs could not be confirmed unchanged; re-run for a current result";
 
+// Temporary diagnostic-only fork. Contract bytes are retained literally as hex,
+// including an explicit absent/error state, never parsed into proof authority.
+fn currentness_contract(path: &Path) -> Value {
+    const LIMIT: u64 = 2 * 1024 * 1024;
+    let read = || -> std::io::Result<Vec<u8>> {
+        let mut bytes = Vec::new();
+        File::open(path)?.take(LIMIT + 1).read_to_end(&mut bytes)?;
+        Ok(bytes)
+    };
+    match read() {
+        Ok(bytes) if bytes.len() as u64 <= LIMIT => serde_json::json!({
+            "path": path, "bytes": bytes.len(), "sha256": digest(&bytes), "hex": hex::encode(bytes),
+        }),
+        Ok(_) => serde_json::json!({"path": path, "error": "diagnostic contract byte cap"}),
+        Err(error) => {
+            serde_json::json!({"path": path, "error": error.to_string(), "kind": format!("{:?}", error.kind())})
+        }
+    }
+}
+
+fn currentness_trace(path: &Path, value: &Value) {
+    const LIMIT: usize = 32 * 1024 * 1024;
+    let Ok(bytes) = serde_json::to_vec(value) else {
+        return;
+    };
+    if bytes.len() > LIMIT {
+        return;
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.mode(0o600);
+    }
+    if let Ok(mut file) = options.open(path) {
+        let _ = file.write_all(&bytes);
+    }
+}
+
 /// Explicit managed verification environment; no caller Cargo artifacts are changed.
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -2253,7 +2293,27 @@ pub(crate) fn run_engine_held(
     if paths.reuse {
         clean(config, &paths.target, &late_scripts)?;
     }
-    let stamp_before = super::input::mutation_stamp(&before_run);
+    // Temporary diagnosis only. The requested directory must be outside all
+    // observed package roots, and is never a proof input or authority.
+    let current_trace = std::env::var_os("SAIL_CURRENTNESS_TRACE")
+        .map(PathBuf::from)
+        .filter(|path| {
+            path.is_absolute()
+                && path.canonicalize().as_ref().ok() == Some(path)
+                && path.is_dir()
+                && !before_run.roots.iter().any(|root| path.starts_with(root))
+        });
+    let contracts_before = current_trace.as_ref().map(|_| {
+        serde_json::json!({
+            "build_inputs": currentness_contract(&paths.build_inputs),
+            "source_inputs": currentness_contract(&source_state),
+        })
+    });
+    let (stamp_before, stamp_rows_before) = if current_trace.is_some() {
+        super::input::observed_mutation_stamp(&before_run)
+    } else {
+        (super::input::mutation_stamp(&before_run), BTreeMap::new())
+    };
     if super::configuration::check(&invocation, &config.args)? != loader {
         return Err(Error::new(
             "SAIL3112",
@@ -2562,8 +2622,13 @@ pub(crate) fn run_engine_held(
     // pre-invocation target revision contained that particular include.
     let pending = completed_receipts(&paths.run, &after_data)?;
     let after_run = without_generated(&after, generated.as_deref());
-    let stamp_after = super::input::mutation_stamp(&after_run);
+    let (stamp_after, stamp_rows_after) = if current_trace.is_some() {
+        super::input::observed_mutation_stamp(&after_run)
+    } else {
+        (super::input::mutation_stamp(&after_run), BTreeMap::new())
+    };
     let absent = absent.finish();
+    let mut runtime_observed = None;
     let currentness = if !paths.reuse
         || !before.complete
         || !after.complete
@@ -2571,7 +2636,11 @@ pub(crate) fn run_engine_held(
         || !source_coverage
         || !absent.complete
         || outside_scope
-        || !runtime_current(&config.cache, &hash)
+        || !{
+            let current = runtime_current(&config.cache, &hash);
+            runtime_observed = Some(current);
+            current
+        }
         || stamp_before.is_none()
         || stamp_after.is_none()
     {
@@ -2584,6 +2653,48 @@ pub(crate) fn run_engine_held(
     } else {
         Currentness::Historical
     };
+    if let Some(directory) = current_trace {
+        let changed_digests: Vec<_> = before_run
+            .digests
+            .keys()
+            .chain(after_run.digests.keys())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .filter(|path| before_run.digests.get(*path) != after_run.digests.get(*path))
+            .collect();
+        let changed_stamps: Vec<_> = stamp_rows_before
+            .keys()
+            .chain(stamp_rows_after.keys())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .filter(|path| stamp_rows_before.get(*path) != stamp_rows_after.get(*path))
+            .collect();
+        let snapshot = |value: &super::input::InputSnapshot| {
+            serde_json::json!({
+                "revision": value.revision, "digests": value.digests,
+                "roots": value.roots, "observation_paths": value.observation_paths,
+                "excluded": value.excluded, "complete": value.complete,
+            })
+        };
+        currentness_trace(
+            &directory.join("currentness.json"),
+            &serde_json::json!({
+                "diagnostic_only": true, "run_id": run_id, "pid": std::process::id(),
+                "currentness": currentness, "before": snapshot(&before_run), "after": snapshot(&after_run),
+                "stamp_before": stamp_before, "stamp_after": stamp_after,
+                "stamp_rows_before": stamp_rows_before, "stamp_rows_after": stamp_rows_after,
+                "changed_digest_paths": changed_digests, "changed_stamp_paths": changed_stamps,
+                "absent": {"changed": absent.changed, "complete": absent.complete},
+                "flags": {"reuse": paths.reuse, "before_complete": before.complete, "after_complete": after.complete,
+                    "after_coverage": after_coverage, "source_coverage": source_coverage,
+                    "outside_scope": outside_scope, "runtime_current_if_evaluated": runtime_observed,
+                    "script_coverage_before": script_coverage, "stale_scripts": stale_scripts},
+                "contracts_before": contracts_before,
+                "contracts_after": {"build_inputs": currentness_contract(&paths.build_inputs),
+                    "source_inputs": currentness_contract(&source_state)},
+            }),
+        );
+    }
     drop(post_run);
     if paths.reuse
         && !shown
