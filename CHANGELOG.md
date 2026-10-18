@@ -14,7 +14,10 @@ semantic versioning once the API is published.
 - Experimental portable vstd proof reuse binds the actual solver-adapter bytes
   and relocates only its configured pathname and exact Cargo-Verus package
   environment names. Unknown observations remain literal and collisions refuse;
-  portable first-use and default selection remain unqualified.
+  portable first-use and default selection remain unqualified. Observed value
+  relocation uses exact Cargo path-variable names; unknown values stay literal
+  under every prefix. Restored dep-info maps the same known environment fields,
+  preserves unknown comments and refuses ambiguous or unsupported grammar.
 - Experimental portable vstd recording/serving also remaps freshly compiled
   registry prerequisites to the existing virtual source base. This prevents
   imported builtin definition spans from retaining the recording machine's

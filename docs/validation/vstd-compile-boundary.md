@@ -46,6 +46,12 @@ Earlier attempts remain failures: the first Mac probe stopped on an unsupported
 stock-reader field, and its corrected successor refused registry-bearing VIR
 before any Serve invocation. Neither establishes a portable hit or safe miss.
 
+The `e723ce47` source successor (2026-10-18) was held before any whole probe:
+review found that broad variable-family value mapping could equate changed
+unknown observations, and restored dep-info could retain the recording shim
+path. The exact-value and dep-info source corrections above address that finding;
+portable execution acceptance remains pending.
+
 ## Portable observed compiler environment
 
 The changed-root Mac probe now records a complete verified bundle and returns
@@ -66,10 +72,30 @@ changed shim bytes (including restored mtime), unknown observations, incomplete
 source evidence or an old schema still miss. Solver-byte and final Currentness
 checks remain required; machine-local mode adds no portable shim binding.
 This is source preparation, not a portable hit or default selection.
-All 38 shipped-boundary tests and workspace all-target clippy pass on Mac.
-These tests include production stored-certificate validation, foreign SourceMap
+The source-review successor uses an exact allowlist of Cargo path-valued
+observations (`CARGO_MANIFEST_DIR`, `CARGO_MANIFEST_PATH`,
+`CARGO_RUSTC_CURRENT_DIR`, `CARGO_TARGET_TMPDIR`, `OUT_DIR`). Unknown observed
+values remain literal under every prefix, including `VERUS_`, `RUST`, `Z3_`,
+`VARGO_` and `CARGO_PKG_`. Same-key regressions check that changed unknown values
+refuse through the production stored-certificate validator.
+
+Dep-info environment comments now use the same mapping in both directions.
+Unknown comments remain byte-for-byte literal; known names and path values use
+the pinned rustc escaping for backslash, newline and carriage return. Unset and
+empty values, line order and final line endings are retained. Duplicate names,
+ambiguous mapped names, reserved-name literals and unsupported escape grammar
+refuse. Machine-local dep-info follows its original path. Old schema 10 entries
+are refused. A real file stage/restore test checks that the restored dependency
+file names the consumer shim rather than the recording shim.
+
+All 39 shipped-boundary tests and workspace all-target clippy pass on Mac.
+These include production stored-certificate validation, foreign SourceMap
 refusal, both name-collision directions and a same-size shim mutation with its
-mtime restored. They are not a successful whole changed-root Serve.
+mtime restored. A separate replay reads the actual recorded 128 source entries
+in each phase and the complete observed environment. Its consumer environment
+is reconstructed from retained command/root identities; the failed capture did
+not preserve the consumer's raw phase document. This is source validation, not
+a successful whole changed-root Serve or unchanged-run freshness acceptance.
 
 The enclosing probe remains FAIL because the optional compiler diagnostic
 capture exceeded its unchanged 128 MiB limit. Its unconditional finalizer reaped
@@ -91,7 +117,7 @@ The lock-order cause audit is
 `SAIL_SHIPPED_RECORD` records an experimental bundle; `SAIL_SHIPPED_DEPS`
 serves one. `SAIL_VSTD_BOUNDARY_LOCAL` instead uses a separate machine-local
 bundle bound to both literal and canonical registry roots. All require the
-research flag. Local mode never remaps VIR or source paths. Schema 10 and the
+research flag. Local mode never remaps VIR or source paths. Schema 11 and the
 bundle kind reject old all-unit bundles. Focused, engine and loader-variable
 setups use the ordinary compiler path. Changed, missing or unsupported inputs
 miss safely. No ordinary CLI, runtime pin or release asset is selected here.

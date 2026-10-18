@@ -7,7 +7,7 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 10 also requires portable adapter/environment bindings. It neither
+//! schema 11 also requires portable adapter/environment bindings. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
 //! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
@@ -29,7 +29,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 10;
+const SCHEMA: u32 = 11;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";
@@ -1066,6 +1066,16 @@ impl<'a> Call<'a> {
     }
 
     fn environment_value(&self, name: &str, value: &str, localize: bool) -> String {
+        // These are Cargo's documented path-valued variables, not families:
+        // an unknown VERUS_*, RUST*, Z3_*, VARGO_* or CARGO_PKG_* read remains
+        // literal even if the lookup key's older environment view maps it.
+        const PATH_VALUES: &[&str] = &[
+            "CARGO_MANIFEST_DIR",
+            "CARGO_MANIFEST_PATH",
+            "CARGO_RUSTC_CURRENT_DIR",
+            "CARGO_TARGET_TMPDIR",
+            "OUT_DIR",
+        ];
         if name == "VERUS_Z3_PATH"
             && let Some(adapter) = &self.plan.solver_adapter
             && let Some(path) = adapter.path.to_str()
@@ -1073,14 +1083,7 @@ impl<'a> Call<'a> {
         {
             return if localize { path } else { SOLVER_ADAPTER }.to_owned();
         }
-        let package = self
-            .normalizer
-            .pairs
-            .iter()
-            .find(|(_, token)| *token == PACKAGE);
-        if !matches!(self.plan.mode, Mode::MachineLocal { .. })
-            && package.is_none_or(|(package, _)| bound_name(name, package).is_none())
-        {
+        if !matches!(self.plan.mode, Mode::MachineLocal { .. }) && !PATH_VALUES.contains(&name) {
             return value.to_owned();
         }
         if localize {
@@ -1097,6 +1100,10 @@ impl<'a> Call<'a> {
     ) -> Option<BTreeMap<String, Option<String>>> {
         let mut mapped = BTreeMap::new();
         for (name, value) in values {
+            // A literal input must not masquerade as our encoded known name.
+            if !localize && self.environment_name(name, true) != *name {
+                return None;
+            }
             let key = self.environment_name(name, localize);
             let value = value.as_ref().map(|value| {
                 self.environment_value(if localize { &key } else { name }, value, localize)
@@ -1106,6 +1113,71 @@ impl<'a> Call<'a> {
             }
         }
         Some(mapped)
+    }
+
+    fn dep_info_declarations(&self, text: &str) -> Option<BTreeMap<String, Option<String>>> {
+        if matches!(self.plan.mode, Mode::MachineLocal { .. }) {
+            Some(
+                dep_info_environment(&self.normalizer.normalize(text))
+                    .into_iter()
+                    .collect(),
+            )
+        } else {
+            self.mapped_environment(&checked_dep_info_environment(text)?, false)
+        }
+    }
+
+    fn mapped_dep_info(&self, text: &str, localize: bool) -> Option<String> {
+        let map_paths = |text: &str| {
+            if localize {
+                self.normalizer.localize(text)
+            } else {
+                self.normalizer.normalize(text)
+            }
+        };
+        if matches!(self.plan.mode, Mode::MachineLocal { .. }) {
+            return Some(map_paths(text));
+        }
+        let mut original_names = std::collections::BTreeSet::new();
+        let mut mapped_names = std::collections::BTreeSet::new();
+        let mut output = String::with_capacity(text.len());
+        for line in text.split_inclusive('\n') {
+            let body = line.strip_suffix('\n').unwrap_or(line);
+            let body = body.strip_suffix('\r').unwrap_or(body);
+            let ending = &line[body.len()..];
+            if body.trim_start().starts_with("# env-dep") {
+                let (name, value) = checked_environment_line(body)?;
+                if !localize && self.environment_name(&name, true) != name {
+                    return None;
+                }
+                let mapped_name = self.environment_name(&name, localize);
+                if !original_names.insert(name.clone()) || !mapped_names.insert(mapped_name.clone())
+                {
+                    return None;
+                }
+                let mapped_value = value.as_ref().map(|value| {
+                    self.environment_value(
+                        if localize { &mapped_name } else { &name },
+                        value,
+                        localize,
+                    )
+                });
+                if mapped_name == name && mapped_value == value {
+                    output.push_str(body);
+                } else {
+                    output.push_str("# env-dep:");
+                    output.push_str(&escape_environment(&mapped_name));
+                    if let Some(value) = mapped_value {
+                        output.push('=');
+                        output.push_str(&escape_environment(&value));
+                    }
+                }
+            } else {
+                output.push_str(&map_paths(body));
+            }
+            output.push_str(ending);
+        }
+        Some(output)
     }
 
     /// Actual compiler arguments use the already verified private input bytes.
@@ -1260,7 +1332,9 @@ impl<'a> Call<'a> {
             let stored = if name == format!("{}.d", self.stem) {
                 let text = String::from_utf8(bytes).map_err(|e| format!("{name}: {e}"))?;
                 dep_info = Some((name.clone(), text.clone()));
-                self.normalizer.normalize(&text).into_bytes()
+                self.mapped_dep_info(&text, false)
+                    .ok_or("unsupported or ambiguous dep-info environment")?
+                    .into_bytes()
             } else {
                 if !matches!(self.plan.mode, Mode::MachineLocal { .. })
                     && registries
@@ -1349,14 +1423,9 @@ impl<'a> Call<'a> {
             let (sha256, _) = sha256_file(Path::new(&source)).ok_or("unreadable source")?;
             sources.push((normalized, sha256));
         }
-        let mut declared: BTreeMap<_, _> = if matches!(self.plan.mode, Mode::MachineLocal { .. }) {
-            dep_info_environment(&self.normalizer.normalize(&text))
-                .into_iter()
-                .collect()
-        } else {
-            self.mapped_environment(&dep_info_environment(&text).into_iter().collect(), false)
-                .ok_or("ambiguous dep-info environment names")?
-        };
+        let mut declared = self
+            .dep_info_declarations(&text)
+            .ok_or("unsupported or ambiguous dep-info environment")?;
         let compiler_reads = compiler::publication(self, &mut declared)?;
         let text_file = |name: &str, text: &str| -> std::result::Result<StoredFile, String> {
             let bytes = self.normalizer.normalize(text).into_bytes();
@@ -1562,7 +1631,10 @@ impl<'a> Call<'a> {
             let to = self.out_dir.join(&file.name);
             let result = if file.name == unit.dep_info {
                 read_text(&from, file).and_then(|text| {
-                    write_new(&to, self.normalizer.localize(&text).as_bytes(), false)
+                    let text = self.mapped_dep_info(&text, true).ok_or_else(|| {
+                        Refusal::Damaged("unsupported or ambiguous dep-info environment".to_owned())
+                    })?;
+                    write_new(&to, text.as_bytes(), false)
                         .map_err(|e| Refusal::Damaged(e.to_string()))
                 })
             } else {
@@ -1662,6 +1734,65 @@ fn dep_info_environment(text: &str) -> Vec<(String, Option<String>)> {
             None => (rest.to_owned(), None),
         })
         .collect()
+}
+
+// Match pinned rustc's escape_dep_env for names AND values. Unknown escapes
+// cannot silently turn into another observed variable or value.
+fn checked_environment_line(line: &str) -> Option<(String, Option<String>)> {
+    let rest = line.strip_prefix("# env-dep:")?;
+    let (name, value) = rest
+        .split_once('=')
+        .map_or((rest, None), |(name, value)| (name, Some(value)));
+    let name = checked_environment_text(name)?;
+    if name.is_empty() || name.contains(['=', '\0']) {
+        return None;
+    }
+    let value = match value {
+        Some(value) => Some(checked_environment_text(value)?),
+        None => None,
+    };
+    Some((name, value))
+}
+
+fn checked_environment_text(text: &str) -> Option<String> {
+    let mut result = String::with_capacity(text.len());
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        result.push(if c == '\\' {
+            match chars.next()? {
+                'n' => '\n',
+                'r' => '\r',
+                '\\' => '\\',
+                _ => return None,
+            }
+        } else {
+            if matches!(c, '\0' | '\n' | '\r') {
+                return None;
+            }
+            c
+        });
+    }
+    Some(result)
+}
+
+fn escape_environment(text: &str) -> String {
+    text.replace('\\', "\\\\")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+}
+
+fn checked_dep_info_environment(text: &str) -> Option<BTreeMap<String, Option<String>>> {
+    let mut result = BTreeMap::new();
+    for line in text
+        .lines()
+        .filter(|line| line.trim_start().starts_with("# env-dep"))
+    {
+        let (name, value) = checked_environment_line(line)?;
+        if result.insert(name, value).is_some() {
+            return None;
+        }
+    }
+    Some(result)
 }
 
 /// rustc escapes `\` and newlines in dep-info environment values.
@@ -1885,6 +2016,55 @@ mod tests {
             "stderr":{"name":"stderr", "sha256":digest(b""), "size":0, "executable":false},
         }))?;
         assert!(compiler::stored(&cb, &stored));
+        for name in [
+            "VERUS_UNKNOWN_PATH",
+            "RUST_UNKNOWN_PATH",
+            "Z3_UNKNOWN_PATH",
+            "VARGO_UNKNOWN_PATH",
+            "CARGO_PKG_UNKNOWN_PATH",
+        ] {
+            let mut a_values = va.clone();
+            let mut b_values = vb.clone();
+            a_values.insert(
+                name.into(),
+                a.plan
+                    .registry
+                    .join("opaque")
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+            b_values.insert(
+                name.into(),
+                b.plan
+                    .registry
+                    .join("opaque")
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+            let a_call = make_call(&a, a_values).ok_or("unknown A call")?;
+            let b_call = make_call(&b, b_values).ok_or("unknown B call")?;
+            assert_eq!(a_call.key, b_call.key, "same older key view for {name}");
+            let mut certificate = serde_json::to_value(&actual)?;
+            certificate["binding"] = serde_json::json!(digest(
+                format!("{}\0{}", a.plan.run_id, a_call.key).as_bytes()
+            ));
+            for phase in ["verification", "compilation"] {
+                certificate["phases"][phase]["tracked_environment"][name] =
+                    serde_json::json!(a.plan.registry.join("opaque"));
+            }
+            let certificate: compiler::Document = serde_json::from_value(certificate)?;
+            assert!(certificate.valid(&a_call, &a.plan.run_id));
+            let saved = certificate.mapped(&a_call, false).ok_or("unknown saved")?;
+            let mut entry = serde_json::to_value(&stored)?;
+            entry["key"] = serde_json::json!(a_call.key);
+            entry["compiler_reads"] = serde_json::to_value(saved)?;
+            let entry: Unit = serde_json::from_value(entry)?;
+            assert!(
+                !compiler::stored(&b_call, &entry),
+                "changed unknown {name} must refuse"
+            );
+        }
+
         let mut foreign_source = serde_json::to_value(&saved)?;
         foreign_source["phases"]["verification"]["sources"]["@@sail-registry@@/foreign/lib.rs"] =
             serde_json::json!({"checksum":"blake3=foreign", "size":1});
@@ -2588,6 +2768,160 @@ mod tests {
         let source = user.plan.registry.join("demo-0.1.0/src/lib.rs");
         assert!(dep_info.contains(&source.display().to_string()));
         assert!(!dep_info.contains(&build.root.display().to_string()));
+        Ok(())
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "The same owned stage/restore pair covers exact rustc grammar and all collision/refusal cases."
+    )]
+    fn portable_dep_info_preserves_environment_lines_and_restores_current_paths() -> TestResult {
+        let mut build = Machine::new("dep-info-build", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let mut user = Machine::new("dep-info-user", |_| Mode::Serve {
+            bundle: build.root.join("bundle"),
+        })?;
+        for machine in [&mut build, &mut user] {
+            let path = machine.root.join("z3");
+            std::fs::write(&path, b"same adapter")?;
+            machine.plan.solver_adapter = Some(SolverAdapter {
+                path,
+                sha256: digest(b"same adapter"),
+            });
+        }
+        let a = build.call(false).ok_or("build call")?;
+        let b = user.call(false).ok_or("user call")?;
+        build.compile()?;
+        let source = build.plan.registry.join("demo-0.1.0/src/lib.rs");
+        let package = package_id(&|name| a.vars.get(name).cloned()).ok_or("package")?;
+        let unknown = format!(
+            "# env-dep:VERUS_UNKNOWN_PATH={}\r\n",
+            build.plan.registry.join("opaque").display()
+        );
+        let text = format!(
+            "{0}/libdemo-abc.rmeta: {1}\n\n{1}:\n\n# env-dep:VERUS_Z3_PATH={2}\n# env-dep: __VERUS_DRIVER_ARGS_FOR_{package}=compile\\nline\\rreturn\\\\slash=equals\n# env-dep:OUT_DIR={0}\n# env-dep:ABSENT\n# env-dep:EMPTY=\n{unknown}# env-dep:ESCAPED=back\\\\slash\\nnewline\\rcarriage",
+            build.plan.target.join("debug/deps").display(),
+            source.display(),
+            build.root.join("z3").display()
+        );
+        let stored = a.mapped_dep_info(&text, false).ok_or("map dep-info")?;
+        assert!(stored.contains(&unknown), "unknown env line byte-identical");
+        let restored = b.mapped_dep_info(&stored, true).ok_or("restore dep-info")?;
+        assert!(restored.contains(&format!(
+            "# env-dep:VERUS_Z3_PATH={}\n",
+            user.root.join("z3").display()
+        )));
+        assert!(!restored.contains(&format!(
+            "VERUS_Z3_PATH={}",
+            build.root.join("z3").display()
+        )));
+        assert!(restored.contains(&unknown));
+        assert!(restored.ends_with("# env-dep:ESCAPED=back\\\\slash\\nnewline\\rcarriage"));
+        assert!(restored.contains("# env-dep:ABSENT\n# env-dep:EMPTY=\n"));
+        assert_eq!(
+            b.mapped_dep_info(&b.mapped_dep_info(&stored, true).ok_or("B again")?, false),
+            Some(stored.clone())
+        );
+        for invalid in [
+            "# env-dep:=empty\n",
+            "# env-dep:BAD=unknown\\q\n",
+            "# env-dep:BAD=trailing\\",
+            " # env-dep:BAD=value\n",
+            "# env-dependency:BAD=value\n",
+            "# env-dep:DUP=1\n# env-dep:DUP=1\n",
+        ] {
+            assert!(
+                a.mapped_dep_info(invalid, false).is_none(),
+                "unsupported {invalid:?}"
+            );
+        }
+        let collision = format!(
+            "# env-dep:__VERUS_DRIVER_VERIFY_{package}=1\n# env-dep:__VERUS_DRIVER_VERIFY_{PACKAGE}=1\n"
+        );
+        assert!(a.mapped_dep_info(&collision, false).is_none());
+        let user_package = package_id(&|name| b.vars.get(name).cloned()).ok_or("user package")?;
+        let collision = format!(
+            "# env-dep:__VERUS_DRIVER_VERIFY_{PACKAGE}=1\n# env-dep:__VERUS_DRIVER_VERIFY_{user_package}=1\n"
+        );
+        assert!(b.mapped_dep_info(&collision, true).is_none());
+        assert!(
+            a.mapped_dep_info(
+                &format!("# env-dep:__VERUS_DRIVER_VERIFY_{PACKAGE}=1\n"),
+                false
+            )
+            .is_none()
+        );
+        let literal_token = "# env-dep:VERUS_UNKNOWN_PATH=@@sail-registry@@/literal\n";
+        assert_eq!(
+            b.mapped_dep_info(literal_token, true),
+            Some(literal_token.into())
+        );
+        assert_eq!(
+            a.mapped_dep_info(literal_token, false),
+            Some(literal_token.into())
+        );
+        for ending in ["", "\n", "\r\n"] {
+            let line = format!(
+                "# env-dep:VERUS_Z3_PATH={}{}",
+                build.root.join("z3").display(),
+                ending
+            );
+            let stored = a.mapped_dep_info(&line, false).ok_or("known line")?;
+            assert_eq!(
+                b.mapped_dep_info(&stored, true),
+                Some(format!(
+                    "# env-dep:VERUS_Z3_PATH={}{}",
+                    user.root.join("z3").display(),
+                    ending
+                ))
+            );
+            let unknown =
+                format!("# env-dep:UNKNOWN\\nNAME=back\\\\slash\\nnewline\\rcarriage{ending}");
+            assert_eq!(a.mapped_dep_info(&unknown, false), Some(unknown));
+        }
+
+        // Exercise the real artifact staging and restore, not just its codec.
+        // Unknown comments remain literal above; this artifact uses actual bound observations.
+        let literal = format!(
+            "# env-dep:VERUS_Z3_PATH={}\n",
+            build.root.join("z3").display()
+        );
+        let mut dep_info =
+            std::fs::read_to_string(build.plan.target.join("debug/deps/demo-abc.d"))?;
+        dep_info.push_str(&literal);
+        std::fs::write(build.plan.target.join("debug/deps/demo-abc.d"), dep_info)?;
+        a.record(b"", build.stderr().as_bytes(), Some(0));
+        assert!(b.serve().is_some());
+        let dep_path = user.plan.target.join("debug/deps/demo-abc.d");
+        let restored = std::fs::read_to_string(&dep_path)?;
+        assert!(restored.contains(&format!(
+            "# env-dep:VERUS_Z3_PATH={}\n",
+            user.root.join("z3").display()
+        )));
+        assert!(!restored.contains(&build.root.to_string_lossy().into_owned()));
+        let stamp = std::fs::metadata(&dep_path)?.modified()?;
+        assert!(checked_dep_info_environment(&restored).is_some());
+        assert_eq!(
+            checked_dep_info_environment(&restored).ok_or("environment")?["VERUS_Z3_PATH"].as_ref(),
+            b.vars.get("VERUS_Z3_PATH")
+        );
+        assert_eq!(
+            std::fs::metadata(&dep_path)?.modified()?,
+            stamp,
+            "freshness inspection never rewrites .d"
+        );
+        // No portable mappings are applied to machine-local env lines.
+        user.plan.mode = Mode::MachineLocal {
+            out: user.root.join("local"),
+        };
+        user.plan.solver_adapter = None;
+        let local = user.call(false).ok_or("local call")?;
+        assert_eq!(
+            local.mapped_dep_info(&text, false),
+            Some(local.normalizer.normalize(&text))
+        );
         Ok(())
     }
 
