@@ -9,6 +9,7 @@ experimental features and validation limits are identified explicitly.
 | Task | Guide |
 |---|---|
 | Verify, reuse complete reports, watch edits, inspect and cancel jobs | [Workspace verification](workspace-verification.md) |
+| Restore a previously verified revision after undoing an edit | [Instant revert](instant-revert.md), with qualified platform/profile and cost limits |
 | Check one repair, follow proof events, explain failures and compare saved baselines | [Walkthrough](proof-repair-walkthrough.md), [repair contract](proof-repair.md) — M7 remains experimental |
 | Integrate an agent through stdio MCP | [MCP tools](mcp.md) |
 | Read job Status and Results from Rust | [Result client](result-client.md) |
@@ -78,7 +79,11 @@ run-to-run differences, and the
 [dependency store record](validation/dependency-store.md) checks new projects
 that start from a stored vstd against plain stock Verus. The
 [fallback assessment](validation/dependency-store-fail-closed.md) records the
-native-input mismatch, temporary v1 quarantine, its cost and qualification. The
+native-input mismatch, temporary v1 quarantine, its cost and qualification.
+The [compiler-reuse integration](validation/proof-reuse-integration.md) binds
+current default gates and the distinct retained-proof and explicit
+[vstd-boundary](validation/vstd-compile-boundary.md) qualifications; shipped
+fresh-machine first use remains pending. The
 [incidental-edit record](validation/incidental-edits.md) tracks the frozen
 three-project edit catalogue and the combined runtime's remaining gates.
 The [full closure-identity record](validation/closure-full-identity.md) tracks the

@@ -117,6 +117,10 @@ Verus's `cargo-verus` on `PATH`, so your own `cargo verus` is unaffected.
 In a Cargo project that Verus already verifies, run `sail verify` instead of
 `cargo verus verify`; nothing needs to change in the project.
 
+The [instant-revert guide](docs/instant-revert.md) explains restoration of a
+previously verified revision, its qualified Linux/dependency-profile scope and
+the measured time and storage tradeoffs.
+
 `sail verify` takes the same arguments as `cargo verus verify` and prints the
 same output, with the same exit code; a few arguments Sail cannot bind to a
 proof receipt run without proof reuse, with one note line

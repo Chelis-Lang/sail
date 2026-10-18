@@ -294,7 +294,13 @@ oyster and such." This supersedes the parallel tracks of
       refusals; a separate sole-wait4 owner passes both fixed solver traces.
       Preparation remains real work and Anvil saves no total CPU. Actual edit
       workflow/default acceptance is unbuilt and unselected; #158 stays open.
-   3. vstd pre-verified in the release archive, #161.
+   3. vstd pre-verified in the release archive, #161: explicit schema-12
+      compiler-boundary research passes same-host Linux and Mac changed-root
+      Record → Serve → unchanged, with Current/1,872 functions and full stock
+      comparisons. The final source passes complete native default gates.
+      Distributed packaging, changed Rustup roots and fresh-machine default
+      first use remain open; v1 stays quarantined
+      ([record](validation/vstd-compile-boundary.md)).
    4. Remaining managed overhead against the removed pass-through, #156:
       cheaper checks qualify against rc.5 on unchanged vest/demo runs
       (1.01/0.39 s to 0.54/0.21 s); the final vest edit gain is
@@ -323,10 +329,18 @@ oyster and such." This supersedes the parallel tracks of
       Both platform builds, native gate/solver/E2E, full FAST and 4,714 fork
       source-suite comparisons, the focused Anvil stock comparison and
       three-run FAST determinism, all four DEEP modes and final source/runtime
-      guards pass. Matching Linux/macOS pins are qualified and selected by
-      the runtime delivery change; current required PR checks gate merge
+      guards pass. Matching Linux/macOS pins are qualified and selected on main through
+      merged #223, with all required CI checks green
       ([qualification](validation/spec-parameter-names.md)).
    6. B4, instant revert: receipts beyond the latest revision, #163.
+      Implemented and native-qualified at `83128ad0` for the exact Linux/public
+      alloc/std profile; delivery PR/merge pending. All 72 fresh rows and the
+      genuinely bundled ordinary Vest ABA control pass, as do full default
+      gates. The four-call Vest median improves 130.66 → 113.08 s (13.45%)
+      against earlier Sail; returned A improves 26.54 → 2.51 s. Cold/edit/
+      unchanged costs rise and cache grows about 519 MB; the small control is
+      essentially unchanged. This does not establish the 25% M8 gate
+      ([record](validation/instant-revert.md)).
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
       real projects caps every other lever. A narrow Cargo-selection correction

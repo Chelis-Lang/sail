@@ -5,6 +5,23 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Restore a previously verified workspace revision on ordinary Linux checks
+  within the qualified public alloc/std dependency profile (#163). Restored
+  results preserve their original establishing run and require fresh Current
+  checks. Three paired native Vest cycles fall from 130.66 s to 113.08 s;
+  returned A falls from 26.54 s to 2.51 s, while cold/edit/unchanged costs rise
+  and cache use grows about 519 MB. The small control remains fresh and is
+  essentially unchanged against earlier Sail. See the
+  [guide](docs/instant-revert.md) and [qualification](docs/validation/instant-revert.md).
+
+- Add an explicit compiler-boundary vstd research path that compiles native
+  prerequisites freshly and binds actual compiler inputs and private dependency
+  graphs (#161). Same-host Linux and Mac moved-root Record/Serve/unchanged
+  functionality passes with full stock verdict/diagnostic checks. Distributed
+  release packaging and default fresh-machine first use remain pending;
+  the old native-artifact store remains quarantined. See the
+  [research limits](docs/validation/vstd-compile-boundary.md).
+
 - Pin the qualified Linux/macOS Verus runtime with positional spec-formal
   solver names and request-driven native compiler observations. Three paired
   native rounds lower specification-parameter rename medians by 22.63% on

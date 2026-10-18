@@ -1,0 +1,190 @@
+{
+  "scope": "Selected literal driver fields from actual native control; metadata subset from retained locked Vest. No fixture is native qualification.",
+  "raw_driver_sha256": "57cacb20c3d7a3a7678deaaa943f6edb9f4fd7682db377bdaa829ba7dd8383ff",
+  "raw_metadata_sha256": "d0bc5e94378e58050f5bab25bf337b4098b4518d92b1fbe4b22acd30440299b1",
+  "rows": [
+    {
+      "id": "boundary_sample-0.1.0-7752c02f8ec8",
+      "common": "__VERUS_DRIVER_ARGS_SEP__--VIA-CARGO__VERUS_DRIVER_ARGS_SEP__compile-when-not-primary-package",
+      "package": "__VERUS_DRIVER_ARGS_SEP__--VIA-CARGO__VERUS_DRIVER_ARGS_SEP__import-dep-if-present=vstd",
+      "tokens": [
+        "--VIA-CARGO",
+        "compile-when-not-primary-package",
+        "--VIA-CARGO",
+        "import-dep-if-present=vstd"
+      ],
+      "is_vstd": false,
+      "imports": [
+        "vstd"
+      ]
+    },
+    {
+      "id": "vstd-0.0.0-2026-10-04-0306-064eddf1ed85",
+      "common": "__VERUS_DRIVER_ARGS_SEP__--VIA-CARGO__VERUS_DRIVER_ARGS_SEP__compile-when-not-primary-package",
+      "package": "__VERUS_DRIVER_ARGS_SEP__--is-vstd__VERUS_DRIVER_ARGS_SEP__--VIA-CARGO__VERUS_DRIVER_ARGS_SEP__import-dep-if-present=vstd",
+      "tokens": [
+        "--VIA-CARGO",
+        "compile-when-not-primary-package",
+        "--is-vstd",
+        "--VIA-CARGO",
+        "import-dep-if-present=vstd"
+      ],
+      "is_vstd": true,
+      "imports": [
+        "vstd"
+      ]
+    }
+  ],
+  "metadata": {
+    "packages": [
+      {
+        "id": "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/builtin#verus_builtin@0.0.0-2026-09-16-0054",
+        "name": "verus_builtin",
+        "metadata": {
+          "verus": {
+            "is-builtin": true
+          }
+        },
+        "targets": []
+      },
+      {
+        "id": "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/builtin_macros#verus_builtin_macros@0.0.0-2026-09-20-0158",
+        "name": "verus_builtin_macros",
+        "metadata": {
+          "verus": {
+            "fmt-as-rust": true,
+            "is-builtin-macros": true
+          }
+        },
+        "targets": []
+      },
+      {
+        "id": "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/state_machines_macros#verus_state_machines_macros@0.0.0-2026-09-06-0133",
+        "name": "verus_state_machines_macros",
+        "metadata": null,
+        "targets": []
+      },
+      {
+        "id": "path+file:///diagnostic/baseline-off/repair/vest/vest_lib#0.2.1",
+        "name": "vest_lib",
+        "metadata": {
+          "verus": {
+            "verify": true,
+            "ide": {
+              "extra_args": "--expand-errors"
+            }
+          }
+        },
+        "targets": [
+          {
+            "name": "vest_lib",
+            "kind": [
+              "lib"
+            ]
+          },
+          {
+            "name": "cbor_rfc",
+            "kind": [
+              "test"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/vstd#0.0.0-2026-10-04-0306",
+        "name": "vstd",
+        "metadata": {
+          "verus": {
+            "verify": true,
+            "is-vstd": true
+          }
+        },
+        "targets": [
+          {
+            "name": "vstd",
+            "kind": [
+              "lib"
+            ]
+          },
+          {
+            "name": "build-script-build",
+            "kind": [
+              "custom-build"
+            ]
+          }
+        ]
+      }
+    ],
+    "resolve": {
+      "nodes": [
+        {
+          "id": "path+file:///diagnostic/baseline-off/repair/vest/vest_lib#0.2.1",
+          "dependencies": [
+            "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/vstd#0.0.0-2026-10-04-0306"
+          ],
+          "deps": [
+            {
+              "name": "vstd",
+              "pkg": "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/vstd#0.0.0-2026-10-04-0306",
+              "dep_kinds": [
+                {
+                  "kind": null,
+                  "target": null
+                }
+              ]
+            }
+          ],
+          "features": [
+            "alloc",
+            "default",
+            "std"
+          ]
+        },
+        {
+          "id": "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/vstd#0.0.0-2026-10-04-0306",
+          "dependencies": [
+            "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/builtin#verus_builtin@0.0.0-2026-09-16-0054",
+            "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/builtin_macros#verus_builtin_macros@0.0.0-2026-09-20-0158",
+            "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/state_machines_macros#verus_state_machines_macros@0.0.0-2026-09-06-0133"
+          ],
+          "deps": [
+            {
+              "name": "verus_builtin",
+              "pkg": "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/builtin#verus_builtin@0.0.0-2026-09-16-0054",
+              "dep_kinds": [
+                {
+                  "kind": null,
+                  "target": null
+                }
+              ]
+            },
+            {
+              "name": "verus_builtin_macros",
+              "pkg": "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/builtin_macros#verus_builtin_macros@0.0.0-2026-09-20-0158",
+              "dep_kinds": [
+                {
+                  "kind": null,
+                  "target": null
+                }
+              ]
+            },
+            {
+              "name": "verus_state_machines_macros",
+              "pkg": "path+file:///diagnostic/baseline-off/source-cache/corpus/verus-426d8b01e7ff/source/state_machines_macros#verus_state_machines_macros@0.0.0-2026-09-06-0133",
+              "dep_kinds": [
+                {
+                  "kind": null,
+                  "target": null
+                }
+              ]
+            }
+          ],
+          "features": [
+            "alloc",
+            "std"
+          ]
+        }
+      ]
+    }
+  }
+}
