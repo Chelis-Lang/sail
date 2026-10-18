@@ -45,6 +45,8 @@ MCP test-server cancellation regression and its remaining validation scope.
 [Solver-continuation findings](reports/2026-10-16-solver-snapshots.md) and their
 [qualification record](validation/solver-snapshots.md) preserve the blocked
 exactness experiment; no continuation implementation is selected.
+The [function-spelling record](validation/smt-function-spellings.md) tracks the
+unselected native Vest edit candidate and its remaining qualification.
 The [source-suite integrity record](validation/source-suite-integrity.md) tracks
 executable digests, legacy-manifest migration and native rebuild controls.
 
