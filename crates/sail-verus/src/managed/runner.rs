@@ -3441,7 +3441,7 @@ mod tests {
             "selected",
             &load()
         ));
-        assert!(dirty_receipt_packages(&load(), &data).is_empty());
+        assert_eq!(dirty_receipt_packages(&load(), &data), Vec::<String>::new());
         // A matching header is explicitly not proof authority: this fixture
         // has no committed proof or artifact, and ordinary validation refuses.
         assert!(!original.valid("selected"));
@@ -3449,12 +3449,12 @@ mod tests {
         assert_eq!(dirty_receipt_packages(&load(), &data), ["input"]);
         let edited = compiler_receipt(&paths, &data, &root.join("absent-artifact"));
         json(&path, &edited)?;
-        assert!(dirty_receipt_packages(&load(), &data).is_empty());
+        assert_eq!(dirty_receipt_packages(&load(), &data), Vec::<String>::new());
         std::fs::write(&source, b"A")?;
         // Returned A still needs restoration against B's currently held receipt.
         assert_eq!(dirty_receipt_packages(&load(), &data), ["input"]);
         json(&path, &original)?;
-        assert!(dirty_receipt_packages(&load(), &data).is_empty());
+        assert_eq!(dirty_receipt_packages(&load(), &data), Vec::<String>::new());
         let mut missing = expected.clone();
         missing.insert(("other".into(), "other".into(), "lib".into()));
         assert!(!receipt_covered_targets(

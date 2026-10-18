@@ -60,6 +60,8 @@ A separate unchanged-run optimization has passed a 36-call native screen: it
 omits optional archive preparation only when existing receipt headers cover all
 requested current revisions. Unchanged Vest falls from 0.895 s to 0.544 s
 (39.29%); the complete four-call sum improves 0.73%. It preserves ordinary
-verification and Current checks and adds no workflow switch. Full delivery gates
-remain pending, so this candidate is unselected. The paired validation record
-retains all ranges, cold/edit/revert costs, footprint and the failed first packet.
+verification and Current checks and adds no workflow switch. Mac host and native
+gate, solver, all end-to-end phases plus extra, PR conformance and full FAST
+checks pass; STANDARD remains running and this candidate remains unselected.
+The paired validation record retains all ranges, cold/edit/revert costs,
+footprint, failed attempts and the Linux evidence export limitation.
