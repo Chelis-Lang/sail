@@ -2,7 +2,7 @@
 
 | Gate | Current state |
 |---|---|
-| Implementation | Candidate adjacent release-bundle Serve activation; explicit Record/LOCAL/alternate modes remain research-only; source review/tests pending |
+| Implementation | Candidate adjacent release-bundle Serve activation; Mac source checks pass, real staged first-use pending; explicit Record/LOCAL/alternate modes remain research-only |
 | Native prerequisites | Every native compiler executes normally; current-run successful provenance and actual linked bytes required |
 | Reuse scope | Pinned, nonprimary vstd library only; no native units or Cargo fingerprints |
 | Identity | Literal flags, actual runtime/sysroot/solver bytes, linked libraries/VIR, official source/feature closure and environment |
@@ -31,8 +31,23 @@ excluded from all proof/native option keys. Missing or damaged indexes fall back
 to genuine verification. Cheap diagnostic naming remains separate from this
 authority so already-restored source paths can still be resolved.
 
-The successor source/FS tests, full Mac host, Linux gates, real archive first-use
-on both platforms and changed Rustup/sysroot roots are pending. Acceptance must
+The release-index Rust source passed the full Mac host gate: clippy and all 749
+enabled tests, with 35 skipped, on source diff `3f0e0896` (committed as `96295377`).
+The actual result SHA-256 is
+`56dc18e6e7977907b2939c3ec89332a6525768ac79b4238827610ee235ad7c31`.
+Earlier attempts remain failed or incomplete: a test-only borrow compile error,
+clippy findings, and fixed deadline/free-space interruptions were not relabelled.
+
+A later owned-parent SIGTERM control reproduced a detached recorder command,
+nested child and socket server surviving the original helper. The helper now
+turns SIGTERM into `KeyboardInterrupt`, allowing the same bounded nested cleanup
+to reap all three and remove its owned scratch. Actual mock-process controls and
+the unchanged Current/Historical/output-cap/member/archive controls pass; these
+use compiler/runtime doubles and do not establish native release acceptance.
+The original leak control and its exact cleanup remain retained externally.
+
+Linux gates, real archive first-use on both platforms and changed Rustup/sysroot
+roots remain pending. Acceptance must
 also remove/change the index after a successful Serve, then check unchanged and
 failing requested runs against stock, including secondary vstd source spans. Previously collected component results and
 whole capture failures keep their original source and scope. No speed or release

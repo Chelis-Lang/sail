@@ -10,6 +10,8 @@ semantic versioning once the API is published.
   from the matching adjacent bundle. Native prerequisites still compile and all
   compiler-input/byte checks remain required. Release first-use on both platforms
   and changed Rustup roots remains unqualified; no release is published here.
+  Cancelling release proof recording now reaps its owned commands and daemon
+  before removing private scratch.
 
 - Integrate the two disabled compiler-reuse research paths around their shared
   owned dependency snapshots. Simultaneous research switches refuse with
