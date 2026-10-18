@@ -118,6 +118,9 @@ record discoveries in this repository.
 
 [Dependency-store stdout validation](validation/dependency-store-output.md) records the rc.5 output defect and its correction.
 
+[Receipt-checksum candidate](validation/receipt-checksum.md) records the parked,
+unselected allocation change: 36 native calls pass without useful latency gain.
+
 [Native source-sync validation](validation/host-source-sync.md) records source
 content and timestamp controls for the EC2 host helpers. The
 [Linux teardown record](validation/perf-host-teardown.md) covers retained

@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Park the receipt-checksum allocation candidate (#156) after all 36 matched
+  native Vest calls pass without useful latency gain: unchanged checks are
+  1.85% slower and the four-call median differs by 0.12%, with overlapping
+  ranges. Serialized checksum bytes and proof checks remain unchanged; the
+  candidate is unselected. See the [record](docs/validation/receipt-checksum.md).
+
 - Prepare an unchanged-run optimization that skips optional proof-archive planning
   for already covered receipt revisions (#156). A 36-call native Vest screen
   lowers unchanged checks from 0.895 s to 0.544 s (39.29%) and the four-call sum
