@@ -66,7 +66,11 @@ not apply to the new protocol.
 The current real-Cargo fixture writes captured/public/combined streams and
 status before assertions. An explicit `SAIL_VISIBLE_TEST_EVIDENCE` directory
 retains complete owned fixture file snapshots with path/mode/size/hash indexes
-under an 8 MiB cumulative cap. Known FIFO metadata is indexed without opening
+under an 8 MiB cumulative cap. The matched actual-Cargo arms now share one
+owned `CARGO_HOME`, separate from other concurrently running tests. Cargo runs
+offline on a dependency-free fixture; the selected Cargo executable, Rustup home
+and toolchain remain unchanged. No package-lock status line is filtered.
+Known FIFO metadata is indexed without opening
 the pipe. A failed or absent external capture preserves the original failed
 fixture tree and prints its path; it does not silently remove uncaptured raw.
 Printed diagnostics have a 64 KiB prefix bound per stream, with full bytes
@@ -123,6 +127,21 @@ fresh-capability framing and retains all exact full-stream and exit checks.
   protected-body guards pass and children are reaped. Total 102.17 seconds;
   this is correctness scope, not a native performance result. Raw result
   SHA-256: `936e24ab58b4c3d007f3c811afbf06e6ea198a521e2122961e6b4e14dc6f63d3`.
+
+- `d26b6bb8`, 2026-10-18, native attempt 01: remote packaging included local
+  `operator.py`, shadowing Python's standard module during runtime inspection.
+  Product gates are unrun; final source guard passes. The corrected remote
+  inventory excludes local operator files.
+- Same source, native attempt 02: gate fails one of 763 tests. Exact decoded
+  assertion tuples show two leading `Blocking waiting for file lock on package
+  cache` lines only in the barrier arm's captured/public stderr; stdout and
+  remaining stderr match. The strict full-stream comparison rejects the sample.
+  The successor isolates both arms with one owned `CARGO_HOME`; no comparison,
+  output filtering or whole-gate parallelism changes. Complete fallback gate
+  log and decoded streams remain external; diagnosis SHA-256:
+  `041031037b87acff380b34eb9c848df6c3839baa21b4f03962dd9e70f085a1f2`.
+  Separate capture permission failure remains visible; no complete enclosing
+  qualification is claimed.
 
 Focused attempt 11 passes on exact tested source `f3c51b78`: all nine sender/relay
 controls, including the four real-Cargo matched pairs, the separate compiler

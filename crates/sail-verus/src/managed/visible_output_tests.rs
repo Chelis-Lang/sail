@@ -538,6 +538,9 @@ fn genuine_cargo_matches_plain_full_streams_and_waits_for_final_stdout_delivery(
     let root = Scratch::new()?;
     let evidence = CargoEvidence::new(&root)?;
     let project = &root.0;
+    // Both real-Cargo arms share one owned cache, isolated from concurrent tests.
+    let cargo_home = project.join("cargo-home");
+    std::fs::create_dir(&cargo_home)?;
     std::fs::create_dir(project.join("src"))?;
     std::fs::write(
         project.join("Cargo.toml"),
@@ -611,6 +614,7 @@ fn genuine_cargo_matches_plain_full_streams_and_waits_for_final_stdout_delivery(
                         "--message-format=json-render-diagnostics",
                     ])
                     .current_dir(project)
+                    .env("CARGO_HOME", &cargo_home)
                     .env("CARGO_TARGET_DIR", project.join("target"))
                     .env("CARGO_INCREMENTAL", "0")
                     .env("CARGO_BUILD_JOBS", "1")
