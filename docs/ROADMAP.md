@@ -305,11 +305,12 @@ oyster and such." This supersedes the parallel tracks of
       A separate native-only component passes fresh compiler-record and
       same-path compiler-replacement checks. Six enclosing failures remain
       failed; components are audited separately. Full Linux regression gates,
-      including FAST/STANDARD, pass. Nine distinct-root first-use rows with
-      Cargo 1.98 reduce median setup plus verification 36.289 → 14.233 s (2.550×),
-      with exact stock function/schema comparisons. Their enclosing consumer
-      attempt fails a cold-stock/warm-Sail diagnostic fixture; complete public
-      interaction, undo and Vest acceptance remain pending. Newer caller Cargo
+      including FAST/STANDARD, pass. The latest complete Linux consumer passes
+      nine Cargo-1.98 first-use rows (37.318 → 14.768 s, 2.527×), public/native
+      controls and all 36 Vest regression calls. Including common minimal
+      installation gives 46.202 → 23.652 s. The enclosing gate fails requested
+      instant revert: A2 remains correct but verifies instead of restoring A1.
+      A shipped/retained coexistence fix and requalification are required. Newer caller Cargo
       versions can safely miss. Earlier native ABI results retain their scope;
       v1 stays quarantined
       ([record](validation/vstd-compile-boundary.md)).

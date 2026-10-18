@@ -42,10 +42,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   pass. A separate native-only component checks fresh native records and a
   same-path compiler replacement. All six enclosing attempts remain failed;
   their successful components are bound and audited separately. Full Linux
-  regression qualification passes; nine Cargo-1.98 first-use rows show a 2.550×
-  setup-plus-verification gain. That enclosing consumer attempt fails its
-  cold-stock/warm-Sail diagnostic fixture, and later interaction checks remain
-  pending. Earlier twelve-pair native ABI results retain
+  regression qualification passes. The latest complete Linux consumer passes
+  nine Cargo-1.98 first-use rows (37.318 → 14.768 s, 2.527×), public diagnostic
+  and index controls, fresh native checks and all 36 Vest regression calls.
+  Including common minimal toolchain installation, totals are 46.202 → 23.652 s.
+  It fails requested-target instant revert: returned A verifies again instead
+  of restoring A1, while unchanged A3 reuses A2. Correctness comparisons pass;
+  shipped/retained coexistence needs a product fix and requalification. Earlier
+  operational/fixture failures stay failed. Earlier twelve-pair native ABI results retain
   their original source scope. The v1 store stays quarantined, and default
   release selection remains unqualified. The
   [compiler-boundary record](validation/vstd-compile-boundary.md) retains the

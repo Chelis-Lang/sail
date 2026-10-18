@@ -210,6 +210,39 @@ unchanged. One compiler family uses one reuse authority. This is a source-level
 integration decision, not fresh-machine or default-selection acceptance: staged
 first-use on both platforms and changed Rustup roots remains required.
 
+### Candidate requested-target coexistence
+
+The complete Linux consumer passes first-use, native-input and existing Vest
+checks, but the new default-profile A → B → A gate fails. The shipped plan
+excludes retained planning for the whole run, and the existing automatic
+retained profile excludes `alloc/default/std`. This is an unimplemented
+coexistence scope, not evidence that the previously qualified `alloc/std`
+profile regressed.
+
+The successor gives each compiler invocation one observer and one restore
+owner. The shipped observer owns actual native compilation when active; only
+after successful complete exit may retained provenance independently validate
+that same child's PID, run/key binding, source reads and closed dependency graph.
+It does not install a second observation endpoint or synthesize local execution.
+
+Served vstd remains owned by the shipped path. A separate typed release witness
+records its admitted unit and index, exact placed outputs and compiler/source
+authority. A retained requested target may depend on this witness only after
+its complete release and output checks succeed; later retained consumption
+rechecks those authorities. The witness is not an actual local compiler-read
+certificate. A miss without a qualified witness cannot establish retained
+authority. Requested targets still need their own actual two-phase compiler
+read document, copied dependency graph, whole-run Current check and committed
+receipt before publication.
+
+This candidate extends ordinary routing to the already closed public
+`alloc/default/std` policy alongside `alloc/std`. Full source and compiler
+admission remains mandatory. Explicit recording, MachineLocal and competing
+research modes retain their exclusions. Default selection requires independent
+review, actual adjacent-bundle A → B → A restoration and the unchanged complete
+Vest regression gate on the final matching runtime; source review and fixture
+success alone do not qualify the bridge.
+
 
 The portable native compiler-source candidate additionally limits option
 binding to recorded pinned Cargo compiler shapes. Exact source/feature
