@@ -2,7 +2,7 @@
 
 | Gate | Current state |
 |---|---|
-| Implementation | Explicit compiler-wrapper research path; requires `SAIL_VSTD_BOUNDARY_RESEARCH=1`; schema 12 |
+| Implementation | Candidate adjacent release-bundle Serve activation; explicit Record/LOCAL/alternate modes remain research-only; source tests pass, staged first-use qualification pending |
 | Native prerequisites | Every native compiler executes normally; current-run successful provenance and actual linked bytes required |
 | Reuse scope | Pinned, nonprimary vstd library only; no native units or Cargo fingerprints |
 | Identity | Literal flags, actual runtime/sysroot/solver bytes, linked libraries/VIR, official source/feature closure and environment |
@@ -12,7 +12,33 @@
 | Literal query comparison | Two separate cold controls match all 366 literal input streams / 2,061 checks each; this is not reuse or stock acceptance |
 | Portable functionality | Linux `83128ad0` and the matching Mac component pass changed Cargo/project/install-root Record → Serve → unchanged; same-host/same-Rustup scope |
 | Default regression gates | `83128ad0`: full Linux gate/solver/all E2E+extra/PR/FAST/STANDARD and final guards pass; Mac host clippy plus 742 tests pass |
-| Selection | Explicit research only; distributed release/default fresh-machine first use remains pending; v1 stays quarantined |
+| Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
+
+## Release activation candidate
+
+The source candidate extends stage/package/smoke around the existing schema12
+format. It records using the actual staged stripped binaries, installs only after
+complete Current, binds all release members, and configures normal serving from
+the adjacent bundle through one owned per-run plan. The adapter, source-base
+mapping and `sail new` lock path are included; changing `plan()` alone would leave
+native observation disabled. A family chooses either shipped or retained
+provenance, never both. No existing key codec, source policy or byte check changes.
+
+The preceding unindexed activation draft passed 56 focused shipped/adapter tests
+and the full Mac host gate (744 enabled tests and clippy). Those checks do not
+qualify this release-index successor. Normal new-target Serve now additionally
+requires the exact adjacent release index and its complete proof member set.
+Per-run admission binds the exact bytes deserialized for serving; its metadata is
+excluded from all proof/native option keys. Missing or damaged indexes fall back
+to genuine verification. Cheap diagnostic naming remains separate from this
+authority so already-restored source paths can still be resolved.
+
+The successor source/FS tests, full Mac host, Linux gates, real archive first-use
+on both platforms and changed Rustup/sysroot roots are pending. Acceptance must
+also remove/change the index after a successful Serve, then check unchanged and
+failing requested runs against stock, including secondary vstd source spans. Previously collected component results and
+whole capture failures keep their original source and scope. No speed or release
+acceptance claim follows from this source change.
 
 ## Current portable functional qualification
 

@@ -2125,7 +2125,7 @@ pub(crate) fn run_engine_held(
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<(ProjectResult, File)> {
-    let _research = super::research::selected()?;
+    let research = super::research::selected()?;
     let mut owned = config.clone();
     owned.workspace =
         std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
@@ -2277,15 +2277,26 @@ pub(crate) fn run_engine_held(
     let registry = super::shipped::registry_dir(&data);
     paths.source_base = registry
         .as_deref()
-        .filter(|_| super::shipped::research_enabled())
-        .filter(|_| std::env::var_os(super::shipped::LOCAL_ENV).is_none())
+        .filter(|_| research != super::research::Mode::RetainedContent)
+        .filter(|_| {
+            super::shipped::research_enabled()
+                || super::shipped::has_adjacent_bundle(&config.cargo_verus)
+        })
+        .filter(|_| {
+            !super::shipped::research_enabled()
+                || std::env::var_os(super::shipped::LOCAL_ENV).is_none()
+        })
         .and_then(|registry| {
             Some(super::shipped::source_base(
                 &super::shipped::virtual_base()?,
                 registry,
             ))
         });
-    let shipped_plan = if focused(&config.args) || engine.is_some() || !paths.reuse {
+    let shipped_plan = if focused(&config.args)
+        || engine.is_some()
+        || !paths.reuse
+        || research == super::research::Mode::RetainedContent
+    {
         None
     } else {
         super::shipped::plan(
@@ -2535,7 +2546,12 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
-        retained: if !forced && !source_engine && paths.reuse && !receipt_covered {
+        retained: if !forced
+            && !source_engine
+            && paths.reuse
+            && !receipt_covered
+            && shipped_plan.is_none()
+        {
             super::retained::Plan::prepare(
                 &data,
                 &paths.target,

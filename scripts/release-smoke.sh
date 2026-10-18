@@ -13,8 +13,14 @@
 # SAIL_CARGO_VERUS are unset.
 set -euo pipefail
 
+# Factory/smoke tooling only; installed Sail does not invoke Python.
+release_python="${SAIL_RELEASE_PYTHON:-python3}"
+"$release_python" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else "release tooling requires Python 3.12 or newer; set SAIL_RELEASE_PYTHON")'
+
+release_helper="$(cd "$(dirname "$0")" && pwd -P)/release-shipped.py"
 archive="$(cd "$(dirname "${1:?usage: scripts/release-smoke.sh ARCHIVE}")" && pwd)/$(basename "$1")"
-unset SAIL_VERUS_BUILD SAIL_CARGO_VERUS
+unset SAIL_VERUS_BUILD SAIL_ENGINE_BUILD SAIL_CARGO_VERUS SAIL_VSTD_BOUNDARY_RESEARCH
+unset SAIL_VSTD_BOUNDARY_LOCAL SAIL_SHIPPED_RECORD SAIL_SHIPPED_DEPS SAIL_RETAINED_CONTENT_RESEARCH
 if command -v cargo-verus >/dev/null; then
   echo "release-smoke: remove cargo-verus from PATH; the archive must work without it" >&2
   exit 1
@@ -25,8 +31,7 @@ work="$(mktemp -d /tmp/sail-smoke.XXXXXX)"
 echo "release-smoke: working in $work"
 
 (cd "$(dirname "$archive")" && shasum -a 256 -c "$(basename "$archive").sha256")
-tar -C "$work" -xzf "$archive"
-release="$(cd "$work"/sail-*/ && pwd -P)"
+release="$("$release_python" -B "$release_helper" unpack "$archive" --destination "$work")"
 sail="$release/bin/sail"
 export SAIL_CACHE_DIR="$work/cache"
 "$sail" --version
