@@ -2,8 +2,10 @@
 
 ## Status
 
-The original-pipe successor for #215 is implemented in source only and remains
-unbuilt and unselected. It restores Cargo's original handling of every stderr
+The printable-marker original-pipe successor for #215 is implemented in source
+only and remains unbuilt and unselected. The preceding control-character marker
+candidate failed its actual-Cargo test despite eight other focused controls
+passing. It restores Cargo's original handling of every stderr
 byte, then acknowledges only each driver's final stdout through a same-stdout
 completion marker. Proof metadata, output filtering, receipts, runtime pins and
 reuse checks are unchanged. No corpus entry changes. The complete local and
@@ -45,7 +47,11 @@ These are tiny Cargo transport controls, not verifier or performance acceptance.
 The new source tests require the real production sender and relay through
 matched plain/barrier arms through actual Cargo with byte-for-byte equality of
 complete captured and public stdout/stderr and exit status, final stdout delivery
-before Cargo's final error, and the observed unterminated-line behavior. Additional
+before Cargo's final error, and the observed unterminated-line behavior. The
+expanded unrun matrix covers plain partial text, valid JSON with and without a
+final newline, and multiline output with a 64 KiB JSON field. The sender completes
+an unterminated record with Cargo's EOF newline before a separate marker, keeping
+JSON parsing independent of the marker. Additional
 owned-pipe controls retain binary bytes, a large complete filtered JSON record,
 structured-output suppression, broken-public-pipe NACK and endpoint cleanup,
 lock serialization and release after NACK, symlink/capability collision refusal,
@@ -55,6 +61,23 @@ its readers without waiting for EOF; the test parent then reaps its owned
 grandchild. Cancellation ownership and process groups are unchanged. They are unrun.
 The old broader concurrent-cross-stream and payload-chunk fixture claims do
 not apply to the new protocol.
+
+The current real-Cargo fixture writes captured/public/combined streams and
+status before assertions. An explicit `SAIL_VISIBLE_TEST_EVIDENCE` directory
+retains complete owned fixture file snapshots with path/mode/size/hash indexes
+under an 8 MiB cumulative cap. Known FIFO metadata is indexed without opening
+the pipe. A failed or absent external capture preserves the original failed
+fixture tree and prints its path; it does not silently remove uncaptured raw.
+Printed diagnostics have a 64 KiB prefix bound per stream, with full bytes
+retained in the fixture files. This retention is test-only.
+
+A separate actual Cargo 1.98.1 tiny control preserves an ASCII marker but strips
+its surrounding record/unit-separator bytes (`0x1e`, `0x1f`) from stdout. The
+exact control-character ACK therefore times out; raw result SHA-256:
+`c5cc33b95843f7e5df4d8a0fc65f57e3de906bb80fab6fa9f88226d76cef416f`.
+This establishes an independent framing defect. It does not reconstruct the
+missing inner streams of focused attempt 07. The successor uses printable,
+fresh-capability framing and retains all exact full-stream and exit checks.
 
 ## Failed and interrupted attempts
 
@@ -73,6 +96,13 @@ not apply to the new protocol.
 - `8766ff71`, actual Cargo control: payload IPC bypasses diagnostic rendering;
   rejected despite the prior Cargo-like fixture passes. The original #174
   complete temporary streams remain unavailable and its cause stays unknown.
+- `e3b1f42f`, 2026-10-18, focused attempt 07: eight of nine tests pass,
+  including protocol/refusal and descendant-FD cleanup controls. Actual Cargo
+  fails at the missing barrier-completion record; exit 101 is retained, but the
+  fixture deleted its inner streams on assertion failure, so the exact cause
+  stays unknown. Source/protected-file/child guards pass; Clippy is unrun after
+  the unit failure. Raw result SHA-256:
+  `f20057251f2bdedd939edb710764509794ddbfe13bb6717eda13348807f3a7bc`.
 
 Acceptance still requires passing/failing/compile-error/unchanged real Verus
 runs through plain and managed commands, strict combined and separate byte

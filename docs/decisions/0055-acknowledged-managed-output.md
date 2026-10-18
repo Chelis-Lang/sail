@@ -28,9 +28,12 @@ adapter branch emits its rebuilt stdout once and then returns.
 On Unix, the managed runner creates a private 0700 directory, an acknowledgment
 socket and a fresh random capability in a 0600 regular file. A driver acquires
 an owner-created 0600 regular lock with a bounded try-lock loop, writes its
-unchanged final stdout through the original pipe, appends a capability marker
+unchanged final stdout through the original pipe, completes an unterminated
+final record with Cargo's observed EOF newline, then appends a capability marker
 on that same stdout pipe, flushes and waits for a private acknowledgment.
-The socket carries no payload. Native compiler and verifier children do not
+The framing uses printable ASCII: an actual Cargo control strips record/unit
+separator control characters, so such delimiters cannot carry the capability
+unchanged. The socket carries no payload. Native compiler and verifier children do not
 inherit the endpoint variable.
 
 After Cargo processes a complete stdout record, the runner removes only this
@@ -41,9 +44,12 @@ caller, does it acknowledge. A failed public write drops the completion and
 sends NACK. The driver cannot exit successfully before this completion.
 
 Actual Cargo controls show that a final unterminated stdout prefix receives a
-newline at EOF. Appending the marker makes that prefix and marker one Cargo
-record. The decoder preserves Cargo's newline for a nonempty prefix; a separate
-marker-only record contributes no bytes. A malformed current-capability marker
+newline at EOF. The sender supplies that newline before a separate marker record,
+so a valid JSON final record remains independently parseable by Cargo. The marker
+contributes no public bytes. Actual matched controls must establish identical
+captured and public output for newline-terminated and unterminated valid JSON,
+plain partial text and multiline output containing a large JSON record. Those
+expanded controls remain unrun. A malformed current-capability marker
 fails with SAIL3106. Foreign marker-like text stays literal. The sender refuses
 an exact current-capability collision before writing any payload.
 

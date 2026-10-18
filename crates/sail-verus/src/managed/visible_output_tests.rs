@@ -5,7 +5,7 @@ use super::*;
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::Duration;
 
-struct Scratch(PathBuf);
+struct Scratch(PathBuf, std::cell::Cell<bool>);
 impl Scratch {
     fn new() -> std::io::Result<Self> {
         let unique = SystemTime::now()
@@ -15,12 +15,14 @@ impl Scratch {
         let path =
             std::env::temp_dir().join(format!("sail-visible-test-{}-{unique}", std::process::id()));
         std::fs::create_dir(&path)?;
-        Ok(Self(path))
+        Ok(Self(path, std::cell::Cell::new(false)))
     }
 }
 impl Drop for Scratch {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
+        if !self.1.get() {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
     }
 }
 
@@ -269,10 +271,10 @@ fn malformed_capability_marker_refuses_and_foreign_text_stays_literal()
     let receiver = Receiver::bind()?;
     let parent = receiver.path().parent().ok_or("missing endpoint parent")?;
     let capability = std::fs::read_to_string(parent.join("capability"))?;
-    let prefix = format!("\u{1e}sail-stdout:{capability}:");
-    let malformed = format!("{prefix}1-0\u{1f}"); // Complete marker newline withheld.
+    let prefix = format!("[[sail-stdout:{capability}:");
+    let malformed = format!("{prefix}1-0]]"); // Complete marker newline withheld.
     assert!(receiver.decode(malformed.as_bytes()).is_err());
-    let foreign = b"\x1esail-stdout:foreign:1-0\x1f\n";
+    let foreign = b"[[sail-stdout:foreign:1-0]]\n";
     assert_eq!(receiver.decode(foreign)?.bytes, foreign);
     let mut untouched = Vec::new();
     assert!(send_test(receiver.path(), prefix.as_bytes(), &mut untouched).is_err());
@@ -380,6 +382,133 @@ if child_code!=0:raise SystemExit(child_code)
 raise SystemExit(code)
 "#;
 
+// Specialized retention for this one actual-Cargo fixture. A failed capture
+// keeps the original owned tree; it never deletes evidence to satisfy a bound.
+struct CargoEvidence<'a> {
+    root: &'a Scratch,
+    destination: Option<PathBuf>,
+    retained: std::cell::Cell<u64>,
+    finished: bool,
+}
+impl<'a> CargoEvidence<'a> {
+    fn new(root: &'a Scratch) -> std::io::Result<Self> {
+        use std::os::unix::fs::DirBuilderExt as _;
+        root.1.set(true);
+        let destination = std::env::var_os("SAIL_VISIBLE_TEST_EVIDENCE")
+            .map(|path| {
+                let parent = PathBuf::from(path).canonicalize()?;
+                let name = root
+                    .0
+                    .file_name()
+                    .ok_or_else(|| std::io::Error::other("missing fixture name"))?;
+                let destination = parent.join(name);
+                if destination.starts_with(root.0.canonicalize()?) {
+                    return Err(std::io::Error::other(
+                        "fixture evidence is inside its input tree",
+                    ));
+                }
+                std::fs::DirBuilder::new()
+                    .mode(0o700)
+                    .create(&destination)?;
+                Ok::<_, std::io::Error>(destination)
+            })
+            .transpose()?;
+        Ok(Self {
+            root,
+            destination,
+            retained: std::cell::Cell::new(0),
+            finished: false,
+        })
+    }
+    fn capture(&self, label: &str) -> std::io::Result<()> {
+        use std::os::unix::fs::{DirBuilderExt as _, FileTypeExt as _, PermissionsExt as _};
+        let Some(destination) = &self.destination else {
+            return Ok(());
+        };
+        let destination = destination.join(label);
+        std::fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&destination)?;
+        let mut pending = vec![PathBuf::new()];
+        let mut rows = Vec::new();
+        while let Some(relative) = pending.pop() {
+            let source = self.root.0.join(&relative);
+            let metadata = std::fs::symlink_metadata(&source)?;
+            let mode = metadata.permissions().mode() & 0o777;
+            if metadata.is_dir() {
+                if !relative.as_os_str().is_empty() {
+                    std::fs::DirBuilder::new()
+                        .mode(0o700)
+                        .create(destination.join(&relative))?;
+                }
+                let mut children = std::fs::read_dir(&source)?
+                    .map(|entry| entry.map(|entry| relative.join(entry.file_name())))
+                    .collect::<std::io::Result<Vec<_>>>()?;
+                children.sort();
+                pending.extend(children.into_iter().rev());
+                rows.push(serde_json::json!({"path":relative,"kind":"directory","mode":mode}));
+            } else if metadata.is_file() {
+                let reserved = self
+                    .retained
+                    .get()
+                    .checked_add(metadata.len())
+                    .ok_or_else(|| std::io::Error::other("fixture capture size overflow"))?;
+                if reserved > 8 * 1024 * 1024 {
+                    return Err(std::io::Error::other(
+                        "complete fixture evidence exceeds 8MiB; original tree preserved",
+                    ));
+                }
+                self.retained.set(reserved);
+                let bytes = std::fs::read(&source)?;
+                if u64::try_from(bytes.len()).ok() != Some(metadata.len()) {
+                    return Err(std::io::Error::other("fixture file changed during capture"));
+                }
+                let path = destination.join(&relative);
+                let mut output = std::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .mode(0o600)
+                    .open(path)?;
+                output.write_all(&bytes)?;
+                rows.push(serde_json::json!({"path":relative,"kind":"file","mode":mode,"bytes":bytes.len(),"sha256":digest(&bytes)}));
+            } else if metadata.file_type().is_fifo() && relative == Path::new("stdout.fifo") {
+                rows.push(
+                    serde_json::json!({"path":relative,"kind":"owned stdout FIFO","mode":mode}),
+                );
+            } else {
+                return Err(std::io::Error::other(
+                    "unexpected fixture alias/special; original tree preserved",
+                ));
+            }
+        }
+        std::fs::write(
+            destination.join("index.json"),
+            serde_json::to_vec_pretty(&rows)?,
+        )
+    }
+    fn finish(mut self) {
+        self.finished = true;
+        self.root.1.set(false);
+    }
+}
+impl Drop for CargoEvidence<'_> {
+    fn drop(&mut self) {
+        if self.finished {
+            return;
+        }
+        let retained = self.capture("failure");
+        self.root
+            .1
+            .set(self.destination.is_none() || retained.is_err());
+        eprintln!(
+            "actual Cargo fixture evidence: destination={:?}; original={:?}; preserved={}; capture={retained:?}",
+            self.destination,
+            self.root.0,
+            self.root.1.get()
+        );
+    }
+}
+
 struct Mirrored {
     separate: Sink,
     combined: Sink,
@@ -405,6 +534,7 @@ fn genuine_cargo_matches_plain_full_streams_and_waits_for_final_stdout_delivery(
 -> std::result::Result<(), Box<dyn std::error::Error>> {
     use std::os::unix::fs::PermissionsExt as _;
     let root = Scratch::new()?;
+    let evidence = CargoEvidence::new(&root)?;
     let project = &root.0;
     std::fs::create_dir(project.join("src"))?;
     std::fs::write(
@@ -416,119 +546,194 @@ fn genuine_cargo_matches_plain_full_streams_and_waits_for_final_stdout_delivery(
     let wrapper = project.join("wrapper.py");
     std::fs::write(&wrapper, CARGO_WRAPPER)?;
     std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o700))?;
-    let payload = b"verification results:: final driver stdout"; // Deliberately no newline.
-    std::fs::write(project.join("payload"), payload)?;
+    let json_record = br#"{"reason":"compiler-artifact","fresh":true,"padding":"test"}"#.to_vec();
+    let mut large = b"driver first line\n".to_vec();
+    large.extend_from_slice(br#"{"reason":"compiler-artifact","padding":""#);
+    large.extend(std::iter::repeat_n(b'x', 65536));
+    large.extend_from_slice(b"\"}\ndriver final stdout");
+    let cases = [
+        (
+            "partial-summary",
+            b"verification results:: final driver stdout".to_vec(),
+            b"verification results:: final driver stdout\n".to_vec(),
+        ),
+        ("partial-json", json_record.clone(), Vec::new()),
+        (
+            "complete-json",
+            [json_record.as_slice(), b"\n"].concat(),
+            Vec::new(),
+        ),
+        (
+            "large-multiline",
+            large,
+            b"driver first line\ndriver final stdout\n".to_vec(),
+        ),
+    ];
     let config = project.join("config.json");
     let test = format!("{}::actual_cargo_sender_child", module_path!());
     let test = test
         .strip_prefix("sail_verus::")
         .ok_or("unexpected test module")?;
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-    let mut arms = Vec::new();
-    for mode in ["plain", "barrier"] {
-        let receiver = if mode == "barrier" {
-            Some(Receiver::bind()?)
-        } else {
-            None
-        };
-        let directory = receiver
-            .as_ref()
-            .and_then(|receiver| receiver.path().parent())
-            .map(Path::to_owned);
-        let completed = project.join(format!("{mode}.completed"));
-        let child_log = project.join(format!("{mode}.child.log"));
-        std::fs::write(
-            &config,
-            serde_json::to_vec(&serde_json::json!({
-                "mode": mode, "endpoint": receiver.as_ref().map(Receiver::path),
-                "fifo": project.join("stdout.fifo"), "payload": project.join("payload"),
-                "completed": completed, "child_log": child_log,
-                "executable": std::env::current_exe()?, "test": test,
-            }))?,
-        )?;
-        let mut child = Producer(
-            Command::new(&cargo)
-                .args([
-                    "check",
-                    "--offline",
-                    "--message-format=json-render-diagnostics",
-                ])
-                .current_dir(project)
-                .env("CARGO_TARGET_DIR", project.join("target"))
-                .env("CARGO_INCREMENTAL", "0")
-                .env("CARGO_BUILD_JOBS", "1")
-                .env("CARGO_TERM_COLOR", "never")
-                .env("RUSTUP_AUTO_INSTALL", "0")
-                .env("RUSTC_WRAPPER", &wrapper)
-                .env_remove("RUSTC_WORKSPACE_WRAPPER")
-                .env_remove("RUSTFLAGS")
-                .env_remove("CARGO_ENCODED_RUSTFLAGS")
-                .env("SAIL_VISIBLE_TEST_CONFIG", &config)
-                .stdin(Stdio::null())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()?,
-        );
-        let combined = Arc::new(Mutex::new(Vec::new()));
-        let public_out = Arc::new(Mutex::new(Vec::new()));
-        let public_err = Arc::new(Mutex::new(Vec::new()));
-        let mut out = Mirrored {
-            separate: Sink(Arc::clone(&public_out)),
-            combined: Sink(Arc::clone(&combined)),
-        };
-        let mut err = Mirrored {
-            separate: Sink(Arc::clone(&public_err)),
-            combined: Sink(Arc::clone(&combined)),
-        };
-        let observed = relay(&mut child.0, &mut Some(&mut out), &mut err, &[], receiver);
-        let exit = child.0.wait()?;
-        assert_eq!(exit.code(), Some(101), "{mode}");
-        let captured = observed?;
-        assert!(completed.is_file(), "{mode} producer did not finish");
-        assert_eq!(std::fs::read(project.join("src/main.rs"))?, source);
-        if let Some(directory) = directory {
-            assert!(!directory.exists(), "owned ACK endpoint leaked");
-            assert_eq!(std::fs::read(completed)?, b"ACK received");
-            assert!(std::fs::metadata(child_log)?.len() < 16384);
-        }
-        let separate_out = public_out.lock().map_err(|_| "stdout poisoned")?.clone();
-        let separate_err = public_err.lock().map_err(|_| "stderr poisoned")?.clone();
-        let shown = [payload.as_slice(), b"\n"].concat();
-        assert_eq!(
-            separate_out, shown,
-            "{mode}: original Cargo newline must remain exact"
-        );
-        if mode == "barrier" {
-            let visible = combined
+    for (case, payload, expected_public) in cases {
+        std::fs::write(project.join("payload"), &payload)?;
+        std::fs::write(project.join(format!("{case}.payload")), &payload)?;
+        let mut arms = Vec::new();
+        for mode in ["plain", "barrier"] {
+            let label = format!("{case}-{mode}");
+            let receiver = if mode == "barrier" {
+                Some(Receiver::bind()?)
+            } else {
+                None
+            };
+            let directory = receiver
+                .as_ref()
+                .and_then(|receiver| receiver.path().parent())
+                .map(Path::to_owned);
+            let completed = project.join(format!("{label}.completed"));
+            let child_log = project.join(format!("{label}.child.log"));
+            std::fs::write(
+                &config,
+                serde_json::to_vec(&serde_json::json!({
+                    "mode": mode, "endpoint": receiver.as_ref().map(Receiver::path),
+                    "fifo": project.join("stdout.fifo"), "payload": project.join("payload"),
+                    "completed": completed, "child_log": child_log,
+                    "executable": std::env::current_exe()?, "test": test,
+                }))?,
+            )?;
+            let mut child = Producer(
+                Command::new(&cargo)
+                    .args([
+                        "check",
+                        "--offline",
+                        "--message-format=json-render-diagnostics",
+                    ])
+                    .current_dir(project)
+                    .env("CARGO_TARGET_DIR", project.join("target"))
+                    .env("CARGO_INCREMENTAL", "0")
+                    .env("CARGO_BUILD_JOBS", "1")
+                    .env("CARGO_TERM_COLOR", "never")
+                    .env("RUSTUP_AUTO_INSTALL", "0")
+                    .env("RUSTC_WRAPPER", &wrapper)
+                    .env_remove("RUSTC_WORKSPACE_WRAPPER")
+                    .env_remove("RUSTFLAGS")
+                    .env_remove("CARGO_ENCODED_RUSTFLAGS")
+                    .env("SAIL_VISIBLE_TEST_CONFIG", &config)
+                    .stdin(Stdio::null())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()?,
+            );
+            let combined = Arc::new(Mutex::new(Vec::new()));
+            let public_out = Arc::new(Mutex::new(Vec::new()));
+            let public_err = Arc::new(Mutex::new(Vec::new()));
+            let mut out = Mirrored {
+                separate: Sink(Arc::clone(&public_out)),
+                combined: Sink(Arc::clone(&combined)),
+            };
+            let mut err = Mirrored {
+                separate: Sink(Arc::clone(&public_err)),
+                combined: Sink(Arc::clone(&combined)),
+            };
+            let observed = relay(&mut child.0, &mut Some(&mut out), &mut err, &[], receiver);
+            let exit = child.0.wait()?;
+            let separate_out = public_out.lock().map_err(|_| "stdout poisoned")?.clone();
+            let separate_err = public_err.lock().map_err(|_| "stderr poisoned")?.clone();
+            let combined_bytes = combined
                 .lock()
                 .map_err(|_| "combined output poisoned")?
                 .clone();
-            let shown_at = visible
-                .windows(shown.len())
-                .position(|part| part == shown)
-                .ok_or("final stdout missing")?;
-            let cargo_error = b"error: could not compile";
-            let error_at = visible
-                .windows(cargo_error.len())
-                .position(|part| part == cargo_error)
-                .ok_or("Cargo final error missing")?;
-            assert!(
-                shown_at + shown.len() <= error_at,
-                "Cargo error overtook acknowledged stdout"
+            for (name, bytes) in [
+                ("stdout", &separate_out),
+                ("stderr", &separate_err),
+                ("combined", &combined_bytes),
+            ] {
+                std::fs::write(project.join(format!("{label}.{name}")), bytes)?;
+                eprintln!(
+                    "actual Cargo {label} {name}: total={} bounded-prefix={:?}",
+                    bytes.len(),
+                    &bytes[..bytes.len().min(65536)]
+                );
+            }
+            if let Ok((stdout, stderr)) = &observed {
+                std::fs::write(project.join(format!("{label}.cargo.stdout")), stdout)?;
+                std::fs::write(project.join(format!("{label}.cargo.stderr")), stderr)?;
+            }
+            if child_log.is_file() {
+                let log = std::fs::read(&child_log)?;
+                eprintln!(
+                    "actual Cargo {label} child log: total={} bounded-prefix={:?}",
+                    log.len(),
+                    &log[..log.len().min(65536)]
+                );
+            }
+            std::fs::write(
+                project.join(format!("{label}.status.json")),
+                serde_json::to_vec_pretty(&serde_json::json!({
+                    "exit":exit.code(), "relay_error":observed.as_ref().err().map(ToString::to_string),
+                    "completed_exists":completed.is_file(), "child_log_exists":child_log.is_file(),
+                }))?,
+            )?;
+            evidence.capture(&label)?; // Retain raw streams and every owned file BEFORE assertions.
+            assert_eq!(exit.code(), Some(101), "{mode}");
+            let captured = observed?;
+            assert!(completed.is_file(), "{mode} producer did not finish");
+            assert_eq!(std::fs::read(project.join("src/main.rs"))?, source);
+            if let Some(directory) = directory {
+                assert!(!directory.exists(), "owned ACK endpoint leaked");
+                assert_eq!(std::fs::read(completed)?, b"ACK received");
+                assert!(std::fs::metadata(child_log)?.len() < 16384);
+            }
+            assert_eq!(
+                separate_out, expected_public,
+                "{label}: original Cargo processing/newline must remain exact"
             );
+            if mode == "barrier" && !expected_public.is_empty() {
+                // Separate complete streams remain exact above and below. Only
+                // the final line is the causal frontier; unrelated earlier
+                // stderr may arrive between preceding stdout records.
+                let shown = expected_public
+                    .strip_suffix(b"\n")
+                    .ok_or("expected Cargo newline missing")?
+                    .rsplit(|byte| *byte == b'\n')
+                    .next()
+                    .ok_or("final stdout line missing")?;
+                let shown = [shown, b"\n"].concat();
+                let visible = combined
+                    .lock()
+                    .map_err(|_| "combined output poisoned")?
+                    .clone();
+                let shown_at = visible
+                    .windows(shown.len())
+                    .position(|part| part == shown.as_slice())
+                    .ok_or("final stdout missing")?;
+                let cargo_error = b"error: could not compile";
+                let error_at = visible
+                    .windows(cargo_error.len())
+                    .position(|part| part == cargo_error)
+                    .ok_or("Cargo final error missing")?;
+                assert!(
+                    shown_at + shown.len() <= error_at,
+                    "Cargo error overtook acknowledged stdout"
+                );
+            }
+            if mode == "barrier" {
+                std::fs::remove_file(project.join("stdout.fifo"))?;
+            }
+            arms.push((captured, separate_out, separate_err));
         }
-        arms.push((captured, separate_out, separate_err));
+        assert_eq!(
+            arms[1], arms[0],
+            "{case}: every captured/public stdout and stderr byte must match plain Cargo"
+        );
+        let text = String::from_utf8(arms[0].2.clone())?;
+        assert!(text.contains("error[E0425]") && text.contains("MISSING_FOR_CARGO_DIAGNOSTIC"));
+        assert!(
+            !text.contains("\"$message_type\""),
+            "raw compiler JSON bypassed Cargo rendering"
+        );
     }
-    assert_eq!(
-        arms[1], arms[0],
-        "every captured/public stdout and stderr byte must match plain Cargo"
-    );
-    let text = String::from_utf8(arms[0].2.clone())?;
-    assert!(text.contains("error[E0425]") && text.contains("MISSING_FOR_CARGO_DIAGNOSTIC"));
-    assert!(
-        !text.contains("\"$message_type\""),
-        "raw compiler JSON bypassed Cargo rendering"
-    );
+    evidence.finish();
     Ok(())
 }
 

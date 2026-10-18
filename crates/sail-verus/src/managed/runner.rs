@@ -16,7 +16,9 @@ use sail_api::project::{
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
-use std::io::{Read, Write};
+#[cfg(not(unix))]
+use std::io::Read;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};

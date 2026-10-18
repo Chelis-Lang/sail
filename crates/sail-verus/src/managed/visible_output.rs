@@ -106,7 +106,7 @@ mod unix {
         {
             return Err(io::Error::other("invalid managed output capability"));
         }
-        Ok(format!("\u{1e}sail-stdout:{capability}:").into_bytes())
+        Ok(format!("[[sail-stdout:{capability}:").into_bytes())
     }
 
     pub(super) fn send(path: &Path, bytes: &[u8], writer: &mut dyn Write) -> io::Result<()> {
@@ -150,10 +150,15 @@ mod unix {
         socket.set_write_timeout(Some(TIMEOUT))?;
         let mut marker = prefix;
         marker.extend_from_slice(name.as_bytes());
-        marker.extend_from_slice(b"\x1f\n");
+        marker.extend_from_slice(b"]]\n");
         // The bytes and completion travel through the SAME original Cargo pipe.
-        // A final unterminated prefix and the marker form one Cargo record.
+        // Complete the original final record exactly as Cargo does at EOF.
+        // Keep valid Cargo JSON separate from the private marker so its
+        // original parsing/filtering cannot change when the marker is added.
         writer.write_all(bytes)?;
+        if !bytes.ends_with(b"\n") {
+            writer.write_all(b"\n")?;
+        }
         writer.write_all(&marker)?;
         writer.flush()?;
         let remaining = deadline
@@ -268,7 +273,7 @@ mod unix {
             };
             let marker = &line[start + self.prefix.len()..];
             let name = marker
-                .strip_suffix(b"\x1f\n")
+                .strip_suffix(b"]]\n")
                 .and_then(|bytes| std::str::from_utf8(bytes).ok())
                 .filter(|name| name.len() <= 41)
                 .and_then(|name| {
