@@ -20,6 +20,13 @@ body SHA-256 values must match. Individual files are limited to128MiB, and the
 input/session lists to16384 entries each; the eventual native caller must also
 bound total capture bytes and time. No native queue is authorized by this example.
 
+The pinned stock/fork emitter reports `is-verifying-entire-crate: true` even
+for this selector ([VI-0028](verus-issues/VI-0028-focused-scope-flag.md)). The
+reader binds that literal metadata; exact argv and the complete function
+catalogue establish its partial scope. The old false-value expectation rejected
+the actual 25-call cohort before observation; that cohort remains failed, with
+a separate spinoff panic. Correcting the reader does not qualify those calls.
+
 Both the observed invocation and genuine pinned stock oracle must use exactly one
 literal `--verify-only-module MODULE` pair. Alternative selectors, equals forms,
 duplicate selectors and every recognized `--no-verify` form refuse. A nonempty full function/module/mode multiset,
@@ -46,12 +53,15 @@ The pure transcript/session/count join is shared with `actual_work`; its complet
 Current/run/invocation gates remain unchanged. Raw SMT, outputs, models,
 statistics, paths and diagnostic bytes are not normalized.
 
-The proposed next native scope is correctness first: five frozen cases across
-stock, normal fork and spinoff fork, each fork both uncached and cached, using the
-same genuine e536 runtime/body guards. Exact capture/command authority still needs
-review before execution. No native Anvil result, gain, public-runtime selection,
-full local gate or default adoption is claimed. The old real Iron finite-rlimit
-verdict disagreement remains a default-adoption blocker even if Anvil later wins.
+The first native cohort executed all 25 calls: five frozen cases across stock,
+normal fork and spinoff fork, each fork both uncached and cached, using the same
+genuine e536 runtime/body guards. The whole cohort failed. Its original reader
+refused the misleading scope field before semantic/work joins, and the spinoff
+arms independently encountered a verifier panic. A small reproduction isolates
+the [spinoff log-path failure](verus-issues/VI-0029-spinoff-log-path.md).
+No native correctness pass, gain, public-runtime selection, full local gate or
+default adoption follows from the reader correction. The old real Iron
+finite-rlimit verdict disagreement remains a default-adoption blocker.
 
 The initial a5 source checks passed2 pure count tests,2 complete-observer guards,
 4 partial catalogue/refusal tests, and exact-example lint; their original record

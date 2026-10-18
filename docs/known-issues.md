@@ -1,5 +1,12 @@
 # Known issues and acceptance limits
 
+- **The partial Anvil spinoff experiment remains unqualified.** All 25 native
+  calls ran, but the cohort failed on a research-reader metadata assumption and
+  a separate verifier panic. The [scope-field reproduction](verus-issues/VI-0028-focused-scope-flag.md)
+  corrects the reader's expectation without granting whole-target authority.
+  A [four-call reproduction](verus-issues/VI-0029-spinoff-log-path.md) isolates
+  oversized spinoff log filenames. No default mode or proof policy is changed.
+
 The disabled compiler-boundary research prototype can publish incompatible vstd
 metadata after a native input is substituted and restored
 ([#222](https://github.com/Chelis-Lang/sail/issues/222)). Private verified native

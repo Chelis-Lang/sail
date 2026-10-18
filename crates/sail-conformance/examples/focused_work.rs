@@ -145,10 +145,13 @@ fn invocation(root: &Path, item: &Invocation) -> io::Result<RunRecord> {
     if !rest.iter().all(u8::is_ascii_whitespace) || outputs.len() != 1 {
         return Err(invalid("missing/unknown focused stdout"));
     }
+    // VI-0028: the pinned stock/fork emitter omits verify_only_module from
+    // this flag. Bind its actual literal value, never use it as scope authority.
+    // The exact argv and full module/function catalogue establish partial scope.
     if outputs[0].pointer("/verification-results/is-verifying-entire-crate")
-        != Some(&Value::Bool(false))
+        != Some(&Value::Bool(true))
     {
-        return Err(invalid("focused scope not explicit"));
+        return Err(invalid("pinned focused emitter metadata differs"));
     }
     Ok(RunRecord {
         exit_code: Some(item.exit_code),
@@ -432,7 +435,7 @@ mod tests {
     fn document(success: bool) -> Value {
         serde_json::json!({"verification-results":{"success":success,"verified":u64::from(success),
             "errors":u64::from(!success),"encountered-error":false,"encountered-vir-error":false,
-            "is-verifying-entire-crate":false},"func-details":{},
+            "is-verifying-entire-crate":true},"func-details":{},
             "times-ms":{"smt":{"smt-run-module-times":[{"module":MODULE,"function-breakdown":[{
                 "function":format!("verifiable_controllers::{MODULE}::controlled"),"mode:":"proof",
                 "success":success,"rlimit-count":1}]}]}}})
@@ -552,6 +555,31 @@ mod tests {
         let mut f = fixture("A")?;
         f.1["invocation"]["argv"] = serde_json::json!(["verus", "--verify-only-module", "foreign"]);
         assert!(observe_fixture(&f).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn pinned_emitter_metadata_is_literal_and_never_scope_authority() -> io::Result<()> {
+        for value in [
+            Value::Bool(false),
+            Value::Null,
+            Value::String("true".to_owned()),
+        ] {
+            for which in ["invocation", "oracle"] {
+                let mut f = fixture("A")?;
+                let mut doc = document(true);
+                doc["verification-results"]["is-verifying-entire-crate"] = value.clone();
+                let raw = serde_json::to_vec(&doc).map_err(invalid)?;
+                f.1[which]["stdout"] = write(&f.0, "changed-metadata.json", &raw)?;
+                assert!(observe_fixture(&f).is_err());
+            }
+        }
+        // Stock's misleading true flag cannot authorize an absent selector.
+        for which in ["invocation", "oracle"] {
+            let mut f = fixture("A")?;
+            f.1[which]["argv"] = serde_json::json!(["verus"]);
+            assert!(observe_fixture(&f).is_err());
+        }
         Ok(())
     }
 

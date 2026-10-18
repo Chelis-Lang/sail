@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Correct the partial research reader's pinned emitter metadata expectation
+  after a genuine selective-verification reproduction. Exact selectors, full
+  function catalogue, stock diagnostics and complete-run guards remain required.
+
 - Add an untimed partial Anvil fixture work reader for developer research. It
   reuses pure transcript counting and enforces exact selectors/case outcomes
   while preserving `actual_work` complete-run admission; it does not select spinoff, produce Current, or publish proof.

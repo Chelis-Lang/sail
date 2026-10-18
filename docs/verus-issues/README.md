@@ -23,6 +23,8 @@ and to the `SAIL_CARGO_VERUS` development override.
 
 | Id | Title | Status | Fork (`Chelis-Lang/verus`) | Reproduction |
 |---|---|---|---|---|
+| [VI-0029](VI-0029-spinoff-log-path.md) | Spinoff logging exceeds the filename limit | reproduced in selected fork; fix unbuilt | not selected | `corpus/repros/verus-spinoff-log-path/` |
+| [VI-0028](VI-0028-focused-scope-flag.md) | Focused module reports whole-crate metadata | reproduced in pinned stock and fork; partial research reader corrected, emitter unchanged | not selected | `corpus/repros/verus-focused-scope-flag/` |
 | [VI-0001](VI-0001-nondeterministic-declaration-order.md) | Nondeterministic SMT output from `arrow_*` accessor order | open in stock Verus; fixed in the fork | fixed: `9a5b2cc8` fix: generate enum arrow accessors in source order (direct runs); `af212563` fix: declare enum arrow accessors in source order in the verifier (cargo runs; pinned since `13a1176c`) | `corpus/repros/verus-nondeterministic-declaration-order/` |
 | [VI-0002](VI-0002-page-table-rlimit-on-pinned-release.md) | page-table fails one check on the pinned release | open | — | corpus entry `page-table` |
 | [VI-0003](VI-0003-bit-vector-failure-reported-as-success.md) | `--output-json` reports `success: true` for a failed bit-vector query | open in stock Verus; fixed in the fork | fixed: `8a5d3655` fix: record bit-vector failures in the function failure set | `crates/sail-cli/tests/fixtures/attr/input.rs` (`arith::bv_bad`) |
