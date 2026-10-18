@@ -124,7 +124,11 @@ is no self-declared qualification bit. Explicit Record, MachineLocal and alterna
 bundle directories remain research-only. A family using a shipped plan does not
 also acquire the retained-content authority. Without a shipped plan, ordinary
 retained eligibility is unchanged. `sail new` uses the accepted bundle's lock for
-its new project only; existing projects' lockfiles are never rewritten.
+its new private staged project only, before the project is moved into place.
+The write uses create-new semantics: a generator's existing lock is preserved;
+I/O failure reports `SAIL0132` and discards the staged project. Ordinary installs
+without an admitted bundle add no lock. Existing projects' lockfiles are never
+rewritten.
 
 `package` verifies all indexed release members before archiving. The smoke
 script first checks the entire archive checksum, rejects unsafe/duplicate/link
