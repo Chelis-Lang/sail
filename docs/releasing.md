@@ -99,6 +99,13 @@ with `-proof-evidence` appended; it is not shipped or treated as proof authority
 On termination, the recorder unwinds its existing cleanup before exiting: it
 stops and reaps its owned command/server groups, then removes its private scratch.
 A cancelled recording never installs a dependency bundle or release index.
+The adjacent evidence also names the actual recorder PID, owned scratch root and
+UID for external resource accounting; this metadata is not proof authority.
+Before deleting scratch, it also retains a bounded, content-once index of native
+and verification/compilation input certificates and skipped records. This
+evidence excludes full native compiler bodies; the staged unit keeps its vstd
+artifacts. Missing certificates in a successful record or failed capture stops
+packaging and still runs owned cleanup.
 
 Normal verification may serve only a matching adjacent `deps/<variant>` bundle
 whose complete proof members match its adjacent `release-files.json` index;

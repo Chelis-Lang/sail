@@ -47,6 +47,16 @@ to reap all three and remove its owned scratch. Actual mock-process controls and
 the unchanged Current/Historical/output-cap/member/archive controls pass; these
 use compiler/runtime doubles and do not establish native release acceptance.
 The original leak control and its exact cleanup remain retained externally.
+The recorder also exposes exact scratch metadata for bounded accounting and
+retains a complete, content-once certificate/skipped-record index before removing
+scratch. Actual small controls cover both certificate directories, deduplication,
+missing and oversized inputs, aliases and unreadable subtrees; a missing
+certificate after an otherwise successful mock record removes the installed
+proof/index and still reaps its server. An initial certificate-copy attempt
+refused after its own read updated access time; an owned-file control isolated
+that change. Content, inode, mode, size, mtime and ctime checks remain strict;
+read-induced access time is not an input. The failed attempt remains indexed
+externally; none of these mocks is a staged-platform qualification.
 
 Linux gates, real archive first-use on both platforms and changed Rustup/sysroot
 roots remain pending. Acceptance must
