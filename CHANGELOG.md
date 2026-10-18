@@ -28,8 +28,11 @@ semantic versioning once the API is published.
   native source certificates, private dependency graphs and checked output
   restoration. Native small/Vest ABA pass; performance and default qualification
   remain pending. An isolated candidate selects the exact admitted Linux runtime
-  and exact path/public provider graphs without requiring a user research flag, falling back
-  to fresh verification for unsupported contexts. It remains unselected.
+  and the exact public alloc/std provider graph without requiring a user research
+  flag, falling back to fresh verification for unsupported contexts. A cheap
+  metadata prefilter excludes the measured slower default-feature small profile
+  before provider hashing or native/graph side effects. Other admitted profiles
+  remain explicit research only. The narrowed candidate remains unselected.
   Retained restoration preserves the fresh outer caller environment boundary,
   original establishing provenance and bounded durable-arena admission; the
   arena limit does not cover all managed-run logs and targets.

@@ -15,11 +15,16 @@ Automatic eligibility is restricted to x86-64 Linux and the exact qualified
 normal runtime manifest. Every invocation uses the existing complete runtime
 validator on fresh file bytes before admitting a plan. Source, features, native
 compiler-read certificates and complete private dependency graphs must also
-satisfy a complete closed policy. The source candidate has separate exact public
-registry profiles for a current-pin new library and current-pin Vest, plus the
-unchanged 718-file path-provider profile. Public profiles bind all 15 archive
-identities, 662 file/checksum entries and exact feature/dependency vectors; they
-still need native automatic qualification. Other Cargo resolutions remain fresh.
+satisfy a complete closed policy. Ordinary selection is a narrowed source
+candidate: a cheap metadata prefilter routes only the public alloc/std dependency
+profile used by current-pin Vest to full admission. It uses the same authority
+selector as full admission and grants no authority by itself. The public default
+feature profile used by a new library and the 718-file path-provider profile
+remain available only through explicit retained-content research. Public profiles
+bind all 15 archive identities, 662 file/checksum entries and exact
+feature/dependency vectors. This is a dependency-profile restriction, not an
+estimate of every target's proof cost; another small library can share that
+profile. Other Cargo resolutions remain fresh.
 macOS, other
 runtimes, unsupported macro/generated inputs, foreign imports and unsupported
 source namespaces remain fresh. Loader, engine and focused contexts keep their
@@ -36,3 +41,16 @@ four archived revisions and 1 GiB of outputs per target. Fullness takes the fres
 compiler path and preserves unknown live graph references. These are not global
 bounds on all managed-run sidecars, project targets or logs. Whole-project
 storage growth and scan costs are part of the pending native performance gate.
+
+The earlier automatic candidate completed 72 ordinary calls. A separately
+reviewed reader establishes matching exact per-function multisets, diagnostics,
+source/runtime bodies and original restored provenance. The frozen whole cohort
+still fails: its function-name-only ordering check refused eight rows, and its
+final aggregate tree inventory was not retained. Per-row counts already exceed
+the configured aggregate allowance. Per-row growth is retained, but there is no
+complete final aggregate measurement. The
+small project regresses; Vest's observed four-call cycle improves about 10%
+against ordinary Sail while cold, changed-B and unchanged costs rise. These
+controlled calls use the same explicit runtime override in both Sail actors;
+bundled/default-discovery correctness remains pending. These observations do not
+qualify the narrowed successor; see the validation record.

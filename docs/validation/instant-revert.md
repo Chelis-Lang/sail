@@ -203,5 +203,79 @@ two exact 15-package/662-file profiles: current-pin new library (vstd default
 features) and current-pin Vest (alloc/std and its locked registry versions).
 Actual offline Cargo metadata uses no provider patches. Independent checks
 match every real archive member SHA-256 and compiler BLAKE3/size. These are
-source authority checks, not real native compiler-read or restored-proof
-acceptance; the earlier 446 functional results remain path-provider scope.
+source authority checks; the earlier 446 functional results remain path-provider
+scope. Native ordinary evidence for the integrated successor follows below.
+
+## Ordinary public candidate and measured-scope successor
+
+Source `aeea0587`, baseline `c3e64d21`, genuine final `e5365c05` runtime and stock
+`426d8b01` completed all 72 normal-verbosity small/current-pin-Vest calls. The
+two Sail actors used the same explicit `SAIL_CARGO_VERUS` runtime override,
+including its exact retained warning, with research flags absent. This does not
+qualify the bundled/default-discovery user entry point. The
+three fresh public-enum controls have identical literal SMT input multisets.
+Actual no-flag native and GHOST/EXEC ABI controls and both functional ABA chains
+pass. All returned-A research rows preserve A1's establishing run and execute
+zero new verifiers.
+
+The frozen whole cohort is **FAIL**, with 64 admitted and eight refused rows.
+Its function-name-only ordering comparison distinguishes same-named records
+from different modules in different orders. A separately reviewed read-only
+gate reconstructs all 72 projections from actual stock/producer documents and
+checks complete `(function, module, mode, success)` multisets with multiplicity,
+all scalar verdicts, diagnostics, stock no-op origins, Current/establishing-run
+bindings, literal source equality and source/runtime/binary guards. That scoped
+semantic/source/origin gate passes; it does not alter the frozen outcome.
+Its 14 controls retain wrong-module verdict/mode, duplicate/missing tuple,
+unknown-field and scalar refusals. Final archive SHA-256:
+`2a6652c746e7a2d265ce1ed0c12bd0b2ddc09898ecc23308e97c241e1fa5d130`;
+read-only gate result SHA-256:
+`79637abfd06c8ebbed0bd8093cdb0809bf5f6ad5f8d87dd8f61e4d51940f1517`.
+
+The final whole-cycle-tree inventory is absent after a separate bare assertion.
+The 18 distinct A3 cycle inventories already contain 456,498 files/directories,
+above the whole-root 131,072 count bound. These are pre-daemon-stop observations,
+not an invented final snapshot. All 72 individual bounded growth inventories
+remain. No whole-cost/default acceptance follows from the semantic reader.
+
+Observed median seconds, retained as diagnostic measurements:
+
+| Project/call | Stock | Ordinary Sail | Automatic candidate |
+| --- | ---: | ---: | ---: |
+| Small cold A1 | 32.218 | 36.578 | 40.465 |
+| Small changed B | 0.704 | 0.947 | 2.246 |
+| Small returned A2 | 0.709 | 0.915 | 1.496 |
+| Small unchanged A3 | 0.102 | 0.194 | 0.344 |
+| Small complete four-call cycle | 35.407 | 41.377 | 50.138 |
+| Current-pin Vest cold A1 | 72.260 | 78.526 | 83.893 |
+| Current-pin Vest changed B | 39.916 | 27.723 | 29.817 |
+| Current-pin Vest returned A2 | 39.922 | 27.428 | 2.604 |
+| Current-pin Vest unchanged A3 | 0.195 | 0.521 | 0.850 |
+| Current-pin Vest complete four-call cycle | 157.586 | 142.664 | 128.496 |
+
+The returned-A improvement is not the whole-workflow improvement: the measured
+Vest cycle improves about 10% against ordinary Sail, with cold/B/A3 regressions.
+Small cycles regress about 21%. Initial owned-tree growth is roughly
+757–811 MB for the candidate small project versus 373 MB ordinary, and
+916–970 MB for candidate Vest versus 492 MB ordinary. These include compiler
+targets and sidecars; the 8 GiB retained-arena cap is not a total-cache bound.
+Cycle times include recorded per-actor preparation and daemon setup/teardown;
+they exclude common source builds, functional gates and later evidence copies.
+
+The source successor therefore restricts ordinary routing to the already
+separate public alloc/std authority, before full source hashing, runtime
+validation, native certificates or graph creation. It reuses the existing
+metadata authority selector; matching metadata still requires unchanged full
+15-package source/feature and compiler-read admission. Default-feature public
+and path-provider profiles remain available only through explicit research.
+This restriction describes an exact dependency profile, not a universal proof
+cost threshold. New-head native small-negative/Vest ABA, targeted cost and final
+aggregate growth checks and full gates remain pending. The original 72 calls
+are not rerun or relabelled as successor qualification.
+
+The metadata-routing successor passes 32 retained-library checks and all-target
+`sail-verus` clippy on macOS. These are source/owned-filesystem controls, not a
+new native acceptance gate. Test stdout SHA-256:
+`4969b8a5c93692bb76dfafff15cb46e3a4e5dd0c5ad76387a4077c82b6561dc8`;
+clippy stderr SHA-256:
+`4ebe896991329469405a3ea58b295513040a8e714010d7b34aeac4ab95574e67`.

@@ -40,6 +40,11 @@ impl Plan {
         if !super::selection::requested(mode) {
             return None;
         }
+        if matches!(mode, super::super::research::Mode::Off)
+            && !eligibility::Closure::automatic_profile_candidate(metadata)
+        {
+            return None;
+        }
         let packages = metadata["packages"].as_array()?;
         let provider = |name: &str| {
             packages.iter().find(|p| p["name"] == name)?["manifest_path"]

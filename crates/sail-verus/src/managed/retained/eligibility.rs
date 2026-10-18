@@ -38,6 +38,16 @@ enum Authority {
 }
 
 impl Authority {
+    fn from_graph(
+        packages: &BTreeMap<&str, &Value>,
+        nodes: &BTreeMap<&str, &Value>,
+    ) -> Option<Self> {
+        let vstd = packages.values().find(|package| {
+            package["name"] == "vstd" && package["version"] == "0.0.0-2026-10-04-0306"
+        })?;
+        Self::select(vstd, nodes.get(vstd["id"].as_str()?)?)
+    }
+
     fn select(vstd: &Value, node: &Value) -> Option<Self> {
         if vstd["source"].is_null() {
             Some(Self::OfficialVest)
@@ -125,6 +135,28 @@ pub(super) struct Closure {
 }
 
 impl Closure {
+    /// Cheap ordinary-mode routing only, never source or proof authority.
+    ///
+    /// Avoid provider reads and graph/native side effects for profiles outside
+    /// the measured ordinary scope. Full admission below remains mandatory for
+    /// a matching profile, including every dependency's exact source/features.
+    pub(super) fn automatic_profile_candidate(metadata: &Value) -> bool {
+        let authority = || {
+            let packages = metadata["packages"]
+                .as_array()?
+                .iter()
+                .map(|package| Some((package["id"].as_str()?, package)))
+                .collect::<Option<BTreeMap<_, _>>>()?;
+            let nodes = metadata["resolve"]["nodes"]
+                .as_array()?
+                .iter()
+                .map(|node| Some((node["id"].as_str()?, node)))
+                .collect::<Option<BTreeMap<_, _>>>()?;
+            Authority::from_graph(&packages, &nodes)
+        };
+        matches!(authority(), Some(Authority::PublicRegistryVest))
+    }
+
     /// Initial scope is a verified workspace library with exactly the pinned
     /// vstd normal dependency, no custom build script or macro provider. Dev
     /// packages elsewhere in Cargo's metadata do not silently widen this set.
@@ -163,10 +195,7 @@ impl Closure {
         {
             return None;
         }
-        let vstd = packages.values().find(|package| {
-            package["name"] == "vstd" && package["version"] == "0.0.0-2026-10-04-0306"
-        })?;
-        let authority = Authority::select(vstd, nodes.get(vstd["id"].as_str()?)?)?;
+        let authority = Authority::from_graph(&packages, &nodes)?;
         let policy = authority.policy()?;
         let root_deps = normal_dependencies(nodes.get(root_id)?)?;
         if root_deps.len() != 1 {
@@ -458,6 +487,60 @@ fn check_package(root: &Path, expected: &Package) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ordinary_prefilter_uses_the_existing_exact_public_feature_profile() {
+        let metadata = |source: Value, features: Value| {
+            serde_json::json!({
+                "packages": [{"id": "vstd", "name": "vstd", "version": "0.0.0-2026-10-04-0306", "source": source}],
+                "resolve": {"nodes": [{"id": "vstd", "features": features}]}
+            })
+        };
+        for (source, features, expected) in [
+            (
+                Value::from("registry+https://github.com/rust-lang/crates.io-index"),
+                serde_json::json!(["alloc", "std"]),
+                true,
+            ),
+            (
+                Value::from("registry+https://github.com/rust-lang/crates.io-index"),
+                serde_json::json!(["alloc", "default", "std"]),
+                false,
+            ),
+            (Value::Null, serde_json::json!(["alloc", "std"]), false),
+            (
+                Value::from("registry+https://foreign.invalid/index"),
+                serde_json::json!(["alloc", "std"]),
+                false,
+            ),
+            (
+                Value::from("registry+https://github.com/rust-lang/crates.io-index"),
+                serde_json::json!(["alloc", "std", "foreign"]),
+                false,
+            ),
+        ] {
+            let data = metadata(source, features);
+            assert_eq!(Closure::automatic_profile_candidate(&data), expected);
+            // Matching metadata is only a routing hint. It has no workspace,
+            // source paths or actual provider bodies and cannot admit a plan.
+            assert!(
+                Closure::admit(
+                    &data,
+                    Path::new("/missing"),
+                    Path::new("/missing"),
+                    Path::new("/missing")
+                )
+                .is_none()
+            );
+        }
+        let mut data = metadata(
+            Value::from("registry+https://github.com/rust-lang/crates.io-index"),
+            serde_json::json!(["alloc", "std"]),
+        );
+        data["packages"][0]["version"] = Value::from("0.0.0-2026-09-20-0500");
+        assert!(!Closure::automatic_profile_candidate(&data));
+        assert!(!Closure::automatic_profile_candidate(&Value::Null));
+    }
 
     #[test]
     fn public_profiles_are_separate_complete_archive_authorities()
