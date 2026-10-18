@@ -379,9 +379,10 @@ eligibility repair passes its source-qualified Mac native admission/refusal
 controls, but has not yet qualified a release.
 
 
-The guarded Mac compiler-source candidate additionally proposes compile-time
-native proc-macro debug-map removal for portable Record/Serve only. This is not
-a selected release option: real closed-source producer provenance, literal
-library identity across two Rustup roots and unmodified consumer diagnostic
-checks remain pending. It changes neither consumer flags nor the Linux or
+The guarded Mac compiler-source candidate applies compile-time native
+proc-macro debug-map removal for portable Record/Serve only. The composed Mac
+components pass actual recording, first Serve at changed physical Rustup roots
+and unmodified consumer diagnostic comparisons. This is not a selected release
+option: native Linux qualification, a clean consumer and useful first-use
+performance remain pending. It changes neither consumer flags nor the Linux or
 machine-local modes, and never rewrites a compiled library.
