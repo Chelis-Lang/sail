@@ -1275,13 +1275,62 @@ fn sibling_receipts(paths: &Paths, context: &str) -> Vec<(String, PathBuf)> {
     siblings
 }
 
-/// The two receipt fields that decide a targeted clean. Reading only these
-/// skips the receipt's embedded report (megabytes for vstd) instead of
-/// building it; reuse still reads and checks the complete receipt.
+/// The revision fields decide a targeted clean; the other small header fields
+/// can only suppress optional restoration. Skipping the embedded report avoids
+/// constructing megabytes for vstd; reuse still checks the complete receipt.
 #[derive(serde::Deserialize)]
 struct ReceiptRevision {
     package_id: String,
     input_revision: String,
+    // These optional hint fields never authorize reuse. Keeping their raw JSON
+    // type preserves the existing dirty scan even for malformed headers.
+    #[serde(default)]
+    version: Value,
+    #[serde(default)]
+    context: Value,
+    #[serde(default)]
+    name: Value,
+    #[serde(default)]
+    kind: Value,
+}
+
+/// Only suppress optional content restoration; complete receipt validation is
+/// still performed after Cargo. The caller has already freshly compared every
+/// decoded revision and must retain the plan after any cleanup or uncertainty.
+fn receipt_covered_targets(
+    paths: &Paths,
+    expected: &BTreeSet<(String, String, String)>,
+    context: &str,
+    revisions: &BTreeMap<PathBuf, ReceiptRevision>,
+) -> bool {
+    !expected.is_empty()
+        && expected.iter().all(|(package, name, kind)| {
+            // Multi-kind targets conservatively keep the optional plan.
+            let kinds = vec![kind.clone()];
+            revisions
+                .get(&receipt_path(paths, package, name, &kinds))
+                .is_some_and(|receipt| {
+                    receipt.package_id == *package
+                        && !receipt.input_revision.is_empty()
+                        && receipt.version.as_u64() == Some(u64::from(RECEIPT_VERSION))
+                        && receipt.context.as_str() == Some(context)
+                        && receipt.name.as_str() == Some(name)
+                        && receipt.kind == serde_json::json!(kinds)
+                })
+        })
+}
+
+fn dirty_receipt_packages(
+    revisions: &BTreeMap<PathBuf, ReceiptRevision>,
+    data: &Value,
+) -> Vec<String> {
+    revisions
+        .values()
+        .filter(|r| r.input_revision != target_revision(data, &r.package_id))
+        .map(|r| r.package_id.clone())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 #[allow(
@@ -2297,21 +2346,29 @@ pub(crate) fn run_engine_held(
     if forced && paths.reuse {
         clean(config, &paths.target, &selected(&config.args, &names))?;
     }
-    let dirty: Vec<String> = std::fs::read_dir(&paths.receipts)
+    let receipt_revisions: BTreeMap<PathBuf, ReceiptRevision> = std::fs::read_dir(&paths.receipts)
         .into_iter()
         .flatten()
         .flatten()
-        .filter_map(|e| read::<ReceiptRevision>(&e.path()))
-        .filter(|r| r.input_revision != target_revision(&data, &r.package_id))
-        .map(|r| r.package_id)
-        .collect::<BTreeSet<_>>()
-        .into_iter()
+        .filter_map(|entry| Some((entry.path(), read::<ReceiptRevision>(&entry.path())?)))
         .collect();
+    let dirty = dirty_receipt_packages(&receipt_revisions, &data);
     if paths.reuse && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);
     let source_engine = engine.is_some();
+    // A header may only avoid optional restoration work. Unexpected Cargo
+    // rebuilds still run the genuine verifier, and the ordinary complete
+    // receipt/artifact/currentness checks below remain the reuse authority.
+    // Reuse this phase's fresh revision scan instead of hashing inputs again.
+    let receipt_covered = !new_target
+        && script_coverage
+        && stamp_before.is_some()
+        && stale_scripts.is_empty()
+        && late_scripts.is_empty()
+        && dirty.is_empty()
+        && receipt_covered_targets(&paths, &expected, &hash, &receipt_revisions);
     let runtime = Runtime {
         run_id: run_id.clone(),
         args: config.args.clone(),
@@ -2362,7 +2419,7 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
-        retained: if !forced && !source_engine && paths.reuse {
+        retained: if !forced && !source_engine && paths.reuse && !receipt_covered {
             super::retained::Plan::prepare(
                 &data,
                 &paths.target,
@@ -3347,6 +3404,123 @@ mod tests {
             declared_environment: BTreeMap::new(),
         }
         .seal()
+    }
+
+    #[test]
+    fn optional_retention_keeps_cold_missing_and_changed_revisions()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-retained-warm-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        let source = root.join("input.rs");
+        std::fs::write(&source, b"A")?;
+        let data = serde_json::json!({
+            "workspace_root":root, "sail_cache_directory":config.cache,
+            "target_directory":paths.target,
+            "packages":[{"id":"input", "manifest_path":root.join("Cargo.toml")}],
+            "resolve":{"nodes":[{"id":"input","dependencies":[]}]}
+        });
+        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let path = receipt_path(&paths, "input", "input", &["lib".into()]);
+        let load = || -> BTreeMap<PathBuf, ReceiptRevision> {
+            read(&path)
+                .map(|receipt| BTreeMap::from([(path.clone(), receipt)]))
+                .unwrap_or_default()
+        };
+        assert!(!receipt_covered_targets(
+            &paths,
+            &expected,
+            "selected",
+            &load()
+        ));
+        let original = compiler_receipt(&paths, &data, &root.join("absent-artifact"));
+        json(&path, &original)?;
+        assert!(receipt_covered_targets(
+            &paths,
+            &expected,
+            "selected",
+            &load()
+        ));
+        assert_eq!(dirty_receipt_packages(&load(), &data), Vec::<String>::new());
+        // A matching header is explicitly not proof authority: this fixture
+        // has no committed proof or artifact, and ordinary validation refuses.
+        assert!(!original.valid("selected"));
+        std::fs::write(&source, b"B")?;
+        assert_eq!(dirty_receipt_packages(&load(), &data), ["input"]);
+        let edited = compiler_receipt(&paths, &data, &root.join("absent-artifact"));
+        json(&path, &edited)?;
+        assert_eq!(dirty_receipt_packages(&load(), &data), Vec::<String>::new());
+        std::fs::write(&source, b"A")?;
+        // Returned A still needs restoration against B's currently held receipt.
+        assert_eq!(dirty_receipt_packages(&load(), &data), ["input"]);
+        json(&path, &original)?;
+        assert_eq!(dirty_receipt_packages(&load(), &data), Vec::<String>::new());
+        let mut missing = expected.clone();
+        missing.insert(("other".into(), "other".into(), "lib".into()));
+        assert!(!receipt_covered_targets(
+            &paths,
+            &missing,
+            "selected",
+            &load()
+        ));
+        std::fs::remove_file(&path)?;
+        assert!(!receipt_covered_targets(
+            &paths,
+            &expected,
+            "selected",
+            &load()
+        ));
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn optional_retention_malformed_or_foreign_headers_keep_plan()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-retained-header-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let path = receipt_path(&paths, "input", "input", &["lib".into()]);
+        let original = serde_json::json!({"version":RECEIPT_VERSION,"package_id":"input",
+            "name":"input","kind":["lib"],"context":"selected","input_revision":"revision"});
+        for (field, value) in [
+            ("version", serde_json::json!(0)),
+            ("context", serde_json::json!("foreign")),
+            ("package_id", serde_json::json!("foreign")),
+            ("name", serde_json::json!("foreign")),
+            ("kind", serde_json::json!(["bin"])),
+            ("kind", serde_json::json!("lib")),
+            ("input_revision", serde_json::json!("")),
+            ("context", Value::Null),
+        ] {
+            let mut header = original.clone();
+            header[field] = value;
+            json(&path, &header)?;
+            let revisions = read(&path)
+                .map(|r| BTreeMap::from([(path.clone(), r)]))
+                .unwrap_or_default();
+            assert!(!receipt_covered_targets(
+                &paths, &expected, "selected", &revisions
+            ));
+        }
+        for bytes in [
+            b"{malformed".as_slice(),
+            br#"{"package_id":"input","input_revision":"old"}"#,
+        ] {
+            std::fs::write(&path, bytes)?;
+            let revisions = read(&path)
+                .map(|r| BTreeMap::from([(path.clone(), r)]))
+                .unwrap_or_default();
+            assert!(!receipt_covered_targets(
+                &paths, &expected, "selected", &revisions
+            ));
+        }
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[test]
