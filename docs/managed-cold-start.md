@@ -9,6 +9,12 @@ those receipts and starts no verifier. See
 [ADR 0023](decisions/0023-managed-incremental-workspace-verification.md) and
 [freshness](freshness.md) for what "unchanged" means.
 
+The proposed [managed output ordering change](decisions/0055-acknowledged-managed-output.md)
+keeps verifier stdout and stderr separate while acknowledging delivery before
+the driver exits. It targets a summary being overtaken by Cargo's subsequent
+error; structured callers still suppress human stdout. Focused macOS controls
+pass; [full qualification remains pending](validation/managed-output-order.md).
+
 Managed metadata probes, including Cargo-Verus's private metadata subprocess,
 select `cargo-metadata/` under the Sail cache with a highest-priority
 `build.target-dir` override. Neither caller environment nor Cargo configuration

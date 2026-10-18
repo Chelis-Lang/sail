@@ -38,6 +38,8 @@ The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 [Output failure evidence](e2e-output-evidence.md) describes bounded original
 E2E streams and producer records retained for diagnosis.
+[Managed output ordering](validation/managed-output-order.md) tracks the
+acknowledged-driver candidate and its remaining correctness and cost checks.
 [Socket fixture retirement](validation/mcp-fixture-retirement.md) records the
 MCP test-server cancellation regression and its remaining validation scope.
 [Solver-continuation findings](reports/2026-10-16-solver-snapshots.md) and their

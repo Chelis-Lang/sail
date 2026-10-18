@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Prepare acknowledged managed-driver output to preserve causal summary/error
+  ordering (#215). The candidate keeps Cargo JSON metadata separate and
+  suppresses human stdout for structured callers. Focused macOS controls pass;
+  full host and native qualification remain pending. See the
+  [qualification record](docs/validation/managed-output-order.md).
+
 - Restore a previously verified workspace revision on ordinary Linux checks
   within the qualified public alloc/std dependency profile (#163). Restored
   results preserve their original establishing run and require fresh Current
