@@ -325,3 +325,24 @@ new native acceptance gate. Test stdout SHA-256:
 `4969b8a5c93692bb76dfafff15cb46e3a4e5dd0c5ad76387a4077c82b6561dc8`;
 clippy stderr SHA-256:
 `4ebe896991329469405a3ea58b295513040a8e714010d7b34aeac4ab95574e67`.
+
+## Unchanged-run optional-plan prototype
+
+A separate, unselected source prototype on `3892881a` omits the optional
+retained-content plan when every requested target has an own-context receipt
+header with the current nonempty input revision. It reuses the existing fresh
+dirty-receipt scan; it adds no second source-hash pass. Cold or missing receipts,
+changed revisions (including returned A against B's receipt), forced runs,
+incomplete inputs, missing mutation stamps and any script/target cleanup keep
+the existing path. Omitting the plan also avoids its publication snapshot.
+
+The header is a disable hint, never proof authority. Cargo still runs normally;
+an unexpected rebuild genuinely verifies. Complete receipt, artifact, native
+input and final Current checks remain unchanged. A malformed matching proof
+body cannot be reused on the strength of this header. At worst the optional
+archive opportunity is missed, so a later invocation verifies freshly.
+
+Source fixtures cover cold/missing headers, changed B and returned A revisions,
+wrong identity/context/version and malformed headers. They are not yet built
+or executed. macOS/Linux gates, actual native ABA and unchanged-run measurements
+are pending; no improvement or selection is claimed by this prototype.
