@@ -2553,12 +2553,7 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
-        retained: if !forced
-            && !source_engine
-            && paths.reuse
-            && !receipt_covered
-            && shipped_plan.is_none()
-        {
+        retained: if !forced && !source_engine && paths.reuse && !receipt_covered {
             super::retained::Plan::prepare(
                 &data,
                 &paths.target,

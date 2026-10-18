@@ -47,6 +47,17 @@ pub(super) struct Observation {
 }
 
 impl Observation {
+    /// Check an already completed, separately owned native observation. This
+    /// never installs a second endpoint or invents a compiler PID.
+    pub(super) fn completed(path: &Path, pid: u32, run: &str, key: &str) -> Option<Self> {
+        Some(Self {
+            path: path.to_owned(),
+            directory: path.parent()?.to_owned(),
+            binding: super::super::digest(format!("{run}\0{key}").as_bytes()),
+            pid: Some(pid),
+        })
+    }
+
     pub(super) fn begin(directory: &Path, run: &str, key: &str) -> Option<Self> {
         let mut builder = std::fs::DirBuilder::new();
         #[cfg(unix)]
@@ -173,4 +184,53 @@ pub(super) fn intact(path: &Path, expected: &str, pid: u32, run: &str, key: &str
         && document.pid == pid
         && document.binding == super::super::files::digest(format!("{run}\0{key}").as_bytes())
         && !document.inputs.sources.is_empty()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shared_native_document_retains_actual_pid_binding_and_loaded_source_authority()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-shared-native-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let (closure, source, checksum, size) =
+            super::super::eligibility::native_test_fixture(&root).ok_or("source authority")?;
+        let path = root.join("inputs.json");
+        let mut raw = serde_json::json!({
+            "kind":"sail-native-compiler-read-inputs", "schema":1,
+            "binding":super::super::super::files::digest(b"run\0key"),
+            "pid":42, "complete":true,
+            "inputs":{"sources":{source.to_str().ok_or("path")?:{"checksum":checksum,"size":size}},
+                "extra_tracked_files":[], "tracked_environment":{}}
+        });
+        let write = |raw: &serde_json::Value| -> std::io::Result<()> {
+            std::fs::write(&path, serde_json::to_vec(raw)?)
+        };
+        write(&raw)?;
+        let validate = |pid, run, key| {
+            Observation::completed(&path, pid, run, key).and_then(|observation| {
+                observation.finish(true, &root, &closure, &BTreeMap::new(), &BTreeMap::new())
+            })
+        };
+        assert!(validate(42, "run", "key").is_some());
+        for (pid, run, key) in [
+            (43, "run", "key"),
+            (42, "other", "key"),
+            (42, "run", "other"),
+        ] {
+            assert!(validate(pid, run, key).is_none());
+        }
+        raw["inputs"]["sources"][source.to_str().ok_or("path")?]["checksum"] =
+            "blake3=wrong".into();
+        write(&raw)?;
+        assert!(validate(42, "run", "key").is_none());
+        raw["inputs"]["sources"][source.to_str().ok_or("path")?]["checksum"] = checksum.into();
+        raw["complete"] = false.into();
+        write(&raw)?;
+        assert!(validate(42, "run", "key").is_none());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 }

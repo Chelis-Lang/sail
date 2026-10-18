@@ -26,6 +26,8 @@ struct Record {
     establishing_run: String,
     key: String,
     native: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    shipped: Option<super::super::shipped::RetainedProof>,
     official: bool,
     crate_name: String,
     pid: u32,
@@ -47,6 +49,14 @@ fn record_path(plan: &Plan, output: &Path) -> PathBuf {
         .join(files::digest(output.as_os_str().as_encoded_bytes()))
 }
 
+#[cfg(test)]
+pub(super) fn has_shipped_producer(plan: &Plan, graph: &Snapshot) -> bool {
+    graph.original_inputs().keys().any(|path| {
+        receipts::read::<Record>(&record_path(plan, path))
+            .is_some_and(|record| record.shipped.is_some() && record.crate_name == "vstd")
+    })
+}
+
 /// Every original body must match a retained successful producer certificate.
 /// A full new snapshot is taken after waiting, because pipelined metadata can
 /// precede its producer's final rlib.
@@ -66,7 +76,12 @@ pub(super) fn established(plan: &Plan, context: &str, graph: &Snapshot) -> bool 
             && !record.establishing_run.is_empty()
             && read_content(&record.document, 8 * 1024 * 1024).as_ref()
                 == Some(&record.document_content)
-            && if record.native {
+            && if let Some(proof) = &record.shipped {
+                !record.native
+                    && record.pid == 0
+                    && proof.compiler_identity() == record.compiler
+                    && proof.intact(path, content)
+            } else if record.native {
                 native::intact(
                     &record.document,
                     &record.document_content.sha256,
@@ -80,6 +95,113 @@ pub(super) fn established(plan: &Plan, context: &str, graph: &Snapshot) -> bool 
                 })
             }
     })
+}
+
+/// Import a genuinely served release proof, preserving its distinct authority.
+/// This runs after the ordinary driver finish; it is not an actual compiler
+/// certificate and cannot make a requested-target retained candidate by itself.
+pub(crate) fn publish_shipped(
+    runtime: &receipts::Runtime,
+    proof: &super::super::shipped::RetainedProof,
+) -> Option<()> {
+    let plan = runtime.retained.as_ref()?;
+    if !proof.for_run(&runtime.run_id, plan.compiler_identity(), &plan.target)
+        || !plan.closure.check_sources()
+        || proof.outputs().is_empty()
+        || !proof
+            .outputs()
+            .iter()
+            .all(|(path, body)| proof.intact(path, body))
+    {
+        return None;
+    }
+    let document = proof.document()?;
+    let content = read_content(&document, 8 * 1024 * 1024)?;
+    let template = Record {
+        version: 1,
+        context: runtime.context_sha256.clone(),
+        compiler: plan.compiler_identity().to_owned(),
+        policy: plan.closure.policy_digest(),
+        establishing_run: runtime.run_id.clone(),
+        key: content.sha256.clone(),
+        native: false,
+        shipped: Some(proof.clone()),
+        official: true,
+        crate_name: "vstd".to_owned(),
+        pid: 0,
+        document,
+        document_content: content.clone(),
+        output: PathBuf::new(),
+        body: content,
+    };
+    publish(
+        plan,
+        &template,
+        proof.outputs().iter().map(|(p, b)| (p.clone(), b.clone())),
+    )
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "The shared completed child binds its actual PID, raw read document, source closure and immutable graph independently for retained use."
+)]
+pub(crate) fn publish_shipped_native(
+    runtime: &receipts::Runtime,
+    args: &[OsString],
+    cwd: &Path,
+    graph: &Snapshot,
+    outputs: &[PathBuf],
+    document: &Path,
+    pid: u32,
+    key: &str,
+) -> Option<()> {
+    let plan = runtime.retained.as_ref()?;
+    let environment = environment()?;
+    let manifest = Path::new(environment.get("CARGO_MANIFEST_DIR")?).join("Cargo.toml");
+    if !plan.compiler_matches(&runtime.original_wrapper)
+        || !plan.closure.unit(&environment, args)
+        || !plan.native_edges(args, &manifest)
+        || !graph.intact()
+        || !ready(plan, graph)
+        || !established(plan, &runtime.context_sha256, graph)
+        || !named_externs(plan, args)
+    {
+        return None;
+    }
+    let reads = native::Observation::completed(document, pid, &runtime.run_id, key)?;
+    let sha = reads.finish(
+        true,
+        cwd,
+        &plan.closure,
+        &graph.copied_inputs()?,
+        &environment,
+    )?;
+    let content = read_content(document, 8 * 1024 * 1024)?;
+    if content.sha256 != sha {
+        return None;
+    }
+    let template = Record {
+        version: 1,
+        context: runtime.context_sha256.clone(),
+        compiler: plan.compiler_identity().to_owned(),
+        policy: plan.closure.policy_digest(),
+        establishing_run: runtime.run_id.clone(),
+        key: key.to_owned(),
+        native: true,
+        shipped: None,
+        official: true,
+        crate_name: driver::value(args, "--crate-name")?.to_owned(),
+        pid,
+        document: document.to_owned(),
+        document_content: content.clone(),
+        output: PathBuf::new(),
+        body: content,
+    };
+    let outputs = outputs
+        .iter()
+        .map(|p| Some((p.clone(), read_content(p, 256 * 1024 * 1024)?)))
+        .collect::<Option<Vec<_>>>()?;
+    publish(plan, &template, outputs.into_iter())
 }
 
 pub(super) fn named_externs(plan: &Plan, args: &[OsString]) -> bool {
@@ -222,6 +344,7 @@ pub(super) fn publish_verified(
         establishing_run: run.to_owned(),
         key: key.to_owned(),
         native: false,
+        shipped: None,
         official: plan.closure.unit(variables, arguments),
         crate_name: driver::value(arguments, "--crate-name")?.to_owned(),
         pid,
@@ -414,6 +537,7 @@ impl Native {
             establishing_run: self.run.clone(),
             key: self.key.clone(),
             native: true,
+            shipped: None,
             official: true,
             crate_name: driver::value(&self.arguments, "--crate-name")?.to_owned(),
             pid: self.reads.pid()?,

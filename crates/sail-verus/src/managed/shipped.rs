@@ -778,6 +778,7 @@ fn active_for(
         || run.file_name()? != OsStr::new(&runtime.run_id)
         || plan.run_id != runtime.run_id
         || runtime.retained.is_some()
+            && (!matches!(plan.mode, Mode::Serve { .. }) || plan.release.is_none())
         || runtime.engine.is_some()
         || runtime.z3_sha256 != plan.solver_sha256
         || runtime.original_wrapper != plan.native_launcher
@@ -1999,6 +2000,7 @@ impl<'a> Call<'a> {
             stdout: stdout.into_bytes(),
             stderr: stderr.into_bytes(),
             origin,
+            retained: RetainedProof::new(self, &bytes, &unit),
         })
     }
 }
@@ -2009,6 +2011,119 @@ pub(crate) struct Replay {
     pub stderr: Vec<u8>,
     /// Scope and establishing invocation, preserved through later reuse.
     pub origin: sail_api::project::DependencyBuildOrigin,
+    /// A distinct release-proof producer, never an actual local compiler run.
+    pub retained: Option<RetainedProof>,
+}
+
+/// Minted only after the complete fresh-native checked Serve boundary succeeds.
+/// The retained arena may preserve it, but must recheck the release index/unit,
+/// closed sources, compiler and exact placed output on every use.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RetainedProof {
+    plan: Plan,
+    key: String,
+    unit_sha256: String,
+    outputs: BTreeMap<PathBuf, super::dependency_snapshot::Content>,
+}
+
+impl RetainedProof {
+    pub(crate) fn for_run(&self, run: &str, compiler: &str, target: &Path) -> bool {
+        self.plan.run_id == run
+            && self.plan.native_compiler_sha256 == compiler
+            && self.plan.target == target
+    }
+
+    pub(crate) fn compiler_identity(&self) -> &str {
+        &self.plan.native_compiler_sha256
+    }
+
+    fn new(call: &Call<'_>, raw: &[u8], unit: &Unit) -> Option<Self> {
+        if call.plan.release.is_none()
+            || !matches!(call.plan.mode, Mode::Serve { .. })
+            || !unit.verifying
+            || call.crate_name != "vstd"
+            || !call.snapshot_intact()
+        {
+            return None;
+        }
+        let outputs = unit
+            .files
+            .iter()
+            .filter(|file| file.name != unit.dep_info)
+            .map(|file| {
+                let path = call.out_dir.join(&file.name);
+                let content = super::dependency_snapshot::read_content(&path, 256 * 1024 * 1024)?;
+                (content.sha256 == file.sha256 && content.size == file.size)
+                    .then_some((path, content))
+            })
+            .collect::<Option<_>>()?;
+        Some(Self {
+            plan: call.plan.clone(),
+            key: call.key.clone(),
+            unit_sha256: digest(raw),
+            outputs,
+        })
+    }
+
+    pub(crate) fn document(&self) -> Option<PathBuf> {
+        let Mode::Serve { bundle } = &self.plan.mode else {
+            return None;
+        };
+        Some(bundle.join(UNITS).join(&self.key).join(UNIT))
+    }
+
+    pub(crate) fn outputs(&self) -> &BTreeMap<PathBuf, super::dependency_snapshot::Content> {
+        &self.outputs
+    }
+
+    pub(crate) fn intact(&self, output: &Path, body: &super::dependency_snapshot::Content) -> bool {
+        let check = || {
+            (self.plan.closure.as_ref()?.check_sources()
+                && self
+                    .plan
+                    .compiler_source
+                    .as_ref()?
+                    .current(&self.plan)
+                    .is_some()
+                && native::launcher_matches(&self.plan, &self.plan.native_launcher)
+                && self.release_output_intact(output, body))
+            .then_some(())
+        };
+        check().is_some()
+    }
+
+    fn release_output_intact(
+        &self,
+        output: &Path,
+        body: &super::dependency_snapshot::Content,
+    ) -> bool {
+        let check = || {
+            let Mode::Serve { bundle } = &self.plan.mode else {
+                return None;
+            };
+            let raw = self.plan.release.as_ref()?.read_unit(bundle, &self.key)?;
+            let unit: Unit = serde_json::from_slice(&raw).ok()?;
+            (digest(&raw) == self.unit_sha256
+                && unit.schema == SCHEMA
+                && unit.key == self.key
+                && unit.verifying
+                && unit.crate_name == "vstd"
+                && self.outputs.get(output) == Some(body)
+                && output
+                    .parent()
+                    .is_some_and(|parent| parent.starts_with(&self.plan.target))
+                && unit.files.iter().any(|file| {
+                    output.file_name() == Some(OsStr::new(&file.name))
+                        && file.sha256 == body.sha256
+                        && file.size == body.size
+                })
+                && super::dependency_snapshot::read_content(output, 256 * 1024 * 1024).as_ref()
+                    == Some(body))
+            .then_some(())
+        };
+        check().is_some()
+    }
 }
 
 enum Refusal {
