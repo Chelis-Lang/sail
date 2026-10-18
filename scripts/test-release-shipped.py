@@ -25,6 +25,16 @@ def refuses(call):
 
 def main():
     os.umask(0o022)
+    assert module.process_census()[os.getpid()][0] == os.getpgrp()
+    original_run = module.subprocess.run
+    def missing_census(*_args, **_kwargs):
+        raise FileNotFoundError('owned missing-ps control')
+    module.subprocess.run = missing_census
+    try:
+        try:module.process_census()
+        except RuntimeError as error:assert 'cleanup requires ps' in str(error)
+        else:raise AssertionError('missing process census was accepted')
+    finally:module.subprocess.run = original_run
     for optimization in ('-O', '-OO'):
         refused = subprocess.run(
             [sys.executable, optimization, '-B', str(Path(__file__).with_name('release-shipped.py')), 'verify', '/unused-stage'],

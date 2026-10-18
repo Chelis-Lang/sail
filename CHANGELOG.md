@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Stop the release recorder's whole owned process group when a command or
+  server leader exits early, including descendants that ignore termination.
+  Cleanup outcomes remain visible on failure; these mock-qualified recorder
+  controls do not qualify a real release or change proof eligibility.
+
 - Skip optional proof-archive planning on unchanged runs
   for already covered receipt revisions (#156). A 36-call native Vest screen
   lowers unchanged checks from 0.895 s to 0.544 s (39.29%) and the four-call sum

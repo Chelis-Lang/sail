@@ -309,6 +309,118 @@ def retain_compiler_inputs(owned, evidence, required):
         save()
 
 
+def process_census():
+    """Bounded PID/group/state view; prerequisite before any owned-group launch."""
+    try:
+        raw = subprocess.run(['ps', '-axo', 'pid=,pgid=,stat='],
+                             capture_output=True, check=True, timeout=2).stdout
+    except (OSError, subprocess.SubprocessError) as error:
+        raise RuntimeError('release-shipped: owned cleanup requires ps (procps on Linux)') from error
+    assert len(raw) <= 8*1024**2, 'process census limit exceeded'
+    rows = {}
+    for line in raw.splitlines():
+        pid, group, state = line.split()
+        pid, group = int(pid), int(group)
+        assert pid > 0 and group >= 0 and state and pid not in rows, 'invalid process census'
+        rows[pid] = (group, state)
+    assert rows[os.getpid()][0] == os.getpgrp(), 'process census omits caller'
+    return rows
+
+
+class OwnedGroup:
+    """Hold the waitable session leader until its owned group has no live work."""
+
+    def __init__(self, child, label, outcomes):
+        self.child = child
+        self.pid = child.pid
+        self.state = {'label': label, 'pid': self.pid, 'extinct': False, 'signals': []}
+        outcomes.append(self.state)
+
+    @classmethod
+    @contextlib.contextmanager
+    def running(cls, argv, label, outcomes, **kwargs):
+        group = None
+        pending = []
+        try:
+            # Defer cancellation across Popen's return/ownership assignment.
+            handlers = {sig: signal.signal(sig, lambda signum, _frame: pending.append(signum))
+                        for sig in (signal.SIGTERM, signal.SIGINT)}
+            try:
+                group = cls(subprocess.Popen(argv, start_new_session=True, **kwargs), label, outcomes)
+            finally:
+                for sig, handler in handlers.items():signal.signal(sig, handler)
+            if pending:raise KeyboardInterrupt('release child creation cancelled')
+            group.members()
+            yield group
+        finally:
+            if group is not None:group.stop()
+
+    def members(self, deadline=None):
+        if deadline is None:deadline = time.monotonic()+2
+        # Never poll/wait before extinction: the unreaped PID prevents group-ID reuse.
+        assert self.child.returncode is None, 'owned leader was reaped early'
+        assert self.pid not in (os.getpgrp(), os.getsid(0))
+        # macOS ps "sess" is not a portable decimal SID. Inspect only PGID/state;
+        # use the kernel's getsid/getpgid for ownership before signalling.
+        members = {}
+        for pid, (group, state) in process_census().items():
+            if group != self.pid:
+                continue
+            zombie = state.startswith(b'Z')
+            if not zombie:
+                try:
+                    assert os.getpgid(pid) == self.pid and os.getsid(pid) == self.pid, 'foreign group member'
+                except ProcessLookupError:
+                    if pid == self.pid:
+                        assert time.monotonic() < deadline, 'leader exit census deadline'
+                        return self.members(deadline)
+                    continue
+            # macOS getsid/getpgid reject zombies. The waitable direct child
+            # still pins this PID/group; zombies cannot change session or fork.
+            members[pid] = zombie
+        assert self.pid in members, 'held leader missing from process census'
+        return members
+
+    def exited(self):
+        return self.members()[self.pid]
+
+    def send(self, signum):
+        assert not self.state['extinct'], 'owned group already extinct'
+        if all(self.members().values()):
+            return
+        os.killpg(self.pid, signum)
+        self.state['signals'].append(signum.name)
+
+    def stop(self):
+        if self.state['extinct']:
+            return
+        # A second cancellation must not interrupt the bounded cleanup already
+        # unwinding the first one. Restore the caller's handlers afterwards.
+        handlers = {sig: signal.signal(sig, signal.SIG_IGN)
+                    for sig in (signal.SIGTERM, signal.SIGINT)}
+        try:
+            for signum in (signal.SIGTERM, signal.SIGKILL):
+                members = self.members()
+                if all(members.values()):
+                    break
+                self.send(signum)
+                deadline = time.monotonic()+10
+                while not all((members := self.members()).values()) and time.monotonic() < deadline:
+                    time.sleep(.05)
+            assert all(members.values()), 'owned process group survived cleanup'
+            # Zombies cannot do more work or fork. The direct leader remains
+            # pinned until now; after this wait the group is never signalled again.
+            self.state['zombie_pids'] = sorted(members)
+            self.state['returncode'] = self.child.wait(timeout=2)
+            self.state['extinct'] = True
+        except BaseException as error:
+            self.state['cleanup_error'] = repr(error)
+            raise
+        finally:
+            for sig, handler in handlers.items():
+                signal.signal(sig, handler)
+
+
 def record(root, evidence):
     assert root.is_absolute() and not root.is_symlink() and not evidence.exists()
     evidence.mkdir(parents=True, mode=0o700)
@@ -328,15 +440,13 @@ def record(root, evidence):
     assert selected['manifest_sha256'] == digest(build/'sail-build.json')
     variant = build.name
     end = time.monotonic()+600
-    server = None
-    outcome = {'passed': False, 'stage': str(root), 'variant': variant}
+    server_group = None
+    outcome = {'passed': False, 'stage': str(root), 'variant': variant, 'process_groups': []}
     def stop_server():
-        if server is not None and server.poll() is None:
-            os.killpg(server.pid, signal.SIGTERM)
-            try:server.wait(timeout=10)
-            except subprocess.TimeoutExpired:os.killpg(server.pid, signal.SIGKILL);server.wait(timeout=10)
-        assert server is None or server.poll() is not None, 'owned server survived'
+        if server_group is not None:
+            server_group.stop()
     try:
+        process_census()
         prerequisite = rust_source(build, env)
         (evidence/'rust-source-prerequisite.json').write_text(json.dumps(prerequisite, indent=2)+'\n')
         with tempfile.TemporaryDirectory(prefix='sail-release-record-', dir='/tmp') as temporary, contextlib.ExitStack() as cleanup:
@@ -364,34 +474,32 @@ def record(root, evidence):
                 remaining = min(cap, end-time.monotonic()-30)
                 assert remaining > 0, 'release record deadline reached'
                 with (evidence/(label+'.stdout')).open('xb') as out, (evidence/(label+'.stderr')).open('xb') as err:
-                    child = subprocess.Popen(argv, cwd=cwd, env=env, stdout=out, stderr=err,
-                                             stdin=subprocess.DEVNULL, start_new_session=True)
-                    try:
-                        while child.poll() is None:
-                            assert time.monotonic() < end-30 and time.monotonic() < started+remaining
+                    with OwnedGroup.running(argv, label, outcome['process_groups'], cwd=cwd, env=env,
+                                            stdout=out, stderr=err, stdin=subprocess.DEVNULL) as group:
+                        try:
+                            while not group.exited():
+                                assert time.monotonic() < end-30 and time.monotonic() < started+remaining
+                                assert os.fstat(out.fileno()).st_size+os.fstat(err.fileno()).st_size <= CAPTURE_LIMIT
+                                owned_size(owned, endpoints)
+                                time.sleep(.2)
                             assert os.fstat(out.fileno()).st_size+os.fstat(err.fileno()).st_size <= CAPTURE_LIMIT
-                            owned_size(owned, endpoints)
-                            time.sleep(.2)
-                        assert os.fstat(out.fileno()).st_size+os.fstat(err.fileno()).st_size <= CAPTURE_LIMIT
-                        assert child.returncode == 0, label+' failed'
-                    finally:
-                        if child.poll() is None:
-                            os.killpg(child.pid, signal.SIGTERM)
-                            try:child.wait(timeout=10)
-                            except subprocess.TimeoutExpired:os.killpg(child.pid, signal.SIGKILL);child.wait(timeout=10)
+                        except BaseException as error:
+                            group.state['command_error'] = repr(error)
+                            raise
+                    assert group.child.returncode == 0, label+' failed'
                 return (evidence/(label+'.stdout')).read_bytes()
             command('fetch', ['cargo', 'fetch', '--locked'], cap=120)
             with (evidence/'server.stdout').open('xb') as out, (evidence/'server.stderr').open('xb') as err:
-                server = subprocess.Popen([str(binaries/'sail'), 'serve', '--socket', str(socket),
-                                           '--cache', str(cache/'results')], env=env,
-                                          stdout=out, stderr=err, start_new_session=True)
+                server_group = cleanup.enter_context(OwnedGroup.running(
+                    [str(binaries/'sail'), 'serve', '--socket', str(socket), '--cache', str(cache/'results')],
+                    'server', outcome['process_groups'], env=env, stdout=out, stderr=err))
             try:
                 deadline = min(end-30,time.monotonic()+10)
                 while not socket.exists():
-                    assert server.poll() is None and time.monotonic()<deadline
+                    assert not server_group.exited() and time.monotonic()<deadline
                     time.sleep(.05)
                 raw = command('record', [str(binaries/'sail'), 'verify', '--locked', '--output', 'json'])
-                outcome['server_pid'] = server.pid
+                outcome['server_pid'] = server_group.pid
                 run = complete_report(json.loads(raw))
                 proof = check_bundle(bundle, variant, selected['manifest_sha256'], run)
             finally:
@@ -411,8 +519,9 @@ def record(root, evidence):
             (root/INDEX).write_text(json.dumps(index, indent=2)+'\n')
             verify(root)
             outcome.update(passed=True, establishing_run=run, proof=proof)
-    except BaseException:
+    except BaseException as error:
         outcome['passed'] = False
+        outcome['error'] = repr(error)
         raise
     finally:
         try:
@@ -430,7 +539,8 @@ def record(root, evidence):
                     if (root/'deps').exists():shutil.rmtree(root/'deps')
                     (root/INDEX).unlink(missing_ok=True)
             finally:
-                outcome['server_reaped'] = server is None or server.poll() is not None
+                outcome['server_reaped'] = all(group['extinct'] for group in outcome['process_groups']
+                                               if group['label'] == 'server')
                 (evidence/'result.json').write_text(json.dumps(outcome, indent=2)+'\n')
 
 

@@ -105,7 +105,17 @@ run before a complete dependency directory becomes discoverable. Refusals and
 failures stop release packaging. Evidence is retained beside the stage directory
 with `-proof-evidence` appended; it is not shipped or treated as proof authority.
 On termination, the recorder unwinds its existing cleanup before exiting: it
-stops and reaps its owned command/server groups, then removes its private scratch.
+stops its owned command/server groups, then reaps each held direct leader before
+removing its private scratch. Cleanup checks the owned process group even
+when its leader has already exited; a descendant ignoring termination still
+receives the bounded kill escalation. Zombie-only groups have no live work.
+The result records group cleanup outcomes and errors; an exited leader alone
+is not successful server cleanup. This accounting is confined to the private
+release recorder, outside public first-use timing.
+Before launching its owned groups, the recorder requires a working bounded `ps`
+process census (`procps` on Linux). The CI image provides it and the pinned
+`rust-src` component needed by the proof-bundle factory. These producer
+prerequisites do not establish a fresh consumer installation measurement.
 A cancelled recording never installs a dependency bundle or release index.
 The adjacent evidence also names the actual recorder PID, owned scratch root and
 UID for external resource accounting; this metadata is not proof authority.
