@@ -7,7 +7,7 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 11 also requires portable adapter/environment bindings. It neither
+//! schema 12 also refuses raw encoded environment-value collisions. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
 //! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
@@ -29,7 +29,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 11;
+const SCHEMA: u32 = 12;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";
@@ -1105,14 +1105,31 @@ impl<'a> Call<'a> {
                 return None;
             }
             let key = self.environment_name(name, localize);
-            let value = value.as_ref().map(|value| {
-                self.environment_value(if localize { &key } else { name }, value, localize)
-            });
+            let value = match value {
+                Some(value) => Some(self.mapped_environment_value(
+                    if localize { &key } else { name },
+                    value,
+                    localize,
+                )?),
+                None => None,
+            };
             if mapped.insert(key, value).is_some() {
                 return None;
             }
         }
         Some(mapped)
+    }
+
+    fn mapped_environment_value(&self, name: &str, value: &str, localize: bool) -> Option<String> {
+        // A raw literal must not impersonate an encoded relocatable value.
+        // Unknown variables stay literal, and MachineLocal keeps its old map.
+        if !localize
+            && !matches!(self.plan.mode, Mode::MachineLocal { .. })
+            && self.environment_value(name, value, true) != value
+        {
+            return None;
+        }
+        Some(self.environment_value(name, value, localize))
     }
 
     fn dep_info_declarations(&self, text: &str) -> Option<BTreeMap<String, Option<String>>> {
@@ -1155,13 +1172,14 @@ impl<'a> Call<'a> {
                 {
                     return None;
                 }
-                let mapped_value = value.as_ref().map(|value| {
-                    self.environment_value(
+                let mapped_value = match &value {
+                    Some(value) => Some(self.mapped_environment_value(
                         if localize { &mapped_name } else { &name },
                         value,
                         localize,
-                    )
-                });
+                    )?),
+                    None => None,
+                };
                 if mapped_name == name && mapped_value == value {
                     output.push_str(body);
                 } else {
@@ -2065,6 +2083,79 @@ mod tests {
             );
         }
 
+        let mut accepted_collisions = Vec::new();
+        for name in ["CARGO_RUSTC_CURRENT_DIR", "OUT_DIR"] {
+            let mut a_values = va.clone();
+            let mut b_values = vb.clone();
+            a_values.insert(name.into(), "@@sail-target@@/opaque".into());
+            b_values.insert(
+                name.into(),
+                b.plan.target.join("opaque").to_string_lossy().into_owned(),
+            );
+            let a_call = make_call(&a, a_values).ok_or("token A call")?;
+            let b_call = make_call(&b, b_values).ok_or("physical B call")?;
+            assert_eq!(a_call.key, b_call.key, "same lookup key for {name}");
+            let mut certificate = serde_json::to_value(&actual)?;
+            certificate["binding"] = serde_json::json!(digest(
+                format!("{}\0{}", a.plan.run_id, a_call.key).as_bytes()
+            ));
+            for phase in ["verification", "compilation"] {
+                certificate["phases"][phase]["tracked_environment"][name] =
+                    serde_json::json!("@@sail-target@@/opaque");
+            }
+            let certificate: compiler::Document = serde_json::from_value(certificate)?;
+            assert!(certificate.valid(&a_call, &a.plan.run_id));
+            if let Some(encoded) = certificate.mapped(&a_call, false) {
+                let mut entry = serde_json::to_value(&stored)?;
+                entry["key"] = serde_json::json!(a_call.key);
+                entry["compiler_reads"] = serde_json::to_value(encoded)?;
+                let entry: Unit = serde_json::from_value(entry)?;
+                if compiler::stored(&b_call, &entry) {
+                    accepted_collisions.push(name);
+                }
+            }
+        }
+        assert!(
+            accepted_collisions.is_empty(),
+            "reserved observed VALUE accepted as changed physical path: {accepted_collisions:?}"
+        );
+
+        for name in [
+            "CARGO_MANIFEST_DIR",
+            "CARGO_MANIFEST_PATH",
+            "CARGO_RUSTC_CURRENT_DIR",
+            "CARGO_TARGET_TMPDIR",
+            "OUT_DIR",
+        ] {
+            for token in [TARGET, REGISTRY, PACKAGE] {
+                let value = format!("{token}/opaque");
+                let fields = BTreeMap::from([(name.into(), Some(value.clone()))]);
+                assert!(
+                    ca.mapped_environment(&fields, false).is_none(),
+                    "raw token in {name}"
+                );
+                let line = format!("# env-dep:{name}={value}\n");
+                assert!(
+                    ca.mapped_dep_info(&line, false).is_none(),
+                    "raw dep-info token in {name}"
+                );
+            }
+        }
+        for name in [
+            "UNKNOWN_READ",
+            "VERUS_UNKNOWN_PATH",
+            "RUST_UNKNOWN_PATH",
+            "Z3_UNKNOWN_PATH",
+            "VARGO_UNKNOWN_PATH",
+            "CARGO_PKG_UNKNOWN_PATH",
+        ] {
+            let value = format!("{TARGET}/{REGISTRY}/{PACKAGE}/{SOLVER_ADAPTER}");
+            let fields = BTreeMap::from([(name.into(), Some(value.clone()))]);
+            assert_eq!(ca.mapped_environment(&fields, false), Some(fields));
+            let line = format!("# env-dep:{name}={value}\n");
+            assert_eq!(ca.mapped_dep_info(&line, false), Some(line));
+        }
+
         let mut foreign_source = serde_json::to_value(&saved)?;
         foreign_source["phases"]["verification"]["sources"]["@@sail-registry@@/foreign/lib.rs"] =
             serde_json::json!({"checksum":"blake3=foreign", "size":1});
@@ -2191,6 +2282,20 @@ mod tests {
         unbound.mode = Mode::MachineLocal {
             out: b.root.join("local"),
         };
+        let local_call = Call::new(
+            &unbound,
+            &b.args,
+            true,
+            vb.iter().map(|(name, value)| (name.into(), value.into())),
+        )
+        .ok_or("local observation call")?;
+        let literal = BTreeMap::from([("OUT_DIR".into(), Some(format!("{TARGET}/opaque")))]);
+        assert_eq!(
+            local_call.mapped_environment(&literal, false),
+            Some(literal)
+        );
+        let line = format!("# env-dep:OUT_DIR={TARGET}/opaque\n");
+        assert_eq!(local_call.mapped_dep_info(&line, false), Some(line));
         let local_key = call_with(&unbound).ok_or("local call")?;
         std::fs::write(b.root.join("z3"), b"local adapter is context-owned")?;
         assert_eq!(
