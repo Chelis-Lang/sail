@@ -295,11 +295,12 @@ oyster and such." This supersedes the parallel tracks of
       Preparation remains real work and Anvil saves no total CPU. Actual edit
       workflow/default acceptance is unbuilt and unselected; #158 stays open.
    3. vstd pre-verified in the release archive, #161: explicit schema-12
-      compiler-boundary research passes same-host Linux and Mac changed-root
-      Record → Serve → unchanged, with Current/1,872 functions and full stock
-      comparisons. The final source passes complete native default gates.
-      Distributed packaging, changed Rustup roots and fresh-machine default
-      first use remain open; v1 stays quarantined
+      research passes same-host Linux and Mac changed Cargo/project/install-root
+      checks with Current/1,872 functions and full stock comparisons. Candidate
+      release recording, complete member validation and adjacent-bundle serving
+      are implemented; actual staged first use on both platforms and changed
+      Rustup roots remain pending. Earlier results retain their source scope;
+      v1 stays quarantined
       ([record](validation/vstd-compile-boundary.md)).
    4. Remaining managed overhead against the removed pass-through, #156:
       cheaper checks qualify against rc.5 on unchanged vest/demo runs

@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add candidate release-time recording of the vstd proof with the final staged
+  binaries, complete release-member integrity checks, and automatic serving only
+  from the matching adjacent bundle. Native prerequisites still compile and all
+  compiler-input/byte checks remain required. Release first-use on both platforms
+  and changed Rustup roots remains unqualified; no release is published here.
+
 - Restore a previously verified workspace revision on ordinary Linux checks
   within the qualified public alloc/std dependency profile (#163). Restored
   results preserve their original establishing run and require fresh Current
