@@ -105,6 +105,8 @@ elif sys.argv[1]=='serve':
  Path(cfg['pid_record']).write_text(str(os.getpid()))
  while True:time.sleep(.05)
 elif sys.argv[1]=='verify':
+ trace=Path(os.environ['SAIL_SHIPPED_TRACE']);assert trace==Path(cfg['evidence'])/'boundary-trace'
+ trace.mkdir();(trace/'fixture.json').write_text(json.dumps({'event':'actual-owned-mock-verify-entry'}))
  for directory in ('.sail-boundary-inputs','.sail-boundary-native-reads'):
   if cfg.get('missing_certificate') and directory=='.sail-boundary-inputs':continue
   observed=Path(os.environ['CARGO_HOME']).parent/directory/'fixture';observed.mkdir(parents=True);(observed/'inputs.json').write_text('{}')
@@ -171,7 +173,7 @@ else:raise SystemExit(3)
                 (stage/'bin/fixture-config.json').write_text(json.dumps({'runtime':str(stage/'engine/variant'),
                     'runtime_hash':module.digest(stage/'engine/variant/sail-build.json'),
                     'template':str(template),'report':doc,'currentness':'historical' if case=='historical' else 'current',
-                    'pid_record':str(pid_record),'missing_certificate':case=='certificate-missing'}))
+                    'pid_record':str(pid_record),'evidence':str(root/(case+'-evidence')),'missing_certificate':case=='certificate-missing'}))
                 evidence=root/(case+'-evidence')
                 previous_limit=module.CAPTURE_LIMIT
                 original_temporary=module.tempfile.TemporaryDirectory
@@ -192,6 +194,7 @@ else:raise SystemExit(3)
                     module.CAPTURE_LIMIT=previous_limit
                     module.tempfile.TemporaryDirectory=original_temporary
                 result=json.loads((evidence/'result.json').read_text())
+                assert json.loads((evidence/'boundary-trace/fixture.json').read_text())=={'event':'actual-owned-mock-verify-entry'}
                 assert result['server_reaped'] and result['original_stage_unchanged']
                 assert result['passed']==(case=='current')
                 if case=='certificate-missing':retained(evidence)

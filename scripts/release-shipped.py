@@ -277,7 +277,8 @@ def record(root, evidence):
             bundle = owned/'bundle';cache = owned/'cache';socket = owned/'daemon.sock'
             env.update(CARGO_HOME=str(home), SAIL_CACHE_DIR=str(cache),
                        SAIL_DAEMON_SOCKET=str(socket), SAIL_VSTD_BOUNDARY_RESEARCH='1',
-                       SAIL_SHIPPED_RECORD=str(bundle))
+                       SAIL_SHIPPED_RECORD=str(bundle),
+                       SAIL_SHIPPED_TRACE=str(evidence/'boundary-trace'))
             endpoints = {socket, socket.with_name('jobs-v1-proof-v1-'+hashlib.sha256(str(socket).encode()).hexdigest()[:8]+'.sock')}
             def command(label, argv, cwd=project, cap=240):
                 started = time.monotonic()
