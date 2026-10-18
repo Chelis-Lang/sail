@@ -84,6 +84,8 @@ three-project edit catalogue and the combined runtime's remaining gates.
 The [full closure-identity record](validation/closure-full-identity.md) tracks the
 subsequent runtime, its matched edit measurements and completed qualification
 with platform/scope limits.
+The [partial benchmark entrypoint record](validation/perf-real-partial.md)
+describes focused Anvil commands, public JSON output and unavailable stage timings.
 Raw logs stay outside the
 repository and are cited by SHA-256. Earlier per-run records and unselected
 engine candidates are preserved in the `archive/m7-contracts-f7103bf` tag.
@@ -123,3 +125,7 @@ main checks.
 
 - [Managed Cargo selection qualification](validation/managed-selection-family.md):
   candidate dependency-artifact sharing, observations and pending native gates.
+
+The [spec formal naming qualification](validation/spec-parameter-names.md) records
+the qualified binder fix, both platform artifacts, completed native gates and
+preserved earlier failures.

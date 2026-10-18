@@ -318,15 +318,23 @@ oyster and such." This supersedes the parallel tracks of
       completed runtime gates and exact platform/scope limits. The three-project
       [incidental-edit catalogue](validation/incidental-edits.md) is prepared;
       its final-runtime measurements and exact solver-work counts are pending.
+      A further positional spec-formal naming candidate lowers native Capy and
+      Anvil rename medians by 22.63% and 59.49% across three paired rounds.
+      Both platform builds, native gate/solver/E2E, full FAST and 4,714 fork
+      source-suite comparisons, the focused Anvil stock comparison and
+      three-run FAST determinism, all four DEEP modes and final source/runtime
+      guards pass. Matching Linux/macOS pins are qualified and selected by
+      the runtime delivery change; current required PR checks gate merge
+      ([qualification](validation/spec-parameter-names.md)).
    6. B4, instant revert: receipts beyond the latest revision, #163.
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
       real projects caps every other lever. A narrow Cargo-selection correction
       measures the first repair transition at 67.868 to 32.732 seconds (2.07×)
       on the same cc7 runtime; later warm repair remains about 33 seconds.
-      Native and Mac gates, full FAST/STANDARD and final guards pass; selection
-      takes effect only with the implementation PR's current green CI and merge
-      ([record](validation/managed-selection-family.md)).
+      Native and Mac gates, full FAST/STANDARD and final guards pass; the
+      implementation is selected on main through merged #220 with required CI
+      green ([record](validation/managed-selection-family.md)).
       Larger callback-local frontend/lowering reuse remains an unselected
       candidate. This first-transition gain does not establish the overall
       25% M8 gate or close #162.
@@ -334,9 +342,11 @@ oyster and such." This supersedes the parallel tracks of
       implemented; native gates and full fast/standard pass; required PR
       checks are enforced separately ([validation](validation/fallback-parity.md)).
    9. B2, single-file `verus file.rs` projects, #164.
-   10. deep-rvt against the fork, #124: exact fork and retained stock
-       control arms implemented; native acceptance pending
-       ([guide](deep-verus-tests.md)).
+   10. deep-rvt against the fork, #124: implemented; selected cc7 full
+       fork suite passes 4,709 Same (58 ignored), with every nonignored test
+       passing. The separate stock control remains strict and its historical
+       JSON-order failure remains recorded ([guide](deep-verus-tests.md),
+       [qualification](validation/deep-tier.md#fork-source-suite-gate-124)).
    11. Reliability: #102, #103, #112, #76, #77, #78, #166, #167.
 
    B1 (a verified vstd shared across projects and worktrees, beyond the
