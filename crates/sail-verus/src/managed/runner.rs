@@ -2152,6 +2152,7 @@ pub(crate) fn run_engine_held(
             registry.as_deref(),
             new_target,
             &config.z3,
+            &config.shim,
             &run_id,
             &data,
         )

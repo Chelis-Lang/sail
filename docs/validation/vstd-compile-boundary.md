@@ -46,12 +46,52 @@ Earlier attempts remain failures: the first Mac probe stopped on an unsupported
 stock-reader field, and its corrected successor refused registry-bearing VIR
 before any Serve invocation. Neither establishes a portable hit or safe miss.
 
+## Portable observed compiler environment
+
+The changed-root Mac probe now records a complete verified bundle and returns
+Current in both roots, with all 1,872 function verdicts and diagnostics matching
+stock through four unchanged core comparisons. It safely misses at Serve: the
+stored compiler input certificate retained Cargo-Verus's recording-root package
+identifier in environment names and the recording installation's shim pathname.
+All three direct native artifact hashes and the complete lookup key were equal.
+
+The prospective successor maps only the current invocation's exact known
+Cargo-Verus package-qualified environment names, including its name, version and
+manifest-origin identifier. The source policy, literal compiler arguments,
+features and package source tree remain independently bound. Name collisions
+refuse, and unknown environment names and values remain literal. Record/Serve
+also binds the configured shim's complete fresh bytes in the key and maps only
+that exact observed `VERUS_Z3_PATH` to a dedicated token. Another shim pathname,
+changed shim bytes (including restored mtime), unknown observations, incomplete
+source evidence or an old schema still miss. Solver-byte and final Currentness
+checks remain required; machine-local mode adds no portable shim binding.
+This is source preparation, not a portable hit or default selection.
+All 38 shipped-boundary tests and workspace all-target clippy pass on Mac.
+These tests include production stored-certificate validation, foreign SourceMap
+refusal, both name-collision directions and a same-size shim mutation with its
+mtime restored. They are not a successful whole changed-root Serve.
+
+The enclosing probe remains FAIL because the optional compiler diagnostic
+capture exceeded its unchanged 128 MiB limit. Its unconditional finalizer reaped
+both owned daemons, checked source/runtime/body inventories and removed owned
+scratch. The earlier Historical attempt is also retained: its hand-renamed
+fixture lockfile was rewritten by Cargo's targeted clean between the content
+snapshot and metadata-stamp bracket. A Cargo-only control reproduced both exact
+hashes; the new fixture uses Cargo's emitted lock before stock and Record, with
+all complete package tables and resolved metadata unchanged. Sail's Currentness
+comparison was not changed.
+
+External actual-result audit SHA-256:
+`f55eed20c7fbc9270814484fa976dc747f31bc1dc5e5b769a92fcc0a8186c4f9`.
+The lock-order cause audit is
+`9fb4aa1008a039d0d19bb235a4ffa896037d81622648739abf7f5570afe1d580`.
+
 ## Product boundary
 
 `SAIL_SHIPPED_RECORD` records an experimental bundle; `SAIL_SHIPPED_DEPS`
 serves one. `SAIL_VSTD_BOUNDARY_LOCAL` instead uses a separate machine-local
 bundle bound to both literal and canonical registry roots. All require the
-research flag. Local mode never remaps VIR or source paths. Schema 9 and the
+research flag. Local mode never remaps VIR or source paths. Schema 10 and the
 bundle kind reject old all-unit bundles. Focused, engine and loader-variable
 setups use the ordinary compiler path. Changed, missing or unsupported inputs
 miss safely. No ordinary CLI, runtime pin or release asset is selected here.

@@ -7,7 +7,7 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 9 cannot accept earlier entries without native consumed-input evidence. It neither
+//! schema 10 also requires portable adapter/environment bindings. It neither
 //! reads nor enables the quarantined machine-local v1 store. Activation requires
 //! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
 //! inputs, diagnostic parity and useful first-run gains are not yet qualified.
@@ -29,7 +29,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 9;
+const SCHEMA: u32 = 10;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";
@@ -57,6 +57,7 @@ pub(crate) fn research_enabled() -> bool {
 const TARGET: &str = "@@sail-target@@";
 const REGISTRY: &str = "@@sail-registry@@";
 const PACKAGE: &str = "@@sail-package@@";
+const SOLVER_ADAPTER: &str = "@@sail-solver-adapter@@";
 
 /// What a run does with shipped dependencies.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -84,6 +85,8 @@ pub(crate) struct Plan {
     pub virtual_base: String,
     /// Actual solver bytes used by this run, independently of the runtime bundle.
     pub solver_sha256: String,
+    /// Exact configured solver adapter, additionally bound for portable entries.
+    solver_adapter: Option<SolverAdapter>,
     /// Current full verification, used as provenance when publishing a miss.
     pub run_id: String,
     /// Closed official source/feature policy; independent of stored cache data.
@@ -94,6 +97,18 @@ pub(crate) struct Plan {
     native_compiler_sha256: String,
     native_launcher: PathBuf,
     native_launcher_sha256: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct SolverAdapter {
+    path: PathBuf,
+    sha256: String,
+}
+
+impl SolverAdapter {
+    fn intact(&self) -> bool {
+        sha256_file(&self.path).is_some_and(|(hash, _)| hash == self.sha256)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -383,12 +398,17 @@ fn rename_root(lock: &str, from: &str, to: &str) -> Option<String> {
 /// The run's plan: recording when [`RECORD_ENV`] is set, serving when the
 /// run starts a new Cargo target and a shipped build of this runtime's
 /// identity exists, nothing otherwise.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "The actual solver and adapter are distinct byte-bound inputs to this run's existing plan."
+)]
 pub(crate) fn plan(
     cargo_verus: &Path,
     target: &Path,
     registry: Option<&Path>,
     new_target: bool,
     solver: &Path,
+    shim: &Path,
     run_id: &str,
     metadata: &Value,
 ) -> Option<Plan> {
@@ -439,6 +459,14 @@ pub(crate) fn plan(
             bundle: accepted_bundle(&root, &identity, &virtual_base)?,
         }
     };
+    let solver_adapter = if matches!(mode, Mode::MachineLocal { .. }) {
+        None
+    } else {
+        Some(SolverAdapter {
+            path: shim.to_owned(),
+            sha256: sha256_file(shim)?.0,
+        })
+    };
     Some(Plan {
         mode,
         identity,
@@ -446,6 +474,7 @@ pub(crate) fn plan(
         target: target.to_owned(),
         virtual_base,
         solver_sha256: sha256_file(solver)?.0,
+        solver_adapter,
         run_id: run_id.to_owned(),
         closure: Some(admission::Closure::resolve(metadata, registry)?),
         native_records: target.join(".sail-boundary-native").join(run_id),
@@ -559,6 +588,18 @@ impl Normalizer {
         pairs.sort_by_key(|(path, _)| std::cmp::Reverse(path.len()));
         pairs.push((package.to_owned(), PACKAGE));
         Some(Self { pairs })
+    }
+
+    fn environment_name(&self, name: &str, localize: bool) -> String {
+        let Some((package, _)) = self.pairs.iter().find(|(_, token)| *token == PACKAGE) else {
+            return name.to_owned();
+        };
+        for prefix in VERUS_OWN {
+            if name.strip_prefix(prefix) == Some(if localize { PACKAGE } else { package }) {
+                return format!("{prefix}{}", if localize { package } else { PACKAGE });
+            }
+        }
+        name.to_owned()
     }
 
     fn normalize(&self, text: &str) -> String {
@@ -929,6 +970,18 @@ impl<'a> Call<'a> {
         verifying: bool,
         vars: BTreeMap<String, String>,
     ) -> std::result::Result<Self, String> {
+        if plan.closure.is_some()
+            && !matches!(plan.mode, Mode::MachineLocal { .. })
+            && plan.solver_adapter.is_none()
+        {
+            return Err("portable solver adapter binding is missing".to_owned());
+        }
+        if let Some(adapter) = &plan.solver_adapter
+            && (!adapter.intact()
+                || vars.get("VERUS_Z3_PATH").map(String::as_str) != adapter.path.to_str())
+        {
+            return Err("configured solver adapter path or bytes differ".to_owned());
+        }
         let lookup = |name: &str| vars.get(name).cloned();
         let package = package_id(&lookup).ok_or("no Cargo package identity")?;
         let normalizer = Normalizer::new(plan, &package).ok_or("non-UTF-8 directories")?;
@@ -955,21 +1008,22 @@ impl<'a> Call<'a> {
         } else {
             None
         };
-        let key = digest(
-            &serde_json::to_vec(&serde_json::json!({
-                "kind": KIND,
-                "schema": SCHEMA,
-                "identity": plan.identity,
-                "solver_sha256": plan.solver_sha256,
-                "literal_registry_scope": registry_scope,
-                "source_policy": plan.closure.as_ref().map(admission::Closure::policy_sha256),
-                "verifying": verifying,
-                "args": &keyed_args,
-                "environment": &environment,
-                "externs": &externs,
-            }))
-            .map_err(|e| e.to_string())?,
-        );
+        let mut identity = serde_json::json!({
+            "kind": KIND,
+            "schema": SCHEMA,
+            "identity": plan.identity,
+            "solver_sha256": plan.solver_sha256,
+            "literal_registry_scope": registry_scope,
+            "source_policy": plan.closure.as_ref().map(admission::Closure::policy_sha256),
+            "verifying": verifying,
+            "args": &keyed_args,
+            "environment": &environment,
+            "externs": &externs,
+        });
+        if let Some(adapter) = &plan.solver_adapter {
+            identity["solver_adapter_sha256"] = serde_json::json!(adapter.sha256);
+        }
+        let key = digest(&serde_json::to_vec(&identity).map_err(|e| e.to_string())?);
         let package = format!(
             "{}-{}",
             lookup("CARGO_PKG_NAME").unwrap_or_default(),
@@ -994,6 +1048,64 @@ impl<'a> Call<'a> {
             compiler_reads: None,
             native_snapshot: None,
         })
+    }
+
+    fn adapter_intact(&self) -> bool {
+        self.plan.solver_adapter.as_ref().is_none_or(|adapter| {
+            adapter.intact()
+                && self.vars.get("VERUS_Z3_PATH").map(String::as_str) == adapter.path.to_str()
+        })
+    }
+
+    fn environment_name(&self, name: &str, localize: bool) -> String {
+        if matches!(self.plan.mode, Mode::MachineLocal { .. }) {
+            name.to_owned()
+        } else {
+            self.normalizer.environment_name(name, localize)
+        }
+    }
+
+    fn environment_value(&self, name: &str, value: &str, localize: bool) -> String {
+        if name == "VERUS_Z3_PATH"
+            && let Some(adapter) = &self.plan.solver_adapter
+            && let Some(path) = adapter.path.to_str()
+            && value == if localize { SOLVER_ADAPTER } else { path }
+        {
+            return if localize { path } else { SOLVER_ADAPTER }.to_owned();
+        }
+        let package = self
+            .normalizer
+            .pairs
+            .iter()
+            .find(|(_, token)| *token == PACKAGE);
+        if !matches!(self.plan.mode, Mode::MachineLocal { .. })
+            && package.is_none_or(|(package, _)| bound_name(name, package).is_none())
+        {
+            return value.to_owned();
+        }
+        if localize {
+            self.normalizer.localize(value)
+        } else {
+            self.normalizer.normalize(value)
+        }
+    }
+
+    fn mapped_environment(
+        &self,
+        values: &BTreeMap<String, Option<String>>,
+        localize: bool,
+    ) -> Option<BTreeMap<String, Option<String>>> {
+        let mut mapped = BTreeMap::new();
+        for (name, value) in values {
+            let key = self.environment_name(name, localize);
+            let value = value.as_ref().map(|value| {
+                self.environment_value(if localize { &key } else { name }, value, localize)
+            });
+            if mapped.insert(key, value).is_some() {
+                return None;
+            }
+        }
+        Some(mapped)
     }
 
     /// Actual compiler arguments use the already verified private input bytes.
@@ -1237,9 +1349,14 @@ impl<'a> Call<'a> {
             let (sha256, _) = sha256_file(Path::new(&source)).ok_or("unreadable source")?;
             sources.push((normalized, sha256));
         }
-        let mut declared: BTreeMap<_, _> = dep_info_environment(&self.normalizer.normalize(&text))
-            .into_iter()
-            .collect();
+        let mut declared: BTreeMap<_, _> = if matches!(self.plan.mode, Mode::MachineLocal { .. }) {
+            dep_info_environment(&self.normalizer.normalize(&text))
+                .into_iter()
+                .collect()
+        } else {
+            self.mapped_environment(&dep_info_environment(&text).into_iter().collect(), false)
+                .ok_or("ambiguous dep-info environment names")?
+        };
         let compiler_reads = compiler::publication(self, &mut declared)?;
         let text_file = |name: &str, text: &str| -> std::result::Result<StoredFile, String> {
             let bytes = self.normalizer.normalize(text).into_bytes();
@@ -1345,6 +1462,24 @@ impl<'a> Call<'a> {
         })
     }
 
+    fn check_declared_environment(&self, unit: &Unit) -> std::result::Result<(), Refusal> {
+        for (name, value) in &unit.declared {
+            let name = if matches!(self.plan.mode, Mode::MachineLocal { .. }) {
+                self.normalizer.localize(name)
+            } else {
+                self.environment_name(name, true)
+            };
+            let current = self
+                .vars
+                .get(&name)
+                .map(|v| self.environment_value(&name, v, false));
+            if current != *value {
+                return Err(Refusal::Miss(format!("declared variable {name} differs")));
+            }
+        }
+        Ok(())
+    }
+
     fn try_serve(&self, entry: &Path) -> std::result::Result<Replay, Refusal> {
         let Ok(bytes) = std::fs::read(entry.join(UNIT)) else {
             return Err(Refusal::Miss("no entry for this key".to_owned()));
@@ -1403,13 +1538,7 @@ impl<'a> Call<'a> {
                 return Err(Refusal::Miss(format!("source {path} differs")));
             }
         }
-        for (name, value) in &unit.declared {
-            let name = self.normalizer.localize(name);
-            let current = self.vars.get(&name).map(|v| self.normalizer.normalize(v));
-            if current != *value {
-                return Err(Refusal::Miss(format!("declared variable {name} differs")));
-            }
-        }
+        self.check_declared_environment(&unit)?;
         let read_text = |path: &Path, file: &StoredFile| -> std::result::Result<String, Refusal> {
             let bytes =
                 std::fs::read(path).map_err(|e| Refusal::Damaged(format!("{}: {e}", file.name)))?;
@@ -1607,6 +1736,7 @@ mod tests {
             target: root.join("target"),
             virtual_base: "/rustc-dev/0123".into(),
             solver_sha256: "solver-bytes".into(),
+            solver_adapter: None,
             run_id: "original-verification".into(),
             closure: None,
             native_records: root.join("native-observations"),
@@ -1650,6 +1780,245 @@ mod tests {
             "-L".into(),
             format!("dependency={}", target.display()).into(),
         ]
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "One owned filesystem pair exercises the same stored compiler certificate through relocation and every refusal."
+    )]
+    fn portable_observed_environment_binds_identity_bytes_and_unknown_reads() -> TestResult {
+        fn make_call(machine: &Machine, values: BTreeMap<String, String>) -> Option<Call<'_>> {
+            Call::new(
+                &machine.plan,
+                &machine.args,
+                true,
+                values
+                    .into_iter()
+                    .map(|(name, value)| (name.into(), value.into())),
+            )
+        }
+        let mut a = Machine::new("environment-a", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let mut b = Machine::new("environment-b", |root| Mode::Serve {
+            bundle: root.join("bundle"),
+        })?;
+        let policy: Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../engine/verus/vstd-boundary-inputs.json"
+        )))?;
+        for machine in [&mut a, &mut b] {
+            let path = machine.root.join("z3");
+            std::fs::write(&path, b"actual solver adapter A")?;
+            machine.plan.solver_adapter = Some(SolverAdapter {
+                path,
+                sha256: digest(b"actual solver adapter A"),
+            });
+            machine.plan.closure = Some(serde_json::from_value(serde_json::json!({
+                "policy_sha256": "same-pinned-policy", "registry": machine.plan.registry,
+                "packages": [policy["vstd"]],
+            }))?);
+        }
+        let observations = |machine: &Machine| -> Option<BTreeMap<String, String>> {
+            let mut values: BTreeMap<_, _> = vars(&machine.root, &[])
+                .into_iter()
+                .map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
+                .collect::<Option<_>>()?;
+            let package = package_id(&|name| values.get(name).cloned())?;
+            values.insert(
+                format!(" __VERUS_DRIVER_ARGS_FOR_{package}"),
+                "--is-vstd".into(),
+            );
+            values.insert(format!("__VERUS_DRIVER_VERIFY_{package}"), "1".into());
+            values.insert("UNKNOWN_READ".into(), "literal value".into());
+            Some(values)
+        };
+        let va = observations(&a).ok_or("A variables")?;
+        let vb = observations(&b).ok_or("B variables")?;
+        let ca = make_call(&a, va.clone()).ok_or("A call")?;
+        let cb = make_call(&b, vb.clone()).ok_or("B call")?;
+        assert_eq!(
+            ca.key, cb.key,
+            "relocated paths and identical adapter bytes"
+        );
+        let checksums =
+            policy["packages"][policy["vstd"].as_str().ok_or("vstd")?]["compiler_checksums"]
+                .as_object()
+                .ok_or("checksums")?;
+        let (source, expected) = checksums
+            .iter()
+            .find(|(name, _)| {
+                Path::new(name)
+                    .extension()
+                    .is_some_and(|extension| extension == "rs")
+            })
+            .ok_or("source")?;
+        let source = a
+            .plan
+            .registry
+            .join(policy["vstd"].as_str().ok_or("vstd")?)
+            .join(source);
+        let phase = serde_json::json!({
+            "sources": {source.to_str().ok_or("source path")?: {
+                "checksum":format!("blake3={}", expected["blake3"].as_str().ok_or("checksum")?),
+                "size":expected["size"]}},
+            "extra_tracked_files":[],
+            "tracked_environment":va.iter().filter(|(name, _)| name.as_str() != "HOME" && name.as_str() != "PATH")
+                .map(|(name, value)| (name.clone(), Some(value.clone()))).collect::<BTreeMap<_, _>>(),
+        });
+        let actual: compiler::Document = serde_json::from_value(serde_json::json!({
+            "kind":"sail-compiler-read-inputs", "schema":1, "complete":true,
+            "pid":123, "binding":digest(format!("{}\0{}", a.plan.run_id, ca.key).as_bytes()),
+            "phases":{"verification":phase, "compilation":phase},
+        }))?;
+        assert!(actual.valid(&ca, &a.plan.run_id));
+        let saved = actual.mapped(&ca, false).ok_or("saved observations")?;
+        let relocated = saved.mapped(&cb, true).ok_or("relocated observations")?;
+        assert!(relocated.valid(&cb, &a.plan.run_id));
+        let stored: Unit = serde_json::from_value(serde_json::json!({
+            "schema":SCHEMA, "key":ca.key, "crate_name":"demo", "package":"demo-0.1.0",
+            "verifying":true, "args":[], "environment":{}, "source_tree":{},
+            "establishing_run":a.plan.run_id, "compiler_reads":saved,
+            "files":[], "dep_info":"demo.d", "sources":[], "declared":[],
+            "stdout":{"name":"stdout", "sha256":digest(b""), "size":0, "executable":false},
+            "stderr":{"name":"stderr", "sha256":digest(b""), "size":0, "executable":false},
+        }))?;
+        assert!(compiler::stored(&cb, &stored));
+        let mut foreign_source = serde_json::to_value(&saved)?;
+        foreign_source["phases"]["verification"]["sources"]["@@sail-registry@@/foreign/lib.rs"] =
+            serde_json::json!({"checksum":"blake3=foreign", "size":1});
+        let foreign_source: compiler::Document = serde_json::from_value(foreign_source)?;
+        assert!(
+            !foreign_source
+                .mapped(&cb, true)
+                .ok_or("foreign source")?
+                .valid(&cb, &a.plan.run_id)
+        );
+        let mut foreign_environment = serde_json::to_value(&saved)?;
+        foreign_environment["phases"]["verification"]["tracked_environment"]["__VERUS_DRIVER_VERIFY_foreign-0.1.0-000000000000"] =
+            serde_json::json!("1");
+        let foreign_environment: compiler::Document = serde_json::from_value(foreign_environment)?;
+        assert!(
+            !foreign_environment
+                .mapped(&cb, true)
+                .ok_or("foreign environment")?
+                .valid(&cb, &a.plan.run_id)
+        );
+        let mut changed = vb.clone();
+        changed.insert("UNKNOWN_READ".into(), "changed".into());
+        assert!(!relocated.valid(
+            &make_call(&b, changed).ok_or("changed call")?,
+            &a.plan.run_id
+        ));
+        let mut absent = vb.clone();
+        absent.remove("UNKNOWN_READ");
+        assert!(!relocated.valid(&make_call(&b, absent).ok_or("absent call")?, &a.plan.run_id));
+        let mut version = vb.clone();
+        version.insert("CARGO_PKG_VERSION".into(), "0.2.0".into());
+        let other = make_call(&b, version).ok_or("other version")?;
+        assert_ne!(ca.key, other.key);
+        assert!(
+            !saved
+                .mapped(&other, true)
+                .ok_or("other observations")?
+                .valid(&other, &a.plan.run_id)
+        );
+        let mut fields = BTreeMap::from([
+            (
+                format!(
+                    "__VERUS_DRIVER_VERIFY_{}",
+                    package_id(&|name| va.get(name).cloned()).ok_or("package")?
+                ),
+                Some("1".into()),
+            ),
+            (format!("__VERUS_DRIVER_VERIFY_{PACKAGE}"), Some("1".into())),
+        ]);
+        assert!(
+            ca.mapped_environment(&fields, false).is_none(),
+            "normalization collision"
+        );
+        fields.remove(&format!(
+            "__VERUS_DRIVER_VERIFY_{}",
+            package_id(&|name| va.get(name).cloned()).ok_or("package")?
+        ));
+        fields.insert(
+            format!(
+                "__VERUS_DRIVER_VERIFY_{}",
+                package_id(&|name| vb.get(name).cloned()).ok_or("package")?
+            ),
+            Some("1".into()),
+        );
+        assert!(
+            cb.mapped_environment(&fields, true).is_none(),
+            "localization collision"
+        );
+        let foreign = "__VERUS_DRIVER_VERIFY_demo-0.1.0-000000000000";
+        assert_eq!(ca.environment_name(foreign, false), foreign);
+        assert_eq!(cb.environment_name(foreign, true), foreign);
+        let unknown_name = format!(
+            "UNKNOWN_{}",
+            package_id(&|name| va.get(name).cloned()).ok_or("package")?
+        );
+        assert_eq!(ca.environment_name(&unknown_name, false), unknown_name);
+        let unknown = BTreeMap::from([(
+            "UNKNOWN_PATH".into(),
+            Some(a.root.join("z3").to_string_lossy().into_owned()),
+        )]);
+        assert_eq!(ca.mapped_environment(&unknown, false), Some(unknown));
+        let mut foreign_path = vb.clone();
+        foreign_path.insert(
+            "VERUS_Z3_PATH".into(),
+            a.root.join("z3").to_string_lossy().into_owned(),
+        );
+        assert!(
+            make_call(&b, foreign_path).is_none(),
+            "same bytes at an unconfigured path refuse"
+        );
+        let path = b.root.join("z3");
+        let modified = std::fs::metadata(&path)?.modified()?;
+        std::fs::write(&path, b"actual solver adapter B")?;
+        std::fs::File::open(&path)?.set_times(std::fs::FileTimes::new().set_modified(modified))?;
+        assert_eq!(std::fs::metadata(&path)?.modified()?, modified);
+        assert!(
+            !cb.adapter_intact(),
+            "same-size restored-mtime changed adapter refuses"
+        );
+        assert!(make_call(&b, vb.clone()).is_none());
+        assert!(!compiler::stored(&cb, &stored));
+        drop(cb);
+        b.plan.solver_adapter.as_mut().ok_or("adapter")?.sha256 =
+            digest(b"actual solver adapter B");
+        assert_ne!(
+            ca.key,
+            make_call(&b, vb.clone()).ok_or("new adapter call")?.key
+        );
+        let mut unbound = b.plan.clone();
+        unbound.solver_adapter = None;
+        let call_with = |plan: &Plan| {
+            Call::new(
+                plan,
+                &b.args,
+                true,
+                vb.iter().map(|(name, value)| (name.into(), value.into())),
+            )
+            .map(|call| call.key)
+        };
+        assert!(
+            call_with(&unbound).is_none(),
+            "portable missing binding refuses"
+        );
+        unbound.mode = Mode::MachineLocal {
+            out: b.root.join("local"),
+        };
+        let local_key = call_with(&unbound).ok_or("local call")?;
+        std::fs::write(b.root.join("z3"), b"local adapter is context-owned")?;
+        assert_eq!(
+            call_with(&unbound),
+            Some(local_key),
+            "local key has no portable adapter binding"
+        );
+        Ok(())
     }
 
     #[test]

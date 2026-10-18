@@ -1,6 +1,6 @@
 //! Read the experimental fork's distinct verification and compilation inputs.
 
-use super::{Call, Normalizer};
+use super::Call;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::Read;
@@ -71,13 +71,21 @@ pub(super) fn publication(
     if call.plan.closure.is_none() {
         return Ok(None);
     }
+    if !call.adapter_intact() {
+        return Err("configured solver adapter changed before publication".to_owned());
+    }
     let reads = call
         .compiler_reads
         .as_ref()
         .filter(|reads| reads.valid(call, &call.plan.run_id))
         .ok_or("complete compiler-read observations unavailable")?;
-    for (name, value) in reads.environment().ok_or("compiler environment changed")? {
-        let value = value.map(|value| call.normalizer.normalize(&value));
+    let environment = call
+        .mapped_environment(
+            &reads.environment().ok_or("compiler environment changed")?,
+            false,
+        )
+        .ok_or("ambiguous compiler environment names")?;
+    for (name, value) in environment {
         if declared
             .insert(name, value.clone())
             .is_some_and(|old| old != value)
@@ -87,18 +95,19 @@ pub(super) fn publication(
     }
     Ok(Some(
         reads
-            .mapped(&call.normalizer, false)
+            .mapped(call, false)
             .ok_or("ambiguous compiler input paths")?,
     ))
 }
 
 pub(super) fn stored(call: &Call<'_>, unit: &super::Unit) -> bool {
-    call.plan.closure.is_none()
-        || unit
-            .compiler_reads
-            .as_ref()
-            .and_then(|reads| reads.mapped(&call.normalizer, true))
-            .is_some_and(|reads| reads.valid(call, &unit.establishing_run))
+    call.adapter_intact()
+        && (call.plan.closure.is_none()
+            || unit
+                .compiler_reads
+                .as_ref()
+                .and_then(|reads| reads.mapped(call, true))
+                .is_some_and(|reads| reads.valid(call, &unit.establishing_run)))
 }
 
 impl Observation {
@@ -215,7 +224,8 @@ impl Document {
     }
 
     /// Apply the same explicit path mapping as the containing vstd unit.
-    pub(super) fn mapped(&self, normalizer: &Normalizer, localize: bool) -> Option<Self> {
+    pub(super) fn mapped(&self, call: &Call<'_>, localize: bool) -> Option<Self> {
+        let normalizer = &call.normalizer;
         let map = |text: &str| {
             if localize {
                 normalizer.localize(text)
@@ -237,11 +247,8 @@ impl Document {
                 .iter()
                 .map(|name| map(name))
                 .collect();
-            phase.tracked_environment = phase
-                .tracked_environment
-                .iter()
-                .map(|(name, value)| (name.clone(), value.as_ref().map(|value| map(value))))
-                .collect();
+            phase.tracked_environment =
+                call.mapped_environment(&phase.tracked_environment, localize)?;
         }
         Some(document)
     }
