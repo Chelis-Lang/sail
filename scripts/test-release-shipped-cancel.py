@@ -64,9 +64,16 @@ def case(root, helper):
     root.mkdir(mode=0o700)
     stage=root/'stage';(stage/'bin').mkdir(parents=True)
     runtime=stage/'engine/variant';runtime.mkdir(parents=True)
-    manifest=runtime/'sail-build.json';manifest.write_text('{}')
+    manifest=runtime/'sail-build.json';manifest.write_text(json.dumps({'rust_toolchain':'1.98.1'}))
     controlled=root/'controlled-bin';controlled.mkdir()
     cargo=controlled/'cargo';cargo.write_text('#!/bin/sh\nexit 0\n');cargo.chmod(0o755)
+    sysroot = root/'fixture-sysroot';rustlib = sysroot/'lib/rustlib'
+    source = rustlib/'src/rust/library/lib.rs';source.parent.mkdir(parents=True);source.write_text('owned rust source')
+    (rustlib/'components').write_text('rust-src\n')
+    (rustlib/'manifest-rust-src').write_text('file:lib/rustlib/src/rust/library/lib.rs\n')
+    rustup = controlled/'rustup'
+    rustup.write_text('#!/bin/sh\n[ "$*" = "run 1.98.1 rustc --print sysroot" ] || exit 9\nprintf "%s\\n" '+str(sysroot)+'\n')
+    rustup.chmod(0o755)
     for name in ('sail','sail-z3'):
         path=stage/'bin'/name;path.write_text(FAKE);path.chmod(0o755)
     ready=root/'verify-ready.json';server_path=root/'server-ready.json'

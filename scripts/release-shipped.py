@@ -15,13 +15,17 @@ import sys
 import tempfile
 import tarfile
 import time
+import tomllib
 
 if sys.version_info < (3, 12):
     raise SystemExit('release-shipped: Python 3.12 or newer is required')
+if not __debug__:
+    raise SystemExit('release-shipped: required validation needs Python without -O or PYTHONOPTIMIZE')
 
 SCHEMA = 12
 LIMIT = 4 * 1024**3
 CAPTURE_LIMIT = 32 * 1024**2
+SOURCE_LIMIT = 128 * 1024**2
 INDEX = 'release-files.json'
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -48,7 +52,7 @@ def paths(root):
                 stack.append(path)
 
 
-def inventory(root):
+def inventory(root, limit=LIMIT):
     files = {}
     total = 0
     for path, meta in paths(root):
@@ -59,7 +63,7 @@ def inventory(root):
         if name == INDEX:
             continue
         total += meta.st_size
-        assert total <= LIMIT and len(files) < 16384, 'release member limit exceeded'
+        assert total <= limit and len(files) < 16384, 'release member limit exceeded'
         files[name] = {'sha256': digest(path), 'bytes': meta.st_size,
                        'mode': stat.S_IMODE(meta.st_mode)}
     return files
@@ -95,6 +99,62 @@ def checked_name(text):
     return path
 
 
+def rust_source(build, env=None):
+    """Check proof-bundle prerequisites; this is not proof/key authority."""
+    pin = tomllib.loads((ROOT/'corpus/toolchain.toml').read_text())['verus']['rust_toolchain']
+    assert json.loads((build/'sail-build.json').read_bytes())['rust_toolchain'] == pin
+    advice = ('proof bundles require complete pinned rust-src; run '
+              'rustup component add rust-src --toolchain '+pin)
+    selected = subprocess.run(['rustup', 'run', pin, 'rustc', '--print', 'sysroot'],
+                              env=env, capture_output=True, timeout=30, check=True)
+    sysroot = Path(selected.stdout.decode().strip())
+    assert sysroot.is_absolute() and sysroot.resolve(strict=True) == sysroot, advice
+    root = sysroot/'lib/rustlib/src/rust'
+    try:
+        assert root.resolve(strict=True) == root, advice
+        components = sysroot/'lib/rustlib/components'
+        manifest = sysroot/'lib/rustlib/manifest-rust-src'
+        for path in (components, manifest):
+            assert stat.S_ISREG(path.lstat().st_mode) and path.stat().st_size <= 4 * 1024**2, advice
+        assert 'rust-src' in components.read_text().splitlines(), advice
+        expected = set()
+        for line in manifest.read_text().splitlines():
+            prefix = 'file:lib/rustlib/src/rust/'
+            assert line.startswith(prefix), advice
+            name = str(checked_name(line[len(prefix):]))
+            assert name not in expected, advice
+            expected.add(name)
+            assert len(expected) <= 16384, advice
+        actual = inventory(root, limit=SOURCE_LIMIT)
+        assert expected and set(actual) == expected, advice
+        total = sum(row['bytes'] for row in actual.values())
+        assert total <= SOURCE_LIMIT, advice
+    except (FileNotFoundError, OSError) as error:
+        raise ValueError(advice) from error
+    return {'toolchain': pin, 'sysroot': str(sysroot), 'source_root': str(root),
+            'source_files': len(actual), 'source_bytes': total,
+            'prerequisite_inventory_sha256': hashlib.sha256(
+                json.dumps(actual, sort_keys=True).encode()).hexdigest(),
+            'scope': 'installed component completeness only; serving still requires fresh source/key/certificate admission'}
+
+
+def verified_report(report):
+    assert report['schema_version'] == 2 and report['mode'] == 'default'
+    assert report['exit_code'] == 0 and report['error'] is None
+    assert report['diagnostics'] == [] and report.get('engine') is None
+    summary = report['summary']
+    assert all(type(summary[name]) is int for name in ('functions','verified','failed','unknown','provisional','unstable'))
+    assert summary['functions'] > 0 and summary['functions'] == summary['verified']
+    assert all(summary[n] == 0 for n in ('failed', 'unknown', 'provisional', 'unstable'))
+    functions = [f for crate in report['crates'] for f in crate['functions']]
+    assert len(functions) == summary['functions']
+    assert all(f['verdict'] == 'verified' and f['establishment'] == 'confirmed'
+               and f['unstable'] is False and f['verus_success'] is True
+               and f['provenance'].get('engine') is None for f in functions)
+    assert all(crate['verus']['success'] is True and crate['verus']['errors'] == 0
+               and crate['verus']['encountered_vir_error'] is False for crate in report['crates'])
+
+
 def complete_report(doc):
     assert doc['kind'] == 'sail-project-result' and doc['schema_version'] == 2
     assert doc['currentness'] == 'current' and doc['exit_code'] == 0 and doc['error'] is None
@@ -107,21 +167,7 @@ def complete_report(doc):
         assert target['kind'] == ['lib']
         assert target['complete'] is True and target['reused'] is False
         assert target['establishing_run'] == doc['run_id'] and not target.get('dependency_build')
-        report = target['report']
-        assert report['schema_version'] == 2 and report['mode'] == 'default'
-        assert report['exit_code'] == 0 and report['error'] is None
-        assert report['diagnostics'] == [] and report.get('engine') is None
-        summary = report['summary']
-        assert all(type(summary[name]) is int for name in ('functions','verified','failed','unknown','provisional','unstable'))
-        assert summary['functions'] > 0 and summary['functions'] == summary['verified']
-        assert all(summary[n] == 0 for n in ('failed', 'unknown', 'provisional', 'unstable'))
-        functions = [f for crate in report['crates'] for f in crate['functions']]
-        assert len(functions) == summary['functions']
-        assert all(f['verdict'] == 'verified' and f['establishment'] == 'confirmed'
-                   and f['unstable'] is False and f['verus_success'] is True
-                   and f['provenance'].get('engine') is None for f in functions)
-        assert all(crate['verus']['success'] is True and crate['verus']['errors'] == 0
-                   and crate['verus']['encountered_vir_error'] is False for crate in report['crates'])
+        verified_report(target['report'])
     requested = [t for t in targets if t['requested']]
     assert requested[0]['target'] == 'sail_shipped_dependencies'
     assert requested[0]['report']['summary']['functions'] == 1
@@ -178,6 +224,37 @@ def verify(root):
     assert digest(runtime_manifest) == index['proof']['runtime_manifest_sha256']
     assert check_bundle(bundle, index['proof']['runtime'], digest(runtime_manifest)) == index['proof']
     return index
+
+
+def first_use(root, doc):
+    """Refuse SAFE_MISS: a proof-bundle smoke must actually serve its release."""
+    index = verify(root)
+    proof = index['proof']
+    manifest = json.loads((root/'deps'/proof['runtime']/'manifest.json').read_bytes())
+    assert len(manifest['units']) == 1
+    identity = proof['identity']+'/'+next(iter(manifest['units']))
+    origin = {'kind': 'release', 'identity': identity, 'establishing_run': 'shipped:'+identity}
+    assert doc['kind'] == 'sail-project-result' and doc['schema_version'] == 2
+    assert doc['currentness'] == 'current' and doc['exit_code'] == 0 and doc['error'] is None
+    assert doc.get('no_reuse') is None and doc.get('engine') is None
+    assert isinstance(doc['run_id'], str) and doc['run_id']
+    targets = doc['targets']
+    assert len(targets) == 2 and len({(t['package_id'], t['target'], tuple(t['kind'])) for t in targets}) == 2
+    for target in targets:
+        assert target['complete'] is True and target['reused'] is False
+        assert target['kind'] == ['lib'] and target.get('dependency_store') is None
+        verified_report(target['report'])
+    vstd = [t for t in targets if t['target'] == 'vstd' and t['requested'] is False]
+    requested = [t for t in targets if t['requested'] is True]
+    assert len(vstd) == len(requested) == 1
+    assert vstd[0].get('dependency_build') == origin, 'first use did not serve the admitted release proof'
+    assert vstd[0]['establishing_run'] == origin['establishing_run']
+    assert requested[0].get('dependency_build') is None and requested[0]['establishing_run'] == doc['run_id']
+    execution = doc['execution']
+    assert type(execution['verifier_invocations']) is int and execution['verifier_invocations'] == 1
+    assert type(execution['reused_targets']) is int and execution['reused_targets'] == 0
+    assert type(execution['wall_ms']) in (int, float) and math.isfinite(execution['wall_ms']) and execution['wall_ms'] >= 0
+    return identity
 
 
 def retain_compiler_inputs(owned, evidence, required):
@@ -260,6 +337,8 @@ def record(root, evidence):
             except subprocess.TimeoutExpired:os.killpg(server.pid, signal.SIGKILL);server.wait(timeout=10)
         assert server is None or server.poll() is not None, 'owned server survived'
     try:
+        prerequisite = rust_source(build, env)
+        (evidence/'rust-source-prerequisite.json').write_text(json.dumps(prerequisite, indent=2)+'\n')
         with tempfile.TemporaryDirectory(prefix='sail-release-record-', dir='/tmp') as temporary, contextlib.ExitStack() as cleanup:
             owned = Path(temporary).resolve()
             def preserve_inputs():
@@ -376,10 +455,11 @@ def main():
         raise KeyboardInterrupt('release recording terminated')
     signal.signal(signal.SIGTERM, terminated)
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('record', 'verify', 'unpack'))
+    parser.add_argument('mode', choices=('record', 'verify', 'unpack', 'prerequisites', 'first-use'))
     parser.add_argument('stage', type=Path)
     parser.add_argument('--evidence', type=Path)
     parser.add_argument('--destination', type=Path)
+    parser.add_argument('--report', type=Path)
     args = parser.parse_args()
     os.umask(0o022)
     stage = args.stage.resolve(strict=True)
@@ -387,6 +467,12 @@ def main():
         assert args.destination is not None
         print(unpack(stage, args.destination.resolve(strict=True)))
     elif args.mode == 'verify':verify(stage)
+    elif args.mode == 'prerequisites':
+        index = verify(stage)
+        print(json.dumps(rust_source(stage/'engine'/index['proof']['runtime']), indent=2))
+    elif args.mode == 'first-use':
+        assert args.report is not None
+        print(first_use(stage, json.loads(args.report.read_bytes())))
     else:
         assert args.evidence is not None
         record(stage, args.evidence.resolve())

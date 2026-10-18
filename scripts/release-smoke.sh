@@ -8,7 +8,8 @@
 # runtime, that `sail verify` succeeds on a new project written as the
 # README's First verification says, and that one `sail repair-check` through
 # the engine is accepted. Needs the user prerequisites only: rustup and the
-# Rust toolchain Verus pins. No Verus installation is used (ADR 0043): PATH
+# Rust toolchain Verus pins, including its complete rust-src component for
+# this proof-bundle archive. No Verus installation is used (ADR 0043): PATH
 # is checked to hold no `cargo-verus`, and SAIL_VERUS_BUILD and
 # SAIL_CARGO_VERUS are unset.
 set -euo pipefail
@@ -34,6 +35,7 @@ echo "release-smoke: working in $work"
 release="$("$release_python" -B "$release_helper" unpack "$archive" --destination "$work")"
 sail="$release/bin/sail"
 export SAIL_CACHE_DIR="$work/cache"
+"$release_python" -B "$release_helper" prerequisites "$release" >"$work/prerequisites.json"
 "$sail" --version
 
 status="$("$sail" engine status --output json)"
@@ -46,8 +48,9 @@ esac
 cd "$work"
 "$sail" new --lib demo
 cd demo
-"$sail" verify
-echo "verify: ok"
+"$sail" verify --locked --output json >"$work/first-verify.json"
+"$release_python" -B "$release_helper" first-use "$release" --report "$work/first-verify.json"
+echo "verify: admitted release proof served"
 
 # A function to repair: the project's own lib.rs, with real specifications.
 cat >src/lib.rs <<'RS'
