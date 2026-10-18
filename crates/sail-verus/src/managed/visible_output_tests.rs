@@ -355,7 +355,7 @@ fn actual_cargo_sender_child() -> std::result::Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-const CARGO_WRAPPER: &str = r#"#!/usr/bin/env python3
+const CARGO_WRAPPER: &str = r"#!/usr/bin/env python3
 import json,os,pathlib,subprocess,sys
 args=sys.argv[1:];compiler=args.pop(0)
 if '--crate-name'not in args or args[args.index('--crate-name')+1]!='sail_visible_cargo':os.execv(compiler,[compiler,*args])
@@ -380,7 +380,7 @@ with open(config['child_log'],'wb') as log:
 if child_code!=0:raise SystemExit(child_code)
 # This exit permits Cargo's final error only AFTER the real sender's ACK.
 raise SystemExit(code)
-"#;
+";
 
 // Specialized retention for this one actual-Cargo fixture. A failed capture
 // keeps the original owned tree; it never deletes evidence to satisfy a bound.
@@ -503,9 +503,9 @@ impl Drop for CargoEvidence<'_> {
             .1
             .set(self.destination.is_none() || retained.is_err());
         eprintln!(
-            "actual Cargo fixture evidence: destination={:?}; original={:?}; preserved={}; capture={retained:?}",
+            "actual Cargo fixture evidence: destination={:?}; original={}; preserved={}; capture={retained:?}",
             self.destination,
-            self.root.0,
+            self.root.0.display(),
             self.root.1.get()
         );
     }
@@ -728,10 +728,13 @@ fn genuine_cargo_matches_plain_full_streams_and_waits_for_final_stdout_delivery(
             arms[1], arms[0],
             "{case}: every captured/public stdout and stderr byte must match plain Cargo"
         );
-        let text = String::from_utf8(arms[0].2.clone())?;
-        assert!(text.contains("error[E0425]") && text.contains("MISSING_FOR_CARGO_DIAGNOSTIC"));
+        let diagnostics = String::from_utf8(arms[0].2.clone())?;
         assert!(
-            !text.contains("\"$message_type\""),
+            diagnostics.contains("error[E0425]")
+                && diagnostics.contains("MISSING_FOR_CARGO_DIAGNOSTIC")
+        );
+        assert!(
+            !diagnostics.contains("\"$message_type\""),
             "raw compiler JSON bypassed Cargo rendering"
         );
     }

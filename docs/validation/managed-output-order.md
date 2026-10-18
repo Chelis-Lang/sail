@@ -2,8 +2,9 @@
 
 ## Status
 
-The printable-marker original-pipe successor for #215 is implemented in source
-only and remains unbuilt and unselected. The preceding control-character marker
+The printable-marker original-pipe successor for #215 passes its focused macOS
+correctness tests and all-target Clippy. It remains unselected; the complete
+macOS host gate, native Linux correctness and overhead gates remain pending. The preceding control-character marker
 candidate failed its actual-Cargo test despite eight other focused controls
 passing. It restores Cargo's original handling of every stderr
 byte, then acknowledges only each driver's final stdout through a same-stdout
@@ -48,7 +49,7 @@ The new source tests require the real production sender and relay through
 matched plain/barrier arms through actual Cargo with byte-for-byte equality of
 complete captured and public stdout/stderr and exit status, final stdout delivery
 before Cargo's final error, and the observed unterminated-line behavior. The
-expanded unrun matrix covers plain partial text, valid JSON with and without a
+expanded matrix covers plain partial text, valid JSON with and without a
 final newline, and multiline output with a 64 KiB JSON field. The sender completes
 an unterminated record with Cargo's EOF newline before a separate marker, keeping
 JSON parsing independent of the marker. Additional
@@ -58,7 +59,7 @@ lock serialization and release after NACK, symlink/capability collision refusal,
 malformed/foreign markers, and the bounded missing-ACK path. A real grandchild
 retains both Cargo pipe descriptors while a failed relay must stop and join
 its readers without waiting for EOF; the test parent then reaps its owned
-grandchild. Cancellation ownership and process groups are unchanged. They are unrun.
+grandchild. Cancellation ownership and process groups are unchanged. They pass in focused attempt 10 below; complete gates remain pending.
 The old broader concurrent-cross-stream and payload-chunk fixture claims do
 not apply to the new protocol.
 
@@ -111,6 +112,26 @@ fresh-capability framing and retains all exact full-stream and exit checks.
   because the test-only capture function lacks `OpenOptionsExt` for `.mode`.
   No tests run. Source/protected-file/child guards pass. The successor adds only
   the missing Unix trait import; production code is unchanged.
+
+- `2a523370`, 2026-10-18, focused attempt 10: all nine production sender/relay
+  tests pass, including four matched real-Cargo plain/barrier pairs with exact
+  captured/public streams and exit, plus the separate compiler-cleanup test.
+  The actual unit executable is source-bound and its complete fixture evidence
+  is retained. The enclosing attempt fails three test-only Clippy findings
+  (raw-string hashes, similar local names and path Debug formatting); no
+  assertions or production code change in the correction. All source/runtime/
+  protected-body guards pass and children are reaped. Total 102.17 seconds;
+  this is correctness scope, not a native performance result. Raw result
+  SHA-256: `936e24ab58b4c3d007f3c811afbf06e6ea198a521e2122961e6b4e14dc6f63d3`.
+
+Focused attempt 11 passes on exact tested source `f3c51b78`: all nine sender/relay
+controls, including the four real-Cargo matched pairs, the separate compiler
+cleanup test, and release all-target `sail-verus` Clippy. All source/protected-body
+guards pass and compiler children are reaped. Total 100.07 seconds. Raw result
+SHA-256: `06ba7ba44a5236cadc4ab1de985ea229b76a2c96c57e499f30f57b8d034ca53c`; actual unit
+SHA-256: `c18b17111fd21433a0869a3b029ea16011c5d6717da00e4e91cfde48596cdc83`.
+The paired documentation successor changes no tested code. This is focused Mac
+correctness, not the full host gate, native Linux acceptance or performance.
 
 Acceptance still requires passing/failing/compile-error/unchanged real Verus
 runs through plain and managed commands, strict combined and separate byte
