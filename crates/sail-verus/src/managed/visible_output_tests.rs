@@ -421,7 +421,9 @@ impl<'a> CargoEvidence<'a> {
         })
     }
     fn capture(&self, label: &str) -> std::io::Result<()> {
-        use std::os::unix::fs::{DirBuilderExt as _, FileTypeExt as _, PermissionsExt as _};
+        use std::os::unix::fs::{
+            DirBuilderExt as _, FileTypeExt as _, OpenOptionsExt as _, PermissionsExt as _,
+        };
         let Some(destination) = &self.destination else {
             return Ok(());
         };

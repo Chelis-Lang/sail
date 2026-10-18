@@ -104,6 +104,14 @@ fresh-capability framing and retains all exact full-stream and exit checks.
   the unit failure. Raw result SHA-256:
   `f20057251f2bdedd939edb710764509794ddbfe13bb6717eda13348807f3a7bc`.
 
+- `def2b553`, 2026-10-18, focused attempt 08: Cargo exits zero with zero
+  matching tests and 281 filtered after a shared-target worktree change. The
+  required nine-test count rejects this harness result; no #215 test passes.
+- Same source, focused attempt 09: forced package compilation fails with E0599
+  because the test-only capture function lacks `OpenOptionsExt` for `.mode`.
+  No tests run. Source/protected-file/child guards pass. The successor adds only
+  the missing Unix trait import; production code is unchanged.
+
 Acceptance still requires passing/failing/compile-error/unchanged real Verus
 runs through plain and managed commands, strict combined and separate byte
 comparisons, JSON/MCP behavior, closed-pipe handling, all nine E2E phases plus
