@@ -1,8 +1,8 @@
 # Instant revert
 
 Status: automatic selection is implemented and qualified at `83128ad0` for the
-narrow Linux/public dependency profile below; delivery PR checks and merge remain
-pending. Native ordinary and genuinely bundled Vest A → B → A controls pass,
+narrow Linux/public dependency profile below and is merged through #224. Native
+ordinary and genuinely bundled Vest A → B → A controls pass,
 along with the complete default gates. See the
 [validation record](validation/instant-revert.md).
 
@@ -55,3 +55,15 @@ override; a separate genuinely bundled, ordinary CLI control passes without
 runtime or research overrides. The earlier 72-call cohort remains failed and
 is indexed in the validation record; its retrospective comparisons are not
 substituted for this fresh qualification.
+
+A separate unchanged-run optimization has passed a 36-call native screen: it
+omits optional archive preparation only when existing receipt headers cover all
+requested current revisions. Unchanged Vest falls from 0.895 s to 0.544 s
+(39.29%); the complete four-call sum improves 0.73%. It preserves ordinary
+verification and Current checks and adds no workflow switch. Mac host and native
+gate, solver, all end-to-end phases plus extra, PR conformance and full FAST
+and STANDARD checks pass in all four arms, with zero verdict or diagnostic
+differences. The optimization is qualified for the existing default profile;
+Mac performance and general CPU savings remain unclaimed.
+The paired validation record retains all ranges, cold/edit/revert costs,
+footprint, failed attempts and the Linux evidence export limitation.

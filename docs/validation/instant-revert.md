@@ -2,8 +2,8 @@
 
 Status: final source `83128ad0` passes the native ordinary-selection, bundled
 Vest A → B → A and complete default gates with the selected `e5365c05` runtime.
-The delivery composition preserves its executed Rust/Cargo bytes; PR checks and
-merge remain pending. Ordinary eligibility is the exact Linux/public alloc/std
+The delivery composition preserves its executed Rust/Cargo bytes and is merged
+through #224 with all required CI checks green. Ordinary eligibility is the exact Linux/public alloc/std
 profile, not every project or platform. [Paired qualification](proof-reuse-integration.md)
 separates the current source from earlier component results.
 
@@ -325,3 +325,146 @@ new native acceptance gate. Test stdout SHA-256:
 `4969b8a5c93692bb76dfafff15cb46e3a4e5dd0c5ad76387a4077c82b6561dc8`;
 clippy stderr SHA-256:
 `4ebe896991329469405a3ea58b295513040a8e714010d7b34aeac4ab95574e67`.
+
+## Unchanged-run optional-plan candidate (#156)
+
+A separate, unselected candidate `e0d14d75`, based on `3892881a`, omits the optional
+retained-content plan when every requested target has an own-context receipt
+header with the current nonempty input revision. It reuses the existing fresh
+dirty-receipt scan; it adds no second source-hash pass. Cold or missing receipts,
+changed revisions (including returned A against B's receipt), forced runs,
+incomplete inputs, missing mutation stamps and any script/target cleanup keep
+the existing path. Omitting the plan also avoids its publication snapshot.
+
+The header is a disable hint, never proof authority. Cargo still runs normally;
+an unexpected rebuild genuinely verifies. Complete receipt, artifact, native
+input and final Current checks remain unchanged. A malformed matching proof
+body cannot be reused on the strength of this header. At worst the optional
+archive opportunity is missed, so a later invocation verifies freshly.
+
+Two owned-filesystem Rust tests pass on macOS: cold/missing headers, changed B
+and returned A revisions, wrong identity/context/version and malformed headers.
+The actual native screen on `c7i.4xlarge`, `us-east-1`, passes all 36 calls with
+zero unrun rows: three rotated rounds of genuine stock `426d8b01`, baseline
+`83128ad0` and this candidate. Baseline executed Rust/Cargo bytes equal the
+candidate's `3892881a` base. Both Sail actors use the genuine normal
+`e5365c05` runtime (archive `689004c0`); no Verus rebuild is involved. The
+current-pin Vest source, lock and ordinary public provider profile are identical
+across actors. Sail uses ordinary default verbosity; stock's explicit JSON/time
+flags supply the function/verdict/diagnostic oracle.
+
+Wall seconds are medians with the complete three-sample min–max range:
+
+| Call | Stock | Baseline | Candidate |
+|---|---:|---:|---:|
+| Cold A1 | 73.931 (73.897–74.055) | 85.879 (85.708–85.893) | 85.524 (85.409–85.582) |
+| Changed B | 41.071 (40.964–41.143) | 30.591 (30.435–30.735) | 30.427 (30.330–30.610) |
+| Returned A2 | 41.117 (41.020–41.130) | 2.804 (2.803–2.811) | 2.800 (2.788–2.806) |
+| Unchanged A3 | 0.227 (0.202–0.232) | 0.895 (0.890–0.913) | 0.544 (0.536–0.555) |
+| Four CLI calls summed | 156.431 (156.113–156.445) | 120.183 (119.859–120.314) | 119.305 (119.062–119.543) |
+| Observed cycle including preparation/validation | 163.902 (163.659–164.021) | 134.849 (134.025–134.953) | 133.843 (133.691–133.945) |
+
+Unchanged A improves 39.29% (0.895213 → 0.543504 s); every candidate sample is
+below every baseline sample. The four-call sum improves 0.73%, and the broader
+observed cycle improves 0.75%. Cold, edit and returned-A medians do not regress
+in this screen; their overlapping ranges and three rounds do not establish a
+general regression bound. Every Sail A2/A3 has Current, zero new verifiers and
+the original A1 establishing run. All rows pass exact stock function/diagnostic
+comparisons and source/runtime/binary guards. No general CPU saving is claimed.
+
+The complete ending inventory covers all nine actor/round trees, targets,
+sidecars, native graphs, certificates and caches: 7,263,140,779 logical bytes,
+7,347,056,640 allocated bytes, 325,379 files and 2,572 directories. This is the
+whole screen's footprint, not one project's cache requirement. These results
+qualify the measured optimization only. The production-identical, test-lint-only
+successor `e130f632` passes the full Mac host gate (744 tests, 35 skipped, plus
+clippy) and native Linux workspace gate (755 tests, 35 skipped), solver tests,
+all nine end-to-end phases plus extra, and PR conformance. Native full FAST
+and STANDARD pass all four arms: FAST 147/147 units and 3,450 functions,
+STANDARD 159/159 units and 12,726 functions. Every arm has zero differences,
+instability, infrastructure errors or skipped projects. The reports retain
+rlimit-only drift in 12 FAST and 18 STANDARD units per arm; those metric drifts
+are not verdict or diagnostic differences. Final source/runtime/product guards
+and the complete FAST/STANDARD evidence capture pass. The optimization is
+qualified for the existing default profile; no Mac performance or general CPU
+gain is claimed.
+
+The Linux gate commands completed successfully with unchanged source, runtime
+and built-product maps. Their enclosing evidence export failed because the
+unprivileged archive reader could not enter the repair fixture's root-owned
+directory. The complete top-level command logs were recovered and checked
+against their remote SHA-256 inventory; nested fixture files were not exported.
+This is scoped command evidence, not a successful complete archive. The
+original enclosing failure remains recorded below.
+
+External evidence under
+`retained-warm-skip-matched-native-2026-10-18/tight-caps-90/attempt01/`:
+
+- `native-results/final.tgz`: SHA-256 `087ac26c877ff0af15d8c906d80fc1b032fcb295d31ed73ef27d79e5e07087bb`.
+- `selected-final/evidence/performance/status.json`: SHA-256 `e83620c630706982e6f82bf309512cd6ed8ae92b2a504db7bea925332d5d8075`.
+- `selected-final/summary.json`: SHA-256 `1c288f3aa8a84f924f834ce2c81023d839f118062e4dd14c02fab1f87defba63`.
+
+Failed attempts remain indexed: `e0d14d75`, 2026-10-18, first native packet FAIL
+at baseline checkout (128), all 36 calls UNRUN because the bundle omitted the
+non-ancestor baseline ref. Original final archive SHA-256
+`e0769e966f446114ec38d99f3266dcd0644a521f5719bffd77e3ce5901ad448c`.
+The successful sibling explicitly bundles both refs and checks every file/mode
+in isolated clones of both heads. It does not relabel the failed attempt or
+claim earlier `7090` qualification.
+
+Delivery-gate attempts remain separate from the completed screen: `cf1b6372`,
+2026-10-18, first native qualification FAIL before staging/checks because the
+watchdog timestamp was on stderr and actual launch missed the fixed cutoff;
+all checks UNRUN. The Mac host gate then FAILs at clippy's existing
+`assert_is_empty` lint in three new test assertions; full tests UNRUN (stderr
+SHA-256 `af55f9055a0795b5157fc162c7815caa70e2195b53a631bc51eaf71580aa6181`).
+The second native attempt is interrupted before checks on that known lint
+failure. A test-only successor uses equality against an empty vector, preserving
+the exact requirement and displaying the unexpected contents. Production code
+and the measured screen are unchanged.
+
+Delivery evidence for `e130f632`, external root
+`retained-warm-skip-qualification-native-2026-10-18/`:
+
+- `mac-host-03/result.json`: full host PASS in 124.91 s; SHA-256
+  `5ef3c2a588f60c623c3092f830ad05b50aeb25ceca449a4e52e08efff07ba3fd`.
+- `detached-gate-admission-attempt02/fallback-raw/status.json`: native command
+  results PASS; workspace gate 62.71 s, solver 9.35 s, full end-to-end 660.09 s
+  and PR conformance 57.38 s; SHA-256
+  `055c809e3e88dd2d9d118efd64e28a9467bccb204a9dae3c9b06833d9bd676e2`.
+  This status records both final source and runtime guards and unchanged
+  product hashes. The complete fallback logs have their own checked inventory.
+
+Additional failed or interrupted attempts, all on 2026-10-18, remain separate:
+
+| Source | Attempt | Result and scope |
+|---|---|---|
+| `e130f632` | Initial post-lint run | Interrupted transport; workspace gate and solver checkpoints passed, later commands unqualified. |
+| `e130f632` | Detached gate attempt 01 | Worker launch failed; product checks UNRUN. |
+| `e130f632` | Detached gate attempt 02 | All declared product commands and final guards PASS; enclosing complete export FAIL on fixture directory permissions, full top-level logs recovered. |
+| `e130f632` | Remaining FAST/STANDARD attempt 02 | Worker launch failed; product checks UNRUN. |
+| `e130f632` | Remaining FAST/STANDARD attempt 03 | Setup budget admission failed before image build; product checks UNRUN. |
+
+Remaining FAST/STANDARD attempt 04 passes on exact `e130f632`: FAST takes
+507.23 s and STANDARD 5,387.61 s. Both complete four-arm report checks pass,
+including the exact 159 STANDARD unit identities. All 640 tracked source
+bodies/modes, the normal runtime and freshly established binaries remain
+unchanged across the commands. The complete archive retains 777,346,531 raw
+bytes and passes its checked inventory. This successful capture covers this
+attempt's FAST/STANDARD scope; it does not replace the earlier gate attempt's
+explicit nested-export limitation or relabel any earlier failure.
+
+External evidence under the same delivery root:
+
+- `remaining-fast-standard-admission-attempt04/result.tgz`: SHA-256
+  `82d12e1ac4e7004245393939683dcb5025fb1fcf26c3f4025124cc6ebfe63a96`.
+- Its `evidence/status.json`: SHA-256
+  `344cddfbf84fbf2027b7c7e7b6ab26a185c3795ce8fed201c67d489287ce0b83`.
+- Its `evidence/fast-report-check.json`: SHA-256
+  `16d9204e866ef549723f87c44d83960a26e83fbe56f9d2ca3ac640d0d28d3328`.
+- Its `evidence/standard-report-check.json`: SHA-256
+  `5d00e5eb963b509b2edb937c159ce33df4f1d9fc558a7b031f62ab02d278143a`.
+
+The delivery documentation amendment preserves every executed Rust/Cargo body
+and mode. The measured production implementation, test-lint successor and
+current qualification scopes remain separately identified above.
