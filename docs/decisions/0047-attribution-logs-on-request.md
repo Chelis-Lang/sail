@@ -311,3 +311,8 @@ for every measured mode; all 24 measured commands exit 0. There is no final-head
 cold, plain, failing/fixing, MCP or Mac performance claim. The
 [validation record](../validation/managed-overhead.md) records full native gates,
 standard conformance, raw evidence hashes and superseded attempts.
+
+An unselected [receipt-checksum candidate](../validation/receipt-checksum.md)
+borrows the same fields for exact checksum serialization without cloning the
+embedded report. It changes no receipt format or content check; compatibility,
+native conformance and matched real-project performance gates remain pending.
