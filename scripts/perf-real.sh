@@ -26,8 +26,11 @@
 #   noopend     the pristine source plus a comment, after the edits
 # Modes (SAIL_PERF_MODES, default "plain sail"):
 #   plain        cargo verus verify (focus with --verify-module)
-#   sail         sail verify
+#   sail         sail verify (public --output json for partial selectors)
 #   incremental  explicit legacy alias for sail verify --incremental
+# Partial Sail modes use their supported public JSON route; this changes output
+# scope, not the Verus module selector. Their JSON omits compiler stage totals,
+# so those six table fields are unavailable (NA), never invented zero timings.
 #   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK: first on
 #                PATH, and for fork-sail also as SAIL_CARGO_VERUS (Sail does not
 #                search PATH, ADR 0043)
@@ -411,8 +414,8 @@ done
 
 verus_cmd() { # MODE EXTRA_VERUS_ARGS...
   local mode="$1"; shift
-  local sub=verify
-  [ "$partial" = 1 ] && sub=focus
+  local sub=verify sail_output=()
+  if [ "$partial" = 1 ]; then sub=focus; sail_output=(--output json); fi
   case "$mode" in
     fork-shim)
       VERUS_Z3_PATH="$(command -v sail-z3)" SAIL_Z3_PATH="$fork/z3" \
@@ -420,14 +423,14 @@ verus_cmd() { # MODE EXTRA_VERUS_ARGS...
     plain | fork-plain) cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     sail)
       if [ -n "$baseline" ]; then
-        SAIL_CARGO_VERUS="$baseline/cargo-verus" sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+        SAIL_CARGO_VERUS="$baseline/cargo-verus" sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
       else
-        sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+        sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
       fi ;;
     # Sail never searches PATH for Verus (ADR 0043); the development
     # override is the only way to run another build under Sail.
-    fork-sail) SAIL_CARGO_VERUS="$fork/cargo-verus" sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
-    incremental) sail verify --incremental ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    fork-sail) SAIL_CARGO_VERUS="$fork/cargo-verus" sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    incremental) sail verify --incremental ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     *) echo "unknown performance mode: $mode" >&2; return 2 ;;
   esac
 }
@@ -444,7 +447,16 @@ stats() { # -> "hellos gets hits puts" of the daemon for SAIL_CACHE_DIR, or zero
 
 # Verus's --time output, summed over every crate verified in the run:
 # total rust vir verify-crate (wall ms), verify and smt-run (ms summed over threads).
-times_of() { # LOG
+times_of() { # LOG MODE
+  if [ "$partial" = 1 ]; then
+    case "$2" in
+      sail | fork-sail | incremental)
+        # The public Sail JSON report does not contain Verus's times-ms.
+        # Retain raw output, and make absent stage measurements explicit.
+        printf 'NA\tNA\tNA\tNA\tNA\tNA'
+        return ;;
+    esac
+  fi
   awk '
     /^total-time:/ { t += $2 }
     /^    rust-time:/ { r += $2 }
@@ -487,7 +499,7 @@ run_one() { # ROUND MODE DIR PHASE
   d=$(echo "$s0 $s1" | awk '{printf "%d\t%d\t%d\t%d", $5-$1, $6-$2, $7-$3, $8-$4}')
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$round" "$mode" "$phase" \
     "$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')" "$code" \
-    "$sessions" "$started" "$served" "$d" "$(times_of "$log")" "$load1" >>"$results"
+    "$sessions" "$started" "$served" "$d" "$(times_of "$log" "$mode")" "$load1" >>"$results"
   printf '  r%s %-11s %-14s %8.2f s exit %s  load %s  sessions %s (solver %s)  daemon %s\n' "$round" "$mode" "$phase" \
     "$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')" "$code" "$load1" "$sessions" "$started" "$d"
   # Every incidental edit must verify, including cold/unchanged controls.
