@@ -310,10 +310,13 @@ oyster and such." This supersedes the parallel tracks of
       about 34 MiB higher observed RSS. These are scoped gains, not whole-pipeline
       CPU savings. See the [overhead record](validation/managed-overhead.md) and
       [identity record](validation/solver-identity.md). A cheaper per-function
-      report in the fork remains a separate lever. The unselected optional-plan
-      candidate passes all 36 native Vest calls: unchanged falls 0.895 → 0.544 s
-      (39.29%), while the four-call sum improves 0.73%. Full delivery gates remain
-      pending ([paired record](validation/instant-revert.md#unchanged-run-optional-plan-candidate-156)).
+      report in the fork remains a separate lever. The qualified optional-plan
+      optimization passes all 36 native Vest calls: unchanged falls 0.895 → 0.544 s
+      (39.29%), while the four-call sum improves 0.73%. Mac host and native
+      gate/solver/all E2E plus extra/PR/full FAST/STANDARD pass for their stated
+      source scopes. The Linux gate's complete-export limitation remains explicit;
+      FAST/STANDARD have complete capture and final guards. No general CPU gain
+      is claimed ([paired record](validation/instant-revert.md#unchanged-run-optional-plan-candidate-156)).
    5. Cache robustness to incidental edits: stable crate-wide numbering in
       the fork, [#118](https://github.com/Chelis-Lang/sail/issues/118); any
       key change is an ADR under charter rules 5 and 6. The only crate-wide
