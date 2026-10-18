@@ -2,7 +2,7 @@
 
 | Gate | Current state |
 |---|---|
-| Implementation | Candidate adjacent release-bundle Serve activation; actual Mac staged first-use components pass; Linux qualification and fresh-machine performance pending; explicit Record/LOCAL/alternate modes remain research-only |
+| Implementation | Candidate adjacent release-bundle Serve activation; actual Mac staged first-use components and full Linux regression qualification pass; bounded Cargo-1.98 first-use component improves; complete public-interaction acceptance pending; explicit Record/LOCAL/alternate modes remain research-only |
 | Native prerequisites | Every native compiler executes normally; current-run successful provenance and actual linked bytes required |
 | Reuse scope | Pinned, nonprimary vstd library only; no native units or Cargo fingerprints |
 | Identity | Literal flags, actual runtime/sysroot/solver bytes, linked libraries/VIR, official source/feature closure and environment |
@@ -11,10 +11,57 @@
 | Compiler-input boundary | Final-source functional probes retain real native and verified-input certificates under the closed source/feature policy; earlier native source/transitive controls keep their recorded source scope |
 | Literal query comparison | Two separate cold controls match all 366 literal input streams / 2,061 checks each; this is not reuse or stock acceptance |
 | Portable functionality | Linux `83128ad0` and the earlier Mac component pass changed Cargo/project/install roots. The guarded Mac successor passes changed physical Rustup/sysroot roots, full Record → Serve → unchanged and both negative comparisons. A separate native-only successor passes all twelve consumer pairs; the original enclosing cohort stays FAIL |
-| Default regression gates | Current candidate: Mac host clippy and 779 tests pass; native Linux gate, solver, all end-to-end phases, PR and full FAST conformance pass; STANDARD is running. Earlier `83128ad0` full Linux results retain their original source scope |
+| Default regression gates | Current candidate: Mac host clippy and 779 tests pass; native Linux gate, solver, all end-to-end phases, PR and full FAST/STANDARD conformance pass. Earlier `83128ad0` full Linux results retain their original source scope |
 | Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
 
 ## Current composed release candidate
+
+The current Linux first-use component has nine valid rotated rows on a distinct
+clean consumer, all with Cargo `1.98.1`, genuine native compilation, full stock
+function/scalar/schema comparisons, Current and the exact release origin.
+Median setup + new + lock + verification falls from 36.28905 s to 14.23317 s
+(2.550×; stock 31.78070 s). Candidate rows include actual 5,741,168-byte official
+`rust-src` download, installation and complete validation. Common minimal Rust
+installation takes 8.938 s and is recorded separately. The nine roots share one
+consumer host; this is not evidence for multiple independent machines or newer
+caller Cargo versions.
+
+The enclosing consumer attempt remains FAIL: its first literal negative check
+compares cold stock dependency progress with warm Sail progress. The actual
+requested-target error span/body matches, but the full stderr differs by fifteen
+dependency progress lines. No bytes are normalized or discarded. Subsequent
+index/native/undo checks were not reached; the successor must prime genuine stock
+positive work before making the same exact negative comparison. Complete failed
+capture SHA-256:
+`039fbdaffed81cb8966b41cd139f6692e08130c6c008b1e199688ce405cf215f`.
+The valid nine-row gain is a component result, not complete release acceptance.
+
+The Cargo-pinned producer correction is causally qualified: actual Record with
+helper `d751d1b1` produces the exact previous consumer unit key, arguments,
+environment and extern hashes, without normalization. Public new, fresh stock
+(1,871 vstd functions plus the requested function), schema/scalar, 25 native
+records across all 14 official packages, strict package/unpack and final guards
+pass. Actual package SHA-256:
+`fe04490ca0b007b003951b5287e7ac83dd86b89932e5b921d03e8fda9cc07b89`;
+complete 184-member producer capture:
+`cee4f6183ce025e999aaddd46357c101368ec10d44063cc45a02c4bdbf6cc9cc`.
+An earlier producer preflight failed because its reused image lacked `rust-src`;
+that failure remains retained. The successor installs the official prerequisite
+before Record within the original stage cap.
+
+Full native regression qualification also passes on `356b7d0f`, with the exact
+Sail/shim/checker bodies used by this producer: workspace gate (790 tests), the
+original 35 solver tests, every end-to-end phase plus extra, PR, full FAST and
+STANDARD, release controls and final source/runtime/product guards. Each of four
+FAST arms has 147 Same / 3,450 functions; each STANDARD arm has 159 Same / 12,726
+functions. There are zero differences, unstable units, infrastructure errors or
+skips. Resource-limit-only drift remains visible: 12 units per FAST arm and 18
+per STANDARD arm. The 9,786-member capture has SHA-256
+`52244187b66fe6924ad3fa10ba934eac987f9ed1df9204f87edf49a2c874ca21`;
+independent complete audit:
+`e88a03ab73ea428bd52cd661c0bad955feb290fd0e50133bf2f225acf6c70b9b`.
+These regression checks qualify their compiled source scope; the later Python
+factory correction is qualified by the actual producer above.
 
 The minimal-profile Mac endpoint also passes. A separate Rustup installation
 contains only the pinned compiler, Cargo, host standard library and `rust-src`.
@@ -47,7 +94,7 @@ a different exact unit key. Final source, package and runtime guards pass;
 the generic "release index or unit changed" refusal does not establish index
 corruption. Retained producer identity records Cargo 1.99.0, whereas the minimal
 consumer uses 1.98.1. The factory now explicitly selects the runtime's validated
-Cargo toolchain; native causal requalification is pending. Mock producer controls
+Cargo toolchain; the successful causal requalification is recorded above. Mock producer controls
 require 1.98.1 even with an inherited 1.99.0 builder selection, and strict archive
 controls require the owned lockfile's portable mode before indexing. No argument
 is ignored and no key or admission check changes.
@@ -103,8 +150,9 @@ All six enclosing Mac failures remain failed in the composite index:
 | `f50862a6` / 2026-10-18 | `ac91d6391af06e032e754470f39f43718ed58d609b0728c3b8d9025dd575654d` | External observer lacked a retained factory sidecar after successful first Serve |
 | `356b7d0f` / 2026-10-18 | `61f94f58773e75ab1b77194df9f134cc393aeb9e4ca94fb2dafb401db2c8813e` | External native donor observer expected the local-reuse flag instead of the release origin |
 
-Current Linux qualification and the distinct producer/consumer performance gate
-are separate requirements. In particular, default selection must also retain
+Full Linux regression qualification and the distinct producer/consumer performance
+gate are separate requirements; the latter currently has valid timing components
+and a failed enclosing public-interaction attempt. In particular, default selection must also retain
 the actual A/B/A and Vest checks after shipped Serve; earlier retained-mode
 speedups do not qualify the shipped mode.
 

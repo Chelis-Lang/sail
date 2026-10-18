@@ -85,6 +85,17 @@ requires the same toolchain's complete Rust sources:
 rustup component add rust-src --toolchain 1.98.1
 ```
 
+The candidate bundle is recorded with Cargo `1.98.1`. Installing that toolchain
+does not change an existing Cargo default. Select it for verification when using
+that bundle's fast path:
+
+```sh
+RUSTUP_TOOLCHAIN=1.98.1 sail verify
+```
+
+A different Cargo version may emit different compiler arguments and safely
+verify vstd again. Sail preserves the caller's Cargo selection.
+
 The proof-bundle release path is still unqualified; this is not an additional
 requirement for ordinary releases without it. Keep the minimal installation
 above for those releases. Proof-bundle first-use qualification includes this

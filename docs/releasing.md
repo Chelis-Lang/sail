@@ -202,6 +202,13 @@ Record release proofs with the verifier's minimal toolchain plus `rust-src`.
 The factory also pins Cargo itself to that toolchain. Cargo versions can add
 different compiler flags even when they invoke the same Rust compiler; using the
 Sail build toolchain's newer Cargo therefore produces a different exact proof key.
+This qualifies only the matching caller-Cargo profile. Managed verification
+preserves the caller's Cargo selection: installing Rust `1.98.1` beside a newer
+default does not select its Cargo. A consumer can explicitly use
+`RUSTUP_TOOLCHAIN=1.98.1 sail verify`; other Cargo versions can safely miss and
+verify vstd afresh. The current factory does not produce a multi-Cargo bundle.
+A first-use result from a fresh home with default/explicit Cargo `1.98.1` must
+not be described as acceptance of the README's latest-default Cargo setup.
 The compiler identity conservatively includes all installed target libraries;
 an extra target therefore produces a different proof key even for a host build.
 The Linux `ci/local.sh release` recipe removes the CI image's bare-metal target

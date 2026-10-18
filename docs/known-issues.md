@@ -41,13 +41,20 @@ are in the `archive/m7-contracts-f7103bf` tag.
   comparisons match stock; unchanged-index and failing-diagnostic controls
   pass. A separate native-only component checks fresh native records and a
   same-path compiler replacement. All six enclosing attempts remain failed;
-  their successful components are bound and audited separately. Linux native
-  qualification, a distinct producer/clean-consumer run and fresh-install
-  performance remain pending. Earlier twelve-pair native ABI results retain
+  their successful components are bound and audited separately. Full Linux
+  regression qualification passes; nine Cargo-1.98 first-use rows show a 2.550×
+  setup-plus-verification gain. That enclosing consumer attempt fails its
+  cold-stock/warm-Sail diagnostic fixture, and later interaction checks remain
+  pending. Earlier twelve-pair native ABI results retain
   their original source scope. The v1 store stays quarantined, and default
   release selection remains unqualified. The
   [compiler-boundary record](validation/vstd-compile-boundary.md) retains the
   failed attempts and precise component limits.
+  The candidate factory records Cargo `1.98.1`; managed runs preserve the caller's
+  Cargo. A newer default can produce different exact compiler arguments and
+  safely miss even with the pinned Rust compiler installed. Current fresh-home
+  measurements select Cargo `1.98.1` explicitly; they do not cover every default
+  Cargo installation.
 
 - **The stale solver-hash defect is fixed on main**
   ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads
