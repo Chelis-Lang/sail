@@ -251,6 +251,68 @@ fn lookups(
     Some((directories, externs))
 }
 
+impl Inventory {
+    /// Read and hash the complete eligible lookup inventory without creating
+    /// private copies. This preliminary value grants no compiler/proof authority;
+    /// callers must recapture or independently reuse a complete final snapshot.
+    pub(super) fn read_ready(owned_target: &Path, args: &[OsString]) -> Option<Self> {
+        let target = owned_target.canonicalize().ok()?;
+        let unit = Unit::parse(args)?;
+        let (directories, externs) = lookups(&target, &unit, args)?;
+        if directories.is_empty()
+            || directories.len() > 8
+            || unit.directory.canonicalize().ok()? != unit.directory
+            || !unit.directory.starts_with(&target)
+        {
+            return None;
+        }
+        capture_after_directory_work(&directories, &unit, || {
+            Self::read(&directories, &unit, &externs)
+        })
+    }
+
+    fn read(directories: &BTreeSet<PathBuf>, unit: &Unit, externs: &[PathBuf]) -> Option<Self> {
+        let mut inventory = Self {
+            directories: BTreeMap::new(),
+            artifacts: BTreeMap::new(),
+        };
+        let mut remaining = TOTAL_LIMIT;
+        for directory in directories {
+            let mut names = BTreeSet::new();
+            for entry in std::fs::read_dir(directory).ok()? {
+                let entry = entry.ok()?;
+                if unit.owns(&entry.path()) {
+                    continue;
+                }
+                if !entry.file_type().ok()?.is_file()
+                    || !names.insert(entry.file_name())
+                    || names.len() > ENTRY_LIMIT
+                {
+                    return None;
+                }
+                if artifact(&entry.path()) {
+                    let bytes = read_content(&entry.path(), remaining.min(FILE_LIMIT))?;
+                    remaining = remaining.checked_sub(bytes.size)?;
+                    inventory.artifacts.insert(entry.path(), bytes);
+                }
+            }
+            inventory.directories.insert(directory.clone(), names);
+        }
+        if externs
+            .iter()
+            .any(|path| !inventory.artifacts.contains_key(path))
+        {
+            return None;
+        }
+        Some(inventory)
+    }
+
+    /// Mutable original names used only to wait for producer-record availability.
+    pub(super) fn original_inputs(&self) -> &BTreeMap<PathBuf, Content> {
+        &self.artifacts
+    }
+}
+
 /// Own every copied directory through compiler completion/publication.
 pub(super) struct Snapshot {
     root: PathBuf,
@@ -297,38 +359,7 @@ impl Snapshot {
         {
             return None;
         }
-        let mut inventory = Inventory {
-            directories: BTreeMap::new(),
-            artifacts: BTreeMap::new(),
-        };
-        let mut remaining = TOTAL_LIMIT;
-        for directory in &directories {
-            let mut names = BTreeSet::new();
-            for entry in std::fs::read_dir(directory).ok()? {
-                let entry = entry.ok()?;
-                if unit.owns(&entry.path()) {
-                    continue;
-                }
-                if !entry.file_type().ok()?.is_file()
-                    || !names.insert(entry.file_name())
-                    || names.len() > ENTRY_LIMIT
-                {
-                    return None;
-                }
-                if artifact(&entry.path()) {
-                    let bytes = read_content(&entry.path(), remaining.min(FILE_LIMIT))?;
-                    remaining = remaining.checked_sub(bytes.size)?;
-                    inventory.artifacts.insert(entry.path(), bytes);
-                }
-            }
-            inventory.directories.insert(directory.clone(), names);
-        }
-        if externs
-            .iter()
-            .any(|path| !inventory.artifacts.contains_key(path))
-        {
-            return None;
-        }
+        let inventory = Inventory::read(&directories, &unit, &externs)?;
         let key = digest(&serde_json::to_vec(&inventory).ok()?);
         let root = graphs.join(key);
         if !graph_intact(&root, &inventory) {
@@ -743,6 +774,162 @@ mod tests {
     }
 
     #[test]
+    fn readiness_reads_complete_inventory_without_creating_copies()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("read-inventory")?;
+        let target = root.0.join("target");
+        let deps = target.join("debug/deps");
+        for (name, bytes) in [
+            ("libvstd-abcd.rmeta", b"metadata A".as_slice()),
+            ("libvstd-abcd.vir", b"VIR A"),
+            ("libbuiltin-abcd.rlib", b"transitive A"),
+            ("other.d", b"membership without body hashing"),
+            ("libworkspace-abcd.rmeta", b"excluded exact self output"),
+        ] {
+            std::fs::write(deps.join(name), bytes)?;
+        }
+        let before: BTreeSet<_> = std::fs::read_dir(&root.0)?
+            .map(|entry| entry.map(|entry| entry.file_name()))
+            .collect::<Result<_, _>>()?;
+        let first = Inventory::read_ready(&target, &root.args()).ok_or("inventory")?;
+        assert_eq!(first.original_inputs().len(), 3);
+        assert_eq!(first.directories[&deps].len(), 4);
+        assert_eq!(
+            first.artifacts[&deps.join("libbuiltin-abcd.rlib")],
+            Content {
+                sha256: digest(b"transitive A"),
+                size: 12,
+            }
+        );
+        assert_eq!(
+            before,
+            std::fs::read_dir(&root.0)?
+                .map(|entry| entry.map(|entry| entry.file_name()))
+                .collect::<Result<BTreeSet<_>, _>>()?
+        );
+        let final_graph = Snapshot::capture(&target, &root.0.join("final"), &root.args())
+            .ok_or("independent final graph")?;
+        assert_eq!(first, final_graph.inventory);
+        assert!(final_graph.intact());
+        Ok(())
+    }
+
+    #[test]
+    fn readiness_cannot_authorize_changed_originals_or_private_bodies()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("read-authority")?;
+        let target = root.0.join("target");
+        let deps = target.join("debug/deps");
+        let original = deps.join("libvstd-abcd.rmeta");
+        std::fs::write(&original, b"A")?;
+        let first = Inventory::read_ready(&target, &root.args()).ok_or("first inventory")?;
+        let modified = std::fs::metadata(&original)?.modified()?;
+        std::fs::write(&original, b"B")?;
+        std::fs::File::options()
+            .write(true)
+            .open(&original)?
+            .set_times(std::fs::FileTimes::new().set_modified(modified))?;
+        let fresh = Inventory::read_ready(&target, &root.args()).ok_or("fresh inventory")?;
+        assert_ne!(first, fresh);
+        let graphs = root.0.join("graphs");
+        std::fs::create_dir(&graphs)?;
+        let final_graph = Snapshot::capture_ready(&target, &root.0.join("final"), &root.args())
+            .and_then(|graph| graph.publish(&graphs, &root.args()))
+            .ok_or("final graph B")?;
+        assert_eq!(final_graph.inventory, fresh);
+        assert_ne!(final_graph.inventory, first);
+        assert!(Snapshot::reuse(&target, &graphs, &root.args()).is_some());
+        std::fs::write(&original, b"A")?;
+        assert!(Snapshot::reuse(&target, &graphs, &root.args()).is_none());
+        std::fs::write(&original, b"B")?;
+        let private = final_graph.copied_inputs().ok_or("private inputs")?;
+        let path = private.keys().next().ok_or("private input")?;
+        // The fixture deliberately corrupts an owned read-only view. An earlier
+        // successful preliminary inventory cannot turn it into proof authority.
+        let mut permissions = std::fs::metadata(path)?.permissions();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            permissions.set_mode(0o600);
+        }
+        std::fs::set_permissions(path, permissions)?;
+        std::fs::write(path, b"C")?;
+        assert!(!final_graph.intact());
+        assert!(Snapshot::reuse(&target, &graphs, &root.args()).is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn readiness_waits_then_rereads_completed_producer_bytes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("read-pipeline")?;
+        let target = root.0.join("target");
+        let deps = target.join("debug/deps");
+        let artifact = deps.join("libvstd-abcd.rmeta");
+        let scratch = deps.join("compiler-work");
+        std::fs::write(&artifact, b"before")?;
+        std::fs::create_dir(&scratch)?;
+        let producer = std::thread::spawn(move || -> std::io::Result<()> {
+            std::thread::sleep(std::time::Duration::from_millis(30));
+            std::fs::write(&artifact, b"finished")?;
+            std::fs::remove_dir(&scratch)
+        });
+        let first = Inventory::read_ready(&target, &root.args());
+        producer.join().map_err(|_| "producer fixture panicked")??;
+        let first = first.ok_or("completed readiness")?;
+        assert_eq!(
+            first.artifacts[&deps.join("libvstd-abcd.rmeta")].sha256,
+            digest(b"finished")
+        );
+        assert_eq!(std::fs::read_dir(&root.0)?.count(), 1, "no private view");
+        Ok(())
+    }
+
+    #[test]
+    fn readiness_refuses_malformed_and_missing_imports() -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("read-malformed")?;
+        let target = root.0.join("target");
+        let deps = target.join("debug/deps");
+        std::fs::write(deps.join("libvstd-abcd.rmeta"), b"A")?;
+        for external in ["missing-equals", "vstd=/foreign/missing.rmeta"] {
+            let mut args = root.args();
+            *args.last_mut().ok_or("extern argument")? = external.into();
+            assert!(Inventory::read_ready(&target, &args).is_none());
+        }
+        let mut args = root.args();
+        args.push("--import=foreign=/foreign/input.vir".into());
+        assert!(Inventory::read_ready(&target, &args).is_none());
+        args = root.args();
+        args[4] = "extra-filename=".into();
+        assert!(Inventory::read_ready(&target, &args).is_none());
+        assert_eq!(std::fs::read_dir(&root.0)?.count(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn readiness_keeps_size_entry_and_lookup_bounds() -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("read-limits")?;
+        let target = root.0.join("target");
+        let deps = target.join("debug/deps");
+        let artifact = deps.join("libvstd-abcd.rmeta");
+        std::fs::File::create(&artifact)?.set_len(FILE_LIMIT + 1)?;
+        assert!(Inventory::read_ready(&target, &root.args()).is_none());
+        std::fs::write(&artifact, b"A")?;
+        let mut args = root.args();
+        for index in 0..8 {
+            let extra = target.join(format!("lookup-{index}/deps"));
+            std::fs::create_dir_all(&extra)?;
+            args.push(format!("-Ldependency={}", extra.display()).into());
+        }
+        assert!(Inventory::read_ready(&target, &args).is_none());
+        for index in 0..ENTRY_LIMIT {
+            std::fs::write(deps.join(format!("member-{index}.d")), b"")?;
+        }
+        assert!(Inventory::read_ready(&target, &root.args()).is_none());
+        Ok(())
+    }
+
+    #[test]
     fn mixed_compiler_directories_disappear_before_any_graph_copy()
     -> Result<(), Box<dyn std::error::Error>> {
         let root = Root::new("metadata-ready")?;
@@ -908,6 +1095,7 @@ mod tests {
         let directories = BTreeSet::from([deps.clone()]);
         let unit = Unit::parse(&root.args()).ok_or("unit")?;
         assert!(lookup_ready(&directories, &unit).is_none());
+        assert!(Inventory::read_ready(&root.0.join("target"), &root.args()).is_none());
         assert!(
             Snapshot::capture_ready(
                 &root.0.join("target"),
@@ -925,6 +1113,7 @@ mod tests {
             .status()?;
         assert!(fifo.success());
         assert!(lookup_ready(&directories, &unit).is_none());
+        assert!(Inventory::read_ready(&root.0.join("target"), &root.args()).is_none());
         assert!(
             Snapshot::capture_ready(
                 &root.0.join("target"),
@@ -993,9 +1182,11 @@ mod tests {
         let mut args = root.args();
         let last = args.len() - 1;
         args[last] = format!("workspace={}/libworkspace-abcd.rmeta", deps.display()).into();
+        assert!(Inventory::read_ready(&root.0.join("target"), &args).is_none());
         assert!(Snapshot::capture(&root.0.join("target"), &root.0.join("self"), &args).is_none());
         args = root.args();
         args.extend([OsString::from("-Lnative=/foreign")]);
+        assert!(Inventory::read_ready(&root.0.join("target"), &args).is_none());
         assert!(
             Snapshot::capture(&root.0.join("target"), &root.0.join("foreign"), &args).is_none()
         );
@@ -1009,6 +1200,7 @@ mod tests {
                 Snapshot::capture(&root.0.join("target"), &root.0.join("alias"), &root.args())
                     .is_none()
             );
+            assert!(Inventory::read_ready(&root.0.join("target"), &root.args()).is_none());
             assert!(!root.0.join("alias").exists());
         }
         Ok(())

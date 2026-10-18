@@ -327,6 +327,8 @@ oyster and such." This supersedes the parallel tracks of
       unrun. Automatic Linux selection is an isolated source candidate; default,
       ordinary-resolution and performance gates remain pending
       ([record](validation/instant-revert.md)).
+      A source-only readiness-inventory prototype removes discarded preliminary
+      copies; correctness builds and any measured benefit remain pending.
    7. The warm Verus frontend (M8), #162: the M8.0 gate failed and the
       hermetic bucket memo did not proceed, but the 5–38 s all-hits floor on
       real projects caps every other lever. A narrow Cargo-selection correction

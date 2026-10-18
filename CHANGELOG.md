@@ -36,6 +36,9 @@ semantic versioning once the API is published.
   Retained restoration preserves the fresh outer caller environment boundary,
   original establishing provenance and bounded durable-arena admission; the
   arena limit does not cover all managed-run logs and targets.
+  A separate unbuilt prototype uses a fresh complete read/hash inventory while
+  awaiting producer readiness, keeping final private-graph authority unchanged;
+  its transient-write savings and performance remain unmeasured.
 
 - Reuse solver-handshake digests after complete fresh-byte equality (#213).
   It reuses SHA-256 only after comparing every freshly read executable byte;

@@ -54,3 +54,11 @@ against ordinary Sail while cold, changed-B and unchanged costs rise. These
 controlled calls use the same explicit runtime override in both Sail actors;
 bundled/default-discovery correctness remains pending. These observations do not
 qualify the narrowed successor; see the validation record.
+
+A separate source prototype removes the preliminary private dependency copies
+used only while waiting for producer records. It still reads and hashes the
+complete eligible lookup inventory, then independently captures or revalidates
+the final private graph before any compiler/proof authority is granted. Exact
+keys, producer certificates, compiler observations, currentness, archive
+placement and arena limits are unchanged. This prototype is unbuilt and
+unmeasured; it does not share artifact inodes or qualify a storage/speed gain.

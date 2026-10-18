@@ -5,7 +5,7 @@
 //! units always compile and need their own actual compiler-read document.
 
 use super::super::{
-    dependency_snapshot::{Content, Snapshot, read_content},
+    dependency_snapshot::{Content, Inventory, Snapshot, read_content},
     files, receipts,
 };
 use super::{Plan, archive, compiler, driver, native};
@@ -105,13 +105,17 @@ pub(super) fn named_externs(plan: &Plan, args: &[OsString]) -> bool {
 }
 
 pub(super) fn ready(plan: &Plan, graph: &Snapshot) -> bool {
+    ready_inputs(plan, graph.original_inputs())
+}
+
+/// Preliminary availability only; no producer certificate is established here.
+pub(super) fn inventory_ready(plan: &Plan, inventory: &Inventory) -> bool {
+    ready_inputs(plan, inventory.original_inputs())
+}
+
+fn ready_inputs(plan: &Plan, inputs: &BTreeMap<PathBuf, Content>) -> bool {
     await_ready(
-        || {
-            graph
-                .original_inputs()
-                .keys()
-                .all(|path| record_path(plan, path).is_file())
-        },
+        || inputs.keys().all(|path| record_path(plan, path).is_file()),
         Duration::from_secs(2),
     )
 }
@@ -343,8 +347,8 @@ impl Native {
             .sidecars
             .join(format!("retained-native-{key}-{}", std::process::id()));
         std::fs::create_dir_all(&directory).ok()?;
-        let first = Snapshot::capture_ready(&plan.target, &directory.join("first"), args)?;
-        if !ready(plan, &first) {
+        let first = Inventory::read_ready(&plan.target, args)?;
+        if !inventory_ready(plan, &first) {
             return None;
         }
         drop(first);

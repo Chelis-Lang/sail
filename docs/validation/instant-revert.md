@@ -279,3 +279,32 @@ new native acceptance gate. Test stdout SHA-256:
 `4969b8a5c93692bb76dfafff15cb46e3a4e5dd0c5ad76387a4077c82b6561dc8`;
 clippy stderr SHA-256:
 `4ebe896991329469405a3ea58b295513040a8e714010d7b34aeac4ab95574e67`.
+
+## Readiness inventory source prototype
+
+An isolated child of `83128ad0` replaces only the discarded preliminary
+verifier/native dependency copies with a fresh read/hash inventory. The scan is
+factored from `Snapshot::reuse`: complete non-self lookup membership, regular
+file/alias refusal, explicit extern coverage, full artifact hashes and the same
+file/aggregate/entry/directory bounds remain. The existing bounded scratch
+directory readiness/retry mechanism is shared. The preliminary value is used
+only to await producer-record availability, then dropped; it cannot rewrite
+compiler arguments, publish a graph or restore a proof. Final private capture
+or fully revalidated reuse, producer establishment, SourceMap observations and
+all currentness/archive/budget/GC checks remain in their original positions.
+
+Source fixtures cover full inventory equality without first-view creation,
+same-size/restored-mtime changes between readiness and final capture, corrupt
+private-body refusal, actual delayed compiler directory completion,
+malformed/missing imports, aliases and size/entry/lookup limits. They are
+**written, not run**: compilation, clippy, Mac/native correctness and any timing
+comparison await independent source review. There is no speed acceptance.
+
+The motivating read-only inventory audit of the earlier aeea/c3 ordinary72
+cohort finds 243–297 MB of identical graph bodies across different graph
+inventories. Those duplicates explain 57–62% of cold ON-minus-OFF tree growth;
+all graph bodies explain 90–91%. Output archive blobs already use content
+addresses. This smaller prototype targets transient writes of the first,
+discarded graph, not that persistent duplication. The original whole cohort
+FAIL and scoped semantic result above are unchanged. A3's zero-verifier cost
+cannot be attributed to these preliminary compiler copies without profiling.
