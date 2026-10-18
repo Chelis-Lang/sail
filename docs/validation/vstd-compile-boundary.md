@@ -104,6 +104,33 @@ The two whole failures remain indexed by result SHA-256:
 `a2b4a08efa07bc4f1e3e7e169b64130581966ec0586369911145255e725db944`
 and `8f26ef3121ad8d2a015decf6fb18e50a3042d1760648bc25386abe933fb1cf6a`.
 
+The new-project lock wire on `b296e2d6` passed both selected CLI filesystem
+units, release clippy and actual product builds. The next whole Mac cohort
+passed actual stripped factory, archive/public smoke, changed physical Rustup
+selection, public creation of the admitted lock, genuine stock and the
+secondary-span negative prerequisite. First Serve was Current with all 1,872
+function entries and complete stock function/scalar/diagnostic comparisons,
+but verified twice and served no release origin: strict SAFE_MISS, whole FAIL.
+The source cause is the compiler child's ordinary admission deriving `deps`
+from its cached hardlink/copy executable name instead of the bound runtime.
+The candidate correction derives only the normal runtime's `engine/<variant>`
+release root and checks the current alias's fresh bytes/mode/size against the
+same index's `bin/sail`; proof keys and source/proof checks are unchanged.
+Result SHA-256: `c05ce84cfefccc28e4f914201f3bf2f33dd97806820e67d4de1918e817ac00a0`.
+The complete 48-path/37-unique diagnostic census exceeded its 256 MiB body cap
+at 359,735,466 bytes; bodies were not retained. Factory certificates and all
+CLI/comparison results remain, and all final guards and owned cleanup passed.
+The archive and unit artifact bodies were deleted by that failed cohort, so
+no later acceptance may claim to consume that unavailable archive.
+
+The shipped profile's exact `alloc/default/std` authority differs from ordinary
+retained restoration's Linux public `alloc/std` authority. A shipped plan
+suppresses the entire retained plan, including the requested target. A release
+consumer must measure/check A/B/A plus the existing Vest profile after shipped
+Serve; the 2.5-second returned-A result is not transferred across these modes.
+Source naming is enabled by an adjacent bundle even if no shipped plan admits;
+that interaction remains a native acceptance gate, not dual-provider authority.
+
 Linux gates, real archive first-use on both platforms and changed Rustup/sysroot
 roots remain pending. Acceptance must
 also remove/change the index after a successful Serve, then check unchanged and

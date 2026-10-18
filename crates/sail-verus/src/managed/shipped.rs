@@ -629,17 +629,41 @@ fn active_for(
         return None;
     }
     if !research {
-        let Mode::Serve { bundle } = &plan.mode else {
+        let Mode::Serve { .. } = &plan.mode else {
             return None;
         };
         let root = runtime_root(&plan.native_launcher.with_file_name("cargo-verus"))?;
-        let adjacent = adjacent_bundle(root.file_name()?)?;
-        let manifest = read_manifest(bundle)?;
-        if !ordinary_serve(&plan, &adjacent, &manifest) || !plan.release.as_ref()?.intact(bundle) {
+        let executable = std::env::current_exe().ok()?;
+        if !ordinary_child(&plan, &root, &executable) {
             return None;
         }
     }
     Some(plan)
+}
+
+// A compiler child runs the same Sail bytes under a cache hardlink/copy name.
+// canonicalize cannot recover an installed path from either kind of alias.
+fn ordinary_child(plan: &Plan, runtime: &Path, executable: &Path) -> bool {
+    let check = || {
+        let root = runtime.canonicalize().ok()?;
+        let engine = root.parent()?;
+        if engine.file_name()? != OsStr::new("engine")
+            || !root.join(crate::source_build::MANIFEST).is_file()
+        {
+            return None;
+        }
+        let adjacent = engine.parent()?.join("deps").join(root.file_name()?);
+        let Mode::Serve { bundle } = &plan.mode else {
+            return None;
+        };
+        let manifest = read_manifest(bundle)?;
+        let release = plan.release.as_ref()?;
+        (ordinary_serve(plan, &adjacent, &manifest)
+            && release.intact(bundle)
+            && release.executable_matches(bundle, executable))
+        .then_some(())
+    };
+    check().is_some()
 }
 
 fn ordinary_serve(plan: &Plan, adjacent: &Path, manifest: &Manifest) -> bool {
