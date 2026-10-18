@@ -11,7 +11,9 @@ semantic versioning once the API is published.
   compiler-input/byte checks remain required. Release first-use on both platforms
   and changed Rustup roots remains unqualified; no release is published here.
   New projects seed the admitted bundle's dependency lock before their final
-  rename, preserving any generator-written lock.
+  rename, preserving any generator-written lock. Compiler children locate the
+  admitted bundle through the bound runtime and must match the indexed Sail
+  executable even when running under a cache alias.
   Cancelling release proof recording now reaps its owned commands and daemon
   before removing private scratch.
 

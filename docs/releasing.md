@@ -117,7 +117,10 @@ missing, old-schema, unindexed, changed or unsupported entries compile and verif
 normally. Full member admission runs for a new target; the per-run admission
 binds the exact unit bytes served and the unchanged index. Benign diagnostic
 source naming remains available for already-restored artifacts when the index
-is later removed; naming alone never authorizes proof reuse.
+is later removed; naming alone never authorizes proof reuse. Compiler children
+run under cache hardlink/copy names, so their bundle location is derived from
+the bound installed runtime, not the alias directory. The same admitted index
+and fresh running-alias bytes, mode and size must match its indexed `bin/sail`.
 The actual source/feature closure, successful current-run native records, native
 bytes, compiler SourceMap phases, solver and exact options remain bound. There
 is no self-declared qualification bit. Explicit Record, MachineLocal and alternate
@@ -264,3 +267,11 @@ gh release create engine-runtime-<short sha>-macos -R Chelis-Lang/verus --prerel
 
 If it fails, do not release macOS: Sail on macOS needs the runtime. Record
 why and keep the failure in [known issues](known-issues.md).
+
+The ordinary shipped profile is vstd's exact public `alloc/default/std` closure.
+Ordinary retained restoration remains a separate qualified Linux `alloc/std`
+profile without `default`. A shipped plan suppresses retained authority for the
+whole run, including the requested target. No combined-provider authority or
+returned-A speedup is inferred for a newly distributed proof bundle; Linux
+release acceptance must check A/B/A and the existing qualified Vest profile
+under the installed bundle's source mapping.

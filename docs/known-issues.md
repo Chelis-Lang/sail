@@ -45,9 +45,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
   stripped staging, packaging and public archive smoke pass. Changed-Rustup
   first-use is still blocked: the existing admitted-lock provider was never
   called by `sail new`, so stock correctly refused `--locked` on the generated
-  project. The candidate now wires that provider only into a new private staged
-  project; actual first-use acceptance of this correction is pending. No lock
-  is fabricated in the oracle and no empty proof bundle is created to pass.
+  project. After wiring that provider only into the new private staged project,
+  actual locked stock verification and full first-Serve comparisons pass; Serve
+  safely reverified because compiler children derived the adjacent bundle from
+  a cache alias. The runtime-root/byte-bound alias correction is prepared;
+  actual release reuse remains pending. That whole cohort also refused its
+  diagnostic body cap; original failures remain visible. No lock is fabricated
+  in the oracle and no empty proof bundle is created to pass.
 
 - **The stale solver-hash defect is fixed on main**
   ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads
