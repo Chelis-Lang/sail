@@ -84,9 +84,20 @@ Unknown comments remain byte-for-byte literal; known names and path values use
 the pinned rustc escaping for backslash, newline and carriage return. Unset and
 empty values, line order and final line endings are retained. Duplicate names,
 ambiguous mapped names, reserved-name literals and unsupported escape grammar
-refuse. Machine-local dep-info follows its original path. Old schema 10 entries
-are refused. A real file stage/restore test checks that the restored dependency
+refuse. Machine-local dep-info follows its original path. Old schemas 10 and 11
+entries are refused. A real file stage/restore test checks that the restored dependency
 file names the consumer shim rather than the recording shim.
+
+A later source audit reproduced a reserved-value collision in source `64224d1d`:
+with the same lookup key, its production stored-certificate validator accepted
+literal `@@sail-target@@/opaque` observations as changed physical consumer paths
+for `CARGO_RUSTC_CURRENT_DIR` and `OUT_DIR`. This is a source-level synthetic
+certificate regression, not a demonstrated incorrect verification. Portable
+encoding now refuses any known path value that already impersonates an encoded
+token, in both compiler observations and dep-info. Unknown values remain literal
+and machine-local mapping is unchanged. Schema 12 rejects earlier bundles.
+The frozen `64224d1d` source and all failed probe records remain unchanged; no
+whole-probe or body build was run from that source.
 
 All 39 shipped-boundary tests and workspace all-target clippy pass on Mac.
 These include production stored-certificate validation, foreign SourceMap

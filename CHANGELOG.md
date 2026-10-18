@@ -18,6 +18,8 @@ semantic versioning once the API is published.
   relocation uses exact Cargo path-variable names; unknown values stay literal
   under every prefix. Restored dep-info maps the same known environment fields,
   preserves unknown comments and refuses ambiguous or unsupported grammar.
+  Raw literals that impersonate encoded path values also refuse; older portable
+  bundle schemas cannot be restored.
 - Experimental portable vstd recording/serving also remaps freshly compiled
   registry prerequisites to the existing virtual source base. This prevents
   imported builtin definition spans from retaining the recording machine's
