@@ -1314,6 +1314,7 @@ mod tests {
             diagnostics: &[],
         });
         let invocation = crate::managed::Invocation {
+            retained_from: None,
             run_id: root
                 .file_name()
                 .and_then(|s| s.to_str())
@@ -1323,6 +1324,7 @@ mod tests {
             report,
             success: true,
             dependencies: std::collections::BTreeMap::new(),
+            dependency_build: None,
         };
         std::fs::write(
             root.join("invocations")

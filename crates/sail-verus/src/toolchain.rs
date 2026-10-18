@@ -60,6 +60,11 @@ pub struct VerusPin {
     pub commit: String,
     /// The Rust toolchain Verus itself needs.
     pub rust_toolchain: String,
+    /// The commit `rustc -vV` reports for that toolchain. It names the
+    /// toolchain's virtual rustc-dev source base, which Sail's shipped
+    /// dependency build uses (ADR 0048).
+    #[serde(default)]
+    pub rust_commit: Option<String>,
 }
 
 /// The pinned Z3.

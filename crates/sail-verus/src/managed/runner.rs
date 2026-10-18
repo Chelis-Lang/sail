@@ -74,6 +74,10 @@ struct Paths {
     /// Whether this run may reuse and record proof receipts. A run with a
     /// process-loader variable set may not (ADR 0046).
     reuse: bool,
+    /// This run's shipped-dependency plan file, when it has one (ADR 0048).
+    shipped_plan: Option<PathBuf>,
+    /// `SAIL_RUSTC_DEV_SOURCE_BASE` for Sail's Verus (ADR 0048).
+    source_base: Option<std::ffi::OsString>,
 }
 
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
@@ -408,7 +412,7 @@ fn actual_wrapper(cargo_verus: &Path) -> Result<PathBuf> {
         .map_err(|e| Error::new("SAIL3104", e.to_string()))
 }
 
-fn verifier_sysroot(wrapper: &Path, workspace: &Path) -> Result<PathBuf> {
+pub(super) fn verifier_sysroot(wrapper: &Path, workspace: &Path) -> Result<PathBuf> {
     let output = Command::new(wrapper)
         .args(["--version", "--output-json"])
         .current_dir(workspace)
@@ -578,6 +582,8 @@ fn prepare(
         family_contexts: compiler.join("contexts"),
         projects: root,
         reuse: true,
+        shipped_plan: None,
+        source_base: None,
     };
     for dir in [
         &paths.receipts,
@@ -780,6 +786,8 @@ fn invoke(
         .env("VERUS_Z3_PATH", &config.shim)
         .env("SAIL_Z3_PATH", &config.z3)
         .env("SAIL_SOLVER_MODE", "default")
+        .env_remove(super::shipped::PLAN_ENV)
+        .env_remove(super::shipped::SOURCE_BASE_ENV)
         .env_remove("SAIL_ENGINE")
         .env_remove("SAIL_ENGINE_FUNCTION")
         .env_remove("SAIL_ENGINE_EVENTS")
@@ -792,6 +800,12 @@ fn invoke(
         cmd.env("SAIL_DAEMON_SOCKET", socket);
     } else {
         cmd.env_remove("SAIL_DAEMON_SOCKET");
+    }
+    if let Some(plan) = &paths.shipped_plan {
+        cmd.env(super::shipped::PLAN_ENV, plan);
+    }
+    if let Some(base) = &paths.source_base {
+        cmd.env(super::shipped::SOURCE_BASE_ENV, base);
     }
     let mut child = cmd
         .spawn()
@@ -1075,8 +1089,11 @@ fn negative_compiler_generation(
                 _ => return Some(false),
             }
         }
+        // A call replayed from the shipped dependency build (ADR 0048) starts
+        // no verifier process.
         let mut names: Vec<_> = calls
             .values()
+            .filter(|call| call.dependency_build.is_none())
             .map(|call| call.identity.name.clone())
             .collect();
         names.sort();
@@ -1418,11 +1435,12 @@ fn target_records(
             }
             results.push(TargetResult {
                 dependency_store: None,
+                dependency_build: call.dependency_build.clone(),
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: call.run_id.clone(),
-                reused: false,
+                establishing_run: call.establishing_run().to_owned(),
+                reused: call.retained_from.is_some(),
                 requested,
                 complete: call.success && complete(&call.report),
                 report: call.report.clone(),
@@ -1506,14 +1524,15 @@ fn target_records(
                 })
         } {
             event(
-                &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.run_id}),
+                &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.establishing_run()}),
             );
             results.push(TargetResult {
                 dependency_store: store_key,
+                dependency_build: receipt.invocation.dependency_build.clone(),
                 package_id: package_id.to_owned(),
                 target: name.to_owned(),
                 kind,
-                establishing_run: receipt.invocation.run_id,
+                establishing_run: receipt.invocation.establishing_run().to_owned(),
                 reused: true,
                 requested,
                 complete: true,
@@ -1526,7 +1545,7 @@ fn target_records(
     // A failing compiler may not emit an artifact; preserve its observed target report.
     for call in calls {
         if !results.iter().any(|r| {
-            r.establishing_run == call.run_id
+            r.establishing_run == call.establishing_run()
                 && r.target.replace('-', "_") == call.identity.name
                 && r.kind.iter().any(|k| {
                     k == &call.identity.crate_type
@@ -1548,14 +1567,15 @@ fn target_records(
             });
             results.push(TargetResult {
                 dependency_store: None,
+                dependency_build: call.dependency_build.clone(),
                 package_id: package
                     .and_then(|p| p["id"].as_str())
                     .unwrap_or_default()
                     .to_owned(),
+                establishing_run: call.establishing_run().to_owned(),
+                reused: call.retained_from.is_some(),
                 target: call.identity.name,
                 kind: vec![call.identity.crate_type],
-                establishing_run: call.run_id,
-                reused: false,
                 requested,
                 complete: call.success && complete(&call.report),
                 report: call.report,
@@ -1963,6 +1983,7 @@ pub(crate) fn run_engine_held(
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<(ProjectResult, File)> {
+    let _research = super::research::selected()?;
     let mut owned = config.clone();
     owned.workspace =
         std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
@@ -2108,6 +2129,39 @@ pub(crate) fn run_engine_held(
         Vec::new()
     };
     let new_target = super::store::new_target(&paths.target);
+    // Sail's Verus names the shipped build's registry sources by this
+    // machine's registry directory, in every managed run (ADR 0048): a target
+    // or store entry may hold shipped units from an earlier run.
+    let registry = super::shipped::registry_dir(&data);
+    paths.source_base = registry
+        .as_deref()
+        .filter(|_| super::shipped::research_enabled())
+        .filter(|_| std::env::var_os(super::shipped::LOCAL_ENV).is_none())
+        .and_then(|registry| {
+            Some(super::shipped::source_base(
+                &super::shipped::virtual_base()?,
+                registry,
+            ))
+        });
+    let shipped_plan = if focused(&config.args) || engine.is_some() || !paths.reuse {
+        None
+    } else {
+        super::shipped::plan(
+            &config.cargo_verus,
+            &paths.target,
+            registry.as_deref(),
+            new_target,
+            &config.z3,
+            &config.shim,
+            &run_id,
+            &data,
+        )
+    };
+    if let Some(plan) = &shipped_plan {
+        let file = paths.run.join("shipped.json");
+        json(&file, plan)?;
+        paths.shipped_plan = Some(file);
+    }
     super::build_inputs::family::begin(
         &paths.compiler_inputs,
         &compiler_hash,
@@ -2308,6 +2362,18 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
+        retained: if !forced && !source_engine && paths.reuse {
+            super::retained::Plan::prepare(
+                &data,
+                &paths.target,
+                &expected,
+                &actual_wrapper(&config.cargo_verus)?,
+                &config.z3,
+                &run_id,
+            )
+        } else {
+            None
+        },
         attribution_logs: config.attribution_logs || engine.is_some(),
         engine,
     };
@@ -2335,6 +2401,9 @@ pub(crate) fn run_engine_held(
     };
     let mut exit = invoke(config, &paths, &mut out, err, &seeded)?;
     drop(invocation_phase);
+    if let Some(plan) = &shipped_plan {
+        super::shipped::finish_record(plan, &config.cargo_verus, &workspace_root)?;
+    }
     let records_phase = diagnostics.phase(Phase::TargetRecords);
     outside_scope |= !units_in_scope(&paths);
     // The inputs after the run: Cargo metadata again, the build-script and
@@ -2570,6 +2639,12 @@ pub(crate) fn run_engine_held(
             "Requested function/module scope is partial; whole-target reuse is disabled".to_owned(),
         );
     }
+    for target in targets.iter().filter(|t| t.dependency_build.is_some()) {
+        notes.push(format!(
+            "SAIL3132: {} replays its complete dependency proof established by {}",
+            target.package_id, target.establishing_run
+        ));
+    }
     for target in targets.iter().filter(|t| t.dependency_store.is_some()) {
         notes.push(format!(
             "SAIL3130: {} was verified by run {} in another workspace and reused from Sail's dependency store",
@@ -2639,7 +2714,7 @@ pub(crate) fn run_engine_held(
         for target in result.targets.iter().filter(|t| t.reused) {
             let Some(seed) = seeded.iter().find(|s| {
                 s.receipt.package_id == target.package_id
-                    && s.receipt.invocation.run_id == target.establishing_run
+                    && s.receipt.invocation.establishing_run() == target.establishing_run
             }) else {
                 continue;
             };
@@ -2664,6 +2739,11 @@ pub(crate) fn run_engine_held(
             }
         }
         store_dependencies(config, &paths, &store_candidates, &result, &after_data);
+        if result.exit_code == Some(0)
+            && let Some(plan) = &runtime.retained
+        {
+            let _ = plan.publish(&runtime);
+        }
     }
     publish_compiler_generation(
         &paths,
@@ -2859,6 +2939,32 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn conflicting_research_refuses_before_runner_setup()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        if std::env::var("SAIL_RESEARCH_SELECTION_EXPECTED").as_deref() == Ok("conflict") {
+            let absent = std::path::PathBuf::from("/not-a-research-fixture");
+            let config = super::Config {
+                workspace: absent.clone(),
+                cache: absent.clone(),
+                sail: absent.clone(),
+                cargo_verus: absent.clone(),
+                cargo: absent.clone(),
+                shim: absent.clone(),
+                z3: absent,
+                socket: None,
+                args: Vec::new(),
+                force: false,
+                attribution_logs: false,
+            };
+            let error = super::run_engine_held(&config, None, &mut Vec::new(), None)
+                .err()
+                .ok_or("expected refusal")?;
+            assert_eq!(error.code, "SAIL3135");
+        }
+        Ok(())
+    }
+
     use super::*;
 
     /// Colour is requested only on a terminal, and never over the user's
@@ -3220,6 +3326,7 @@ mod tests {
             context: "selected".to_owned(),
             input_revision: target_revision(data, "input"),
             invocation: Invocation {
+                retained_from: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: PathBuf::from(
                         data["packages"][0]["manifest_path"]
@@ -3234,6 +3341,7 @@ mod tests {
                 report,
                 success: true,
                 dependencies: BTreeMap::new(),
+                dependency_build: None,
             },
             artifact_hashes: artifact_hashes(&[artifact.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),
@@ -4119,6 +4227,96 @@ mod tests {
     }
 
     #[test]
+    fn shipped_proof_origin_survives_receipt_and_store_reuse()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-shipped-origin-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
+        let data = serde_json::json!({"workspace_root":root,
+            "sail_cache_directory":config.cache, "target_directory":paths.target,
+            "workspace_members":[], "resolve":{"nodes":[{"id":"input","dependencies":[]}]},
+            "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
+                "source":"registry+https://github.com/rust-lang/crates.io-index",
+                "metadata":{"verus":{"verify":true}},
+                "targets":[{"name":"input","kind":["lib"],"src_path":root.join("lib.rs")}]}]});
+        std::fs::create_dir_all(&paths.target)?;
+        let artifact = paths.target.join("input.rlib");
+        std::fs::write(&artifact, "shipped artifact")?;
+        let artifact_record = |fresh| {
+            serde_json::json!({
+                "reason":"compiler-artifact", "package_id":"input", "fresh":fresh,
+                "target":{"name":"input","kind":["lib"]}, "filenames":[artifact]
+            })
+        };
+        json(&paths.run.join("artifacts.jsonl"), &artifact_record(false))?;
+        let mut call = compiler_receipt(&paths, &data, &artifact).invocation;
+        call.dependency_build = Some(sail_api::project::DependencyBuildOrigin {
+            kind: sail_api::project::DependencyBuildKind::Release,
+            identity: "build/entry".to_owned(),
+            establishing_run: "shipped:build/entry".to_owned(),
+        });
+        let invocation = paths.run.join("invocations/call.json");
+        json(&invocation, &call)?;
+        let empty = BTreeSet::new();
+        let (first, missing) = target_records(&paths, &data, "selected", false, &empty, &[])?;
+        assert_eq!(missing, BTreeSet::<String>::new());
+        assert_eq!(first.len(), 1);
+        assert!(!first[0].reused);
+        assert_eq!(first[0].establishing_run, "shipped:build/entry");
+        assert_eq!(first[0].dependency_build, call.dependency_build);
+        super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+        std::fs::remove_file(invocation)?;
+        json(&paths.run.join("artifacts.jsonl"), &artifact_record(true))?;
+        let (reused, missing) = target_records(&paths, &data, "selected", false, &empty, &[])?;
+        assert_eq!(missing, BTreeSet::<String>::new());
+        assert_eq!(reused.len(), 1);
+        assert!(reused[0].reused);
+        assert_eq!(reused[0].establishing_run, first[0].establishing_run);
+        assert_eq!(reused[0].dependency_build, first[0].dependency_build);
+        let path = receipt_path(&paths, "input", "input", &["lib".to_owned()]);
+        let receipt: Receipt = read(&path).ok_or("missing receipt")?;
+        assert_eq!(receipt.invocation.run_id, "run");
+        assert!(receipt.valid("selected"));
+        std::fs::remove_file(&path)?;
+        let seeds = [super::super::store::Seeded {
+            key: "store-key".into(),
+            receipt,
+            placed: true,
+            shown_stdout: Vec::new(),
+        }];
+        let (stored, missing) = target_records(&paths, &data, "other", false, &empty, &seeds)?;
+        assert_eq!(missing, BTreeSet::<String>::new());
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].dependency_store.as_deref(), Some("store-key"));
+        assert_eq!(stored[0].establishing_run, first[0].establishing_run);
+        assert_eq!(stored[0].dependency_build, first[0].dependency_build);
+        assert_eq!(
+            seeds[0].receipt.invocation.establishing_run(),
+            stored[0].establishing_run
+        );
+        super::super::receipts::adopt(
+            &paths.run,
+            &paths.receipts,
+            path.file_name().ok_or("receipt name")?,
+            "other",
+            target_revision(&data, "input"),
+            seeds[0].receipt.clone(),
+        )?;
+        let (adopted, _) = target_records(&paths, &data, "other", false, &empty, &[])?;
+        assert_eq!(adopted.len(), 1);
+        assert_eq!(adopted[0].establishing_run, first[0].establishing_run);
+        assert_eq!(adopted[0].dependency_build, first[0].dependency_build);
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn runtime_identity_compares_stats_of_installed_files_and_bytes_of_configuration()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-runtime-stat-{}", std::process::id()));
@@ -4264,6 +4462,7 @@ mod tests {
             context: "context".to_owned(),
             input_revision: target_revision(&data, "vstd"),
             invocation: Invocation {
+                retained_from: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: dependency.join("Cargo.toml"),
                     name: "vstd".to_owned(),
@@ -4274,6 +4473,7 @@ mod tests {
                 report: crate::report::setup_failure(&[], "SAIL3100", "fixture"),
                 success: true,
                 dependencies: BTreeMap::new(),
+                dependency_build: None,
             },
             artifact_hashes: BTreeMap::new(),
             committed: run.join("committed.json"),

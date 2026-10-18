@@ -98,6 +98,27 @@ pub enum Currentness {
     Unknown,
 }
 
+/// Where a compiler-boundary dependency proof was established.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DependencyBuildKind {
+    /// A verified dependency packaged with a release.
+    Release,
+    /// An earlier full verification on this machine, after fresh native compilation.
+    MachineLocal,
+}
+
+/// Provenance retained when a dependency invocation replays a complete proof.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DependencyBuildOrigin {
+    /// Scope of the dependency build.
+    pub kind: DependencyBuildKind,
+    /// Runtime identity and exact compiler-boundary entry key.
+    pub identity: String,
+    /// Invocation which actually established the proof, rather than its replay.
+    pub establishing_run: String,
+}
+
 /// One Cargo target's proof report, with an explicit establishing invocation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TargetResult {
@@ -107,7 +128,9 @@ pub struct TargetResult {
     pub target: String,
     /// Target kind (`lib`, `bin`, and so on).
     pub kind: Vec<String>,
-    /// Invocation which actually established the embedded report.
+    /// Invocation which actually established the embedded report. A shipped
+    /// proof uses the nonlocal namespace `shipped:<build identity>/<entry key>`;
+    /// it does not name a local replay run.
     pub establishing_run: String,
     /// True when Cargo's fresh artifact and its complete proof receipt matched.
     pub reused: bool,
@@ -126,6 +149,10 @@ pub struct TargetResult {
     /// workspace, that verified it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dependency_store: Option<String>,
+    /// Origin of a replayed dependency proof (ADR 0048), preserved through
+    /// later receipt reuse. Native prerequisites execute before boundary lookup.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dependency_build: Option<DependencyBuildOrigin>,
 }
 
 /// Current invocation's execution counters.
