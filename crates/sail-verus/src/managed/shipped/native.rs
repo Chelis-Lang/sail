@@ -897,6 +897,7 @@ mod tests {
             target: root.clone(),
             virtual_base: String::new(),
             solver_sha256: "solver".into(),
+            solver_adapter: None,
             run_id: "current-run".into(),
             closure: None,
             native_records: root.clone(),

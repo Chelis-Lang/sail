@@ -11,6 +11,10 @@ semantic versioning once the API is published.
 
 - Experimental vstd reuse: compile admitted macOS proc macros with a stable,
   explicitly keyed install name; native artifact comparisons remain exact.
+- Experimental portable vstd proof reuse binds the actual solver-adapter bytes
+  and relocates only its configured pathname and exact Cargo-Verus package
+  environment names. Unknown observations remain literal and collisions refuse;
+  portable first-use and default selection remain unqualified.
 - Experimental portable vstd recording/serving also remaps freshly compiled
   registry prerequisites to the existing virtual source base. This prevents
   imported builtin definition spans from retaining the recording machine's

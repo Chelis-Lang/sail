@@ -370,3 +370,10 @@ The two compiler-reuse research switches are mutually exclusive. Setting both
 returns `SAIL3135` before compiler setup; unset either switch. Their
 [source integration](validation/proof-reuse-integration.md) is not native-qualified
 and preserves each experiment's separate source authority and remaining gates.
+
+Experimental portable vstd bundles also bind the configured solver-adapter bytes
+and the exact Cargo-Verus package environment identity. Moving identical
+installed binaries is distinct from selecting a different adapter; changed,
+unknown or ambiguous observations safely run the compiler. Old bundle schemas
+are refused. Portable first-use remains unqualified; see the
+[vstd boundary limits](validation/vstd-compile-boundary.md).
