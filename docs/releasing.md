@@ -1,11 +1,15 @@
 # Releasing Sail
 
-The compiler-source portability successor is source-only. Its portable native
+The compiler-source portability candidate has passing actual Mac staged
+first-use components; native Linux qualification and fresh-machine performance
+remain pending. Its portable native
 path requires the pinned verifier toolchain's canonical `lib/rustlib/src/rust`
 tree; a missing, aliased or changed tree declines proof reuse and runs genuine
 verification. The candidate binds every source byte and the exact compiler
-remap option. It must still pass literal native panic/backtrace diagnostics and
-real staged first use before release selection. It does not change the
+remap option. Earlier native panic/backtrace controls retain their recorded
+source scope. The current [qualification record](validation/vstd-compile-boundary.md)
+distinguishes those controls, composed Mac acceptance and remaining release
+gates. The candidate does not change the
 machine-local research mode or permit user-supplied compiler remap flags.
 
 Sail ships prebuilt binaries for Linux and macOS as GitHub release assets on
@@ -92,10 +96,11 @@ packaging/test prerequisite, not a dependency of the installed Sail binaries.
 The candidate release stage additionally records one complete vstd proof with
 its final stripped Sail/shim binaries and installs it under `deps/<variant>`.
 `release-files.json` binds every regular file and directory mode, including the
-proof bundle. This source implementation is not yet a qualified release: actual
-staged first-use on both platforms and at different Rustup roots remains pending.
-The existing machine-local and changed-Cargo-home results do not establish that
-fresh-machine boundary.
+proof bundle. Actual Mac staged first-use components pass at different physical
+Rustup/sysroot roots. The candidate is not yet a qualified release: Linux
+producer/clean-consumer acceptance and measured fresh-machine installation cost
+remain pending. A changed-root test does not establish that fresh-machine
+boundary.
 
 The record recipe is `scripts/shipped-deps`: exact vstd version, canonical
 Cargo-produced lock, one requested proof. `scripts/release-shipped.py record`

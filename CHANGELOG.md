@@ -26,8 +26,8 @@ semantic versioning once the API is published.
   data shows no gain: changed-B median is 0.99% slower and unchanged timings
   overlap; no CPU gain is claimed. Both earlier Vest capture failures remain
   recorded. Joined Mac and full native qualification, including all four FAST
-  and STANDARD arms, final guards and complete capture, pass; the delivery head
-  still requires its own CI. See [output](docs/validation/managed-output-order.md)
+  and STANDARD arms, final guards and complete capture, pass; PR #226 is merged
+  after delivery CI and review passed. See [output](docs/validation/managed-output-order.md)
   and [scheduling](docs/validation/unscheduled-script-cleaning.md) records.
 - Require the complete pinned Rust-source component for candidate proof-bundle
   recording and smoke tests, and require actual indexed release-proof origin
@@ -67,8 +67,10 @@ semantic versioning once the API is published.
 - Add an explicit compiler-boundary vstd research path that compiles native
   prerequisites freshly and binds actual compiler inputs and private dependency
   graphs (#161). Same-host Linux and Mac moved-root Record/Serve/unchanged
-  functionality passes with full stock verdict/diagnostic checks. Distributed
-  release packaging and default fresh-machine first use remain pending;
+  functionality passes with full stock verdict/diagnostic checks. Candidate
+  release packaging and actual Mac first-use components now pass with the
+  indexed proof origin at changed physical Rustup/sysroot roots. Linux clean
+  consumer acceptance and default fresh-machine performance remain pending;
   the old native-artifact store remains quarantined. See the
   [research limits](docs/validation/vstd-compile-boundary.md).
 

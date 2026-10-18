@@ -151,7 +151,7 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | Performance-claims page backed by reproducible `sail-bench` runs on Linux and macOS | Done (#105, [performance](performance.md)) |
 | Disk cleanup for managed targets (review B3) | Done (#97) |
 | One `sail verify`: managed verification by default, pass-through removed ([ADR 0046](decisions/0046-managed-verification-by-default.md)) | Implemented; required gates and the standard tier pass on Linux; awaiting review |
-| Managed stdout completion and relevant script facts (#215, #174) | Qualified: Mac759/Clippy; Linux gate/solver/all9E2E+extra/PR/full FAST and STANDARD, final guards and complete capture pass. Current affected fixture 0.896 → 0.174 s (5.14×); Vest has no gain (B +0.99%). Delivery CI/review pending ([output](validation/managed-output-order.md), [scheduling](validation/unscheduled-script-cleaning.md)) |
+| Managed stdout completion and relevant script facts (#215, #174) | Merged in #226 after review and required CI: Mac759/Clippy; Linux gate/solver/all9E2E+extra/PR/full FAST and STANDARD, final guards and complete capture pass. Current affected fixture 0.896 → 0.174 s (5.14×); Vest has no gain (B +0.99%) ([output](validation/managed-output-order.md), [scheduling](validation/unscheduled-script-cleaning.md)) |
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
 | `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Implemented ([#148](https://github.com/Chelis-Lang/sail/issues/148)): `sail new` runs Sail's Verus's `cargo verus new`; e2e checks it matches stock and verifies. Clean-install acceptance follows the managed-by-default and pre-verified vstd work |
 | Output schema v2: establishment and evidence-tier axes (question 22) | Implemented ([#149](https://github.com/Chelis-Lang/sail/issues/149), ADR 0044): `establishment`, `evidence_tier` and ITF counterexample values in `--output json`, the project envelope and MCP; gate, solver, e2e and PR conformance pass on native Linux; macOS host checks pass |
@@ -299,11 +299,14 @@ oyster and such." This supersedes the parallel tracks of
       research passes same-host Linux and Mac changed Cargo/project/install-root
       checks with Current/1,872 functions and full stock comparisons. Candidate
       release recording, complete member validation and adjacent-bundle serving
-      are implemented. The guarded Mac changed-Rustup component passes actual
-      Record/Serve/unchanged and both negative diagnostics; its full native matrix
-      remains FAIL at an invalid panic prerequisite. A separate native-only
-      successor passes all twelve strict consumer pairs. Staged first use on both
-      platforms and fresh-machine performance remain pending. Earlier results retain their source scope;
+      are implemented. Composed Mac evidence passes actual staged smoke and
+      public first Serve with the indexed release origin at changed physical
+      Rustup/sysroot roots, full stock comparisons and unchanged/failing controls.
+      A separate native-only component passes fresh compiler-record and
+      same-path compiler-replacement checks. Six enclosing failures remain
+      failed; components are audited separately. Linux qualification, distinct
+      producer/clean-consumer acceptance and fresh-machine performance remain
+      pending. Earlier native ABI results retain their source scope;
       v1 stays quarantined
       ([record](validation/vstd-compile-boundary.md)).
    4. Remaining managed overhead against the removed pass-through, #156:
