@@ -2,8 +2,8 @@
 
 Status: final source `83128ad0` passes the native ordinary-selection, bundled
 Vest A → B → A and complete default gates with the selected `e5365c05` runtime.
-The delivery composition preserves its executed Rust/Cargo bytes and is merged
-through #224 with all required CI checks green. Ordinary eligibility is the exact Linux/public alloc/std
+The delivery composition preserves its executed Rust/Cargo bytes. PR #224
+merged as `3892881a`; all required checks and the main workflow pass. Ordinary eligibility is the exact Linux/public alloc/std
 profile, not every project or platform. [Paired qualification](proof-reuse-integration.md)
 separates the current source from earlier component results.
 
