@@ -154,7 +154,10 @@ impl Closure {
                 .collect::<Option<BTreeMap<_, _>>>()?;
             Authority::from_graph(&packages, &nodes)
         };
-        matches!(authority(), Some(Authority::PublicRegistryVest))
+        matches!(
+            authority(),
+            Some(Authority::PublicRegistry | Authority::PublicRegistryVest)
+        )
     }
 
     /// Initial scope is a verified workspace library with exactly the pinned
@@ -350,6 +353,24 @@ impl Closure {
     }
 }
 
+#[cfg(test)]
+pub(super) fn native_test_fixture(root: &Path) -> Option<(Closure, PathBuf, String, u64)> {
+    let authority = Authority::PublicRegistry;
+    let policy = authority.policy()?;
+    let key = "convert_case-0.4.0";
+    let source = policy.packages.get(key)?.compiler_files.get("src/lib.rs")?;
+    let directory = root.join(key);
+    Some((
+        Closure {
+            authority,
+            directories: BTreeMap::from([(key.to_owned(), directory.clone())]),
+        },
+        directory.join("src/lib.rs"),
+        source.checksum.clone(),
+        source.size,
+    ))
+}
+
 /// Cargo emits one exact spelling. Rust also accepts whitespace and raw
 /// identifiers; silently ignoring those would admit an unapproved feature.
 fn actual_features(args: &[OsString]) -> Option<BTreeSet<String>> {
@@ -505,7 +526,7 @@ mod tests {
             (
                 Value::from("registry+https://github.com/rust-lang/crates.io-index"),
                 serde_json::json!(["alloc", "default", "std"]),
-                false,
+                true,
             ),
             (Value::Null, serde_json::json!(["alloc", "std"]), false),
             (

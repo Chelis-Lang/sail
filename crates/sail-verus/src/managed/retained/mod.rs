@@ -14,7 +14,10 @@ mod native;
 mod producers;
 mod selection;
 pub(crate) use driver::Plan;
+#[cfg(test)]
+pub(crate) use driver::actual_late_guard;
 pub(crate) use producers::Native;
+pub(crate) use producers::{publish_shipped, publish_shipped_native};
 
 /// Resolve lexical dot components only. Never reopen a path to manufacture
 /// consumed-byte evidence; compiler checksums provide that separate authority.

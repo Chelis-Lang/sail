@@ -507,6 +507,46 @@ mod tests {
     }
 
     #[test]
+    fn retained_release_witness_rechecks_unit_output_and_index() -> Result {
+        let fixture = Installation::new()?;
+        let plan = fixture.child_plan().ok_or("admitted plan")?;
+        std::fs::create_dir_all(&plan.target)?;
+        let output = plan.target.join("libvstd.rmeta");
+        std::fs::write(&output, b"metadata")?;
+        let body = dependency_snapshot::read_content(&output, 1024).ok_or("body")?;
+        let document = fixture.bundle.join("units").join(KEY).join("unit.json");
+        let raw = std::fs::read(&document)?;
+        let proof = super::super::RetainedProof {
+            plan,
+            key: KEY.into(),
+            unit_sha256: digest(&raw),
+            outputs: BTreeMap::from([(output.clone(), body.clone())]),
+        };
+        // Storage integrity only: this fixture has no compiler/source/native
+        // authority and deliberately cannot authorize a retained proof.
+        assert!(proof.release_output_intact(&output, &body));
+        assert!(!proof.intact(&output, &body));
+        assert!(proof.for_run("run", "compiler", &fixture.root.join("target")));
+        assert!(!proof.for_run("other", "compiler", &fixture.root.join("target")));
+        assert!(!proof.for_run("run", "foreign", &fixture.root.join("target")));
+        assert!(!proof.for_run("run", "compiler", &fixture.root.join("other")));
+        std::fs::write(&output, b"metadatz")?;
+        assert!(!proof.release_output_intact(&output, &body));
+        std::fs::write(&output, b"metadata")?;
+        let foreign = fixture.root.join("libvstd.rmeta");
+        std::fs::write(&foreign, b"metadata")?;
+        assert!(!proof.release_output_intact(&foreign, &body));
+        std::fs::write(&document, [raw.as_slice(), b" "].concat())?;
+        assert!(!proof.release_output_intact(&output, &body));
+        std::fs::write(&document, raw)?;
+        assert!(proof.release_output_intact(&output, &body));
+        let index = fixture.root.join(INDEX);
+        std::fs::write(&index, b"changed index")?;
+        assert!(!proof.release_output_intact(&output, &body));
+        Ok(())
+    }
+
+    #[test]
     fn only_indexed_complete_installation_is_admitted() -> Result {
         let fixture = Installation::new()?;
         let accepted = fixture.admit().ok_or("positive admission")?;

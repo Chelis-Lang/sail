@@ -39,6 +39,9 @@ fn save_output(base: &Path, label: &str, output: &Output) -> Result<(), Failure>
 fn actual_native_admission_child() -> Result<(), Failure> {
     let config: serde_json::Value =
         serde_json::from_slice(&std::fs::read(required("SAIL_ACTUAL_ADMISSION_CONFIG")?)?)?;
+    if config["case"] == "retained-late-guard" {
+        return crate::managed::retained::actual_late_guard(&config);
+    }
     let path = |name: &str| -> Result<PathBuf, Failure> {
         config[name]
             .as_str()
