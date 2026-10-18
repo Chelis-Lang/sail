@@ -430,6 +430,7 @@ fn unbound_project(
         Ok((report, status)) => {
             let error = report.error.clone();
             let target = TargetResult {
+                dependency_build: None,
                 package_id: String::new(),
                 target: PLAIN_TARGET.to_owned(),
                 kind: Vec::new(),

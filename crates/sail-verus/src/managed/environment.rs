@@ -36,6 +36,10 @@ const OBSERVATION_ONLY: &[&str] = &[
     // Whether and how much the dependency store keeps (ADR 0045); it never
     // changes what Cargo or the verifier produce.
     "SAIL_DEPENDENCY_STORE_ENTRIES",
+    // Where Sail's shipped dependency build is (ADR 0048); a served
+    // invocation produces exactly what compiling it produces.
+    "SAIL_SHIPPED_DEPS",
+    "SAIL_SHIPPED_TRACE",
 ];
 
 /// Families the pinned tools read, by prefix. Sources:

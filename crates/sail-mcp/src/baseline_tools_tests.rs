@@ -22,6 +22,7 @@ fn baseline(name: &str) -> Baseline {
             exit_code: Some(1),
             targets: vec![TargetResult {
                 dependency_store: None,
+                dependency_build: None,
                 package_id: "demo@1".into(),
                 target: "demo".into(),
                 kind: vec!["lib".into()],

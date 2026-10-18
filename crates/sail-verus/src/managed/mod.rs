@@ -3,6 +3,7 @@
 mod absent;
 mod build_inputs;
 mod configuration;
+mod dependency_snapshot;
 mod diagnostics;
 mod environment;
 mod files;
@@ -11,7 +12,14 @@ mod input;
 pub mod projects;
 mod read_check;
 mod receipts;
+pub(crate) mod research;
+#[expect(
+    dead_code,
+    reason = "ADR 0050's content-bound successor is source-only until its two-phase compiler admission and real Vest ABA gate qualify."
+)]
+pub(crate) mod retained;
 mod runner;
+pub(crate) mod shipped;
 mod source_inputs;
 mod store;
 
@@ -21,6 +29,7 @@ pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
 pub use runner::{Config, refresh_context, refresh_result, run, run_showing_output};
 pub(crate) use runner::{run_engine, run_engine_held};
+pub use shipped::new_project_lockfile;
 
 pub(crate) use receipts::complete as receipt_complete;
 

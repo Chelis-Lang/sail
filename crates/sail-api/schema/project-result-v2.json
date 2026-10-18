@@ -128,7 +128,10 @@
         "object",
         "null"
       ],
-      "required": ["code", "message"],
+      "required": [
+        "code",
+        "message"
+      ],
       "properties": {
         "code": {
           "type": "string",
@@ -161,6 +164,7 @@
           "type": "string"
         },
         "establishing_run": {
+          "description": "Proof-establishing invocation; shipped:<build identity>/<entry key> names a nonlocal shipped proof, never its local replay run",
           "type": "string"
         },
         "kind": {
@@ -184,6 +188,29 @@
         },
         "report": {
           "$ref": "verify-output-v2.json"
+        },
+        "dependency_build": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "identity",
+            "establishing_run"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "release",
+                "machine-local"
+              ]
+            },
+            "identity": {
+              "type": "string"
+            },
+            "establishing_run": {
+              "type": "string"
+            }
+          }
         }
       }
     }

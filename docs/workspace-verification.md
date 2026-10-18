@@ -346,3 +346,43 @@ same results. An explicit `SAIL_DAEMON_SOCKET` is used as given, so keep it
 short.
 An explicitly selected older cache daemon can keep running: Sail starts a
 private jobs-only sidecar alongside it instead of terminating it.
+
+## Instant revert and research scope
+
+Ordinary `sail verify` can restore a previously verified revision after an
+A → B → A edit on the exact qualified Linux/public alloc/std dependency profile.
+The original establishing run remains visible; fresh complete input, runtime,
+compiler-certificate and Current checks are still required. Other resolutions,
+platforms and unsupported contexts compile normally. `SAIL_MANAGED_FORCE=1`
+keeps verification fresh. See the [guide](instant-revert.md) and
+[ADR 0050](decisions/0050-retained-proofs-instant-revert.md).
+
+`SAIL_RETAINED_CONTENT_RESEARCH=1` explicitly enables the other separately
+closed provider profiles. It still requires actual source-observer documents
+and never treats missing or unsupported evidence as reusable. Failed placement
+rollback refuses with `SAIL3134`. Scoped native qualifications, the 13.45% Vest
+cycle gain and increased cold/edit/unchanged and storage costs are in the
+[validation record](validation/instant-revert.md).
+
+The experimental retained arena refuses new admission at 8 GiB of file data or
+65,536 entries, including failed writes and lifetime markers. It preserves
+potentially live compiler generations and falls back to compilation on fullness
+or unsupported inventory. Existing graph reuse can also refuse near capacity
+because admission conservatively reserves a full graph. These limits cover the
+retained arena, not ordinary managed-run sidecars or every Sail cache. The
+complete native cycle includes the scan and storage costs for its stated scope.
+
+The two compiler-reuse research switches are mutually exclusive. Setting both
+`SAIL_VSTD_BOUNDARY_RESEARCH=1` and `SAIL_RETAINED_CONTENT_RESEARCH=1`
+returns `SAIL3135` before compiler setup; unset either switch. Their
+[source integration](validation/proof-reuse-integration.md) passes final-source
+default gates and preserves each experiment's separate source authority and
+remaining release limits.
+
+Experimental portable vstd bundles also bind the configured solver-adapter bytes
+and the exact Cargo-Verus package environment identity. Moving identical
+installed binaries is distinct from selecting a different adapter; changed,
+unknown or ambiguous observations safely run the compiler. Old bundle schemas
+are refused. Same-host changed-root portable functionality passes; distributed
+release/default fresh-machine first use remains pending. See the
+[vstd boundary limits](validation/vstd-compile-boundary.md).

@@ -23,6 +23,9 @@ pub(crate) struct Runtime {
     pub packages: BTreeMap<PathBuf, String>,
     pub target_kinds: BTreeMap<PathBuf, BTreeMap<String, Vec<String>>>,
     pub engine: Option<crate::engine::Request>,
+    /// Per-run content-restoration plan admitted by the managed caller.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retained: Option<super::retained::Plan>,
     /// Whether the driver asks Verus for attribution logs ([`super::Config`]'s
     /// `attribution_logs`; always for an interactive-engine run).
     #[serde(default)]
@@ -45,11 +48,30 @@ impl TargetIdentity {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Invocation {
+    /// Original proof run for the named same-workspace content experiment.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retained_from: Option<String>,
     pub identity: TargetIdentity,
     pub run_id: String,
     pub report: Report,
     pub success: bool,
     pub dependencies: BTreeMap<PathBuf, String>,
+    /// Original proof provenance for compiler-boundary dependency replay.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dependency_build: Option<sail_api::project::DependencyBuildOrigin>,
+}
+
+impl Invocation {
+    /// Original proof provenance; the local invocation run remains separately sealed.
+    pub(crate) fn establishing_run(&self) -> &str {
+        self.retained_from.as_deref().unwrap_or_else(|| {
+            self.dependency_build
+                .as_ref()
+                .map_or(self.run_id.as_str(), |origin| {
+                    origin.establishing_run.as_str()
+                })
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -331,6 +353,7 @@ mod tests {
             context: "ctx".to_owned(),
             input_revision: "inputs".to_owned(),
             invocation: Invocation {
+                retained_from: None,
                 identity: TargetIdentity {
                     manifest: PathBuf::from("Cargo.toml"),
                     name: "input".to_owned(),
@@ -341,6 +364,7 @@ mod tests {
                 report,
                 success: true,
                 dependencies: BTreeMap::new(),
+                dependency_build: None,
             },
             artifact_hashes: artifact_hashes(&[path.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),

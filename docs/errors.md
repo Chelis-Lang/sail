@@ -154,6 +154,9 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3124` | A target needs a Verus feature the engine is built without (for example `singular` for `by(integer_ring)`); it was verified by the configured stock Verus and accepts no repair | Use the stock result, or stock `sail verify`; see [Verus features the engine lacks](proof-repair.md#verus-features-the-engine-lacks) |
 | `SAIL3130` | Note: a dependency (such as vstd) was verified by a run in another workspace and placed in this new project from Sail's [dependency store](decisions/0045-dependency-store.md) | None; plain Cargo-Verus would have verified it in this run, and its recorded report is the one shown |
 | `SAIL3131` | Warning: a dependency store entry is damaged (its checksums or digests fail), so it was ignored | None; the dependency is verified normally. Delete `<cache>/dependency-store/` if the warning repeats |
+| `SAIL3132` | Research note: a complete dependency proof was replayed at the vstd compiler boundary, with its original establishing invocation | The unselected [compiler-boundary experiment](validation/vstd-compile-boundary.md) records whether the proof was established locally or in a release build; this does not enable the quarantined native-artifact store |
+| `SAIL3134` | Research dependency recording is incomplete, or checked restoration could not remove a partial output | Read the specific message. Incomplete recordings are unusable; a partial-restoration cleanup failure requires a fresh owned target |
+| `SAIL3135` | Both compiler-reuse research switches are enabled; this combination is unsupported and refused before setup or child execution | Unset either `SAIL_VSTD_BOUNDARY_RESEARCH` or `SAIL_RETAINED_CONTENT_RESEARCH`; see the [integration limits](validation/proof-reuse-integration.md) |
 
 ## Portfolio and solver libraries
 
@@ -187,3 +190,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | Code | Meaning | What to do |
 |---|---|---|
 | `SAIL9001` | `scripts/perf-host.sh down` could not verify termination or complete resource cleanup; recorded lane files are retained | Read the AWS error, refresh authentication or permissions as needed, then retry the same `down LANE`. A successful waiter must also be followed by a confirmed terminated/absent instance before resource deletion |
+
+`SAIL3134`: the disabled retained-content experiment could not remove a
+partially restored output. The attempt refuses; do not treat it as a cache miss
+or reuse a receipt. A fresh owned target is required before retrying.

@@ -12,7 +12,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   18 retained Sail rows used non-JSON `sail verify` with `--verify-module`,
   which intentionally refuses partial verification. The benchmark correction
   uses the supported public JSON route and records unavailable stage timings
-  explicitly. The current candidate now passes the focused Anvil stock comparison;
+  explicitly. The selected runtime passes the focused Anvil stock comparison;
   three-run FAST determinism, all four DEEP modes and final guards also pass. The original failed
   rows remain indexed in the [entrypoint record](validation/perf-real-partial.md).
 
@@ -23,8 +23,23 @@ are in the `archive/m7-contracts-f7103bf` tag.
   final audit accounts for all extras without changing the original failed
   cohort. The later focused Anvil stock comparison and three-run FAST
   determinism, all four DEEP modes and final guards pass. The matching runtime
-  pins are qualified; required PR checks gate their merge. See the
+  pins are selected on main through merged #223, with all required CI checks green. See the
   [qualification record](validation/spec-parameter-names.md).
+
+- **Instant revert has a narrow qualified profile and visible costs.** Final
+  source `83128ad0` passes 72 fresh ordinary calls, genuine bundled Vest ABA and
+  complete native default gates. It admits only the exact Linux/public alloc/std
+  profile. Vest's complete cycle improves 13.45% against earlier Sail, but cold,
+  changed and unchanged costs rise and final cache grows about 519 MB. The small
+  control remains fresh and essentially unchanged. The earlier whole 72-call
+  failure stays failed; see the [record](validation/instant-revert.md).
+
+- **Portable vstd functionality is not release first-use acceptance (#161).**
+  Same-host Linux and Mac changed-root Record/Serve/unchanged components pass;
+  the Mac enclosing diagnostic-capture failure stays visible. Distributed
+  packaging, another machine, changed Rustup roots and default fresh-project
+  first use remain pending. The v1 store stays quarantined. See the
+  [compiler-boundary record](validation/vstd-compile-boundary.md).
 
 - **The stale solver-hash defect is fixed on main**
   ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads

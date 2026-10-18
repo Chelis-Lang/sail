@@ -196,6 +196,14 @@ fn cargo_driver_options(id: &str) -> Result<DriverOptions> {
     })
 }
 
+/// Exact effective per-package Verus tokens, using the shipped decoder.
+/// Experimental reuse declines an invalid decoder result instead of guessing.
+pub(crate) fn effective_verus_arguments() -> Option<Vec<String>> {
+    cargo_driver_options(&cargo_package_id()?)
+        .ok()
+        .map(|options| options.arguments)
+}
+
 struct DriverOptions {
     arguments: Vec<String>,
     environment: std::collections::BTreeMap<String, String>,
@@ -349,20 +357,90 @@ fn custom_compiler_context(args: &[OsString]) -> bool {
     })
 }
 
+// The runner serializes its admitted plan before applying managed child
+// environment overrides. Do not synthesize a public research switch here:
+// the outer caller's absence is part of the archive restore contract.
+fn retained_runtime(mode: crate::managed::research::Mode) -> Option<Runtime> {
+    if mode == crate::managed::research::Mode::VstdBoundary {
+        return None;
+    }
+    let path = std::env::var_os("SAIL_MANAGED_RUNTIME")?;
+    let runtime: Runtime = serde_json::from_slice(&std::fs::read(path).ok()?).ok()?;
+    runtime.retained.as_ref()?;
+    Some(runtime)
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "Engine fallback is kept alongside the owned subprocess drain and seal check."
 )]
 fn driver() -> Result<ExitCode> {
+    let research = crate::managed::research::selected()?;
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
+    // Native prerequisites always execute through Cargo's real compiler. The
+    // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
-        return Command::new(wrapper)
-            .args(args)
-            .status()
-            .map(status)
-            .map_err(|e| Error::new("SAIL3111", e.to_string()));
+        let runtime = retained_runtime(research);
+        if research == crate::managed::research::Mode::Off && runtime.is_none() {
+            return Command::new(wrapper)
+                .args(args)
+                .status()
+                .map(status)
+                .map_err(|e| Error::new("SAIL3111", e.to_string()));
+        }
+        let plan = (research == crate::managed::research::Mode::VstdBoundary)
+            .then(crate::managed::shipped::active)
+            .flatten();
+        let mut observation = plan
+            .as_ref()
+            .and_then(|plan| crate::managed::shipped::native::Observation::begin(plan, &args));
+        let mut retained = runtime
+            .as_ref()
+            .and_then(|runtime| crate::managed::retained::Native::begin(runtime, &args, &wrapper));
+        let mut command = Command::new(&wrapper);
+        let native_args = if let Some(call) = &observation {
+            call.arguments()
+        } else if let Some(attempt) = &retained {
+            attempt.arguments()
+        } else {
+            args.as_slice()
+        };
+        command.args(native_args);
+        if let Some(call) = &observation {
+            call.configure(&mut command);
+        }
+        if let Some(attempt) = &retained {
+            attempt.configure(&mut command);
+        }
+        let mut child = command
+            .spawn()
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        if let Some(call) = &mut observation {
+            call.started(child.id());
+        }
+        if let Some(attempt) = &mut retained {
+            attempt.started(child.id());
+        }
+        let actual = child
+            .wait()
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        if actual.success()
+            && let Some(observation) = observation
+        {
+            observation.complete();
+        }
+        if let Some(attempt) = &retained {
+            let _ = attempt.finish(actual.success());
+        }
+        return Ok(status(actual));
     }
+    let plan = (research == crate::managed::research::Mode::VstdBoundary)
+        .then(crate::managed::shipped::active)
+        .flatten();
+    let mut call = plan.as_ref().and_then(|plan| {
+        crate::managed::shipped::Call::vstd_boundary(plan, &args, std::env::vars_os())
+    });
     if custom_compiler_context(&args) {
         return Err(Error::new(
             "SAIL3111",
@@ -374,17 +452,10 @@ fn driver() -> Result<ExitCode> {
         &std::fs::read(runtime_path).map_err(|e| Error::new("SAIL3111", e.to_string()))?,
     )
     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let identity = TargetIdentity {
-        manifest: PathBuf::from(required("CARGO_MANIFEST_DIR")?).join("Cargo.toml"),
-        name: argument(&args, "--crate-name").unwrap_or_default(),
-        crate_type: argument(&args, "--crate-type").unwrap_or_default(),
-        rustc_args_sha256: digest(
-            &args
-                .iter()
-                .flat_map(|s| s.as_encoded_bytes().iter().copied().chain([0]))
-                .collect::<Vec<_>>(),
-        ),
-    };
+    let identity = target_identity(
+        &args,
+        PathBuf::from(required("CARGO_MANIFEST_DIR")?).join("Cargo.toml"),
+    );
     crate::managed::retire_receipts(&runtime, &identity)?;
     let dir = runtime.sidecars.join(identity.key());
     std::fs::create_dir_all(dir.join("provenance"))
@@ -438,12 +509,103 @@ fn driver() -> Result<ExitCode> {
             || crate::verus_stdout::UserFlags::of(&runtime.args),
             |effective| crate::verus_stdout::UserFlags::of_verus(effective.arguments.iter()),
         );
+    // The engine runs its own phases; a shipped dependency is never the
+    // engine's selected crate, and the engine is not asked to replay one.
+    if runtime.engine.is_none()
+        && let Some(replay) = call.as_ref().and_then(crate::managed::shipped::Call::serve)
+    {
+        event(
+            &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),
+        );
+        std::io::stderr()
+            .write_all(&replay.stderr)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        finish(
+            &runtime,
+            identity,
+            &dir,
+            &Captured {
+                stdout: &replay.stdout,
+                stderr: &replay.stderr,
+                exit: Some(0),
+            },
+            None,
+            Some(&replay.origin),
+        )?;
+        let shown_stdout = crate::verus_stdout::rebuild(&replay.stdout, flags);
+        std::fs::write(dir.join("verus.shown-stdout"), &shown_stdout)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        std::io::stdout()
+            .write_all(&shown_stdout)
+            .and_then(|()| std::io::stdout().flush())
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        return Ok(ExitCode::SUCCESS);
+    }
+    let mut retained = runtime
+        .retained
+        .as_ref()
+        .filter(|_| research != crate::managed::research::Mode::VstdBoundary)
+        .and_then(|plan| {
+            (wrapper.canonicalize().ok()? == runtime.original_wrapper.canonicalize().ok()?)
+                .then(|| plan.begin(&runtime, &identity, &launcher_args, &dir))
+                .flatten()
+        });
+    if let Some(attempt) = &retained
+        && let Some(restored) = attempt.restore(&runtime)?
+    {
+        finish(
+            &runtime,
+            identity.clone(),
+            &dir,
+            &Captured {
+                stdout: &restored.stdout,
+                stderr: &restored.stderr,
+                exit: Some(0),
+            },
+            None,
+            None,
+        )?;
+        let path = runtime.invocations.join(format!("{}.json", identity.key()));
+        let mut invocation: Invocation = serde_json::from_slice(
+            &std::fs::read(&path).map_err(|e| Error::new("SAIL3111", e.to_string()))?,
+        )
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        invocation.retained_from = Some(restored.establishing_run);
+        json(&path, &invocation)?;
+        std::io::stderr()
+            .write_all(&restored.stderr)
+            .and_then(|()| {
+                std::io::stdout().write_all(&crate::verus_stdout::rebuild(&restored.stdout, flags))
+            })
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let mut cmd = Command::new(&wrapper);
-    cmd.args(&launcher_args)
+    let compiler_args = if let Some(call) = &call {
+        call.compiler_arguments()
+    } else if let Some(attempt) = &retained {
+        attempt.arguments()
+    } else {
+        launcher_args.as_slice()
+    };
+    cmd.args(compiler_args)
         .envs(&launcher_environment)
         .args(observation_args(flags, logs.as_deref()))
+        .args(
+            call.as_ref()
+                .map(crate::managed::shipped::Call::record_args)
+                .unwrap_or_default(),
+        )
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    cmd.env_remove("SAIL_COMPILER_INPUTS")
+        .env_remove("SAIL_COMPILER_INPUTS_BINDING");
+    if let Some(call) = &mut call {
+        call.observe_compiler(&mut cmd);
+    }
+    if let Some(attempt) = &retained {
+        attempt.configure(&mut cmd);
+    }
     // Session records join cached answers to transcripts; without logs there
     // is nothing to join them to.
     if logs.is_some() {
@@ -466,6 +628,12 @@ fn driver() -> Result<ExitCode> {
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    if let Some(call) = &mut call {
+        call.compiler_started(child.id());
+    }
+    if let Some(attempt) = &mut retained {
+        attempt.started(child.id());
+    }
     let invocation_log = InvocationLog {
         directory: &runtime.invocations,
         run_id: &runtime.run_id,
@@ -502,6 +670,9 @@ fn driver() -> Result<ExitCode> {
     let exit = child
         .wait()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    if let Some(call) = &mut call {
+        call.compiler_finished();
+    }
     let stdout = stdout
         .ok_or_else(|| Error::new("SAIL3111", "missing solver output pipe"))?
         .join()
@@ -540,6 +711,7 @@ fn driver() -> Result<ExitCode> {
             .write_all(&stderr)
             .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
+    let invocation_key = identity.key();
     finish(
         &runtime,
         identity,
@@ -550,7 +722,25 @@ fn driver() -> Result<ExitCode> {
             exit: exit.code(),
         },
         established.as_ref(),
+        None,
     )?;
+    // A successful process alone is insufficient: partial/no-verify output
+    // must never become a reusable proof. Reuse only the complete successful
+    // invocation that finish just established from Verus's full document.
+    if let Some(call) = &call {
+        let completed = std::fs::read(runtime.invocations.join(format!("{invocation_key}.json")))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<Invocation>(&bytes).ok())
+            .is_some_and(|invocation| {
+                invocation.success && crate::managed::receipt_complete(&invocation.report)
+            });
+        if completed {
+            call.record(&stdout, &stderr, exit.code());
+        }
+    }
+    if let Some(attempt) = &retained {
+        let _ = attempt.finish(exit.success());
+    }
     let shown = crate::verus_stdout::rebuild(&stdout, flags);
     // The dependency store must replay exactly what this target displayed,
     // including effective per-package output flags, when it seeds a new target.
@@ -582,6 +772,11 @@ fn observation_args(flags: crate::verus_stdout::UserFlags, logs: Option<&Path>) 
     }
     args
 }
+
+/// The attribution note of a report replayed from Sail's shipped dependency
+/// build (ADR 0048). Its functions' verdicts, rlimit and time are Verus's own,
+/// from the release build that verified the dependency.
+pub const SHIPPED_NOT_RECORDED: &str = "obligation detail not recorded: this dependency's complete report comes from an earlier compiler-boundary verification";
 
 /// The attribution note of a report whose run asked Verus for no logs
 /// (ADR 0047). Its functions' verdicts, rlimit and time are Verus's own.
@@ -688,6 +883,7 @@ fn finish(
     dir: &Path,
     captured: &Captured<'_>,
     engine: Option<&sail_api::output::EngineProvenance>,
+    dependency_build: Option<&sail_api::project::DependencyBuildOrigin>,
 ) -> Result<()> {
     let Captured {
         stdout,
@@ -698,7 +894,16 @@ fn finish(
         .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let (docs, _) = crate::attribution::json_documents(stdout);
-    let attr = if runtime.attribution_logs {
+    let attr = if dependency_build.is_some() {
+        // Replayed from Sail's shipped dependency build, which records no
+        // attribution logs.
+        crate::attribution::attribute(
+            &docs,
+            None,
+            &crate::attribution::Provenance::NoCache,
+            Some(SHIPPED_NOT_RECORDED),
+        )
+    } else if runtime.attribution_logs {
         let logs = crate::attribution::read_logs(&full_log_dir(&dir.join("logs"), engine))
             .unwrap_or_default();
         let provenance = if runtime.daemon {
@@ -749,11 +954,13 @@ fn finish(
     });
     let dependencies = dependencies?;
     let invocation = Invocation {
+        retained_from: None,
         identity,
         run_id: runtime.run_id.clone(),
         report,
         success,
         dependencies,
+        dependency_build: dependency_build.cloned(),
     };
     json(
         &runtime
@@ -951,8 +1158,172 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
     )
 }
 
+fn target_identity(args: &[OsString], manifest: PathBuf) -> TargetIdentity {
+    TargetIdentity {
+        manifest,
+        name: argument(args, "--crate-name").unwrap_or_default(),
+        crate_type: argument(args, "--crate-type").unwrap_or_default(),
+        rustc_args_sha256: digest(
+            &args
+                .iter()
+                .flat_map(|s| s.as_encoded_bytes().iter().copied().chain([0]))
+                .collect::<Vec<_>>(),
+        ),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn automatic_retained_plan_reaches_owned_managed_child()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        const CHILD: &str = "SAIL_RETAINED_ADAPTER_CHILD";
+        if std::env::var_os(CHILD).is_some() {
+            assert_eq!(std::env::var("RUSTC_BOOTSTRAP")?, "1");
+            assert!(std::env::var_os("SAIL_RETAINED_CONTENT_RESEARCH").is_none());
+            let mode = crate::managed::research::selected()?;
+            assert_eq!(mode, crate::managed::research::Mode::Off);
+            let runtime = super::retained_runtime(mode).ok_or("automatic plan lost")?;
+            let wire = serde_json::to_value(&runtime)?;
+            assert_eq!(runtime.run_id, "owned-outer-run");
+            assert!(
+                wire["retained"]["caller_environment"]["values"]
+                    .get("RUSTC_BOOTSTRAP")
+                    .is_none()
+            );
+            assert!(
+                super::retained_runtime(crate::managed::research::Mode::VstdBoundary).is_none()
+            );
+            let path = std::env::var_os("SAIL_MANAGED_RUNTIME").ok_or("runtime path")?;
+            let mut malformed = wire;
+            malformed["retained"]
+                .as_object_mut()
+                .ok_or("plan")?
+                .remove("caller_environment");
+            std::fs::write(&path, serde_json::to_vec(&malformed)?)?;
+            assert!(super::retained_runtime(mode).is_none());
+            malformed["retained"] = serde_json::Value::Null;
+            std::fs::write(&path, serde_json::to_vec(&malformed)?)?;
+            assert!(super::retained_runtime(mode).is_none());
+            return Ok(());
+        }
+        let root = std::env::temp_dir().join(format!("sail-auto-adapter-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let path = root.join("runtime.json");
+        // An actual Runtime/Plan wire file exercises the existing managed
+        // child transport. This fixture is not compiler/source admission.
+        let wire = serde_json::json!({
+            "run_id":"owned-outer-run", "args":[], "z3":"/pinned/z3",
+            "z3_sha256":"solver", "daemon":false, "sidecars":root,
+            "invocations":root, "original_wrapper":"/pinned/verus", "receipts":root,
+            "context_sha256":"context", "input_revision":"revision",
+            "packages":{}, "target_kinds":{}, "engine":null,
+            "retained":{"root":root,"target":root,"metadata":null,"roots":[],
+                "closure":{"directories":{}},"launcher":"/pinned/verus",
+                "launcher_sha256":"launcher","compiler_sha256":"compiler",
+                "caller_environment":{"version":1,"run":"owned-outer-run","values":{}}}
+        });
+        let _: super::Runtime = serde_json::from_value(wire.clone())?;
+        std::fs::write(&path, serde_json::to_vec(&wire)?)?;
+        let output = std::process::Command::new(std::env::current_exe()?)
+            .args([
+                "--exact",
+                "adapter::tests::automatic_retained_plan_reaches_owned_managed_child",
+            ])
+            .env(CHILD, "1")
+            .env("SAIL_MANAGED_RUNTIME", &path)
+            .env("RUSTC_BOOTSTRAP", "1")
+            .env_remove("SAIL_RETAINED_CONTENT_RESEARCH")
+            .env_remove("SAIL_VSTD_BOUNDARY_RESEARCH")
+            .output()?;
+        std::fs::remove_dir_all(root)?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn conflicting_research_refuses_before_adapter_setup()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        if std::env::var("SAIL_RESEARCH_SELECTION_EXPECTED").as_deref() == Ok("conflict") {
+            assert_eq!(
+                super::driver().err().ok_or("expected refusal")?.code,
+                "SAIL3135"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn cargo_lint_bytes_order_and_repetitions_remain_in_the_actual_target_identity()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../tests/fixtures/retained-cargo-lints.json"))?;
+        let mut args: Vec<std::ffi::OsString> = [
+            "/rustc",
+            "--crate-name",
+            "sample",
+            "--crate-type",
+            "lib",
+            "src/lib.rs",
+        ]
+        .into_iter()
+        .map(Into::into)
+        .collect();
+        let lint_start = args.len();
+        for value in fixture["lint_arguments"]
+            .as_array()
+            .ok_or("lint arguments")?
+        {
+            args.push(value.as_str().ok_or("lint argument")?.into());
+        }
+        let manifest = std::path::PathBuf::from("/owned/Cargo.toml");
+        let original = super::target_identity(&args, manifest.clone());
+        let mut repeated = args.clone();
+        repeated.push("--warn=unexpected_cfgs".into());
+        assert_ne!(
+            original.key(),
+            super::target_identity(&repeated, manifest.clone()).key()
+        );
+        let mut reversed = args.clone();
+        reversed[lint_start..].reverse();
+        assert_ne!(
+            original.key(),
+            super::target_identity(&reversed, manifest.clone()).key()
+        );
+        args.push("--deny=unexpected_cfgs".into());
+        assert_ne!(
+            original.key(),
+            super::target_identity(&args, manifest).key()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn retained_routing_fixture_uses_the_real_effective_driver_decoder()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../tests/fixtures/retained-cargo-routing.json"
+        ))?;
+        for row in fixture["rows"].as_array().ok_or("rows")? {
+            let id = row["id"].as_str().ok_or("id")?;
+            let decoded = super::cargo_driver_options_with(id, |name| {
+                Ok(if name == " __VERUS_DRIVER_ARGS__" {
+                    row["common"].as_str().map(str::to_owned)
+                } else if name == format!(" __VERUS_DRIVER_ARGS_FOR_{id}") {
+                    row["package"].as_str().map(str::to_owned)
+                } else {
+                    None
+                })
+            })?;
+            assert_eq!(serde_json::to_value(decoded.arguments)?, row["tokens"]);
+        }
+        Ok(())
+    }
+
     use super::*;
 
     #[test]
