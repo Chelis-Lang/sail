@@ -413,12 +413,47 @@ fn emitted_outputs(call: &Call<'_>) -> Option<Vec<PathBuf>> {
     (!outputs.is_empty()).then_some(outputs)
 }
 
+// Lint levels change diagnostics, not the compiler's source/lookup boundary.
+// The full original flag/value spelling remains in Call's existing literal key.
+fn lint_arguments(args: &[&str]) -> Option<usize> {
+    const LONG: &[&str] = &["--allow", "--warn", "--deny", "--forbid", "--force-warn"];
+    const SHORT: &[&str] = &["-A", "-W", "-D", "-F"];
+    let argument = *args.first()?;
+    let (value, count) = if LONG.contains(&argument) || SHORT.contains(&argument) {
+        (*args.get(1)?, 2)
+    } else if let Some((flag, value)) = argument.split_once('=')
+        && LONG.contains(&flag)
+    {
+        (value, 1)
+    } else if SHORT.iter().any(|flag| argument.starts_with(flag)) {
+        (argument.get(2..)?, 1)
+    } else {
+        return None;
+    };
+    value
+        .split(',')
+        .all(|name| {
+            name.split("::").all(|segment| {
+                let mut bytes = segment.bytes();
+                bytes
+                    .next()
+                    .is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_')
+                    && bytes.all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+            })
+        })
+        .then_some(count)
+}
+
 /// Only the ordinary native Cargo library flags are observed. Unsupported
 /// backend/linker/sysroot/source overrides still compile, but establish no reuse.
 fn native_source<'a>(args: &'a [&str], target: &Path) -> Option<&'a str> {
     let mut source = None;
     let mut index = 1;
     while let Some(argument) = args.get(index) {
+        if let Some(consumed) = lint_arguments(&args[index..]) {
+            index += consumed;
+            continue;
+        }
         match *argument {
             "--crate-name" | "--crate-type" | "--edition" | "--emit" | "--out-dir"
             | "--error-format" | "--json" | "--cap-lints" | "--cfg" | "--check-cfg"
@@ -879,6 +914,72 @@ mod tests {
             if arguments.last() != Some(&"--emit=link=/foreign/output") {
                 assert!(native_source(&arguments, Path::new("/owned-target")).is_none());
             }
+        }
+    }
+
+    #[test]
+    fn cargo_lint_options_preserve_native_source_and_refuse_path_overrides() {
+        let source = "/registry/macros/src/lib.rs";
+        let ordinary = [
+            "rustc",
+            source,
+            "--crate-type",
+            "lib",
+            "--emit=metadata,link",
+        ];
+        // Joined spellings occur in the actual pinned Cargo traces for
+        // verus_syn, hashbrown, indexmap, builtin and both macro libraries.
+        for lint in [
+            vec!["--warn=unexpected_cfgs"],
+            vec!["--allow=clippy::zero_ptr"],
+            vec!["--deny=unsafe_code"],
+            vec!["--forbid=unsafe_code"],
+            vec!["--force-warn=unused_variables"],
+            vec!["--allow", "clippy::wrong_self_convention"],
+            vec!["--warn", "rust_2018_idioms"],
+            vec!["--deny", "unsafe_code"],
+            vec!["--forbid", "unsafe_code"],
+            vec!["--force-warn", "unused_variables"],
+            vec!["-A", "clippy::zero_ptr"],
+            vec!["-W", "unused_variables"],
+            vec!["-D", "unsafe_code"],
+            vec!["-F", "unsafe_code"],
+            vec!["-Aclippy::zero_ptr"],
+            vec!["-Wunsafe-op-in-unsafe-fn"],
+            vec!["-Dunsafe_code"],
+            vec!["-Funsafe_code"],
+            vec!["--warn=dead_code,unused_imports"],
+        ] {
+            let mut args = ordinary.to_vec();
+            args.extend(lint);
+            assert_eq!(native_source(&args, Path::new("/target")), Some(source));
+            for foreign in [
+                vec!["/foreign/second.rs"],
+                vec!["--sysroot", "/foreign"],
+                vec!["--remap-path-prefix=/registry=/foreign"],
+                vec!["-C", "linker=/foreign/cc"],
+                vec!["-Z", "codegen-backend=/foreign"],
+                vec!["--unknown-flag=unused"],
+            ] {
+                let mut changed = args.clone();
+                changed.extend(foreign);
+                assert!(native_source(&changed, Path::new("/target")).is_none());
+            }
+        }
+        for malformed in [
+            vec!["--warn"],
+            vec!["--allow="],
+            vec!["-W"],
+            vec!["--warn", "--sysroot=/foreign"],
+            vec!["--allow=/foreign/lib.rs"],
+            vec!["--deny=clippy::::zero_ptr"],
+            vec!["--warn=dead_code,"],
+            vec!["--warn=unused variables"],
+            vec!["-A=unused"],
+        ] {
+            let mut args = ordinary.to_vec();
+            args.extend(malformed);
+            assert!(native_source(&args, Path::new("/target")).is_none());
         }
     }
 
