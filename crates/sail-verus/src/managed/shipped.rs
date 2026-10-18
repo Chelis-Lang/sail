@@ -550,8 +550,17 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
     };
     let failed = |m: String| Error::new("SAIL3134", m);
     // The resolution new projects start from (`sail new`).
-    std::fs::copy(workspace.join(LOCKFILE), out.join(LOCKFILE))
-        .map_err(|e| failed(format!("{}: {e}", workspace.join(LOCKFILE).display())))?;
+    let source_lock = workspace.join(LOCKFILE);
+    let destination_lock = out.join(LOCKFILE);
+    std::fs::copy(&source_lock, &destination_lock).map_err(|error| {
+        failed(format!(
+            "copy {} -> {} (source_exists={:?}, destination_parent_exists={:?}): {error}",
+            source_lock.display(),
+            destination_lock.display(),
+            source_lock.try_exists(),
+            out.try_exists(),
+        ))
+    })?;
     let mut units = BTreeMap::new();
     let mut verified = false;
     for entry in std::fs::read_dir(out.join(UNITS))
@@ -3396,6 +3405,43 @@ mod tests {
         refusal(user.call(false).ok_or("no call")?, "unreadable entry")?;
         std::fs::remove_dir_all(&entry)?;
         refusal(user.call(false).ok_or("no call")?, "no entry")?;
+        Ok(())
+    }
+
+    #[test]
+    fn record_lock_copy_error_distinguishes_source_and_destination() -> TestResult {
+        let machine = Machine::new("record-copy-error", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let workspace = machine.root.join("workspace");
+        std::fs::create_dir(&workspace)?;
+        let source = workspace.join(LOCKFILE);
+        std::fs::write(&source, b"unchanged lock")?;
+        let out = machine.out().ok_or("not recording")?;
+        let destination = out.join(LOCKFILE);
+        let error = finish_record(&machine.plan, Path::new("unused"), &workspace)
+            .err()
+            .ok_or("missing destination parent was accepted")?;
+        assert_eq!(error.code, "SAIL3134");
+        for expected in [
+            source.display().to_string(),
+            destination.display().to_string(),
+            "source_exists=Ok(true)".to_owned(),
+            "destination_parent_exists=Ok(false)".to_owned(),
+        ] {
+            assert!(error.message.contains(&expected), "{}", error.message);
+        }
+        assert_eq!(std::fs::read(&source)?, b"unchanged lock");
+        assert!(!out.exists(), "diagnostics must not create a recording");
+        std::fs::create_dir(&out)?;
+        std::fs::remove_file(&source)?;
+        let error = finish_record(&machine.plan, Path::new("unused"), &workspace)
+            .err()
+            .ok_or("missing source was accepted")?;
+        assert_eq!(error.code, "SAIL3134");
+        assert!(error.message.contains("source_exists=Ok(false)"));
+        assert!(error.message.contains("destination_parent_exists=Ok(true)"));
+        assert!(!destination.exists() && !out.join(UNITS).exists());
         Ok(())
     }
 

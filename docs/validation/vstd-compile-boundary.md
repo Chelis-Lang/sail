@@ -61,6 +61,18 @@ that change. Content, inode, mode, size, mtime and ctime checks remain strict;
 read-induced access time is not an input. The failed attempt remains indexed
 externally; none of these mocks is a staged-platform qualification.
 
+The first actual Mac stage on `34bea2fa` failed before archive/consumer work;
+its initiating cause remains unknown after an outer size-observer error and
+interrupted cleanup. A separate factory-only diagnostic retained the complete
+factory evidence: Cargo finished and individual compilers succeeded, but the CLI
+returned Unknown with `SAIL3134` at the recording lock copy, with no target
+results. That error previously named only the source even if the destination
+parent was absent. Copy errors now report both paths and their diagnostic
+presence; the factory also records the existing native-boundary trace. These
+changes do not create missing outputs or relax recording/Current admission.
+The failed result SHA-256 values are `ff57a516f8c056c66bb2f22f23612480f71291353a1a0629e09464f08698f4f4`
+and `ca9b8cc9526d83db644b1ab0dbb1ac1aa2564c4c5d202d9a33baa7fb7b538fb5`.
+
 Linux gates, real archive first-use on both platforms and changed Rustup/sysroot
 roots remain pending. Acceptance must
 also remove/change the index after a successful Serve, then check unchanged and

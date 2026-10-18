@@ -102,7 +102,9 @@ A cancelled recording never installs a dependency bundle or release index.
 The adjacent evidence also names the actual recorder PID, owned scratch root and
 UID for external resource accounting; this metadata is not proof authority.
 Before deleting scratch, it also retains a bounded, content-once index of native
-and verification/compilation input certificates and skipped records. This
+and verification/compilation input certificates and skipped records. The factory
+also writes the existing compiler-boundary trace under its owned evidence
+directory so native-provenance refusals remain diagnosable. This
 evidence excludes full native compiler bodies; the staged unit keeps its vstd
 artifacts. Missing certificates in a successful record or failed capture stops
 packaging and still runs owned cleanup. Already admitted certificate bodies remain
