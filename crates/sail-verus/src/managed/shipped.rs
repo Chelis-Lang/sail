@@ -16,6 +16,7 @@ mod admission;
 mod compiler;
 pub(crate) mod native;
 mod native_reads;
+mod release;
 mod snapshot;
 
 use super::files::digest;
@@ -49,7 +50,7 @@ pub(crate) const PLAN_ENV: &str = "SAIL_MANAGED_SHIPPED";
 /// serving run looks up, its keyed inputs and the outcome.
 pub(crate) const TRACE_ENV: &str = "SAIL_SHIPPED_TRACE";
 
-/// Unselected experiment. Ordinary verification never activates this path.
+/// Explicit release-recording, machine-local or alternate-bundle research request.
 pub(crate) fn research_enabled() -> bool {
     std::env::var_os("SAIL_VSTD_BOUNDARY_RESEARCH").is_some_and(|value| value == "1")
 }
@@ -97,6 +98,9 @@ pub(crate) struct Plan {
     native_compiler_sha256: String,
     native_launcher: PathBuf,
     native_launcher_sha256: String,
+    /// Per-run admission of a distributed release index, never a proof-key input.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    release: Option<release::Admission>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -310,28 +314,66 @@ fn identity(root: &Path, virtual_base: &str) -> Option<String> {
 
 /// The shipped build beside the running `sail` (`<release>/deps/<variant>`)
 /// or named by [`BUNDLE_ENV`].
-fn bundle_dir(variant: &OsStr) -> Option<PathBuf> {
-    if let Some(explicit) = std::env::var_os(BUNDLE_ENV).filter(|v| !v.is_empty()) {
-        return Some(PathBuf::from(explicit));
-    }
+fn adjacent_bundle(variant: &OsStr) -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?.canonicalize().ok()?;
     Some(exe.parent()?.parent()?.join("deps").join(variant))
 }
 
+fn bundle_dir(variant: &OsStr) -> Option<PathBuf> {
+    if research_enabled()
+        && let Some(explicit) = std::env::var_os(BUNDLE_ENV).filter(|v| !v.is_empty())
+    {
+        return Some(PathBuf::from(explicit));
+    }
+    adjacent_bundle(variant)
+}
+
+/// Cheap source-name configuration for an installed bundle, including warm
+/// runs. This grants no proof authority: serving still needs the full identity,
+/// source, native-byte and compiler-read checks in the run's owned plan.
+pub(crate) fn has_adjacent_bundle(cargo_verus: &Path) -> bool {
+    let Some(root) = runtime_root(cargo_verus) else {
+        return false;
+    };
+    let Some(variant) = root.file_name() else {
+        return false;
+    };
+    adjacent_bundle(variant)
+        .and_then(|bundle| read_manifest(&bundle))
+        .is_some_and(|manifest| {
+            manifest.schema == SCHEMA
+                && manifest.kind == KIND
+                && Some(manifest.runtime.as_str()) == variant.to_str()
+                && virtual_base().as_ref() == Some(&manifest.virtual_base)
+        })
+}
+
 fn read_manifest(bundle: &Path) -> Option<Manifest> {
-    serde_json::from_slice(&std::fs::read(bundle.join(MANIFEST)).ok()?).ok()
+    release::manifest(bundle)
 }
 
 /// The shipped build for the runtime at `root`, if one of its identity
 /// exists.
-fn accepted_bundle(root: &Path, identity: &str, virtual_base: &str) -> Option<PathBuf> {
+fn accepted_bundle(
+    root: &Path,
+    identity: &str,
+    virtual_base: &str,
+) -> Option<(PathBuf, Option<release::Admission>)> {
     let bundle = bundle_dir(root.file_name()?)?;
     let manifest = read_manifest(&bundle)?;
-    (manifest.schema == SCHEMA
-        && manifest.kind == KIND
-        && manifest.identity == identity
-        && manifest.virtual_base == virtual_base)
-        .then_some(bundle)
+    if manifest.schema != SCHEMA
+        || manifest.kind != KIND
+        || manifest.identity != identity
+        || manifest.virtual_base != virtual_base
+    {
+        return None;
+    }
+    let release = if research_enabled() {
+        None
+    } else {
+        Some(release::admit(&bundle, root, &manifest)?)
+    };
+    Some((bundle, release))
 }
 
 /// The package name of the project a shipped build is recorded from; its
@@ -346,7 +388,7 @@ const LOCKFILE: &str = "Cargo.lock";
 /// whatever crates.io holds later. `None` without an accepted shipped build.
 #[must_use]
 pub fn new_project_lockfile(cargo_verus: &Path, name: &str) -> Option<String> {
-    if !research_enabled() {
+    if super::research::selected().ok()? == super::research::Mode::RetainedContent {
         return None;
     }
     let virtual_base = virtual_base()?;
@@ -354,7 +396,7 @@ pub fn new_project_lockfile(cargo_verus: &Path, name: &str) -> Option<String> {
     // An ordinary install without a bundle needs no shipped-input probe.
     read_manifest(&bundle_dir(root.file_name()?)?)?;
     let identity = identity(&root, &virtual_base)?;
-    let bundle = accepted_bundle(&root, &identity, &virtual_base)?;
+    let (bundle, _) = accepted_bundle(&root, &identity, &virtual_base)?;
     let lock = std::fs::read_to_string(bundle.join(LOCKFILE)).ok()?;
     rename_root(&lock, RECORD_PACKAGE, name)
 }
@@ -412,7 +454,8 @@ pub(crate) fn plan(
     run_id: &str,
     metadata: &Value,
 ) -> Option<Plan> {
-    if !research_enabled() {
+    let research = research_enabled();
+    if !research && !has_adjacent_bundle(cargo_verus) {
         return None;
     }
     if [
@@ -425,8 +468,12 @@ pub(crate) fn plan(
     {
         return None;
     }
-    let recording = std::env::var_os(RECORD_ENV).filter(|v| !v.is_empty());
-    let local = std::env::var_os(LOCAL_ENV).filter(|value| !value.is_empty());
+    let recording = research
+        .then(|| std::env::var_os(RECORD_ENV).filter(|v| !v.is_empty()))
+        .flatten();
+    let local = research
+        .then(|| std::env::var_os(LOCAL_ENV).filter(|value| !value.is_empty()))
+        .flatten();
     // Do not silently reinterpret conflicting research modes.
     if recording.is_some() && local.is_some() {
         return None;
@@ -446,18 +493,23 @@ pub(crate) fn plan(
         read_manifest(&bundle_dir(root.file_name()?)?)?;
     }
     let identity = identity(&root, &virtual_base)?;
-    let mode = if let Some(out) = local {
-        Mode::MachineLocal {
-            out: std::path::absolute(out).ok()?,
-        }
+    let (mode, release) = if let Some(out) = local {
+        (
+            Mode::MachineLocal {
+                out: std::path::absolute(out).ok()?,
+            },
+            None,
+        )
     } else if let Some(out) = recording {
-        Mode::Record {
-            out: std::path::absolute(out).ok()?,
-        }
+        (
+            Mode::Record {
+                out: std::path::absolute(out).ok()?,
+            },
+            None,
+        )
     } else {
-        Mode::Serve {
-            bundle: accepted_bundle(&root, &identity, &virtual_base)?,
-        }
+        let (bundle, release) = accepted_bundle(&root, &identity, &virtual_base)?;
+        (Mode::Serve { bundle }, release)
     };
     let solver_adapter = if matches!(mode, Mode::MachineLocal { .. }) {
         None
@@ -469,6 +521,7 @@ pub(crate) fn plan(
     };
     Some(Plan {
         mode,
+        release,
         identity,
         registry: registry.to_owned(),
         target: target.to_owned(),
@@ -540,11 +593,51 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
 
 /// The plan of the run this driver proxy belongs to.
 pub(crate) fn active() -> Option<Plan> {
-    if !research_enabled() {
+    let path = PathBuf::from(std::env::var_os(PLAN_ENV)?);
+    let plan: Plan = serde_json::from_slice(&std::fs::read(&path).ok()?).ok()?;
+    let runtime_path = PathBuf::from(std::env::var_os("SAIL_MANAGED_RUNTIME")?);
+    let runtime: super::receipts::Runtime =
+        serde_json::from_slice(&std::fs::read(runtime_path).ok()?).ok()?;
+    active_for(&path, plan, &runtime, research_enabled())
+}
+
+fn active_for(
+    path: &Path,
+    plan: Plan,
+    runtime: &super::receipts::Runtime,
+    research: bool,
+) -> Option<Plan> {
+    let run = runtime.sidecars.parent()?;
+    if path != run.join("shipped.json")
+        || run.file_name()? != OsStr::new(&runtime.run_id)
+        || plan.run_id != runtime.run_id
+        || runtime.retained.is_some()
+        || runtime.engine.is_some()
+        || runtime.z3_sha256 != plan.solver_sha256
+        || runtime.original_wrapper != plan.native_launcher
+    {
         return None;
     }
-    let path = std::env::var_os(PLAN_ENV)?;
-    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+    if !research {
+        let Mode::Serve { bundle } = &plan.mode else {
+            return None;
+        };
+        let root = runtime_root(&plan.native_launcher.with_file_name("cargo-verus"))?;
+        let adjacent = adjacent_bundle(root.file_name()?)?;
+        let manifest = read_manifest(bundle)?;
+        if !ordinary_serve(&plan, &adjacent, &manifest) || !plan.release.as_ref()?.intact(bundle) {
+            return None;
+        }
+    }
+    Some(plan)
+}
+
+fn ordinary_serve(plan: &Plan, adjacent: &Path, manifest: &Manifest) -> bool {
+    matches!(&plan.mode, Mode::Serve { bundle } if bundle == adjacent)
+        && manifest.schema == SCHEMA
+        && manifest.kind == KIND
+        && manifest.identity == plan.identity
+        && manifest.virtual_base == plan.virtual_base
 }
 
 /// Replaces `from` by `to` wherever `from` occurs as a whole path prefix:
@@ -1567,10 +1660,24 @@ impl<'a> Call<'a> {
         Ok(())
     }
 
+    fn read_unit_bytes(&self, entry: &Path) -> std::result::Result<Vec<u8>, Refusal> {
+        if let Some(release) = &self.plan.release {
+            let Mode::Serve { bundle } = &self.plan.mode else {
+                return Err(Refusal::Miss(
+                    "release admission outside serving mode".to_owned(),
+                ));
+            };
+            release
+                .read_unit(bundle, &self.key)
+                .ok_or_else(|| Refusal::Miss("release index or unit changed".to_owned()))
+        } else {
+            std::fs::read(entry.join(UNIT))
+                .map_err(|_| Refusal::Miss("no entry for this key".to_owned()))
+        }
+    }
+
     fn try_serve(&self, entry: &Path) -> std::result::Result<Replay, Refusal> {
-        let Ok(bytes) = std::fs::read(entry.join(UNIT)) else {
-            return Err(Refusal::Miss("no entry for this key".to_owned()));
-        };
+        let bytes = self.read_unit_bytes(entry)?;
         let unit: Unit = serde_json::from_slice(&bytes)
             .map_err(|e| Refusal::Damaged(format!("unreadable entry: {e}")))?;
         if unit.schema != SCHEMA || unit.key != self.key || unit.verifying != self.verifying {
@@ -1892,7 +1999,86 @@ mod tests {
             native_compiler_sha256: "compiler-bytes".into(),
             native_launcher: root.join("verus"),
             native_launcher_sha256: "launcher-bytes".into(),
+            release: None,
         }
+    }
+
+    #[test]
+    fn ordinary_activation_accepts_only_matching_adjacent_serve() {
+        let root = Path::new("/owned-release");
+        let adjacent = root.join("deps/variant");
+        let mut call = plan(
+            root,
+            Mode::Serve {
+                bundle: adjacent.clone(),
+            },
+        );
+        let mut manifest = Manifest {
+            schema: SCHEMA,
+            kind: KIND.into(),
+            identity: call.identity.clone(),
+            runtime: "variant".into(),
+            virtual_base: call.virtual_base.clone(),
+            units: BTreeMap::new(),
+        };
+        assert!(ordinary_serve(&call, &adjacent, &manifest));
+        assert!(!ordinary_serve(&call, &root.join("other"), &manifest));
+        manifest.schema -= 1;
+        assert!(!ordinary_serve(&call, &adjacent, &manifest));
+        manifest.schema = SCHEMA;
+        manifest.identity.push('x');
+        assert!(!ordinary_serve(&call, &adjacent, &manifest));
+        manifest.identity = call.identity.clone();
+        call.mode = Mode::Record {
+            out: adjacent.clone(),
+        };
+        assert!(!ordinary_serve(&call, &adjacent, &manifest));
+        call.mode = Mode::MachineLocal {
+            out: adjacent.clone(),
+        };
+        assert!(!ordinary_serve(&call, &adjacent, &manifest));
+    }
+
+    #[test]
+    fn child_plan_is_bound_to_original_run_solver_and_single_authority() {
+        let root = Path::new("/owned-family");
+        let call = plan(
+            root,
+            Mode::Record {
+                out: root.join("record"),
+            },
+        );
+        let run = root.join("runs").join(&call.run_id);
+        let path = run.join("shipped.json");
+        let mut runtime = super::super::receipts::Runtime {
+            run_id: call.run_id.clone(),
+            args: Vec::new(),
+            z3: root.join("z3"),
+            z3_sha256: call.solver_sha256.clone(),
+            daemon: false,
+            sidecars: run.join("sidecars"),
+            invocations: run.join("invocations"),
+            original_wrapper: call.native_launcher.clone(),
+            receipts: root.join("receipts"),
+            context_sha256: "context".into(),
+            input_revision: "source".into(),
+            packages: BTreeMap::new(),
+            target_kinds: BTreeMap::new(),
+            engine: None,
+            retained: None,
+            attribution_logs: false,
+        };
+        assert!(active_for(&path, call.clone(), &runtime, true).is_some());
+        assert!(active_for(&run.join("foreign.json"), call.clone(), &runtime, true).is_none());
+        assert!(active_for(&path, call.clone(), &runtime, false).is_none());
+        runtime.run_id.push('x');
+        assert!(active_for(&path, call.clone(), &runtime, true).is_none());
+        runtime.run_id = call.run_id.clone();
+        runtime.z3_sha256.push('x');
+        assert!(active_for(&path, call.clone(), &runtime, true).is_none());
+        runtime.z3_sha256 = call.solver_sha256.clone();
+        runtime.original_wrapper = root.join("foreign-verus");
+        assert!(active_for(&path, call, &runtime, true).is_none());
     }
 
     fn vars(root: &Path, extra: &[(&str, &str)]) -> Vec<(OsString, OsString)> {
@@ -2624,6 +2810,28 @@ mod tests {
                 Mode::Serve { .. } => None,
             }
         }
+    }
+
+    #[test]
+    fn release_inventory_metadata_is_not_a_proof_key_input()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut machine = Machine::new("release-admission-key", |root| Mode::Serve {
+            bundle: root.join("bundle"),
+        })?;
+        let original = machine.call(true).ok_or("original key")?.key;
+        machine.plan.release = Some(serde_json::from_value(serde_json::json!({
+            "index_sha256":"installation-only", "members":{}
+        }))?);
+        assert_eq!(machine.call(true).ok_or("admitted key")?.key, original);
+        // The optional field is absent from earlier research per-run plans.
+        machine.plan.release = None;
+        assert!(
+            serde_json::to_value(&machine.plan)?
+                .get("release")
+                .is_none()
+        );
+        std::fs::remove_dir_all(&machine.root)?;
+        Ok(())
     }
 
     #[test]
