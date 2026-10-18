@@ -2,15 +2,17 @@
 
 ## Status
 
-The printable-marker original-pipe successor for #215 passes its focused macOS
-correctness tests and all-target Clippy. It remains unselected; the complete
-macOS host gate, native Linux correctness and overhead gates remain pending. The preceding control-character marker
+The printable-marker original-pipe successor for #215 passes focused macOS
+controls and the complete Mac host gate. Native Linux workspace, solver,
+all nine end-to-end phases plus extra and PR conformance commands pass.
+Full FAST/STANDARD, final native guards and native overhead remain pending;
+the candidate is unselected. The preceding control-character marker
 candidate failed its actual-Cargo test despite eight other focused controls
 passing. It restores Cargo's original handling of every stderr
 byte, then acknowledges only each driver's final stdout through a same-stdout
 completion marker. Proof metadata, output filtering, receipts, runtime pins and
-reuse checks are unchanged. No corpus entry changes. The complete local and
-native gates, real Verus output cases and native overhead remain pending.
+reuse checks are unchanged. No corpus entry changes. Full-corpus completion,
+final native guards and overhead gates remain pending.
 
 The [proposed decision](../decisions/0055-acknowledged-managed-output.md) claims
 final stdout delivery before that driver exits and allows its subsequent Cargo
@@ -66,7 +68,11 @@ not apply to the new protocol.
 The current real-Cargo fixture writes captured/public/combined streams and
 status before assertions. An explicit `SAIL_VISIBLE_TEST_EVIDENCE` directory
 retains complete owned fixture file snapshots with path/mode/size/hash indexes
-under an 8 MiB cumulative cap. Known FIFO metadata is indexed without opening
+under an 8 MiB cumulative cap. The matched actual-Cargo arms now share one
+owned `CARGO_HOME`, separate from other concurrently running tests. Cargo runs
+offline on a dependency-free fixture; the selected Cargo executable, Rustup home
+and toolchain remain unchanged. No package-lock status line is filtered.
+Known FIFO metadata is indexed without opening
 the pipe. A failed or absent external capture preserves the original failed
 fixture tree and prints its path; it does not silently remove uncaptured raw.
 Printed diagnostics have a 64 KiB prefix bound per stream, with full bytes
@@ -124,6 +130,21 @@ fresh-capability framing and retains all exact full-stream and exit checks.
   this is correctness scope, not a native performance result. Raw result
   SHA-256: `936e24ab58b4c3d007f3c811afbf06e6ea198a521e2122961e6b4e14dc6f63d3`.
 
+- `d26b6bb8`, 2026-10-18, native attempt 01: remote packaging included local
+  `operator.py`, shadowing Python's standard module during runtime inspection.
+  Product gates are unrun; final source guard passes. The corrected remote
+  inventory excludes local operator files.
+- Same source, native attempt 02: gate fails one of 763 tests. Exact decoded
+  assertion tuples show two leading `Blocking waiting for file lock on package
+  cache` lines only in the barrier arm's captured/public stderr; stdout and
+  remaining stderr match. The strict full-stream comparison rejects the sample.
+  The successor isolates both arms with one owned `CARGO_HOME`; no comparison,
+  output filtering or whole-gate parallelism changes. Complete fallback gate
+  log and decoded streams remain external; diagnosis SHA-256:
+  `041031037b87acff380b34eb9c848df6c3839baa21b4f03962dd9e70f085a1f2`.
+  Separate capture permission failure remains visible; no complete enclosing
+  qualification is claimed.
+
 Focused attempt 11 passes on exact tested source `f3c51b78`: all nine sender/relay
 controls, including the four real-Cargo matched pairs, the separate compiler
 cleanup test, and release all-target `sail-verus` Clippy. All source/protected-body
@@ -133,8 +154,35 @@ SHA-256: `c18b17111fd21433a0869a3b029ea16011c5d6717da00e4e91cfde48596cdc83`.
 The paired documentation successor changes no tested code. This is focused Mac
 correctness, not the full host gate, native Linux acceptance or performance.
 
-Acceptance still requires passing/failing/compile-error/unchanged real Verus
-runs through plain and managed commands, strict combined and separate byte
-comparisons, JSON/MCP behavior, closed-pipe handling, all nine E2E phases plus
-extra, workspace/solver gates and applicable FAST/STANDARD conformance. Measure
-native overhead before selection. Raw originals remain outside the repository.
+## Current delivery checks
+
+The test-only successor `9dff1ab4` changes only the real-Cargo fixture's shared
+owned cache; production remains byte-identical to `d26b6bb8`. Focused Mac
+attempt 12 passes all nine sender/relay controls, four actual-Cargo pairs,
+compiler cleanup and Clippy in 100.85 s. Result SHA-256:
+`1cfe7d12b7155f06dc6d328956daabbef1d664f9f944ee4faa3c7c2aa8d869d3`.
+The full Mac host gate then passes 752 tests with 35 skips and all-target
+workspace Clippy in 204.46 s. Source, runtime and protected bodies remain
+unchanged and owned compiler children are reaped. External evidence
+`managed-output-order-source-2026-10-18/mac-host-02/result.json`, SHA-256:
+`ef734f53b96e8dc5a29f3d00f85b0c8c262de40a3c130c3826f299755eff6518`.
+
+The matching source on native EC2 c7i.4xlarge, us-east-1, passes the workspace
+gate, solver tests, every end-to-end phase plus extra, and PR conformance in
+85.02 s, 9.45 s, 668.50 s and 57.73 s respectively. These exercise real passing,
+failing, compile-error and unchanged verification, structured output and MCP;
+they supplement the focused causal-delivery and closed-pipe controls. This is
+a completed-command checkpoint, not completion of the still-running worker:
+full FAST/STANDARD and final source/runtime/product guards remain pending.
+
+The complete three command logs were copied and checked against their remote
+SHA-256 inventory before pushing. External evidence under
+`managed-output-order-qualification-native-2026-10-18/isolated-cargo-capture-successor/completed-command-checkpoint/`:
+
+- `completed-command-result.json`: `4da946f135febf14b5b3a9c783ed490eb5bf063b150cd35286f86dbcbe66a34e`.
+- `gate.log`: `042e1e44b684b0001cea02f3e0bdf5b1382da132a41ebc0b225f9abc2b32a797`.
+- `e2e.log`: `8c11f0e9c1689f443f2de258891407bba046d78d959b17e9291b867ffc744c76`.
+- `pr.log`: `b4bdb53295c8fef95d4fac054de55343b483d0ac56e50747a598f8bd932b456b`.
+
+Measure native overhead before selection. Raw originals remain outside the
+repository; the earlier failures remain failed.

@@ -12,8 +12,9 @@ those receipts and starts no verifier. See
 The proposed [managed output ordering change](decisions/0055-acknowledged-managed-output.md)
 keeps verifier stdout and stderr separate while acknowledging delivery before
 the driver exits. It targets a summary being overtaken by Cargo's subsequent
-error; structured callers still suppress human stdout. Focused macOS controls
-pass; [full qualification remains pending](validation/managed-output-order.md).
+error; structured callers still suppress human stdout. Focused and full Mac
+checks and native gate/solver/all E2E plus extra/PR commands pass;
+[full qualification remains pending](validation/managed-output-order.md).
 
 Managed metadata probes, including Cargo-Verus's private metadata subprocess,
 select `cargo-metadata/` under the Sail cache with a highest-priority
