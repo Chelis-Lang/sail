@@ -2073,11 +2073,17 @@ impl RetainedProof {
         Some(bundle.join(UNITS).join(&self.key).join(UNIT))
     }
 
-    pub(crate) fn outputs(&self) -> &BTreeMap<PathBuf, super::dependency_snapshot::Content> {
+    pub(in crate::managed) fn outputs(
+        &self,
+    ) -> &BTreeMap<PathBuf, super::dependency_snapshot::Content> {
         &self.outputs
     }
 
-    pub(crate) fn intact(&self, output: &Path, body: &super::dependency_snapshot::Content) -> bool {
+    pub(in crate::managed) fn intact(
+        &self,
+        output: &Path,
+        body: &super::dependency_snapshot::Content,
+    ) -> bool {
         let check = || {
             (self.plan.closure.as_ref()?.check_sources()
                 && self
