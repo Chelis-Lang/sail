@@ -308,3 +308,78 @@ addresses. This smaller prototype targets transient writes of the first,
 discarded graph, not that persistent duplication. The original whole cohort
 FAIL and scoped semantic result above are unchanged. A3's zero-verifier cost
 cannot be attributed to these preliminary compiler copies without profiling.
+
+## Path-only readiness successor (parked)
+
+The source-only child of `7090fff1` replaces only the two preliminary retained
+readiness calls with a separate nonserializable path type. Canonical lookup,
+exact self-family exclusion, regular readable held FDs, size/count limits and
+bounded directory draining remain. The final full `Inventory`, graph keys,
+private-body validation, producer/source observations and Current checks are
+unchanged. Existing full-content controls remain intact. New controls
+cover same-size/restored-mtime mutation, private damage and late rlib membership.
+Bounded Mac checks pass: 16 dependency-snapshot tests (including the three new
+controls), 32 retained producer/native/source/certificate/archive tests, 14
+source/currentness tests, and all-target sail-verus clippy. The shared target
+used two jobs, no incremental compilation, debug0 and two test threads. The
+external focused result SHA-256 is `1352424e4c661c2ece219fb1ea6cfbb31f09cb68a7903eba5b28d873da39241f`.
+These are Mac correctness tests, not a full-host or broad qualification.
+
+**Decision: parked and unselected.** Native source `e950fbfa` completed a
+combined comparison against `83128ad0` on one quiet `c7i.4xlarge` in
+`us-east-1`, with genuine stock `426d8b01` as the third actor. Both Sail actors
+used the same normal runtime archive `689004c0`, fork `e5365c05`, through
+ordinary bundled discovery. Three rotated Vest A1/B/A2/A3 cycles per actor
+retain all 36 actual calls: every row passes, zero rows are unrun, and the
+literal function/diagnostic, source/runtime/binary, Current/original-origin
+and complete final-growth guards pass. Final stock versions run as the
+ordinary caller, followed by the independent privileged full-file census.
+The complete source, controller steps and raw 36-row status were independently
+reviewed. The recorded `qualified=false` and `selected=false` fields remain
+unchanged; this narrow completed screen is not broad product qualification.
+
+| Wall seconds, median (retained min–max) | Stock | BASE `83128ad0` | Candidate `e950fbfa` |
+|---|---:|---:|---:|
+| A1 cold | 70.54354 (70.20071–71.71900) | 81.82948 (80.29841–82.88252) | 81.47378 (79.96186–82.97716) |
+| Changed B | 38.82055 (38.73226–40.00875) | 29.37019 (28.81962–29.87676) | 29.02393 (28.53301–29.33229) |
+| Returned A2 | 38.93527 (38.61524–38.98042) | 2.55372 (2.52775–2.58797) | 2.36020 (2.33927–2.36144) |
+| A3 unchanged | 0.19178 (0.18936–0.19467) | 0.81813 (0.81424–0.83945) | 0.82826 (0.81891–0.82967) |
+| Four actual CLI calls summed per round | 149.33410 (148.08283–149.71464) | 114.54165 (112.48987–116.18669) | 113.68740 (111.65306–115.49932) |
+| Broader observed cycle | 156.09344 (154.89968–156.55688) | 127.27898 (125.75934–129.63015) | 127.00801 (124.88084–128.38992) |
+
+The median of each round's four actual CLI times falls from
+114.541648212 to 113.687400653 seconds, about 0.75%. This is distinct from the
+broader recorded cycle, which includes preparation, validation and daemon
+setup/teardown: 127.278984985 to 127.008013139 seconds, about 0.21%. Returned A2
+improves about 7.58%, while unchanged A3 regresses about 1.24%. The retained
+ranges overlap for the overall cycle; no general CPU or real-project-wide
+speed claim follows. This combines both readiness deltas since `83128ad0`;
+it does not measure the path-only change against `7090fff1` or qualify that
+intermediate source independently. No broad qualification is pursued for
+this parked candidate.
+
+Complete final owned trees, including targets, sidecars, native/private copies,
+certificates and archives, contain 7,226,009,993 logical bytes,
+7,310,127,104 allocated bytes, 325,358 files and 2,570 directories, with zero
+live sockets. These are nine separate measured actor/round trees, not one
+project's cache footprint.
+
+Raw evidence remains outside git under
+`retained-readiness-matched-native-2026-10-18/e950-caller-stock-version/attempt01/`:
+
+| Relative evidence | SHA-256 |
+|---|---|
+| `native-results/final.tgz` | `f2a02460ddee941b5b2eee92319db7801c99b52328b986ec7bc785a460df9e4a` |
+| `selected-final/evidence/performance/status.json` | `1e045cd5eeb29b5903507e5f2a1e4347eaf35cb1c445f69fb6445c5f9062cf4b` |
+| `selected-final/summary.json` | `a80c990e9bab11615e3e123a7d852b5661ae7db145ff320f36b9bbe3d7ae89dd` |
+
+Earlier attempts remain separate and failed: the `7090fff1` deadline-revision
+native cohort refused at the final stock-version check under the privileged
+caller environment (final archive SHA-256
+`f74d3ce5634c3286589be3c8252b53df77fc851f2cfcc070627382e8194aa415`).
+Only its exact source-bound BASE binaries were reused here, not its result.
+The e950 preparation's first controller replay refused a stale seal; the second
+failed a fixture expectation after an intentionally failed restore. Their
+original `controls-controller` and `controls-controller-r2` records remain
+retained; the corrected five-case `controls-controller-r3` replay passes.
+None of these failed preparation records is relabelled as native acceptance.

@@ -5,7 +5,7 @@
 
 use super::super::{dependency_snapshot, files, input, receipts};
 use super::{archive, compiler, eligibility};
-use dependency_snapshot::{Content, Inventory, Snapshot};
+use dependency_snapshot::{Content, PathReadiness, Snapshot};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
@@ -263,9 +263,9 @@ impl Plan {
             .map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
             .collect::<Option<BTreeMap<_, _>>>()?;
         // Cargo may invoke this verifier as soon as dependency metadata is
-        // ready. Read/hash the complete first inventory without private copies,
+        // ready. Check the bounded first lookup paths without content authority,
         // wait for producer availability, then capture the full final graph.
-        let first = Inventory::read_ready(&self.target, args)?;
+        let first = PathReadiness::read_ready(&self.target, args)?;
         if !super::producers::inventory_ready(self, &first) {
             return None;
         }

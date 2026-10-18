@@ -31,6 +31,68 @@ pub(super) struct Inventory {
     artifacts: BTreeMap<PathBuf, Content>,
 }
 
+/// Preliminary producer-record names only; never byte/key/proof authority.
+/// This type cannot serialize into a final graph or carry content digests.
+pub(super) struct PathReadiness {
+    artifacts: BTreeSet<PathBuf>,
+}
+
+impl PathReadiness {
+    /// Check the same bounded lookup shape and readable regular-file sizes,
+    /// without hashing bodies that the producer-availability wait discards.
+    pub(super) fn read_ready(owned_target: &Path, args: &[OsString]) -> Option<Self> {
+        let target = owned_target.canonicalize().ok()?;
+        let unit = Unit::parse(args)?;
+        let (directories, externs) = lookups(&target, &unit, args)?;
+        if directories.is_empty()
+            || directories.len() > 8
+            || unit.directory.canonicalize().ok()? != unit.directory
+            || !unit.directory.starts_with(&target)
+        {
+            return None;
+        }
+        capture_after_directory_work(&directories, &unit, || {
+            let mut artifacts = BTreeSet::new();
+            let mut remaining = TOTAL_LIMIT;
+            for directory in &directories {
+                let mut names = BTreeSet::new();
+                for entry in std::fs::read_dir(directory).ok()? {
+                    let entry = entry.ok()?;
+                    if unit.owns(&entry.path()) {
+                        continue;
+                    }
+                    if !entry.file_type().ok()?.is_file()
+                        || !names.insert(entry.file_name())
+                        || names.len() > ENTRY_LIMIT
+                    {
+                        return None;
+                    }
+                    if artifact(&entry.path()) {
+                        // Opening NOFOLLOW still checks actual readability/type.
+                        // Size is only preliminary admission, never consumed-byte evidence.
+                        let held = open(&entry.path())?;
+                        let size = held.metadata().ok()?.len();
+                        if size > remaining.min(FILE_LIMIT) {
+                            return None;
+                        }
+                        remaining = remaining.checked_sub(size)?;
+                        artifacts.insert(entry.path());
+                    }
+                }
+            }
+            if externs.iter().any(|path| !artifacts.contains(path)) {
+                return None;
+            }
+            Some(Self { artifacts })
+        })
+    }
+
+    /// Mutable original names used only for producer-record availability.
+    pub(super) fn original_paths(&self) -> impl Iterator<Item = &PathBuf> {
+        self.artifacts.iter()
+    }
+}
+
 /// The exact current unit's output family; never a broad basename prefix.
 struct Unit {
     directory: PathBuf,
@@ -255,6 +317,7 @@ impl Inventory {
     /// Read and hash the complete eligible lookup inventory without creating
     /// private copies. This preliminary value grants no compiler/proof authority;
     /// callers must recapture or independently reuse a complete final snapshot.
+    #[cfg(test)]
     pub(super) fn read_ready(owned_target: &Path, args: &[OsString]) -> Option<Self> {
         let target = owned_target.canonicalize().ok()?;
         let unit = Unit::parse(args)?;
@@ -308,6 +371,7 @@ impl Inventory {
     }
 
     /// Mutable original names used only to wait for producer-record availability.
+    #[cfg(test)]
     pub(super) fn original_inputs(&self) -> &BTreeMap<PathBuf, Content> {
         &self.artifacts
     }
@@ -632,9 +696,9 @@ fn capture_after_directory_work<T>(
             let remaining = deadline.checked_duration_since(std::time::Instant::now())?;
             std::thread::sleep(remaining.min(std::time::Duration::from_millis(10)));
         }
-        // All path, shape, membership and byte checks still run on every
-        // capture. The first failure may be a transient already gone before
-        // another scan; at most one fresh complete attempt is allowed.
+        // Every callback reruns its complete checks: path readiness checks
+        // metadata only; final snapshots also read and validate full bytes.
+        // A transient may already be gone before the second complete attempt.
         if let Some(snapshot) = capture() {
             return Some(snapshot);
         }
@@ -771,6 +835,114 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn path_readiness_cannot_authorize_mutation_or_private_damage()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("path-only-authority")?;
+        let target = root.0.join("target");
+        let original = target.join("debug/deps/libvstd-abcd.rmeta");
+        std::fs::write(&original, b"A")?;
+        let graphs = root.0.join("graphs");
+        std::fs::create_dir(&graphs)?;
+        let a = Snapshot::capture_ready(&target, &root.0.join("A"), &root.args())
+            .and_then(|graph| graph.publish(&graphs, &root.args()))
+            .ok_or("final A")?;
+        let paths = PathReadiness::read_ready(&target, &root.args()).ok_or("paths")?;
+        assert_eq!(paths.original_paths().collect::<Vec<_>>(), vec![&original]);
+        let modified = std::fs::metadata(&original)?.modified()?;
+        std::fs::write(&original, b"B")?;
+        std::fs::File::options()
+            .write(true)
+            .open(&original)?
+            .set_times(std::fs::FileTimes::new().set_modified(modified))?;
+        assert!(Snapshot::reuse(&target, &graphs, &root.args()).is_none());
+        let b = Snapshot::capture_ready(&target, &root.0.join("B"), &root.args())
+            .and_then(|graph| graph.publish(&graphs, &root.args()))
+            .ok_or("final B")?;
+        assert_ne!(a.key(), b.key());
+        assert_eq!(b.original_inputs()[&original].sha256, digest(b"B"));
+        assert!(b.intact());
+        let private = b.copied_inputs().ok_or("private inputs")?;
+        let copy = private.keys().next().ok_or("private body")?;
+        let mut permissions = std::fs::metadata(copy)?.permissions();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            permissions.set_mode(0o600);
+        }
+        std::fs::set_permissions(copy, permissions)?;
+        std::fs::write(copy, b"C")?;
+        assert!(!b.intact());
+        assert!(Snapshot::reuse(&target, &graphs, &root.args()).is_none());
+        // The path-only result stays unchanged; it cannot authorize either body.
+        assert_eq!(paths.original_paths().collect::<Vec<_>>(), vec![&original]);
+        Ok(())
+    }
+
+    #[test]
+    fn path_readiness_does_not_omit_later_producer_outputs()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("path-only-pipeline")?;
+        let target = root.0.join("target");
+        let deps = target.join("debug/deps");
+        let metadata = deps.join("libvstd-abcd.rmeta");
+        let library = deps.join("libvstd-abcd.rlib");
+        std::fs::write(&metadata, b"metadata")?;
+        let first = PathReadiness::read_ready(&target, &root.args()).ok_or("first paths")?;
+        assert_eq!(first.original_paths().count(), 1);
+        // A pipelined rmeta alone does not fix the final graph membership.
+        std::fs::write(&library, b"later completed library")?;
+        let final_graph = Snapshot::capture_ready(&target, &root.0.join("final"), &root.args())
+            .ok_or("complete final graph")?;
+        assert_eq!(final_graph.original_inputs().len(), 2);
+        assert_eq!(
+            final_graph.original_inputs()[&library].sha256,
+            digest(b"later completed library")
+        );
+        assert!(!first.original_paths().any(|path| path == &library));
+        // The production final ready/established checks must now require both
+        // records, including the late rlib (the existing producer wait test).
+        assert!(final_graph.intact());
+        Ok(())
+    }
+
+    #[test]
+    fn path_readiness_preserves_lookup_type_and_size_refusals()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("path-only-limits")?;
+        let target = root.0.join("target");
+        let artifact = target.join("debug/deps/libvstd-abcd.rmeta");
+        std::fs::File::create(&artifact)?.set_len(FILE_LIMIT + 1)?;
+        assert!(PathReadiness::read_ready(&target, &root.args()).is_none());
+        std::fs::write(&artifact, b"A")?;
+        let mut args = root.args();
+        args.push("--import=foreign=/foreign/input.vir".into());
+        assert!(PathReadiness::read_ready(&target, &args).is_none());
+        #[cfg(unix)]
+        {
+            let alias = artifact.with_extension("rlib");
+            std::os::unix::fs::symlink(&artifact, &alias)?;
+            assert!(PathReadiness::read_ready(&target, &root.args()).is_none());
+            std::fs::remove_file(alias)?;
+        }
+        assert!(PathReadiness::read_ready(&target, &root.args()).is_some());
+        // Sparse files test metadata-only aggregate admission without reading bodies.
+        let deps = artifact.parent().ok_or("dependency directory")?;
+        for name in ["libone.rlib", "libtwo.rlib"] {
+            std::fs::File::create(deps.join(name))?.set_len(FILE_LIMIT)?;
+        }
+        assert!(PathReadiness::read_ready(&target, &root.args()).is_none());
+        for name in ["libone.rlib", "libtwo.rlib"] {
+            std::fs::remove_file(deps.join(name))?;
+        }
+        for index in 0..ENTRY_LIMIT {
+            std::fs::write(deps.join(format!("member-{index}.d")), b"")?;
+        }
+        assert!(PathReadiness::read_ready(&target, &root.args()).is_none());
+        assert_eq!(std::fs::read_dir(&root.0)?.count(), 1, "no private view");
+        Ok(())
     }
 
     #[test]

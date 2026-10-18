@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Prototype path-only producer readiness before independent full dependency
+  snapshots. Final byte/source/certificate checks remain unchanged; this
+  isolated successor is parked and unselected. Its combined native comparison
+  against `83128ad0` passes all 36 rows but improves the median four-call sum
+  only 0.75% and the broader observed cycle only 0.21%; unchanged runs regress
+  slightly. See the [measured scope](docs/validation/instant-revert.md#path-only-readiness-successor-parked).
+
 - Integrate the two disabled compiler-reuse research paths around their shared
   owned dependency snapshots. Simultaneous research switches refuse with
   `SAIL3135`; this does not select reuse or change the runtime pins.

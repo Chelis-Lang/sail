@@ -62,3 +62,17 @@ the final private graph before any compiler/proof authority is granted. Exact
 keys, producer certificates, compiler observations, currentness, archive
 placement and arena limits are unchanged. This prototype is unbuilt and
 unmeasured; it does not share artifact inodes or qualify a storage/speed gain.
+
+## Path-only readiness prototype
+
+An isolated successor to `7090fff1` checks bounded, readable artifact paths
+while waiting for producer records, without computing discarded preliminary
+content hashes. This value cannot enter graph keys, compiler observations or
+proof provenance. The final snapshot still independently reads every mutable
+body, validates private copies and checks qualified producer/source records.
+No filesystem timestamp grants byte authority. The combined native comparison
+against `83128ad0` passes all 36 rows, but the median four-call sum improves
+only 0.75% (0.21% for the broader observed cycle), and unchanged runs regress
+slightly. The successor is parked and unselected; this does not qualify
+`7090fff1` independently or change the default policy. See the
+[results and limits](validation/instant-revert.md#path-only-readiness-successor-parked).
