@@ -11,10 +11,33 @@
 | Compiler-input boundary | Final-source functional probes retain real native and verified-input certificates under the closed source/feature policy; earlier native source/transitive controls keep their recorded source scope |
 | Literal query comparison | Two separate cold controls match all 366 literal input streams / 2,061 checks each; this is not reuse or stock acceptance |
 | Portable functionality | Linux `83128ad0` and the earlier Mac component pass changed Cargo/project/install roots. The guarded Mac successor passes changed physical Rustup/sysroot roots, full Record → Serve → unchanged and both negative comparisons. A separate native-only successor passes all twelve consumer pairs; the original enclosing cohort stays FAIL |
-| Default regression gates | Current candidate: Mac host clippy and 779 tests pass; native Linux qualification is running. Earlier `83128ad0` full Linux results retain their original source scope |
+| Default regression gates | Current candidate: Mac host clippy and 779 tests pass; native Linux gate, solver, all end-to-end phases, PR and full FAST conformance pass; STANDARD is running. Earlier `83128ad0` full Linux results retain their original source scope |
 | Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
 
 ## Current composed release candidate
+
+The minimal-profile Mac endpoint also passes. A separate Rustup installation
+contains only the pinned compiler, Cargo, host standard library and `rust-src`.
+The actual factory records a new bundle, and its indexed 40,851,004-byte archive
+(SHA-256 `2b703d54ab9b1ae4d03727b73d92175b23d89211f24f610c5d3604f3f652a1df`)
+passes public first-use smoke from a different physical Rustup/sysroot, Cargo,
+project and installation root. The first report is Current, with the exact
+release origin, one requested-target verifier invocation and no local target
+reuse; an edit and bundled repair also pass. A genuinely fresh stock build
+matches all 1,871 vstd functions and the factory's one requested function,
+verification totals and report schemas. The served vstd report retains those
+same verdicts, totals and schema validity. Result SHA-256:
+`c7edf510b0b1eec98451884aadb1a5b18e96d7a6f42f2530627988f32dd3ab68`.
+
+This endpoint uses the `f7c540f4` binaries and `1363e634` release recipe, with
+unchanged compiled admission policy. It establishes minimal-profile Mac
+correctness on this machine, not Mac performance or a clean-machine install.
+Its initial local comparison incorrectly demanded equality of entire factory
+and served report objects, including intentionally lazy obligation attribution
+and relocated solver paths; that failed assertion remains in the result index.
+The successful comparison uses the existing exact function, scalar, schema and
+release-origin checks. Linux clean-consumer performance and shipped-mode
+A/B/A interaction gates remain pending.
 
 Source `356b7d0f` uses products built from `f7c540f4`: all compiled Rust,
 Cargo and admission-policy files are identical. The four subsequent changed
