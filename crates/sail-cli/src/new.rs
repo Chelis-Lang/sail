@@ -518,10 +518,10 @@ mod tests {
     #[test]
     fn reads_the_vstd_requirement() {
         let manifest =
-            "[package]\nname = \"d\"\n\n[dependencies]\nvstd = \"=0.0.0-2026-10-04-0306\"\n";
+            "[package]\nname = \"d\"\n\n[dependencies]\nvstd = \"=0.0.0-2026-10-18-0147\"\n";
         assert_eq!(
             vstd_requirement(manifest),
-            Some("0.0.0-2026-10-04-0306".to_owned())
+            Some("0.0.0-2026-10-18-0147".to_owned())
         );
         assert_eq!(vstd_requirement("[dependencies]\nvstdx = \"1\"\n"), None);
     }
@@ -535,7 +535,7 @@ mod tests {
         assert!(!project.join("Cargo.lock").exists());
         // The provider has already renamed and ordered the admitted resolution.
         // The CLI must preserve every supplied byte, rather than resolve again.
-        let lock = "version = 4\n\n[[package]]\nname = \"client\"\nversion = \"0.1.0\"\ndependencies = [\n \"vstd\",\n]\n\n[[package]]\nname = \"vstd\"\nversion = \"0.0.0-2026-10-04-0306\"\n";
+        let lock = "version = 4\n\n[[package]]\nname = \"client\"\nversion = \"0.1.0\"\ndependencies = [\n \"vstd\",\n]\n\n[[package]]\nname = \"vstd\"\nversion = \"0.0.0-2026-10-18-0147\"\n";
         assert!(write_shipped_lockfile(&project, Some(lock)).is_ok());
         assert_eq!(
             std::fs::read(project.join("Cargo.lock")).ok().as_deref(),

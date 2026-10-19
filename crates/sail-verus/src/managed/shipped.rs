@@ -1186,11 +1186,14 @@ impl<'a> Call<'a> {
                 .find(|(name, _)| name == key)
                 .map(|(_, value)| value)
         };
-        if lookup("CARGO_PKG_NAME")? != "vstd"
-            || lookup("CARGO_PKG_VERSION")? != "0.0.0-2026-10-04-0306"
+        if lookup("CARGO_PKG_NAME")? != "vstd" {
+            return None;
+        }
+        let version = crate::toolchain::Pins::embedded().ok()?.verus.vstd?;
+        if lookup("CARGO_PKG_VERSION")? != version.as_str()
             || lookup("CARGO_PRIMARY_PACKAGE").is_some()
             || Path::new(lookup("CARGO_MANIFEST_DIR")?)
-                != plan.registry.join("vstd-0.0.0-2026-10-04-0306")
+                != plan.registry.join(format!("vstd-{version}"))
         {
             return None;
         }
@@ -3360,19 +3363,25 @@ mod tests {
             Call::vstd_invocation(&machine.plan, &machine.args, ordinary_vars.into_iter())
                 .is_none()
         );
-        let package = machine.plan.registry.join("vstd-0.0.0-2026-10-04-0306");
+        let version = crate::toolchain::Pins::embedded()?
+            .verus
+            .vstd
+            .ok_or("pinned vstd")?;
+        let package = machine.plan.registry.join(format!("vstd-{version}"));
         std::fs::create_dir_all(package.join("src"))?;
         let manifest = package.join("Cargo.toml");
         std::fs::write(
             &manifest,
-            "[package]\nname='vstd'\nversion='0.0.0-2026-10-04-0306'\n[package.metadata.verus]\nverify=true\nis-vstd=true\n",
+            format!(
+                "[package]\nname='vstd'\nversion='{version}'\n[package.metadata.verus]\nverify=true\nis-vstd=true\n"
+            ),
         )?;
         machine.args[2] = "vstd".into();
         machine.args[3] = package.join("src/lib.rs").into_os_string();
         machine.args.extend(["--crate-type".into(), "lib".into()]);
         let invocation_vars = vec![
             (OsString::from("CARGO_PKG_NAME"), OsString::from("vstd")),
-            ("CARGO_PKG_VERSION".into(), "0.0.0-2026-10-04-0306".into()),
+            ("CARGO_PKG_VERSION".into(), version.clone().into()),
             ("CARGO_MANIFEST_DIR".into(), package.into_os_string()),
         ];
         let key = || {

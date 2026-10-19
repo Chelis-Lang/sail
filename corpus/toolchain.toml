@@ -16,6 +16,10 @@ rust_toolchain = "1.99.1"
 # the toolchain's virtual rustc-dev source base (`/rustc-dev/<commit>`), which
 # the shipped dependency build uses (ADR 0048).
 rust_commit = "58cf8f9c35b355199727627d07ae34a4e2846d67"
+# The crates.io vstd this release publishes (verus@7d82994:source/vstd/Cargo.toml).
+# Sail's shipped and retained vstd proofs admit only this version, and
+# scripts/shipped-deps/Cargo.toml must require exactly it (ADR 0059).
+vstd = "0.0.0-2026-10-18-0147"
 
 [z3]
 # As pinned by verus@7d82994:source/cargo-verus-toolchains/src/external_deps.rs.
