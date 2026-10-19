@@ -14,7 +14,8 @@ layer followed the caller. Managed verification ran `$CARGO` or `cargo` on
 The shipped vstd proof bundle (ADR 0048) is keyed to the exact compiler
 arguments a Cargo emits, and Cargo versions add different flags even when they
 invoke the same compiler. The bundle is recorded with the pinned Cargo. Most
-users' default Cargo is newer (the CI image's is `1.99.0`), so they silently
+users' default Cargo differs from the pin (when this was decided, the pin was
+`1.98.1` and the CI image's default `1.99.0`), so they silently
 missed the shipped proof and verified vstd again: a slow first run, with the
 fast path reachable only by typing `RUSTUP_TOOLCHAIN=<pin> sail verify`.
 
