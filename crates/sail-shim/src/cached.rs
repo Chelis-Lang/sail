@@ -330,17 +330,15 @@ fn spawn_storer(
             if !quiet.load(Ordering::SeqCst) {
                 return;
             }
-            for entry in pending {
+            // A daemon error drops the remaining stores.
+            let _ = client.put_all(pending.into_iter().map(|entry| {
                 let meta = PutMeta {
                     command: entry.command,
                     provenance: "pinned-solver".to_owned(),
                     effort: entry.effort,
                 };
-                if client.put(&entry.key.0, meta, entry.reply).is_err() {
-                    // The daemon is gone: drop the remaining stores.
-                    break;
-                }
-            }
+                (entry.key.0, meta, entry.reply)
+            }));
         })
         .ok()
 }
