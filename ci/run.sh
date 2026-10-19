@@ -19,8 +19,10 @@
 #                        writes, and its lib and bin projects verify;
 #                        `sail verify` (managed verification, the default,
 #                        ADR 0046, on Sail's Verus, the fork runtime,
-#                        ADR 0043) vs stock `cargo verus verify` on a fresh
-#                        project, cold and warm: identical output and exit;
+#                        ADR 0043) vs stock `cargo verus verify` (with the
+#                        toolchain Sail selects for its Cargo, ADR 0058) on
+#                        a fresh project, cold and warm: identical output
+#                        and exit;
 #                        then `sail verify --output json`: unchanged stderr
 #                        and exit, a sail-project-result whose requested
 #                        report agrees with Verus's own --output-json; then
@@ -218,6 +220,9 @@ case "$step" in
       sail_portfolio_test="$PWD/ci/test-portfolio.sh"
       work="$(mktemp -d)"
       export SAIL_CACHE_DIR="$work/cache"
+      # Stock runs with the toolchain Sail selects for its Cargo (ADR 0058).
+      sail_stock_toolchain="$(python3 "$sail_checkout/ci/stock-toolchain.py" "$sail")"
+      stock_cargo() { RUSTUP_TOOLCHAIN="$sail_stock_toolchain" cargo "$@"; }
       cd "$work"
       cargo verus new --lib demo >/dev/null
       # `sail new` (#148): the project stock `cargo verus new` at the pinned
@@ -265,7 +270,7 @@ RS
       # dependency; afterwards every run below re-verifies only the crate.
       # Stock's cold build runs while the `sail new` projects verify (their
       # first run verifies vstd for Sail); neither's output is compared.
-      plain_run warmup cargo verus verify &
+      plain_run warmup stock_cargo verus verify &
       plain_warmup=$!
       cd "$work"
       for kind in lib bin; do
@@ -280,7 +285,7 @@ RS
       echo "e2e: sail new: lib identical to cargo verus new; lib and bin verify"
       wait "$plain_warmup"
       cd demo
-      plain_run plain cargo verus verify
+      plain_run plain stock_cargo verus verify
       sail_run sailwarmup "$sail" verify
       sail_run cold "$sail" verify
       sail_run warm "$sail" verify
@@ -303,7 +308,7 @@ RS
       # report agrees with Verus's own --output-json. The runs above filled
       # the cache, so every answer is served from it.
       sail_run json "$sail" verify --output json
-      plain_run verusjson cargo verus verify -- --output-json --time
+      plain_run verusjson stock_cargo verus verify -- --output-json --time
       for part in rc err; do
         if ! cmp -s "$work/plain.$part" "$work/json.$part"; then
           echo "e2e: --output json $part differs from plain cargo verus verify" >&2

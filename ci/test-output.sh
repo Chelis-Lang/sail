@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The e2e `output` phase (ADR 0046): `sail verify`'s output against plain
-# stock `cargo verus verify`, byte for byte, across the edit loop and the
+# stock `cargo verus verify` under the toolchain Sail selects for its Cargo
+# (`RUSTUP_TOOLCHAIN`, ADR 0058), byte for byte, across the edit loop and the
 # flags that change Verus's or Cargo's output. Run by `ci/run.sh e2e output`
 # inside the CI image, with Sail's Verus selected (SAIL_VERUS_BUILD) and
 # stock `cargo verus` on PATH.
@@ -71,6 +72,9 @@ record_finish() {
   fi
 }
 export SAIL_CACHE_DIR="$work/cache"
+# Stock runs with the toolchain Sail selects for its Cargo (ADR 0058).
+sail_stock_toolchain="$(python3 "$sail_output_checkout/ci/stock-toolchain.py" "$sail")"
+stock_cargo() { RUSTUP_TOOLCHAIN="$sail_stock_toolchain" cargo "$@"; }
 cd "$work"
 cargo verus new --lib demo >/dev/null
 cd demo
@@ -140,7 +144,7 @@ warm_plain() { CARGO_TARGET_DIR="$work/target-plain" quiet_run "$@"; }
 warm_sail() { CARGO_TARGET_DIR="$work/target-sail" quiet_run "$@"; }
 # Warm-ups: each side builds and verifies vstd once, where the part needs it.
 # The loader part's Sail run builds its own context meanwhile (below).
-case "$part" in loop | loader | extra) warm_plain warmup-plain cargo verus verify & ;; esac
+case "$part" in loop | loader | extra) warm_plain warmup-plain stock_cargo verus verify & ;; esac
 case "$part" in loop | extra) warm_sail warmup-sail "$sail" verify & ;; esac
 [ "$part" = loader ] || wait
 
@@ -148,8 +152,8 @@ if [ "$part" = loop ]; then
 # Combined output (2>&1), as agents read it, on the failing proof.
 set +e
 touch src/lib.rs
-CARGO_TARGET_DIR="$work/target-plain" record_start combined-plain cargo verus verify
-CARGO_TARGET_DIR="$work/target-plain" cargo verus verify > "$work/combined-plain.out" 2>&1
+CARGO_TARGET_DIR="$work/target-plain" record_start combined-plain stock_cargo verus verify
+CARGO_TARGET_DIR="$work/target-plain" stock_cargo verus verify > "$work/combined-plain.out" 2>&1
 sail_output_exit=$?
 record_finish combined-plain "$sail_output_exit"
 touch src/lib.rs
@@ -162,21 +166,21 @@ same combined-plain combined-sail out
 # Passing proofs, then an unchanged re-run (Cargo's no-op; Sail reuses
 # its receipts), then a compile error.
 sed -i 's/ensures r > x,/ensures r >= x,/' src/lib.rs
-plain_run pass-plain cargo verus verify
+plain_run pass-plain stock_cargo verus verify
 sail_run pass-sail "$sail" verify
 same pass-plain pass-sail
 grep -q "verified, 0 errors" "$work/pass-plain.out"
-CARGO_TARGET_DIR="$work/target-plain" quiet_run noop-plain cargo verus verify
+CARGO_TARGET_DIR="$work/target-plain" quiet_run noop-plain stock_cargo verus verify
 CARGO_TARGET_DIR="$work/target-sail" quiet_run noop-sail "$sail" verify
 same noop-plain noop-sail
 printf 'pub fn broken() -> u32 { y }\n' >> src/lib.rs
-plain_run compile-plain cargo verus verify
+plain_run compile-plain stock_cargo verus verify
 sail_run compile-sail "$sail" verify
 same compile-plain compile-sail
 grep -q "cannot find value" "$work/compile-plain.err"
 sed -i '/pub fn broken/d' src/lib.rs
 # Partial verification under `verify`: plain Cargo-Verus's own refusal.
-plain_run partial-plain cargo verus verify -- --verify-function max
+plain_run partial-plain stock_cargo verus verify -- --verify-function max
 sail_run partial-sail "$sail" verify -- --verify-function max
 same partial-plain partial-sail
 grep -q "Partial verification must use" "$work/partial-plain.err"
@@ -209,10 +213,10 @@ unbound_compare() { # label
 unbound_case() { # label; rest = the arguments for both sides
   local label="$1"; shift
   touch src/lib.rs
-  warm_plain "$label-plainwarm" cargo verus verify "$@" &
+  warm_plain "$label-plainwarm" stock_cargo verus verify "$@" &
   warm_sail "$label-sailwarm" "$sail" verify "$@" &
   wait
-  plain_run "$label-plain" cargo verus verify "$@"
+  plain_run "$label-plain" stock_cargo verus verify "$@"
   sail_run "$label-sail" "$sail" verify "$@"
   unbound_compare "$label"
 }
@@ -248,7 +252,7 @@ PY
 echo "e2e: a --tests job verified as plain cargo verus verify, without proof reuse"
 # An explicit target directory: each side its own, already built by the
 # cases above (a fresh one would add two cold builds to this job).
-run target-dir-plain cargo verus verify --target-dir "$work/target-plain"
+run target-dir-plain stock_cargo verus verify --target-dir "$work/target-plain"
 run target-dir-sail "$sail" verify --target-dir "$work/target-sail"
 unbound_compare target-dir
 # Last: plain Cargo-Verus then treats the crate as fresh for any later
@@ -274,7 +278,7 @@ contexts = list(pathlib.Path(sys.argv[2], "projects").glob("*/" + doc["context_s
 assert len(contexts) == 1 and not list((contexts[0] / "receipts").glob("*.json")), contexts
 PY
 wait # the plain warm-up
-plain_run loader-plain cargo verus verify
+plain_run loader-plain stock_cargo verus verify
 LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
   run loader-sail "$sail" verify
 [ "$(grep -c '^note\[SAIL3112\]' "$work/loader-sail.err")" = 1 ]
@@ -289,9 +293,9 @@ if [ "$part" = extra ]; then
 # again), so each side runs once first. The documents' timings and build
 # information (Sail's Verus is built from the fork, ADR 0043) differ; their
 # results must not.
-CARGO_TARGET_DIR="$work/target-plain" edit_run json-plainwarm cargo verus verify -- --output-json --time
+CARGO_TARGET_DIR="$work/target-plain" edit_run json-plainwarm stock_cargo verus verify -- --output-json --time
 CARGO_TARGET_DIR="$work/target-sail" edit_run json-sailwarm "$sail" verify -- --output-json --time
-CARGO_TARGET_DIR="$work/target-plain" edit_run json-plain cargo verus verify -- --output-json --time
+CARGO_TARGET_DIR="$work/target-plain" edit_run json-plain stock_cargo verus verify -- --output-json --time
 CARGO_TARGET_DIR="$work/target-sail" edit_run json-sail "$sail" verify -- --output-json --time
 same json-plain json-sail "rc err"
 python3 - "$work/json-plain.out" "$work/json-sail.out" <<'PY'
@@ -340,8 +344,8 @@ RS
 (
   cd "$ws"
   ws_run() { printf '// %s\n' "$1" >> b/src/lib.rs; quiet_run "$@"; }
-  CARGO_TARGET_DIR="$work/target-ws-plain" ws_run ws-plainwarm cargo verus verify -p b --features extra
-  CARGO_TARGET_DIR="$work/target-ws-plain" ws_run ws-plain cargo verus verify -p b --features extra
+  CARGO_TARGET_DIR="$work/target-ws-plain" ws_run ws-plainwarm stock_cargo verus verify -p b --features extra
+  CARGO_TARGET_DIR="$work/target-ws-plain" ws_run ws-plain stock_cargo verus verify -p b --features extra
   ws_run ws-sailwarm "$sail" verify -p b --features extra
   ws_run ws-sail "$sail" verify -p b --features extra
   same ws-plain ws-sail
