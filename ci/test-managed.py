@@ -78,7 +78,9 @@ def bounded_verification(arguments, cwd, env, timeout):
     finish_verification(observation, process.returncode, stdout, stderr)
     return subprocess.CompletedProcess(arguments, process.returncode, stdout, stderr)
 
-with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary:
+# Under /tmp: macOS's default TMPDIR makes the job service socket path longer
+# than a Unix socket name allows (SAIL0800).
+with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") as temporary:
     root = Path(temporary)
     evidence = Path(os.environ.get("SAIL_MANAGED_ACCEPTANCE_OUT", str(root / "evidence"))).resolve()
     evidence.mkdir(mode=0o700, parents=True, exist_ok=True)
