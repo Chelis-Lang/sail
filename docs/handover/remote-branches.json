@@ -1,0 +1,2121 @@
+[
+  {
+    "repository": "sail",
+    "local_branch": "archive/ci-stock-layers-qualified-87a222eb",
+    "head": "87a222eb62e07bd0c55879292de990d10ff2f986",
+    "remote_branch": "archive/ci-stock-layers-qualified-87a222eb",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/ci-stock-layers-qualified-9e90e673",
+    "head": "9e90e673c916819ea0366cade8cc3bcd05c0bd10",
+    "remote_branch": "archive/ci-stock-layers-qualified-9e90e673",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/ci-stock-layers-unselected-0833d0c8",
+    "head": "0833d0c80efdadc9dbcfd0c608d1cbd6461daeed",
+    "remote_branch": "archive/ci-stock-layers-unselected-0833d0c8",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/fallback-parity-daa48b8e",
+    "head": "daa48b8e1f1b188aeb01ed00595975e7840a3aee",
+    "remote_branch": "archive/fallback-parity-daa48b8e",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/joined-output-scheduling-executed-7411",
+    "head": "7411f458c1630818ae05f5cca3389ecb666c43e2",
+    "remote_branch": "archive/joined-output-scheduling-executed-7411",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/m8-captured-ad168d35",
+    "head": "ad168d353f4d65ba175824beda7909385935ac57",
+    "remote_branch": "archive/m8-captured-ad168d35",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/m8-research-41687a67",
+    "head": "41687a67aa044db7d2f6547924c27cb7b19bf294",
+    "remote_branch": "archive/m8-research-41687a67",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/output-qualified-9dff",
+    "head": "9dff1ab46c2c94f74a89203dd686179a0c0af540",
+    "remote_branch": "archive/output-qualified-9dff",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/pr226-before-final-native-6bc8054f",
+    "head": "6bc8054f3ecd7e2c981157e6d52a149bfc860bba",
+    "remote_branch": "archive/pr226-before-final-native-6bc8054f",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/pr226-before-status-docs-0fb",
+    "head": "0fb0d78dd052625902aa504aa7290dce73d63ba5",
+    "remote_branch": "archive/pr226-before-status-docs-0fb",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/pr226-before-vest-facts-27a6",
+    "head": "27a6ea26b313bd9467c3c07a7c109aa3368e7e6b",
+    "remote_branch": "archive/pr226-before-vest-facts-27a6",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/pr226-delivered-4208273d",
+    "head": "4208273d57d05e58d11a33cbf5ccfc2900b4e046",
+    "remote_branch": "archive/pr226-delivered-4208273d",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/qualification-6880-before-selector",
+    "head": "6880cb9b22e41b26c43a7faa017542eb8f8695df",
+    "remote_branch": "archive/qualification-6880-before-selector",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/receipt-checksum-pre-squash-62987ee7",
+    "head": "62987ee77ffb47f67919b6922588a9cc6746a4e6",
+    "remote_branch": "archive/receipt-checksum-pre-squash-62987ee7",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retained-checksum-native-7ced",
+    "head": "7ced406f2e291ac296c94d32a219f71c42e4e180",
+    "remote_branch": "archive/retained-checksum-native-7ced",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retained-checksum-parked",
+    "head": "909750b6c87bcb7308a23d2876f2ad6253401932",
+    "remote_branch": "archive/retained-checksum-parked",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-actual-work-completion-5fa4b01d",
+    "head": "5fa4b01d890f80aefd9b16934437e02e80b9bb60",
+    "remote_branch": "archive/retired-actual-work-completion-5fa4b01d",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-cc7-macos-delivery-56004d81",
+    "head": "56004d815bcfcc2010688fc0e29aeccfbcb07e6c",
+    "remote_branch": "archive/retired-cc7-macos-delivery-56004d81",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-closure-full-identity-engine-d422adf0",
+    "head": "d422adf099f14c689372e34b313a2ef02db57200",
+    "remote_branch": "archive/retired-closure-full-identity-engine-d422adf0",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-closure-full-identity-validation-d8d7e6b7",
+    "head": "d8d7e6b781f6bedd97cff9fdf8d40453d3856a59",
+    "remote_branch": "archive/retired-closure-full-identity-validation-d8d7e6b7",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-combined-8a-current-af339f8a",
+    "head": "af339f8a4c7e08fb2c9dbf74d63facd37a923176",
+    "remote_branch": "archive/retired-combined-8a-current-af339f8a",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-combined-8a-integration-dfafffcf",
+    "head": "dfafffcf65b554b9594cdf1dc9c31a4e6d416110",
+    "remote_branch": "archive/retired-combined-8a-integration-dfafffcf",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-combined-8a-qualification-b9816738",
+    "head": "b9816738a3114cf9f14400b0dd75f1215ebabf69",
+    "remote_branch": "archive/retired-combined-8a-qualification-b9816738",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-combined-cc7-candidate-56004d81",
+    "head": "56004d815bcfcc2010688fc0e29aeccfbcb07e6c",
+    "remote_branch": "archive/retired-combined-cc7-candidate-56004d81",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-core-reuse-final-83128ad0",
+    "head": "83128ad0d5327f00bfea822d608ebd99dd9d8112",
+    "remote_branch": "archive/retired-core-reuse-final-83128ad0",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-external-fn-order-125fec48",
+    "head": "125fec48416e379516e3e2fc4608f01f1a0be95d",
+    "remote_branch": "archive/retired-external-fn-order-125fec48",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-focus-seed-baseline-0f031d16",
+    "head": "0f031d160a428348e5500e47c875728865e89a52",
+    "remote_branch": "archive/retired-focus-seed-baseline-0f031d16",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-focus-seed-candidate-381e5aae",
+    "head": "381e5aaec0a9e79c825ec9fe47782484b1f1e13c",
+    "remote_branch": "archive/retired-focus-seed-candidate-381e5aae",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-fork-suite-status-fb95d196",
+    "head": "fb95d196398a380d767cfcb7d93425d3c9e53b25",
+    "remote_branch": "archive/retired-fork-suite-status-fb95d196",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-ghost-incremental-build-source-829c328e",
+    "head": "829c328e9b57c4a135584d70f29f2a2a86227d03",
+    "remote_branch": "archive/retired-ghost-incremental-build-source-829c328e",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-instant-revert-activation-f32c325b",
+    "head": "f32c325b44e476596527f5a84cbb2e6587d222c0",
+    "remote_branch": "archive/retired-instant-revert-activation-f32c325b",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-instant-revert-content-446385e9",
+    "head": "446385e99caeb6d0f2abcf7fec49dd8c04dab42a",
+    "remote_branch": "archive/retired-instant-revert-content-446385e9",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-instant-revert-input-events-8ec547b2",
+    "head": "8ec547b262ed153848b3a58d4a7c5b5961216f61",
+    "remote_branch": "archive/retired-instant-revert-input-events-8ec547b2",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-instant-revert-profile-selection-c5fc9697",
+    "head": "c5fc969777568398cbcf707c744f6f9bb5e44db8",
+    "remote_branch": "archive/retired-instant-revert-profile-selection-c5fc9697",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-integrated-native-input-fixture-4f0007a1",
+    "head": "4f0007a134b099b032935dfa276d886230147b00",
+    "remote_branch": "archive/retired-integrated-native-input-fixture-4f0007a1",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-integrated-proof-reuse-29222632",
+    "head": "29222632d51a7db40de7c471cce30b62d77cfb3f",
+    "remote_branch": "archive/retired-integrated-proof-reuse-29222632",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-integrated-proof-reuse-candidate-c3e64d21",
+    "head": "c3e64d21e33754b2dd40b82ad103db36e28c55a4",
+    "remote_branch": "archive/retired-integrated-proof-reuse-candidate-c3e64d21",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-integrated-vstd-input-fixture-4e8709ed",
+    "head": "4e8709edc7894e7a6eb0402572eb1d155a5f0849",
+    "remote_branch": "archive/retired-integrated-vstd-input-fixture-4e8709ed",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-live-prefix-critical-context-372293a1",
+    "head": "372293a1a8bbc7f55469a44fd9fa86ea5b19f7ee",
+    "remote_branch": "archive/retired-live-prefix-critical-context-372293a1",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-live-prefix-driver-guards-9814ad7e",
+    "head": "9814ad7e5a4562bfcf781f507634d63d2a7c8358",
+    "remote_branch": "archive/retired-live-prefix-driver-guards-9814ad7e",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-live-prefix-edit-provenance-9e7ec66c",
+    "head": "9e7ec66c8b4acca45da8975a6dcba63e08de85eb",
+    "remote_branch": "archive/retired-live-prefix-edit-provenance-9e7ec66c",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-live-prefix-event-readiness-340a698d",
+    "head": "340a698d3209d45294703a1f32c516021b4edeab",
+    "remote_branch": "archive/retired-live-prefix-event-readiness-340a698d",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-live-prefix-kernel-rss-0e59b07f",
+    "head": "0e59b07fb73b81e5ab365f6c00c866ef4b5f0b7a",
+    "remote_branch": "archive/retired-live-prefix-kernel-rss-0e59b07f",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-live-prefix-time-only-6c89a9e9",
+    "head": "6c89a9e92d5cc749006b4ddae03ed67836c5b191",
+    "remote_branch": "archive/retired-live-prefix-time-only-6c89a9e9",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-log-completion-builder-baseline-fcd3a797",
+    "head": "fcd3a797848bd2b7ac6e618ec60fab90ed0abd15",
+    "remote_branch": "archive/retired-log-completion-builder-baseline-fcd3a797",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-log-completion-builder-baseline-fixture-104e8621",
+    "head": "104e8621e78aa56348d1394dbee5b9cd0343de5b",
+    "remote_branch": "archive/retired-log-completion-builder-baseline-fixture-104e8621",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-log-completion-builder-baseline-r2-194e0c23",
+    "head": "194e0c23b36c96b9487422072cecfba63f453959",
+    "remote_branch": "archive/retired-log-completion-builder-baseline-r2-194e0c23",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-log-completion-builder-combined-62d838cd",
+    "head": "62d838cd3e81af9b02d6182fb2903537e559bb55",
+    "remote_branch": "archive/retired-log-completion-builder-combined-62d838cd",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-log-completion-builder-combined-fixture-84eac8a9",
+    "head": "84eac8a9f199cdf49af368617ba288d6e27e4b39",
+    "remote_branch": "archive/retired-log-completion-builder-combined-fixture-84eac8a9",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-log-completion-builder-combined-r2-e5bf717e",
+    "head": "e5bf717ed9de52930451e0993030bd6bfe37ed8c",
+    "remote_branch": "archive/retired-log-completion-builder-combined-r2-e5bf717e",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-managed-output-order-f8232eca",
+    "head": "f8232eca74efc237ef82ca52033aa4a02cd65e1b",
+    "remote_branch": "archive/retired-managed-output-order-f8232eca",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-managed-selection-family-285f7fa3",
+    "head": "285f7fa3ea9f6cc07b924c199fe9b03aa3dea736",
+    "remote_branch": "archive/retired-managed-selection-family-285f7fa3",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-native-graph-complete-retry-bc713dc3",
+    "head": "bc713dc3d6853b5ce93944b93d795f2b45b5f2da",
+    "remote_branch": "archive/retired-native-graph-complete-retry-bc713dc3",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-native-graph-directory-readiness-67b00a93",
+    "head": "67b00a935568b70b4cd9052bc5e7064e06c44d1d",
+    "remote_branch": "archive/retired-native-graph-directory-readiness-67b00a93",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-native-graph-readiness-d19e7e29",
+    "head": "d19e7e2972e225af325c724d1c480d72e41ff4d9",
+    "remote_branch": "archive/retired-native-graph-readiness-d19e7e29",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-native-producer-corpus-selector-6fc7c8b6",
+    "head": "6fc7c8b6d9e06e0535a86cb016e4c31d69dba772",
+    "remote_branch": "archive/retired-native-producer-corpus-selector-6fc7c8b6",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-native-producer-readiness-fixture-2b559a65",
+    "head": "2b559a65231a6b15704f64034874fae5ad3a4198",
+    "remote_branch": "archive/retired-native-producer-readiness-fixture-2b559a65",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-native-producer-reuse-fixture-842e86fe",
+    "head": "842e86fe0b74033c325e48329d567a9fb87465be",
+    "remote_branch": "archive/retired-native-producer-reuse-fixture-842e86fe",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-perf-real-partial-26e9a388",
+    "head": "26e9a38892b6a815eb416d30398b686db21c3344",
+    "remote_branch": "archive/retired-perf-real-partial-26e9a388",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-portable-currentness-diagnostic-ccfcf912",
+    "head": "ccfcf912d6cf04f0ca5e75bb75541dd2bd081ee2",
+    "remote_branch": "archive/retired-portable-currentness-diagnostic-ccfcf912",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-portable-native-source-map-ce3f6370",
+    "head": "ce3f6370b10e0926ea03a8b7177591269e9d9cfb",
+    "remote_branch": "archive/retired-portable-native-source-map-ce3f6370",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-portable-observed-environment-64224d1d",
+    "head": "64224d1da61bd5c798cd7e756f5d1318bf0d054e",
+    "remote_branch": "archive/retired-portable-observed-environment-64224d1d",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-portable-value-collisions-6573b195",
+    "head": "6573b19505e23b6803456003416aa2268f77e705",
+    "remote_branch": "archive/retired-portable-value-collisions-6573b195",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-proof-reuse-final-aeea0587",
+    "head": "aeea05877d355375be12f871133e5568c646d0eb",
+    "remote_branch": "archive/retired-proof-reuse-final-aeea0587",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-prune-raw-native-builder-d1776ebe",
+    "head": "d1776ebecaeafe455f6c30340cccbd6ca0601b5c",
+    "remote_branch": "archive/retired-prune-raw-native-builder-d1776ebe",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-prune-shared-native-builder-9457c982",
+    "head": "9457c982afa47a861a79cb487f9c4fe41bc885c1",
+    "remote_branch": "archive/retired-prune-shared-native-builder-9457c982",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-prune-walk-validation-5f41ded1",
+    "head": "5f41ded17377d316953e08f1f47ff0e64ca5cb1b",
+    "remote_branch": "archive/retired-prune-walk-validation-5f41ded1",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-receipt-checksum-borrow-9d0a59d1",
+    "head": "9d0a59d1b1bde5549c55bc41743429cee91dfa66",
+    "remote_branch": "archive/retired-receipt-checksum-borrow-9d0a59d1",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-recovery-deep-rvt-bbf3d20a",
+    "head": "bbf3d20a3c98317d37749aa1244f517e80e20e0c",
+    "remote_branch": "archive/retired-recovery-deep-rvt-bbf3d20a",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-relay-order-probe-5df93a78",
+    "head": "5df93a7882e83a52b72c4863a70c2323d78df792",
+    "remote_branch": "archive/retired-relay-order-probe-5df93a78",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-repair-bucket-baseline-0e3efdc1",
+    "head": "0e3efdc15935662891824b911eedbaf347bfefef",
+    "remote_branch": "archive/retired-repair-bucket-baseline-0e3efdc1",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-repair-bucket-candidate-29116e7d",
+    "head": "29116e7d4c3d03908e69143ba82c186fd716e9d4",
+    "remote_branch": "archive/retired-repair-bucket-candidate-29116e7d",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-repair-stage-validation-b3550838",
+    "head": "b3550838b98b9e999c2943837262bf98533344c5",
+    "remote_branch": "archive/retired-repair-stage-validation-b3550838",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-retained-path-readiness-eea642e4",
+    "head": "eea642e4aaeeb20bc738bdbf2996390462f395be",
+    "remote_branch": "archive/retired-retained-path-readiness-eea642e4",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-retained-readiness-inventory-7090fff1",
+    "head": "7090fff1c9c226e717e7aa2f9084d549785d0be8",
+    "remote_branch": "archive/retired-retained-readiness-inventory-7090fff1",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-retained-storage-bound-289573a4",
+    "head": "289573a4c19ddad6da322688d02bf5a58f682d61",
+    "remote_branch": "archive/retired-retained-storage-bound-289573a4",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-scc-access-native-builder-623b8ba8",
+    "head": "623b8ba878973f57efb83e333cb629e9443ab813",
+    "remote_branch": "archive/retired-scc-access-native-builder-623b8ba8",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-selection-baseline-cc7-0272afe8",
+    "head": "0272afe8f6ece9f7d1cd28ac63f4ebde390fbbdf",
+    "remote_branch": "archive/retired-selection-baseline-cc7-0272afe8",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-selection-candidate-cc7-5a52f8a9",
+    "head": "5a52f8a9c57ee121bd5165fac6c86346e2831e61",
+    "remote_branch": "archive/retired-selection-candidate-cc7-5a52f8a9",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-session-observe-no-snapshot-d8ee0457",
+    "head": "d8ee045739dafb95b80b9d9380eed4e81d02b761",
+    "remote_branch": "archive/retired-session-observe-no-snapshot-d8ee0457",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-shim-discarded-snapshots-06e6e8cc",
+    "head": "06e6e8ccf5c924786e6d609df1c86d574e40bbc9",
+    "remote_branch": "archive/retired-shim-discarded-snapshots-06e6e8cc",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-shim-response-observer-8f46d6c9",
+    "head": "8f46d6c9cb4b7b8921cd082d7f9da0692609eb6a",
+    "remote_branch": "archive/retired-shim-response-observer-8f46d6c9",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-solver-identity-bytes-e62b9d66",
+    "head": "e62b9d666d672bfae1429574245efc0a302f3d28",
+    "remote_branch": "archive/retired-solver-identity-bytes-e62b9d66",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-solver-identity-digest-memo-fd31d747",
+    "head": "fd31d747d88c3003e699722db4b2664936ed5177",
+    "remote_branch": "archive/retired-solver-identity-digest-memo-fd31d747",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-solver-identity-host-validation-e3322f4f",
+    "head": "e3322f4f301d689cc4acd813e070b1672aaea6db",
+    "remote_branch": "archive/retired-solver-identity-host-validation-e3322f4f",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-source-suite-join-ba935014",
+    "head": "ba935014eace0b8c922e06a9feafbc92c37bcc3c",
+    "remote_branch": "archive/retired-source-suite-join-ba935014",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-spec-native-combined-acceptance-0cec0568",
+    "head": "0cec0568f6bc7658295f1a5f1a5f4b0b28e4af3c",
+    "remote_branch": "archive/retired-spec-native-combined-acceptance-0cec0568",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-spec-native-combined-delivery-070f4764",
+    "head": "070f4764d30f143ff38b0b64772191730ba78274",
+    "remote_branch": "archive/retired-spec-native-combined-delivery-070f4764",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-spec-param-native-validation-4ce1f00e",
+    "head": "4ce1f00ee169b5d94f01e06025493cdac7b1bb36",
+    "remote_branch": "archive/retired-spec-param-native-validation-4ce1f00e",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-spec-parameter-acceptance-6af7d10f",
+    "head": "6af7d10f851b0eb4e51f25f5bb252255050d695c",
+    "remote_branch": "archive/retired-spec-parameter-acceptance-6af7d10f",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-spec-parameter-partial-acceptance-3038b1fa",
+    "head": "3038b1fa81e19003097d9390d51907064faa240c",
+    "remote_branch": "archive/retired-spec-parameter-partial-acceptance-3038b1fa",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-spec-parameter-research-68260ec6",
+    "head": "68260ec6bda75de937203387bc568e9f289a5c55",
+    "remote_branch": "archive/retired-spec-parameter-research-68260ec6",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-spinoff-anvil-focused-56cbc3d9",
+    "head": "56cbc3d97d1b2d842ade213fddf54b72ef55c69d",
+    "remote_branch": "archive/retired-spinoff-anvil-focused-56cbc3d9",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-spinoff-anvil-scope-reader-ee3bd3f5",
+    "head": "ee3bd3f55827fa2025568022dcd72564ad987fec",
+    "remote_branch": "archive/retired-spinoff-anvil-scope-reader-ee3bd3f5",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-store-native-guard-bd7a0e05",
+    "head": "bd7a0e055da6b5c7925cd07abfba2f18a5073cc3",
+    "remote_branch": "archive/retired-store-native-guard-bd7a0e05",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-store-v1-fail-closed-7b0908bd",
+    "head": "7b0908bd193d349ed598838cc661884f11132fb4",
+    "remote_branch": "archive/retired-store-v1-fail-closed-7b0908bd",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-unscheduled-script-current-3506625b",
+    "head": "3506625b1e064482bcd4e800f52820669d889135",
+    "remote_branch": "archive/retired-unscheduled-script-current-3506625b",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-unscheduled-script-delivery-f217785f",
+    "head": "f217785fb63c7b8ab964e17fac7cabf03ec0ad40",
+    "remote_branch": "archive/retired-unscheduled-script-delivery-f217785f",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-unscheduled-script-memo-9341e827",
+    "head": "9341e8274d84908878f3431af0006c8677956b5e",
+    "remote_branch": "archive/retired-unscheduled-script-memo-9341e827",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-unscheduled-script-output-join-d1dd0863",
+    "head": "d1dd086324217178ec0bef243b08d0a8d9719e6a",
+    "remote_branch": "archive/retired-unscheduled-script-output-join-d1dd0863",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/retired-vest-overhead-output-225-354d2995",
+    "head": "354d299526d9a2405012fa4e0f09cf02064de2d6",
+    "remote_branch": "archive/retired-vest-overhead-output-225-354d2995",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/setup-fixture-6beb2f27",
+    "head": "6beb2f278a9192bc34d550ce109d9556aa5e3c9b",
+    "remote_branch": "archive/setup-fixture-6beb2f27",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/shipped-release-index-3f649232",
+    "head": "3f649232f709b843dbc36db6e887a4832147383d",
+    "remote_branch": "archive/shipped-release-index-3f649232",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/solver-report-519cb773",
+    "head": "519cb773a98823f55273ab4c60d23073f38f73ba",
+    "remote_branch": "archive/solver-report-519cb773",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/unscheduled-output-d26-6d43",
+    "head": "6d43a49d4121d557109002bfad421ed2e8c43bc4",
+    "remote_branch": "archive/unscheduled-output-d26-6d43",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/unscheduled-output-native-643ffd",
+    "head": "643ffd2e50ed0ee4a9015698daa7b15510e8cb21",
+    "remote_branch": "archive/unscheduled-output-native-643ffd",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/unscheduled-script-f217",
+    "head": "f217785fb63c7b8ab964e17fac7cabf03ec0ad40",
+    "remote_branch": "archive/unscheduled-script-f217",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/vest-overhead-memo-225-before-scope-41d",
+    "head": "41d0b0b3b7ee0d3c831bab9109c12b33bb67d795",
+    "remote_branch": "archive/vest-overhead-memo-225-before-scope-41d",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/vstd-boundary-before-current-main-5bd9ca39",
+    "head": "5bd9ca3977d48eb1cbf8ba937862089e82f99a97",
+    "remote_branch": "archive/vstd-boundary-before-current-main-5bd9ca39",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/vstd-boundary-consumption-before-snapshots-c0cb340b",
+    "head": "c0cb340b731706da77c75a64a15cae326e5043c0",
+    "remote_branch": "archive/vstd-boundary-consumption-before-snapshots-c0cb340b",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/vstd-macos-6043-qualified",
+    "head": "6043c17cf17abd610148bcf594a552bf6a68909b",
+    "remote_branch": "archive/vstd-macos-6043-qualified",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/warm-skip-packet-baseline831",
+    "head": "83128ad0d5327f00bfea822d608ebd99dd9d8112",
+    "remote_branch": "archive/warm-skip-packet-baseline831",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/warm-skip-qualified-b1",
+    "head": "b1c0635e0ba08bb1801e26738c84f00aa94f7e90",
+    "remote_branch": "archive/warm-skip-qualified-b1",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/warm-skip-qualified-e130",
+    "head": "e130f632eb6cacd62aa7877bc9f91578142306c1",
+    "remote_branch": "archive/warm-skip-qualified-e130",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "archive/warm-skip-reviewed-174",
+    "head": "17464f16c8b5f0cf723e7d12f5aca26ba5017e29",
+    "remote_branch": "archive/warm-skip-reviewed-174",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "capsule-receipt-checksum-Mac-c660",
+    "head": "c66049a02296abad35af092f81150563fe5a7f7b",
+    "remote_branch": "capsule-receipt-checksum-Mac-c660",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "capsule-receipt-checksum-baseline",
+    "head": "e0d14d7544ed07b2f01c09988ee78b7b39bbe13e",
+    "remote_branch": "capsule-receipt-checksum-baseline",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "capsule-receipt-checksum-candidate",
+    "head": "62987ee77ffb47f67919b6922588a9cc6746a4e6",
+    "remote_branch": "capsule-receipt-checksum-candidate",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "capsule-receipt-checksum-final7ced",
+    "head": "7ced406f2e291ac296c94d32a219f71c42e4e180",
+    "remote_branch": "capsule-receipt-checksum-final7ced",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "capsule-unscheduled-output-baseline",
+    "head": "9dff1ab46c2c94f74a89203dd686179a0c0af540",
+    "remote_branch": "capsule-unscheduled-output-baseline",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "capsule-unscheduled-output-candidate",
+    "head": "643ffd2e50ed0ee4a9015698daa7b15510e8cb21",
+    "remote_branch": "capsule-unscheduled-output-candidate",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "capsule-vest-main-225",
+    "head": "17464f16c8b5f0cf723e7d12f5aca26ba5017e29",
+    "remote_branch": "capsule-vest-main-225",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "capsule-vest-memo174-225",
+    "head": "7411f458c1630818ae05f5cca3389ecb666c43e2",
+    "remote_branch": "capsule-vest-memo174-225",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "capsule-vest-output215-225",
+    "head": "354d299526d9a2405012fa4e0f09cf02064de2d6",
+    "remote_branch": "capsule-vest-output215-225",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "docs/fork-suite-status",
+    "head": "fb95d196398a380d767cfcb7d93425d3c9e53b25",
+    "remote_branch": "docs/fork-suite-status",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "docs/incidental-impl-identity-record",
+    "head": "1c48aac42d7264c5f2e54b7aa74a0c85854ac4b1",
+    "remote_branch": "docs/incidental-impl-identity-record",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "docs/incidental-impl-smt-alias-record",
+    "head": "01e8944e3adbe22e083c089b01ad1e625727a6c7",
+    "remote_branch": "docs/incidental-impl-smt-alias-record",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "exp/live-prefix-time-only",
+    "head": "6c89a9e92d5cc749006b4ddae03ed67836c5b191",
+    "remote_branch": "exp/live-prefix-time-only",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "experiment/log-completion-builder-baseline-fixture",
+    "head": "104e8621e78aa56348d1394dbee5b9cd0343de5b",
+    "remote_branch": "experiment/log-completion-builder-baseline-fixture",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "experiment/log-completion-builder-combined-fixture",
+    "head": "84eac8a9f199cdf49af368617ba288d6e27e4b39",
+    "remote_branch": "experiment/log-completion-builder-combined-fixture",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "feat/fallback-parity",
+    "head": "9bda47660dfbb2c69d13c0aa58bbece2c9d1234e",
+    "remote_branch": "feat/fallback-parity",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "feat/instant-revert",
+    "head": "ac1e3c74a8d13b1c0a3a411d9612d8ee11b747df",
+    "remote_branch": "feat/instant-revert",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "feat/instant-revert-default",
+    "head": "f32c325b44e476596527f5a84cbb2e6587d222c0",
+    "remote_branch": "feat/instant-revert-default",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "feat/shipped-default-integration",
+    "head": "356b7d0fdb859adf169b78f16fe0935a38b449fc",
+    "remote_branch": "feat/shipped-default-integration",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "feat/shipped-proof-release-index",
+    "head": "c4b1644fc561afd034119fee60264f6af46ced2e",
+    "remote_branch": "feat/shipped-proof-release-index",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "feat/shipped-proof-release-stage",
+    "head": "83128ad0d5327f00bfea822d608ebd99dd9d8112",
+    "remote_branch": "feat/shipped-proof-release-stage",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "feat/shipped-release-delivery",
+    "head": "c170163f9c076360dc6f6ccb09cd049ed6a66fe2",
+    "remote_branch": "handover-2026-10-19/feat/shipped-release-delivery",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "feat/shipped-vstd",
+    "head": "c2b6a1402ab8e24c66d7c742bc5ee262c9c26eb1",
+    "remote_branch": "handover-2026-10-19/feat/shipped-vstd",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/dependency-store-native-inputs",
+    "head": "bd7a0e055da6b5c7925cd07abfba2f18a5073cc3",
+    "remote_branch": "fix/dependency-store-native-inputs",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/focused-module-scope-reader",
+    "head": "ee3bd3f55827fa2025568022dcd72564ad987fec",
+    "remote_branch": "fix/focused-module-scope-reader",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/fork-deep-rvt",
+    "head": "bbf3d20a3c98317d37749aa1244f517e80e20e0c",
+    "remote_branch": "fix/fork-deep-rvt",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/managed-output-order",
+    "head": "f8232eca74efc237ef82ca52033aa4a02cd65e1b",
+    "remote_branch": "fix/managed-output-order",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/native-graph-complete-retry",
+    "head": "bc713dc3d6853b5ce93944b93d795f2b45b5f2da",
+    "remote_branch": "fix/native-graph-complete-retry",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/native-graph-directory-readiness",
+    "head": "67b00a935568b70b4cd9052bc5e7064e06c44d1d",
+    "remote_branch": "fix/native-graph-directory-readiness",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/native-graph-readiness",
+    "head": "d19e7e2972e225af325c724d1c480d72e41ff4d9",
+    "remote_branch": "fix/native-graph-readiness",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/perf-real-partial",
+    "head": "26e9a38892b6a815eb416d30398b686db21c3344",
+    "remote_branch": "fix/perf-real-partial",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/portable-value-collisions",
+    "head": "6573b19505e23b6803456003416aa2268f77e705",
+    "remote_branch": "fix/portable-value-collisions",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/retained-input-content-events",
+    "head": "8ec547b262ed153848b3a58d4a7c5b5961216f61",
+    "remote_branch": "fix/retained-input-content-events",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/retained-storage-bound",
+    "head": "289573a4c19ddad6da322688d02bf5a58f682d61",
+    "remote_branch": "fix/retained-storage-bound",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/shipped-compiler-source-paths",
+    "head": "c4b1644fc561afd034119fee60264f6af46ced2e",
+    "remote_branch": "fix/shipped-compiler-source-paths",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/shipped-release-group-cleanup",
+    "head": "abb4b1ad556b02a063470fa0b20465b2e991de62",
+    "remote_branch": "fix/shipped-release-group-cleanup",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/shipped-release-prerequisites",
+    "head": "c4b1644fc561afd034119fee60264f6af46ced2e",
+    "remote_branch": "fix/shipped-release-prerequisites",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/solver-identity-bytes",
+    "head": "e62b9d666d672bfae1429574245efc0a302f3d28",
+    "remote_branch": "fix/solver-identity-bytes",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/solver-identity-current",
+    "head": "3fadf649c869c880545f836ac7a0ff763fb4d42b",
+    "remote_branch": "fix/solver-identity-current",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "fix/store-v1-fail-closed",
+    "head": "7b0908bd193d349ed598838cc661884f11132fb4",
+    "remote_branch": "fix/store-v1-fail-closed",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "handover/2026-10-19",
+    "head": "a3bc075fcb6b0bcf98964108f336c3dbc3336948",
+    "remote_branch": "handover/2026-10-19",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "handover/followup-2026-10-19",
+    "head": "246ea87a0f46de543119dc722c28c48c09913017",
+    "remote_branch": "handover/followup-2026-10-19",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "m11-5/stable-closure-ids",
+    "head": "d11568c4c4ee8a4d394f09788d3dc14599deb38c",
+    "remote_branch": "m11-5/stable-closure-ids",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "main",
+    "head": "d1499effe368a4e396992f4bcc4a120ae3652db4",
+    "status": "protected base; not pushed"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/ci-stock-layers",
+    "head": "0833d0c80efdadc9dbcfd0c608d1cbd6461daeed",
+    "remote_branch": "perf/ci-stock-layers",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/closure-full-identity-pin",
+    "head": "aa7b53d8dc481c545b8d23dca2c0d2d9327f82a1",
+    "remote_branch": "perf/closure-full-identity-pin",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/combined-8a-candidate",
+    "head": "9da6e31891a5ad9b7552f95df7ab40a45b49982f",
+    "remote_branch": "perf/combined-8a-candidate",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/combined-cc7-candidate",
+    "head": "56004d815bcfcc2010688fc0e29aeccfbcb07e6c",
+    "remote_branch": "perf/combined-cc7-candidate",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/core-reuse-final",
+    "head": "83128ad0d5327f00bfea822d608ebd99dd9d8112",
+    "remote_branch": "perf/core-reuse-final",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/instant-revert-profile-selection",
+    "head": "c5fc969777568398cbcf707c744f6f9bb5e44db8",
+    "remote_branch": "perf/instant-revert-profile-selection",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/managed-overhead",
+    "head": "072524c5bc68578c7ed0846ce71e35ea213e7a50",
+    "remote_branch": "perf/managed-overhead",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/managed-selection-current",
+    "head": "f595e6ae93093341d022ced320c628d9f802151d",
+    "remote_branch": "perf/managed-selection-current",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/managed-selection-family",
+    "head": "285f7fa3ea9f6cc07b924c199fe9b03aa3dea736",
+    "remote_branch": "perf/managed-selection-family",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/proof-reuse-final",
+    "head": "aeea05877d355375be12f871133e5568c646d0eb",
+    "remote_branch": "perf/proof-reuse-final",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/receipt-checksum-borrow",
+    "head": "9d0a59d1b1bde5549c55bc41743429cee91dfa66",
+    "remote_branch": "perf/receipt-checksum-borrow",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/repin-combined-8a",
+    "head": "dfafffcf65b554b9594cdf1dc9c31a4e6d416110",
+    "remote_branch": "perf/repin-combined-8a",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/retained-path-readiness",
+    "head": "eea642e4aaeeb20bc738bdbf2996390462f395be",
+    "remote_branch": "perf/retained-path-readiness",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/retained-readiness-inventory",
+    "head": "7090fff1c9c226e717e7aa2f9084d549785d0be8",
+    "remote_branch": "perf/retained-readiness-inventory",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/scc-access-log-native-builder",
+    "head": "623b8ba878973f57efb83e333cb629e9443ab813",
+    "remote_branch": "perf/scc-access-log-native-builder",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/scc-access-native-builder",
+    "head": "e669bdcde2ef695bd0c1f01b41fd42256aaa93f5",
+    "remote_branch": "perf/scc-access-native-builder",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/shim-discarded-snapshots",
+    "head": "06e6e8ccf5c924786e6d609df1c86d574e40bbc9",
+    "remote_branch": "perf/shim-discarded-snapshots",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/shim-response-observer",
+    "head": "8f46d6c9cb4b7b8921cd082d7f9da0692609eb6a",
+    "remote_branch": "perf/shim-response-observer",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/skip-unused-session-snapshots",
+    "head": "d8ee045739dafb95b80b9d9380eed4e81d02b761",
+    "remote_branch": "perf/skip-unused-session-snapshots",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/solver-identity-digest-memo",
+    "head": "fd31d747d88c3003e699722db4b2664936ed5177",
+    "remote_branch": "perf/solver-identity-digest-memo",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/solver-identity-stream",
+    "head": "e3322f4f301d689cc4acd813e070b1672aaea6db",
+    "remote_branch": "perf/solver-identity-stream",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/solver-snapshots",
+    "head": "b9345c2a116693f8b6a7b6c23ee3d812ef04dec5",
+    "remote_branch": "perf/solver-snapshots",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/spec-native-combined",
+    "head": "070f4764d30f143ff38b0b64772191730ba78274",
+    "remote_branch": "perf/spec-native-combined",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/unscheduled-script-current",
+    "head": "3506625b1e064482bcd4e800f52820669d889135",
+    "remote_branch": "perf/unscheduled-script-current",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/unscheduled-script-delivery",
+    "head": "f217785fb63c7b8ab964e17fac7cabf03ec0ad40",
+    "remote_branch": "perf/unscheduled-script-delivery",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/unscheduled-script-memo",
+    "head": "9341e8274d84908878f3431af0006c8677956b5e",
+    "remote_branch": "handover-2026-10-19/perf/unscheduled-script-memo",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/unscheduled-script-output-join",
+    "head": "d1dd086324217178ec0bef243b08d0a8d9719e6a",
+    "remote_branch": "perf/unscheduled-script-output-join",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/vest-overhead-output-225",
+    "head": "354d299526d9a2405012fa4e0f09cf02064de2d6",
+    "remote_branch": "perf/vest-overhead-output-225",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/vstd-compile-boundary",
+    "head": "3c15130448f37d89a24724478c4cd4bbfa7d2bd8",
+    "remote_branch": "perf/vstd-compile-boundary",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/vstd-macos-repro",
+    "head": "4488f2df92a0331e44c3c0b9588e7e9b11f619c1",
+    "remote_branch": "perf/vstd-macos-repro",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "perf/warm-frontend",
+    "head": "bd281c6c2f00e9f1ee3196d6a3eed05e30dc2800",
+    "remote_branch": "perf/warm-frontend",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "pr154",
+    "head": "f0e2d07501f406f966e53a25bec53f9eed05b41e",
+    "remote_branch": "pr154",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "pr155",
+    "head": "472e1b8e8c41b1045c0d4205138888adc61a592d",
+    "remote_branch": "pr155",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "pr173",
+    "head": "0e8176bd7aea4f815ed45b485fd1b010c26afcad",
+    "remote_branch": "pr173",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "pr183",
+    "head": "4fdc518559c0dc634ac76696949ec575a653e42c",
+    "remote_branch": "pr183",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "prepare/combined-8a-delivery",
+    "head": "3dd4e28ebdc9adab0e6878e14ca12e47591bf56d",
+    "remote_branch": "prepare/combined-8a-delivery",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "private/shipped-alias-integration",
+    "head": "d827c407ae0465ff8be6e8b4d2375a9c1f80fbda",
+    "remote_branch": "private/shipped-alias-integration",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "private/smt-alias-final-current-main",
+    "head": "f6ee51b3fa48aa2c0364b12b14f6550cff8fc466",
+    "remote_branch": "private/smt-alias-final-current-main",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "private/smt-alias-final-mac-builder",
+    "head": "9bfe8934e0e5bdb94a111da649a8d433d7bf1dfb",
+    "remote_branch": "private/smt-alias-final-mac-builder",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "private/smt-alias-final-qa-pr227",
+    "head": "48a7a6b68d3edbd6fe833f4f1b73bd5843635374",
+    "remote_branch": "private/smt-alias-final-qa-pr227",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "private/smt-alias-native-builder",
+    "head": "095a61d4d744f779c45c82ec1076c39f29bd51eb",
+    "remote_branch": "private/smt-alias-native-builder",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "qualification/cc7-macos-delivery",
+    "head": "56004d815bcfcc2010688fc0e29aeccfbcb07e6c",
+    "remote_branch": "qualification/cc7-macos-delivery",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "qualification/combined-8a",
+    "head": "b9816738a3114cf9f14400b0dd75f1215ebabf69",
+    "remote_branch": "qualification/combined-8a",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "qualification/combined-8a-056-archived",
+    "head": "05674c60d3a83a1ab3f82dff8e3ae5376f90e826",
+    "remote_branch": "qualification/combined-8a-056-archived",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "qualification/combined-8a-current",
+    "head": "af339f8a4c7e08fb2c9dbf74d63facd37a923176",
+    "remote_branch": "qualification/combined-8a-current",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "qualification/solver-identity-host",
+    "head": "e3322f4f301d689cc4acd813e070b1672aaea6db",
+    "remote_branch": "qualification/solver-identity-host",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "qualification/spec-native-combined",
+    "head": "0cec0568f6bc7658295f1a5f1a5f4b0b28e4af3c",
+    "remote_branch": "qualification/spec-native-combined",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "qualification/spec-parameter-macos",
+    "head": "6af7d10f851b0eb4e51f25f5bb252255050d695c",
+    "remote_branch": "qualification/spec-parameter-macos",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "recovery/frontend-profile-c03991fb",
+    "head": "c03991fb79a1ce6144e13910f95054b89721b868",
+    "remote_branch": "recovery/frontend-profile-c03991fb",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "recovery/snapshot-prototype-88076b62",
+    "head": "88076b627727e12d6172a6a60aa5eb97ba9782e6",
+    "remote_branch": "recovery/snapshot-prototype-88076b62",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "rescue/m6-baseline",
+    "head": "26f124f52dbf51d6c94178778873e96ac5e072ef",
+    "remote_branch": "rescue/m6-baseline",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/closure-full-identity-engine",
+    "head": "d422adf099f14c689372e34b313a2ef02db57200",
+    "remote_branch": "research/closure-full-identity-engine",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/closure-full-identity-validation",
+    "head": "d8d7e6b781f6bedd97cff9fdf8d40453d3856a59",
+    "remote_branch": "research/closure-full-identity-validation",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/external-fn-order",
+    "head": "125fec48416e379516e3e2fc4608f01f1a0be95d",
+    "remote_branch": "research/external-fn-order",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/focus-seed-baseline",
+    "head": "0f031d160a428348e5500e47c875728865e89a52",
+    "remote_branch": "research/focus-seed-baseline",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/focus-seed-candidate",
+    "head": "381e5aaec0a9e79c825ec9fe47782484b1f1e13c",
+    "remote_branch": "research/focus-seed-candidate",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/ghost-incremental-build-source",
+    "head": "829c328e9b57c4a135584d70f29f2a2a86227d03",
+    "remote_branch": "research/ghost-incremental-build-source",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/instant-revert-content",
+    "head": "446385e99caeb6d0f2abcf7fec49dd8c04dab42a",
+    "remote_branch": "research/instant-revert-content",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/integrated-native-input-fixture",
+    "head": "4f0007a134b099b032935dfa276d886230147b00",
+    "remote_branch": "research/integrated-native-input-fixture",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/integrated-proof-reuse",
+    "head": "29222632d51a7db40de7c471cce30b62d77cfb3f",
+    "remote_branch": "research/integrated-proof-reuse",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/integrated-proof-reuse-candidate",
+    "head": "c3e64d21e33754b2dd40b82ad103db36e28c55a4",
+    "remote_branch": "research/integrated-proof-reuse-candidate",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/integrated-vstd-input-fixture",
+    "head": "4e8709edc7894e7a6eb0402572eb1d155a5f0849",
+    "remote_branch": "research/integrated-vstd-input-fixture",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/kernel-rss",
+    "head": "0e59b07fb73b81e5ab365f6c00c866ef4b5f0b7a",
+    "remote_branch": "research/kernel-rss",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/live-prefix-critical-context",
+    "head": "372293a1a8bbc7f55469a44fd9fa86ea5b19f7ee",
+    "remote_branch": "research/live-prefix-critical-context",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/live-prefix-driver-guards",
+    "head": "9814ad7e5a4562bfcf781f507634d63d2a7c8358",
+    "remote_branch": "research/live-prefix-driver-guards",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/live-prefix-edit-provenance",
+    "head": "9e7ec66c8b4acca45da8975a6dcba63e08de85eb",
+    "remote_branch": "research/live-prefix-edit-provenance",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/live-prefix-event-readiness",
+    "head": "340a698d3209d45294703a1f32c516021b4edeab",
+    "remote_branch": "research/live-prefix-event-readiness",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/log-completion-builder-baseline",
+    "head": "fcd3a797848bd2b7ac6e618ec60fab90ed0abd15",
+    "remote_branch": "research/log-completion-builder-baseline",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/log-completion-builder-baseline-r2",
+    "head": "194e0c23b36c96b9487422072cecfba63f453959",
+    "remote_branch": "research/log-completion-builder-baseline-r2",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/log-completion-builder-combined",
+    "head": "62d838cd3e81af9b02d6182fb2903537e559bb55",
+    "remote_branch": "research/log-completion-builder-combined",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/log-completion-builder-combined-r2",
+    "head": "e5bf717ed9de52930451e0993030bd6bfe37ed8c",
+    "remote_branch": "research/log-completion-builder-combined-r2",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/portable-currentness-diagnostic",
+    "head": "ccfcf912d6cf04f0ca5e75bb75541dd2bd081ee2",
+    "remote_branch": "research/portable-currentness-diagnostic",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/portable-native-source-map",
+    "head": "ce3f6370b10e0926ea03a8b7177591269e9d9cfb",
+    "remote_branch": "research/portable-native-source-map",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/portable-observed-environment",
+    "head": "64224d1da61bd5c798cd7e756f5d1318bf0d054e",
+    "remote_branch": "research/portable-observed-environment",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/prune-logging-native-builder",
+    "head": "9457c982afa47a861a79cb487f9c4fe41bc885c1",
+    "remote_branch": "research/prune-logging-native-builder",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/prune-raw-native-builder",
+    "head": "d1776ebecaeafe455f6c30340cccbd6ca0601b5c",
+    "remote_branch": "research/prune-raw-native-builder",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/prune-shared-native-builder",
+    "head": "5ea5e01447f572f7c636da4e5a6c9a586e03f473",
+    "remote_branch": "research/prune-shared-native-builder",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/prune-traversal-native-builder",
+    "head": "b263bd146dc29a0975d679c4b81e8961150ab8e7",
+    "remote_branch": "research/prune-traversal-native-builder",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/prune-walk-validation",
+    "head": "5f41ded17377d316953e08f1f47ff0e64ca5cb1b",
+    "remote_branch": "research/prune-walk-validation",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/relay-order-probe",
+    "head": "5df93a7882e83a52b72c4863a70c2323d78df792",
+    "remote_branch": "research/relay-order-probe",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/render-once-validation",
+    "head": "2bbedf083d3c18dc878aca26097a71f5192fea77",
+    "remote_branch": "research/render-once-validation",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/repair-bucket-baseline",
+    "head": "0e3efdc15935662891824b911eedbaf347bfefef",
+    "remote_branch": "research/repair-bucket-baseline",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/repair-bucket-candidate",
+    "head": "29116e7d4c3d03908e69143ba82c186fd716e9d4",
+    "remote_branch": "research/repair-bucket-candidate",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/repair-stage-validation",
+    "head": "b3550838b98b9e999c2943837262bf98533344c5",
+    "remote_branch": "research/repair-stage-validation",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/selection-baseline-cc7",
+    "head": "0272afe8f6ece9f7d1cd28ac63f4ebde390fbbdf",
+    "remote_branch": "research/selection-baseline-cc7",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/selection-candidate-cc7",
+    "head": "5a52f8a9c57ee121bd5165fac6c86346e2831e61",
+    "remote_branch": "research/selection-candidate-cc7",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/shipped-native-admission-controls",
+    "head": "c4b1644fc561afd034119fee60264f6af46ced2e",
+    "remote_branch": "research/shipped-native-admission-controls",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/spec-param-native-validation",
+    "head": "4ce1f00ee169b5d94f01e06025493cdac7b1bb36",
+    "remote_branch": "research/spec-param-native-validation",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/spec-parameter-acceptance",
+    "head": "6af7d10f851b0eb4e51f25f5bb252255050d695c",
+    "remote_branch": "research/spec-parameter-acceptance",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/spec-parameter-names",
+    "head": "68260ec6bda75de937203387bc568e9f289a5c55",
+    "remote_branch": "research/spec-parameter-names",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/spec-parameter-partial-acceptance",
+    "head": "3038b1fa81e19003097d9390d51907064faa240c",
+    "remote_branch": "research/spec-parameter-partial-acceptance",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/spinoff-anvil-focused",
+    "head": "56cbc3d97d1b2d842ade213fddf54b72ef55c69d",
+    "remote_branch": "research/spinoff-anvil-focused",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "research/vstd-native-producer-control",
+    "head": "8e60daa7634d6562d48fdfd2c075bf6afb382500",
+    "remote_branch": "research/vstd-native-producer-control",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "test/actual-work-completion",
+    "head": "5fa4b01d890f80aefd9b16934437e02e80b9bb60",
+    "remote_branch": "test/actual-work-completion",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "test/native-producer-corpus-selector",
+    "head": "6fc7c8b6d9e06e0535a86cb016e4c31d69dba772",
+    "remote_branch": "test/native-producer-corpus-selector",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "test/native-producer-readiness-fixture",
+    "head": "2b559a65231a6b15704f64034874fae5ad3a4198",
+    "remote_branch": "test/native-producer-readiness-fixture",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "test/native-producer-reuse-fixture",
+    "head": "842e86fe0b74033c325e48329d567a9fb87465be",
+    "remote_branch": "test/native-producer-reuse-fixture",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "test/vstd-boundary-consumption-control",
+    "head": "b8be218c244810aee3099c8edc8b5eb110309bc6",
+    "remote_branch": "test/vstd-boundary-consumption-control",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "validate/source-suite-join",
+    "head": "ba935014eace0b8c922e06a9feafbc92c37bcc3c",
+    "remote_branch": "validate/source-suite-join",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "worktree-agent-a0ad566a5ac41169e",
+    "head": "502fc669f5dfebf08dd2cb607c09825556e60bcb",
+    "remote_branch": "worktree-agent-a0ad566a5ac41169e",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "worktree-agent-a378cedcca0cf7f28",
+    "head": "b8c5ab56b322c4cf778151b6dedf6a32d2030db1",
+    "remote_branch": "worktree-agent-a378cedcca0cf7f28",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "worktree-agent-a55ffb024e7fbab6d",
+    "head": "502fc669f5dfebf08dd2cb607c09825556e60bcb",
+    "remote_branch": "worktree-agent-a55ffb024e7fbab6d",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "worktree-agent-a68cd0436ad9858d1",
+    "head": "f0c4fa8b800033b89b16f0597da68879b121480a",
+    "remote_branch": "worktree-agent-a68cd0436ad9858d1",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "worktree-agent-a9a4c44bdeebf2360",
+    "head": "502fc669f5dfebf08dd2cb607c09825556e60bcb",
+    "remote_branch": "worktree-agent-a9a4c44bdeebf2360",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "worktree-agent-aab69e8f9acf05925",
+    "head": "0a7c1d0d55d29c5494f3a2c66cacd17de7292fd6",
+    "remote_branch": "worktree-agent-aab69e8f9acf05925",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "sail",
+    "local_branch": "worktree-agent-adc20818bfeeeecdb",
+    "head": "502fc669f5dfebf08dd2cb607c09825556e60bcb",
+    "remote_branch": "worktree-agent-adc20818bfeeeecdb",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/retired-fork-autospec-preserve-types-64cd191f",
+    "head": "64cd191f5ae87eba24617c5c2f0f6412d07e1037",
+    "remote_branch": "archive/retired-fork-autospec-preserve-types-64cd191f",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/retired-fork-cc7-selection-docs-230d6ab2",
+    "head": "230d6ab2867f4ad54b8c4c0654f70d17551b7600",
+    "remote_branch": "archive/retired-fork-cc7-selection-docs-230d6ab2",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/retired-fork-closure-full-identity-cc7bbce4",
+    "head": "cc7bbce4fdc8cf7e4256668b3ee8431343bdb6b9",
+    "remote_branch": "archive/retired-fork-closure-full-identity-cc7bbce4",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/retired-fork-log-completion-a9736649",
+    "head": "a9736649acc021d043b077f4f2a0d02ef21dd1b9",
+    "remote_branch": "archive/retired-fork-log-completion-a9736649",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/retired-fork-log-completion-baseline-0455c42a",
+    "head": "0455c42a12511d9d7d72c1593a47c7fe0982b06d",
+    "remote_branch": "archive/retired-fork-log-completion-baseline-0455c42a",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/retired-fork-prune-raw-lookups-f1683f3e",
+    "head": "f1683f3e66e3ad0f7921a206907279aaf538a6b5",
+    "remote_branch": "archive/retired-fork-prune-raw-lookups-f1683f3e",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/retired-fork-prune-shared-indexes-2f798282",
+    "head": "2f798282a15dcdfc4d306802e89a7dca12044d14",
+    "remote_branch": "archive/retired-fork-prune-shared-indexes-2f798282",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/retired-fork-spec-test-isolation-de1f0e1a",
+    "head": "de1f0e1acef3c65e09d0d66814e741ed11c6c4e5",
+    "remote_branch": "archive/retired-fork-spec-test-isolation-de1f0e1a",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/retired-fork-stable-spec-params-aead21d2",
+    "head": "aead21d2930652d606656d127d2565b7d3780ed2",
+    "remote_branch": "archive/retired-fork-stable-spec-params-aead21d2",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/scc-borrow-a571",
+    "head": "a57179c06f69c3bfe5b6d78183000a3e4b974957",
+    "remote_branch": "archive/scc-borrow-a571",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/scc-index-c25e",
+    "head": "c25e91b4508922be04e337a51bf1f49d85688aaf",
+    "remote_branch": "archive/scc-index-c25e",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "archive/scc-screen-3ee9",
+    "head": "3ee9afb2c25e08babfac50c2e607c83377053e8c",
+    "remote_branch": "archive/scc-screen-3ee9",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "candidate/shipped-vstd-closure",
+    "head": "8a373f81a507b7ef4f144767ccd237d3d3de6c48",
+    "remote_branch": "candidate/shipped-vstd-closure",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "docs/cc7-qualified-runtime",
+    "head": "230d6ab2867f4ad54b8c4c0654f70d17551b7600",
+    "remote_branch": "docs/cc7-qualified-runtime",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "experiment/log-completion",
+    "head": "a9736649acc021d043b077f4f2a0d02ef21dd1b9",
+    "remote_branch": "experiment/log-completion",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "experiment/log-completion-baseline",
+    "head": "0455c42a12511d9d7d72c1593a47c7fe0982b06d",
+    "remote_branch": "experiment/log-completion-baseline",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "experiment/vstd-compiler-read-inputs",
+    "head": "0fe2bfb3ca44bad3c1d53639ff761927aaa9cce9",
+    "remote_branch": "experiment/vstd-compiler-read-inputs",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "fix/closure-full-def-path-hash",
+    "head": "cc7bbce4fdc8cf7e4256668b3ee8431343bdb6b9",
+    "remote_branch": "fix/closure-full-def-path-hash",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "fix/spinoff-log-names",
+    "head": "2f798282a15dcdfc4d306802e89a7dca12044d14",
+    "remote_branch": "fix/spinoff-log-names",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "fix/stable-impl-identity",
+    "head": "d7e85e9519be14c4570de2c5eb34246205a55c40",
+    "remote_branch": "fix/stable-impl-identity",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "fix/stable-smt-function-alias-delivery",
+    "head": "cbbcdf44ec0f245924ccccb8c5b7c957abb86cb7",
+    "remote_branch": "fix/stable-smt-function-alias-delivery",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "fix/stable-smt-function-aliases",
+    "head": "0a4a06cb6431d5a36e1ea4c8eb9c8da938866a24",
+    "remote_branch": "fix/stable-smt-function-aliases",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "m11-3/shipped-vstd",
+    "head": "7800051895154c3241a77a3bc7566aaf7e9c23c6",
+    "remote_branch": "m11-3/shipped-vstd",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "perf/air-line-cleanup",
+    "head": "125e4a55dcb78bdb155f73494eb28f938ca73e54",
+    "remote_branch": "perf/air-line-cleanup",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "perf/autospec-preserve-types",
+    "head": "64cd191f5ae87eba24617c5c2f0f6412d07e1037",
+    "remote_branch": "perf/autospec-preserve-types",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "perf/prune-map-single-probe",
+    "head": "e5365c05d0a9f8c8cb655edc035ce9a2f6dde482",
+    "remote_branch": "perf/prune-map-single-probe",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "perf/prune-raw-lookups",
+    "head": "f1683f3e66e3ad0f7921a206907279aaf538a6b5",
+    "remote_branch": "perf/prune-raw-lookups",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "perf/prune-traversal-memo",
+    "head": "3456783915f1fb226b17c30a2cd6a177216ce6b6",
+    "remote_branch": "perf/prune-traversal-memo",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "perf/scc-access-combined",
+    "head": "2a5d678eba6aef8e55b1f9baf166046c293338b4",
+    "remote_branch": "perf/scc-access-combined",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "perf/scc-access-with-log-fix",
+    "head": "3ee9afb2c25e08babfac50c2e607c83377053e8c",
+    "remote_branch": "perf/scc-access-with-log-fix",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "perf/scc-borrowed-members",
+    "head": "a57179c06f69c3bfe5b6d78183000a3e4b974957",
+    "remote_branch": "perf/scc-borrowed-members",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "perf/scc-node-index",
+    "head": "c25e91b4508922be04e337a51bf1f49d85688aaf",
+    "remote_branch": "perf/scc-node-index",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "research/native-compiler-inputs",
+    "head": "067d0d7c350a9c38cbb9bb8ed54b7548ce9c8bbc",
+    "remote_branch": "research/native-compiler-inputs",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "research/prune-shared-indexes",
+    "head": "b6208d4572601c4749ed7bbd394c5fc699ba5038",
+    "remote_branch": "research/prune-shared-indexes",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "research/spec-names-native-observers",
+    "head": "e5365c05d0a9f8c8cb655edc035ce9a2f6dde482",
+    "remote_branch": "research/spec-names-native-observers",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "research/stable-spec-params",
+    "head": "aead21d2930652d606656d127d2565b7d3780ed2",
+    "remote_branch": "research/stable-spec-params",
+    "status": "verified remote exact HEAD"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "sail",
+    "head": "a9ce7c13efc0162b8d62ed8688068de2b3fdba73",
+    "status": "protected base; not pushed"
+  },
+  {
+    "repository": "verus",
+    "local_branch": "test/spec-parameter-scratch-isolation",
+    "head": "de1f0e1acef3c65e09d0d66814e741ed11c6c4e5",
+    "remote_branch": "test/spec-parameter-scratch-isolation",
+    "status": "verified remote exact HEAD"
+  }
+]

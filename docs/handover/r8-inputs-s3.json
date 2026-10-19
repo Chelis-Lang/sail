@@ -1,0 +1,57 @@
+{
+  "status": "uploaded; S3 full-object SHA256 and size independently verified",
+  "bucket": "example-evidence-bucket",
+  "prefix": "handover/2026-10-19/r8-inputs",
+  "candidate_source": "d827c407ae0465ff8be6e8b4d2375a9c1f80fbda",
+  "baseline_source": "7411f458c1630818ae05f5cca3389ecb666c43e2",
+  "objects": [
+    {
+      "name": "baseline-runtime.tar.gz",
+      "bytes": 35271409,
+      "sha256": "689004c074aca8883e225a2b89efebc137f3e563f24df2abd398516112b13928",
+      "s3_uri": "s3://example-evidence-bucket/handover/2026-10-19/r8-inputs/689004c074aca8883e225a2b89efebc137f3e563f24df2abd398516112b13928/baseline-runtime.tar.gz",
+      "s3_full_object_sha256_verified": true,
+      "server_side_encryption": "AES256"
+    },
+    {
+      "name": "candidate-cbb-linux-runtime.tar.gz",
+      "bytes": 35293859,
+      "sha256": "ae901465277e0e6950f4de14f32bb211f21bea993feabb04a0e44567a7ce6f85",
+      "s3_uri": "s3://example-evidence-bucket/handover/2026-10-19/r8-inputs/ae901465277e0e6950f4de14f32bb211f21bea993feabb04a0e44567a7ce6f85/candidate-cbb-linux-runtime.tar.gz",
+      "s3_full_object_sha256_verified": true,
+      "server_side_encryption": "AES256"
+    },
+    {
+      "name": "candidate-cbb-macos-runtime.tar.gz",
+      "bytes": 29029343,
+      "sha256": "8e8bd410a80f8a321a0a67676294a1769c812e207ea697f61c4bb88337b093a7",
+      "s3_uri": "s3://example-evidence-bucket/handover/2026-10-19/r8-inputs/8e8bd410a80f8a321a0a67676294a1769c812e207ea697f61c4bb88337b093a7/candidate-cbb-macos-runtime.tar.gz",
+      "s3_full_object_sha256_verified": true,
+      "server_side_encryption": "AES256"
+    },
+    {
+      "name": "producer-result.tgz",
+      "bytes": 105787448,
+      "sha256": "3fee4fe8f6a614b6b81fca9d23c5db4bb23bbc22b1016f7ad425f41c14fc4841",
+      "s3_uri": "s3://example-evidence-bucket/handover/2026-10-19/r8-inputs/3fee4fe8f6a614b6b81fca9d23c5db4bb23bbc22b1016f7ad425f41c14fc4841/producer-result.tgz",
+      "s3_full_object_sha256_verified": true,
+      "server_side_encryption": "AES256"
+    },
+    {
+      "name": "reused-binaries.tar.gz",
+      "bytes": 22961065,
+      "sha256": "8e1c42fc661af29216bca0b6006e532791d5f7c0eba2f1880ec362e083a4ac3b",
+      "s3_uri": "s3://example-evidence-bucket/handover/2026-10-19/r8-inputs/8e1c42fc661af29216bca0b6006e532791d5f7c0eba2f1880ec362e083a4ac3b/reused-binaries.tar.gz",
+      "s3_full_object_sha256_verified": true,
+      "server_side_encryption": "AES256"
+    },
+    {
+      "name": "stock-runtime.zip",
+      "bytes": 485341373,
+      "sha256": "624018662868563a7bec0dd07be5e4dd0c3d61124b4b55105765884bf2d4d1a0",
+      "s3_uri": "s3://example-evidence-bucket/handover/2026-10-19/r8-inputs/624018662868563a7bec0dd07be5e4dd0c3d61124b4b55105765884bf2d4d1a0/stock-runtime.zip",
+      "s3_full_object_sha256_verified": true,
+      "server_side_encryption": "AES256"
+    }
+  ]
+}
