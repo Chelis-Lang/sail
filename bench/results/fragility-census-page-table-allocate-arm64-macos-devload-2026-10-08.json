@@ -14,7 +14,7 @@
     "uname": "Darwin 25.5.0 arm64"
   },
   "solver": {
-    "path": "<home>/.cache/sail/verus/0.2026.10.04.426d8b0/verus-arm64-macos/z3",
+    "path": "~/.cache/sail/verus/0.2026.10.04.426d8b0/verus-arm64-macos/z3",
     "version": "Z3 version 4.16.0 - 64 bit",
     "sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
   },
