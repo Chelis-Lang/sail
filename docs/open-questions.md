@@ -326,7 +326,7 @@ planned for releases after 0.1.0. The owner answered all twelve on
     whatever."
 27. **Priority against the Verus path.** The 2026-10-13 roadmap review
     deferred more backends, certificates and other verifiers for lack of user
-    pull. The [roadmap](ROADMAP.md#after-010) now orders the Verus-path items
+    pull. The [roadmap](ROADMAP.md#later) now orders the Verus-path items
     (B1, B2, B4, #118) before the verification runtime. Is that the owner's
     order, and which runtime workstream comes first after the interface
     specifications?
@@ -364,6 +364,12 @@ planned for releases after 0.1.0. The owner answered all twelve on
     validation passes. Cut 0.1.0 from rc.5. Managed-by-default mode and
     pre-verified vstd are the headline speed story, and a user's first
     public impression should be of that build.
+
+    **Superseded 2026-10-19 (owner):** rc.5 is not accepted (#184, #187,
+    #189). 0.1.0 is the joined candidate on PR #227: shipped verified vstd,
+    fork runtime `cbbcdf44` and proof coexistence. Nothing ships without
+    real, robust performance wins over stock Verus, measured on the final
+    candidate.
 30. **Process-loader variables now that managed verification is the only
     `sail verify`** (ADR 0046). Managed verification cannot bind what
     `LD_LIBRARY_PATH`, `LD_PRELOAD` or a macOS `DYLD_*` loader variable changes
@@ -399,3 +405,26 @@ planned for releases after 0.1.0. The owner answered all twelve on
     models, statistics or runtime identity. Until decided and qualified,
     the current gate remains failed and the prototype stays unselected.
     [Evidence](validation/solver-snapshots.md).
+32. **How much slower counts as "materially slower".** The release goal says
+    no scenario may be materially slower than stock Verus.
+
+    **Answered 2026-10-19 (owner):** At most 5% slower than stock, or at most
+    0.1 s on sub-second runs. Known losses are fixed, not documented.
+33. **Which Cargo runs managed verification.** The shipped vstd proof is keyed
+    to the compiler arguments Cargo 1.98.1 emits; a newer default Cargo misses
+    it and verifies vstd again.
+
+    **Answered 2026-10-19 (owner):** Sail is released as a CLI. Managed builds
+    use the engine's pinned Cargo unless the user or project selects a
+    toolchain (`RUSTUP_TOOLCHAIN`, a toolchain file, a rustup override or
+    `$CARGO`). Stock comparisons run with the same toolchain.
+34. **Fork base for 0.1.0.** The fork is based on Verus
+    `0.2026.10.04.426d8b0` (Rust 1.98.1). Upstream released
+    `0.2026.10.18.7d82994` (Rust 1.99.1) after moving to Rust 1.99 on
+    2026-10-17, and Sail supports one Verus release. Rebase before qualifying
+    0.1.0, or qualify on the current base and rebase after?
+35. **Prebuilt macro crates under ADR 0053.** Serving release-built
+    proc-macro and build-script crates from the archive would save an
+    estimated 1.5–3 s per fresh project, but a broken local compiler (for
+    example a user's `cc`) would then no longer fail Sail as it fails stock
+    Verus (#187). Is that divergence acceptable for exact-match pinned tools?
