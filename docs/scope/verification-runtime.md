@@ -12,7 +12,7 @@
 - **Source:** owner direction, 2026-10-15.
 - **Tracking:** milestone *M10: Verification runtime*, umbrella issue
   [#146](https://github.com/Chelis-Lang/sail/issues/146). Ordering
-  against other post-release work is in the [roadmap](../ROADMAP.md#after-010).
+  against other post-release work is in the [roadmap](../ROADMAP.md#later).
 
 Sail today serves Verus. It runs Sail's Verus (built from the fork,
 [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)) with the pinned
@@ -326,7 +326,7 @@ different audience from this mission.
 landed and is ready for brittonr's review of the fully performance-improved
 Sail.
 
-The Verus-path items in the [roadmap](../ROADMAP.md#after-010) and the
+The Verus-path items in the [roadmap](../ROADMAP.md#later) and the
 interface specifications share no dependencies and run in parallel; the
 specifications do not wait behind the Verus items (question 27).
 
