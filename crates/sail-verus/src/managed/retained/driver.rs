@@ -45,6 +45,7 @@ impl Plan {
         launcher: &Path,
         z3: &Path,
         run: &str,
+        notes: &mut Vec<String>,
     ) -> Option<Self> {
         let mode = super::super::research::selected().ok()?;
         if !super::selection::requested(mode) {
@@ -78,7 +79,12 @@ impl Plan {
             closure = Some(admitted);
         }
         let launcher = launcher.canonicalize().ok()?;
-        if !super::selection::admitted(mode, &launcher, z3) {
+        if let Err(unqualified) = super::selection::admitted(mode, &launcher, z3) {
+            notes.extend(
+                unqualified
+                    .as_deref()
+                    .map(super::selection::unqualified_note),
+            );
             return None;
         }
         let root = target.parent()?.join("retained-content-v1");

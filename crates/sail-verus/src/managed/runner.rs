@@ -2503,6 +2503,7 @@ pub(crate) fn run_engine_held(
         && late_scripts.is_empty()
         && dirty.is_empty()
         && receipt_covered_targets(&paths, &expected, &hash, &receipt_revisions);
+    let mut retained_notes = Vec::new();
     let runtime = Runtime {
         run_id: run_id.clone(),
         args: config.args.clone(),
@@ -2561,6 +2562,7 @@ pub(crate) fn run_engine_held(
                 &actual_wrapper(&config.cargo_verus)?,
                 &config.z3,
                 &run_id,
+                &mut retained_notes,
             )
         } else {
             None
@@ -2823,7 +2825,7 @@ pub(crate) fn run_engine_held(
     .unwrap_or(u64::MAX);
     let reused_targets =
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
-    let mut notes = Vec::new();
+    let mut notes = retained_notes;
     if let Some(variable) = &loader {
         notes.push(format!(
             "SAIL3112: {variable} is set, so this run reused and recorded no proof receipts; targets Cargo found up to date have no report"

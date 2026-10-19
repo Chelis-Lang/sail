@@ -184,8 +184,14 @@ rather than `vstd/seq.rs:980:12` (L4b).
 ## Pinned Linux runtime for CI
 
 `artifact-linux.json` (schema 2) binds the release asset (`repo`,
-`release_tag`, `asset`), archive digest, upstream commit, fork commit
-(`fork_commit`), lockfile, Rust toolchain and solver. `ci/engine-artifact.py`
+`release_tag`, `asset`), archive digest, runtime manifest digest
+(`manifest_sha256`, the sha256 of the archive's `sail-build.json`), upstream
+commit, fork commit (`fork_commit`), lockfile, Rust toolchain and solver.
+Ordinary retained reuse on Linux is qualified for one manifest
+(`LINUX_MANIFEST` in `crates/sail-verus/src/managed/retained/selection.rs`); a
+unit test fails when it differs from the pin's `manifest_sha256`, so a re-pin
+updates it deliberately, with ordinary-reuse qualification. A valid engine
+with another manifest verifies normally and notes `SAIL3136`. `ci/engine-artifact.py`
 checks those pins and every runtime file before installation. The Docker image
 does not build Verus from source; the optional runtime is exercised by the
 real repair CLI/MCP end-to-end phase alongside the stock checks. CI downloads
@@ -223,8 +229,8 @@ with Sail on the new runtime against plain stock Verus
    ([Validation](#validation)).
 2. Pack it:
    `python3 ci/engine-artifact.py pack --build BUILD --archive OUT/engine-runtime.tar.gz --pin engine/verus/artifact-linux.json`.
-   The pin records the archive digest and the release it belongs to
-   (`repo`, `release_tag` and `asset`).
+   The pin records the archive and manifest digests and the release it
+   belongs to (`repo`, `release_tag` and `asset`).
 3. Publish the archive on the fork, with publish rights to
    `Chelis-Lang/verus` (a maintainer step; fetching needs none):
    `gh release create engine-runtime-<short sha>-linux -R Chelis-Lang/verus --target <fork commit> --prerelease --latest=false --title "Engine runtime <short sha> (Linux x86-64)" OUT/engine-runtime.tar.gz`.

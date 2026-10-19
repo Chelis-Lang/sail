@@ -157,6 +157,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3132` | Research note: a complete dependency proof was replayed at the vstd compiler boundary, with its original establishing invocation | The unselected [compiler-boundary experiment](validation/vstd-compile-boundary.md) records whether the proof was established locally or in a release build; this does not enable the quarantined native-artifact store |
 | `SAIL3134` | Research dependency recording is incomplete, or checked restoration could not remove a partial output | Read the specific message. Incomplete recordings are unusable; a partial-restoration cleanup failure requires a fresh owned target |
 | `SAIL3135` | Both compiler-reuse research switches are enabled; this combination is unsupported and refused before setup or child execution | Unset either `SAIL_VSTD_BOUNDARY_RESEARCH` or `SAIL_RETAINED_CONTENT_RESEARCH`; see the [integration limits](validation/proof-reuse-integration.md) |
+| `SAIL3136` | Note: ordinary retained reuse (instant revert) is off because the valid engine in use is not the qualified Linux runtime (its manifest digest differs from the one Sail was qualified with). Verification is unaffected | None for verdicts. Use the pinned runtime (`engine/verus/artifact-linux.json`) to get instant revert; see [instant revert](validation/instant-revert.md) |
 
 ## Portfolio and solver libraries
 

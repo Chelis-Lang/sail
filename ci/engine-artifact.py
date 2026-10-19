@@ -88,6 +88,10 @@ def pin_host(pin):
 
 
 def validate(build, pin):
+    # The pinned manifest digest is the runtime authority Sail binds to
+    # (sail_verus managed::retained::selection::LINUX_MANIFEST on Linux).
+    if sha(build / "sail-build.json") != pin["manifest_sha256"]:
+        raise ValueError("SAIL0944: engine manifest digest mismatch")
     manifest = json.loads((build / "sail-build.json").read_text())
     # The pin records the runtime's Verus Cargo features (none today, like the
     # stock release); projects needing another fall back to stock (SAIL3124).
@@ -122,6 +126,7 @@ def pack(args):
            "fork_commit": fork_commit(),
            "source_lock_sha256": sha(REPO / "engine/verus/Cargo.lock"),
            "verus_features": verus_features(manifest["features"]),
+           "manifest_sha256": sha(build / "sail-build.json"),
            "release_tag": "engine-runtime-" + fork_commit()[:8] + "-" + getattr(args, "platform", "linux")}
     validate(build, pin)
     args.archive.parent.mkdir(parents=True, exist_ok=True)
@@ -186,6 +191,7 @@ def committed_pin(path):
     pin = json.loads(path.read_text())
     if (pin["schema_version"] != 2 or pin["fork_commit"] != fork_commit()
             or not isinstance(pin.get("verus_features"), list)
+            or not re.fullmatch(r"[0-9a-f]{64}", str(pin.get("manifest_sha256", "")))
             or pin["source_lock_sha256"] != sha(REPO / "engine/verus/Cargo.lock")):
         raise ValueError("SAIL0944: committed engine artifact is stale; rebuild locally")
     return pin

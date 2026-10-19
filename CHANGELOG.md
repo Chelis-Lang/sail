@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Bind the runtime manifest digest in the engine pins (`manifest_sha256`),
+  checked on install. A unit test requires the qualified Linux retained-reuse
+  manifest to equal the pin, and a valid engine with another manifest now
+  notes `SAIL3136` instead of silently leaving instant revert off.
+
 - Add candidate coexistence between adjacent vstd release proofs and requested
   target instant revert. A single actual native observation is independently
   checked for each authority; served vstd has a distinct indexed-release

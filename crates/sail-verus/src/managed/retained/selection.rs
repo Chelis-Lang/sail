@@ -6,6 +6,8 @@ use std::path::Path;
 // Exact manifest of the final cbb Linux runtime; ordinary reuse qualification
 // remains mandatory before this private integration candidate is selected.
 // Changing this authority requires new runtime and ordinary-reuse qualification.
+// It stays a separate constant so a re-pin cannot select reuse unqualified;
+// a test requires it to equal `manifest_sha256` in engine/verus/artifact-linux.json.
 const LINUX_MANIFEST: &str = "51370000d09691c391e59eefed2b58b07716cbba5b4db0b588a24d8a1cf71e25";
 
 pub(super) fn requested(mode: Mode) -> bool {
@@ -15,10 +17,33 @@ pub(super) fn requested(mode: Mode) -> bool {
 /// An explicit vstd experiment never also selects ordinary retained reuse.
 /// The old retained switch remains a research qualification route, not a user
 /// requirement. Ordinary selection must validate the qualified Linux image.
-pub(super) fn admitted(mode: Mode, launcher: &Path, z3: &Path) -> bool {
-    choose(mode, crate::toolchain::host(), || {
-        normal_runtime(launcher, z3).is_some()
-    })
+///
+/// # Errors
+/// Not selected. Carries the manifest digest when the only reason is that an
+/// otherwise valid engine is not the qualified runtime ([`LINUX_MANIFEST`]).
+pub(super) fn admitted(mode: Mode, launcher: &Path, z3: &Path) -> Result<(), Option<String>> {
+    let mut unqualified = None;
+    let selected = choose(mode, crate::toolchain::host(), || {
+        match normal_runtime(launcher, z3) {
+            Runtime::Qualified => true,
+            Runtime::Unqualified(manifest) => {
+                unqualified = Some(manifest);
+                false
+            }
+            Runtime::Absent => false,
+        }
+    });
+    if selected { Ok(()) } else { Err(unqualified) }
+}
+
+/// The result note recorded when ordinary retained reuse is off only because
+/// the engine's manifest is not the qualified Linux runtime.
+pub(crate) fn unqualified_note(manifest: &str) -> String {
+    format!(
+        "SAIL3136: ordinary retained reuse is off because the engine's manifest {} is not the qualified Linux runtime {}; verification is unaffected",
+        manifest.get(..12).unwrap_or(manifest),
+        LINUX_MANIFEST.get(..12).unwrap_or(LINUX_MANIFEST)
+    )
 }
 
 fn choose(mode: Mode, host: &str, validate: impl FnOnce() -> bool) -> bool {
@@ -29,20 +54,36 @@ fn choose(mode: Mode, host: &str, validate: impl FnOnce() -> bool) -> bool {
     }
 }
 
-fn normal_runtime(launcher: &Path, z3: &Path) -> Option<()> {
+/// What the engine behind a launcher is, for ordinary selection.
+#[derive(Debug, PartialEq, Eq)]
+enum Runtime {
+    /// The exact qualified Linux runtime.
+    Qualified,
+    /// A valid, correctly placed engine with another manifest digest.
+    Unqualified(String),
+    /// No valid engine at this launcher and solver.
+    Absent,
+}
+
+fn normal_runtime(launcher: &Path, z3: &Path) -> Runtime {
+    match placed_manifest(launcher, z3) {
+        Some(manifest) if manifest == LINUX_MANIFEST => Runtime::Qualified,
+        Some(manifest) => Runtime::Unqualified(manifest),
+        None => Runtime::Absent,
+    }
+}
+
+/// The manifest digest of the valid engine whose launcher and solver these are.
+fn placed_manifest(launcher: &Path, z3: &Path) -> Option<String> {
     let launcher = launcher.canonicalize().ok()?;
     // Installed::at checks the complete inventory, expected fork/features,
     // toolchain and solver. No stat-only or cross-invocation memo qualifies it.
     let build = launcher.ancestors().nth(5)?;
     let installed =
         crate::engine::Installed::at(build, &crate::toolchain::Pins::embedded().ok()?).ok()?;
-    if installed.manifest_sha256 != LINUX_MANIFEST
-        || installed.verus.canonicalize().ok()? != launcher
-        || installed.verus.with_file_name("z3").canonicalize().ok()? != z3.canonicalize().ok()?
-    {
-        return None;
-    }
-    Some(())
+    (installed.verus.canonicalize().ok()? == launcher
+        && installed.verus.with_file_name("z3").canonicalize().ok()? == z3.canonicalize().ok()?)
+    .then_some(installed.manifest_sha256)
 }
 
 #[cfg(test)]
@@ -85,9 +126,28 @@ mod tests {
     }
 
     #[test]
+    fn qualified_manifest_is_the_committed_linux_runtime_pin()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        // Moving the runtime pin without requalifying ordinary reuse fails
+        // here instead of silently turning instant revert off.
+        let pin: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../engine/verus/artifact-linux.json"
+        )))?;
+        assert_eq!(pin["manifest_sha256"].as_str(), Some(LINUX_MANIFEST));
+        Ok(())
+    }
+
+    #[test]
     fn absent_or_misplaced_runtime_cannot_select_ordinary_reuse() {
-        assert!(normal_runtime(Path::new("/not-a-runtime/verus"), Path::new("/z3")).is_none());
-        assert!(normal_runtime(Path::new("verus"), Path::new("z3")).is_none());
+        assert_eq!(
+            normal_runtime(Path::new("/not-a-runtime/verus"), Path::new("/z3")),
+            Runtime::Absent
+        );
+        assert_eq!(
+            normal_runtime(Path::new("verus"), Path::new("z3")),
+            Runtime::Absent
+        );
     }
 
     #[test]
@@ -121,7 +181,17 @@ mod tests {
         // This fixture passes the existing inventory validator, but an
         // arbitrary coherent manifest is not the exact admitted Linux build.
         assert!(crate::engine::Installed::at(&root, &pins).is_ok());
-        assert!(normal_runtime(&runtime.join("verus"), &runtime.join("z3")).is_none());
+        let manifest = crate::engine::Installed::at(&root, &pins)?.manifest_sha256;
+        assert_eq!(
+            normal_runtime(&runtime.join("verus"), &runtime.join("z3")),
+            Runtime::Unqualified(manifest.clone())
+        );
+        assert!(unqualified_note(&manifest).starts_with("SAIL3136: "));
+        // Another solver is not this engine's placement, so it is no manifest note.
+        assert_eq!(
+            normal_runtime(&runtime.join("verus"), &runtime.join("cargo-verus")),
+            Runtime::Absent
+        );
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

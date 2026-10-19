@@ -90,6 +90,20 @@ class ArtifactTests(unittest.TestCase):
         committed = json.loads((artifact.REPO / "engine/verus/artifact-linux.json").read_text())
         self.assertEqual(committed["verus_features"], [])
 
+    def test_pin_binds_the_runtime_manifest_digest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            build, archive, pin, pin_path = self.fixture(root)
+            self.assertEqual(pin["manifest_sha256"], artifact.sha(build / "sail-build.json"))
+            with self.assertRaises(ValueError):
+                artifact.install(archive, dict(pin, manifest_sha256="0" * 64), root / "cache")
+            del pin["manifest_sha256"]
+            pin_path.write_text(json.dumps(pin))
+            with self.assertRaises(ValueError):
+                artifact.committed_pin(pin_path)
+        for name in ("linux", "macos"):
+            artifact.committed_pin(artifact.REPO / ("engine/verus/artifact-" + name + ".json"))
+
     def test_runtime_is_fetched_from_the_public_fork_release(self):
         committed = artifact.committed_pin(artifact.REPO / "engine/verus/artifact-linux.json")
         self.assertTrue(artifact.asset_url(committed).startswith(
