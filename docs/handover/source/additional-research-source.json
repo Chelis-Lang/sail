@@ -1,0 +1,229 @@
+{
+  "files": [
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/a1-ironkv.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/a1-ironkv.sh",
+      "sha256": "ac9ec917c8c2a7828af68572552d193b827e7cfafd3f69dadea8750eeaa6d9bd"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/a2-exact.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/a2-exact.sh",
+      "sha256": "f3ac2535508b43318bfd4749cb8b95f862cc94e48d33e0f6c3d0b893a65978eb"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/a3-traces.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/a3-traces.sh",
+      "sha256": "a32a70924619debee11dec1e4697698cca77caf8c5476179cc8def08a86af28e"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/a4-one.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/a4-one.sh",
+      "sha256": "ffcd8a64dc74d079dfe41bf8bad73377c840458944b0b703c70867f78518c88d"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/a5-exact-all.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/a5-exact-all.sh",
+      "sha256": "fc28ee19ae851e859b856516b5448989eee03c784225e15a7f05fc7967910240"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/a6-image.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/a6-image.sh",
+      "sha256": "c53dd0de2a55c7986507e67f9e80d57eb4b8a08374791fbbd157842db2ae9138"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/a7-replay.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/a7-replay.sh",
+      "sha256": "86522739546bbf3a055fb70a28e73add35fb52bea9df002bcc876e39dd6ea7c0"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/a8-shimsanity.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/a8-shimsanity.sh",
+      "sha256": "cedd69a29014350cc56b87cb1a430605fca916a67b3f69d17ec1c84d70c81cc7"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/analyze.py",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/analyze.py",
+      "sha256": "2c2c1cfe11c606120f99732ca693c2a33d4af5ac0f4c978d8e603dca9de5fe89"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/b0-sanity.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/b0-sanity.sh",
+      "sha256": "6db54f52dc8857d02b3b12f3dbfc34cfb49720b218373ba0bd46945e035bd87a"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/b1-timing.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/b1-timing.sh",
+      "sha256": "f49f98e8f8dd97b31fe6be68bdb9b45666cb74d7e2fdc624b3b75422020e91e5"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/b2-gaps.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/b2-gaps.sh",
+      "sha256": "8f7d8acbff75f8bcec0db1876dbd96b0972c1f0648a41d397aa94212c895fdd1"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/b3-anvil-shim.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/b3-anvil-shim.sh",
+      "sha256": "7f15f60bc898057efa83a7a76b63051c44845e46929baa7c916ff32c73c9f36d"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/bg.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/bg.sh",
+      "sha256": "360dea5329f8c873f97ab77903c56d3505f68bd8d6d9f7b95670f31ad7b6e44e"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/done.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/done.sh",
+      "sha256": "127306a0a3afa65cd6977df11973d4bf42aa628f6ad8827804f347d2611ce158"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/env.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/env.sh",
+      "sha256": "d2c5a821ad93c05ec12fe4af7d7a77d1cb2bd146e2900809dadb4c52cafd1f22"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/host-setup.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/host-setup.sh",
+      "sha256": "8b509c8416556cd5493b8b9505d2225a0859d6cb8da820f00e9b6c3ff7ba443f"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/probe.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/probe.sh",
+      "sha256": "d08baad0acb0f2db66bd0d834a3f361ec28a6d41cfeef192f945a88209682459"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/prov.py",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/prov.py",
+      "sha256": "6971a9b8c6a24a9d3e6ae07a2af5b7ab95d464879f1a36a59ddb05641e72f672"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/rebuild.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/rebuild.sh",
+      "sha256": "91fbbe7d99512873a103d67901fb6f72b7093d0dee5b021632ebf78b1dedbeed"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/show.py",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/show.py",
+      "sha256": "c296dd4c8f4971b71f3841d265a413905465c929b7592185f58b32b5fd6c9d6b"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/status.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/status.sh",
+      "sha256": "3b7e2b54d5cac587d01e7f1fe9cfc3315a8a1ec5f22ccc611c78a6aa95908074"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a55ffb024e7fbab6d",
+      "file": ".m112/stopb.sh",
+      "archive_member": "Sail/agent-a55ffb024e7fbab6d/.m112/stopb.sh",
+      "sha256": "e0cc57e08c2e872b800b9682eb04e21fb100f8dfe80368b66aef161193131ce3"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a68cd0436ad9858d1",
+      "file": ".gates.sh",
+      "archive_member": "Sail/agent-a68cd0436ad9858d1/.gates.sh",
+      "sha256": "bfe304f5beedce8c597c3f60800047a443b0677a9295ffa7fb96259b22dc9458"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a68cd0436ad9858d1",
+      "file": ".perf-provision.sh",
+      "archive_member": "Sail/agent-a68cd0436ad9858d1/.perf-provision.sh",
+      "sha256": "6e238ead251a05afd483ca08f404d98699ea7083438a9bb04a0eefca45f04ed7"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-a68cd0436ad9858d1",
+      "file": ".perf-run.sh",
+      "archive_member": "Sail/agent-a68cd0436ad9858d1/.perf-run.sh",
+      "sha256": "6e111ae908059c01c074a111e602eb4991c15593d58f37932ed59be7cd24ee7e"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-aaf3876565ef9ebd2",
+      "file": "m118-tmp/analyze.py",
+      "archive_member": "Sail/agent-aaf3876565ef9ebd2/m118-tmp/analyze.py",
+      "sha256": "a3c3a512fd0e0e7b56f36a4448ea843c6639a28af37a86aa67cb357fe2398d97"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-aaf3876565ef9ebd2",
+      "file": "m118-tmp/exp.py",
+      "archive_member": "Sail/agent-aaf3876565ef9ebd2/m118-tmp/exp.py",
+      "sha256": "216ae2d2dfe697bc412401890b1f9acdb220d084d17ac4041c624f1729d07c6e"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-aaf3876565ef9ebd2",
+      "file": "m118-tmp/exprun.sh",
+      "archive_member": "Sail/agent-aaf3876565ef9ebd2/m118-tmp/exprun.sh",
+      "sha256": "4980fed214c5a9c5d83826bb723e53b67c01a406d4d7e9e7a89369b4ca8eb976"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-aaf3876565ef9ebd2",
+      "file": "m118-tmp/host-setup.sh",
+      "archive_member": "Sail/agent-aaf3876565ef9ebd2/m118-tmp/host-setup.sh",
+      "sha256": "dfcc9a59e8ccc9e4a451b9fe4528bea17a3259a1d7ac92b7ad7632c0b4b1a0f9"
+    },
+    {
+      "repository": "Sail",
+      "worktree": "agent-aaf3876565ef9ebd2",
+      "file": "m118-tmp/measure.sh",
+      "archive_member": "Sail/agent-aaf3876565ef9ebd2/m118-tmp/measure.sh",
+      "sha256": "dd053e5e3c3ffda57ad66f34c47e8fe4287925ccf40c7d357601568599b212ca"
+    },
+    {
+      "repository": "Verus fork",
+      "worktree": "fork-stable-impl-identity",
+      "file": "SAIL_STABLE_IMPL_IDENTITY_DESIGN.md",
+      "archive_member": "Verus-fork/fork-stable-impl-identity/SAIL_STABLE_IMPL_IDENTITY_DESIGN.md",
+      "sha256": "c291d2ea197aed4ccbed4fcc5914c1ef6ba33a367480fcd98c1ffd0f97c3f560"
+    }
+  ],
+  "excluded": []
+}
