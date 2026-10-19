@@ -67,6 +67,7 @@ def run(args):
             (work / (mode + ".stdout")).write_bytes(result.stdout)
             (work / (mode + ".stderr")).write_bytes(result.stderr)
             records[mode] = result
+        engine = records["engine"]
         # Per-function success fields are the verdict oracle. Timing/effort remain outputs.
         def verdicts(document):
             modules = document.get("times-ms", {}).get("smt", {}).get("smt-run-module-times", [])
@@ -111,7 +112,8 @@ def run(args):
                         "stock_smt": stock_sessions,
                         "normal_termination": events[-1]["payload"]["normal_termination"]})
         differing = sum(not session["equal"] for session in stock_sessions)
-        print(name, "matches", f"(raw SMT differs from stock in {differing} of {len(stock_sessions)} sessions)" if differing else "", flush=True)
+        note = f" (raw SMT differs from stock in {differing} of {len(stock_sessions)} sessions)" if differing else ""
+        print(name, "matches" + note, flush=True)
     summary = {"version": 1, "machine": platform.platform(), "engine_sha256": sha(pathlib.Path(args.engine)),
                "engine_verifier_sha256": sha(pathlib.Path(args.engine).with_name("rust_verify")),
                "stock_sha256": sha(pathlib.Path(args.stock)), "z3_sha256": sha(pathlib.Path(args.z3)), "results": results}
