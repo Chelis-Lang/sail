@@ -15,6 +15,7 @@ import tarfile
 spec = importlib.util.spec_from_file_location('release_shipped', Path(__file__).with_name('release-shipped.py'))
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
+PIN = module.tomllib.loads((module.ROOT/'corpus/toolchain.toml').read_text())['verus']['rust_toolchain']
 
 
 def refuses(call):
@@ -49,7 +50,7 @@ def main():
         for name in ('sail', 'sail-z3'):
             path = release/'bin'/name;path.write_bytes(b'fixture executable');path.chmod(0o755)
         runtime = release/'engine/variant';runtime.mkdir(parents=True)
-        (runtime/'sail-build.json').write_text(json.dumps({'rust_toolchain':'1.98.1'}))
+        (runtime/'sail-build.json').write_text(json.dumps({'rust_toolchain':PIN}))
         key = 'a'*64;entry = bundle/'units'/key
         (entry/'files').mkdir(parents=True)
         (bundle/'Cargo.lock').write_text('fixture lock')
@@ -112,13 +113,13 @@ def main():
         template = root/'proof-template'
         shutil.copytree(bundle, template)
         controlled = root/'controlled-bin';controlled.mkdir()
-        cargo = controlled/'cargo';cargo.write_text('#!/bin/sh\n[ "$RUSTUP_TOOLCHAIN" = "1.98.1" ] || exit 87\nexit 0\n');cargo.chmod(0o755)
+        cargo = controlled/'cargo';cargo.write_text('#!/bin/sh\n[ "$RUSTUP_TOOLCHAIN" = "'+PIN+'" ] || exit 87\nexit 0\n');cargo.chmod(0o755)
         sysroot = root/'fixture-sysroot';rustlib = sysroot/'lib/rustlib'
         source = rustlib/'src/rust/library/lib.rs';source.parent.mkdir(parents=True);source.write_text('owned rust source')
         (rustlib/'components').write_text('rust-src\n')
         (rustlib/'manifest-rust-src').write_text('file:lib/rustlib/src/rust/library/lib.rs\n')
         rustup = controlled/'rustup'
-        rustup.write_text('#!/bin/sh\n[ "$*" = "run 1.98.1 rustc --print sysroot" ] || exit 9\nprintf "%s\\n" '+str(sysroot)+'\n')
+        rustup.write_text('#!/bin/sh\n[ "$*" = "run '+PIN+' rustc --print sysroot" ] || exit 9\nprintf "%s\\n" '+str(sysroot)+'\n')
         rustup.chmod(0o755)
         executable = r'''#!/usr/bin/env python3
 import json,os,shutil,signal,socket,sys,time
@@ -131,7 +132,7 @@ elif sys.argv[1]=='serve':
  Path(cfg['pid_record']).write_text(str(os.getpid()))
  while True:time.sleep(.05)
 elif sys.argv[1]=='verify':
- assert os.environ['RUSTUP_TOOLCHAIN']=='1.98.1'
+ assert os.environ['RUSTUP_TOOLCHAIN']==cfg['toolchain']
  trace=Path(os.environ['SAIL_SHIPPED_TRACE']);assert trace==Path(cfg['evidence'])/'boundary-trace'
  trace.mkdir();(trace/'fixture.json').write_text(json.dumps({'event':'actual-owned-mock-verify-entry'}))
  for directory in ('.sail-boundary-inputs','.sail-boundary-native-reads'):
@@ -192,7 +193,7 @@ else:raise SystemExit(3)
         try:
             # Complete owned source component, not a system-preinstalled source tree.
             prerequisite = module.rust_source(runtime)
-            assert prerequisite['toolchain']=='1.98.1' and prerequisite['source_files']==1
+            assert prerequisite['toolchain']==PIN and prerequisite['source_files']==1
             assert prerequisite['source_bytes']==len(b'owned rust source')
             previous_source_limit=module.SOURCE_LIMIT
             try:
@@ -248,7 +249,7 @@ else:raise SystemExit(3)
                 for name in ('sail','sail-z3'):
                     path=stage/'bin'/name;path.write_text(executable);path.chmod(0o755)
                 pid_record=root/(case+'-server-pid')
-                (stage/'bin/fixture-config.json').write_text(json.dumps({'runtime':str(stage/'engine/variant'),
+                (stage/'bin/fixture-config.json').write_text(json.dumps({'runtime':str(stage/'engine/variant'),'toolchain':PIN,
                     'runtime_hash':module.digest(stage/'engine/variant/sail-build.json'),
                     'template':str(template),'report':doc,'currentness':'historical' if case=='historical' else 'current',
                     'pid_record':str(pid_record),'evidence':str(root/(case+'-evidence')),'missing_certificate':case=='certificate-missing'}))

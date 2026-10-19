@@ -11,6 +11,9 @@ import subprocess
 import sys
 import time
 import tempfile
+import tomllib
+
+PIN = tomllib.loads((Path(__file__).resolve().parent.parent/'corpus/toolchain.toml').read_text())['verus']['rust_toolchain']
 
 
 def digest(path):
@@ -75,7 +78,7 @@ def case(root, helper, scenario):
     root.mkdir(mode=0o700)
     stage=root/'stage';(stage/'bin').mkdir(parents=True)
     runtime=stage/'engine/variant';runtime.mkdir(parents=True)
-    manifest=runtime/'sail-build.json';manifest.write_text(json.dumps({'rust_toolchain':'1.98.1'}))
+    manifest=runtime/'sail-build.json';manifest.write_text(json.dumps({'rust_toolchain':PIN}))
     controlled=root/'controlled-bin';controlled.mkdir()
     cargo=controlled/'cargo';cargo.write_text('#!/bin/sh\nexit 0\n');cargo.chmod(0o755)
     sysroot = root/'fixture-sysroot';rustlib = sysroot/'lib/rustlib'
@@ -83,7 +86,7 @@ def case(root, helper, scenario):
     (rustlib/'components').write_text('rust-src\n')
     (rustlib/'manifest-rust-src').write_text('file:lib/rustlib/src/rust/library/lib.rs\n')
     rustup = controlled/'rustup'
-    rustup.write_text('#!/bin/sh\n[ "$*" = "run 1.98.1 rustc --print sysroot" ] || exit 9\nprintf "%s\\n" '+str(sysroot)+'\n')
+    rustup.write_text('#!/bin/sh\n[ "$*" = "run '+PIN+' rustc --print sysroot" ] || exit 9\nprintf "%s\\n" '+str(sysroot)+'\n')
     rustup.chmod(0o755)
     for name in ('sail','sail-z3'):
         path=stage/'bin'/name;path.write_text(FAKE);path.chmod(0o755)

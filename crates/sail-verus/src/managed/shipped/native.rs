@@ -1037,10 +1037,10 @@ mod tests {
             vec!["--remap-path-prefix=/registry=/foreign"],
             vec![
                 "--remap-path-prefix",
-                "/toolchain/lib/rustlib/src/rust=/rustc/48a229ceaefd4985c50990b14116b6d856af0985",
+                "/toolchain/lib/rustlib/src/rust=/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67",
             ],
             vec![
-                "--remap-path-prefix=/toolchain/lib/rustlib/src/rust=/rustc/48a229ceaefd4985c50990b14116b6d856af0985",
+                "--remap-path-prefix=/toolchain/lib/rustlib/src/rust=/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67",
             ],
             vec!["--remap-path-scope", "object"],
             vec!["--remap-path-scope=all"],

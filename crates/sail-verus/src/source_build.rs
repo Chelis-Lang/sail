@@ -295,7 +295,7 @@ mod tests {
         let m = Manifest {
             schema_version: SCHEMA_VERSION,
             commit: "abc".to_owned(),
-            rust_toolchain: "1.98.1".to_owned(),
+            rust_toolchain: "1.99.1".to_owned(),
             z3_sha256: "00".to_owned(),
             features: Vec::new(),
             build_seconds: 1,

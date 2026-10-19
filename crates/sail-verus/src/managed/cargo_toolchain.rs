@@ -243,7 +243,7 @@ fn cargo_name() -> &'static str {
 mod tests {
     use super::*;
 
-    const PIN: &str = "1.98.1";
+    const PIN: &str = "1.99.1";
 
     fn proxy() -> Observed {
         Observed {
@@ -296,7 +296,7 @@ mod tests {
         assert!(note.starts_with("SAIL3137: "), "{note}");
         assert!(
             note.contains(
-                "`rustup toolchain install 1.98.1 --profile minimal --component rust-src`"
+                "`rustup toolchain install 1.99.1 --profile minimal --component rust-src`"
             ),
             "{note}"
         );

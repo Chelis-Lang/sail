@@ -753,8 +753,8 @@ mod tests {
                 .and_then(|(_, value)| value.map(std::ffi::OsStr::to_owned))
         };
         assert_eq!(
-            toolchain(&crate::managed::CargoToolchain::Pinned("1.98.1".into())),
-            Some("1.98.1".into())
+            toolchain(&crate::managed::CargoToolchain::Pinned("1.99.1".into())),
+            Some("1.99.1".into())
         );
         assert_eq!(toolchain(&crate::managed::CargoToolchain::Caller), None);
     }

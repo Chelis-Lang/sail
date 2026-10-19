@@ -49,7 +49,7 @@ const OBSERVATION_ONLY: &[&str] = &[
 ///   `RUST_MIN_STACK`, `RUST_BACKTRACE`, `RUST_LOG` (Cargo book, rustup book,
 ///   std documentation); backtrace and log settings change a crash's stderr.
 /// - `VERUS_`, `__VERUS_`, `VARGO_`: the Verus launcher and driver
-///   (verus@426d8b0 `verus/src/main.rs`, `rust_verify/src/driver.rs`,
+///   (verus@7d82994 `verus/src/main.rs`, `rust_verify/src/driver.rs`,
 ///   `air/src/singular_manager.rs`).
 /// - `Z3_`: none known for Z3 4.16.0; bound conservatively.
 /// - `SAIL_`: Sail's shim, cache and daemon selection, except
@@ -62,7 +62,7 @@ const PREFIXES: &[&str] = &[
 ];
 
 /// Single variables the pinned tools read. `VSTD_KIND` is an undeclared read
-/// by Verus's `builtin_macros` (verus@426d8b0 `builtin_macros/src/lib.rs`).
+/// by Verus's `builtin_macros` (verus@7d82994 `builtin_macros/src/lib.rs`).
 /// The rest select colour, layout and language of rendered diagnostics.
 const NAMES: &[&str] = &[
     "VSTD_KIND",
