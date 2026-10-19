@@ -248,7 +248,7 @@ mod tests {
         let mut shapes: BTreeMap<String, Shape> =
             serde_json::from_str(include_str!("native_shapes.json"))?;
         shapes
-            .remove("verus_builtin-0.0.0-2026-09-16-0054")
+            .remove("verus_builtin-0.0.0-2026-10-11-0230")
             .ok_or_else(|| "required builtin tuple missing".into())
     }
 
@@ -280,7 +280,7 @@ mod tests {
         ];
         assert!(arguments_admitted(
             &shape,
-            "verus_builtin-0.0.0-2026-09-16-0054",
+            "verus_builtin-0.0.0-2026-10-11-0230",
             &original
         ));
         for extra in [
@@ -299,7 +299,7 @@ mod tests {
             args.extend(extra);
             assert!(!arguments_admitted(
                 &shape,
-                "verus_builtin-0.0.0-2026-09-16-0054",
+                "verus_builtin-0.0.0-2026-10-11-0230",
                 &args
             ));
         }
@@ -307,13 +307,13 @@ mod tests {
         repeated_check_cfg.extend(["--check-cfg", "cfg(docsrs,test)"]);
         assert!(arguments_admitted(
             &shape,
-            "verus_builtin-0.0.0-2026-09-16-0054",
+            "verus_builtin-0.0.0-2026-10-11-0230",
             &repeated_check_cfg
         ));
         repeated_check_cfg.extend(["--check-cfg", "cfg(docsrs,test)"]);
         assert!(!arguments_admitted(
             &shape,
-            "verus_builtin-0.0.0-2026-09-16-0054",
+            "verus_builtin-0.0.0-2026-10-11-0230",
             &repeated_check_cfg
         ));
         // Some genuine Cargo invocations repeat a build-script check-cfg.
@@ -322,7 +322,7 @@ mod tests {
         repeated_shape.check_cfg.push("cfg(docsrs,test)".into());
         assert!(arguments_admitted(
             &repeated_shape,
-            "verus_builtin-0.0.0-2026-09-16-0054",
+            "verus_builtin-0.0.0-2026-10-11-0230",
             &repeated_check_cfg
         ));
         Ok(())
