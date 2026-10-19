@@ -366,7 +366,11 @@ The macOS runtime is built on an Apple-silicon Mac from the same fork commit,
 so it needs its own run, recorded in
 [the macOS engine record](validation/macos-engine.md). As on Linux, the
 Verus toolchain must not have `rust-src`
-([VI-0031](verus-issues/VI-0031-rust-src-std-paths.md)):
+([VI-0031](verus-issues/VI-0031-rust-src-std-paths.md)). The binaries record
+the absolute paths of their dependency sources (panic locations) and vstd.vir
+those of vstd's, so set `RUSTUP_HOME`, `CARGO_HOME` and `SAIL_CACHE_DIR` to
+directories outside the home directory (for example under `/tmp`) and check
+the packed archive's strings for `/Users/` before publishing it:
 
 ```sh
 cargo xtask build-verus-engine       # also builds and verifies vstd
