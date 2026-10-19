@@ -377,6 +377,10 @@ python3 engine/verus/test-cancel.py --engine "$build/verus/source/target-verus/r
 SAIL_ENGINE_BUILD="$build" ci/run.sh conformance fast pr
 ```
 
+`test-engine.py` requires the engine to match the plain fork run exactly,
+raw SMT included, and stock on everything but raw SMT, which it records in
+`summary.json` (ADRs 0054 and 0056; engine README, Validation).
+
 Then pack and pin it, and publish the archive as a prerelease on the public
 fork, like the Linux runtime (engine README, Publishing):
 

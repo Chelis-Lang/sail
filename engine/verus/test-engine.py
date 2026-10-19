@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Local-only source-engine differential gate; never builds Verus or runs in CI."""
+"""Local-only source-engine differential gate; never builds Verus or runs in CI.
+
+Each fixture runs three ways: stock Verus, the fork runtime without the engine
+("fork") and the fork runtime with the engine ("engine"). The engine must match
+the plain fork run exactly, raw SMT included. Against stock, exit status,
+diagnostics, counters, verdicts and the SMT session inventory must match; the
+raw SMT is only recorded, because the fork's accepted divergences rename
+solver symbols (ADR 0054, spec parameters; ADR 0056, trait function spellings).
+"""
 import argparse
 import hashlib
 import json
@@ -40,7 +48,7 @@ def run(args):
         source = work / "lib.rs"
         source.write_text("use verus_builtin::*;\nuse verus_builtin_macros::*;\n" + ("macro_rules! identity {($x:expr)=>{$x}}\n" if name == "macro_spans" else "") + "verus! {\n" + body + "\n}\nfn main() {}\n")
         records = {}
-        for mode, executable in [("stock", args.stock), ("engine", args.engine)]:
+        for mode, executable in [("stock", args.stock), ("fork", args.engine), ("engine", args.engine)]:
             environment = os.environ.copy()
             for key in list(environment):
                 if key.startswith("SAIL_ENGINE"):
@@ -59,23 +67,30 @@ def run(args):
             (work / (mode + ".stdout")).write_bytes(result.stdout)
             (work / (mode + ".stderr")).write_bytes(result.stderr)
             records[mode] = result
-        stock, engine = records["stock"], records["engine"]
-        assert stock.returncode == engine.returncode, (name, stock.returncode, engine.returncode)
-        assert stock.stderr == engine.stderr, (name, "diagnostics differ")
-        stock_json, engine_json = json.loads(stock.stdout), json.loads(engine.stdout)
-        assert stock_json["verification-results"] == engine_json["verification-results"], name
-        assert stock_json["func-details"] == engine_json["func-details"], name
         # Per-function success fields are the verdict oracle. Timing/effort remain outputs.
         def verdicts(document):
             modules = document.get("times-ms", {}).get("smt", {}).get("smt-run-module-times", [])
             return sorted((entry["function"], entry["success"]) for module in modules
                           for entry in module.get("function-breakdown", []))
-        assert verdicts(stock_json) == verdicts(engine_json), (name, "function verdicts differ")
-        stock_logs = sorted((work / "stock").glob("*.smt_transcript"))
+        def agree(reference, label):
+            left, right = records[reference], records["engine"]
+            assert left.returncode == right.returncode, (name, label, left.returncode, right.returncode)
+            assert left.stderr == right.stderr, (name, label, "diagnostics differ")
+            left_json, right_json = json.loads(left.stdout), json.loads(right.stdout)
+            assert left_json["verification-results"] == right_json["verification-results"], (name, label)
+            assert left_json["func-details"] == right_json["func-details"], (name, label)
+            assert verdicts(left_json) == verdicts(right_json), (name, label, "function verdicts differ")
+            logs = sorted((work / reference).glob("*.smt_transcript"))
+            assert [p.name for p in logs] == [p.name for p in engine_logs], (name, label, "session inventory")
+            return logs
         engine_logs = sorted((work / "engine").glob("*.smt_transcript"))
-        assert [p.name for p in stock_logs] == [p.name for p in engine_logs], (name, "session inventory")
-        for left, right in zip(stock_logs, engine_logs):
-            assert pipe(left) == pipe(right), (name, "full SMT bytes differ", left.name)
+        for left, right in zip(agree("fork", "engine vs fork"), engine_logs):
+            assert pipe(left) == pipe(right), (name, "engine vs fork", "full SMT bytes differ", left.name)
+        # Raw SMT against stock is recorded, not asserted (ADR 0054, ADR 0056).
+        stock_sessions = [{"name": left.name, "equal": pipe(left) == pipe(right),
+                           "stock_input_sha256": hashlib.sha256(pipe(left)).hexdigest(),
+                           "engine_input_sha256": hashlib.sha256(pipe(right)).hexdigest()}
+                          for left, right in zip(agree("stock", "engine vs stock"), engine_logs)]
         events = [json.loads(line) for line in (work / "events.jsonl").read_text().splitlines()]
         assert events[-1]["event"] == "compiler-sealed", (name, "missing compiler terminal seal")
         assert events[-1]["payload"]["normal_termination"] is True, (name, "missing normal driver completion")
@@ -93,8 +108,10 @@ def run(args):
             assert engine.returncode != 0 and b"E0499" in engine.stderr, "late borrow error disappeared"
         results.append({"fixture": name, "exit_code": engine.returncode, "diagnostics_sha256": hashlib.sha256(engine.stderr).hexdigest(),
                         "full_sessions": [{"name": p.name, "bytes": len(pipe(p)), "input_sha256": hashlib.sha256(pipe(p)).hexdigest()} for p in engine_logs],
+                        "stock_smt": stock_sessions,
                         "normal_termination": events[-1]["payload"]["normal_termination"]})
-        print(name, "matches", flush=True)
+        differing = sum(not session["equal"] for session in stock_sessions)
+        print(name, "matches", f"(raw SMT differs from stock in {differing} of {len(stock_sessions)} sessions)" if differing else "", flush=True)
     summary = {"version": 1, "machine": platform.platform(), "engine_sha256": sha(pathlib.Path(args.engine)),
                "engine_verifier_sha256": sha(pathlib.Path(args.engine).with_name("rust_verify")),
                "stock_sha256": sha(pathlib.Path(args.stock)), "z3_sha256": sha(pathlib.Path(args.z3)), "results": results}

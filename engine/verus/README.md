@@ -149,9 +149,17 @@ tag.
 `test-engine.py` and `test-cancel.py` are local-only differential checks that
 use an already built variant; CI never compiles Verus.
 
-- `test-engine.py` compares the engine with stock on exit status, exact
-  stderr, verification counters, per-function verdicts and full raw SMT
-  sessions. Fixtures cover bitvectors, termination, failed focus, failed other
+- `test-engine.py` runs each fixture three ways: stock, the fork runtime
+  without the engine (every `SAIL_ENGINE*` variable removed) and the engine.
+  The engine must match the plain fork run exactly: exit status, stderr,
+  verification counters, `func-details`, per-function verdicts, the SMT
+  session inventory and every session's full raw SMT. Against stock, all of
+  these except the raw SMT must match exactly. The fork's accepted solver-name
+  divergences ([ADR 0054](../../docs/decisions/0054-stable-spec-parameter-names.md)
+  and [ADR 0056](../../docs/decisions/0056-stable-smt-function-spellings.md))
+  rename symbols, so raw SMT against stock is not asserted; `summary.json`
+  records, per session, whether it equals stock's and both input digests.
+  Fixtures cover bitvectors, termination, failed focus, failed other
   functions, macro diagnostic spans, missing and ambiguous exact selectors,
   Rust frontend errors and late EXEC errors.
 - `test-cancel.py` kills a worker at an actual blocked solver check, requires
