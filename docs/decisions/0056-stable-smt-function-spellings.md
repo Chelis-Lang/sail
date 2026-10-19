@@ -1,6 +1,7 @@
 # 0056: Stable SMT spellings for concrete trait functions
 
-- **Status:** proposed; native-built and measured prototype03, unqualified and unselected
+- **Status:** proposed; native-built and measured prototype03, unqualified. The
+  runtime pins name its joined source, fork `cbbcdf44`; that qualification is pending
 - **Date:** 2026-10-18
 
 ## Context

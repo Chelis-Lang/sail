@@ -269,9 +269,12 @@ Rust tails refuse. Literal argument/environment bytes remain bound in keys.
 ## Automatic-selection candidate
 
 An isolated source successor selects a retained plan without a user flag only
-on x86-64 Linux with exact normal-runtime manifest
-`a845cd2fcba411148566d8214c1285f083689df6a8ffa5479afcf3845382b033`.
-It calls existing `Installed::at` with fresh complete artifact reads and binds
+on x86-64 Linux with one exact normal-runtime manifest, which must equal the
+Linux pin's `manifest_sha256` (a unit test enforces it). The `83128ad0` gates
+below used manifest `a845cd2f…` (fork `e5365c05`). The authority is now
+`51370000d09691c391e59eefed2b58b07716cbba5b4db0b588a24d8a1cf71e25` (fork
+`cbbcdf44`), whose ordinary-reuse qualification is pending. A valid engine with
+another manifest compiles normally and notes `SAIL3136`. It calls existing `Installed::at` with fresh complete artifact reads and binds
 the actual selected launcher and Z3. Config currently has no held fresh
 `Installed` authority to reuse, so this validation adds an invocation cost; no
 metadata memo substitutes for it. The same 718-file provider/native/source

@@ -1,6 +1,7 @@
 # Concrete-trait function spellings
 
-Status: built and measured on native Linux; not qualified or selected. Proposed
+Status: built and measured on native Linux; not qualified. The runtime pins
+name its joined source, fork `cbbcdf44`; that qualification is pending. Proposed
 [ADR 0056](../decisions/0056-stable-smt-function-spellings.md) preserves original
 Rust/VIR identities and changes only eligible function names generated for AIR.
 [VI-0030](../verus-issues/VI-0030-anonymous-impl-numbering.md) retains the cause.
@@ -14,7 +15,7 @@ Rust/VIR identities and changes only eligible function names generated for AIR.
 | Whole-project per-function/diagnostic comparison | Pending; timing checks do not replace it |
 | Complete named SMT census and residual-stream classification | Pending |
 | Controlled crate/root variation, full FAST/STANDARD/DEEP, source suite, determinism, macOS | Pending |
-| Default runtime pin | Unchanged |
+| Default runtime pin | Fork `cbbcdf44` (this source plus standalone fixtures); Linux manifest `51370000…`; joined-source qualification pending |
 
 ## Source and environment
 
@@ -24,6 +25,13 @@ archive SHA-256 is
 `10eff8fba0c3c8d4c517742ddf7db16284972e1d67b2236a1d18f31309b701a7`;
 accepted runtime archive is
 `689004c074aca8883e225a2b89efebc137f3e563f24df2abd398516112b13928`.
+The measurements below use those runtimes. The pinned fork
+`cbbcdf44ec0f245924ccccb8c5b7c957abb86cb7` adds only the standalone fixtures
+(`d3f38611`) and their record to `0a4a06cb`; its pinned runtimes are Linux
+archive `ae901465277e0e6950f4de14f32bb211f21bea993feabb04a0e44567a7ce6f85`
+(manifest `51370000d09691c391e59eefed2b58b07716cbba5b4db0b588a24d8a1cf71e25`)
+and macOS archive
+`8e8bd410a80f8a321a0a67676294a1769c812e207ea697f61c4bb88337b093a7`.
 Common Sail source is `83128ad0d5327f00bfea822d608ebd99dd9d8112` and Vest is
 `11af01ddaef76cceded03517cd48764adb9d35b1`. The isolated native host is EC2
 c7i.4xlarge, 16 vCPU, us-east-1.
@@ -87,5 +95,5 @@ Failed and interrupted attempts remain visible:
 | Repaired focused run, 2026-10-18 | Five pure and eight compiler controls pass; external fixture SHA-256 `04fef7326e3851de350b8ef5d04d45cfcc92bca886946b3be0fbcf4f3a5b9b5d` |
 
 The reduced corpus example remains unrun. Timing-harness statuses and focused
-controls are not complete whole-project or corpus acceptance. No fork merge,
-Sail runtime re-pin or default behavior change follows from this record.
+controls are not complete whole-project or corpus acceptance. No fork merge
+follows from this record, and it does not qualify the `cbbcdf44` re-pin.

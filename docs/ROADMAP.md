@@ -351,14 +351,18 @@ oyster and such." This supersedes the parallel tracks of
       guards pass. Matching Linux/macOS pins are qualified and selected on main through
       merged #223, with all required CI checks green
       ([qualification](validation/spec-parameter-names.md)).
-      A further unselected function-spelling candidate is native-built and
+      A further function-spelling candidate is native-built and
       passes focused controls. Its three-round Vest empty-impl edit screen
       lowers the median 45.089 → 33.955 s (24.693%) and solver starts 30 → 24.
+      The runtime pins now name its joined source, fork `cbbcdf44` (Linux
+      manifest `51370000…`); joined-source qualification is pending.
       Whole-project/corpus, source-suite, controlled-root, determinism and Mac
       gates remain open ([record](validation/smt-function-spellings.md)).
    6. B4, instant revert: receipts beyond the latest revision, #163.
       Implemented and native-qualified at `83128ad0` for the exact Linux/public
-      alloc/std profile; delivery merged through #224 with required CI green. All
+      alloc/std profile on the `e5365c05` runtime; its manifest authority now
+      names the `cbbcdf44` runtime, where ordinary-reuse qualification is
+      pending. Delivery merged through #224 with required CI green. All
       72 fresh rows and the genuinely bundled ordinary Vest ABA control pass, as do full default
       gates. The four-call Vest median improves 130.66 → 113.08 s (13.45%)
       against earlier Sail; returned A improves 26.54 → 2.51 s. Cold/edit/
