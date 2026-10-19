@@ -69,19 +69,19 @@ archive downloaded with a browser instead of `curl` is quarantined; clear
 that with `xattr -dr com.apple.quarantine ~/.local/opt/sail-$VERSION-$TARGET`.
 
 **2. Rust.** Verus compiles your crate with the Rust toolchain it pins,
-`1.98.1`. Install [rustup](https://rustup.rs) and that toolchain with its Rust
+`1.99.1`. Install [rustup](https://rustup.rs) and that toolchain with its Rust
 sources (`rust-src`):
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 . "$HOME/.cargo/env"
-rustup toolchain install 1.98.1 --profile minimal --component rust-src
+rustup toolchain install 1.99.1 --profile minimal --component rust-src
 sail engine status                 # checks Sail's Verus against its pins
 ```
 
 Installing it does not change your default toolchain. `sail verify` runs
 Cargo with this toolchain on its own, so a release's preverified vstd proof
-(recorded with Cargo `1.98.1`) applies whatever your default Cargo is. A
+(recorded with Cargo `1.99.1`) applies whatever your default Cargo is. A
 `RUSTUP_TOOLCHAIN` you set, a project's `rust-toolchain.toml`, a `rustup
 override` or an explicit `CARGO` keeps your choice instead; another Cargo
 version may emit different compiler arguments and safely verifies vstd again.
@@ -227,7 +227,7 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
 ## Limits
 
 - **Sail runs only its own Verus,** built from its fork at the Verus release
-  it pins (`0.2026.10.04.426d8b0`). Projects that need another Verus release
+  it pins (`0.2026.10.18.7d82994`). Projects that need another Verus release
   are not supported yet.
 - **Cargo library and binary targets only.** `sail verify`, `watch` and MCP
   run `cargo verus`. Projects verified with `verus file.rs` directly are not

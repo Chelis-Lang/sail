@@ -39,8 +39,8 @@ issues there; nothing is contributed upstream
 The fork's branches:
 
 - `upstream/<short sha>` is an unmodified upstream Verus commit, for example
-  `upstream/426d8b0` (the pin in `corpus/toolchain.toml`) and `upstream/8dea4a2`
-  (the secondary pin).
+  `upstream/7d82994` (the pin in `corpus/toolchain.toml`) and `upstream/426d8b0`
+  and `upstream/8dea4a2` (the secondary pins).
 - `sail` is that upstream commit plus Sail's commits, in this order:
   1. one commit per Verus issue fix, each with its regression test under
      `source/rust_verify_test/tests/sail_vi<NNNN>_*.rs`, plus one harness
@@ -98,6 +98,16 @@ CI never builds Verus; it installs the prebuilt runtime.
    steps below, and publish and re-pin the runtime
    ([Publishing a runtime](#publishing-a-runtime)). Tag the pinned commit
    `pinned/<sha>`.
+6. Move the published crates with the release (ADR 0059): set `vstd` in
+   `corpus/toolchain.toml` from `source/vstd/Cargo.toml`, re-lock
+   `scripts/shipped-deps` with the pinned Cargo
+   (`cargo +<rust_toolchain> update -p vstd --precise <vstd>` after editing
+   its requirement), regenerate the four `*-inputs.json` source policies with
+   `scripts/source-policies.py --verus-repo <fork clone> --work <new dir>`
+   (`--check` compares with the committed files), and re-observe
+   `crates/sail-verus/src/managed/shipped/native_shapes.json` from the pinned
+   Cargo's actual compiler arguments for `scripts/shipped-deps`. Then
+   re-record the shipped vstd proof bundle on the new runtime.
 
 ## What the engine commit contains
 

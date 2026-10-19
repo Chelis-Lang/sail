@@ -182,10 +182,10 @@ key mismatch is a safe miss, not a first-use gain. See the
 Ordinary releases without a qualified dependency proof bundle keep the README's
 minimal Rust installation. A proof-bundle factory and its strict release smoke
 additionally require the complete `rust-src` component for the Rust version
-bound by the admitted runtime. The current pin is `1.98.1`:
+bound by the admitted runtime. The current pin is `1.99.1`:
 
 ```sh
-rustup component add rust-src --toolchain 1.98.1
+rustup component add rust-src --toolchain 1.99.1
 ```
 
 The factory derives that version from the validated runtime and checks it against
@@ -214,7 +214,7 @@ Otherwise the caller's Cargo runs; another Cargo version safely misses and
 verifies vstd afresh, and a missing pinned toolchain is noted as `SAIL3137`.
 Sail never installs it. The current factory does not produce a multi-Cargo bundle.
 A first-use result is qualified for the Cargo the run selected: a fresh home
-whose only toolchain is `1.98.1` does not by itself qualify the selection from
+whose only toolchain is `1.99.1` does not by itself qualify the selection from
 a newer default, which needs its own first-use measurement.
 The compiler identity conservatively includes all installed target libraries;
 an extra target therefore produces a different proof key even for a host build.

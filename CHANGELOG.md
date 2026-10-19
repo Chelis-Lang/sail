@@ -5,7 +5,19 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- Run managed Cargo with the engine's pinned toolchain (`1.98.1`) when the
+- Move Sail's Verus to upstream 0.2026.10.18.7d82994 (Rust 1.99.1, Z3 4.16.0
+  unchanged), with the fork rebased onto it. Install Rust with
+  `rustup toolchain install 1.99.1 --profile minimal --component rust-src`.
+  `sail new` projects use the matching `vstd 0.0.0-2026-10-18-0147`. Under
+  this release `--verify-only-module` reports partial verification, as the
+  other `--verify-*` options do. The published vstd version is now a pin in
+  `corpus/toolchain.toml`, and `scripts/source-policies.py` generates the
+  shipped and retained source policies from the pins
+  ([ADR 0059](docs/decisions/0059-pinned-vstd-and-generated-source-policies.md)).
+  0.2026.10.04.426d8b0 stays available as a secondary pin. The new runtime's
+  qualification is pending.
+
+- Run managed Cargo with the engine's pinned toolchain (currently `1.99.1`) when the
   caller made no toolchain choice, so the shipped vstd proof applies with a
   newer default Cargo ([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
   `RUSTUP_TOOLCHAIN`, `CARGO`, `RUSTC`, a `rust-toolchain` file, a rustup

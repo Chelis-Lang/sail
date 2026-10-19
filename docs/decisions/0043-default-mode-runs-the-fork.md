@@ -97,7 +97,7 @@
    as ADR 0041 already does for toolchain files. Any change forces the full
    check again.
 7. **Rust toolchain.** `cargo verus` compiles the user's crate with the Rust
-   toolchain the runtime was built with, `1.98.1` (Verus's own pin), through
+   toolchain the runtime was built with, currently `1.99.1` (Verus's own pin), through
    rustup. Users install rustup and that toolchain; `sail verify` reports the
    requirement if it is missing (Verus's own message).
 8. **vstd and the builtin crates.** Under `cargo verus`, Cargo builds `vstd`,

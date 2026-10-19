@@ -6,17 +6,17 @@
 ## Context
 
 Verus already requires its pinned Rust compiler (`pins.verus.rust_toolchain`
-in `corpus/toolchain.toml`, currently `1.98.1`): the launcher runs its driver
+in `corpus/toolchain.toml`, currently `1.99.1`): the launcher runs its driver
 with `rustup run <toolchain>`, whatever the caller's default is. Only the Cargo
 layer followed the caller. Managed verification ran `$CARGO` or `cargo` on
 `PATH`, which for a rustup user is the default toolchain's Cargo.
 
 The shipped vstd proof bundle (ADR 0048) is keyed to the exact compiler
 arguments a Cargo emits, and Cargo versions add different flags even when they
-invoke the same compiler. The bundle is recorded with Cargo `1.98.1`. Most
+invoke the same compiler. The bundle is recorded with the pinned Cargo. Most
 users' default Cargo is newer (the CI image's is `1.99.0`), so they silently
 missed the shipped proof and verified vstd again: a slow first run, with the
-fast path reachable only by typing `RUSTUP_TOOLCHAIN=1.98.1 sail verify`.
+fast path reachable only by typing `RUSTUP_TOOLCHAIN=<pin> sail verify`.
 
 Sail is primarily a command-line tool. The owner decided that managed builds
 use the engine's pinned toolchain's Cargo unless the user or the project chose
