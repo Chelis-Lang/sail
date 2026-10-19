@@ -1,0 +1,407 @@
+[
+  {
+    "repository": "Sail",
+    "head": "d1499effe368a4e396992f4bcc4a120ae3652db4",
+    "branch": "refs/heads/main",
+    "status": "",
+    "error": "",
+    "worktree": "sail"
+  },
+  {
+    "repository": "Sail",
+    "head": "c2b6a1402ab8e24c66d7c742bc5ee262c9c26eb1",
+    "branch": "refs/heads/feat/shipped-vstd",
+    "status": " M docs/validation/release-candidate.md\n M scripts/shipped-deps-check.py\n",
+    "error": "",
+    "worktree": "agent-a0ad566a5ac41169e",
+    "recovery_directory": "source/dirty/01-agent-a0ad566a5ac41169e",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "b9345c2a116693f8b6a7b6c23ee3d812ef04dec5",
+    "branch": "refs/heads/perf/solver-snapshots",
+    "status": "?? .m112/\n",
+    "error": "",
+    "worktree": "agent-a55ffb024e7fbab6d",
+    "recovery_directory": "source/dirty/02-agent-a55ffb024e7fbab6d",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": [
+      ".m112/a1-ironkv.sh",
+      ".m112/a2-exact.sh",
+      ".m112/a3-traces.sh",
+      ".m112/a4-one.sh",
+      ".m112/a5-exact-all.sh",
+      ".m112/a6-image.sh",
+      ".m112/a7-replay.sh",
+      ".m112/a8-shimsanity.sh",
+      ".m112/analyze.py",
+      ".m112/b0-sanity.sh",
+      ".m112/b1-timing.sh",
+      ".m112/b2-gaps.sh",
+      ".m112/b3-anvil-shim.sh",
+      ".m112/bg.sh",
+      ".m112/done.sh",
+      ".m112/env.sh",
+      ".m112/host-setup.sh",
+      ".m112/probe.sh",
+      ".m112/prov.py",
+      ".m112/rebuild.sh",
+      ".m112/show.py",
+      ".m112/status.sh",
+      ".m112/stopb.sh"
+    ]
+  },
+  {
+    "repository": "Sail",
+    "head": "ac1e3c74a8d13b1c0a3a411d9612d8ee11b747df",
+    "branch": "refs/heads/feat/instant-revert",
+    "status": "?? .gates.sh\n?? .perf-provision.sh\n?? .perf-run.sh\n",
+    "error": "",
+    "worktree": "agent-a68cd0436ad9858d1",
+    "recovery_directory": "source/dirty/03-agent-a68cd0436ad9858d1",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": [
+      ".gates.sh",
+      ".perf-provision.sh",
+      ".perf-run.sh"
+    ]
+  },
+  {
+    "repository": "Sail",
+    "head": "bd281c6c2f00e9f1ee3196d6a3eed05e30dc2800",
+    "branch": "refs/heads/perf/warm-frontend",
+    "status": "?? m118-tmp/\n",
+    "error": "",
+    "worktree": "agent-aaf3876565ef9ebd2",
+    "recovery_directory": "source/dirty/04-agent-aaf3876565ef9ebd2",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": [
+      "m118-tmp/analyze.py",
+      "m118-tmp/exp.py",
+      "m118-tmp/exprun.sh",
+      "m118-tmp/host-setup.sh",
+      "m118-tmp/measure.sh"
+    ]
+  },
+  {
+    "repository": "Sail",
+    "head": "3dd4e28ebdc9adab0e6878e14ca12e47591bf56d",
+    "branch": "refs/heads/prepare/combined-8a-delivery",
+    "status": "M  docs/README.md\nM  docs/ROADMAP.md\nM  docs/decisions/0049-stable-closure-names.md\nA  docs/validation/combined-fork-candidate.md\nM  docs/verus-issues/VI-0019-crate-wide-closure-numbering.md\n M engine/verus/artifact-linux.json\n M engine/verus/artifact-macos.json\n M engine/verus/fork.toml\n",
+    "error": "",
+    "worktree": "combined-8a-delivery",
+    "recovery_directory": "source/dirty/05-combined-8a-delivery",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "9da6e31891a5ad9b7552f95df7ab40a45b49982f",
+    "branch": "refs/heads/perf/combined-8a-candidate",
+    "status": "M  docs/validation/combined-fork-candidate.md\nM  docs/validation/dependency-store-fail-closed.md\n",
+    "error": "",
+    "worktree": "combined-8a-pr",
+    "recovery_directory": "source/dirty/06-combined-8a-pr",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "ee163bc348de89ed40cd5038207520b9efcd7c39",
+    "branch": "refs/heads/docs/incidental-impl-identity-record",
+    "status": " M crates/sail-verus/src/attribution.rs\n M docs/decisions/README.md\n M docs/verus-issues/README.md\n?? corpus/repros/verus-impl-renumbering/\n?? docs/decisions/0056-stable-anonymous-impl-identities.md\n?? docs/verus-issues/VI-0030-anonymous-impl-numbering.md\n",
+    "error": "",
+    "worktree": "incidental-impl-identity-record",
+    "recovery_directory": "source/dirty/07-incidental-impl-identity-record",
+    "saved_untracked_source": [
+      "corpus/repros/verus-impl-renumbering/README.md",
+      "corpus/repros/verus-impl-renumbering/client.rs",
+      "corpus/repros/verus-impl-renumbering/defs-after.rs",
+      "corpus/repros/verus-impl-renumbering/defs-before.rs",
+      "corpus/repros/verus-impl-renumbering/main.rs",
+      "docs/decisions/0056-stable-anonymous-impl-identities.md",
+      "docs/verus-issues/VI-0030-anonymous-impl-numbering.md"
+    ],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "01e8944e3adbe22e083c089b01ad1e625727a6c7",
+    "branch": "refs/heads/docs/incidental-impl-smt-alias-record",
+    "status": "",
+    "error": "",
+    "worktree": "incidental-impl-smt-alias-record"
+  },
+  {
+    "repository": "Sail",
+    "head": "b263bd146dc29a0975d679c4b81e8961150ab8e7",
+    "branch": "refs/heads/research/prune-traversal-native-builder",
+    "status": "",
+    "error": "",
+    "worktree": "prune-traversal-native-builder"
+  },
+  {
+    "repository": "Sail",
+    "head": "d827c407ae0465ff8be6e8b4d2375a9c1f80fbda",
+    "branch": "refs/heads/private/shipped-alias-integration",
+    "status": "",
+    "error": "",
+    "worktree": "shipped-alias-integration"
+  },
+  {
+    "repository": "Sail",
+    "head": "c4b1644fc561afd034119fee60264f6af46ced2e",
+    "branch": "refs/heads/fix/shipped-compiler-source-paths",
+    "status": " M CHANGELOG.md\n M crates/sail-verus/src/managed/shipped.rs\n M crates/sail-verus/src/managed/shipped/native.rs\n M crates/sail-verus/src/managed/shipped/release.rs\n M docs/decisions/0048-shipped-dependency-build.md\n M docs/releasing.md\n M docs/validation/vstd-compile-boundary.md\n",
+    "error": "",
+    "worktree": "shipped-compiler-source-paths",
+    "recovery_directory": "source/dirty/11-shipped-compiler-source-paths",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "356b7d0fdb859adf169b78f16fe0935a38b449fc",
+    "branch": "refs/heads/feat/shipped-default-integration",
+    "status": "",
+    "error": "",
+    "worktree": "shipped-default-integration"
+  },
+  {
+    "repository": "Sail",
+    "head": "c4b1644fc561afd034119fee60264f6af46ced2e",
+    "branch": "refs/heads/research/shipped-native-admission-controls",
+    "status": " M CHANGELOG.md\n M crates/sail-verus/src/managed/runner.rs\n M crates/sail-verus/src/managed/shipped.rs\n M crates/sail-verus/src/managed/shipped/native.rs\n M crates/sail-verus/src/managed/shipped/release.rs\n M docs/decisions/0048-shipped-dependency-build.md\n M docs/releasing.md\n M docs/validation/vstd-compile-boundary.md\n?? crates/sail-verus/src/managed/shipped/admission_actual_tests.rs\n?? crates/sail-verus/src/managed/shipped/native_shape.rs\n?? crates/sail-verus/src/managed/shipped/native_shapes.json\n",
+    "error": "",
+    "worktree": "shipped-native-admission-controls",
+    "recovery_directory": "source/dirty/13-shipped-native-admission-controls",
+    "saved_untracked_source": [
+      "crates/sail-verus/src/managed/shipped/admission_actual_tests.rs",
+      "crates/sail-verus/src/managed/shipped/native_shape.rs",
+      "crates/sail-verus/src/managed/shipped/native_shapes.json"
+    ],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "c170163f9c076360dc6f6ccb09cd049ed6a66fe2",
+    "branch": "refs/heads/feat/shipped-release-delivery",
+    "status": "",
+    "error": "",
+    "worktree": "shipped-release-delivery"
+  },
+  {
+    "repository": "Sail",
+    "head": "abb4b1ad556b02a063470fa0b20465b2e991de62",
+    "branch": "refs/heads/fix/shipped-release-group-cleanup",
+    "status": " M CHANGELOG.md\n M docs/releasing.md\n M scripts/release-shipped.py\n M scripts/test-release-shipped-cancel.py\n",
+    "error": "",
+    "worktree": "shipped-release-group-cleanup",
+    "recovery_directory": "source/dirty/15-shipped-release-group-cleanup",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "c4b1644fc561afd034119fee60264f6af46ced2e",
+    "branch": "refs/heads/feat/shipped-proof-release-index",
+    "status": "",
+    "error": "",
+    "worktree": "shipped-release-index"
+  },
+  {
+    "repository": "Sail",
+    "head": "c4b1644fc561afd034119fee60264f6af46ced2e",
+    "branch": "refs/heads/fix/shipped-release-prerequisites",
+    "status": " M CHANGELOG.md\n M README.md\n M docs/releasing.md\n M docs/validation/vstd-compile-boundary.md\n M scripts/release-shipped.py\n M scripts/release-smoke.sh\n M scripts/test-release-shipped-cancel.py\n M scripts/test-release-shipped.py\n",
+    "error": "",
+    "worktree": "shipped-release-prerequisites",
+    "recovery_directory": "source/dirty/17-shipped-release-prerequisites",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "83128ad0d5327f00bfea822d608ebd99dd9d8112",
+    "branch": "refs/heads/feat/shipped-proof-release-stage",
+    "status": " M CHANGELOG.md\n M crates/sail-verus/src/adapter.rs\n M crates/sail-verus/src/managed/runner.rs\n M crates/sail-verus/src/managed/shipped.rs\n M docs/ROADMAP.md\n M docs/decisions/0048-shipped-dependency-build.md\n M docs/releasing.md\n M docs/validation/vstd-compile-boundary.md\n A scripts/release-shipped.py\n M scripts/release-smoke.sh\n M scripts/release.sh\n A scripts/shipped-deps/Cargo.lock\n A scripts/shipped-deps/Cargo.toml\n A scripts/shipped-deps/src/lib.rs\n A scripts/test-release-shipped.py\n",
+    "error": "",
+    "worktree": "shipped-release-stage",
+    "recovery_directory": "source/dirty/18-shipped-release-stage",
+    "saved_untracked_source": [],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "f6ee51b3fa48aa2c0364b12b14f6550cff8fc466",
+    "branch": "refs/heads/private/smt-alias-final-current-main",
+    "status": "",
+    "error": "",
+    "worktree": "smt-alias-final-current-main"
+  },
+  {
+    "repository": "Sail",
+    "head": "9bfe8934e0e5bdb94a111da649a8d433d7bf1dfb",
+    "branch": "refs/heads/private/smt-alias-final-mac-builder",
+    "status": "",
+    "error": "",
+    "worktree": "smt-alias-final-mac-builder"
+  },
+  {
+    "repository": "Sail",
+    "head": "48a7a6b68d3edbd6fe833f4f1b73bd5843635374",
+    "branch": "refs/heads/private/smt-alias-final-qa-pr227",
+    "status": "",
+    "error": "",
+    "worktree": "smt-alias-final-qa-pr227"
+  },
+  {
+    "repository": "Sail",
+    "head": "095a61d4d744f779c45c82ec1076c39f29bd51eb",
+    "branch": "refs/heads/private/smt-alias-native-builder",
+    "status": "",
+    "error": "",
+    "worktree": "smt-alias-native-builder"
+  },
+  {
+    "repository": "Sail",
+    "head": "e3322f4f301d689cc4acd813e070b1672aaea6db",
+    "branch": "refs/heads/perf/solver-identity-stream",
+    "status": " M crates/sail-daemon/src/server.rs\n M crates/sail-key/src/lib.rs\n?? crates/sail-key/tests/reader.rs\n",
+    "error": "",
+    "worktree": "solver-identity-stream",
+    "recovery_directory": "source/dirty/23-solver-identity-stream",
+    "saved_untracked_source": [
+      "crates/sail-key/tests/reader.rs"
+    ],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Sail",
+    "head": "b8be218c244810aee3099c8edc8b5eb110309bc6",
+    "branch": "refs/heads/test/vstd-boundary-consumption-control",
+    "status": "",
+    "error": "",
+    "worktree": "vstd-boundary-consumption-control"
+  },
+  {
+    "repository": "Sail",
+    "head": "3c15130448f37d89a24724478c4cd4bbfa7d2bd8",
+    "branch": "refs/heads/perf/vstd-compile-boundary",
+    "status": "",
+    "error": "",
+    "worktree": "vstd-compile-boundary"
+  },
+  {
+    "repository": "Sail",
+    "head": "4488f2df92a0331e44c3c0b9588e7e9b11f619c1",
+    "branch": "refs/heads/perf/vstd-macos-repro",
+    "status": "",
+    "error": "",
+    "worktree": "vstd-macos-repro"
+  },
+  {
+    "repository": "Sail",
+    "head": "8e60daa7634d6562d48fdfd2c075bf6afb382500",
+    "branch": "refs/heads/research/vstd-native-producer-control",
+    "status": "",
+    "error": "",
+    "worktree": "vstd-native-producer-control"
+  },
+  {
+    "repository": "Verus fork",
+    "head": "7800051895154c3241a77a3bc7566aaf7e9c23c6",
+    "branch": "refs/heads/m11-3/shipped-vstd",
+    "status": "",
+    "error": "",
+    "worktree": "verus"
+  },
+  {
+    "repository": "Verus fork",
+    "head": "8a373f81a507b7ef4f144767ccd237d3d3de6c48",
+    "branch": "refs/heads/candidate/shipped-vstd-closure",
+    "status": "",
+    "error": "",
+    "worktree": "combined-verus"
+  },
+  {
+    "repository": "Verus fork",
+    "head": "125e4a55dcb78bdb155f73494eb28f938ca73e54",
+    "branch": "refs/heads/perf/air-line-cleanup",
+    "status": "",
+    "error": "",
+    "worktree": "fork-air-line-cleanup"
+  },
+  {
+    "repository": "Verus fork",
+    "head": "e5365c05d0a9f8c8cb655edc035ce9a2f6dde482",
+    "branch": "refs/heads/perf/prune-map-single-probe",
+    "status": " M SAIL.md\n M source/vir/src/prune.rs\n?? source/vir/src/prune_map_tests.rs\n",
+    "error": "",
+    "worktree": "fork-prune-map-single-probe",
+    "recovery_directory": "source/dirty/31-fork-prune-map-single-probe",
+    "saved_untracked_source": [
+      "source/vir/src/prune_map_tests.rs"
+    ],
+    "excluded_untracked_scratch": []
+  },
+  {
+    "repository": "Verus fork",
+    "head": "3456783915f1fb226b17c30a2cd6a177216ce6b6",
+    "branch": "refs/heads/perf/prune-traversal-memo",
+    "status": "",
+    "error": "",
+    "worktree": "fork-prune-traversal-memo"
+  },
+  {
+    "repository": "Verus fork",
+    "head": "cbbcdf44ec0f245924ccccb8c5b7c957abb86cb7",
+    "branch": "refs/heads/fix/stable-smt-function-alias-delivery",
+    "status": "",
+    "error": "",
+    "worktree": "fork-smt-function-alias-delivery"
+  },
+  {
+    "repository": "Verus fork",
+    "head": "0a4a06cb6431d5a36e1ea4c8eb9c8da938866a24",
+    "branch": "refs/heads/fix/stable-smt-function-aliases",
+    "status": "",
+    "error": "",
+    "worktree": "fork-smt-function-aliases"
+  },
+  {
+    "repository": "Verus fork",
+    "head": "e5365c05d0a9f8c8cb655edc035ce9a2f6dde482",
+    "branch": "refs/heads/research/spec-names-native-observers",
+    "status": "",
+    "error": "",
+    "worktree": "fork-spec-native-combined"
+  },
+  {
+    "repository": "Verus fork",
+    "head": "e5365c05d0a9f8c8cb655edc035ce9a2f6dde482",
+    "branch": "refs/heads/fix/stable-impl-identity",
+    "status": " M SAIL.md\n M source/rust_verify/src/external.rs\n M source/rust_verify/src/import_export.rs\n M source/rust_verify/src/lib.rs\n M source/rust_verify/src/rust_to_vir_base.rs\n M source/rust_verify/src/rust_to_vir_func.rs\n M source/rust_verify/src/verifier.rs\n M source/rust_verify/src/verus_items.rs\n M source/vir/src/ast.rs\n M source/vir/src/ast_simplify.rs\n M source/vir/src/ast_visitor.rs\n M source/vir/src/def.rs\n?? SAIL_STABLE_IMPL_IDENTITY_DESIGN.md\n?? source/rust_verify/src/sail_impl_identity.rs\n?? source/rust_verify/src/sail_log_file_name.rs\n?? source/rust_verify_test/tests/sail_vi0030_impl_identity.rs\n",
+    "error": "",
+    "worktree": "fork-stable-impl-identity",
+    "recovery_directory": "source/dirty/36-fork-stable-impl-identity",
+    "saved_untracked_source": [
+      "source/rust_verify/src/sail_impl_identity.rs",
+      "source/rust_verify/src/sail_log_file_name.rs",
+      "source/rust_verify_test/tests/sail_vi0030_impl_identity.rs"
+    ],
+    "excluded_untracked_scratch": [
+      "SAIL_STABLE_IMPL_IDENTITY_DESIGN.md"
+    ]
+  },
+  {
+    "repository": "Verus fork",
+    "head": "067d0d7c350a9c38cbb9bb8ed54b7548ce9c8bbc",
+    "branch": "refs/heads/research/native-compiler-inputs",
+    "status": "",
+    "error": "",
+    "worktree": "fork-vstd-compiler-inputs"
+  }
+]
