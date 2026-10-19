@@ -1,5 +1,7 @@
 //! Memoize only a digest whose complete input bytes have just matched.
 
+use std::io::Read as _;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use sail_key::sha256;
@@ -7,6 +9,11 @@ use sail_key::sha256;
 /// One retained executable body. Concurrent readers can temporarily retain
 /// older immutable snapshots; this is not a process-wide memory bound.
 pub(crate) const MAX_RETAINED_BYTES: usize = 64 * 1024 * 1024;
+
+/// Bytes compared per read when checking a file against the retained body.
+/// A small reused buffer avoids allocating and faulting in an
+/// executable-sized copy on every handshake.
+const COMPARE_CHUNK: usize = 256 * 1024;
 
 #[derive(Clone)]
 struct Entry {
@@ -26,6 +33,32 @@ impl DigestMemo {
             latest: Mutex::new(None),
             maximum,
         }
+    }
+
+    /// The retained digest, only if the file at `path` holds exactly the
+    /// retained bytes when read now, in full: equal bytes have the same
+    /// SHA-256 by construction. A read error, a length difference or any
+    /// differing byte returns `None`, and the caller reads and hashes the
+    /// file with [`Self::digest`].
+    pub(crate) fn current(&self, path: &Path) -> Option<[u8; 32]> {
+        let entry = self.latest.lock().ok()?.clone()?;
+        let mut file = std::fs::File::open(path).ok()?;
+        let mut buf = vec![0u8; COMPARE_CHUNK];
+        let mut at = 0usize;
+        loop {
+            let n = match file.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => n,
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(_) => return None,
+            };
+            let end = at.checked_add(n)?;
+            if entry.bytes.get(at..end)? != buf.get(..n)? {
+                return None;
+            }
+            at = end;
+        }
+        (at == entry.bytes.len()).then_some(entry.digest)
     }
 
     /// The caller supplies the whole freshly read body on every invocation.
@@ -72,6 +105,38 @@ mod tests {
         for bytes in [b"abc".as_slice(), b"abc", b"abd", b"abc", b""] {
             assert_eq!(memo.digest(bytes.to_vec()), sha256(bytes));
         }
+    }
+
+    #[test]
+    fn current_reuses_a_digest_only_for_the_complete_retained_bytes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let dir = std::env::temp_dir().join(format!("sail-digest-memo-{}", std::process::id()));
+        std::fs::create_dir_all(&dir)?;
+        let path = dir.join("solver");
+        // More than one comparison chunk, so a change in a later chunk counts.
+        let body: Vec<u8> = (0..=u8::MAX).cycle().take(COMPARE_CHUNK * 2 + 17).collect();
+        let memo = DigestMemo::new(body.len());
+        std::fs::write(&path, &body)?;
+        assert_eq!(memo.current(&path), None, "nothing is retained yet");
+        assert_eq!(memo.digest(body.clone()), sha256(&body));
+        assert_eq!(memo.current(&path), Some(sha256(&body)));
+
+        let mut late = body.clone();
+        if let Some(last) = late.last_mut() {
+            *last ^= 1;
+        }
+        let shorter = body.get(..body.len() - 1).unwrap_or_default().to_vec();
+        let longer = [body.as_slice(), b"x"].concat();
+        for changed in [&late, &shorter, &longer] {
+            std::fs::write(&path, changed)?;
+            assert_eq!(memo.current(&path), None);
+        }
+        std::fs::remove_file(&path)?;
+        assert_eq!(memo.current(&path), None);
+        std::fs::write(&path, &body)?;
+        assert_eq!(memo.current(&path), Some(sha256(&body)));
+        std::fs::remove_dir_all(&dir)?;
+        Ok(())
     }
 
     #[test]
