@@ -1473,8 +1473,7 @@ mod tests {
     #[test]
     fn interrupted_engine_restarts_exact_stock_args_and_preserves_failure()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let root =
-            std::env::temp_dir().join(format!("sail-engine-fallback-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("sail-engine-restart-{}", std::process::id()));
         let proof = include_bytes!("../tests/fixtures/engine-terminal/failed-proof.json");
         let late = include_bytes!("../tests/fixtures/engine-terminal/late-exec.json");
         let documents = [
