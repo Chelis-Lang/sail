@@ -1,0 +1,35 @@
+{
+  "private_draft_release": "handover-2026-10-19",
+  "status": "all listed assets uploaded; GitHub sizes and SHA256 digests match",
+  "assets": [
+    {
+      "asset": "cbb-linux-runtime.tar.gz",
+      "bytes": 35293859,
+      "sha256": "ae901465277e0e6950f4de14f32bb211f21bea993feabb04a0e44567a7ce6f85",
+      "original_evidence_relative_path": "smt-alias-final-native-qualification-2026-10-18/normal-engine-handoff/engine-runtime.tar.gz",
+      "github_digest_verified": true
+    },
+    {
+      "asset": "cbb-macos-runtime.tar.gz",
+      "bytes": 29029343,
+      "sha256": "8e8bd410a80f8a321a0a67676294a1769c812e207ea697f61c4bb88337b093a7",
+      "original_evidence_relative_path": "smt-alias-final-native-qualification-2026-10-18/qa-transition/mac-runtime.tar.gz",
+      "github_digest_verified": true
+    },
+    {
+      "asset": "shipped-producer-d827-r2.tgz",
+      "bytes": 105787448,
+      "sha256": "3fee4fe8f6a614b6b81fca9d23c5db4bb23bbc22b1016f7ad425f41c14fc4841",
+      "original_evidence_relative_path": "shipped-proof-release-activation-plan-2026-10-18/linux-producer-cbb-d827-r2/result.tgz",
+      "github_digest_verified": true
+    },
+    {
+      "asset": "cbb-qualified-checkpoint.tgz",
+      "bytes": 680082213,
+      "sha256": "3f02cf26d38fcfa80294f715fe567a0342a4d4e1f86cb16554816a20b81f7e21",
+      "original_evidence_relative_path": "smt-alias-final-native-qualification-2026-10-18/native-attempt01/native-results/fixture-pre-cleanup-sourcecopies01.tgz",
+      "github_digest_verified": true
+    }
+  ],
+  "private_draft_release_url": "https://github.com/Chelis-Lang/sail/releases/tag/untagged-ca4206ff1e115beaf3f0"
+}

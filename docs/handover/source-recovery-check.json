@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "baseline": "fresh GitHub main fetch; no original-Mac object alternates",
+  "recovered_candidate": "d827c407ae0465ff8be6e8b4d2375a9c1f80fbda",
+  "fork_bundle_prerequisites_in_public_sail_history": true,
+  "fork_prerequisite_count": 3
+}
