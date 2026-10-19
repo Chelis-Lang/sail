@@ -157,13 +157,17 @@ fn a_caller_or_project_choice_keeps_the_callers_cargo() {
         assert_eq!(fixture.sail(setup, &[]), "unset");
     }
     assert!(std::fs::remove_file(&file).is_ok());
-    // A rustup directory override of the project's parent.
+    // A rustup directory override of the project's parent, keyed by the
+    // resolved path as `rustup override set` writes it (on macOS `/tmp` is
+    // `/private/tmp`).
+    let work = fixture.root.join("work");
+    let work = work.canonicalize().unwrap_or(work);
     assert!(
         std::fs::write(
             fixture.root.join("rustup/settings.toml"),
             format!(
                 "version = \"12\"\n[overrides]\n{:?} = \"1.99.0\"\n",
-                fixture.root.join("work").display().to_string()
+                work.display().to_string()
             ),
         )
         .is_ok()
