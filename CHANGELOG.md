@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Run managed Cargo with the engine's pinned toolchain (`1.98.1`) when the
+  caller made no toolchain choice, so the shipped vstd proof applies with a
+  newer default Cargo ([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
+  `RUSTUP_TOOLCHAIN`, `CARGO`, `RUSTC`, a `rust-toolchain` file, a rustup
+  override or a Cargo that is not a rustup proxy keep the caller's Cargo.
+  Nothing is installed: without the pinned toolchain's `rust-src`, Sail runs
+  the default Cargo and a release with a shipped proof notes `SAIL3137`. Stock
+  comparisons now run `RUSTUP_TOOLCHAIN=<effective toolchain> cargo verus
+  verify`. The README's install step adds `rust-src`.
+
 - Bind the runtime manifest digest in the engine pins (`manifest_sha256`),
   checked on install. A unit test requires the qualified Linux retained-reuse
   manifest to equal the pin, and a valid engine with another manifest now

@@ -163,6 +163,15 @@ Cargo's own. Two parts of the environment bind a result:
   `rerun-if-env-changed`. Each receipt records their values, and it is reused
   only while every one is unchanged.
 
+`RUSTUP_TOOLCHAIN` binds its effective value. When the caller made no
+toolchain choice, Sail runs Cargo with the engine's pinned toolchain
+([ADR 0058](decisions/0058-managed-builds-use-the-pinned-cargo.md)) and the
+context records `RUSTUP_TOOLCHAIN=<pinned>` exactly as if the caller had set
+it, along with that toolchain's Cargo sysroot. Selecting the pinned toolchain
+and keeping the caller's Cargo are therefore different contexts, and so are
+installing the pinned toolchain's `rust-src` or adding a `rust-toolchain`
+file or rustup override, which change the selection.
+
 `CARGO_TARGET_DIR` does not select a managed context: Sail always passes its
 owned `--target-dir` to Cargo. Setting, changing or unsetting the caller's
 directory therefore keeps the same compiled target. It still reaches child

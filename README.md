@@ -69,37 +69,30 @@ archive downloaded with a browser instead of `curl` is quarantined; clear
 that with `xattr -dr com.apple.quarantine ~/.local/opt/sail-$VERSION-$TARGET`.
 
 **2. Rust.** Verus compiles your crate with the Rust toolchain it pins,
-`1.98.1`. Install [rustup](https://rustup.rs) and that toolchain:
+`1.98.1`. Install [rustup](https://rustup.rs) and that toolchain with its Rust
+sources (`rust-src`):
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 . "$HOME/.cargo/env"
-rustup toolchain install 1.98.1 --profile minimal
+rustup toolchain install 1.98.1 --profile minimal --component rust-src
 sail engine status                 # checks Sail's Verus against its pins
 ```
 
-A qualified release that includes a preverified dependency proof bundle also
-requires the same toolchain's complete Rust sources:
+Installing it does not change your default toolchain. `sail verify` runs
+Cargo with this toolchain on its own, so a release's preverified vstd proof
+(recorded with Cargo `1.98.1`) applies whatever your default Cargo is. A
+`RUSTUP_TOOLCHAIN` you set, a project's `rust-toolchain.toml`, a `rustup
+override` or an explicit `CARGO` keeps your choice instead; another Cargo
+version may emit different compiler arguments and safely verifies vstd again.
+Without `rust-src`, Sail runs your default Cargo and its JSON result notes
+`SAIL3137` with the command above. Sail never installs a toolchain itself
+([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
 
-```sh
-rustup component add rust-src --toolchain 1.98.1
-```
-
-The candidate bundle is recorded with Cargo `1.98.1`. Installing that toolchain
-does not change an existing Cargo default. Select it for verification when using
-that bundle's fast path:
-
-```sh
-RUSTUP_TOOLCHAIN=1.98.1 sail verify
-```
-
-A different Cargo version may emit different compiler arguments and safely
-verify vstd again. Sail preserves the caller's Cargo selection.
-
-The proof-bundle release path is still unqualified; this is not an additional
-requirement for ordinary releases without it. Keep the minimal installation
-above for those releases. Proof-bundle first-use qualification includes this
-component's download, verification and installation cost. See
+The proof-bundle release path is still unqualified; `rust-src` is needed only
+for a release with a bundle, and the minimal installation without it remains
+enough for ordinary releases. Proof-bundle first-use qualification includes
+this component's download, verification and installation cost. See
 [release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use).
 
 **From source (contributors).** With rustup, a C toolchain and `git`:

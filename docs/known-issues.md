@@ -54,11 +54,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
   release selection remains unqualified. The
   [compiler-boundary record](validation/vstd-compile-boundary.md) retains the
   failed attempts and precise component limits.
-  The candidate factory records Cargo `1.98.1`; managed runs preserve the caller's
-  Cargo. A newer default can produce different exact compiler arguments and
-  safely miss even with the pinned Rust compiler installed. Current fresh-home
-  measurements select Cargo `1.98.1` explicitly; they do not cover every default
-  Cargo installation.
+  The candidate factory records Cargo `1.98.1`. Managed runs now select that
+  Cargo when the caller made no toolchain choice and it is installed with
+  `rust-src` ([ADR 0058](decisions/0058-managed-builds-use-the-pinned-cargo.md));
+  a caller's or project's own choice of another Cargo can still produce
+  different exact compiler arguments and safely miss. Current fresh-home
+  measurements select Cargo `1.98.1` explicitly; first use from a newer default
+  Cargo through Sail's selection is not yet measured.
 
 - **The stale solver-hash defect is fixed on main**
   ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads
