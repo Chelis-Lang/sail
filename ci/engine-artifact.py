@@ -86,6 +86,8 @@ def pin_host(pin):
         raise ValueError("SAIL0944: unknown engine runtime platform: " + platform)
     return PLATFORMS[platform]
 
+LOCAL_RUST_SRC = b"lib/rustlib/src/rust"
+
 
 def validate(build, pin):
     # The pinned manifest digest is the runtime authority Sail binds to
@@ -115,6 +117,11 @@ def validate(build, pin):
             raise ValueError("SAIL0944: runtime artifact mismatch: " + name)
     if sha(build / RUNTIME / "z3") != pin["z3_sha256"]:
         raise ValueError("SAIL0944: pinned solver mismatch")
+    # The Verus release's vstd.vir names standard library sources by the
+    # toolchain's virtual /rustc/<commit> path. A build toolchain with rust-src
+    # records its local copy instead (xtask refuses to build that way).
+    if LOCAL_RUST_SRC in (build / RUNTIME / "vstd.vir").read_bytes():
+        raise ValueError("SAIL0944: vstd.vir names local rust-src standard library paths")
     return manifest
 
 

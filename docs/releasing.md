@@ -364,7 +364,9 @@ and runtime files, into `OUT`, then runs the self-check.
 The Linux runtime is qualified when it is pinned (engine README, Validation).
 The macOS runtime is built on an Apple-silicon Mac from the same fork commit,
 so it needs its own run, recorded in
-[the macOS engine record](validation/macos-engine.md):
+[the macOS engine record](validation/macos-engine.md). As on Linux, the
+Verus toolchain must not have `rust-src`
+([VI-0031](verus-issues/VI-0031-rust-src-std-paths.md)):
 
 ```sh
 cargo xtask build-verus-engine       # also builds and verifies vstd

@@ -244,7 +244,12 @@ with Sail on the new runtime against plain stock Verus
 
 1. On a native Linux x86-64 host, build it with
    `cargo xtask build-verus-engine` and run the qualification steps
-   ([Validation](#validation)).
+   ([Validation](#validation)). The Verus toolchain must not have the
+   `rust-src` component: with it, vstd.vir names the host's copy of the
+   standard library instead of `/rustc/<commit>`, as the release's does
+   ([VI-0031](../../docs/verus-issues/VI-0031-rust-src-std-paths.md)). The
+   build refuses such a toolchain, and packing and installation reject such a
+   vstd.vir.
 2. Pack it:
    `python3 ci/engine-artifact.py pack --build BUILD --archive OUT/engine-runtime.tar.gz --pin engine/verus/artifact-linux.json`.
    The pin records the archive and manifest digests and the release it
