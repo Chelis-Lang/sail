@@ -1541,7 +1541,10 @@ impl<'a> Call<'a> {
 
     /// Extra compiler arguments when recording: name registry sources by the
     /// virtual base, under the directory Cargo names and under its canonical
-    /// form (rustc's working directory for a registry package).
+    /// form (rustc's working directory for a registry package). Standard
+    /// library files keep rustc's virtual `/rustc/<commit>` names, as a
+    /// toolchain without `rust-src` records them, rather than the recording
+    /// host's `rust-src` path (VI-0031).
     pub(crate) fn record_args(&self) -> Vec<OsString> {
         if !matches!(self.plan.mode, Mode::Record { .. }) {
             return Vec::new();
@@ -1551,6 +1554,12 @@ impl<'a> Call<'a> {
             let mut mapping = directory.into_os_string();
             mapping.push("=");
             mapping.push(&self.plan.virtual_base);
+            args.extend([OsString::from("--remap-path-prefix"), mapping]);
+        }
+        if let Some(source) = &self.plan.compiler_source {
+            let mut mapping = source.root.clone().into_os_string();
+            mapping.push("=");
+            mapping.push(&source.virtual_root);
             args.extend([OsString::from("--remap-path-prefix"), mapping]);
         }
         args
@@ -3131,6 +3140,21 @@ mod tests {
         assert_eq!(
             a.plan.compiler_source.as_ref().map(CompilerSource::keyed),
             b.plan.compiler_source.as_ref().map(CompilerSource::keyed)
+        );
+        // Recording names the standard library by its virtual root, never by
+        // the recording host's rust-src path (VI-0031); serving adds nothing.
+        let recorded = a.call(false).ok_or("A call")?.record_args();
+        let source = a.plan.compiler_source.as_ref().ok_or("A compiler source")?;
+        let mut std_mapping = source.root.clone().into_os_string();
+        std_mapping.push(format!("={}", "/rustc/".to_owned() + &"1".repeat(40)));
+        assert_eq!(
+            recorded.windows(2).last(),
+            Some([OsString::from("--remap-path-prefix"), std_mapping].as_slice())
+        );
+        assert_eq!(
+            b.call(false).ok_or("B call")?.record_args(),
+            Vec::<OsString>::new(),
+            "serving adds no remapping"
         );
         let original = a.call(false).ok_or("A call")?.key;
         assert_eq!(original, b.call(false).ok_or("B call")?.key);
