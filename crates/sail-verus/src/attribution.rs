@@ -1225,6 +1225,47 @@ unsat
     }
 
     #[test]
+    fn shortened_paired_stems_retain_distinct_same_function_spinoffs() {
+        let function = "demo::S::check";
+        let doc = serde_json::json!({
+            "verification-results": {"verified": 1, "errors": 0, "success": true},
+            "times-ms": {"smt": {"smt-run-module-times": [{
+                "module": "demo", "function-breakdown": [{
+                    "function": function, "success": true, "time-micros": 7
+                }]
+            }]}}
+        });
+        // VI-0029's bounded filename protocol preserves ._NN[_expand] after
+        // its complete-stem digest. AIR/transcript retain the same stem.
+        let log = |digest: char, tail: &str| LogFile {
+            stem: format!(
+                "{}-{}{tail}",
+                "x".repeat(120),
+                digest.to_string().repeat(64)
+            ),
+            air: vec![AirQuery {
+                function: function.to_owned(),
+                kind: "Function-Def".to_owned(),
+                span: None,
+            }],
+            ops: vec![SmtOp::default()],
+            spinoff_reason: Some("bitvector".to_owned()),
+            input_sha256: digest.to_string().repeat(64),
+            solver_version: None,
+        };
+        let logs = [log('a', "._01"), log('b', "._02_expand")];
+        let result = attribute(&[doc], Some(&logs), &Provenance::NoCache, None);
+        let records = &result.crates[0].functions[0];
+        let obligations = records.obligations.as_deref().unwrap_or_default();
+        assert_eq!(obligations.len(), 2);
+        assert_eq!(obligations[0].id.spinoff, Some(1));
+        assert_eq!(obligations[1].id.spinoff, Some(2));
+        assert_eq!(obligations[0].id.ordinal, 0);
+        assert_eq!(obligations[1].id.ordinal, 0);
+        assert_ne!(obligations[0].id, obligations[1].id);
+    }
+
+    #[test]
     fn spinoff_indices_come_from_file_stems() {
         assert_eq!(spinoff_index("root"), None);
         assert_eq!(spinoff_index("foo__bar"), None);

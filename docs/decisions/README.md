@@ -58,3 +58,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0053: Disable unqualified native-artifact seeding (proposed, unselected)](0053-disable-unqualified-native-store.md)
 
 - [0054: Stable solver names for spec formal parameters (proposed)](0054-stable-spec-parameter-names.md)
+
+- [0056: Stable identities for concrete trait implementations (proposed, source-only)](0056-stable-anonymous-impl-identities.md)
