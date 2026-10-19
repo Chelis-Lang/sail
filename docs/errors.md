@@ -158,6 +158,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3134` | Research dependency recording is incomplete, or checked restoration could not remove a partial output | Read the specific message. Incomplete recordings are unusable; a partial-restoration cleanup failure requires a fresh owned target |
 | `SAIL3135` | Both compiler-reuse research switches are enabled; this combination is unsupported and refused before setup or child execution | Unset either `SAIL_VSTD_BOUNDARY_RESEARCH` or `SAIL_RETAINED_CONTENT_RESEARCH`; see the [integration limits](validation/proof-reuse-integration.md) |
 | `SAIL3136` | Note: ordinary retained reuse (instant revert) is off because the valid engine in use is not the qualified Linux runtime (its manifest digest differs from the one Sail was qualified with). Verification is unaffected | None for verdicts. Use the pinned runtime (`engine/verus/artifact-linux.json`) to get instant revert; see [instant revert](validation/instant-revert.md) |
+| `SAIL3137` | Note: the release ships a preverified vstd proof, but Rust's pinned toolchain (`pins.verus.rust_toolchain`, currently `1.98.1`) is not installed with `rust-src`, so managed verification ran the default Cargo and verifies vstd again ([ADR 0058](decisions/0058-managed-builds-use-the-pinned-cargo.md)). Verification is unaffected; Sail installs nothing | Run the command the note names, `rustup toolchain install 1.98.1 --profile minimal --component rust-src`, to use the shipped proof |
 
 ## Portfolio and solver libraries
 

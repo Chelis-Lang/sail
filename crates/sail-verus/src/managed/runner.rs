@@ -40,6 +40,10 @@ pub struct Config {
     pub cargo_verus: PathBuf,
     /// Actual Cargo executable (never the private adapter).
     pub cargo: PathBuf,
+    /// The toolchain every Cargo, rustc and Cargo-Verus process of the run
+    /// is started with (ADR 0058): the engine's pinned toolchain unless the
+    /// caller or the project chose one.
+    pub cargo_toolchain: super::CargoToolchain,
     /// Sail's solver shim.
     pub shim: PathBuf,
     /// Actual solver executable.
@@ -129,14 +133,10 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
     );
     let rustup = resolve_program(std::ffi::OsStr::new("rustup"), &config.workspace);
     let (cargo_probe, verifier_probe) = std::thread::scope(|scope| {
-        let cargo_probe = rustc.as_ref().ok().map(|rustc| {
-            scope.spawn(move || {
-                Command::new(rustc)
-                    .args(["--print", "sysroot"])
-                    .current_dir(&config.workspace)
-                    .output()
-            })
-        });
+        let cargo_probe = rustc
+            .as_ref()
+            .ok()
+            .map(|rustc| scope.spawn(move || sysroot_probe(config, rustc).output()));
         let verifier_probe = wrapper
             .as_ref()
             .ok()
@@ -169,11 +169,7 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
     }
     let wrapper = wrapper?;
     identity.push((wrapper.to_string_lossy().into_owned(), installed(&wrapper)?));
-    let mut environment: BTreeMap<Vec<u8>, Vec<u8>> = std::env::vars_os()
-        .filter(|(k, _)| input_environment_key(k))
-        .map(|(k, v)| (k.as_encoded_bytes().to_vec(), v.as_encoded_bytes().to_vec()))
-        .chain(super::environment::resolved_homes())
-        .collect();
+    let mut environment = context_environment(config);
     let rustc = rustc?;
     identity.push((rustc.to_string_lossy().into_owned(), installed(&rustc)?));
     let actual = cargo_probe
@@ -267,6 +263,35 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         compiler_hash,
         store_hash,
     })
+}
+
+/// The Cargo toolchain's `rustc --print sysroot`, run as Cargo runs rustc:
+/// with the selected toolchain (ADR 0058).
+fn sysroot_probe(config: &Config, rustc: &Path) -> Command {
+    let mut command = Command::new(rustc);
+    config.cargo_toolchain.apply(&mut command);
+    command
+        .args(["--print", "sysroot"])
+        .current_dir(&config.workspace);
+    command
+}
+
+/// The proof context's environment: the variables the tools read, the
+/// resolved homes, and the toolchain Sail selects, which every tool of the
+/// run sees exactly as if the caller had set it (ADR 0058).
+fn context_environment(config: &Config) -> BTreeMap<Vec<u8>, Vec<u8>> {
+    let mut environment: BTreeMap<Vec<u8>, Vec<u8>> = std::env::vars_os()
+        .filter(|(k, _)| input_environment_key(k))
+        .map(|(k, v)| (k.as_encoded_bytes().to_vec(), v.as_encoded_bytes().to_vec()))
+        .chain(super::environment::resolved_homes())
+        .collect();
+    if let Some(toolchain) = config.cargo_toolchain.selected() {
+        environment.insert(
+            super::cargo_toolchain::ENV.as_bytes().to_vec(),
+            toolchain.as_bytes().to_vec(),
+        );
+    }
+    environment
 }
 
 /// The compiler family as the dependency store sees it (ADR 0045): the
@@ -712,6 +737,7 @@ fn restore_incremental(kept: Vec<(PathBuf, PathBuf)>) {
 
 fn cargo_clean(config: &Config, build_target: &Path, packages: &[String]) -> Result<()> {
     let mut cmd = Command::new(&config.cargo);
+    config.cargo_toolchain.apply(&mut cmd);
     // Cargo-Verus builds with a different rustc fingerprint, so a clean that
     // rewrote the target's rustc-info cache would force the following build to
     // probe its compiler driver again. The clean neither reads nor writes that
@@ -758,6 +784,9 @@ fn invoke(
         .position(|a| a == "--")
         .unwrap_or(config.args.len());
     let mut cmd = Command::new(&config.cargo_verus);
+    // Cargo-Verus, the Cargo it runs through Sail's adapter
+    // (`SAIL_MANAGED_CARGO`) and every compiler below inherit the selection.
+    config.cargo_toolchain.apply(&mut cmd);
     cmd.current_dir(&config.workspace)
         .args([
             "verus",
@@ -2216,6 +2245,7 @@ pub(crate) fn run_engine_held(
                 &config.workspace,
                 &config.args,
                 &config.cargo,
+                &config.cargo_toolchain,
                 &config.cache,
             )
         });
@@ -2638,6 +2668,7 @@ pub(crate) fn run_engine_held(
                     &config.workspace,
                     &config.args,
                     &config.cargo,
+                    &config.cargo_toolchain,
                     &config.cache,
                 );
                 (after, snapshot.join().ok())
@@ -2700,6 +2731,7 @@ pub(crate) fn run_engine_held(
                         &config.workspace,
                         &config.args,
                         &config.cargo,
+                        &config.cargo_toolchain,
                         &config.cache,
                     )),
                     None,
@@ -2826,6 +2858,10 @@ pub(crate) fn run_engine_held(
     let reused_targets =
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = retained_notes;
+    // Only a release with a shipped vstd proof has a fast path to offer.
+    if super::shipped::has_adjacent_bundle(&config.cargo_verus) {
+        notes.extend(config.cargo_toolchain.note());
+    }
     if let Some(variable) = &loader {
         notes.push(format!(
             "SAIL3112: {variable} is set, so this run reused and recorded no proof receipts; targets Cargo found up to date have no report"
@@ -3176,6 +3212,7 @@ mod tests {
                 sail: absent.clone(),
                 cargo_verus: absent.clone(),
                 cargo: absent.clone(),
+                cargo_toolchain: crate::managed::CargoToolchain::Caller,
                 shim: absent.clone(),
                 z3: absent,
                 socket: None,
@@ -3233,6 +3270,8 @@ mod tests {
 
     #[cfg(unix)]
     include!("runner_artifact_isolation_tests.rs");
+    #[cfg(unix)]
+    include!("runner_cargo_toolchain_tests.rs");
     fn compiler_request(function: Option<&str>) -> crate::engine::Request {
         crate::engine::Request {
             function: function.map(str::to_owned),
@@ -3402,6 +3441,7 @@ mod tests {
             sail: sail.clone(),
             cargo_verus: sail.clone(),
             cargo: sail.clone(),
+            cargo_toolchain: crate::managed::CargoToolchain::Caller,
             shim: sail.clone(),
             z3: sail,
             socket: None,
@@ -4755,6 +4795,7 @@ mod tests {
             sail: launcher.clone(),
             cargo_verus: request.cargo_verus.clone(),
             cargo: launcher.clone(),
+            cargo_toolchain: crate::managed::CargoToolchain::Caller,
             shim: launcher.clone(),
             z3: runtime.join("z3"),
             socket: None,
@@ -5360,6 +5401,7 @@ mod tests {
             sail: PathBuf::from("sail"),
             cargo_verus: PathBuf::from("cargo-verus"),
             cargo: PathBuf::from("cargo"),
+            cargo_toolchain: crate::managed::CargoToolchain::Caller,
             shim: PathBuf::from("sail-z3"),
             z3: PathBuf::from("z3"),
             socket: None,

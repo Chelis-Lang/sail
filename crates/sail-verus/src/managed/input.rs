@@ -55,17 +55,26 @@ fn metadata_command(workspace: &Path, args: &[String], cargo: &Path) -> Command 
     cmd
 }
 
-pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Result<Value> {
-    read_metadata(metadata_command(workspace, args, cargo), args)
+pub(super) fn metadata(
+    workspace: &Path,
+    args: &[String],
+    cargo: &Path,
+    toolchain: &super::CargoToolchain,
+) -> Result<Value> {
+    let mut command = metadata_command(workspace, args, cargo);
+    toolchain.apply(&mut command);
+    read_metadata(command, args)
 }
 
 fn managed_metadata_command(
     workspace: &Path,
     args: &[String],
     cargo: &Path,
+    toolchain: &super::CargoToolchain,
     cache: &Path,
 ) -> Result<Command> {
     let mut command = metadata_command(workspace, args, cargo);
+    toolchain.apply(&mut command);
     // Metadata does not build anything. Keep its excluded output directory
     // independent of the caller's target override: managed compilation uses
     // an explicit owned target, even when the caller names a source directory.
@@ -80,10 +89,11 @@ pub(super) fn managed_metadata(
     workspace: &Path,
     args: &[String],
     cargo: &Path,
+    toolchain: &super::CargoToolchain,
     cache: &Path,
 ) -> Result<Value> {
     read_metadata(
-        managed_metadata_command(workspace, args, cargo, cache)?,
+        managed_metadata_command(workspace, args, cargo, toolchain, cache)?,
         args,
     )
 }
@@ -645,14 +655,20 @@ fn stamp_paths(_paths: &BTreeSet<PathBuf>) -> Option<String> {
     None
 }
 
-/// Hashes Cargo's declared workspace and resolved dependency inputs.
+/// Hashes Cargo's declared workspace and resolved dependency inputs, reading
+/// Cargo's metadata with `cargo` under `toolchain`.
 ///
 /// # Errors
 /// Returns `SAIL3103` when Cargo metadata cannot be obtained.
-pub fn snapshot(workspace: &Path, args: &[String], cargo: &Path) -> Result<InputSnapshot> {
+pub fn snapshot(
+    workspace: &Path,
+    args: &[String],
+    cargo: &Path,
+    toolchain: &super::CargoToolchain,
+) -> Result<InputSnapshot> {
     let invocation =
         std::path::absolute(workspace).map_err(|e| Error::new("SAIL3103", e.to_string()))?;
-    let mut data = metadata(workspace, args, cargo)?;
+    let mut data = metadata(workspace, args, cargo, toolchain)?;
     data["sail_invocation_directory"] =
         serde_json::Value::String(invocation.to_string_lossy().into_owned());
     let mut snapshot = snapshot_metadata(&data, &[]);
@@ -702,7 +718,8 @@ mod tests {
         let workspace = std::path::Path::new("workspace");
         let cargo = std::path::Path::new("cargo");
         let cache = std::path::Path::new("owned-cache");
-        let managed = super::managed_metadata_command(workspace, &[], cargo, cache)
+        let caller = crate::managed::CargoToolchain::Caller;
+        let managed = super::managed_metadata_command(workspace, &[], cargo, &caller, cache)
             .unwrap_or_else(|error| unreachable!("{error}"));
         let expected =
             crate::adapter::metadata_target(cache).unwrap_or_else(|error| unreachable!("{error}"));
@@ -717,6 +734,29 @@ mod tests {
                 .get_envs()
                 .any(|(key, _)| key == "CARGO_TARGET_DIR")
         );
+    }
+
+    #[test]
+    fn managed_metadata_runs_with_the_selected_toolchain() {
+        let toolchain = |selection: &crate::managed::CargoToolchain| {
+            let command = super::managed_metadata_command(
+                std::path::Path::new("workspace"),
+                &[],
+                std::path::Path::new("cargo"),
+                selection,
+                std::path::Path::new("owned-cache"),
+            )
+            .unwrap_or_else(|error| unreachable!("{error}"));
+            command
+                .get_envs()
+                .find(|(key, _)| *key == "RUSTUP_TOOLCHAIN")
+                .and_then(|(_, value)| value.map(std::ffi::OsStr::to_owned))
+        };
+        assert_eq!(
+            toolchain(&crate::managed::CargoToolchain::Pinned("1.98.1".into())),
+            Some("1.98.1".into())
+        );
+        assert_eq!(toolchain(&crate::managed::CargoToolchain::Caller), None);
     }
 
     /// The keyed sort builds exactly the set that ordered inserts build,
