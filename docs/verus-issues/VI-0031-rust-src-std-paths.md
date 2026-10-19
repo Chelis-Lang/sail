@@ -34,3 +34,22 @@ elsewhere, and its recorder requires `rust-src`. The recorder therefore remaps
 the `rust-src` root to `/rustc/<rustc commit>` for the vstd unit, so the
 bundle's VIR names the standard library as the release's `vstd.vir` does
 ([compiler-boundary record](../validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)).
+
+Serving the bundle restores local names. A vstd compiled on the user's machine
+names standard library spans by the toolchain's `rust-src` copy when it is
+installed, and its own sources by the user's registry directory; the bundle
+recorded `/rustc/<rustc commit>` and the virtual rustc-dev base. Whenever Sail
+sets `SAIL_RUSTC_DEV_SOURCE_BASE`, it also sets `SAIL_VIR_SPAN_REMAP`, which
+Sail's Verus applies to the span strings of imported VIR: one `<from>=<to>`
+pair per line, the first matching prefix wins, both prefixes absolute, and a
+malformed line selects nothing. The pairs are
+`/rustc/<rustc commit>/=<sysroot>/lib/rustlib/src/rust/` (only when the
+verifier toolchain has `rust-src`) and `<virtual base>/=<registry>/`. The
+presence of `rust-src` joins the proof context. The variable needs a runtime
+built from fork branch `fix/vir-span-remap`; earlier runtimes ignore it.
+
+These strings appear in `--log impl-names` and the VIR logs, and Verus prints
+one in place of a label whose imported span it cannot resolve. No ordinary
+diagnostic that prints one has been found: cycle errors through standard
+library implementations report a shorter cycle without them, and `--profile`
+labels resolve vstd spans normally.

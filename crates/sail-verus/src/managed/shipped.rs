@@ -45,6 +45,8 @@ pub(crate) const BUNDLE_ENV: &str = "SAIL_SHIPPED_DEPS";
 pub(crate) const LOCAL_ENV: &str = "SAIL_VSTD_BOUNDARY_LOCAL";
 /// Sail's Verus: `<virtual base>=<registry source directory>`.
 pub(crate) const SOURCE_BASE_ENV: &str = "SAIL_RUSTC_DEV_SOURCE_BASE";
+/// Sail's Verus: prefix pairs for imported span strings, one per line.
+pub(crate) const SPAN_REMAP_ENV: &str = "SAIL_VIR_SPAN_REMAP";
 /// Private plumbing: the run's [`Plan`] for its driver proxies.
 pub(crate) const PLAN_ENV: &str = "SAIL_MANAGED_SHIPPED";
 /// Diagnosis: a directory that receives, for every registry invocation a
@@ -305,6 +307,36 @@ pub(crate) fn source_base(virtual_base: &str, registry: &Path) -> OsString {
     value.push("=");
     value.push(registry);
     value
+}
+
+/// The value of [`SPAN_REMAP_ENV`]: prebuilt VIR's span strings name this
+/// machine's sources as a local build would (VI-0031). Standard library spans
+/// were recorded under `/rustc/<commit>`, which rustc translates to the
+/// toolchain's `rust-src` copy when present; registry sources were recorded
+/// under the virtual rustc-dev base. `None` when a path cannot be stated on
+/// one line or the toolchain is unpinned.
+pub(crate) fn span_remap(registry: &Path, rust_src: Option<&Path>) -> Option<OsString> {
+    let mut value = OsString::new();
+    let mut pair = |from: &str, to: &Path| -> Option<()> {
+        let to = to.as_os_str();
+        if to.as_encoded_bytes().contains(&b'\n') || !Path::new(to).is_absolute() {
+            return None;
+        }
+        if !value.is_empty() {
+            value.push("\n");
+        }
+        value.push(from);
+        value.push("/=");
+        value.push(to);
+        value.push("/");
+        Some(())
+    };
+    if let Some(rust_src) = rust_src {
+        let commit = crate::toolchain::Pins::embedded().ok()?.verus.rust_commit?;
+        pair(&format!("/rustc/{commit}"), rust_src)?;
+    }
+    pair(&virtual_base()?, registry)?;
+    Some(value)
 }
 
 /// The pinned Rust toolchain's virtual rustc-dev source base, when pinned.
@@ -2338,6 +2370,32 @@ fn copy_checked(from: &Path, to: &Path, file: &StoredFile) -> std::result::Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn span_remap_names_local_standard_library_and_registry_sources() {
+        let commit = crate::toolchain::Pins::embedded()
+            .ok()
+            .and_then(|pins| pins.verus.rust_commit)
+            .unwrap_or_default();
+        let registry = Path::new("/home/u/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f");
+        let rust_src = Path::new("/home/u/.rustup/toolchains/1.99.1/lib/rustlib/src/rust");
+        let base = virtual_base().unwrap_or_default();
+        assert_eq!(
+            span_remap(registry, None),
+            Some(OsString::from(format!("{base}/={}/", registry.display())))
+        );
+        assert_eq!(
+            span_remap(registry, Some(rust_src)),
+            Some(OsString::from(format!(
+                "/rustc/{commit}/={}/\n{base}/={}/",
+                rust_src.display(),
+                registry.display()
+            )))
+        );
+        // A path that cannot be stated on one line, or a relative one, selects nothing.
+        assert_eq!(span_remap(Path::new("/a\nb"), None), None);
+        assert_eq!(span_remap(Path::new("relative"), None), None);
+    }
 
     #[test]
     fn portable_context_refuses_rustflag_selectors_inline_overrides_and_config_aliases()
