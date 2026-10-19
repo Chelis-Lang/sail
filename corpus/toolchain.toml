@@ -7,29 +7,29 @@
 # published by GitHub for the release asset) and the bundled z3's SHA-256.
 
 [verus]
-release = "0.2026.10.04.426d8b0"
-tag = "release/0.2026.10.04.426d8b0"
-commit = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
-# Verus's own Rust toolchain (verus@426d8b0:rust-toolchain.toml).
-rust_toolchain = "1.98.1"
-# The commit `rustc +1.98.1 -vV` reports, the same on every host. It names
+release = "0.2026.10.18.7d82994"
+tag = "release/0.2026.10.18.7d82994"
+commit = "7d829946231d6413a398f6e4160cdfe951261dad"
+# Verus's own Rust toolchain (verus@7d82994:rust-toolchain.toml).
+rust_toolchain = "1.99.1"
+# The commit `rustc +1.99.1 -vV` reports, the same on every host. It names
 # the toolchain's virtual rustc-dev source base (`/rustc-dev/<commit>`), which
 # the shipped dependency build uses (ADR 0048).
-rust_commit = "48a229ceaefd4985c50990b14116b6d856af0985"
+rust_commit = "58cf8f9c35b355199727627d07ae34a4e2846d67"
 
 [z3]
-# As pinned by verus@426d8b0:source/cargo-verus-toolchains/src/external_deps.rs.
+# As pinned by verus@7d82994:source/cargo-verus-toolchains/src/external_deps.rs.
 version = "4.16.0"
 
 [assets.aarch64-apple-darwin]
-url = "https://github.com/verus-lang/verus/releases/download/release/0.2026.10.04.426d8b0/verus-0.2026.10.04.426d8b0-arm64-macos.zip"
-sha256 = "83cafc50284caea07fa8762df04b00cc0af441f25cdf1631d6c30987c65af446"
+url = "https://github.com/verus-lang/verus/releases/download/release/0.2026.10.18.7d82994/verus-0.2026.10.18.7d82994-arm64-macos.zip"
+sha256 = "3fc56c58277b5f0999368f7b3a2b07ba4eb9ec2965454ce7a9f2769c0464d32b"
 dir = "verus-arm64-macos"
 z3_sha256 = "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
 
 [assets.x86_64-unknown-linux-gnu]
-url = "https://github.com/verus-lang/verus/releases/download/release/0.2026.10.04.426d8b0/verus-0.2026.10.04.426d8b0-x86-linux.zip"
-sha256 = "624018662868563a7bec0dd07be5e4dd0c3d61124b4b55105765884bf2d4d1a0"
+url = "https://github.com/verus-lang/verus/releases/download/release/0.2026.10.18.7d82994/verus-0.2026.10.18.7d82994-x86-linux.zip"
+sha256 = "e9af03732d4bdd32b93a8fcf471706739c24c1473fa5086618d96c47237845dd"
 dir = "verus-x86-linux"
 # Recorded from the first CI install (conformance workflow, 2026-10-08).
 z3_sha256 = "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"

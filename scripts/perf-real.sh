@@ -87,7 +87,7 @@ for v in $(env | sed -n 's/^\(SAIL_[A-Z0-9_]*\)=.*/\1/p'); do
 done
 
 corpus="${SAIL_PERF_CORPUS:-$HOME/.cache/sail/corpus}"
-verus_src="$corpus/verus-426d8b01e7ff"
+verus_src="$corpus/verus-7d829946231d"
 
 # Project definitions: corpus entry, source directory, package directory,
 # cargo and Verus arguments, the file noop comments go to, and the edits.

@@ -116,7 +116,7 @@ install_runtime() {
 # runtime comes from the image; this never builds Verus.
 fetch_repair_source() {
   ./target/release/sail-conformance fetch --tier fast --project verus-examples
-  sail_repair_source="${SAIL_CACHE_DIR:-$HOME/.cache/sail}/corpus/verus-426d8b01e7ff"
+  sail_repair_source="${SAIL_CACHE_DIR:-$HOME/.cache/sail}/corpus/verus-7d829946231d"
 }
 
 # Starts a cache daemon on a fresh cache; sets $sock, $cache and $daemon.
