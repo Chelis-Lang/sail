@@ -14,6 +14,55 @@
 | Default regression gates | Current candidate: Mac host clippy and 779 tests pass; native Linux gate, solver, all end-to-end phases, PR and full FAST/STANDARD conformance pass. Earlier `83128ad0` full Linux results retain their original source scope |
 | Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
 
+## Verus 7d82994 bundle and standard-library paths (VI-0031)
+
+Linux x86-64 bundle for runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`),
+recorded on native EC2 c7i.4xlarge (us-east-1, Ubuntu 24.04) with
+`ci/local.sh release`, recorder code as at `7b9416d7`. The recorder ran Cargo 1.99.1 with
+`rust-src`. Proof identity `4c0b33fa…`, bundle manifest `bab28a85…`. Status:
+**recorded; diagnostic identity passes on the tested set; first-use
+performance not yet measured.**
+
+- **Host path.** With `rust-src` installed, rustc names standard-library
+  files by their local copy, and Verus writes those names into exported VIR
+  ([VI-0031](../verus-issues/VI-0031-rust-src-std-paths.md)). The first
+  recording's `libvstd.vir` held 9,611 spans under the recording container's
+  `/opt/rustup/toolchains/1.99.1-…/lib/rustlib/src/rust` and no `/rustc/`
+  name. No other bundle member named a host path. The recorder now also
+  passes `--remap-path-prefix <rust-src root>=/rustc/<rustc commit>` to the
+  vstd unit, the mapping native units already receive. The re-recorded
+  `libvstd.vir` (sha256 `3a62facc…`) has 0 local and 9,611 `/rustc/58cf8f9c…`
+  spans, as the Verus release's own `vstd.vir` does. Proof identity and keys
+  are unchanged: recording arguments are not keyed.
+- **Diagnostic identity.** These runs used a user-like host outside the
+  container: rustup in `/home/ubuntu/.rustup`, default toolchain 1.99.0,
+  pinned 1.99.1, a fresh `CARGO_HOME` and a fresh Sail cache. The project
+  required `vstd = "=0.0.0-2026-10-18-0147"` and failed seven obligations
+  through vstd specifications (`shl`, `add`, `neg`, `Option::unwrap`,
+  `Vec` indexing) plus an external type specification of
+  `core::marker::PhantomPinned`. Stock `cargo verus verify` and `sail verify`
+  ran from the staged release. With `rust-src`, Sail replayed the shipped
+  proof (`SAIL3132`). Without it, Sail noted `SAIL3137` and verified vstd.
+  For both bundles (host-path and virtual), in both environments, stdout,
+  exit code and every diagnostic byte matched. The only difference was the
+  order of Cargo's parallel `Compiling`/`Checking` lines, whose set matched.
+  None of these diagnostics names a standard-library file. The probes that
+  cite vstd's specifications (duplicate assume, type and trait specifications,
+  positivity) all point into vstd, so no diagnostic that displays a vstd
+  standard-library span has been compared yet.
+- **Native shapes.** The recording's boundary trace has 25
+  `native-output-established` records across 14 packages (tuples sha256
+  `5731dc08…`). `ci/run.sh boundary-witness shapes` (the
+  `actual_retained_native_shapes` test) passes on them, and shapes derived
+  from them equal `native_shapes.json` exactly. The admission witness
+  (`boundary-witness admission`) was not run: its five-case configuration
+  runner is not in the repository.
+
+Raw evidence (both recordings, traces, comparison streams) stays outside the
+repository: `d17-evidence.tgz` sha256
+`1ef81a243dcda6476daedb53209fe42034d54249e339b1140e9cf6fd74cad5d5`; recorder
+logs `f89c694d…` (first) and `b4b07a2f…` (re-recorded).
+
 ## Current composed release candidate
 
 The latest distinct Linux consumer (R5, native c7i.4xlarge, us-east-1) passes

@@ -28,4 +28,9 @@ Sail's handling: `cargo xtask build-verus-engine` refuses to build when the
 Verus toolchain has `rust-src` and checks the built `vstd.vir`, and
 `ci/engine-artifact.py` refuses to pack or install a runtime whose `vstd.vir`
 names a local `rust-src` path (`SAIL0944`). User projects are verified in
-their own environment by both stock and Sail, so they see the same paths.
+their own environment by both stock and Sail, so they see the same paths. The
+shipped vstd proof bundle is the exception: it is recorded once and served
+elsewhere, and its recorder requires `rust-src`. The recorder therefore remaps
+the `rust-src` root to `/rustc/<rustc commit>` for the vstd unit, so the
+bundle's VIR names the standard library as the release's `vstd.vir` does
+([compiler-boundary record](../validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)).

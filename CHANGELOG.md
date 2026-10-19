@@ -14,7 +14,9 @@ semantic versioning once the API is published.
   `corpus/toolchain.toml`, and `scripts/source-policies.py` generates the
   shipped and retained source policies from the pins
   ([ADR 0059](docs/decisions/0059-pinned-vstd-and-generated-source-policies.md)).
-  0.2026.10.04.426d8b0 stays available as a secondary pin. The new runtime's
+  0.2026.10.04.426d8b0 stays available as a secondary pin. The shipped vstd
+  proof now names standard-library files by rustc's virtual `/rustc/<commit>`
+  paths, not the recording host's `rust-src` copy (VI-0031). The new runtime's
   qualification is pending.
 
 - Run managed Cargo with the engine's pinned toolchain (currently `1.99.1`) when the
