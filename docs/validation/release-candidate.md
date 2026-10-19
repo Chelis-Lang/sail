@@ -1,7 +1,7 @@
 # Release-candidate validation
 
 This record covers the release candidate for Sail's first open-source release
-([roadmap](../ROADMAP.md#open-source-release-planned)): the required gates,
+([roadmap](../ROADMAP.md#010)): the required gates,
 the standard and deep tiers, the release build and its smoke tests, and a
 repeat of the [new-user walkthrough](../reports/2026-10-13-new-user-walkthrough.md)
 on a clean Linux host, including the real Claude Code CLI, for `v0.1.0-rc.1`;
