@@ -100,7 +100,7 @@ the engine pin).
 | Fresh-machine default first use with pinned Cargo | Pending | — | After the Cargo selection is built |
 | Fallback-path first runs | Unmeasured | [question 30](open-questions.md) (`SAIL3112` runs reuse no receipts) | First use with `LD_LIBRARY_PATH` set and with `--target-dir`: record bundle hit/miss and wall vs stock; the miss note must fire here too |
 | macOS components | Built; no Mac performance claim | PR #227 body; no record yet | — |
-| macOS ordinary retained reuse (instant revert) | Not qualified: retained reuse selects only the Linux manifest (`LINUX_MANIFEST`); macOS verifies the returned revision again | [instant revert](validation/instant-revert.md) (Linux only) | A `MACOS_MANIFEST` authority with its own pin test, then the Vest A → B → A qualification on a Mac host |
+| macOS ordinary retained reuse (instant revert) | Qualified on `64baccbb` (`MACOS_MANIFEST` `4392062a…`): Vest cycle 84.2 → 75.3 s, returned A 22.5 → 3.3 s with no verifier; cold A +35% while the shipped proof misses on `--rlimit 100` (ADR 0060) | [instant revert](validation/instant-revert.md#macos-qualification-on-runtime-64baccbb) | Requalify on R3 with its macOS manifest |
 | e2e scripts on macOS | Not portable: `ci/test-output.sh` and others use GNU `sed -i` and `timeout`, which macOS lacks | — | Make the scripts portable, or document GNU coreutils and sed as a macOS prerequisite |
 | macOS first-use and cold A/B | Not scheduled | — | Stock vs Sail on the joined head, rotated rounds (about 1 Mac day) |
 | Pinned Cargo 1.98.1 selection | Selected, in progress (#233, [question 33](open-questions.md)) | — | ADR, stock comparisons on the same toolchain, fresh-machine test. Without it a newer default Cargo misses silently (about 36 s) |
