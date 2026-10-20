@@ -77,8 +77,10 @@ is the owner's.**
   The extension impls print the same `verifier.rs:113:17` line as stock in
   both states. On macOS, `CARGO_HOME` and the project must be under physical
   paths: under `/tmp` (a symbolic link to `/private/tmp`) native provenance
-  is refused and the proof misses for any bundle. The shapes and admission
-  witnesses were not run on this macOS stage. Evidence:
+  is refused and the proof misses for any bundle. The shapes witness passes
+  on the recording's boundary trace (25 records across 14 packages,
+  `actual_retained_native_shapes`, tuples sha256 `270a7e47…`); the admission
+  witness was not run on this macOS stage. Evidence:
   `r3-bundle-probes.tgz` sha256
   `0370168596f63fecfaaec266bb9631061719ef9bd61efe1147a7b780ac8d2d34`.
 
