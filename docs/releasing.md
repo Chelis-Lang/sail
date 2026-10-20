@@ -301,10 +301,13 @@ qualifying the macOS runtime against it).
 
 1. Land a PR that sets `[workspace.package] version` in `Cargo.toml` and
    moves `CHANGELOG.md`'s Unreleased entries under that version. In the same
-   PR, check `THIRD-PARTY-NOTICES` against the locks and the pinned fork:
-   `scripts/third-party-notices.py --verus-repo FORK_CLONE --work NEW_DIR
-   --check`, then regenerate without `--check` if it is stale. Staging copies
-   it and `LICENSE` into each archive.
+   PR, regenerate `THIRD-PARTY-NOTICES` if the locks, the pinned fork or the
+   pinned Z3 changed: `scripts/third-party-notices.py --work NEW_DIR`
+   (`--verus-repo FORK_CLONE` uses a local clone instead of fetching the
+   pinned fork commit). A new Z3 version needs its licence vendored as
+   `scripts/notices/z3-VERSION-LICENSE.txt` first. Staging runs the same
+   script with `--check` and fails the release on stale notices, then copies
+   them and `LICENSE` into each archive.
 2. Check that `engine/verus/artifact-macos.json` names the fork commit in
    `engine/verus/fork.toml` and that the
    [macOS engine record](validation/macos-engine.md) qualifies that runtime.
