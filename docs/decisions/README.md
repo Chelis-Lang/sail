@@ -65,3 +65,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0059: Pin the published vstd and generate the source policies (proposed)](0059-pinned-vstd-and-generated-source-policies.md)
 - [0060: Serve the shipped vstd proof under a raised `--rlimit` (accepted)](0060-shipped-vstd-under-a-raised-rlimit.md)
 - [0062: Ship the pinned vstd's solver replies in the release archive (accepted)](0062-shipped-vstd-solver-replies.md)
+- [0060: Certify native units after their compile (proposed)](0060-pipelined-native-admission.md)
