@@ -11,7 +11,7 @@
 | Compiler-input boundary | Final-source functional probes retain real native and verified-input certificates under the closed source/feature policy; earlier native source/transitive controls keep their recorded source scope |
 | Literal query comparison | Two separate cold controls match all 366 literal input streams / 2,061 checks each; this is not reuse or stock acceptance |
 | Portable functionality | Linux `83128ad0` and the earlier Mac component pass changed Cargo/project/install roots. The guarded Mac successor passes changed physical Rustup/sysroot roots, full Record → Serve → unchanged and both negative comparisons. A separate native-only successor passes all twelve consumer pairs; the original enclosing cohort stays FAIL |
-| Default regression gates | Current candidate: Mac host clippy and 779 tests pass; native Linux gate, solver, all end-to-end phases, PR and full FAST/STANDARD conformance pass. Earlier `83128ad0` full Linux results retain their original source scope |
+| Default regression gates | 7d82994 candidate (`a12beb53`, runtime `9c0ca7e7`): native Linux gate (811 tests), solver, all end-to-end phases plus extra and the PR conformance subset (33/33 same in every arm) pass; full FAST/STANDARD conformance pending. The previous `426d8b0` candidate passed Mac host clippy and 779 tests and full FAST/STANDARD. Earlier `83128ad0` full Linux results retain their original source scope |
 | Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
 
 ## Verus 7d82994 bundle and standard-library paths (VI-0031)

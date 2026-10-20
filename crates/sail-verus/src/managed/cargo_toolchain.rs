@@ -52,7 +52,7 @@ impl CargoToolchain {
         match self {
             Self::Unavailable(toolchain) => Some(format!(
                 "SAIL3137: Rust {toolchain} with rust-src is not installed, so this run used the \
-                 default Cargo and verifies the shipped vstd proof again; \
+                 default Cargo and verifies vstd itself instead of using the shipped proof; \
                  `rustup toolchain install {toolchain} --profile minimal --component rust-src` \
                  enables the shipped proof"
             )),

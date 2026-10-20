@@ -72,8 +72,11 @@ are in the `archive/m7-contracts-f7103bf` tag.
   a caller's or project's own choice of another Cargo can still produce
   different exact compiler arguments and safely miss. The fresh-home
   measurements so far used the 426d8b0 runtime with Cargo `1.98.1` selected
-  explicitly. No bundle is recorded yet for the 7d82994 runtime, and first use
-  from a newer default Cargo through Sail's selection is not yet measured.
+  explicitly. On the 7d82994 runtime the Linux bundle is recorded, and first
+  use from a newer default Cargo through Sail's selection measures 30.38 →
+  15.35 s (1.98×) over four rounds; see the
+  [compiler-boundary record](validation/vstd-compile-boundary.md). The macOS
+  bundle is not yet recorded.
 
 - **The stale solver-hash defect is fixed on main**
   ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads
