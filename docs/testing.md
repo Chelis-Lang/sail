@@ -5,6 +5,11 @@ Run Linux checks on a native EC2 host with `ci/local.sh`; use `ci/run.sh host`
 for the macOS platform check. Performance measurements require a quiet native
 host, separate from builds and gates.
 
+The e2e shell scripts need no GNU tools on macOS: fixture edits use portable
+`sed`, and bounded steps use coreutils' `timeout` where it is installed or
+`ci/timeout.py` (the same options and exit statuses, checked against GNU by
+`ci/test-timeout.py`) where it is not.
+
 ## End-to-end phases
 
 CI builds the release binaries once, then runs nine independent jobs. Each
