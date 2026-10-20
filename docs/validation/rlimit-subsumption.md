@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Linux validation passes; macOS repeat pending; ADR 0060 proposed** |
+| Status | **Linux and macOS validation pass; ADR 0060 proposed (owner sign-off pending)** |
 | Source | Sail `feat/rlimit-subsumption` on `main` `3b9ec170`; runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`); stock release 0.2026.10.18.7d82994; Z3 4.16.0 |
 | Host | native EC2 c7i.8xlarge (us-east-1, Xeon Platinum 8488C, 32 vCPUs), Ubuntu 24.04, Rust 1.99.1 |
 | Tool | `scripts/rlimit-subsumption.py --runs 3 --rlimit 100` |
@@ -48,6 +48,39 @@ Stock `cargo verus verify` and the staged `sail verify` were each run once on a 
 
 A second, unchanged run of the same project differs from stock, with or without `--rlimit`. Sail recompiles vstd and prints its results; stock is a no-op. The same happens on pristine `main` (#259), so it is not part of this change.
 
+## macOS repeat
+
+| | |
+|---|---|
+| Host | EC2 mac-m4.metal (us-east-1d), macOS 27.0, Rust 1.99.1 |
+| Runtime | the branch's pinned macOS runtime `7d829946…-8f917633f244b095` (fork `9c0ca7e7`, manifest `5a6114d3…`), fetched with `ci/engine-artifact.py`; stock 0.2026.10.18.7d82994 arm64-macos; Z3 4.16.0 |
+| Method | as on Linux; the same 147 inputs, 3 + 3 runs, `--rlimit 100` |
+
+| Subject | Byte-identical apart from rlimit values | Answers and per-query resource counts identical | A query at or above its own limit |
+|---|---|---|---|
+| Sail's runtime, compared exactly | **147 / 147** | 147 / 147 | none |
+| Stock Verus, compared as multisets | 133 / 147 | 146 / 147 | none |
+
+- **Stock's 14 differing inputs:** 12 examples, HumanEval and vstd differ in stock's hash-ordered declarations. 13 of them have identical answers and resource counts, and identical outputs as multisets.
+- **Stock HumanEval:** the 6 runs fall into two classes, each mixing default and raised runs ({d0, d2, r0, r1} and {d1, r2}). They differ by one resource count in one process (148,633 against 148,650). That is stock's run-to-run variation, not the raised limit. The fork's 6 HumanEval runs are identical.
+- **Consumption:** the largest vstd query consumed 3,985,998 against its 30,000,000 limit. In HumanEval one query consumed 85,053,077 under its own explicit limit.
+- **Staged release** (`scripts/release.sh stage` from the branch; the recording passed). The witness reads:
+  - recorded/witness rlimit 10/100, solver limits 30,000,000/300,000,000;
+  - largest query 3,985,998, whose own limit is 60,000,000;
+  - 2,061 queries, 366 processes, 0 `unknown`, 0 at or over their limit;
+  - inputs equal and answers and counts equal.
+
+  Proof identity is `0ad080a5…`, the same as the earlier macOS `9c0ca7e7` bundle. With a fresh `sail new --lib` project per case, caches outside it and `rust-src` installed, stock and Sail had byte-identical rc, stdout and stderr in all four cases:
+
+  | Arguments | vstd in Sail |
+  |---|---|
+  | (none) | served, `SAIL3132` |
+  | `-- --rlimit 100` | served under the raised rlimit, `SAIL3132` |
+  | `--fwd-verus-args-to roots -- --rlimit 100` | served, `SAIL3132` |
+  | `-- --rlimit 5` | not served; vstd verified |
+
+- macOS evidence: logs, witness and stage cases, sha256 `70a3c79440f5d831ff45578a127b2fa3ad838485680bf7d1a70a135c09c9620e`, outside the repository.
+
 ## Evidence
 
 Raw logs are outside the repository:
@@ -62,6 +95,5 @@ Failed or interrupted attempts:
 
 ## Remaining
 
-- The macOS repeat of the corpus check and of a staged witness.
 - Owner sign-off of ADR 0060.
 - #259 (unchanged re-run), which is independent.

@@ -111,7 +111,7 @@ Linux so far:
 - No query reached its own limit.
 - A staged release's witness passed, and stock and Sail were byte-identical
   with the bundle served under `-- --rlimit 100`.
-- The macOS repeat is pending.
+- macOS (EC2 mac-m4.metal) repeats it: Sail's runtime is 147 of 147 byte-identical; the staged witness passed; stock and Sail matched byte for byte in all four cases. Stock's one resource-count difference, in HumanEval, is its own run-to-run variation and appears within each setting.
 
 ## Consequences
 
