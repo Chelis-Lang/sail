@@ -23,7 +23,7 @@ Z3 (the solver binary in engine/<variant>/, from the Verus release)
 Sail's Verus (engine/<variant>/ and the vstd proof in deps/<variant>/)
 ----------------------------------------------------------------------
 
-* Sail's Verus fork (Chelis-Lang/verus at 9c0ca7e7): MIT (https://github.com/Chelis-Lang/verus)
+* Sail's Verus fork (Chelis-Lang/verus at 64baccbb): MIT (https://github.com/Chelis-Lang/verus)
   LICENSE [text 2]
 * verus_prettyplease 0.0.0-2026-09-06-0133 (in the fork): MIT OR Apache-2.0
   LICENSE-APACHE [text 3], LICENSE-MIT [text 4]

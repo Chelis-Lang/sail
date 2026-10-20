@@ -189,6 +189,12 @@ def main():
     work = args.work.absolute()
     work.mkdir(parents=True)
     env = {k: v for k, v in os.environ.items() if not k.startswith(('CARGO_TARGET', 'SAIL_'))}
+    # Run every `cargo metadata` with Sail's own toolchain. In the fork's
+    # checkout, its rust-toolchain.toml would otherwise make rustup install
+    # rustc-dev, llvm-tools and rustfmt into the verifier toolchain, and
+    # release staging records the shipped vstd proof against that toolchain
+    # next, under a compiler identity that README installations never have.
+    env['RUSTUP_TOOLCHAIN'] = tomllib.loads((ROOT / 'rust-toolchain.toml').read_text())['toolchain']['channel']
     pin = tomllib.loads((ROOT / 'engine/verus/fork.toml').read_text())['fork']
     fork = pin['commit']
     z3_version = tomllib.loads((ROOT / 'corpus/toolchain.toml').read_text())['z3']['version']
