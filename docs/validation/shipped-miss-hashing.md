@@ -82,6 +82,18 @@ timestamps as content evidence for retention after mapped-write ABA
 counterexamples, so this stays as it is; reducing it needs an owner decision
 on that trust boundary. The daemon's per-handshake solver read is lever 1.3.
 
+## Gates
+
+On native c7i.8xlarge lane `hash1020g`, source before the rebase onto
+`13ef5258` and `e45f9031` (which do not touch this code): workspace gate (832
+tests, 37 skipped), all 35 solver tests, all E2E phases plus extra, and PR
+conformance pass. FAST: 147 Same of 147 in all four modes. STANDARD: 159 Same
+in pass-through and cache fill; cache warm and engine each record one
+Unstable unit (Anvil, then `vest-generated/vest_tests`) whose two plain runs
+disagreed on the order of `note: verifying module` lines, and zero Different
+or infrastructure errors in every mode. macOS arm64 `ci/run.sh host`: 821
+passed, 37 skipped.
+
 ## Raw evidence
 
 Native evidence bucket, `experiments/2026-10-20/miss-hashing/miss-hashing-evidence.tgz`,
