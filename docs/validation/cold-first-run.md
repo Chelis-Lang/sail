@@ -234,7 +234,7 @@ Vest's cold run is now faster than stock on Linux (−2.2%); on macOS it is
 
 | Field | Evidence |
 |---|---|
-| Source | Main `e45f9031`; #289 (closure-scoped source check) `7ea42f2b`; branch `perf/pipelined-native` `780fc392` (#289 plus ADR 0061) |
+| Source | Main `e45f9031`; #289 (closure-scoped source check) `7ea42f2b`; branch `perf/pipelined-native` `780fc392` (#289 plus ADR 0061). Rebased afterwards onto main `e8e62867` (#276 adds a closure-difference note) with the same diff; the rebase was not re-measured |
 | Runtime | macOS `7d829946…-e9b69a75ea390499`, Linux `7d829946…-81186034d2e137a2` (fork `f8589ed4`); stock 0.2026.10.18.7d82994, Rust 1.99.1 |
 | Environment | Full release trees from `scripts/release.sh stage` (shipped vstd bundle and replies). macOS: EC2 mac-m4.metal, us-east-1d, macOS 27.0. Linux: native EC2 c7i.8xlarge, us-east-1, inside the CI image (`core`), README verifier toolchain |
 | Scope | Demo first run; public-profile Vest cycle, `-p vest_lib -- --rlimit 100`; three rounds per platform, arms rotated; one JSON instant-revert round per platform |
