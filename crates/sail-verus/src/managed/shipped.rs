@@ -546,6 +546,50 @@ fn bundle_dir(variant: &OsStr) -> Option<PathBuf> {
     adjacent_bundle(variant)
 }
 
+/// The SAIL3138 reason when Cargo resolved vstd's closure differently from
+/// the shipped build's (#237): what differs and, when that covers every
+/// difference, the exact `cargo update` commands and vstd feature edit that
+/// align it. Sail never applies them itself: they change the user's lock and
+/// manifest, and so what stock Cargo builds too.
+pub(crate) fn closure_miss(metadata: &Value) -> Option<String> {
+    let difference = admission::closure_difference(metadata)?;
+    let list = |items: &[String], last: &str| match items {
+        [] => String::new(),
+        [only] => only.clone(),
+        [init @ .., tail] => format!("{} {last} {tail}", init.join(", ")),
+    };
+    if !difference.alignable
+        && difference.packages.len() == 1
+        && difference.packages[0].starts_with("this project uses vstd ")
+    {
+        return Some(difference.packages[0].clone());
+    }
+    let mut reason = format!(
+        "vstd's dependencies differ from the shipped build's: {}",
+        list(&difference.packages, "and")
+    );
+    if difference.alignable {
+        let commands: Vec<String> = difference
+            .commands
+            .iter()
+            .map(|command| format!("`{command}`"))
+            .collect();
+        let feature = "enabling vstd's default features, that is removing `default-features = false` from its dependency";
+        let advice = match (commands.is_empty(), difference.vstd_default_off) {
+            (false, false) => format!("align them with {}", list(&commands, "and")),
+            (false, true) => format!(
+                "align them with {}, and by {feature}",
+                list(&commands, "and")
+            ),
+            (true, _) => format!("align them by {feature}"),
+        };
+        reason.push_str(" (");
+        reason.push_str(&advice);
+        reason.push(')');
+    }
+    Some(reason)
+}
+
 /// Cheap source-name configuration for an installed bundle, including warm
 /// runs. This grants no proof authority: serving still needs the full identity,
 /// source, native-byte and compiler-read checks in the run's owned plan.
@@ -828,7 +872,7 @@ pub(crate) fn plan_miss(
             if reason == TOOLCHAIN_MISS
                 && admission::Closure::resolve(metadata, registry).is_none() =>
         {
-            CLOSURE_MISS.to_owned()
+            closure_miss(metadata).unwrap_or_else(|| CLOSURE_MISS.to_owned())
         }
         _ => reason.to_owned(),
     }
@@ -2829,6 +2873,48 @@ mod tests {
         )?;
         assert_eq!(extra_components(&root), [format!("rustc-dev-{target}")]);
         std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn closure_misses_name_differences_and_the_commands_that_align_them()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let shipped = admission::policy_metadata(Path::new("/r"))?;
+        assert_eq!(closure_miss(&shipped), None);
+        let shipped_version = |name: &str| -> std::result::Result<String, &str> {
+            let mut copy = shipped.clone();
+            admission::test_entry(&mut copy, name, "packages")?["version"]
+                .as_str()
+                .map(str::to_owned)
+                .ok_or("no version")
+        };
+        let unicode = shipped_version("unicode-ident")?;
+        let mut vest = shipped.clone();
+        admission::test_version(&mut vest, "unicode-ident", "1.0.24")?;
+        admission::test_features(&mut vest, "vstd", &["alloc", "std"])?;
+        assert_eq!(
+            closure_miss(&vest).ok_or("no reason")?,
+            format!(
+                "vstd's dependencies differ from the shipped build's: unicode-ident is 1.0.24 instead of {unicode} and vstd's default features are off (align them with `cargo update -p unicode-ident --precise {unicode}`, and by enabling vstd's default features, that is removing `default-features = false` from its dependency)"
+            )
+        );
+        let mut defaults = shipped.clone();
+        admission::test_features(&mut defaults, "vstd", &["alloc", "std"])?;
+        assert!(closure_miss(&defaults).ok_or("no reason")?.ends_with(
+            "vstd's default features are off (align them by enabling vstd's default features, that is removing `default-features = false` from its dependency)"
+        ));
+        let mut verismo = shipped.clone();
+        admission::test_features(&mut verismo, "vstd", &["alloc", "allow_panic"])?;
+        let reason = closure_miss(&verismo).ok_or("no reason")?;
+        assert!(
+            !reason.contains("cargo update") && !reason.contains("align"),
+            "{reason}"
+        );
+        let mut release = shipped;
+        admission::test_version(&mut release, "vstd", "0.0.0-2026-09-06-0133")?;
+        assert!(closure_miss(&release).ok_or("no reason")?.starts_with(
+            "this project uses vstd 0.0.0-2026-09-06-0133 and the proof is for vstd "
+        ));
         Ok(())
     }
 

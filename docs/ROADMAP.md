@@ -40,7 +40,7 @@ release matrix (`scripts/perf-matrix.py`) has not yet run on the candidate.
 | First use, shipped vstd miss (lock file or loader variable) | Linux | 29.82 s | 27.76 / 26.95 s | 1.07× / 1.11× | Win (ADR 0062) |
 | Small project cold, bundle miss | Linux | 31.31 s | 33.89 s | 0.92× | **Slower** (#232) |
 | Small project cold | macOS | 16.66 s | 19.86 s | 0.84× | **Slower** (#278) |
-| Vest cold | Linux | 66.59 s | 69.84 s | 0.95× | **Slower**: Vest misses the bundle on its vstd closure (default features off, `unicode-ident` 1.0.24; #238). Its `--rlimit 100` is served since ADR 0060 |
+| Vest cold | Linux | 66.59 s | 69.84 s | 0.95× | **Slower**: Vest misses the bundle on its vstd closure (default features off, three locked versions; #238, and #276's note names the alignment). Its `--rlimit 100` is served since ADR 0060 |
 | Vest cold | macOS | 40.16 s | 47.91 s | 0.84× | **Slower** (#278) |
 | Vest edit | Linux | 37.36 s | 23.93 s | 1.56× | Win |
 | Vest revert to verified content | Linux | 37.5 s | 1.43 s | 26× | Win |
