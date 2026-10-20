@@ -187,3 +187,46 @@ and recompiles an enabled type-error control (exit101/E0308). This is target
 selection evidence, with no SMT, performance or native-product claim.
 Archive `feature-alias-2026-10-16.tgz`, SHA-256
 `63b8d70de973695411972f6f434c45d9f1062cfec4ef859b4951a4ed62131374`.
+
+## Snapshot-hint order (#156)
+
+| Field | Evidence |
+|---|---|
+| Status | Measured |
+| Source | Baseline `main` `356238cd`; candidate branch `fix/snapshot-hint-order` |
+| Runtime | Sail fork `9c0ca7e7` (7d82994), pinned Z3 4.16.0; stock `0.2026.10.18.7d82994`, Cargo 1.99.1 |
+| Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, CI `core` image, one lane |
+| Scope | Current-pin Vest (`-p vest_lib -- --rlimit 100`): a cold run, then unchanged reruns, fresh copy and cache per arm and round, rotated; demo edit/unchanged/revert as a control |
+| Limits | Linux only; benefits runs that follow a change in build-script execution order |
+
+An unchanged run reuses the snapshot it takes while Cargo reads the metadata
+only when its selection equals the previous run's hint. The extras in that
+selection (build-script `rerun-if-changed` paths) kept Cargo's emission order,
+which varies between runs. A selection equal as a set but in another order
+discarded the snapshot and took a second one: 105–110 ms on Vest, measured
+in-process. The extras are now sorted. The snapshot never depended on their
+order, except that a symbolic link reached after its target was collected
+was not recorded as a root; links are now always roots, which only adds
+watched paths.
+
+Medians over eleven paired rounds (five with a stock arm, six without), with ranges:
+
+| Run after cold | `main` | Candidate |
+|---|---:|---:|
+| First unchanged (hint from the cold run's selection) | 0.683–0.696 s | 0.688–0.751 s |
+| Second unchanged | 0.693–0.728 s (0.613–0.762) | 0.573–0.631 s (0.510–0.636) |
+| Third and fourth unchanged | 0.618–0.621 s | 0.626–0.629 s |
+| Cold | 84.4–87.2 s | 86.8–92.7 s |
+
+Cold differs only by noise: stock's own cold ranged 71–89 s in the same
+cohort, and the paired cold-only rounds gave 87.2 s against 86.8 s. The
+demo control (five rounds) is unchanged: edit 2.352 against 2.363 s,
+unchanged 0.191 against 0.187 s, revert 1.598 against 1.597 s. All runs
+exit 0.
+
+In-process timings on this path also show that Sail's two `cargo metadata`
+calls (105–110 ms each) run alongside an input snapshot of the same length.
+A metadata memo alone therefore saves 0–10 ms; it was not built.
+
+Raw evidence: `hint-evidence.tgz` sha256
+`573e1b25295a0174ccf60be255d617a4b824e27974bc17e7a0edc4d1253ca5b3`.
