@@ -1,7 +1,7 @@
 {
   "kind": "sail-retained-vest-official-inputs",
   "lock_sha256": "ad0aea3f682b977432b349a3e525476c56a6cb9fc79dc9a0fd53196c71a7ec3a",
-  "metadata_sha256": "c83a8fc9ce632fdfd182e749d21709753ba81f1cfa7843a2d215a52de696ed5a",
+  "metadata_sha256": "d2639a8f0dfdd948ff175e3ca8248693a2795a6b647bd0b4b7608b5d2fcdb7d8",
   "packages": {
     "convert_case-0.4.0": {
       "compiler_files": {
@@ -3851,5 +3851,5 @@
   "schema": 1,
   "scope": "Pinned source/feature authority for the disabled workspace retained-proof prototype; native provenance and actual compiler observations remain separately mandatory.",
   "verus_source_commit": "7d829946231d6413a398f6e4160cdfe951261dad",
-  "verus_source_fork_commit": "64baccbb1f4c8af3f5e015d4ac561c96058717a7"
+  "verus_source_fork_commit": "f8589ed4345f147d8fb43d8cb7992921944b91f0"
 }
