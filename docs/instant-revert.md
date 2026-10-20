@@ -41,6 +41,14 @@ on every edit and revert, while a Vest-class target (about 26 s against
 one, keeps retention; a skipped plan compiles normally and changes no verdict,
 receipt or check. The records authorize nothing.
 
+The source check reads the packages that the selected targets depend on (the
+same closure receipts use), every workspace member's manifest, the lockfile
+and Cargo configuration. It does not read other workspace members' or
+unrelated registry packages' sources. Editing such a package therefore keeps
+a retained proof, as it keeps a receipt. Any source the compiler actually
+loads must still be covered with matching bytes. On Vest this check takes
+25–50 ms instead of 200–265 ms (macOS), and a cold run takes it five times.
+
 The explicit vstd-boundary experiment suppresses automatic retention. Explicitly
 requesting both research modes still refuses with `SAIL3135`. The runner passes
 an admitted plan through the existing managed runtime file; it does not add a
