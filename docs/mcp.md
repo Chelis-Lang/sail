@@ -199,7 +199,9 @@ scope, target identity, original report provenance, and counterexample data.
 
 ## Evidence tools
 
-These tools read recorded evidence from the local job service through the same
+`explain_failure`, `compare_verification` and the baseline tools are
+**experimental**, like the `sail explain`, `sail compare` and `sail baseline`
+commands they run: they may change in any release. These tools read recorded evidence from the local job service through the same
 CLI commands described in
 [workspace verification](workspace-verification.md#evidence-from-completed-jobs).
 They do not accept `project_dir`; they use the server's working directory and
@@ -287,8 +289,8 @@ point; whole-project requests use `cargo verus verify`.
 | `package` | `-p <package>`. |
 | `module` | Verus `--verify-module <module>`: this module and its descendants (with `function`, `--verify-only-module` selects that function’s owning module), relative to the crate root (`arith`, `foo::bar`). |
 | `function` | Verus `--verify-function <function>`: a unique substring of the name, or a pattern with `*` at either end. It is looked up in `module`, or in the crate root (`--verify-root`) if no module is given. |
-| `portfolio` | Optional `accept-first-proof`: sequential complete Verus attempts; every winning function comes from one complete run, with seed/configuration and attempt evidence. Never enabled by default. |
-| `measure_fragility` | Optional boolean: capture and replay solver sessions locally, attaching exact per-function scores; incomplete or ambiguous attribution stays null with a note. Cannot be combined with a portfolio. |
+| `portfolio` | Experimental. Optional `accept-first-proof`: sequential complete Verus attempts; every winning function comes from one complete run, with seed/configuration and attempt evidence. Never enabled by default. |
+| `measure_fragility` | Experimental. Optional boolean: capture and replay solver sessions locally, attaching exact per-function scores; incomplete or ambiguous attribution stays null with a note. Cannot be combined with a portfolio. |
 | `cargo_args` | Further `cargo verus verify` arguments, before `--`. They may not contain `--` or `--output`. |
 | `verus_args` | Further Verus arguments, after `--`. |
 | `detail` | `summary` (default), `targets` or `full`; see [reply size](#reply-size-and-detail). |
@@ -543,7 +545,7 @@ status, and `runs` holds each run's freshness.
 
 ### `fragility`
 
-Runs `sail fragility --output json` (ADR 0018) with `verify`'s arguments
+**Experimental**, like `sail fragility`. Runs `sail fragility --output json` (ADR 0018) with `verify`'s arguments
 (the `FRAGILITY_COMMAND` line in `crates/sail-mcp/src/tools.rs`). The
 command captures one Verus run through the pass-through shim, re-runs every
 solver session under 8 seeds, and returns per-check answer and effort
@@ -553,7 +555,7 @@ long as `verify`. Selecting a `module` or `function` runs `cargo verus
 focus`, and checks are attributed to a function only when exactly one
 function was verified.
 
-The tool checks `sail --help` on every call. A `sail` without the command
+The tool checks `sail help fragility` on every call. A `sail` without the command
 gets `isError: true` with `{"available": false, "error": "not_available"}`.
 
 ## The result store

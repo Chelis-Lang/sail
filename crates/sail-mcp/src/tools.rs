@@ -17,7 +17,7 @@ use crate::summary;
 const VERIFY_COMMAND: &[&str] = &["verify", "--output", "json"];
 
 /// The `sail` arguments `fragility` starts with (`sail fragility`, ADR
-/// 0018). The tool still probes `sail --help` for it on every call, so a
+/// 0018). The tool probes `sail help fragility` for it on every call, so a
 /// `sail` without it gives a clear not-available result.
 const FRAGILITY_COMMAND: &[&str] = &["fragility", "--output", "json"];
 
@@ -880,12 +880,15 @@ fn models(
     )
 }
 
-/// Whether this `sail` lists a `fragility` command in its help.
+/// Whether this `sail` has a `fragility` command: `sail help fragility`
+/// prints its usage. `sail --help` does not list it, since it is
+/// experimental, and a `sail` without it exits 2 or prints the general usage.
 fn has_fragility(sail: &Path, dir: &Path) -> bool {
-    run::run(sail, &["--help".to_owned()], dir, &Cancel::default()).is_ok_and(|o| {
-        String::from_utf8_lossy(&o.stdout)
-            .lines()
-            .any(|l| l.split_whitespace().next() == Some(FRAGILITY_COMMAND[0]))
+    let args = ["help".to_owned(), FRAGILITY_COMMAND[0].to_owned()];
+    run::run(sail, &args, dir, &Cancel::default()).is_ok_and(|o| {
+        o.exit_code == Some(0)
+            && String::from_utf8_lossy(&o.stdout)
+                .contains(&format!("sail {}", FRAGILITY_COMMAND[0]))
     })
 }
 
@@ -943,6 +946,41 @@ fn fragility(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolR
 mod tests {
     use super::*;
     use sail_api::output::{PortfolioAttempt, PortfolioReport, SolverConfiguration, VerdictName};
+
+    /// `sail help fragility` decides availability: a `sail` that rejects the
+    /// topic, or prints only the general usage, has no fragility command.
+    #[cfg(unix)]
+    #[test]
+    fn fragility_is_available_only_when_its_own_help_prints() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let root = std::env::temp_dir().join(format!("sail-mcp-fragility-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let cases = [
+            ("exit 2", false),
+            (
+                "echo 'USAGE:'; echo '    sail <COMMAND> [ARGS]'; echo '    verify  verify a crate'",
+                false,
+            ),
+            (
+                "echo 'USAGE:'; echo '    sail fragility [--seeds N]'; exit 3",
+                false,
+            ),
+            (
+                "echo 'EXPERIMENTAL: ...'; echo 'USAGE:'; echo '    sail fragility [--seeds N]'",
+                true,
+            ),
+        ];
+        for (index, (body, expected)) in cases.into_iter().enumerate() {
+            let sail = root.join(format!("sail-{index}"));
+            let script = format!("#!/bin/sh\n[ \"$1 $2\" = 'help fragility' ] || exit 9\n{body}\n");
+            assert!(std::fs::write(&sail, script).is_ok());
+            assert!(
+                std::fs::set_permissions(&sail, std::fs::Permissions::from_mode(0o755)).is_ok()
+            );
+            assert_eq!(has_fragility(&sail, &root), expected, "{body}");
+        }
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn lookup_returns_completed_evidence_while_a_project_run_is_locked() {

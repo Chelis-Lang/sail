@@ -3,8 +3,10 @@
 Sail (S.A.I.L., the Satisfiability Analysis & Inference Layer) makes
 [Verus](https://github.com/verus-lang/verus) verification loops faster for
 developers and coding agents, without changing what Verus tells you. The gain
-is largest on solver-heavy projects; small projects and first runs take about
-as long as plain Verus ([performance](docs/performance.md)).
+is largest on solver-heavy projects. A preverified vstd for a new project's
+first run is measured on the 0.1.0 candidate but not yet accepted. Small edits
+and unchanged reruns currently cost a little more than plain Verus
+([Limits](#limits), [performance](docs/performance.md)).
 
 `sail verify` runs `cargo verus verify` with the same arguments and puts a
 cache in front of the Z3 solver that Verus uses. Sail ships its own Verus,
@@ -13,8 +15,8 @@ removes known run-to-run variation in the solver queries stock Verus sends
 for the same input (variation defeats caching). You get the same verdicts, the
 same errors and the same exit code as plain stock Verus with its pinned Z3;
 Sail's conformance suite checks exactly that. On top of that, Sail
-adds complete per-target reports, durable background jobs, a file watcher, an
-MCP server for agents and signed team caches. When anything in Sail fails,
+adds complete per-target reports, durable background jobs, a file watcher and
+an MCP server for agents. When anything in Sail fails,
 verification falls back to the pinned Z3 and stays correct.
 
 Sail supports Linux on x86-64 and macOS on Apple silicon. It works on Cargo
@@ -89,10 +91,9 @@ Without `rust-src`, Sail runs your default Cargo and its JSON result notes
 `SAIL3137` with the command above. Sail never installs a toolchain itself
 ([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
 
-The proof-bundle release path is still unqualified; `rust-src` is needed only
-for a release with a bundle, and the minimal installation without it remains
-enough for ordinary releases. Proof-bundle first-use qualification includes
-this component's download, verification and installation cost. See
+Without `rust-src` everything still works; only the preverified vstd is
+skipped. The proof-bundle release path is still unqualified: its measured
+first-use gain (below) is not accepted yet. See
 [release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use).
 
 **From source (contributors).** With rustup, a C toolchain and `git`:
@@ -143,17 +144,27 @@ previously verified revision, its qualified Linux/dependency-profile scope and
 the measured time and storage tradeoffs.
 
 `sail verify` takes the same arguments as `cargo verus verify` and prints the
-same output, with the same exit code; a few arguments Sail cannot bind to a
-proof receipt run without proof reuse, with one note line
+same verdicts, diagnostics and exit code. Two things can differ in the text
+(see also [known issues](docs/known-issues.md)): Cargo's parallel `Compiling`
+lines can come out in another order, and a few arguments Sail cannot bind to
+a proof receipt run without proof reuse, with one note line
 ([details](docs/workspace-verification.md#setups-verified-without-proof-reuse)).
 It builds in its own Cargo target under
-the Sail cache and never touches your `target/`. Each fresh project or worktree
-compiles its dependencies and verifies `vstd`. Compiled dependencies are
-temporarily no longer shared between projects: v1 reuse could hide a native
-compiler failure ([ADR 0053](docs/decisions/0053-disable-unqualified-native-store.md)).
-In the bounded Linux assessment, a fresh small project took 32.6 seconds;
-this first-run performance remains work to recover safely. It starts the Sail
-cache daemon on demand; you never need to start it yourself. Run it again
+the Sail cache and never touches your `target/`.
+
+With a release that ships a preverified vstd proof, a new project or worktree
+starts from it, when the pinned Rust toolchain with `rust-src` is installed
+(see [Install](#install)) and the project uses the vstd `sail new` writes. On
+the 0.1.0 candidate this is measured but not yet accepted
+([record](docs/validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)). On Linux (EC2 c7i.8xlarge), the first `sail new` plus
+`sail verify` took 15.3 s against 30.4 s for plain Verus, about 2×. On Apple
+silicon, verification alone (project creation not timed) took 10.2 s against
+17.3 s, 1.7×. Your project's other
+compiled dependencies are still built once per project and worktree: sharing
+them between projects is disabled until it is sound
+([ADR 0053](docs/decisions/0053-disable-unqualified-native-store.md)).
+`sail verify` starts the Sail cache daemon on demand; you never need to
+start it yourself. Run it again
 after an edit: targets whose inputs are unchanged keep their proof receipts
 and are not verified again, and solver queries Verus has seen before are
 answered from the cache. To stop using Sail, run your own
@@ -188,25 +199,10 @@ Each result says whether it is still **Current** (its inputs are unchanged),
 claude mcp add --transport stdio sail -- sail mcp
 ```
 
-Agents get `verify`, `counterexample`, `cached_result`, background jobs
+Agents get `verify`, `counterexample`, `cached_result` and background jobs
 (`start_verification`, `verification_status`, `verification_result`,
-`cancel_verification`) and evidence tools. See [MCP setup and tools](docs/mcp.md).
-
-## Team cache
-
-Teams and CI can share solver results. Entries are signed, and a machine uses
-one only if a key it trusts signed it for the same solver binary and platform:
-
-```sh
-sail cache keygen --out ci.key                        # once, where CI runs
-sail cache publish --to /shared/sail --key ci.key     # after a CI run
-sail cache trust add ci.key.pub                       # on each developer machine
-SAIL_SHARED_STORE=/shared/sail sail verify            # read from the shared store
-```
-
-The store can be a shared directory or an HTTPS server (`sail cache serve`,
-`sail cache connect`). See [HTTP team caching](docs/http-shared-cache.md) and
-[trust](docs/trust.md).
+`cancel_verification`). The evidence, baseline and fragility tools are
+experimental. See [MCP setup and tools](docs/mcp.md).
 
 ## Maintenance
 
@@ -231,7 +227,7 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
   are not supported yet.
 - **Cargo library and binary targets only.** `sail verify`, `watch` and MCP
   run `cargo verus`. Projects verified with `verus file.rs` directly are not
-  supported (the opt-in portfolio is the exception, with `--verus-source`).
+  supported.
   Tests, benches, examples, `--target-dir`, Verus's `--log` options, Cargo
   `--config` overrides and `LD_LIBRARY_PATH` or another loader variable
   work, verified as `cargo verus verify` does, but get no proof reuse ([details](docs/workspace-verification.md#setups-verified-without-proof-reuse)).
@@ -246,22 +242,24 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
     as fast as plain Verus, because the solver re-runs each changed
     module's earlier queries
     ([real-project report](docs/reports/2026-10-15-real-project-performance.md));
-  - small projects cost about 0.3 s more per run than plain Verus (demo
-    edits 1.17 s against 0.88 s), and cold first runs 1–2 s more, for
-    Sail's receipts and complete reports;
-  - re-running `sail verify` on unchanged code takes about 0.4 s on a small
-    project and 1.0 s on vest, where plain Cargo does nothing in 0.1–0.2 s;
-    Sail checks every input and keeps the complete report for agents.
+  - small projects currently cost more per run than plain Verus, for Sail's
+    input checks, receipts and complete reports. On Apple silicon, an
+    unchanged rerun takes 0.13 s more (0.30 s against 0.17 s) and adding one
+    function 0.26 s more (0.69 s against 0.43 s)
+    ([record](docs/validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)). On Linux the small-edit overhead is currently larger;
+    it is being reduced ([#156](https://github.com/Chelis-Lang/sail/issues/156));
+  - with the candidate's preverified vstd, a new project's first run was
+    about 2× faster on Linux and 1.7× on Apple silicon (above; not yet
+    accepted).
 - **macOS.** Receipt reuse works on Linux and macOS. On macOS a Cargo
   configuration file created and deleted again during a single run is not
   detected; see [freshness](docs/freshness.md#what-these-checks-do-not-catch).
-- **The first run on a machine verifies vstd,** about 30 s. Later new
-  projects and worktrees reuse it only when they resolve the same vstd
-  (version, features, its dependencies' versions in `Cargo.lock`, profile,
-  arguments) with the same Sail and toolchain; anything else verifies vstd
-  again once and is stored too (four entries, about 120 MB each). A run
-  that gets no proof reuse (a `note[SAIL3112]` line) does not use the store.
-- **Proof repair is experimental** (below).
+- **The shipped vstd proof applies to one exact setup:** the vstd version
+  `sail new` writes, its default dependency resolution, the pinned Cargo and
+  toolchain with `rust-src`, and no extra Verus arguments. Anything else, for
+  example `-- --rlimit 100` or a project-chosen toolchain, verifies vstd in that
+  project (about 15 s more on Linux), with the same results.
+- **Proof repair and the commands below are experimental.**
 
 See [known issues](docs/known-issues.md) for the full list.
 
@@ -276,16 +274,25 @@ runtime `sail engine status` checks. Follow the
 [repair walkthrough](docs/proof-repair-walkthrough.md); the
 [repair guide](docs/proof-repair.md) has the details.
 
-## Opt-in tools
+## Experimental commands
 
-These can change what is reported, or cost much more than a verification, so
-they run only when asked:
+These run, but they are not part of the supported command set and may change
+in any release. `sail --help` does not list them; `sail help COMMAND` says
+what each does.
 
 - `sail verify --portfolio accept-first-proof --portfolio-seeds 4` tries
   independent seeded runs and accepts the first complete proof. This can change
   a verdict; see [divergences](docs/divergences.md).
 - `sail verify --measure-fragility` and `sail fragility` measure how fragile
   proofs are across solver seeds. They change no verdict.
+- `sail explain`, `sail baseline` and `sail compare` show retained failure
+  evidence and compare jobs ([workspace verification](docs/workspace-verification.md)).
+- Team caching shares signed solver results through a directory or an HTTPS
+  server: `sail cache keygen`, `trust`, `publish`, `serve`, `connect` and
+  `disconnect` ([HTTP team caching](docs/http-shared-cache.md),
+  [trust](docs/trust.md)).
+- `sail serve` runs the cache daemon in the foreground; `sail verify` starts
+  it on demand.
 
 ## Documentation
 

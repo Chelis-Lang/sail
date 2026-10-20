@@ -10,17 +10,44 @@ fn sail(args: &[&str]) -> Output {
     }
 }
 
-/// The user help lists the shipped commands. `sail bench` needs `sail-bench`,
-/// which only a source build has, so the help leaves it out.
+/// The user help lists the supported commands. `sail bench` needs
+/// `sail-bench`, which only a source build has, and experimental commands
+/// are not part of the supported set, so the help leaves them out;
+/// `repair-check` stays listed, marked experimental.
 #[test]
 fn help_lists_every_user_command() {
     let output = sail(&["--help"]);
     assert_eq!(output.status.code(), Some(0));
     let text = String::from_utf8_lossy(&output.stdout);
-    for cmd in ["verify", "watch", "mcp", "serve", "status", "cache"] {
-        assert!(text.contains(cmd), "help is missing `{cmd}`:\n{text}");
+    let listed: Vec<&str> = text
+        .lines()
+        .filter_map(|line| line.strip_prefix("    "))
+        .filter_map(|line| line.split_whitespace().next())
+        .collect();
+    for cmd in [
+        "new",
+        "verify",
+        "repair-check",
+        "engine",
+        "watch",
+        "jobs",
+        "mcp",
+        "status",
+        "cache",
+    ] {
+        assert!(listed.contains(&cmd), "help is missing `{cmd}`:\n{text}");
     }
-    assert!(!text.contains("bench"), "help lists `bench`:\n{text}");
+    for cmd in [
+        "bench",
+        "explain",
+        "baseline",
+        "compare",
+        "serve",
+        "fragility",
+    ] {
+        assert!(!listed.contains(&cmd), "help lists `{cmd}`:\n{text}");
+    }
+    assert!(text.contains("repair-check  (experimental)"), "{text}");
 }
 
 /// `--version` reports the build's `SAIL_VERSION` when set (release builds),
@@ -288,6 +315,33 @@ fn every_command_has_help() {
             assert!(!output.stdout.is_empty(), "{args:?}");
         }
     }
+    // Experimental commands keep their help, which says they are experimental.
+    for args in [
+        &["repair-check", "--help"][..],
+        &["explain", "--help"],
+        &["baseline", "--help"],
+        &["compare", "--help"],
+        &["serve", "--help"],
+        &["fragility", "--help"],
+        &["cache", "keygen", "--help"],
+        &["cache", "trust", "list", "--help"],
+        &["cache", "publish", "--help"],
+        &["cache", "serve", "--help"],
+        &["cache", "connect", "--help"],
+    ] {
+        let output = sail(args);
+        assert_eq!(output.status.code(), Some(0), "{args:?}");
+        assert!(
+            String::from_utf8_lossy(&output.stdout).starts_with("EXPERIMENTAL: "),
+            "{args:?}"
+        );
+    }
+    let cache = sail(&["cache", "--help"]);
+    let cache = String::from_utf8_lossy(&cache.stdout);
+    assert!(
+        !cache.contains("EXPERIMENTAL") && !cache.contains("keygen"),
+        "{cache}"
+    );
     let gc = sail(&["cache", "gc", "--help"]);
     assert_eq!(gc.status.code(), Some(0));
     assert!(String::from_utf8_lossy(&gc.stdout).contains("gc --max-bytes N"));
@@ -297,6 +351,12 @@ fn every_command_has_help() {
     // and is documented as a deprecated no-op.
     assert!(
         verify.contains("--incremental                 deprecated, does nothing"),
+        "{verify}"
+    );
+    // The verdict-changing portfolio and experimental fragility options
+    // still run but are not listed.
+    assert!(
+        !verify.contains("--portfolio") && !verify.contains("--measure-fragility"),
         "{verify}"
     );
     assert_eq!(sail(&["help", "frobnicate"]).status.code(), Some(2));

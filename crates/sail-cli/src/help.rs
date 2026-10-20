@@ -2,12 +2,16 @@
 //! `sail help COMMAND` print the command's usage and exit 0, without running
 //! it. Only arguments before a `--` count, so `-- --help` still reaches
 //! Verus. `sail bench` (a contributor tool, not in `sail --help`) keeps
-//! delegating to `sail-bench`, which has its own.
+//! delegating to `sail-bench`, which has its own. Experimental commands and
+//! options run as before; `sail --help` does not list them, and their own
+//! help says they are experimental.
 
 use std::io::Write;
 use std::process::{Command, ExitCode};
 
 /// `sail verify`'s own options. Everything else goes to `cargo verus verify`.
+/// The experimental `--measure-fragility` and verdict-changing `--portfolio`
+/// options (docs/divergences.md) still work but are not listed.
 pub(crate) const VERIFY_OPTIONS: &str = "\
 SAIL OPTIONS (before --):
     --output json                 print one sail-project-result document on stdout
@@ -16,11 +20,41 @@ SAIL OPTIONS (before --):
     --engine stock|interactive    engine (interactive needs `sail engine status`)
     --incremental                 deprecated, does nothing: managed verification is
                                   the default
-    --measure-fragility [--fragility-seeds N]
-                                  also measure proof fragility (changes no verdict)
-    --portfolio accept-first-proof [--portfolio-seeds 1,2,...]
-    --portfolio-timeout-secs N    opt-in seed portfolio (verdict-changing; docs/divergences.md)
-    --verus-source FILE           with a portfolio, verify a single file with `verus FILE`
+";
+
+/// Commands that run but are not part of the supported command set:
+/// `sail --help` omits them (`repair-check` stays listed, marked
+/// experimental) and their own help starts with [`EXPERIMENTAL_NOTE`].
+pub(crate) const EXPERIMENTAL: &[&str] = &[
+    "repair-check",
+    "explain",
+    "baseline",
+    "compare",
+    "serve",
+    "fragility",
+    "cache shared",
+];
+
+/// The first paragraph of every experimental command's help.
+pub(crate) const EXPERIMENTAL_NOTE: &str = "\
+EXPERIMENTAL: not part of Sail's supported command set. It may change or be
+removed in any release.
+
+";
+
+/// The team-cache subcommands of `sail cache` (ADR 0017, ADR 0025).
+const CACHE_SHARED: &str = "\
+Share signed cache entries through a directory or HTTP(S) store
+(docs/trust.md, docs/http-shared-cache.md).
+
+USAGE:
+    sail cache [--cache DIR] keygen --out FILE
+    sail cache [--cache DIR] trust add FILE.pub | trust list | trust remove ID
+    sail cache [--cache DIR] publish --to STORE|URL --key FILE [--token-file FILE]
+               [--filter command=NAME]... [--filter solver=SHA256] [--dry-run]
+    sail cache serve --store DIR [--listen IP:PORT] [--behind-tls-proxy]
+    sail cache connect URL --trust FILE.pub --token-file FILE [--ca-file FILE]
+    sail cache disconnect
 ";
 
 /// Help for the commands whose usage is fixed text.
@@ -175,6 +209,7 @@ that Verus is installed (`sail engine status` checks it).
 "
         )),
         "cache" => Some(crate::ops::CACHE_USAGE.to_owned()),
+        "cache shared" => Some(CACHE_SHARED.to_owned()),
         "new" => Some(crate::new::USAGE.to_owned()),
         "cache projects" => Some(crate::projects_cli::USAGE.to_owned()),
         _ => HELP
@@ -185,11 +220,21 @@ that Verus is installed (`sail engine status` checks it).
 }
 
 /// The help topic for a command line (`args[0]` is the command): the command,
-/// or `cache projects`, which has help of its own.
+/// or `cache projects` and the team-cache subcommands, which have help of
+/// their own.
 pub(crate) fn topic(args: &[String]) -> String {
     match args {
         [cache, projects, ..] if cache == "cache" && projects == "projects" => {
             "cache projects".to_owned()
+        }
+        [cache, shared, ..]
+            if cache == "cache"
+                && matches!(
+                    shared.as_str(),
+                    "keygen" | "trust" | "publish" | "serve" | "connect" | "disconnect"
+                ) =>
+        {
+            "cache shared".to_owned()
         }
         [command, ..] => command.clone(),
         [] => String::new(),
@@ -206,6 +251,9 @@ pub(crate) fn requested(args: &[String]) -> bool {
 /// Prints `command`'s help. `None` when `command` has no help of its own.
 pub(crate) fn print(command: &str, out: &mut dyn Write) -> Option<ExitCode> {
     let body = text(command)?;
+    if EXPERIMENTAL.contains(&command) {
+        let _ = write!(out, "{EXPERIMENTAL_NOTE}");
+    }
     let _ = write!(out, "{body}");
     if command == "verify"
         && let Ok(cargo_verus) = crate::verify::cargo_verus()
