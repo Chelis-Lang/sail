@@ -7,7 +7,7 @@ semantic versioning once the API is published.
 
 - Instant revert's source check reads only the packages the selected
   targets depend on, plus every workspace member's manifest, instead of every
-  package in the workspace and registry (#278; proposed ADR 0050
+  package in the workspace and registry (#278; ADR 0050
   amendment). On public-profile Vest, a cold run takes this check five times,
   and each one falls from 200–265 ms to 25–50 ms on macOS. Editing a package
   outside that closure no longer invalidates a retained proof. Verdicts,

@@ -133,9 +133,9 @@ SHA-256 `a3cbf7e04825d44e669cfe68a03f797effa6d31d2965d279945b9f625dbfc412`.
 slower than stock, inside the 5% bar. On Linux it is 0.7% faster than stock.
 The demo's first run on macOS stays 12.3% slower: its remaining cost is native
 admission and the observed compile, which this change does not touch.
-Instant revert stays intact and gets faster. The change is a proposed
-[ADR 0050 amendment](../decisions/0050-retained-proofs-instant-revert.md#amendment-2026-10-20-proposed-the-source-snapshot-reads-the-selected-closure-278)
-that needs the owner's review.
+Instant revert stays intact and gets faster. The change is an accepted
+[ADR 0050 amendment](../decisions/0050-retained-proofs-instant-revert.md#amendment-2026-10-20-the-source-snapshot-reads-the-selected-closure-278)
+(accepted 2026-10-20).
 
 | Field | Evidence |
 |---|---|

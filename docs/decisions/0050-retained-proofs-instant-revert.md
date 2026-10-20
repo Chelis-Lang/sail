@@ -351,10 +351,9 @@ normally, so verdicts, diagnostics, receipts, cache keys and every check
 compare the same bytes. Timing makes only the cost decision vary from run to
 run. The threshold is the constant `RATIO` in `managed/retained/cost.rs`.
 
-## Amendment 2026-10-20 (proposed): the source snapshot reads the selected closure (#278)
+## Amendment 2026-10-20: the source snapshot reads the selected closure (#278)
 
-**Status:** proposed, implemented on branch `perf/cold-retention`; it needs
-the owner's review before merge.
+**Status:** accepted by the owner 2026-10-20 (#289).
 
 Every retained source snapshot read every package in Cargo's metadata. Vest's
 metadata lists the whole workspace and every resolved registry package, about

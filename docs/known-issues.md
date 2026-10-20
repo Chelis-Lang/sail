@@ -33,7 +33,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   certificate and for other units' compiler scratch directories, which undoes
   Cargo's rmeta pipelining. Changing that is an ADR 0050 design change
   awaiting owner review. Public-profile Vest is within the bar (+3.9% on
-  macOS, −0.7% on Linux, with the proposed closure-scoped source check). See
+  macOS, −0.7% on Linux, with the closure-scoped source check). See
   the [record](validation/cold-first-run.md).
 
 - **A first run without a retention plan costs every later run 2 s** (#285).
