@@ -269,12 +269,17 @@ Rust tails refuse. Literal argument/environment bytes remain bound in keys.
 ## Automatic-selection candidate
 
 An isolated source successor selects a retained plan without a user flag only
-on x86-64 Linux with one exact normal-runtime manifest, which must equal the
-Linux pin's `manifest_sha256` (a unit test enforces it). The `83128ad0` gates
+on x86-64 Linux and Apple-silicon macOS, each with one exact normal-runtime
+manifest that must equal that platform's pin `manifest_sha256` (a unit test
+per platform enforces it). The macOS authority is `4392062a…` (fork
+`64baccbb`), qualified for ordinary public alloc/std reuse
+([record](../validation/instant-revert.md#macos-qualification-on-runtime-64baccbb)). The `83128ad0` gates
 below used manifest `a845cd2f…` (fork `e5365c05`). The authority is now
-`f4568e2931e6d8b53bc15dbf564199e5594b3b9e69e54cffc5cbe9bd3cd233de` (fork
-`9c0ca7e7` on Verus `7d82994`), requalified for ordinary Linux public
-alloc/std reuse ([record](../validation/instant-revert.md#verus-7d82994-runtime-requalification)). A valid engine with
+`cd78756b462127d2551fd35dfc4dd1259a26aeb2501428b5702fa30bcdc96a04` (fork
+`64baccbb` on Verus `7d82994`), requalified for ordinary Linux public
+alloc/std reuse ([record](../validation/instant-revert.md#runtime-64baccbb-requalification)).
+The previous authority `f4568e29…` (fork `9c0ca7e7`) was requalified too
+([record](../validation/instant-revert.md#verus-7d82994-runtime-requalification)). A valid engine with
 another manifest compiles normally and notes `SAIL3136`. It calls existing `Installed::at` with fresh complete artifact reads and binds
 the actual selected launcher and Z3. Config currently has no held fresh
 `Installed` authority to reuse, so this validation adds an invocation cost; no
@@ -311,3 +316,31 @@ Actual offline Cargo metadata and all archive/compiler checksums pass locally;
 those local source-admission controls alone are not native automatic reuse
 qualification. The later final-source ordinary cohort is separately qualified
 in the validation record.
+
+## Amendment 2026-10-20: retention must pay for itself (#156)
+
+Retention is optional restoration work, and on a cheap target it costs more
+than it can save. On the current Linux runtime the ordinary new-library
+profile admits the one-function `sail new` demo. Its retention checks read
+the private dependency graph (vstd's 43 MB `.vir` and the macro libraries)
+before and after the compiler, 1.5 s per edit and 0.7 s per revert, against
+a 0.8 s compile. Restoring that crate was slower than compiling it.
+
+Decision: each verifying compile records its compiler wall time and, when
+retention was engaged, the time spent in the driver's retention admission,
+restore attempt and finish. These records sit in `retention-costs/` beside
+the proof context's receipts. A run prepares no retention plan when every
+selected target has a record whose compile time is below 4× its retention
+time. A target with no record, an unreadable or other-version record, or no
+measured retention keeps retention. So a project's first run, including cold
+Vest A, still captures its proof, and the A → B → A return stays instant.
+The ratio rule follows from the costs: one retention costs about one restore
+check, so a target whose compile is under 4× that saves little even on a
+revert and pays the full cost on every edit. Measured examples: the demo
+compiles in 0.75 s against 1.4 s of retention and skips retention after its
+first run. Vest compiles in 26–29 s against 1.4–1.7 s and keeps it.
+
+The records authorize nothing and bind no proof. A skipped plan compiles
+normally, so verdicts, diagnostics, receipts, cache keys and every check
+compare the same bytes. Timing makes only the cost decision vary from run to
+run. The threshold is the constant `RATIO` in `managed/retained/cost.rs`.

@@ -34,6 +34,50 @@ pub(crate) fn file_digest(path: &Path) -> Result<String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+/// Whether two files hold the same bytes, read completely from both. A
+/// length difference answers without reading; equal lengths are never taken
+/// as equal content. Comparing directly is several times cheaper than two
+/// digests of a large executable.
+pub(crate) fn same_content(left: &Path, right: &Path) -> Result<bool> {
+    let open = |path: &Path| {
+        std::fs::File::open(path)
+            .map_err(|e| Error::new("SAIL3101", format!("cannot read {}: {e}", path.display())))
+    };
+    let (mut left, mut right) = (open(left)?, open(right)?);
+    let length = |file: &std::fs::File| {
+        file.metadata()
+            .map(|m| m.len())
+            .map_err(|e| Error::new("SAIL3101", e.to_string()))
+    };
+    if length(&left)? != length(&right)? {
+        return Ok(false);
+    }
+    let (mut a, mut b) = (vec![0u8; 256 * 1024], vec![0u8; 256 * 1024]);
+    loop {
+        let n = fill(&mut left, &mut a)?;
+        if n != fill(&mut right, &mut b)? || a[..n] != b[..n] {
+            return Ok(false);
+        }
+        if n == 0 {
+            return Ok(true);
+        }
+    }
+}
+
+/// Reads until `buf` is full or the file ends; returns the bytes read.
+fn fill(file: &mut std::fs::File, buf: &mut [u8]) -> Result<usize> {
+    let mut filled = 0;
+    while filled < buf.len() {
+        match file.read(&mut buf[filled..]) {
+            Ok(0) => break,
+            Ok(n) => filled += n,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(e) => return Err(Error::new("SAIL3101", e.to_string())),
+        }
+    }
+    Ok(filled)
+}
+
 /// Deduplicates alias reads within one hash phase, never across observations.
 #[derive(Default)]
 pub(super) struct FileDigests(BTreeMap<PathBuf, String>);
@@ -146,5 +190,43 @@ pub(crate) fn event(value: &serde_json::Value) {
         && let Ok(bytes) = serde_json::to_vec(value)
     {
         let _ = file.write_all(&bytes).and_then(|()| file.write_all(b"\n"));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn same_content_reads_every_byte() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-same-content-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root)?;
+        let large: Vec<u8> = (0..700_000u32).map(|i| (i % 251) as u8).collect();
+        let write = |name: &str, bytes: &[u8]| -> std::io::Result<PathBuf> {
+            let path = root.join(name);
+            std::fs::write(&path, bytes)?;
+            Ok(path)
+        };
+        let a = write("a", &large)?;
+        let b = write("b", &large)?;
+        assert!(same_content(&a, &b)?);
+        // Same length, one byte different past the first chunk.
+        let mut late = large.clone();
+        late[600_000] ^= 1;
+        let c = write("c", &late)?;
+        assert!(!same_content(&a, &c)?);
+        // A prefix differs in length; empty files are equal.
+        let d = write("d", &large[..large.len() - 1])?;
+        assert!(!same_content(&a, &d)?);
+        assert!(same_content(&write("e", b"")?, &write("f", b"")?)?);
+        assert_eq!(
+            same_content(&a, &root.join("missing"))
+                .err()
+                .map(|e| e.code),
+            Some("SAIL3101")
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 }

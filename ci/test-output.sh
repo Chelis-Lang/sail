@@ -199,7 +199,35 @@ plain_run partial-plain stock_cargo verus verify -- --verify-function max
 sail_run partial-sail "$sail" verify -- --verify-function max
 same partial-plain partial-sail
 grep -q "Partial verification must use" "$work/partial-plain.err"
-echo "e2e: combined output, passing, unchanged, compile error and partial verification identical to cargo verus verify"
+# An extension impl without a matching standard library impl: Verus labels
+# core's impl from vstd's VIR, cannot resolve that span and prints its stored
+# text with `dbg!`, location included (VI-0031). Both must read as stock's.
+cp src/lib.rs "$work/lib.rs.keep"
+cat > src/lib.rs <<'RS'
+use vstd::prelude::*;
+use vstd::std_specs::fmt::DisplaySpecImpl;
+
+verus! {
+
+pub struct S;
+
+impl core::fmt::Display for S {
+    #[verifier::external_body]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        Ok(())
+    }
+}
+
+impl<'a> DisplaySpecImpl for &'a S {}
+
+} // verus!
+RS
+plain_run fallback-plain stock_cargo verus verify
+sail_run fallback-sail "$sail" verify
+same fallback-plain fallback-sail
+grep -q '^\[rust_verify/src/verifier.rs:[0-9]*:[0-9]*\] &sp.as_string = ' "$work/fallback-plain.err"
+cp "$work/lib.rs.keep" src/lib.rs
+echo "e2e: combined output, passing, unchanged, compile error, partial verification and the stored-span fallback identical to cargo verus verify"
 
 fi
 

@@ -82,7 +82,7 @@ sail-VERSION-TARGET/
 
 `<variant>` is the engine's source-variant name: the pinned Verus commit
 followed by a hash of the toolchain, fork commit, host, source lock and vstd
-build (for example `7d829946231d6413a398f6e4160cdfe951261dad-4ed2dee08bc877ae`
+build (for example `7d829946231d6413a398f6e4160cdfe951261dad-5fcf72e8d6cc0786`
 on Linux). Users should not rename or move anything inside the directory.
 
 The bundled runtime is Sail's Verus: every verification Sail runs uses it,
@@ -301,10 +301,13 @@ qualifying the macOS runtime against it).
 
 1. Land a PR that sets `[workspace.package] version` in `Cargo.toml` and
    moves `CHANGELOG.md`'s Unreleased entries under that version. In the same
-   PR, check `THIRD-PARTY-NOTICES` against the locks and the pinned fork:
-   `scripts/third-party-notices.py --verus-repo FORK_CLONE --work NEW_DIR
-   --check`, then regenerate without `--check` if it is stale. Staging copies
-   it and `LICENSE` into each archive.
+   PR, regenerate `THIRD-PARTY-NOTICES` if the locks, the pinned fork or the
+   pinned Z3 changed: `scripts/third-party-notices.py --work NEW_DIR`
+   (`--verus-repo FORK_CLONE` uses a local clone instead of fetching the
+   pinned fork commit). A new Z3 version needs its licence vendored as
+   `scripts/notices/z3-VERSION-LICENSE.txt` first. Staging runs the same
+   script with `--check` and fails the release on stale notices, then copies
+   them and `LICENSE` into each archive.
 2. Check that `engine/verus/artifact-macos.json` names the fork commit in
    `engine/verus/fork.toml` and that the
    [macOS engine record](validation/macos-engine.md) qualifies that runtime.
@@ -376,7 +379,12 @@ Verus toolchain must not have `rust-src`
 the absolute paths of their dependency sources (panic locations) and vstd.vir
 those of vstd's, so set `RUSTUP_HOME`, `CARGO_HOME` and `SAIL_CACHE_DIR` to
 directories outside the home directory (for example under `/tmp`) and check
-the packed archive's strings for `/Users/` before publishing it:
+the packed archive's strings for `/Users/` before publishing it.
+`scripts/build-macos-runtime.sh build` does all of this, plus the fork's
+library and regression tests and the determinism check, and packs the
+archive; after publishing, `scripts/build-macos-runtime.sh published` fetches
+the pinned runtime anonymously and runs the conformance and `cargo verus new`
+checks. The steps it runs:
 
 ```sh
 cargo xtask build-verus-engine       # also builds and verifies vstd

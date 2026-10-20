@@ -8,7 +8,36 @@ same engine checks as the Linux runtime
 
 | Field | Value |
 |---|---|
-| Status | **Pass** for the pinned runtime, fork `9c0ca7e7`: built, qualified and published; release smoke test not yet run on it |
+| Status | **Pass** for the pinned runtime, fork `64baccbb`: built, qualified and published; release smoke test not yet run on it |
+| Source | Sail `feat/vir-span-remap` (`466da4dc`, plus this record's pin commit), 2026-10-20; fork commit `64baccbb1f4c8af3f5e015d4ac561c96058717a7` (`fix/vir-span-remap`: span-string remap, stock `dbg!` location) on upstream `7d82994` |
+| Runtime | `cargo xtask build-verus-engine`, pinned in `engine/verus/artifact-macos.json`: variant `7d829946231d6413a398f6e4160cdfe951261dad-7faa35e5238b9bfc`, manifest sha256 `4392062ae1674fb473818d3bb730b4a2d2dba831dd2e9dddf98c5c57a8ed91fe`, archive sha256 `9f9381d53e1478aaae589d7d00399d01f5fee4e56daf81d9e4cde03e5dda69c2` (fork prerelease `engine-runtime-64baccbb-macos`; the anonymous download matches), Verus Rust toolchain 1.99.1 without `rust-src`, no Verus features; stock Verus `0.2026.10.18.7d82994` (arm64-macos) and its Z3 4.16.0 |
+| Build roots | `RUSTUP_HOME`, `CARGO_HOME` and `SAIL_CACHE_DIR` under `/tmp/sail-engine-64baccbb`. vstd.vir names the standard library only by `/rustc/58cf8f9c…` (10,215 spans, 0 under `rustlib/src/rust`). A strings scan of every archive file found no `/Users/` or `/home/` path, IP address, account id or host name (one false positive: `Z3 4.16.0.0` in the pinned Z3) |
+| Environment | EC2 mac-m4.metal, Apple M4 (10 cores, 24 GiB), macOS 27.0 (26A428), us-east-1d, a fresh instance |
+| Scope | As for `9c0ca7e7` below: build with vstd verification; `test-engine.py`; `test-cancel.py`; the fork's library tests and every `sail_vi*` test plus `basic` on a fresh clone; `scripts/verus-determinism.py --runs 3` over 320 fast-tier inputs; `ci/run.sh conformance fast pr` on the runtime fetched from the release; `cargo verus new` |
+| Limits | Correctness only, one run of each (determinism: 3); no performance measurement |
+
+## Results
+
+| Check | Result | Evidence (sha256 of the log, kept outside the repository) |
+|---|---|---|
+| Build, vstd verification | 2,059 verified, 0 errors; built in 165 s | `engine-build.log` `d600e1d0…0d27` |
+| `test-engine.py` | 11 of 11 fixtures match the plain fork run exactly and stock on everything but raw SMT, which differs in 1 session (`recursive`) | `test-engine.log` `90301274…42b6`, `summary.json` `6cfbb605…de43` |
+| `test-cancel.py` | no seal after a kill at a blocked solver check; the restart matches stock | `test-cancel.log` `0f6ac145…5988` |
+| Fork library tests | `rust_verify` 18, `vir` 11, `air` 144 passed, 0 failed | `lib-rust_verify.log` `9dc63b70…9a22`, `lib-vir.log` `f585af03…02ad`, `lib-air.log` `51e99ed4…1fa8` |
+| Fork regression tests | all 15 `sail_vi*` targets (including `sail_vi0031_vir_span_remap`) and `basic`, 0 failed | `sail-vi.log` `1a9c7ec5…63a5` |
+| Determinism | 320 of 320 inputs identical over 3 runs in solver input, blanked stdout, stderr and exit code | `determinism.log` `494f4f3d…d334` |
+| Conformance, fast PR subset | pass-through, cache fill and cache warm (3,442 entries): 33 units, 33 same, 0 unstable, 0 different, 0 infra errors, 311 functions each. Engine arm: 33 same, 0 different, 32 focused units, engine `4392062ae167` | `conformance-pr.log` `32c68a16…524c` |
+| `cargo verus new` (VI-0018) | `vstd = "=0.0.0-2026-10-18-0147"`; `cargo verus verify` 1 verified, 0 errors | `cargo-verus-new.log` `512cf1d1…da98` |
+
+All logs: `mac64-evidence.tgz` `c6b3839c…18de`.
+
+## Earlier runtimes
+
+### Runtime `9c0ca7e7`
+
+| Field | Value |
+|---|---|
+| Status | **Pass** for the then pinned runtime, fork `9c0ca7e7`: built, qualified and published |
 | Source | Sail `repin/7d82994` (`362235c4`, plus this record's pin commit), 2026-10-19; fork commit `9c0ca7e75f20c8ae7120196efd760b64a61251aa` on upstream `7d82994` |
 | Runtime | `cargo xtask build-verus-engine`, pinned in `engine/verus/artifact-macos.json`: variant `7d829946231d6413a398f6e4160cdfe951261dad-8f917633f244b095`, manifest sha256 `5a6114d3cbf0028e42cb182e0810b6a07ccbd10076b09be3b5b63c0e05016758`, archive sha256 `3b771f41a602de8c0d1f31c622e8bf507320c6c9343f5c0e097328361a44ff4b` (fork prerelease `engine-runtime-9c0ca7e7-macos`; the anonymous download matches), Verus Rust toolchain 1.99.1 without `rust-src` ([VI-0031](../verus-issues/VI-0031-rust-src-std-paths.md)), no Verus features; stock Verus `0.2026.10.18.7d82994` (arm64-macos) and its Z3 4.16.0 |
 | Build roots | `RUSTUP_HOME`, `CARGO_HOME` and `SAIL_CACHE_DIR` under `/tmp/sail-engine-9c0ca7e7`, so no home-directory path is compiled into the runtime (panic locations and vstd spans name the build roots). vstd.vir names the standard library only by `/rustc/58cf8f9c…` (10,215 spans, as in the release's vstd.vir). A strings scan of every archive file found no `/Users/` or `/home/` path, IP address, account id or host name (one false positive: `Z3 4.16.0.0` in the pinned Z3) |
@@ -16,7 +45,7 @@ same engine checks as the Linux runtime
 | Scope | Engine build with vstd verification; `test-engine.py` (11 fixtures, three arms); `test-cancel.py`; the fork's `rust_verify`, `vir` and `air` library tests and every `sail_vi*` test plus `basic`, on a fresh clone of the fork commit; `scripts/verus-determinism.py --runs 3` over the fast tier's direct inputs; `ci/run.sh conformance fast pr` with `SAIL_ENGINE_BUILD` set to the runtime fetched from the release (`ci/engine-artifact.py fetch`); `cargo verus new` with the runtime |
 | Limits | Correctness only, one run of each (determinism: 3); no performance measurement. The fast PR subset (33 guide units) for the conformance arms |
 
-## Results
+### Results (`9c0ca7e7`)
 
 | Check | Result | Evidence (sha256 of the log, kept outside the repository) |
 |---|---|---|
@@ -30,8 +59,6 @@ same engine checks as the Linux runtime
 | `cargo verus new` (VI-0018) | with the runtime on `PATH`: project created with `vstd = "=0.0.0-2026-10-18-0147"`, `cargo verus verify` 1 verified, 0 errors | `cargo-verus-new.log` `919b560c…4d9e` |
 
 All logs: `mac1019-engine-evidence-full.tgz` `5e6b74bc…0da2`.
-
-## Earlier runtimes
 
 The runtime pinned before `9c0ca7e7` was fork `cbbcdf44` (prerelease
 `engine-runtime-cbbcdf44-macos`). The last full record before that, for

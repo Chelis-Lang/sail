@@ -6,9 +6,11 @@ the production plan, source policy, argument binding and compiler-read
 consumer on one genuine native compiler invocation. This runner supplies it:
 
 1. a private copy of `scripts/shipped-deps` with its own `CARGO_HOME`;
-2. one recording `sail verify` of that project, traced with `strace`, which
-   yields the genuine `verus_builtin` compiler invocation (driver, arguments
-   and environment) that Cargo made;
+2. one recording `sail verify` of that project with Sail's boundary trace on
+   (`SAIL_SHIPPED_TRACE`). Its `native-output-established` record for
+   `verus_builtin` holds the genuine compiler invocation that Sail's compiler
+   proxy received from Cargo: the arguments and the tool-read environment.
+   No system tracer is needed, so this runs on Linux and macOS alike;
 3. one configuration per case, each run in a fresh root:
    - `official-default`: the unchanged invocation; observation and checked
      native output must succeed;
@@ -21,8 +23,9 @@ consumer on one genuine native compiler invocation. This runner supplies it:
    - `modified`: the official source, which the test changes after planning;
      refused.
 
-Usage (native Linux, outside the CI image; the staged release from
-`ci/local.sh release`, the witness test binary built for this host):
+Usage (natively on Linux or macOS, outside the CI image; a release staged by
+`ci/local.sh release` or `scripts/release.sh stage`, and the witness test
+binary built for this host):
 
     scripts/admission-witness.py --stage STAGE --test-binary BIN --work NEW_DIR
 
@@ -33,7 +36,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
@@ -57,32 +59,30 @@ def run(command, **kwargs):
     return result.stdout
 
 
-def hex_strings(text):
-    """The strings of one `strace -xx` argument or environment array."""
-    return [bytes.fromhex(item.replace('\\x', '')).decode() for item in re.findall(r'"((?:\\x[0-9a-f]{2})*)"', text)]
+def builtin_invocation(trace, launcher, base_env):
+    """Cargo's verus_builtin library invocation as Sail's compiler proxy received
+    it, from the boundary trace: the launcher, its arguments and environment.
 
-
-def builtin_invocation(trace):
-    """Cargo's verus_builtin library invocation, as Sail's compiler proxy received it,
-    and the Verus launcher the proxy runs it with."""
-    found = {}
-    lines = [line for path in sorted(trace.parent.glob(trace.name + '.*'))
-             for line in path.read_text().splitlines()]
-    for line in lines:
-        match = re.match(r'^execve\("((?:\\x[0-9a-f]{2})*)", \[(.*?)\], \[(.*)\]\) = 0$', line)
-        if not match:
-            continue
-        argv, envp = hex_strings(match.group(2)), hex_strings(match.group(3))
-        if (len(argv) > 2 and Path(argv[1]).name == 'rustc' and '--crate-name' in argv
-                and argv[argv.index('--crate-name') + 1:][:1] == ['verus_builtin']
-                and 'lib' in argv and '-' not in argv):
-            found.setdefault(Path(argv[0]).name, []).append(
-                (argv, dict(item.split('=', 1) for item in envp if '=' in item)))
-    proxies, launchers = found.get('sail-verus-driver', []), found.get('verus', [])
-    if len(proxies) != 1 or len(launchers) != 1:
-        raise SystemExit(f'admission-witness: expected one proxy and one launcher invocation, found {found.keys()}')
-    (proxy_argv, proxy_env), (launcher_argv, _) = proxies[0], launchers[0]
-    return launcher_argv[0], proxy_argv[1:], proxy_env
+    The trace records the tool-read variables; the rest (PATH, HOME and so on)
+    are this runner's own, as the proxy inherited them through Cargo.
+    """
+    found = []
+    for path in sorted(trace.glob('native-*.json')):
+        row = json.loads(path.read_text())
+        observation = row['observation']
+        if (observation.get('event') == 'native-output-established'
+                and observation['record']['crate_name'] == 'verus_builtin'
+                and observation['record']['output'].endswith('.rmeta')):
+            found.append(row)
+    if len(found) != 1:
+        raise SystemExit(f'admission-witness: expected one verus_builtin metadata record, found {len(found)}')
+    row = found[0]
+    if 'environment' not in row['observation']:
+        raise SystemExit('admission-witness: this Sail records no traced environment')
+    environment = {k: v for k, v in base_env.items()
+                   if not k.startswith(('CARGO_', 'RUST', 'SAIL_', 'VERUS_', '__VERUS_'))}
+    environment.update(row['observation']['environment'])
+    return str(launcher), row['actual_args'], environment
 
 
 def argument(args, name):
@@ -129,7 +129,7 @@ def main():
     metadata = work/'metadata.json'
     metadata.write_bytes(run(['cargo', 'metadata', '--locked', '--format-version', '1'], cwd=project, env=env))
     # One genuine recording run supplies the native invocation.
-    # As the release recorder does, the cache daemon runs outside the trace.
+    # As the release recorder does, the cache daemon runs on its own socket.
     socket = work/'daemon.sock'
     record_env = dict(env, SAIL_CACHE_DIR=str(work/'sail-cache'), SAIL_VSTD_BOUNDARY_RESEARCH='1',
                       SAIL_SHIPPED_RECORD=str(work/'capture-bundle'), SAIL_DAEMON_SOCKET=str(socket))
@@ -143,17 +143,16 @@ def main():
             if server.poll() is not None:
                 raise SystemExit('admission-witness: cache daemon exited')
             subprocess.run(['sleep', '0.05'], check=True)
-        trace = work/'execve'
-        capture = subprocess.run(['strace', '-ff', '-qq', '-xx', '-v', '-s', '1048576', '-e', 'trace=execve',
-                                  '-e', 'signal=none', '-o', str(trace), str(stage/'bin/sail'), 'verify',
-                                  '--locked', '--output', 'json'], cwd=project, env=record_env,
+        trace = work/'boundary-trace'
+        capture = subprocess.run([str(stage/'bin/sail'), 'verify', '--locked', '--output', 'json'], cwd=project,
+                                 env=dict(record_env, SAIL_SHIPPED_TRACE=str(trace)),
                                  capture_output=True, check=False, timeout=1200)
     finally:
         server.terminate()
         server.wait(timeout=30)
     (work/'capture.stdout').write_bytes(capture.stdout)
     (work/'capture.stderr').write_bytes(capture.stderr)
-    wrapper, compiler_args, driver_env = builtin_invocation(trace)
+    wrapper, compiler_args, driver_env = builtin_invocation(trace, release/'verus', env)
     target = Path(argument(compiler_args, '--out-dir')).parent.parent
     package = Path(driver_env['CARGO_MANIFEST_DIR'])
     registry = package.parent

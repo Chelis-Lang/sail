@@ -8,17 +8,6 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
-- **Unresolvable standard-library labels print differently from stock.**
-  Some Verus errors label a standard-library impl recorded in vstd's VIR,
-  for example an `impl … DisplaySpecImpl for &'a S` without a matching std
-  impl. Verus then prints a fallback line. Sail's fork prints
-  `rust_verify/src/verifier.rs:117` where stock prints `:113`, with or
-  without the shipped vstd proof. When the shipped proof is served, the
-  quoted path is also `/rustc/<commit>/…`, where stock quotes the user's
-  `rust-src` copy. Verdicts and other diagnostics are unaffected. Both
-  need a fork fix; the shipped bundle is not accepted until then
-  ([record](validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)).
-
 - **The original focused Anvil benchmark never reached verification.** All
   18 retained Sail rows used non-JSON `sail verify` with `--verify-module`,
   which intentionally refuses partial verification. The benchmark correction
@@ -36,6 +25,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   determinism, all four DEEP modes and final guards pass. The matching runtime
   pins are selected on main through merged #223, with all required CI checks green. See the
   [qualification record](validation/spec-parameter-names.md).
+
+- **The demo's first run is 8.2% slower than stock** (#232; the release bar
+  is 5%). Most of the remainder is instant revert's native admission: each
+  native unit waits for every dependency's producer certificate and for other
+  units' compiler scratch directories, which undoes Cargo's rmeta pipelining.
+  Changing that is an ADR 0050 design change awaiting owner review.
+  Public-profile Vest is 4.8% slower. See the
+  [record](validation/cold-first-run.md).
 
 - **Instant revert has a narrow qualified profile and visible costs.** Final
   source `83128ad0` passes 72 fresh ordinary calls, genuine bundled Vest ABA and

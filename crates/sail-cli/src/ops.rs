@@ -324,12 +324,6 @@ COMMANDS:
     verify [--remove]      check every entry's integrity; --remove deletes bad files
     gc --max-bytes N       evict least recently used entries down to N bytes (K/M/G suffixes)
     clear --yes            remove every entry
-    keygen --out FILE      create a signing key (FILE) and its public key (FILE.pub)
-    trust add FILE.pub     trust a public key's signatures on shared entries
-    trust list             list the trusted keys
-    trust remove ID        stop trusting a key
-    publish --to STORE --key FILE [--filter command=NAME]... [--filter solver=SHA256]
-            [--dry-run]    sign this cache's pinned-solver entries into a shared store
     projects list|prune    managed runs' compiled targets and receipts, per workspace
                            (`sail cache projects --help`)
 

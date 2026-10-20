@@ -47,7 +47,8 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0025](VI-0025-module-candidate-absence.md) | Loaded source files do not establish absent module candidates | reproduced compiler-input limitation | conservative retained namespace eligibility; no general absence claim | `corpus/repros/rust-module-candidate-absence/` |
 | [VI-0026](VI-0026-macos-native-install-name.md) | Mac proc macros embed their absolute output library path | expected linker identity, reproduced | explicit research uses a stable install name; scoped Mac portable functionality passes | `corpus/repros/rust-macos-dylib-install-name/` |
 | [VI-0030](VI-0030-anonymous-impl-numbering.md) | Empty impl shifts methods and untouched clients' literal SMT | actual accepted-e536 Vest cause | function-only SMT alias source uncompiled/unselected | `corpus/repros/verus-impl-renumbering/` |
-| [VI-0031](VI-0031-rust-src-std-paths.md) | Exported VIR names the build host's rust-src copy of the standard library | Rust behaviour inherited by Verus, reproduced | Sail's engine build refuses `rust-src` and the pack/install check rejects such a `vstd.vir` | `corpus/repros/rust-src-std-paths/` |
+| [VI-0031](VI-0031-rust-src-std-paths.md) | Exported VIR names the build host's rust-src copy of the standard library | Rust behaviour inherited by Verus, reproduced | Sail's engine build refuses `rust-src` and the pack/install check rejects such a `vstd.vir`; runtime `64baccbb` remaps a shipped vstd's span strings to the local names | `corpus/repros/rust-src-std-paths/` |
+| [VI-0032](VI-0032-vest-rlimit-on-7d82994.md) | vest_lib exceeds the default rlimit on 0.2026.10.18.7d82994 | open | — | corpus entry `vest` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The

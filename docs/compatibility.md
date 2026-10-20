@@ -6,9 +6,9 @@ is validated against. Secondary pins are compatibility targets (ADR 0010),
 run locally with `SAIL_VERUS_RELEASE=<release>` (ADR 0013).
 
 **Sail's Verus.** Sail runs its own Verus, built from its fork
-(`engine/verus/fork.toml`, commit `9c0ca7e7`, rebased onto the primary pin
-`7d829946`; Linux and macOS runtimes are published and pinned, see
-[engine](../engine/verus/README.md) and [macOS engine](validation/macos-engine.md)), for every verification
+(`engine/verus/fork.toml`, commit `64baccbb`, rebased onto the primary pin
+`7d829946`; its Linux and macOS runtimes are published and pinned, see [engine](../engine/verus/README.md) and
+[macOS engine](validation/macos-engine.md)), for every verification
 ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). Stock releases
 are the conformance oracle: `sail-conformance run` compares Sail on its fork
 with plain stock Verus at the primary pin. Under a secondary pin the fork has
@@ -44,7 +44,8 @@ Upstream changes that can show in corpus results:
 - Vest at its corpus pin no longer verifies with the default rlimit:
   `parse_cbor_with_child` (`vest_lib/src/cbor/format.rs`) exceeds it under
   stock 7d82994 and Sail alike. Upstream verita runs Vest with
-  `--rlimit 100`.
+  `--rlimit 100`. The corpus entry now expects that one error
+  ([VI-0032](verus-issues/VI-0032-vest-rlimit-on-7d82994.md)).
 - Cargo 1.99.1 no longer passes a registry package's `[lints]` to the compiler
   under `--cap-lints allow`; the shipped native shapes were re-observed.
 

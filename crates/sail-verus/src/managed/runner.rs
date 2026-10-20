@@ -84,6 +84,9 @@ struct Paths {
     shipped_plan: Option<PathBuf>,
     /// `SAIL_RUSTC_DEV_SOURCE_BASE` for Sail's Verus (ADR 0048).
     source_base: Option<std::ffi::OsString>,
+    /// `SAIL_VIR_SPAN_REMAP` for Sail's Verus, set with `source_base`
+    /// (VI-0031).
+    span_remap: Option<std::ffi::OsString>,
 }
 
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
@@ -194,6 +197,16 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
             .into_owned(),
         installed(&wrapper.with_file_name("rust_verify"))?,
     ));
+    // With `rust-src`, rustc names standard library sources by the local copy,
+    // and so do span strings in VIR compiled here (VI-0031). Prebuilt VIR is
+    // renamed to match, so the copy's presence joins the proof context.
+    let rust_src = shipped_rust_src(&verifier_sysroot);
+    if let Some(rust_src) = &rust_src {
+        environment.insert(
+            b"sail-verifier-rust-src".to_vec(),
+            rust_src.as_os_str().as_encoded_bytes().to_vec(),
+        );
+    }
     for path in sysroot_files(&BTreeSet::from([cargo_sysroot, verifier_sysroot]))? {
         identity.push((path.to_string_lossy().into_owned(), installed(&path)?));
     }
@@ -259,6 +272,7 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
     let store_hash = store_family_hash(&config.args, engine, &identity, &environment)?;
     super::files::json(&state.join(format!("{hash}.link")), &identity_sha)?;
     Ok(Context {
+        rust_src,
         hash,
         compiler_hash,
         store_hash,
@@ -346,6 +360,15 @@ fn without_selection(args: &[String]) -> Vec<&str> {
     out
 }
 
+/// The directory rustc translates `/rustc/<commit>` standard library names
+/// to: the sysroot's `rust-src` root, when it holds the standard library.
+fn shipped_rust_src(sysroot: &Path) -> Option<PathBuf> {
+    let root = sysroot.join("lib/rustlib/src/rust");
+    root.join("library/std/src/lib.rs")
+        .is_file()
+        .then_some(root)
+}
+
 /// Files of the installed sysroots that compilation can load: `bin/rustc`,
 /// `bin/cargo`, the files directly in `lib/` and in each `lib/rustlib/*/lib/`.
 fn sysroot_files(sysroots: &BTreeSet<PathBuf>) -> Result<Vec<PathBuf>> {
@@ -392,6 +415,9 @@ fn sysroot_files(sysroots: &BTreeSet<PathBuf>) -> Result<Vec<PathBuf>> {
 }
 
 struct Context {
+    /// The verifier toolchain's `rust-src` copy of the standard library, when
+    /// installed ([`shipped_rust_src`]).
+    rust_src: Option<PathBuf>,
     hash: String,
     compiler_hash: String,
     /// The dependency store's view of the compiler family
@@ -429,6 +455,26 @@ fn context_hashes(
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     );
     Ok((hash, compiler_hash))
+}
+
+/// The manifest and target name of every selected target.
+fn selected_targets(
+    data: &Value,
+    expected: &BTreeSet<(String, String, String)>,
+) -> Vec<(PathBuf, String)> {
+    expected
+        .iter()
+        .filter_map(|(id, name, _)| {
+            let package = data["packages"]
+                .as_array()?
+                .iter()
+                .find(|package| package["id"] == *id)?;
+            Some((
+                PathBuf::from(package["manifest_path"].as_str()?),
+                name.clone(),
+            ))
+        })
+        .collect()
 }
 
 fn actual_wrapper(cargo_verus: &Path) -> Result<PathBuf> {
@@ -506,9 +552,9 @@ fn resolve_program(program: &std::ffi::OsStr, workspace: &Path) -> Result<PathBu
 
 fn alias(original: &Path, path: &Path) -> Result<()> {
     // An alias that resolves to the original's own inode is that file, so no
-    // byte comparison could differ. Copies and stale links keep the original
-    // full content comparison and replacement.
-    if same_file(original, path) || path.is_file() && file_digest(path)? == file_digest(original)? {
+    // byte comparison could differ. Copies and stale links keep the full
+    // content comparison (of the bytes directly) and replacement.
+    if same_file(original, path) || path.is_file() && super::files::same_content(original, path)? {
         return Ok(());
     }
     let _ = std::fs::remove_file(path);
@@ -615,6 +661,7 @@ fn prepare(
         reuse: true,
         shipped_plan: None,
         source_base: None,
+        span_remap: None,
     };
     for dir in [
         &paths.receipts,
@@ -632,8 +679,14 @@ fn prepare(
     if !member.is_file() {
         std::fs::write(&member, []).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
     }
-    alias(&config.sail, &paths.cargo_alias)?;
-    alias(&config.sail, &paths.proxy_alias)?;
+    // The two aliases are independent; copies are compared concurrently.
+    let (cargo_alias, proxy_alias) = std::thread::scope(|scope| {
+        let cargo_alias = scope.spawn(|| alias(&config.sail, &paths.cargo_alias));
+        let proxy_alias = alias(&config.sail, &paths.proxy_alias);
+        (cargo_alias.join(), proxy_alias)
+    });
+    cargo_alias.unwrap_or_else(|_| alias(&config.sail, &paths.cargo_alias))?;
+    proxy_alias?;
     Ok((paths, ownership))
 }
 
@@ -823,6 +876,7 @@ fn invoke(
         .env("SAIL_SOLVER_MODE", "default")
         .env_remove(super::shipped::PLAN_ENV)
         .env_remove(super::shipped::SOURCE_BASE_ENV)
+        .env_remove(super::shipped::SPAN_REMAP_ENV)
         .env_remove("SAIL_ENGINE")
         .env_remove("SAIL_ENGINE_FUNCTION")
         .env_remove("SAIL_ENGINE_EVENTS")
@@ -841,6 +895,9 @@ fn invoke(
     }
     if let Some(base) = &paths.source_base {
         cmd.env(super::shipped::SOURCE_BASE_ENV, base);
+    }
+    if let Some(remap) = &paths.span_remap {
+        cmd.env(super::shipped::SPAN_REMAP_ENV, remap);
     }
     #[cfg(unix)]
     let visible = super::visible_output::Receiver::bind()
@@ -1450,10 +1507,14 @@ fn dirty_receipt_packages(
     revisions: &BTreeMap<PathBuf, ReceiptRevision>,
     data: &Value,
 ) -> Vec<String> {
-    revisions
-        .values()
-        .filter(|r| r.input_revision != target_revision(data, &r.package_id))
-        .map(|r| r.package_id.clone())
+    // Each current revision is its own complete snapshot; they overlap.
+    let receipts: Vec<&ReceiptRevision> = revisions.values().collect();
+    let current = crate::parallel::in_order(&receipts, |r| target_revision(data, &r.package_id));
+    receipts
+        .into_iter()
+        .zip(current)
+        .filter(|(r, current)| r.input_revision != *current)
+        .map(|(r, _)| r.package_id.clone())
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
@@ -1532,12 +1593,29 @@ fn target_records(
         }
         stored.insert(path, receipt);
     }
-    digests.prefetch(
-        batch
-            .iter()
-            .filter(|path| path.is_file())
-            .map(PathBuf::as_path),
-    );
+    // Each verified package's current revision is its own complete snapshot.
+    // They are taken while the batch is read, in the same phase.
+    let ids: Vec<String> = artifacts
+        .iter()
+        .filter(|artifact| verified(artifact).is_some())
+        .filter_map(|artifact| artifact["package_id"].as_str())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .map(str::to_owned)
+        .collect();
+    let revisions: HashMap<String, String> = std::thread::scope(|scope| {
+        let current =
+            scope.spawn(|| crate::parallel::in_order(&ids, |id| target_revision(data, id)));
+        digests.prefetch(
+            batch
+                .iter()
+                .filter(|path| path.is_file())
+                .map(PathBuf::as_path),
+        );
+        current.join().ok()
+    })
+    .map(|current| ids.into_iter().zip(current).collect())
+    .unwrap_or_default();
     for artifact in artifacts {
         let Some(package) = verified(&artifact) else {
             continue;
@@ -1557,7 +1635,10 @@ fn target_records(
                 && kind.contains(target_kind)
         });
         let force = force && requested;
-        let input_revision = target_revision(data, package_id);
+        let input_revision = revisions
+            .get(package_id)
+            .cloned()
+            .unwrap_or_else(|| target_revision(data, package_id));
         let path = receipt_path(paths, package_id, name, &kind);
         let call = calls.iter().find(|c| {
             c.identity.manifest == Path::new(package["manifest_path"].as_str().unwrap_or_default())
@@ -2280,6 +2361,7 @@ pub(crate) fn run_engine_held(
     }
     drop(metadata_phase);
     let Context {
+        rust_src,
         hash,
         compiler_hash,
         store_hash,
@@ -2327,7 +2409,17 @@ pub(crate) fn run_engine_held(
                 registry,
             ))
         });
+    paths.span_remap = paths
+        .source_base
+        .as_ref()
+        .and(registry.as_deref())
+        .and_then(|registry| super::shipped::span_remap(registry, rust_src.as_deref()));
+    // A shipped bundle's stored span strings name virtual paths; without the
+    // remap that names them as this machine's, its diagnostics could differ
+    // from stock, so the bundle is not served (VI-0031).
+    let remap_missing = paths.source_base.is_some() && paths.span_remap.is_none();
     let shipped_plan = if focused(&config.args)
+        || remap_missing
         || engine.is_some()
         || !paths.reuse
         || research == super::research::Mode::RetainedContent
@@ -2584,7 +2676,18 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
-        retained: if !forced && !source_engine && paths.reuse && !receipt_covered {
+        // Retention is optional restoration work: a target whose compile is
+        // cheap next to retention compiles normally instead (#156).
+        retained: if !forced
+            && !source_engine
+            && paths.reuse
+            && !receipt_covered
+            && super::retained::cost::pays(
+                &paths.receipts,
+                selected_targets(&data, &expected)
+                    .iter()
+                    .map(|(manifest, name)| (manifest.as_path(), name.as_str())),
+            ) {
             super::retained::Plan::prepare(
                 &data,
                 &paths.target,

@@ -21,7 +21,12 @@ and macOS arm64: Sail's workspace (Cargo.lock) for `sail-cli` and
 engine/verus/Cargo.lock) for the runtime packages. Each crate's notice is the
 licence files its package contains, copied verbatim.
 
-    scripts/third-party-notices.py --verus-repo FORK_CLONE --work NEW_DIR [--check]
+Z3's licence is vendored per version as scripts/notices/z3-<version>-LICENSE.txt,
+for the version corpus/toolchain.toml pins; a pin without it fails. Without
+--verus-repo, the pinned fork commit is fetched from engine/verus/fork.toml's
+repository.
+
+    scripts/third-party-notices.py [--verus-repo FORK_CLONE] --work NEW_DIR [--check]
 """
 import argparse
 import hashlib
@@ -41,11 +46,8 @@ SAIL_ROOTS = ('sail-cli', 'sail-shim')
 VERUS_ROOTS = ('rust_verify', 'verus', 'cargo-verus', 'verus_builtin', 'verus_builtin_macros',
                'verus_state_machines_macros')
 LICENSE_FILE = re.compile(r'^(licen[cs]e|copying|notice|copyright|unlicense|authors)([-._].*)?$', re.I)
-Z3_LICENSE = ROOT / 'scripts/notices/z3-LICENSE.txt'
-
-
-def run(command, cwd, env=None):
-    result = subprocess.run(command, cwd=cwd, env=env, capture_output=True, check=False)
+def run(command, cwd, env=None, data=None):
+    result = subprocess.run(command, cwd=cwd, env=env, input=data, capture_output=True, check=False)
     if result.returncode != 0:
         sys.stderr.write(result.stderr.decode(errors='replace')[-4000:])
         raise SystemExit('third-party-notices: failed: ' + ' '.join(map(str, command)))
@@ -179,18 +181,37 @@ def render(sections):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--verus-repo', type=Path, required=True, help='a Git clone holding the pinned fork commit')
+    parser.add_argument('--verus-repo', type=Path,
+                        help="a Git clone holding the pinned fork commit (default: fetch it from fork.toml's repository)")
     parser.add_argument('--work', type=Path, required=True, help='a new directory')
     parser.add_argument('--check', action='store_true', help='compare with THIRD-PARTY-NOTICES instead of writing')
     args = parser.parse_args()
     work = args.work.absolute()
     work.mkdir(parents=True)
     env = {k: v for k, v in os.environ.items() if not k.startswith(('CARGO_TARGET', 'SAIL_'))}
-    fork = tomllib.loads((ROOT / 'engine/verus/fork.toml').read_text())['fork']['commit']
+    # Run every `cargo metadata` with Sail's own toolchain. In the fork's
+    # checkout, its rust-toolchain.toml would otherwise make rustup install
+    # rustc-dev, llvm-tools and rustfmt into the verifier toolchain, and
+    # release staging records the shipped vstd proof against that toolchain
+    # next, under a compiler identity that README installations never have.
+    env['RUSTUP_TOOLCHAIN'] = tomllib.loads((ROOT / 'rust-toolchain.toml').read_text())['toolchain']['channel']
+    pin = tomllib.loads((ROOT / 'engine/verus/fork.toml').read_text())['fork']
+    fork = pin['commit']
+    z3_version = tomllib.loads((ROOT / 'corpus/toolchain.toml').read_text())['z3']['version']
+    z3_license = ROOT / f'scripts/notices/z3-{z3_version}-LICENSE.txt'
+    if not z3_license.is_file():
+        raise SystemExit(f'third-party-notices: no vendored licence for the pinned Z3 {z3_version} '
+                         f'({z3_license.relative_to(ROOT)}); add it from Z3Prover/z3 at z3-{z3_version}')
+    repo = args.verus_repo
+    if repo is None:
+        repo = work / 'fork.git'
+        git_env = dict(os.environ, GIT_TERMINAL_PROMPT='0')
+        run(['git', 'init', '--quiet', '--bare', str(repo)], work, git_env)
+        run(['git', 'fetch', '--quiet', '--depth', '1', pin['repo'], fork], repo, git_env)
     verus = work / 'verus'
     verus.mkdir()
-    archive = run(['git', 'archive', '--format=tar', fork], args.verus_repo)
-    subprocess.run(['tar', '-x', '-C', str(verus)], input=archive, check=True)
+    archive = run(['git', 'archive', '--format=tar', fork], repo)
+    run(['tar', '-x', '-C', str(verus)], work, data=archive)
     shutil.copyfile(ROOT / 'engine/verus/Cargo.lock', verus / 'source/Cargo.lock')
 
     sail_registry, _ = closure(ROOT, SAIL_ROOTS, env)
@@ -218,7 +239,7 @@ def main():
                       'https://github.com/rust-lang/rust'))
     sections = [
         ('Z3 (the solver binary in engine/<variant>/, from the Verus release)',
-         [('Z3 4.16.0', 'MIT', [('LICENSE.txt', Z3_LICENSE.read_text())], 'https://github.com/Z3Prover/z3')]),
+         [(f'Z3 {z3_version}', 'MIT', [('LICENSE.txt', z3_license.read_text())], 'https://github.com/Z3Prover/z3')]),
         ('Sail\'s Verus (engine/<variant>/ and the vstd proof in deps/<variant>/)', fork_rows),
         ('Crates compiled into Sail\'s Verus', notices(verus_registry, standard)),
         ('Crates compiled into the shipped vstd proof (deps/<variant>/)', notices(shipped_registry, standard)),

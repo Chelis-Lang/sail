@@ -280,6 +280,50 @@ impl Snapshot {
         })
     }
 
+    /// The artifact paths [`Self::capture_ready`] would copy now, after the
+    /// same wait for compiler scratch directories and the same path, kind and
+    /// membership checks, without copying or reading any body. A caller that
+    /// only waits for these artifacts' producers before its own complete
+    /// capture needs nothing more.
+    pub(super) fn artifacts_ready(
+        owned_target: &Path,
+        args: &[OsString],
+    ) -> Option<BTreeSet<PathBuf>> {
+        let target = owned_target.canonicalize().ok()?;
+        let unit = Unit::parse(args)?;
+        let (directories, externs) = lookups(&target, &unit, args)?;
+        if directories.is_empty()
+            || directories.len() > 8
+            || unit.directory.canonicalize().ok()? != unit.directory
+            || !unit.directory.starts_with(&target)
+        {
+            return None;
+        }
+        capture_after_directory_work(&directories, &unit, || {
+            let mut artifacts = BTreeSet::new();
+            for directory in &directories {
+                let mut names = 0usize;
+                for entry in std::fs::read_dir(directory).ok()? {
+                    let entry = entry.ok()?;
+                    if unit.owns(&entry.path()) {
+                        continue;
+                    }
+                    names += 1;
+                    if !entry.file_type().ok()?.is_file() || names > ENTRY_LIMIT {
+                        return None;
+                    }
+                    if artifact(&entry.path()) {
+                        artifacts.insert(entry.path());
+                    }
+                }
+            }
+            externs
+                .iter()
+                .all(|path| artifacts.contains(path))
+                .then_some(artifacts)
+        })
+    }
+
     /// Reuse a graph only after full new reads of the actual mutable dependency
     /// inventory and all private bodies. There is no metadata-freshness memo.
     pub(super) fn reuse(owned_target: &Path, graphs: &Path, args: &[OsString]) -> Option<Self> {
@@ -301,7 +345,7 @@ impl Snapshot {
             directories: BTreeMap::new(),
             artifacts: BTreeMap::new(),
         };
-        let mut remaining = TOTAL_LIMIT;
+        let mut bodies = Vec::new();
         for directory in &directories {
             let mut names = BTreeSet::new();
             for entry in std::fs::read_dir(directory).ok()? {
@@ -316,12 +360,21 @@ impl Snapshot {
                     return None;
                 }
                 if artifact(&entry.path()) {
-                    let bytes = read_content(&entry.path(), remaining.min(FILE_LIMIT))?;
-                    remaining = remaining.checked_sub(bytes.size)?;
-                    inventory.artifacts.insert(entry.path(), bytes);
+                    bodies.push(entry.path());
                 }
             }
             inventory.directories.insert(directory.clone(), names);
+        }
+        // Full reads of every body, concurrently; the total limit then applies
+        // to the actual sizes, as when reading one by one.
+        let contents = crate::parallel::in_order(&bodies, |path| {
+            read_content(path, TOTAL_LIMIT.min(FILE_LIMIT))
+        });
+        let mut remaining = TOTAL_LIMIT;
+        for (path, bytes) in bodies.into_iter().zip(contents) {
+            let bytes = bytes?;
+            remaining = remaining.checked_sub(bytes.size)?;
+            inventory.artifacts.insert(path, bytes);
         }
         if externs
             .iter()
@@ -384,7 +437,7 @@ impl Snapshot {
             copies: BTreeMap::new(),
             arguments: Vec::new(),
         };
-        let mut remaining = TOTAL_LIMIT;
+        let mut copies = Vec::new();
         for (index, directory) in directories.iter().enumerate() {
             let destination = root.join(index.to_string());
             builder.create(&destination).ok()?;
@@ -401,13 +454,7 @@ impl Snapshot {
                     return None;
                 }
                 if artifact(&entry.path()) {
-                    let copied = destination.join(entry.file_name());
-                    let bytes = copy(&entry.path(), &copied, remaining)?;
-                    remaining = remaining.checked_sub(bytes.size)?;
-                    if !content(&copied, &bytes) {
-                        return None;
-                    }
-                    snapshot.inventory.artifacts.insert(entry.path(), bytes);
+                    copies.push((entry.path(), destination.join(entry.file_name())));
                 }
             }
             snapshot
@@ -415,6 +462,25 @@ impl Snapshot {
                 .directories
                 .insert(directory.clone(), names);
             snapshot.copies.insert(directory.clone(), destination);
+        }
+        // Copy and verify the bodies concurrently. Each body is copied, hashed
+        // and reread exactly as one by one; the total limit is then applied
+        // to the actual sizes, so the same graphs are refused.
+        let listed = copies.iter().try_fold(0u64, |total, (original, _)| {
+            total.checked_add(std::fs::symlink_metadata(original).ok()?.len())
+        })?;
+        if listed > TOTAL_LIMIT {
+            return None;
+        }
+        let bodies = crate::parallel::in_order(&copies, |(original, copied)| {
+            let bytes = copy(original, copied, TOTAL_LIMIT)?;
+            content(copied, &bytes).then_some(bytes)
+        });
+        let mut remaining = TOTAL_LIMIT;
+        for ((original, _), bytes) in copies.into_iter().zip(bodies) {
+            let bytes = bytes?;
+            remaining = remaining.checked_sub(bytes.size)?;
+            snapshot.inventory.artifacts.insert(original, bytes);
         }
         if externs
             .iter()
@@ -577,13 +643,16 @@ impl Snapshot {
             };
             actual == expected
         });
+        let artifacts: Vec<_> = self.inventory.artifacts.iter().collect();
         membership
-            && self.inventory.artifacts.iter().all(|(path, expected)| {
+            && crate::parallel::in_order(&artifacts, |&(path, expected)| {
                 path.parent()
                     .and_then(|parent| self.copies.get(parent))
                     .zip(path.file_name())
                     .is_some_and(|(directory, name)| content(&directory.join(name), expected))
             })
+            .into_iter()
+            .all(|intact| intact)
     }
 }
 
@@ -692,15 +761,18 @@ fn graph_intact(root: &Path, inventory: &Inventory) -> bool {
             }) else {
                 return false;
             };
+            let artifacts: Vec<_> = inventory
+                .artifacts
+                .iter()
+                .filter(|(path, _)| path.parent() == Some(original))
+                .collect();
             actual == expected
-                && inventory
-                    .artifacts
-                    .iter()
-                    .filter(|(path, _)| path.parent() == Some(original))
-                    .all(|(path, expected)| {
-                        path.file_name()
-                            .is_some_and(|name| content(&directory.join(name), expected))
-                    })
+                && crate::parallel::in_order(&artifacts, |&(path, expected)| {
+                    path.file_name()
+                        .is_some_and(|name| content(&directory.join(name), expected))
+                })
+                .into_iter()
+                .all(|intact| intact)
         })
 }
 

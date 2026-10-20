@@ -5,11 +5,42 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Cut fixed overhead on small managed runs (#156). Instant-revert
+  retention now skips a target whose last compile cost less than four times
+  retention's own checks, which on a one-function project took 1.5 s per
+  edit and 0.7 s per revert; Vest-class targets keep instant revert. The
+  per-target revision snapshots of a run overlap, and copied driver aliases
+  (sail installed on another filesystem than its cache) are compared byte
+  for byte instead of by two digests. Linux demo project: small edit
+  2.55 s to 1.04 s, revert 1.72 s to 1.01 s, unchanged 0.22 s to 0.215 s
+  (stock 0.79, 0.79 and 0.12 s); verdicts and output are unchanged. See
+  [managed overhead](docs/validation/managed-overhead.md#small-project-overhead-156).
+
+- `sail --help` lists only the supported commands. `explain`, `baseline`,
+  `compare`, `fragility`, `serve` and the team-cache subcommands of
+  `sail cache` (`keygen`, `trust`, `publish`, `serve`, `connect`,
+  `disconnect`) still run. Their own help now starts with an experimental
+  note. `repair-check` stays listed, marked experimental. `sail verify --help`
+  no longer lists `--portfolio` or `--measure-fragility`. MCP's fragility
+  tool detects `sail fragility` with `sail help fragility`.
+
 - Release archives carry `LICENSE` and `THIRD-PARTY-NOTICES`. The notices
   cover Z3, Sail's Verus with its copies of Rust compiler crates, the crates
   compiled into the runtime, the shipped vstd proof and `sail`/`sail-z3`, and
   the Rust standard library. `scripts/third-party-notices.py` generates them
   from the locks and the pinned fork.
+- Make first runs faster without changing what is checked (#232). The daemon
+  compares the solver with its retained bytes in place during each handshake,
+  while the version command runs. Finished solver sessions send their stores
+  in windows instead of one round trip each, and shim exit no longer waits out
+  the stderr monitor's poll. Instant revert's native admission waits for
+  producers on a path listing instead of a discarded copy. Its graph copies,
+  rereads, certificate, source and runtime checks run on up to eight workers,
+  and its source snapshot overlaps the graph capture. On native Linux the demo's
+  first run went from 22.5% to 8.2% slower than stock, and public-profile Vest's
+  from 12.6% to 4.8%. Vest's returned A went from 2.75 s to 1.62 s. The demo is
+  still above the release bar; see the
+  [record](docs/validation/cold-first-run.md).
 
 - Move Sail's Verus to upstream 0.2026.10.18.7d82994 (Rust 1.99.1, Z3 4.16.0
   unchanged), with the fork rebased onto it. Install Rust with
@@ -24,6 +55,12 @@ semantic versioning once the API is published.
   proof now names standard-library files by rustc's virtual `/rustc/<commit>`
   paths, not the recording host's `rust-src` copy (VI-0031). The new runtime's
   qualification is pending.
+
+- Diagnostics that print an imported span's stored text (for example an
+  extension impl with no matching standard-library impl) now read exactly as
+  stock's when Sail serves the shipped vstd: standard-library and registry
+  paths name this machine's files, and the printed `dbg!` location is
+  stock's (VI-0031, runtime `64baccbb`; byte comparison on Linux and macOS).
 
 - Run managed Cargo with the engine's pinned toolchain (currently `1.99.1`) when the
   caller made no toolchain choice, so the shipped vstd proof applies with a

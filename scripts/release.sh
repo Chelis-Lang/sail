@@ -74,7 +74,13 @@ stage() {
   rm -rf "$out"
   mkdir -p "$out/bin"
   # Sail's licence and the notices for everything else the archive
-  # redistributes (scripts/third-party-notices.py).
+  # redistributes. Stale notices fail the release: the check regenerates them
+  # from the locks and the pinned fork (scripts/third-party-notices.py).
+  local notices
+  notices="$(mktemp -d)"
+  "$release_python" -B scripts/third-party-notices.py --check --work "$notices/work" \
+    || die "THIRD-PARTY-NOTICES is stale: regenerate it with scripts/third-party-notices.py"
+  rm -rf "$notices"
   cp LICENSE THIRD-PARTY-NOTICES "$out/"
   cp target/release/sail target/release/sail-z3 "$out/bin/"
   chmod 755 "$out/bin/sail" "$out/bin/sail-z3"

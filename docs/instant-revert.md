@@ -29,6 +29,18 @@ unsupported macro/generated inputs, foreign imports and unsupported
 source namespaces remain fresh. Loader, engine and focused contexts keep their
 existing refusal rules.
 
+Retention also has to pay for itself. Its checks read the target's whole
+private dependency graph (vstd and the macro crates) before and after the
+compiler runs, about 1.5 s on the current runtime. Each verifying compile
+records, beside the proof context's receipts (`retention-costs/`), how long
+the compiler and, when engaged, retention took. A run prepares no retention
+for its selected targets when every one of them last compiled in less than
+four times its measured retention, so a one-function crate compiles normally
+on every edit and revert, while a Vest-class target (about 26 s against
+1.5 s) keeps instant revert. A target without a record, or with an unreadable
+one, keeps retention; a skipped plan compiles normally and changes no verdict,
+receipt or check. The records authorize nothing.
+
 The explicit vstd-boundary experiment suppresses automatic retention. Explicitly
 requesting both research modes still refuses with `SAIL3135`. The runner passes
 an admitted plan through the existing managed runtime file; it does not add a

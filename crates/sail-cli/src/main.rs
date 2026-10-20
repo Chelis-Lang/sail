@@ -1,7 +1,8 @@
 //! The `sail` binary.
 //!
-//! Verification, persistent jobs, workspace watch, MCP, cache management,
-//! fragility measurement, and `sail bench` for contributors.
+//! Verification, persistent jobs, workspace watch, MCP and cache management.
+//! Experimental commands (`help::EXPERIMENTAL`) and `sail bench` for
+//! contributors run but are not listed by `sail --help`.
 #![forbid(unsafe_code)]
 
 mod engine_cli;
@@ -31,7 +32,7 @@ use std::process::ExitCode;
 /// The version `sail --version` reports, which every report also states.
 const VERSION: &str = sail_api::VERSION;
 
-/// Commands named by the charter, in the order `--help` lists them.
+/// The supported commands, in the order `--help` lists them.
 const COMMANDS: &[(&str, &str)] = &[
     (
         "new",
@@ -43,31 +44,20 @@ const COMMANDS: &[(&str, &str)] = &[
     ),
     (
         "repair-check",
-        "focus a repair, then independently validate its full target",
+        "(experimental) focus a repair, then independently validate its full target",
     ),
     (
         "engine",
         "install or inspect Sail's Verus (fork runtime and repair engine)",
     ),
-    ("explain", "show exact failure evidence from a retained job"),
-    (
-        "baseline",
-        "save, list and read immutable verification baselines",
-    ),
-    ("compare", "compare completed jobs or a saved baseline"),
     ("watch", "re-verify the workspace as files change"),
     ("jobs", "inspect, follow, or cancel local verification jobs"),
     (
         "mcp",
         "serve verification to agents over MCP (stdio; see docs/mcp.md)",
     ),
-    ("serve", "run the S.A.I.L. daemon in the foreground"),
     ("status", "show daemon and cache state"),
     ("cache", "inspect and manage the result cache"),
-    (
-        "fragility",
-        "measure proof fragility across solver seeds (opt-in; changes no verdict)",
-    ),
 ];
 
 /// Exit code for a malformed command line.
