@@ -86,7 +86,7 @@ mkdir -p ../repair-demo/src
 cd ../repair-demo
 cat > rust-toolchain.toml <<'TOML'
 [toolchain]
-channel = "1.98.1"
+channel = "1.99.1"
 TOML
 cat > Cargo.toml <<'TOML'
 [package]
@@ -100,7 +100,7 @@ edition = "2021"
 verify = true
 
 [dependencies]
-vstd = "=0.0.0-2026-10-04-0306"
+vstd = "=0.0.0-2026-10-18-0147"
 TOML
 cat > src/lib.rs <<'RUST'
 use vstd::prelude::*;

@@ -2,6 +2,7 @@
 
 mod absent;
 mod build_inputs;
+pub mod cargo_toolchain;
 mod configuration;
 mod dependency_snapshot;
 mod diagnostics;
@@ -24,6 +25,7 @@ mod source_inputs;
 mod store;
 pub(crate) mod visible_output;
 
+pub use cargo_toolchain::CargoToolchain;
 pub(crate) use files::{digest, event, file_digest, json, stat_identity};
 pub use freshness::FreshnessIndex;
 pub use input::{InputSnapshot, snapshot};

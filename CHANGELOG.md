@@ -5,6 +5,48 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Move Sail's Verus to upstream 0.2026.10.18.7d82994 (Rust 1.99.1, Z3 4.16.0
+  unchanged), with the fork rebased onto it. Install Rust with
+  `rustup toolchain install 1.99.1 --profile minimal --component rust-src`.
+  `sail new` projects use the matching `vstd 0.0.0-2026-10-18-0147`. Under
+  this release `--verify-only-module` reports partial verification, as the
+  other `--verify-*` options do. The published vstd version is now a pin in
+  `corpus/toolchain.toml`, and `scripts/source-policies.py` generates the
+  shipped and retained source policies from the pins
+  ([ADR 0059](docs/decisions/0059-pinned-vstd-and-generated-source-policies.md)).
+  0.2026.10.04.426d8b0 stays available as a secondary pin. The shipped vstd
+  proof now names standard-library files by rustc's virtual `/rustc/<commit>`
+  paths, not the recording host's `rust-src` copy (VI-0031). The new runtime's
+  qualification is pending.
+
+- Run managed Cargo with the engine's pinned toolchain (currently `1.99.1`) when the
+  caller made no toolchain choice, so the shipped vstd proof applies with a
+  newer default Cargo ([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
+  `RUSTUP_TOOLCHAIN`, `CARGO`, `RUSTC`, a `rust-toolchain` file, a rustup
+  override or a Cargo that is not a rustup proxy keep the caller's Cargo.
+  Nothing is installed: without the pinned toolchain's `rust-src`, Sail runs
+  the default Cargo and a release with a shipped proof notes `SAIL3137`. Stock
+  comparisons now run `RUSTUP_TOOLCHAIN=<effective toolchain> cargo verus
+  verify`. The README's install step adds `rust-src`.
+
+- Bind the runtime manifest digest in the engine pins (`manifest_sha256`),
+  checked on install. A unit test requires the qualified Linux retained-reuse
+  manifest to equal the pin, and a valid engine with another manifest now
+  notes `SAIL3136` instead of silently leaving instant revert off.
+
+- Add candidate coexistence between adjacent vstd release proofs and requested
+  target instant revert. A single actual native observation is independently
+  checked for each authority; served vstd has a distinct indexed-release
+  witness, and requested targets retain their own compiler-read checks.
+  The closed public default-feature profile joins the existing Vest profile.
+  Source review and 14 focused Mac controls pass; native combined-profile and
+  late-mutation qualification remain pending. No new release is selected.
+
+- Stop the release recorder's whole owned process group when a command or
+  server leader exits early, including descendants that ignore termination.
+  Cleanup outcomes remain visible on failure; these mock-qualified recorder
+  controls do not qualify a real release or change proof eligibility.
+
 - Skip optional proof-archive planning on unchanged runs
   for already covered receipt revisions (#156). A 36-call native Vest screen
   lowers unchanged checks from 0.895 s to 0.544 s (39.29%) and the four-call sum
@@ -21,9 +63,34 @@ semantic versioning once the API is published.
   data shows no gain: changed-B median is 0.99% slower and unchanged timings
   overlap; no CPU gain is claimed. Both earlier Vest capture failures remain
   recorded. Joined Mac and full native qualification, including all four FAST
-  and STANDARD arms, final guards and complete capture, pass; the delivery head
-  still requires its own CI. See [output](docs/validation/managed-output-order.md)
+  and STANDARD arms, final guards and complete capture, pass; PR #226 is merged
+  after delivery CI and review passed. See [output](docs/validation/managed-output-order.md)
   and [scheduling](docs/validation/unscheduled-script-cleaning.md) records.
+- Require the complete pinned Rust-source component for candidate proof-bundle
+  recording and smoke tests, and require actual indexed release-proof origin
+  on the smoke's first verification. A successful full fallback no longer
+  passes that first-Serve smoke. Ordinary minimal installs remain unchanged;
+  proof-bundle eligibility and both-platform first-use gain remain unqualified.
+
+- Add candidate release-time recording of the vstd proof with the final staged
+  binaries, complete release-member integrity checks, and automatic serving only
+  from the matching adjacent bundle. Native prerequisites still compile and all
+  compiler-input/byte checks remain required. Release first-use on both platforms
+  and changed Rustup roots remains unqualified; no release is published here.
+  New projects seed the admitted bundle's dependency lock before their final
+  rename, preserving any generator-written lock. Compiler children locate the
+  admitted bundle through the bound runtime and must match the indexed Sail
+  executable even when running under a cache alias.
+  A further unqualified source candidate binds and remaps the verifier's exact
+  compiler-source tree for portable native builds; missing or changed sources
+  decline proof reuse. Portable native changes are further restricted to pinned
+  Cargo compiler shapes; unsupported warning/cfg/Rustflag contexts retain
+  original arguments and genuine verification. A further Mac-only candidate
+  removes native proc-macro debug maps at link time in portable modes, without
+  changing consumer arguments or rewriting artifacts. Literal panic/backtrace
+  and staged first-use acceptance remain required.
+  Cancelling release proof recording now reaps its owned commands and daemon
+  before removing private scratch.
 
 - Restore a previously verified workspace revision on ordinary Linux checks
   within the qualified public alloc/std dependency profile (#163). Restored
@@ -37,8 +104,10 @@ semantic versioning once the API is published.
 - Add an explicit compiler-boundary vstd research path that compiles native
   prerequisites freshly and binds actual compiler inputs and private dependency
   graphs (#161). Same-host Linux and Mac moved-root Record/Serve/unchanged
-  functionality passes with full stock verdict/diagnostic checks. Distributed
-  release packaging and default fresh-machine first use remain pending;
+  functionality passes with full stock verdict/diagnostic checks. Candidate
+  release packaging and actual Mac first-use components now pass with the
+  indexed proof origin at changed physical Rustup/sysroot roots. Linux clean
+  consumer acceptance and default fresh-machine performance remain pending;
   the old native-artifact store remains quarantined. See the
   [research limits](docs/validation/vstd-compile-boundary.md).
 

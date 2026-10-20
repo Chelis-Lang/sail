@@ -2,7 +2,7 @@
 
 | Gate | Current state |
 |---|---|
-| Implementation | Explicit compiler-wrapper research path; requires `SAIL_VSTD_BOUNDARY_RESEARCH=1`; schema 12 |
+| Implementation | Candidate adjacent release-bundle Serve activation; actual Mac staged first-use components and full Linux regression qualification pass; bounded Cargo-1.98 first-use component improves; complete public-interaction acceptance pending; explicit Record/LOCAL/alternate modes remain research-only |
 | Native prerequisites | Every native compiler executes normally; current-run successful provenance and actual linked bytes required |
 | Reuse scope | Pinned, nonprimary vstd library only; no native units or Cargo fingerprints |
 | Identity | Literal flags, actual runtime/sysroot/solver bytes, linked libraries/VIR, official source/feature closure and environment |
@@ -10,9 +10,449 @@
 | Native performance | Historical direct-observation source `6ea94c8d`: median 39.840 s versus 9.336 s over three pairs; not a final schema-12 or release-performance result |
 | Compiler-input boundary | Final-source functional probes retain real native and verified-input certificates under the closed source/feature policy; earlier native source/transitive controls keep their recorded source scope |
 | Literal query comparison | Two separate cold controls match all 366 literal input streams / 2,061 checks each; this is not reuse or stock acceptance |
-| Portable functionality | Linux `83128ad0` and the matching Mac component pass changed Cargo/project/install-root Record → Serve → unchanged; same-host/same-Rustup scope |
-| Default regression gates | `83128ad0`: full Linux gate/solver/all E2E+extra/PR/FAST/STANDARD and final guards pass; Mac host clippy plus 742 tests pass |
-| Selection | Explicit research only; distributed release/default fresh-machine first use remains pending; v1 stays quarantined |
+| Portable functionality | Linux `83128ad0` and the earlier Mac component pass changed Cargo/project/install roots. The guarded Mac successor passes changed physical Rustup/sysroot roots, full Record → Serve → unchanged and both negative comparisons. A separate native-only successor passes all twelve consumer pairs; the original enclosing cohort stays FAIL |
+| Default regression gates | 7d82994 candidate (`a12beb53`, runtime `9c0ca7e7`): native Linux gate (811 tests), solver, all end-to-end phases plus extra and the PR conformance subset (33/33 same in every arm) pass; full FAST/STANDARD conformance pending. The previous `426d8b0` candidate passed Mac host clippy and 779 tests and full FAST/STANDARD. Earlier `83128ad0` full Linux results retain their original source scope |
+| Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
+
+## Verus 7d82994 bundle and standard-library paths (VI-0031)
+
+Linux x86-64 bundle for runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`),
+recorded by `ci/local.sh release` (recorder as at `7b9416d7`, Cargo 1.99.1
+with `rust-src`) on native EC2 hosts in us-east-1: c7i.4xlarge `d17` and
+c7i.8xlarge `rq1`, both Ubuntu 24.04. Both recordings give proof identity
+`4c0b33fa…` and bundle manifest `bab28a85…`. Status: **recorded; first use
+measured; diagnostic identity FAILS on one reachable diagnostic class (below);
+not accepted.**
+
+- **Host path.** With `rust-src` installed, rustc names standard-library
+  files by their local copy, and Verus writes those names into exported VIR
+  ([VI-0031](../verus-issues/VI-0031-rust-src-std-paths.md)). The first
+  recording's `libvstd.vir` held 9,611 spans under the recording container's
+  `/opt/rustup/toolchains/1.99.1-…/lib/rustlib/src/rust`. The recorder now
+  remaps the `rust-src` root to `/rustc/<rustc commit>` for the vstd unit, so
+  `libvstd.vir` (sha256 `3a62facc…`) has 0 local and 9,611 `/rustc/58cf8f9c…`
+  spans, as the Verus release's own `vstd.vir` does. No other bundle member
+  names a host path.
+- **Where those spans can surface.** vstd's VIR packs spans as positions in
+  vstd's own source files; standard-library positions have no recorded file,
+  so no consumer can resolve them. A label on such a span prints Verus's
+  fallback line `[rust_verify/src/verifier.rs:<line>:17] &sp.as_string =
+  "<path>"` with the string recorded at export. One reachable trigger is an
+  extension impl without a matching standard-library impl, such as
+  `impl<'a> DisplaySpecImpl for &'a S` (or `DebugSpecImpl for &'a mut S`):
+  Verus's "must have a matching impl" error labels core's
+  `impl<T: Display> Display for &T`.
+- **Byte comparison.** A user-like host was used (rustup in `~/.rustup`,
+  default 1.99.0, pinned 1.99.1, fresh `CARGO_HOME` and Sail cache). Stock
+  `cargo verus verify` and the staged `sail verify` were run on five probes:
+  the two extension impls; the VI-0031 `external_type_specification` of
+  `PhantomPinned`; failing vstd lemma preconditions
+  (`lemma_fundamental_div_mod`, `lemma_mul_strict_inequality`) with std op,
+  `unwrap` and indexing preconditions; and the same with `--expand-errors`.
+  Stdout and exit codes match everywhere. Cargo's parallel progress lines
+  change order but match as a set. Diagnostics:
+
+  | Probe | With `rust-src` (shipped hit, `SAIL3132`) | Without (`SAIL3137`) |
+  |---|---|---|
+  | Extension impls (2) | **Different**: stock names `~/.rustup/…/library/core/src/fmt/mod.rs:2871:9`, Sail `/rustc/58cf8f9c…/library/core/src/fmt/mod.rs:2871:9`; fallback line `verifier.rs:113` vs `117` | **Different**: same path; fallback line `verifier.rs:113` vs `117` |
+  | `external_type_specification`, lemma and std preconditions | Same | Same |
+  | The same with `--expand-errors` | Same (the bundle misses: it was recorded without the flag) | Same |
+
+  Two defects follow. The bundle's recorded `/rustc/` string cannot match a
+  stock build on a machine with `rust-src`, which is every machine the bundle
+  serves, because serving requires `rust-src`. Separately, Sail's fork moves
+  upstream's `dbg!` from line 113 to 117 of `rust_verify/src/verifier.rs`,
+  so this fallback differs from stock with or without the bundle.
+- **Native shapes.** The `d17` recording's boundary trace has 25
+  `native-output-established` records across 14 packages (tuples sha256
+  `5731dc08…`). `boundary-witness shapes` passes on them, and shapes derived
+  from them equal `native_shapes.json` exactly.
+- **Native admission witness.** `scripts/admission-witness.py` traces one
+  recording run and replays Cargo's genuine `verus_builtin` invocation, as
+  Sail's compiler proxy received it, through `boundary-witness admission`'s
+  test. All five cases pass on `rq1`, and every case's original and
+  candidate exit, stdout and stderr are equal:
+  - `official-default`: observation and native-output provenance established;
+  - `official` (`--force-warn missing_docs`): refused as an unsupported tuple,
+    exit 0;
+  - `official-custom-cfg` (`verus_keep_ghost`, `verus_verify_core`): refused
+    as an unsupported tuple, exit 101;
+  - `foreign`: refused as an unkeyed unit, exit 101;
+  - `modified`: refused as a foreign source, exit 101.
+- **First use (README path).** On `rq1`, four alternating paired rounds,
+  each with a fresh `CARGO_HOME` (registry downloads in both arms) and Sail
+  cache, default toolchain 1.99.0 and pinned 1.99.1 with `rust-src`. Stock
+  ran `cargo verus new --lib` and `cargo verus verify` under the toolchain
+  Sail selects; Sail ran `sail new --lib` and `sail verify`. Every Sail first
+  verification replayed the shipped proof (`SAIL3132`, one verifier
+  invocation, no `SAIL3136` or `SAIL3137`).
+
+  | Median new + verify | Stock | Sail | Speedup |
+  |---|---:|---:|---:|
+  | First project | 30.377 s | 15.348 s | 1.98× |
+  | Second new project, same home | 30.227 s | 15.019 s | 2.01× |
+
+  The second project gains nothing over the first: native dependencies
+  compile again (the dependency store stays quarantined, ADR 0053). Rust
+  installation is not included. This is one consumer host.
+
+Raw evidence stays outside the repository: `d17-evidence.tgz` sha256
+`1ef81a243dcda6476daedb53209fe42034d54249e339b1140e9cf6fd74cad5d5`
+(recordings, trace, first comparisons); `adm1.tgz`
+`84d0ea5c85b110b263556453610ad25d618ac19c75c04288dd952598ba89447a`
+(admission witness); `rq1-bench.tgz`
+`75e937d0cecc509990088610f751041e8ac9f105b88aad371e636d2685785c0d` (probes,
+first use, revert). Harness scripts outside the repository: `bench.py`
+`b612732f…`, `analyze.py` `c1578803…`, `compare.sh` `c613ed9d…`.
+
+## Current composed release candidate
+
+The latest distinct Linux consumer (R5, native c7i.4xlarge, us-east-1) passes
+first-use, public diagnostic/index controls and fresh native-input checks.
+All nine rotated rows use Cargo `1.98.1`, genuine native compilation, full stock
+function/scalar/schema comparisons, Current and the exact release origin.
+Median setup + new + lock + verification falls from 37.318 s to 14.768 s
+(2.527×; stock 32.534 s). Candidate rows include each actual 5,741,168-byte
+official `rust-src` download, installation and complete validation. Common
+minimal Rust installation takes 8.884 s separately; adding it to both totals
+gives 46.202 → 23.652 s (1.953×). The nine roots share one consumer host;
+this does not qualify multiple machines or newer caller Cargo versions.
+
+All 36 ordinary Vest calls also pass, retaining the existing qualified
+`alloc/std` profile and safe proof-bundle misses. Edit medians overlap:
+30.008 s before and 30.168 s with the candidate, so no Vest edit gain is claimed.
+
+The complete consumer cohort remains **FAIL** solely because its new default-
+profile coexistence gate requires requested-target instant revert. The existing
+automatic profile admits only public `alloc/std`, whose Vest checks pass above;
+public `alloc/default/std` was research-only before this candidate. B, returned A2 and
+unchanged A3 all match stock functions, totals, schema and provenance, but A2
+invokes the requested verifier once (0.904 s) instead of restoring A1's proof;
+A3 then reuses A2 with zero verifier invocations (0.205 s). The run-wide
+`shipped_plan.is_none()` condition suppresses retained planning for A1, and
+the automatic profile filter also excludes the default profile. Extending this
+scope requires explicit shipped-proof/native provenance coexistence; removing
+one condition alone is insufficient. The original reuse assertion remains mandatory.
+
+Complete source/runtime/product guards and all 1,519 captured file bodies,
+sizes and modes pass. Capture SHA-256:
+`4ef382e8679d45ec14fbd8fe2c5fdabc44bf70433c2710597049338d357cae8b`.
+The first-use gain and Vest regression results qualify this source component;
+they do not qualify the pending coexistence fix or complete release selection.
+
+The coexistence successor passes independent source review and fourteen focused
+Mac controls, including actual PID/run/key/read-document binding and indexed
+release unit/output mutation refusals. Its additional native late-guard case
+requires genuine first-Serve authority; compiling it is not a native pass. The
+bundled and unbundled default-profile cycles, first-use gain and existing Vest
+profile still require qualification on the final matching runtime.
+
+Earlier consumer failures remain indexed:
+
+- R2, 2026-10-18: nine valid timing rows; literal negative compares cold stock
+  dependency progress with warm Sail progress. Full stderr differs by fifteen
+  progress lines; no normalization. Capture
+  `039fbdaffed81cb8966b41cd139f6692e08130c6c008b1e199688ce405cf215f`.
+- R3, 2026-10-18: public negative controls pass; final tree equality fails after
+  the index-recreation fixture changes its mode. Capture
+  `21e304a1830f53f70bf5cef3daeeea50c6086d3232e443911fec7c9903d80478`.
+- R4, 2026-10-18: first-use/native passing checkpoint, then a control reader's
+  1 MiB bound rejects the 7,235,552-byte status. Both capture attempts refuse a
+  busy shared transfer lock; primary/Vest results and full raw evidence are lost.
+  R4 does not qualify those gates. R5 corrects only the reader projection and
+  bounded lock retry; all product, oracle and workload bytes remain unchanged.
+
+The Cargo-pinned producer correction is causally qualified: actual Record with
+helper `d751d1b1` produces the exact previous consumer unit key, arguments,
+environment and extern hashes, without normalization. Public new, fresh stock
+(1,871 vstd functions plus the requested function), schema/scalar, 25 native
+records across all 14 official packages, strict package/unpack and final guards
+pass. Actual package SHA-256:
+`fe04490ca0b007b003951b5287e7ac83dd86b89932e5b921d03e8fda9cc07b89`;
+complete 184-member producer capture:
+`cee4f6183ce025e999aaddd46357c101368ec10d44063cc45a02c4bdbf6cc9cc`.
+An earlier producer preflight failed because its reused image lacked `rust-src`;
+that failure remains retained. The successor installs the official prerequisite
+before Record within the original stage cap.
+
+Full native regression qualification also passes on `356b7d0f`, with the exact
+Sail/shim/checker bodies used by this producer: workspace gate (790 tests), the
+original 35 solver tests, every end-to-end phase plus extra, PR, full FAST and
+STANDARD, release controls and final source/runtime/product guards. Each of four
+FAST arms has 147 Same / 3,450 functions; each STANDARD arm has 159 Same / 12,726
+functions. There are zero differences, unstable units, infrastructure errors or
+skips. Resource-limit-only drift remains visible: 12 units per FAST arm and 18
+per STANDARD arm. The 9,786-member capture has SHA-256
+`52244187b66fe6924ad3fa10ba934eac987f9ed1df9204f87edf49a2c874ca21`;
+independent complete audit:
+`e88a03ab73ea428bd52cd661c0bad955feb290fd0e50133bf2f225acf6c70b9b`.
+These regression checks qualify their compiled source scope; the later Python
+factory correction is qualified by the actual producer above.
+
+The minimal-profile Mac endpoint also passes. A separate Rustup installation
+contains only the pinned compiler, Cargo, host standard library and `rust-src`.
+The actual factory records a new bundle, and its indexed 40,851,004-byte archive
+(SHA-256 `2b703d54ab9b1ae4d03727b73d92175b23d89211f24f610c5d3604f3f652a1df`)
+passes public first-use smoke from a different physical Rustup/sysroot, Cargo,
+project and installation root. The first report is Current, with the exact
+release origin, one requested-target verifier invocation and no local target
+reuse; an edit and bundled repair also pass. A genuinely fresh stock build
+matches all 1,871 vstd functions and the factory's one requested function,
+verification totals and report schemas. The served vstd report retains those
+same verdicts, totals and schema validity. Result SHA-256:
+`c7edf510b0b1eec98451884aadb1a5b18e96d7a6f42f2530627988f32dd3ab68`.
+
+This endpoint uses the `f7c540f4` binaries and `1363e634` release recipe, with
+unchanged compiled admission policy. It establishes minimal-profile Mac
+correctness on this machine, not Mac performance or a clean-machine install.
+Its initial local comparison incorrectly demanded equality of entire factory
+and served report objects, including intentionally lazy obligation attribution
+and relocated solver paths; that failed assertion remains in the result index.
+The successful comparison uses the existing exact function, scalar, schema and
+release-origin checks. Linux clean-consumer performance is recorded above;
+shipped-mode A/B/A coexistence remains failed.
+
+The first distinct Linux consumer remains FAIL, capture SHA-256
+`a6d5c5ea511a2f313705f4ae72af810ee2ea6a80b93f6863f9142b80fdd086b4`.
+Its candidate verifies correctly but misses the release bundle: the factory's
+vstd invocation lacks the consumer's unexpected-cfg lint/check flags, yielding
+a different exact unit key. Final source, package and runtime guards pass;
+the generic "release index or unit changed" refusal does not establish index
+corruption. Retained producer identity records Cargo 1.99.0, whereas the minimal
+consumer uses 1.98.1. The factory now explicitly selects the runtime's validated
+Cargo toolchain; the successful causal requalification is recorded above. Mock producer controls
+require 1.98.1 even with an inherited 1.99.0 builder selection, and strict archive
+controls require the owned lockfile's portable mode before indexing. No argument
+is ignored and no key or admission check changes.
+
+Source `356b7d0f` uses products built from `f7c540f4`: all compiled Rust,
+Cargo and admission-policy files are identical. The four subsequent changed
+files contain documentation, canonical physical-path handling in release smoke,
+and the separation of two external compiler-witness entrypoints from the
+ordinary solver test inventory. Those witnesses still require their original
+external inputs; `ci/run.sh boundary-witness admission|shapes` runs them locally.
+The pinned-Z3 solver inventory retains all 35 original tests.
+
+The Mac evidence is a composition of retained successful components, not a
+successful enclosing run. It binds one actual 40,849,036-byte archive, SHA-256
+`f6c706ef8bcc522734b72780f6450c1ec3190e1a7d2ee93712704dd6b1354cff`,
+to the normal pinned `e536` runtime and final stripped binaries. All 25 indexed
+files have checked contents and modes. The components establish:
+
+- Fresh product builds, all 779 enabled Mac host tests and clippy, actual
+  factory recording, complete proof/index packaging and strict public smoke.
+- Public first use after changing physical Rustup/sysroot, Cargo, project and
+  installation roots: Current, all 1,872 stock function comparisons, one fresh
+  requested-target verifier invocation, no local target reuse and the exact
+  shipped release origin.
+- Unchanged runs with intact, missing and corrupt adjacent indexes: no verifier
+  invocation and both retained targets preserve their establishing origins.
+  The corresponding failing JSON and text runs match stock diagnostics; the
+  text stdout/stderr comparisons are literal.
+- A separate native-only successor: 25 fresh native output records covering
+  all 14 official packages, checked certificate bodies, and an actual
+  same-path compiler replacement which both stock and Sail reject with the
+  required diagnostic and no native publication.
+
+The composite index SHA-256 is
+`2b3d6019f35b3a86236ad1f87be95fd34f07d41a09121555d20d3382b8d3e276`;
+the independent archive/raw-stream/component audit is
+`d4c41f01592a7d876fa723eef68547b1b6f197ff862a2f2343573cbdb6a31b95`.
+The native-only successful result is
+`47d24b30b09f4e556d9df01a8a9cdbd154a47241fbfe7cc977b3c1b5b104f8fa`.
+Every contributing component retains final source/runtime guards and owned
+process cleanup. Earlier producer-negative and twelve-pair ABI results retain
+their earlier source scope. These Mac checks establish correctness components,
+not fresh-machine installation cost or a performance gain.
+
+All six enclosing Mac failures remain failed in the composite index:
+
+| Source / date | Result SHA-256 | Failure scope |
+|---|---|---|
+| `f7c540f4` / 2026-10-18 | `64e560683a71f3a0ac6bf13efe9ddbe68f506d9051d1ba961edc4d4486a4bfba` | Host tests: an assertion matched the canonical private temporary path; a separate mock deadline failed with initiating cause unknown |
+| `f7c540f4` / 2026-10-18 | `c0d9f864c46f9637f81df22ca47b148667e87575dea079b7b96db3dd51516905` | Strict smoke rejected SAFE_MISS through the `/tmp` alias; physical-path correction is in `f50862a6` |
+| `f50862a6` / 2026-10-18 | `b4b1bee0743e0e14b0a380aae69ac2687e2dad97950b5f7afaefcfc2d49fd9cc` | External observer attempted to unpack into a nonempty directory |
+| `f50862a6` / 2026-10-18 | `c68608447275112eb35c766107d2fc20bb443f54930a31ec85d356db6faa46bc` | External diagnostic fixture expected the factory crate name in a public-consumer diagnostic |
+| `f50862a6` / 2026-10-18 | `ac91d6391af06e032e754470f39f43718ed58d609b0728c3b8d9025dd575654d` | External observer lacked a retained factory sidecar after successful first Serve |
+| `356b7d0f` / 2026-10-18 | `61f94f58773e75ab1b77194df9f134cc393aeb9e4ca94fb2dafb401db2c8813e` | External native donor observer expected the local-reuse flag instead of the release origin |
+
+Full Linux regression qualification and the distinct producer/consumer performance
+gate are separate requirements; the latter currently has valid timing components
+and a failed enclosing public-interaction attempt. In particular, default selection must also retain
+the actual A/B/A and Vest checks after shipped Serve; earlier retained-mode
+speedups do not qualify the shipped mode.
+
+The native Linux attempts retain these failed capture archives. No later
+success changes their outcome:
+
+| Source / date | Capture SHA-256 | Failure scope |
+|---|---|---|
+| `f7c540f4` / 2026-10-18 | `e19b61b7adcca63cc9c98ad0d5d9aba2d21eab55229c1b980f05daadfe7b2448` | Unreadable-member fixture ran as root, invalidating its permission premise; subsequent test containers use UID 1000 |
+| `f7c540f4` / 2026-10-18 | `bbed764086e58f2a9b591acc3eb4f73df95318d53aaa26fded0146ad9c242ae0` | Added operator preflight tried to read a root-only runtime manifest as UID 1000 before tests using their own runtime fixtures |
+| `f50862a6` / 2026-10-18 | `349c5d3ffe3f26a721e0e5170b9fc643e6c144ddf681592d3020f964ae38cde0` | Workspace gate passed; solver inventory passed its original 35 tests but also selected two new external witnesses without their required inputs; `356b7d0f` supplies their separate local entrypoint |
+
+## Packaging prerequisite and first-Serve source correction
+
+A separate packaging-only successor on `c4b1644f` checks the complete pinned
+`rust-src` component before factory recording and proof-bundle release smoke.
+It derives the toolchain from the admitted runtime, checks the installed source
+manifest against the exact regular-file set, and retains a hashed source
+inventory. This is prerequisite evidence; it neither changes nor replaces
+compiler-source keys/certificates or native admission. Ordinary minimal installs
+without a qualified proof bundle are unchanged.
+
+The strict first-use smoke additionally requires the indexed bundle's actual
+release origin and one fresh requested-target invocation. A successful full
+verification with no release origin (SAFE_MISS) now fails this smoke. Owned
+Python controls pass for component completeness/missing/extra/alias/content
+inventory, exact origin and SAFE_MISS/warm/store/foreign-origin refusals; the
+existing member/report/producer and parent-cancellation controls also pass with
+compiler/runtime doubles. No actual runtime, compiler or network operation was
+used by these controls. Real release first use and useful gain on both platforms
+remain unqualified; fresh setup must include the Rust-source component's
+download/verification time and bytes as described in the
+[release guide](../releasing.md#proof-bundle-prerequisites-and-first-use).
+
+## Release activation candidate
+
+The source candidate extends stage/package/smoke around the existing schema12
+format. It records using the actual staged stripped binaries, installs only after
+complete Current, binds all release members, and configures normal serving from
+the adjacent bundle through one owned per-run plan. The adapter, source-base
+mapping and `sail new` lock path are included; changing `plan()` alone would leave
+native observation disabled. A family chooses either shipped or retained
+provenance, never both. No existing key codec, source policy or byte check changes.
+
+The preceding unindexed activation draft passed 56 focused shipped/adapter tests
+and the full Mac host gate (744 enabled tests and clippy). Those checks do not
+qualify this release-index successor. Normal new-target Serve now additionally
+requires the exact adjacent release index and its complete proof member set.
+Per-run admission binds the exact bytes deserialized for serving; its metadata is
+excluded from all proof/native option keys. Missing or damaged indexes fall back
+to genuine verification. Cheap diagnostic naming remains separate from this
+authority so already-restored source paths can still be resolved.
+
+The release-index Rust source passed the full Mac host gate: clippy and all 749
+enabled tests, with 35 skipped, on source diff `3f0e0896` (committed as `96295377`).
+The actual result SHA-256 is
+`56dc18e6e7977907b2939c3ec89332a6525768ac79b4238827610ee235ad7c31`.
+Earlier attempts remain failed or incomplete: a test-only borrow compile error,
+clippy findings, and fixed deadline/free-space interruptions were not relabelled.
+
+A later owned-parent SIGTERM control reproduced a detached recorder command,
+nested child and socket server surviving the original helper. The helper now
+turns SIGTERM into `KeyboardInterrupt`, allowing the same bounded nested cleanup
+to reap all three and remove its owned scratch. Actual mock-process controls and
+the unchanged Current/Historical/output-cap/member/archive controls pass; these
+use compiler/runtime doubles and do not establish native release acceptance.
+The original leak control and its exact cleanup remain retained externally.
+The recorder also exposes exact scratch metadata for bounded accounting and
+retains a complete, content-once certificate/skipped-record index before removing
+scratch. Actual small controls cover both certificate directories, deduplication,
+missing and oversized inputs, aliases and unreadable subtrees; a missing
+certificate after an otherwise successful mock record removes the installed
+proof/index and still reaps its server. Admitted certificate bodies also survive a
+later missing-kind or scan refusal. A separate scratch-exit interruption control
+proves that failure after provisional publication removes the proof/index and
+records failure after cleanup. An initial certificate-copy attempt
+refused after its own read updated access time; an owned-file control isolated
+that change. Content, inode, mode, size, mtime and ctime checks remain strict;
+read-induced access time is not an input. The failed attempt remains indexed
+externally; none of these mocks is a staged-platform qualification.
+
+The first actual Mac stage on `34bea2fa` failed before archive/consumer work;
+its initiating cause remains unknown after an outer size-observer error and
+interrupted cleanup. A separate factory-only diagnostic retained the complete
+factory evidence: Cargo finished and individual compilers succeeded, but the CLI
+returned Unknown with `SAIL3134` at the recording lock copy, with no target
+results. That error previously named only the source even if the destination
+parent was absent. Copy errors now report both paths and their diagnostic
+presence; the factory also records the existing native-boundary trace. These
+changes do not create missing outputs or relax recording/Current admission.
+The failed result SHA-256 values are `ff57a516f8c056c66bb2f22f23612480f71291353a1a0629e09464f08698f4f4`
+and `ca9b8cc9526d83db644b1ab0dbb1ac1aa2564c4c5d202d9a33baa7fb7b538fb5`.
+
+The exact `25a89d0b` diagnostic (result SHA-256
+`7daecf17e9884d9a7e0ce42843fc8b1c3dee4c878c129a964aa53b3185da1379`)
+retains the source lock present and destination parent absent. Its existing trace
+shows the native parser rejecting Cargo's ordinary `--warn`/`--allow`/`--deny`
+flags in seven dependency libraries, including all three direct vstd inputs.
+Those missing producer records make vstd provenance refuse; individual compiler
+success does not qualify recording. The parser correction recognizes only the
+compiler's lint-level spellings and lint-name grammar. Every original argument
+remains in the existing key; unknown options, foreign source/lookup/backend
+paths, native bytes, compiler reads and complete graph provenance stay checked.
+The exact parser successor `38943cf5` passed its three selected native
+parser/shape/key tests, release clippy and actual product/checker builds. Its
+separate real Mac factory passed with Current, all 1,872 functions, two verifier
+invocations, schema-12 unit and complete release index. Result SHA-256:
+`2f4edbcdcd3f5dde5a1b3c9e1d2da83d76474e2064092c6b5c5a4d641f6f6200`.
+
+The subsequent whole archive attempt failed in an external observer that rejected
+macOS's native `/tmp` alias; product staging, packaging and unpacking had passed.
+A known-system-alias-only observer successor passed those steps and public
+archive smoke, then established a genuinely separate physical Rustup root and
+created a public new project. Stock correctly refused `--locked`: the
+`new_project_lockfile` provider had no CLI caller, and the generated project had
+no lock. That is a missing product integration, not a proof-admission refusal.
+The correction calls the existing accepted-bundle provider before moving only
+that newly generated private project, preserves a generator's existing lock,
+and reports stable `SAIL0132` I/O failures with staging cleanup. Real first-use,
+stock comparisons and the warm-index matrix remain unrun on this correction.
+The two whole failures remain indexed by result SHA-256:
+`a2b4a08efa07bc4f1e3e7e169b64130581966ec0586369911145255e725db944`
+and `8f26ef3121ad8d2a015decf6fb18e50a3042d1760648bc25386abe933fb1cf6a`.
+
+The new-project lock wire on `b296e2d6` passed both selected CLI filesystem
+units, release clippy and actual product builds. The next whole Mac cohort
+passed actual stripped factory, archive/public smoke, changed physical Rustup
+selection, public creation of the admitted lock, genuine stock and the
+secondary-span negative prerequisite. First Serve was Current with all 1,872
+function entries and complete stock function/scalar/diagnostic comparisons,
+but verified twice and served no release origin: strict SAFE_MISS, whole FAIL.
+The source cause is the compiler child's ordinary admission deriving `deps`
+from its cached hardlink/copy executable name instead of the bound runtime.
+The candidate correction derives only the normal runtime's `engine/<variant>`
+release root and checks the current alias's fresh bytes/mode/size against the
+same index's `bin/sail`; proof keys and source/proof checks are unchanged.
+Result SHA-256: `c05ce84cfefccc28e4f914201f3bf2f33dd97806820e67d4de1918e817ac00a0`.
+The complete 48-path/37-unique diagnostic census exceeded its 256 MiB body cap
+at 359,735,466 bytes; bodies were not retained. Factory certificates and all
+CLI/comparison results remain, and all final guards and owned cleanup passed.
+The archive and unit artifact bodies were deleted by that failed cohort, so
+no later acceptance may claim to consume that unavailable archive.
+
+The alias fix on `c4b1644f` passes its six selected release-admission filesystem
+tests, release clippy and product builds. Its next actual whole Mac cohort still
+fails safely: factory, archive/public smoke, changed Rustup selection, public
+lock creation, genuine stock and all first-Serve function/scalar/diagnostic
+comparisons pass, but release origin is absent. Factory and consumer keyed
+arguments/environment are identical; builtin metadata is byte-identical.
+The macro dylibs differ. Their consumer bodies contain 71 and 61 literal
+changed-Rustup standard-library source paths. This is a concrete relocation
+hazard, not complete byte-difference attribution: factory macro bodies were
+certificate-only. Whole-result SHA-256:
+`c726e3e5f99ad4f3e5e7797de00da325220a4f76a0b578727defea4321204544`.
+Complete metadata capture (1,092 paths, 26,591,430 unique bytes) and selected
+compiler capture (63 paths, 360,549,453 unique bytes), all final guards and owned
+cleanup pass. The actual archive remains retained. Warm index cases are unrun.
+The compiler-source prefix successor is source-only: no new build, actual
+two-root diagnostic control or whole acceptance is claimed.
+
+The shipped profile's exact `alloc/default/std` authority differs from ordinary
+retained restoration's Linux public `alloc/std` authority. A shipped plan
+suppresses the entire retained plan, including the requested target. A release
+consumer must measure/check A/B/A plus the existing Vest profile after shipped
+Serve; the 2.5-second returned-A result is not transferred across these modes.
+Source naming is enabled by an adjacent bundle even if no shipped plan admits;
+that interaction remains a native acceptance gate, not dual-provider authority.
+
+Linux gates, real archive first-use on both platforms and changed Rustup/sysroot
+roots remain pending. Acceptance must
+also remove/change the index after a successful Serve, then check unchanged and
+failing requested runs against stock, including secondary vstd source spans. Previously collected component results and
+whole capture failures keep their original source and scope. No speed or release
+acceptance claim follows from this source change.
 
 ## Current portable functional qualification
 
@@ -643,3 +1083,158 @@ Failed native attempts remain indexed without replacing their scope:
 The [source integration](proof-reuse-integration.md) preserves this path as a
 separate default-off experiment. Enabling both research switches refuses with
 `SAIL3135`; no integrated native acceptance is inferred from this record.
+
+The portable compiler-source candidate also checks its current sysroot from
+native driver processes. Its standalone verifier version query now clears
+only `__VERUS_DRIVER_VIA_CARGO__` on that metadata subprocess; the actual
+native compiler keeps Cargo mode and every original argument. The original
+admission witness incorrectly resolved the outer plan in native mode and
+failed before native admission (result
+`2e2b96d18c5c17445ecb5829081f04d247b4c7d14403c7affdd60a27ea2b9cd6`).
+The later corrected outer-plan/native-child witness exercises this scoped
+query repair; its actual acceptance and limits are recorded below.
+The next witness also exposed the candidate's use of the registry-crate
+64 MiB source bound for the complete 71,933,732-byte pinned rust-src tree;
+it refused before native admission (result
+`d386b44c1055fbfc12412ccbeb9867928ca21b59da75a829e3a2c90fcda9ab0b`).
+The compiler-source domain now has its own 128 MiB bound with the unchanged
+16,384-file limit and full fresh file inventory. Registry admission retains
+its original 64 MiB bound. The actual native admission gate and diagnostic
+counterexample are recorded below.
+
+
+### Portable native diagnostic eligibility candidate
+
+The real outer-plan/native-child witness now reaches actual compiler
+observation with the unchanged official closure. Its default builtin case
+passes admission, exact original/candidate streams and the successful native
+output plus SourceMap certificate checks. Foreign and modified-source cases
+refuse before added options and retain literal original diagnostics. The whole
+witness nevertheless **fails**: an unchanged official builtin invocation with
+`--cap-lints allow --force-warn missing_docs` is admitted and emits different
+registry paths in its warning diagnostics. Result SHA-256:
+`1dea107f0d84bd7b274e87d7d41fb3bb417d9a30cb6c8b5ba413f1393bb1d7d7`.
+This is a source-qualified counterexample to the existing registry remap, not
+proof that the compiler-source remap alone caused it. The earlier direct-flag
+failure remains separate; no diagnostic is normalized or suppressed.
+
+A candidate successor restricts portable native option binding to the
+recorded pinned-package Cargo shapes. It requires capped lint reporting,
+known lint spellings, official feature admission and recorded non-feature cfg,
+check-cfg, codegen and driver-role shapes. Forced warnings, custom cfgs and
+unsupported tuples refuse before added options, observation directories or
+provenance, then compile through the existing original-argument fallback.
+The table comes from 25 successful native output observations across fourteen
+packages; it is an eligibility restriction, not a substitute for fresh source,
+private graph, runtime, compiler-read or output checks. The complete original
+arguments remain keyed. Machine-local behavior is unchanged.
+
+Portable planning and source naming also decline unsupported global Rustflag
+selectors in the environment, Cargo build/target/env configuration or inline
+`--config`/`-Z` contexts. Benign ordinary warm naming remains separate from
+bundle admission. The prospective witness retains the old foreign, modified,
+default and forced-warning cases and adds a custom-cfg case.
+
+That exact successor passes the five-case Mac witness with genuine e536 Verus
+and Rust 1.98.1. Its freshly compiled Sail test artifact also passes the three
+focused guard controls and the actual Rust predicate over all 25 retained
+Cargo tuples, including prettyplease's recorded check-cfg multiplicities.
+The official default compiles successfully and establishes the checked native
+output and actual SourceMap certificate. Both unchanged official unsafe
+invocations still pass source admission but refuse compiler observation before
+added options: forced warnings retain all 440,844 stderr bytes and exit zero;
+the custom cfg retains all 717,616 stderr bytes and exit 101. Foreign and
+modified sources refuse too. All five preserve the complete original exit,
+stdout and stderr. Fresh source/runtime/toolchain/shim guards and owned child
+cleanup pass. Result SHA-256:
+`e72fc30a53a7df226b4ea575578e197aaba7ead28e63a516c11b5b5c1b8ab628`;
+raw audit SHA-256:
+`1d895ab72801b2e446004f2271590fedd1b9a704717432afef56ada87095b22a`.
+The tested production/test patch is
+`6013e25c474f97705d5aebf5f3ff594cd80a2ca65f6d00b518746acce9c21412`
+on `c4b1644f`; the retained actual test binary is
+`1ad50aa700106bfcc16024d1f1cf7c0f8594bd9b21fcae7460575b00ac5a1502`.
+
+This qualifies these native admission/refusal and diagnostic controls only.
+The default output is an rmeta, not a portable native macro library; no
+`ld -S` option is integrated. Whole-host/lint validation, staged release
+first-use, portable dylib identity and performance remain pending. The earlier
+admitted-warning and direct-flag failures are not reclassified.
+
+
+A further candidate adds the constructed Mac native proc-macro
+link option `-C link-arg=-Wl,-S` after the guarded admission above. The earlier
+tiny producer-only direct-compiler matrix passed library identity and all
+unmodified-consumer diagnostic cases, but did not establish the real closed
+Sail/native producer chain. The candidate therefore remains unqualified until
+an actual two-root Record/Serve run retains both roots' native libraries,
+complete source-read certificates, exact full verdict/diagnostic comparisons,
+and release-origin/Current/unchanged provenance. The admitted-warning failure
+and older composed diagnostic failures remain indexed; no consumer remap or
+comparison relaxation follows from the direct-compiler result.
+
+### Guarded changed-Rustup Mac components
+
+On 2026-10-18, `c4b1644f` plus product patch SHA-256
+`1e0d2b4896dbabaaea1fe8ed3a2a1402a6ee6167d739c167c8190b9444104a39`
+passes the actual same-Mac changed-root Record → Serve → unchanged components.
+Cargo, project, installation, Rustup and sysroot paths differ physically. The
+three successful Current reports retain 1,872 functions each; verifier
+invocations are two, one and zero. Serve and unchanged retain the exact shipped
+release identity. All six positive stock comparisons pass. Both roots' negative
+JSON/full raw-child diagnostic comparisons and literal public text comparisons
+also pass. Direct native artifact bytes and complete compiler-source tree hashes
+match across roots. This establishes functional portability components, not
+fresh-machine or first-use performance acceptance.
+
+The enclosing full cohort remains **FAIL** after 199.34 seconds. Only two of
+twelve required native-consumer pairs pass: its purported public macro panic
+input emits an ordinary `unexpected token` error in both actors, so the strict
+genuine-panic prerequisite refuses. The remaining ten pairs are unqualified;
+identical syntax errors do not qualify panic/backtrace behavior. No threshold,
+diagnostic comparison or deadline is relaxed. Final source/runtime/product
+guards, complete metadata/compiler capture and owned-child cleanup pass.
+
+Result SHA-256:
+`d63c77fd30b07235c8af4ce8beedb42fd4e89000608767f0fbccbdbd878efa42`.
+An independent retained-component audit verifies all 703 metadata paths
+(615 distinct bodies, 21,693,796 bytes), all 71 compiler paths (61 distinct bodies,
+228,150,451 bytes), both literal negative streams and three Current reports:
+`6b39e8237e81e997f7315e988b70b61b605603af2bac7b2a06a84844fa143941`.
+Raw evidence is outside git under
+`shipped-proof-release-activation-plan-2026-10-18/compiler-source-paths/guarded-debug-map-source/full-cohort-02/`.
+
+Earlier attempts remain failed: the original full cohort stopped at a mismatched
+raw-child/public-diagnostic comparison layer; focused A01 lost Cargo's inherited
+jobserver descriptors, A02 refused disk admission before compiler work, and A03
+joined the compiler child's exit 1 as though it were outer Cargo exit 101. The
+corrected retained A03 comparison passes independently; its enclosing failure
+remains. None of those attempts qualifies the complete native matrix.
+
+The current-main composition preserves the independently qualified scheduling
+and output changes while restoring the release path. Its retained-plan condition
+keeps both receipt-coverage and shipped-plan exclusions. This source composition
+and the prerequisite/strict-origin packaging successor require their own complete
+platform gates and release first-use qualification; default eligibility remains
+held and v1 remains quarantined.
+
+The distinct native-only successor corrects the fixture using the admitted public
+`verus_keep_ghost!` macro's `open(crate) spec const` branch, which genuinely panics.
+All twelve original/candidate pairs pass: A/B × successful compile, panic and
+standard-library diagnostic × `RUST_BACKTRACE` unset/1. All 24 compiler calls retain
+exact exit status and complete stdout/stderr; every panic pair meets the unchanged
+genuine-panic prerequisite. It uses independently copied original/candidate macro
+bodies and producer provenance retained from the full cohort, without rebuilding
+Sail, its comparison core or the macro libraries. Source/runtime/product guards,
+complete capture and cleanup pass in 47.53 seconds. This is native-consumer
+qualification, not a new whole Record/Serve run or first-use performance result.
+The original full cohort's failure remains.
+
+Native result SHA-256:
+`c4ae9009265124016bccf1dc2302d3ce0b37d53e39bae7e1b9cffad1f06a0ca5`.
+Independent audit verifies all twelve pair streams/statuses and four actual panic
+prerequisites, 103 metadata paths and four compiler-artifact paths:
+`6393a43bd892fb50a5959c56fdf9cc3884cd2d6b9b0ba842dbf6efa1b0197f3b`.
+The raw directory is the sibling `native-matrix-03/`. Current-main composition,
+complete platform gates, public staged-archive first use and useful measured
+first-use gains remain pending.

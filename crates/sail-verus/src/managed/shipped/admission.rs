@@ -622,7 +622,11 @@ mod tests {
             .as_array_mut()
             .ok_or("missing nodes")?
             .iter_mut()
-            .find(|node| node["id"] == "verus_builtin_macros-0.0.0-2026-09-20-0158")
+            .find(|node| {
+                node["id"]
+                    .as_str()
+                    .is_some_and(|id| id.starts_with("verus_builtin_macros-"))
+            })
             .ok_or("missing macros")?;
         hook_node["features"] = serde_json::json!(["contrib-hooks"]);
         assert!(resolved_packages(&hooks, registry, &policy).is_none());

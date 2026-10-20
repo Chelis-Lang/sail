@@ -34,8 +34,10 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 
-VSTD = "=0.0.0-2026-10-04-0306"
+PINS = Path(__file__).resolve().parent.parent / "corpus/toolchain.toml"
+VSTD = "=" + tomllib.loads(PINS.read_text())["verus"]["vstd"]
 SOURCE = """use vstd::prelude::*;
 
 verus! {

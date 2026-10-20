@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Bounded direct A/B compiler research; preserves raw streams and every failure."""
-import argparse,collections,hashlib,json,os,platform,resource,shutil,signal,subprocess,time
+import argparse,collections,hashlib,json,os,platform,resource,shutil,signal,subprocess,time,tomllib
 from pathlib import Path
 PROJECTS={
  'vest':('https://github.com/secure-foundations/vest','11af01ddaef76cceded03517cd48764adb9d35b1','vest_lib','vest_lib/src/asn1/der_ord.rs'),
@@ -18,7 +18,8 @@ def main():
  work=a.work.resolve(strict=True);out=work/'profile-v2-results';out.mkdir(exist_ok=False)
  build=work/'build-results';bm=json.loads((build/'manifest.json').read_text());assert bm['complete']
  m={'scope':'direct A/B compiler research; no Sail/default/corpus acceptance','complete':False,'candidate_gate':False,'research_gate':False,'runtime_hashes':{},'steps':[],'rows':[],'errors':[],'platform':platform.platform(),'build_manifest_sha256':sha(build/'manifest.json')}
- env=dict(os.environ,RUSTUP_TOOLCHAIN='1.98.1',CARGO_BUILD_JOBS='8',CARGO_INCREMENTAL='0')
+ toolchain=tomllib.loads((work/'verus/rust-toolchain.toml').read_text())['toolchain']['channel'] # the built source's own
+ env=dict(os.environ,RUSTUP_TOOLCHAIN=toolchain,CARGO_BUILD_JOBS='8',CARGO_INCREMENTAL='0')
  for k in list(env):
   if k.startswith(('SAIL_','__VERUS_')) or k in ['RUSTFLAGS','CARGO_ENCODED_RUSTFLAGS','RUSTC_WRAPPER','RUSTC_WORKSPACE_WRAPPER','VERUS_Z3_PATH','LD_PRELOAD','DYLD_INSERT_LIBRARIES','CARGO_BUILD_BUILD_DIR']:env.pop(k,None)
  restorations=[]

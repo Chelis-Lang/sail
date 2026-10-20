@@ -16,6 +16,8 @@
 //! from `cargo verus new`, both following `cargo new`: no nested Git
 //! repository is created inside an existing one, and a missing `git` is not
 //! an error (VI-0016) but leaves the project without a repository.
+//! A qualified adjacent proof bundle may supply its admitted resolution as a
+//! new project's lockfile. A lockfile already written by the generator is kept.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -265,6 +267,33 @@ impl Drop for Staging {
     }
 }
 
+/// Seed only a newly generated project, without replacing a generator's lock.
+fn write_shipped_lockfile(project: &Path, lock: Option<&str>) -> Result<(), Failure> {
+    let Some(lock) = lock else {
+        return Ok(());
+    };
+    let path = project.join("Cargo.lock");
+    let cannot = |error| {
+        Failure(
+            "SAIL0132",
+            format!(
+                "cannot write admitted lockfile `{}`: {error}",
+                path.display()
+            ),
+        )
+    };
+    let mut file = match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+    {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => return Ok(()),
+        Err(error) => return Err(cannot(error)),
+    };
+    file.write_all(lock.as_bytes()).map_err(cannot)
+}
+
 fn create(options: &Options) -> Result<Created, Failure> {
     let name = package_name(options)?;
     check_destination(&options.path)?;
@@ -319,6 +348,8 @@ fn create(options: &Options) -> Result<Created, Failure> {
             ),
         ));
     }
+    let shipped_lock = sail_verus::managed::new_project_lockfile(&cargo_verus, &name);
+    write_shipped_lockfile(&staged, shipped_lock.as_deref())?;
     if inside_git_repo(&parent) {
         match std::fs::remove_dir_all(staged.join(".git")) {
             Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
@@ -349,8 +380,8 @@ fn create(options: &Options) -> Result<Created, Failure> {
 #[cfg(test)]
 mod tests {
     use super::{
-        Failure, Options, check_destination, check_name, inside_git_repo, package_name, parse,
-        project_written, vstd_requirement,
+        Failure, Options, Staging, check_destination, check_name, inside_git_repo, package_name,
+        parse, project_written, vstd_requirement, write_shipped_lockfile,
     };
     use std::path::{Path, PathBuf};
 
@@ -487,11 +518,59 @@ mod tests {
     #[test]
     fn reads_the_vstd_requirement() {
         let manifest =
-            "[package]\nname = \"d\"\n\n[dependencies]\nvstd = \"=0.0.0-2026-10-04-0306\"\n";
+            "[package]\nname = \"d\"\n\n[dependencies]\nvstd = \"=0.0.0-2026-10-18-0147\"\n";
         assert_eq!(
             vstd_requirement(manifest),
-            Some("0.0.0-2026-10-04-0306".to_owned())
+            Some("0.0.0-2026-10-18-0147".to_owned())
         );
         assert_eq!(vstd_requirement("[dependencies]\nvstdx = \"1\"\n"), None);
+    }
+
+    #[test]
+    fn admitted_lock_is_written_only_for_new_projects_and_survives_rename() {
+        let root = scratch("admitted-lock");
+        let project = root.join("private-generated");
+        assert!(std::fs::create_dir(&project).is_ok());
+        assert!(write_shipped_lockfile(&project, None).is_ok());
+        assert!(!project.join("Cargo.lock").exists());
+        // The provider has already renamed and ordered the admitted resolution.
+        // The CLI must preserve every supplied byte, rather than resolve again.
+        let lock = "version = 4\n\n[[package]]\nname = \"client\"\nversion = \"0.1.0\"\ndependencies = [\n \"vstd\",\n]\n\n[[package]]\nname = \"vstd\"\nversion = \"0.0.0-2026-10-18-0147\"\n";
+        assert!(write_shipped_lockfile(&project, Some(lock)).is_ok());
+        assert_eq!(
+            std::fs::read(project.join("Cargo.lock")).ok().as_deref(),
+            Some(lock.as_bytes())
+        );
+        let destination = root.join("public-project");
+        assert!(std::fs::rename(&project, &destination).is_ok());
+        assert_eq!(
+            std::fs::read(destination.join("Cargo.lock"))
+                .ok()
+                .as_deref(),
+            Some(lock.as_bytes())
+        );
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn generated_lock_is_preserved_and_lock_write_failure_cleans_staging() {
+        let root = scratch("lock-failure");
+        let generated = root.join("Cargo.lock");
+        assert!(std::fs::write(&generated, b"generator lock\n").is_ok());
+        assert!(write_shipped_lockfile(&root, Some("admitted lock\n")).is_ok());
+        assert_eq!(
+            std::fs::read(&generated).ok().as_deref(),
+            Some(b"generator lock\n".as_slice())
+        );
+        let staging = Staging(root.join("private-stage"));
+        assert!(std::fs::create_dir(&staging.0).is_ok());
+        assert!(matches!(
+            write_shipped_lockfile(&staging.0.join("missing-project"), Some("lock")),
+            Err(Failure("SAIL0132", message)) if message.contains("Cargo.lock")
+        ));
+        let path = staging.0.clone();
+        drop(staging);
+        assert!(!path.exists());
+        assert!(std::fs::remove_dir_all(root).is_ok());
     }
 }

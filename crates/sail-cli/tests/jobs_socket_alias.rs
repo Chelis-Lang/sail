@@ -109,6 +109,16 @@ fn relative_serve_absolute_and_symlink_clients_share_jobs_and_fifo() {
     let root = root.canonicalize().unwrap_or_else(|e| unreachable!("{e}"));
     let executable = root.join("bin/sail");
     assert!(std::fs::copy(env!("CARGO_BIN_EXE_sail"), &executable).is_ok());
+    // macOS assesses a new executable file on its first launch: about 1.5 s
+    // for this copy when idle, 16 s under full-host load. Launch it once
+    // here so the daemon start deadline below measures only the daemon.
+    assert!(
+        Command::new(&executable)
+            .arg("--version")
+            .stdout(Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    );
     for name in ["sail-z3", "z3", "cargo-verus"] {
         script(&root.join("bin").join(name), "#!/bin/sh\nexit 0\n");
     }

@@ -180,6 +180,23 @@ struct Setup {
     shim: PathBuf,
     z3: PathBuf,
     socket: PathBuf,
+    /// The Cargo toolchain: managed `sail verify`'s selection (ADR 0058) when
+    /// it verifies a setup as plain Cargo-Verus does; the caller's for the
+    /// explicit fragility measurement and seed portfolio.
+    cargo_toolchain: sail_verus::managed::CargoToolchain,
+}
+
+/// [`setup`] for the plain runs managed `sail verify` falls back to, with
+/// its Cargo toolchain selection.
+fn managed_setup() -> Result<Setup, SetupError> {
+    let mut setup = setup()?;
+    if let Some((_, toolchain)) = std::env::current_dir()
+        .ok()
+        .and_then(|workspace| crate::managed_cli::cargo(&workspace))
+    {
+        setup.cargo_toolchain = toolchain;
+    }
+    Ok(setup)
 }
 
 fn setup() -> Result<Setup, SetupError> {
@@ -212,6 +229,7 @@ fn setup() -> Result<Setup, SetupError> {
         shim,
         z3,
         socket,
+        cargo_toolchain: sail_verus::managed::CargoToolchain::Caller,
     })
 }
 
@@ -261,6 +279,7 @@ fn command(s: &Setup, args: &[String]) -> (Command, bool) {
             .env("SAIL_SOLVER_MODE", s.mode.name())
             .stdin(Stdio::null());
     }
+    s.cargo_toolchain.apply(&mut cmd);
     let daemon = s.measure.is_none() && ensure_daemon(&s.socket);
     if daemon {
         cmd.env("SAIL_DAEMON_SOCKET", &s.socket);
@@ -376,7 +395,7 @@ pub(crate) fn unbound(
     if project {
         return unbound_project(args, why, out, err);
     }
-    let setup = match setup() {
+    let setup = match managed_setup() {
         Ok(s) => s,
         Err(e) if json => return json_failure(args, &e, out, err),
         Err(e) => {
@@ -425,7 +444,7 @@ fn unbound_project(
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos())
     );
-    let outcome = setup().and_then(|setup| plain_report(&setup, args, err));
+    let outcome = managed_setup().and_then(|setup| plain_report(&setup, args, err));
     let (targets, exit, error) = match outcome {
         Ok((report, status)) => {
             let error = report.error.clone();
@@ -497,14 +516,16 @@ fn unbound_project(
 /// what plain Cargo-Verus itself refuses (partial verification under
 /// `verify`): its own message and exit code.
 pub(crate) fn plain_verify(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
-    let setup = match setup() {
+    let setup = match managed_setup() {
         Ok(s) => s,
         Err(e) => {
             let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
             return ExitCode::from(EXIT_SETUP);
         }
     };
-    let status = Command::new(&setup.cargo_verus)
+    let status = setup
+        .cargo_toolchain
+        .apply(&mut Command::new(&setup.cargo_verus))
         .arg("verus")
         .arg("verify")
         .args(args)

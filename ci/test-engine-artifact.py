@@ -66,6 +66,19 @@ class ArtifactTests(unittest.TestCase):
                 artifact.install(archive, pin, root / "cache")
             self.assertFalse((root / "escaped").exists())
 
+    def test_local_rust_src_paths_in_vstd_are_never_packed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            build, _, _, _ = self.fixture(root)
+            vir = build / artifact.RUNTIME / "vstd.vir"
+            vir.write_bytes(b"/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/ops/bit.rs"
+                            b"/opt/rustup/toolchains/1.99.1-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ops/bit.rs")
+            manifest = json.loads((build / "sail-build.json").read_text())
+            manifest["artifacts"][str(artifact.RUNTIME / "vstd.vir")] = artifact.sha(vir)
+            (build / "sail-build.json").write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "rust-src"), contextlib.redirect_stdout(io.StringIO()):
+                artifact.pack(argparse.Namespace(build=build, archive=root / "again.tar.gz", pin=root / "again.json"))
+
     def test_stale_fork_commit_is_rejected_even_if_archive_is_valid(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -89,6 +102,20 @@ class ArtifactTests(unittest.TestCase):
                 artifact.committed_pin(pin_path)
         committed = json.loads((artifact.REPO / "engine/verus/artifact-linux.json").read_text())
         self.assertEqual(committed["verus_features"], [])
+
+    def test_pin_binds_the_runtime_manifest_digest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            build, archive, pin, pin_path = self.fixture(root)
+            self.assertEqual(pin["manifest_sha256"], artifact.sha(build / "sail-build.json"))
+            with self.assertRaises(ValueError):
+                artifact.install(archive, dict(pin, manifest_sha256="0" * 64), root / "cache")
+            del pin["manifest_sha256"]
+            pin_path.write_text(json.dumps(pin))
+            with self.assertRaises(ValueError):
+                artifact.committed_pin(pin_path)
+        for name in ("linux", "macos"):
+            artifact.committed_pin(artifact.REPO / ("engine/verus/artifact-" + name + ".json"))
 
     def test_runtime_is_fetched_from_the_public_fork_release(self):
         committed = artifact.committed_pin(artifact.REPO / "engine/verus/artifact-linux.json")

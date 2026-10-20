@@ -10,10 +10,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 # build-essential/pkg-config/libssl-dev/cmake/ninja: corpus build
 # requirements (anvil needs OpenSSL; verismo needs cmake and ninja).
 # time: GNU time for the harness's CPU and memory figures.
+# procps: owned process-group census for the release proof recorder.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       build-essential pkg-config libssl-dev cmake ninja-build \
-      git curl ca-certificates unzip python3 time \
+      git curl ca-certificates unzip python3 time procps \
  && rm -rf /var/lib/apt/lists/*
 
 ENV RUSTUP_HOME=/opt/rustup \
@@ -29,7 +30,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
  && sail_tc="$(sed -n 's/^channel = "\(.*\)"/\1/p' /tmp/pins/rust-toolchain.toml)" \
  && verus_tc="$(sed -n '/^rust_toolchain = /{s/^rust_toolchain = "\(.*\)"/\1/p;q;}' /tmp/pins/toolchain.toml)" \
  && rustup toolchain install "$sail_tc" --profile minimal -c clippy,rustfmt \
- && rustup toolchain install "$verus_tc" --profile minimal -t x86_64-unknown-none \
+ && rustup toolchain install "$verus_tc" --profile minimal -c rust-src -t x86_64-unknown-none \
  && rustup default "$sail_tc"
 
 # Prebuilt, digest-checked binaries: compiling them made image rebuilds slow.

@@ -1,8 +1,8 @@
 # Instant revert
 
 Status: automatic selection is implemented and qualified at `83128ad0` for the
-narrow Linux/public dependency profile below and is merged through #224. Native
-ordinary and genuinely bundled Vest A → B → A controls pass,
+narrow Linux/public dependency profile below. PR #224 merged as `3892881a`,
+with all required checks and the main workflow passing. Native ordinary and genuinely bundled Vest A → B → A controls pass,
 along with the complete default gates. See the
 [validation record](validation/instant-revert.md).
 
@@ -34,6 +34,16 @@ requesting both research modes still refuses with `SAIL3135`. The runner passes
 an admitted plan through the existing managed runtime file; it does not add a
 public switch to the compiler child's environment. Archived declared-variable
 checks use the fresh outer caller snapshot, including variable absence.
+
+The pending release-integration candidate extends ordinary routing to the exact
+closed public default-feature profile and allows requested-target retention
+alongside an admitted adjacent vstd proof. It independently validates shared
+native observations and keeps a distinct release witness for served vstd;
+requested targets still require their own compiler-read evidence. This extension
+is not yet qualified or selected. Its bundled and unbundled A → B → A controls,
+late-authority mutation checks and existing complete Vest regression must pass
+on the final matching runtime. See the [candidate decision](decisions/0048-shipped-dependency-build.md#candidate-requested-target-coexistence)
+and [qualification record](validation/vstd-compile-boundary.md).
 
 The durable retained arena admits at most 8 GiB and 65,536 entries, with at most
 four archived revisions and 1 GiB of outputs per target. Fullness takes the fresh

@@ -8,6 +8,17 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **Unresolvable standard-library labels print differently from stock.**
+  Some Verus errors label a standard-library impl recorded in vstd's VIR,
+  for example an `impl … DisplaySpecImpl for &'a S` without a matching std
+  impl. Verus then prints a fallback line. Sail's fork prints
+  `rust_verify/src/verifier.rs:117` where stock prints `:113`, with or
+  without the shipped vstd proof. When the shipped proof is served, the
+  quoted path is also `/rustc/<commit>/…`, where stock quotes the user's
+  `rust-src` copy. Verdicts and other diagnostics are unaffected. Both
+  need a fork fix; the shipped bundle is not accepted until then
+  ([record](validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)).
+
 - **The original focused Anvil benchmark never reached verification.** All
   18 retained Sail rows used non-JSON `sail verify` with `--verify-module`,
   which intentionally refuses partial verification. The benchmark correction
@@ -35,11 +46,37 @@ are in the `archive/m7-contracts-f7103bf` tag.
   failure stays failed; see the [record](validation/instant-revert.md).
 
 - **Portable vstd functionality is not release first-use acceptance (#161).**
-  Same-host Linux and Mac changed-root Record/Serve/unchanged components pass;
-  the Mac enclosing diagnostic-capture failure stays visible. Distributed
-  packaging, another machine, changed Rustup roots and default fresh-project
-  first use remain pending. The v1 store stays quarantined. See the
-  [compiler-boundary record](validation/vstd-compile-boundary.md).
+  Current composed Mac evidence passes actual stripped recording, archive
+  smoke and public first Serve with the shipped origin at changed physical
+  Rustup/sysroot, Cargo, project and installation roots. All 1,872 function
+  comparisons match stock; unchanged-index and failing-diagnostic controls
+  pass. A separate native-only component checks fresh native records and a
+  same-path compiler replacement. All six enclosing attempts remain failed;
+  their successful components are bound and audited separately. Full Linux
+  regression qualification passes. The latest complete Linux consumer passes
+  nine Cargo-1.98 first-use rows (37.318 → 14.768 s, 2.527×), public diagnostic
+  and index controls, fresh native checks and all 36 Vest regression calls.
+  Including common minimal toolchain installation, totals are 46.202 → 23.652 s.
+  It fails requested-target instant revert: returned A verifies again instead
+  of restoring A1, while unchanged A3 reuses A2. Correctness comparisons pass;
+  shipped/retained coexistence needs a product fix and requalification. Earlier
+  operational/fixture failures stay failed. Earlier twelve-pair native ABI results retain
+  their original source scope. The v1 store stays quarantined, and default
+  release selection remains unqualified. The
+  [compiler-boundary record](validation/vstd-compile-boundary.md) retains the
+  failed attempts and precise component limits.
+  The candidate factory records with the pinned Cargo, currently `1.99.1`.
+  Managed runs now select that Cargo when the caller made no toolchain choice
+  and it is installed with `rust-src`
+  ([ADR 0058](decisions/0058-managed-builds-use-the-pinned-cargo.md));
+  a caller's or project's own choice of another Cargo can still produce
+  different exact compiler arguments and safely miss. The fresh-home
+  measurements so far used the 426d8b0 runtime with Cargo `1.98.1` selected
+  explicitly. On the 7d82994 runtime the Linux bundle is recorded, and first
+  use from a newer default Cargo through Sail's selection measures 30.38 →
+  15.35 s (1.98×) over four rounds; see the
+  [compiler-boundary record](validation/vstd-compile-boundary.md). The macOS
+  bundle is not yet recorded.
 
 - **The stale solver-hash defect is fixed on main**
   ([#213](https://github.com/Chelis-Lang/sail/issues/213)). Every handshake reads
@@ -69,7 +106,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   Cargo diagnostic rendering. The original-pipe stdout-barrier successor passes
   focused/full Mac checks. Joined Mac759/Clippy and native gate/solver/all E2E
   plus extra/PR/full FAST and STANDARD, final guards and complete capture pass.
-  The delivery head still requires its own CI and review. Complete retained
+  PR #226 is merged after delivery CI and review passed. Complete retained
   Vest facts show no gain; both earlier capture failures and the unknown cause
   of the original missing-stream disagreement remain visible. The barrier
   guarantees final stdout completion, not a global cross-stream order;
@@ -123,7 +160,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   The joined implementation passes Mac759/Clippy and full native qualification,
   including all four FAST/STANDARD arms, final guards and complete capture.
   Its current affected fixture improves 0.896 → 0.174 s (5.14×) across all nine
-  measured calls; final delivery CI and review remain pending
+  measured calls; PR #226 is merged after delivery CI and review passed
   ([record](validation/unscheduled-script-cleaning.md)). The first Vest cohort
   lost detailed rows; the second retains complete facts showing no speed/CPU
   gain, while its capture-parent deadline failure stays failed. Source edits and

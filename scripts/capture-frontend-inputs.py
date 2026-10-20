@@ -16,6 +16,7 @@ import re
 import signal
 import subprocess
 import time
+import tomllib
 
 RECORD_BYTES = 256 * 1024 * 1024
 MANIFEST_BYTES = 1024 * 1024
@@ -220,7 +221,8 @@ def main():
                 "runtime_sha256": expected_runtime, "patcher_sha256": args.patcher_sha256,
                 "dependency_source": source_identity,
                 "steps": [], "errors": [], "platform": platform.platform()}
-    environment = dict(os.environ, RUSTUP_TOOLCHAIN="1.98.1", CARGO_INCREMENTAL="0",
+    toolchain = tomllib.loads((dependency_source / "rust-toolchain.toml").read_text())["toolchain"]["channel"]
+    environment = dict(os.environ, RUSTUP_TOOLCHAIN=toolchain, CARGO_INCREMENTAL="0",
                        CARGO_BUILD_JOBS="8", CARGO_TARGET_DIR=str(target))
     for key in list(environment):
         if key.startswith(("SAIL_", "__VERUS_")) or key in [

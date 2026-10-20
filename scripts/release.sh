@@ -23,6 +23,11 @@
 #
 # Never publishes: the release stays a draft until the owner publishes it.
 set -euo pipefail
+umask 022
+
+# Factory/smoke tooling only; installed Sail does not invoke Python.
+release_python="${SAIL_RELEASE_PYTHON:-python3}"
+"$release_python" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else "release tooling requires Python 3.12 or newer; set SAIL_RELEASE_PYTHON")'
 cd "$(dirname "$0")/.."
 
 repo="Chelis-Lang/sail"
@@ -80,12 +85,17 @@ stage() {
   cp "$build/sail-build.json" "$out/engine/$variant/"
   find "$build/$runtime/" -maxdepth 1 \( -type f -o -type l \) -exec cp -L {} "$out/engine/$variant/$runtime/" \;
   self_check "$out"
+  # Record with the final stripped bodies; only a complete Current proof is
+  # atomically installed into the adjacent dependency bundle.
+  "$release_python" -B scripts/release-shipped.py record "$out" --evidence "$out-proof-evidence"
+  "$release_python" -B scripts/release-shipped.py verify "$out"
 }
 
 # package DIR NAME: NAME.tar.gz (top directory NAME, root-owned entries) and
 # NAME.tar.gz.sha256 in `shasum -a 256` format, in dist/.
 package() {
   local dir="$1" name="$2" parent
+  "$release_python" -B scripts/release-shipped.py verify "$dir"
   parent="$(mktemp -d)"
   cp -R "$dir" "$parent/$name"
   tar -C "$parent" --uid 0 --gid 0 --uname root --gname root -czf "dist/$name.tar.gz" "$name"
@@ -141,7 +151,7 @@ release() {
     --title "Sail $version" \
     --notes "Draft release built by scripts/release.sh from $commit.
 
-Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/sail-z3 and Sail's Verus (built from Sail's Verus fork; also the repair engine) under engine/. Users need only a Rust toolchain besides. See docs/releasing.md." \
+Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/sail-z3, a source/native-byte-bound vstd proof bundle and Sail's Verus (built from Sail's Verus fork; also the repair engine) under engine/. Users need only a Rust toolchain besides. See docs/releasing.md." \
     dist/*.tar.gz dist/*.tar.gz.sha256
   gh release view "v$version" --repo "$repo" --json url,isDraft,assets \
     --jq '"\(.url) draft=\(.isDraft)", (.assets[] | "  \(.name) \(.size)")'

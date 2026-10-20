@@ -417,7 +417,10 @@ fn driver() -> Result<ExitCode> {
     // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
         let runtime = retained_runtime(research);
-        if research == crate::managed::research::Mode::Off && runtime.is_none() {
+        let plan = (research != crate::managed::research::Mode::RetainedContent)
+            .then(crate::managed::shipped::active)
+            .flatten();
+        if research == crate::managed::research::Mode::Off && runtime.is_none() && plan.is_none() {
             return Command::new(wrapper)
                 .args(args)
                 .env_remove(crate::managed::visible_output::ENV)
@@ -425,14 +428,15 @@ fn driver() -> Result<ExitCode> {
                 .map(status)
                 .map_err(|e| Error::new("SAIL3111", e.to_string()));
         }
-        let plan = (research == crate::managed::research::Mode::VstdBoundary)
-            .then(crate::managed::shipped::active)
-            .flatten();
         let mut observation = plan
             .as_ref()
             .and_then(|plan| crate::managed::shipped::native::Observation::begin(plan, &args));
         let mut retained = runtime
             .as_ref()
+            // The shipped observer owns the one actual compiler read endpoint.
+            // It independently certifies the same completed child for retained
+            // use after its fresh native boundary checks succeed.
+            .filter(|_| observation.is_none())
             .and_then(|runtime| crate::managed::retained::Native::begin(runtime, &args, &wrapper));
         let mut command = Command::new(&wrapper);
         let native_args = if let Some(call) = &observation {
@@ -466,14 +470,14 @@ fn driver() -> Result<ExitCode> {
         if actual.success()
             && let Some(observation) = observation
         {
-            observation.complete();
+            observation.complete(runtime.as_ref());
         }
         if let Some(attempt) = &retained {
             let _ = attempt.finish(actual.success());
         }
         return Ok(status(actual));
     }
-    let plan = (research == crate::managed::research::Mode::VstdBoundary)
+    let plan = (research != crate::managed::research::Mode::RetainedContent)
         .then(crate::managed::shipped::active)
         .flatten();
     let mut call = plan.as_ref().and_then(|plan| {
@@ -572,6 +576,9 @@ fn driver() -> Result<ExitCode> {
             None,
             Some(&replay.origin),
         )?;
+        if let Some(proof) = &replay.retained {
+            let _ = crate::managed::retained::publish_shipped(&runtime, proof);
+        }
         let shown_stdout = crate::verus_stdout::rebuild(&replay.stdout, flags);
         std::fs::write(dir.join("verus.shown-stdout"), &shown_stdout)
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -585,7 +592,10 @@ fn driver() -> Result<ExitCode> {
     let mut retained = runtime
         .retained
         .as_ref()
-        .filter(|_| research != crate::managed::research::Mode::VstdBoundary)
+        .filter(|retained| {
+            research != crate::managed::research::Mode::VstdBoundary
+                && (plan.is_none() || retained.requested(&identity))
+        })
         .and_then(|plan| {
             (wrapper.canonicalize().ok()? == runtime.original_wrapper.canonicalize().ok()?)
                 .then(|| plan.begin(&runtime, &identity, &launcher_args, &dir))
@@ -1463,8 +1473,7 @@ mod tests {
     #[test]
     fn interrupted_engine_restarts_exact_stock_args_and_preserves_failure()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let root =
-            std::env::temp_dir().join(format!("sail-engine-fallback-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("sail-engine-restart-{}", std::process::id()));
         let proof = include_bytes!("../tests/fixtures/engine-terminal/failed-proof.json");
         let late = include_bytes!("../tests/fixtures/engine-terminal/late-exec.json");
         let documents = [

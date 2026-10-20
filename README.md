@@ -69,14 +69,31 @@ archive downloaded with a browser instead of `curl` is quarantined; clear
 that with `xattr -dr com.apple.quarantine ~/.local/opt/sail-$VERSION-$TARGET`.
 
 **2. Rust.** Verus compiles your crate with the Rust toolchain it pins,
-`1.98.1`. Install [rustup](https://rustup.rs) and that toolchain:
+`1.99.1`. Install [rustup](https://rustup.rs) and that toolchain with its Rust
+sources (`rust-src`):
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 . "$HOME/.cargo/env"
-rustup toolchain install 1.98.1 --profile minimal
+rustup toolchain install 1.99.1 --profile minimal --component rust-src
 sail engine status                 # checks Sail's Verus against its pins
 ```
+
+Installing it does not change your default toolchain. `sail verify` runs
+Cargo with this toolchain on its own, so a release's preverified vstd proof
+(recorded with Cargo `1.99.1`) applies whatever your default Cargo is. A
+`RUSTUP_TOOLCHAIN` you set, a project's `rust-toolchain.toml`, a `rustup
+override` or an explicit `CARGO` keeps your choice instead; another Cargo
+version may emit different compiler arguments and safely verifies vstd again.
+Without `rust-src`, Sail runs your default Cargo and its JSON result notes
+`SAIL3137` with the command above. Sail never installs a toolchain itself
+([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
+
+The proof-bundle release path is still unqualified; `rust-src` is needed only
+for a release with a bundle, and the minimal installation without it remains
+enough for ordinary releases. Proof-bundle first-use qualification includes
+this component's download, verification and installation cost. See
+[release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use).
 
 **From source (contributors).** With rustup, a C toolchain and `git`:
 
@@ -113,6 +130,10 @@ Verus's `verify` flag, and a `src/lib.rs` (or `src/main.rs`) with one
 verified function. It refuses a path that exists and is not an empty
 directory. Sail makes the project with its own Verus and never puts that
 Verus's `cargo-verus` on `PATH`, so your own `cargo verus` is unaffected.
+When a release includes an admitted adjacent proof bundle, a new project also
+gets that bundle's matching dependency lock. A lock already written by the
+generator is preserved; ordinary installs without an admitted bundle keep the
+generator's behavior.
 
 In a Cargo project that Verus already verifies, run `sail verify` instead of
 `cargo verus verify`; nothing needs to change in the project.
@@ -206,7 +227,7 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
 ## Limits
 
 - **Sail runs only its own Verus,** built from its fork at the Verus release
-  it pins (`0.2026.10.04.426d8b0`). Projects that need another Verus release
+  it pins (`0.2026.10.18.7d82994`). Projects that need another Verus release
   are not supported yet.
 - **Cargo library and binary targets only.** `sail verify`, `watch` and MCP
   run `cargo verus`. Projects verified with `verus file.rs` directly are not

@@ -31,6 +31,13 @@ cardinality, Current and publication-refusal assertions remain required.
 Only `managed` invokes the real external Claude Code tool-listing check;
 the ordinary MCP checks remain there too.
 
+Every stock oracle runs `RUSTUP_TOOLCHAIN=<effective toolchain> cargo verus
+verify`, the toolchain Sail selects for its own Cargo
+([ADR 0058](decisions/0058-managed-builds-use-the-pinned-cargo.md)); Sail runs
+without the variable, so its pinned selection is exercised. `ci/stock-toolchain.py`
+prints it (the caller's `RUSTUP_TOOLCHAIN`, else the engine's pin) and fails
+when the pin lacks `rust-src`, which the CI image installs.
+
 `ci/local.sh e2e` runs the complete union, including both extracted fresh-project
 groups once using the already established managed donor, then the local-only
 `extra` flag/workspace cases. Validate standalone `managed-copies` and

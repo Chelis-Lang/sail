@@ -42,9 +42,10 @@ impl Authority {
         packages: &BTreeMap<&str, &Value>,
         nodes: &BTreeMap<&str, &Value>,
     ) -> Option<Self> {
-        let vstd = packages.values().find(|package| {
-            package["name"] == "vstd" && package["version"] == "0.0.0-2026-10-04-0306"
-        })?;
+        let version = crate::toolchain::Pins::embedded().ok()?.verus.vstd?;
+        let vstd = packages
+            .values()
+            .find(|package| package["name"] == "vstd" && package["version"] == version.as_str())?;
         Self::select(vstd, nodes.get(vstd["id"].as_str()?)?)
     }
 
@@ -91,7 +92,13 @@ impl Authority {
     }
 }
 
-const VSTD: &str = "vstd-0.0.0-2026-10-04-0306";
+/// The pinned vstd package's policy key.
+fn vstd_key() -> Option<String> {
+    Some(format!(
+        "vstd-{}",
+        crate::toolchain::Pins::embedded().ok()?.verus.vstd?
+    ))
+}
 
 #[derive(Deserialize)]
 struct Policy {
@@ -154,7 +161,10 @@ impl Closure {
                 .collect::<Option<BTreeMap<_, _>>>()?;
             Authority::from_graph(&packages, &nodes)
         };
-        matches!(authority(), Some(Authority::PublicRegistryVest))
+        matches!(
+            authority(),
+            Some(Authority::PublicRegistry | Authority::PublicRegistryVest)
+        )
     }
 
     /// Initial scope is a verified workspace library with exactly the pinned
@@ -197,6 +207,7 @@ impl Closure {
         }
         let authority = Authority::from_graph(&packages, &nodes)?;
         let policy = authority.policy()?;
+        let vstd = vstd_key()?;
         let root_deps = normal_dependencies(nodes.get(root_id)?)?;
         if root_deps.len() != 1 {
             return None;
@@ -214,7 +225,7 @@ impl Closure {
                 package["name"].as_str()?,
                 package["version"].as_str()?
             );
-            if directories.is_empty() && key != VSTD {
+            if directories.is_empty() && key != vstd {
                 return None;
             }
             let expected = policy.packages.get(&key)?;
@@ -348,6 +359,24 @@ impl Closure {
         };
         features == expected.features && check_package(directory, expected)
     }
+}
+
+#[cfg(test)]
+pub(super) fn native_test_fixture(root: &Path) -> Option<(Closure, PathBuf, String, u64)> {
+    let authority = Authority::PublicRegistry;
+    let policy = authority.policy()?;
+    let key = "convert_case-0.4.0";
+    let source = policy.packages.get(key)?.compiler_files.get("src/lib.rs")?;
+    let directory = root.join(key);
+    Some((
+        Closure {
+            authority,
+            directories: BTreeMap::from([(key.to_owned(), directory.clone())]),
+        },
+        directory.join("src/lib.rs"),
+        source.checksum.clone(),
+        source.size,
+    ))
 }
 
 /// Cargo emits one exact spelling. Rust also accepts whitespace and raw
@@ -490,9 +519,14 @@ mod tests {
 
     #[test]
     fn ordinary_prefilter_uses_the_existing_exact_public_feature_profile() {
+        let version = crate::toolchain::Pins::embedded()
+            .ok()
+            .and_then(|pins| pins.verus.vstd)
+            .unwrap_or_default();
+        assert!(!version.is_empty(), "the primary pin names its vstd");
         let metadata = |source: Value, features: Value| {
             serde_json::json!({
-                "packages": [{"id": "vstd", "name": "vstd", "version": "0.0.0-2026-10-04-0306", "source": source}],
+                "packages": [{"id": "vstd", "name": "vstd", "version": version, "source": source}],
                 "resolve": {"nodes": [{"id": "vstd", "features": features}]}
             })
         };
@@ -505,7 +539,7 @@ mod tests {
             (
                 Value::from("registry+https://github.com/rust-lang/crates.io-index"),
                 serde_json::json!(["alloc", "default", "std"]),
-                false,
+                true,
             ),
             (Value::Null, serde_json::json!(["alloc", "std"]), false),
             (
@@ -674,7 +708,7 @@ mod tests {
             crate::toolchain::Pins::embedded()?.verus.commit
         );
         assert_eq!(
-            policy.packages[VSTD].features,
+            policy.packages[&vstd_key().ok_or("pinned vstd")?].features,
             BTreeSet::from(["alloc".into(), "std".into()])
         );
         assert!(policy.packages.values().all(|package| {

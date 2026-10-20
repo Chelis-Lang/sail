@@ -64,6 +64,24 @@ fn options(args: &[String]) -> Result<Options, (&'static str, String)> {
     Ok(result)
 }
 
+/// The Cargo managed verification runs in `workspace`, and the toolchain it
+/// runs with (ADR 0058): the engine's pinned toolchain, unless the caller or
+/// the project chose one or it is not installed. Every managed command —
+/// `sail verify`, jobs (which run `sail verify`), `watch` and MCP — selects
+/// here.
+pub(crate) fn cargo(
+    workspace: &std::path::Path,
+) -> Option<(PathBuf, sail_verus::managed::CargoToolchain)> {
+    let cargo = std::env::var_os("CARGO")
+        .map(PathBuf::from)
+        .or_else(|| crate::verify::on_path("cargo"))?;
+    let pinned = sail_verus::toolchain::Pins::embedded()
+        .map(|pins| pins.verus.rust_toolchain)
+        .unwrap_or_default();
+    let toolchain = sail_verus::managed::cargo_toolchain::choose(workspace, &cargo, &pinned);
+    Some((cargo, toolchain))
+}
+
 pub(crate) fn config(
     args: Vec<String>,
     attribution_logs: bool,
@@ -81,16 +99,16 @@ pub(crate) fn config(
     let socket = std::env::var_os("SAIL_DAEMON_SOCKET")
         .map_or_else(|| crate::default_socket(&cache), PathBuf::from);
     let daemon = crate::verify::ensure_daemon(&socket);
-    let cargo = std::env::var_os("CARGO")
-        .map(PathBuf::from)
-        .or_else(|| crate::verify::on_path("cargo"))
-        .ok_or("error[SAIL3100]: cargo is not on PATH")?;
+    let workspace = std::env::current_dir().map_err(|e| e.to_string())?;
+    let (cargo, cargo_toolchain) =
+        cargo(&workspace).ok_or("error[SAIL3100]: cargo is not on PATH")?;
     Ok(sail_verus::managed::Config {
-        workspace: std::env::current_dir().map_err(|e| e.to_string())?,
+        workspace,
         cache,
         sail,
         cargo_verus,
         cargo,
+        cargo_toolchain,
         shim,
         z3,
         socket: daemon.then_some(socket),

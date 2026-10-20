@@ -15,6 +15,7 @@ import shutil
 import signal
 import subprocess
 import time
+import tomllib
 
 SOURCE = "7812863f152ed21f0a1b36711ac33130c8f1183b"
 BASE = "8a373f81a507b7ef4f144767ccd237d3d3de6c48"
@@ -60,7 +61,8 @@ def main():
                 "solver_sha256": Z3, "platform": platform.platform(),
                 "scope": "direct compiler research runtime; no Sail runtime/corpus qualification",
                 "complete": False, "candidate_gate": False, "steps": [], "errors": []}
-    env = dict(os.environ, RUSTUP_TOOLCHAIN="1.98.1", CARGO_BUILD_JOBS="8", CARGO_INCREMENTAL="0",
+    # The toolchain is the checked-out source's own, set once it is checked out.
+    env = dict(os.environ, CARGO_BUILD_JOBS="8", CARGO_INCREMENTAL="0",
                VERUS_Z3_PATH=str(args.z3))
     for key in list(env):
         if key.startswith(("SAIL_", "__VERUS_")) or key in [
@@ -110,18 +112,20 @@ def main():
         run("fetch-observer", ["git", "fetch", str(args.observer_bundle),
                                "refs/heads/m11-8/raw-key-evidence"], checkout)
         run("checkout", ["git", "checkout", "--detach", SOURCE], checkout)
+        toolchain = tomllib.loads((checkout / "rust-toolchain.toml").read_text())["toolchain"]["channel"]
+        env["RUSTUP_TOOLCHAIN"] = manifest["rust_toolchain"] = toolchain
         if sha(checkout / "source/Cargo.lock") != LOCK:
             raise ValueError("locked source dependencies differ")
         run("source-before", ["git", "status", "--porcelain"], checkout)
         if subprocess.check_output(["git", "status", "--porcelain"], cwd=checkout):
             raise ValueError("unexpected source changes before build")
         if args.install_toolchain:
-            run("toolchain-install", ["rustup", "toolchain", "install", "1.98.1", "--profile", "minimal",
+            run("toolchain-install", ["rustup", "toolchain", "install", toolchain, "--profile", "minimal",
                                       "--component", "rustc-dev,llvm-tools,rustfmt",
                                       "--target", "x86_64-unknown-none"], checkout, 1200)
         run("rustc-identity", ["rustc", "-Vv"], checkout)
         run("toolchain-components", ["rustup", "component", "list", "--installed",
-                                     "--toolchain", "1.98.1"], checkout)
+                                     "--toolchain", toolchain], checkout)
         run("vargo-build", ["cargo", "build", "--release", "--locked"], checkout / "tools/vargo", 900)
         source = checkout / "source"
         vargo = checkout / "tools/vargo/target/release/vargo"

@@ -7,6 +7,9 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
+#   boundary-witness admission|shapes
+#                        local-only external compiler witnesses; requires
+#                        frozen inputs and the owning bounded runner
 #   e2e-build DIR        CI only: build the e2e binaries once (release sail,
 #                        sail-z3, sail-conformance, check_output, check_mcp)
 #                        into DIR/e2e-bin.tar, which every e2e phase job
@@ -16,8 +19,10 @@
 #                        writes, and its lib and bin projects verify;
 #                        `sail verify` (managed verification, the default,
 #                        ADR 0046, on Sail's Verus, the fork runtime,
-#                        ADR 0043) vs stock `cargo verus verify` on a fresh
-#                        project, cold and warm: identical output and exit;
+#                        ADR 0043) vs stock `cargo verus verify` (with the
+#                        toolchain Sail selects for its Cargo, ADR 0058) on
+#                        a fresh project, cold and warm: identical output
+#                        and exit;
 #                        then `sail verify --output json`: unchanged stderr
 #                        and exit, a sail-project-result whose requested
 #                        report agrees with Verus's own --output-json; then
@@ -71,7 +76,7 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|e2e-build|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|boundary-witness|e2e-build|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
@@ -111,7 +116,7 @@ install_runtime() {
 # runtime comes from the image; this never builds Verus.
 fetch_repair_source() {
   ./target/release/sail-conformance fetch --tier fast --project verus-examples
-  sail_repair_source="${SAIL_CACHE_DIR:-$HOME/.cache/sail}/corpus/verus-426d8b01e7ff"
+  sail_repair_source="${SAIL_CACHE_DIR:-$HOME/.cache/sail}/corpus/verus-7d829946231d"
 }
 
 # Starts a cache daemon on a fresh cache; sets $sock, $cache and $daemon.
@@ -148,7 +153,32 @@ case "$step" in
 
   solver)
     : "${SAIL_TEST_Z3:?SAIL_TEST_Z3 must name the pinned z3 (set in the CI image)}"
-    cargo nextest run --workspace --locked --profile ci --run-ignored only
+    # These two ignored entrypoints require separately captured compiler inputs,
+    # not just Z3. Keep their strict missing-input failures in the local witness
+    # invocation rather than treating them as solver fixtures.
+    cargo nextest run --workspace --locked --profile ci --run-ignored only \
+      -E 'not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes))'
+    ;;
+
+  boundary-witness)
+    local_only boundary-witness
+    if [ "$#" -ne 1 ]; then
+      echo 'boundary-witness: expected admission|shapes' >&2
+      exit 2
+    fi
+    case "$1" in
+      admission)
+        : "${SAIL_ACTUAL_ADMISSION_CONFIG:?requires frozen actual compiler admission inputs}"
+        sail_witness_test='managed::shipped::native::admission_actual_tests::actual_native_admission_child'
+        ;;
+      shapes)
+        : "${SAIL_ACTUAL_NATIVE_TUPLES:?requires retained genuine Cargo tuple evidence}"
+        sail_witness_test='managed::shipped::native::native_shape::tests::actual_retained_native_shapes'
+        ;;
+      *) echo 'boundary-witness: expected admission|shapes' >&2; exit 2 ;;
+    esac
+    cargo nextest run -p sail-verus --lib --locked --profile ci --run-ignored only \
+      -E "test(=$sail_witness_test)"
     ;;
 
   e2e-build)
@@ -190,6 +220,9 @@ case "$step" in
       sail_portfolio_test="$PWD/ci/test-portfolio.sh"
       work="$(mktemp -d)"
       export SAIL_CACHE_DIR="$work/cache"
+      # Stock runs with the toolchain Sail selects for its Cargo (ADR 0058).
+      sail_stock_toolchain="$(python3 "$sail_checkout/ci/stock-toolchain.py" "$sail")"
+      stock_cargo() { RUSTUP_TOOLCHAIN="$sail_stock_toolchain" cargo "$@"; }
       cd "$work"
       cargo verus new --lib demo >/dev/null
       # `sail new` (#148): the project stock `cargo verus new` at the pinned
@@ -237,7 +270,7 @@ RS
       # dependency; afterwards every run below re-verifies only the crate.
       # Stock's cold build runs while the `sail new` projects verify (their
       # first run verifies vstd for Sail); neither's output is compared.
-      plain_run warmup cargo verus verify &
+      plain_run warmup stock_cargo verus verify &
       plain_warmup=$!
       cd "$work"
       for kind in lib bin; do
@@ -252,7 +285,7 @@ RS
       echo "e2e: sail new: lib identical to cargo verus new; lib and bin verify"
       wait "$plain_warmup"
       cd demo
-      plain_run plain cargo verus verify
+      plain_run plain stock_cargo verus verify
       sail_run sailwarmup "$sail" verify
       sail_run cold "$sail" verify
       sail_run warm "$sail" verify
@@ -275,7 +308,7 @@ RS
       # report agrees with Verus's own --output-json. The runs above filled
       # the cache, so every answer is served from it.
       sail_run json "$sail" verify --output json
-      plain_run verusjson cargo verus verify -- --output-json --time
+      plain_run verusjson stock_cargo verus verify -- --output-json --time
       for part in rc err; do
         if ! cmp -s "$work/plain.$part" "$work/json.$part"; then
           echo "e2e: --output json $part differs from plain cargo verus verify" >&2
@@ -406,6 +439,14 @@ RS
     # image's validated prebuilt engine, staged in $SAIL_RELEASE_OUT.
     local_only release "$@"
     release_build
+    # The disposable CI container also installs verismo's bare-metal target.
+    # A distributed proof uses the README's minimal verifier toolchain; its
+    # exact sysroot identity includes every installed target library.
+    # Keep the shared image and other CI steps intact.
+    if [ "${RUSTUP_HOME:-}" = /opt/rustup ] && [ -f /.dockerenv ]; then
+      sail_release_tc="$(python3 -c 'import json, os, pathlib; print(json.loads((pathlib.Path(os.environ["SAIL_ENGINE_BUILD"]) / "sail-build.json").read_text())["rust_toolchain"])')"
+      RUSTUP_PERMIT_COPY_RENAME=1 rustup target remove --toolchain "$sail_release_tc" x86_64-unknown-none
+    fi
     bash scripts/release.sh stage "${SAIL_RELEASE_OUT:?release needs SAIL_RELEASE_OUT}" "${SAIL_ENGINE_BUILD:?release needs the validated prebuilt engine}"
     ;;
 
