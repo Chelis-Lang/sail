@@ -445,3 +445,9 @@ planned for releases after 0.1.0. The owner answered all twelve on
     for that store? It is the same trust boundary as the shipped `sail`, Z3
     and vstd proof. The record recommends fixing the managed path's hashing
     first: it costs about 2.4 s on the same miss and needs no trust decision.
+
+    **Answered 2026-10-20 (owner):** yes. A public key carried inside the
+    checksummed release archive, and listed in its file index, is an
+    acceptable trust root for that archive's own vstd reply store, and
+    only that store. Sail builds ADR 0062: every entry is still checked as
+    a shared entry is, and any doubt means the solver answers.

@@ -2,7 +2,7 @@
 //! (ADR 0062).
 //!
 //! A pack is one file holding ordinary signed shared entries (ADR 0017),
-//! each exactly as [`sign_entry`](crate::shared::sign_entry) builds it. A
+//! each exactly as [`sign_entry`] builds it. A
 //! pack adds no trust of its own. A reader looks an entry up by its key and
 //! then applies every check of
 //! [`verify_entry`](crate::shared::verify_entry) against the keys it trusts

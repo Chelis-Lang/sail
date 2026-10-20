@@ -862,8 +862,12 @@ pub(crate) fn now_unix() -> u64 {
 
 /// Exports `disk`'s entries to `store`, signed with `secret`.
 ///
-/// Only the entries [`eligible`] accepts are exported. An entry the store
-/// already holds, signed by this key, is left alone.
+/// Only entries the local daemon recorded from the pinned solver
+/// (provenance [`PINNED_SOLVER`]) with a recorded solver identity are
+/// exported; entries that came from the shared tier never are. An
+/// `unknown` answer is exported only if `unknown_ok` accepts its effort
+/// (the serving policy, ADR 0009). An entry the store already holds,
+/// signed by this key, is left alone.
 pub fn publish(
     disk: &DiskCache,
     store: &SharedStore,

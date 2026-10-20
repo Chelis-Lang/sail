@@ -1,6 +1,6 @@
 # 0062: Ship the pinned vstd's solver replies in the release archive
 
-- **Status:** proposed (needs an owner decision on its trust root, question 36)
+- **Status:** accepted (owner decision 2026-10-20, question 36)
 - **Date:** 2026-10-20
 
 ## Context
@@ -34,40 +34,70 @@ it: "nothing else about the entry, its location or its store makes it
 trusted." The daemon reads one shared store. A release that carries replies
 therefore needs a trust root that ADR 0017 does not have.
 
-## Decision (proposed)
+## Decision
 
 1. **Release factory.** `scripts/release-shipped.py record` already verifies
-   vstd with an owned daemon and an empty cache. After a successful record:
-   - generate a fresh ed25519 key for this release (`sail cache keygen`);
-   - sign the run's pinned-solver entries into `replies/` with
-     `sail cache publish`, with the existing filters and the ADR 0009
-     unknown-answer policy;
-   - write `replies/release.pub`, then **destroy the secret key**. No
-     long-lived signing secret exists, so there is nothing to steal or
-     rotate.
+   vstd with an owned daemon and an empty cache. After a successful record,
+   it waits for the daemon's write queue to drain, stops the daemon and
+   runs `sail cache bundle-replies --cache <recording cache> --out <dir>`.
+   That command:
+   - generates a fresh ed25519 key, in memory only;
+   - signs every entry that `sail cache publish` would export into one
+     pack, `vstd.pack`. These are the pinned solver's replies with a
+     recorded solver identity, and only the `unknown` answers that the
+     ADR 0009 policy serves. Each entry is an ordinary ADR 0017 shared
+     entry;
+   - writes the public half to `release.pub`, and **never writes the
+     secret**. It is gone when the command exits, so no long-lived signing
+     secret exists to steal or rotate.
 
-   `release-files.json` indexes every reply file, as it indexes the proof
-   bundle, and `package` and the smoke test check them.
-2. **A second, read-only shared tier: the bundled store.** The daemon finds
-   `replies/` beside the installed runtime (the `bin/sail` the run executes,
-   the same discovery as the proof bundle). It consults that store after the
-   local tier and before any configured team store. This tier:
-   - trusts **only** `replies/release.pub`, and only for this store. The key
-     is never added to `<cache root>/trust/`, so it authorizes nothing else;
-   - applies every ADR 0017 check in the same order: format, signature,
-     reply hash, solver name, version and binary, platform class, mode,
-     reply shape and unknown policy. A reply for another solver binary is a
-     counted miss;
+   The factory moves both files to `replies/` in the stage before writing
+   `release-files.json`, so the index binds them like every other member.
+   `verify`, `package` and the smoke test require exactly these two files,
+   a well-formed and non-empty pack, and a public key.
+2. **A pack, not a directory.** A directory store would add about 20,000
+   files, more than the release index allows (16,384 members). The pack is
+   the line `sail-reply-pack-v1`, then records in ascending key order:
+   32 key bytes, a little-endian `u32` length, and the entry bytes. It has
+   no trust of its own (`sail_cache::pack`).
+3. **The bundled tier in the daemon.** `sail serve` finds the release root
+   from its own executable (`<root>/bin/sail`, after resolving symbolic
+   links). A helper thread then loads the tier once:
+   - it reads `release-files.json`;
+   - it requires `replies/release.pub` and `replies/vstd.pack` to match the
+     SHA-256 and size the index lists for them;
+   - it parses the key and the pack.
+
+   Any failure leaves the tier off: every lookup misses, and `INFO` and
+   `sail status` say why. Lookups made before loading finishes miss. On a
+   local miss in default mode, for a session whose `HELLO` gave a solver
+   identity, the daemon looks the key up in the pack before any team
+   store. The tier:
+   - trusts **only** the release key, and only for this pack. The key is
+     never added to `<cache root>/trust/`, so it authorizes nothing else,
+     and the trust directory's keys authorize nothing in the pack;
+   - applies `verify_entry` unchanged: format, key, signature, reply hash,
+     solver name, version and binary, platform class, mode, reply shape,
+     then the `unknown` policy. A failure is a counted miss
+     (`bundled_rejected`);
    - copies hits into the local tier with provenance `bundled:<key id>`.
-     `sail cache publish` never republishes them, as it already refuses
-     `shared:*` entries;
-   - keeps ADR 0017's 250 ms deadline, negative caching and back-off. Any
-     failure is a miss, and the pinned solver answers.
-3. **Opt-out.** `SAIL_BUNDLED_REPLIES=0` skips the tier. This is for
+     `sail cache publish` never republishes them, because it exports only
+     `pinned-solver` entries;
+   - reads only memory once loaded, so it needs no deadline or back-off.
+
+   `STATS` gains `bundled_lookups`, `bundled_hits` and `bundled_rejected`,
+   and `INFO` gains `bundled`. Both are additive with serde defaults, so
+   protocol 1 is unchanged.
+4. **Opt-out.** `SAIL_BUNDLED_REPLIES=0` skips the tier. This is for
    diagnosis only; the tier never changes a reply's bytes.
-4. **Scope.** Ship replies only for the runtime's own pinned vstd. Older
+5. **Scope.** Ship replies only for the runtime's own pinned vstd. Older
    crates.io vstd versions do not verify under a newer runtime, as Vest's
-   pin showed, so "the last N versions" is N = 1.
+   pin showed, so "the last N versions" is N = 1. The pack also holds the
+   few replies of the recipe's own one-function crate, which no user
+   project matches; they are harmless.
+6. **Default-mode keys are unchanged.** An entry serves only a
+   byte-identical process prefix on the same solver binary and platform
+   class (ADR 0008). Nothing is normalized.
 
 **Why the archive may carry a trust root.** The archive's checksum is
 already the trust boundary for `bin/sail`, `bin/sail-z3`, Z3 itself and the
@@ -83,25 +113,35 @@ corrupted or replaced reply file is a miss, not a wrong answer.
 - **Speed.** Every vstd miss saves 1.4–1.8 s on Linux (macOS is
   unmeasured). This alone does not make a component miss faster than stock;
   it brings it to parity.
-- **Size.** The archive grows by about 4 MB compressed and about 20,000 small
-  files once unpacked. Packing them into one indexed file would avoid the
-  file count, but it needs a new store layout, so it is left out of this
-  proposal.
+- **Size.** The archive grows by two files: a pack of about 18 MB
+  (about 4 MB compressed) and a key.
 - **Release time.** The release factory adds one publish step (seconds).
   Linux and macOS need separate replies, because the platform class and the
   Z3 binary differ.
-- **Code.** The daemon gains a second store with its own trust set, and its
-  counters gain `bundled_*` fields (additive, protocol 1). The shim does not
-  change, and neither does the layering table.
-- **Tests.** The ADR 0017 cases rerun against the bundled tier: forged,
-  untrusted, foreign-solver, foreign-platform, truncated and hung entries.
-  Added cases: a key from the bundled store does not authorize the team
-  store, and the team store's keys do not authorize the bundled store. An
-  archive whose `replies/` is altered fails `package` and the smoke test.
-- **Not chosen first.** The record finds a larger and cheaper lever for the
-  component miss. On a plan-less miss, the driver proxies rehash the engine
-  runtime (530 MB, 4.4 CPU-s), and the developer toolchain's sysroot is
-  hashed in full. Together these cost about 2.4 s and need no trust
-  decision. They should be fixed first; this ADR then adds its 1.4–1.8 s.
+- **Code.** The daemon gains a second store with its own trust set. The
+  shim does not change, and neither does the layering table.
+- **Tests.**
+  - `crates/sail-daemon/tests/bundled.rs` runs against a real daemon:
+    - a factory-built pack is served and copied locally with its
+      provenance, and is never republished;
+    - each of these entries is a counted miss: a modified entry, an entry
+      for another solver binary, an entry signed by another key, and a
+      misfiled entry;
+    - each of these turns the tier off: the key outside the index, the
+      pack outside the index, a swapped key, a modified pack, a malformed
+      pack, and a missing index;
+    - with a swapped key and a rewritten index, the release's entries are
+      untrusted;
+    - release and team trust never cross.
+  - `sail_cache::pack` unit tests refuse every malformed pack.
+  - `crates/sail-cli/tests/shared_ops.rs` checks that `bundle-replies`
+    writes exactly the pack and the public key, and that every packed
+    entry verifies.
+  - `scripts/test-release-shipped.py` covers the factory and the
+    `verify` checks.
+- **Complementary lever.** On a plan-less miss, the driver proxies rehash
+  the engine runtime (530 MB, 4.4 CPU-s), and the developer toolchain's
+  sysroot is hashed in full. Together these cost about 2.4 s; #286 fixes
+  that separately. This ADR adds its 1.4–1.8 s on top.
 - **Revisit** if the fork's vstd query generation gets faster: the solver's
   share of a miss, and with it this lever's value, would then grow.
