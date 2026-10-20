@@ -70,6 +70,8 @@ Each archive unpacks to one directory:
 
 ```
 sail-VERSION-TARGET/
+  LICENSE                       Sail's licence (MIT)
+  THIRD-PARTY-NOTICES           licences of everything else the archive holds
   bin/sail                      the CLI, daemon and MCP server
   bin/sail-z3                   the solver shim; must stay beside sail
   engine/<variant>/             the repair engine runtime
@@ -298,7 +300,11 @@ access to `Chelis-Lang/sail`, AWS credentials for `scripts/perf-host.sh`,
 qualifying the macOS runtime against it).
 
 1. Land a PR that sets `[workspace.package] version` in `Cargo.toml` and
-   moves `CHANGELOG.md`'s Unreleased entries under that version.
+   moves `CHANGELOG.md`'s Unreleased entries under that version. In the same
+   PR, check `THIRD-PARTY-NOTICES` against the locks and the pinned fork:
+   `scripts/third-party-notices.py --verus-repo FORK_CLONE --work NEW_DIR
+   --check`, then regenerate without `--check` if it is stale. Staging copies
+   it and `LICENSE` into each archive.
 2. Check that `engine/verus/artifact-macos.json` names the fork commit in
    `engine/verus/fork.toml` and that the
    [macOS engine record](validation/macos-engine.md) qualifies that runtime.
