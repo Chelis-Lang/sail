@@ -230,3 +230,49 @@ A metadata memo alone therefore saves 0–10 ms; it was not built.
 
 Raw evidence: `hint-evidence.tgz` sha256
 `573e1b25295a0174ccf60be255d617a4b824e27974bc17e7a0edc4d1253ca5b3`.
+
+## File workers on macOS
+
+| Field | Evidence |
+|---|---|
+| Status | Measured; candidate `perf/macos-file-workers` |
+| Source | Sail `candidate/r3-macos-reuse` `8afc8663` (R3 macOS reuse), staged with `scripts/release.sh stage`; variants differ only in `parallel::MAX_WORKERS` |
+| Runtime | Sail fork `f8589ed4` (`…-e9b69a75ea390499`), pinned Z3 4.16.0; stock `0.2026.10.18.7d82994`, Cargo 1.99.1 |
+| Environment | EC2 mac-m4.metal (Apple M4, 10 cores), us-east-1d, macOS 27.0, idle; minimal Rustup home (1.99.1 with `rust-src`), all paths physical |
+| Scope | Current-pin Vest (`-p vest_lib -- --rlimit 100`, ordinary macOS retained reuse active): unchanged reruns after a warm-up, eight interleaved rounds per variant; cold Vest and cold demo, three interleaved rounds per variant, fresh copy, `CARGO_HOME` and cache each |
+| Limits | One host; the setup-phase and syscall profile is from the shipped cap of 8 |
+
+The macOS unchanged Vest rerun took 0.89 s against stock's 0.22 s.
+`SAIL_JOB_EVENTS` phase medians over ten reruns: post-run 330 ms (25 ms on
+Linux), invocation 137, target records 106, metadata 99, inputs 75, runtime
+context 59, publication 28, target cleanup 25. One rerun made 31,003 `open`
+calls over 13,780 distinct input files (most read twice) and about 109,000
+`lstat` calls (seven per file); `sample` of eight reruns attributes 75% of
+sampled thread time to `open` in `files::file_digest`, 12% to `lstat` in
+`input::stamp_paths` and 11% to SHA-256. `open` averaged 77 µs.
+
+macOS serialises those calls in the kernel. A pass over the same 11,467
+files on this host:
+
+| Workers | 1 | 2 | 3 | 4 | 6 | 8 |
+|---|---:|---:|---:|---:|---:|---:|
+| Open, read and SHA-256 (ms) | 289–357 | 240–242 | 228–235 | 248–250 | 306–309 | 322–324 |
+| `lstat` (ms) | 92–94 | 89–91 | 93–95 | 91–94 | 90–91 | 88–89 |
+
+With `MAX_WORKERS` set per variant (same bytes read and compared; only the
+overlap changes):
+
+| Median, s | 2 | 3 | 4 | 8 |
+|---|---:|---:|---:|---:|
+| Vest unchanged (8 rounds) | 0.852 | 0.770 | **0.732** | 0.893 |
+| Vest cold (3 rounds) | — | — | 50.02 | 51.00 |
+| Demo cold (3 rounds) | — | — | 20.00 | 19.94 |
+
+Every run exits 0; every unchanged run is Current with no verifier and both
+targets reused. The cap is now 4 on macOS and stays 8 elsewhere, where 8
+measured fastest. The remaining macOS rerun gap is mostly the repeated
+complete reads and stamps themselves, which this change keeps.
+
+Raw evidence: `mac-unch.tgz` sha256
+`c65c712c84a37d8a5fce5895fe53f3d44892032c16c1bcc639cba583361cdd12`
+(phase rows, the `fs_usage` capture, eight `sample` profiles, the drivers).

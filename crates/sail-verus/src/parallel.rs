@@ -5,10 +5,18 @@
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-/// At most this many workers run at once.
+/// At most this many workers run at once. macOS serialises `open` and
+/// `lstat` in the kernel: on Apple silicon, digesting vest's 11,467 input
+/// files took about 230 ms with 3 or 4 workers and 323 ms with 8, and a
+/// managed unchanged rerun took 0.73 s with 4 workers against 0.89 s with 8.
+/// On Linux 8 is fastest.
+#[cfg(target_os = "macos")]
+const MAX_WORKERS: usize = 4;
+#[cfg(not(target_os = "macos"))]
 const MAX_WORKERS: usize = 8;
 
-/// `items.iter().map(work).collect()`, computed by up to eight scoped workers.
+/// `items.iter().map(work).collect()`, computed by up to `MAX_WORKERS`
+/// scoped workers.
 /// A worker that panics leaves its items to be recomputed sequentially, so a
 /// result is never missing or taken from another item.
 pub(crate) fn in_order<T: Sync, R: Send>(items: &[T], work: impl Fn(&T) -> R + Sync) -> Vec<R> {
