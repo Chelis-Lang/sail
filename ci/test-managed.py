@@ -78,12 +78,21 @@ def bounded_verification(arguments, cwd, env, timeout):
     finish_verification(observation, process.returncode, stdout, stderr)
     return subprocess.CompletedProcess(arguments, process.returncode, stdout, stderr)
 
-with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary:
+# Under /tmp: macOS's default TMPDIR makes the job service socket path longer
+# than a Unix socket name allows (SAIL0800).
+with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") as temporary:
     root = Path(temporary)
     evidence = Path(os.environ.get("SAIL_MANAGED_ACCEPTANCE_OUT", str(root / "evidence"))).resolve()
     evidence.mkdir(mode=0o700, parents=True, exist_ok=True)
     managed_calls = []
     env = dict(os.environ, SAIL_CACHE_DIR=str(root / "cache"))
+    # Stock runs with the toolchain Sail selects for its Cargo (ADR 0058).
+    stock_toolchain = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve().parent / "stock-toolchain.py"), sail],
+        env=env, check=True, stdout=subprocess.PIPE).stdout.decode().strip()
+
+    def stock_env():
+        return dict(env, RUSTUP_TOOLCHAIN=stock_toolchain)
     # The project is a member of a two-member workspace and every run starts
     # in its own directory without -p, as a user inside a member crate does.
     # The other member has a build script that this member never schedules;
@@ -333,11 +342,11 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 "sys.stderr.write('SAIL_TEST_CHANGED_CC\\n')\nraise SystemExit(42)\n")
             try:
                 commands = [
-                    ("stock-changed-compiler", [cargo_verus, "verus", "verify", "--target-dir", str(root / "changed-compiler-oracle")]),
-                    ("sail-changed-compiler", [sail, "verify"]),
+                    ("stock-changed-compiler", [cargo_verus, "verus", "verify", "--target-dir", str(root / "changed-compiler-oracle")], stock_env()),
+                    ("sail-changed-compiler", [sail, "verify"], env),
                 ]
-                for label, arguments in commands:
-                    failed = bounded_verification(arguments, broken_project, env, 240)
+                for label, arguments, command_env in commands:
+                    failed = bounded_verification(arguments, broken_project, command_env, 240)
                     (evidence / (label + ".stdout")).write_bytes(failed.stdout)
                     (evidence / (label + ".stderr")).write_bytes(failed.stderr)
                     assert failed.returncode == 101 and marker in failed.stderr, (label, failed.returncode, failed.stderr.decode())
@@ -373,7 +382,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 try:
                     oracle["run"] = bounded_verification(
                         [cargo_verus, "verus", "verify", "--target-dir", str(root / "oracle-target")],
-                        oracle_project, env, 300)
+                        oracle_project, stock_env(), 300)
                 except Exception as failure:  # reported where the verdict is compared
                     oracle["error"] = failure
             oracle_thread = threading.Thread(target=run_oracle)

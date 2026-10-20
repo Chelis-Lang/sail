@@ -4,13 +4,13 @@
 # metadata only: conformance always compares sail with plain Verus on the
 # same run.
 schema_version = 1
-verus_release = "0.2026.10.04.426d8b0"
-verus_commit = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+verus_release = "0.2026.10.18.7d82994"
+verus_commit = "7d829946231d6413a398f6e4160cdfe951261dad"
 
 [[project]]
 name = "verus-examples"
 url = "https://github.com/verus-lang/verus"
-commit = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+commit = "7d829946231d6413a398f6e4160cdfe951261dad"
 license = "MIT"
 tier = "fast"
 verus_version_compat = "compatible"
@@ -26,7 +26,7 @@ expected_from = "examples-first-line-tag"
 [[project]]
 name = "vstd"
 url = "https://github.com/verus-lang/verus"
-commit = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+commit = "7d829946231d6413a398f6e4160cdfe951261dad"
 license = "MIT"
 tier = "fast"
 verus_version_compat = "compatible"
@@ -54,7 +54,7 @@ extra_verus_args = ["--crate-type=lib"]
 expected = "verified"
 
 # Standard tier: the verita projects (docs/survey/corpus.md section 3), with
-# crate roots and arguments from verus@426d8b0:tools/verita/run_configuration_all.toml.
+# crate roots and arguments from verus@7d82994:tools/verita/run_configuration_all.toml.
 # `cargo-verus` entries run `cargo verus focus` as verita does: only the
 # listed package is verified, and its dependencies (including vstd, patched to
 # the pinned source) are built with --no-verify.
@@ -206,7 +206,7 @@ expected = "verified"
 [[project]]
 name = "verus-integer-ring"
 url = "https://github.com/verus-lang/verus"
-commit = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+commit = "7d829946231d6413a398f6e4160cdfe951261dad"
 license = "MIT"
 tier = "deep"
 verus_version_compat = "needs-singular-build"

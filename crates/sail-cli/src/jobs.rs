@@ -119,8 +119,13 @@ pub(crate) fn revision(
     project: &std::path::Path,
     args: &[String],
 ) -> Option<sail_verus::managed::InputSnapshot> {
-    let cargo = std::env::var_os("CARGO").map_or_else(|| PathBuf::from("cargo"), PathBuf::from);
-    sail_verus::managed::snapshot(project, args, &cargo).ok()
+    let (cargo, toolchain) = crate::managed_cli::cargo(project).unwrap_or_else(|| {
+        (
+            PathBuf::from("cargo"),
+            sail_verus::managed::CargoToolchain::Caller,
+        )
+    });
+    sail_verus::managed::snapshot(project, args, &cargo, &toolchain).ok()
 }
 
 pub(crate) fn strip_output(args: &[String]) -> Result<Vec<String>, String> {

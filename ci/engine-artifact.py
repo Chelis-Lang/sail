@@ -86,8 +86,14 @@ def pin_host(pin):
         raise ValueError("SAIL0944: unknown engine runtime platform: " + platform)
     return PLATFORMS[platform]
 
+LOCAL_RUST_SRC = b"lib/rustlib/src/rust"
+
 
 def validate(build, pin):
+    # The pinned manifest digest is the runtime authority Sail binds to
+    # (sail_verus managed::retained::selection::LINUX_MANIFEST on Linux).
+    if sha(build / "sail-build.json") != pin["manifest_sha256"]:
+        raise ValueError("SAIL0944: engine manifest digest mismatch")
     manifest = json.loads((build / "sail-build.json").read_text())
     # The pin records the runtime's Verus Cargo features (none today, like the
     # stock release); projects needing another fall back to stock (SAIL3124).
@@ -111,6 +117,11 @@ def validate(build, pin):
             raise ValueError("SAIL0944: runtime artifact mismatch: " + name)
     if sha(build / RUNTIME / "z3") != pin["z3_sha256"]:
         raise ValueError("SAIL0944: pinned solver mismatch")
+    # The Verus release's vstd.vir names standard library sources by the
+    # toolchain's virtual /rustc/<commit> path. A build toolchain with rust-src
+    # records its local copy instead (xtask refuses to build that way).
+    if LOCAL_RUST_SRC in (build / RUNTIME / "vstd.vir").read_bytes():
+        raise ValueError("SAIL0944: vstd.vir names local rust-src standard library paths")
     return manifest
 
 
@@ -122,6 +133,7 @@ def pack(args):
            "fork_commit": fork_commit(),
            "source_lock_sha256": sha(REPO / "engine/verus/Cargo.lock"),
            "verus_features": verus_features(manifest["features"]),
+           "manifest_sha256": sha(build / "sail-build.json"),
            "release_tag": "engine-runtime-" + fork_commit()[:8] + "-" + getattr(args, "platform", "linux")}
     validate(build, pin)
     args.archive.parent.mkdir(parents=True, exist_ok=True)
@@ -186,6 +198,7 @@ def committed_pin(path):
     pin = json.loads(path.read_text())
     if (pin["schema_version"] != 2 or pin["fork_commit"] != fork_commit()
             or not isinstance(pin.get("verus_features"), list)
+            or not re.fullmatch(r"[0-9a-f]{64}", str(pin.get("manifest_sha256", "")))
             or pin["source_lock_sha256"] != sha(REPO / "engine/verus/Cargo.lock")):
         raise ValueError("SAIL0944: committed engine artifact is stale; rebuild locally")
     return pin

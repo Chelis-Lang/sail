@@ -1,8 +1,8 @@
 {
-  "authority_source_sha256": "abf802d7deb7c0110b0aae0875e15a7b1ace82d0d02f2acaf8f26d1ba8a73049",
+  "authority_source_sha256": "77cfe09e6aec9d1934662198c343800bcde4c53b6cda2ed1011fe43f180fc12a",
   "authority_sources": [
-    "abf802d7deb7c0110b0aae0875e15a7b1ace82d0d02f2acaf8f26d1ba8a73049",
-    "71c9bde23eb3af6d952fc58723f3ddc1e830888ff565119256258aa09ab15dd7"
+    "77cfe09e6aec9d1934662198c343800bcde4c53b6cda2ed1011fe43f180fc12a",
+    "12d779a067fc0d6dbd9ee25abed5e2fdbda27ab55cb0716f436b9f549c4eb2b3"
   ],
   "feature_graph": "actual current-pin Vest metadata; only vstd version/lock updated, no path providers",
   "kind": "sail-retained-public-vest-inputs",
@@ -1741,22 +1741,22 @@
       "source_bytes": 336823,
       "version": "1.0.24"
     },
-    "verus_builtin-0.0.0-2026-09-16-0054": {
+    "verus_builtin-0.0.0-2026-10-11-0230": {
       "compiler_files": {
         ".cargo_vcs_info.json": {
-          "checksum": "blake3=967ec1cb26a0e7d43b77e80079d0264d35b6ef4d1a5a23565cd567404bd197f2",
+          "checksum": "blake3=31571b694695b8710defdc2b17fa62c5b45ba4498506b8233ef5722c5b1aa5d5",
           "size": 108
         },
         "Cargo.lock": {
-          "checksum": "blake3=3fabaa20d04e858c4fa8f4763cfb9bd656bf60f36c7af130e00ec7f8f61d54d7",
+          "checksum": "blake3=ed2321d1cf67fe5b5da9af82cf13368fa422857d59a13c188bbe4858adb97667",
           "size": 173
         },
         "Cargo.toml": {
-          "checksum": "blake3=75d322b4cec58394b462f69b0f7fdc80f3636b4c42f624100b20c827fc563ff5",
+          "checksum": "blake3=15d745a609e37499e27ae8b31a145b81ab86070cddbf2417cae43dc1bac4587f",
           "size": 3850
         },
         "Cargo.toml.orig": {
-          "checksum": "blake3=d6f977126cd1e363a77f80bb0fc441843a0b4a480817896ccd620e328cd34bf3",
+          "checksum": "blake3=4f05653a9056f80c5c349a7d9f0ddfc5ec9ac8d690f3e01ef23c0d4526dc2c83",
           "size": 638
         },
         "README.md": {
@@ -1764,43 +1764,43 @@
           "size": 5826
         },
         "src/lib.rs": {
-          "checksum": "blake3=a706ee69ad40fa39449aa615cf1bd0ae2e88dfe3d15c43b5d5c040eebd02a660",
-          "size": 74135
+          "checksum": "blake3=37ed27c28cf5a1598e7b85ccd44afb8448eb8c75d883b84b0ef6753c017b7f90",
+          "size": 74241
         }
       },
       "features": [],
       "files": {
-        ".cargo_vcs_info.json": "b035105fb8eb8895ba69c4ea85150d5b618d6f8cfbebedb9957443e451f93632",
-        "Cargo.lock": "7a7f2d3717396dfea4473ca16d30d42f9031f0d44849ef864975a5f478c97b7f",
-        "Cargo.toml": "a0a485a68d5593df0cb4875f101f0ff35dfbed02553deb55ea84db4461e7a79e",
-        "Cargo.toml.orig": "041ace3cffaed8f42ea05aa5979197dcd71e06571b8872648fda34426d171309",
+        ".cargo_vcs_info.json": "a874e2d98bee61daf9b2d6a684a0fbf2cf64c4b7d83119dccbd51685b6dde122",
+        "Cargo.lock": "8a81fd2587b4b54d69b0c1b89a123cf474bd8734dc3d8046ec7d1e0250e0c135",
+        "Cargo.toml": "d8eb8302ef8d18ebdc74b3fd60ce9aee7a77ad18c62d829f0b5472e8c0a1e601",
+        "Cargo.toml.orig": "07f62c0599a0d65cb50fd7afbb2177e45237ff662ac257a2b2ba8bad07966f57",
         "README.md": "faa585b7f3463e7a837fbd3364ea3e751b207fa141268d60fa011515d20a99ba",
-        "src/lib.rs": "03dbe36b8c89107d3ab88ff26c28c4db9e66cf8a097ba8fd01096875d4ebf522"
+        "src/lib.rs": "c7c63e9327358ae3c6f4038927fb3ce01d08238a31f50b93b7c521a80d072e2e"
       },
       "name": "verus_builtin",
       "origin": {
-        "archive_sha256": "5e4a9e69d45ddbe303075756d3fc2fcc965eb9dc70c80651d0e4458a6af1ed83",
+        "archive_sha256": "d2e5d0972903f31da5271f50645c402122804a4e5292e1694706977ce18cbe67",
         "kind": "crates-io"
       },
-      "version": "0.0.0-2026-09-16-0054"
+      "version": "0.0.0-2026-10-11-0230"
     },
-    "verus_builtin_macros-0.0.0-2026-09-20-0158": {
+    "verus_builtin_macros-0.0.0-2026-10-18-0147": {
       "compiler_files": {
         ".cargo_vcs_info.json": {
-          "checksum": "blake3=a35a17b9d8e4230ed8e76bc94dce2c66d33925c18879ec742f984288018f5a2a",
+          "checksum": "blake3=1a059bd1a60920dd47d8b323fd99f1e4abd4909936c4016a0d9e154087512ad8",
           "size": 115
         },
         "Cargo.lock": {
-          "checksum": "blake3=b2928830d3c27bf4d7db3ea86809d5fdf4b573c5a0375051b6d2dc19b4fafcab",
+          "checksum": "blake3=b703db9375f8fb874d6d05a9fed069febfd3cffe6f5a8bef5501ae2d430d02c3",
           "size": 2198
         },
         "Cargo.toml": {
-          "checksum": "blake3=29025fda5db1d3944bb4bff47723d357ff8c047f82cdb982a2a178f65340149f",
-          "size": 4344
+          "checksum": "blake3=3b1c738b56401ae63ef2325b42ce5ba98bf8d7dc75c637e85eebd79378451ce8",
+          "size": 4363
         },
         "Cargo.toml.orig": {
-          "checksum": "blake3=4d2710311db98926cedb47a18cdd79f867389309d0bfeda6cf67995b9b8a4ec3",
-          "size": 789
+          "checksum": "blake3=c58226f1be0f2d4bf25d4d5d4d8e7579f8e6060269a5a73f83053f00de0b7edd",
+          "size": 808
         },
         "README.md": {
           "checksum": "blake3=63235c45b9022fde931d1a5490a3a9be7627b56155f07930378a04792f1a9728",
@@ -1815,8 +1815,8 @@
           "size": 4094
         },
         "src/attr_rewrite.rs": {
-          "checksum": "blake3=175d2ad0c71dde5b7f29b4bd6c409f05eee0e8061d46d267848c56f5dbcfd378",
-          "size": 52423
+          "checksum": "blake3=7e0fb89a8633d1564672ad5fc7ae11216c53027fd84b4db00a50b52914642769",
+          "size": 54661
         },
         "src/calc_macro.rs": {
           "checksum": "blake3=40b774cc1fea405787323b843f9375f5e4358be88d391eb10489fbed43522fc8",
@@ -1831,8 +1831,8 @@
           "size": 128211
         },
         "src/contrib/hooks.rs": {
-          "checksum": "blake3=45ff80c9cc18043a2092152963a57b37c3a0ac56768a66995ce66de7be73006b",
-          "size": 5218
+          "checksum": "blake3=6462fec5161ede0c8a67c8253ab8a89ed92655005643fd1277ed2b27f983b2fd",
+          "size": 5217
         },
         "src/contrib/mod.rs": {
           "checksum": "blake3=68c17f413ca58467a47f8dbdbecae11e475d4327fef6569841d21e8aa3f9e51b",
@@ -1863,8 +1863,8 @@
           "size": 26315
         },
         "src/rustdoc.rs": {
-          "checksum": "blake3=e130b98cbfc8bed4b140bd87853fd87e034e4059ad5dfcffde45ad4682ef6b12",
-          "size": 14314
+          "checksum": "blake3=9a2540c4c14eb5cdf5ea627c79a3bda13eb4f223d7e3ffb62e3d6ef07621dac5",
+          "size": 14313
         },
         "src/struct_decl_inv.rs": {
           "checksum": "blake3=751a38f4c776d69390da0333eb51aee1bf612115b53db175de23719a2285facb",
@@ -1875,8 +1875,8 @@
           "size": 2239
         },
         "src/syntax.rs": {
-          "checksum": "blake3=602256370aff93aabb65b110830994fb14416e569e0c00c6df59a648c5e21836",
-          "size": 256279
+          "checksum": "blake3=9f3187f505795781746f0d4dedd2f100f82ca7739a1c31d814239746f8f57ec4",
+          "size": 256334
         },
         "src/syntax_trait.rs": {
           "checksum": "blake3=41509eb4fa19a1fda834452cb258bda1e9e8a247d88a116bc410f49f6d9af9c5",
@@ -1887,24 +1887,24 @@
           "size": 1826
         },
         "src/unerased_proxies.rs": {
-          "checksum": "blake3=6a946ee96c2e38943edfc533b81f4d62f430522cecf257f0814451632d77d346",
-          "size": 21842
+          "checksum": "blake3=3200bd2600a857162e99174e302e58131fc90784044898c3a1e4492d13d32bbf",
+          "size": 21841
         }
       },
       "features": [],
       "files": {
-        ".cargo_vcs_info.json": "8c205e693568f71cd96239d7f0c363c9b2170297698f80bd324f8bc064b0a942",
-        "Cargo.lock": "cc6310074ac32525355f176d54dc4a5317442d62bef33156849f3482d2835637",
-        "Cargo.toml": "37ff67d9aeca03f981a8d955e4bfcb5f35e38910e5f9c7b17fbb84d2fef36a27",
-        "Cargo.toml.orig": "6ffa67f59c89c8380bc24c5600272222e07516be4b571cff3c398911103f5901",
+        ".cargo_vcs_info.json": "436b5434350652c4777ee3d1b248e6c2bdd181d15b7f53922d96fcaba0174218",
+        "Cargo.lock": "48deea6298f550dfeb85fd5f39ff2822a000880f06404f6b6f06fc7283a94b5d",
+        "Cargo.toml": "4c8f8b2c9dd584108e1674870b3fd26f2e12cd4347e6b17b0a67121541db280b",
+        "Cargo.toml.orig": "4cdbcd697b4f459b368ec10a864d0178076bd1ff5848bcf88434b014d342f842",
         "README.md": "faa585b7f3463e7a837fbd3364ea3e751b207fa141268d60fa011515d20a99ba",
         "src/atomic_ghost.rs": "a3aa5d05dea856478fa154a167143692d94d68869cd4d05f7c6108379dabdc39",
         "src/attr_block_trait.rs": "29b8ebb529232c94223b59ae6d5fdc037fdea4504b4d1f7c87c9e24971c52a77",
-        "src/attr_rewrite.rs": "ac7afa21d485aa289fd551755015003cbaecf9bcdef95a1e790a8b996843947c",
+        "src/attr_rewrite.rs": "0beb00a2f82cd57c443f3b8dd20ad453a656dcc5303180da57fe489b4c8156f5",
         "src/calc_macro.rs": "61c24635c9a716758faf949cec928d37f77c9a3b220567e7d7c11f885f95a701",
         "src/contrib/auto_spec.rs": "b82e9d2b39b98a337a82572f9c41806f3a68516a9b7a5dc829462f18d5b9909d",
         "src/contrib/exec_spec.rs": "bb54104e0cd1a405a4fe12fcf47ec823889b6d22cd3c62917a89e34840df2f3b",
-        "src/contrib/hooks.rs": "a74d941187dfafef55ce5adb59bb468acbedcd1618e9a02d7c3436ce479f2f75",
+        "src/contrib/hooks.rs": "85e506a308c248d8c61d487a0fe99acfe4c7169340f28042f1640269b8a3b82a",
         "src/contrib/mod.rs": "81ca1752441848172d9dd797856c0dbca3ed84c3b4e15afb92b01056b75eb452",
         "src/contrib/set_build.rs": "74519b1949aff41ec53a8375e752f156f71d261aa0b3d402688957d7fc240a69",
         "src/contrib/spec_derive.rs": "c665223a9c4292f374c44453e84544687066acbf055e5bd9682a7f613718c490",
@@ -1912,20 +1912,20 @@
         "src/fndecl.rs": "abe5187ba2c2084f270be986ada0b6a8949e801455bc3351d84543bb721ca522",
         "src/is_variant.rs": "2947e850f0b0754da6b50f51d388c3c433bc332a452181c7a224ff7f6e726ec8",
         "src/lib.rs": "b6650b8b354bb47dddb0fd4d315f341f01918e882aea273d7e8ef352ffc4d5ce",
-        "src/rustdoc.rs": "21c43bec00d40ec2aa9fc82aacd80294398c6d8681d290c3787aeb407e626c8a",
+        "src/rustdoc.rs": "691e3b7aea7f7780b54509dda1d2f64e1c927ee8429546e9347d0e672e610d6b",
         "src/struct_decl_inv.rs": "5f287b00156fe5d50112625801cf81cefd2664cfa808e7536caeb6b06f2b7c99",
         "src/structural.rs": "a78c2136b77e59e87640ae595303a80de71f72966284a355f9af1b41d1503c42",
-        "src/syntax.rs": "592f9ef07f20c68d7978bc6f0309de8e848529fe63d6be1be0f900648850440f",
+        "src/syntax.rs": "d2f7c26449a70903b3475a39bce3fa66b28e733c71691cb8078ed085b0cab721",
         "src/syntax_trait.rs": "3aef0b681620e7a437a821020bf060b23afe473cac74ca95cc333ceb395e4fad",
         "src/topological_sort.rs": "aa53f630cc04e1ae852ff6d04307ed2e62d0b81d281b4063a2f2460ee516a28d",
-        "src/unerased_proxies.rs": "50bae64b8da1586e1a7a8571218ea9e52d41553d3ee53457049af63a7d3f49c5"
+        "src/unerased_proxies.rs": "46f6f5f8bed25eac7fb161b4e519817c447d13bbce34d7531b881e3e66be7042"
       },
       "name": "verus_builtin_macros",
       "origin": {
-        "archive_sha256": "213ca3e8a80925aec251d3f1952a213d6090156b58ad81dccc3a2f1fed77c99f",
+        "archive_sha256": "c420824c5f3528bc29892c12c9083c03e8abe09119456e0ffe98ec3fb16ee5b8",
         "kind": "crates-io"
       },
-      "version": "0.0.0-2026-09-20-0158"
+      "version": "0.0.0-2026-10-18-0147"
     },
     "verus_prettyplease-0.0.0-2026-09-06-0133": {
       "compiler_files": {
@@ -2145,22 +2145,22 @@
       },
       "version": "0.0.0-2026-09-06-0133"
     },
-    "verus_state_machines_macros-0.0.0-2026-09-06-0133": {
+    "verus_state_machines_macros-0.0.0-2026-10-18-0147": {
       "compiler_files": {
         ".cargo_vcs_info.json": {
-          "checksum": "blake3=f2e3cc0bc02ee96e92c109694468385fa9a77486895096be56e27fcbf22be980",
+          "checksum": "blake3=7e23af7aea510c1b0701a006e6708818ae16665e4c1b96939313d6b5f77917e5",
           "size": 122
         },
         "Cargo.lock": {
-          "checksum": "blake3=697030c8a791b3c79b410ebdb02f0c51a44fe3c3d3a9ee1521b4f620d3d7dbfc",
+          "checksum": "blake3=0539a4e74a6bcd2153182bd6167f8e49ac40b56a17ffcd493c0039331174d06a",
           "size": 1817
         },
         "Cargo.toml": {
-          "checksum": "blake3=aecc8eda93981742ffc7af606c59a1c6fd9b8f055c18db6ae5937d7eeb788a4c",
+          "checksum": "blake3=992fa7a007525239af4eea95aab853a8a07e472d79811a1de6794b869d6e45fd",
           "size": 4163
         },
         "Cargo.toml.orig": {
-          "checksum": "blake3=2575bac0f5773636cad6c2a1490afd9e44bfc9ce98503afaaed749d908e20e53",
+          "checksum": "blake3=085fe557f6fa37a012c0088d5bd5c1a0fb399f7ebf73f7d8c8aa50a1ed64de28",
           "size": 827
         },
         "README.md": {
@@ -2192,8 +2192,8 @@
           "size": 13139
         },
         "src/ident_visitor.rs": {
-          "checksum": "blake3=075984979f61395c1cfa34faec95cf1aeb930bd044b70e01eba6ff3fd79b8b55",
-          "size": 12706
+          "checksum": "blake3=b3f850606a24e61fe45ed0d497fb6eca6ec12e0c087d8e1778a646bf7093b919",
+          "size": 13338
         },
         "src/inherent_safety_conditions.rs": {
           "checksum": "blake3=8d3c64eda42424a0290badcfaea5a127f1c80a6a6efe604e0d53aa2391351ecf",
@@ -2216,8 +2216,8 @@
           "size": 27037
         },
         "src/safety_conditions.rs": {
-          "checksum": "blake3=840edfbccf2064757e797bc8a20904057e7795480e98436661094010f374e965",
-          "size": 6377
+          "checksum": "blake3=a4f27c2ea16cad1bad3f7f5f7fe854457502dac5999dc300220854653ff7511b",
+          "size": 7436
         },
         "src/self_type_visitor.rs": {
           "checksum": "blake3=108d48fb1885910c58e587e0910153f891b7493d808b130a2692323249718638",
@@ -2236,8 +2236,8 @@
           "size": 19136
         },
         "src/to_token_stream.rs": {
-          "checksum": "blake3=8e5e66bc4b2f2a2880372cdfa3a3e6b16cab79d6b93f98656b0d57faa8ffafdd",
-          "size": 42265
+          "checksum": "blake3=1517afefd9d7376930c144f532302e645ca9014fd8bbf04e1d7a43dcf5aa0942",
+          "size": 42245
         },
         "src/token_transition_checks.rs": {
           "checksum": "blake3=8c67e41e96f2a5e99e3749dbf0706083ec29e13cde6f28d37535d611906282df",
@@ -2258,10 +2258,10 @@
       },
       "features": [],
       "files": {
-        ".cargo_vcs_info.json": "b4820d2ecc098cfbfcb3aefc4eee7fe72fbc94c91664bb27e18f658f3bec6fb5",
-        "Cargo.lock": "13c339ed0e5e169ec4a690438fe80d28d11ee195e8e616728454e347d120b844",
-        "Cargo.toml": "a324c312464fab045790ae9cd07a9004b97389e2b96e8d4cf67ea5955cef634a",
-        "Cargo.toml.orig": "5bb68afbad028655217df3ae0d036181615638b146889c465ffc1bebe8ac81a1",
+        ".cargo_vcs_info.json": "6cd7f6fe46a3241e00c92ef557d8233fcbff85373f513c96547b44614b9e2eab",
+        "Cargo.lock": "d62655214cbcd4f65f17136082e7fb0787bbdcf8af3fe24edbdba257c7e59cac",
+        "Cargo.toml": "bb4e922d10d37f301d81637b2dd6b88922c2739ca0fa3186f0ebe4a704662976",
+        "Cargo.toml.orig": "d5cc8d0bf8d436f7e6e38fa24ac45b7bd49ecffe3e1d36e9602277b652b3d9fd",
         "README.md": "faa585b7f3463e7a837fbd3364ea3e751b207fa141268d60fa011515d20a99ba",
         "src/ast.rs": "b81ac60e2c2e984be7c288c1c9e2ed3ac46b47794525fd67a7f9bff7973970d4",
         "src/case_macro.rs": "4c6c6fac464c76d049fb12e8bd5adf122025d451c35c9cab9d653ccf462fb41e",
@@ -2269,18 +2269,18 @@
         "src/check_birds_eye.rs": "be37b59402ac1b6b36cc27c4ecc5d227878b43551f352d89df6331bad3f5f0f9",
         "src/concurrency_tokens.rs": "10f3bbbb00c4ecf279b4396938ce0cdbc17277e545abe9994185b9db7b45ec2d",
         "src/field_access_visitor.rs": "e6e837cdd247f09fd7615069c123da653ca54752ac668d139f46f11de77f00ec",
-        "src/ident_visitor.rs": "49ba19ad502fcf9be4ed30d62ab8492dba1917aa055e9c26d2c6b1f3470691cf",
+        "src/ident_visitor.rs": "4de85499e977ef297abaf37be4dad6e5ddc26b604bc0b0eaf24386525961fa46",
         "src/inherent_safety_conditions.rs": "895f50162be7cbb116feb5063a50c20b866d1fcd67844ffb2cec6e117f3a66ad",
         "src/lemmas.rs": "19934ac7a5902379e2e2c5068ecbdfd588091dfa4d960e8092f5776da5dbdcdf",
         "src/lib.rs": "ffc2ffb9c10d1e7a3dee384d47e752e0c5fe7296dd0adfb93e24c64c2a05ec5d",
         "src/parse_token_stream.rs": "4d8bcc32b34de2940e23db7adbf36e30c7c049d711f561d27ed2572b3e18a36c",
         "src/parse_transition.rs": "0c388a90c541a1d8690b3accc0d4b616ce72524437bf9ebd30a0ceb44573f68c",
-        "src/safety_conditions.rs": "cbacb077d64343bbd9eb1e07a650af747ba099c7231794919b215ab56820d6b9",
+        "src/safety_conditions.rs": "cdf13157d41bb13d2b1b894828bd0baa03ab6b6fd767ba00289b364f7483edfa",
         "src/self_type_visitor.rs": "48be3128d0c4d63ab24c6b33da04269e5c8146121e8e41cfee632740ca29d2dd",
         "src/simplification.rs": "d37e53bf9c3a5ec0ff161c22a3f34453032c1bc3398b5bf1300fb71e53d3e6da",
         "src/simplify_asserts.rs": "2366adf1d55b994eff114494c578315185ac5916a2345fef499e272ee35476e7",
         "src/to_relation.rs": "4ceb47a4368020b9ca3ef4244b19fb86d46b23b588fddcc29c114da9c22ef52e",
-        "src/to_token_stream.rs": "9dd1ed34a8abe314908cd979a375e28bc2d905b5587c6c922fbfdc8ba018a652",
+        "src/to_token_stream.rs": "5845fd682cdafcc35604e1f368ed8df3ead13c4b2e9538590576c8c62045d5a0",
         "src/token_transition_checks.rs": "4472eabe7ef4caf0916ba3bf70c56c94c98c5d5f809ebd3c08c9687cb6ecea82",
         "src/transitions.rs": "18078adb29c30a6c76beb5a326137b8126bf8e9a10fb6a8e3c1c78ddcf16de10",
         "src/util.rs": "84dd9fb542efbdac191a8e00c8cdf356e2b57575b53347a2c30c2ce0c83a3edb",
@@ -2288,10 +2288,10 @@
       },
       "name": "verus_state_machines_macros",
       "origin": {
-        "archive_sha256": "5f78ea16629331605a440e9e0a259dd3492a78212186ba82253ad0988127407f",
+        "archive_sha256": "999032b29d28518b813f7b474adbb958a2f41c606d72d84e986546309469eeef",
         "kind": "crates-io"
       },
-      "version": "0.0.0-2026-09-06-0133"
+      "version": "0.0.0-2026-10-18-0147"
     },
     "verus_syn-0.0.0-2026-09-06-0133": {
       "compiler_files": {
@@ -2852,22 +2852,22 @@
       },
       "version": "0.0.0-2026-09-06-0133"
     },
-    "vstd-0.0.0-2026-10-04-0306": {
+    "vstd-0.0.0-2026-10-18-0147": {
       "compiler_files": {
         ".cargo_vcs_info.json": {
-          "checksum": "blake3=4a8a364ef8028298e8c6c3be41f7c38003534a4c12f12a5c31c1fa91517b9fec",
+          "checksum": "blake3=6f04f73d78649ae6dad81ffc66bed17487891f13337084ce717cc3af7a746973",
           "size": 105
         },
         "Cargo.lock": {
-          "checksum": "blake3=279cb7fea9f79838b8a9f428901fad47e2265e7b9b71c3db388dd7145ddd626e",
+          "checksum": "blake3=eec41feb37fe053ee5c8d1d7216aeaa82e685c2bf7ec973887e7b89a38c17ea3",
           "size": 3637
         },
         "Cargo.toml": {
-          "checksum": "blake3=ccc6806cdf9b1dcf22a4487b01d4bf6aa9125b9ef179871d79de8e3a8cb50f54",
+          "checksum": "blake3=a051dee07256f576ac0768102b94dc9c31fbe1476784a59fa2938db6b637ef19",
           "size": 1681
         },
         "Cargo.toml.orig": {
-          "checksum": "blake3=fc9a4310aef67b722f3875b4507365f7cfb212378536d5d3f92f918506f932f0",
+          "checksum": "blake3=202795050c39ba6aa6e682201d95e83f509db1c405a49cda172b12bbcae06696",
           "size": 1404
         },
         "README.md": {
@@ -2883,8 +2883,8 @@
           "size": 2971
         },
         "arithmetic/div_mod.rs": {
-          "checksum": "blake3=ccbd832c9874e3a9fb769576f6f9054076bcab8b5cd435389880bf745f59262d",
-          "size": 50886
+          "checksum": "blake3=e942127939c713ed67cf5ff911c0aa949c7f136d9af57ad4ad642a653c45f2be",
+          "size": 51086
         },
         "arithmetic/internals/div_internals.rs": {
           "checksum": "blake3=f6f861b10d8f339ef4fb34ab2a79d341e13bcb6f4a910016bb943242cedb554f",
@@ -2943,8 +2943,8 @@
           "size": 9689
         },
         "array.rs": {
-          "checksum": "blake3=f4cb98799b84692461ed81e44e9260b24ba2f9555ed41ee4d4dab8f7c51f2069",
-          "size": 6342
+          "checksum": "blake3=f1e1fffa7534d432058594ad0a7c5af2356d439acd88f8e118081b8e9f309933",
+          "size": 6382
         },
         "atomic.rs": {
           "checksum": "blake3=c99e304ae476e9cc740466d934977b47dfcfce3570cb15002172e6846e387fa1",
@@ -2979,8 +2979,8 @@
           "size": 4385
         },
         "cell/pcell.rs": {
-          "checksum": "blake3=a6f42a92e24baa09f008334676b94636af8bf64b827f4d3551aa7443fc740945",
-          "size": 8204
+          "checksum": "blake3=9f4da17c62abe5c487345ff08881872f74cd857fc7d50d25e2818ef3d08079c0",
+          "size": 8180
         },
         "cell/pcell_maybe_uninit.rs": {
           "checksum": "blake3=17cff73ff775b72205300ff6fdb65992d03272ec716681909c3a27ea6e09fbf8",
@@ -3031,8 +3031,8 @@
           "size": 3682
         },
         "function.rs": {
-          "checksum": "blake3=af0e94aa174ed4c2ef7d5aec51844ebf9da7c495580ef7c94b9b282e16a12189",
-          "size": 4598
+          "checksum": "blake3=e8165757e2b2ddeeabf28473db59e6fa04cebc361aeb4c0c913a7204a0def13d",
+          "size": 4718
         },
         "future.rs": {
           "checksum": "blake3=625315a30c5ca2f236c95fc0278a78c0e0757901ba9a8e38e7962864acbdb4d3",
@@ -3047,8 +3047,8 @@
           "size": 11821
         },
         "imap.rs": {
-          "checksum": "blake3=93b69c675f600b8064e38c3db63efd6a4f777a0f3202cd6c71e6e9c3bc2bbcca",
-          "size": 17546
+          "checksum": "blake3=c635b1ef49aa188fd40cfe02700eaf2decd8524e2df28a7a190ea3cf3785eac5",
+          "size": 17589
         },
         "imap_lib.rs": {
           "checksum": "blake3=1054cb9fcccee9c8ad2ea53a7a375f50aa0596b0864eb925e0fd10e12ffd48d3",
@@ -3083,8 +3083,8 @@
           "size": 3306
         },
         "map.rs": {
-          "checksum": "blake3=d33a2e3603310fdd04da14f285c44b5e1414463790b6116bd97df4c55bbbbfe1",
-          "size": 18255
+          "checksum": "blake3=900c470f0f65c240f8e7b96a4b3600c9733956aed93d5c20ac22e26927c1d53e",
+          "size": 18298
         },
         "map_lib.rs": {
           "checksum": "blake3=a7cbfb08a4393f544d1faf795bb58162d130500ada75fdfbf232c250418f72a7",
@@ -3127,8 +3127,8 @@
           "size": 11648
         },
         "raw_ptr.rs": {
-          "checksum": "blake3=29b7e6d9cc54897f3d7cf44e2a723ae8f989972131c5016379184ae0dc0cc23d",
-          "size": 37223
+          "checksum": "blake3=5cada6b4ac4b19148c979c36b866833a654c231c7010434acc22e1bb6c341241",
+          "size": 37198
         },
         "relations.rs": {
           "checksum": "blake3=2013798573c6d9ab1c2b3a15ac032ab4e39f2483b6b0eb4fbb63c72d64c07062",
@@ -3247,12 +3247,12 @@
           "size": 1644
         },
         "simple_pptr.rs": {
-          "checksum": "blake3=4354e2f5884e07c9c579e3b7e3e4dcc3ab1eb1995db2951ca288615cb888b731",
-          "size": 21023
+          "checksum": "blake3=c287c1129e65090ed4b1a10593f1e25b7d2df49596c713cb5fdc4be89c99c97d",
+          "size": 21002
         },
         "slice.rs": {
-          "checksum": "blake3=9f5455a7f64fb2ccfad87074000ff02408fcd189d11f823478b0abeade8149ab",
-          "size": 7076
+          "checksum": "blake3=b10f050dd8dfaa19c5c5fdb5698a303573ee1957358290b917e594bdedd56e1a",
+          "size": 7156
         },
         "state_machine_internal.rs": {
           "checksum": "blake3=6208a95ca3239b87813d512580cf0048dece9fa368af0ecfc5758a758983196d",
@@ -3267,8 +3267,8 @@
           "size": 3587
         },
         "std_specs/atomic.rs": {
-          "checksum": "blake3=1387d4791838f589575849719c48a57a95f7d6e27f53be48896aa38d852f4e8f",
-          "size": 3236
+          "checksum": "blake3=4dbd9457bc16b18cea55620cff8d0e92e7d699bf6a055310689c7e0f452e8d69",
+          "size": 4168
         },
         "std_specs/bits.rs": {
           "checksum": "blake3=138c74b22715ffa0302dd54fe47f984711846c2ad96c27572264d6ba59010ac2",
@@ -3291,16 +3291,16 @@
           "size": 1620
         },
         "std_specs/cmp.rs": {
-          "checksum": "blake3=fd51392930eb4837eb3420ec581aa91cbb0c3f08472ac07c02b1c0be93a2c77b",
-          "size": 16288
+          "checksum": "blake3=bebb4d279dc3026288e4ab5780dad5a03c1f7c4afc28c785e3603c1a77f17526",
+          "size": 16871
         },
         "std_specs/control_flow.rs": {
           "checksum": "blake3=68ea695a5cf15ae4231f81f1d32388fd7ffa3fc5b6c34e79e77fe705bf3fa215",
           "size": 1935
         },
         "std_specs/convert.rs": {
-          "checksum": "blake3=9f7e2f3b025d67a13046c222ebd6e6c69e07c69d9643cb5e6019c00df066a78d",
-          "size": 5377
+          "checksum": "blake3=60b913be475f5545e2e4af8ae34e3587f43da63b67e6ff89672c094894372354",
+          "size": 5617
         },
         "std_specs/core.rs": {
           "checksum": "blake3=385594e39153e57ae49003d0075ddca9a1355b9fe66dcafe15f73521cec4e50a",
@@ -3311,24 +3311,24 @@
           "size": 2313
         },
         "std_specs/fmt.rs": {
-          "checksum": "blake3=c0dd111849e8725b8d33e369eeea9d1694efeac3d725caa6224894230ab4f0bf",
-          "size": 9852
+          "checksum": "blake3=5d63429049bb1f1c6e9edeaab7d86287880eccfd1a40a032d627fc2d6ab51ce8",
+          "size": 9889
         },
         "std_specs/hash.rs": {
-          "checksum": "blake3=f0f20d394263cfd2492fb40253676e6fe1aceb050a9fc33393da97a73035c392",
-          "size": 51449
+          "checksum": "blake3=270e4189386d987dbe161b82b4331a8bcd0b8748f9c2cc688a7f171da46f8d92",
+          "size": 52211
         },
         "std_specs/iter.rs": {
-          "checksum": "blake3=a8c8191c34184358f92522471c293db541281155cfcf11818fea833b865c80ae",
-          "size": 39744
+          "checksum": "blake3=410c09ef8938aff88fdfa567006aaa3ea483c23aa94affd9d6e7a25bae2fd25c",
+          "size": 45626
         },
         "std_specs/manually_drop.rs": {
           "checksum": "blake3=2a370649da7e840f3f0e88f4cec51d8f840546e9281f2492bd3baccd06d50dcf",
           "size": 1533
         },
         "std_specs/maybe_uninit.rs": {
-          "checksum": "blake3=8ce3ee5e46218493e6d8b6163e4735b85840ed61af7b3365d9f739d526c3fd28",
-          "size": 1898
+          "checksum": "blake3=570e3010210d79c232ccbbe1e7ccbb5be003e4cce122ada0312b9d87b74224f1",
+          "size": 2168
         },
         "std_specs/mod.rs": {
           "checksum": "blake3=821cd6a03079248304a62239f6ba910264d309dec3b3c9b627e494ddd71a2dd9",
@@ -3347,52 +3347,52 @@
           "size": 24344
         },
         "std_specs/option.rs": {
-          "checksum": "blake3=24ad71c8f6297ce7bcbaa27f24dcb2c27f944a245a07ad16ba01b50e3868ddf6",
-          "size": 11332
+          "checksum": "blake3=bdcc96dc5895aca5734ec20114432ec18ac192a83885186714d572e2a95fa41f",
+          "size": 11568
         },
         "std_specs/range.rs": {
-          "checksum": "blake3=0e5fb0a1303363a500176598cb162d7747845dab6444b76b4059f28003231ef4",
-          "size": 18719
+          "checksum": "blake3=797e0d1edf9a55caf09730a7191093c38f3e214770173952b63691ed77e33bbc",
+          "size": 19543
         },
         "std_specs/result.rs": {
           "checksum": "blake3=d6cb49633c8c00a2d227b41e2fecaa4daf635e538588a85646eb5f6ae2373669",
           "size": 7411
         },
         "std_specs/slice.rs": {
-          "checksum": "blake3=5bdcebb6fffb34bba39f42bddb6d23c34eca3fb9115e47b86b0df80d535d38ef",
-          "size": 22199
+          "checksum": "blake3=d63f3a333049381c7e266cf6991240e6466d02619fd2982f712010d8c4f9ceba",
+          "size": 25111
         },
         "std_specs/smart_ptrs.rs": {
           "checksum": "blake3=39b38b94711234305cdd1cd8a12be1971419d4183508310eb74443baad77dc17",
           "size": 1708
         },
         "std_specs/vec.rs": {
-          "checksum": "blake3=0ba29b89dc465575d7b5ec6ca71301f3fa61f1ea407602ebc46b747ce01da3b3",
-          "size": 15474
+          "checksum": "blake3=da3dc80050815d882dfbd9ca309828b097ea9504dd53eb0bd56e4bea7c69782f",
+          "size": 15811
         },
         "std_specs/vecdeque.rs": {
           "checksum": "blake3=595f9487c79b61ab2a61216e8602bf1790f2bc929d9ab16916b7314eb9fa304d",
           "size": 9104
         },
         "string.rs": {
-          "checksum": "blake3=c0570780d255b47a29558253e8f83ff90e1745fe5c987bf9d94fdcc6a01e491a",
-          "size": 28948
+          "checksum": "blake3=1250a01cae4161824976aa877ff4b44b8260cd324b75cee56396c99d55d4c5e2",
+          "size": 29342
         },
         "thread.rs": {
           "checksum": "blake3=f9d96e6f180b16e2b36dbeb54ceaf5f9d6ca1b433fc19a73f1367c88643c92dd",
           "size": 7930
         },
         "tokens.rs": {
-          "checksum": "blake3=de06ed9ac218c3cc0f679d241b93902075cc5eea221aec4ae5a68391f5e79dd7",
-          "size": 31190
+          "checksum": "blake3=d0c468310ca024028692bb32ec87e1a6b4e7c64bf644f1a023d6f461ef533315",
+          "size": 31136
         },
         "utf8.rs": {
           "checksum": "blake3=c63a889b96f5b0cffe8004d39838dbf78cf87277ab54354a09debb0e3ae27fba",
           "size": 43786
         },
         "view.rs": {
-          "checksum": "blake3=0dc1b5af9e9d5cc52950e332e58cf6b52faf18ab2c0e978dd8ded16b95816e38",
-          "size": 8850
+          "checksum": "blake3=16897756aba0d7a2b019aace97d3c80d615b54e9d8248da91fd8e3360233ea64",
+          "size": 9256
         },
         "vstd.rs": {
           "checksum": "blake3=835f517957115052871472aac54967dad2706e21d67ffa5c5d7014e489c5507d",
@@ -3408,14 +3408,14 @@
         "std"
       ],
       "files": {
-        ".cargo_vcs_info.json": "91caa2cc895632232738b1f0fa08ef82fad68b481dbc45a32a86e327e97a0b40",
-        "Cargo.lock": "cddee78b4253d6613b0b7de26489649d72d2e5bdf60caa0f9930f9c37edbf5b2",
-        "Cargo.toml": "eecde6f9138a80664bd389bd7d6e81ed9f93a522bc6a4774d67d094c716ef1a7",
-        "Cargo.toml.orig": "96887ec2c5f6013a713ddd0bbb75ee38e2325cd33092637429fe95660250082f",
+        ".cargo_vcs_info.json": "8d8f1a0d023c18ff9b14a04041eafc79a719b22eb20d8cfb7c3cc66ed3d3181b",
+        "Cargo.lock": "863272d7b19e383a386d3026d70362e12a26443cfc29ce44e835109ed651e9d6",
+        "Cargo.toml": "18659c1c76743b3653e468c58261a79e895c5b9bc6eda94cc451c1c833e4f3bf",
+        "Cargo.toml.orig": "a1bdeab50195c1fcd588479b63f5d67cfe983c8e9d4031ed237f3b92c88cc428",
         "README.md": "faa585b7f3463e7a837fbd3364ea3e751b207fa141268d60fa011515d20a99ba",
         "SOURCES.md": "79271874869de907fc6c39556c72983b9a3733f28f4cf566de1884b4d06d1ad8",
         "arithmetic/README.md": "57ff079bf5c4524f55f7c3be236022d9d1eaed5e83a7930698c71b2535e670c3",
-        "arithmetic/div_mod.rs": "f65255849a17641e2927fd638c610ddb175f2e3a1e3ee325f716e18f8a11555f",
+        "arithmetic/div_mod.rs": "8f061edfcf84e8f6aa6cf4a3184f00add6fce4939d5477524f0bde9a9cf39f4b",
         "arithmetic/internals/div_internals.rs": "7a6cef28c9c5d52a38a728dce93369ee9265ca62cef5976f57dd90e925de5faa",
         "arithmetic/internals/div_internals_nonlinear.rs": "d68b881398bcfe1f7dcf6f64f5f895fa05544c3c55f4288d04eac7f42bbf231e",
         "arithmetic/internals/general_internals.rs": "fbef157aa9356ebdf670ce8513f1f560ff27c36991152397b635af53b1ae3235",
@@ -3430,7 +3430,7 @@
         "arithmetic/overflow.rs": "f5316a606c7bc5e756b7883cc0833066a0b39288e597b25d787c5725b202efeb",
         "arithmetic/power.rs": "cd00b1318597a0d60685f714ac4eb0c24ce9cf7bcf65520fb756de6a2dc259f7",
         "arithmetic/power2.rs": "5cd80489ce538a59a9bb2d7ea8fd493450576d65eabef0255e99d3d5fef91fbd",
-        "array.rs": "f2dbab65e3afd8f8d62c89504bbd024c1c1a150ec841069c87b28c8e4d87864c",
+        "array.rs": "ba06ea37aa4821aad258a295c0a524635f8eecb7326d5fefa579c542c9f308fb",
         "atomic.rs": "218c3aea79efd986faa9984458cbdd45a699c788d8cab462b09b5accd3eba7ea",
         "atomic_ghost.rs": "11175cf002e2705e54b527f107f3e993db129d248502d9bc3dce3ee562212c89",
         "bits.rs": "55cdb303823e41f76b3a2fe467a9dc5aa78962c021b616843cccdcc7ceb077b6",
@@ -3439,7 +3439,7 @@
         "calc_macro.rs": "0beb176215c6129a2d3c6629baa6c4b0b8dbecef418df04dc16eff405601567d",
         "cell.rs": "a66412faf7fa4f88cad6c1401088ed26a71b12ae420d5f83972ee05216885365",
         "cell/invcell.rs": "b59259e33c1360cc7967b4e79a78e8fac512fbaf2fe4b1130bf3cb66e422a7a5",
-        "cell/pcell.rs": "8025a1c47d0b638d936107328bb276494494489762d53054fbcbea0ab0555e59",
+        "cell/pcell.rs": "b77c52c4d840d4227417bdca6d2776eeeee6168d2bc058b425af55d5f9caee37",
         "cell/pcell_maybe_uninit.rs": "a35d61d4b4e250ddf0fa3090f82bef247908067c132f17ddecf11db9ee60c857",
         "compute.rs": "5cdb743098e9e2034204a272be50a48f3e7667863d3587ad313f4911134eeba9",
         "contrib/exec_spec/map.rs": "b12ae5576ccdbcf6f97a299a63d965e1e028340ee0034ac20e152de38bb0dc9c",
@@ -3452,11 +3452,11 @@
         "contrib/mod.rs": "3043136aee01b45957be10a1dbe225ed9bf84a3fcf85e2da76bfa8ecb4f5bb5c",
         "endian.rs": "bfde9dd11c6f595887eeddbd3a973bf50c34a789d0b875e1efce3f7a5c5675f1",
         "float.rs": "56418018135b89fb9c3a35ce3f6e79fa5bf03405317da7c52fdc92446fc77b27",
-        "function.rs": "a75bd4667c60e25ac97c21f5820cd2f87aa78834f2a219a05c089ad7e4d23438",
+        "function.rs": "75ad06cedfb71e5df112fb73b6be86e131261adc30a94e354a7738a15b811dba",
         "future.rs": "84fcf98b7734345e4b7c3ea928ed36325736a0431a6a4f39c73a37936bbe61c7",
         "hash_map.rs": "b9da0c0d5147af9b634a62d14c2dd57365dd9590a47375e95fa5daf737ca58c0",
         "hash_set.rs": "5251b8c54d0efe1cd2968b9f6ed450e1e2d99d28fa72eda25e75282620b25ae4",
-        "imap.rs": "7877e01aa2a77d4e9d4d8e2eaed2821393cdbc7efb41654ddc8996172b5d12ad",
+        "imap.rs": "965511752af813a98733fd94d56a134f401b9ab494edea2bbc02443038680c52",
         "imap_lib.rs": "291cb1812fe6da440cd5fdf22d0d6a97f85566b6f54e695c2615d4f95a8292c3",
         "invariant.rs": "c2287017433f259de1e870833d330d7a31f6ed73c3f321e72aa9c14b70f6d501",
         "iset.rs": "33c1c604c5e3c2757d42b3d0c2c472633a4b9ab3f831cb8447be64fa0643c031",
@@ -3465,7 +3465,7 @@
         "laws_eq.rs": "b54377eec67ad8bad6e656c1cfcda22bb1bcb9910202148d92dbaa3a3ee98d26",
         "layout.rs": "9dedcaf673e32242c0688ff422a428b1bac8b9c80bfc9dfe218ccf980f7be635",
         "logatom.rs": "3732bdee07e7bdddd1a87f1620538928153941bddfdb350bc4a9cec227dda465",
-        "map.rs": "306cf7abc350db681f588e68466f767b7e3fa3135582aecfafdfebb44a87e852",
+        "map.rs": "7c90832b68a9f53eb2a8dc3cc1da57d43bc611712cc76817ae1a39d777d88a8a",
         "map_lib.rs": "9629524dfdfad48c591ad05531e00a367948001dd4ebd090fde3a78f3a554efa",
         "math.rs": "e07ae80f73eb45c8409787d3201da313b2916fe44fd22077d82cb5875ec739f8",
         "modes.rs": "e09a3b4bd2542f033625013c37137ea5eb12e3a0efe0b45e2f0e53362e3ed4a0",
@@ -3476,7 +3476,7 @@
         "predicate.rs": "6757ab240707de4e9c601d54fdbb2e1e0427905dbb4dd0a5730ecee9ecea6199",
         "prelude.rs": "8bc94ce677ec98bd29b466502d28b3955c9ac129955a9220dec9ba5ff8f551c0",
         "proph.rs": "398ab396aa2c1576480530e907379dd1fd5ebf38f75342f3d3f0e5bc9ce86134",
-        "raw_ptr.rs": "7d2d0e95b23543c3a02a30b0290b929e926530b21f46168936247a523815cbc5",
+        "raw_ptr.rs": "0d789a7980929100a59438cea1a4c9bab93cb159475be0986baf9f3256d424e8",
         "relations.rs": "d58416bad0663dfa3e3fa4c573faa030562dcaa1569b6372f0bd37d3edd661d2",
         "resource/algebra.rs": "2e07c399b0fcb4c790c40efa3bf092e9769f70314cc7eba387333db5a7e8f97c",
         "resource/combinators/agree.rs": "325d7aaa38f09b9ac1dec401394a82c8d4770cc39a3deadaab4f6d29be885bfe",
@@ -3506,54 +3506,54 @@
         "set.rs": "dc12382eb7ebb7d2d0387fbf7149ae8418d40b696b1043b33de41734fe3a75dc",
         "set_lib.rs": "f7344268af23753da510aca46f2e1bc50a43cba9166a02f2b1e248185b7e1adb",
         "shared.rs": "30c0dfadd83cafaf020f3f4738b69697bc08b19c9eaf77d9c5fbcae597727f81",
-        "simple_pptr.rs": "05583dea10db5a5d3dc2e85928e12d870b70a2230c2f495d589e8523d6e6ce26",
-        "slice.rs": "1d6f965318758b48c8216f3f77bc84eef8ce613318a1e0507e0e44ff601a872d",
+        "simple_pptr.rs": "731dc3b725e48379e64d72368c89a017838b8be5a2d0e5b74a185c49fac4e8f0",
+        "slice.rs": "be205926d5f2331f07e16c7e52941692dd6600a95a088ada31ffb5196200571e",
         "state_machine_internal.rs": "c5a8cb753b275073872266323494a7e450d586debc21a2bb14eb5c492330fe2c",
         "std_specs/alloc.rs": "7245ad0dc739412eaa5a9199838c7b10d7eda7840caaee0091058bd3811d5cfb",
         "std_specs/array.rs": "3bd099b9ba219dd87349e4984f7f1fe00a121c67649994f1b47728282dc08ed9",
-        "std_specs/atomic.rs": "025b64faccedbfea3f7978d57923047b4099f13048b320b05b1dc154f79db43c",
+        "std_specs/atomic.rs": "146999c62edcd4c9fa032445492408605fe57b6f6dfd2279434e7c44b046d2b5",
         "std_specs/bits.rs": "4bf86e02b483635134634c0300a4fc0624019eaffd687a974f8cb2227c4cb0d9",
         "std_specs/borrow.rs": "29cadd1756b59a64c7d74f8b3679e6ab8e03e676b16d5f15e379d2a40c6f1965",
         "std_specs/btree.rs": "d2e72ee02841150fd6d766d41dd7f85fd6b8e4fd4256fcacb0c64098523d3c24",
         "std_specs/char.rs": "e9d71dcc9e6156e751691e5ae6d8a03b0ed2c140ef0e56e607ea2736338e7b90",
         "std_specs/clone.rs": "310fe8bfbfff6f93ae3cc198244fc0a877939ee3f7af65c4cc435540db1619aa",
-        "std_specs/cmp.rs": "442eebb4e52af88533f3092cfc5ab6468958ad31207072e3aff26f74a6c2e07f",
+        "std_specs/cmp.rs": "3c444bf96f3d3367f2daf9a0c03cee1fcf0c53ff21994efd0f2162f4bf4bfcc2",
         "std_specs/control_flow.rs": "e547c837c61c4f0f3a9a9b95e836988bfbb791cb34dac5fcf2b47ab00db61548",
-        "std_specs/convert.rs": "a8ecf63aa62cb0502ea22750a892fc3e4d884842d2b1ca6a842c2d2f8f5651e7",
+        "std_specs/convert.rs": "66eca229d3679e2365af9095c9a171dc3764ec10bf3631fa473a9e98ab50d0f2",
         "std_specs/core.rs": "3c1757506b9660b591b8320bce152d8981d7171f70891f94f940991d7dd73dbf",
         "std_specs/default.rs": "d8a2e250d5419ea9743a05c9530840882f009dcff04513c1df5cb0e66e55cc4b",
-        "std_specs/fmt.rs": "6da33915ae7229ca8cab92f32e98c4591d075f1cbdc0a9e76302a39120569a21",
-        "std_specs/hash.rs": "1dec732b6284adb27f6cc3b89f22a6b88f7430fe3922686bce281e8787323ea9",
-        "std_specs/iter.rs": "8f4685e957321c6463cbf27218be8b21396b09a02be0bdef6197b42c80944b56",
+        "std_specs/fmt.rs": "7ce4ed46839970d39b16c1e4da485bf541938f44d785a270154333fc28ece7f7",
+        "std_specs/hash.rs": "61754d0740450e9c5ed2aaaac8f8be647eaf0dbe0cdb33d6bfe95cbf37a37677",
+        "std_specs/iter.rs": "99b54f4a61c93335685539d047e7ea5d86865a25fdb8fb861505c6d4f473a92c",
         "std_specs/manually_drop.rs": "29b5365193dd284b4454c4bf382880191b685d18f43cc7b85ffad2b62a679afd",
-        "std_specs/maybe_uninit.rs": "1727163a6c7d09fa5ad34d56640190a81da55b5b7a57926a5589e65f61e00651",
+        "std_specs/maybe_uninit.rs": "f69eb45b2b267a8067604816f9dc8a201a4f5ae0bd25ec5fb389e08ff863ed89",
         "std_specs/mod.rs": "30875a2b2c36d23999316f838191f2aaf090e2c4282fc5c847564f5cecc029f0",
         "std_specs/nonzero.rs": "6ff51b8065465e2171930b3621cb30d04e9d1c3ebd76fbf035d68e1ea5aea086",
         "std_specs/num.rs": "8df9090bdb557ddc817c0774abca34a49fe13be6bacb1547b6b781f70fee2711",
         "std_specs/ops.rs": "5be3d4f42e768b1fe4de9ccd674a86dd4e7fbbb1150d8521e6e04fefdf9a51aa",
-        "std_specs/option.rs": "5e029b4ec250bd9c5643b039951b5c159d010474b0c7fc4fb09810c34e4a153b",
-        "std_specs/range.rs": "7d8bd5c1dee06200561693c9513944c91bd3cf6d890e8d46023149a7da8259bf",
+        "std_specs/option.rs": "d5c9275fa3cb63aeeeb0a84d5257c539cd8df6bcb53e39089783aea802283b33",
+        "std_specs/range.rs": "5f74bf9c1d21fdcf6df191a1f61f47fd12a5e6ad52e09644ad5f979062592073",
         "std_specs/result.rs": "c0d32562ba5b25d9d7a1d5425e9b0ef848c1ab800e1ebba47737d89868b456ff",
-        "std_specs/slice.rs": "9bbae0de4481138355b6808f31299350b4cab403cb0ee98ce5c01000ffc5c8cf",
+        "std_specs/slice.rs": "5e3ef5bf8428c7f61c47a55fa7487980f721b630fe67f9606fb7378c35e7b993",
         "std_specs/smart_ptrs.rs": "d0a510399b7334ec6f62aa5a007fb91dd2c43f5c38b6b0f9a713f39f2c3fa547",
-        "std_specs/vec.rs": "5526cb89272d47ac86a4199a5f0f3267dd68237e9ad93283a853496b3d6bb983",
+        "std_specs/vec.rs": "d1b91e5972d46345b583d1467c0df400a6d44a686d1c3bc841826baaa2aea8f5",
         "std_specs/vecdeque.rs": "2bf2a2e14672cbe4967f113acfdb56157809f9114ca5ae3d083dd0007c2e74af",
-        "string.rs": "c5e3a93a2a7c5b6a3c5ba4f4dd296152dfad95b6def4fcfb5b7b3a8df3b95473",
+        "string.rs": "f3d753b0977c10118d68822b7dc7c82e2e3ffe5ab19d7f93640d77e5fbcb3f2d",
         "thread.rs": "7735376abf8a7c09cb3f8adc7be6763519d2bceed3bafd84df1de1c205bd30f5",
-        "tokens.rs": "2a3c183d622c96874fa9142b60d8583123675772e9dff6dd4e97693b8d2c049e",
+        "tokens.rs": "d978eebbeb5b25f2192036982525051343d1daae69717149800148ce9c44c1c0",
         "utf8.rs": "7434e805f883e140ec94b395a96730243ba05c9f0dfa0f349462355c5875bed1",
-        "view.rs": "6004bcbfaa698fda7560b6ed690af1c219f24b7003e42a1765d6e294105b1abb",
+        "view.rs": "0abe21aec1b3a9285958646ea8b820731efa597acc6076b924514fc4ac4ae8c3",
         "vstd.rs": "01ed79494cefad5a9892493f8932d45c26c23b563ef09560c8cb274e1cc3c602",
         "wrapping.rs": "f1118a2702b2b5b1dcbd182fcde7695b94176c72f5ed79aacd981082f1774556"
       },
       "name": "vstd",
       "origin": {
-        "archive_sha256": "f22e1cad7b5f35642a5a020b25e9b49915066d836bab77f8431bbc80228290a7",
+        "archive_sha256": "eb200973a51d678d3432092ce692c110bf262e281d7ffd55ec028708be84d676",
         "kind": "crates-io"
       },
-      "version": "0.0.0-2026-10-04-0306"
+      "version": "0.0.0-2026-10-18-0147"
     }
   },
   "schema": 1,
-  "verus_source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+  "verus_source_commit": "7d829946231d6413a398f6e4160cdfe951261dad"
 }

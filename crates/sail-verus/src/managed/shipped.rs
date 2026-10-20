@@ -8,14 +8,16 @@
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
 //! schema 12 also refuses raw encoded environment-value collisions. It neither
-//! reads nor enables the quarantined machine-local v1 store. Activation requires
-//! `SAIL_VSTD_BOUNDARY_RESEARCH=1`. Fresh dependency-byte equality, complete native
-//! inputs, diagnostic parity and useful first-run gains are not yet qualified.
+//! reads nor enables the quarantined machine-local v1 store. Explicit recording,
+//! machine-local and alternate-bundle modes require `SAIL_VSTD_BOUNDARY_RESEARCH=1`.
+//! A valid adjacent release index permits normal serving. Fresh native inputs
+//! remain mandatory; staged first-use and its performance remain unqualified.
 
 mod admission;
 mod compiler;
 pub(crate) mod native;
 mod native_reads;
+mod release;
 mod snapshot;
 
 use super::files::digest;
@@ -49,9 +51,83 @@ pub(crate) const PLAN_ENV: &str = "SAIL_MANAGED_SHIPPED";
 /// serving run looks up, its keyed inputs and the outcome.
 pub(crate) const TRACE_ENV: &str = "SAIL_SHIPPED_TRACE";
 
-/// Unselected experiment. Ordinary verification never activates this path.
+/// Explicit release-recording, machine-local or alternate-bundle research request.
 pub(crate) fn research_enabled() -> bool {
     std::env::var_os("SAIL_VSTD_BOUNDARY_RESEARCH").is_some_and(|value| value == "1")
+}
+
+/// Portable source names require ordinary Cargo compiler flags. Unsupported
+/// global selectors decline both a new plan and new source-name mapping;
+/// unchanged ordinary warm targets still retain their existing naming map.
+pub(super) fn portable_context(workspace: &Path, args: &[String]) -> bool {
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cargo")));
+    portable_context_inputs(workspace, home.as_deref(), args, std::env::vars_os())
+}
+
+fn portable_context_inputs(
+    workspace: &Path,
+    home: Option<&Path>,
+    args: &[String],
+    mut environment: impl Iterator<Item = (OsString, OsString)>,
+) -> bool {
+    if args
+        .iter()
+        .any(|arg| arg == "--config" || arg.starts_with("--config=") || arg.starts_with("-Z"))
+        || environment
+            .any(|(name, value)| rust_flag_selector(&name.to_string_lossy()) && !value.is_empty())
+    {
+        return false;
+    }
+    super::configuration::paths(workspace, home)
+        .into_iter()
+        .filter(|path| {
+            path.file_name()
+                .is_some_and(|name| name == "config" || name == "config.toml")
+        })
+        .all(|path| {
+            match std::fs::symlink_metadata(&path) {
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return true,
+                Ok(metadata) if metadata.is_file() => {}
+                _ => return false,
+            }
+            let Some(file) = super::dependency_snapshot::open(&path) else {
+                return false;
+            };
+            let mut text = String::new();
+            if file
+                .take(1024 * 1024 + 1)
+                .read_to_string(&mut text)
+                .is_err()
+                || text.len() > 1024 * 1024
+            {
+                return false;
+            }
+            let Ok(config) = toml::from_str::<toml::Value>(&text) else {
+                return false;
+            };
+            config
+                .get("env")
+                .and_then(toml::Value::as_table)
+                .is_none_or(|environment| environment.keys().all(|name| !rust_flag_selector(name)))
+                && config
+                    .get("build")
+                    .and_then(|build| build.get("rustflags"))
+                    .is_none()
+                && config
+                    .get("target")
+                    .and_then(toml::Value::as_table)
+                    .is_none_or(|targets| {
+                        targets
+                            .values()
+                            .all(|target| target.get("rustflags").is_none())
+                    })
+        })
+}
+
+fn rust_flag_selector(name: &str) -> bool {
+    name.ends_with("RUSTFLAGS") || name == "CARGO_ENCODED_RUSTFLAGS"
 }
 
 const TARGET: &str = "@@sail-target@@";
@@ -97,12 +173,75 @@ pub(crate) struct Plan {
     native_compiler_sha256: String,
     native_launcher: PathBuf,
     native_launcher_sha256: String,
+    /// Portable compiler source names, independently rechecked before reuse.
+    compiler_source: Option<CompilerSource>,
+    /// Per-run admission of a distributed release index, never a proof-key input.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    release: Option<release::Admission>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct SolverAdapter {
     path: PathBuf,
     sha256: String,
+}
+
+/// Imported standard-library locations come from compiled sysroot metadata;
+/// these are not additional claims about native `SourceMap` reads. The local
+/// source tree also binds diagnostic quoting and the exact added compiler flag.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct CompilerSource {
+    root: PathBuf,
+    virtual_root: String,
+    tree_sha256: String,
+}
+
+impl CompilerSource {
+    fn capture(sysroot: &Path, virtual_base: &str, registry: &Path, target: &Path) -> Option<Self> {
+        let commit = virtual_base.strip_prefix("/rustc-dev/")?;
+        if commit.len() != 40 || !commit.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return None;
+        }
+        let root = sysroot.join("lib/rustlib/src/rust");
+        if sysroot.canonicalize().ok()?.as_path() != sysroot
+            || root.canonicalize().ok()? != root
+            || root.starts_with(registry)
+            || registry.starts_with(&root)
+            || root.starts_with(target)
+            || target.starts_with(&root)
+            || root.to_str()?.contains(['=', '@'])
+            || root.starts_with("/rustc")
+            || root.starts_with("/rustc-dev")
+        {
+            return None;
+        }
+        // The pinned complete rust-src tree is larger than a registry crate.
+        // Keep that distinct domain bounded without broadening crate admission.
+        let files = bounded_source_tree(&root, 128 * 1024 * 1024)?;
+        if files.is_empty() {
+            return None;
+        }
+        Some(Self {
+            root,
+            virtual_root: format!("/rustc/{commit}"),
+            tree_sha256: digest(&serde_json::to_vec(&files).ok()?),
+        })
+    }
+
+    fn current(&self, plan: &Plan) -> Option<()> {
+        let sysroot =
+            super::runner::verifier_sysroot(&plan.native_launcher, Path::new(".")).ok()?;
+        self.current_at(&sysroot, plan)
+    }
+
+    fn current_at(&self, sysroot: &Path, plan: &Plan) -> Option<()> {
+        let current = Self::capture(sysroot, &plan.virtual_base, &plan.registry, &plan.target)?;
+        (current == *self).then_some(())
+    }
+
+    fn keyed(&self) -> (&str, &str) {
+        (&self.virtual_root, &self.tree_sha256)
+    }
 }
 
 impl SolverAdapter {
@@ -310,28 +449,66 @@ fn identity(root: &Path, virtual_base: &str) -> Option<String> {
 
 /// The shipped build beside the running `sail` (`<release>/deps/<variant>`)
 /// or named by [`BUNDLE_ENV`].
-fn bundle_dir(variant: &OsStr) -> Option<PathBuf> {
-    if let Some(explicit) = std::env::var_os(BUNDLE_ENV).filter(|v| !v.is_empty()) {
-        return Some(PathBuf::from(explicit));
-    }
+fn adjacent_bundle(variant: &OsStr) -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?.canonicalize().ok()?;
     Some(exe.parent()?.parent()?.join("deps").join(variant))
 }
 
+fn bundle_dir(variant: &OsStr) -> Option<PathBuf> {
+    if research_enabled()
+        && let Some(explicit) = std::env::var_os(BUNDLE_ENV).filter(|v| !v.is_empty())
+    {
+        return Some(PathBuf::from(explicit));
+    }
+    adjacent_bundle(variant)
+}
+
+/// Cheap source-name configuration for an installed bundle, including warm
+/// runs. This grants no proof authority: serving still needs the full identity,
+/// source, native-byte and compiler-read checks in the run's owned plan.
+pub(crate) fn has_adjacent_bundle(cargo_verus: &Path) -> bool {
+    let Some(root) = runtime_root(cargo_verus) else {
+        return false;
+    };
+    let Some(variant) = root.file_name() else {
+        return false;
+    };
+    adjacent_bundle(variant)
+        .and_then(|bundle| read_manifest(&bundle))
+        .is_some_and(|manifest| {
+            manifest.schema == SCHEMA
+                && manifest.kind == KIND
+                && Some(manifest.runtime.as_str()) == variant.to_str()
+                && virtual_base().as_ref() == Some(&manifest.virtual_base)
+        })
+}
+
 fn read_manifest(bundle: &Path) -> Option<Manifest> {
-    serde_json::from_slice(&std::fs::read(bundle.join(MANIFEST)).ok()?).ok()
+    release::manifest(bundle)
 }
 
 /// The shipped build for the runtime at `root`, if one of its identity
 /// exists.
-fn accepted_bundle(root: &Path, identity: &str, virtual_base: &str) -> Option<PathBuf> {
+fn accepted_bundle(
+    root: &Path,
+    identity: &str,
+    virtual_base: &str,
+) -> Option<(PathBuf, Option<release::Admission>)> {
     let bundle = bundle_dir(root.file_name()?)?;
     let manifest = read_manifest(&bundle)?;
-    (manifest.schema == SCHEMA
-        && manifest.kind == KIND
-        && manifest.identity == identity
-        && manifest.virtual_base == virtual_base)
-        .then_some(bundle)
+    if manifest.schema != SCHEMA
+        || manifest.kind != KIND
+        || manifest.identity != identity
+        || manifest.virtual_base != virtual_base
+    {
+        return None;
+    }
+    let release = if research_enabled() {
+        None
+    } else {
+        Some(release::admit(&bundle, root, &manifest)?)
+    };
+    Some((bundle, release))
 }
 
 /// The package name of the project a shipped build is recorded from; its
@@ -346,7 +523,7 @@ const LOCKFILE: &str = "Cargo.lock";
 /// whatever crates.io holds later. `None` without an accepted shipped build.
 #[must_use]
 pub fn new_project_lockfile(cargo_verus: &Path, name: &str) -> Option<String> {
-    if !research_enabled() {
+    if super::research::selected().ok()? == super::research::Mode::RetainedContent {
         return None;
     }
     let virtual_base = virtual_base()?;
@@ -354,7 +531,7 @@ pub fn new_project_lockfile(cargo_verus: &Path, name: &str) -> Option<String> {
     // An ordinary install without a bundle needs no shipped-input probe.
     read_manifest(&bundle_dir(root.file_name()?)?)?;
     let identity = identity(&root, &virtual_base)?;
-    let bundle = accepted_bundle(&root, &identity, &virtual_base)?;
+    let (bundle, _) = accepted_bundle(&root, &identity, &virtual_base)?;
     let lock = std::fs::read_to_string(bundle.join(LOCKFILE)).ok()?;
     rename_root(&lock, RECORD_PACKAGE, name)
 }
@@ -400,7 +577,8 @@ fn rename_root(lock: &str, from: &str, to: &str) -> Option<String> {
 /// identity exists, nothing otherwise.
 #[allow(
     clippy::too_many_arguments,
-    reason = "The actual solver and adapter are distinct byte-bound inputs to this run's existing plan."
+    clippy::too_many_lines,
+    reason = "Keep the complete sequential plan admission together; solver and adapter are distinct byte-bound inputs."
 )]
 pub(crate) fn plan(
     cargo_verus: &Path,
@@ -410,9 +588,12 @@ pub(crate) fn plan(
     solver: &Path,
     shim: &Path,
     run_id: &str,
+    workspace: &Path,
+    cargo_args: &[String],
     metadata: &Value,
 ) -> Option<Plan> {
-    if !research_enabled() {
+    let research = research_enabled();
+    if !research && !has_adjacent_bundle(cargo_verus) {
         return None;
     }
     if [
@@ -425,10 +606,17 @@ pub(crate) fn plan(
     {
         return None;
     }
-    let recording = std::env::var_os(RECORD_ENV).filter(|v| !v.is_empty());
-    let local = std::env::var_os(LOCAL_ENV).filter(|value| !value.is_empty());
+    let recording = research
+        .then(|| std::env::var_os(RECORD_ENV).filter(|v| !v.is_empty()))
+        .flatten();
+    let local = research
+        .then(|| std::env::var_os(LOCAL_ENV).filter(|value| !value.is_empty()))
+        .flatten();
     // Do not silently reinterpret conflicting research modes.
     if recording.is_some() && local.is_some() {
+        return None;
+    }
+    if local.is_none() && !portable_context(workspace, cargo_args) {
         return None;
     }
     // Ordinary unchanged runs do not use a shipped build and must not probe
@@ -446,18 +634,23 @@ pub(crate) fn plan(
         read_manifest(&bundle_dir(root.file_name()?)?)?;
     }
     let identity = identity(&root, &virtual_base)?;
-    let mode = if let Some(out) = local {
-        Mode::MachineLocal {
-            out: std::path::absolute(out).ok()?,
-        }
+    let (mode, release) = if let Some(out) = local {
+        (
+            Mode::MachineLocal {
+                out: std::path::absolute(out).ok()?,
+            },
+            None,
+        )
     } else if let Some(out) = recording {
-        Mode::Record {
-            out: std::path::absolute(out).ok()?,
-        }
+        (
+            Mode::Record {
+                out: std::path::absolute(out).ok()?,
+            },
+            None,
+        )
     } else {
-        Mode::Serve {
-            bundle: accepted_bundle(&root, &identity, &virtual_base)?,
-        }
+        let (bundle, release) = accepted_bundle(&root, &identity, &virtual_base)?;
+        (Mode::Serve { bundle }, release)
     };
     let solver_adapter = if matches!(mode, Mode::MachineLocal { .. }) {
         None
@@ -467,8 +660,24 @@ pub(crate) fn plan(
             sha256: sha256_file(shim)?.0,
         })
     };
+    let compiler_source = if matches!(mode, Mode::MachineLocal { .. }) {
+        None
+    } else {
+        let sysroot = super::runner::verifier_sysroot(
+            &root.join("verus/source/target-verus/release/verus"),
+            Path::new("."),
+        )
+        .ok()?;
+        Some(CompilerSource::capture(
+            &sysroot,
+            &virtual_base,
+            registry,
+            target,
+        )?)
+    };
     Some(Plan {
         mode,
+        release,
         identity,
         registry: registry.to_owned(),
         target: target.to_owned(),
@@ -485,6 +694,7 @@ pub(crate) fn plan(
         native_launcher: root.join("verus/source/target-verus/release/verus"),
         native_launcher_sha256: sha256_file(&root.join("verus/source/target-verus/release/verus"))?
             .0,
+        compiler_source,
     })
 }
 
@@ -496,8 +706,17 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
     };
     let failed = |m: String| Error::new("SAIL3134", m);
     // The resolution new projects start from (`sail new`).
-    std::fs::copy(workspace.join(LOCKFILE), out.join(LOCKFILE))
-        .map_err(|e| failed(format!("{}: {e}", workspace.join(LOCKFILE).display())))?;
+    let source_lock = workspace.join(LOCKFILE);
+    let destination_lock = out.join(LOCKFILE);
+    std::fs::copy(&source_lock, &destination_lock).map_err(|error| {
+        failed(format!(
+            "copy {} -> {} (source_exists={:?}, destination_parent_exists={:?}): {error}",
+            source_lock.display(),
+            destination_lock.display(),
+            source_lock.try_exists(),
+            out.try_exists(),
+        ))
+    })?;
     let mut units = BTreeMap::new();
     let mut verified = false;
     for entry in std::fs::read_dir(out.join(UNITS))
@@ -540,11 +759,76 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
 
 /// The plan of the run this driver proxy belongs to.
 pub(crate) fn active() -> Option<Plan> {
-    if !research_enabled() {
+    let path = PathBuf::from(std::env::var_os(PLAN_ENV)?);
+    let plan: Plan = serde_json::from_slice(&std::fs::read(&path).ok()?).ok()?;
+    let runtime_path = PathBuf::from(std::env::var_os("SAIL_MANAGED_RUNTIME")?);
+    let runtime: super::receipts::Runtime =
+        serde_json::from_slice(&std::fs::read(runtime_path).ok()?).ok()?;
+    active_for(&path, plan, &runtime, research_enabled())
+}
+
+fn active_for(
+    path: &Path,
+    plan: Plan,
+    runtime: &super::receipts::Runtime,
+    research: bool,
+) -> Option<Plan> {
+    let run = runtime.sidecars.parent()?;
+    if path != run.join("shipped.json")
+        || run.file_name()? != OsStr::new(&runtime.run_id)
+        || plan.run_id != runtime.run_id
+        || runtime.retained.is_some()
+            && (!matches!(plan.mode, Mode::Serve { .. }) || plan.release.is_none())
+        || runtime.engine.is_some()
+        || runtime.z3_sha256 != plan.solver_sha256
+        || runtime.original_wrapper != plan.native_launcher
+    {
         return None;
     }
-    let path = std::env::var_os(PLAN_ENV)?;
-    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+    if !research {
+        let Mode::Serve { .. } = &plan.mode else {
+            return None;
+        };
+        let root = runtime_root(&plan.native_launcher.with_file_name("cargo-verus"))?;
+        let executable = std::env::current_exe().ok()?;
+        if !ordinary_child(&plan, &root, &executable) {
+            return None;
+        }
+    }
+    Some(plan)
+}
+
+// A compiler child runs the same Sail bytes under a cache hardlink/copy name.
+// canonicalize cannot recover an installed path from either kind of alias.
+fn ordinary_child(plan: &Plan, runtime: &Path, executable: &Path) -> bool {
+    let check = || {
+        let root = runtime.canonicalize().ok()?;
+        let engine = root.parent()?;
+        if engine.file_name()? != OsStr::new("engine")
+            || !root.join(crate::source_build::MANIFEST).is_file()
+        {
+            return None;
+        }
+        let adjacent = engine.parent()?.join("deps").join(root.file_name()?);
+        let Mode::Serve { bundle } = &plan.mode else {
+            return None;
+        };
+        let manifest = read_manifest(bundle)?;
+        let release = plan.release.as_ref()?;
+        (ordinary_serve(plan, &adjacent, &manifest)
+            && release.intact(bundle)
+            && release.executable_matches(bundle, executable))
+        .then_some(())
+    };
+    check().is_some()
+}
+
+fn ordinary_serve(plan: &Plan, adjacent: &Path, manifest: &Manifest) -> bool {
+    matches!(&plan.mode, Mode::Serve { bundle } if bundle == adjacent)
+        && manifest.schema == SCHEMA
+        && manifest.kind == KIND
+        && manifest.identity == plan.identity
+        && manifest.virtual_base == plan.virtual_base
 }
 
 /// Replaces `from` by `to` wherever `from` occurs as a whole path prefix:
@@ -735,20 +1019,25 @@ pub(crate) struct Call<'a> {
 /// Observe every package file, including files that dep-info does not yet
 /// name. Added/removed modules must also invalidate a recorded compilation.
 fn package_tree(root: &Path) -> Option<BTreeMap<String, String>> {
+    bounded_source_tree(root, 64 * 1024 * 1024)
+}
+
+fn bounded_source_tree(root: &Path, byte_limit: u64) -> Option<BTreeMap<String, String>> {
     fn visit(
         root: &Path,
         directory: &Path,
         files: &mut BTreeMap<String, String>,
         bytes: &mut u64,
+        byte_limit: u64,
     ) -> Option<()> {
         for entry in std::fs::read_dir(directory).ok()? {
             let entry = entry.ok()?;
             let kind = entry.file_type().ok()?;
             if kind.is_dir() {
-                visit(root, &entry.path(), files, bytes)?;
+                visit(root, &entry.path(), files, bytes, byte_limit)?;
             } else if kind.is_file() {
                 *bytes = bytes.checked_add(entry.metadata().ok()?.len())?;
-                if *bytes > 64 * 1024 * 1024 || files.len() >= 16_384 {
+                if *bytes > byte_limit || files.len() >= 16_384 {
                     return None;
                 }
                 files.insert(
@@ -762,7 +1051,7 @@ fn package_tree(root: &Path) -> Option<BTreeMap<String, String>> {
         Some(())
     }
     let mut files = BTreeMap::new();
-    visit(root, root, &mut files, &mut 0)?;
+    visit(root, root, &mut files, &mut 0, byte_limit)?;
     Some(files)
 }
 
@@ -897,11 +1186,14 @@ impl<'a> Call<'a> {
                 .find(|(name, _)| name == key)
                 .map(|(_, value)| value)
         };
-        if lookup("CARGO_PKG_NAME")? != "vstd"
-            || lookup("CARGO_PKG_VERSION")? != "0.0.0-2026-10-04-0306"
+        if lookup("CARGO_PKG_NAME")? != "vstd" {
+            return None;
+        }
+        let version = crate::toolchain::Pins::embedded().ok()?.verus.vstd?;
+        if lookup("CARGO_PKG_VERSION")? != version.as_str()
             || lookup("CARGO_PRIMARY_PACKAGE").is_some()
             || Path::new(lookup("CARGO_MANIFEST_DIR")?)
-                != plan.registry.join("vstd-0.0.0-2026-10-04-0306")
+                != plan.registry.join(format!("vstd-{version}"))
         {
             return None;
         }
@@ -1022,6 +1314,9 @@ impl<'a> Call<'a> {
         });
         if let Some(adapter) = &plan.solver_adapter {
             identity["solver_adapter_sha256"] = serde_json::json!(adapter.sha256);
+        }
+        if let Some(source) = &plan.compiler_source {
+            identity["compiler_source"] = serde_json::json!(source.keyed());
         }
         let key = digest(&serde_json::to_vec(&identity).map_err(|e| e.to_string())?);
         let package = format!(
@@ -1206,11 +1501,19 @@ impl<'a> Call<'a> {
     }
 
     fn snapshot_intact(&self) -> bool {
-        self.plan.closure.is_none()
-            || self
-                .native_snapshot
-                .as_ref()
-                .is_some_and(snapshot::Snapshot::intact)
+        self.compiler_source_intact()
+            && (self.plan.closure.is_none()
+                || self
+                    .native_snapshot
+                    .as_ref()
+                    .is_some_and(snapshot::Snapshot::intact))
+    }
+
+    fn compiler_source_intact(&self) -> bool {
+        self.plan
+            .compiler_source
+            .as_ref()
+            .is_none_or(|source| source.current(self.plan).is_some())
     }
 
     /// Request observations only for this actual admitted compiler invocation.
@@ -1238,7 +1541,10 @@ impl<'a> Call<'a> {
 
     /// Extra compiler arguments when recording: name registry sources by the
     /// virtual base, under the directory Cargo names and under its canonical
-    /// form (rustc's working directory for a registry package).
+    /// form (rustc's working directory for a registry package). Standard
+    /// library files keep rustc's virtual `/rustc/<commit>` names, as a
+    /// toolchain without `rust-src` records them, rather than the recording
+    /// host's `rust-src` path (VI-0031).
     pub(crate) fn record_args(&self) -> Vec<OsString> {
         if !matches!(self.plan.mode, Mode::Record { .. }) {
             return Vec::new();
@@ -1248,6 +1554,12 @@ impl<'a> Call<'a> {
             let mut mapping = directory.into_os_string();
             mapping.push("=");
             mapping.push(&self.plan.virtual_base);
+            args.extend([OsString::from("--remap-path-prefix"), mapping]);
+        }
+        if let Some(source) = &self.plan.compiler_source {
+            let mut mapping = source.root.clone().into_os_string();
+            mapping.push("=");
+            mapping.push(&source.virtual_root);
             args.extend([OsString::from("--remap-path-prefix"), mapping]);
         }
         args
@@ -1319,6 +1631,10 @@ impl<'a> Call<'a> {
         if let Err(reason) = staged {
             let _ = std::fs::remove_dir_all(&staging);
             return Err(reason);
+        }
+        if !self.compiler_source_intact() {
+            let _ = std::fs::remove_dir_all(&staging);
+            return Err("compiler source tree changed before publication".to_owned());
         }
         let entry = out.join(UNITS).join(&self.key);
         if entry.exists() {
@@ -1567,10 +1883,28 @@ impl<'a> Call<'a> {
         Ok(())
     }
 
+    fn read_unit_bytes(&self, entry: &Path) -> std::result::Result<Vec<u8>, Refusal> {
+        if let Some(release) = &self.plan.release {
+            let Mode::Serve { bundle } = &self.plan.mode else {
+                return Err(Refusal::Miss(
+                    "release admission outside serving mode".to_owned(),
+                ));
+            };
+            release
+                .read_unit(bundle, &self.key)
+                .ok_or_else(|| Refusal::Miss("release index or unit changed".to_owned()))
+        } else {
+            std::fs::read(entry.join(UNIT))
+                .map_err(|_| Refusal::Miss("no entry for this key".to_owned()))
+        }
+    }
+
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keep fresh compiler/source, unit, artifact and release admission in one ordered restore boundary."
+    )]
     fn try_serve(&self, entry: &Path) -> std::result::Result<Replay, Refusal> {
-        let Ok(bytes) = std::fs::read(entry.join(UNIT)) else {
-            return Err(Refusal::Miss("no entry for this key".to_owned()));
-        };
+        let bytes = self.read_unit_bytes(entry)?;
         let unit: Unit = serde_json::from_slice(&bytes)
             .map_err(|e| Refusal::Damaged(format!("unreadable entry: {e}")))?;
         if unit.schema != SCHEMA || unit.key != self.key || unit.verifying != self.verifying {
@@ -1666,10 +2000,19 @@ impl<'a> Call<'a> {
             }
             placed.push(to);
         }
+        if !self.compiler_source_intact() {
+            for path in &placed {
+                let _ = std::fs::remove_file(path);
+            }
+            return Err(Refusal::Miss(
+                "compiler source tree changed during restore".to_owned(),
+            ));
+        }
         Ok(Replay {
             stdout: stdout.into_bytes(),
             stderr: stderr.into_bytes(),
             origin,
+            retained: RetainedProof::new(self, &bytes, &unit),
         })
     }
 }
@@ -1680,6 +2023,125 @@ pub(crate) struct Replay {
     pub stderr: Vec<u8>,
     /// Scope and establishing invocation, preserved through later reuse.
     pub origin: sail_api::project::DependencyBuildOrigin,
+    /// A distinct release-proof producer, never an actual local compiler run.
+    pub retained: Option<RetainedProof>,
+}
+
+/// Minted only after the complete fresh-native checked Serve boundary succeeds.
+/// The retained arena may preserve it, but must recheck the release index/unit,
+/// closed sources, compiler and exact placed output on every use.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RetainedProof {
+    plan: Plan,
+    key: String,
+    unit_sha256: String,
+    outputs: BTreeMap<PathBuf, super::dependency_snapshot::Content>,
+}
+
+impl RetainedProof {
+    pub(crate) fn for_run(&self, run: &str, compiler: &str, target: &Path) -> bool {
+        self.plan.run_id == run
+            && self.plan.native_compiler_sha256 == compiler
+            && self.plan.target == target
+    }
+
+    pub(crate) fn compiler_identity(&self) -> &str {
+        &self.plan.native_compiler_sha256
+    }
+
+    fn new(call: &Call<'_>, raw: &[u8], unit: &Unit) -> Option<Self> {
+        if call.plan.release.is_none()
+            || !matches!(call.plan.mode, Mode::Serve { .. })
+            || !unit.verifying
+            || call.crate_name != "vstd"
+            || !call.snapshot_intact()
+        {
+            return None;
+        }
+        let outputs = unit
+            .files
+            .iter()
+            .filter(|file| file.name != unit.dep_info)
+            .map(|file| {
+                let path = call.out_dir.join(&file.name);
+                let content = super::dependency_snapshot::read_content(&path, 256 * 1024 * 1024)?;
+                (content.sha256 == file.sha256 && content.size == file.size)
+                    .then_some((path, content))
+            })
+            .collect::<Option<_>>()?;
+        Some(Self {
+            plan: call.plan.clone(),
+            key: call.key.clone(),
+            unit_sha256: digest(raw),
+            outputs,
+        })
+    }
+
+    pub(crate) fn document(&self) -> Option<PathBuf> {
+        let Mode::Serve { bundle } = &self.plan.mode else {
+            return None;
+        };
+        Some(bundle.join(UNITS).join(&self.key).join(UNIT))
+    }
+
+    pub(in crate::managed) fn outputs(
+        &self,
+    ) -> &BTreeMap<PathBuf, super::dependency_snapshot::Content> {
+        &self.outputs
+    }
+
+    pub(in crate::managed) fn intact(
+        &self,
+        output: &Path,
+        body: &super::dependency_snapshot::Content,
+    ) -> bool {
+        let check = || {
+            (self.plan.closure.as_ref()?.check_sources()
+                && self
+                    .plan
+                    .compiler_source
+                    .as_ref()?
+                    .current(&self.plan)
+                    .is_some()
+                && native::launcher_matches(&self.plan, &self.plan.native_launcher)
+                && self.release_output_intact(output, body))
+            .then_some(())
+        };
+        check().is_some()
+    }
+
+    fn release_output_intact(
+        &self,
+        output: &Path,
+        body: &super::dependency_snapshot::Content,
+    ) -> bool {
+        let check = || {
+            let Mode::Serve { bundle } = &self.plan.mode else {
+                return None;
+            };
+            let raw = self.plan.release.as_ref()?.read_unit(bundle, &self.key)?;
+            let unit: Unit = serde_json::from_slice(&raw).ok()?;
+            (digest(&raw) == self.unit_sha256
+                && unit.schema == SCHEMA
+                && unit.key == self.key
+                && unit.verifying
+                && unit.crate_name == "vstd"
+                && self.outputs.get(output) == Some(body)
+                && output
+                    .parent()
+                    .is_some_and(|parent| parent.starts_with(&self.plan.target))
+                && unit.files.iter().any(|file| {
+                    output.file_name() == Some(OsStr::new(&file.name))
+                        && file.sha256 == body.sha256
+                        && file.size == body.size
+                })
+                && super::dependency_snapshot::read_content(output, 256 * 1024 * 1024).as_ref()
+                    == Some(body))
+            .then_some(())
+        };
+        check().is_some()
+    }
 }
 
 enum Refusal {
@@ -1877,6 +2339,71 @@ fn copy_checked(from: &Path, to: &Path, file: &StoredFile) -> std::result::Resul
 mod tests {
     use super::*;
 
+    #[test]
+    fn portable_context_refuses_rustflag_selectors_inline_overrides_and_config_aliases()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let machine = Machine::new("portable-context-guard", |root| Mode::MachineLocal {
+            out: root.join("local"),
+        })?;
+        let workspace = machine.root.join("workspace");
+        let home = machine.root.join("cargo-home");
+        std::fs::create_dir_all(workspace.join(".cargo"))?;
+        std::fs::create_dir_all(&home)?;
+        let check = |args: &[&str], vars: &[(&str, &str)]| {
+            portable_context_inputs(
+                &workspace,
+                Some(&home),
+                &args.iter().map(|arg| (*arg).to_owned()).collect::<Vec<_>>(),
+                vars.iter()
+                    .map(|(name, value)| ((*name).into(), (*value).into())),
+            )
+        };
+        assert!(check(&[], &[]));
+        assert!(check(&[], &[("RUSTFLAGS", "")]));
+        for name in [
+            "RUSTFLAGS",
+            "CARGO_ENCODED_RUSTFLAGS",
+            "CARGO_BUILD_RUSTFLAGS",
+            "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS",
+        ] {
+            assert!(!check(&[], &[(name, "--force-warn=missing_docs")]));
+        }
+        for args in [
+            vec!["--config", "build.rustflags=[]"],
+            vec!["--config=build.rustflags=[]"],
+            vec!["-Z", "config-include"],
+            vec!["-Zconfig-include"],
+        ] {
+            assert!(!check(&args, &[]));
+        }
+        let config = workspace.join(".cargo/config.toml");
+        std::fs::write(&config, "[build]\njobs=2\n")?;
+        assert!(check(&[], &[]));
+        for text in [
+            "[build]\nrustflags=[]\n",
+            "[target.aarch64-apple-darwin]\nrustflags=['--cfg=custom']\n",
+            "[env]\nRUSTFLAGS='--force-warn=missing_docs'\n",
+            "[env]\nCARGO_ENCODED_RUSTFLAGS={value='--cfg=custom',force=true}\n",
+            "[env]\nCARGO_BUILD_RUSTFLAGS={value='--cfg=custom',force=true}\n",
+            "[env]\nCARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS='--cfg=custom'\n",
+            "[build\n",
+        ] {
+            std::fs::write(&config, text)?;
+            assert!(!check(&[], &[]));
+        }
+        std::fs::File::create(&config)?.set_len(1024 * 1024 + 1)?;
+        assert!(!check(&[], &[]));
+        std::fs::remove_file(&config)?;
+        #[cfg(unix)]
+        {
+            let target = machine.root.join("ordinary-config");
+            std::fs::write(&target, "[build]\njobs=2\n")?;
+            std::os::unix::fs::symlink(target, &config)?;
+            assert!(!check(&[], &[]));
+        }
+        Ok(())
+    }
+
     fn plan(root: &Path, mode: Mode) -> Plan {
         Plan {
             mode,
@@ -1892,7 +2419,87 @@ mod tests {
             native_compiler_sha256: "compiler-bytes".into(),
             native_launcher: root.join("verus"),
             native_launcher_sha256: "launcher-bytes".into(),
+            compiler_source: None,
+            release: None,
         }
+    }
+
+    #[test]
+    fn ordinary_activation_accepts_only_matching_adjacent_serve() {
+        let root = Path::new("/owned-release");
+        let adjacent = root.join("deps/variant");
+        let mut call = plan(
+            root,
+            Mode::Serve {
+                bundle: adjacent.clone(),
+            },
+        );
+        let mut manifest = Manifest {
+            schema: SCHEMA,
+            kind: KIND.into(),
+            identity: call.identity.clone(),
+            runtime: "variant".into(),
+            virtual_base: call.virtual_base.clone(),
+            units: BTreeMap::new(),
+        };
+        assert!(ordinary_serve(&call, &adjacent, &manifest));
+        assert!(!ordinary_serve(&call, &root.join("other"), &manifest));
+        manifest.schema -= 1;
+        assert!(!ordinary_serve(&call, &adjacent, &manifest));
+        manifest.schema = SCHEMA;
+        manifest.identity.push('x');
+        assert!(!ordinary_serve(&call, &adjacent, &manifest));
+        manifest.identity = call.identity.clone();
+        call.mode = Mode::Record {
+            out: adjacent.clone(),
+        };
+        assert!(!ordinary_serve(&call, &adjacent, &manifest));
+        call.mode = Mode::MachineLocal {
+            out: adjacent.clone(),
+        };
+        assert!(!ordinary_serve(&call, &adjacent, &manifest));
+    }
+
+    #[test]
+    fn child_plan_is_bound_to_original_run_solver_and_single_authority() {
+        let root = Path::new("/owned-family");
+        let call = plan(
+            root,
+            Mode::Record {
+                out: root.join("record"),
+            },
+        );
+        let run = root.join("runs").join(&call.run_id);
+        let path = run.join("shipped.json");
+        let mut runtime = super::super::receipts::Runtime {
+            run_id: call.run_id.clone(),
+            args: Vec::new(),
+            z3: root.join("z3"),
+            z3_sha256: call.solver_sha256.clone(),
+            daemon: false,
+            sidecars: run.join("sidecars"),
+            invocations: run.join("invocations"),
+            original_wrapper: call.native_launcher.clone(),
+            receipts: root.join("receipts"),
+            context_sha256: "context".into(),
+            input_revision: "source".into(),
+            packages: BTreeMap::new(),
+            target_kinds: BTreeMap::new(),
+            engine: None,
+            retained: None,
+            attribution_logs: false,
+        };
+        assert!(active_for(&path, call.clone(), &runtime, true).is_some());
+        assert!(active_for(&run.join("foreign.json"), call.clone(), &runtime, true).is_none());
+        assert!(active_for(&path, call.clone(), &runtime, false).is_none());
+        runtime.run_id.push('x');
+        assert!(active_for(&path, call.clone(), &runtime, true).is_none());
+        runtime.run_id = call.run_id.clone();
+        runtime.z3_sha256.push('x');
+        assert!(active_for(&path, call.clone(), &runtime, true).is_none());
+        runtime.z3_sha256 = call.solver_sha256.clone();
+        runtime.original_wrapper = root.join("foreign-verus");
+        assert!(active_for(&path, call, &runtime, true).is_none());
     }
 
     fn vars(root: &Path, extra: &[(&str, &str)]) -> Vec<(OsString, OsString)> {
@@ -2507,6 +3114,127 @@ mod tests {
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
     #[test]
+    fn compiler_source_binding_is_portable_but_checks_every_fresh_byte() -> TestResult {
+        let mut a = Machine::new("compiler-source-a", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let mut b = Machine::new("compiler-source-b", |root| Mode::Serve {
+            bundle: root.join("bundle"),
+        })?;
+        for machine in [&mut a, &mut b] {
+            machine.plan.virtual_base = format!("/rustc-dev/{}", "1".repeat(40));
+            let root = machine
+                .root
+                .join("sysroot/lib/rustlib/src/rust/library/core/src");
+            std::fs::create_dir_all(&root)?;
+            std::fs::write(root.join("lib.rs"), b"original compiler source")?;
+            let sysroot = machine.root.join("sysroot").canonicalize()?;
+            machine.plan.compiler_source = CompilerSource::capture(
+                &sysroot,
+                &machine.plan.virtual_base,
+                &machine.plan.registry,
+                &machine.plan.target,
+            );
+            assert!(machine.plan.compiler_source.is_some());
+        }
+        assert_eq!(
+            a.plan.compiler_source.as_ref().map(CompilerSource::keyed),
+            b.plan.compiler_source.as_ref().map(CompilerSource::keyed)
+        );
+        // Recording names the standard library by its virtual root, never by
+        // the recording host's rust-src path (VI-0031); serving adds nothing.
+        let recorded = a.call(false).ok_or("A call")?.record_args();
+        let source = a.plan.compiler_source.as_ref().ok_or("A compiler source")?;
+        let mut std_mapping = source.root.clone().into_os_string();
+        std_mapping.push(format!("={}", "/rustc/".to_owned() + &"1".repeat(40)));
+        assert_eq!(
+            recorded.windows(2).last(),
+            Some([OsString::from("--remap-path-prefix"), std_mapping].as_slice())
+        );
+        assert_eq!(
+            b.call(false).ok_or("B call")?.record_args(),
+            Vec::<OsString>::new(),
+            "serving adds no remapping"
+        );
+        let original = a.call(false).ok_or("A call")?.key;
+        assert_eq!(original, b.call(false).ok_or("B call")?.key);
+        let source = b.plan.compiler_source.as_ref().ok_or("B compiler source")?;
+        let sysroot = b.root.join("sysroot").canonicalize()?;
+        assert!(source.current_at(&sysroot, &b.plan).is_some());
+        assert!(
+            source
+                .current_at(&a.root.join("sysroot").canonicalize()?, &b.plan)
+                .is_none()
+        );
+        let file = source.root.join("library/core/src/lib.rs");
+        let modified = std::fs::metadata(&file)?.modified()?;
+        std::fs::write(&file, b"modified compiler source")?;
+        std::fs::File::open(&file)?.set_times(std::fs::FileTimes::new().set_modified(modified))?;
+        assert!(source.current_at(&sysroot, &b.plan).is_none());
+        b.plan.compiler_source = CompilerSource::capture(
+            &sysroot,
+            &b.plan.virtual_base,
+            &b.plan.registry,
+            &b.plan.target,
+        );
+        assert_ne!(original, b.call(false).ok_or("changed B call")?.key);
+        let local = Machine::new("compiler-source-local", |root| Mode::MachineLocal {
+            out: root.join("local"),
+        })?;
+        assert!(local.plan.compiler_source.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_source_binding_refuses_aliases_collisions_and_unknown_trees() -> TestResult {
+        let machine = Machine::new("compiler-source-refusals", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let sysroot = machine.root.canonicalize()?.join("sysroot");
+        let source = sysroot.join("lib/rustlib/src/rust");
+        std::fs::create_dir_all(&source)?;
+        let virtual_base = format!("/rustc-dev/{}", "1".repeat(40));
+        let capture = |base: &str, registry: &Path| {
+            CompilerSource::capture(&sysroot, base, registry, &machine.plan.target)
+        };
+        assert!(
+            capture(&virtual_base, &machine.plan.registry).is_none(),
+            "empty tree"
+        );
+        std::fs::write(source.join("source.rs"), b"compiler source")?;
+        assert!(capture(&virtual_base, &machine.plan.registry).is_some());
+        assert!(capture("/foreign/commit", &machine.plan.registry).is_none());
+        assert!(capture("/rustc-dev/short", &machine.plan.registry).is_none());
+        assert!(capture(&virtual_base, &source).is_none());
+        assert!(capture(&virtual_base, &source.join("nested-registry")).is_none());
+        assert!(
+            CompilerSource::capture(&sysroot, &virtual_base, &machine.plan.registry, &source)
+                .is_none()
+        );
+        #[cfg(unix)]
+        {
+            let alias = machine.root.join("sysroot-alias");
+            std::os::unix::fs::symlink(&sysroot, &alias)?;
+            assert!(
+                CompilerSource::capture(
+                    &alias,
+                    &virtual_base,
+                    &machine.plan.registry,
+                    &machine.plan.target
+                )
+                .is_none()
+            );
+            std::os::unix::fs::symlink("source.rs", source.join("alias.rs"))?;
+            assert!(capture(&virtual_base, &machine.plan.registry).is_none());
+            std::fs::remove_file(source.join("alias.rs"))?;
+        }
+        std::fs::remove_file(source.join("source.rs"))?;
+        std::fs::create_dir(source.join("unreadable-file-shape"))?;
+        assert!(capture(&virtual_base, &machine.plan.registry).is_none());
+        Ok(())
+    }
+
+    #[test]
     fn installed_compiler_and_sysroot_bytes_are_portable_but_never_omitted() -> TestResult {
         let root =
             std::env::temp_dir().join(format!("sail-shipped-sysroot-{}", std::process::id()));
@@ -2627,6 +3355,28 @@ mod tests {
     }
 
     #[test]
+    fn release_inventory_metadata_is_not_a_proof_key_input()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut machine = Machine::new("release-admission-key", |root| Mode::Serve {
+            bundle: root.join("bundle"),
+        })?;
+        let original = machine.call(true).ok_or("original key")?.key;
+        machine.plan.release = Some(serde_json::from_value(serde_json::json!({
+            "index_sha256":"installation-only", "members":{}
+        }))?);
+        assert_eq!(machine.call(true).ok_or("admitted key")?.key, original);
+        // The optional field is absent from earlier research per-run plans.
+        machine.plan.release = None;
+        assert!(
+            serde_json::to_value(&machine.plan)?
+                .get("release")
+                .is_none()
+        );
+        std::fs::remove_dir_all(&machine.root)?;
+        Ok(())
+    }
+
+    #[test]
     fn boundary_accepts_only_unselected_verified_vstd_and_fresh_dependency_bytes()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut machine = Machine::new("vstd-boundary", |root| Mode::Record {
@@ -2637,19 +3387,25 @@ mod tests {
             Call::vstd_invocation(&machine.plan, &machine.args, ordinary_vars.into_iter())
                 .is_none()
         );
-        let package = machine.plan.registry.join("vstd-0.0.0-2026-10-04-0306");
+        let version = crate::toolchain::Pins::embedded()?
+            .verus
+            .vstd
+            .ok_or("pinned vstd")?;
+        let package = machine.plan.registry.join(format!("vstd-{version}"));
         std::fs::create_dir_all(package.join("src"))?;
         let manifest = package.join("Cargo.toml");
         std::fs::write(
             &manifest,
-            "[package]\nname='vstd'\nversion='0.0.0-2026-10-04-0306'\n[package.metadata.verus]\nverify=true\nis-vstd=true\n",
+            format!(
+                "[package]\nname='vstd'\nversion='{version}'\n[package.metadata.verus]\nverify=true\nis-vstd=true\n"
+            ),
         )?;
         machine.args[2] = "vstd".into();
         machine.args[3] = package.join("src/lib.rs").into_os_string();
         machine.args.extend(["--crate-type".into(), "lib".into()]);
         let invocation_vars = vec![
             (OsString::from("CARGO_PKG_NAME"), OsString::from("vstd")),
-            ("CARGO_PKG_VERSION".into(), "0.0.0-2026-10-04-0306".into()),
+            ("CARGO_PKG_VERSION".into(), version.clone().into()),
             ("CARGO_MANIFEST_DIR".into(), package.into_os_string()),
         ];
         let key = || {
@@ -3187,6 +3943,43 @@ mod tests {
         refusal(user.call(false).ok_or("no call")?, "unreadable entry")?;
         std::fs::remove_dir_all(&entry)?;
         refusal(user.call(false).ok_or("no call")?, "no entry")?;
+        Ok(())
+    }
+
+    #[test]
+    fn record_lock_copy_error_distinguishes_source_and_destination() -> TestResult {
+        let machine = Machine::new("record-copy-error", |root| Mode::Record {
+            out: root.join("bundle"),
+        })?;
+        let workspace = machine.root.join("workspace");
+        std::fs::create_dir(&workspace)?;
+        let source = workspace.join(LOCKFILE);
+        std::fs::write(&source, b"unchanged lock")?;
+        let out = machine.out().ok_or("not recording")?;
+        let destination = out.join(LOCKFILE);
+        let error = finish_record(&machine.plan, Path::new("unused"), &workspace)
+            .err()
+            .ok_or("missing destination parent was accepted")?;
+        assert_eq!(error.code, "SAIL3134");
+        for expected in [
+            source.display().to_string(),
+            destination.display().to_string(),
+            "source_exists=Ok(true)".to_owned(),
+            "destination_parent_exists=Ok(false)".to_owned(),
+        ] {
+            assert!(error.message.contains(&expected), "{}", error.message);
+        }
+        assert_eq!(std::fs::read(&source)?, b"unchanged lock");
+        assert!(!out.exists(), "diagnostics must not create a recording");
+        std::fs::create_dir(&out)?;
+        std::fs::remove_file(&source)?;
+        let error = finish_record(&machine.plan, Path::new("unused"), &workspace)
+            .err()
+            .ok_or("missing source was accepted")?;
+        assert_eq!(error.code, "SAIL3134");
+        assert!(error.message.contains("source_exists=Ok(false)"));
+        assert!(error.message.contains("destination_parent_exists=Ok(true)"));
+        assert!(!destination.exists() && !out.join(UNITS).exists());
         Ok(())
     }
 

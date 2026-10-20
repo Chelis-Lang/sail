@@ -1,0 +1,182 @@
+{
+  "unicode-ident-1.0.27": {
+    "edition": "2021",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values())"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "proc-macro2-1.0.107": {
+    "edition": "2021",
+    "non_feature_cfg": [
+      "proc_macro_span",
+      "proc_macro_span_file",
+      "proc_macro_span_location",
+      "span_locations",
+      "wrap_proc_macro"
+    ],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"default\", \"nightly\", \"proc-macro\", \"span-locations\"))",
+      "cfg(fuzzing)",
+      "cfg(no_is_available)",
+      "cfg(no_literal_byte_character)",
+      "cfg(no_literal_c_string)",
+      "cfg(no_source_text)",
+      "cfg(proc_macro_span)",
+      "cfg(proc_macro_span_file)",
+      "cfg(proc_macro_span_location)",
+      "cfg(procmacro2_backtrace)",
+      "cfg(procmacro2_build_probe)",
+      "cfg(procmacro2_nightly_testing)",
+      "cfg(procmacro2_semver_exempt)",
+      "cfg(randomize_layout)",
+      "cfg(span_locations)",
+      "cfg(super_unstable)",
+      "cfg(wrap_proc_macro)"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "quote-1.0.47": {
+    "edition": "2021",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"default\", \"proc-macro\"))",
+      "cfg(no_diagnostic_namespace)"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "verus_syn-0.0.0-2026-09-06-0133": {
+    "edition": "2021",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"clone-impls\", \"default\", \"derive\", \"extra-traits\", \"fold\", \"full\", \"parsing\", \"printing\", \"proc-macro\", \"visit\", \"visit-mut\"))"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "syn-2.0.119": {
+    "edition": "2021",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"clone-impls\", \"default\", \"derive\", \"extra-traits\", \"fold\", \"full\", \"parsing\", \"printing\", \"proc-macro\", \"test\", \"visit\", \"visit-mut\"))"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "equivalent-1.0.3": {
+    "edition": "2015",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values())"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "hashbrown-0.17.1": {
+    "edition": "2024",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"alloc\", \"allocator-api2\", \"core\", \"default\", \"default-hasher\", \"equivalent\", \"inline-more\", \"nightly\", \"raw-entry\", \"rayon\", \"rustc-dep-of-std\", \"rustc-internal-api\", \"serde\"))"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "synstructure-0.13.2": {
+    "edition": "2018",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"default\", \"proc-macro\"))"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "indexmap-2.14.2": {
+    "edition": "2024",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"arbitrary\", \"borsh\", \"default\", \"quickcheck\", \"rayon\", \"serde\", \"std\", \"sval\", \"test_debug\"))"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "verus_prettyplease-0.0.0-2026-09-06-0133": {
+    "edition": "2021",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(exhaustive)",
+      "cfg(feature, values(\"verbatim\"))",
+      "cfg(prettyplease_debug)",
+      "cfg(prettyplease_debug_indent)"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "convert_case-0.4.0": {
+    "edition": "2018",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"rand\", \"random\"))"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "verus_builtin_macros-0.0.0-2026-10-18-0147": {
+    "edition": "2018",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"contrib-hooks\", \"vpanic\"))"
+    ],
+    "builtin": false,
+    "builtin_macros": true,
+    "lints": []
+  },
+  "verus_state_machines_macros-0.0.0-2026-10-18-0147": {
+    "edition": "2018",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values())"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "verus_builtin-0.0.0-2026-10-11-0230": {
+    "edition": "2018",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values())"
+    ],
+    "builtin": true,
+    "builtin_macros": false,
+    "lints": []
+  }
+}

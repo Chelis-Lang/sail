@@ -423,6 +423,8 @@ planned for releases after 0.1.0. The owner answered all twelve on
     `0.2026.10.18.7d82994` (Rust 1.99.1) after moving to Rust 1.99 on
     2026-10-17, and Sail supports one Verus release. Rebase before qualifying
     0.1.0, or qualify on the current base and rebase after?
+    *Answered 2026-10-19:* rebase before qualifying, so the gates run once on
+    the shipped runtime (owner decision). See the ROADMAP rebase row.
 35. **Prebuilt macro crates under ADR 0053.** Serving release-built
     proc-macro and build-script crates from the archive would save an
     estimated 1.5–3 s per fresh project, but a broken local compiler (for

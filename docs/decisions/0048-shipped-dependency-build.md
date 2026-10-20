@@ -51,6 +51,33 @@ consumers. Actual Mac fill, fresh consumer, unchanged receipts and loader
 controls pass with complete native-body equality. Adversarial and wider runtime
 qualification remain required before selection; no Mac timing is claimed.
 
+The changed-Rustup release attempt on `c4b1644f` safely missed: its native
+builtin metadata matched, but the two fresh macro libraries differed and
+contained physical Rustup standard-library source locations. A source-only
+successor proposes mapping exactly the fresh verifier sysroot's
+`lib/rustlib/src/rust` prefix into `/rustc/<pinned compiler commit>` with a real
+compiler flag. It binds the complete local compiler-source tree (at most 128 MiB
+and 16,384 files; registry source admission retains its separate 64 MiB limit),
+virtual namespace and typed option into portable inputs, and
+rechecks them at native begin/completion and final Record/Serve boundaries.
+Aliases, source/target overlaps, foreign namespaces and incoming remap flags
+decline reuse. This does not rewrite saved artifacts. Imported standard-library
+locations originate compiled sysroot metadata; they are not additional native
+`SourceMap` read claims. The observer still records actual local reads.
+Machine-local keys and options remain unchanged.
+
+The guarded Mac candidate passes the changed-Rustup Record/Serve/unchanged and
+both negative-diagnostic components. Its enclosing native-consumer matrix remains
+failed because the supposed panic fixture produced a syntax error. A separate
+native-only successor with the genuine public-macro panic branch passes all
+twelve pairs, including both backtrace settings and literal diagnostics.
+These components do not qualify release first use.
+Compiler
+remapping can alter `file!`, panic, backtrace or source-quoting behavior. Actual
+two-root library equality, the old-flag negative, successful consumers and
+literal panic/compile-error diagnostics with and without `RUST_BACKTRACE` must
+pass before another whole staged-archive attempt or selection.
+
 A separate `SAIL_VSTD_BOUNDARY_LOCAL=<directory>` research mode binds both the
 literal and canonical registry root into each key. It never remaps registry
 sources and may retain those literal paths in outputs because reuse cannot
@@ -170,3 +197,71 @@ separately. Distributed packaging, fresh-machine checks on both platforms and
 measured first-project cost still gate default enablement.
 
 See [the implementation record](../validation/vstd-compile-boundary.md).
+
+## Candidate release integration
+
+The release-stage successor records only after its actual Sail/shim binaries have
+been copied and stripped. A normal consumer may use only the adjacent bundle
+admitted for its exact runtime/sysroot identity and schema; arbitrary recording,
+MachineLocal and alternate directories remain explicit experiments. Complete
+release archives bind all dependency members as well as the runtime. Existing
+keys, source/native/compiler-read authorities, literal bytes and safe misses are
+unchanged. One compiler family uses one reuse authority. This is a source-level
+integration decision, not fresh-machine or default-selection acceptance: staged
+first-use on both platforms and changed Rustup roots remains required.
+
+### Candidate requested-target coexistence
+
+The complete Linux consumer passes first-use, native-input and existing Vest
+checks, but the new default-profile A → B → A gate fails. The shipped plan
+excludes retained planning for the whole run, and the existing automatic
+retained profile excludes `alloc/default/std`. This is an unimplemented
+coexistence scope, not evidence that the previously qualified `alloc/std`
+profile regressed.
+
+The successor gives each compiler invocation one observer and one restore
+owner. The shipped observer owns actual native compilation when active; only
+after successful complete exit may retained provenance independently validate
+that same child's PID, run/key binding, source reads and closed dependency graph.
+It does not install a second observation endpoint or synthesize local execution.
+
+Served vstd remains owned by the shipped path. A separate typed release witness
+records its admitted unit and index, exact placed outputs and compiler/source
+authority. A retained requested target may depend on this witness only after
+its complete release and output checks succeed; later retained consumption
+rechecks those authorities. The witness is not an actual local compiler-read
+certificate. A miss without a qualified witness cannot establish retained
+authority. Requested targets still need their own actual two-phase compiler
+read document, copied dependency graph, whole-run Current check and committed
+receipt before publication.
+
+This candidate extends ordinary routing to the already closed public
+`alloc/default/std` policy alongside `alloc/std`. Full source and compiler
+admission remains mandatory. Explicit recording, MachineLocal and competing
+research modes retain their exclusions. Default selection requires independent
+review, actual adjacent-bundle A → B → A restoration and the unchanged complete
+Vest regression gate on the final matching runtime; source review and fixture
+success alone do not qualify the bridge.
+
+
+The portable native compiler-source candidate additionally limits option
+binding to recorded pinned Cargo compiler shapes. Exact source/feature
+admission and literal invocation keys alone do not establish diagnostic
+parity: a genuinely admitted forced-warning invocation exposed remapped
+registry filenames. Unsupported warning, cfg, codegen/link and global Cargo
+Rustflag contexts must decline portability before added options; their native
+children execute the original arguments. This restriction does not weaken
+fresh compiler-read, graph or final-byte checks and does not change the
+machine-local mode. The source-qualified Mac default/refusal witness passes
+with complete literal diagnostics, while dylib portability and staged release
+first-use acceptance remain pending.
+
+
+The next unqualified Mac-only candidate passes `-C link-arg=-Wl,-S` only to
+admitted portable native proc-macro producers. This prevents ld from recording
+physical Rustup and temporary output N_OSO debug-map paths at link time. The
+exact constructed option participates in the existing native option key;
+consumer arguments, source/read certificates and artifact byte checks remain
+unchanged. Machine-local and Linux options remain byte-identical. No artifact
+is edited after compilation. The guarded real two-root Record/Serve and
+literal diagnostic qualification remains required before use.

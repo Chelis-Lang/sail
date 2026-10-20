@@ -1,8 +1,8 @@
 # Compiler-reuse integration
 
 Status: source `83128ad0` passes the complete native default qualification and
-final guards. The composed delivery preserves its executed code; current PR
-checks and merge remain pending. The native 72-row cohort and same-host Linux portable
+final guards. The composed delivery preserves its executed code and merged
+through PR #224 as `3892881a`; all required checks and the main workflow pass. The native 72-row cohort and same-host Linux portable
 component pass. These results qualify their stated scopes separately; they do
 not establish release-bundled first-use vstd reuse or combined proof authority.
 See [retained restoration](instant-revert.md) and
@@ -47,11 +47,18 @@ The four literal source policies remain distinct:
 | `engine/verus/retained-public-inputs.json` | Public default-feature profile; explicit retained research only |
 | `engine/verus/retained-vest-inputs.json` | Fork path-provider profile; explicit retained research only |
 
-The public profiles bind all 15 archive identities, 662 file/checksum entries
-and exact feature/dependency vectors. The path-provider view has 718 files;
-its 400 official provider files match `e5365c05`. The boundary view instead
-contains published package bytes: 307 corresponding official files match that
-Git tree, 15 differ, and 22 package-only paths have no Git-tree counterpart.
+`scripts/source-policies.py` generates all four from the pins
+([ADR 0059](../decisions/0059-pinned-vstd-and-generated-source-policies.md));
+at the 426d8b0 pins it reproduced the committed `e5365c05` policies. The
+current policies are for Verus 7d82994 and fork `9c0ca7e7`, and the retained
+and boundary qualification below was done on the earlier policies; it is
+repeated on the new runtime. The public profiles bind all 15 archive
+identities, 662 file/checksum entries and exact feature/dependency vectors.
+The path-provider view has 718 files; its 400 official provider files match
+`9c0ca7e7`. The boundary view instead contains published package bytes: 314
+corresponding official files match that Git tree, 8 differ, and 22
+package-only paths have no Git-tree counterpart (at `e5365c05`: 307, 15 and
+22).
 Those views cannot lend one another source authority. The shared dependency
 snapshot implementation does not combine certificates or caches.
 

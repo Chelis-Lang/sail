@@ -13,6 +13,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+#[cfg(test)]
+#[path = "late_guard_tests.rs"]
+mod late_guard_tests;
+#[cfg(test)]
+pub(crate) use late_guard_tests::run as actual_late_guard;
+
 /// A per-compiler-family request with explicit source and runtime admission.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Plan {
@@ -28,6 +34,10 @@ pub(crate) struct Plan {
 }
 
 impl Plan {
+    pub(crate) fn requested(&self, identity: &receipts::TargetIdentity) -> bool {
+        self.roots.contains(&identity.manifest)
+    }
+
     pub(crate) fn prepare(
         metadata: &Value,
         target: &Path,
@@ -35,6 +45,7 @@ impl Plan {
         launcher: &Path,
         z3: &Path,
         run: &str,
+        notes: &mut Vec<String>,
     ) -> Option<Self> {
         let mode = super::super::research::selected().ok()?;
         if !super::selection::requested(mode) {
@@ -68,7 +79,12 @@ impl Plan {
             closure = Some(admitted);
         }
         let launcher = launcher.canonicalize().ok()?;
-        if !super::selection::admitted(mode, &launcher, z3) {
+        if let Err(unqualified) = super::selection::admitted(mode, &launcher, z3) {
+            notes.extend(
+                unqualified
+                    .as_deref()
+                    .map(super::selection::unqualified_note),
+            );
             return None;
         }
         let root = target.parent()?.join("retained-content-v1");
@@ -442,6 +458,7 @@ impl Attempt {
 
     fn unchanged(&self) -> bool {
         self.graph.intact()
+            && super::producers::established(&self.plan, &self.basis.context, &self.graph)
             && self
                 .plan
                 .snapshot()
@@ -965,6 +982,28 @@ fn output_paths(args: &[OsString], target: &Path) -> Option<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shipped_coexistence_is_limited_to_the_selected_requested_manifest()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let caller = archive::CallerEnvironment::capture("run").ok_or("capture")?;
+        let plan: Plan = serde_json::from_value(serde_json::json!({
+            "root":"/owned", "target":"/owned/target", "metadata":null,
+            "roots":["/project/Cargo.toml"], "closure":{"directories":{}},
+            "launcher":"/pinned/verus", "launcher_sha256":"launcher",
+            "compiler_sha256":"compiler", "caller_environment":caller
+        }))?;
+        let identity = |manifest: &str, name: &str| receipts::TargetIdentity {
+            manifest: PathBuf::from(manifest),
+            name: name.into(),
+            crate_type: "lib".into(),
+            rustc_args_sha256: "actual arguments".into(),
+        };
+        assert!(plan.requested(&identity("/project/Cargo.toml", "project")));
+        assert!(!plan.requested(&identity("/registry/vstd/Cargo.toml", "vstd")));
+        assert!(!plan.requested(&identity("/foreign/Cargo.toml", "project")));
+        Ok(())
+    }
 
     #[test]
     fn caller_environment_is_required_and_bound_to_the_actual_run()

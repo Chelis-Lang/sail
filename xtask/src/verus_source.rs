@@ -282,6 +282,9 @@ fn compile(
     // The toolchain and components Verus's rust-toolchain.toml lists
     // (rustc-dev, llvm-tools, rustfmt).
     run(clean(Command::new("rustup").current_dir(checkout), jobs).args(["toolchain", "install"]))?;
+    if engine {
+        refuse_local_rust_src(checkout, jobs)?;
+    }
 
     println!("building vargo");
     let vargo_dir = checkout.join("tools").join("vargo");
@@ -358,6 +361,7 @@ fn compile(
         .env("PATH", &path)
         .env("VERUS_Z3_PATH", z3)
         .args(["build", "--release", "--manifest-path", "vstd/Cargo.toml"]))?;
+        check_std_paths(&release.join("vstd.vir"))?;
         // That Cargo build leaves its build-dir intermediates (per-package
         // directories, dep-info and lock files) beside the runtime; the
         // runtime needs none of them (`deps` is pruned separately).
@@ -393,6 +397,57 @@ fn compile(
         return Err("vargo test --no-run reported no rust_verify_test binaries".to_owned());
     }
     Ok(executables)
+}
+
+/// Where an installed `rust-src` component puts the standard library
+/// sources, below the sysroot. With it, Rust 1.99 records the standard
+/// library's spans in vstd.vir by this local path instead of the virtual
+/// `/rustc/<commit>/library` path the Verus release records.
+const LOCAL_RUST_SRC: &str = "lib/rustlib/src/rust";
+
+/// Refuses an engine build whose Verus toolchain has `rust-src`: the
+/// runtime's vstd.vir would name the build host's toolchain directory.
+fn refuse_local_rust_src(checkout: &Path, jobs: &str) -> Result<()> {
+    let output = clean(Command::new("rustc").current_dir(checkout), jobs)
+        .args(["--print", "sysroot"])
+        .output()
+        .map_err(|e| format!("failed to run rustc --print sysroot: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "rustc --print sysroot exited with {}",
+            output.status
+        ));
+    }
+    let sysroot = PathBuf::from(String::from_utf8_lossy(&output.stdout).trim());
+    if sysroot.join(LOCAL_RUST_SRC).exists() {
+        return Err(format!(
+            "the Verus toolchain in {} has the rust-src component, so vstd.vir would record \
+             this host's standard library paths instead of /rustc/<commit> as the Verus \
+             release does; build on a toolchain without it (rustup component remove rust-src)",
+            sysroot.display()
+        ));
+    }
+    Ok(())
+}
+
+/// Requires vstd.vir to name standard library sources only by the
+/// toolchain's virtual `/rustc/<commit>` path, never a local `rust-src`.
+fn check_std_paths(vir: &Path) -> Result<()> {
+    let bytes = std::fs::read(vir).map_err(|e| format!("cannot read {}: {e}", vir.display()))?;
+    if contains(&bytes, LOCAL_RUST_SRC.as_bytes()) {
+        return Err(format!(
+            "{} names local rust-src standard library paths ({LOCAL_RUST_SRC}); \
+             rebuild on a toolchain without rust-src",
+            vir.display()
+        ));
+    }
+    Ok(())
+}
+
+fn contains(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack
+        .windows(needle.len())
+        .any(|window| window == needle)
 }
 
 fn relative_binaries(build: &Path, executables: &[(String, PathBuf)]) -> Result<Vec<TestBinary>> {
@@ -628,6 +683,22 @@ mod tests {
         for other in ["--interactive-engine", "--features=singular"] {
             assert!(parse(&[fork[0].clone(), other.to_owned()]).is_err());
         }
+    }
+
+    #[test]
+    fn vstd_std_paths_must_be_virtual() {
+        let dir = std::env::temp_dir().join(format!("sail-std-paths-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).ok();
+        let vir = dir.join("vstd.vir");
+        std::fs::write(
+            &vir,
+            b"x/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/ops/bit.rsx",
+        )
+        .ok();
+        assert!(super::check_std_paths(&vir).is_ok());
+        std::fs::write(&vir, b"x/opt/rustup/toolchains/1.99.1-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ops/bit.rsx").ok();
+        assert!(super::check_std_paths(&vir).is_err());
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

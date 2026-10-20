@@ -59,3 +59,7 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0054: Stable solver names for spec formal parameters (proposed)](0054-stable-spec-parameter-names.md)
 - [0055: Acknowledge visible managed-driver output (accepted)](0055-acknowledged-managed-output.md)
+
+- [0056: Stable SMT spellings for concrete trait functions (proposed, measured candidate)](0056-stable-smt-function-spellings.md)
+- [0058: Managed builds use the engine's pinned Cargo (accepted)](0058-managed-builds-use-the-pinned-cargo.md)
+- [0059: Pin the published vstd and generate the source policies (proposed)](0059-pinned-vstd-and-generated-source-policies.md)

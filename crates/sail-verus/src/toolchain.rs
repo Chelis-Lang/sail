@@ -65,6 +65,11 @@ pub struct VerusPin {
     /// dependency build uses (ADR 0048).
     #[serde(default)]
     pub rust_commit: Option<String>,
+    /// The crates.io `vstd` version the release publishes
+    /// (`source/vstd/Cargo.toml`). Sail's shipped and retained vstd proofs
+    /// admit only this version (ADR 0059).
+    #[serde(default)]
+    pub vstd: Option<String>,
 }
 
 /// The pinned Z3.
@@ -349,5 +354,21 @@ z3_sha256 = ""
             && p.verus.rust_toolchain == "1.98.0"
             && p.assets.get("h").is_some_and(|a| a.url == "u2")));
         assert!(pins.select("0.8").is_err());
+    }
+
+    /// The shipped vstd proof bundle is built from `scripts/shipped-deps`,
+    /// which must require and lock exactly the pinned vstd (ADR 0059).
+    #[test]
+    fn shipped_dependency_project_locks_the_pinned_vstd() {
+        let pins: Pins = match toml::from_str(include_str!("../../../corpus/toolchain.toml")) {
+            Ok(p) => p,
+            Err(e) => unreachable!("{e}"),
+        };
+        let vstd = pins.verus.vstd.unwrap_or_default();
+        assert!(!vstd.is_empty(), "the primary pin names its vstd");
+        let manifest = include_str!("../../../scripts/shipped-deps/Cargo.toml");
+        assert!(manifest.contains(&format!("vstd = \"={vstd}\"\n")));
+        let lock = include_str!("../../../scripts/shipped-deps/Cargo.lock");
+        assert!(lock.contains(&format!("name = \"vstd\"\nversion = \"{vstd}\"\n")));
     }
 }

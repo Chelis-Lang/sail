@@ -414,7 +414,7 @@ cargo build --release -p sail-cli -p sail-shim
 python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
   --cache ~/.cache/sail      # Sail's Verus; artifact-macos.json on macOS
 cargo xtask fetch-verus      # the stock baseline; prints its PATH line
-export PATH="$PWD/target/release:$HOME/.cache/sail/verus/0.2026.10.04.426d8b0/verus-x86-linux:$PATH"
+export PATH="$PWD/target/release:$HOME/.cache/sail/verus/0.2026.10.18.7d82994/verus-x86-linux:$PATH"
 #   on macOS: .../verus-arm64-macos instead of .../verus-x86-linux
 export SAIL_PERF_MACHINE="EC2 c7i.4xlarge (16 vCPU, 30 GiB), us-east-1, idle"
 #   describe the actual machine and whether anything else is running

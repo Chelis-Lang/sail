@@ -1340,7 +1340,7 @@ mod tests {
     fn real_stock_fallback_is_never_a_completed_driver()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root =
-            std::env::temp_dir().join(format!("sail-engine-fallback-{}", std::process::id()));
+            std::env::temp_dir().join(format!("sail-engine-stock-fallback-{}", std::process::id()));
         let sidecar = driver_fixture(&root)?;
         let seal = include_str!("../tests/fixtures/engine-terminal/terminal-success.jsonl");
         std::fs::write(sidecar.join("engine.events.jsonl"), seal)?;

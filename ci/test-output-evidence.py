@@ -122,6 +122,7 @@ import json,os,sys,time
 from pathlib import Path
 state=Path(os.environ['SAIL_E2E_TEST_STATE'])
 a=sys.argv[1:]
+if a[:2]==['engine','status']:print(json.dumps({'rust_toolchain':'sail-test-pin'}));sys.exit(0)
 if a[:2]==['verus','new']:
  state.write_text(os.getcwd());p=Path('demo/src');p.mkdir(parents=True);(p/'lib.rs').write_text('fixture');Path('demo/Cargo.toml').write_text('[package]\nname="demo"\nversion="0.0.0"\n');sys.exit(0)
 if a[:1]==['generate-lockfile']:
@@ -129,6 +130,8 @@ if a[:1]==['generate-lockfile']:
  Path('Cargo.lock').write_text('fixture lock');sys.exit(0)
 assert 'SAIL_E2E_OUTPUT_OUT' not in os.environ, 'diagnostic path reached verifier'
 is_sail=Path(sys.argv[0]).name=='sail'
+# Stock runs with the toolchain Sail selects (ADR 0058); Sail selects it itself.
+assert os.environ.get('RUSTUP_TOOLCHAIN')==(None if is_sail else 'sail-test-pin'), os.environ.get('RUSTUP_TOOLCHAIN')
 if is_sail:
  run=str(time.time_ns());p=Path(os.environ['SAIL_CACHE_DIR'])/'projects/p/c/runs'/run;p.mkdir(parents=True)
  (p/'result.json').write_text(json.dumps({'run_id':run,'fixture':True}));(p/'cargo.stderr').write_bytes(b'original producer bytes\n')
@@ -152,6 +155,16 @@ def shell_controls():
                 binary = tools / name
                 binary.write_text(VERIFIER.replace('PYTHON', sys.executable))
                 binary.chmod(0o755)
+            # The pinned toolchain is installed with rust-src.
+            rustup = tools / 'rustup'
+            rustup.write_text('#!' + sys.executable + '''
+import os,sys
+assert sys.argv[1:]==['component','list','--installed','--toolchain','sail-test-pin'], sys.argv
+assert os.environ.get('RUSTUP_AUTO_INSTALL')=='0'
+print('cargo-x86_64-unknown-linux-gnu')
+print('rust-src')
+''')
+            rustup.chmod(0o755)
             # Only in-place fixture edits need a portability shim on macOS;
             # stream comparisons execute the actual system sed unchanged.
             sed = tools / 'sed'
@@ -182,7 +195,7 @@ a=a[1:];os.execvp(a[0],a)
             evidence = root / ('relative-evidence' if case == 'relative-child-failed' else 'evidence')
             if case in ('collector-failed', 'both-failed', 'relative-child-failed'):
                 evidence.write_text('intentional destination failure')
-            env = os.environ | {
+            env = {key: value for key, value in os.environ.items() if key != 'RUSTUP_TOOLCHAIN'} | {
                 'PATH': str(tools) + os.pathsep + os.environ['PATH'],
                 'SAIL_E2E_OUTPUT_OUT': evidence.name if case == 'relative-child-failed' else str(evidence),
                 'SAIL_E2E_TEST_CASE': case,
