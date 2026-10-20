@@ -227,7 +227,20 @@ sail_run fallback-sail "$sail" verify
 same fallback-plain fallback-sail
 grep -q '^\[rust_verify/src/verifier.rs:[0-9]*:[0-9]*\] &sp.as_string = ' "$work/fallback-plain.err"
 cp "$work/lib.rs.keep" src/lib.rs
-echo "e2e: combined output, passing, unchanged, compile error, partial verification and the stored-span fallback identical to cargo verus verify"
+# A log written into the workspace during a run (#259): that run cannot be
+# current, but the next unchanged run must still be Cargo's own no-op, as
+# plain Cargo-Verus's is, without re-running the registry build scripts.
+CARGO_TARGET_DIR="$work/target-plain" stock_cargo verus verify > in-workspace.log 2>&1
+CARGO_TARGET_DIR="$work/target-sail" "$sail" verify > in-workspace.log 2>&1
+CARGO_TARGET_DIR="$work/target-plain" quiet_run logged-plain stock_cargo verus verify
+CARGO_TARGET_DIR="$work/target-sail" quiet_run logged-sail "$sail" verify
+same logged-plain logged-sail
+if grep -qE '^ *(Compiling|Checking) ' "$work/logged-sail.err"; then
+  echo "e2e: the run after a workspace log compiled again" >&2
+  exit 1
+fi
+rm in-workspace.log
+echo "e2e: combined output, passing, unchanged, compile error, partial verification, the stored-span fallback and the run after a workspace log identical to cargo verus verify"
 
 fi
 

@@ -20,6 +20,10 @@ semantic versioning once the API is published.
   2.55 s to 1.04 s, revert 1.72 s to 1.01 s, unchanged 0.22 s to 0.215 s
   (stock 0.79, 0.79 and 0.12 s); verdicts and output are unchanged. See
   [managed overhead](docs/validation/managed-overhead.md#small-project-overhead-156).
+- A file written into the project during `sail verify`, such as
+  `sail verify > verify.log`, no longer makes the following runs rebuild
+  vstd and its macro crates and print output plain Cargo-Verus does not. The
+  following unchanged run is again Cargo's no-op (#259; ADR 0046 amendment).
 
 - `sail --help` lists only the supported commands. `explain`, `baseline`,
   `compare`, `fragility`, `serve` and the team-cache subcommands of
