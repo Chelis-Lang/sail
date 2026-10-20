@@ -281,8 +281,11 @@ artifact above. The macOS archive carries the runtime pinned in
 Apple silicon from the same fork commit, published as the fork's prerelease
 `engine-runtime-<short sha>-macos` (pack with `--platform macos`; otherwise
 the steps above apply), and qualified separately in the
-[macOS engine record](../../docs/validation/macos-engine.md). CI never builds,
-installs or runs the macOS runtime.
+[macOS engine record](../../docs/validation/macos-engine.md). On the Mac,
+`scripts/build-macos-runtime.sh build` runs the build in neutral build roots,
+every qualification step, the pack and the archive scan, and
+`scripts/build-macos-runtime.sh published` checks the published runtime.
+CI never builds, installs or runs the macOS runtime.
 
 The [combined binder/runtime candidate](../../docs/validation/spec-parameter-names.md)
 has both platform archives built and remains under qualification. Its native
