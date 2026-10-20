@@ -33,10 +33,15 @@ pub(super) fn requested(mode: Mode) -> bool {
 /// Not selected. Carries the manifest digest when the only reason is that an
 /// otherwise valid engine is not the platform's qualified runtime
 /// ([`qualified_manifest`]).
-pub(super) fn admitted(mode: Mode, launcher: &Path, z3: &Path) -> Result<(), Option<String>> {
+pub(super) fn admitted(
+    mode: Mode,
+    launcher: &Path,
+    z3: &Path,
+    digests: &crate::source_build::RunDigests,
+) -> Result<(), Option<String>> {
     let mut unqualified = None;
     let selected = choose(mode, crate::toolchain::host(), || {
-        match normal_runtime(launcher, z3, crate::toolchain::host()) {
+        match normal_runtime(launcher, z3, crate::toolchain::host(), digests) {
             Runtime::Qualified => true,
             Runtime::Unqualified(manifest) => {
                 unqualified = Some(manifest);
@@ -78,8 +83,13 @@ enum Runtime {
     Absent,
 }
 
-fn normal_runtime(launcher: &Path, z3: &Path, host: &str) -> Runtime {
-    match placed_manifest(launcher, z3) {
+fn normal_runtime(
+    launcher: &Path,
+    z3: &Path,
+    host: &str,
+    digests: &crate::source_build::RunDigests,
+) -> Runtime {
+    match placed_manifest(launcher, z3, digests) {
         Some(manifest) if Some(manifest.as_str()) == qualified_manifest(host) => Runtime::Qualified,
         Some(manifest) => Runtime::Unqualified(manifest),
         None => Runtime::Absent,
@@ -87,13 +97,22 @@ fn normal_runtime(launcher: &Path, z3: &Path, host: &str) -> Runtime {
 }
 
 /// The manifest digest of the valid engine whose launcher and solver these are.
-fn placed_manifest(launcher: &Path, z3: &Path) -> Option<String> {
+fn placed_manifest(
+    launcher: &Path,
+    z3: &Path,
+    digests: &crate::source_build::RunDigests,
+) -> Option<String> {
     let launcher = launcher.canonicalize().ok()?;
     // Installed::at checks the complete inventory, expected fork/features,
-    // toolchain and solver. No stat-only or cross-invocation memo qualifies it.
+    // toolchain and solver. No stat-only or cross-invocation memo qualifies
+    // it; the digests are this run's own complete read of the runtime.
     let build = launcher.ancestors().nth(5)?;
-    let installed =
-        crate::engine::Installed::at(build, &crate::toolchain::Pins::embedded().ok()?).ok()?;
+    let installed = crate::engine::Installed::at_in_run(
+        build,
+        &crate::toolchain::Pins::embedded().ok()?,
+        digests,
+    )
+    .ok()?;
     (installed.verus.canonicalize().ok()? == launcher
         && installed.verus.with_file_name("z3").canonicalize().ok()? == z3.canonicalize().ok()?)
     .then_some(installed.manifest_sha256)
@@ -179,7 +198,8 @@ mod tests {
             normal_runtime(
                 Path::new("/not-a-runtime/verus"),
                 Path::new("/z3"),
-                crate::toolchain::host()
+                crate::toolchain::host(),
+                &crate::source_build::RunDigests::default()
             ),
             Runtime::Absent
         );
@@ -187,7 +207,8 @@ mod tests {
             normal_runtime(
                 Path::new("verus"),
                 Path::new("z3"),
-                crate::toolchain::host()
+                crate::toolchain::host(),
+                &crate::source_build::RunDigests::default()
             ),
             Runtime::Absent
         );
@@ -229,7 +250,8 @@ mod tests {
             normal_runtime(
                 &runtime.join("verus"),
                 &runtime.join("z3"),
-                crate::toolchain::host()
+                crate::toolchain::host(),
+                &crate::source_build::RunDigests::default()
             ),
             Runtime::Unqualified(manifest.clone())
         );
@@ -239,7 +261,8 @@ mod tests {
             normal_runtime(
                 &runtime.join("verus"),
                 &runtime.join("cargo-verus"),
-                crate::toolchain::host()
+                crate::toolchain::host(),
+                &crate::source_build::RunDigests::default()
             ),
             Runtime::Absent
         );

@@ -2446,6 +2446,9 @@ pub(crate) fn run_engine_held(
     // remap that names them as this machine's, its diagnostics could differ
     // from stock, so the bundle is not served (VI-0031).
     let remap_missing = paths.source_base.is_some() && paths.span_remap.is_none();
+    // The shipped proof's identity and retained reuse's admission both bind
+    // the complete runtime; this run reads it once for both (#286).
+    let runtime_digests = crate::source_build::RunDigests::default();
     let shipped_plan = if focused(&config.args)
         || remap_missing
         || engine.is_some()
@@ -2465,6 +2468,7 @@ pub(crate) fn run_engine_held(
             &config.workspace,
             &config.args,
             &data,
+            &runtime_digests,
         )
     };
     // An installed release offers its proof to every new target. When it does
@@ -2750,6 +2754,7 @@ pub(crate) fn run_engine_held(
                 &config.z3,
                 &run_id,
                 &mut retained_notes,
+                &runtime_digests,
             )
         } else {
             None

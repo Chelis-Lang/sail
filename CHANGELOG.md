@@ -24,6 +24,15 @@ semantic versioning once the API is published.
   diagnostics and receipts are unchanged. See the
   [record](docs/validation/cold-first-run.md#follow-up-closure-scoped-retained-source-check-278).
 
+- When a toolchain's extra components (such as `rustc-dev`) make the shipped
+  vstd proof inapplicable, `sail verify` and `sail new` now see that from the
+  sysroot's file names and sizes instead of hashing about a gigabyte of
+  libraries and the runtime first (#286). The toolchain's libraries are hashed
+  on several workers when the full check does run, and one run reads Sail's
+  Verus runtime once for both the shipped proof and instant revert. Admission,
+  verdicts and output are unchanged; see the
+  [record](docs/validation/shipped-miss-hashing.md).
+
 - The release archive ships signed solver replies for its pinned vstd
   (`replies/vstd.pack` and `replies/release.pub`, ADR 0062). When the
   preverified vstd proof does not apply, the daemon answers vstd's solver

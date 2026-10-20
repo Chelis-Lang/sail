@@ -331,8 +331,18 @@ impl Installed {
     /// # Errors
     /// `SAIL3120` when its identity or artifact bytes do not match the engine.
     pub fn at(build: &Path, pins: &Pins) -> Result<Self> {
+        Self::at_in_run(build, pins, &source_build::RunDigests::default())
+    }
+
+    /// [`Installed::at`] with the artifact digests a managed run has already
+    /// read for `build`, read now if it has not.
+    pub(crate) fn at_in_run(
+        build: &Path,
+        pins: &Pins,
+        digests: &source_build::RunDigests,
+    ) -> Result<Self> {
         let (manifest, manifest_sha256) = preflight(build, pins)?;
-        if source_build::artifact_hashes(build).ok().as_ref() != Some(&manifest.artifacts) {
+        if digests.of(build).as_ref() != Some(&manifest.artifacts) {
             return Err(invalid());
         }
         let runtime = runtime_dir(build);
