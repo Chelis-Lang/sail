@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Release staging refuses to record the shipped vstd proof unless the
+  verifier toolchain has exactly the minimal profile and `rust-src`: the
+  proof binds every installed compiler library, so any other component makes
+  a proof no README installation can use. The notices check no longer lets
+  rustup install a missing toolchain.
+
 - An unchanged rerun no longer takes its input snapshot twice when Cargo
   ran build scripts in a different order than last time: the snapshot hint
   now lists build-script inputs in sorted order (#156). On Vest, the second

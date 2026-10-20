@@ -194,6 +194,8 @@ def main():
     # rustc-dev, llvm-tools and rustfmt into the verifier toolchain, and
     # release staging records the shipped vstd proof against that toolchain
     # next, under a compiler identity that README installations never have.
+    # A missing toolchain fails the check instead of being installed.
+    env['RUSTUP_AUTO_INSTALL'] = '0'
     env['RUSTUP_TOOLCHAIN'] = tomllib.loads((ROOT / 'rust-toolchain.toml').read_text())['toolchain']['channel']
     pin = tomllib.loads((ROOT / 'engine/verus/fork.toml').read_text())['fork']
     fork = pin['commit']

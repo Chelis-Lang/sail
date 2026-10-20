@@ -116,7 +116,14 @@ def rust_source(build, env=None):
         manifest = sysroot/'lib/rustlib/manifest-rust-src'
         for path in (components, manifest):
             assert stat.S_ISREG(path.lstat().st_mode) and path.stat().st_size <= 4 * 1024**2, advice
-        assert 'rust-src' in components.read_text().splitlines(), advice
+        installed = set(components.read_text().splitlines())
+        assert 'rust-src' in installed, advice
+        # The proof binds every installed compiler library, so it is recorded
+        # from the README's toolchain: the minimal profile plus rust-src.
+        hosts = [name[len('rustc-'):] for name in installed if name.startswith('rustc-')]
+        assert len(hosts) == 1 and installed == {'rust-src', *(f'{c}-{hosts[0]}' for c in ('cargo', 'rustc', 'rust-std'))}, (
+            'proof bundles are recorded from the minimal pinned toolchain with rust-src only; installed: '
+            + ' '.join(sorted(installed)))
         expected = set()
         for line in manifest.read_text().splitlines():
             prefix = 'file:lib/rustlib/src/rust/'

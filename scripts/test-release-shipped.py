@@ -16,6 +16,7 @@ spec = importlib.util.spec_from_file_location('release_shipped', Path(__file__).
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 PIN = module.tomllib.loads((module.ROOT/'corpus/toolchain.toml').read_text())['verus']['rust_toolchain']
+MINIMAL = 'cargo-x86_64-unknown-linux-gnu\nrust-src\nrust-std-x86_64-unknown-linux-gnu\nrustc-x86_64-unknown-linux-gnu\n'
 
 
 def refuses(call):
@@ -116,7 +117,7 @@ def main():
         cargo = controlled/'cargo';cargo.write_text('#!/bin/sh\n[ "$RUSTUP_TOOLCHAIN" = "'+PIN+'" ] || exit 87\nexit 0\n');cargo.chmod(0o755)
         sysroot = root/'fixture-sysroot';rustlib = sysroot/'lib/rustlib'
         source = rustlib/'src/rust/library/lib.rs';source.parent.mkdir(parents=True);source.write_text('owned rust source')
-        (rustlib/'components').write_text('rust-src\n')
+        (rustlib/'components').write_text(MINIMAL)
         (rustlib/'manifest-rust-src').write_text('file:lib/rustlib/src/rust/library/lib.rs\n')
         rustup = controlled/'rustup'
         rustup.write_text('#!/bin/sh\n[ "$*" = "run '+PIN+' rustc --print sysroot" ] || exit 9\nprintf "%s\\n" '+str(sysroot)+'\n')
@@ -210,7 +211,12 @@ else:raise SystemExit(3)
             assert module.rust_source(runtime)['prerequisite_inventory_sha256'] != prerequisite['prerequisite_inventory_sha256']
             source.write_bytes(held)
             components = rustlib/'components';components.write_text('rustc\n')
-            refuses(lambda:module.rust_source(runtime));components.write_text('rust-src\n')
+            refuses(lambda:module.rust_source(runtime))
+            # Components beyond the minimal profile change the bound compiler files.
+            for extra in ('rustc-dev-x86_64-unknown-linux-gnu', 'llvm-tools-x86_64-unknown-linux-gnu', 'rust-std-x86_64-unknown-none'):
+                components.write_text(MINIMAL+extra+'\n');refuses(lambda:module.rust_source(runtime))
+            components.write_text('rust-src\n');refuses(lambda:module.rust_source(runtime))
+            components.write_text(MINIMAL)
             manifest = rustlib/'manifest-rust-src';text=manifest.read_text()
             manifest.write_text(text+text);refuses(lambda:module.rust_source(runtime));manifest.write_text(text)
             manifest.write_text('file:../outside\n');refuses(lambda:module.rust_source(runtime));manifest.write_text(text)
