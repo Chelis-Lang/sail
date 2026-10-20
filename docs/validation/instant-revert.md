@@ -7,6 +7,81 @@ merged as `3892881a`; all required checks and the main workflow pass. Ordinary e
 profile, not every project or platform. [Paired qualification](proof-reuse-integration.md)
 separates the current source from earlier component results.
 
+## Runtime `f8589ed4` requalification
+
+Runtime `7d829946…-81186034d2e137a2` (fork `f8589ed4`, R3, manifest
+`576558fc…`, equal to `LINUX_MANIFEST`) from a release staged at `4d933e8e` (with the #271 toolchain fix)
+(see the [compiler-boundary record](vstd-compile-boundary.md#verus-7d82994-bundle-on-runtime-f8589ed4)),
+native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04. The protocol is
+[below](#verus-7d82994-runtime-requalification): Vest public alloc/std
+profile, `-- --rlimit 100`, A → B → A → unchanged, three alternating rounds.
+Status: **ordinary Linux public alloc/std reuse requalified for correctness
+and returned-A reuse.**
+
+- All 24 calls exit 0. Each Sail step's stderr equals stock's after the
+  arm-root and `Finished … in` normalization. Every run is `current`.
+  Returned and unchanged A run zero verifiers, reuse both targets and keep
+  cold A's establishing run. B reruns only `vest_lib`. No `SAIL3136`.
+- Medians of three:
+
+  | Step | Stock | Sail |
+  |---|---:|---:|
+  | A cold | 71.460 s | 72.709 s |
+  | B edit | 39.907 s | 25.075 s |
+  | A returned | 39.975 s | 1.880 s |
+  | A unchanged | 0.201 s | 0.649 s |
+  | Four-command cycle | 151.648 s | 100.314 s |
+
+  The cycle is 33.9% faster. Cold A is 1.7% slower: the shipped proof
+  still misses on `--rlimit 100`. Wall time only.
+- An earlier run on a `1ae17585` stage passed the same correctness checks
+  (cycle 155.260 s against 106.066 s), but diagnosis ran beside two of its
+  rounds, so its times are not used.
+
+Raw evidence: `r3l-evidence.tgz` sha256
+`6594bd503f8fb56725b05628cc9cc11b4758eb1add2b7d8faa823b2b6d89137e`.
+
+## macOS qualification on runtime `f8589ed4`
+
+macOS runtime `7d829946…-e9b69a75ea390499` (fork `f8589ed4`, R3, manifest
+`67589de3…`, equal to `MACOS_MANIFEST`), staged by `scripts/release.sh stage`
+from candidate/r3-macos-reuse `8afc8663`. The bundle record passed (proof
+identity `ca0d4988…`, as in the
+[bundle record](vstd-compile-boundary.md#verus-7d82994-bundle-on-runtime-f8589ed4);
+bundle manifest `f5ba3290…`). Host: EC2 mac-m4.metal, us-east-1d, macOS 27.0,
+otherwise idle; a fresh Rustup home on physical paths with default 1.99.0 and
+pinned 1.99.1 minimal with `rust-src`, whose components were unchanged at the
+start, after staging, at the end and after the admission witness. Protocol and
+harness as [on Linux](#runtime-f8589ed4-requalification) (`bench.py`
+`b612732f…`, `analyze.py` `c1578803…`). Status: **ordinary macOS public
+alloc/std reuse qualified for correctness and returned-A reuse.**
+
+- All 24 calls exit 0. Each Sail step's stderr equals stock's after the
+  arm-root and `Finished … in` normalization, and the progress lines match
+  as a set. Every run is `current`. Returned and unchanged A run zero
+  verifiers, reuse both targets and keep cold A's establishing run; B reruns
+  only `vest_lib`. No `SAIL3136`.
+- Medians of three:
+
+  | Step | Stock | Sail |
+  |---|---:|---:|
+  | A cold | 38.549 s | 44.175 s |
+  | B edit | 22.210 s | 15.923 s |
+  | A returned | 22.312 s | 2.247 s |
+  | A unchanged | 0.222 s | 0.887 s |
+  | Four-command cycle | 83.274 s | 63.263 s |
+
+  The cycle is 24.0% faster (per round 83.3/63.0, 83.0/63.3 and
+  83.5/65.7 s). Cold A is 14.6% slower, against 35% on `64baccbb`: the
+  shipped proof still misses on `--rlimit 100`. Unchanged A is 0.67 s
+  slower. Wall time only.
+- The admission witness (`scripts/admission-witness.py`) passes all five
+  cases on the same stage.
+
+Raw evidence: `rr3-mac.tgz` sha256
+`a43d0d6ca2d319e18533d376eb8781b6b3ee0e6847c225f526917aefb3223225` (rows,
+every step's streams, driver, stage record, witness result and cases).
+
 ## macOS qualification on runtime `64baccbb`
 
 macOS runtime `7d829946…-7faa35e5238b9bfc` (fork `64baccbb`, manifest

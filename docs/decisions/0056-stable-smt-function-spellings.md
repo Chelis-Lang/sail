@@ -94,3 +94,11 @@ identities, raw hashes, limits and remaining gates. Complete correctness,
 determinism, matching macOS runtime and full fork-suite gates still precede
 selection. User guides/default behavior are unchanged while this candidate
 remains unselected.
+
+## Note (2026-10-20, accepted (lead), owner review pending): keys without the stable crate ID
+
+The prototype's key contains each path's stable crate ID, which Cargo derives
+from build profiles, so a proc-macro profile change renamed every alias
+(VI-0033). Fork branch `perf/7d82994` (`912052eb`) keys crates by name only
+and bumps the key tag to `sail-function-alias-04`; same-named crates then
+produce equal keys, which the all-duplicates rule keeps legacy.

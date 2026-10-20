@@ -14,6 +14,95 @@
 | Default regression gates | 7d82994 candidate (`a12beb53`, runtime `9c0ca7e7`): native Linux gate (811 tests), solver, all end-to-end phases plus extra and the PR conformance subset (33/33 same in every arm) pass; full FAST/STANDARD conformance pending. The previous `426d8b0` candidate passed Mac host clippy and 779 tests and full FAST/STANDARD. Earlier `83128ad0` full Linux results retain their original source scope |
 | Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
 
+## Verus 7d82994 bundle on runtime `f8589ed4`
+
+Linux x86-64 bundle for runtime `7d829946…-81186034d2e137a2` (fork
+`f8589ed4`, R3, manifest `576558fc…`), recorded by `ci/local.sh release` at
+`4d933e8e` (candidate/r3-runtime `3d8185cd` plus the #271 toolchain fix,
+cherry-picked) on native EC2 c7i.8xlarge (us-east-1, Ubuntu 24.04, lane `r3l`).
+Proof identity `0391f755…`, bundle manifest `200874fd…`. Status:
+**recorded; diagnostic identity passes on every probe with and without
+`rust-src`; first use, shape and admission witnesses pass; release selection
+is the owner's.**
+
+- **Paths.** `libvstd.vir` (sha256 `7f43cc19…`) has 9,611 `/rustc/58cf8f9c…`
+  standard-library spans, 148,645 `/rustc-dev/` vstd spans and no local
+  `rust-src`, `/opt/rustup` or home path. The other bundle members contain no
+  host path either.
+- **Byte comparison.** The probes and host of the
+  [`64baccbb` record](#verus-7d82994-bundle-on-runtime-64baccbb), stock
+  `cargo verus verify` against the staged `sail verify`: stdout, exit codes
+  and diagnostics are identical in all nine cases. With `rust-src` the four
+  plain probes replay the shipped proof (`SAIL3132`) and the
+  `--expand-errors` probe misses on the extra flag; without it every probe
+  notes `SAIL3137`. The two extension impls print stock's
+  `verifier.rs:113:17` and stock's path. The only raw byte difference is the
+  order of Cargo's parallel progress lines on a cold build.
+- **Native shapes.** 25 `native-output-established` records across 14
+  packages (tuples sha256 `d0de178a…`); `actual_retained_native_shapes`
+  passes on them. They differ from the `64baccbb` tuples only in the
+  recording's temporary directory names.
+- **Native admission witness.** `scripts/admission-witness.py` on the same
+  stage: all five cases pass with equal original and candidate exit, stdout
+  and stderr. `official-default` establishes native-output provenance;
+  `official` and `official-custom-cfg` are refused as unsupported tuples
+  (exit 0 and 101); `foreign` and `modified` are refused (exit 101).
+- **First use (README path).** Four alternating paired rounds. All eight
+  Sail runs replayed the shipped proof (`SAIL3132`); no `SAIL3136` or
+  `SAIL3137`.
+
+  | Median new + verify | Stock | Sail | Speedup |
+  |---|---:|---:|---:|
+  | First project | 31.495 s | 13.880 s | 2.27× |
+  | Second new project, same home | 31.330 s | 13.691 s | 2.29× |
+
+  Sail's spread is 13.691–14.070 s for the first project. Rust installation
+  is not included. This is one consumer host.
+- **macOS.** Apple-silicon bundle for runtime `7d829946…-e9b69a75ea390499`
+  (manifest `67589de3…`), staged by `scripts/release.sh stage` from
+  candidate/r3-runtime `3d8185cd` with PR #271's notices change on an EC2
+  mac-m4.metal (us-east-1d, macOS 27.0), in a fresh Rustup home with default
+  1.99.0 and pinned 1.99.1 minimal with `rust-src`. The 1.99.1 component set
+  was the same before staging, after it, and after the consumer runs below.
+  Proof identity `ca0d4988…`, bundle manifest `67f10f7e…`. `libvstd.vir` has
+  9,627 `/rustc/58cf8f9c…` spans and no local or home path; the boundary
+  trace has 25 `native-output-established` records. A fresh `sail new`
+  project in that home replays the shipped proof (`SAIL3132`, outcome
+  `served`). The probes of the
+  [`64baccbb` record](#verus-7d82994-bundle-on-runtime-64baccbb) ran against
+  this stage in the same home: stdout, exit code (101) and diagnostics are
+  identical to stock in all nine cases, and progress lines match as a set.
+  With `rust-src` the four plain probes replay the shipped proof and the
+  `--expand-errors` probe misses; without it every probe notes `SAIL3137`.
+  The extension impls print the same `verifier.rs:113:17` line as stock in
+  both states. On macOS, `CARGO_HOME` and the project must be under physical
+  paths: under `/tmp` (a symbolic link to `/private/tmp`) native provenance
+  is refused and the proof misses for any bundle. The shapes witness passes
+  on the recording's boundary trace (25 records across 14 packages,
+  `actual_retained_native_shapes`, tuples sha256 `270a7e47…`). The
+  admission witness passes all five cases on the A → B → A stage (same home
+  and proof identity, bundle manifest `f5ba3290…`; evidence `rr3-mac.tgz`,
+  see the [macOS revert record](instant-revert.md#macos-qualification-on-runtime-f8589ed4)). Evidence:
+  `r3-bundle-probes.tgz` sha256
+  `0370168596f63fecfaaec266bb9631061719ef9bd61efe1147a7b780ac8d2d34`.
+
+Raw evidence: `r3l-evidence.tgz` sha256
+`6594bd503f8fb56725b05628cc9cc11b4758eb1add2b7d8faa823b2b6d89137e`.
+
+Attempts:
+
+- `1ae17585`, 2026-10-20, FAIL: the shipped proof was never served (first
+  use 33.191 s against stock 31.373 s; outputs equal stock). The release's
+  notices check had installed the fork's `rustc-dev`, `llvm-tools` and
+  `rustfmt` into the verifier toolchain before recording, so the proof's
+  compiler identity (`bbe3d350…`) matched no minimal toolchain (fixed by
+  #271). Evidence `run1-1ae17585.tgz` sha256
+  `44d97390d748aec7cbaea535378af8f05870438a66c383064c7331aa2257abb8`.
+- `3d8185cd`, 2026-10-20, macOS, FAIL: the same notices-check cause added
+  `rustc-dev`, `llvm-tools` and `rustfmt` to the release home's 1.99.1 (proof
+  identity `99efc080…`); in a minimal home the proof had no plan (no
+  `SAIL3132`). Fixed by PR #271; evidence in `r3-bundle-probes.tgz`.
+
 ## Verus 7d82994 bundle on runtime `64baccbb`
 
 Linux x86-64 bundle for runtime `7d829946…-5fcf72e8d6cc0786` (fork

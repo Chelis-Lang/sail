@@ -8,7 +8,36 @@ same engine checks as the Linux runtime
 
 | Field | Value |
 |---|---|
-| Status | **Pass** for the pinned runtime, fork `64baccbb`: built, qualified and published; release smoke test not yet run on it |
+| Status | **Pass** for the pinned runtime, fork `f8589ed4` (R3): built, qualified and published; release smoke test not yet run on it |
+| Source | Sail `candidate/r3-runtime` (`af163cae`, plus this record's pin commit), 2026-10-20; fork commit `f8589ed4345f147d8fb43d8cb7992921944b91f0` (`64baccbb` plus closure-name determinism, cost-ordered dispatch and the Fx hasher) on upstream `7d82994` |
+| Runtime | `scripts/build-macos-runtime.sh build`, pinned in `engine/verus/artifact-macos.json`: variant `7d829946231d6413a398f6e4160cdfe951261dad-e9b69a75ea390499`, manifest sha256 `67589de3c3f9681fb50dcd96313311e1a3d2776241d121f6c0e433be54cf7f0c`, archive sha256 `6f523cea7595b82cc6e0f1434b8ff550b6295a3897e8301733511b78065fca12` (fork prerelease `engine-runtime-f8589ed4-macos`; the anonymous download matches), Verus Rust toolchain 1.99.1 without `rust-src`, no Verus features; stock Verus `0.2026.10.18.7d82994` (arm64-macos) and its Z3 4.16.0 |
+| Build roots | Under `/tmp/sail-engine-f8589ed4`. vstd.vir: 10,215 `/rustc/58cf8f9c…` spans, 0 local. The archive scan found no home-directory path, IP address, account id or host name (one false positive: `Z3 4.16.0.0`) |
+| Environment | EC2 mac-m4.metal, Apple M4 (10 cores, 24 GiB), macOS 27.0 (26A428), us-east-1d |
+| Scope | The script's `build` and `published` steps: build with vstd verification; `test-engine.py`; `test-cancel.py`; the fork's library tests and every `sail_vi*` test plus `basic` on a fresh clone; `scripts/verus-determinism.py --runs 3` over 320 fast-tier inputs; the fast PR conformance subset on the runtime fetched from the release; `cargo verus new` |
+| Limits | Correctness only, one run of each (determinism: 3); no performance measurement |
+
+## Results
+
+| Check | Result | Evidence (sha256 of the log, kept outside the repository) |
+|---|---|---|
+| Build, vstd verification | 2,059 verified, 0 errors; built in 164 s | `engine-build.log` `691d5777…efe3a` |
+| `test-engine.py` | 11 of 11 fixtures match the plain fork run exactly and stock on everything but raw SMT, which differs in 1 session (`recursive`) | `test-engine.log` `90301274…42b6` |
+| `test-cancel.py` | no seal after a kill at a blocked solver check; the restart matches stock | `test-cancel.log` `0f6ac145…5988` |
+| Fork library tests | `rust_verify` 18, `vir` 13, `air` 144 passed, 0 failed | `lib-rust_verify.log` `0843e908…2e3a`, `lib-vir.log` `4d160dd2…d63d`, `lib-air.log` `dba4056f…1000` |
+| Fork regression tests | all 17 `sail_vi*` targets and `basic`, 0 failed | `sail-vi.log` `e394181f…2205` |
+| Determinism | solver input identical in every bucket of all 320 inputs over 3 runs; stdout, stderr and exit code identical for 319. HumanEval's `tasks/lib.rs` reported a different `rlimit-run` (260,152,849 and 260,152,832) from byte-identical solver input: Z3's own count ([z3-nla-rlimit-nondeterminism](../../corpus/repros/z3-nla-rlimit-nondeterminism/README.md)), as with `9c0ca7e7` | `determinism.log` `d9932019…c95a` |
+| Conformance, fast PR subset | pass-through, cache fill and cache warm (3,442 entries): 33 units, 33 same, 0 different, 311 functions each. Engine arm: 33 same, 0 different, 32 focused units, engine `67589de3c3f9` | `r3pub.log` `20cdaadc…85b3` |
+| `cargo verus new` (VI-0018) | `vstd = "=0.0.0-2026-10-18-0147"`; `cargo verus verify` 1 verified, 0 errors | `r3pub.log` |
+
+All logs: `r3-evidence.tgz` `5166d8ea…6568`.
+
+## Earlier runtimes
+
+### Runtime `64baccbb`
+
+| Field | Value |
+|---|---|
+| Status | **Pass** for the then pinned runtime, fork `64baccbb`: built, qualified and published |
 | Source | Sail `feat/vir-span-remap` (`466da4dc`, plus this record's pin commit), 2026-10-20; fork commit `64baccbb1f4c8af3f5e015d4ac561c96058717a7` (`fix/vir-span-remap`: span-string remap, stock `dbg!` location) on upstream `7d82994` |
 | Runtime | `cargo xtask build-verus-engine`, pinned in `engine/verus/artifact-macos.json`: variant `7d829946231d6413a398f6e4160cdfe951261dad-7faa35e5238b9bfc`, manifest sha256 `4392062ae1674fb473818d3bb730b4a2d2dba831dd2e9dddf98c5c57a8ed91fe`, archive sha256 `9f9381d53e1478aaae589d7d00399d01f5fee4e56daf81d9e4cde03e5dda69c2` (fork prerelease `engine-runtime-64baccbb-macos`; the anonymous download matches), Verus Rust toolchain 1.99.1 without `rust-src`, no Verus features; stock Verus `0.2026.10.18.7d82994` (arm64-macos) and its Z3 4.16.0 |
 | Build roots | `RUSTUP_HOME`, `CARGO_HOME` and `SAIL_CACHE_DIR` under `/tmp/sail-engine-64baccbb`. vstd.vir names the standard library only by `/rustc/58cf8f9c…` (10,215 spans, 0 under `rustlib/src/rust`). A strings scan of every archive file found no `/Users/` or `/home/` path, IP address, account id or host name (one false positive: `Z3 4.16.0.0` in the pinned Z3) |
@@ -16,7 +45,7 @@ same engine checks as the Linux runtime
 | Scope | As for `9c0ca7e7` below: build with vstd verification; `test-engine.py`; `test-cancel.py`; the fork's library tests and every `sail_vi*` test plus `basic` on a fresh clone; `scripts/verus-determinism.py --runs 3` over 320 fast-tier inputs; `ci/run.sh conformance fast pr` on the runtime fetched from the release; `cargo verus new` |
 | Limits | Correctness only, one run of each (determinism: 3); no performance measurement |
 
-## Results
+### Results (`64baccbb`)
 
 | Check | Result | Evidence (sha256 of the log, kept outside the repository) |
 |---|---|---|
@@ -30,8 +59,6 @@ same engine checks as the Linux runtime
 | `cargo verus new` (VI-0018) | `vstd = "=0.0.0-2026-10-18-0147"`; `cargo verus verify` 1 verified, 0 errors | `cargo-verus-new.log` `512cf1d1…da98` |
 
 All logs: `mac64-evidence.tgz` `c6b3839c…18de`.
-
-## Earlier runtimes
 
 ### Runtime `9c0ca7e7`
 

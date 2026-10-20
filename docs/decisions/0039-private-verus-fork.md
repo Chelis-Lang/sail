@@ -53,3 +53,13 @@ stock never prints. [ADR 0049](0049-stable-closure-names.md) (proposed)
 admits one such fix, stable closure-type names (VI-0019), on fork-versus-stock
 conformance and the fork's full `rust_verify_test` suite instead of a
 construction argument.
+
+## Note (2026-10-20, proposed): output-preserving performance changes
+
+Two fork changes on branch `perf/7d82994` change no output at all: the order
+in which parallel workers take buckets (issue #244, `1a892f97`) and the
+hasher of VIR's hot maps (issue #248, `51afcba6`). Neither fix rule above
+names this kind. The proposal: a fork change may also alter scheduling or
+internal data structures when its solver input (multiset of session
+digests), verdicts and diagnostics equal the preceding commit's on the fast
+tier, and its determinism check passes. This awaits the owner.
