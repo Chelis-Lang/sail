@@ -167,22 +167,8 @@ print('cargo-x86_64-unknown-linux-gnu')
 print('rust-src')
 ''')
             rustup.chmod(0o755)
-            # Only in-place fixture edits need a portability shim on macOS;
-            # stream comparisons execute the actual system sed unchanged.
-            sed = tools / 'sed'
-            sed.write_text('#!' + sys.executable + '''
-import os,re,sys
-from pathlib import Path
-a=sys.argv[1:]
-if a[:1]==['-i']:
- p=Path(a[2]);s=p.read_text()
- if a[1]=='s/ensures r > x,/ensures r >= x,/':s=s.replace('ensures r > x,','ensures r >= x,')
- elif a[1]=='/pub fn broken/d':s=''.join(x for x in s.splitlines(keepends=True) if 'pub fn broken' not in x)
- else:raise AssertionError(a)
- p.write_text(s)
-else:os.execv('/usr/bin/sed',['sed',*a])
-''')
-            sed.chmod(0o755)
+            # The harness edits fixtures with portable sed (no GNU `-i`), so
+            # the system sed runs unchanged on Linux and macOS.
             timeout = tools / 'timeout'
             timeout.write_text('#!' + sys.executable + '''
 import os,sys

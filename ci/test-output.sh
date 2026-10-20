@@ -26,12 +26,27 @@ case "$sail_output_evidence" in /*) ;; *) sail_output_evidence="$PWD/$sail_outpu
 # The observer path is harness state, never a verifier input.
 unset SAIL_E2E_OUTPUT_OUT
 work="$(mktemp -d)"
+# Stock macOS has neither GNU sed's `-i` spelling nor `timeout`. Edit through
+# a copy (keeping the file's inode and mode, as `sed -i` keeps its mode), and
+# use coreutils' timeout where installed, else ci/timeout.py.
+edit_in_place() {
+  sed "$1" "$2" > "$2.sail-edit"
+  cat "$2.sail-edit" > "$2"
+  rm "$2.sail-edit"
+}
+bounded() {
+  if command -v timeout > /dev/null; then
+    timeout "$@"
+  else
+    python3 "$sail_output_checkout/ci/timeout.py" "$@"
+  fi
+}
 output_cleanup() {
   local original_exit=$? capture_exit
   trap - EXIT
   set +e
   if [ "$original_exit" -ne 0 ]; then
-    timeout --signal=TERM --kill-after=5s 60s python3 \
+    bounded --signal=TERM --kill-after=5s 60s python3 \
       "$sail_output_checkout/ci/capture-output-evidence.py" \
       --work "$work" --out "$sail_output_evidence" --part "$sail_output_phase" \
       --exit "$original_exit" --sail "$sail"
@@ -165,7 +180,7 @@ set -e
 same combined-plain combined-sail out
 # Passing proofs, then an unchanged re-run (Cargo's no-op; Sail reuses
 # its receipts), then a compile error.
-sed -i 's/ensures r > x,/ensures r >= x,/' src/lib.rs
+edit_in_place 's/ensures r > x,/ensures r >= x,/' src/lib.rs
 plain_run pass-plain stock_cargo verus verify
 sail_run pass-sail "$sail" verify
 same pass-plain pass-sail
@@ -178,7 +193,7 @@ plain_run compile-plain stock_cargo verus verify
 sail_run compile-sail "$sail" verify
 same compile-plain compile-sail
 grep -q "cannot find value" "$work/compile-plain.err"
-sed -i '/pub fn broken/d' src/lib.rs
+edit_in_place '/pub fn broken/d' src/lib.rs
 # Partial verification under `verify`: plain Cargo-Verus's own refusal.
 plain_run partial-plain stock_cargo verus verify -- --verify-function max
 sail_run partial-sail "$sail" verify -- --verify-function max
@@ -310,7 +325,7 @@ plain_run loader-plain stock_cargo verus verify
 LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
   run loader-sail "$sail" verify
 [ "$(grep -c '^note\[SAIL3112\]' "$work/loader-sail.err")" = 1 ]
-sed -i '/^note\[SAIL3112\]/d' "$work/loader-sail.err"
+edit_in_place '/^note\[SAIL3112\]/d' "$work/loader-sail.err"
 same loader-plain loader-sail
 echo "e2e: LD_LIBRARY_PATH verified as plain cargo verus verify, without proof reuse"
 fi
