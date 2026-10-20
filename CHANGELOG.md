@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Check instant revert's workspace sources and namespace facts on several
+  workers, and skip a graph reread that repeated the one just done (#232).
+  Public-profile Vest's cold run is 0.48 s shorter (now 4.9% slower than stock)
+  and its returned A 0.10 s shorter; see the
+  [record](docs/validation/cold-first-run.md#follow-up-namespace-checks-and-a-repeated-graph-reread).
+
 - Sail's Verus moves to fork `f8589ed4` (Linux and macOS). Closure and trait-function
   solver names no longer depend on Cargo's crate metadata, so building the
   proc-macro crates with another profile keeps cache hits (VI-0033).

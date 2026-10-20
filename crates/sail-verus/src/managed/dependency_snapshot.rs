@@ -600,6 +600,7 @@ impl Snapshot {
             .map(|(index, directory)| (directory.clone(), self.root.join(index.to_string())))
             .collect();
         self.arguments = self.rewrite(original_args)?;
+        // Callers rely on this as the complete reread of the published copies.
         if !self.intact() {
             return None;
         }
@@ -812,6 +813,39 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn publication_rereads_every_copy_in_full() -> Result<(), Box<dyn std::error::Error>> {
+        use std::os::unix::fs::PermissionsExt as _;
+        let root = Root::new("publish-reread")?;
+        let deps = root.0.join("target/debug/deps");
+        std::fs::write(deps.join("libvstd-abcd.rmeta"), b"complete metadata")?;
+        let target = root.0.join("target");
+        let graphs = root.0.join("graphs");
+        std::fs::create_dir(&graphs)?;
+        let graphs = graphs.canonicalize()?;
+        let fresh =
+            Snapshot::capture(&target, &root.0.join("fresh"), &root.args()).ok_or("capture")?;
+        let published = fresh
+            .publish(&graphs, &root.args())
+            .ok_or("intact publish")?;
+        drop(published);
+        // A same-length change to a copy is refused by publish's own reread.
+        let changed =
+            Snapshot::capture(&target, &root.0.join("changed"), &root.args()).ok_or("capture")?;
+        let copy = root.0.join("changed/0/libvstd-abcd.rmeta");
+        std::fs::set_permissions(&copy, std::fs::Permissions::from_mode(0o600))?;
+        std::fs::write(&copy, b"complete metadatA")?;
+        let other = root.0.join("graphs-other");
+        std::fs::create_dir(&other)?;
+        assert!(
+            changed
+                .publish(&other.canonicalize()?, &root.args())
+                .is_none()
+        );
+        Ok(())
     }
 
     #[test]

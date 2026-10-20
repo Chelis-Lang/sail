@@ -98,6 +98,31 @@ Keeping pipelining means certifying a native unit's inputs after its compile
 rather than before, or changing the scratch-directory wait. Both change
 ADR 0050's admission design and need owner review and their own qualification.
 
+## Follow-up: namespace checks and a repeated graph reread
+
+Two follow-up changes. Workspace source admission now reads and lexes its
+sources on up to eight workers. The namespace digest gathers path facts
+concurrently and hashes them in the original order, so the digest is
+unchanged; a test compares it with the sequential digest. `publish_graph`
+also no longer rereads a graph that `publish` reread in full immediately
+before, with nothing in between; a test shows that `publish`'s own reread
+refuses a changed copy.
+
+These changes were measured on the same host, with three interleaved rounds,
+on the public-profile Vest cycle. Values are seconds: median (min–max).
+
+| Step | Stock | Before (#256) | After |
+|---|---:|---:|---:|
+| A, cold | 66.59 (66.46–67.44) | 70.32 (70.18–70.37), +5.6% | 69.84 (69.69–69.95), +4.9% |
+| B, edit | 37.36 | 23.95 | 23.93 |
+| A, returned | 37.53 | 1.532 | 1.433 |
+| A, unchanged | 0.187 | 0.487 | 0.482 |
+| Comment no-op | 37.30 | 22.80 | 22.68 |
+
+Every output equals stock's. Sixteen workers instead of eight changed
+nothing measurable. Evidence: `experiments/2026-10-20/vest-cold/vc-evidence.tgz`,
+SHA-256 `a3cbf7e04825d44e669cfe68a03f797effa6d31d2965d279945b9f625dbfc412`.
+
 ## Raw evidence
 
 Native evidence bucket, `experiments/2026-10-20/cold-gap/cold-gap-evidence.tgz`,
