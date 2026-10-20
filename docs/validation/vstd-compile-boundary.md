@@ -49,6 +49,14 @@ the owner's.**
 - **Native shapes.** The recording's boundary trace has 25
   `native-output-established` records across 14 packages (tuples sha256
   `bdfc36d2…`); `actual_retained_native_shapes` passes on them.
+- **Native admission witness.** `scripts/admission-witness.py` on a release
+  staged at `92f7ed6b` (native EC2 c7i.4xlarge, us-east-1, lane `adm2`): all
+  five cases pass with equal original and candidate exit, stdout and stderr.
+  `official-default` establishes native-output provenance. `official` and
+  `official-custom-cfg` are refused as unsupported tuples (exit 0 and 101).
+  `foreign` is refused as an unkeyed unit and `modified` as a foreign source
+  (exit 101). Evidence `adm2.tgz` sha256
+  `61a9bcb17d29e862ab528cd933ea618a8e31dcf95f804dc2cc03a6d8b1b49cde`.
 - **First use (README path).** Four alternating paired rounds on `rq2`, the
   protocol of the earlier record. Every Sail first verification replayed the
   shipped proof (`SAIL3132`); no `SAIL3136` or `SAIL3137`.
