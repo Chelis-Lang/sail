@@ -4,7 +4,8 @@
   while building fork runtime `9c0ca7e7`; 0.2026.10.04.426d8b0 (Rust 1.98.1)
   behaves the same.
 - Status: Rust behaviour that Verus inherits, reproduced; Sail's runtime build
-  avoids it. No upstream issue filed.
+  avoids it, and runtime `64baccbb` (pinned) fixes the resulting diagnostic
+  difference for the shipped vstd (byte comparison on Linux and macOS). No upstream issue filed.
 - Reproduction: [one external type specification](../../corpus/repros/rust-src-std-paths/README.md).
 
 The standard library's source spans have rustc's virtual path
@@ -34,3 +35,32 @@ elsewhere, and its recorder requires `rust-src`. The recorder therefore remaps
 the `rust-src` root to `/rustc/<rustc commit>` for the vstd unit, so the
 bundle's VIR names the standard library as the release's `vstd.vir` does
 ([compiler-boundary record](../validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)).
+
+Serving the bundle restores local names. A vstd compiled on the user's machine
+names standard library spans by the toolchain's `rust-src` copy when it is
+installed, and its own sources by the user's registry directory; the bundle
+recorded `/rustc/<rustc commit>` and the virtual rustc-dev base. Whenever Sail
+sets `SAIL_RUSTC_DEV_SOURCE_BASE`, it also sets `SAIL_VIR_SPAN_REMAP`, which
+Sail's Verus applies to the span strings of imported VIR: one `<from>=<to>`
+pair per line, the first matching prefix wins, both prefixes absolute, and a
+malformed line selects nothing. The pairs are
+`/rustc/<rustc commit>/=<sysroot>/lib/rustlib/src/rust/` (only when the
+verifier toolchain has `rust-src`) and `<virtual base>/=<registry>/`. The
+presence of `rust-src` joins the proof context. Runtimes from fork commit
+`64baccbb` on apply the variable; earlier runtimes ignore it.
+
+These strings appear in `--log impl-names` and the VIR logs, and Verus prints
+one, with `dbg!`, in place of a label whose imported span it cannot resolve.
+An extension impl without a matching standard library impl reaches that in
+ordinary verification, for example `impl<'a> DisplaySpecImpl for &'a S` with
+only `impl Display for S`: the error labels core's `impl<T: Display> Display
+for &T` from vstd's VIR. Before runtime `64baccbb`, Sail serving the shipped
+vstd printed `/rustc/<rustc commit>/...` there where stock printed the
+user's `rust-src` path, and the fork's `dbg!` printed line 117 where stock
+prints 113. On a native EC2 host, the `64baccbb` runtime with a staged,
+recorded bundle gave byte-identical stdout, stderr and exit codes to stock
+`cargo verus verify` on DisplaySpec, DebugSpec, passing and failing probes,
+with `rust-src` (vstd served from the bundle) and without it, apart from the
+order of Cargo's parallel `Compiling` lines on a cold build. The hygiene
+suffix (`#8091`) matches. The fork's `sail_vi0031` tests and the output
+phase's loop of `ci/test-output.sh` cover the case.

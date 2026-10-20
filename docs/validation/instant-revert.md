@@ -7,6 +7,37 @@ merged as `3892881a`; all required checks and the main workflow pass. Ordinary e
 profile, not every project or platform. [Paired qualification](proof-reuse-integration.md)
 separates the current source from earlier component results.
 
+## Runtime `64baccbb` requalification
+
+Runtime `7d829946…-5fcf72e8d6cc0786` (fork `64baccbb`, manifest `cd78756b…`,
+equal to `LINUX_MANIFEST`) from a release staged at `08134b6e` (see the
+[compiler-boundary record](vstd-compile-boundary.md#verus-7d82994-bundle-on-runtime-64baccbb)),
+native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04. The protocol is
+[below](#verus-7d82994-runtime-requalification): Vest public alloc/std
+profile, `-- --rlimit 100`, A → B → A → unchanged, three alternating rounds.
+Status: **ordinary Linux public alloc/std reuse requalified for correctness
+and returned-A reuse.**
+
+- All 24 calls exit 0. Each Sail step's stderr equals stock's after the
+  arm-root and `Finished … in` normalization. Every run is `current`.
+  Returned and unchanged A run zero verifiers, reuse both targets and keep
+  cold A's establishing run. B reruns only `vest_lib`. No `SAIL3136`.
+- Medians of three:
+
+  | Step | Stock | Sail |
+  |---|---:|---:|
+  | A cold | 71.153 s | 81.484 s |
+  | B edit | 39.739 s | 27.521 s |
+  | A returned | 39.672 s | 3.071 s |
+  | A unchanged | 0.199 s | 0.643 s |
+  | Four-command cycle | 150.749 s | 112.720 s |
+
+  The cycle is 25.2% faster. Cold A is 14.5% slower, as before: the shipped
+  proof misses on `--rlimit 100`. Wall time only.
+
+Raw evidence: `rq2-evidence.tgz` sha256
+`6daeee5f03f6ef2741fcc51b235091c29f010e5daabca283cee5cdb0c6f15f70`.
+
 ## Verus 7d82994 runtime requalification
 
 Runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`, manifest `f4568e29…`,

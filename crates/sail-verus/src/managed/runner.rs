@@ -84,6 +84,9 @@ struct Paths {
     shipped_plan: Option<PathBuf>,
     /// `SAIL_RUSTC_DEV_SOURCE_BASE` for Sail's Verus (ADR 0048).
     source_base: Option<std::ffi::OsString>,
+    /// `SAIL_VIR_SPAN_REMAP` for Sail's Verus, set with `source_base`
+    /// (VI-0031).
+    span_remap: Option<std::ffi::OsString>,
 }
 
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
@@ -194,6 +197,16 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
             .into_owned(),
         installed(&wrapper.with_file_name("rust_verify"))?,
     ));
+    // With `rust-src`, rustc names standard library sources by the local copy,
+    // and so do span strings in VIR compiled here (VI-0031). Prebuilt VIR is
+    // renamed to match, so the copy's presence joins the proof context.
+    let rust_src = shipped_rust_src(&verifier_sysroot);
+    if let Some(rust_src) = &rust_src {
+        environment.insert(
+            b"sail-verifier-rust-src".to_vec(),
+            rust_src.as_os_str().as_encoded_bytes().to_vec(),
+        );
+    }
     for path in sysroot_files(&BTreeSet::from([cargo_sysroot, verifier_sysroot]))? {
         identity.push((path.to_string_lossy().into_owned(), installed(&path)?));
     }
@@ -259,6 +272,7 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
     let store_hash = store_family_hash(&config.args, engine, &identity, &environment)?;
     super::files::json(&state.join(format!("{hash}.link")), &identity_sha)?;
     Ok(Context {
+        rust_src,
         hash,
         compiler_hash,
         store_hash,
@@ -346,6 +360,15 @@ fn without_selection(args: &[String]) -> Vec<&str> {
     out
 }
 
+/// The directory rustc translates `/rustc/<commit>` standard library names
+/// to: the sysroot's `rust-src` root, when it holds the standard library.
+fn shipped_rust_src(sysroot: &Path) -> Option<PathBuf> {
+    let root = sysroot.join("lib/rustlib/src/rust");
+    root.join("library/std/src/lib.rs")
+        .is_file()
+        .then_some(root)
+}
+
 /// Files of the installed sysroots that compilation can load: `bin/rustc`,
 /// `bin/cargo`, the files directly in `lib/` and in each `lib/rustlib/*/lib/`.
 fn sysroot_files(sysroots: &BTreeSet<PathBuf>) -> Result<Vec<PathBuf>> {
@@ -392,6 +415,9 @@ fn sysroot_files(sysroots: &BTreeSet<PathBuf>) -> Result<Vec<PathBuf>> {
 }
 
 struct Context {
+    /// The verifier toolchain's `rust-src` copy of the standard library, when
+    /// installed ([`shipped_rust_src`]).
+    rust_src: Option<PathBuf>,
     hash: String,
     compiler_hash: String,
     /// The dependency store's view of the compiler family
@@ -615,6 +641,7 @@ fn prepare(
         reuse: true,
         shipped_plan: None,
         source_base: None,
+        span_remap: None,
     };
     for dir in [
         &paths.receipts,
@@ -823,6 +850,7 @@ fn invoke(
         .env("SAIL_SOLVER_MODE", "default")
         .env_remove(super::shipped::PLAN_ENV)
         .env_remove(super::shipped::SOURCE_BASE_ENV)
+        .env_remove(super::shipped::SPAN_REMAP_ENV)
         .env_remove("SAIL_ENGINE")
         .env_remove("SAIL_ENGINE_FUNCTION")
         .env_remove("SAIL_ENGINE_EVENTS")
@@ -841,6 +869,9 @@ fn invoke(
     }
     if let Some(base) = &paths.source_base {
         cmd.env(super::shipped::SOURCE_BASE_ENV, base);
+    }
+    if let Some(remap) = &paths.span_remap {
+        cmd.env(super::shipped::SPAN_REMAP_ENV, remap);
     }
     #[cfg(unix)]
     let visible = super::visible_output::Receiver::bind()
@@ -2280,6 +2311,7 @@ pub(crate) fn run_engine_held(
     }
     drop(metadata_phase);
     let Context {
+        rust_src,
         hash,
         compiler_hash,
         store_hash,
@@ -2327,7 +2359,17 @@ pub(crate) fn run_engine_held(
                 registry,
             ))
         });
+    paths.span_remap = paths
+        .source_base
+        .as_ref()
+        .and(registry.as_deref())
+        .and_then(|registry| super::shipped::span_remap(registry, rust_src.as_deref()));
+    // A shipped bundle's stored span strings name virtual paths; without the
+    // remap that names them as this machine's, its diagnostics could differ
+    // from stock, so the bundle is not served (VI-0031).
+    let remap_missing = paths.source_base.is_some() && paths.span_remap.is_none();
     let shipped_plan = if focused(&config.args)
+        || remap_missing
         || engine.is_some()
         || !paths.reuse
         || research == super::research::Mode::RetainedContent

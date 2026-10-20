@@ -139,6 +139,8 @@ source=Path('src/lib.rs').read_text()
 if '--verify-function' in a:os.write(2,b'Partial verification must use focus\n');sys.exit(101)
 if 'pub fn broken' in source:os.write(2,b'cannot find value y\n');sys.exit(101)
 if is_sail and os.environ['SAIL_E2E_TEST_CASE'] in ['mismatch','collector-failed']:os.write(1,b'intentional fixture mismatch\n')
+if 'DisplaySpecImpl' in source:
+ os.write(2,b'[rust_verify/src/verifier.rs:113:17] &sp.as_string = "/rustc/fixture/library/core/src/fmt/mod.rs:1:1: 1:2 (#1)"\nerror: could not compile `demo`\n');sys.exit(101)
 if 'ensures r > x,' in source:
  os.write(1,b'verification results:: 1 verified, 1 errors\n');os.write(2,b'error: postcondition not satisfied\nerror: could not compile `demo`\n');sys.exit(101)
 os.write(1,b'verification results:: 2 verified, 0 errors\n')
