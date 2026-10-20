@@ -224,7 +224,8 @@ impl Plan {
         // dep-info selection; unknown extra reads still fail compiler admission.
         let mut metadata = self.metadata.clone();
         metadata["sail_source_inputs"] = serde_json::json!([]);
-        let mut snapshot = input::snapshot_metadata(&metadata, &[]);
+        let members = scope_packages(&mut metadata, &self.scope());
+        let mut snapshot = input::snapshot_metadata(&metadata, &members);
         if !snapshot.complete || !self.closure.check_sources() {
             return None;
         }
@@ -249,6 +250,23 @@ impl Plan {
         Snapshot::reuse(&self.target, &self.root.join("graphs"), args).or_else(|| {
             Snapshot::capture_ready(&self.target, &directory.join("dependency-final"), args)
         })
+    }
+
+    /// Package ids of the selected targets' dependency closure: the packages
+    /// whose sources the source snapshot reads.
+    fn scope(&self) -> BTreeSet<String> {
+        let selected: Vec<&str> = self.metadata["packages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|package| {
+                package["manifest_path"]
+                    .as_str()
+                    .is_some_and(|manifest| self.roots.contains(Path::new(manifest)))
+            })
+            .filter_map(|package| package["id"].as_str())
+            .collect();
+        super::super::runner::dependency_closure(&self.metadata, selected)
     }
 
     fn compile_source_roots(&self) -> Option<BTreeSet<PathBuf>> {
@@ -402,6 +420,34 @@ impl Plan {
             directory: directory.to_owned(),
         })
     }
+}
+
+/// Narrows `metadata` to the packages of `scope`, the selected targets'
+/// dependency closure, and returns the manifests of the workspace members
+/// outside it, which Cargo still reads to load the workspace. Receipts scope
+/// their inputs by the same closure (`input::closure_digests`). A package
+/// without an id is kept. Files of other packages cannot reach the compiler
+/// unnoticed: every source it loads must be covered by the snapshot, and the
+/// namespace checks cover the compile roots, which are all in the closure.
+fn scope_packages(metadata: &mut Value, scope: &BTreeSet<String>) -> Vec<PathBuf> {
+    let members = metadata["workspace_members"].clone();
+    let mut outside = Vec::new();
+    if let Some(packages) = metadata["packages"].as_array_mut() {
+        packages.retain(|package| {
+            if package["id"].as_str().is_none_or(|id| scope.contains(id)) {
+                return true;
+            }
+            if members
+                .as_array()
+                .is_some_and(|members| members.contains(&package["id"]))
+                && let Some(manifest) = package["manifest_path"].as_str()
+            {
+                outside.push(PathBuf::from(manifest));
+            }
+            false
+        });
+    }
+    outside
 }
 
 /// Publish one complete graph and its deduplicated lifetime marker together.
@@ -1053,6 +1099,94 @@ fn output_paths(args: &[OsString], target: &Path) -> Option<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn source_snapshot_reads_only_the_selected_closure() -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-retained-scope-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for (path, body) in [
+            ("Cargo.toml", "[workspace]\nmembers = [\"a\", \"b\"]\n"),
+            ("Cargo.lock", "# lock\n"),
+            ("a/Cargo.toml", "[package]\nname = \"a\"\n"),
+            ("a/src/lib.rs", "pub fn a() {}\n"),
+            ("b/Cargo.toml", "[package]\nname = \"b\"\n"),
+            ("b/src/lib.rs", "pub fn b() {}\n"),
+            ("registry/c/Cargo.toml", "[package]\nname = \"c\"\n"),
+            ("registry/c/src/lib.rs", "pub fn c() {}\n"),
+            ("registry/d/Cargo.toml", "[package]\nname = \"d\"\n"),
+            ("registry/d/src/lib.rs", "pub fn d() {}\n"),
+        ] {
+            let path = root.join(path);
+            std::fs::create_dir_all(path.parent().ok_or("parent")?)?;
+            std::fs::write(path, body)?;
+        }
+        let root = root.canonicalize()?;
+        let manifest = |dir: &str| root.join(dir).join("Cargo.toml");
+        let package = |id: &str, dir: &str| serde_json::json!({"id": id, "name": id, "manifest_path": manifest(dir)});
+        let metadata = serde_json::json!({
+            "workspace_root": root,
+            "target_directory": root.join("target"),
+            "workspace_members": ["a", "b"],
+            "packages": [
+                package("a", "a"),
+                package("b", "b"),
+                package("c", "registry/c"),
+                package("d", "registry/d"),
+            ],
+            "resolve": {"nodes": [
+                {"id": "a", "dependencies": ["c"]},
+                {"id": "b", "dependencies": ["d"]},
+                {"id": "c", "dependencies": []},
+                {"id": "d", "dependencies": []},
+            ]},
+        });
+        let scope = super::super::super::runner::dependency_closure(&metadata, ["a"]);
+        assert_eq!(scope, BTreeSet::from(["a".to_owned(), "c".to_owned()]));
+        let snapshot = || {
+            let mut scoped = metadata.clone();
+            let members = scope_packages(&mut scoped, &scope);
+            assert_eq!(members, [manifest("b")]);
+            input::snapshot_metadata_home(&scoped, &members, None)
+        };
+        let first = snapshot();
+        assert!(first.complete);
+        let read: BTreeSet<_> = first.digests.keys().cloned().collect();
+        let expected: BTreeSet<_> = [
+            "Cargo.toml",
+            "Cargo.lock",
+            "a/Cargo.toml",
+            "a/src/lib.rs",
+            "b/Cargo.toml",
+            "registry/c/Cargo.toml",
+            "registry/c/src/lib.rs",
+        ]
+        .iter()
+        .map(|path| root.join(path))
+        .collect();
+        assert_eq!(read, expected);
+        // A source outside the closure is not part of the revision; the
+        // closure's sources and every member manifest are.
+        std::fs::write(root.join("b/src/lib.rs"), "pub fn b2() {}\n")?;
+        std::fs::write(root.join("registry/d/src/lib.rs"), "pub fn d2() {}\n")?;
+        assert_eq!(snapshot().revision, first.revision);
+        for path in ["b/Cargo.toml", "a/src/lib.rs", "registry/c/src/lib.rs"] {
+            let original = std::fs::read(root.join(path))?;
+            std::fs::write(root.join(path), b"// changed\n")?;
+            assert_ne!(snapshot().revision, first.revision, "{path}");
+            std::fs::write(root.join(path), original)?;
+            assert_eq!(snapshot().revision, first.revision, "{path}");
+        }
+        // A package without an id is never dropped.
+        let mut unidentified = metadata.clone();
+        unidentified["packages"][3]
+            .as_object_mut()
+            .ok_or("package")?
+            .remove("id");
+        assert_eq!(scope_packages(&mut unidentified, &scope).len(), 1);
+        assert_eq!(unidentified["packages"].as_array().map(Vec::len), Some(3));
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
+    }
 
     /// The one-path-at-a-time namespace digest `namespace` replaced.
     fn sequential_namespace(snapshot: &input::InputSnapshot) -> Option<String> {

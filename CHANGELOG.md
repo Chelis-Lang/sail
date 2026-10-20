@@ -5,6 +5,15 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Instant revert's source check reads only the packages the selected
+  targets depend on, plus every workspace member's manifest, instead of every
+  package in the workspace and registry (#278; ADR 0050
+  amendment). On public-profile Vest, a cold run takes this check five times,
+  and each one falls from 200–265 ms to 25–50 ms on macOS. Editing a package
+  outside that closure no longer invalidates a retained proof. Verdicts,
+  diagnostics and receipts are unchanged. See the
+  [record](docs/validation/cold-first-run.md#follow-up-closure-scoped-retained-source-check-278).
+
 - The release archive ships signed solver replies for its pinned vstd
   (`replies/vstd.pack` and `replies/release.pub`, ADR 0062). When the
   preverified vstd proof does not apply, the daemon answers vstd's solver
