@@ -117,9 +117,10 @@ Linux so far:
 
 - Projects that forward `--rlimit N` with N ≥ 10 keep the shipped vstd proof
   when nothing else separates them from it. Vest at its corpus pin does not:
-  it depends on vstd with `default-features = false`, so its vstd closure
-  (alloc/std) differs from the shipped one (alloc/default/std) and it misses
-  for that reason (#238), as its `note[SAIL3138]` says. Any other forwarded flag still misses it.
+  it depends on vstd with `default-features = false` and its lock has
+  `unicode-ident` 1.0.24, so its vstd closure differs from the shipped one
+  (alloc/default/std, `unicode-ident` 1.0.27) and it misses for that reason
+  (#238), as its `note[SAIL3138]` says. Any other forwarded flag still misses it.
 - Recording runs vstd twice more, about two minutes on a c7i.8xlarge.
 - The argument relies on Z3's resource counting being the deterministic cut-off it is in Z3 4.16.0. A solver
   upgrade or another solver must repeat the validation. The recorder's

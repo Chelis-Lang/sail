@@ -12,8 +12,9 @@ semantic versioning once the API is published.
   [ADR 0060](docs/decisions/0060-shipped-vstd-under-a-raised-rlimit.md)).
   Any other forwarded flag, or a lower `--rlimit`, still verifies vstd again,
   and `note[SAIL3138]` names it; use `--fwd-verus-args-to roots` to keep
-  flags off vstd. Vest at its corpus pin still misses the proof: it turns off
-  vstd's default features, so its vstd closure differs from the shipped one.
+  flags off vstd. Vest at its corpus pin still misses the proof: its vstd
+  closure differs from the shipped one (vstd's default features are off, and
+  its lock has `unicode-ident` 1.0.24 rather than 1.0.27).
 
 - Print one `note[SAIL3138]` when a release's preverified vstd proof does not
   apply to a new project, naming the reason, such as a wrapper or loader

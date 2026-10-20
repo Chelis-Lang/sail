@@ -37,7 +37,7 @@ Stock against two staged releases: `main` `658e8001` (before) and this branch (a
 | Public-profile Vest, `-p vest_lib`, 3 rounds | 69.11 (68.90–69.22) | 68.89 (68.61–69.32) | 70.14 (68.96–75.42) | `SAIL3138` in both: vstd's closure differs |
 | Vest, 2 further before/after rounds | | 72.11, 69.72 | 69.43, 69.74 | as above |
 
-Over all five Vest rounds the before and after medians are 69.32 s and 69.74 s, the same within this host's variation. Vest does not gain: its `Cargo.toml` depends on vstd with `default-features = false` (vest_lib enables `vstd/alloc` and `vstd/std`), so its vstd is the alloc/std closure, while the shipped proof is alloc/default/std. Sail therefore makes no shipped plan for it, with or without `--rlimit` (#238). Public-profile Vest moves only the vstd requirement to crates.io `=0.0.0-2026-10-18-0147`, with the corpus pin otherwise unchanged.
+Over all five Vest rounds the before and after medians are 69.32 s and 69.74 s, the same within this host's variation. Vest does not gain: its `Cargo.toml` depends on vstd with `default-features = false` (vest_lib enables `vstd/alloc` and `vstd/std`), so its vstd is the alloc/std closure, while the shipped proof is alloc/default/std; its lock also has `unicode-ident` 1.0.24 where the shipped build has 1.0.27. Sail therefore makes no shipped plan for it, with or without `--rlimit` (#238). Public-profile Vest moves only the vstd requirement to crates.io `=0.0.0-2026-10-18-0147`, with the corpus pin otherwise unchanged.
 
 ## Corpus: default vs `--rlimit 100`
 
@@ -127,4 +127,4 @@ Failed or interrupted attempts:
 
 ## Remaining
 
-- Vest gains nothing until a shipped proof matches its vstd closure (alloc/std without `default`); see #238.
+- Vest gains nothing until a shipped proof matches its vstd closure (alloc/std without `default`, `unicode-ident` 1.0.24); see #238.
