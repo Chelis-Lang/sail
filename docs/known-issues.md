@@ -8,6 +8,17 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **Unresolvable standard-library labels print differently from stock.**
+  Some Verus errors label a standard-library impl recorded in vstd's VIR,
+  for example an `impl … DisplaySpecImpl for &'a S` without a matching std
+  impl. Verus then prints a fallback line. Sail's fork prints
+  `rust_verify/src/verifier.rs:117` where stock prints `:113`, with or
+  without the shipped vstd proof. When the shipped proof is served, the
+  quoted path is also `/rustc/<commit>/…`, where stock quotes the user's
+  `rust-src` copy. Verdicts and other diagnostics are unaffected. Both
+  need a fork fix; the shipped bundle is not accepted until then
+  ([record](validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)).
+
 - **The original focused Anvil benchmark never reached verification.** All
   18 retained Sail rows used non-JSON `sail verify` with `--verify-module`,
   which intentionally refuses partial verification. The benchmark correction

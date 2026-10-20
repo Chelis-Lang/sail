@@ -17,51 +17,93 @@
 ## Verus 7d82994 bundle and standard-library paths (VI-0031)
 
 Linux x86-64 bundle for runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`),
-recorded on native EC2 c7i.4xlarge (us-east-1, Ubuntu 24.04) with
-`ci/local.sh release`, recorder code as at `7b9416d7`. The recorder ran Cargo 1.99.1 with
-`rust-src`. Proof identity `4c0b33fa…`, bundle manifest `bab28a85…`. Status:
-**recorded; diagnostic identity passes on the tested set; first-use
-performance not yet measured.**
+recorded by `ci/local.sh release` (recorder as at `7b9416d7`, Cargo 1.99.1
+with `rust-src`) on native EC2 hosts in us-east-1: c7i.4xlarge `d17` and
+c7i.8xlarge `rq1`, both Ubuntu 24.04. Both recordings give proof identity
+`4c0b33fa…` and bundle manifest `bab28a85…`. Status: **recorded; first use
+measured; diagnostic identity FAILS on one reachable diagnostic class (below);
+not accepted.**
 
 - **Host path.** With `rust-src` installed, rustc names standard-library
   files by their local copy, and Verus writes those names into exported VIR
   ([VI-0031](../verus-issues/VI-0031-rust-src-std-paths.md)). The first
   recording's `libvstd.vir` held 9,611 spans under the recording container's
-  `/opt/rustup/toolchains/1.99.1-…/lib/rustlib/src/rust` and no `/rustc/`
-  name. No other bundle member named a host path. The recorder now also
-  passes `--remap-path-prefix <rust-src root>=/rustc/<rustc commit>` to the
-  vstd unit, the mapping native units already receive. The re-recorded
+  `/opt/rustup/toolchains/1.99.1-…/lib/rustlib/src/rust`. The recorder now
+  remaps the `rust-src` root to `/rustc/<rustc commit>` for the vstd unit, so
   `libvstd.vir` (sha256 `3a62facc…`) has 0 local and 9,611 `/rustc/58cf8f9c…`
-  spans, as the Verus release's own `vstd.vir` does. Proof identity and keys
-  are unchanged: recording arguments are not keyed.
-- **Diagnostic identity.** These runs used a user-like host outside the
-  container: rustup in `/home/ubuntu/.rustup`, default toolchain 1.99.0,
-  pinned 1.99.1, a fresh `CARGO_HOME` and a fresh Sail cache. The project
-  required `vstd = "=0.0.0-2026-10-18-0147"` and failed seven obligations
-  through vstd specifications (`shl`, `add`, `neg`, `Option::unwrap`,
-  `Vec` indexing) plus an external type specification of
-  `core::marker::PhantomPinned`. Stock `cargo verus verify` and `sail verify`
-  ran from the staged release. With `rust-src`, Sail replayed the shipped
-  proof (`SAIL3132`). Without it, Sail noted `SAIL3137` and verified vstd.
-  For both bundles (host-path and virtual), in both environments, stdout,
-  exit code and every diagnostic byte matched. The only difference was the
-  order of Cargo's parallel `Compiling`/`Checking` lines, whose set matched.
-  None of these diagnostics names a standard-library file. The probes that
-  cite vstd's specifications (duplicate assume, type and trait specifications,
-  positivity) all point into vstd, so no diagnostic that displays a vstd
-  standard-library span has been compared yet.
-- **Native shapes.** The recording's boundary trace has 25
-  `native-output-established` records across 14 packages (tuples sha256
-  `5731dc08…`). `ci/run.sh boundary-witness shapes` (the
-  `actual_retained_native_shapes` test) passes on them, and shapes derived
-  from them equal `native_shapes.json` exactly. The admission witness
-  (`boundary-witness admission`) was not run: its five-case configuration
-  runner is not in the repository.
+  spans, as the Verus release's own `vstd.vir` does. No other bundle member
+  names a host path.
+- **Where those spans can surface.** vstd's VIR packs spans as positions in
+  vstd's own source files; standard-library positions have no recorded file,
+  so no consumer can resolve them. A label on such a span prints Verus's
+  fallback line `[rust_verify/src/verifier.rs:<line>:17] &sp.as_string =
+  "<path>"` with the string recorded at export. One reachable trigger is an
+  extension impl without a matching standard-library impl, such as
+  `impl<'a> DisplaySpecImpl for &'a S` (or `DebugSpecImpl for &'a mut S`):
+  Verus's "must have a matching impl" error labels core's
+  `impl<T: Display> Display for &T`.
+- **Byte comparison.** A user-like host was used (rustup in `~/.rustup`,
+  default 1.99.0, pinned 1.99.1, fresh `CARGO_HOME` and Sail cache). Stock
+  `cargo verus verify` and the staged `sail verify` were run on five probes:
+  the two extension impls; the VI-0031 `external_type_specification` of
+  `PhantomPinned`; failing vstd lemma preconditions
+  (`lemma_fundamental_div_mod`, `lemma_mul_strict_inequality`) with std op,
+  `unwrap` and indexing preconditions; and the same with `--expand-errors`.
+  Stdout and exit codes match everywhere. Cargo's parallel progress lines
+  change order but match as a set. Diagnostics:
 
-Raw evidence (both recordings, traces, comparison streams) stays outside the
-repository: `d17-evidence.tgz` sha256
-`1ef81a243dcda6476daedb53209fe42034d54249e339b1140e9cf6fd74cad5d5`; recorder
-logs `f89c694d…` (first) and `b4b07a2f…` (re-recorded).
+  | Probe | With `rust-src` (shipped hit, `SAIL3132`) | Without (`SAIL3137`) |
+  |---|---|---|
+  | Extension impls (2) | **Different**: stock names `~/.rustup/…/library/core/src/fmt/mod.rs:2871:9`, Sail `/rustc/58cf8f9c…/library/core/src/fmt/mod.rs:2871:9`; fallback line `verifier.rs:113` vs `117` | **Different**: same path; fallback line `verifier.rs:113` vs `117` |
+  | `external_type_specification`, lemma and std preconditions | Same | Same |
+  | The same with `--expand-errors` | Same (the bundle misses: it was recorded without the flag) | Same |
+
+  Two defects follow. The bundle's recorded `/rustc/` string cannot match a
+  stock build on a machine with `rust-src`, which is every machine the bundle
+  serves, because serving requires `rust-src`. Separately, Sail's fork moves
+  upstream's `dbg!` from line 113 to 117 of `rust_verify/src/verifier.rs`,
+  so this fallback differs from stock with or without the bundle.
+- **Native shapes.** The `d17` recording's boundary trace has 25
+  `native-output-established` records across 14 packages (tuples sha256
+  `5731dc08…`). `boundary-witness shapes` passes on them, and shapes derived
+  from them equal `native_shapes.json` exactly.
+- **Native admission witness.** `scripts/admission-witness.py` traces one
+  recording run and replays Cargo's genuine `verus_builtin` invocation, as
+  Sail's compiler proxy received it, through `boundary-witness admission`'s
+  test. All five cases pass on `rq1`, and every case's original and
+  candidate exit, stdout and stderr are equal:
+  - `official-default`: observation and native-output provenance established;
+  - `official` (`--force-warn missing_docs`): refused as an unsupported tuple,
+    exit 0;
+  - `official-custom-cfg` (`verus_keep_ghost`, `verus_verify_core`): refused
+    as an unsupported tuple, exit 101;
+  - `foreign`: refused as an unkeyed unit, exit 101;
+  - `modified`: refused as a foreign source, exit 101.
+- **First use (README path).** On `rq1`, four alternating paired rounds,
+  each with a fresh `CARGO_HOME` (registry downloads in both arms) and Sail
+  cache, default toolchain 1.99.0 and pinned 1.99.1 with `rust-src`. Stock
+  ran `cargo verus new --lib` and `cargo verus verify` under the toolchain
+  Sail selects; Sail ran `sail new --lib` and `sail verify`. Every Sail first
+  verification replayed the shipped proof (`SAIL3132`, one verifier
+  invocation, no `SAIL3136` or `SAIL3137`).
+
+  | Median new + verify | Stock | Sail | Speedup |
+  |---|---:|---:|---:|
+  | First project | 30.377 s | 15.348 s | 1.98× |
+  | Second new project, same home | 30.227 s | 15.019 s | 2.01× |
+
+  The second project gains nothing over the first: native dependencies
+  compile again (the dependency store stays quarantined, ADR 0053). Rust
+  installation is not included. This is one consumer host.
+
+Raw evidence stays outside the repository: `d17-evidence.tgz` sha256
+`1ef81a243dcda6476daedb53209fe42034d54249e339b1140e9cf6fd74cad5d5`
+(recordings, trace, first comparisons); `adm1.tgz`
+`84d0ea5c85b110b263556453610ad25d618ac19c75c04288dd952598ba89447a`
+(admission witness); `rq1-bench.tgz`
+`75e937d0cecc509990088610f751041e8ac9f105b88aad371e636d2685785c0d` (probes,
+first use, revert). Harness scripts outside the repository: `bench.py`
+`b612732f…`, `analyze.py` `c1578803…`, `compare.sh` `c613ed9d…`.
 
 ## Current composed release candidate
 

@@ -7,7 +7,49 @@ merged as `3892881a`; all required checks and the main workflow pass. Ordinary e
 profile, not every project or platform. [Paired qualification](proof-reuse-integration.md)
 separates the current source from earlier component results.
 
-## Current ordinary qualification
+## Verus 7d82994 runtime requalification
+
+Runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`, manifest `f4568e29…`,
+equal to `LINUX_MANIFEST`) from the staged release, run on native EC2
+c7i.8xlarge in us-east-1 (Ubuntu 24.04). Status: **ordinary Linux public
+alloc/std reuse requalified for correctness and returned-A reuse.**
+
+- **Project.** Vest at its corpus pin, with only its vstd requirement and
+  lock moved to crates.io `vstd 0.0.0-2026-10-18-0147`, the public alloc/std
+  profile. `-p vest_lib` runs with `-- --rlimit 100` in both arms. Under
+  7d82994, `parse_cbor_with_child` exceeds the default rlimit in stock and in
+  Sail alike. Upstream verita adds the same flag for Vest.
+- **Cycle.** A cold; B (`assert(true);` as the first statement of the `fn`
+  at `der_ord.rs:245`); returned A; unchanged A. Three alternating rounds,
+  fresh copies, `CARGO_HOME` and Sail cache each. Stock runs `cargo verus
+  verify`; Sail runs `sail verify --output json`. Sail selects Cargo 1.99.1
+  itself.
+- **Correctness.** All 24 calls exit 0. Each Sail step's stderr equals
+  stock's after removing the arm's root path and Cargo's `Finished … in`
+  time; the progress lines match as a set. Every Sail run is `current`.
+  Returned and unchanged A run zero verifiers, reuse both targets and keep
+  cold A's establishing run. B reruns only `vest_lib`. No `SAIL3136` note.
+- **Times** (medians of three):
+
+  | Step | Stock | Sail |
+  |---|---:|---:|
+  | A cold | 68.746 s | 78.807 s |
+  | B edit | 38.279 s | 26.533 s |
+  | A returned | 38.386 s | 2.934 s |
+  | A unchanged | 0.191 s | 0.609 s |
+  | Four-command cycle | 145.767 s | 108.885 s |
+
+  The cycle is 25.3% faster. Cold A is 14.6% slower: with `--rlimit 100`
+  the shipped vstd proof misses (it was recorded without the flag), so Sail
+  verifies vstd too, plus its own overhead. Unchanged A is 0.4 s slower.
+  This round measured wall time only, not CPU or cache bytes.
+
+Raw evidence: `rq1-bench.tgz` sha256
+`75e937d0cecc509990088610f751041e8ac9f105b88aad371e636d2685785c0d`
+(see the [compiler-boundary record](vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)
+for the harness digests).
+
+## Earlier ordinary qualification (426d8b0 runtime `e5365c05`)
 
 Three rotated native rounds on `c7i.4xlarge`, `us-east-1`, retain all 72 calls
 and 18 complete four-command cycles. Genuine stock is the pinned `426d8b01`
