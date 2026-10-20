@@ -9,8 +9,8 @@ semantic versioning once the API is published.
   vstd is a raised `--rlimit N` (N at least the default 10), as Vest needs.
   The release recorder now proves, for its own unit, that raising the limit
   changes nothing but the limit (`units/<key>/rlimit.json`;
-  [ADR 0060](docs/decisions/0060-shipped-vstd-under-a-raised-rlimit.md),
-  proposed). Any other forwarded flag still verifies vstd again; use
+  [ADR 0060](docs/decisions/0060-shipped-vstd-under-a-raised-rlimit.md)).
+  Any other forwarded flag still verifies vstd again; use
   `--fwd-verus-args-to roots` to keep flags off vstd.
 
 - Print one `note[SAIL3138]` when a release's preverified vstd proof does not

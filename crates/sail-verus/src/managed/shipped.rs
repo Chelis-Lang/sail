@@ -1174,19 +1174,20 @@ const ARGS_SEP: &str = "__VERUS_DRIVER_ARGS_SEP__";
 /// The rlimit witness the release recorder stores beside a unit (ADR 0060).
 pub(super) const RLIMIT_WITNESS: &str = "rlimit.json";
 
-/// A package's packed forwarded Verus arguments without its one `--rlimit N`
-/// (or `--rlimit=N`), and N, when they hold exactly one such flag with a
-/// finite positive decimal N (ADR 0060). Anything else returns `None`.
-fn without_rlimit(packed: &str) -> Option<(String, f64)> {
-    let items: Vec<&str> = packed.strip_prefix(ARGS_SEP)?.split(ARGS_SEP).collect();
+/// Verus's default `--rlimit`, the one the release records the shipped proof
+/// at (its witness's `recorded_rlimit`).
+const DEFAULT_RLIMIT: f64 = 10.0;
+
+/// `items` without their one `--rlimit N` (or `--rlimit=N`), and N, when they
+/// hold exactly one such flag with a finite positive decimal N (ADR 0060).
+/// Anything else returns `None`.
+fn split_rlimit<'a>(items: &[&'a str]) -> Option<(Vec<&'a str>, f64)> {
     let mut found = None;
     let mut kept = Vec::with_capacity(items.len());
-    let mut index = 0;
-    while index < items.len() {
-        let item = items[index];
+    let mut rest = items.iter();
+    while let Some(&item) = rest.next() {
         let value = if item == "--rlimit" {
-            index += 1;
-            Some(*items.get(index)?)
+            Some(*rest.next()?)
         } else {
             item.strip_prefix("--rlimit=")
         };
@@ -1206,9 +1207,16 @@ fn without_rlimit(packed: &str) -> Option<(String, f64)> {
             }
             None => kept.push(item),
         }
-        index += 1;
     }
-    let n = found?;
+    Some((kept, found?))
+}
+
+/// A package's packed forwarded Verus arguments without its one `--rlimit N`
+/// (or `--rlimit=N`), and N, when they hold exactly one such flag with a
+/// finite positive decimal N (ADR 0060). Anything else returns `None`.
+fn without_rlimit(packed: &str) -> Option<(String, f64)> {
+    let items: Vec<&str> = packed.strip_prefix(ARGS_SEP)?.split(ARGS_SEP).collect();
+    let (kept, n) = split_rlimit(&items)?;
     if kept.is_empty() {
         return None;
     }
@@ -1218,6 +1226,43 @@ fn without_rlimit(packed: &str) -> Option<(String, f64)> {
         packed
     });
     Some((packed, n))
+}
+
+/// Why the shipped vstd proof missed because of the Verus flags this run's
+/// Cargo arguments forward to vstd (`cargo verus verify` forwards everything
+/// after `--` to every verified package unless `--fwd-verus-args-to` says
+/// otherwise). Exact keys bind those flags; only one raised `--rlimit` is
+/// served under the proof's rlimit witness (ADR 0060), so that case returns
+/// `None`, as does a run that forwards nothing to vstd.
+pub(crate) fn forwarded_miss(cargo_args: &[String]) -> Option<String> {
+    let split = cargo_args.iter().position(|arg| arg == "--")?;
+    let (cargo, verus) = cargo_args.split_at(split);
+    let verus: Vec<&str> = verus.iter().skip(1).map(String::as_str).collect();
+    let mut to = None;
+    let mut rest = cargo.iter();
+    while let Some(arg) = rest.next() {
+        if arg == "--fwd-verus-args-to" {
+            to = rest.next().map(String::as_str);
+        } else if let Some(value) = arg.strip_prefix("--fwd-verus-args-to=") {
+            to = Some(value);
+        }
+    }
+    if verus.is_empty() || to.is_some_and(|to| to != "all") {
+        return None;
+    }
+    let keep_off = "pass `--fwd-verus-args-to roots` before `--` to keep";
+    match split_rlimit(&verus) {
+        Some((kept, n)) if kept.is_empty() => (n < DEFAULT_RLIMIT).then(|| {
+            format!(
+                "`{}` reaches vstd and is below the default rlimit {DEFAULT_RLIMIT} the proof was recorded at, so it could change vstd's results ({keep_off} it off vstd)",
+                verus.join(" ")
+            )
+        }),
+        _ => Some(format!(
+            "the Verus flags after `--` (`{}`) reach vstd too and the proof binds them; only a raised `--rlimit` is exempt ({keep_off} them off vstd)",
+            verus.join(" ")
+        )),
+    }
 }
 
 /// The record a raised `--rlimit` is served under (ADR 0060): the package's
@@ -4010,6 +4055,37 @@ mod tests {
         );
         assert!(changed.serve().is_none());
         Ok(())
+    }
+
+    #[test]
+    fn forwarded_flags_name_the_miss_unless_only_a_raised_rlimit() {
+        let args = |items: &[&str]| -> Vec<String> {
+            items.iter().map(|item| (*item).to_owned()).collect()
+        };
+        for none in [
+            args(&["-p", "vest_lib"]),
+            args(&["--"]),
+            args(&["--", "--rlimit", "100"]),
+            args(&["--", "--rlimit=10"]),
+            args(&["--fwd-verus-args-to", "roots", "--", "--rlimit", "5"]),
+            args(&["--fwd-verus-args-to=roots", "--", "--expand-errors"]),
+        ] {
+            assert_eq!(forwarded_miss(&none), None, "{none:?}");
+        }
+        let low = forwarded_miss(&args(&["--", "--rlimit", "5"])).unwrap_or_default();
+        assert!(low.contains("`--rlimit 5`") && low.contains("below the default rlimit 10"));
+        for flags in [
+            args(&["--", "--expand-errors"]),
+            args(&["--", "--rlimit", "100", "--expand-errors"]),
+            args(&["--fwd-verus-args-to", "all", "--", "--rlimit", "inf"]),
+        ] {
+            let reason = forwarded_miss(&flags).unwrap_or_default();
+            assert!(
+                reason.contains("the proof binds them"),
+                "{flags:?}: {reason}"
+            );
+            assert!(reason.contains("--fwd-verus-args-to roots"));
+        }
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # 0060: Serve the shipped vstd proof under a raised `--rlimit`
 
-- **Status:** proposed
+- **Status:** accepted (owner decision, 2026-10-20)
 - **Date:** 2026-10-20
 
 ## Context
@@ -95,7 +95,7 @@ smallest limit set.
 
 ## Validation
 
-Required before this ADR is accepted:
+Required for acceptance (all met):
 - `scripts/rlimit-subsumption.py --runs 3` with `--rlimit 100` over the whole
   fast tier, and vstd as a Cargo dependency, on native Linux, for stock Verus
   (comparing as multisets where stock is unordered: VI-0001, VI-0007, VI-0008,
