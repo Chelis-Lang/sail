@@ -8,7 +8,7 @@ use std::path::Path;
 // Changing this authority requires new runtime and ordinary-reuse qualification.
 // It stays a separate constant so a re-pin cannot select reuse unqualified;
 // a test requires it to equal `manifest_sha256` in engine/verus/artifact-linux.json.
-const LINUX_MANIFEST: &str = "f4568e2931e6d8b53bc15dbf564199e5594b3b9e69e54cffc5cbe9bd3cd233de";
+const LINUX_MANIFEST: &str = "cd78756b462127d2551fd35dfc4dd1259a26aeb2501428b5702fa30bcdc96a04";
 
 pub(super) fn requested(mode: Mode) -> bool {
     choose(mode, crate::toolchain::host(), || true)

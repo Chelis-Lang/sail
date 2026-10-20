@@ -2,7 +2,7 @@
   "authority_source_sha256": "77cfe09e6aec9d1934662198c343800bcde4c53b6cda2ed1011fe43f180fc12a",
   "authority_sources": [
     "77cfe09e6aec9d1934662198c343800bcde4c53b6cda2ed1011fe43f180fc12a",
-    "12d779a067fc0d6dbd9ee25abed5e2fdbda27ab55cb0716f436b9f549c4eb2b3"
+    "432a1ec75f4859a29e3156bf605322522d4869f3f2b5a600066b1ba79c0ff2e3"
   ],
   "feature_graph": "actual current-pin Vest metadata; only vstd version/lock updated, no path providers",
   "kind": "sail-retained-public-vest-inputs",
