@@ -173,6 +173,9 @@ fn status_text(
                 human(i.queue.capacity_bytes)
             );
             shared_status(&mut t, i.shared.as_ref());
+            if let Some(bundled) = &i.bundled {
+                let _ = writeln!(t, "  bundled      {bundled}");
+            }
         }
         None => {
             let _ = writeln!(
@@ -197,6 +200,13 @@ fn status_text(
             stats.shared_other_platform,
             stats.shared_timeouts,
             stats.shared_skipped
+        );
+    }
+    if stats.bundled_lookups > 0 {
+        let _ = writeln!(
+            t,
+            "  bundled      {} lookups, {} hits, {} rejected",
+            stats.bundled_lookups, stats.bundled_hits, stats.bundled_rejected
         );
     }
     t
@@ -505,7 +515,7 @@ pub fn cache(
     }
     if !matches!(
         sub.as_str(),
-        "stats" | "verify" | "gc" | "clear" | "trust" | "publish"
+        "stats" | "verify" | "gc" | "clear" | "trust" | "publish" | "bundle-replies"
     ) {
         let _ = writeln!(
             err,
@@ -532,6 +542,7 @@ pub fn cache(
     match sub.as_str() {
         "trust" => crate::shared_ops::trust(&root, &a, out, err),
         "publish" => crate::shared_ops::publish(&disk, &a, out, err),
+        "bundle-replies" => crate::shared_ops::bundle_replies(&disk, &a, out, err),
         "stats" => stats(&disk, &root_text, a.json, out),
         "verify" => verify(&disk, &root_text, &a, out, err),
         "gc" => {

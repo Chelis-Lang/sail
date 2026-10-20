@@ -11,6 +11,8 @@
 #![forbid(unsafe_code)]
 
 #[cfg(unix)]
+mod bundled;
+#[cfg(unix)]
 mod digest_memo;
 #[cfg(unix)]
 pub mod jobs;
@@ -23,6 +25,8 @@ mod shared;
 #[cfg(unix)]
 mod writer;
 
+#[cfg(unix)]
+pub use bundled::BundledConfig;
 #[cfg(unix)]
 pub use server::{
     Config, DEFAULT_IDLE_TIMEOUT, DEFAULT_MEMORY_BYTES, DEFAULT_QUEUE_BYTES, DEFAULT_QUEUE_WAIT,
