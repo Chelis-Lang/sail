@@ -36,7 +36,11 @@ semantic versioning once the API is published.
   apply to a new project, naming the reason, such as a wrapper or loader
   variable, extra toolchain components like `rustc-dev`, or vstd dependency
   versions that differ from the shipped build (#238, #264). Output is
-  otherwise unchanged, and verification is unaffected.
+  otherwise unchanged, and verification is unaffected. For differing vstd
+  dependencies the note lists each package and, when that is enough, the
+  exact `cargo update -p … --precise …` commands and vstd feature edit that
+  let the project use the proof; Vest with vstd `0.0.0-2026-10-18-0147`
+  needs three updates and vstd's default features (#237).
 
 - Check instant revert's workspace sources and namespace facts on several
   workers, and skip a graph reread that repeated the one just done (#232).

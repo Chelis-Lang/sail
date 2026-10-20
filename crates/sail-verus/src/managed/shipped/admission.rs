@@ -140,7 +140,7 @@ impl Closure {
         {
             return false;
         }
-        features(args).is_some_and(|actual| actual == package.features.iter().cloned().collect())
+        features_admitted(args, package)
     }
 
     /// Admit actual native compiler source reads only from the complete exact
@@ -243,6 +243,13 @@ impl Closure {
         }
         count > 0
     }
+}
+
+/// A unit's features are its own `--cfg feature=` arguments. Cargo metadata
+/// reports features unified over the whole workspace, which a `-p` build of
+/// one member may not enable, so the closure check alone cannot bind them.
+fn features_admitted(args: &[std::ffi::OsString], package: &Package) -> bool {
+    features(args).is_some_and(|actual| actual == package.features.iter().cloned().collect())
 }
 
 fn features(args: &[std::ffi::OsString]) -> Option<BTreeSet<String>> {
@@ -431,6 +438,207 @@ fn resolved_packages(
     Some(admitted)
 }
 
+/// How a workspace's resolved vstd closure differs from the shipped proof's.
+/// This is advice for the miss note only; admission stays [`Closure::resolve`].
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct Difference {
+    /// One phrase per difference, in package-name order.
+    pub(super) packages: Vec<String>,
+    /// `cargo update` commands that select the shipped proof's versions.
+    pub(super) commands: Vec<String>,
+    /// vstd is resolved without its `default` feature and otherwise matches.
+    pub(super) vstd_default_off: bool,
+    /// The commands and the vstd feature edit align every difference.
+    pub(super) alignable: bool,
+}
+
+/// Compares the closure of the workspace's crates.io vstd with the embedded
+/// policy by package version, features and source. `None` without exactly
+/// one vstd, or when nothing differs.
+pub(super) fn closure_difference(metadata: &Value) -> Option<Difference> {
+    let policy: Policy = serde_json::from_str(POLICY).ok()?;
+    let wanted: BTreeMap<&str, &Package> = policy
+        .packages
+        .values()
+        .map(|package| (package.name.as_str(), package))
+        .collect();
+    let packages: BTreeMap<&str, &Value> = metadata["packages"]
+        .as_array()?
+        .iter()
+        .map(|package| Some((package["id"].as_str()?, package)))
+        .collect::<Option<_>>()?;
+    let nodes: BTreeMap<&str, &Value> = metadata["resolve"]["nodes"]
+        .as_array()?
+        .iter()
+        .map(|node| Some((node["id"].as_str()?, node)))
+        .collect::<Option<_>>()?;
+    let version = |package: &Value| package["version"].as_str().unwrap_or_default().to_owned();
+    let roots: Vec<&str> = packages
+        .iter()
+        .filter(|(_, package)| package["name"] == "vstd")
+        .map(|(id, _)| *id)
+        .collect();
+    let [root] = roots[..] else {
+        return None;
+    };
+    let shipped_vstd = wanted.get("vstd")?;
+    let mut difference = Difference {
+        packages: Vec::new(),
+        commands: Vec::new(),
+        vstd_default_off: false,
+        alignable: true,
+    };
+    let vstd_version = version(packages.get(root)?);
+    if vstd_version != shipped_vstd.version {
+        // Another vstd release is another proof; its closure is not compared.
+        difference.packages.push(format!(
+            "this project uses vstd {vstd_version} and the proof is for vstd {}",
+            shipped_vstd.version
+        ));
+        difference.alignable = false;
+        return Some(difference);
+    }
+    let found = closure_members(&packages, &nodes, root)?;
+    // A package name with several versions in the workspace needs a full spec.
+    let versions = |wanted: &str| {
+        packages
+            .values()
+            .filter(|package| package["name"] == wanted)
+            .count()
+    };
+    let names: BTreeSet<&str> = wanted
+        .keys()
+        .copied()
+        .chain(found.keys().map(String::as_str))
+        .collect();
+    for package in names {
+        match (wanted.get(package), found.get(package).map(Vec::as_slice)) {
+            (Some(shipped), Some([(actual, features, registry)])) => {
+                let spec = if versions(package) > 1 {
+                    format!("{package}@{actual}")
+                } else {
+                    package.to_owned()
+                };
+                compare(
+                    &mut difference,
+                    package,
+                    shipped,
+                    (actual, features, *registry),
+                    &spec,
+                );
+            }
+            (Some(_), Some(several)) => {
+                let list: Vec<_> = several.iter().map(|(v, _, _)| v.as_str()).collect();
+                difference
+                    .packages
+                    .push(format!("{package} is resolved as {}", list.join(" and ")));
+                difference.alignable = false;
+            }
+            (Some(shipped), None) => {
+                difference
+                    .packages
+                    .push(format!("{package} {} is absent", shipped.version));
+                difference.alignable = false;
+            }
+            (None, Some(extra)) => {
+                let list: Vec<_> = extra.iter().map(|(v, _, _)| v.as_str()).collect();
+                difference.packages.push(format!(
+                    "{package} {} is an extra dependency",
+                    list.join(" and ")
+                ));
+                difference.alignable = false;
+            }
+            (None, None) => {}
+        }
+    }
+    (!difference.packages.is_empty()).then_some(difference)
+}
+
+/// Each package in the closure of `root`: name to its (version, features,
+/// from crates.io) resolutions.
+type Members = BTreeMap<String, Vec<(String, BTreeSet<String>, bool)>>;
+
+fn closure_members(
+    packages: &BTreeMap<&str, &Value>,
+    nodes: &BTreeMap<&str, &Value>,
+    root: &str,
+) -> Option<Members> {
+    let text =
+        |package: &Value, field: &str| package[field].as_str().unwrap_or_default().to_owned();
+    let mut found = Members::new();
+    let mut pending = vec![root];
+    let mut visited = BTreeSet::new();
+    while let Some(id) = pending.pop() {
+        if !visited.insert(id) {
+            continue;
+        }
+        let package = packages.get(id)?;
+        let node = nodes.get(id)?;
+        let features = node["features"]
+            .as_array()?
+            .iter()
+            .map(|feature| feature.as_str().map(str::to_owned))
+            .collect::<Option<_>>()?;
+        let registry = package["source"].as_str()
+            == Some("registry+https://github.com/rust-lang/crates.io-index");
+        found.entry(text(package, "name")).or_default().push((
+            text(package, "version"),
+            features,
+            registry,
+        ));
+        for dependency in node["dependencies"].as_array()? {
+            pending.push(dependency.as_str()?);
+        }
+    }
+    Some(found)
+}
+
+/// Records how one singly resolved closure member differs from the policy.
+fn compare(
+    difference: &mut Difference,
+    package: &str,
+    shipped: &Package,
+    (actual, features, registry): (&str, &BTreeSet<String>, bool),
+    spec: &str,
+) {
+    if !registry {
+        difference
+            .packages
+            .push(format!("{package} {actual} is not from crates.io"));
+        difference.alignable = false;
+        return;
+    }
+    if actual != shipped.version {
+        difference.packages.push(format!(
+            "{package} is {actual} instead of {}",
+            shipped.version
+        ));
+        difference.commands.push(format!(
+            "cargo update -p {spec} --precise {}",
+            shipped.version
+        ));
+    }
+    let expected: BTreeSet<String> = shipped.features.iter().cloned().collect();
+    if *features != expected {
+        let mut with_default = features.clone();
+        with_default.insert("default".to_owned());
+        if package == "vstd" && !features.contains("default") && with_default == expected {
+            difference.vstd_default_off = true;
+            difference
+                .packages
+                .push("vstd's default features are off".to_owned());
+        } else {
+            let list = |set: &BTreeSet<String>| set.iter().cloned().collect::<Vec<_>>().join(", ");
+            difference.packages.push(format!(
+                "{package} has features [{}] instead of [{}]",
+                list(features),
+                list(&expected)
+            ));
+            difference.alignable = false;
+        }
+    }
+}
+
 fn check_package(root: &Path, expected: &Package) -> bool {
     let Some(mut actual) = super::package_tree(root) else {
         return false;
@@ -589,33 +797,7 @@ mod tests {
     -> Result<(), Box<dyn std::error::Error>> {
         let policy: Policy = serde_json::from_str(POLICY)?;
         let registry = Path::new("/registry");
-        let packages: Vec<_> = policy
-            .packages
-            .iter()
-            .map(|(id, package)| {
-                serde_json::json!({"id":id,"name":package.name,"version":package.version,
-                "source":"registry+https://github.com/rust-lang/crates.io-index",
-                "manifest_path":registry.join(id).join("Cargo.toml")})
-            })
-            .collect();
-        let nodes: Vec<_> = policy
-            .packages
-            .iter()
-            .map(|(id, package)| {
-                let dependencies: Vec<_> = if *id == policy.vstd {
-                    policy
-                        .packages
-                        .keys()
-                        .filter(|name| *name != id)
-                        .cloned()
-                        .collect()
-                } else {
-                    Vec::new()
-                };
-                serde_json::json!({"id":id,"features":package.features,"dependencies":dependencies})
-            })
-            .collect();
-        let metadata = serde_json::json!({"packages":packages,"resolve":{"nodes":nodes}});
+        let metadata = policy_metadata(registry)?;
         assert!(resolved_packages(&metadata, registry, &policy).is_some());
         let mut hooks = metadata.clone();
         let hook_node = hooks["resolve"]["nodes"]
@@ -649,6 +831,82 @@ mod tests {
     }
 }
 
+/// The package named `name` (`list` "packages") or its resolve node.
+#[cfg(test)]
+pub(super) fn test_entry<'a>(
+    metadata: &'a mut Value,
+    name: &str,
+    list: &str,
+) -> Result<&'a mut Value, &'static str> {
+    let id = metadata["packages"]
+        .as_array()
+        .and_then(|packages| packages.iter().find(|package| package["name"] == name))
+        .map(|package| package["id"].clone())
+        .ok_or("no such package")?;
+    let items = if list == "packages" {
+        &mut metadata["packages"]
+    } else {
+        &mut metadata["resolve"]["nodes"]
+    };
+    items
+        .as_array_mut()
+        .and_then(|items| items.iter_mut().find(|item| item["id"] == id))
+        .ok_or("no such entry")
+}
+
+#[cfg(test)]
+pub(super) fn test_version(
+    metadata: &mut Value,
+    name: &str,
+    version: &str,
+) -> Result<(), &'static str> {
+    test_entry(metadata, name, "packages")?["version"] = version.into();
+    Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn test_features(
+    metadata: &mut Value,
+    name: &str,
+    features: &[&str],
+) -> Result<(), &'static str> {
+    test_entry(metadata, name, "nodes")?["features"] = serde_json::json!(features);
+    Ok(())
+}
+
+/// Cargo metadata resolving exactly the policy's closure under `registry`.
+#[cfg(test)]
+pub(super) fn policy_metadata(registry: &Path) -> Result<Value, serde_json::Error> {
+    let policy: Policy = serde_json::from_str(POLICY)?;
+    let packages: Vec<_> = policy
+        .packages
+        .iter()
+        .map(|(id, package)| {
+            serde_json::json!({"id":id,"name":package.name,"version":package.version,
+                "source":"registry+https://github.com/rust-lang/crates.io-index",
+                "manifest_path":registry.join(id).join("Cargo.toml")})
+        })
+        .collect();
+    let nodes: Vec<_> = policy
+        .packages
+        .iter()
+        .map(|(id, package)| {
+            let dependencies: Vec<_> = if *id == policy.vstd {
+                policy
+                    .packages
+                    .keys()
+                    .filter(|name| *name != id)
+                    .cloned()
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            serde_json::json!({"id":id,"features":package.features,"dependencies":dependencies})
+        })
+        .collect();
+    Ok(serde_json::json!({"packages":packages,"resolve":{"nodes":nodes}}))
+}
+
 #[cfg(test)]
 pub(super) fn native_test_fixture(registry: &Path) -> Option<(Closure, PathBuf, String, u64)> {
     let policy: Policy = serde_json::from_str(POLICY).ok()?;
@@ -664,6 +922,157 @@ pub(super) fn native_test_fixture(registry: &Path) -> Option<(Closure, PathBuf, 
         source.checksum.clone(),
         source.size,
     ))
+}
+
+#[cfg(test)]
+mod closure_difference_tests {
+    use super::*;
+
+    type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+    fn policy() -> Result<Policy, serde_json::Error> {
+        serde_json::from_str(POLICY)
+    }
+
+    #[test]
+    fn the_shipped_closure_has_no_difference() -> TestResult {
+        assert_eq!(closure_difference(&policy_metadata(Path::new("/r"))?), None);
+        Ok(())
+    }
+
+    #[test]
+    fn version_and_default_feature_differences_are_alignable() -> TestResult {
+        // Vest's lock moved to the shipped vstd (#237): older host crates and
+        // `default-features = false`.
+        let policy = policy()?;
+        let shipped = |name: &str| {
+            policy
+                .packages
+                .values()
+                .find(|package| package.name == name)
+                .map(|package| package.version.clone())
+        };
+        let mut metadata = policy_metadata(Path::new("/r"))?;
+        test_version(&mut metadata, "unicode-ident", "1.0.24")?;
+        test_version(&mut metadata, "indexmap", "2.14.1")?;
+        test_features(&mut metadata, "vstd", &["alloc", "std"])?;
+        let difference = closure_difference(&metadata).ok_or("no difference")?;
+        let unicode = shipped("unicode-ident").ok_or("unicode-ident")?;
+        let indexmap = shipped("indexmap").ok_or("indexmap")?;
+        assert_eq!(
+            difference.packages,
+            [
+                format!("indexmap is 2.14.1 instead of {indexmap}"),
+                format!("unicode-ident is 1.0.24 instead of {unicode}"),
+                "vstd's default features are off".to_owned(),
+            ]
+        );
+        assert_eq!(
+            difference.commands,
+            [
+                format!("cargo update -p indexmap --precise {indexmap}"),
+                format!("cargo update -p unicode-ident --precise {unicode}"),
+            ]
+        );
+        assert!(difference.vstd_default_off && difference.alignable);
+        Ok(())
+    }
+
+    #[test]
+    fn a_name_with_several_versions_gets_a_full_spec() -> TestResult {
+        let mut metadata = policy_metadata(Path::new("/r"))?;
+        test_version(&mut metadata, "unicode-ident", "1.0.24")?;
+        // Another unicode-ident elsewhere in the workspace, outside the closure.
+        metadata["packages"]
+            .as_array_mut()
+            .ok_or("packages")?
+            .push(serde_json::json!({"id":"unicode-ident-0.9.0","name":"unicode-ident",
+                "version":"0.9.0","source":"registry+https://github.com/rust-lang/crates.io-index"}));
+        let difference = closure_difference(&metadata).ok_or("no difference")?;
+        assert!(
+            difference.commands[0].starts_with("cargo update -p unicode-ident@1.0.24 --precise "),
+            "{:?}",
+            difference.commands
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn other_releases_features_and_sources_are_reported_without_commands() -> TestResult {
+        let mut other = policy_metadata(Path::new("/r"))?;
+        test_version(&mut other, "vstd", "0.0.0-2026-09-06-0133")?;
+        let difference = closure_difference(&other).ok_or("no difference")?;
+        assert_eq!(difference.packages.len(), 1, "{:?}", difference.packages);
+        assert!(difference.packages[0].starts_with(
+            "this project uses vstd 0.0.0-2026-09-06-0133 and the proof is for vstd "
+        ));
+        assert!(!difference.alignable && difference.commands.is_empty());
+
+        let mut other_features = policy_metadata(Path::new("/r"))?;
+        test_features(&mut other_features, "vstd", &["alloc", "allow_panic"])?;
+        let difference = closure_difference(&other_features).ok_or("no difference")?;
+        assert!(!difference.alignable && !difference.vstd_default_off);
+
+        let mut path = policy_metadata(Path::new("/r"))?;
+        test_entry(&mut path, "syn", "packages")?["source"] = Value::Null;
+        let difference = closure_difference(&path).ok_or("no difference")?;
+        assert!(!difference.alignable);
+        assert!(
+            difference
+                .packages
+                .iter()
+                .any(|p| p.ends_with("is not from crates.io"))
+        );
+
+        let mut extra = policy_metadata(Path::new("/r"))?;
+        test_entry(&mut extra, "vstd", "nodes")?["dependencies"]
+            .as_array_mut()
+            .ok_or("dependencies")?
+            .push("foreign-1.0.0".into());
+        extra["packages"]
+            .as_array_mut()
+            .ok_or("packages")?
+            .push(serde_json::json!({
+            "id":"foreign-1.0.0","name":"foreign","version":"1.0.0",
+            "source":"registry+https://github.com/rust-lang/crates.io-index"}));
+        extra["resolve"]["nodes"]
+            .as_array_mut()
+            .ok_or("nodes")?
+            .push(serde_json::json!({"id":"foreign-1.0.0","features":[],"dependencies":[]}));
+        let difference = closure_difference(&extra).ok_or("no difference")?;
+        assert!(!difference.alignable);
+        assert!(
+            difference
+                .packages
+                .contains(&"foreign 1.0.0 is an extra dependency".to_owned())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn unit_features_bind_the_invocation_not_workspace_metadata() -> TestResult {
+        // Workspace-unified metadata admits vstd with the policy's features
+        // even when the selected `-p` member enables fewer. The invocation's
+        // own `--cfg feature=` arguments decide.
+        let policy = policy()?;
+        let registry = Path::new("/r");
+        let metadata = policy_metadata(registry)?;
+        assert!(resolved_packages(&metadata, registry, &policy).is_some());
+        let vstd = policy.packages.get(&policy.vstd).ok_or("vstd")?;
+        let cfgs = |features: &[&str]| {
+            let mut args = vec![std::ffi::OsString::from("rustc")];
+            for feature in features {
+                args.push("--cfg".into());
+                args.push(format!("feature=\"{feature}\"").into());
+            }
+            args
+        };
+        let exact: Vec<&str> = vstd.features.iter().map(String::as_str).collect();
+        assert!(features_admitted(&cfgs(&exact), vstd));
+        let narrower: Vec<&str> = exact.iter().copied().filter(|f| *f != "default").collect();
+        assert!(!features_admitted(&cfgs(&narrower), vstd));
+        Ok(())
+    }
 }
 
 #[cfg(test)]
