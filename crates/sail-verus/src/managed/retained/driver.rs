@@ -134,37 +134,27 @@ impl Plan {
         if !self.caller_environment.for_run(&runtime.run_id) {
             return None;
         }
-        let snapshot = self.snapshot()?;
+        // The source snapshot runs while the candidates and their outputs are
+        // read; nothing is retained before it is known.
+        let (snapshot, checked) = std::thread::scope(|scope| {
+            let snapshot = std::thread::Builder::new()
+                .name("sail-retained-sources".to_owned())
+                .spawn_scoped(scope, || self.snapshot())
+                .ok();
+            let checked = self.checked_candidates(runtime);
+            let snapshot = match snapshot {
+                Some(thread) => thread.join().ok().flatten(),
+                None => self.snapshot(),
+            };
+            (snapshot, checked)
+        });
+        let snapshot = snapshot?;
         let live = std::fs::read_dir(self.root.join("live-graphs"))
             .ok()?
             .map(|entry| receipts::read::<String>(&entry.ok()?.path()))
             .collect::<Option<BTreeSet<_>>>()?;
-        for entry in std::fs::read_dir(&runtime.receipts).ok()? {
-            let receipt: receipts::Receipt = receipts::read(&entry.ok()?.path())?;
-            if receipt.invocation.run_id != runtime.run_id
-                || receipt.invocation.retained_from.is_some()
-                || !self.roots.contains(&receipt.invocation.identity.manifest)
-            {
-                continue;
-            }
-            let directory = runtime.sidecars.join(receipt.invocation.identity.key());
-            let Some(candidate): Option<Candidate> =
-                receipts::read(&directory.join("retained-candidate.json"))
-            else {
-                continue;
-            };
-            if candidate.basis.context != runtime.context_sha256
-                || candidate.basis.identity != receipt.invocation.identity
-                || candidate.basis.source_revision != snapshot.revision
-                || !receipt.valid(&runtime.context_sha256)
-                || candidate.outputs.iter().any(|output| {
-                    dependency_snapshot::read_content(&output.path, 256 * 1024 * 1024).as_ref()
-                        != Some(&output.content)
-                })
-                || dependency_snapshot::read_content(&candidate.reads_path, 8 * 1024 * 1024)
-                    .as_ref()
-                    != Some(&candidate.compiler_reads)
-            {
+        for (directory, receipt, candidate) in checked? {
+            if candidate.basis.source_revision != snapshot.revision {
                 continue;
             }
             let entry = archive::Entry::new(
@@ -189,6 +179,45 @@ impl Plan {
         Some(())
     }
 
+    /// This run's requested-target candidates whose receipt, outputs and
+    /// compiler reads are intact, before the source revision is compared.
+    fn checked_candidates(
+        &self,
+        runtime: &receipts::Runtime,
+    ) -> Option<Vec<(PathBuf, receipts::Receipt, Candidate)>> {
+        let mut checked = Vec::new();
+        for entry in std::fs::read_dir(&runtime.receipts).ok()? {
+            let receipt: receipts::Receipt = receipts::read(&entry.ok()?.path())?;
+            if receipt.invocation.run_id != runtime.run_id
+                || receipt.invocation.retained_from.is_some()
+                || !self.roots.contains(&receipt.invocation.identity.manifest)
+            {
+                continue;
+            }
+            let directory = runtime.sidecars.join(receipt.invocation.identity.key());
+            let Some(candidate): Option<Candidate> =
+                receipts::read(&directory.join("retained-candidate.json"))
+            else {
+                continue;
+            };
+            if candidate.basis.context != runtime.context_sha256
+                || candidate.basis.identity != receipt.invocation.identity
+                || !receipt.valid(&runtime.context_sha256)
+                || candidate.outputs.iter().any(|output| {
+                    dependency_snapshot::read_content(&output.path, 256 * 1024 * 1024).as_ref()
+                        != Some(&output.content)
+                })
+                || dependency_snapshot::read_content(&candidate.reads_path, 8 * 1024 * 1024)
+                    .as_ref()
+                    != Some(&candidate.compiler_reads)
+            {
+                continue;
+            }
+            checked.push((directory, receipt, candidate));
+        }
+        Some(checked)
+    }
+
     fn snapshot(&self) -> Option<input::InputSnapshot> {
         // Declared graph files are separately bound immutable inputs. Do not
         // make the source-content key depend on the ever-growing historical
@@ -206,6 +235,20 @@ impl Plan {
         snapshot.revision =
             files::digest(&serde_json::to_vec(&(&snapshot.revision, namespace(&snapshot)?)).ok()?);
         Some(snapshot)
+    }
+
+    /// Cargo may invoke this verifier as soon as dependency metadata is
+    /// ready. Wait for those actual successful producers of the artifacts
+    /// present now, then reuse or capture the complete final directory
+    /// (including rlibs). The caller publishes it.
+    fn capture_graph(&self, args: &[OsString], directory: &Path) -> Option<Snapshot> {
+        let first = Snapshot::artifacts_ready(&self.target, args)?;
+        if !super::producers::ready_for(self, &first) {
+            return None;
+        }
+        Snapshot::reuse(&self.target, &self.root.join("graphs"), args).or_else(|| {
+            Snapshot::capture_ready(&self.target, &directory.join("dependency-final"), args)
+        })
     }
 
     fn compile_source_roots(&self) -> Option<BTreeSet<PathBuf>> {
@@ -274,30 +317,26 @@ impl Plan {
         if cwd.join(source_argument).canonicalize().ok()? != actual_source.canonicalize().ok()? {
             return None;
         }
-        let sources = self.snapshot()?;
+        // The source snapshot reads source trees and the graph capture reads
+        // the owned target, so they run at once. Nothing is published until
+        // both succeed; an unpublished capture removes its copies on drop.
+        let (sources, graph) = std::thread::scope(|scope| {
+            let sources = std::thread::Builder::new()
+                .name("sail-retained-sources".to_owned())
+                .spawn_scoped(scope, || self.snapshot())
+                .ok();
+            let graph = self.capture_graph(args, directory);
+            let sources = match sources {
+                Some(thread) => thread.join().ok().flatten(),
+                None => self.snapshot(),
+            };
+            (sources, graph)
+        });
+        let sources = sources?;
+        let graph = publish_graph(&self.root, graph?, args)?;
         let environment = std::env::vars_os()
             .map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
             .collect::<Option<BTreeMap<_, _>>>()?;
-        // Cargo may invoke this verifier as soon as dependency metadata is
-        // ready. Wait for those actual successful producers, discard the first
-        // view, then capture the complete final directory (including rlibs).
-        let first =
-            Snapshot::capture_ready(&self.target, &directory.join("dependency-first"), args)?;
-        if !super::producers::ready(self, &first) {
-            return None;
-        }
-        drop(first);
-        let graph = if let Some(graph) =
-            Snapshot::reuse(&self.target, &self.root.join("graphs"), args)
-        {
-            publish_graph(&self.root, graph, args)?
-        } else {
-            publish_graph(
-                &self.root,
-                Snapshot::capture_ready(&self.target, &directory.join("dependency-final"), args)?,
-                args,
-            )?
-        };
         if !super::producers::ready(self, &graph)
             || !super::producers::established(self, &runtime.context_sha256, &graph)
             || !super::producers::named_externs(self, args)
@@ -331,18 +370,21 @@ impl Plan {
             .iter()
             .filter_map(|root| root.canonicalize().ok())
             .collect();
-        let source_contents = sources
+        let compiled: Vec<_> = sources
             .digests
             .iter()
             .filter(|(path, _)| {
                 compile_roots.iter().any(|root| path.starts_with(root))
                     && !excluded.iter().any(|root| path.starts_with(root))
             })
-            .map(|(path, sha)| {
-                let content = dependency_snapshot::read_content(path, 256 * 1024 * 1024)?;
-                (content.sha256 == *sha).then(|| (path.clone(), content))
-            })
-            .collect::<Option<_>>()?;
+            .collect();
+        // Every compiled source is read again in full, several at once.
+        let source_contents = crate::parallel::in_order(&compiled, |&(path, sha)| {
+            let content = dependency_snapshot::read_content(path, 256 * 1024 * 1024)?;
+            (content.sha256 == *sha).then(|| (path.clone(), content))
+        })
+        .into_iter()
+        .collect::<Option<_>>()?;
         let observation = compiler::Observation::begin(
             &directory.join("compiler-inputs"),
             &runtime.run_id,
@@ -457,23 +499,33 @@ impl Attempt {
     }
 
     fn unchanged(&self) -> bool {
-        self.graph.intact()
-            && super::producers::established(&self.plan, &self.basis.context, &self.graph)
-            && self
-                .plan
-                .snapshot()
-                .is_some_and(|current| current.revision == self.basis.source_revision)
-            && self
-                .environment
-                .iter()
-                .filter(|(name, _)| keyed_environment(name))
-                .all(|(name, value)| std::env::var(name).as_ref() == Ok(value))
-            && Snapshot::reuse(
-                &self.plan.target,
-                &self.plan.root.join("graphs"),
-                &self.original_arguments,
-            )
-            .is_some_and(|graph| graph.key().as_ref() == Some(&self.basis.dependency_inventory))
+        // Independent complete reads, so they run at once; every one must hold.
+        let checks: [&(dyn Fn() -> bool + Sync); 5] = [
+            &|| self.graph.intact(),
+            &|| super::producers::established(&self.plan, &self.basis.context, &self.graph),
+            &|| {
+                self.plan
+                    .snapshot()
+                    .is_some_and(|current| current.revision == self.basis.source_revision)
+            },
+            &|| {
+                self.environment
+                    .iter()
+                    .filter(|(name, _)| keyed_environment(name))
+                    .all(|(name, value)| std::env::var(name).as_ref() == Ok(value))
+            },
+            &|| {
+                Snapshot::reuse(
+                    &self.plan.target,
+                    &self.plan.root.join("graphs"),
+                    &self.original_arguments,
+                )
+                .is_some_and(|graph| graph.key().as_ref() == Some(&self.basis.dependency_inventory))
+            },
+        ];
+        crate::parallel::in_order(&checks, |check| check())
+            .into_iter()
+            .all(|held| held)
     }
 
     /// Stores only an admission witness. Actual archive publication is later,
@@ -510,16 +562,16 @@ impl Attempt {
         if !invocation.success || !receipts::complete(&invocation.report) {
             return None;
         }
-        let outputs = output_paths(&self.original_arguments, &self.plan.target)?
-            .into_iter()
-            .map(|path| {
-                Some(archive::Output {
-                    content: dependency_snapshot::read_content(&path, 256 * 1024 * 1024)?,
-                    path,
-                    executable: false,
-                })
+        let paths = output_paths(&self.original_arguments, &self.plan.target)?;
+        let outputs = crate::parallel::in_order(&paths, |path| {
+            Some(archive::Output {
+                content: dependency_snapshot::read_content(path, 256 * 1024 * 1024)?,
+                path: path.clone(),
+                executable: false,
             })
-            .collect::<Option<Vec<_>>>()?;
+        })
+        .into_iter()
+        .collect::<Option<Vec<_>>>()?;
         let streams = ["verus.stdout", "verus.stderr"].map(|name| {
             dependency_snapshot::read_content(&self.directory.join(name), 16 * 1024 * 1024)
         });

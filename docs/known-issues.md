@@ -26,6 +26,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   pins are selected on main through merged #223, with all required CI checks green. See the
   [qualification record](validation/spec-parameter-names.md).
 
+- **The demo's first run is 8.2% slower than stock** (#232; the release bar
+  is 5%). Most of the remainder is instant revert's native admission: each
+  native unit waits for every dependency's producer certificate and for other
+  units' compiler scratch directories, which undoes Cargo's rmeta pipelining.
+  Changing that is an ADR 0050 design change awaiting owner review.
+  Public-profile Vest is 4.8% slower. See the
+  [record](validation/cold-first-run.md).
+
 - **Instant revert has a narrow qualified profile and visible costs.** Final
   source `83128ad0` passes 72 fresh ordinary calls, genuine bundled Vest ABA and
   complete native default gates. It admits only the exact Linux/public alloc/std

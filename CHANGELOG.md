@@ -29,6 +29,18 @@ semantic versioning once the API is published.
   compiled into the runtime, the shipped vstd proof and `sail`/`sail-z3`, and
   the Rust standard library. `scripts/third-party-notices.py` generates them
   from the locks and the pinned fork.
+- Make first runs faster without changing what is checked (#232). The daemon
+  compares the solver with its retained bytes in place during each handshake,
+  while the version command runs. Finished solver sessions send their stores
+  in windows instead of one round trip each, and shim exit no longer waits out
+  the stderr monitor's poll. Instant revert's native admission waits for
+  producers on a path listing instead of a discarded copy. Its graph copies,
+  rereads, certificate, source and runtime checks run on up to eight workers,
+  and its source snapshot overlaps the graph capture. On native Linux the demo's
+  first run went from 22.5% to 8.2% slower than stock, and public-profile Vest's
+  from 12.6% to 4.8%. Vest's returned A went from 2.75 s to 1.62 s. The demo is
+  still above the release bar; see the
+  [record](docs/validation/cold-first-run.md).
 
 - Move Sail's Verus to upstream 0.2026.10.18.7d82994 (Rust 1.99.1, Z3 4.16.0
   unchanged), with the fork rebased onto it. Install Rust with

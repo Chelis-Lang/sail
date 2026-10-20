@@ -118,7 +118,15 @@ pub(crate) fn hash_file(path: &Path) -> Result<String> {
 /// # Errors
 /// `SAIL3040` if an artifact cannot be read.
 pub fn artifact_hashes(build: &Path) -> Result<BTreeMap<PathBuf, String>> {
-    artifact_hashes_with(build, hash_file)
+    // Read every runtime file in full, several at once; the first failure in
+    // inventory order is reported, as when reading them one by one.
+    let files = artifact_files(build)?;
+    let hashes = crate::parallel::in_order(&files, |(path, _)| hash_file(path));
+    files
+        .into_iter()
+        .zip(hashes)
+        .map(|((_, relative), hash)| Ok((relative, hash?)))
+        .collect()
 }
 
 /// Enumerates the complete runtime inventory with a caller's same-phase hasher.
@@ -126,9 +134,17 @@ pub(crate) fn artifact_hashes_with(
     build: &Path,
     mut hash: impl FnMut(&Path) -> Result<String>,
 ) -> Result<BTreeMap<PathBuf, String>> {
+    artifact_files(build)?
+        .into_iter()
+        .map(|(path, relative)| Ok((relative, hash(&path)?)))
+        .collect()
+}
+
+/// Every runtime file: its path and its path relative to `build`.
+fn artifact_files(build: &Path) -> Result<Vec<(PathBuf, PathBuf)>> {
     let dir = checkout_dir(build).join("source/target-verus/release");
     let entries = std::fs::read_dir(&dir).map_err(|e| Error::new("SAIL3040", e.to_string()))?;
-    let mut hashes = BTreeMap::new();
+    let mut files = Vec::new();
     for entry in entries {
         let path = entry
             .map_err(|e| Error::new("SAIL3040", e.to_string()))?
@@ -136,11 +152,12 @@ pub(crate) fn artifact_hashes_with(
         if path.is_file() {
             let relative = path
                 .strip_prefix(build)
-                .map_err(|e| Error::new("SAIL3040", e.to_string()))?;
-            hashes.insert(relative.to_path_buf(), hash(&path)?);
+                .map_err(|e| Error::new("SAIL3040", e.to_string()))?
+                .to_path_buf();
+            files.push((path, relative));
         }
     }
-    Ok(hashes)
+    Ok(files)
 }
 
 /// The Verus checkout inside a build directory.
