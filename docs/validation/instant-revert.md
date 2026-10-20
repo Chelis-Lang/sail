@@ -41,6 +41,28 @@ and returned-A reuse.**
 Raw evidence: `r3l-evidence.tgz` sha256
 `6594bd503f8fb56725b05628cc9cc11b4758eb1add2b7d8faa823b2b6d89137e`.
 
+## Closure-scoped source check (#278)
+
+Branch `perf/cold-retention` `ea5f4d66` narrows the retained source snapshot
+to the selected targets' dependency closure (proposed
+[ADR 0050 amendment](../decisions/0050-retained-proofs-instant-revert.md#amendment-2026-10-20-proposed-the-source-snapshot-reads-the-selected-closure-278)).
+Retained keys change, so the protocol was rerun on the same runtimes as the
+qualifications below: one JSON-output round per platform with this harness
+(macOS mac-m4.metal; Linux c7i.8xlarge, release tree in the CI image).
+Status: **correctness and returned-A reuse hold on both platforms; one round
+each, so not a full requalification.**
+
+- All eight Sail calls exit 0 with diagnostics equal to stock's and progress
+  lines equal as a set. Every run is `current`. Returned and unchanged A run
+  zero verifiers, reuse both targets and keep cold A's establishing run; B
+  reruns only `vest_lib`. No `SAIL3136`.
+- Times (stock / Sail): macOS A cold 39.98 / 43.59 s, B 22.47 / 15.08 s,
+  A returned 22.32 / 1.26 s, A unchanged 0.22 / 0.77 s. Linux 72.55 / 72.23,
+  40.59 / 25.61, 40.22 / 1.34, 0.21 / 0.70 s.
+- Three-round human-output comparisons against main are in the
+  [cold first-run record](cold-first-run.md#follow-up-closure-scoped-retained-source-check-278):
+  returned A falls from 1.78 to 1.16 s (macOS) and 1.62 to 1.16 s (Linux).
+
 ## macOS qualification on runtime `f8589ed4`
 
 macOS runtime `7d829946…-e9b69a75ea390499` (fork `f8589ed4`, R3, manifest

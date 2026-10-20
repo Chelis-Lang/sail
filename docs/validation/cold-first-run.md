@@ -174,6 +174,13 @@ Linux:
 | Vest A, unchanged | 0.21 (0.20–0.21) | 0.58 (0.58–0.58) | 0.58 (0.58–0.58) |
 | Vest cycle | 153.16 (152.49–154.68) | 99.70 (99.39–100.29) | 99.26 (98.51–99.28) |
 
+One further round per platform used the instant-revert harness with JSON
+output (`bench.py` `b612732f…`, `analyze.py` `c1578803…`, as in the
+[instant-revert record](instant-revert.md#closure-scoped-source-check-278)).
+On both, returned and unchanged A run no verifier, reuse both targets and keep
+cold A's establishing run; B reruns only `vest_lib`. Every step's diagnostics
+equal stock's, and no `SAIL3136` appears.
+
 The Linux demo serves vstd from the shipped bundle; on macOS that bundle is
 not in the measured layout, so every arm verifies vstd.
 
@@ -191,14 +198,28 @@ no-retention arm of the same build):
   for its dependencies' certificates and for other units' scratch directories,
   so `verus_prettyplease` and `verus_builtin_macros` no longer overlap
   `verus_syn`. This is the remainder recorded above.
-- **The observed compile, about 0.33 s on the demo** (0.60 s instead of
-  0.27 s); not separable from noise on `vest_lib`'s 22 s.
+- **The demo's own compile, about 0.33 s** (0.60 s instead of 0.27 s). It
+  stays at 0.58 s without the compile observer and without the SHA-256
+  checksum request, so neither causes it; the cause is open (#288). It is not
+  separable from noise on `vest_lib`'s 22 s.
 - **The rest, about 0.6 s on Vest:** plan preparation (35 ms), the targets'
   graph copies and certificate checks (vstd about 0.1 s, `vest_lib` about
   0.2 s before and 0.08 s after its compile) and publication (0.15 s).
 
 Branch against no retention: demo +1.62 s, Vest +1.80 s. Branch against main:
-Vest cold −1.09 s, B −0.65 s, returned A −0.62 s.
+Vest cold −1.09 s, B −0.65 s, returned A −0.62 s. On Linux, a separate
+three-round cohort of the branch against the same no-retention probe gives
+demo 13.84 against 12.15 s and Vest cold 72.52 against 70.63 s, so retention
+still costs about 1.7–1.9 s there, offset by Sail's other first-run savings.
+
+An unproposed experiment checked how much of the native admission cost
+pipelining would recover. Native units captured their dependency graph at
+start without waiting for other units' scratch directories, and checked their
+producers' certificates at finish instead of at start. In a second macOS
+cohort of three rounds it ran demo 18.34 s against the branch's 18.61 s, and
+Vest cold 41.29 s against 42.06 s (stock 40.40 s). Every step still matched
+stock, and returned A still took 1.16 s. That design changes ADR 0050's
+admission rules and is left for the owner's decision.
 
 A first run that prepares no plan (for example `SAIL_MANAGED_FORCE=1`)
 compiles the native units and vstd without certificates. Every later run then
@@ -215,10 +236,13 @@ holds every run's stdout and stderr, `results.tsv` per cohort, the shim and
 driver timestamp logs, the exec traces, the harness scripts and the binary
 digests.
 
-Closure-scoped follow-up (#278): `experiments/2026-10-20/cold-retention/cold-retention-evidence.tgz`,
-SHA-256 `SHA_PLACEHOLDER`. It holds `results.tsv` and every step's stdout
-and stderr for both platforms, the probe traces, the forced-first-run case,
-the drivers (`cr.py`, `lxb.py`) and the analyzer (`cr-analyze.py`).
+Closure-scoped follow-up (#278):
+`experiments/2026-10-20/cold-retention/cold-retention-evidence.tgz`, SHA-256
+`be1ac53a3a03aa5c6fb41e013daa21aada9f7a693c846b36139aa8002410fabb`. It holds
+`results.tsv` and every step's stdout and stderr for both platforms, the
+probe traces, the forced-first-run case, the JSON revert rounds, the probe and
+experiment diffs, the drivers (`cr.py`, `lxb.py`) and the analyzer
+(`cr-analyze.py`).
 
 ## Attempts
 
