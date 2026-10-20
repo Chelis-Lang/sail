@@ -92,6 +92,66 @@ They remain historical evidence, not current-head acceptance.
 Archive `m114-linux-perf.tgz`, SHA-256
 `2b94e9bf9be67ac3410576a9eacc61b634750b73e25e3b73f43ad90e92b5f8af`.
 
+## Small-project overhead (#156)
+
+| Field | Evidence |
+|---|---|
+| Status | Measured; edit and revert still above the 0.1 s sub-second bar |
+| Source | Baseline `main` `4f373727`; candidate branch `perf/small-overhead` at `ac8422a2` (its crates are byte-identical to the branch rebased onto `5f79459d`, which added only release notices) |
+| Runtime | Sail fork `9c0ca7e7` (7d82994, manifest `f4568e29…`), pinned Z3 4.16.0; stock oracle `0.2026.10.18.7d82994`, Cargo 1.99.1 both |
+| Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, CI `core` image, one idle lane |
+| Scope | `sail new --lib` demo with one function; per round: add one function (edit), rerun unchanged, return to the original (revert); 7 rotated rounds after two warm-ups, own project copy, cache and target per arm; Sail binaries copied onto the cache filesystem |
+| Limits | One small project on Linux; no macOS, Vest edit or cold claim; plain `sail verify` output only |
+
+Medians of seven paired rounds (ranges in the archive). All 63 timed runs
+exit 0 and print the same `verification results` lines as stock.
+
+| Case | Stock | `main` | Candidate |
+|---|---:|---:|---:|
+| Small edit | 0.792 s | 2.551 s | 1.042 s |
+| Unchanged rerun | 0.117 s | 0.223 s | 0.215 s |
+| Revert to verified content | 0.794 s | 1.715 s | 1.011 s |
+
+Attribution on `main` (perf call-stack timelines, `SAIL_JOB_EVENTS` setup
+phases and diagnostic builds): on the qualified Linux runtime the demo
+project takes the ordinary instant-revert route, and retention cost 1.49 s
+per edit and 0.68 s per revert. Of that, about 140 ms re-reads the engine
+inventory to admit the plan, 0.9 s copies and checks the dependency graph
+(vstd's 43 MB `.vir` and the macro libraries, read five to ten times) before
+the compiler starts and 0.45 s checks it again afterwards: about 1.6 GB read
+and hashed per edit, against a 0.8 s compile. The candidate skips retention
+when the target's last compile cost less than four times its retention (see
+[instant revert](../instant-revert.md)). A Vest A → B → A cycle on the
+candidate (`-p vest_lib -- --rlimit 100`, one round) still restores: cold A
+87.7 s, B 29.7 s, returned A 3.16 s with zero verifier invocations, unchanged
+0.69 s; the records were 26–29 s of compile against 1.4–1.7 s of retention.
+
+What remains of the candidate's gap, from the setup phases:
+
+| Item | Edit | Unchanged |
+|---|---:|---:|
+| Runtime context and Cargo metadata (sysroot and verifier probes overlap the first metadata) | 38 ms | 37 ms |
+| Input snapshot and checks | 17 ms | 16 ms |
+| Targeted `cargo clean` of the edited package, dirty-receipt revisions, solver digest | 51 ms | 11 ms |
+| Driver after the compiler: dependency digests (vstd `.vir` dominates), report | about 45 ms | — |
+| One `sail-z3` session: handshake before Z3 starts | about 20 ms | — |
+| Receipt checks with the post-run Cargo metadata (critical path) | 46 ms | 45 ms |
+| Post-run snapshot and publication | 26 ms | 18 ms |
+
+Each is a complete content read or a Cargo process the checks require.
+Stock pays one Cargo metadata, Sail three (one inside Cargo-Verus, as stock).
+The two small cuts are concurrent per-target revision snapshots (about 10 ms
+per run) and comparing copied driver aliases byte for byte: with sail on
+another filesystem than its cache the aliases are copies, and the unchanged
+run fell from 0.474 s to 0.240 s (edit 1.304 to 1.075 s, five rounds).
+cold-gap's daemon and shim commits (`7c91c4f5`, `fc78624c`) applied on top
+measured 10 ms on the edit (six rounds); they are not part of this branch.
+
+Raw evidence: `final-evidence.tgz` sha256
+`6cc9ed2239d65bf9ce49d8f91ee637c57660180188df96dd590aefd51e9fe295` (every
+sample, outputs and setup-phase files of the final, retention-off and alias
+cohorts, and the Vest cycle's JSON results and cost records).
+
 ## Earlier attempts
 
 - `6f73ab9e`, 2026-10-16: required gates and full fast pass; independent review found the raw-path representative defect, corrected in `6563a170`.

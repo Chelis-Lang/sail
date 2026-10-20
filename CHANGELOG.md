@@ -5,6 +5,17 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Cut fixed overhead on small managed runs (#156). Instant-revert
+  retention now skips a target whose last compile cost less than four times
+  retention's own checks, which on a one-function project took 1.5 s per
+  edit and 0.7 s per revert; Vest-class targets keep instant revert. The
+  per-target revision snapshots of a run overlap, and copied driver aliases
+  (sail installed on another filesystem than its cache) are compared byte
+  for byte instead of by two digests. Linux demo project: small edit
+  2.55 s to 1.04 s, revert 1.72 s to 1.01 s, unchanged 0.22 s to 0.215 s
+  (stock 0.79, 0.79 and 0.12 s); verdicts and output are unchanged. See
+  [managed overhead](docs/validation/managed-overhead.md#small-project-overhead-156).
+
 - `sail --help` lists only the supported commands. `explain`, `baseline`,
   `compare`, `fragility`, `serve` and the team-cache subcommands of
   `sail cache` (`keygen`, `trust`, `publish`, `serve`, `connect`,
