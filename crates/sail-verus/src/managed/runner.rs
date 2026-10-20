@@ -526,9 +526,9 @@ fn resolve_program(program: &std::ffi::OsStr, workspace: &Path) -> Result<PathBu
 
 fn alias(original: &Path, path: &Path) -> Result<()> {
     // An alias that resolves to the original's own inode is that file, so no
-    // byte comparison could differ. Copies and stale links keep the original
-    // full content comparison and replacement.
-    if same_file(original, path) || path.is_file() && file_digest(path)? == file_digest(original)? {
+    // byte comparison could differ. Copies and stale links keep the full
+    // content comparison (of the bytes directly) and replacement.
+    if same_file(original, path) || path.is_file() && super::files::same_content(original, path)? {
         return Ok(());
     }
     let _ = std::fs::remove_file(path);
@@ -652,8 +652,14 @@ fn prepare(
     if !member.is_file() {
         std::fs::write(&member, []).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
     }
-    alias(&config.sail, &paths.cargo_alias)?;
-    alias(&config.sail, &paths.proxy_alias)?;
+    // The two aliases are independent; copies are compared concurrently.
+    let (cargo_alias, proxy_alias) = std::thread::scope(|scope| {
+        let cargo_alias = scope.spawn(|| alias(&config.sail, &paths.cargo_alias));
+        let proxy_alias = alias(&config.sail, &paths.proxy_alias);
+        (cargo_alias.join(), proxy_alias)
+    });
+    cargo_alias.unwrap_or_else(|_| alias(&config.sail, &paths.cargo_alias))?;
+    proxy_alias?;
     Ok((paths, ownership))
 }
 
