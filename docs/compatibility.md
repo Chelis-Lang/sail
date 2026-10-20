@@ -6,9 +6,10 @@ is validated against. Secondary pins are compatibility targets (ADR 0010),
 run locally with `SAIL_VERUS_RELEASE=<release>` (ADR 0013).
 
 **Sail's Verus.** Sail runs its own Verus, built from its fork
-(`engine/verus/fork.toml`, commit `9c0ca7e7`, rebased onto the primary pin
-`7d829946`; Linux and macOS runtimes are published and pinned, see
-[engine](../engine/verus/README.md) and [macOS engine](validation/macos-engine.md)), for every verification
+(`engine/verus/fork.toml`, commit `64baccbb`, rebased onto the primary pin
+`7d829946`; its Linux runtime is published and pinned and its macOS runtime
+is pending, see [engine](../engine/verus/README.md) and
+[macOS engine](validation/macos-engine.md)), for every verification
 ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). Stock releases
 are the conformance oracle: `sail-conformance run` compares Sail on its fork
 with plain stock Verus at the primary pin. Under a secondary pin the fork has

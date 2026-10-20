@@ -33,6 +33,12 @@ semantic versioning once the API is published.
   paths, not the recording host's `rust-src` copy (VI-0031). The new runtime's
   qualification is pending.
 
+- Diagnostics that print an imported span's stored text (for example an
+  extension impl with no matching standard-library impl) now read exactly as
+  stock's when Sail serves the shipped vstd: standard-library and registry
+  paths name this machine's files, and the printed `dbg!` location is
+  stock's (VI-0031, runtime `64baccbb`).
+
 - Run managed Cargo with the engine's pinned toolchain (currently `1.99.1`) when the
   caller made no toolchain choice, so the shipped vstd proof applies with a
   newer default Cargo ([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).

@@ -82,7 +82,7 @@ sail-VERSION-TARGET/
 
 `<variant>` is the engine's source-variant name: the pinned Verus commit
 followed by a hash of the toolchain, fork commit, host, source lock and vstd
-build (for example `7d829946231d6413a398f6e4160cdfe951261dad-4ed2dee08bc877ae`
+build (for example `7d829946231d6413a398f6e4160cdfe951261dad-5fcf72e8d6cc0786`
 on Linux). Users should not rename or move anything inside the directory.
 
 The bundled runtime is Sail's Verus: every verification Sail runs uses it,
