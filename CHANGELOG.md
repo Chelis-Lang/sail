@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- The shipped vstd proof also applies when the only Verus flag forwarded to
+  vstd is a raised `--rlimit N` (N at least the default 10), as Vest needs.
+  The release recorder now proves, for its own unit, that raising the limit
+  changes nothing but the limit (`units/<key>/rlimit.json`;
+  [ADR 0060](docs/decisions/0060-shipped-vstd-under-a-raised-rlimit.md),
+  proposed). Any other forwarded flag still verifies vstd again; use
+  `--fwd-verus-args-to roots` to keep flags off vstd.
+
 - Print one `note[SAIL3138]` when a release's preverified vstd proof does not
   apply to a new project, naming the reason, such as a wrapper or loader
   variable, extra toolchain components like `rustc-dev`, or vstd dependency
