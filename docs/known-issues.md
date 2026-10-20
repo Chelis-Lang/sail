@@ -34,6 +34,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   Public-profile Vest is 4.8% slower. See the
   [record](validation/cold-first-run.md).
 
+- **The preverified vstd is not used on a toolchain with `rustc-dev`** (#264).
+  On Rust 1.99.1 with `rustc-dev`, a traced fresh compile loads `rustc-dev`'s
+  own `librustc_driver` and `libLLVM` copies through the dynamic loader. It
+  also reads `liballocator_api2` and `libproc_macro_hack` during crate
+  lookup. These are bytes the proof was not built with, so the miss is kept.
+  `note[SAIL3138]` names the components; a minimal toolchain with `rust-src`
+  gets the proof.
+
 - **Instant revert has a narrow qualified profile and visible costs.** Final
   source `83128ad0` passes 72 fresh ordinary calls, genuine bundled Vest ABA and
   complete native default gates. It admits only the exact Linux/public alloc/std

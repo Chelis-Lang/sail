@@ -456,6 +456,57 @@ fn sysroot_identity(sysroot: &Path) -> Option<String> {
     Some(digest(&serde_json::to_vec(&portable).ok()?))
 }
 
+/// The rustup components besides the compiler, its standard library, Cargo
+/// and `rust-src` that installed libraries into the sysroot directories the
+/// identity binds (`rustc-dev`, for example). rustc can load them: the
+/// dynamic loader can take `rustc-dev`'s copy of `librustc_driver`, and crate
+/// lookup reads every library whose name begins with a sysroot crate's
+/// (`liballocator_api2` for `alloc`). So they stay bound, and a toolchain
+/// with them misses the shipped proof (#264); this names them for its note.
+fn extra_components(sysroot: &Path) -> Vec<String> {
+    let rustlib = sysroot.join("lib/rustlib");
+    let Ok(entries) = std::fs::read_dir(&rustlib) else {
+        return Vec::new();
+    };
+    let mut extra = Vec::new();
+    for entry in entries.flatten() {
+        let Some(component) = entry
+            .file_name()
+            .to_str()
+            .and_then(|name| name.strip_prefix("manifest-"))
+            .map(str::to_owned)
+        else {
+            continue;
+        };
+        if ["rustc-", "rust-std-", "cargo-"]
+            .iter()
+            .any(|core| component.starts_with(core) && !component.starts_with("rustc-dev"))
+            || component == "rust-src"
+        {
+            continue;
+        }
+        let installs_libraries = std::fs::read_to_string(entry.path()).is_ok_and(|text| {
+            text.lines().any(|line| {
+                line.strip_prefix("file:").is_some_and(|file| {
+                    let mut parts = file.split('/');
+                    // The directories `sysroot_identity` binds: `lib/` itself
+                    // and each `lib/rustlib/<target>/lib/`.
+                    matches!(
+                        (parts.next(), parts.next(), parts.next(), parts.next()),
+                        (Some("lib"), Some(_), None, _)
+                            | (Some("lib"), Some("rustlib"), Some(_), Some("lib"))
+                    )
+                })
+            })
+        });
+        if installs_libraries {
+            extra.push(component);
+        }
+    }
+    extra.sort();
+    extra
+}
+
 /// The identity a shipped build must have to be used with a runtime: its
 /// build manifest, actual installed compiler/sysroot bytes and virtual base.
 fn identity(root: &Path, virtual_base: &str) -> Option<String> {
@@ -728,6 +779,98 @@ pub(crate) fn plan(
             .0,
         compiler_source,
     })
+}
+
+/// Why an installed release's shipped vstd proof does not apply to this run's
+/// new target, when [`plan`] declined it (#238). It names the first of `plan`'s
+/// cheap refusals that holds. Otherwise the installed compiler, runtime or
+/// bundle identity differs from the one the proof was built with, which only
+/// a complete hash could tell apart, and this does not repeat it.
+pub(crate) fn plan_miss(
+    cargo_verus: &Path,
+    workspace: &Path,
+    cargo_args: &[String],
+    registry: Option<&Path>,
+    target: &Path,
+    metadata: &Value,
+) -> String {
+    let wrapped = [
+        "RUSTC_WRAPPER",
+        "RUSTC_WORKSPACE_WRAPPER",
+        "VERUS_CONTRIB_HOOKS_FILE",
+    ]
+    .iter()
+    .any(|name| std::env::var_os(name).is_some());
+    let reason = miss_reason(
+        wrapped,
+        portable_context(workspace, cargo_args),
+        registry,
+        loader_variables(),
+        target,
+    );
+    if reason == TOOLCHAIN_MISS
+        && let Ok(sysroot) = super::runner::verifier_sysroot(
+            &runtime_root(cargo_verus)
+                .unwrap_or_default()
+                .join("verus/source/target-verus/release/verus"),
+            Path::new("."),
+        )
+    {
+        let extra = extra_components(&sysroot);
+        if !extra.is_empty() {
+            return components_miss(&extra);
+        }
+    }
+    // The shipped closure's admission is cheap to repeat; the compiler and
+    // runtime identity is not, so it is the reason left when this holds.
+    match registry {
+        Some(registry)
+            if reason == TOOLCHAIN_MISS
+                && admission::Closure::resolve(metadata, registry).is_none() =>
+        {
+            CLOSURE_MISS.to_owned()
+        }
+        _ => reason.to_owned(),
+    }
+}
+
+fn components_miss(extra: &[String]) -> String {
+    format!(
+        "the pinned Rust toolchain also has {}, whose libraries rustc can load (install a separate toolchain without them, or `rustup component remove` them)",
+        extra.join(", ")
+    )
+}
+
+const TOOLCHAIN_MISS: &str =
+    "the installed Rust toolchain or Sail's Verus differs from the one the proof was built with";
+
+/// Also the reason when Cargo resolved vstd's closure differently.
+pub(crate) const CLOSURE_MISS: &str =
+    "vstd's dependency versions or build settings differ from the shipped build's";
+
+fn miss_reason(
+    wrapped: bool,
+    portable: bool,
+    registry: Option<&Path>,
+    loader: bool,
+    target: &Path,
+) -> &'static str {
+    if wrapped {
+        return "RUSTC_WRAPPER, RUSTC_WORKSPACE_WRAPPER or VERUS_CONTRIB_HOOKS_FILE is set";
+    }
+    if !portable {
+        return "a Cargo configuration file, `--config`, `-Z` or a RUSTFLAGS-style variable can change how dependencies compile";
+    }
+    let Some(registry) = registry else {
+        return "this project's vstd does not come from crates.io";
+    };
+    if loader {
+        return "an LD_ or DYLD_ variable is set";
+    }
+    if !plain_directory(registry) || !plain_directory(target) {
+        return "the Cargo home or target path contains characters the proof cannot name";
+    }
+    TOOLCHAIN_MISS
 }
 
 /// Completes a recording run: the manifest lists every recorded invocation.
@@ -2370,6 +2513,64 @@ fn copy_checked(from: &Path, to: &Path, file: &StoredFile) -> std::result::Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extra_components_name_only_those_installing_bound_libraries()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-components-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("lib/rustlib"))?;
+        let manifest = |component: &str, files: &[&str]| {
+            let text = files
+                .iter()
+                .fold(String::new(), |text, file| text + "file:" + file + "\n");
+            std::fs::write(root.join(format!("lib/rustlib/manifest-{component}")), text)
+        };
+        let target = "x86_64-unknown-linux-gnu";
+        manifest(
+            &format!("rustc-{target}"),
+            &["bin/rustc", "lib/librustc_driver-1.so"],
+        )?;
+        manifest(
+            &format!("rust-std-{target}"),
+            &["lib/rustlib/x86_64-unknown-linux-gnu/lib/libstd-1.rlib"],
+        )?;
+        manifest(
+            "rust-src",
+            &["lib/rustlib/src/rust/library/core/src/lib.rs"],
+        )?;
+        manifest(&format!("clippy-{target}"), &["bin/cargo-clippy"])?;
+        manifest(
+            &format!("llvm-tools-{target}"),
+            &["lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-objcopy"],
+        )?;
+        assert_eq!(extra_components(&root), Vec::<String>::new());
+        manifest(
+            &format!("rustc-dev-{target}"),
+            &["lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_driver-1.so"],
+        )?;
+        assert_eq!(extra_components(&root), [format!("rustc-dev-{target}")]);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn shipped_misses_name_the_first_refusal_that_holds() {
+        let registry = Path::new("/home/user/.cargo/registry/src/index.crates.io-1");
+        let target = Path::new("/tmp/target");
+        let reason = |wrapped, portable, registry, loader, target| {
+            miss_reason(wrapped, portable, registry, loader, target)
+        };
+        assert!(reason(true, false, None, true, target).starts_with("RUSTC_WRAPPER"));
+        assert!(reason(false, false, None, true, target).starts_with("a Cargo configuration"));
+        assert!(reason(false, true, None, true, target).contains("crates.io"));
+        assert!(reason(false, true, Some(registry), true, target).contains("LD_"));
+        assert!(
+            reason(false, true, Some(registry), false, Path::new("/tmp/a b"))
+                .contains("characters")
+        );
+        assert!(reason(false, true, Some(registry), false, target).contains("toolchain"));
+    }
 
     #[test]
     fn span_remap_names_local_standard_library_and_registry_sources() {
