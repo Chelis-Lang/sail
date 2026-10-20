@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- `sail --help` lists only the supported commands. `explain`, `baseline`,
+  `compare`, `fragility`, `serve` and the team-cache subcommands of
+  `sail cache` (`keygen`, `trust`, `publish`, `serve`, `connect`,
+  `disconnect`) still run. Their own help now starts with an experimental
+  note. `repair-check` stays listed, marked experimental. `sail verify --help`
+  no longer lists `--portfolio` or `--measure-fragility`. MCP's fragility
+  tool detects `sail fragility` with `sail help fragility`.
+
 - Release archives carry `LICENSE` and `THIRD-PARTY-NOTICES`. The notices
   cover Z3, Sail's Verus with its copies of Rust compiler crates, the crates
   compiled into the runtime, the shipped vstd proof and `sail`/`sail-z3`, and
