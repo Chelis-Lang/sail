@@ -268,3 +268,32 @@ ancestor direction, including a project checked out under the Sail cache,
 returns SAIL3112 for ordinary Cargo-Verus fallback without managed receipts.
 This is a conservative unsupported-configuration boundary, not an expansion
 of the input exclusions; the default external cache is unaffected.
+
+## Amendment (2026-10-20): build-script contracts after a Historical run
+
+A run whose workspace inputs change while it runs is Historical and records
+no receipt. A log redirected into the project (`sail verify > verify.log`)
+is enough. Until now such a run also withheld the compiler family's
+build-script export (ADR 0047's script contracts). The next run then found no
+export, treated every registry build script as unobserved, and ran
+`cargo clean -p` on all of them: proc-macro2, quote, verus_prettyplease and
+vstd. Cargo rebuilt nine crates, vstd was verified again and printed its
+results, where plain Cargo-Verus was a no-op. With the log written on every
+run this never ended (#259).
+
+A Historical run with exit code 0 and no error now publishes the export, but
+only when its changes left every script contract intact. That holds when every
+path whose content differs between the run's before and after snapshots:
+- lies inside the workspace;
+- lies outside every package that has a build script;
+- is not a path any recorded script declared.
+
+The records must all be observed (covered). Declared variables and declared
+paths are rechecked against each record when the export is published and
+again when the next run reads it, as before. A run with a changed module
+candidate (absence), an unknown currentness, or any other change keeps
+today's behaviour.
+
+The run itself stays Historical and records no receipt. The next unchanged
+run is Cargo's own no-op with the same output as plain Cargo-Verus. The
+output phase's `loop` checks this (`ci/test-output.sh`).

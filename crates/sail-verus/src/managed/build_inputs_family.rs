@@ -343,6 +343,79 @@ pub(in crate::managed) fn begin(
 /// runner admits either successful verification or its separately sealed full
 /// negative outcome; neither this export nor a negative outcome is a proof.
 /// Encoding/publication failure leaves no reusable family export.
+/// Whether a run whose inputs changed (Historical) left every build-script
+/// contract it observed intact, so it may still publish them (ADR 0046/0047
+/// amendment). Every path whose content differs between `before` and `after`
+/// must lie inside `workspace` and outside every build-script package, and
+/// must not be a recorded script's declared path. Declared variables are
+/// checked against the record when publishing. Anything else returns false,
+/// keeping the export unpublished.
+pub(in crate::managed) fn scripts_unchanged_by_run(
+    local: &Path,
+    data: &Value,
+    before: &std::collections::BTreeMap<std::path::PathBuf, String>,
+    after: &std::collections::BTreeMap<std::path::PathBuf, String>,
+    workspace: &Path,
+) -> bool {
+    let Some(records) = super::read::<Vec<BuildInput>>(local) else {
+        return false;
+    };
+    if records.is_empty() || records.iter().any(|record| !record.covered) {
+        return false;
+    }
+    let forms = |path: &Path| -> Vec<std::path::PathBuf> {
+        let mut forms = vec![path.to_owned()];
+        if let Ok(canonical) = path.canonicalize() {
+            forms.push(canonical);
+        }
+        forms
+    };
+    let workspace = forms(workspace);
+    let mut scripts = Vec::new();
+    for package in data["packages"].as_array().into_iter().flatten() {
+        let script = package["targets"].as_array().is_some_and(|targets| {
+            targets.iter().any(|t| {
+                t["kind"]
+                    .as_array()
+                    .is_some_and(|k| k.iter().any(|v| v == "custom-build"))
+            })
+        });
+        if script {
+            let Some(root) = package["manifest_path"]
+                .as_str()
+                .and_then(|manifest| Path::new(manifest).parent())
+            else {
+                return false;
+            };
+            scripts.extend(forms(root));
+        }
+    }
+    let declared: BTreeSet<std::path::PathBuf> = records
+        .iter()
+        .flat_map(|record| record.paths.iter().flat_map(|path| forms(path)))
+        .collect();
+    let changed = before
+        .iter()
+        .filter(|(path, digest)| after.get(*path) != Some(*digest))
+        .map(|(path, _)| path)
+        .chain(after.keys().filter(|path| !before.contains_key(*path)));
+    let mut any = false;
+    for path in changed {
+        any = true;
+        let path_forms = forms(path);
+        let inside = path_forms
+            .iter()
+            .any(|form| workspace.iter().any(|root| form.starts_with(root)));
+        let in_script = path_forms
+            .iter()
+            .any(|form| scripts.iter().any(|root| form.starts_with(root)));
+        if !inside || in_script || path_forms.iter().any(|form| declared.contains(form)) {
+            return false;
+        }
+    }
+    any
+}
+
 pub(in crate::managed) fn publish(
     path: &Path,
     compiler: &str,
@@ -472,6 +545,108 @@ mod tests {
             let _ = std::fs::remove_dir_all(&self.root);
         }
     }
+    /// A workspace with one member and a registry package with a build script
+    /// that declares a workspace file.
+    struct Run {
+        root: PathBuf,
+        workspace: PathBuf,
+        script: PathBuf,
+        declared: PathBuf,
+        local: PathBuf,
+        data: Value,
+    }
+    impl Run {
+        fn new(name: &str, covered: bool) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+            let root =
+                std::env::temp_dir().join(format!("sail-script-run-{name}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&root);
+            let workspace = root.join("ws");
+            let script = root.join("registry/pkg-1.0.0");
+            std::fs::create_dir_all(workspace.join("src"))?;
+            std::fs::create_dir_all(&script)?;
+            let declared = workspace.join("shared.txt");
+            let data = serde_json::json!({"packages":[
+                {"id":"member","name":"member","manifest_path":workspace.join("Cargo.toml"),
+                 "targets":[{"kind":["lib"]}]},
+                {"id":"pkg","name":"pkg","manifest_path":script.join("Cargo.toml"),
+                 "targets":[{"kind":["lib"]},{"kind":["custom-build"]}]}
+            ]});
+            let record = BuildInput {
+                package_id: "pkg".to_owned(),
+                package_name: "pkg".to_owned(),
+                manifest: script.join("Cargo.toml"),
+                paths: vec![declared.clone()],
+                env: BTreeMap::from([("PKG_CONFIG".to_owned(), None)]),
+                digest: "recorded".to_owned(),
+                covered,
+                output: None,
+            };
+            let local = root.join("context.json");
+            json(&local, &[record])?;
+            Ok(Self {
+                root,
+                workspace,
+                script,
+                declared,
+                local,
+                data,
+            })
+        }
+        fn unchanged(&self, changed: &[PathBuf]) -> bool {
+            let before: BTreeMap<PathBuf, String> = [
+                self.workspace.join("src/lib.rs"),
+                self.declared.clone(),
+                self.script.join("build.rs"),
+            ]
+            .into_iter()
+            .map(|path| (path, "before".to_owned()))
+            .collect();
+            let mut after = before.clone();
+            for path in changed {
+                after.insert(path.clone(), "after".to_owned());
+            }
+            scripts_unchanged_by_run(&self.local, &self.data, &before, &after, &self.workspace)
+        }
+    }
+    impl Drop for Run {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[test]
+    fn historical_run_publishes_only_when_no_script_input_changed() -> TestResult {
+        let run = Run::new("changes", true)?;
+        let log = run.workspace.join("verify.log");
+        // A log written into the workspace, or a member's own source, leaves
+        // every script contract intact.
+        assert!(run.unchanged(std::slice::from_ref(&log)));
+        assert!(run.unchanged(&[run.workspace.join("src/lib.rs")]));
+        // Changed: a script's declared path, any file of a script package,
+        // anything outside the workspace (registry sources included).
+        assert!(!run.unchanged(&[log.clone(), run.declared.clone()]));
+        assert!(!run.unchanged(&[run.script.join("build.rs")]));
+        assert!(!run.unchanged(&[run.script.join("src/lib.rs")]));
+        assert!(!run.unchanged(&[run.root.join("registry/other-1.0.0/src/lib.rs")]));
+        assert!(!run.unchanged(&[run.root.join("elsewhere.txt")]));
+        // Nothing changed: not a Historical run this decides for.
+        assert!(!run.unchanged(&[]));
+        Ok(())
+    }
+
+    #[test]
+    fn historical_run_never_publishes_unobserved_or_missing_contracts() -> TestResult {
+        let uncovered = Run::new("uncovered", false)?;
+        assert!(!uncovered.unchanged(&[uncovered.workspace.join("verify.log")]));
+        let missing = Run::new("missing", true)?;
+        std::fs::remove_file(&missing.local)?;
+        assert!(!missing.unchanged(&[missing.workspace.join("verify.log")]));
+        let mut nameless = Run::new("nameless", true)?;
+        nameless.data["packages"][1]["manifest_path"] = Value::Null;
+        assert!(!nameless.unchanged(&[nameless.workspace.join("verify.log")]));
+        Ok(())
+    }
+
     #[test]
     fn selector_reuses_script_contract_but_consumes_generation_before_any_mutation() -> TestResult {
         let f = Fixture::new("selector")?;
