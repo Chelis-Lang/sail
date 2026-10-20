@@ -396,6 +396,45 @@ that row mostly measures the daemon's overhead.
 Reproduce with `scripts/perf-agents.sh vest 4 3` (about 15 minutes on Linux)
 or `scripts/perf-agents.sh demo 4 3`.
 
+## Release performance matrix
+
+`scripts/perf-matrix.py` measures every release scenario against stock in
+one run: an installed release archive's `sail verify` against plain `cargo
+verus verify`, in at least three paired rounds whose order rotates (stock
+first in odd rounds). Every arm of every round starts from fresh copies and
+an empty Sail cache.
+
+| Project | Scenarios | Bar |
+|---|---|---|
+| Small (the `sail new --lib` template) | first use: fresh Cargo home and cache, `new` + `verify` (`cold-first`); `unchanged`; `small-edit`; `revert`; `fresh-project` after the first; `worktree` (a new `git worktree`) | `cold-first` and `fresh-project` at least 2× faster; others no more than 5% (0.1 s sub-second) slower |
+| vest, ironkv, capybarakv, anvil, verismo (`scripts/perf-real.sh` definitions) | `cold`, `unchanged`, `module-edit` (a body edit in one module), `spec-wide`; vest also `worktree` | `module-edit` at least 1.3× faster; others no more than 5% slower |
+
+Every sample goes to `samples.jsonl` as it finishes, failures and Sail
+refusals included. A sample passes when its exit code and normalized output
+(verification summaries, diagnostic headlines and locations) equal its
+round's stock sample. When Cargo answers a stock rerun without Verus, Sail
+may match that no-op or the copy's previous verifying output. A row passes only when
+all its samples exist and pass and its medians meet the bar; the run writes
+`matrix.md` with medians, ranges and ratios.
+
+```sh
+scripts/perf-matrix.py list                       # scenarios and bars
+scripts/perf-matrix.py run --out ~/pm --rounds 3 \
+  --sail-install ~/.local/opt/sail-VERSION-TARGET \
+  --stock-verus ~/.cache/sail/verus/0.2026.10.18.7d82994/verus-x86-linux \
+  --machine "EC2 c7i.8xlarge, us-east-1, idle"
+scripts/perf-matrix.py report ~/pm                # the table again
+```
+
+It needs the setup below (the pinned Rust toolchain with `rust-src`, the
+stock baseline, and `target/release/sail-conformance` for the corpus), and
+runs on Linux and on an EC2 Mac (`--stock-verus` then names
+`verus-arm64-macos`). Keep `--out` short: Sail's daemon socket lives under
+it. `--project` and `--scenario` select a subset, and `--allow-fewer-rounds`
+allows a trial with fewer than three rounds. `python3
+scripts/test-perf-matrix.py` checks the bars, normalization, pairing and
+report with stand-in tools.
+
 ## Running the scripts
 
 `scripts/perf-loops.sh` and `scripts/perf-agents.sh` need `sail` and
