@@ -803,6 +803,92 @@ mod tests {
     }
 
     #[test]
+    fn running_marks_cover_every_dependent_visible_output_and_end_with_the_driver()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let args: Vec<OsString> = [
+            "--crate-name",
+            "p",
+            "--out-dir",
+            "/t/deps",
+            "-C",
+            "extra-filename=-1",
+        ]
+        .iter()
+        .map(OsString::from)
+        .collect();
+        let outputs = unit_outputs(&args).ok_or("outputs")?;
+        for extension in ["rmeta", "rlib", "vir", std::env::consts::DLL_EXTENSION] {
+            assert!(outputs.contains(&PathBuf::from(format!("/t/deps/libp-1.{extension}"))));
+        }
+        // Without an extra filename the unit is not one Cargo names: no marks.
+        assert!(unit_outputs(&args[..4]).is_none());
+        // Dropping the driver's guard removes its marks, so a dependent stops
+        // waiting as soon as the producer's driver ends, certified or not.
+        let root = scratch("marks")?;
+        let output = root.join("deps/libp-1.rmeta");
+        std::fs::write(running_at(&root, &output), b"run")?;
+        assert!(running(&root, "run", &output));
+        assert!(!running(&root, "other", &output));
+        drop(Running {
+            marks: vec![running_at(&root, &output)],
+        });
+        assert!(!running(&root, "run", &output));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn a_dependent_of_a_failed_producer_is_never_certified()
+    -> Result<(), Box<dyn std::error::Error>> {
+        // A dependent copied P's metadata while P ran. P then fails (no
+        // certificate) or certifies other bytes: the dependent's finish waits
+        // only until P's driver ends and then refuses; nothing is reused.
+        let root = scratch("failed")?;
+        let output = root.join("deps/libp-1.rmeta");
+        std::fs::create_dir_all(root.join("deps"))?;
+        std::fs::write(&output, b"metadata copied mid-build")?;
+        let copied = read_content(&output, 1024).ok_or("copied")?;
+        let artifacts: BTreeSet<PathBuf> = [output.clone()].into();
+        std::fs::write(running_at(&root, &output), b"run")?;
+        let mark = running_at(&root, &output);
+        let (rewritten, record) = (output.clone(), record_at(&root, &output));
+        let producer = std::thread::spawn(move || -> std::io::Result<()> {
+            std::thread::sleep(Duration::from_millis(50));
+            // P rewrites its metadata, certifies those bytes and ends.
+            std::fs::write(&rewritten, b"metadata P finally wrote!")?;
+            std::fs::write(&record, b"{}")?;
+            std::fs::remove_file(mark)
+        });
+        let start = Instant::now();
+        // The producer settled with a certificate, so the wait succeeds...
+        assert!(ready_in(&root, "run", &artifacts, Duration::from_secs(10)));
+        assert!(start.elapsed() < Duration::from_secs(2));
+        assert!(producer.join().is_ok_and(|result| result.is_ok()));
+        // ...but the certified bytes are not the ones the dependent copied.
+        let final_body = read_content(&output, 1024).ok_or("final")?;
+        let record = Record {
+            version: 1,
+            context: "context".to_owned(),
+            compiler: "compiler".to_owned(),
+            policy: "policy".to_owned(),
+            establishing_run: "run".to_owned(),
+            key: "key".to_owned(),
+            native: true,
+            shipped: None,
+            official: true,
+            crate_name: "p".to_owned(),
+            pid: 1,
+            document: root.join("document"),
+            document_content: final_body.clone(),
+            output: output.clone(),
+            body: final_body,
+        };
+        assert!(!certifies(&record, &output, &copied));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn final_native_graph_waits_for_later_rlib_record() -> Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!(
             "sail-retained-producer-ready-{}",
