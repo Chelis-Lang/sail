@@ -93,12 +93,12 @@ commit = "11af01ddaef76cceded03517cd48764adb9d35b1"
 license = "MIT"
 tier = "standard"
 verus_version_compat = "compatible"
-compat_evidence = "3,237 verified, 0 errors in 1.9 min, plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3)"
+compat_evidence = "3,236 verified, 1 error: rlimit exceeded in `parse_cbor_with_child` (vest_lib/src/cbor/format.rs:471), the same in every plain and sail run, plain Verus 0.2026.10.18.7d82994, 2026-10-19, Linux x86-64 (EC2 c7i.8xlarge); 3,237 verified, 0 errors with plain Verus 0.2026.10.04 (2026-10-08, macOS arm64); passes with --rlimit 100 (VI-0032)"
 build = "cargo-verus"
 cargo_verus_command = "focus"
 crate_roots = ["vest_lib"]
 patch_verus_deps = true
-expected = "verified"
+expected = "1 error: rlimit exceeded in vest_lib/src/cbor/format.rs `parse_cbor_with_child`"
 
 [[project]]
 name = "vest-generated"
