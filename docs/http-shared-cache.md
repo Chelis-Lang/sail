@@ -1,9 +1,9 @@
 # Optional team cache over HTTP
 
 **Experimental.** The team-cache commands (`sail cache keygen`, `trust`,
-`publish`, `serve`, `connect` and `disconnect`) are not listed by
-`sail --help` or `sail cache --help` and may change in any release;
-`sail help cache serve` shows their usage.
+`publish`, `serve`, `connect` and `disconnect`) may change in any release.
+`sail --help` and `sail cache --help` do not list them; any of them with
+`--help` (for example `sail cache keygen --help`) prints their usage.
 
 Local `sail verify` remains automatic. A single developer needs no server,
 Docker installation, signing key, account, credentials or remote configuration.

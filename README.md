@@ -3,10 +3,10 @@
 Sail (S.A.I.L., the Satisfiability Analysis & Inference Layer) makes
 [Verus](https://github.com/verus-lang/verus) verification loops faster for
 developers and coding agents, without changing what Verus tells you. The gain
-is largest on solver-heavy projects and on a new project's first run, which
-starts from a preverified vstd. Small edits and unchanged reruns currently
-cost a little more than plain Verus ([Limits](#limits),
-[performance](docs/performance.md)).
+is largest on solver-heavy projects. A preverified vstd for a new project's
+first run is measured on the 0.1.0 candidate but not yet accepted. Small edits
+and unchanged reruns currently cost a little more than plain Verus
+([Limits](#limits), [performance](docs/performance.md)).
 
 `sail verify` runs `cargo verus verify` with the same arguments and puts a
 cache in front of the Z3 solver that Verus uses. Sail ships its own Verus,
@@ -92,7 +92,8 @@ Without `rust-src`, Sail runs your default Cargo and its JSON result notes
 ([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
 
 Without `rust-src` everything still works; only the preverified vstd is
-skipped. See
+skipped. The proof-bundle release path is still unqualified: its measured
+first-use gain (below) is not accepted yet. See
 [release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use).
 
 **From source (contributors).** With rustup, a C toolchain and `git`:
@@ -143,19 +144,22 @@ previously verified revision, its qualified Linux/dependency-profile scope and
 the measured time and storage tradeoffs.
 
 `sail verify` takes the same arguments as `cargo verus verify` and prints the
-same verdicts, diagnostics and exit code. Two things can differ in the text:
-Cargo's parallel `Compiling` lines can come out in another order, and a few
-arguments Sail cannot bind to a proof receipt run without proof reuse, with
-one note line
+same verdicts, diagnostics and exit code. Two things can differ in the text
+(see also [known issues](docs/known-issues.md)): Cargo's parallel `Compiling`
+lines can come out in another order, and a few arguments Sail cannot bind to
+a proof receipt run without proof reuse, with one note line
 ([details](docs/workspace-verification.md#setups-verified-without-proof-reuse)).
 It builds in its own Cargo target under
 the Sail cache and never touches your `target/`.
 
-A new project or worktree starts from the vstd proof the release ships, when
-the pinned Rust toolchain with `rust-src` is installed (see [Install](#install))
-and the project uses the vstd `sail new` writes. On a fresh Linux host the first
-`sail new` plus `sail verify` takes about 16 s against 31 s for plain Verus
-(1.9×, EC2 c7i.8xlarge); on Apple silicon, 10 s against 17 s (1.7×). Your project's other
+With a release that ships a preverified vstd proof, a new project or worktree
+starts from it, when the pinned Rust toolchain with `rust-src` is installed
+(see [Install](#install)) and the project uses the vstd `sail new` writes. On
+the 0.1.0 candidate this is measured but not yet accepted
+([record](docs/validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)). On Linux (EC2 c7i.8xlarge), the first `sail new` plus
+`sail verify` took 15.3 s against 30.4 s for plain Verus, about 2×. On Apple
+silicon, verification alone (project creation not timed) took 10.2 s against
+17.3 s, 1.7×. Your project's other
 compiled dependencies are still built once per project and worktree: sharing
 them between projects is disabled until it is sound
 ([ADR 0053](docs/decisions/0053-disable-unqualified-native-store.md)).
@@ -238,11 +242,15 @@ experimental. See [MCP setup and tools](docs/mcp.md).
     as fast as plain Verus, because the solver re-runs each changed
     module's earlier queries
     ([real-project report](docs/reports/2026-10-15-real-project-performance.md));
-  - small projects currently cost 0.13–0.26 s more per run than plain Verus,
-    edits and unchanged reruns alike, for Sail's input checks, receipts and
-    complete reports. That overhead is being reduced;
-  - a new project's first run is about 1.9× faster (a 32-vCPU Linux host)
-    and 1.7× on Apple silicon (above).
+  - small projects currently cost more per run than plain Verus, for Sail's
+    input checks, receipts and complete reports. On Apple silicon, an
+    unchanged rerun takes 0.13 s more (0.30 s against 0.17 s) and adding one
+    function 0.26 s more (0.69 s against 0.43 s)
+    ([record](docs/validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)). On Linux the small-edit overhead is currently larger;
+    it is being reduced ([#156](https://github.com/Chelis-Lang/sail/issues/156));
+  - with the candidate's preverified vstd, a new project's first run was
+    about 2× faster on Linux and 1.7× on Apple silicon (above; not yet
+    accepted).
 - **macOS.** Receipt reuse works on Linux and macOS. On macOS a Cargo
   configuration file created and deleted again during a single run is not
   detected; see [freshness](docs/freshness.md#what-these-checks-do-not-catch).
