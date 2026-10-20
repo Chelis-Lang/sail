@@ -379,7 +379,12 @@ Verus toolchain must not have `rust-src`
 the absolute paths of their dependency sources (panic locations) and vstd.vir
 those of vstd's, so set `RUSTUP_HOME`, `CARGO_HOME` and `SAIL_CACHE_DIR` to
 directories outside the home directory (for example under `/tmp`) and check
-the packed archive's strings for `/Users/` before publishing it:
+the packed archive's strings for `/Users/` before publishing it.
+`scripts/build-macos-runtime.sh build` does all of this, plus the fork's
+library and regression tests and the determinism check, and packs the
+archive; after publishing, `scripts/build-macos-runtime.sh published` fetches
+the pinned runtime anonymously and runs the conformance and `cargo verus new`
+checks. The steps it runs:
 
 ```sh
 cargo xtask build-verus-engine       # also builds and verifies vstd
