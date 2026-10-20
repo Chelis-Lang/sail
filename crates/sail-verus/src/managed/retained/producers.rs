@@ -104,7 +104,7 @@ pub(super) fn established(plan: &Plan, context: &str, graph: &Snapshot) -> bool 
 
 /// Whether `record` certifies the body a graph copied from `path`: the same
 /// output, the same bytes, and the original still holding exactly them. The
-/// copy may have been taken before its producer finished (ADR 0060); this
+/// copy may have been taken before its producer finished (ADR 0061); this
 /// complete read after the consumer's compiler is what binds the two.
 fn certifies(record: &Record, path: &Path, content: &Content) -> bool {
     record.output == path
@@ -571,7 +571,7 @@ impl Native {
         // Cargo starts this unit once its dependencies' metadata exists, as
         // it would without Sail. The compiler reads only private copies of
         // what is present now; whether every copied body is a certified
-        // producer output is decided after it finishes (ADR 0060).
+        // producer output is decided after it finishes (ADR 0061).
         let graph = driver::publish_graph(
             &plan.root,
             Snapshot::capture_pipelined(&plan.target, &directory.join("graph"), args)?,

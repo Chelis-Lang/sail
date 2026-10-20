@@ -1,4 +1,4 @@
-# 0060: Certify native units after their compile
+# 0061: Certify native units after their compile
 
 - **Status:** proposed (prototype on `perf/pipelined-admission`; not selected)
 - **Date:** 2026-10-20

@@ -423,7 +423,7 @@ impl Snapshot {
     /// the private copies and its crate lookup never descends into them.
     /// Every regular artifact present now is copied and verified as in a
     /// capture; any other entry kind still refuses. The caller certifies the
-    /// copied bodies only after its compiler has finished (ADR 0060).
+    /// copied bodies only after its compiler has finished (ADR 0061).
     pub(super) fn capture_pipelined(
         owned_target: &Path,
         root: &Path,
