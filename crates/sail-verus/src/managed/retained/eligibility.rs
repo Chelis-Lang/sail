@@ -320,13 +320,17 @@ impl Closure {
         let Some(policy) = self.authority.policy() else {
             return false;
         };
+        let packages: Vec<_> = self.directories.iter().collect();
+        // Each package's complete source tree is checked, several at once.
         self.directories.keys().eq(policy.packages.keys())
-            && self.directories.iter().all(|(key, path)| {
+            && crate::parallel::in_order(&packages, |&(key, path)| {
                 policy
                     .packages
                     .get(key)
                     .is_some_and(|expected| check_package(path, expected))
             })
+            .into_iter()
+            .all(|checked| checked)
     }
 
     /// Actual Cargo package identity and feature flags must agree too. The

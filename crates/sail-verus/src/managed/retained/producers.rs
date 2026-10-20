@@ -10,7 +10,7 @@ use super::super::{
 };
 use super::{Plan, archive, compiler, driver, native};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
@@ -61,7 +61,9 @@ pub(super) fn has_shipped_producer(plan: &Plan, graph: &Snapshot) -> bool {
 /// A full new snapshot is taken after waiting, because pipelined metadata can
 /// precede its producer's final rlib.
 pub(super) fn established(plan: &Plan, context: &str, graph: &Snapshot) -> bool {
-    graph.original_inputs().iter().all(|(path, content)| {
+    // Every input is checked in full, several at once.
+    let inputs: Vec<_> = graph.original_inputs().iter().collect();
+    crate::parallel::in_order(&inputs, |&(path, content)| {
         let Some(record): Option<Record> = receipts::read(&record_path(plan, path)) else {
             return false;
         };
@@ -95,6 +97,8 @@ pub(super) fn established(plan: &Plan, context: &str, graph: &Snapshot) -> bool 
                 })
             }
     })
+    .into_iter()
+    .all(|established| established)
 }
 
 /// Import a genuinely served release proof, preserving its distinct authority.
@@ -227,11 +231,15 @@ pub(super) fn named_externs(plan: &Plan, args: &[OsString]) -> bool {
 }
 
 pub(super) fn ready(plan: &Plan, graph: &Snapshot) -> bool {
+    ready_for(plan, &graph.original_inputs().keys().cloned().collect())
+}
+
+/// Waits briefly for every artifact's successful producer certificate.
+pub(super) fn ready_for(plan: &Plan, artifacts: &BTreeSet<PathBuf>) -> bool {
     await_ready(
         || {
-            graph
-                .original_inputs()
-                .keys()
+            artifacts
+                .iter()
                 .all(|path| record_path(plan, path).is_file())
         },
         Duration::from_secs(2),
@@ -466,11 +474,13 @@ impl Native {
             .sidecars
             .join(format!("retained-native-{key}-{}", std::process::id()));
         std::fs::create_dir_all(&directory).ok()?;
-        let first = Snapshot::capture_ready(&plan.target, &directory.join("first"), args)?;
-        if !ready(plan, &first) {
+        // Cargo may start this unit once its dependencies' metadata exists.
+        // Wait for the producers of every artifact present now; the complete
+        // graph is captured only after that.
+        let first = Snapshot::artifacts_ready(&plan.target, args)?;
+        if !ready_for(plan, &first) {
             return None;
         }
-        drop(first);
         let graph = driver::publish_graph(
             &plan.root,
             Snapshot::capture_ready(&plan.target, &directory.join("graph"), args)?,
