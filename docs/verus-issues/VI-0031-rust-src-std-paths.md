@@ -5,8 +5,7 @@
   behaves the same.
 - Status: Rust behaviour that Verus inherits, reproduced; Sail's runtime build
   avoids it, and runtime `64baccbb` (pinned) fixes the resulting diagnostic
-  difference for the shipped vstd (byte comparison on Linux; the macOS
-  repeat is pending). No upstream issue filed.
+  difference for the shipped vstd (byte comparison on Linux and macOS). No upstream issue filed.
 - Reproduction: [one external type specification](../../corpus/repros/rust-src-std-paths/README.md).
 
 The standard library's source spans have rustc's virtual path
