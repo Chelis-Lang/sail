@@ -241,6 +241,10 @@ incremental reports.
 
 ## Evidence from completed jobs
 
+`sail jobs` is supported. `sail explain`, `sail baseline` and `sail compare`
+are experimental: `sail --help` does not list them, and they may change in
+any release.
+
 ```sh
 sail jobs events JOB [--stream ID] [--after N] [--follow] [--output jsonl|json]
 sail explain JOB --package-id ID --target NAME --kind lib|bin --function F [--obligation O] [--output json]
