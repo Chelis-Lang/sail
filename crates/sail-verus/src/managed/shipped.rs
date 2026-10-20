@@ -262,6 +262,11 @@ struct Manifest {
     virtual_base: String,
     /// Recorded invocations: key to `<crate> <package>`.
     units: BTreeMap<String, String>,
+    /// The recording sysroot's [`sysroot_shape`], which lets a consumer whose
+    /// sysroot differs refuse the proof before hashing it. Absent in bundles
+    /// recorded before #286; those are decided by the complete identity alone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    sysroot_shape: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -412,6 +417,34 @@ fn runtime_root(cargo_verus: &Path) -> Option<PathBuf> {
 /// and target libraries), including target libraries' nested linker inputs.
 /// Unreadable files and unsupported filesystem entries decline reuse.
 fn sysroot_identity(sysroot: &Path) -> Option<String> {
+    // Several files at once; any unreadable one still declines reuse.
+    let inputs: Vec<_> = sysroot_inputs(sysroot)?.into_iter().collect();
+    let hashes = crate::parallel::in_order(&inputs, |(_, path)| sha256_file(path));
+    let portable = inputs
+        .into_iter()
+        .zip(hashes)
+        .map(|((relative, _), hash)| Some((relative, hash?)))
+        .collect::<Option<BTreeMap<_, _>>>()?;
+    Some(digest(&serde_json::to_vec(&portable).ok()?))
+}
+
+/// The portable name and size of every input [`sysroot_identity`] hashes,
+/// without reading any of them (#286). Sizes are part of what that identity
+/// binds, so two sysroots with different shapes never share an identity:
+/// a shape that differs from the recorded one refuses the shipped proof
+/// exactly as the complete hash would, before reading about a gigabyte of
+/// libraries. A matching shape proves nothing; the complete hash still
+/// decides.
+fn sysroot_shape(sysroot: &Path) -> Option<String> {
+    let mut shape = BTreeMap::new();
+    for (relative, path) in sysroot_inputs(sysroot)? {
+        shape.insert(relative, std::fs::metadata(&path).ok()?.len());
+    }
+    Some(digest(&serde_json::to_vec(&shape).ok()?))
+}
+
+/// Every input of [`sysroot_identity`], keyed by its sysroot-relative name.
+fn sysroot_inputs(sysroot: &Path) -> Option<BTreeMap<String, PathBuf>> {
     fn files(directory: &Path, out: &mut Vec<PathBuf>, recursive: bool) -> Option<()> {
         for entry in std::fs::read_dir(directory).ok()? {
             let entry = entry.ok()?;
@@ -448,12 +481,10 @@ fn sysroot_identity(sysroot: &Path) -> Option<String> {
             _ => return None,
         }
     }
-    let mut portable = BTreeMap::new();
-    for path in inputs {
-        let relative = path.strip_prefix(sysroot).ok()?.to_str()?.to_owned();
-        portable.insert(relative, sha256_file(&path)?);
-    }
-    Some(digest(&serde_json::to_vec(&portable).ok()?))
+    inputs
+        .into_iter()
+        .map(|path| Some((path.strip_prefix(sysroot).ok()?.to_str()?.to_owned(), path)))
+        .collect()
 }
 
 /// The rustup components besides the compiler, its standard library, Cargo
@@ -507,19 +538,28 @@ fn extra_components(sysroot: &Path) -> Vec<String> {
     extra
 }
 
-/// The identity a shipped build must have to be used with a runtime: its
-/// build manifest, actual installed compiler/sysroot bytes and virtual base.
-fn identity(root: &Path, virtual_base: &str) -> Option<String> {
-    // Without rustup the launcher may load another system's compiler
-    // libraries. That configuration cannot establish this portable binding.
+/// The sysroot of the compiler the runtime at `root` runs. Without rustup
+/// the launcher may load another system's compiler libraries. That
+/// configuration cannot establish this portable binding.
+fn compiler_sysroot(root: &Path) -> Option<PathBuf> {
     if std::env::var_os("VERUS_USE_RUSTUP").is_some_and(|value| value == "0") {
         return None;
     }
-    let manifest = std::fs::read(root.join(crate::source_build::MANIFEST)).ok()?;
-    let runtime = crate::source_build::artifact_hashes(root).ok()?;
     let wrapper = root.join("verus/source/target-verus/release/verus");
-    let sysroot = super::runner::verifier_sysroot(&wrapper, Path::new(".")).ok()?;
-    let compiler = sysroot_identity(&sysroot)?;
+    super::runner::verifier_sysroot(&wrapper, Path::new(".")).ok()
+}
+
+/// The identity a shipped build must have to be used with a runtime: its
+/// build manifest, actual installed compiler/sysroot bytes and virtual base.
+fn identity_at(
+    root: &Path,
+    sysroot: &Path,
+    virtual_base: &str,
+    digests: &crate::source_build::RunDigests,
+) -> Option<String> {
+    let manifest = std::fs::read(root.join(crate::source_build::MANIFEST)).ok()?;
+    let runtime = digests.of(root)?;
+    let compiler = sysroot_identity(sysroot)?;
     Some(digest(
         format!(
             "{KIND}-v{SCHEMA}\n{}\n{}\n{virtual_base}\n{compiler}\n",
@@ -528,6 +568,17 @@ fn identity(root: &Path, virtual_base: &str) -> Option<String> {
         )
         .as_bytes(),
     ))
+}
+
+/// Whether `sysroot` can still have the identity `manifest` was recorded
+/// with: false only when its recorded sysroot shape differs from this one
+/// ([`sysroot_shape`]). A bundle recorded without a shape, or a shape that
+/// matches, leaves the decision to the complete identity.
+fn shape_admits(manifest: &Manifest, sysroot: &Path) -> bool {
+    manifest
+        .sysroot_shape
+        .as_ref()
+        .is_none_or(|expected| sysroot_shape(sysroot).as_ref() == Some(expected))
 }
 
 /// The shipped build beside the running `sail` (`<release>/deps/<variant>`)
@@ -656,8 +707,17 @@ pub fn new_project_lockfile(cargo_verus: &Path, name: &str) -> Option<String> {
     let virtual_base = virtual_base()?;
     let root = runtime_root(cargo_verus)?;
     // An ordinary install without a bundle needs no shipped-input probe.
-    read_manifest(&bundle_dir(root.file_name()?)?)?;
-    let identity = identity(&root, &virtual_base)?;
+    let manifest = read_manifest(&bundle_dir(root.file_name()?)?)?;
+    let sysroot = compiler_sysroot(&root)?;
+    if !shape_admits(&manifest, &sysroot) {
+        return None;
+    }
+    let identity = identity_at(
+        &root,
+        &sysroot,
+        &virtual_base,
+        &crate::source_build::RunDigests::default(),
+    )?;
     let (bundle, _) = accepted_bundle(&root, &identity, &virtual_base)?;
     let lock = std::fs::read_to_string(bundle.join(LOCKFILE)).ok()?;
     rename_root(&lock, RECORD_PACKAGE, name)
@@ -718,6 +778,7 @@ pub(crate) fn plan(
     workspace: &Path,
     cargo_args: &[String],
     metadata: &Value,
+    digests: &crate::source_build::RunDigests,
 ) -> Option<Plan> {
     let research = research_enabled();
     if !research && !has_adjacent_bundle(cargo_verus) {
@@ -757,10 +818,21 @@ pub(crate) fn plan(
         return None;
     }
     let root = runtime_root(cargo_verus)?;
-    if recording.is_none() && local.is_none() {
-        read_manifest(&bundle_dir(root.file_name()?)?)?;
+    let recorded = if recording.is_none() && local.is_none() {
+        Some(read_manifest(&bundle_dir(root.file_name()?)?)?)
+    } else {
+        None
+    };
+    let sysroot = compiler_sysroot(&root)?;
+    // A sysroot whose shape already differs from the recorded one cannot have
+    // the bundle's identity: refuse before hashing it (#286).
+    if recorded
+        .as_ref()
+        .is_some_and(|manifest| !shape_admits(manifest, &sysroot))
+    {
+        return None;
     }
-    let identity = identity(&root, &virtual_base)?;
+    let identity = identity_at(&root, &sysroot, &virtual_base, digests)?;
     let (mode, release) = if let Some(out) = local {
         (
             Mode::MachineLocal {
@@ -790,11 +862,6 @@ pub(crate) fn plan(
     let compiler_source = if matches!(mode, Mode::MachineLocal { .. }) {
         None
     } else {
-        let sysroot = super::runner::verifier_sysroot(
-            &root.join("verus/source/target-verus/release/verus"),
-            Path::new("."),
-        )
-        .ok()?;
         Some(CompilerSource::capture(
             &sysroot,
             &virtual_base,
@@ -958,9 +1025,18 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
             "no verified registry dependency was recorded".to_owned(),
         ));
     }
-    let runtime = runtime_root(cargo_verus)
+    let root = runtime_root(cargo_verus);
+    let runtime = root
+        .as_ref()
         .and_then(|root| root.file_name().map(|n| n.to_string_lossy().into_owned()))
         .unwrap_or_default();
+    // The shape of the sysroot the plan's identity hashed (#286).
+    let sysroot_shape = root
+        .as_deref()
+        .and_then(compiler_sysroot)
+        .as_deref()
+        .and_then(sysroot_shape)
+        .ok_or_else(|| failed("cannot read the recording sysroot's shape".to_owned()))?;
     let manifest = Manifest {
         schema: SCHEMA,
         kind: KIND.to_owned(),
@@ -968,6 +1044,7 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
         runtime,
         virtual_base: plan.virtual_base.clone(),
         units,
+        sysroot_shape: Some(sysroot_shape),
     };
     std::fs::write(
         out.join(MANIFEST),
@@ -3064,6 +3141,7 @@ mod tests {
             runtime: "variant".into(),
             virtual_base: call.virtual_base.clone(),
             units: BTreeMap::new(),
+            sysroot_shape: None,
         };
         assert!(ordinary_serve(&call, &adjacent, &manifest));
         assert!(!ordinary_serve(&call, &root.join("other"), &manifest));
@@ -3896,7 +3974,61 @@ mod tests {
             let path = b.join("lib/rustlib/host/lib/dangling.rlib");
             std::os::unix::fs::symlink("absent", path)?;
             assert!(sysroot_identity(&b).is_none());
+            assert!(sysroot_shape(&b).is_none());
         }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    /// The shape refuses only sysroots the complete identity refuses too: an
+    /// added, removed or resized library changes both, while equal-size bytes
+    /// keep the shape and are left to the identity (#286).
+    #[test]
+    fn sysroot_shape_refuses_only_what_the_identity_refuses() -> TestResult {
+        let root = std::env::temp_dir().join(format!("sail-shipped-shape-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (a, b) = (root.join("machine-a"), root.join("machine-b"));
+        for machine in [&a, &b] {
+            for path in ["bin/rustc", "bin/cargo", "lib/rustlib/host/lib/libstd.rlib"] {
+                let path = machine.join(path);
+                std::fs::create_dir_all(path.parent().ok_or("no parent")?)?;
+                std::fs::write(path, b"matching toolchain bytes")?;
+            }
+        }
+        let recorded = |sysroot: &Path| -> std::result::Result<Manifest, &'static str> {
+            Ok(Manifest {
+                schema: SCHEMA,
+                kind: KIND.into(),
+                identity: String::new(),
+                runtime: String::new(),
+                virtual_base: String::new(),
+                units: BTreeMap::new(),
+                sysroot_shape: Some(sysroot_shape(sysroot).ok_or("no shape")?),
+            })
+        };
+        let manifest = recorded(&a)?;
+        assert!(shape_admits(&manifest, &b));
+        // Same names and sizes, other bytes: admitted by the shape, refused
+        // by the identity.
+        let library = b.join("lib/rustlib/host/lib/libstd.rlib");
+        std::fs::write(&library, b"matching toolchain BYTES")?;
+        assert!(shape_admits(&manifest, &b));
+        assert_ne!(sysroot_identity(&a), sysroot_identity(&b));
+        // A developer component's extra library, a resized one, a removed one.
+        let extra = b.join("lib/rustlib/host/lib/librustc_driver.rlib");
+        std::fs::write(&extra, b"rustc-dev")?;
+        assert!(!shape_admits(&manifest, &b));
+        std::fs::remove_file(&extra)?;
+        std::fs::write(&library, b"a longer standard library")?;
+        assert!(!shape_admits(&manifest, &b));
+        std::fs::remove_file(&library)?;
+        assert!(!shape_admits(&manifest, &b));
+        // A bundle recorded without a shape leaves everything to the identity.
+        let unshaped = Manifest {
+            sysroot_shape: None,
+            ..recorded(&a)?
+        };
+        assert!(shape_admits(&unshaped, &b));
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

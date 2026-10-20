@@ -129,6 +129,31 @@ pub fn artifact_hashes(build: &Path) -> Result<BTreeMap<PathBuf, String>> {
         .collect()
 }
 
+/// One managed run's [`artifact_hashes`] of its runtime, read at most once
+/// in that run (#286). The run's shipped-proof identity and its retained-reuse
+/// admission both bind the complete runtime; the second asks within the same
+/// run and gets the bytes the first read. Each run starts with an empty one,
+/// so nothing carries over between runs, and a build directory other than the
+/// first one asked about is read afresh. A failed read is a failure for the
+/// whole run, which both callers treat as "no reuse".
+#[derive(Debug, Default)]
+pub(crate) struct RunDigests(std::sync::OnceLock<(PathBuf, Option<BTreeMap<PathBuf, String>>)>);
+
+impl RunDigests {
+    /// [`artifact_hashes`] of `build`, or `None` if any artifact is unreadable.
+    pub(crate) fn of(&self, build: &Path) -> Option<BTreeMap<PathBuf, String>> {
+        let canonical = build.canonicalize().ok()?;
+        let (first, hashes) = self
+            .0
+            .get_or_init(|| (canonical.clone(), artifact_hashes(&canonical).ok()));
+        if *first == canonical {
+            hashes.clone()
+        } else {
+            artifact_hashes(&canonical).ok()
+        }
+    }
+}
+
 /// Enumerates the complete runtime inventory with a caller's same-phase hasher.
 pub(crate) fn artifact_hashes_with(
     build: &Path,
@@ -284,6 +309,36 @@ impl Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One run reads its runtime once; another run, or another build, reads
+    /// the bytes as they are then (#286).
+    #[test]
+    fn run_digests_are_read_once_per_run_and_never_shared_between_runs()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-run-digests-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (first, second) = (root.join("first"), root.join("second"));
+        for build in [&first, &second] {
+            let runtime = checkout_dir(build).join("source/target-verus/release");
+            std::fs::create_dir_all(&runtime)?;
+            std::fs::write(runtime.join("verus"), b"launcher")?;
+        }
+        let launcher = checkout_dir(&first).join("source/target-verus/release/verus");
+        let run = RunDigests::default();
+        let read = run.of(&first).ok_or("unreadable")?;
+        assert_eq!(read, artifact_hashes(&first.canonicalize()?)?);
+        std::fs::write(&launcher, b"replaced")?;
+        assert_eq!(run.of(&first), Some(read.clone()));
+        assert_eq!(
+            run.of(&second),
+            Some(artifact_hashes(&second.canonicalize()?)?)
+        );
+        let next = RunDigests::default().of(&first).ok_or("unreadable")?;
+        assert_ne!(next, read);
+        assert!(RunDigests::default().of(&root.join("absent")).is_none());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn source_build_ownership_is_exclusive_and_released_on_drop() {

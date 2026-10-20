@@ -38,6 +38,10 @@ impl Plan {
         self.roots.contains(&identity.manifest)
     }
 
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "The run's runtime digests are shared with its shipped-proof identity (#286)."
+    )]
     pub(crate) fn prepare(
         metadata: &Value,
         target: &Path,
@@ -46,6 +50,7 @@ impl Plan {
         z3: &Path,
         run: &str,
         notes: &mut Vec<String>,
+        digests: &crate::source_build::RunDigests,
     ) -> Option<Self> {
         let mode = super::super::research::selected().ok()?;
         if !super::selection::requested(mode) {
@@ -79,7 +84,7 @@ impl Plan {
             closure = Some(admitted);
         }
         let launcher = launcher.canonicalize().ok()?;
-        if let Err(unqualified) = super::selection::admitted(mode, &launcher, z3) {
+        if let Err(unqualified) = super::selection::admitted(mode, &launcher, z3, digests) {
             notes.extend(
                 unqualified
                     .as_deref()
