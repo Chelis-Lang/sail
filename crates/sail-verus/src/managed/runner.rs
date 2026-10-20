@@ -2757,7 +2757,7 @@ pub(crate) fn run_engine_held(
     // The inputs after the run: Cargo metadata again, the build-script and
     // source-input records this run's artifacts update, and the complete
     // content snapshot they select.
-    let after_inputs = |after_metadata: Option<Result<Value>>| -> Result<AfterInputs> {
+    let after_inputs = || -> Result<AfterInputs> {
         super::build_inputs::update(
             &paths.build_inputs,
             &paths.run.join("artifacts.jsonl"),
@@ -2777,29 +2777,26 @@ pub(crate) fn run_engine_held(
         after_extras.extend(script_roots.iter().cloned());
         let after_extras = ordered_extras(after_extras);
         let sources = serde_json::to_value(sources).unwrap_or_default();
-        // Without metadata in hand, the snapshot is taken while Cargo reads it,
-        // from the package list before the run, and kept only if the metadata
-        // after the run lists exactly the same packages: then it is the
-        // snapshot that list selects. Otherwise it is taken again.
-        let (after_data, speculative) = match after_metadata {
-            Some(after) => (after, None),
-            None => std::thread::scope(|threads| {
-                let snapshot = threads.spawn(|| {
-                    super::input::snapshot_metadata_stamped(
-                        &snapshot_projection(&data, &sources),
-                        &after_extras,
-                    )
-                });
-                let after = metadata(
-                    &config.workspace,
-                    &config.args,
-                    &config.cargo,
-                    &config.cargo_toolchain,
-                    &config.cache,
-                );
-                (after, snapshot.join().ok())
-            }),
-        };
+        // The snapshot is taken while Cargo reads the metadata, from the
+        // package list before the run, and kept only if the metadata after
+        // the run lists exactly the same packages: then it is the snapshot
+        // that list selects. Otherwise it is taken again.
+        let (after_data, speculative) = std::thread::scope(|threads| {
+            let snapshot = threads.spawn(|| {
+                super::input::snapshot_metadata_stamped(
+                    &snapshot_projection(&data, &sources),
+                    &after_extras,
+                )
+            });
+            let after = metadata(
+                &config.workspace,
+                &config.args,
+                &config.cargo,
+                &config.cargo_toolchain,
+                &config.cache,
+            );
+            (after, snapshot.join().ok())
+        });
         let mut after_data = after_data?;
         after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
         after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
@@ -2842,43 +2839,25 @@ pub(crate) fn run_engine_held(
     // lacks those targets.
     let shown = out.is_some();
     let retry_possible = paths.reuse && !shown && exit == Some(0);
-    // The post-run Cargo metadata starts once the verifier invocation has
-    // ended and overlaps the receipt checks, which never read it. When no
-    // retry can follow, the rest of the inputs after the run overlap them
-    // too: neither reads what the other writes, and the stamp that brackets
-    // every content read of both is taken once both have finished. A retry
-    // discards the metadata and reads everything again after its own
-    // invocation.
+    // The inputs after the run (Cargo metadata and the snapshot it selects)
+    // start once the verifier invocation has ended and overlap the receipt
+    // checks: neither reads what the other writes, and the stamp that
+    // brackets every content read of both is taken once both have finished.
+    // A retry, possible only when Verus's output is not shown, discards them
+    // and reads everything again after its own invocation. Their build-input
+    // and source-input updates merge records, so the retry's pass replaces
+    // or prunes what the discarded pass wrote, and the input state is
+    // rewritten by the retry's pass.
     let (records, after_thread) = std::thread::scope(|threads| {
-        let after = threads.spawn(|| {
-            if retry_possible {
-                (
-                    Some(metadata(
-                        &config.workspace,
-                        &config.args,
-                        &config.cargo,
-                        &config.cargo_toolchain,
-                        &config.cache,
-                    )),
-                    None,
-                )
-            } else {
-                (None, Some(after_inputs(None)))
-            }
-        });
+        let after = threads.spawn(after_inputs);
         let records = target_records(&paths, &data, &hash, forced, &expected, &seeded);
         (records, after.join())
     });
     let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
-    let (mut after_metadata, overlapped) = after_thread.unwrap_or_else(|_| {
-        (
-            Some(Err(reader_failed())),
-            (!retry_possible).then(|| Err(reader_failed())),
-        )
-    });
+    let mut overlapped = Some(after_thread.unwrap_or_else(|_| Err(reader_failed())));
     let (mut targets, missing) = records?;
     if retry_possible && !missing.is_empty() {
-        after_metadata = None;
+        overlapped = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
         std::fs::write(paths.run.join("artifacts.jsonl"), [])
@@ -2907,7 +2886,7 @@ pub(crate) fn run_engine_held(
         source_coverage,
     } = match overlapped {
         Some(inputs) => inputs?,
-        None => after_inputs(after_metadata)?,
+        None => after_inputs()?,
     };
     // Resolve fresh receipt bindings while the input stamp still brackets every
     // content read. A newly discovered include may already belong to another

@@ -577,6 +577,16 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             refill_run, refill, fresh = managed()
             assert refill_run.returncode == 0 and not fresh["reused"] and fresh["complete"], refill
             assert refill["execution"]["verifier_invocations"] == 1, refill["execution"]
+            # That run retried after Cargo found the target up to date: the
+            # inputs taken alongside the first pass's receipt checks are
+            # discarded and taken again after the retry. Only inputs from after
+            # the retry make the run Current and its receipt reusable as is.
+            assert refill["currentness"] == "current", diagnostic(refill)
+            again_run, again, kept = managed()
+            assert again_run.returncode == 0 and kept["reused"], diagnostic(again)
+            assert again["execution"]["verifier_invocations"] == 0, again["execution"]
+            assert again["currentness"] == "current", diagnostic(again)
+            assert kept["establishing_run"] == refill["run_id"], diagnostic(again)
 
             # Without --output json the same missing receipt is not re-verified:
             # Cargo finds the target up to date, and Sail prints what plain
