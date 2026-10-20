@@ -1240,7 +1240,11 @@ mod tests {
     #[test]
     fn collect_finds_what_resolving_every_entry_finds() -> std::io::Result<()> {
         use std::os::unix::fs::symlink;
-        let root = std::env::temp_dir().join(format!("sail-collect-test-{}", std::process::id()));
+        // The temporary directory's real path: on macOS it sits behind the
+        // `/var` -> `/private/var` link, and collected roots are real paths.
+        let root = std::env::temp_dir()
+            .canonicalize()?
+            .join(format!("sail-collect-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let package = root.join("package");
         let outside = root.join("outside");
