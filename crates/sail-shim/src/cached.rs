@@ -453,6 +453,7 @@ fn output_side(
     if forward_from.is_some() && all.len() > forwarded {
         forwarding_ok &= write_out(all.get(forwarded..).unwrap_or_default());
     }
+    crate::probe("eof");
     let (_, mut code) = match child.wait() {
         Ok(status) => crate::status_code(status),
         Err(_) => (None, 1),
@@ -477,10 +478,12 @@ fn output_side(
         code = 1;
     }
     quiet.store(code == 0 && silent, Ordering::SeqCst);
+    crate::probe("waited");
     drop(store_tx);
     if let Some(h) = storer {
         let _ = h.join();
     }
+    crate::probe("stored");
     if !input_done {
         // The input side is blocked reading a client that waits for replies
         // the dead solver will never give.
@@ -499,11 +502,24 @@ fn start_solver(
     first: Expect,
     client: Option<Client>,
 ) -> Option<Solving> {
+    let child = spawn_child(solver, args)?;
+    adopt(child, raw, skip, first, client)
+}
+
+/// A started solver that has not been handed any output side yet.
+struct Prestart {
+    child: Child,
+    feed: Sender<Vec<u8>>,
+    writer: JoinHandle<Option<ChildStdin>>,
+    stdout: std::process::ChildStdout,
+    stderr: Option<crate::cached_stderr::Monitor>,
+}
+
+fn spawn_child(solver: &Path, args: &[std::ffi::OsString]) -> Option<Prestart> {
     // Observation failure must not prevent replay: inherit solver stderr and
     // disable publication when its silence cannot be established.
     let (stderr, child_stderr) = crate::cached_stderr::Monitor::new()
         .map_or_else(|_| (None, Stdio::inherit()), |(m, io)| (Some(m), io));
-    let client = stderr.as_ref().and(client);
     let mut child = Command::new(solver)
         .args(args)
         .stdin(Stdio::piped())
@@ -516,6 +532,47 @@ fn start_solver(
         let _ = child.wait();
         return None;
     };
+    let (feed, chunks) = std::sync::mpsc::channel::<Vec<u8>>();
+    let writer = std::thread::Builder::new()
+        .name("sail-z3-feed".to_owned())
+        .spawn(move || {
+            let mut stdin = stdin;
+            for chunk in chunks {
+                stdin.write_all(&chunk).ok()?;
+            }
+            Some(stdin)
+        })
+        .ok()?;
+    Some(Prestart {
+        child,
+        feed,
+        writer,
+        stdout,
+        stderr,
+    })
+}
+
+fn adopt(
+    p: Prestart,
+    raw: &[u8],
+    skip: u64,
+    first: Expect,
+    client: Option<Client>,
+) -> Option<Solving> {
+    let Prestart {
+        mut child,
+        feed,
+        writer,
+        stdout,
+        stderr,
+    } = p;
+    drop(feed);
+    let Some(stdin) = writer.join().ok().flatten() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return None;
+    };
+    let client = stderr.as_ref().and(client);
     let (tx, rx) = std::sync::mpsc::channel();
     // Queued before the solver sees any input, so it precedes its reply.
     let _ = tx.send(first);
@@ -638,7 +695,21 @@ fn observe(
 /// reused, so a late reply can never be read as the answer to a later
 /// request.
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
-    let (client, mut prefix) = connect(socket, solver)?;
+    let eager = std::env::var_os("SAIL_PROBE_PRESTART").is_some();
+    let mut prestart = if eager {
+        spawn_child(solver, args)
+    } else {
+        None
+    };
+    let mut fed = 0usize;
+    let Some((client, mut prefix)) = connect(socket, solver) else {
+        if let Some(mut p) = prestart.take() {
+            let _ = p.child.kill();
+            let _ = p.child.wait();
+        }
+        return None;
+    };
+    crate::probe("hello");
     let mut session = Session::new();
     let mut splitter = CommandSplitter::new();
     let mut raw: Vec<u8> = Vec::new();
@@ -665,6 +736,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         for item in items {
             let (expects, name, expect) = observe(&mut session, &item, &mut prefix, &raw);
             if name == "exit" && closes_session(&item.bytes) {
+                crate::probe("exit-cmd");
                 if let Some(s) = &solving
                     && expects != Output::None
                 {
@@ -674,6 +746,10 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                     && !fresh_solver
                 {
                     s.write(&chunk);
+                }
+                if let Some(mut p) = prestart.take() {
+                    let _ = p.child.kill();
+                    let _ = p.child.wait();
                 }
                 return finish_run(
                     solving,
@@ -691,9 +767,31 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 }
                 continue;
             }
+            if expects == Output::None {
+                if let Some(p) = &mut prestart {
+                    let end = usize::try_from(item.offset + item.bytes.len() as u64)
+                        .unwrap_or(usize::MAX);
+                    if p.feed
+                        .send(raw.get(fed..end).unwrap_or_default().to_vec())
+                        .is_err()
+                    {
+                        let mut p = prestart.take();
+                        if let Some(p) = &mut p {
+                            let _ = p.child.kill();
+                            let _ = p.child.wait();
+                        }
+                    } else {
+                        fed = end;
+                    }
+                }
+                continue;
+            }
             let hit = match expects {
                 Output::None => continue,
-                Output::One => match client.as_mut().map(|c| c.get_with_effort(&prefix.key().0)) {
+                Output::One => match client.as_mut().map(|c| {
+                    crate::probe("get");
+                    c.get_with_effort(&prefix.key().0)
+                }) {
                     Some(Ok(found)) => found
                         .filter(|(r, e)| !unservable(&item.bytes, r, e.as_ref()))
                         .map(|(r, _)| r),
@@ -706,6 +804,10 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 Output::Unknown => None,
             };
             if let Some(reply) = hit {
+                if let Some(mut p) = prestart.take() {
+                    let _ = p.child.kill();
+                    let _ = p.child.wait();
+                }
                 if !write_out(&reply) {
                     return Some(ExitCode::SUCCESS);
                 }
@@ -713,9 +815,21 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 continue;
             }
             // Miss: start the solver with the whole input so far.
-            let Some(s) = start_solver(solver, args, &raw, served, expect, client.take()) else {
+            crate::probe(&format!("miss {}", raw.len()));
+            let started = match prestart.take() {
+                Some(p) => adopt(
+                    p,
+                    raw.get(fed..).unwrap_or_default(),
+                    served,
+                    expect,
+                    client.take(),
+                ),
+                None => start_solver(solver, args, &raw, served, expect, client.take()),
+            };
+            let Some(s) = started else {
                 return Some(ExitCode::from(1));
             };
+            crate::probe("spawned");
             solving = Some(s);
             fresh_solver = true;
         }
@@ -724,6 +838,10 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         {
             s.write(&chunk);
         }
+    }
+    if let Some(mut p) = prestart.take() {
+        let _ = p.child.kill();
+        let _ = p.child.wait();
     }
     // At the end of input while serving, incomplete trailing input goes to
     // the solver, which decides what it means.

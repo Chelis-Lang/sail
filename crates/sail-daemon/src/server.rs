@@ -164,7 +164,34 @@ fn hex(bytes: &[u8]) -> String {
 // Equal path, length and mtime do not establish equal executable bytes (#213).
 // Identify every handshake afresh from the complete current bytes; any read or
 // launch failure rejects the handshake so the shim takes its fail-safe path.
+static PROBE_VERSION: std::sync::Mutex<Option<([u8; 32], String)>> = std::sync::Mutex::new(None);
+
 fn identify(path: &Path, digests: &DigestMemo) -> Result<Identity, String> {
+    if std::env::var_os("SAIL_PROBE_MEMOVER").is_some()
+        && let Some(current) = digests.current(path)
+        && let Ok(guard) = PROBE_VERSION.lock()
+        && let Some((d, v)) = guard.as_ref()
+        && *d == current
+    {
+        return Ok(Identity {
+            name: "z3".to_owned(),
+            version: v.clone(),
+            binary_sha256: hex(&current),
+            platform: SolverIdentity::host_platform(),
+            protocol_version: sail_api::protocol::PROTOCOL_VERSION,
+        });
+    }
+    let r = identify_full(path, digests);
+    if let Ok(id) = &r
+        && let Some(d) = digests.current(path)
+        && let Ok(mut guard) = PROBE_VERSION.lock()
+    {
+        *guard = Some((d, id.version.clone()));
+    }
+    r
+}
+
+fn identify_full(path: &Path, digests: &DigestMemo) -> Result<Identity, String> {
     let cannot_run = |e: std::io::Error| format!("cannot run {}: {e}", path.display());
     let version_process = std::process::Command::new(path)
         .arg("--version")

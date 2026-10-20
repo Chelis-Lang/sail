@@ -24,6 +24,23 @@ mod cached;
 mod cached_stderr;
 mod trace;
 
+/// Probe (local measurement only).
+pub(crate) fn probe(tag: &str) {
+    if let Some(dir) = std::env::var_os("SAIL_PROBE_DIR") {
+        let t = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_micros())
+            .unwrap_or(0);
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(std::path::Path::new(&dir).join(format!("{}.txt", std::process::id())))
+        {
+            let _ = writeln!(f, "{t} {tag}");
+        }
+    }
+}
+
 use std::ffi::OsString;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -187,6 +204,13 @@ pub(crate) fn status_code(status: std::process::ExitStatus) -> (Option<i32>, u8)
 /// Runs the shim with the process's own arguments, stdio and environment.
 #[must_use]
 pub fn run() -> ExitCode {
+    probe("start");
+    let code = run_inner();
+    probe("end");
+    code
+}
+
+fn run_inner() -> ExitCode {
     let started = Instant::now();
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let solver = match solver_path() {
@@ -203,6 +227,7 @@ pub fn run() -> ExitCode {
     {
         return code;
     }
+    probe("pt-spawn");
     let mut child = match spawn_solver(&solver, &args) {
         Ok(child) => child,
         Err(code) => return code,
@@ -273,6 +298,7 @@ pub fn run() -> ExitCode {
         });
 
     let status = child.wait();
+    probe("pt-waited");
     if let Ok(handle) = out_thread {
         let _ = handle.join();
     }
