@@ -1394,6 +1394,9 @@ struct CompilerGeneration<'a> {
     script_coverage: bool,
     source_engine: bool,
     args: &'a [String],
+    /// A Historical run whose changes left every build-script contract intact
+    /// (`build_inputs::family::scripts_unchanged_by_run`).
+    scripts_unchanged: bool,
 }
 
 fn publish_compiler_generation(
@@ -1403,7 +1406,15 @@ fn publish_compiler_generation(
     result: &ProjectResult,
     generation: &CompilerGeneration<'_>,
 ) {
+    // A run stays Historical (no receipt) when workspace files outside every
+    // build-script package changed during it, but the script contracts it
+    // observed are still valid (ADR 0046/0047 amendment).
+    let historical = result.currentness == Currentness::Historical
+        && result.exit_code == Some(0)
+        && result.error.is_none()
+        && generation.scripts_unchanged;
     if (result.currentness == Currentness::Current && result.exit_code == Some(0))
+        || historical
         || negative_compiler_generation(
             paths,
             data,
@@ -2944,6 +2955,15 @@ pub(crate) fn run_engine_held(
     } else {
         Currentness::Historical
     };
+    let scripts_unchanged = currentness == Currentness::Historical
+        && !absent.changed
+        && super::build_inputs::family::scripts_unchanged_by_run(
+            &paths.build_inputs,
+            &after_data,
+            &before_run.digests,
+            &after_run.digests,
+            &before_run.workspace,
+        );
     drop(post_run);
     if paths.reuse
         && !shown
@@ -3132,6 +3152,7 @@ pub(crate) fn run_engine_held(
             script_coverage,
             source_engine,
             args: &config.args,
+            scripts_unchanged,
         },
     );
     drop(publication);
@@ -4227,6 +4248,57 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn historical_generation_publishes_only_with_unchanged_scripts()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut f = NegativeGeneration::new("historical")?;
+        std::fs::create_dir_all(f.root.join("src"))?;
+        std::fs::write(
+            f.root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\nedition='2024'\n[workspace]\n",
+        )?;
+        std::fs::write(f.root.join("src/lib.rs"), "pub fn input() {}\n")?;
+        let metadata = Command::new("cargo")
+            .current_dir(&f.root)
+            .args(["metadata", "--offline", "--format-version=1"])
+            .output()?;
+        assert!(metadata.status.success());
+        f.data = serde_json::from_slice(&metadata.stdout)?;
+        f.result.exit_code = Some(0);
+        f.result.currentness = Currentness::Historical;
+        let generation = |scripts_unchanged| CompilerGeneration {
+            compiler: "compiler",
+            script_coverage: true,
+            source_engine: false,
+            args: &[],
+            scripts_unchanged,
+        };
+        publish_compiler_generation(
+            &f.paths,
+            &f.data,
+            &f.expected,
+            &f.result,
+            &generation(false),
+        );
+        assert!(
+            !f.paths.compiler_inputs.exists(),
+            "today's Historical behaviour"
+        );
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &generation(true));
+        assert!(
+            f.paths.compiler_inputs.is_file(),
+            "unchanged script contracts publish"
+        );
+        std::fs::remove_file(&f.paths.compiler_inputs)?;
+        f.result.exit_code = Some(101);
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &generation(true));
+        assert!(
+            !f.paths.compiler_inputs.exists(),
+            "only a successful run publishes"
+        );
+        Ok(())
+    }
+
+    #[test]
     #[allow(
         clippy::too_many_lines,
         reason = "One real Cargo dependency lifecycle brackets the negative generation and restored-input refusal."
@@ -4291,6 +4363,7 @@ mod tests {
         std::fs::write(&artifacts, &built.stdout)?;
         super::super::build_inputs::update(&f.paths.build_inputs, &artifacts, &f.data)?;
         let generation = CompilerGeneration {
+            scripts_unchanged: false,
             compiler: "compiler",
             script_coverage: true,
             source_engine: true,
@@ -4380,6 +4453,7 @@ mod tests {
         );
         f.seal()?;
         let establishing = CompilerGeneration {
+            scripts_unchanged: false,
             script_coverage: false,
             ..generation
         };
@@ -4547,6 +4621,7 @@ mod tests {
         assert!(!targets[0].complete && !targets[0].reused);
         assert_eq!(std::fs::read_dir(&f.paths.receipts)?.count(), 0);
         let generation = CompilerGeneration {
+            scripts_unchanged: false,
             compiler: "compiler",
             script_coverage: true,
             source_engine: false,
