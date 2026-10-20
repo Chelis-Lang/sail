@@ -73,6 +73,9 @@ stage() {
   local runtime=verus/source/target-verus/release variant
   rm -rf "$out"
   mkdir -p "$out/bin"
+  # Sail's licence and the notices for everything else the archive
+  # redistributes (scripts/third-party-notices.py).
+  cp LICENSE THIRD-PARTY-NOTICES "$out/"
   cp target/release/sail target/release/sail-z3 "$out/bin/"
   chmod 755 "$out/bin/sail" "$out/bin/sail-z3"
   # Drop the release profile's line tables from the shipped binaries (symbols
