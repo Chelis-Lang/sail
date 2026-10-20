@@ -41,6 +41,47 @@ and returned-A reuse.**
 Raw evidence: `r3l-evidence.tgz` sha256
 `6594bd503f8fb56725b05628cc9cc11b4758eb1add2b7d8faa823b2b6d89137e`.
 
+## macOS qualification on runtime `f8589ed4`
+
+macOS runtime `7d829946…-e9b69a75ea390499` (fork `f8589ed4`, R3, manifest
+`67589de3…`, equal to `MACOS_MANIFEST`), staged by `scripts/release.sh stage`
+from candidate/r3-macos-reuse `8afc8663`. The bundle record passed (proof
+identity `ca0d4988…`, as in the
+[bundle record](vstd-compile-boundary.md#verus-7d82994-bundle-on-runtime-f8589ed4);
+bundle manifest `f5ba3290…`). Host: EC2 mac-m4.metal, us-east-1d, macOS 27.0,
+otherwise idle; a fresh Rustup home on physical paths with default 1.99.0 and
+pinned 1.99.1 minimal with `rust-src`, whose components were unchanged at the
+start, after staging, at the end and after the admission witness. Protocol and
+harness as [on Linux](#runtime-f8589ed4-requalification) (`bench.py`
+`b612732f…`, `analyze.py` `c1578803…`). Status: **ordinary macOS public
+alloc/std reuse qualified for correctness and returned-A reuse.**
+
+- All 24 calls exit 0. Each Sail step's stderr equals stock's after the
+  arm-root and `Finished … in` normalization, and the progress lines match
+  as a set. Every run is `current`. Returned and unchanged A run zero
+  verifiers, reuse both targets and keep cold A's establishing run; B reruns
+  only `vest_lib`. No `SAIL3136`.
+- Medians of three:
+
+  | Step | Stock | Sail |
+  |---|---:|---:|
+  | A cold | 38.549 s | 44.175 s |
+  | B edit | 22.210 s | 15.923 s |
+  | A returned | 22.312 s | 2.247 s |
+  | A unchanged | 0.222 s | 0.887 s |
+  | Four-command cycle | 83.274 s | 63.263 s |
+
+  The cycle is 24.0% faster (per round 83.3/63.0, 83.0/63.3 and
+  83.5/65.7 s). Cold A is 14.6% slower, against 35% on `64baccbb`: the
+  shipped proof still misses on `--rlimit 100`. Unchanged A is 0.67 s
+  slower. Wall time only.
+- The admission witness (`scripts/admission-witness.py`) passes all five
+  cases on the same stage.
+
+Raw evidence: `rr3-mac.tgz` sha256
+`a43d0d6ca2d319e18533d376eb8781b6b3ee0e6847c225f526917aefb3223225` (rows,
+every step's streams, driver, stage record, witness result and cases).
+
 ## macOS qualification on runtime `64baccbb`
 
 macOS runtime `7d829946…-7faa35e5238b9bfc` (fork `64baccbb`, manifest

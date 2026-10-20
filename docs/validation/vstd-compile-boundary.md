@@ -79,8 +79,10 @@ is the owner's.**
   paths: under `/tmp` (a symbolic link to `/private/tmp`) native provenance
   is refused and the proof misses for any bundle. The shapes witness passes
   on the recording's boundary trace (25 records across 14 packages,
-  `actual_retained_native_shapes`, tuples sha256 `270a7e47…`); the admission
-  witness was not run on this macOS stage. Evidence:
+  `actual_retained_native_shapes`, tuples sha256 `270a7e47…`). The
+  admission witness passes all five cases on the A → B → A stage (same home
+  and proof identity, bundle manifest `f5ba3290…`; evidence `rr3-mac.tgz`,
+  see the [macOS revert record](instant-revert.md#macos-qualification-on-runtime-f8589ed4)). Evidence:
   `r3-bundle-probes.tgz` sha256
   `0370168596f63fecfaaec266bb9631061719ef9bd61efe1147a7b780ac8d2d34`.
 

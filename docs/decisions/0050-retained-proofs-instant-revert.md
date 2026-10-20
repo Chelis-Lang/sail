@@ -271,8 +271,11 @@ Rust tails refuse. Literal argument/environment bytes remain bound in keys.
 An isolated source successor selects a retained plan without a user flag only
 on x86-64 Linux and Apple-silicon macOS, each with one exact normal-runtime
 manifest that must equal that platform's pin `manifest_sha256` (a unit test
-per platform enforces it). The macOS authority is `4392062a…` (fork
-`64baccbb`), qualified for ordinary public alloc/std reuse
+per platform enforces it). The macOS authority is
+`67589de3c3f9681fb50dcd96313311e1a3d2776241d121f6c0e433be54cf7f0c` (fork
+`f8589ed4`), qualified for ordinary public alloc/std reuse
+([record](../validation/instant-revert.md#macos-qualification-on-runtime-f8589ed4));
+the previous macOS authority `4392062a…` (fork `64baccbb`) was qualified too
 ([record](../validation/instant-revert.md#macos-qualification-on-runtime-64baccbb)). The `83128ad0` gates
 below used manifest `a845cd2f…` (fork `e5365c05`). The authority is now
 `576558fc76eecfdd91908fb85e30916e9d78b0153a144041f5b03937e4bcde26` (fork

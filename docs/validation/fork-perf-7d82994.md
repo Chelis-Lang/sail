@@ -1,6 +1,6 @@
 # Fork branch perf/7d82994: macro-profile names, dispatch order, Fx hashing
 
-**Status: Linux and macOS runtimes `f8589ed4` published and pinned (`engine-runtime-f8589ed4-linux`, `-macos`); Linux bundle and instant revert requalified; macOS bundle and instant revert, and the conformance gates, pending.** Fork branch
+**Status: Linux and macOS runtimes `f8589ed4` published and pinned (`engine-runtime-f8589ed4-linux`, `-macos`); Linux and macOS bundles re-recorded and instant revert requalified on both; conformance gates pending.** Fork branch
 `perf/7d82994` adds three commits to `9c0ca7e7` (Verus `0.2026.10.18.7d82994`,
 Rust 1.99.1): `912052eb` (VI-0033, issue #247), `1a892f97` (issue #244) and
 `51afcba6` (issue #248). Selecting any of them needs a fresh matching runtime,
@@ -104,7 +104,9 @@ Published as prerelease `engine-runtime-f8589ed4-linux`; the anonymous download 
 ([record](vstd-compile-boundary.md#verus-7d82994-bundle-on-runtime-f8589ed4))
 and Linux instant revert requalified
 ([record](instant-revert.md#runtime-f8589ed4-requalification)) on this
-runtime. Pending: the macOS bundle and instant revert, and the conformance tiers.
+runtime, and so are the macOS bundle and instant revert
+([record](instant-revert.md#macos-qualification-on-runtime-f8589ed4)).
+Pending: the conformance tiers.
 
 ## Attempts
 
