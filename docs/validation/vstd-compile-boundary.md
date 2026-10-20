@@ -95,6 +95,38 @@ not accepted.**
   The second project gains nothing over the first: native dependencies
   compile again (the dependency store stays quarantined, ADR 0053). Rust
   installation is not included. This is one consumer host.
+- **macOS.** Apple-silicon bundle for runtime `7d829946…-8f917633f244b095`
+  (fork `9c0ca7e7`), recorded by `ci/run.sh release` at `a12beb53` on an EC2
+  mac-m4.metal (us-east-1d, macOS 27.0) in a Rustup home composed like the
+  CI image's (default 1.99.0; pinned 1.99.1 minimal with `rust-src`). Proof
+  identity `0ad080a5…`, bundle manifest `651a0058…`. `libvstd.vir` (sha256
+  `9f4de340…`) has 0 local and 9,627 `/rustc/58cf8f9c…` spans, and no bundle
+  member names a home-directory path. The boundary trace has 25
+  `native-output-established` records. A fresh home with its rustup at
+  another physical root replayed the shipped proof (`SAIL3132`, origin
+  `release`, one verifier invocation). Three alternating paired rounds, each
+  with a fresh `HOME` and `CARGO_HOME` and freshly unpacked stock and Sail
+  trees, timed stock `cargo +1.99.1 verus verify` and `sail verify` on the
+  same five-function `cargo verus new --lib` project (creation untimed); all
+  30 samples exit 0:
+
+  | Median verification | Stock | Sail | Speedup |
+  |---|---:|---:|---:|
+  | First project | 17.30 s | 10.18 s | 1.70× |
+  | Second new project, same home | 16.35 s | 9.22 s | 1.77× |
+  | `git worktree` of the first | 16.45 s | 9.41 s | 1.75× |
+  | One added function | 0.43 s | 0.69 s | 0.63× |
+  | Unchanged rerun | 0.17 s | 0.30 s | 0.56× |
+
+  Without the bundle the same Sail tree takes 19.56 s for the first project
+  and 16.01 s for the second. Not run on macOS: the diagnostic probes above,
+  whose extension-impl difference follows from the same recorded `/rustc/`
+  strings and the fork's `verifier.rs` line; `boundary-witness shapes`; and
+  the admission witness. Evidence: `d17-mac-evidence.tgz` sha256
+  `654c93912e5c5958e15efbfc938bf3c6d805fb4b4027175123613d1e756d0b86`
+  (recording, trace, first serve); `mac-ship-bench.tgz`
+  `74c55bd5224697a13e82d879f17a26726cafb5a38642adc420e3e0cfeb0fb068`
+  (timings); harness `bench-mac.py` `78b19879…`.
 
 Raw evidence stays outside the repository: `d17-evidence.tgz` sha256
 `1ef81a243dcda6476daedb53209fe42034d54249e339b1140e9cf6fd74cad5d5`
