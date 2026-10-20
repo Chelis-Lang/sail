@@ -414,17 +414,49 @@ fn client_refuses_redirects_encodings_oversize_and_stalled_responses() {
     let _ = std::fs::remove_dir_all(root);
 }
 
+/// A fresh test CA and a server certificate for 127.0.0.1 that it signs:
+/// (CA PEM, server certificate, server key). Generated for each run, so no
+/// private key is committed and nothing expires.
+fn local_tls() -> (
+    String,
+    rustls::pki_types::CertificateDer<'static>,
+    rustls::pki_types::PrivateKeyDer<'static>,
+) {
+    use rcgen::{
+        BasicConstraints, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa, Issuer,
+        KeyPair, KeyUsagePurpose,
+    };
+    let ca_key = KeyPair::generate().unwrap();
+    let mut ca_params = CertificateParams::new(Vec::<String>::new()).unwrap();
+    ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+    ca_params
+        .distinguished_name
+        .push(DnType::CommonName, "sail-http-test-ca");
+    ca_params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+    let ca = ca_params.self_signed(&ca_key).unwrap();
+    let issuer = Issuer::new(ca_params, ca_key);
+    let key = KeyPair::generate().unwrap();
+    let mut params = CertificateParams::new(vec!["127.0.0.1".to_owned()]).unwrap();
+    params
+        .distinguished_name
+        .push(DnType::CommonName, "sail-http-test");
+    params.key_usages = vec![
+        KeyUsagePurpose::DigitalSignature,
+        KeyUsagePurpose::KeyEncipherment,
+    ];
+    params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
+    let certificate = params.signed_by(&key, &issuer).unwrap();
+    (
+        ca.pem(),
+        certificate.der().clone(),
+        rustls::pki_types::PrivateKeyDer::Pkcs8(key.serialize_der().into()),
+    )
+}
+
 #[test]
 fn tls_requires_trusted_ca_and_matching_hostname() {
-    use rustls::pki_types::pem::PemObject as _;
     let _ = rustls::crypto::ring::default_provider().install_default();
-    let certificate = rustls::pki_types::CertificateDer::from_pem_slice(include_bytes!(
-        "fixtures/http-local.pem"
-    ))
-    .unwrap();
-    let key =
-        rustls::pki_types::PrivateKeyDer::from_pem_slice(include_bytes!("fixtures/http-local.key"))
-            .unwrap();
+    let (ca_pem, certificate, key) = local_tls();
     let tls = std::sync::Arc::new(
         rustls::ServerConfig::builder()
             .with_no_client_auth()
@@ -438,7 +470,7 @@ fn tls_requires_trusted_ca_and_matching_hostname() {
     ));
     std::fs::create_dir(&root).unwrap();
     let ca = root.join("ca.pem");
-    std::fs::write(&ca, include_bytes!("fixtures/http-ca.pem")).unwrap();
+    std::fs::write(&ca, ca_pem).unwrap();
     let token_file = root.join("read.token");
     std::fs::write(&token_file, "0123456789abcdef0123456789abcdef").unwrap();
     #[cfg(unix)]
