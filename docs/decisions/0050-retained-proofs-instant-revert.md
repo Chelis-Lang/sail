@@ -269,8 +269,11 @@ Rust tails refuse. Literal argument/environment bytes remain bound in keys.
 ## Automatic-selection candidate
 
 An isolated source successor selects a retained plan without a user flag only
-on x86-64 Linux with one exact normal-runtime manifest, which must equal the
-Linux pin's `manifest_sha256` (a unit test enforces it). The `83128ad0` gates
+on x86-64 Linux and Apple-silicon macOS, each with one exact normal-runtime
+manifest that must equal that platform's pin `manifest_sha256` (a unit test
+per platform enforces it). The macOS authority is `4392062a…` (fork
+`64baccbb`), qualified for ordinary public alloc/std reuse
+([record](../validation/instant-revert.md#macos-qualification-on-runtime-64baccbb)). The `83128ad0` gates
 below used manifest `a845cd2f…` (fork `e5365c05`). The authority is now
 `cd78756b462127d2551fd35dfc4dd1259a26aeb2501428b5702fa30bcdc96a04` (fork
 `64baccbb` on Verus `7d82994`), requalified for ordinary Linux public
