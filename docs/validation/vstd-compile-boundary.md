@@ -83,10 +83,30 @@ the owner's.**
   project (creation untimed); all 30 samples exit 0. Medians: first project
   17.62 → 10.19 s (1.73×), second new project 16.59 → 9.29 s (1.79×),
   `git worktree` of the first 16.83 → 9.23 s (1.82×), one added function
-  0.44 → 0.70 s and an unchanged rerun 0.17 → 0.30 s (Sail slower). The
-  byte comparison probes, shapes and admission witnesses were not run on
-  macOS. Evidence: `d17-mac64.tgz` sha256
-  `f0c9acaf94495d1e3ec2e8148b9d651c89a1d5e9e71a48f7040fb8012938baa4`.
+  0.44 → 0.70 s and an unchanged rerun 0.17 → 0.30 s (Sail slower).
+
+  The four probes above ran on the same host against this staged release, in
+  a Rustup home with default 1.99.0 and pinned 1.99.1, each in a fresh
+  project, `CARGO_HOME` and Sail cache. Stdout, exit code (101 everywhere)
+  and stderr without Cargo's `Compiling`/`Checking` lines are identical to
+  stock in all nine runs, and the progress lines match as a set:
+
+  | Probe | With `rust-src` | Without (`SAIL3137`; stock on 1.99.0) |
+  |---|---|---|
+  | Extension impls (2) | Same; shipped hit (`SAIL3132`); both arms print the fallback `verifier.rs:113` line naming the local `rustlib/src/rust/library/core/src/fmt/mod.rs:2871:9` | Same; both name `/rustc/58cf8f9c…/library/core/src/fmt/mod.rs:2871:9` |
+  | `external_type_specification` | Same; shipped hit | Same |
+  | Lemma and std preconditions | Same; shipped hit | — |
+  | The same with `--expand-errors` | Same (bundle miss: recorded without the flag) | Same |
+
+  The shapes witness passes on this recording's trace (25 records across 14
+  packages, `actual_retained_native_shapes`, tuples sha256 `327ed60b…`). The
+  five-case admission witness was not run on macOS: its runner captures the
+  compiler invocation with `strace`, which macOS lacks. Evidence:
+  `d17-mac64.tgz` sha256
+  `f0c9acaf94495d1e3ec2e8148b9d651c89a1d5e9e71a48f7040fb8012938baa4`
+  (recording, trace, timings); `probes-mac64.tgz`
+  `dbe94247893e6cd354fef802e9edf75b9858c1d863b056e5fabb5678d90d5944`
+  (probe streams).
 
 Raw evidence: `rq2-evidence.tgz` sha256
 `6daeee5f03f6ef2741fcc51b235091c29f010e5daabca283cee5cdb0c6f15f70`
