@@ -2364,7 +2364,12 @@ pub(crate) fn run_engine_held(
         .as_ref()
         .and(registry.as_deref())
         .and_then(|registry| super::shipped::span_remap(registry, rust_src.as_deref()));
+    // A shipped bundle's stored span strings name virtual paths; without the
+    // remap that names them as this machine's, its diagnostics could differ
+    // from stock, so the bundle is not served (VI-0031).
+    let remap_missing = paths.source_base.is_some() && paths.span_remap.is_none();
     let shipped_plan = if focused(&config.args)
+        || remap_missing
         || engine.is_some()
         || !paths.reuse
         || research == super::research::Mode::RetainedContent
