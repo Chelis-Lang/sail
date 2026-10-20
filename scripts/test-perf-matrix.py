@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 import unittest
 
@@ -77,12 +78,123 @@ class Normalize(unittest.TestCase):
         self.assertEqual(pm.normalize(text), ["error: assertion failed", "--> src/lib.rs:7:12",
                                               "verification results:: 1 verified, 1 errors"])
 
-    def test_project_result_counts_requested_targets(self):
-        doc = {"kind": "sail-project-result", "targets": [
-            {"requested": True, "report": {"summary": {"verified": 144, "failed": 0}}},
-            {"requested": False, "report": {"summary": {"verified": 9, "failed": 0}}}]}
-        text = "   Checking anvil\n" + json.dumps(doc, indent=2) + "\n"
-        self.assertEqual(pm.normalize(text), ["verification results:: 144 verified, 0 errors"])
+    @staticmethod
+    def project_doc(verified=3, errors=0, outcomes=(("f", ["proved"]), ("g", ["proved", "proved"])),
+                    failed=0, partial=True):
+        """A sail-project-result shaped like anvil's: Verus counts checks
+        (`crates[].verus`), the report lists functions and their obligations."""
+        fns = [{"function": name, "verdict": "failed" if "failed" in obs else "verified",
+                "obligations": [{"kind": "Function-Def", "advisory": False, "outcome": o} for o in obs]
+                + [{"kind": "Function-Def", "advisory": True, "outcome": "proved"}]}
+               for name, obs in outcomes]
+        requested = {"requested": True, "target": "anvil", "complete": not partial, "report": {
+            "summary": {"functions": len(fns), "verified": len(fns) - failed, "failed": failed},
+            "crates": [{"verus": {"verified": verified, "errors": errors}, "functions": fns}]}}
+        other = {"requested": False, "target": "vstd", "report": {
+            "summary": {"verified": 9, "failed": 0}, "crates": [{"verus": {"verified": 9, "errors": 0}}]}}
+        notes = ["Requested function/module scope is partial; whole-target reuse is disabled"] if partial else []
+        return {"kind": "sail-project-result", "targets": [other, requested], "notes": notes}
+
+    def test_project_result_uses_verus_check_counts_of_requested_targets(self):
+        # Two functions, three checks (one function's loop is its own query):
+        # Verus prints 3, as stock does, with the partial-verification suffix.
+        text = "   Checking anvil\n" + json.dumps(self.project_doc(), indent=2) + "\n"
+        self.assertEqual(pm.normalize(text), [
+            "verification results:: 3 verified, 0 errors (partial verification with `--verify-*`)"])
+        stock = "verification results:: 3 verified, 0 errors (partial verification with `--verify-*`)\n"
+        self.assertEqual(pm.normalize(text), pm.normalize(stock))
+
+    def test_project_result_counts_must_agree_with_function_verdicts(self):
+        # A Verus count that the report's obligations do not account for (a
+        # missing function verdict) is never papered over.
+        text = json.dumps(self.project_doc(verified=4)) + "\n"
+        got = pm.normalize(text)
+        self.assertEqual(got[0], "verification results:: 4 verified, 0 errors (partial verification with `--verify-*`)")
+        self.assertEqual(len(got), 2, got)
+        self.assertTrue(got[1].startswith("sail-report-inconsistent: anvil: 3 proved obligations, Verus counted 4"), got)
+        # Failures must agree too.
+        text = json.dumps(self.project_doc(verified=2, errors=0, outcomes=(("f", ["proved"]), ("g", ["proved", "failed"])),
+                                           failed=1)) + "\n"
+        self.assertIn("1 failed functions, Verus counted 0 errors", pm.normalize(text)[1])
+        # A report without Verus's counts is inconsistent, not zero.
+        doc = self.project_doc()
+        del doc["targets"][1]["report"]["crates"][0]["verus"]
+        self.assertTrue(pm.normalize(json.dumps(doc) + "\n")[1].endswith("no Verus counts; 3 proved obligations, Verus counted 0 verified"))
+
+    def test_whole_project_result_has_no_partial_suffix(self):
+        text = json.dumps(self.project_doc(partial=False)) + "\n"
+        self.assertEqual(pm.normalize(text), ["verification results:: 3 verified, 0 errors"])
+
+    def test_copy_roots_are_normalized(self):
+        warning = ("warning: the following packages contain code that will be rejected by a future version "
+                   "of Rust: verismo v0.1.0 ({}/source/verismo)\n")
+        with tempfile.TemporaryDirectory() as d:
+            plain, sail = Path(d, "r1", "plain-proj"), Path(d, "r1", "sail-proj")
+            a = pm.normalize(warning.format(plain), [plain])
+            b = pm.normalize(warning.format(sail), [sail])
+            self.assertEqual(a, b)
+            self.assertIn("(<copy>/source/verismo)", a[0])
+            # Only the arm's own root is replaced: another path still differs.
+            self.assertNotEqual(pm.normalize(warning.format(sail), [plain]), a)
+
+
+SHIPPED_LOCK = """version = 4
+
+[[package]]
+name = "sail-shipped-dependencies"
+version = "0.1.0"
+
+[[package]]
+name = "syn"
+version = "2.0.119"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "verus_builtin"
+version = "0.0.0-b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "vstd"
+version = "0.0.0-v"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+"""
+
+
+class ShippedVstd(unittest.TestCase):
+    def test_versions_and_lock_diff(self):
+        self.assertEqual(pm.verus_versions(SHIPPED_LOCK), ["verus_builtin=0.0.0-b", "vstd=0.0.0-v"])
+        self.assertEqual(pm.lock_diff(SHIPPED_LOCK, SHIPPED_LOCK.replace("sail-shipped-dependencies", "p")),
+                         ["lock: vstd's closure resolves to the shipped versions"])
+        older = SHIPPED_LOCK.replace('version = "2.0.119"', 'version = "2.0.100"')
+        self.assertEqual(pm.lock_diff(SHIPPED_LOCK, older), ["lock: syn 2.0.100 (shipped 2.0.119)"])
+
+    def test_proof_detection(self):
+        with tempfile.TemporaryDirectory() as d:
+            cache, log = Path(d, "cache"), Path(d, "cold.log")
+            log.write_text("   Compiling vstd\n")
+            self.assertEqual(pm.vstd_proof(cache, log), "not offered")
+            log.write_text("note[SAIL3138]: the release ships a preverified vstd proof, but ... vstd that is not from crates.io\n")
+            self.assertTrue(pm.vstd_proof(cache, log).startswith("miss: the release ships"))
+            receipts = cache / "projects" / "x" / "receipts"
+            receipts.mkdir(parents=True)
+            (receipts / "a.json").write_text(json.dumps({"name": "demo", "invocation": {"dependency_build": None}}))
+            (receipts / "b.json").write_text(json.dumps(
+                {"name": "vstd", "invocation": {"dependency_build": {"kind": "release", "establishing_run": "r"}}}))
+            self.assertEqual(pm.vstd_proof(cache, log), "served")
+
+    def test_proof_summary(self):
+        self.assertEqual(pm.proof_summary([]), "-")
+        self.assertEqual(pm.proof_summary(["served", "served", "miss: x"]), "miss 1/3, served 2/3")
+
+    def test_rust_targets_match_the_corpus(self):
+        corpus = (pm.ROOT / "corpus" / "corpus.toml").read_text()
+        entries = {"verismo": "verismo-main"}
+        for project, entry in entries.items():
+            block = corpus.split(f'name = "{entry}"', 1)[1].split("[[project]]", 1)[0]
+            requires = re.search(r"(?m)^requires = \[(.*)\]", block).group(1)
+            targets = re.findall(r'"rust-target:([^"]+)"', requires)
+            self.assertEqual(pm.RUST_TARGETS.get(project, []), targets)
 
 
 def sample(rnd, arm, scenario, wall, norm, ref=None, code=0, project="small", note=""):
@@ -141,7 +253,7 @@ class Report(unittest.TestCase):
             code = pm.cmd_report(argparse.Namespace(dir=d, markdown=str(out)))
             text = out.read_text()
         self.assertEqual(code, 0)
-        self.assertIn("| vest | module-edit | 41.00 s [41.00-41.00] | 30.00 s [30.00-30.00] | 1.37x | 3/3 | >= 1.3x | pass |", text)
+        self.assertIn("| vest | module-edit | 41.00 s [41.00-41.00] | 30.00 s [30.00-30.00] | 1.37x | 3/3 | >= 1.3x | - | pass |", text)
 
 
 class SmallSequence(unittest.TestCase):
@@ -155,7 +267,8 @@ class SmallSequence(unittest.TestCase):
             install = d / "install"; (install / "bin").mkdir(parents=True)
             stock = d / "stock"; stock.mkdir()
             args = argparse.Namespace(out=str(d / "out"), sail_install=str(install), env=None,
-                                      stock_verus=str(stock), tools=str(d / "none"), settle=0.0)
+                                      stock_verus=str(stock), tools=str(d / "none"), settle=0.0,
+                                      vstd="source")
             (d / "out").mkdir()
             r = pm.Runner(args)
             r.path = os.pathsep.join([str(tools), os.environ["PATH"]])
@@ -171,6 +284,7 @@ class SmallSequence(unittest.TestCase):
         self.assertEqual(got[("stock", "unchanged")]["reference_from"], "previous verifying stock output")
         self.assertEqual(got[("sail", "small-edit")]["normalized"],
                          ["verification results:: 2 verified, 0 errors"])
+        self.assertEqual(got[("sail", "cold-first")]["vstd_proof"], "not offered")
 
 
 if __name__ == "__main__":

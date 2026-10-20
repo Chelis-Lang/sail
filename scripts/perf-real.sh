@@ -14,7 +14,11 @@
 #   ironkv      ironsht                      (verus-lang/verified-ironkv)
 #   anvil       --lib, --verify-module vdeployment_controller
 # Each copy has its Verus dependencies patched to the pinned Verus source, as
-# the conformance harness does (sail_verus::patch).
+# the conformance harness does (sail_verus::patch), unless SAIL_PERF_VSTD is
+# `registry` (below). verismo needs the x86_64-unknown-none Rust target on
+# the pinned toolchain (corpus `requires`); the run refuses without it. An
+# extra target changes the toolchain's identity, so Sail's shipped vstd
+# proof cannot apply while it is installed.
 #
 # `run`: each round gives each mode a fresh copy and, for Sail, an empty cache,
 # then runs, in order:
@@ -36,7 +40,8 @@
 #                search PATH, ADR 0043)
 #   fork-shim    cargo verus verify/focus with sail-z3 and its cache daemon,
 #                using SAIL_PERF_FORK; measures the shim, not managed Sail CLI
-# Every run passes `--time-expanded` to Verus. Sail runs record the daemon's
+# Every run passes `--time-expanded` to Verus unless SAIL_PERF_VERUS_TIMES=0
+# (then the six stage fields are NA). Sail runs record the daemon's
 # counters (`sail status --json`) before and after, and the shim's per-session
 # provenance (SAIL_PROVENANCE_DIR: replies served, solver started).
 #
@@ -62,6 +67,23 @@
 #   SAIL_PERF_CORPUS   fetched corpus (default ~/.cache/sail/corpus)
 #   SAIL_PERF_VERUS_ARGS  extra Verus arguments for every run (e.g. "-V spinoff-all")
 #   SAIL_PERF_MACHINE  free-text machine description for the header
+#   SAIL_PERF_VSTD     where the copies' Verus dependencies come from:
+#                      `source` (default) patches them to the pinned Verus
+#                      source on disk; `registry` pins vstd and the verus_*
+#                      crates to the crates.io versions of the shipped vstd
+#                      build's Cargo.lock, as a user moving the project to
+#                      the release's Verus would (git sources become registry
+#                      versions; changes go to vstd-adjustments.txt, and
+#                      vstd-setup.txt lists the resolved versions that differ
+#                      from the shipped lock). Sail runs then record, after
+#                      `cold`, whether the shipped vstd proof was served
+#                      (r*/MODE.vstd-proof.txt)
+#   SAIL_PERF_VERUS_TIMES  0 drops `--time-expanded`: cargo-verus forwards
+#                      Verus flags to vstd as well, and the shipped vstd proof
+#                      binds them, so the release matrix runs without it, as
+#                      a user would
+#   SAIL_PERF_VSTD_LOCK  the shipped build's Cargo.lock for `registry`
+#                      (default: the one in the release beside `sail`)
 # Needs sail, sail-z3, sail-conformance, cargo verus, python3, perl, git, jq.
 set -euo pipefail
 
@@ -88,13 +110,17 @@ done
 
 corpus="${SAIL_PERF_CORPUS:-$HOME/.cache/sail/corpus}"
 verus_src="$corpus/verus-7d829946231d"
+rust_toolchain=$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' "$sail_root/corpus/toolchain.toml" | head -1)
+vstd_mode="${SAIL_PERF_VSTD:-source}"
+case "${SAIL_PERF_VERUS_TIMES:-1}" in 1) time_args=(--time-expanded) ;; 0) time_args=() ;; *) echo "SAIL_PERF_VERUS_TIMES must be 0 or 1" >&2; exit 2 ;; esac
+case "$vstd_mode" in source | registry) ;; *) echo "SAIL_PERF_VSTD must be source or registry" >&2; exit 2 ;; esac
 
 # Project definitions: corpus entry, source directory, package directory,
 # cargo and Verus arguments, the file noop comments go to, and the edits.
 # Edit lines are "NAME OP FILE LINE EXPECTED_EXIT", LINE being the line of
 # the target `fn` (body, fail, fix, spec), or the insertion point (comment,
 # lemma). See apply_op for the operations.
-cargs=() vargs=()
+cargs=() vargs=() rust_targets=()
 case "$project" in
   vest)
     entry=vest src=vest-11af01ddaef7 pkg=vest_lib
@@ -126,6 +152,8 @@ EOF
     } ;;
   verismo)
     entry=verismo-main src=verismo-6bc6dd326d8b pkg=source/verismo
+    # source/.cargo/config.toml builds for it (corpus `requires`).
+    rust_targets=(x86_64-unknown-none)
     noop_file=source/verismo/src/security/mem.rs
     # fail and fix sit in tspec_e/array/sort.rs, not security/mem.rs: verismo's
     # trusted axiom_size_from_cast_bytes with SpecSize for char (1) contradicts
@@ -209,6 +237,24 @@ selected_edits >"$out/selected-edits.txt"
 for tool in sail sail-z3 sail-conformance cargo-verus verus python3 perl git jq; do
   command -v "$tool" >/dev/null || { echo "$tool is not on PATH" >&2; exit 1; }
 done
+if [ ${#rust_targets[@]} -gt 0 ]; then
+  installed=$(rustup target list --installed --toolchain "$rust_toolchain" 2>/dev/null || true)
+  for t in "${rust_targets[@]}"; do
+    printf '%s\n' "$installed" | grep -qx "$t" || {
+      echo "$project needs the $t target: rustup target add --toolchain $rust_toolchain $t" >&2; exit 1; }
+  done
+fi
+vstd_lock=""
+if [ "$vstd_mode" = registry ]; then
+  vstd_lock="${SAIL_PERF_VSTD_LOCK:-}"
+  if [ -z "$vstd_lock" ]; then
+    locks=("$(dirname "$(command -v sail)")"/../deps/*/Cargo.lock)
+    [ ${#locks[@]} -eq 1 ] && [ -f "${locks[0]}" ] ||
+      { echo "SAIL_PERF_VSTD=registry: no single shipped deps/*/Cargo.lock beside sail; set SAIL_PERF_VSTD_LOCK" >&2; exit 1; }
+    vstd_lock="${locks[0]}"
+  fi
+  [ -f "$vstd_lock" ] || { echo "SAIL_PERF_VSTD_LOCK=$vstd_lock does not exist" >&2; exit 1; }
+fi
 fork="${SAIL_PERF_FORK:-}"
 if [ -n "$fork" ] && [ ! -x "$fork/cargo-verus" ]; then
   echo "SAIL_PERF_FORK=$fork has no cargo-verus" >&2; exit 1
@@ -264,15 +310,36 @@ sail-verus = { path = "$sail_root/crates/sail-verus" }
 [workspace]
 EOF
   cat >"$patcher/src/main.rs" <<'EOF'
-//! Patches a project's Verus dependencies exactly as the conformance harness does.
+//! `source PACKAGE ROOT VERUS`: patches a project's Verus dependencies to the
+//! pinned Verus source exactly as the conformance harness does.
+//! `registry PACKAGE ROOT GIT_NAMES NAME=VERSION...`: pins them to crates.io
+//! versions instead (GIT_NAMES: comma-separated crates to patch in Verus's
+//! git source), printing one line per change.
+use std::collections::{BTreeMap, BTreeSet};
 fn main() -> std::process::ExitCode {
-    let a: Vec<std::path::PathBuf> = std::env::args_os().skip(1).map(Into::into).collect();
-    let [package, root, verus] = a.as_slice() else {
-        return std::process::ExitCode::from(2);
+    let a: Vec<String> = std::env::args().skip(1).collect();
+    let result = match a.as_slice() {
+        [mode, package, root, verus] if mode == "source" => {
+            sail_verus::patch::patch_verus_deps(package.as_ref(), root.as_ref(), verus.as_ref())
+                .map(|p| vec![format!("patched {:?}: {}", p.manifest, p.crates.join(", "))])
+        }
+        [mode, package, root, git, versions @ ..] if mode == "registry" => {
+            let git: BTreeSet<String> =
+                git.split(',').filter(|n| !n.is_empty()).map(ToOwned::to_owned).collect();
+            let versions: BTreeMap<String, String> = versions
+                .iter()
+                .filter_map(|kv| kv.split_once('='))
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                .collect();
+            sail_verus::patch::pin_verus_deps_to_registry(package.as_ref(), root.as_ref(), &versions, &git)
+        }
+        _ => return std::process::ExitCode::from(2),
     };
-    match sail_verus::patch::patch_verus_deps(package, root, verus) {
-        Ok(p) => {
-            println!("patched {:?}: {}", p.manifest, p.crates.join(", "));
+    match result {
+        Ok(lines) => {
+            for line in lines {
+                println!("{line}");
+            }
             std::process::ExitCode::SUCCESS
         }
         Err(e) => {
@@ -287,10 +354,46 @@ EOF
   rm -rf "$p"
   cp -r "$corpus/$src" "$p"
   rm -rf "$p/.git"
-  "$patcher/target/release/sail-perf-patcher" "$p/$pkg" "$p" "$verus_src"
-  (cd "$p/$pkg" && CARGO_TARGET_DIR="$out/metadata-target" cargo metadata --format-version 1 >/dev/null)
+  if [ "$vstd_mode" = source ]; then
+    "$patcher/target/release/sail-perf-patcher" source "$p/$pkg" "$p" "$verus_src"
+    (cd "$p/$pkg" && CARGO_TARGET_DIR="$out/metadata-target" cargo metadata --format-version 1 >/dev/null)
+  else
+    pin_registry "$patcher/target/release/sail-perf-patcher" "$p"
+  fi
   rm -rf "$out/metadata-target"
   touch "$p/.sail-perf-ready"
+}
+
+# The Verus crates of verus-lang/verus's git source in DIR's resolution,
+# comma-separated.
+verus_git_crates() { # DIR
+  (cd "$1/$pkg" && CARGO_TARGET_DIR="$out/metadata-target" cargo metadata --format-version 1) |
+    jq -r '.packages[] | select((.source // "") | startswith("git+https://github.com/verus-lang/verus.git")) | .name' |
+    sort -u | paste -sd, -
+}
+
+pin_registry() { # PATCHER DIR: Verus crates to the shipped lock's crates.io versions
+  local patcher="$1" p="$2" git versions=()
+  while read -r v; do versions+=("$v"); done < <(python3 -I "$here/perf-matrix.py" vstd-versions "$vstd_lock")
+  "$patcher" registry "$p/$pkg" "$p" "" "${versions[@]}" >"$out/vstd-adjustments.txt"
+  # A git dependency's own Verus git dependencies (anvil's verus-tla, for
+  # example) follow through Verus's git source. When they cannot even
+  # resolve beside the registry crates (Verus's git head can pin other
+  # versions of crates that declare the same `links`), patch every Verus
+  # crate of the shipped lock there: a git vstd brings all of them.
+  if ! git=$(verus_git_crates "$p" 2>"$out/metadata.err"); then
+    git=$(printf '%s\n' "${versions[@]}" | cut -d= -f1 | paste -sd, -)
+  fi
+  if [ -n "$git" ]; then
+    "$patcher" registry "$p/$pkg" "$p" "$git" "${versions[@]}" >>"$out/vstd-adjustments.txt"
+    git=$(verus_git_crates "$p" 2>"$out/metadata.err") || { cat "$out/metadata.err" >&2; return 1; }
+    [ -z "$git" ] || { echo "Verus git crates remain after pinning: $git" >&2; return 1; }
+    # Every added patch must be used, or each build would warn about it.
+    if grep -i "was not used in the crate graph" "$out/metadata.err" >&2; then return 1; fi
+  fi
+  local root
+  root=$(cd "$p/$pkg" && CARGO_TARGET_DIR="$out/metadata-target" cargo metadata --format-version 1 --no-deps | jq -r .workspace_root)
+  python3 -I "$here/perf-matrix.py" lock-diff "$vstd_lock" "$root/Cargo.lock" >"$out/vstd-setup.txt"
 }
 
 fresh_copy() { # DIR
@@ -448,6 +551,10 @@ stats() { # -> "hellos gets hits puts" of the daemon for SAIL_CACHE_DIR, or zero
 # Verus's --time output, summed over every crate verified in the run:
 # total rust vir verify-crate (wall ms), verify and smt-run (ms summed over threads).
 times_of() { # LOG MODE
+  if [ "${SAIL_PERF_VERUS_TIMES:-1}" = 0 ]; then
+    printf 'NA\tNA\tNA\tNA\tNA\tNA'
+    return
+  fi
   if [ "$partial" = 1 ]; then
     case "$2" in
       sail | fork-sail | incremental)
@@ -487,7 +594,7 @@ run_one() { # ROUND MODE DIR PHASE
   fi
   t0=$(now)
   (cd "$dir/$pkg" && if [ -n "${SAIL_PERF_VERUS_BUILD:-}" ]; then export SAIL_VERUS_BUILD="$SAIL_PERF_VERUS_BUILD"; fi &&
-    PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$prov" verus_cmd "$mode" --time-expanded) >"$log" 2>&1 || code=$?
+    PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$prov" verus_cmd "$mode" ${time_args[@]+"${time_args[@]}"}) >"$log" 2>&1 || code=$?
   t1=$(now)
   s1=$(stats)
   local sessions started served
@@ -539,6 +646,11 @@ run_mode() { # ROUND MODE
     [ "$ready" = 1 ] || { echo "fork-shim daemon did not start; see $out/r$round/$mode.daemon.log" >&2; exit 2; }
   fi
   run_one "$round" "$mode" "$dir" cold
+  case "$mode" in
+    sail | fork-sail | incremental)
+      python3 -I "$here/perf-matrix.py" vstd-proof "$cache" "$out/r$round/$mode.cold.log" \
+        >"$out/r$round/$mode.vstd-proof.txt" || true ;;
+  esac
   for ((i = 1; i <= ${SAIL_PERF_NOOPS:-3}; i++)); do
     apply_op "$dir" noop "$noop_file" "$i"
     run_one "$round" "$mode" "$dir" "noop$i"
@@ -569,6 +681,11 @@ header() {
   echo "machine: ${SAIL_PERF_MACHINE:-unspecified}; $(uname -sm); $(cpu); $(getconf _NPROCESSORS_ONLN) cores"
   echo "sail: $(sail --version 2>/dev/null | head -1) at $(command -v sail)"
   echo "verus: $(verus --version 2>&1 | sed -n 's/^ *Version: //p')"
+  echo "vstd: $vstd_mode${vstd_lock:+ (shipped lock $vstd_lock)}"
+  [ ! -s "$out/vstd-adjustments.txt" ] || sed 's/^/  adjusted: /' "$out/vstd-adjustments.txt"
+  [ ! -s "$out/vstd-setup.txt" ] || sed 's/^/  /' "$out/vstd-setup.txt"
+  [ ${#rust_targets[@]} -eq 0 ] ||
+    echo "rust targets: ${rust_targets[*]} on $rust_toolchain (changes the toolchain identity: the shipped vstd proof cannot apply)"
   [ -n "$fork" ] && echo "fork: $(sed -n 's/^ *//p' "$fork/version.txt" 2>/dev/null | head -1) at $fork"
   if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
     python3 -I "$here/perf-incidental.py" check "$corpus" >"$out/catalogue-manifest.json"
