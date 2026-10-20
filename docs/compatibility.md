@@ -44,7 +44,8 @@ Upstream changes that can show in corpus results:
 - Vest at its corpus pin no longer verifies with the default rlimit:
   `parse_cbor_with_child` (`vest_lib/src/cbor/format.rs`) exceeds it under
   stock 7d82994 and Sail alike. Upstream verita runs Vest with
-  `--rlimit 100`.
+  `--rlimit 100`. The corpus entry now expects that one error
+  ([VI-0032](verus-issues/VI-0032-vest-rlimit-on-7d82994.md)).
 - Cargo 1.99.1 no longer passes a registry package's `[lints]` to the compiler
   under `--cap-lints allow`; the shipped native shapes were re-observed.
 
