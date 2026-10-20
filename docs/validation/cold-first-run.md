@@ -212,14 +212,10 @@ three-round cohort of the branch against the same no-retention probe gives
 demo 13.84 against 12.15 s and Vest cold 72.52 against 70.63 s, so retention
 still costs about 1.7–1.9 s there, offset by Sail's other first-run savings.
 
-An unproposed experiment checked how much of the native admission cost
-pipelining would recover. Native units captured their dependency graph at
-start without waiting for other units' scratch directories, and checked their
-producers' certificates at finish instead of at start. In a second macOS
-cohort of three rounds it ran demo 18.34 s against the branch's 18.61 s, and
-Vest cold 41.29 s against 42.06 s (stock 40.40 s). Every step still matched
-stock, and returned A still took 1.16 s. That design changes ADR 0050's
-admission rules and is left for the owner's decision.
+A pipelining experiment, later accepted as ADR 0061
+([below](#pipelined-native-admission-adr-0061)), ran demo 18.34 s against
+18.61 s and Vest cold 41.29 s against 42.06 s in a second macOS cohort
+without the shipped bundle.
 
 A first run that prepares no plan (for example `SAIL_MANAGED_FORCE=1`)
 compiles the native units and vstd without certificates. Every later run then
@@ -227,6 +223,64 @@ waits 2 s for certificates that cannot come and never retains (#285). So
 skipping retention on a first run would lose instant revert for that target
 directory until its dependencies are rebuilt, and is not a way to remove
 this cost.
+
+## Pipelined native admission (ADR 0061)
+
+**Status:** accepted and selected. Native units compile as soon as Cargo
+starts them and are certified after their own compile
+([ADR 0061](../decisions/0061-pipelined-native-admission.md)). Public-profile
+Vest's cold run is now faster than stock on Linux (−2.2%); on macOS it is
++4.3% (within the 5% bar). Instant revert is unchanged.
+
+| Field | Evidence |
+|---|---|
+| Source | Main `e45f9031`; #289 (closure-scoped source check) `7ea42f2b`; branch `perf/pipelined-native` `780fc392` (#289 plus ADR 0061) |
+| Runtime | macOS `7d829946…-e9b69a75ea390499`, Linux `7d829946…-81186034d2e137a2` (fork `f8589ed4`); stock 0.2026.10.18.7d82994, Rust 1.99.1 |
+| Environment | Full release trees from `scripts/release.sh stage` (shipped vstd bundle and replies). macOS: EC2 mac-m4.metal, us-east-1d, macOS 27.0. Linux: native EC2 c7i.8xlarge, us-east-1, inside the CI image (`core`), README verifier toolchain |
+| Scope | Demo first run; public-profile Vest cycle, `-p vest_lib -- --rlimit 100`; three rounds per platform, arms rotated; one JSON instant-revert round per platform |
+| Limits | The macOS host was terminated before its raw files were copied; only the analyzer summary survives in the evidence archive |
+
+Medians of three, seconds (Linux):
+
+| Step | Stock | Main | #289 | Branch |
+|---|---:|---:|---:|---:|
+| Demo, first run | 31.05 | 13.43 | 13.53 | 13.41 |
+| Vest A, cold | 71.45 | 71.31 | 70.45 | 69.91 |
+| Vest B, edit | 39.15 | 24.02 | 23.76 | 23.64 |
+| Vest A, returned | 38.99 | 1.57 | 1.13 | 1.13 |
+| Vest A, unchanged | 0.20 | 0.56 | 0.56 | 0.56 |
+| Vest cycle | 149.78 | 97.45 | 95.93 | 95.23 |
+
+macOS:
+
+| Step | Stock | Main | #289 | Branch |
+|---|---:|---:|---:|---:|
+| Demo, first run | 16.71 | 10.54 | 10.54 | 10.54 |
+| Vest A, cold | 40.76 | 43.96 | 42.79 | 42.53 |
+| Vest B, edit | 22.27 | 13.71 | 13.05 | 13.01 |
+| Vest A, returned | 22.28 | 1.78 | 1.17 | 1.17 |
+| Vest A, unchanged | 0.23 | 0.69 | 0.70 | 0.69 |
+| Vest cycle | 85.49 | 60.14 | 57.63 | 57.36 |
+
+Every Sail step exits 0. Stdout and stderr equal stock's after normalization,
+except that every Sail arm, main included, prints main's intended
+`note[SAIL3138]` on Vest's cold run (vstd's dependency versions differ from
+the shipped build's, so vstd is verified). The JSON round passes on both
+platforms: returned and unchanged A run no verifier, reuse both targets and
+keep cold A's establishing run; B reruns only `vest_lib`; no `SAIL3136`.
+With the shipped bundle, the demo serves vstd, so its native admission is no
+longer on the critical path and every Sail arm runs it 1.6× (macOS) to 2.3×
+(Linux) faster than stock.
+
+Gates on `780fc392` (Linux lane): solver, every e2e phase plus extra, PR
+conformance (33/33 in every arm and engine), fast conformance (147/147 in
+every arm and engine) and standard conformance (fill 159/159, engine 159/159,
+pass-through and warm 158 same plus anvil unstable on module progress-note
+order, 0 different) pass. The workspace gate failed only on a missing anchor
+to this section and passes after it.
+
+Evidence: `experiments/2026-10-20/pipelined-native/pipelined-evidence.tgz`,
+SHA-256 `9a49618177c2181a58f44548ecb4f006b1a66ff322c7584873136559cbb72188`.
 
 ## Raw evidence
 
