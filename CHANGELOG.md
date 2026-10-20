@@ -5,6 +5,22 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- The release archive ships signed solver replies for its pinned vstd
+  (`replies/vstd.pack` and `replies/release.pub`, ADR 0062). When the
+  preverified vstd proof does not apply, the daemon answers vstd's solver
+  queries from them instead of running Z3. Examples are extra toolchain
+  components, another lock file or a loader variable. On Linux, a first run
+  that misses the proof because of `rustc-dev` and `llvm-tools` took
+  29.93 s, against 31.76 s without the replies and 29.82 s for stock.
+  Lock-file and loader-variable misses run 7–10% faster than stock.
+  - **Trust.** The daemon trusts the release's key only for that pack, and
+    only if both files match `release-files.json`.
+  - **Checks.** Every entry passes the shared tier's signature, solver and
+    shape checks; anything else is solved normally.
+  - **Diagnostics.** `sail status` shows the pack, and
+    `SAIL_BUNDLED_REPLIES=0` turns it off. Verdicts and diagnostics are
+    unchanged.
+
 - The shipped vstd proof also applies when the only Verus flag forwarded to
   vstd is a raised `--rlimit N` (N at least the default 10).
   The release recorder now proves, for its own unit, that raising the limit

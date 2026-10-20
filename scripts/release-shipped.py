@@ -34,6 +34,8 @@ RLIMIT_WITNESS = 'rlimit.json'
 WITNESS_RLIMIT = '100'
 # Cargo's progress lines, whose order follows Cargo's parallel scheduling.
 CARGO_PROGRESS = re.compile(r'^\s*(Compiling|Checking|Fresh|Finished|Running|Locking|Blocking|Downloaded|Downloading) ')
+REPLIES = 'replies'
+PACK_MAGIC = b'sail-reply-pack-v1\n'
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -231,12 +233,46 @@ def check_bundle(bundle, variant, manifest_sha256, run=None):
             'members': tree}
 
 
+def check_replies(replies, report=None):
+    """The bundled vstd replies (ADR 0062): exactly a pack and its public key."""
+    assert sorted(path.name for path in replies.iterdir()) == ['release.pub', 'vstd.pack']
+    pack = (replies/'vstd.pack').read_bytes()
+    assert pack.startswith(PACK_MAGIC), 'malformed reply pack'
+    at, count, previous = len(PACK_MAGIC), 0, b''
+    while at < len(pack):
+        key, length = pack[at:at+32], int.from_bytes(pack[at+32:at+36], 'little')
+        assert len(key) == 32 and key > previous and at+36+length <= len(pack), 'malformed reply pack'
+        previous, at, count = key, at+36+length, count+1
+    assert at == len(pack) and count > 0, 'empty or malformed reply pack'
+    public = (replies/'release.pub').read_text()
+    assert public.startswith('sail-ed25519-public-v1 ') and len(public.split()) == 2
+    if report is not None:
+        assert report['publish']['published'] == count and report['publish']['failed'] == 0
+        assert report['pack_bytes'] == len(pack)
+    return {'entries': count, 'pack_sha256': digest(replies/'vstd.pack'),
+            'key_sha256': digest(replies/'release.pub')}
+
+
+def drain_queue(binaries, socket, env):
+    """Wait (bounded) until the recording daemon has written every reply."""
+    deadline = time.monotonic()+30
+    while time.monotonic() < deadline:
+        status = subprocess.run([str(binaries/'sail'), 'status', '--json', '--socket', str(socket)],
+                                env=env, capture_output=True, timeout=10)
+        if status.returncode == 0 and json.loads(status.stdout)['info']['queue']['entries'] == 0:
+            return
+        time.sleep(.1)
+    raise AssertionError('recording daemon did not drain its write queue')
+
+
 def verify(root):
     index = json.loads((root/INDEX).read_bytes())
     assert set(index) == {'schema', 'proof', 'files', 'directories'}
     assert index['schema'] == 1 and index['files'] == inventory(root)
     assert index['directories'] == directories(root)
     assert set(index['files']).issuperset({'bin/sail', 'bin/sail-z3'})
+    assert set(index['files']).issuperset({REPLIES+'/vstd.pack', REPLIES+'/release.pub'})
+    check_replies(root/REPLIES)
     bundle = root/'deps'/index['proof']['runtime']
     runtime_manifest = root/'engine'/index['proof']['runtime']/'sail-build.json'
     assert digest(runtime_manifest) == index['proof']['runtime_manifest_sha256']
@@ -508,6 +544,7 @@ def record(root, evidence):
     evidence.mkdir(parents=True, mode=0o700)
     before = inventory(root)
     assert not (root/'deps').exists() and not (root/INDEX).exists(), 'stage already contains dependencies'
+    assert not (root/REPLIES).exists(), 'stage already contains replies'
     binaries = root/'bin'
     env = {k: v for k, v in os.environ.items() if not k.startswith('SAIL_')
            and k not in ('CARGO_TARGET_DIR', 'CARGO_ENCODED_RUSTFLAGS', 'RUSTFLAGS', 'VERUS_Z3_PATH')}
@@ -592,8 +629,19 @@ def record(root, evidence):
                 assert lock.is_file() and not lock.is_symlink()
                 lock.chmod(0o644)
                 proof = check_bundle(bundle, variant, selected['manifest_sha256'], run)
+                drain_queue(binaries, socket, env)
             finally:
                 stop_server()
+            # ADR 0062: sign the recording's solver replies with a one-off key
+            # that exists only inside this command, and ship them with its
+            # public half. They serve byte-identical vstd queries after a
+            # shipped-proof miss; every entry is still verified when served. Pack
+            # before the rlimit witness, which runs only for its own evidence.
+            replies_raw = command('bundle-replies', [str(binaries/'sail'), 'cache', 'bundle-replies',
+                                                     '--cache', str(cache/'results'), '--out', str(owned/'replies')],
+                                  cwd=owned, cap=120)
+            replies = check_replies(owned/'replies', json.loads(replies_raw))
+            outcome['replies'] = replies
             # ADR 0060: the unit may also serve a raised --rlimit if the
             # recipe's solver processes are unchanged apart from the limit.
             end += 600
@@ -619,7 +667,10 @@ def record(root, evidence):
             try:
                 shutil.copytree(bundle, staging/variant)
                 assert check_bundle(staging/variant, variant, selected['manifest_sha256'], run) == proof
+                shutil.copytree(owned/'replies', staging/'.replies')
+                assert check_replies(staging/'.replies') == replies
                 staging.rename(root/'deps')
+                (root/'deps'/'.replies').rename(root/REPLIES)
             finally:
                 if staging.exists():shutil.rmtree(staging)
             index = {'schema': 1, 'proof': proof, 'files': inventory(root),
@@ -645,6 +696,7 @@ def record(root, evidence):
             try:
                 if not outcome['passed']:
                     if (root/'deps').exists():shutil.rmtree(root/'deps')
+                    if (root/REPLIES).exists():shutil.rmtree(root/REPLIES)
                     (root/INDEX).unlink(missing_ok=True)
             finally:
                 outcome['server_reaped'] = all(group['extinct'] for group in outcome['process_groups']

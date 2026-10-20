@@ -36,7 +36,8 @@ release matrix (`scripts/perf-matrix.py`) has not yet run on the candidate.
 |---|---|---:|---:|---:|---|
 | First use, new project (shipped vstd hit) | Linux | 31.5 s | 13.9 s | 2.27× | Win |
 | First use, new project | macOS | 17.6 s | 10.2 s | 1.73× | Win |
-| First use, shipped vstd miss (extra toolchain components) | Linux | 29.4 s | 33.1 s | 0.89× | **Slower** (#232, #236) |
+| First use, shipped vstd miss (extra toolchain components) | Linux | 29.82 s | 29.93 s | 1.00× | Parity with shipped replies (ADR 0062; 31.76 s without them); #286 remains |
+| First use, shipped vstd miss (lock file or loader variable) | Linux | 29.82 s | 27.76 / 26.95 s | 1.07× / 1.11× | Win (ADR 0062) |
 | Small project cold, bundle miss | Linux | 31.31 s | 33.89 s | 0.92× | **Slower** (#232) |
 | Small project cold | macOS | 16.66 s | 19.86 s | 0.84× | **Slower** (#278) |
 | Vest cold | Linux | 66.59 s | 69.84 s | 0.95× | **Slower**: Vest misses the bundle on its vstd closure (default features off, `unicode-ident` 1.0.24; #238). Its `--rlimit 100` is served since ADR 0060 |
@@ -119,7 +120,7 @@ then verifies vstd (2,061 checks, 366 solver sessions), then the user crate.
 Cold was 0.97–1.01× on the 2026-10-15 corpus (removed pass-through mode)
 and is 0.86–0.88× on the latest measured managed builds; the regression is
 unattributed (lever 1.1). On Vest, overhead fixes (1.1, 1.3, 1.4, EXEC skip)
-can reach parity at best; only vstd coverage for Vest's pin (1.7–1.9)
+can reach parity at best; only vstd coverage for Vest's pin (1.8–1.9; 1.7 covers only the runtime's own vstd)
 turns cold into a win, because Vest pins vstd 2026-09-06 and misses the
 shipped bundle.
 
@@ -132,7 +133,7 @@ shipped bundle.
 | 1.4 | Take instant-revert retention off the cold path | About 4.6 s on Vest cold (76.05 → 80.68 s when added) plus about 1.6 s on changed B; the unchanged-run cost is largely recovered by #225 | Proposed. The #156 cost gate (`perf/small-overhead`) skips retention only for targets whose compile is cheap next to it; a first run and Vest still retain | Skip retention on a project's first run, or write it after the result (days) | No | #163 |
 | 1.5 | Profile the 9.3–14.2 s residual first use | Unmeasured, likely 0–3 s; fixed waits alone could be up to about 4 s per first run; decides 1.10 | Proposed | Control: stock `cargo build --timings` of only the macro closure (never timed). Then per-phase timestamps: native compile, rust-src setup, admission hashing (662 policy files, 128 source maps), fixed 2 s waits (0.5 day). Candidate cuts: per-machine content-memoized policy-archive attestation, readiness signals in place of the fixed arrival and graph-capture waits, parallel hashing (1–3 days) | No | #234 |
 | 1.6 | Overlap daemon start and solver-identity hashing with Cargo's native compile | Unmeasured; pure cold cut, needs no think time | Proposed | `SAIL_JOB_EVENTS` timeline of a fresh project to show the serial section, then overlap (1–2 days) | No | #235 |
-| 1.7 | Ship vstd SMT replies as signed shared-tier entries ([ADR 0017](decisions/0017-shared-tier-with-signed-entries.md)) for the pinned and last N crates.io vstd versions | Unmeasured; covers bundle misses (other vstd such as Vest's pin, `SAIL3112` fallbacks, Cargo mismatch), where the solver cache stays on ([question 30](open-questions.md)). Two cold controls already match all 366 literal input streams ([boundary record](validation/vstd-compile-boundary.md)). Still pays the vstd frontend | Proposed | Fill a directory store from one vstd verify, seed a fresh machine, time a deliberate bundle miss (different Cargo; Vest's pinned vstd) with and without it; record hit rate and wall saved (0.5–1 day, no code) | No | #236 |
+| 1.7 | Ship vstd SMT replies as signed entries in the release archive ([ADR 0062](decisions/0062-shipped-vstd-solver-replies.md), accepted) for the pinned vstd | Measured: component miss 31.76 → 29.93 s against stock's 29.82 s (+6.5% → +0.4%); lock-file and loader-variable misses 7–10% faster than stock; bundle hit unchanged; 20,197 of 20,197 vstd lookups hit ([record](validation/vstd-miss-replies.md#shipped-replies-implementation)) | Built (PR #287); Linux measured, macOS unmeasured | Measure on the macOS release stage | No | #236 |
 | 1.8 | Compiler-boundary local reuse as the default fallback | 39.84 → 9.34 s per new demo project (Sail vs Sail); worktree and Vest unmeasured, and Vest's vstd pin likely misses | Built behind a research flag; #222 fix built, qualification pending | Land the #222 fix; Vest hit/miss from 1.1; then qualify as default | No | #161, #222 |
 | 1.9 | More vstd versions (Vest pins 2026-09-06) | About 26 s per Vest-class worktree; corpus gain about 0 today | Proposed | Can start from 1.1's Vest hit/miss: fill-once local store keyed by `Cargo.lock` checksum (about 1 week), then published bundles (about 1 week) | No | #237 |
 | 1.10 | Release-built macro crates as pinned tools | Plausibly 1.5–3 s fresh project (estimate) for projects matching the runtime's pinned vstd and macros; v1's 1.28 s is the upper bound. At opt-level 3 also 0.6–2 s per warm edit (one sample) | Proposed; blocked on an owner parity decision under ADR 0053 (#187: a broken user `cc` would no longer break Sail) | After 1.5: re-run the opt-level 3 macro A/B with ≥3 cold and ≥6 warm samples per arm on Vest and IronKV (0.5 day); then serve exact-match macro units from the archive, bound by digest (4–6 days). On Mac, requires qualifying the VI-0026 stable `@rpath` install-name fix (branch `perf/vstd-macos-repro`) | Yes | #239 |
@@ -140,6 +141,7 @@ shipped bundle.
 | 1.12 | Background prebuild at `sail new` or first sight (the ordinary managed Cargo build, run early) | Hides up to the residual first use with think time; 0 without | Proposed; independent of 1.8 | Time `sail new` → first verify with a realistic agent think-time trace (days). Background pre-verification on a miss waits for 1.8 to be default-safe | No | #241 |
 | 1.13 | User CI cache recipe | Unmeasured; plausibly the all-hits floor on unchanged code (charter success criterion) | Proposed | One measured GitHub Actions example persisting the Sail cache or reading a team store (days) | No | #242 |
 | 1.14 | Bulk prefetch from the team store | Unmeasured | Proposed | Only after 1.11 shows remote latency matters | No | #243 |
+| 1.15 | Hash the engine runtime once per run, and refuse the shipped proof on its sysroot file-name set before hashing contents | About 2.4 s of the 3.0 s that recording receipts costs on a toolchain-component miss (37.2 s against 34.1 s on the plain path; 0.6 s with the minimal toolchain), plausibly making that miss faster than stock (estimate) | Attributed ([record](validation/vstd-miss-replies.md)): plan-less misses rehash the 530 MB runtime in the driver proxies (4.4 CPU-s), and the developer toolchain adds about 0.8 GB of hashed sysroot libraries | Locate the driver-side rehash, hand it the run's runtime identity, measure with the same 2×2 cohort (1–2 days) | No | #286 |
 
 Also a cold contributor: EXEC-pass skip (track 2 step 2) saves about 3 s on
 Vest cold as well as every edit, about a quarter of the Vest cold gap.

@@ -4,14 +4,16 @@ How far each source of a verification result is trusted, and what is checked
 before it is used. Charter rules 2, 3, 7, 9 and 10 apply.
 
 Status: two local tiers exist, the in-memory tier and the disk tier, both
-inside the daemon (ADR 0011, ADR 0015). A shared tier of signed entries
-sits behind them (ADR 0017).
+inside the daemon (ADR 0011, ADR 0015). Behind them sit the bundled tier,
+the signed vstd replies a release archive ships (ADR 0062), and a shared
+tier of signed entries (ADR 0017).
 
 | Source | Trusted for | Checks before use |
 |---|---|---|
 | Fresh pinned-Z3 run | Confirmed results | Solver identity (version string, binary hash and platform) matches the pin |
 | In-memory tier | Bytes that are on disk, or queued to be written there by the daemon | A slot read from disk, or whose write completed, is served only while its entry file has the stamp it had then (device, inode, length, modification time). Otherwise the slot is dropped and the disk is read. A pending slot exists only for a key that has no entry file and no other queued write (ADR 0015) |
 | Local disk tier | Replies written by the local daemon, which is its only writer | Key and reply hash match the entry, and the reply has the shape its command requires (ADR 0011). Any failure is a miss |
+| Bundled tier | Nothing, until verified: then as far as the release archive is trusted, and only for that archive's own pack | `replies/release.pub` and `replies/vstd.pack` must match the SHA-256 and size that the archive's `release-files.json` lists for them, or the tier is not used. Then every entry passes the shared tier's checks below, with that one key as the only trusted signer (ADR 0062) |
 | Shared tier | Nothing, until verified (rule 9): then exactly as far as its signer is trusted | An ed25519 signature by a key in `<cache root>/trust/*.pub`, over the key, reply hash, command, mode, solver identity, platform class, effort, format version and signer id. Then: key, reply hash, solver identity and platform class equal the session's, the reply has its command's shape, and an `unknown` passes the serving policy (ADR 0009). Any failure or timeout is a miss (ADR 0017) |
 
 ## Solver identity
@@ -122,6 +124,43 @@ time, memory and `rlimit-count` figures. Plain Verus uses only
 `rlimit-count`, which is exact for the publisher's run of the same
 process prefix on the same binary and platform class. See "Solver
 identity" above for machine classes.
+
+## Bundled tier: the release's own replies
+
+A release archive carries `replies/vstd.pack` and `replies/release.pub`
+(ADR 0062). The pack holds ordinary signed shared entries: the pinned
+solver's replies from the factory's own vstd recording. The release
+factory signs them with a key it generates for that release. The secret
+exists only inside `sail cache bundle-replies` and is never written, so no
+long-lived signing secret exists.
+
+**Why the archive may carry its own trust root.** The archive's checksum
+already protects `bin/sail`, `bin/sail-z3`, the pinned Z3 and the shipped
+vstd proof. Whoever produced the archive is already trusted with every
+verdict a user sees. A public key in the same archive, bound by the same
+`release-files.json` and trusted only for the same archive's pack, adds no
+new party. The owner accepted this on 2026-10-20 (question 36).
+
+**What the daemon checks.**
+- **The index.** The key and the pack are used only if their bytes match
+  the SHA-256 and size that `release-files.json` records. A file missing
+  from the index, a swapped key, a modified pack or a malformed pack turns
+  the whole tier off: every lookup misses, and `sail status` says why.
+- **Every entry.** Each entry is checked as a shared entry is:
+  - signature by the release key;
+  - key, reply hash, solver name, version, binary and platform class;
+  - mode, reply shape and the `unknown` policy.
+
+  A failure is a counted miss (`bundled_rejected`).
+- **Separation.** The release key is never added to `<cache root>/trust/`,
+  so it authorizes no team store. The trust directory's keys authorize
+  nothing in the pack.
+- **Order.** The tier is consulted after the local tiers and before any
+  team store. A hit is copied into the local tier with provenance
+  `bundled:<key id>` and is never published again.
+
+`SAIL_BUNDLED_REPLIES=0` turns the tier off for diagnosis. It never changes
+any reply's bytes, only whether the pinned solver is asked.
 
 ## Key management
 

@@ -13,6 +13,7 @@
 
 pub mod maint;
 pub mod memory;
+pub mod pack;
 pub mod shared;
 
 use std::io::Write as _;

@@ -18,6 +18,7 @@ use sail_cache::shared::{Rejection, Solver};
 use sail_cache::{DiskCache, FileStamp};
 use sail_key::{QueryKey, SolverIdentity};
 
+use crate::bundled::{self, BundledConfig, BundledTier};
 use crate::digest_memo::{DigestMemo, MAX_RETAINED_BYTES};
 use crate::log::Log;
 use crate::shared::{Lookup, SharedConfig, SharedTier};
@@ -59,6 +60,9 @@ pub struct Config {
     pub write_delay: Option<Duration>,
     /// The shared tier to consult on local misses (`None`: none).
     pub shared: Option<SharedConfig>,
+    /// The release's bundled replies, consulted on local misses before the
+    /// shared tier (`None`: none; ADR 0062).
+    pub bundled: Option<BundledConfig>,
 }
 
 impl Default for Config {
@@ -72,6 +76,7 @@ impl Default for Config {
             log: None,
             write_delay: None,
             shared: None,
+            bundled: None,
         }
     }
 }
@@ -107,6 +112,12 @@ pub struct Stats {
     /// Local misses not looked up: the store was backing off after a
     /// timeout, the key missed recently, or too many reads were running.
     pub shared_skipped: AtomicU64,
+    /// Local misses looked up in the bundled replies.
+    pub bundled_lookups: AtomicU64,
+    /// Bundled entries that passed every check and were served.
+    pub bundled_hits: AtomicU64,
+    /// Bundled entries that failed a check.
+    pub bundled_rejected: AtomicU64,
 }
 
 impl Stats {
@@ -127,6 +138,9 @@ impl Stats {
             shared_other_platform: self.shared_other_platform.load(Ordering::Relaxed),
             shared_timeouts: self.shared_timeouts.load(Ordering::Relaxed),
             shared_skipped: self.shared_skipped.load(Ordering::Relaxed),
+            bundled_lookups: self.bundled_lookups.load(Ordering::Relaxed),
+            bundled_hits: self.bundled_hits.load(Ordering::Relaxed),
+            bundled_rejected: self.bundled_rejected.load(Ordering::Relaxed),
         }
     }
 }
@@ -137,6 +151,7 @@ struct State {
     writer: Writer,
     stats: Arc<Stats>,
     shared: Option<SharedTier>,
+    bundled: Option<Arc<BundledTier>>,
     /// Shared-tier rejections and timeouts logged so far (the first few
     /// are logged, to help diagnose a trust setup).
     shared_logged: AtomicU64,
@@ -264,9 +279,85 @@ impl State {
         if mode != "default" {
             return None;
         }
-        let (shared, solver) = (self.shared.as_ref()?, solver?);
+        let solver = solver?;
+        if let Some(bundled) = &self.bundled
+            && let Some(value) = self.bundled_get(bundled, key, solver)
+        {
+            return Some((value, Source::Shared));
+        }
+        let shared = self.shared.as_ref()?;
         self.shared_get(shared, key, solver)
             .map(|v| (v, Source::Shared))
+    }
+
+    /// Looks `key` up in the release's bundled replies (ADR 0062). A
+    /// verified entry is also queued for the local disk tier, with
+    /// provenance `bundled:<key id>`. Every failure is a miss.
+    fn bundled_get(
+        &self,
+        bundled: &BundledTier,
+        key: &QueryKey,
+        solver: &Solver,
+    ) -> Option<Arc<Value>> {
+        let lookup = bundled.lookup(key, solver);
+        if matches!(lookup, bundled::Lookup::Miss) {
+            return None;
+        }
+        self.stats.bundled_lookups.fetch_add(1, Ordering::Relaxed);
+        let verified = match lookup {
+            bundled::Lookup::Hit(v) => v,
+            bundled::Lookup::Miss => return None,
+            bundled::Lookup::Rejected(r) => {
+                self.bundled_rejected(key, r);
+                return None;
+            }
+        };
+        let effort = verified.effort.as_ref().map(to_wire);
+        if verified.command.starts_with("check-sat")
+            && sail_api::policy::is_unknown(&verified.reply)
+            && !sail_api::policy::unknown_servable(effort.as_ref())
+        {
+            self.bundled_rejected(key, Rejection::UnservableUnknown);
+            return None;
+        }
+        self.stats.bundled_hits.fetch_add(1, Ordering::Relaxed);
+        let provenance = format!("{}{}", bundled::PROVENANCE_PREFIX, verified.signer);
+        Some(self.keep(key, verified, provenance, solver))
+    }
+
+    fn bundled_rejected(&self, key: &QueryKey, r: Rejection) {
+        self.stats.bundled_rejected.fetch_add(1, Ordering::Relaxed);
+        self.shared_log(&format!("bundled entry {key} rejected: {}", r.name()));
+    }
+
+    /// Serves a verified copied entry and queues it for the local disk tier
+    /// under `provenance`. Never waits for room: a dropped copy only costs
+    /// a future lookup.
+    fn keep(
+        &self,
+        key: &QueryKey,
+        verified: sail_cache::shared::Verified,
+        provenance: String,
+        solver: &Solver,
+    ) -> Arc<Value> {
+        let value = Arc::new(Value {
+            mode: "default".to_owned(),
+            reply: verified.reply,
+            effort: verified.effort,
+        });
+        let job = Job {
+            key: *key,
+            value: Arc::clone(&value),
+            command: verified.command,
+            provenance,
+            solver: solver.summary(),
+        };
+        if !self.disk.contains(key)
+            && self.writer.submit(&self.memory, job, Duration::ZERO) == Submitted::Dropped
+        {
+            self.stats.dropped_puts.fetch_add(1, Ordering::Relaxed);
+        }
+        value
     }
 
     /// Looks `key` up in the shared tier. A verified entry is also queued
@@ -317,26 +408,7 @@ impl State {
         }
         self.stats.shared_hits.fetch_add(1, Ordering::Relaxed);
         let provenance = verified.provenance();
-        let value = Arc::new(Value {
-            mode: "default".to_owned(),
-            reply: verified.reply,
-            effort: verified.effort,
-        });
-        let job = Job {
-            key: *key,
-            value: Arc::clone(&value),
-            command: verified.command,
-            provenance,
-            solver: solver.summary(),
-        };
-        // Never wait for room here: a dropped copy only costs a future
-        // shared lookup.
-        if !self.disk.contains(key)
-            && self.writer.submit(&self.memory, job, Duration::ZERO) == Submitted::Dropped
-        {
-            self.stats.dropped_puts.fetch_add(1, Ordering::Relaxed);
-        }
-        Some(value)
+        Some(self.keep(key, verified, provenance, solver))
     }
 
     fn shared_rejected(&self, key: &QueryKey, r: Rejection) {
@@ -428,6 +500,7 @@ impl State {
                 bytes: queued_bytes,
             },
             shared: self.shared.as_ref().and_then(SharedTier::status),
+            bundled: self.bundled.as_ref().map(|b| b.describe()),
         }
     }
 
@@ -605,6 +678,10 @@ pub fn bind(
         writer: Writer::new(config.queue_bytes),
         stats: counters,
         shared: Some(SharedTier::auto(config.shared.clone(), cache_root)),
+        bundled: config
+            .bundled
+            .as_ref()
+            .map(|b| Arc::new(BundledTier::new(b))),
         shared_logged: AtomicU64::new(0),
         log: Log::open(config.log.as_deref()),
         started: Instant::now(),
@@ -617,6 +694,19 @@ pub fn bind(
     });
     if let Some(shared) = &state.shared {
         shared.prepare();
+    }
+    if state.bundled.is_some() {
+        let s = Arc::clone(&state);
+        // Without the helper the tier never loads, and every lookup misses.
+        let _ = std::thread::Builder::new()
+            .name("sail-bundled-load".to_owned())
+            .spawn(move || {
+                if let Some(bundled) = &s.bundled {
+                    bundled.load();
+                    s.log
+                        .line(&format!("bundled replies: {}", bundled.describe()));
+                }
+            });
     }
     if let Some(shared) = &state.shared
         && let Some(info) = shared.status()
