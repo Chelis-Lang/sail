@@ -1,6 +1,6 @@
 # Fork branch perf/7d82994: macro-profile names, dispatch order, Fx hashing
 
-**Status: Linux runtime `f8589ed4` published and pinned (`engine-runtime-f8589ed4-linux`); macOS, bundle and conformance gates pending.** Fork branch
+**Status: Linux and macOS runtimes `f8589ed4` published and pinned (`engine-runtime-f8589ed4-linux`, `-macos`); Linux bundle and instant revert requalified; macOS bundle and instant revert, and the conformance gates, pending.** Fork branch
 `perf/7d82994` adds three commits to `9c0ca7e7` (Verus `0.2026.10.18.7d82994`,
 Rust 1.99.1): `912052eb` (VI-0033, issue #247), `1a892f97` (issue #244) and
 `51afcba6` (issue #248). Selecting any of them needs a fresh matching runtime,
@@ -100,8 +100,11 @@ location guard (37 of 37) and the release-style vstd build (2,059 verified).
 | Strings scan | every archive file: no `/home/`, `/Users/`, host name or account id; only false positives (version strings, `Z3 4.16.0.0`) |
 | Raw evidence | `r3-evidence.tgz`, sha256 `045a6e7f88396e8a6719f116ca01eb791c94802e1fbd714fba105b708da41d93` |
 
-Published as prerelease `engine-runtime-f8589ed4-linux`; the anonymous download matches the archive digest. Pending: the macOS runtime, the shipped vstd bundle re-record and
-instant-revert requalification on this runtime, and the conformance tiers.
+Published as prerelease `engine-runtime-f8589ed4-linux`; the anonymous download matches the archive digest. The Linux shipped vstd bundle is re-recorded
+([record](vstd-compile-boundary.md#verus-7d82994-bundle-on-runtime-f8589ed4))
+and Linux instant revert requalified
+([record](instant-revert.md#runtime-f8589ed4-requalification)) on this
+runtime. Pending: the macOS bundle and instant revert, and the conformance tiers.
 
 ## Attempts
 
