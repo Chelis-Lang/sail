@@ -271,15 +271,21 @@ Rust tails refuse. Literal argument/environment bytes remain bound in keys.
 An isolated source successor selects a retained plan without a user flag only
 on x86-64 Linux and Apple-silicon macOS, each with one exact normal-runtime
 manifest that must equal that platform's pin `manifest_sha256` (a unit test
-per platform enforces it). The macOS authority is `4392062a…` (fork
-`64baccbb`), qualified for ordinary public alloc/std reuse
+per platform enforces it). The macOS authority is
+`67589de3c3f9681fb50dcd96313311e1a3d2776241d121f6c0e433be54cf7f0c` (fork
+`f8589ed4`), qualified for ordinary public alloc/std reuse
+([record](../validation/instant-revert.md#macos-qualification-on-runtime-f8589ed4));
+the previous macOS authority `4392062a…` (fork `64baccbb`) was qualified too
 ([record](../validation/instant-revert.md#macos-qualification-on-runtime-64baccbb)). The `83128ad0` gates
 below used manifest `a845cd2f…` (fork `e5365c05`). The authority is now
-`cd78756b462127d2551fd35dfc4dd1259a26aeb2501428b5702fa30bcdc96a04` (fork
-`64baccbb` on Verus `7d82994`), requalified for ordinary Linux public
-alloc/std reuse ([record](../validation/instant-revert.md#runtime-64baccbb-requalification)).
-The previous authority `f4568e29…` (fork `9c0ca7e7`) was requalified too
-([record](../validation/instant-revert.md#verus-7d82994-runtime-requalification)). A valid engine with
+`576558fc76eecfdd91908fb85e30916e9d78b0153a144041f5b03937e4bcde26` (fork
+`f8589ed4` on Verus `7d82994`), requalified for ordinary Linux public
+alloc/std reuse ([record](../validation/instant-revert.md#runtime-f8589ed4-requalification)).
+The previous authorities `cd78756b…` (fork `64baccbb`,
+[record](../validation/instant-revert.md#runtime-64baccbb-requalification)) and
+`f4568e29…` (fork `9c0ca7e7`,
+[record](../validation/instant-revert.md#verus-7d82994-runtime-requalification))
+were requalified too. A valid engine with
 another manifest compiles normally and notes `SAIL3136`. It calls existing `Installed::at` with fresh complete artifact reads and binds
 the actual selected launcher and Z3. Config currently has no held fresh
 `Installed` authority to reuse, so this validation adds an invocation cost; no
