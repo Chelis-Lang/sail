@@ -233,7 +233,11 @@ impl<'a> Observation<'a> {
             std::fs::rename(staging, path).ok()?;
             trace(
                 self.call.arguments,
-                &serde_json::json!({"event":"native-output-established","record":record}),
+                &serde_json::json!({
+                    "event": "native-output-established",
+                    "record": record,
+                    "environment": traced_environment(&self.call.vars),
+                }),
             );
         }
         Some(())
@@ -785,6 +789,31 @@ fn established(record: &Record, plan: &Plan, path: &Path, sha256: &str, policy: 
         && sha256_file(path).is_some_and(|(actual, _)| actual == sha256)
 }
 
+/// The invocation's tool-read variables, which the external admission
+/// witness (`scripts/admission-witness.py`) replays: the proof-context
+/// families, the driver's per-package roles and Sail's managed plumbing.
+/// Recorded only in the opt-in trace; credential-like values are withheld.
+fn traced_environment(vars: &BTreeMap<String, String>) -> BTreeMap<&str, &str> {
+    vars.iter()
+        .filter(|(name, _)| {
+            super::super::environment::input_environment_key(std::ffi::OsStr::new(name))
+                || name.starts_with(" __VERUS_")
+                || name.starts_with("SAIL_MANAGED_")
+                || name.as_str() == "CARGO_TARGET_DIR"
+        })
+        .map(|(name, value)| {
+            let upper = name.to_ascii_uppercase();
+            let secret = ["TOKEN", "SECRET", "PASSWORD", "CREDENTIAL"]
+                .iter()
+                .any(|word| upper.contains(word));
+            (
+                name.as_str(),
+                if secret { "<withheld>" } else { value.as_str() },
+            )
+        })
+        .collect()
+}
+
 fn trace(args: &[OsString], record: &serde_json::Value) {
     let Some(directory) = std::env::var_os(super::TRACE_ENV) else {
         return;
@@ -811,6 +840,33 @@ fn trace(args: &[OsString], record: &serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn traced_environment_keeps_tool_reads_and_withholds_credentials() {
+        let vars: BTreeMap<String, String> = [
+            ("CARGO_PKG_NAME", "verus_builtin"),
+            (" __VERUS_DRIVER_IS_BUILTIN_verus_builtin-1", "1"),
+            ("SAIL_MANAGED_PROXY", "/proxy"),
+            ("RUSTC_BOOTSTRAP", "1"),
+            ("CARGO_REGISTRY_TOKEN", "secret-value"),
+            ("HOME", "/home/someone"),
+            ("AWS_SECRET_ACCESS_KEY", "secret-value"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .collect();
+        let traced = traced_environment(&vars);
+        assert_eq!(traced.get("CARGO_PKG_NAME"), Some(&"verus_builtin"));
+        assert_eq!(
+            traced.get(" __VERUS_DRIVER_IS_BUILTIN_verus_builtin-1"),
+            Some(&"1")
+        );
+        assert_eq!(traced.get("SAIL_MANAGED_PROXY"), Some(&"/proxy"));
+        assert_eq!(traced.get("RUSTC_BOOTSTRAP"), Some(&"1"));
+        assert_eq!(traced.get("CARGO_REGISTRY_TOKEN"), Some(&"<withheld>"));
+        assert!(!traced.contains_key("HOME"));
+        assert!(!traced.contains_key("AWS_SECRET_ACCESS_KEY"));
+    }
 
     #[test]
     fn compiler_source_options_keep_physical_paths_out_of_the_typed_key()

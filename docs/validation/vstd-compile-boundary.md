@@ -79,6 +79,15 @@ not accepted.**
     as an unsupported tuple, exit 101;
   - `foreign`: refused as an unkeyed unit, exit 101;
   - `modified`: refused as a foreign source, exit 101.
+- **Witness capture without a system tracer.** The runner first captured the
+  invocation with `strace`, which macOS lacks. It now reads it from Sail's
+  own boundary trace. The `native-output-established` record carries the
+  proxy's arguments and its tool-read environment, with credential-like
+  values withheld. Rerun on native EC2 c7i.4xlarge (us-east-1, lane `adm3`)
+  from `38b04b12` plus that change, with runtime `9c0ca7e7`: all five cases
+  pass with the same verdicts, refusal reasons and exit codes as the
+  `strace` run above. Evidence `adm3.tgz` sha256
+  `a9e760dac8567ec348e021366356983445300f81c83bd134779c9f36efd59c62`.
 - **First use (README path).** On `rq1`, four alternating paired rounds,
   each with a fresh `CARGO_HOME` (registry downloads in both arms) and Sail
   cache, default toolchain 1.99.0 and pinned 1.99.1 with `rust-src`. Stock
