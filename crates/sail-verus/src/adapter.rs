@@ -428,6 +428,10 @@ fn driver() -> Result<ExitCode> {
                 .map(status)
                 .map_err(|e| Error::new("SAIL3111", e.to_string()));
         }
+        // Dependents Cargo starts on this unit's metadata wait while it runs.
+        let _running = runtime
+            .as_ref()
+            .and_then(|runtime| crate::managed::retained::Running::begin(runtime, &args));
         let mut observation = plan
             .as_ref()
             .and_then(|plan| crate::managed::shipped::native::Observation::begin(plan, &args));
@@ -494,6 +498,7 @@ fn driver() -> Result<ExitCode> {
         &std::fs::read(runtime_path).map_err(|e| Error::new("SAIL3111", e.to_string()))?,
     )
     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let _running = crate::managed::retained::Running::begin(&runtime, &args);
     let identity = target_identity(
         &args,
         PathBuf::from(required("CARGO_MANIFEST_DIR")?).join("Cargo.toml"),

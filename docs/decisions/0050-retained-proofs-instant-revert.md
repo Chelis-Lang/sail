@@ -386,3 +386,10 @@ once and are aged out normally. An edit to a package outside the closure, for
 example another workspace member, no longer invalidates a retained proof,
 which matches the receipts. Each snapshot takes 25–50 ms on Vest instead of
 200–265 ms.
+
+## Amendment 2026-10-20: native units are certified after their compile
+
+Accepted by the owner. Native units no longer wait for their dependencies'
+certificates or for other units' scratch directories before compiling; they
+are certified after their compile by the same checks. See
+[ADR 0061](0061-pipelined-native-admission.md).

@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Instant revert certifies each native dependency right after its own compile
+  instead of making it wait for its dependencies' certificates and for other
+  crates' scratch directories first, so Cargo's metadata pipelining is kept
+  (ADR 0061). A crate whose certificate fails is never reused. A run whose
+  dependencies were built without certificates (for example after a forced
+  first run) no longer waits 2 s for them on every later run (#285). Linux
+  public-profile Vest's cold run falls from 71.31 s to 69.91 s (stock
+  71.45 s); see the
+  [record](docs/validation/cold-first-run.md#pipelined-native-admission-adr-0061).
+
 - Instant revert's source check reads only the packages the selected
   targets depend on, plus every workspace member's manifest, instead of every
   package in the workspace and registry (#278; ADR 0050

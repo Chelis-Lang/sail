@@ -44,8 +44,11 @@ pub(super) fn environment() -> Option<BTreeMap<String, String>> {
 }
 
 fn record_path(plan: &Plan, output: &Path) -> PathBuf {
-    plan.root
-        .join("producers")
+    record_at(&plan.root, output)
+}
+
+fn record_at(root: &Path, output: &Path) -> PathBuf {
+    root.join("producers")
         .join(files::digest(output.as_os_str().as_encoded_bytes()))
 }
 
@@ -72,9 +75,7 @@ pub(super) fn established(plan: &Plan, context: &str, graph: &Snapshot) -> bool 
             && record.compiler == plan.compiler_identity()
             && record.policy == plan.closure.policy_digest()
             && record.official
-            && record.output == *path
-            && record.body == *content
-            && read_content(path, 256 * 1024 * 1024).as_ref() == Some(content)
+            && certifies(&record, path, content)
             && !record.establishing_run.is_empty()
             && read_content(&record.document, 8 * 1024 * 1024).as_ref()
                 == Some(&record.document_content)
@@ -99,6 +100,16 @@ pub(super) fn established(plan: &Plan, context: &str, graph: &Snapshot) -> bool 
     })
     .into_iter()
     .all(|established| established)
+}
+
+/// Whether `record` certifies the body a graph copied from `path`: the same
+/// output, the same bytes, and the original still holding exactly them. The
+/// copy may have been taken before its producer finished (ADR 0061); this
+/// complete read after the consumer's compiler is what binds the two.
+fn certifies(record: &Record, path: &Path, content: &Content) -> bool {
+    record.output == path
+        && record.body == *content
+        && read_content(path, 256 * 1024 * 1024).as_ref() == Some(content)
 }
 
 /// Import a genuinely served release proof, preserving its distinct authority.
@@ -166,7 +177,7 @@ pub(in crate::managed) fn publish_shipped_native(
         || !plan.closure.unit(&environment, args)
         || !plan.native_edges(args, &manifest)
         || !graph.intact()
-        || !ready(plan, graph)
+        || !ready(plan, &runtime.run_id, graph)
         || !established(plan, &runtime.context_sha256, graph)
         || !named_externs(plan, args)
     {
@@ -230,20 +241,103 @@ pub(super) fn named_externs(plan: &Plan, args: &[OsString]) -> bool {
     })
 }
 
-pub(super) fn ready(plan: &Plan, graph: &Snapshot) -> bool {
-    ready_for(plan, &graph.original_inputs().keys().cloned().collect())
+pub(super) fn ready(plan: &Plan, run: &str, graph: &Snapshot) -> bool {
+    ready_for(
+        plan,
+        run,
+        &graph.original_inputs().keys().cloned().collect(),
+    )
 }
 
-/// Waits briefly for every artifact's successful producer certificate.
-pub(super) fn ready_for(plan: &Plan, artifacts: &BTreeSet<PathBuf>) -> bool {
+/// Waits while any artifact lacks a certificate and its producer is still
+/// running in this run, then requires every certificate. A producer that
+/// ended without one, or ran in no driver of this run, is not waited for. A
+/// driver that died while running is waited for at most [`RUNNING_LIMIT`].
+pub(super) fn ready_for(plan: &Plan, run: &str, artifacts: &BTreeSet<PathBuf>) -> bool {
+    ready_in(&plan.root, run, artifacts, RUNNING_LIMIT)
+}
+
+fn ready_in(root: &Path, run: &str, artifacts: &BTreeSet<PathBuf>, limit: Duration) -> bool {
+    let certified = |path: &PathBuf| record_at(root, path).is_file();
     await_ready(
         || {
             artifacts
                 .iter()
-                .all(|path| record_path(plan, path).is_file())
+                .all(|path| certified(path) || !running(root, run, path))
         },
-        Duration::from_secs(2),
+        limit,
+    ) && artifacts.iter().all(certified)
+}
+
+/// The longest wait for a producer whose driver never ends.
+const RUNNING_LIMIT: Duration = Duration::from_secs(120);
+
+fn running_at(root: &Path, output: &Path) -> PathBuf {
+    root.join("running")
+        .join(files::digest(output.as_os_str().as_encoded_bytes()))
+}
+
+/// Whether a driver of this run is still producing `output`. Marks are bound
+/// to their run: one left by an earlier run's driver means nothing now.
+fn running(root: &Path, run: &str, output: &Path) -> bool {
+    std::fs::read(running_at(root, output)).is_ok_and(|mark| mark == run.as_bytes())
+}
+
+/// Every output a compiler invocation can write into its output directory
+/// that a dependent may read: its library, metadata, macro and VIR files.
+fn unit_outputs(args: &[OsString]) -> Option<Vec<PathBuf>> {
+    let out = PathBuf::from(driver::value(args, "--out-dir")?);
+    let name = driver::value(args, "--crate-name")?;
+    let extra = args.iter().enumerate().find_map(|(i, arg)| {
+        arg.to_str()?.strip_prefix("-Cextra-filename=").or_else(|| {
+            (arg == "-C")
+                .then(|| args.get(i + 1)?.to_str()?.strip_prefix("extra-filename="))
+                .flatten()
+        })
+    })?;
+    Some(
+        ["rmeta", "rlib", "vir", std::env::consts::DLL_EXTENSION]
+            .iter()
+            .map(|extension| out.join(format!("lib{name}{extra}.{extension}")))
+            .collect(),
     )
+}
+
+/// Marks this driver's outputs as being produced in this run, from before
+/// its compiler starts until the driver ends, however it ends, and after any
+/// certificate it writes. Dependents that Cargo starts on this unit's
+/// metadata wait on the mark instead of a fixed timeout.
+pub(crate) struct Running {
+    marks: Vec<PathBuf>,
+}
+
+impl Running {
+    pub(crate) fn begin(runtime: &receipts::Runtime, args: &[OsString]) -> Option<Self> {
+        let plan = runtime.retained.as_ref()?;
+        let marks: Vec<_> = unit_outputs(args)?
+            .iter()
+            .map(|output| running_at(&plan.root, output))
+            .collect();
+        let directory = plan.root.join("running");
+        std::fs::create_dir_all(&directory).ok()?;
+        let mut written = Vec::new();
+        for mark in marks {
+            // Without a mark, a dependent simply does not wait: it requires
+            // the certificate at once and otherwise misses.
+            if std::fs::write(&mark, runtime.run_id.as_bytes()).is_ok() {
+                written.push(mark);
+            }
+        }
+        Some(Self { marks: written })
+    }
+}
+
+impl Drop for Running {
+    fn drop(&mut self) {
+        for mark in &self.marks {
+            let _ = std::fs::remove_file(mark);
+        }
+    }
 }
 
 fn await_ready(mut ready: impl FnMut() -> bool, maximum: Duration) -> bool {
@@ -474,24 +568,15 @@ impl Native {
             .sidecars
             .join(format!("retained-native-{key}-{}", std::process::id()));
         std::fs::create_dir_all(&directory).ok()?;
-        // Cargo may start this unit once its dependencies' metadata exists.
-        // Wait for the producers of every artifact present now; the complete
-        // graph is captured only after that.
-        let first = Snapshot::artifacts_ready(&plan.target, args)?;
-        if !ready_for(plan, &first) {
-            return None;
-        }
+        // Cargo starts this unit once its dependencies' metadata exists, as
+        // it would without Sail. The compiler reads only private copies of
+        // what is present now; whether every copied body is a certified
+        // producer output is decided after it finishes (ADR 0061).
         let graph = driver::publish_graph(
             &plan.root,
-            Snapshot::capture_ready(&plan.target, &directory.join("graph"), args)?,
+            Snapshot::capture_pipelined(&plan.target, &directory.join("graph"), args)?,
             args,
         )?;
-        if !ready(plan, &graph) || !established(plan, &runtime.context_sha256, &graph) {
-            return None;
-        }
-        if !named_externs(plan, args) {
-            return None;
-        }
         // publish_graph persists the shared graph marker before spawn.
         let reads = native::Observation::begin(&directory.join("read"), &runtime.run_id, &key)?;
         Some(Self {
@@ -520,7 +605,11 @@ impl Native {
     }
 
     pub(crate) fn finish(&self, success: bool) -> Option<()> {
+        // The producers of the copied inputs may still be running: wait for
+        // each to settle, then require all of their certificates.
         if !success
+            || !ready(&self.plan, &self.run, &self.graph)
+            || !named_externs(&self.plan, &self.arguments)
             || !self.graph.intact()
             || !established(&self.plan, &self.context, &self.graph)
             || !self.plan.compiler_matches(&self.wrapper)
@@ -610,6 +699,195 @@ fn outputs(args: &[OsString], target: &Path, macro_crate: bool) -> Option<Vec<Pa
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn scratch(name: &str) -> std::io::Result<PathBuf> {
+        let root =
+            std::env::temp_dir().join(format!("sail-retained-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("producers"))?;
+        std::fs::create_dir_all(root.join("running"))?;
+        Ok(root)
+    }
+
+    #[test]
+    fn dependents_wait_only_for_producers_running_in_this_run()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = scratch("running")?;
+        let output = root.join("deps/libp-1.rmeta");
+        let artifacts: BTreeSet<PathBuf> = [output.clone()].into();
+        let limit = Duration::from_secs(10);
+        // Nothing runs and nothing is certified: refuse at once.
+        let start = Instant::now();
+        assert!(!ready_in(&root, "run", &artifacts, limit));
+        assert!(start.elapsed() < Duration::from_secs(2));
+        // A mark left by another run is not a running producer.
+        std::fs::write(running_at(&root, &output), b"earlier")?;
+        assert!(!ready_in(&root, "run", &artifacts, limit));
+        assert!(start.elapsed() < Duration::from_secs(2));
+        // A producer of this run that certifies, then ends: accepted.
+        std::fs::write(running_at(&root, &output), b"run")?;
+        let (record, mark) = (record_at(&root, &output), running_at(&root, &output));
+        let producer = std::thread::spawn(move || -> std::io::Result<()> {
+            std::thread::sleep(Duration::from_millis(50));
+            std::fs::write(&record, b"{}")?;
+            std::fs::remove_file(&mark)
+        });
+        assert!(ready_in(&root, "run", &artifacts, limit));
+        assert!(producer.join().is_ok_and(|result| result.is_ok()));
+        // A producer of this run that ends without a certificate: refused as
+        // soon as it ends, not at the limit.
+        std::fs::remove_file(record_at(&root, &output))?;
+        std::fs::write(running_at(&root, &output), b"run")?;
+        let mark = running_at(&root, &output);
+        let producer = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(50));
+            std::fs::remove_file(mark)
+        });
+        let start = Instant::now();
+        assert!(!ready_in(&root, "run", &artifacts, limit));
+        assert!(start.elapsed() < Duration::from_secs(2));
+        assert!(producer.join().is_ok_and(|result| result.is_ok()));
+        // A producer whose driver died keeps its mark: bounded, then refused.
+        std::fs::write(running_at(&root, &output), b"run")?;
+        assert!(!ready_in(
+            &root,
+            "run",
+            &artifacts,
+            Duration::from_millis(30)
+        ));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn certification_after_the_compile_rejects_bytes_the_early_check_rejected()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = scratch("certifies")?;
+        let original = root.join("libp-1.rmeta");
+        std::fs::write(&original, b"metadata the consumer copied")?;
+        // What a pipelined capture records for the copy it compiles against.
+        let copied = read_content(&original, 1024).ok_or("copied content")?;
+        let record = |body: &Content| Record {
+            version: 1,
+            context: "context".to_owned(),
+            compiler: "compiler".to_owned(),
+            policy: "policy".to_owned(),
+            establishing_run: "run".to_owned(),
+            key: "key".to_owned(),
+            native: true,
+            shipped: None,
+            official: true,
+            crate_name: "p".to_owned(),
+            pid: 1,
+            document: root.join("document"),
+            document_content: body.clone(),
+            output: original.clone(),
+            body: body.clone(),
+        };
+        assert!(certifies(&record(&copied), &original, &copied));
+        // The producer finished and certified other bytes than were copied.
+        let other = Content {
+            sha256: files::digest(b"metadata the producer finally wrote"),
+            size: copied.size,
+        };
+        assert!(!certifies(&record(&other), &original, &copied));
+        // The original changed after the copy, even back to the same length.
+        std::fs::write(&original, b"metadata the consumer copiee")?;
+        assert!(!certifies(&record(&copied), &original, &copied));
+        // A certificate for a different output never certifies this one.
+        let mut elsewhere = record(&copied);
+        elsewhere.output = root.join("libq-1.rmeta");
+        std::fs::write(&original, b"metadata the consumer copied")?;
+        assert!(!certifies(&elsewhere, &original, &copied));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn running_marks_cover_every_dependent_visible_output_and_end_with_the_driver()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let args: Vec<OsString> = [
+            "--crate-name",
+            "p",
+            "--out-dir",
+            "/t/deps",
+            "-C",
+            "extra-filename=-1",
+        ]
+        .iter()
+        .map(OsString::from)
+        .collect();
+        let outputs = unit_outputs(&args).ok_or("outputs")?;
+        for extension in ["rmeta", "rlib", "vir", std::env::consts::DLL_EXTENSION] {
+            assert!(outputs.contains(&PathBuf::from(format!("/t/deps/libp-1.{extension}"))));
+        }
+        // Without an extra filename the unit is not one Cargo names: no marks.
+        assert!(unit_outputs(&args[..4]).is_none());
+        // Dropping the driver's guard removes its marks, so a dependent stops
+        // waiting as soon as the producer's driver ends, certified or not.
+        let root = scratch("marks")?;
+        let output = root.join("deps/libp-1.rmeta");
+        std::fs::write(running_at(&root, &output), b"run")?;
+        assert!(running(&root, "run", &output));
+        assert!(!running(&root, "other", &output));
+        drop(Running {
+            marks: vec![running_at(&root, &output)],
+        });
+        assert!(!running(&root, "run", &output));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn a_dependent_of_a_failed_producer_is_never_certified()
+    -> Result<(), Box<dyn std::error::Error>> {
+        // A dependent copied P's metadata while P ran. P then fails (no
+        // certificate) or certifies other bytes: the dependent's finish waits
+        // only until P's driver ends and then refuses; nothing is reused.
+        let root = scratch("failed")?;
+        let output = root.join("deps/libp-1.rmeta");
+        std::fs::create_dir_all(root.join("deps"))?;
+        std::fs::write(&output, b"metadata copied mid-build")?;
+        let copied = read_content(&output, 1024).ok_or("copied")?;
+        let artifacts: BTreeSet<PathBuf> = [output.clone()].into();
+        std::fs::write(running_at(&root, &output), b"run")?;
+        let mark = running_at(&root, &output);
+        let (rewritten, record) = (output.clone(), record_at(&root, &output));
+        let producer = std::thread::spawn(move || -> std::io::Result<()> {
+            std::thread::sleep(Duration::from_millis(50));
+            // P rewrites its metadata, certifies those bytes and ends.
+            std::fs::write(&rewritten, b"metadata P finally wrote!")?;
+            std::fs::write(&record, b"{}")?;
+            std::fs::remove_file(mark)
+        });
+        let start = Instant::now();
+        // The producer settled with a certificate, so the wait succeeds...
+        assert!(ready_in(&root, "run", &artifacts, Duration::from_secs(10)));
+        assert!(start.elapsed() < Duration::from_secs(2));
+        assert!(producer.join().is_ok_and(|result| result.is_ok()));
+        // ...but the certified bytes are not the ones the dependent copied.
+        let final_body = read_content(&output, 1024).ok_or("final")?;
+        let record = Record {
+            version: 1,
+            context: "context".to_owned(),
+            compiler: "compiler".to_owned(),
+            policy: "policy".to_owned(),
+            establishing_run: "run".to_owned(),
+            key: "key".to_owned(),
+            native: true,
+            shipped: None,
+            official: true,
+            crate_name: "p".to_owned(),
+            pid: 1,
+            document: root.join("document"),
+            document_content: final_body.clone(),
+            output: output.clone(),
+            body: final_body,
+        };
+        assert!(!certifies(&record, &output, &copied));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[test]
     fn final_native_graph_waits_for_later_rlib_record() -> Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!(
