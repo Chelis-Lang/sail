@@ -1,6 +1,6 @@
 # 0061: Certify native units after their compile
 
-- **Status:** proposed (prototype on `perf/pipelined-admission`; not selected)
+- **Status:** accepted by the owner 2026-10-20; implemented by `perf/pipelined-native` (supersedes the #265 prototype)
 - **Date:** 2026-10-20
 - **Amends:** [ADR 0050](0050-retained-proofs-instant-revert.md)
 - **Relates to:** [#232](https://github.com/Chelis-Lang/sail/issues/232),
@@ -31,7 +31,7 @@ holds the copied bytes, and that each of those bytes is a certified producer
 output (`established`). It also checks the compiler-read document. The checks
 before the compile only decide whether to observe at all.
 
-## Decision (proposed)
+## Decision
 
 A native unit does not wait before its compile. It copies the regular
 artifacts present in its lookup directories at once, leaving other units'
@@ -48,7 +48,9 @@ and then counts as no certificate.
 
 Verified targets keep their existing waits before compiling. Only the
 producer wait now ends when the producer's mark is gone instead of after a
-fixed 2 s.
+fixed 2 s. A target whose dependencies were built by an earlier run without
+certificates (for example a forced first run) therefore refuses at once
+instead of waiting 2 s on every later run (#285).
 
 ## Soundness argument
 
@@ -95,7 +97,7 @@ which they miss. A verified target whose graph contains an uncertified input
 fails `established` and is neither retained nor restored. It then compiles
 and verifies normally. Every refusal therefore costs only reuse.
 
-## Prototype measurement
+## Prototype measurement (#265)
 
 These are native c7i.8xlarge runs in us-east-1 with runtime `9c0ca7e7`, three
 interleaved rounds each, comparing the prototype (`7e0dde85`) with the #256
@@ -134,12 +136,16 @@ dependent. That check now runs after the producers settle.
   restored; native units always compile.
 - The tests show that each dropped check's failure is still caught:
   `certification_after_the_compile_rejects_bytes_the_early_check_rejected`,
-  `dependents_wait_only_for_producers_running_in_this_run` and
-  `pipelined_capture_leaves_out_scratch_directories_but_refuses_other_kinds`.
-- **Before selection:** owner review of this argument, the full gate,
-  solver, e2e `managed` and `managed-copies` phases, fast and standard
-  conformance in every arm, the instant-revert Vest cycle, and paired
-  cold/warm timings on Linux and macOS.
+  `dependents_wait_only_for_producers_running_in_this_run`,
+  `pipelined_capture_leaves_out_scratch_directories_but_refuses_other_kinds`,
+  `a_dependent_of_a_failed_producer_is_never_certified` (a producer that
+  rewrites its metadata after a dependent copied it, then certifies the new
+  bytes) and
+  `running_marks_cover_every_dependent_visible_output_and_end_with_the_driver`.
+- Selection gates (owner review, the full gate, solver, every e2e phase,
+  fast and standard conformance in every arm, the instant-revert Vest cycle,
+  and paired cold timings on Linux and macOS) are recorded in the
+  [cold first-run record](../validation/cold-first-run.md#pipelined-native-admission-adr-0061).
 
 Raw evidence: native evidence bucket,
 `experiments/2026-10-20/pipelined-admission/pipe-evidence.tgz`, SHA-256
