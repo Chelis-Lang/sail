@@ -120,6 +120,7 @@ These runs redirected their output into the project directory. Under those condi
 Raw logs are outside the repository:
 - corpus validation logs: sha256 `db526da89efd6d0c767de999c081517600b18cf1e852f2d83437c5ed15026cea`;
 - staging, witness and comparison logs: sha256 `41515e404fbbf3a9ed32284aa404fef874ad00e9ef2b22ac6075edf6bda2a907`.
+- `f8589ed4` re-recording: both witnesses, staging logs, flag cases, cold timing samples and per-run outputs, aligned-Vest runs, and the local gate logs for #268 and #276. sha256 `53ab78b54b9d8771575a8cfeb06dca16ee1466c40d52ca527a85964d6fdd0257`.
 
 Failed or interrupted attempts:
 - 2026-10-20, branch WIP: the first two stagings computed the witness's limits from the smallest set limit, which made `recorded_rlimit` 50. The cause was a vstd function's explicit rlimit. Fixed by using each query's own limit and the most common limit.
