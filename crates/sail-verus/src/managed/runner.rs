@@ -431,6 +431,26 @@ fn context_hashes(
     Ok((hash, compiler_hash))
 }
 
+/// The manifest and target name of every selected target.
+fn selected_targets(
+    data: &Value,
+    expected: &BTreeSet<(String, String, String)>,
+) -> Vec<(PathBuf, String)> {
+    expected
+        .iter()
+        .filter_map(|(id, name, _)| {
+            let package = data["packages"]
+                .as_array()?
+                .iter()
+                .find(|package| package["id"] == *id)?;
+            Some((
+                PathBuf::from(package["manifest_path"].as_str()?),
+                name.clone(),
+            ))
+        })
+        .collect()
+}
+
 fn actual_wrapper(cargo_verus: &Path) -> Result<PathBuf> {
     // Cargo-Verus uses current_exe, not its invoked symlink's directory.
     cargo_verus
@@ -2584,7 +2604,18 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
-        retained: if !forced && !source_engine && paths.reuse && !receipt_covered {
+        // Retention is optional restoration work: a target whose compile is
+        // cheap next to retention compiles normally instead (#156).
+        retained: if !forced
+            && !source_engine
+            && paths.reuse
+            && !receipt_covered
+            && super::retained::cost::pays(
+                &paths.receipts,
+                selected_targets(&data, &expected)
+                    .iter()
+                    .map(|(manifest, name)| (manifest.as_path(), name.as_str())),
+            ) {
             super::retained::Plan::prepare(
                 &data,
                 &paths.target,

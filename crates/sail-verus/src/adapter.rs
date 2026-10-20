@@ -589,6 +589,7 @@ fn driver() -> Result<ExitCode> {
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         return Ok(ExitCode::SUCCESS);
     }
+    let retention_started = std::time::Instant::now();
     let mut retained = runtime
         .retained
         .as_ref()
@@ -636,6 +637,7 @@ fn driver() -> Result<ExitCode> {
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         return Ok(ExitCode::SUCCESS);
     }
+    let mut retention = retained.as_ref().map(|_| retention_started.elapsed());
     let mut cmd = Command::new(&wrapper);
     let compiler_args = if let Some(call) = &call {
         call.compiler_arguments()
@@ -682,6 +684,7 @@ fn driver() -> Result<ExitCode> {
         .engine
         .as_ref()
         .map(|_| crate::engine_events::Relay::start(source_events.clone(), &runtime, &identity));
+    let compile_started = std::time::Instant::now();
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -731,6 +734,7 @@ fn driver() -> Result<ExitCode> {
         .child
         .wait()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let compiled = compile_started.elapsed();
     if let Some(call) = &mut call {
         call.compiler_finished();
     }
@@ -772,6 +776,7 @@ fn driver() -> Result<ExitCode> {
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
     let invocation_key = identity.key();
+    let measured = (identity.manifest.clone(), identity.name.clone());
     finish(
         &runtime,
         identity,
@@ -799,7 +804,18 @@ fn driver() -> Result<ExitCode> {
         }
     }
     if let Some(attempt) = &retained {
+        let finishing = std::time::Instant::now();
         let _ = attempt.finish(exit.success());
+        retention = retention.map(|before| before + finishing.elapsed());
+    }
+    if exit.success() && runtime.engine.is_none() {
+        crate::managed::retained::cost::record(
+            &runtime.receipts,
+            &measured.0,
+            &measured.1,
+            compiled,
+            retention,
+        );
     }
     let shown = crate::verus_stdout::rebuild(&stdout, flags);
     // The dependency store must replay exactly what this target displayed,
