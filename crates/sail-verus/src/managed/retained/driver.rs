@@ -416,10 +416,9 @@ pub(super) fn publish_graph(root: &Path, graph: Snapshot, args: &[OsString]) -> 
         incoming.0.checked_add(66)?,
         incoming.1.checked_add(2)?,
     )?;
+    // Every graph `publish` returns has just been reread in full: its last
+    // step before returning is `intact`.
     let graph = graph.publish(&root.join("graphs"), args)?;
-    if !graph.intact() {
-        return None;
-    }
     files::json(&root.join("live-graphs").join(key.clone()), &key).ok()?;
     Some(graph)
 }
@@ -619,39 +618,29 @@ struct Candidate {
 /// Content keys include namespace facts, never inode/mtime freshness. The
 /// compiler documents separately prove what was actually consumed.
 fn namespace(snapshot: &input::InputSnapshot) -> Option<String> {
+    const ENTRIES: usize = 262_144;
+    /// What a path is, observed now.
+    enum Fact {
+        Link(OsString),
+        Directory(BTreeMap<OsString, u8>),
+        File,
+    }
     let mut paths = snapshot.observation_paths.clone();
     paths.extend(snapshot.roots.iter().cloned());
     if paths.len() > 131_072 {
         return None;
     }
-    let mut hash = Sha256::new();
-    let mut entries = 0usize;
-    let mut bytes = 0usize;
-    let mut add = |value: &[u8]| -> Option<()> {
-        bytes = bytes.checked_add(value.len())?;
-        if bytes > 64 * 1024 * 1024 {
-            return None;
-        }
-        hash.update((value.len() as u64).to_le_bytes());
-        hash.update(value);
-        Some(())
-    };
-    for path in paths {
-        add(path.as_os_str().as_encoded_bytes())?;
-        let metadata = std::fs::symlink_metadata(&path).ok()?;
+    let paths: Vec<_> = paths.into_iter().collect();
+    // The paths are examined several at once; the facts are hashed in order.
+    let facts = crate::parallel::in_order(&paths, |path| -> Option<Fact> {
+        let metadata = std::fs::symlink_metadata(path).ok()?;
         if metadata.file_type().is_symlink() {
-            add(b"link")?;
-            add(std::fs::read_link(&path)
-                .ok()?
-                .as_os_str()
-                .as_encoded_bytes())?;
+            Some(Fact::Link(std::fs::read_link(path).ok()?.into_os_string()))
         } else if metadata.is_dir() {
-            add(b"directory")?;
             let mut names = BTreeMap::new();
-            for entry in std::fs::read_dir(&path).ok()? {
+            for entry in std::fs::read_dir(path).ok()? {
                 let entry = entry.ok()?;
-                entries = entries.checked_add(1)?;
-                if entries > 262_144 {
+                if names.len() >= ENTRIES {
                     return None;
                 }
                 let kind = entry.file_type().ok()?;
@@ -666,14 +655,44 @@ fn namespace(snapshot: &input::InputSnapshot) -> Option<String> {
                 };
                 names.insert(entry.file_name(), kind);
             }
-            for (name, kind) in names {
-                add(name.as_encoded_bytes())?;
-                add(&[kind])?;
-            }
+            Some(Fact::Directory(names))
         } else if metadata.is_file() {
-            add(b"file")?;
+            Some(Fact::File)
         } else {
+            None
+        }
+    });
+    let mut hash = Sha256::new();
+    let mut entries = 0usize;
+    let mut bytes = 0usize;
+    let mut add = |value: &[u8]| -> Option<()> {
+        bytes = bytes.checked_add(value.len())?;
+        if bytes > 64 * 1024 * 1024 {
             return None;
+        }
+        hash.update((value.len() as u64).to_le_bytes());
+        hash.update(value);
+        Some(())
+    };
+    for (path, fact) in paths.iter().zip(facts) {
+        add(path.as_os_str().as_encoded_bytes())?;
+        match fact? {
+            Fact::Link(target) => {
+                add(b"link")?;
+                add(target.as_encoded_bytes())?;
+            }
+            Fact::Directory(names) => {
+                add(b"directory")?;
+                entries = entries.checked_add(names.len())?;
+                if entries > ENTRIES {
+                    return None;
+                }
+                for (name, kind) in names {
+                    add(name.as_encoded_bytes())?;
+                    add(&[kind])?;
+                }
+            }
+            Fact::File => add(b"file")?,
         }
     }
     Some(format!("{:x}", hash.finalize()))
@@ -1034,6 +1053,92 @@ fn output_paths(args: &[OsString], target: &Path) -> Option<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The one-path-at-a-time namespace digest `namespace` replaced.
+    fn sequential_namespace(snapshot: &input::InputSnapshot) -> Option<String> {
+        let mut paths = snapshot.observation_paths.clone();
+        paths.extend(snapshot.roots.iter().cloned());
+        let mut hash = Sha256::new();
+        let mut add = |value: &[u8]| {
+            hash.update((value.len() as u64).to_le_bytes());
+            hash.update(value);
+        };
+        for path in paths {
+            add(path.as_os_str().as_encoded_bytes());
+            let metadata = std::fs::symlink_metadata(&path).ok()?;
+            if metadata.file_type().is_symlink() {
+                add(b"link");
+                add(std::fs::read_link(&path)
+                    .ok()?
+                    .as_os_str()
+                    .as_encoded_bytes());
+            } else if metadata.is_dir() {
+                add(b"directory");
+                let mut names = BTreeMap::new();
+                for entry in std::fs::read_dir(&path).ok()? {
+                    let entry = entry.ok()?;
+                    let kind = entry.file_type().ok()?;
+                    let kind = if kind.is_symlink() {
+                        1u8
+                    } else if kind.is_dir() {
+                        2
+                    } else {
+                        3
+                    };
+                    names.insert(entry.file_name(), kind);
+                }
+                for (name, kind) in names {
+                    add(name.as_encoded_bytes());
+                    add(&[kind]);
+                }
+            } else {
+                add(b"file");
+            }
+        }
+        Some(format!("{:x}", hash.finalize()))
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn concurrent_namespace_digest_equals_the_sequential_one()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-namespace-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("src/nested"))?;
+        for (index, name) in ["src/lib.rs", "src/a.rs", "src/nested/b.rs", "Cargo.toml"]
+            .iter()
+            .enumerate()
+        {
+            std::fs::write(root.join(name), format!("// {index}"))?;
+        }
+        std::os::unix::fs::symlink(root.join("src/a.rs"), root.join("src/alias.rs"))?;
+        let mut snapshot = input::snapshot_metadata(&serde_json::json!({}), &[]);
+        snapshot.observation_paths = [
+            "src/lib.rs",
+            "src/a.rs",
+            "src/alias.rs",
+            "src/nested",
+            "src",
+        ]
+        .iter()
+        .map(|name| root.join(name))
+        .collect();
+        snapshot.roots = vec![root.clone(), root.join("src/nested")];
+        let digest = namespace(&snapshot).ok_or("namespace")?;
+        assert_eq!(Some(digest.clone()), sequential_namespace(&snapshot));
+        // A changed membership changes both the same way.
+        std::fs::write(root.join("src/nested/c.rs"), b"")?;
+        let changed = namespace(&snapshot).ok_or("namespace")?;
+        assert_ne!(changed, digest);
+        assert_eq!(Some(changed), sequential_namespace(&snapshot));
+        // A missing path refuses.
+        snapshot
+            .observation_paths
+            .insert(root.join("src/missing.rs"));
+        assert_eq!(namespace(&snapshot), None);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn shipped_coexistence_is_limited_to_the_selected_requested_manifest()

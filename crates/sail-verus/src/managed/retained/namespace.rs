@@ -26,6 +26,7 @@ pub(super) fn admit(
     files: &BTreeMap<PathBuf, String>,
     fixed_provider_roots: &BTreeSet<PathBuf>,
 ) -> Option<()> {
+    let mut read = Vec::new();
     for path in files
         .keys()
         .filter(|path| path.extension().is_some_and(|ext| ext == "rs"))
@@ -40,18 +41,21 @@ pub(super) fn admit(
             .iter()
             .any(|root| path.starts_with(root))
         {
-            let file = super::super::dependency_snapshot::open(path)?;
-            let mut raw = Vec::new();
-            file.take(16 * 1024 * 1024 + 1).read_to_end(&mut raw).ok()?;
-            if raw.len() > 16 * 1024 * 1024
-                || files.get(path)? != &super::super::files::digest(&raw)
-                || !ordinary(&raw)
-            {
-                return None;
-            }
+            read.push(path);
         }
     }
-    Some(())
+    // Every other source is read in full and checked, several at once.
+    crate::parallel::in_order(&read, |path| {
+        let file = super::super::dependency_snapshot::open(path)?;
+        let mut raw = Vec::new();
+        file.take(16 * 1024 * 1024 + 1).read_to_end(&mut raw).ok()?;
+        (raw.len() <= 16 * 1024 * 1024
+            && files.get(*path)? == &super::super::files::digest(&raw)
+            && ordinary(&raw))
+        .then_some(())
+    })
+    .into_iter()
+    .collect()
 }
 
 // No expansion-dependent path attributes or include forms, including ones
