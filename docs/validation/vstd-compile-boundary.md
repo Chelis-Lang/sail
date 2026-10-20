@@ -63,6 +63,21 @@ not accepted.**
   serves, because serving requires `rust-src`. Separately, Sail's fork moves
   upstream's `dbg!` from line 113 to 117 of `rust_verify/src/verifier.rs`,
   so this fallback differs from stock with or without the bundle.
+- **Fork fix (runtime `64baccbb`).** Fork `64baccbb` restores stock's `dbg!`
+  line and adds `SAIL_VIR_SPAN_REMAP`, which Sail sets whenever it serves
+  prebuilt VIR: `/rustc/<rustc commit>/` maps to the verifier toolchain's
+  `rust-src` copy when installed, and the virtual rustc-dev base to the
+  user's registry directory, so imported span strings read as a local
+  build's ([VI-0031](../verus-issues/VI-0031-rust-src-std-paths.md)). On a
+  native EC2 c7i.8xlarge (us-east-1), a staged Sail with that runtime and a
+  bundle recorded on it gave stdout, stderr and exit codes identical to stock
+  `cargo verus verify` on the two extension impls and on a passing and a
+  failing probe, with `rust-src` (vstd served) and without; only the order
+  of Cargo's parallel `Compiling` lines on a cold build differed. Both sides
+  print `(#8091)`. That staging bundle was a check, not this record's
+  bundle: the bundle above was recorded on the `9c0ca7e7` runtime and must
+  be re-recorded, and these comparisons repeated, on the pinned `64baccbb`
+  runtime.
 - **Native shapes.** The `d17` recording's boundary trace has 25
   `native-output-established` records across 14 packages (tuples sha256
   `5731dc08…`). `boundary-witness shapes` passes on them, and shapes derived
