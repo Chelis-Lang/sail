@@ -37,7 +37,8 @@ semantic versioning once the API is published.
   extension impl with no matching standard-library impl) now read exactly as
   stock's when Sail serves the shipped vstd: standard-library and registry
   paths name this machine's files, and the printed `dbg!` location is
-  stock's (VI-0031, runtime `64baccbb`).
+  stock's (VI-0031, runtime `64baccbb`; byte comparison run on Linux, the
+  macOS repeat is pending).
 
 - Run managed Cargo with the engine's pinned toolchain (currently `1.99.1`) when the
   caller made no toolchain choice, so the shipped vstd proof applies with a

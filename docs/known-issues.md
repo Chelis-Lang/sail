@@ -8,6 +8,12 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **macOS shipped-vstd diagnostics are not yet byte-compared on runtime
+  `64baccbb`.** On Linux, diagnostics that print an imported span's stored
+  text match stock with and without `rust-src`
+  ([VI-0031](verus-issues/VI-0031-rust-src-std-paths.md)); the same probes on
+  macOS are pending.
+
 - **The original focused Anvil benchmark never reached verification.** All
   18 retained Sail rows used non-JSON `sail verify` with `--verify-module`,
   which intentionally refuses partial verification. The benchmark correction
