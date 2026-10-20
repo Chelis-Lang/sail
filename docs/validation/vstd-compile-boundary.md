@@ -18,8 +18,8 @@
 
 Linux x86-64 bundle for runtime `7d829946…-81186034d2e137a2` (fork
 `f8589ed4`, R3, manifest `576558fc…`), recorded by `ci/local.sh release` at
-`4d933e8e` (candidate/r3-runtime `3d8185cd` plus the release-toolchain fix,
-PR #272) on native EC2 c7i.8xlarge (us-east-1, Ubuntu 24.04, lane `r3l`).
+`4d933e8e` (candidate/r3-runtime `3d8185cd` plus the #271 toolchain fix,
+cherry-picked) on native EC2 c7i.8xlarge (us-east-1, Ubuntu 24.04, lane `r3l`).
 Proof identity `0391f755…`, bundle manifest `200874fd…`. Status:
 **recorded; diagnostic identity passes on every probe with and without
 `rust-src`; first use, shape and admission witnesses pass; release selection
@@ -92,7 +92,7 @@ Attempts:
   notices check had installed the fork's `rustc-dev`, `llvm-tools` and
   `rustfmt` into the verifier toolchain before recording, so the proof's
   compiler identity (`bbe3d350…`) matched no minimal toolchain (fixed by
-  PR #272). Evidence `run1-1ae17585.tgz` sha256
+  #271). Evidence `run1-1ae17585.tgz` sha256
   `44d97390d748aec7cbaea535378af8f05870438a66c383064c7331aa2257abb8`.
 - `3d8185cd`, 2026-10-20, macOS, FAIL: the same notices-check cause added
   `rustc-dev`, `llvm-tools` and `rustfmt` to the release home's 1.99.1 (proof
