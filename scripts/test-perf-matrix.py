@@ -116,6 +116,11 @@ class Report(unittest.TestCase):
                          {(2, "different"), (3, "unpaired")})
         self.assertEqual(s[0]["identity"], "same")
 
+    def test_a_stock_no_op_also_matches_a_sail_no_op(self):
+        s = [sample(1, "stock", "unchanged", 0.1, [], ref=self.V), sample(1, "sail", "unchanged", 0.2, [])]
+        pm.judge(s)
+        self.assertEqual([x["identity"] for x in s], ["same", "same"])
+
     def test_refusal_counts_as_failure(self):
         s = []
         for r in (1, 2, 3):

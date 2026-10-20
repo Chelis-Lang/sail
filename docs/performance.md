@@ -412,8 +412,8 @@ an empty Sail cache.
 Every sample goes to `samples.jsonl` as it finishes, failures and Sail
 refusals included. A sample passes when its exit code and normalized output
 (verification summaries, diagnostic headlines and locations) equal its
-round's stock sample. A stock rerun that Cargo answers without Verus is
-compared with that copy's previous verifying output. A row passes only when
+round's stock sample. When Cargo answers a stock rerun without Verus, Sail
+may match that no-op or the copy's previous verifying output. A row passes only when
 all its samples exist and pass and its medians meet the bar; the run writes
 `matrix.md` with medians, ranges and ratios.
 

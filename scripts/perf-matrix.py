@@ -36,9 +36,9 @@ Every sample is appended to `samples.jsonl` as it finishes, failures and
 Sail refusals included, and none is ever dropped. A sample passes its
 identity check when its exit code and normalized output (verification
 summaries and diagnostic headlines and locations, without Cargo status lines
-or timings) equal the paired stock sample's. An unchanged stock rerun that
-Cargo answers without running Verus is compared with that copy's previous
-verifying stock output. Rows are judged when the report is generated: a row
+or timings) equal the paired stock sample's. When Cargo answers a stock
+rerun without running Verus, Sail may match that no-op or the copy's
+previous verifying stock output. Rows are judged when the report is generated: a row
 passes only if every sample in it exists, exited as stock did and passed its
 identity check, and the medians meet its bar.
 
@@ -385,8 +385,9 @@ def cmd_run(args):
 
 def version(cmd):
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=60).stdout.strip().splitlines()[0]
-    except (OSError, subprocess.SubprocessError, IndexError):
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=60).stdout
+        return " ".join(l.strip() for l in out.splitlines() if l.strip())[:200] or "unknown"
+    except (OSError, subprocess.SubprocessError):
         return "unknown"
 
 
@@ -409,8 +410,10 @@ def judge(samples):
     sail = {(s["round"], s["project"], s["scenario"]): s for s in samples if s["arm"] == "sail"}
     for key in set(stock) | set(sail):
         st, sa = stock.get(key), sail.get(key)
+        # A stock rerun that Cargo answered without Verus matches either
+        # the same no-op or that copy's previous verifying output.
         same = bool(st and sa and st["exit"] is not None and st["exit"] == sa["exit"]
-                    and st["reference"] == sa["normalized"])
+                    and sa["normalized"] in (st["normalized"], st["reference"]))
         for s in (st, sa):
             if s is not None:
                 s["identity"] = "same" if same else ("unpaired" if not (st and sa) else "different")
@@ -424,9 +427,11 @@ def rows_of(samples, rounds):
     for s in samples:
         groups.setdefault((s["project"], s["scenario"]), {}).setdefault(s["arm"], []).append(s)
     order = {p: i for i, p in enumerate(["small"] + PROJECTS)}
-    sc = {s: i for i, s in enumerate(SMALL + [x for x in REAL if x not in SMALL])}
+    small_sc = {s: i for i, s in enumerate(SMALL)}
+    real_sc = {s: i for i, s in enumerate(REAL + ["worktree"])}
+    sc = lambda project, scenario: (small_sc if project == "small" else real_sc).get(scenario, 99)
     rows = []
-    for (project, scenario), arms in sorted(groups.items(), key=lambda kv: (order.get(kv[0][0], 99), sc.get(kv[0][1], 99))):
+    for (project, scenario), arms in sorted(groups.items(), key=lambda kv: (order.get(kv[0][0], 99), sc(*kv[0]))):
         stock, sail = arms.get("stock", []), arms.get("sail", [])
         bar = bar_of(scenario, project)
         failures = [s for s in stock + sail if not s.get("ok")]
