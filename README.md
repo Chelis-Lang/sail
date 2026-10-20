@@ -92,7 +92,10 @@ Without `rust-src`, Sail runs your default Cargo and its JSON result notes
 ([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
 
 Without `rust-src` everything still works; only the preverified vstd is
-skipped. The proof-bundle release path is still unqualified: its measured
+skipped. Keep that toolchain to the components above: `rustc-dev` or another
+component that adds compiler libraries changes files rustc loads, so the proof
+is not used. Whenever the preverified vstd does not apply to a new project,
+`sail verify` prints one `note[SAIL3138]` line saying why. The proof-bundle release path is still unqualified: its measured
 first-use gain (below) is not accepted yet. See
 [release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use).
 

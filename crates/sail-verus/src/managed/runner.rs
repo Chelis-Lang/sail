@@ -953,6 +953,13 @@ fn colour_wanted(terminal: bool, colour_env: bool, cargo_args: &[String]) -> boo
             .any(|a| a == "--color" || a.starts_with("--color="))
 }
 
+/// The SAIL3138 note's text for a shipped-proof miss `reason` (#238).
+fn shipped_miss_message(reason: &str) -> String {
+    format!(
+        "Sail's preverified vstd proof was not used because {reason}, so this run verified vstd itself; verification is unaffected"
+    )
+}
+
 /// One original Cargo-Verus pipe record.
 enum Output {
     Line(Vec<u8>),
@@ -2460,6 +2467,31 @@ pub(crate) fn run_engine_held(
             &data,
         )
     };
+    // An installed release offers its proof to every new target. When it does
+    // not apply, the run says why in one note (#238); SAIL3137 already
+    // explains a missing pinned toolchain.
+    let shipped_offered = new_target
+        && engine.is_none()
+        && paths.reuse
+        && !focused(&config.args)
+        && research == super::research::Mode::Off
+        && !super::shipped::research_enabled()
+        && config.cargo_toolchain.note().is_none()
+        && super::shipped::has_adjacent_bundle(&config.cargo_verus);
+    let mut shipped_miss = (shipped_offered && shipped_plan.is_none()).then(|| {
+        if remap_missing {
+            "the standard-library source the proof's diagnostics name is not available".to_owned()
+        } else {
+            super::shipped::plan_miss(
+                &config.cargo_verus,
+                &config.workspace,
+                &config.args,
+                registry.as_deref(),
+                &paths.target,
+                &data,
+            )
+        }
+    });
     if let Some(plan) = &shipped_plan {
         let file = paths.run.join("shipped.json");
         json(&file, plan)?;
@@ -3026,6 +3058,19 @@ pub(crate) fn run_engine_held(
             "SAIL3132: {} replays its complete dependency proof established by {}",
             target.package_id, target.establishing_run
         ));
+    }
+    if shipped_offered
+        && shipped_plan.is_some()
+        && targets
+            .iter()
+            .any(|t| t.target == "vstd" && !t.reused && t.dependency_build.is_none())
+    {
+        shipped_miss.get_or_insert_with(|| super::shipped::CLOSURE_MISS.to_owned());
+    }
+    if let Some(reason) = shipped_miss {
+        let message = shipped_miss_message(&reason);
+        let _ = writeln!(err, "note[SAIL3138]: {message}");
+        notes.push(format!("SAIL3138: {message}"));
     }
     for target in targets.iter().filter(|t| t.dependency_store.is_some()) {
         notes.push(format!(
