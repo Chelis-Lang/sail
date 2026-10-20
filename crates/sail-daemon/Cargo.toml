@@ -18,7 +18,6 @@ rustls.workspace = true
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-rcgen.workspace = true
 sail-api.workspace = true
 sail-verus.workspace = true
 sail-cache.workspace = true
