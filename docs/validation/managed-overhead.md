@@ -101,7 +101,7 @@ Archive `m114-linux-perf.tgz`, SHA-256
 | Runtime | Sail fork `9c0ca7e7` (7d82994, manifest `f4568e29…`), pinned Z3 4.16.0; stock oracle `0.2026.10.18.7d82994`, Cargo 1.99.1 both |
 | Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, CI `core` image, one idle lane |
 | Scope | `sail new --lib` demo with one function; per round: add one function (edit), rerun unchanged, return to the original (revert); 7 rotated rounds after two warm-ups, own project copy, cache and target per arm; Sail binaries copied onto the cache filesystem |
-| Limits | One small project on Linux; no macOS, Vest edit or cold claim; plain `sail verify` output only |
+| Limits | Linux only; no macOS claim; demo and current-pin Vest only; plain `sail verify` output |
 
 Medians of seven paired rounds (ranges in the archive). All 63 timed runs
 exit 0 and print the same `verification results` lines as stock.
@@ -121,10 +121,25 @@ inventory to admit the plan, 0.9 s copies and checks the dependency graph
 the compiler starts and 0.45 s checks it again afterwards: about 1.6 GB read
 and hashed per edit, against a 0.8 s compile. The candidate skips retention
 when the target's last compile cost less than four times its retention (see
-[instant revert](../instant-revert.md)). A Vest A → B → A cycle on the
-candidate (`-p vest_lib -- --rlimit 100`, one round) still restores: cold A
-87.7 s, B 29.7 s, returned A 3.16 s with zero verifier invocations, unchanged
-0.69 s; the records were 26–29 s of compile against 1.4–1.7 s of retention.
+[instant revert](../instant-revert.md)). Vest keeps instant revert. Five rotated paired rounds of the
+requalification cycle (current-pin Vest with crates.io vstd
+`0.0.0-2026-10-18-0147`, `-p vest_lib -- --rlimit 100`, plain output, fresh
+copy and cache per arm and round) give these medians, with ranges:
+
+| Step | Stock | `main` | Candidate |
+|---|---:|---:|---:|
+| A cold | 76.10 s (75.72–76.68) | 85.42 s (84.75–85.56) | 85.14 s (84.19–85.46) |
+| B edit | 42.47 s (42.27–42.81) | 28.58 s (28.33–29.17) | 28.80 s (28.44–28.89) |
+| A returned | 42.32 s (42.14–42.91) | 2.99 s (2.96–3.01) | 2.99 s (2.99–3.00) |
+| A unchanged | 0.22 s (0.22–0.25) | 0.57 s (0.56–0.58) | 0.58 s (0.57–0.58) |
+| Cycle | 161.38 s | 117.27 s | 117.44 s |
+
+All 60 runs exit 0. Each of the 40 Sail runs prints the same lines as its
+stock pair once the arm's root path and Cargo's `Finished … in` time are
+normalized; lines are compared as a set. A one-round JSON check of the
+candidate's returned A shows zero verifier invocations and both targets
+reused, and its cost records were 26–29 s of compile against 1.4–1.7 s of
+retention.
 
 What remains of the candidate's gap, from the setup phases:
 
@@ -147,7 +162,9 @@ run fell from 0.474 s to 0.240 s (edit 1.304 to 1.075 s, five rounds).
 cold-gap's daemon and shim commits (`7c91c4f5`, `fc78624c`) applied on top
 measured 10 ms on the edit (six rounds); they are not part of this branch.
 
-Raw evidence: `final-evidence.tgz` sha256
+Raw evidence: Vest cycles `vest-evidence.tgz` sha256
+`1f1677714cbe51a4d9f7f32a802968a315d42620e135a717e81cf14186c344b2`;
+demo cohorts `final-evidence.tgz` sha256
 `6cc9ed2239d65bf9ce49d8f91ee637c57660180188df96dd590aefd51e9fe295` (every
 sample, outputs and setup-phase files of the final, retention-off and alias
 cohorts, and the Vest cycle's JSON results and cost records).
