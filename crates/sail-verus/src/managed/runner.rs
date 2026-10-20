@@ -1470,10 +1470,14 @@ fn dirty_receipt_packages(
     revisions: &BTreeMap<PathBuf, ReceiptRevision>,
     data: &Value,
 ) -> Vec<String> {
-    revisions
-        .values()
-        .filter(|r| r.input_revision != target_revision(data, &r.package_id))
-        .map(|r| r.package_id.clone())
+    // Each current revision is its own complete snapshot; they overlap.
+    let receipts: Vec<&ReceiptRevision> = revisions.values().collect();
+    let current = crate::parallel::in_order(&receipts, |r| target_revision(data, &r.package_id));
+    receipts
+        .into_iter()
+        .zip(current)
+        .filter(|(r, current)| r.input_revision != *current)
+        .map(|(r, _)| r.package_id.clone())
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
@@ -1552,12 +1556,29 @@ fn target_records(
         }
         stored.insert(path, receipt);
     }
-    digests.prefetch(
-        batch
-            .iter()
-            .filter(|path| path.is_file())
-            .map(PathBuf::as_path),
-    );
+    // Each verified package's current revision is its own complete snapshot.
+    // They are taken while the batch is read, in the same phase.
+    let ids: Vec<String> = artifacts
+        .iter()
+        .filter(|artifact| verified(artifact).is_some())
+        .filter_map(|artifact| artifact["package_id"].as_str())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .map(str::to_owned)
+        .collect();
+    let revisions: HashMap<String, String> = std::thread::scope(|scope| {
+        let current =
+            scope.spawn(|| crate::parallel::in_order(&ids, |id| target_revision(data, id)));
+        digests.prefetch(
+            batch
+                .iter()
+                .filter(|path| path.is_file())
+                .map(PathBuf::as_path),
+        );
+        current.join().ok()
+    })
+    .map(|current| ids.into_iter().zip(current).collect())
+    .unwrap_or_default();
     for artifact in artifacts {
         let Some(package) = verified(&artifact) else {
             continue;
@@ -1577,7 +1598,10 @@ fn target_records(
                 && kind.contains(target_kind)
         });
         let force = force && requested;
-        let input_revision = target_revision(data, package_id);
+        let input_revision = revisions
+            .get(package_id)
+            .cloned()
+            .unwrap_or_else(|| target_revision(data, package_id));
         let path = receipt_path(paths, package_id, name, &kind);
         let call = calls.iter().find(|c| {
             c.identity.manifest == Path::new(package["manifest_path"].as_str().unwrap_or_default())
