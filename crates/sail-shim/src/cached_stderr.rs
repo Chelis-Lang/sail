@@ -87,7 +87,9 @@ impl Monitor {
                     if ended {
                         break;
                     }
-                    std::thread::sleep(Duration::from_millis(10));
+                    // Drop unparks this thread, so shutdown never waits out
+                    // the poll interval.
+                    std::thread::park_timeout(Duration::from_millis(10));
                 }
             })?;
         Ok((
@@ -122,6 +124,7 @@ impl Drop for Monitor {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::SeqCst);
         if let Some(thread) = self.thread.take() {
+            thread.thread().unpark();
             let _ = thread.join();
         }
     }

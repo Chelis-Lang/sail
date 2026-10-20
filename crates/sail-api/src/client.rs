@@ -3,6 +3,7 @@
 //! Every call has timeouts. Any failure is reported as an error, which the
 //! shim treats as a miss and falls back to the pinned solver.
 
+use std::io::Write as _;
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::time::Duration;
@@ -13,6 +14,11 @@ use crate::protocol::{
 
 /// Timeout for each request/response exchange.
 pub const TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Most `PUT`s [`Client::put_all`] sends before reading their
+/// acknowledgements. The unread acknowledgements stay far below any socket
+/// buffer, so the daemon never blocks writing them while the client writes.
+const PUT_WINDOW: usize = 64;
 
 /// A connection to the daemon.
 #[derive(Debug)]
@@ -132,6 +138,38 @@ impl Client {
             reply,
         })
         .map(|_| ())
+    }
+
+    /// Stores every `(key, meta, reply)` in order, sending up to a window of
+    /// requests before reading their acknowledgements, so a session's stores
+    /// cost a few round trips instead of one each. The daemon answers each
+    /// request in order, exactly as for [`Client::put`].
+    ///
+    /// # Errors
+    ///
+    /// I/O errors. Stores before the failing window may have been made.
+    pub fn put_all(
+        &mut self,
+        puts: impl IntoIterator<Item = ([u8; 32], PutMeta, Vec<u8>)>,
+    ) -> std::io::Result<()> {
+        let mut puts = puts.into_iter().peekable();
+        let mut frames = Vec::new();
+        while puts.peek().is_some() {
+            frames.clear();
+            let mut sent = 0usize;
+            for (key, meta, reply) in puts.by_ref().take(PUT_WINDOW) {
+                Request::Put { key, meta, reply }.write(&mut frames)?;
+                sent += 1;
+            }
+            (&self.stream).write_all(&frames)?;
+            // Only acknowledgements of these requests can arrive, so the
+            // buffer never holds bytes past the last one.
+            let mut acks = std::io::BufReader::new(&self.stream);
+            for _ in 0..sent {
+                read_response(&mut acks)?;
+            }
+        }
+        Ok(())
     }
 
     /// The daemon's counters since it started.
