@@ -46,7 +46,7 @@ Stock `cargo verus verify` and the staged `sail verify` were each run once on a 
 | `--fwd-verus-args-to roots -- --rlimit 100` | identical | served, `SAIL3132` (no subsumption needed: vstd gets no forwarded flag) |
 | `-- --rlimit 5` | identical | not served: "the rlimit witness does not admit this rlimit"; vstd verified |
 
-A second, unchanged run of the same project differs from stock, with or without `--rlimit`. Sail recompiles vstd and prints its results; stock is a no-op. The same happens on pristine `main` (#259), so it is not part of this change.
+These runs redirected their output into the project directory. Under those conditions a second, unchanged run differed from stock: Sail recompiled vstd and printed its results, where stock was a no-op. The same happens on `main` and is independent of this change. The cause is the in-project output file, which makes each run Historical (#259, fixed by #266). With output written outside the project, the rerun is a Cargo no-op identical to stock.
 
 ## macOS repeat
 
@@ -96,4 +96,3 @@ Failed or interrupted attempts:
 ## Remaining
 
 - Owner sign-off of ADR 0060.
-- #259 (unchanged re-run), which is independent.
