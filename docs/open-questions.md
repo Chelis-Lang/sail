@@ -408,8 +408,12 @@ planned for releases after 0.1.0. The owner answered all twelve on
 32. **How much slower counts as "materially slower".** The release goal says
     no scenario may be materially slower than stock Verus.
 
-    **Answered 2026-10-19 (owner):** At most 5% slower than stock, or at most
-    0.1 s on sub-second runs. Known losses are fixed, not documented.
+    **Answered 2026-10-20 (owner), replacing the 2026-10-19 record of a fixed
+    5% / 0.1 s line:** the bar is relative, not a fixed percentage. Most
+    scenarios should be faster than stock. Sail may add only modest overhead
+    on runs that are already tiny and cannot be optimized, and must never make
+    a run genuinely slower, cold runs included. Known slowdowns are fixed, not
+    documented.
 33. **Which Cargo runs managed verification.** The shipped vstd proof is keyed
     to the compiler arguments Cargo 1.98.1 emits; a newer default Cargo misses
     it and verifies vstd again.
