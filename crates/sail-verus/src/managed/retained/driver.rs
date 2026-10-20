@@ -241,9 +241,9 @@ impl Plan {
     /// ready. Wait for those actual successful producers of the artifacts
     /// present now, then reuse or capture the complete final directory
     /// (including rlibs). The caller publishes it.
-    fn capture_graph(&self, args: &[OsString], directory: &Path) -> Option<Snapshot> {
+    fn capture_graph(&self, run: &str, args: &[OsString], directory: &Path) -> Option<Snapshot> {
         let first = Snapshot::artifacts_ready(&self.target, args)?;
-        if !super::producers::ready_for(self, &first) {
+        if !super::producers::ready_for(self, run, &first) {
             return None;
         }
         Snapshot::reuse(&self.target, &self.root.join("graphs"), args).or_else(|| {
@@ -325,7 +325,7 @@ impl Plan {
                 .name("sail-retained-sources".to_owned())
                 .spawn_scoped(scope, || self.snapshot())
                 .ok();
-            let graph = self.capture_graph(args, directory);
+            let graph = self.capture_graph(&runtime.run_id, args, directory);
             let sources = match sources {
                 Some(thread) => thread.join().ok().flatten(),
                 None => self.snapshot(),
@@ -337,7 +337,7 @@ impl Plan {
         let environment = std::env::vars_os()
             .map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
             .collect::<Option<BTreeMap<_, _>>>()?;
-        if !super::producers::ready(self, &graph)
+        if !super::producers::ready(self, &runtime.run_id, &graph)
             || !super::producers::established(self, &runtime.context_sha256, &graph)
             || !super::producers::named_externs(self, args)
         {

@@ -17,6 +17,7 @@ pub(crate) use driver::Plan;
 #[cfg(test)]
 pub(crate) use driver::actual_late_guard;
 pub(crate) use producers::Native;
+pub(crate) use producers::Running;
 pub(crate) use producers::publish_shipped;
 pub(in crate::managed) use producers::publish_shipped_native;
 
