@@ -7,119 +7,99 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 ## Goal
 
 The first public release must be clearly faster than plain `cargo verus
-verify` (stock Verus) in normal use. No scenario may be materially slower
-than stock, cold runs included: at most 5% slower, or 0.1 s on sub-second
-rows ([question 32](open-questions.md)).
-Verdicts, diagnostics and exit codes stay identical to stock. Sail's Verus
-fork is an accepted way to get speed (ADR 0039, ADR 0043). The release is a
-CLI. M10 (multi-backend verification runtime, Oyster) stays backburnered
-(owner direction 2026-10-15 and 2026-10-19).
+verify` (stock Verus) in normal use. Most scenarios should be faster; Sail
+may add only modest overhead on runs that are already tiny and cannot be
+optimized, and must never make a run genuinely slower, cold runs included
+(owner direction 2026-10-20, superseding the fixed 5% line of
+[question 32](open-questions.md)). Verdicts, diagnostics and exit codes stay
+identical to stock. Sail's Verus fork is an accepted way to get speed (ADR
+0039, ADR 0043). The release is a CLI with Linux and macOS binaries. M10
+(multi-backend verification runtime, Oyster) stays backburnered (owner
+direction 2026-10-15 and 2026-10-19).
 
-Milestones: M11 is *Verus core and performance*, tracked by the GitHub
-milestone and its ordered backlog
-[#168](https://github.com/Chelis-Lang/sail/issues/168). The performance
-program below is #168's order; new performance issues are filed under M11
-and listed in #168. M10 is the multi-backend verification runtime (#146).
+Milestones: the GitHub milestone **0.1.0** holds the release blockers. M11
+is *Verus core and performance*, with its ordered backlog
+[#168](https://github.com/Chelis-Lang/sail/issues/168); new performance
+issues are filed under M11 and listed in #168. M10 is the multi-backend
+verification runtime (#146).
 
 ### Current standing against stock Verus
 
-Ratio = stock time ÷ Sail time; above 1 means Sail is faster. Linux, native
-host (dedicated EC2), three-round medians unless noted. **No row has been
-measured on current main `d1499eff` or on the 0.1.0 candidate.** Each row
-names the Sail build it measured; cohorts differ, so rows cannot be combined.
+Ratio = stock time ÷ Sail time; above 1 means Sail is faster. Medians of
+three rotated rounds on fork runtime `f8589ed4` (Verus 0.2026.10.18.7d82994),
+Linux on c7i.8xlarge and macOS on mac-m4.metal, both us-east-1, human
+output. These are component screens from the 0.1.0 qualification
+([handover #279](https://github.com/Chelis-Lang/sail/issues/279)); the full
+release matrix (`scripts/perf-matrix.py`) has not yet run on the candidate.
 
-| Scenario | Stock | Sail (latest measured) | Ratio | Meets goal | Sail build measured | Evidence |
-|---|---:|---:|---:|---|---|---|
-| Cold first run, Vest | 73.93 s | 85.52 s | 0.86× | **No** (+16%) | `e0d14d75` (#225; main minus #226) | [instant revert, optional-plan screen](validation/instant-revert.md#unchanged-run-optional-plan-candidate-156) |
-| Cold first run, small project | 32.22 s | 36.58 s | 0.88× | **No** (+14%) | `c3e64d21`, pre-#224, diagnostic figures from a FAIL cohort | [instant revert, ordinary public candidate](validation/instant-revert.md#ordinary-public-candidate-and-measured-scope-successor) |
-| Cold first run, five real projects | unmeasured | unmeasured | gap | Unknown (likely failing: four projects use path or pinned Verus and get nothing from shipped vstd) | — | lever 1.1 |
-| Fresh project (`sail new` + verify) | 34.36 s | 32.57 s | 1.05× | Unknown on current main (likely below parity after #217) | `19034f8d`, pre-#217 containment candidate (2026-10-16), original pinned runtime | [store containment](validation/dependency-store-fail-closed.md); #217 later added +11.26% here ([solver identity](validation/solver-identity.md)) |
-| Fresh project, shipped vstd (Cargo 1.98 only) | 31.78 s | 14.23 s | 2.23× | Not qualified (candidate component screen only) | `356b7d0f` (runtime `e5365c05`, before the `cbbcdf44` join) | no record yet (PR #227 body); setup + new + lock + verify, nine roots, one host |
-| New worktree, Vest | unmeasured | unmeasured | gap | Unknown | — | v1 history only ([store record](validation/dependency-store.md)); boundary path is Sail vs Sail ([record](validation/vstd-compile-boundary.md)) |
-| Small edit | 0.79 s | 1.04 s (main `4f373727`: 2.55 s) | 0.76× | **No** (+0.25 s, sub-second) | `perf/small-overhead` `ac8422a2` (seven rounds, c7i.8xlarge) | [small-project overhead](validation/managed-overhead.md#small-project-overhead-156) |
-| Vest edit | 41.07 s | 30.43 s | 1.35× | Yes (requalify on `cbbcdf44`) | `e0d14d75` (#225) | [optional-plan screen](validation/instant-revert.md#unchanged-run-optional-plan-candidate-156) |
-| Unchanged rerun | 0.12 s (small), 0.23 s (Vest) | 0.215 s, 0.54 s | 0.54×, 0.42× | Small yes by the 0.1 s rule (+0.098 s); Vest **No** (Sail returns a complete report, stock a Cargo no-op) | small `ac8422a2`; Vest `e0d14d75` | [small-project overhead](validation/managed-overhead.md#small-project-overhead-156); [optional-plan screen](validation/instant-revert.md#unchanged-run-optional-plan-candidate-156) |
-| One-module edit, five real projects | 9.9–124 s | 7.4–104 s | 1.19–2.25× (Anvil lowest) | Not current product | removed pass-through mode on stock Verus, 2026-10-15; not current managed behaviour | [real-project report](reports/2026-10-15-real-project-performance.md) (three rounds, Anvil two) |
-| Spec-wide edit, five real projects | 9.9–124 s | 9.9–124.3 s | 1.00–1.60× | Not current product; parity on Anvil, IronKV, CapybaraKV then | same | same |
-| Revert to verified content, Vest | 41.12 s | 2.80 s | 14.7× | Yes on Linux public alloc/std profile (requalify on `cbbcdf44`) | `e0d14d75` (#225) | [instant revert](validation/instant-revert.md) |
-| Revert, small project | 0.79 s | 1.01 s (main: 1.72 s) | 0.79× | **No** (+0.22 s, sub-second) | `ac8422a2` | [small-project overhead](validation/managed-overhead.md#small-project-overhead-156) |
-| macOS, any scenario | unmeasured | unmeasured | gap | Unknown | — | historical cold was 15–18% slower ([performance](performance.md)) |
+| Scenario | Platform | Stock | Sail | Ratio | Standing |
+|---|---|---:|---:|---:|---|
+| First use, new project (shipped vstd hit) | Linux | 31.5 s | 13.9 s | 2.27× | Win |
+| First use, new project | macOS | 17.6 s | 10.2 s | 1.73× | Win |
+| First use, shipped vstd miss (extra toolchain components) | Linux | 29.4 s | 33.1 s | 0.89× | **Slower** (#232, #236) |
+| Small project cold, bundle miss | Linux | 31.31 s | 33.89 s | 0.92× | **Slower** (#232) |
+| Small project cold | macOS | 16.66 s | 19.86 s | 0.84× | **Slower** (#278) |
+| Vest cold | Linux | 66.59 s | 69.84 s | 0.95× | **Slower**: Vest misses the bundle (lock closure, `--rlimit 100`) |
+| Vest cold | macOS | 40.16 s | 47.91 s | 0.84× | **Slower** (#278) |
+| Vest edit | Linux | 37.36 s | 23.93 s | 1.56× | Win |
+| Vest revert to verified content | Linux | 37.5 s | 1.43 s | 26× | Win |
+| Vest edit/revert cycle | Linux | 151.6 s | 100.3 s | 1.51× | Win |
+| Vest edit/revert cycle | macOS | 83.3 s | 63.3 s | 1.32× | Win |
+| Small project unchanged rerun | Linux | 0.12 s | 0.22 s | — | Modest overhead |
+| Small project small edit | Linux | 0.79 s | 1.04 s | — | Overhead to trim (#156) |
+| Vest unchanged rerun | Linux / macOS | 0.19 / 0.22 s | 0.48 / 0.73 s | — | Overhead to trim (#156) |
+| One-module and spec-wide edits, IronKV, CapybaraKV, Anvil, Verismo | Linux | — | — | — | Unmeasured on the current product |
 
 Corpus: Vest, Anvil, IronKV, CapybaraKV and Verismo are the real-project
-corpus (`corpus/`; [real-project report](reports/2026-10-15-real-project-performance.md)).
-"Small project" is the `sail new` template.
-
-The all-hits floor (an edit with every solver query cached) caps the
-edit-loop speedup at 1.45× (Verismo) to 3.25× (Anvil); measured in the
-2026-10-15 pass-through mode; see track 2.
-
-Gaps: cold runs lose to stock on every measured row; the fresh-project win
-is a candidate screen on a pre-join runtime; current main, the joined
-candidate, the real-project cold row, new worktrees and macOS have no
-current stock A/B.
+corpus (`corpus/`). "Small project" is the `sail new` template.
 
 ## 0.1.0
 
-Nothing is published and repository visibility is unchanged. The 0.1.0
-scope is PR #227's joined candidate (owner decision 2026-10-19,
-[question 29](open-questions.md)); rc.5's v1 store stays quarantined
-([ADR 0053](decisions/0053-disable-unqualified-native-store.md), #187).
-Nothing goes to crates.io until the owner's rollout; the release is open
-source under the MIT License with macOS and Linux binaries on GitHub
-releases.
+Nothing is published and repository visibility is unchanged. Nothing goes to
+crates.io until the owner's rollout; the release is open source under the
+MIT License with macOS and Linux binaries on GitHub releases. The last draft
+candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 
-**Scope** (selected for 0.1.0): PR #227, draft, built and not qualified.
-Scope commit `d827c407`; the PR head is now `7f1301a0` (`d827c407` plus
-follow-ups, including `eb816fb8`, which binds the Linux runtime manifest to
-the engine pin).
+**Scope** (owner, 2026-10-19), on main:
 
-- Built: verified vstd shipped in release archives as a compiler-boundary
-  proof bundle (#161, [ADR 0048](decisions/0048-shipped-dependency-build.md)).
-  Proc-macro and build-script crates still compile fresh. Sail serves the
-  bundle only after *admission*: exact source, compiler, runtime,
-  linked-byte and release-index match; any mismatch verifies vstd normally.
-- Built: fork runtime pin `cbbcdf44` (includes fork PR #8, stable
-  trait-function spellings).
-- Built: *proof coexistence*, so shipped and locally verified vstd proofs
-  can sit in one cache without conflict.
-- Selected for 0.1.0 (not built): Sail will select the pinned Cargo 1.98.1
-  for managed builds so the shipped bundle hits regardless of the user's
-  default Cargo.
+- Verified vstd shipped in release archives as a compiler-boundary proof
+  bundle, served only after exact admission (#249,
+  [ADR 0048](decisions/0048-shipped-dependency-build.md)); any mismatch
+  verifies vstd normally.
+- Fork runtime `f8589ed4` on upstream Verus 0.2026.10.18.7d82994 (Rust
+  1.99.1), Linux and macOS (#267).
+- Proof coexistence, so shipped and locally verified vstd proofs share one
+  cache.
+- Managed builds use the engine's pinned Cargo
+  ([ADR 0058](decisions/0058-managed-builds-use-the-pinned-cargo.md)).
+- Instant revert on Linux and macOS (#224, #269).
 
-| Gate | Status | Evidence | Next |
-|---|---|---|---|
-| Archive build produces the vstd bundle (producer), joined head | Pending (joined-source qualification not recorded) | [releasing](releasing.md) on PR head: Linux producer/clean-consumer acceptance pending | Record on `7f1301a0` |
-| First run on a fresh Linux machine uses the bundle | Not qualified (component pass on `356b7d0f`; last enclosing attempt FAIL) | record lands with PR #227 ([boundary record](validation/vstd-compile-boundary.md)) | Rerun with stock primed, on the joined head |
-| Fresh-project first use, joined head | Not measured | — | Re-measure stock vs Sail on `7f1301a0` (`cbbcdf44` runtime) |
-| Instant revert and edit rows on `cbbcdf44` | Not qualified (manifest authority names `cbbcdf44`; ordinary-reuse qualification pending) | PR-head ROADMAP | Requalify Vest edit and A/B/A |
-| Vest and public-profile A/B/A screens | Pending | — | Queued native run |
-| Fast and standard conformance tiers ([testing](testing.md)) | Pending on the joined head | — | Run on the joined head |
-| Release-candidate validation | Pending | rc.5 precedent ([release candidate](validation/release-candidate.md)) | Gate, e2e, every conformance tier incl. deep, one deep-rvt round, clean Linux and macOS README walkthrough including Claude Code |
-| #222 applicability | Unknown | #222 (boundary path can publish vstd after a native input is replaced and restored) | Confirm the protected native-input fix is in the archive path, or show the archive path is unaffected |
-| Changed Rustup roots, Linux | Pending (Mac components only) | PR #227 body | One changed-root Linux consumer |
-| Fresh-machine default first use with pinned Cargo | Pending | — | After the Cargo selection is built |
-| Fallback-path first runs | Unmeasured | [question 30](open-questions.md) (`SAIL3112` runs reuse no receipts) | First use with `LD_LIBRARY_PATH` set and with `--target-dir`: record bundle hit/miss and wall vs stock; the miss note must fire here too |
-| macOS components | Built; no Mac performance claim | PR #227 body; no record yet | — |
-| macOS ordinary retained reuse (instant revert) | Qualified on `f8589ed4` (`MACOS_MANIFEST` `67589de3…`): Vest cycle 83.3 → 63.3 s, returned A 22.3 → 2.2 s with no verifier; cold A +14.6% while the shipped proof misses on `--rlimit 100` (ADR 0060) | [instant revert](validation/instant-revert.md#macos-qualification-on-runtime-f8589ed4) | Requalify on each macOS runtime re-pin |
-| e2e scripts on macOS | Portable (#261): `ci/run.sh e2e output` and `loader` and `ci/test-timeout.py` pass on stock macOS 27.0 userland (BSD sed, no `timeout`, Python 3.9.6) | [testing](testing.md) | — |
-| macOS first-use and cold A/B | Not scheduled | — | Stock vs Sail on the joined head, rotated rounds (about 1 Mac day) |
-| Pinned Cargo 1.98.1 selection | Selected, in progress (#233, [question 33](open-questions.md)) | — | ADR, stock comparisons on the same toolchain, fresh-machine test. Without it a newer default Cargo misses silently (about 36 s) |
-| Loud miss note | Proposed (#238) | — | One `note[SAILnnnn]` line on a bundle miss (Cargo, vstd, toolchain mismatch, fallback paths) |
-| Runtime base current with upstream Verus | In progress: fork `f8589ed4` (R3: `64baccbb` plus VI-0033 stable SMT names, largest-first dispatch and Fx hashing; [fork perf](validation/fork-perf-7d82994.md)) on `0.2026.10.18.7d82994` (Rust 1.99.1); Linux and macOS runtimes published and pinned ([macOS engine](validation/macos-engine.md)). On `f8589ed4` (Linux): shipped vstd bundle re-recorded, identical stdout, exit code and diagnostics to stock on every probe with and without `rust-src`, first use 31.5 → 13.9 s; native shape and five-case admission witnesses pass; instant revert requalified (Vest cycle 151.6 → 100.3 s). On `f8589ed4` (macOS): bundle re-recorded, probes identical, shape and admission witnesses pass, instant revert qualified (cycle 83.3 → 63.3 s). Conformance on `f8589ed4` (Linux): fast 147/147 same in every arm; standard 159/159 same in fill, warm and engine, 158 same + 1 unstable in pass-through `64baccbb` fixed the reachable standard-library label difference (VI-0031) | [compatibility](compatibility.md#upgrade-to-0202610187d82994), [boundary record](validation/vstd-compile-boundary.md#verus-7d82994-bundle-on-runtime-f8589ed4) | Merge #267; `deep-rvt` runs with release-candidate validation |
-| **Performance matrix** | **Fails (cold rows); most rows unmeasured on the candidate** | standing table | Every row, Linux and macOS, three rotated rounds, identical verdicts; no row materially slower than stock. Needs track 1 |
-| Docs and CLI trim | Pending | — | [releasing](releasing.md) "no prebuilt vstd"; [performance](performance.md) "1–3 s slower" cold claim and "a warm team cache does not change this" (never measured on real projects); README toolchain advice; research flags off the user surface |
-| Owner review and publication | Not started | — | — |
+| Gate | Status | Next |
+|---|---|---|
+| Runtime rebased onto upstream 7d82994, Linux and macOS | Done (#249, #251, #267) | — |
+| Shipped bundle re-recorded, admission witnesses, identical output to stock | Done on `f8589ed4`, both platforms | — |
+| Conformance fast and standard on `f8589ed4` | Done: fast 147/147, standard 159/159 (one unstable unit is stock's own note-order race) | Rerun on rc.6 |
+| Determinism | Done: Linux 146/146, macOS 320/320 | — |
+| Instant revert qualified | Done: Linux and macOS on `f8589ed4` | — |
+| macOS `main` green | #281 (macOS host gate passes) | Merge |
+| Bundle-miss note | #275 | Merge |
+| Vest-class projects hit the bundle | #276 (closure alignment hint), #268 (raised `--rlimit`, ADR 0060 approved 2026-10-20) | Merge |
+| Cold runs never slower than stock | **Open**: Linux miss path and macOS cold are slower | #278, #232, #236 |
+| Sub-second overhead modest | **Open** | #156 |
+| Release matrix, Linux and macOS | **Open**: Linux baseline running | `scripts/perf-matrix.py`, every row |
+| Deep conformance and `deep-rvt` | Open | On the rc.6 source |
+| Docs from the matrix (`performance.md`, CHANGELOG, `known-issues.md`, README) | Open | After the matrix |
+| rc.6 draft, clean Linux and macOS walkthroughs including Claude Code | Open | `scripts/release.sh` |
+| Owner review and publication | Not started | — |
 
 **Merged on main for 0.1.0** (implemented; release qualification is the
 gate table above): MCP in Claude Code, agent-sized replies, honest counts,
 macOS managed reuse, install and first run, release builds with the engine
-runtime, fork runtime releases, the performance page, managed target
-cleanup, `LICENSE`/`CONTRIBUTING.md`, `sail new`, output schema v2 (ADR
-0044), managed output order and script facts
-([record](validation/managed-output-order.md)), and managed verification by
-default ([ADR 0046](decisions/0046-managed-verification-by-default.md);
-implemented, awaiting review). Issue lists: [CHANGELOG](../CHANGELOG.md) and
-the GitHub milestones. Out of 0.1.0: single-file projects (#164).
+runtime, fork runtime releases, third-party notices, managed target cleanup,
+`LICENSE`/`CONTRIBUTING.md`, `sail new`, output schema v2 (ADR 0044),
+managed output order and script facts, and managed verification by default
+([ADR 0046](decisions/0046-managed-verification-by-default.md)). Out of
+0.1.0: single-file projects (#164), multi-backend verification (M10).
 
 ## Performance program
 
@@ -145,7 +125,7 @@ shipped bundle.
 | # | Lever | Prize | Status | Next experiment (cost) | Fork | Issue |
 |---|---|---|---|---|---|---|
 | 1.1 | Cold-gap attribution, re-baseline and owner | Required for the goal: about 12 s on Vest cold, 4 s on small | Attributed on the 7d82994 runtime; after the #232 fixes, small project +22.5% → +8.2%, public-profile Vest +12.6% → +4.8% (three rounds, [record](validation/cold-first-run.md)) | Owner decision on the remaining native-admission waits (lever 1.4 or a pipelined admission); the #232 fixes include the handshake and parallel-hashing parts of 1.5; 1.6 (daemon overlap) remains | No | #232 |
-| 1.2 | Shipped verified vstd + pinned Cargo 1.98.1 | Fresh project 31.78 → 14.23 s vs stock (2.23×; pre-join candidate screen) | Bundle built (PR #227); Cargo selection selected, not built | 0.1.0 gate table | No | #161, PR #227 |
+| 1.2 | Shipped verified vstd + pinned Cargo 1.98.1 | Fresh project 31.78 → 14.23 s vs stock (2.23×; pre-join candidate screen) | Merged (#249, ADR 0058) | 0.1.0 gate table | No | #161 |
 | 1.2b | Pinned toolchain and rust-src fetched at install, in parallel with the archive download | How the 1.2 pin arrives; unmeasured share of 14.23 s | Proposed | rust-src split is part of 1.5's profile; then fetch during install (days) | No | #233 |
 | 1.3 | Read the solver binary once per run (or a content-addressed private copy) | 2–3.3 s per fresh project, 0.5–0.9 s per Vest edit | Proposed; #219 recovered 1–3% | Per-run identity reuse (1–2 days); a private copy needs an ADR on same-path replacement | No | #156 |
 | 1.4 | Take instant-revert retention off the cold path | About 4.6 s on Vest cold (76.05 → 80.68 s when added) plus about 1.6 s on changed B; the unchanged-run cost is largely recovered by #225 | Proposed. The #156 cost gate (`perf/small-overhead`) skips retention only for targets whose compile is cheap next to it; a first run and Vest still retain | Skip retention on a project's first run, or write it after the result (days) | No | #163 |
@@ -214,7 +194,7 @@ spec-parameter names (#223, [record](validation/spec-parameter-names.md)).
 
 | Item | Prize | Status | Next step (cost) | Fork | Issue |
 |---|---|---|---|---|---|
-| Trait function spellings | Vest empty-impl edit 45.09 → 33.96 s | Built (fork PR #8 draft; runtime `cbbcdf44` published as a prerelease); part of the 0.1.0 scope | Qualified with the joined candidate | Yes | #118 |
+| Trait function spellings | Vest empty-impl edit 45.09 → 33.96 s | Merged in fork runtime `f8589ed4` | — | Yes | #118 |
 | 15-edit catalogue | Finds remaining leaks; mostly insurance | Prepared, never timed ([catalogue](validation/incidental-edits.md)) | One machine, 5–7 h, no new code, plus one Anvil row | No | #118 |
 
 ### 5. Managed overhead (#156)
@@ -237,15 +217,15 @@ them gating.
 
 Merged for the Linux public alloc/std profile (#224,
 [record](validation/instant-revert.md), [guide](instant-revert.md));
-requalification on `cbbcdf44` is a 0.1.0 gate. Remaining: macOS and other
+qualified on Linux and macOS on `f8589ed4`. Remaining: macOS and other
 dependency profiles, and lever 1.4 (its cold and cache cost, about 519 MB).
 
 ## Owner and lead decisions pending
 
 | Decision | Who | Blocks |
 |---|---|---|
-| Fork base: rebase onto the current upstream Verus release before qualifying ([question 34](open-questions.md)) | Owner | 0.1.0 qualification |
-| ADR for pinned Cargo selection: stock comparisons run with the same toolchain ([question 33](open-questions.md), decided) | Lead | 1.2 |
+| Pipelined native admission ([ADR 0061](https://github.com/Chelis-Lang/sail/pull/265), proposed): certify native units after their compile, about 0.5 s per cold run | Owner | 1.1 |
+| Closure-name determinism amendments to ADRs 0049 and 0056 (#247), accepted by the lead | Owner review | — |
 | Prebuilt macro crates under ADR 0053 parity ([question 35](open-questions.md)) | Owner | 1.10 |
 | Private solver copy on same-path replacement (ADR) | Lead | 1.3 variant |
 | Question 31, continuation timing oracle | Owner | Live-prefix preparation |
