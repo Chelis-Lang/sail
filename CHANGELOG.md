@@ -5,6 +5,19 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Projects that depend on rustix 0.38, such as CapybaraKV (through bindgen),
+  no longer rebuild their whole dependency graph and verify vstd again on
+  every `sail verify`. rustix's build script makes a temporary directory in
+  its own registry directory, and every run that ran it read Historical.
+  The next run then cleaned every build-script package, and the loop never
+  ended. Such a run is now Current. The contracts of scripts that declare
+  Cargo's `CARGO_CFG_*` or `CARGO_FEATURE_*` variables are kept across runs
+  (#294; ADR 0036 and 0046 amendments). On CapybaraKV (Linux, 3 rounds): an
+  unchanged rerun after a comment edit SAILAB_NOOP, a module edit
+  SAILAB_EDIT and a spec-wide edit SAILAB_SPEC, against stock's
+  SAILAB_STOCK; see [the record](docs/validation/script-directory-churn.md).
+  Verdicts and output are unchanged.
+
 - The release archive ships signed solver replies for its pinned vstd
   (`replies/vstd.pack` and `replies/release.pub`, ADR 0062). When the
   preverified vstd proof does not apply, the daemon answers vstd's solver

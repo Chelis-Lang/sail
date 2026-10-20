@@ -6,14 +6,15 @@
 
 use super::{BuildInput, current};
 use crate::managed::files::{digest, json};
+use crate::managed::input::PathStamp;
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 #[cfg(unix)]
 use std::io::Read as _;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[path = "build_inputs_sources.rs"]
 mod sources;
@@ -144,11 +145,25 @@ fn matches(record: &BuildInput, data: &Value, target: &Path) -> bool {
 // RUSTC_BOOTSTRAP is pinned by the invocation. CARGO_TARGET_DIR is different:
 // compilation preserves the exact caller value (including absence); only
 // metadata's separate child receives the owned metadata target override.
+//
+// `CARGO_CFG_*` and `CARGO_FEATURE_*` are Cargo-injected too, but what Cargo
+// injects is fixed by what the contract already pins (#294). Feature values
+// are the unit's features, which select its output directory
+// (`output_matches` binds that exact path). Cfg values are the target's
+// `rustc --print cfg` under the effective rustflags: the toolchain, target,
+// caller `CARGO_*`/`RUST*` environment and Cargo configuration bytes are all
+// part of the compiler family's identity, so a family's target cannot see
+// other values. Cargo's own `rerun-if-env-changed` check reads these names
+// from its own environment, as the recorded parent value does. rustix 0.38
+// declares both kinds; refusing them cleaned rustix and every package that
+// depends on it on every run.
 fn allowed_environment(key: &str) -> bool {
     if matches!(std::env::var(key), Err(std::env::VarError::NotUnicode(_))) {
         return false;
     }
     matches!(key, "RUSTC_BOOTSTRAP" | "CARGO_TARGET_DIR")
+        || key.starts_with("CARGO_CFG_")
+        || key.starts_with("CARGO_FEATURE_")
         || !(key.starts_with("SAIL_")
             || key.starts_with("VERUS_")
             || key.starts_with("CARGO_")
@@ -339,38 +354,109 @@ pub(in crate::managed) fn begin(
     Ok(available)
 }
 
-/// Optional publication after the original final Current transaction. The
-/// runner admits either successful verification or its separately sealed full
-/// negative outcome; neither this export nor a negative outcome is a proof.
-/// Encoding/publication failure leaves no reusable family export.
+/// The stamp of each path (`None`: absent).
+pub(in crate::managed) type Stamps = BTreeMap<PathBuf, Option<PathStamp>>;
+
+/// What changed across a Historical run, for [`scripts_unchanged_by_run`].
+pub(in crate::managed) struct RunChanges<'a> {
+    /// Content digests of the run's inputs before it.
+    pub before: &'a BTreeMap<PathBuf, String>,
+    /// Content digests of the run's inputs after it.
+    pub after: &'a BTreeMap<PathBuf, String>,
+    /// Every input path or directory whose `lstat` stamp differs across the
+    /// run, or that only one side covers (`input::changed_stamps`).
+    pub stamps: &'a BTreeMap<PathBuf, (Option<PathStamp>, Option<PathStamp>)>,
+    /// Every path the input stamps cover after the run.
+    pub stamped: &'a Stamps,
+    /// Stamps of the parent directories of every package directory and of
+    /// the workspace, before and after the run ([`parent_paths`]); `None`
+    /// when either side could not be taken.
+    pub parents: Option<(&'a Stamps, &'a Stamps)>,
+    /// Cargo's workspace root.
+    pub workspace: &'a Path,
+    /// The packages (by name) this run cleaned with `cargo clean -p`, so
+    /// that Cargo ran their build scripts again.
+    pub cleaned: &'a BTreeSet<String>,
+}
+
+/// The directories whose stamps [`RunChanges::parents`] holds: the parent of
+/// every package directory (as Cargo names it and canonical) and of the
+/// workspace root.
+pub(in crate::managed) fn parent_paths(data: &Value, workspace: &Path) -> BTreeSet<PathBuf> {
+    let mut parents = BTreeSet::new();
+    let roots = data["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|package| package["manifest_path"].as_str())
+        .filter_map(|manifest| Path::new(manifest).parent())
+        .chain(std::iter::once(workspace));
+    for root in roots {
+        for form in forms(root) {
+            if let Some(parent) = form.parent() {
+                parents.insert(parent.to_owned());
+            }
+        }
+    }
+    parents
+}
+
+fn forms(path: &Path) -> Vec<PathBuf> {
+    let mut forms = vec![path.to_owned()];
+    if let Ok(canonical) = path.canonicalize() {
+        forms.push(canonical);
+    }
+    forms
+}
+
 /// Whether a run whose inputs changed (Historical) left every build-script
 /// contract it observed intact, so it may still publish them (ADR 0046/0047
-/// amendment). Every path whose content differs between `before` and `after`
-/// must lie inside `workspace` and outside every build-script package, and
-/// must not be a recorded script's declared path. Declared variables are
-/// checked against the record when publishing. Anything else returns false,
-/// keeping the export unpublished.
+/// amendments). Every path whose content or `lstat` stamp differs across the
+/// run must be explained, and no path may be, or lie inside, a recorded
+/// script's declared path:
+///
+/// - a path inside `workspace` and outside every build-script package (a
+///   log written into the project, #259); or
+/// - the directory of a build-script package this run cleaned, which is the
+///   same directory at both ends (device, inode and mode) and changed only in
+///   its entries' bookkeeping: a script that creates and removes a temporary
+///   entry where Cargo runs it, as rustix 0.38's compiler probe does (#294).
+///   Every other path of that package is unchanged, its declared paths do not
+///   include the directory, and its parent is unchanged, so the directory was
+///   not renamed or replaced.
+///
+/// A changed directory above a declared path also needs an unchanged parent.
+/// Declared variables are checked against the record when publishing.
+/// Anything else returns false, keeping the export unpublished.
 pub(in crate::managed) fn scripts_unchanged_by_run(
     local: &Path,
     data: &Value,
-    before: &std::collections::BTreeMap<std::path::PathBuf, String>,
-    after: &std::collections::BTreeMap<std::path::PathBuf, String>,
-    workspace: &Path,
+    changes: &RunChanges<'_>,
 ) -> bool {
-    let Some(records) = super::read::<Vec<BuildInput>>(local) else {
-        return false;
-    };
-    if records.is_empty() || records.iter().any(|record| !record.covered) {
-        return false;
-    }
-    let forms = |path: &Path| -> Vec<std::path::PathBuf> {
-        let mut forms = vec![path.to_owned()];
-        if let Ok(canonical) = path.canonicalize() {
-            forms.push(canonical);
-        }
-        forms
-    };
-    let workspace = forms(workspace);
+    explained(local, data, changes, true)
+}
+
+/// Whether the only change across a run is build scripts this run cleaned
+/// creating and removing temporary entries in their own package directories,
+/// exactly as [`scripts_unchanged_by_run`]'s second case describes, with
+/// every content digest unchanged. Nothing such a script did can be an input
+/// of the run: an entry a compiler read is a recorded input that is now
+/// missing (Unknown), the script's declared paths do not include the
+/// directory, and nothing else in the package changed. Such a run is Current
+/// (#294); every other stamp change keeps it Historical.
+pub(in crate::managed) fn only_script_churn(
+    local: &Path,
+    data: &Value,
+    changes: &RunChanges<'_>,
+) -> bool {
+    changes.before == changes.after
+        && !changes.stamps.is_empty()
+        && explained(local, data, changes, false)
+}
+
+/// Every build-script package's directory (as Cargo names it and canonical),
+/// with the package's name; `None` if a script package has neither.
+fn script_directories(data: &Value) -> Option<Vec<(PathBuf, &str)>> {
     let mut scripts = Vec::new();
     for package in data["packages"].as_array().into_iter().flatten() {
         let script = package["targets"].as_array().is_some_and(|targets| {
@@ -381,41 +467,124 @@ pub(in crate::managed) fn scripts_unchanged_by_run(
             })
         });
         if script {
-            let Some(root) = package["manifest_path"]
+            let root = package["manifest_path"]
                 .as_str()
-                .and_then(|manifest| Path::new(manifest).parent())
-            else {
-                return false;
-            };
-            scripts.extend(forms(root));
+                .and_then(|manifest| Path::new(manifest).parent())?;
+            let name = package["name"].as_str()?;
+            scripts.extend(forms(root).into_iter().map(|form| (form, name)));
         }
     }
-    let declared: BTreeSet<std::path::PathBuf> = records
+    Some(scripts)
+}
+
+fn explained(local: &Path, data: &Value, changes: &RunChanges<'_>, workspace_rule: bool) -> bool {
+    let Some(records) = super::read::<Vec<BuildInput>>(local) else {
+        return false;
+    };
+    if records.is_empty() || records.iter().any(|record| !record.covered) {
+        return false;
+    }
+    let workspace = forms(changes.workspace);
+    let Some(scripts) = script_directories(data) else {
+        return false;
+    };
+    let declared: BTreeSet<PathBuf> = records
         .iter()
         .flat_map(|record| record.paths.iter().flat_map(|path| forms(path)))
         .collect();
-    let changed = before
+    let parent_unchanged = |path: &Path| -> bool {
+        let Some(parent) = path.parent() else {
+            return false;
+        };
+        if changes.stamps.contains_key(parent) {
+            return false;
+        }
+        if changes.stamped.contains_key(parent) {
+            return true;
+        }
+        let Some((before, after)) = changes.parents else {
+            return false;
+        };
+        matches!(
+            (before.get(parent), after.get(parent)),
+            (Some(Some(b)), Some(Some(a))) if b == a
+        )
+    };
+    let in_workspace = |forms: &[PathBuf]| -> bool {
+        forms
+            .iter()
+            .any(|form| workspace.iter().any(|root| form.starts_with(root)))
+            && !forms
+                .iter()
+                .any(|form| scripts.iter().any(|(root, _)| form.starts_with(root)))
+    };
+    let content: BTreeSet<&PathBuf> = changes
+        .before
         .iter()
-        .filter(|(path, digest)| after.get(*path) != Some(*digest))
+        .filter(|(path, digest)| changes.after.get(*path) != Some(*digest))
         .map(|(path, _)| path)
-        .chain(after.keys().filter(|path| !before.contains_key(*path)));
-    let mut any = false;
-    for path in changed {
-        any = true;
+        .chain(
+            changes
+                .after
+                .keys()
+                .filter(|path| !changes.before.contains_key(*path)),
+        )
+        .collect();
+    if content.is_empty() && changes.stamps.is_empty() {
+        // Nothing changed: not a Historical run this decides for.
+        return false;
+    }
+    for path in &content {
+        if !workspace_rule {
+            return false;
+        }
         let path_forms = forms(path);
-        let inside = path_forms
+        if path_forms
             .iter()
-            .any(|form| workspace.iter().any(|root| form.starts_with(root)));
-        let in_script = path_forms
-            .iter()
-            .any(|form| scripts.iter().any(|root| form.starts_with(root)));
-        if !inside || in_script || path_forms.iter().any(|form| declared.contains(form)) {
+            .any(|form| declared.iter().any(|d| form.starts_with(d)))
+            || !in_workspace(&path_forms)
+        {
             return false;
         }
     }
-    any
+    for (path, (before, after)) in changes.stamps {
+        let path_forms = forms(path);
+        if path_forms
+            .iter()
+            .any(|form| declared.iter().any(|d| form.starts_with(d)))
+        {
+            return false;
+        }
+        let directory = matches!((before, after), (Some(b), Some(a)) if b.same_directory(a));
+        // A changed directory above a declared path: it was not renamed.
+        if directory
+            && declared.iter().any(|d| d != path && d.starts_with(path))
+            && !parent_unchanged(path)
+        {
+            return false;
+        }
+        if workspace_rule && in_workspace(&path_forms) {
+            continue;
+        }
+        let cleaned_root = scripts
+            .iter()
+            .any(|(root, name)| root == path && changes.cleaned.contains(*name));
+        let inside_changed = changes
+            .stamps
+            .keys()
+            .chain(content.iter().copied())
+            .any(|other| other != path && other.starts_with(path));
+        if !(directory && cleaned_root && !inside_changed && parent_unchanged(path)) {
+            return false;
+        }
+    }
+    true
 }
 
+/// Optional publication after the original final Current transaction. The
+/// runner admits either successful verification or its separately sealed full
+/// negative outcome; neither this export nor a negative outcome is a proof.
+/// Encoding/publication failure leaves no reusable family export.
 pub(in crate::managed) fn publish(
     path: &Path,
     compiler: &str,
@@ -554,6 +723,8 @@ mod tests {
         declared: PathBuf,
         local: PathBuf,
         data: Value,
+        /// Whether the last [`Run::unchanged_with`] run would be Current.
+        current: std::cell::Cell<bool>,
     }
     impl Run {
         fn new(name: &str, covered: bool) -> std::result::Result<Self, Box<dyn std::error::Error>> {
@@ -590,9 +761,21 @@ mod tests {
                 declared,
                 local,
                 data,
+                current: std::cell::Cell::new(false),
             })
         }
         fn unchanged(&self, changed: &[PathBuf]) -> bool {
+            self.unchanged_with(changed, &BTreeMap::new(), &BTreeSet::new(), &[])
+        }
+        /// `changed` content, `stamps` changed stamps, `cleaned` packages and
+        /// the parent directories whose stamps changed across the run.
+        fn unchanged_with(
+            &self,
+            changed: &[PathBuf],
+            stamps: &BTreeMap<PathBuf, (Option<PathStamp>, Option<PathStamp>)>,
+            cleaned: &BTreeSet<String>,
+            moved_parents: &[PathBuf],
+        ) -> bool {
             let before: BTreeMap<PathBuf, String> = [
                 self.workspace.join("src/lib.rs"),
                 self.declared.clone(),
@@ -605,7 +788,42 @@ mod tests {
             for path in changed {
                 after.insert(path.clone(), "after".to_owned());
             }
-            scripts_unchanged_by_run(&self.local, &self.data, &before, &after, &self.workspace)
+            let parents_before: BTreeMap<PathBuf, Option<PathStamp>> =
+                parent_paths(&self.data, &self.workspace)
+                    .into_iter()
+                    .map(|path| (path, Some(stamp(true, 1))))
+                    .collect();
+            let mut parents_after = parents_before.clone();
+            for parent in moved_parents {
+                parents_after.insert(parent.clone(), Some(stamp(true, 2)));
+            }
+            let stamped: BTreeMap<PathBuf, Option<PathStamp>> = stamps
+                .iter()
+                .map(|(path, (_, after))| (path.clone(), *after))
+                .collect();
+            let run_changes = RunChanges {
+                before: &before,
+                after: &after,
+                stamps,
+                stamped: &stamped,
+                parents: Some((&parents_before, &parents_after)),
+                workspace: &self.workspace,
+                cleaned,
+            };
+            let historical = scripts_unchanged_by_run(&self.local, &self.data, &run_changes);
+            // A run that is Current through script churn alone also keeps
+            // every contract.
+            let current = only_script_churn(&self.local, &self.data, &run_changes);
+            assert!(!current || historical, "current without intact contracts");
+            self.current.set(current);
+            historical
+        }
+        /// A directory that gained and lost an entry across the run.
+        fn churned(path: &Path) -> (PathBuf, (Option<PathStamp>, Option<PathStamp>)) {
+            (
+                path.to_owned(),
+                (Some(stamp(true, 1)), Some(stamp(true, 2))),
+            )
         }
     }
     impl Drop for Run {
@@ -644,6 +862,124 @@ mod tests {
         let mut nameless = Run::new("nameless", true)?;
         nameless.data["packages"][1]["manifest_path"] = Value::Null;
         assert!(!nameless.unchanged(&[nameless.workspace.join("verify.log")]));
+        Ok(())
+    }
+
+    /// A stamp of a directory (or file) whose times are `time`.
+    fn stamp(directory: bool, time: i64) -> PathStamp {
+        PathStamp {
+            dev: 1,
+            ino: 7,
+            size: 4096,
+            mode: if directory { 0o040_755 } else { 0o100_644 },
+            mtime: (time, 0),
+            ctime: (time, 0),
+        }
+    }
+
+    #[test]
+    fn historical_run_publishes_after_a_cleaned_script_churned_its_own_directory() -> TestResult {
+        // rustix 0.38's build script runs rustc with `-o -` in its package
+        // directory, and rustc creates and removes a temporary `rmeta*`
+        // directory there (#294). Content is unchanged; only that
+        // directory's times are.
+        let run = Run::new("churn", true)?;
+        let cleaned = BTreeSet::from(["pkg".to_owned()]);
+        let churn = BTreeMap::from([Run::churned(&run.script)]);
+        assert!(run.unchanged_with(&[], &churn, &cleaned, &[]));
+        // Nothing such a script did is an input: the run is Current.
+        assert!(run.current.get());
+        // Together with a log in the workspace, as before: Historical, but the
+        // contracts are intact.
+        let mut both = churn.clone();
+        both.insert(
+            run.workspace.clone(),
+            (Some(stamp(true, 1)), Some(stamp(true, 2))),
+        );
+        assert!(run.unchanged_with(&[run.workspace.join("verify.log")], &both, &cleaned, &[]));
+        assert!(!run.current.get());
+        assert!(run.unchanged_with(&[], &both, &cleaned, &[]));
+        assert!(!run.current.get());
+        // Sail did not make Cargo run that script: someone else changed it.
+        assert!(!run.unchanged_with(&[], &churn, &BTreeSet::new(), &[]));
+        assert!(!run.unchanged_with(&[], &churn, &BTreeSet::from(["member".to_owned()]), &[]));
+        // The directory may have been renamed or replaced.
+        let registry = run.root.join("registry");
+        assert!(!run.unchanged_with(&[], &churn, &cleaned, std::slice::from_ref(&registry)));
+        let mut replaced = stamp(true, 2);
+        replaced.ino = 8;
+        let swapped =
+            BTreeMap::from([(run.script.clone(), (Some(stamp(true, 1)), Some(replaced)))]);
+        assert!(!run.unchanged_with(&[], &swapped, &cleaned, &[]));
+        // A file, an absent side, or a path below the directory changed too.
+        let file = BTreeMap::from([(
+            run.script.clone(),
+            (Some(stamp(false, 1)), Some(stamp(false, 2))),
+        )]);
+        assert!(!run.unchanged_with(&[], &file, &cleaned, &[]));
+        let appeared = BTreeMap::from([(run.script.clone(), (None, Some(stamp(true, 2))))]);
+        assert!(!run.unchanged_with(&[], &appeared, &cleaned, &[]));
+        let mut below = churn.clone();
+        below.insert(
+            run.script.join("src"),
+            (Some(stamp(true, 1)), Some(stamp(true, 2))),
+        );
+        assert!(!run.unchanged_with(&[], &below, &cleaned, &[]));
+        assert!(!run.unchanged_with(&[run.script.join("build.rs")], &churn, &cleaned, &[]));
+        // Another package's directory, though cleaned.
+        let other = BTreeMap::from([Run::churned(&run.root.join("registry/other-1.0.0"))]);
+        assert!(!run.unchanged_with(&[], &other, &cleaned, &[]));
+        Ok(())
+    }
+
+    #[test]
+    fn historical_run_never_publishes_a_directory_a_script_declared() -> TestResult {
+        // With no declarations Cargo watches the whole package: a temporary
+        // entry there may be what the script read.
+        let run = Run::new("whole", true)?;
+        let mut records: Vec<BuildInput> = super::super::read(&run.local).ok_or("records")?;
+        records[0].paths = vec![run.script.clone()];
+        json(&run.local, &records)?;
+        let cleaned = BTreeSet::from(["pkg".to_owned()]);
+        let churn = BTreeMap::from([Run::churned(&run.script)]);
+        assert!(!run.unchanged_with(&[], &churn, &cleaned, &[]));
+        Ok(())
+    }
+
+    #[test]
+    fn historical_run_checks_workspace_stamps_like_workspace_content() -> TestResult {
+        let run = Run::new("stamps", true)?;
+        let none = BTreeSet::new();
+        // A member source touched or restored: its stamp alone changed.
+        let touched = BTreeMap::from([(
+            run.workspace.join("src/lib.rs"),
+            (Some(stamp(false, 1)), Some(stamp(false, 2))),
+        )]);
+        assert!(run.unchanged_with(&[], &touched, &none, &[]));
+        assert!(!run.current.get());
+        // A declared path restored during the run is not intact.
+        let declared = BTreeMap::from([(
+            run.declared.clone(),
+            (Some(stamp(false, 1)), Some(stamp(false, 2))),
+        )]);
+        assert!(!run.unchanged_with(&[], &declared, &none, &[]));
+        // The workspace directory gained a log; the declared file inside it is
+        // intact as long as the workspace directory itself was not moved.
+        let log = run.workspace.join("verify.log");
+        let workspace = BTreeMap::from([Run::churned(&run.workspace)]);
+        assert!(run.unchanged_with(std::slice::from_ref(&log), &workspace, &none, &[]));
+        assert!(!run.unchanged_with(
+            std::slice::from_ref(&log),
+            &workspace,
+            &none,
+            std::slice::from_ref(&run.root)
+        ));
+        // A script package's file, though only its stamp changed.
+        let script = BTreeMap::from([(
+            run.script.join("src/lib.rs"),
+            (Some(stamp(false, 1)), Some(stamp(false, 2))),
+        )]);
+        assert!(!run.unchanged_with(&[], &script, &none, &[]));
         Ok(())
     }
 
@@ -840,7 +1176,8 @@ mod tests {
             "NUM_JOBS",
             "SAIL_MANAGED_RUNTIME",
             "CARGO",
-            "CARGO_FEATURE_TEST",
+            "CARGO_PKG_VERSION",
+            "CARGO_ENCODED_RUSTFLAGS",
             "VERUS_DRIVER_ARGS",
             "RUSTUP_TOOLCHAIN",
         ] {
@@ -849,6 +1186,17 @@ mod tests {
             assert_eq!(
                 super::super::stale(&f.local, &f.data).0,
                 vec!["registry-script"],
+                "declared {key}"
+            );
+        }
+        // What Cargo injects for these is fixed by the unit and the family
+        // (#294): rustix 0.38 declares both.
+        for key in ["CARGO_FEATURE_USE_LIBC", "CARGO_CFG_MIRI"] {
+            f.export(&[f.record("host", &f.input, &[key])?])?;
+            f.begin(&f.local, "compiler")?;
+            assert_eq!(
+                super::super::stale(&f.local, &f.data).0,
+                Vec::<String>::new(),
                 "declared {key}"
             );
         }

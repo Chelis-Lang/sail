@@ -79,6 +79,20 @@ checks could not be made), with the note "inputs could not be confirmed
 unchanged; re-run for a current result". Verification itself still runs and
 its report is kept as the record of that run.
 
+One stamp change is not a change of input. Some build scripts create and
+remove a temporary entry in their own package directory: rustix 0.38 probes
+the compiler with `rustc -o -`, and rustc makes a temporary `rmeta*`
+directory where it runs. A run stays Current when every content digest is
+unchanged and every changed stamp is such a directory. It must belong to a
+package whose script this run made Cargo run again (Sail cleaned it). It
+must be the same directory at both ends, with an unchanged parent. Nothing
+else in the package may have changed, and no script may declare it or
+anything above it. An entry the compiler read is a recorded input that is
+missing at the end (Unknown), and the script's declared inputs are
+unchanged, so such an entry is not an input of the run
+([#294](https://github.com/Chelis-Lang/sail/issues/294); ADR 0046
+amendment). Any other changed stamp still makes the run Historical.
+
 Build-script coverage does not wait for scripts outside an explicit `-p`
 selection's dependency closure, because they never run for it. Without an exact
 selection or a complete, unambiguous resolve graph, every resolved package is in

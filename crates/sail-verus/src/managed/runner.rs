@@ -1396,6 +1396,15 @@ fn cargo_build_failed(stdout: &Path) -> bool {
     matches!(finished.as_slice(), [only] if only["success"] == false)
 }
 
+/// Which question `build_inputs::family` answers about a run's changes.
+#[derive(Clone, Copy)]
+enum ChurnRule {
+    /// Only cleaned scripts' own temporary entries changed: Current.
+    Current,
+    /// A Historical run left every script contract intact.
+    Historical,
+}
+
 struct CompilerGeneration<'a> {
     compiler: &'a str,
     script_coverage: bool,
@@ -2586,8 +2595,11 @@ pub(crate) fn run_engine_held(
     // Sail's targeted cleans exist to observe what a receipt binds. A run
     // without reuse records no receipt, so Cargo's own freshness decides, as
     // for plain Cargo-Verus.
+    // What this run cleans, so that Cargo runs those build scripts again.
+    let mut cleaned: BTreeSet<String> = BTreeSet::new();
     if paths.reuse && !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
+        cleaned.extend(stale_scripts.iter().cloned());
     }
     let absent = super::absent::Observer::begin(&before_run, &paths.run.join("observer"));
     // Cargo must compile nothing outside the selected targets' dependency
@@ -2612,8 +2624,16 @@ pub(crate) fn run_engine_held(
         .collect();
     if paths.reuse {
         clean(config, &paths.target, &late_scripts)?;
+        cleaned.extend(late_scripts.iter().cloned());
     }
-    let stamp_before = super::input::mutation_stamp(&before_run);
+    let input_stamps_before = super::input::mutation_stamps(&before_run);
+    let stamp_before = input_stamps_before
+        .as_ref()
+        .map(|stamps| stamps.digest.clone());
+    // A directory whose own entries changed may also have been renamed; its
+    // parent tells them apart (`scripts_unchanged_by_run`).
+    let parent_paths = super::build_inputs::family::parent_paths(&data, &before.workspace);
+    let parents_before = super::input::path_stamps(&parent_paths);
     if super::configuration::check(&invocation, &config.args)? != loader {
         return Err(Error::new(
             "SAIL3112",
@@ -2654,7 +2674,9 @@ pub(crate) fn run_engine_held(
         .filter_map(|p| p["name"].as_str().map(str::to_owned))
         .collect();
     if forced && paths.reuse {
-        clean(config, &paths.target, &selected(&config.args, &names))?;
+        let forced_packages = selected(&config.args, &names);
+        clean(config, &paths.target, &forced_packages)?;
+        cleaned.extend(forced_packages);
     }
     let receipt_revisions: BTreeMap<PathBuf, ReceiptRevision> = std::fs::read_dir(&paths.receipts)
         .into_iter()
@@ -2665,6 +2687,7 @@ pub(crate) fn run_engine_held(
     let dirty = dirty_receipt_packages(&receipt_revisions, &data);
     if paths.reuse && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
+        cleaned.extend(dirty.iter().cloned());
     }
     drop(cleanup);
     let source_engine = engine.is_some();
@@ -2913,6 +2936,7 @@ pub(crate) fn run_engine_held(
         after_metadata = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
+        cleaned.extend(retry_packages.iter().cloned());
         std::fs::write(paths.run.join("artifacts.jsonl"), [])
             .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
         std::fs::remove_dir_all(paths.run.join("pending-receipts"))
@@ -2964,8 +2988,43 @@ pub(crate) fn run_engine_held(
         // if an unexpectedly scheduled unit left the same input bytes.
         let _ = std::fs::remove_file(&schedule_path);
     }
-    let stamp_after = super::input::mutation_stamp(&after_run);
+    let input_stamps_after = super::input::mutation_stamps(&after_run);
+    let stamp_after = input_stamps_after
+        .as_ref()
+        .map(|stamps| stamps.digest.clone());
+    let parents_after = super::input::path_stamps(&parent_paths);
     let absent = absent.finish();
+    let changed_stamps = input_stamps_before
+        .as_ref()
+        .zip(input_stamps_after.as_ref())
+        .map(|(before, after)| (super::input::changed_stamps(before, after), after));
+    // Which stamp changes a build script this run cleaned explains (#294),
+    // and for a Historical run, which leave every script contract intact.
+    let script_churn = |rule: ChurnRule| {
+        changed_stamps.as_ref().is_some_and(|(stamps, after)| {
+            let changes = super::build_inputs::family::RunChanges {
+                before: &before_run.digests,
+                after: &after_run.digests,
+                stamps,
+                stamped: &after.paths,
+                parents: parents_before.as_ref().zip(parents_after.as_ref()),
+                workspace: &before_run.workspace,
+                cleaned: &cleaned,
+            };
+            match rule {
+                ChurnRule::Current => super::build_inputs::family::only_script_churn(
+                    &paths.build_inputs,
+                    &after_data,
+                    &changes,
+                ),
+                ChurnRule::Historical => super::build_inputs::family::scripts_unchanged_by_run(
+                    &paths.build_inputs,
+                    &after_data,
+                    &changes,
+                ),
+            }
+        })
+    };
     let currentness = if !paths.reuse
         || !before.complete
         || !after.complete
@@ -2980,8 +3039,8 @@ pub(crate) fn run_engine_held(
     {
         Currentness::Unknown
     } else if before_run.digests == after_run.digests
-        && stamp_before == stamp_after
         && !absent.changed
+        && (stamp_before == stamp_after || script_churn(ChurnRule::Current))
     {
         Currentness::Current
     } else {
@@ -2989,13 +3048,7 @@ pub(crate) fn run_engine_held(
     };
     let scripts_unchanged = currentness == Currentness::Historical
         && !absent.changed
-        && super::build_inputs::family::scripts_unchanged_by_run(
-            &paths.build_inputs,
-            &after_data,
-            &before_run.digests,
-            &after_run.digests,
-            &before_run.workspace,
-        );
+        && script_churn(ChurnRule::Historical);
     drop(post_run);
     if paths.reuse
         && !shown

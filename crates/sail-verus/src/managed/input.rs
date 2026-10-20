@@ -591,7 +591,23 @@ fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool, BTreeMap<PathB
 
 // A run-local mutation stamp is separate from logical proof keys: reverting an
 // edit between completed runs may reuse a proof, reverting during a run may not.
+#[cfg(test)]
 pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
+    stamp_paths(&mutation_paths(snapshot))
+}
+
+/// [`mutation_stamp`] together with the stamp of every path it covers, so
+/// that a run whose stamp changed can say which paths changed and how
+/// ([`changed_stamps`]). The digest is exactly [`mutation_stamp`]'s.
+pub(super) fn mutation_stamps(snapshot: &InputSnapshot) -> Option<MutationStamps> {
+    let entries = stamp_entries(&mutation_paths(snapshot))?;
+    Some(MutationStamps {
+        digest: fold_stamps(&entries),
+        paths: entries.into_iter().collect(),
+    })
+}
+
+fn mutation_paths(snapshot: &InputSnapshot) -> BTreeSet<PathBuf> {
     let mut paths = snapshot.observation_paths.clone();
     // Package roots share most ancestors (the registry source directory, the
     // home directory): each ancestor is examined once.
@@ -609,51 +625,140 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
             }
         }
     }
-    stamp_paths(&paths)
+    paths
+}
+
+/// The `lstat` result one mutation stamp folds for one path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct PathStamp {
+    pub(super) dev: u64,
+    pub(super) ino: u64,
+    pub(super) size: u64,
+    pub(super) mode: u32,
+    pub(super) mtime: (i64, i64),
+    pub(super) ctime: (i64, i64),
+}
+
+impl PathStamp {
+    /// Whether this is a directory (not a link to one).
+    pub(super) fn is_dir(&self) -> bool {
+        // S_IFMT and S_IFDIR, the same on Linux and macOS.
+        self.mode & 0o170_000 == 0o040_000
+    }
+
+    /// Whether `other` is the same directory, changed only in what an entry
+    /// created, removed or renamed inside it changes: its size and times.
+    pub(super) fn same_directory(&self, other: &Self) -> bool {
+        self.is_dir() && self.dev == other.dev && self.ino == other.ino && self.mode == other.mode
+    }
+}
+
+/// A mutation stamp and the per-path stamps it was folded from (`None`:
+/// the path did not exist).
+#[derive(Debug, Clone)]
+pub(super) struct MutationStamps {
+    pub(super) digest: String,
+    pub(super) paths: BTreeMap<PathBuf, Option<PathStamp>>,
+}
+
+/// Every path whose stamp differs between `before` and `after`, or that only
+/// one of them covers, with its stamp on each side (`None` on a side: absent
+/// there, or not covered).
+pub(super) fn changed_stamps(
+    before: &MutationStamps,
+    after: &MutationStamps,
+) -> BTreeMap<PathBuf, (Option<PathStamp>, Option<PathStamp>)> {
+    let mut changed = BTreeMap::new();
+    for (path, stamp) in &before.paths {
+        let other = after.paths.get(path).copied().flatten();
+        if after.paths.get(path) != Some(stamp) {
+            changed.insert(path.clone(), (*stamp, other));
+        }
+    }
+    for (path, stamp) in &after.paths {
+        if !before.paths.contains_key(path) {
+            changed.insert(path.clone(), (None, *stamp));
+        }
+    }
+    changed
+}
+
+fn fold_stamps(entries: &[(PathBuf, Option<PathStamp>)]) -> String {
+    let mut stamp = Sha256::new();
+    for (path, metadata) in entries {
+        let name = path.as_os_str().as_encoded_bytes();
+        stamp.update((name.len() as u64).to_le_bytes());
+        stamp.update(name);
+        let Some(metadata) = metadata else {
+            stamp.update(b"missing");
+            continue;
+        };
+        for number in [
+            metadata.dev,
+            metadata.ino,
+            metadata.size,
+            u64::from(metadata.mode),
+        ] {
+            stamp.update(number.to_le_bytes());
+        }
+        for number in [
+            metadata.mtime.0,
+            metadata.mtime.1,
+            metadata.ctime.0,
+            metadata.ctime.1,
+        ] {
+            stamp.update(number.to_le_bytes());
+        }
+    }
+    format!("{:x}", stamp.finalize())
+}
+
+fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
+    stamp_entries(paths).map(|entries| fold_stamps(&entries))
+}
+
+/// The stamp of each of `paths` (`None`: absent); `None` when one cannot be
+/// read, or on a platform without stamps.
+pub(super) fn path_stamps(
+    paths: &BTreeSet<PathBuf>,
+) -> Option<BTreeMap<PathBuf, Option<PathStamp>>> {
+    stamp_entries(paths).map(|entries| entries.into_iter().collect())
 }
 
 // The `lstat` calls overlap (about 13,000 paths per vest snapshot); the stamp
 // folds their results in the original sorted order, exactly as one by one.
 #[cfg(unix)]
-fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
+fn stamp_entries(paths: &BTreeSet<PathBuf>) -> Option<Vec<(PathBuf, Option<PathStamp>)>> {
     use std::os::unix::fs::MetadataExt as _;
-    let mut stamp = Sha256::new();
     let paths: Vec<&PathBuf> = paths.iter().collect();
     let stats = crate::parallel::in_order(&paths, |path| std::fs::symlink_metadata(path));
+    let mut entries = Vec::with_capacity(paths.len());
     for (path, metadata) in paths.into_iter().zip(stats) {
-        let name = path.as_os_str().as_encoded_bytes();
-        stamp.update((name.len() as u64).to_le_bytes());
-        stamp.update(name);
         let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                stamp.update(b"missing");
+                entries.push((path.clone(), None));
                 continue;
             }
             Err(_) => return None,
         };
-        for number in [
-            metadata.dev(),
-            metadata.ino(),
-            metadata.size(),
-            u64::from(metadata.mode()),
-        ] {
-            stamp.update(number.to_le_bytes());
-        }
-        for number in [
-            metadata.mtime(),
-            metadata.mtime_nsec(),
-            metadata.ctime(),
-            metadata.ctime_nsec(),
-        ] {
-            stamp.update(number.to_le_bytes());
-        }
+        entries.push((
+            path.clone(),
+            Some(PathStamp {
+                dev: metadata.dev(),
+                ino: metadata.ino(),
+                size: metadata.size(),
+                mode: metadata.mode(),
+                mtime: (metadata.mtime(), metadata.mtime_nsec()),
+                ctime: (metadata.ctime(), metadata.ctime_nsec()),
+            }),
+        ));
     }
-    Some(format!("{:x}", stamp.finalize()))
+    Some(entries)
 }
 
 #[cfg(not(unix))]
-fn stamp_paths(_paths: &BTreeSet<PathBuf>) -> Option<String> {
+fn stamp_entries(_paths: &BTreeSet<PathBuf>) -> Option<Vec<(PathBuf, Option<PathStamp>)>> {
     None
 }
 
@@ -1144,6 +1249,47 @@ mod tests {
         assert_eq!(before.revision, after.revision);
         assert_ne!(stamp_before, mutation_stamp(&after));
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn mutation_stamps_name_a_directory_that_only_gained_and_lost_an_entry() {
+        let root =
+            std::env::temp_dir().join(format!("sail-mutation-stamps-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        assert!(std::fs::create_dir_all(root.join("src")).is_ok());
+        assert!(std::fs::write(root.join("src/lib.rs"), "fn f() {}").is_ok());
+        let data = serde_json::json!({"workspace_root":root,"packages":[{"manifest_path":root.join("Cargo.toml")}]});
+        let before = snapshot_metadata(&data, &[]);
+        let stamps_before = mutation_stamps(&before).unwrap_or_else(|| unreachable!("stamps"));
+        // The per-path stamps fold to exactly the run's mutation stamp.
+        assert_eq!(Some(stamps_before.digest.clone()), mutation_stamp(&before));
+        // As rustc does for `-o -`: a temporary directory where it runs.
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        assert!(std::fs::create_dir(root.join("rmetaXYZ")).is_ok());
+        assert!(std::fs::remove_dir(root.join("rmetaXYZ")).is_ok());
+        let after = snapshot_metadata(&data, &[]);
+        assert_eq!(before.revision, after.revision);
+        let stamps_after = mutation_stamps(&after).unwrap_or_else(|| unreachable!("stamps"));
+        assert_ne!(stamps_before.digest, stamps_after.digest);
+        let changed = changed_stamps(&stamps_before, &stamps_after);
+        // The package directory, as Cargo names it and canonical (they differ
+        // where the temporary directory is a link, as on macOS).
+        let canonical = root
+            .canonicalize()
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let Some((Some(was), Some(is))) = changed.get(&canonical) else {
+            unreachable!("the directory's stamp did not change: {changed:?}");
+        };
+        assert!(was.same_directory(is) && was != is);
+        // Nothing else: not the source file, not `src`.
+        assert!(
+            changed
+                .keys()
+                .all(|path| path == &canonical || path == &root),
+            "{changed:?}"
+        );
+        assert!(std::fs::remove_dir_all(&root).is_ok());
     }
 
     #[cfg(unix)]

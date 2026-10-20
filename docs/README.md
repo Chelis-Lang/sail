@@ -44,6 +44,8 @@ release's shipped vstd solver replies on a shipped-proof miss and breaks down
 what a miss costs.
 [Output failure evidence](e2e-output-evidence.md) describes bounded original
 E2E streams and producer records retained for diagnosis.
+The [script directory churn record](validation/script-directory-churn.md)
+measures CapybaraKV after the rustix rebuild loop fix (#294).
 [Managed output ordering](validation/managed-output-order.md) tracks the
 acknowledged-driver candidate and its remaining correctness and cost checks.
 [Socket fixture retirement](validation/mcp-fixture-retirement.md) records the
