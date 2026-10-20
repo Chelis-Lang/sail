@@ -49,6 +49,7 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0030](VI-0030-anonymous-impl-numbering.md) | Empty impl shifts methods and untouched clients' literal SMT | actual accepted-e536 Vest cause | function-only SMT alias source uncompiled/unselected | `corpus/repros/verus-impl-renumbering/` |
 | [VI-0031](VI-0031-rust-src-std-paths.md) | Exported VIR names the build host's rust-src copy of the standard library | Rust behaviour inherited by Verus, reproduced | Sail's engine build refuses `rust-src` and the pack/install check rejects such a `vstd.vir`; runtime `64baccbb` remaps a shipped vstd's span strings to the local names | `corpus/repros/rust-src-std-paths/` |
 | [VI-0032](VI-0032-vest-rlimit-on-7d82994.md) | vest_lib exceeds the default rlimit on 0.2026.10.18.7d82994 | open | — | corpus entry `vest` |
+| [VI-0033](VI-0033-crate-metadata-in-smt-names.md) | The fork's closure and alias SMT names carry Cargo's crate metadata | fork defect (VI-0019/VI-0030 renamings); stock unaffected | fixed: `bd79859c` fix: spell closure and alias SMT names without the stable crate ID (Linux pin `f8589ed4`) | `corpus/repros/verus-macro-profile-names/` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The

@@ -94,3 +94,15 @@ and how it is validated.
   them. No measured edit showed it, and it is not addressed here.
 - Each upstream rebase must keep the regression test passing; if upstream
   changes closure naming, the fix is revisited.
+
+## Note (2026-10-20, accepted (lead), owner review pending): names without the stable crate ID
+
+The consequence above, that names change with `-C metadata`, is reached by
+more than a project's own configuration: Cargo derives a crate's metadata
+from its dependencies' profiles too, so building only the proc-macro crates
+at another opt-level renamed every closure (VI-0033, issue #247). Fork branch
+`perf/7d82994` (`912052eb`) keeps the identity pair of decision 1 for
+equality and hashing but spells names from the crate name and the
+crate-relative definition path; same-named crates whose closures collide
+fall back to the pair. This changes decision 1's "SMT names encode the
+pair". The lead accepted it for the R3 runtime candidate (fork `f8589ed4`); owner review is pending.
