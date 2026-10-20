@@ -1,15 +1,15 @@
 {
   "schema_version": 2,
-  "variant": "7d829946231d6413a398f6e4160cdfe951261dad-7faa35e5238b9bfc",
+  "variant": "7d829946231d6413a398f6e4160cdfe951261dad-e9b69a75ea390499",
   "commit": "7d829946231d6413a398f6e4160cdfe951261dad",
   "rust_toolchain": "1.99.1",
   "z3_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
-  "fork_commit": "64baccbb1f4c8af3f5e015d4ac561c96058717a7",
-  "source_lock_sha256": "d877af9745924df47c90763750fc3ccb12e8a6180cef3bd19dbee75e8f207b7d",
+  "fork_commit": "f8589ed4345f147d8fb43d8cb7992921944b91f0",
+  "source_lock_sha256": "04efc53f189f719c2ecd206ce8e15fe7d3c02643efc3f5a7835864c0dc594ee6",
   "verus_features": [],
-  "manifest_sha256": "4392062ae1674fb473818d3bb730b4a2d2dba831dd2e9dddf98c5c57a8ed91fe",
-  "archive_sha256": "9f9381d53e1478aaae589d7d00399d01f5fee4e56daf81d9e4cde03e5dda69c2",
+  "manifest_sha256": "67589de3c3f9681fb50dcd96313311e1a3d2776241d121f6c0e433be54cf7f0c",
+  "archive_sha256": "6f523cea7595b82cc6e0f1434b8ff550b6295a3897e8301733511b78065fca12",
   "repo": "Chelis-Lang/verus",
-  "release_tag": "engine-runtime-64baccbb-macos",
+  "release_tag": "engine-runtime-f8589ed4-macos",
   "asset": "engine-runtime.tar.gz"
 }

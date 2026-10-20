@@ -5,7 +5,7 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- Sail's Verus moves to fork `f8589ed4` (Linux). Closure and trait-function
+- Sail's Verus moves to fork `f8589ed4` (Linux and macOS). Closure and trait-function
   solver names no longer depend on Cargo's crate metadata, so building the
   proc-macro crates with another profile keeps cache hits (VI-0033).
   Parallel verification starts the largest buckets first, and VIR's hot maps
