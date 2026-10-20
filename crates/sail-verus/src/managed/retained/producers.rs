@@ -577,9 +577,6 @@ impl Native {
             Snapshot::capture_pipelined(&plan.target, &directory.join("graph"), args)?,
             args,
         )?;
-        if !named_externs(plan, args) {
-            return None;
-        }
         // publish_graph persists the shared graph marker before spawn.
         let reads = native::Observation::begin(&directory.join("read"), &runtime.run_id, &key)?;
         Some(Self {
@@ -612,6 +609,7 @@ impl Native {
         // each to settle, then require all of their certificates.
         if !success
             || !ready(&self.plan, &self.run, &self.graph)
+            || !named_externs(&self.plan, &self.arguments)
             || !self.graph.intact()
             || !established(&self.plan, &self.context, &self.graph)
             || !self.plan.compiler_matches(&self.wrapper)
