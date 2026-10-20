@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import select
@@ -789,6 +790,40 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             assert vstd(edited)["reused"], diagnostic(edited)
             assert b"Compiling vstd" not in edited_run.stderr, edited_run.stderr.decode()
             assert schedule_marker() != script_execution, "changed source incorrectly kept old scheduling memo"
+
+            # Issue #294: a build script that creates and removes a temporary
+            # entry in its own package directory, as rustix 0.38's compiler
+            # probe does (rustc `-o -` makes an `rmeta*` directory where it
+            # runs), and declares Cargo-injected cfg and feature variables, as
+            # rustix does. Nothing such an entry holds is an input, so the run
+            # that executes the script is current, and the next unchanged runs
+            # are Cargo's no-op, as plain Cargo-Verus's are, not a rebuild of
+            # every script package and vstd.
+            churn_script = workspace / "schedule-new/build.rs"
+            original_churn_script = churn_script.read_text()
+            churn_script.write_text(
+                'fn main() {\n'
+                '    println!("cargo::rerun-if-changed=build.rs");\n'
+                '    println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_OS");\n'
+                '    println!("cargo::rerun-if-env-changed=CARGO_FEATURE_SAIL_FIXTURE");\n'
+                '    std::fs::create_dir("rmeta-sail-churn").unwrap();\n'
+                '    std::fs::remove_dir("rmeta-sail-churn").unwrap();\n'
+                '    let out = std::env::var("OUT_DIR").unwrap();\n'
+                '    let time = std::time::SystemTime::now().duration_since('
+                'std::time::UNIX_EPOCH).unwrap().as_nanos();\n'
+                '    std::fs::write(format!("{out}/sail-schedule-marker"), '
+                'format!("new:{time}")).unwrap();\n'
+                '}\n')
+            churn_run, churn, _ = managed()
+            assert churn_run.returncode == 0 and churn["currentness"] == "current", diagnostic(churn)
+            churn_execution = schedule_marker()
+            for label in ("first", "second"):
+                quiet_run, quiet, quiet_target = managed()
+                assert quiet_run.returncode == 0 and quiet["currentness"] == "current", (label, diagnostic(quiet))
+                assert quiet["execution"]["verifier_invocations"] == 0 and quiet_target["reused"], (label, diagnostic(quiet))
+                assert not re.search(rb"(?m)^ *(Compiling|Checking) ", quiet_run.stderr), (label, quiet_run.stderr.decode())
+                assert schedule_marker() == churn_execution, f"{label} run after a churning script ran it again"
+            churn_script.write_text(original_churn_script)
 
             # Generated files stay bound by content (#120): the build script
             # declares an environment variable and writes its value into a file

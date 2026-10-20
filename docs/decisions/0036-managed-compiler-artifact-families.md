@@ -392,3 +392,25 @@ load 21–40, the demo shows the same pattern: compile errors 0.6–0.7 s, the
 fixed run 0.7 s, vstd verified only by the first run. Every run above read
 Current; compile-error runs started one driver and kept no receipt for the
 failing crate. Measured by L41.
+
+## Amendment (2026-10-20): Cargo-injected cfg and feature variables (#294)
+
+Family sharing refused every script contract that declared a Cargo-injected
+variable. rustix 0.38 declares `rerun-if-env-changed` for
+`CARGO_CFG_MIRI`, `CARGO_CFG_RUSTIX_USE_*` and `CARGO_FEATURE_*`, so its
+contract was never exported, and every run cleaned rustix and every package
+that depends on it (on CapybaraKV: which, bindgen and the crate itself).
+
+`CARGO_CFG_*` and `CARGO_FEATURE_*` are now shared like ordinary variables.
+What Cargo injects for them is fixed by what the contract already pins:
+- feature values are the unit's features, which select the unit's output
+  directory, and the export binds that exact path;
+- cfg values are the target's `rustc --print cfg` under the effective
+  rustflags. The toolchain, target, caller `CARGO_*` and `RUST*` environment
+  and the Cargo configuration bytes are all part of the family's identity,
+  so one family's target cannot see other values.
+
+Cargo's own `rerun-if-env-changed` check reads these names from Cargo's
+environment, which is the parent value the record holds. All other
+Cargo-injected names (`OUT_DIR`, `TARGET`, `CARGO_PKG_*`,
+`CARGO_ENCODED_RUSTFLAGS` and the rest) still refuse sharing.

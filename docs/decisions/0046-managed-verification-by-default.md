@@ -297,3 +297,42 @@ today's behaviour.
 The run itself stays Historical and records no receipt. The next unchanged
 run is Cargo's own no-op with the same output as plain Cargo-Verus. The
 output phase's `loop` checks this (`ci/test-output.sh`).
+
+## Amendment (2026-10-20): build scripts that churn their own directory (#294)
+
+rustix 0.38's build script probes the compiler with `rustc -o -`, and rustc
+creates and removes a temporary `rmeta*` directory where it runs: the
+script's own package directory in the Cargo registry. No file content
+changes, but that directory's modification and change times do, and the run
+stamps every input directory. Every run in which rustix's script ran was
+therefore Historical and withheld the build-script export; the next run
+cleaned every script package, rustix's script ran again, and so on. On
+CapybaraKV (rustix comes in through bindgen) every rerun rebuilt about 20
+crates and verified vstd again: 36.5 s against stock's 25.2 s.
+
+A stamp change is now explained, and the run is Current, when every
+content digest is unchanged, no module candidate changed, and every changed
+stamp belongs to the directory of a build-script package that this run
+cleaned (so Cargo ran its script again), where:
+- it is the same directory at both ends (device, inode and mode); only its
+  times and size changed, which is what an entry created and removed inside
+  it changes;
+- no other path of that package changed, and the directory is not, and is
+  not inside, a path any recorded script declared (with no declarations
+  Cargo watches the whole package, and such a directory never qualifies);
+- its parent directory's stamp is unchanged, so the directory itself was not
+  renamed or replaced.
+
+Nothing such an entry holds is an input of the run. An entry the compiler
+read is a dep-info input that is missing at the end, which makes the run
+Unknown. The script's own inputs are its declared paths, whose content and
+stamps are unchanged, exactly as Cargo's own rerun check sees them. Any
+other stamp change keeps today's rule.
+
+The 2026-10-20 amendment above (a Historical run may still publish the
+export) now also checks stamps. A path whose stamp alone changed must meet
+the same conditions as a path whose content changed (inside the workspace,
+outside every build-script package), or be such a script directory. No
+changed path may be, or lie inside, a declared path, where before only
+equality was checked. A changed directory above a declared path also needs
+an unchanged parent. This rule is stricter than before, never looser.
