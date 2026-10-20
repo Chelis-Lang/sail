@@ -350,3 +350,40 @@ The records authorize nothing and bind no proof. A skipped plan compiles
 normally, so verdicts, diagnostics, receipts, cache keys and every check
 compare the same bytes. Timing makes only the cost decision vary from run to
 run. The threshold is the constant `RATIO` in `managed/retained/cost.rs`.
+
+## Amendment 2026-10-20 (proposed): the source snapshot reads the selected closure (#278)
+
+**Status:** proposed, implemented on branch `perf/cold-retention`; it needs
+the owner's review before merge.
+
+Every retained source snapshot read every package in Cargo's metadata. Vest's
+metadata lists the whole workspace and every resolved registry package, about
+11,600 files, although `-p vest_lib` compiles only `vest_lib`, vstd and the 15
+closed providers. A cold run takes that snapshot five times: before and after
+vstd's compile, before and after the target's, and at publication. Each took
+200–265 ms on macOS and about 175 ms on Linux, almost all on the critical
+path.
+
+Decision: the snapshot reads the packages in the selected targets' dependency
+closure (every resolved dependency kind, as `runner::dependency_closure`
+computes it), plus every workspace member's manifest, the workspace manifest,
+lockfile, toolchain file and Cargo configuration it already read. Receipts
+already scope their inputs by the same closure (`input::closure_digests`). A
+package without an id is never dropped. Nothing else changes: full content
+reads, the closed provider policy, namespace admission over the compile
+roots, the compiler-read coverage of every loaded source in both phases and
+the private dependency graph.
+
+Why this is sound: a file of a package outside the closure cannot reach the
+proof unnoticed. A source the compiler loads must be covered by the snapshot
+with matching bytes, or recording refuses. The compile roots, whose namespace
+facts are bound, are the closed providers' and the selected manifests'
+directories, all inside the closure. Binary dependencies are bound by the
+private graph inventory and their producer certificates. Member manifests stay
+bound because Cargo reads them to resolve the workspace.
+
+Effects: retained keys change, so entries recorded before this change miss
+once and are aged out normally. An edit to a package outside the closure, for
+example another workspace member, no longer invalidates a retained proof,
+which matches the receipts. Each snapshot takes 25–50 ms on Vest instead of
+200–265 ms.
