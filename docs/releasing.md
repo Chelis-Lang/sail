@@ -222,7 +222,12 @@ The compiler identity conservatively includes all installed target libraries;
 an extra target therefore produces a different proof key even for a host build.
 The Linux `ci/local.sh release` recipe removes the CI image's bare-metal target
 inside its disposable container before recording. The shared image and its
-conformance prerequisites remain intact. For macOS packaging, prepare a separate
+conformance prerequisites remain intact. The factory refuses to record unless
+the verifier toolchain's installed components are exactly the minimal profile
+(`rustc`, `rust-std` and `cargo` for the host) plus `rust-src`. The notices
+check that staging runs first reads the fork's lock with Sail's own toolchain,
+so the fork's `rust-toolchain.toml` cannot make rustup add `rustc-dev`,
+`llvm-tools` or `rustfmt` to the verifier toolchain. For macOS packaging, prepare a separate
 Rustup home with the pinned Sail toolchain and the verifier's minimal toolchain
 plus `rust-src`, and use it for the release command. Existing full-toolchain
 changed-root controls do not qualify a minimal installation.
