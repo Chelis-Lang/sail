@@ -251,6 +251,15 @@ fn lookups(
     Some((directories, externs))
 }
 
+/// What a capture does with a directory inside a lookup directory.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Scratch {
+    /// Refuse the capture (after [`capture_after_directory_work`] waited).
+    Refuse,
+    /// Leave it out of the private copy.
+    Skip,
+}
+
 /// Own every copied directory through compiler completion/publication.
 pub(super) struct Snapshot {
     root: PathBuf,
@@ -406,6 +415,29 @@ impl Snapshot {
     /// `root` must be a fresh private sibling outside every source lookup dir.
     /// `owned_target` is the actual managed target, not a source-derived path.
     pub(super) fn capture(owned_target: &Path, root: &Path, args: &[OsString]) -> Option<Self> {
+        Self::capture_with(owned_target, root, args, Scratch::Refuse)
+    }
+
+    /// [`Self::capture`] at once, without waiting for other units' compiler
+    /// scratch directories: they are left out, since the compiler only reads
+    /// the private copies and its crate lookup never descends into them.
+    /// Every regular artifact present now is copied and verified as in a
+    /// capture; any other entry kind still refuses. The caller certifies the
+    /// copied bodies only after its compiler has finished (ADR 0061).
+    pub(super) fn capture_pipelined(
+        owned_target: &Path,
+        root: &Path,
+        args: &[OsString],
+    ) -> Option<Self> {
+        Self::capture_with(owned_target, root, args, Scratch::Skip)
+    }
+
+    fn capture_with(
+        owned_target: &Path,
+        root: &Path,
+        args: &[OsString],
+        scratch: Scratch,
+    ) -> Option<Self> {
         let target = owned_target.canonicalize().ok()?;
         let unit = Unit::parse(args)?;
         let (directories, externs) = lookups(&target, &unit, args)?;
@@ -442,15 +474,18 @@ impl Snapshot {
             let destination = root.join(index.to_string());
             builder.create(&destination).ok()?;
             let mut names = BTreeSet::new();
+            let mut entries = 0usize;
             for entry in std::fs::read_dir(directory).ok()? {
                 let entry = entry.ok()?;
                 if unit.owns(&entry.path()) {
                     continue;
                 }
-                if !entry.file_type().ok()?.is_file()
-                    || !names.insert(entry.file_name())
-                    || names.len() > ENTRY_LIMIT
-                {
+                entries += 1;
+                let kind = entry.file_type().ok()?;
+                if scratch == Scratch::Skip && kind.is_dir() && entries <= ENTRY_LIMIT {
+                    continue;
+                }
+                if !kind.is_file() || !names.insert(entry.file_name()) || entries > ENTRY_LIMIT {
                     return None;
                 }
                 if artifact(&entry.path()) {
@@ -845,6 +880,42 @@ mod tests {
                 .publish(&other.canonicalize()?, &root.args())
                 .is_none()
         );
+        Ok(())
+    }
+
+    #[test]
+    fn pipelined_capture_leaves_out_scratch_directories_but_refuses_other_kinds()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("pipelined")?;
+        let deps = root.0.join("target/debug/deps");
+        std::fs::write(deps.join("libvstd-abcd.rmeta"), b"complete metadata")?;
+        std::fs::create_dir(deps.join("rmeta4RA3xP"))?;
+        std::fs::write(deps.join("rmeta4RA3xP/full.rmeta"), b"in progress")?;
+        let target = root.0.join("target");
+        // The waiting capture refuses a directory it cannot see disappear.
+        assert!(Snapshot::capture(&target, &root.0.join("refused"), &root.args()).is_none());
+        let graph = Snapshot::capture_pipelined(&target, &root.0.join("copy"), &root.args())
+            .ok_or("pipelined capture")?;
+        assert_eq!(
+            graph.original_inputs().keys().collect::<Vec<_>>(),
+            [&deps.join("libvstd-abcd.rmeta")]
+        );
+        assert!(graph.intact());
+        let copied = std::fs::read_dir(root.0.join("copy/0"))?
+            .map(|entry| entry.map(|entry| entry.file_name()))
+            .collect::<std::io::Result<Vec<_>>>()?;
+        assert_eq!(copied, [OsString::from("libvstd-abcd.rmeta")]);
+        drop(graph);
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(
+                deps.join("libvstd-abcd.rmeta"),
+                deps.join("libalias-abcd.rmeta"),
+            )?;
+            assert!(
+                Snapshot::capture_pipelined(&target, &root.0.join("alias"), &root.args()).is_none()
+            );
+        }
         Ok(())
     }
 
