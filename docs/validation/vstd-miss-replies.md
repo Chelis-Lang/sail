@@ -193,6 +193,27 @@ the hit pair).
 Evidence: `experiments/2026-10-20/miss-replies/replies-impl-evidence.tgz`,
 SHA-256 `d5d6c863a8a2f075899355c6a1a1381137b08c68788ced91d5035af215dee5b4`.
 
+**Confirming cohort after rebasing onto main `13ef5258`** (with ADR 0060's
+rlimit witness in the factory). This is a second release stage on lane
+`missr2g`, which also ran the gates, so its timings are noisier: the load
+average was still falling from the release build, and timings drift
+upward across rounds. The factory packed 20,208 entries (pack SHA-256
+`3c4bf83e…`) before running the rlimit witness. Three rotated rounds,
+median (min–max):
+
+| Arm | Wall | vs stock |
+|---|---:|---:|
+| Stock (developer) | 33.24 (33.06–33.61) | |
+| Component miss, replies off | 34.14 (33.81–34.79) | +2.7% |
+| Component miss, replies on | 33.13 (32.19–33.40) | −0.3% |
+| Lock-file miss | 30.18 (29.62–31.06) | −9.2% |
+| Loader-variable run | 29.18 (28.79–30.10) | −12.2% |
+| Bundle hit | 13.41 (13.35–13.66) | 2.48× faster |
+
+Hit rates and output identity are as in the first cohort. Evidence:
+`experiments/2026-10-20/miss-replies/replies-rebased-evidence.tgz`, SHA-256
+`7810d592f4f923840013ad62353f63a3db0b7fe06506dbdbe93544e3ee16dff9`.
+
 ## Raw evidence
 
 Native evidence bucket,
