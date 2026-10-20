@@ -136,6 +136,7 @@ case "$step" in
     # The image's engine installer: corrupt or stale runtimes never install.
     python3 ci/test-engine-artifact.py
     python3 ci/test-output-evidence.py
+    python3 ci/test-timeout.py
     python3 scripts/check-links.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
