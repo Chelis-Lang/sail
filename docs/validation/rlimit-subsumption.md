@@ -37,7 +37,9 @@ Stock against two staged releases: `main` `658e8001` (before) and this branch (a
 | Public-profile Vest, `-p vest_lib`, 3 rounds | 69.11 (68.90–69.22) | 68.89 (68.61–69.32) | 70.14 (68.96–75.42) | `SAIL3138` in both: vstd's closure differs |
 | Vest, 2 further before/after rounds | | 72.11, 69.72 | 69.43, 69.74 | as above |
 
-Over all five Vest rounds the before and after medians are 69.32 s and 69.74 s, the same within this host's variation. Vest does not gain: its `Cargo.toml` depends on vstd with `default-features = false` (vest_lib enables `vstd/alloc` and `vstd/std`), so its vstd is the alloc/std closure, while the shipped proof is alloc/default/std; its lock also has `unicode-ident` 1.0.24 where the shipped build has 1.0.27. Sail therefore makes no shipped plan for it, with or without `--rlimit` (#238). Public-profile Vest moves only the vstd requirement to crates.io `=0.0.0-2026-10-18-0147`, with the corpus pin otherwise unchanged.
+Over all five Vest rounds the before and after medians are 69.32 s and 69.74 s, the same within this host's variation. Vest does not gain: its `Cargo.toml` depends on vstd with `default-features = false` (vest_lib enables `vstd/alloc` and `vstd/std`), so its vstd is the alloc/std closure, while the shipped proof is alloc/default/std; its lock also has `equivalent` 1.0.2, `indexmap` 2.14.1 and `unicode-ident` 1.0.24 (the shipped build has 1.0.3, 2.14.2 and 1.0.27). Sail therefore makes no shipped plan for it, with or without `--rlimit` (#238). Public-profile Vest moves only the vstd requirement to crates.io `=0.0.0-2026-10-18-0147`, with the corpus pin otherwise unchanged.
+
+With #276, Vest's `note[SAIL3138]` names these four differences and the edits that align them: three `cargo update -p … --precise …` commands and removing `default-features = false`. Applied to a copy, they let the shipped proof serve: one cold run each with `-- --rlimit 100` took 71.56 s stock and **49.95 s** Sail. Both reported 2060 and 3237 verified, 0 errors, and Sail printed no note. That changes Vest's manifest and lock, so it is the project's choice; Sail never applies it.
 
 ## Corpus: default vs `--rlimit 100`
 
@@ -118,6 +120,7 @@ These runs redirected their output into the project directory. Under those condi
 Raw logs are outside the repository:
 - corpus validation logs: sha256 `db526da89efd6d0c767de999c081517600b18cf1e852f2d83437c5ed15026cea`;
 - staging, witness and comparison logs: sha256 `41515e404fbbf3a9ed32284aa404fef874ad00e9ef2b22ac6075edf6bda2a907`.
+- `f8589ed4` re-recording: both witnesses, staging logs, flag cases, cold timing samples and per-run outputs, aligned-Vest runs, and the local gate logs for #268 and #276. sha256 `53ab78b54b9d8771575a8cfeb06dca16ee1466c40d52ca527a85964d6fdd0257`.
 
 Failed or interrupted attempts:
 - 2026-10-20, branch WIP: the first two stagings computed the witness's limits from the smallest set limit, which made `recorded_rlimit` 50. The cause was a vstd function's explicit rlimit. Fixed by using each query's own limit and the most common limit.
@@ -127,4 +130,4 @@ Failed or interrupted attempts:
 
 ## Remaining
 
-- Vest gains nothing until a shipped proof matches its vstd closure (alloc/std without `default`, `unicode-ident` 1.0.24); see #238.
+- Vest gains nothing until a shipped proof matches its vstd closure (default features off, three locked versions); see #238. The project can align it as its note says.

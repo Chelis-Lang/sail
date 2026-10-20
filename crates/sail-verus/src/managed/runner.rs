@@ -3069,6 +3069,7 @@ pub(crate) fn run_engine_held(
         // `--rlimit` (ADR 0060), so they explain the miss before the closure.
         shipped_miss.get_or_insert_with(|| {
             super::shipped::forwarded_miss(&config.args)
+                .or_else(|| super::shipped::closure_miss(&data))
                 .unwrap_or_else(|| super::shipped::CLOSURE_MISS.to_owned())
         });
     }
