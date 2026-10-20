@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Sail's Verus moves to fork `f8589ed4` (Linux). Closure and trait-function
+  solver names no longer depend on Cargo's crate metadata, so building the
+  proc-macro crates with another profile keeps cache hits (VI-0033).
+  Parallel verification starts the largest buckets first, and VIR's hot maps
+  use a deterministic Fx hasher; neither changes any query, verdict or
+  diagnostic. The runtime now includes `rustc-hash` 2.1.1.
+
 - Release staging refuses to record the shipped vstd proof unless the
   verifier toolchain has exactly the minimal profile and `rust-src`: the
   proof binds every installed compiler library, so any other component makes
