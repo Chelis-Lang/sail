@@ -313,3 +313,31 @@ Actual offline Cargo metadata and all archive/compiler checksums pass locally;
 those local source-admission controls alone are not native automatic reuse
 qualification. The later final-source ordinary cohort is separately qualified
 in the validation record.
+
+## Amendment 2026-10-20: retention must pay for itself (#156)
+
+Retention is optional restoration work, and on a cheap target it costs more
+than it can save. On the current Linux runtime the ordinary new-library
+profile admits the one-function `sail new` demo. Its retention checks read
+the private dependency graph (vstd's 43 MB `.vir` and the macro libraries)
+before and after the compiler, 1.5 s per edit and 0.7 s per revert, against
+a 0.8 s compile. Restoring that crate was slower than compiling it.
+
+Decision: each verifying compile records its compiler wall time and, when
+retention was engaged, the time spent in the driver's retention admission,
+restore attempt and finish. These records sit in `retention-costs/` beside
+the proof context's receipts. A run prepares no retention plan when every
+selected target has a record whose compile time is below 4× its retention
+time. A target with no record, an unreadable or other-version record, or no
+measured retention keeps retention. So a project's first run, including cold
+Vest A, still captures its proof, and the A → B → A return stays instant.
+The ratio rule follows from the costs: one retention costs about one restore
+check, so a target whose compile is under 4× that saves little even on a
+revert and pays the full cost on every edit. Measured examples: the demo
+compiles in 0.75 s against 1.4 s of retention and skips retention after its
+first run. Vest compiles in 26–29 s against 1.4–1.7 s and keeps it.
+
+The records authorize nothing and bind no proof. A skipped plan compiles
+normally, so verdicts, diagnostics, receipts, cache keys and every check
+compare the same bytes. Timing makes only the cost decision vary from run to
+run. The threshold is the constant `RATIO` in `managed/retained/cost.rs`.

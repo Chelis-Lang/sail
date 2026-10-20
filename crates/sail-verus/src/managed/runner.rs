@@ -457,6 +457,26 @@ fn context_hashes(
     Ok((hash, compiler_hash))
 }
 
+/// The manifest and target name of every selected target.
+fn selected_targets(
+    data: &Value,
+    expected: &BTreeSet<(String, String, String)>,
+) -> Vec<(PathBuf, String)> {
+    expected
+        .iter()
+        .filter_map(|(id, name, _)| {
+            let package = data["packages"]
+                .as_array()?
+                .iter()
+                .find(|package| package["id"] == *id)?;
+            Some((
+                PathBuf::from(package["manifest_path"].as_str()?),
+                name.clone(),
+            ))
+        })
+        .collect()
+}
+
 fn actual_wrapper(cargo_verus: &Path) -> Result<PathBuf> {
     // Cargo-Verus uses current_exe, not its invoked symlink's directory.
     cargo_verus
@@ -532,9 +552,9 @@ fn resolve_program(program: &std::ffi::OsStr, workspace: &Path) -> Result<PathBu
 
 fn alias(original: &Path, path: &Path) -> Result<()> {
     // An alias that resolves to the original's own inode is that file, so no
-    // byte comparison could differ. Copies and stale links keep the original
-    // full content comparison and replacement.
-    if same_file(original, path) || path.is_file() && file_digest(path)? == file_digest(original)? {
+    // byte comparison could differ. Copies and stale links keep the full
+    // content comparison (of the bytes directly) and replacement.
+    if same_file(original, path) || path.is_file() && super::files::same_content(original, path)? {
         return Ok(());
     }
     let _ = std::fs::remove_file(path);
@@ -659,8 +679,14 @@ fn prepare(
     if !member.is_file() {
         std::fs::write(&member, []).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
     }
-    alias(&config.sail, &paths.cargo_alias)?;
-    alias(&config.sail, &paths.proxy_alias)?;
+    // The two aliases are independent; copies are compared concurrently.
+    let (cargo_alias, proxy_alias) = std::thread::scope(|scope| {
+        let cargo_alias = scope.spawn(|| alias(&config.sail, &paths.cargo_alias));
+        let proxy_alias = alias(&config.sail, &paths.proxy_alias);
+        (cargo_alias.join(), proxy_alias)
+    });
+    cargo_alias.unwrap_or_else(|_| alias(&config.sail, &paths.cargo_alias))?;
+    proxy_alias?;
     Ok((paths, ownership))
 }
 
@@ -1481,10 +1507,14 @@ fn dirty_receipt_packages(
     revisions: &BTreeMap<PathBuf, ReceiptRevision>,
     data: &Value,
 ) -> Vec<String> {
-    revisions
-        .values()
-        .filter(|r| r.input_revision != target_revision(data, &r.package_id))
-        .map(|r| r.package_id.clone())
+    // Each current revision is its own complete snapshot; they overlap.
+    let receipts: Vec<&ReceiptRevision> = revisions.values().collect();
+    let current = crate::parallel::in_order(&receipts, |r| target_revision(data, &r.package_id));
+    receipts
+        .into_iter()
+        .zip(current)
+        .filter(|(r, current)| r.input_revision != *current)
+        .map(|(r, _)| r.package_id.clone())
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
@@ -1563,12 +1593,29 @@ fn target_records(
         }
         stored.insert(path, receipt);
     }
-    digests.prefetch(
-        batch
-            .iter()
-            .filter(|path| path.is_file())
-            .map(PathBuf::as_path),
-    );
+    // Each verified package's current revision is its own complete snapshot.
+    // They are taken while the batch is read, in the same phase.
+    let ids: Vec<String> = artifacts
+        .iter()
+        .filter(|artifact| verified(artifact).is_some())
+        .filter_map(|artifact| artifact["package_id"].as_str())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .map(str::to_owned)
+        .collect();
+    let revisions: HashMap<String, String> = std::thread::scope(|scope| {
+        let current =
+            scope.spawn(|| crate::parallel::in_order(&ids, |id| target_revision(data, id)));
+        digests.prefetch(
+            batch
+                .iter()
+                .filter(|path| path.is_file())
+                .map(PathBuf::as_path),
+        );
+        current.join().ok()
+    })
+    .map(|current| ids.into_iter().zip(current).collect())
+    .unwrap_or_default();
     for artifact in artifacts {
         let Some(package) = verified(&artifact) else {
             continue;
@@ -1588,7 +1635,10 @@ fn target_records(
                 && kind.contains(target_kind)
         });
         let force = force && requested;
-        let input_revision = target_revision(data, package_id);
+        let input_revision = revisions
+            .get(package_id)
+            .cloned()
+            .unwrap_or_else(|| target_revision(data, package_id));
         let path = receipt_path(paths, package_id, name, &kind);
         let call = calls.iter().find(|c| {
             c.identity.manifest == Path::new(package["manifest_path"].as_str().unwrap_or_default())
@@ -2626,7 +2676,18 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
-        retained: if !forced && !source_engine && paths.reuse && !receipt_covered {
+        // Retention is optional restoration work: a target whose compile is
+        // cheap next to retention compiles normally instead (#156).
+        retained: if !forced
+            && !source_engine
+            && paths.reuse
+            && !receipt_covered
+            && super::retained::cost::pays(
+                &paths.receipts,
+                selected_targets(&data, &expected)
+                    .iter()
+                    .map(|(manifest, name)| (manifest.as_path(), name.as_str())),
+            ) {
             super::retained::Plan::prepare(
                 &data,
                 &paths.target,
