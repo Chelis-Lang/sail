@@ -33,7 +33,7 @@ and returned-A reuse.**
   | Four-command cycle | 151.648 s | 100.314 s |
 
   The cycle is 33.9% faster. Cold A is 1.7% slower: the shipped proof
-  still misses on `--rlimit 100`. Wall time only.
+  still misses (Vest's vstd closure differs from the shipped one, #238; first attributed to `--rlimit 100`). Wall time only.
 - An earlier run on a `1ae17585` stage passed the same correctness checks
   (cycle 155.260 s against 106.066 s), but diagnosis ran beside two of its
   rounds, so its times are not used.
@@ -73,7 +73,7 @@ alloc/std reuse qualified for correctness and returned-A reuse.**
 
   The cycle is 24.0% faster (per round 83.3/63.0, 83.0/63.3 and
   83.5/65.7 s). Cold A is 14.6% slower, against 35% on `64baccbb`: the
-  shipped proof still misses on `--rlimit 100`. Unchanged A is 0.67 s
+  shipped proof still misses (Vest's vstd closure differs from the shipped one, #238; first attributed to `--rlimit 100`). Unchanged A is 0.67 s
   slower. Wall time only.
 - The admission witness (`scripts/admission-witness.py`) passes all five
   cases on the same stage.
@@ -144,7 +144,7 @@ and returned-A reuse.**
   | Four-command cycle | 150.749 s | 112.720 s |
 
   The cycle is 25.2% faster. Cold A is 14.5% slower, as before: the shipped
-  proof misses on `--rlimit 100`. Wall time only.
+  proof misses (Vest's vstd closure differs from the shipped one, #238; first attributed to `--rlimit 100`). Wall time only.
 
 Raw evidence: `rq2-evidence.tgz` sha256
 `6daeee5f03f6ef2741fcc51b235091c29f010e5daabca283cee5cdb0c6f15f70`.
