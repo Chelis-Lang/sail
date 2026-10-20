@@ -2169,6 +2169,16 @@ fn runtime_current(cache: &Path, context: &str) -> bool {
     })
 }
 
+/// A snapshot's extra inputs in a run-independent order. Build-script records
+/// keep Cargo's emission order, which varies from run to run; the snapshot
+/// does not depend on it. A sorted list keeps an unchanged invocation's
+/// selection equal to its hint (#156).
+fn ordered_extras(mut extras: Vec<PathBuf>) -> Vec<PathBuf> {
+    extras.sort();
+    extras.dedup();
+    extras
+}
+
 fn script_roots(data: &Value) -> Vec<PathBuf> {
     data["packages"]
         .as_array()
@@ -2460,11 +2470,7 @@ pub(crate) fn run_engine_held(
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
     extras.extend(script_roots.clone());
-    // Build-script records keep Cargo's emission order, which varies from run
-    // to run; the snapshot does not depend on it. A sorted list keeps an
-    // unchanged invocation's selection equal to its hint (#156).
-    extras.sort();
-    extras.dedup();
+    let extras = ordered_extras(extras);
     let selection = super::input::SnapshotHint {
         version: super::input::SNAPSHOT_HINT_VERSION,
         projection: snapshot_projection(&data, &data["sail_source_inputs"]),
@@ -2758,8 +2764,7 @@ pub(crate) fn run_engine_held(
         let (_, mut after_extras, after_coverage) =
             super::build_inputs::stale_after(&paths.build_inputs, &data, &unscheduled);
         after_extras.extend(script_roots.iter().cloned());
-        after_extras.sort();
-        after_extras.dedup();
+        let after_extras = ordered_extras(after_extras);
         let sources = serde_json::to_value(sources).unwrap_or_default();
         // Without metadata in hand, the snapshot is taken while Cargo reads it,
         // from the package list before the run, and kept only if the metadata
@@ -3339,6 +3344,32 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn two_build_script_emission_orders_give_one_selection() {
+        let script = |name: &str| PathBuf::from(format!("/registry/{name}/build.rs"));
+        let roots = vec![
+            PathBuf::from("/registry/quote"),
+            PathBuf::from("/registry/syn"),
+        ];
+        let selection = |records: Vec<PathBuf>| {
+            let mut extras = records;
+            extras.extend(roots.clone());
+            super::super::input::SnapshotHint {
+                version: super::super::input::SNAPSHOT_HINT_VERSION,
+                projection: serde_json::json!({"workspace_root": "/w"}),
+                extras: ordered_extras(extras),
+            }
+        };
+        let first = selection(vec![script("quote"), script("verus_prettyplease")]);
+        let second = selection(vec![
+            script("verus_prettyplease"),
+            script("quote"),
+            script("quote"),
+        ]);
+        assert_eq!(first, second);
+        assert_ne!(first, selection(vec![script("quote")]));
+    }
 
     /// Colour is requested only on a terminal, and never over the user's
     /// own colour setting.
