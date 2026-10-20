@@ -779,27 +779,27 @@ pub struct PublishReport {
     pub failed: u64,
 }
 
-/// Exports `disk`'s entries to `store`, signed with `secret`.
-///
-/// Only entries the local daemon recorded from the pinned solver
-/// (provenance [`PINNED_SOLVER`]) with a recorded solver identity are
-/// exported; entries that came from the shared tier never are. An
-/// `unknown` answer is exported only if `unknown_ok` accepts its effort
-/// (the serving policy, ADR 0009). An entry the store already holds,
-/// signed by this key, is left alone.
-pub fn publish(
+/// An entry `publish` may export: a local, pinned-solver, default-mode
+/// reply with a recorded solver identity that the serving policy serves.
+pub(crate) struct Eligible {
+    pub(crate) key: QueryKey,
+    pub(crate) meta: crate::Meta,
+    pub(crate) reply: Vec<u8>,
+    pub(crate) solver: Solver,
+}
+
+/// Visits every entry of `disk` that may be exported, counting the others
+/// in `r`: only entries the local daemon recorded from the pinned solver
+/// (provenance [`PINNED_SOLVER`]) with a recorded solver identity; never
+/// entries that came from the shared tier; an `unknown` answer only if
+/// `unknown_ok` accepts its effort (ADR 0009).
+pub(crate) fn eligible(
     disk: &DiskCache,
-    store: &SharedStore,
-    secret: &SecretKey,
     options: &PublishOptions,
     unknown_ok: &dyn Fn(Option<&Effort>) -> bool,
-) -> PublishReport {
-    let mut r = PublishReport::default();
-    let mut ours = TrustedKeys::default();
-    ours.insert(secret.public());
-    let now = SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs());
+    r: &mut PublishReport,
+    mut each: impl FnMut(Eligible, &mut PublishReport),
+) {
     for listed in disk.list() {
         let FileKind::Entry(key) = listed.kind else {
             continue;
@@ -841,37 +841,76 @@ pub fn publish(
             r.unknown_held += 1;
             continue;
         }
-        let Some(path) = store.entry_path(&solver, &key) else {
+        each(
+            Eligible {
+                key,
+                meta,
+                reply,
+                solver,
+            },
+            r,
+        );
+    }
+}
+
+/// The current Unix time, for `published_unix`.
+pub(crate) fn now_unix() -> u64 {
+    SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs())
+}
+
+/// Exports `disk`'s entries to `store`, signed with `secret`.
+///
+/// Only entries the local daemon recorded from the pinned solver
+/// (provenance [`PINNED_SOLVER`]) with a recorded solver identity are
+/// exported; entries that came from the shared tier never are. An
+/// `unknown` answer is exported only if `unknown_ok` accepts its effort
+/// (the serving policy, ADR 0009). An entry the store already holds,
+/// signed by this key, is left alone.
+pub fn publish(
+    disk: &DiskCache,
+    store: &SharedStore,
+    secret: &SecretKey,
+    options: &PublishOptions,
+    unknown_ok: &dyn Fn(Option<&Effort>) -> bool,
+) -> PublishReport {
+    let mut report = PublishReport::default();
+    let mut ours = TrustedKeys::default();
+    ours.insert(secret.public());
+    let now = now_unix();
+    eligible(disk, options, unknown_ok, &mut report, |e, r| {
+        let Some(path) = store.entry_path(&e.solver, &e.key) else {
             r.unattributed += 1;
-            continue;
+            return;
         };
         let present = SharedStore::read(&path)
             .ok()
             .flatten()
-            .is_some_and(|data| verify_entry(&data, &key, &ours, &solver).is_ok());
+            .is_some_and(|data| verify_entry(&data, &e.key, &ours, &e.solver).is_ok());
         if present {
             r.present += 1;
-            continue;
+            return;
         }
         if options.dry_run {
             r.published += 1;
-            continue;
+            return;
         }
         let data = sign_entry(
             secret,
-            &key,
-            &reply,
-            &meta.command,
-            &solver,
-            meta.effort.as_ref(),
+            &e.key,
+            &e.reply,
+            &e.meta.command,
+            &e.solver,
+            e.meta.effort.as_ref(),
             now,
         );
         match SharedStore::write(&path, &data) {
             Ok(()) => r.published += 1,
             Err(_) => r.failed += 1,
         }
-    }
-    r
+    });
+    report
 }
 
 #[cfg(test)]

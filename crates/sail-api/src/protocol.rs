@@ -150,6 +150,16 @@ pub struct StatsSnapshot {
     /// timeout, a recent miss for the key, or too many reads in flight.
     #[serde(default)]
     pub shared_skipped: u64,
+    /// Local misses looked up in the release's bundled replies (ADR 0062).
+    #[serde(default)]
+    pub bundled_lookups: u64,
+    /// Bundled entries that passed every check and were served (included
+    /// in `hits`).
+    #[serde(default)]
+    pub bundled_hits: u64,
+    /// Bundled entries that failed a check. Each is a miss.
+    #[serde(default)]
+    pub bundled_rejected: u64,
 }
 
 impl StatsSnapshot {
@@ -174,6 +184,11 @@ impl StatsSnapshot {
                 .saturating_sub(earlier.shared_other_platform),
             shared_timeouts: self.shared_timeouts.saturating_sub(earlier.shared_timeouts),
             shared_skipped: self.shared_skipped.saturating_sub(earlier.shared_skipped),
+            bundled_lookups: self.bundled_lookups.saturating_sub(earlier.bundled_lookups),
+            bundled_hits: self.bundled_hits.saturating_sub(earlier.bundled_hits),
+            bundled_rejected: self
+                .bundled_rejected
+                .saturating_sub(earlier.bundled_rejected),
         }
     }
 }
@@ -229,6 +244,10 @@ pub struct Info {
     /// The shared tier, if one is configured (ADR 0017).
     #[serde(default)]
     pub shared: Option<SharedInfo>,
+    /// The release's bundled replies, if this installation ships them
+    /// (ADR 0062): the pack, and whether it is loading, used or refused.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundled: Option<String>,
 }
 
 /// The shared tier's configuration, as `INFO` reports it.
@@ -616,6 +635,9 @@ mod tests {
                 timeout_ms: 250,
                 remote: None,
             }),
+            bundled: Some(
+                "/opt/sail/replies/vstd.pack (3 entries, key 0123456789abcdef)".to_owned(),
+            ),
         };
         let mut buf = Vec::new();
         assert!(write_info_response(&mut buf, &info).is_ok());
