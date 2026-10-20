@@ -1,0 +1,1496 @@
+{
+  "base_commit": "41cab95051229ebd457b4eed7fc111e3e7c9099c",
+  "candidate_sites": {
+    "arith": 938,
+    "compare": 3208,
+    "constant": 972,
+    "invariant": 120,
+    "logic": 290,
+    "rare-region": 19,
+    "spec-strengthen": 929,
+    "spec-weaken": 1412,
+    "statement": 1346
+  },
+  "candidates_sha256": "4fc74324a86cba8caee3f00414daabf7135dbd51bb81eff2707f47ca738d6c7f",
+  "files": 94,
+  "generated": {
+    "arith": 5,
+    "compare": 5,
+    "constant": 5,
+    "invariant": 5,
+    "logic": 5,
+    "rare-region": 5,
+    "spec-strengthen": 5,
+    "spec-weaken": 5,
+    "statement": 5
+  },
+  "generator": "gen-mutants 1",
+  "mutants": {
+    "capybarakv-arith-001": {
+      "class": "arith",
+      "column": 53,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/slots_v.rs",
+      "function": "lemma_corresponds_implies_sum_lengths_equals_num_pos_tuples",
+      "kind": "body",
+      "line": 77,
+      "mode": "proof"
+    },
+    "capybarakv-arith-002": {
+      "class": "arith",
+      "column": 24,
+      "file": "capybaraKV/capybarakv/src/pmem/pmemutil_v.rs",
+      "function": "lemma_noop_can_result_from_partial_write",
+      "kind": "spec",
+      "line": 821,
+      "mode": "proof"
+    },
+    "capybarakv-arith-003": {
+      "class": "arith",
+      "column": 33,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/inv_v.rs",
+      "function": "inv",
+      "kind": "body",
+      "line": 429,
+      "mode": "spec"
+    },
+    "capybarakv-arith-004": {
+      "class": "arith",
+      "column": 57,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/slots_v.rs",
+      "function": "lemma_corresponds_implication_for_free_list_length",
+      "kind": "body",
+      "line": 118,
+      "mode": "proof"
+    },
+    "capybarakv-arith-005": {
+      "class": "arith",
+      "column": 44,
+      "file": "capybaraKV/capybarakv/src/journal/commit_v.rs",
+      "function": "write_journal_entry",
+      "kind": "body",
+      "line": 166,
+      "mode": "exec"
+    },
+    "capybarakv-compare-001": {
+      "class": "compare",
+      "column": 78,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/trim_v.rs",
+      "function": "trim_case_modify",
+      "kind": "spec",
+      "line": 845,
+      "mode": "exec"
+    },
+    "capybarakv-compare-002": {
+      "class": "compare",
+      "column": 25,
+      "file": "capybaraKV/capybarakv/src/journal/commit_v.rs",
+      "function": "lemma_write_journal_entry_initial_conditions",
+      "kind": "spec",
+      "line": 35,
+      "mode": "proof"
+    },
+    "capybarakv-compare-003": {
+      "class": "compare",
+      "column": 57,
+      "file": "capybaraKV/capybarakv/src/journal/start_v.rs",
+      "function": "read_journal_entries_bytes",
+      "kind": "spec",
+      "line": 124,
+      "mode": "exec"
+    },
+    "capybarakv-compare-004": {
+      "class": "compare",
+      "column": 51,
+      "file": "capybaraKV/capybarakv/src/kv2/slots_v.rs",
+      "function": "lemma_used_list_slots_correspond",
+      "kind": "body",
+      "line": 111,
+      "mode": "proof"
+    },
+    "capybarakv-compare-005": {
+      "class": "compare",
+      "column": 44,
+      "file": "capybaraKV/capybarakv/src/pmem/pmcopy_t.rs",
+      "function": "as_signed_byte_slice",
+      "kind": "spec",
+      "line": 99,
+      "mode": "exec"
+    },
+    "capybarakv-constant-001": {
+      "class": "constant",
+      "column": 50,
+      "file": "capybaraKV/capybarakv/src/kv2/shardkv_t.rs",
+      "function": "start",
+      "kind": "spec",
+      "line": 87,
+      "mode": "exec"
+    },
+    "capybarakv-constant-002": {
+      "class": "constant",
+      "column": 105,
+      "file": "capybaraKV/capybarakv/src/kv2/impl_t.rs",
+      "function": "tentatively_trim_list_and_update_item",
+      "kind": "body",
+      "line": 850,
+      "mode": "exec"
+    },
+    "capybarakv-constant-003": {
+      "class": "constant",
+      "column": 33,
+      "file": "capybaraKV/capybarakv/src/pmem/pmem_async_equiv_v.rs",
+      "function": "resolve",
+      "kind": "body",
+      "line": 55,
+      "mode": "exec"
+    },
+    "capybarakv-constant-004": {
+      "class": "constant",
+      "column": 16,
+      "file": "capybaraKV/capybarakv/src/common/table_v.rs",
+      "function": "lemma_start_is_valid_row",
+      "kind": "body",
+      "line": 105,
+      "mode": "proof"
+    },
+    "capybarakv-constant-005": {
+      "class": "constant",
+      "column": 36,
+      "file": "capybaraKV/capybarakv/src/pmem/pmemspec_t.rs",
+      "function": "spec_crc_hamming_bound",
+      "kind": "body",
+      "line": 111,
+      "mode": "spec"
+    },
+    "capybarakv-invariant-001": {
+      "class": "invariant",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/journal/commit_v.rs",
+      "function": "install_journal_entries_during_commit",
+      "kind": "body",
+      "line": 598,
+      "mode": "exec"
+    },
+    "capybarakv-invariant-002": {
+      "class": "invariant",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/pmem/power_sound_t.rs",
+      "function": "run",
+      "kind": "body",
+      "line": 110,
+      "mode": "exec"
+    },
+    "capybarakv-invariant-003": {
+      "class": "invariant",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/journal/start_v.rs",
+      "function": "install_journal_entries_during_start",
+      "kind": "body",
+      "line": 292,
+      "mode": "exec"
+    },
+    "capybarakv-invariant-004": {
+      "class": "invariant",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/pmem/pmem_async_equiv_t.rs",
+      "function": "crash",
+      "kind": "body",
+      "line": 118,
+      "mode": "exec"
+    },
+    "capybarakv-invariant-005": {
+      "class": "invariant",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/journal/commit_v.rs",
+      "function": "write_journal_entries",
+      "kind": "body",
+      "line": 244,
+      "mode": "exec"
+    },
+    "capybarakv-logic-001": {
+      "class": "logic",
+      "column": 52,
+      "file": "capybaraKV/capybarakv/src/pmem/pmemutil_v.rs",
+      "function": "maybe_corrupted_cdb",
+      "kind": "spec",
+      "line": 179,
+      "mode": "proof"
+    },
+    "capybarakv-logic-002": {
+      "class": "logic",
+      "column": 13,
+      "file": "capybaraKV/capybarakv/src/kv2/keys/crud_v.rs",
+      "function": "create_step2",
+      "kind": "spec",
+      "line": 240,
+      "mode": "exec"
+    },
+    "capybarakv-logic-003": {
+      "class": "logic",
+      "column": 33,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/start_v.rs",
+      "function": "build_free_list",
+      "kind": "body",
+      "line": 286,
+      "mode": "exec"
+    },
+    "capybarakv-logic-004": {
+      "class": "logic",
+      "column": 43,
+      "file": "capybaraKV/capybarakv/src/pmem/pmemutil_v.rs",
+      "function": "check_cdb",
+      "kind": "spec",
+      "line": 404,
+      "mode": "exec"
+    },
+    "capybarakv-logic-005": {
+      "class": "logic",
+      "column": 57,
+      "file": "capybaraKV/capybarakv/src/journal/write_v.rs",
+      "function": "write_preconditions",
+      "kind": "body",
+      "line": 31,
+      "mode": "spec"
+    },
+    "capybarakv-rare-region-001": {
+      "class": "rare-region",
+      "column": 6,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/trim_v.rs",
+      "function": "trim_case_modify",
+      "kind": "body",
+      "line": 851,
+      "mode": "exec"
+    },
+    "capybarakv-rare-region-002": {
+      "class": "rare-region",
+      "column": 6,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/trim_v.rs",
+      "function": "trim_case_drain",
+      "kind": "body",
+      "line": 977,
+      "mode": "exec"
+    },
+    "capybarakv-rare-region-003": {
+      "class": "rare-region",
+      "column": 6,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/trim_v.rs",
+      "function": "trim_case_advance",
+      "kind": "body",
+      "line": 917,
+      "mode": "exec"
+    },
+    "capybarakv-rare-region-004": {
+      "class": "rare-region",
+      "column": 6,
+      "file": "capybaraKV/capybarakv/src/journal/write_v.rs",
+      "function": "write_object",
+      "kind": "body",
+      "line": 124,
+      "mode": "exec"
+    },
+    "capybarakv-rare-region-005": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "capybaraKV/capybarakv/src/common/align_v.rs",
+      "function": "get_space_needed_for_alignment",
+      "kind": "body",
+      "line": 93,
+      "mode": "exec"
+    },
+    "capybarakv-spec-strengthen-001": {
+      "class": "spec-strengthen",
+      "column": 9,
+      "file": "capybaraKV/capybarakv/src/pmem/mmap_pmemfile_t.rs",
+      "function": "new_internal",
+      "kind": "spec",
+      "line": 133,
+      "mode": "exec"
+    },
+    "capybarakv-spec-strengthen-002": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/pmem/hamming_v.rs",
+      "function": "valid_indexes_permute",
+      "kind": "spec",
+      "line": 34,
+      "mode": "proof"
+    },
+    "capybarakv-spec-strengthen-003": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/setup_v.rs",
+      "function": "setup",
+      "kind": "spec",
+      "line": 86,
+      "mode": "exec"
+    },
+    "capybarakv-spec-strengthen-004": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/journal/commit_v.rs",
+      "function": "mark_journal_committed",
+      "kind": "spec",
+      "line": 380,
+      "mode": "exec"
+    },
+    "capybarakv-spec-strengthen-005": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/common/subrange_v.rs",
+      "function": "broadcast_can_result_from_write_effect_on_read_state_subranges",
+      "kind": "spec",
+      "line": 202,
+      "mode": "proof"
+    },
+    "capybarakv-spec-weaken-001": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/append_v.rs",
+      "function": "append_case_modified",
+      "kind": "spec",
+      "line": 590,
+      "mode": "exec"
+    },
+    "capybarakv-spec-weaken-002": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/kv2/rwkv_t.rs",
+      "function": "append_to_list",
+      "kind": "spec",
+      "line": 232,
+      "mode": "exec"
+    },
+    "capybarakv-spec-weaken-003": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/kv2/lists/trim_v.rs",
+      "function": "get_addresses_to_trim_case_advance",
+      "kind": "spec",
+      "line": 589,
+      "mode": "exec"
+    },
+    "capybarakv-spec-weaken-004": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/pmem/pmem_async_spec_t.rs",
+      "function": "read_aligned",
+      "kind": "spec",
+      "line": 173,
+      "mode": "exec"
+    },
+    "capybarakv-spec-weaken-005": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/journal/entry_v.rs",
+      "function": "lemma_addresses_in_entry_dont_affect_recovery",
+      "kind": "spec",
+      "line": 381,
+      "mode": "proof"
+    },
+    "capybarakv-statement-001": {
+      "class": "statement",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/common/util_v.rs",
+      "function": "lemma_two_seqs_with_no_duplicates_and_same_to_set_are_permutations",
+      "kind": "body",
+      "line": 412,
+      "mode": "proof"
+    },
+    "capybarakv-statement-002": {
+      "class": "statement",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/common/subrange_v.rs",
+      "function": "broadcast_update_bytes_effect_on_subranges",
+      "kind": "body",
+      "line": 293,
+      "mode": "proof"
+    },
+    "capybarakv-statement-003": {
+      "class": "statement",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/journal/entry_v.rs",
+      "function": "lemma_parse_journal_entries_append",
+      "kind": "body",
+      "line": 504,
+      "mode": "proof"
+    },
+    "capybarakv-statement-004": {
+      "class": "statement",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/pmem/power_v.rs",
+      "function": "apply",
+      "kind": "body",
+      "line": 72,
+      "mode": "proof"
+    },
+    "capybarakv-statement-005": {
+      "class": "statement",
+      "column": 1,
+      "file": "capybaraKV/capybarakv/src/common/util_v.rs",
+      "function": "lemma_set_to_seq_has_same_length_with_no_duplicates",
+      "kind": "body",
+      "line": 205,
+      "mode": "proof"
+    }
+  },
+  "oracle": {
+    "dropped": {
+      "capybarakv-spec-strengthen-001": "does not compile",
+      "capybarakv-spec-strengthen-005": "Verus rejects it before verification"
+    },
+    "finished_unix": 1792505104,
+    "kept": 43,
+    "machine": {
+      "cpus": "32",
+      "host": "x86_64-unknown-linux-gnu",
+      "uname": "Linux 7.0.0-1014-aws x86_64"
+    },
+    "original": {
+      "failing": [],
+      "outcome": "verified",
+      "wall_s": 119.4
+    },
+    "platform": "x86_64-unknown-linux-gnu",
+    "results": {
+      "capybarakv-arith-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::lists::slots_v::capybarakv::kv2::lists::inv_v::ListTableInternalView::lemma_corresponds_implies_sum_lengths_equals_num_pos_tuples"
+        ],
+        "new_failures": [
+          "0#kv2::lists::slots_v::capybarakv::kv2::lists::inv_v::ListTableInternalView::lemma_corresponds_implies_sum_lengths_equals_num_pos_tuples"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          36.0,
+          51.4,
+          49.9
+        ]
+      },
+      "capybarakv-arith-002": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          45.0,
+          47.1,
+          54.5
+        ]
+      },
+      "capybarakv-arith-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::lists::append_v::capybarakv::kv2::lists::impl_v::ListTable::append_case_durable",
+          "0#kv2::lists::append_v::capybarakv::kv2::lists::impl_v::ListTable::append_case_modified",
+          "0#kv2::lists::start_v::capybarakv::kv2::lists::impl_v::ListTable::start",
+          "0#kv2::lists::update_v::capybarakv::kv2::lists::impl_v::ListTable::update_normal_case_write_step"
+        ],
+        "new_failures": [
+          "0#kv2::lists::append_v::capybarakv::kv2::lists::impl_v::ListTable::append_case_durable",
+          "0#kv2::lists::append_v::capybarakv::kv2::lists::impl_v::ListTable::append_case_modified",
+          "0#kv2::lists::start_v::capybarakv::kv2::lists::impl_v::ListTable::start",
+          "0#kv2::lists::update_v::capybarakv::kv2::lists::impl_v::ListTable::update_normal_case_write_step"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          62.6,
+          61.3,
+          46.4
+        ]
+      },
+      "capybarakv-arith-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::lists::slots_v::capybarakv::kv2::lists::inv_v::ListTableInternalView::lemma_corresponds_implication_for_free_list_length"
+        ],
+        "new_failures": [
+          "0#kv2::lists::slots_v::capybarakv::kv2::lists::inv_v::ListTableInternalView::lemma_corresponds_implication_for_free_list_length"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          34.6,
+          51.5,
+          48.4
+        ]
+      },
+      "capybarakv-arith-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#journal::commit_v::capybarakv::journal::impl_v::Journal::write_journal_entry"
+        ],
+        "new_failures": [
+          "0#journal::commit_v::capybarakv::journal::impl_v::Journal::write_journal_entry"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          30.7,
+          54.3,
+          50.2
+        ]
+      },
+      "capybarakv-compare-001": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          52.3,
+          41.5,
+          52.8
+        ]
+      },
+      "capybarakv-compare-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#journal::commit_v::capybarakv::journal::impl_v::Journal::lemma_write_journal_entry_initial_conditions",
+          "0#journal::commit_v::capybarakv::journal::impl_v::Journal::write_journal_entry"
+        ],
+        "new_failures": [
+          "0#journal::commit_v::capybarakv::journal::impl_v::Journal::lemma_write_journal_entry_initial_conditions",
+          "0#journal::commit_v::capybarakv::journal::impl_v::Journal::write_journal_entry"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          54.4,
+          54.6,
+          31.6
+        ]
+      },
+      "capybarakv-compare-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#journal::start_v::capybarakv::journal::impl_v::Journal::start"
+        ],
+        "new_failures": [
+          "0#journal::start_v::capybarakv::journal::impl_v::Journal::start"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          33.3,
+          55.0,
+          52.1
+        ]
+      },
+      "capybarakv-compare-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::slots_v::capybarakv::kv2::impl_v::UntrustedKvStoreImpl::lemma_used_list_slots_correspond"
+        ],
+        "new_failures": [
+          "0#kv2::slots_v::capybarakv::kv2::impl_v::UntrustedKvStoreImpl::lemma_used_list_slots_correspond"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          34.4,
+          52.8,
+          44.4
+        ]
+      },
+      "capybarakv-compare-005": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          56.3,
+          36.9,
+          53.8
+        ]
+      },
+      "capybarakv-constant-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::shardkv_v::capybarakv::kv2::shardkv_v::ShardedKvStore::start"
+        ],
+        "new_failures": [
+          "0#kv2::shardkv_v::capybarakv::kv2::shardkv_v::ShardedKvStore::start"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          54.6,
+          49.9,
+          31.7
+        ]
+      },
+      "capybarakv-constant-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::impl_t::capybarakv::kv2::impl_t::KvStore::tentatively_trim_list_and_update_item"
+        ],
+        "new_failures": [
+          "0#kv2::impl_t::capybarakv::kv2::impl_t::KvStore::tentatively_trim_list_and_update_item"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          33.5,
+          52.2,
+          44.7
+        ]
+      },
+      "capybarakv-constant-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#pmem::pmem_async_equiv_v::capybarakv::pmem::pmem_async_equiv_v::ProphecyVec::resolve"
+        ],
+        "new_failures": [
+          "0#pmem::pmem_async_equiv_v::capybarakv::pmem::pmem_async_equiv_v::ProphecyVec::resolve"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          39.7,
+          58.7,
+          39.9
+        ]
+      },
+      "capybarakv-constant-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#common::table_v::capybarakv::common::table_v::TableMetadata::lemma_start_is_valid_row"
+        ],
+        "new_failures": [
+          "0#common::table_v::capybarakv::common::table_v::TableMetadata::lemma_start_is_valid_row"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          58.4,
+          37.5,
+          44.4
+        ]
+      },
+      "capybarakv-constant-005": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          60.0,
+          53.6,
+          37.4
+        ]
+      },
+      "capybarakv-invariant-001": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          61.0,
+          56.5,
+          33.2
+        ]
+      },
+      "capybarakv-invariant-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#pmem::power_sound_t::capybarakv::pmem::power_sound_t::ExampleApp::run"
+        ],
+        "new_failures": [
+          "0#pmem::power_sound_t::capybarakv::pmem::power_sound_t::ExampleApp::run"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          57.4,
+          35.1,
+          48.1
+        ]
+      },
+      "capybarakv-invariant-003": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          45.5,
+          49.2,
+          57.7
+        ]
+      },
+      "capybarakv-invariant-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#pmem::pmem_async_equiv_t::capybarakv::pmem::pmem_async_equiv_t::PMRegionProph::crash"
+        ],
+        "new_failures": [
+          "0#pmem::pmem_async_equiv_t::capybarakv::pmem::pmem_async_equiv_t::PMRegionProph::crash"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          31.8,
+          55.3,
+          34.0
+        ]
+      },
+      "capybarakv-invariant-005": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          59.3,
+          59.2,
+          37.3
+        ]
+      },
+      "capybarakv-logic-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#pmem::pmemutil_v::capybarakv::pmem::pmemutil_v::check_cdb"
+        ],
+        "new_failures": [
+          "0#pmem::pmemutil_v::capybarakv::pmem::pmemutil_v::check_cdb"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          39.9,
+          57.3,
+          40.9
+        ]
+      },
+      "capybarakv-logic-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::keys::crud_v::capybarakv::kv2::keys::impl_v::KeyTable::create"
+        ],
+        "new_failures": [
+          "0#kv2::keys::crud_v::capybarakv::kv2::keys::impl_v::KeyTable::create"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          42.7,
+          54.7,
+          35.7
+        ]
+      },
+      "capybarakv-logic-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::lists::start_v::capybarakv::kv2::lists::impl_v::ListTable::build_free_list"
+        ],
+        "new_failures": [
+          "0#kv2::lists::start_v::capybarakv::kv2::lists::impl_v::ListTable::build_free_list"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          55.3,
+          33.0,
+          47.1
+        ]
+      },
+      "capybarakv-logic-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#common::recover_v::capybarakv::common::recover_v::exec_recover_cdb"
+        ],
+        "new_failures": [
+          "0#common::recover_v::capybarakv::common::recover_v::exec_recover_cdb"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          51.1,
+          49.5,
+          31.3
+        ]
+      },
+      "capybarakv-logic-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#journal::write_v::capybarakv::journal::impl_v::Journal::write_slice",
+          "0#kv2::items::crud_v::capybarakv::kv2::items::impl_v::ItemTable::create",
+          "0#kv2::keys::crud_v::capybarakv::kv2::keys::impl_v::KeyTable::create_step2",
+          "0#kv2::lists::append_v::capybarakv::kv2::lists::impl_v::ListTable::write_tail_to_free_slot",
+          "0#kv2::lists::update_v::capybarakv::kv2::lists::impl_v::ListTable::update_normal_case_write_step"
+        ],
+        "new_failures": [
+          "0#journal::write_v::capybarakv::journal::impl_v::Journal::write_slice",
+          "0#kv2::items::crud_v::capybarakv::kv2::items::impl_v::ItemTable::create",
+          "0#kv2::keys::crud_v::capybarakv::kv2::keys::impl_v::KeyTable::create_step2",
+          "0#kv2::lists::append_v::capybarakv::kv2::lists::impl_v::ListTable::write_tail_to_free_slot",
+          "0#kv2::lists::update_v::capybarakv::kv2::lists::impl_v::ListTable::update_normal_case_write_step"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          46.6,
+          62.5,
+          58.0
+        ]
+      },
+      "capybarakv-rare-region-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::lists::trim_v::capybarakv::kv2::lists::impl_v::ListTable::trim_case_modify"
+        ],
+        "new_failures": [
+          "0#kv2::lists::trim_v::capybarakv::kv2::lists::impl_v::ListTable::trim_case_modify"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          55.9,
+          40.9,
+          37.6
+        ]
+      },
+      "capybarakv-rare-region-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::lists::trim_v::capybarakv::kv2::lists::impl_v::ListTable::trim_case_drain"
+        ],
+        "new_failures": [
+          "0#kv2::lists::trim_v::capybarakv::kv2::lists::impl_v::ListTable::trim_case_drain"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          44.9,
+          54.9,
+          28.7
+        ]
+      },
+      "capybarakv-rare-region-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::lists::trim_v::capybarakv::kv2::lists::impl_v::ListTable::trim_case_advance"
+        ],
+        "new_failures": [
+          "0#kv2::lists::trim_v::capybarakv::kv2::lists::impl_v::ListTable::trim_case_advance"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          36.9,
+          41.4,
+          56.8
+        ]
+      },
+      "capybarakv-rare-region-004": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          36.5,
+          56.2,
+          53.5
+        ]
+      },
+      "capybarakv-rare-region-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#common::align_v::capybarakv::common::align_v::get_space_needed_for_alignment"
+        ],
+        "new_failures": [
+          "0#common::align_v::capybarakv::common::align_v::get_space_needed_for_alignment"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          55.6,
+          29.0,
+          36.9
+        ]
+      },
+      "capybarakv-spec-strengthen-001": {
+        "dropped": "does not compile",
+        "exits": [
+          101
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "stillborn"
+        ],
+        "wall_s": [
+          3.4
+        ]
+      },
+      "capybarakv-spec-strengthen-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#pmem::hamming_v::capybarakv::pmem::hamming_v::sum_indexes"
+        ],
+        "new_failures": [
+          "0#pmem::hamming_v::capybarakv::pmem::hamming_v::sum_indexes"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          53.8,
+          52.3,
+          29.9
+        ]
+      },
+      "capybarakv-spec-strengthen-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::setup_v::capybarakv::kv2::impl_v::UntrustedKvStoreImpl::setup"
+        ],
+        "new_failures": [
+          "0#kv2::setup_v::capybarakv::kv2::impl_v::UntrustedKvStoreImpl::setup"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          30.9,
+          53.9,
+          35.6
+        ]
+      },
+      "capybarakv-spec-strengthen-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#journal::commit_v::capybarakv::journal::impl_v::Journal::commit"
+        ],
+        "new_failures": [
+          "0#journal::commit_v::capybarakv::journal::impl_v::Journal::commit"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          55.0,
+          29.6,
+          55.7
+        ]
+      },
+      "capybarakv-spec-strengthen-005": {
+        "dropped": "Verus rejects it before verification",
+        "exits": [
+          101
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "stillborn"
+        ],
+        "wall_s": [
+          55.6
+        ]
+      },
+      "capybarakv-spec-weaken-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::lists::append_v::capybarakv::kv2::lists::impl_v::ListTable::append_case_modified"
+        ],
+        "new_failures": [
+          "0#kv2::lists::append_v::capybarakv::kv2::lists::impl_v::ListTable::append_case_modified"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          56.6,
+          30.9,
+          51.9
+        ]
+      },
+      "capybarakv-spec-weaken-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::rwkv_v::capybarakv::kv2::rwkv_v::ConcurrentKvStore::append_to_list"
+        ],
+        "new_failures": [
+          "0#kv2::rwkv_v::capybarakv::kv2::rwkv_v::ConcurrentKvStore::append_to_list"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          57.6,
+          30.2,
+          53.0
+        ]
+      },
+      "capybarakv-spec-weaken-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#kv2::lists::trim_v::capybarakv::kv2::lists::impl_v::ListTable::get_addresses_to_trim_case_advance"
+        ],
+        "new_failures": [
+          "0#kv2::lists::trim_v::capybarakv::kv2::lists::impl_v::ListTable::get_addresses_to_trim_case_advance"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          49.1,
+          53.8,
+          30.9
+        ]
+      },
+      "capybarakv-spec-weaken-004": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          52.7,
+          57.7,
+          56.0
+        ]
+      },
+      "capybarakv-spec-weaken-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#journal::entry_v::capybarakv::journal::entry_v::lemma_addresses_in_entry_dont_affect_recovery"
+        ],
+        "new_failures": [
+          "0#journal::entry_v::capybarakv::journal::entry_v::lemma_addresses_in_entry_dont_affect_recovery"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          52.6,
+          31.4,
+          54.5
+        ]
+      },
+      "capybarakv-statement-001": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          47.5,
+          56.9,
+          56.6
+        ]
+      },
+      "capybarakv-statement-002": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          58.6,
+          39.2,
+          50.4
+        ]
+      },
+      "capybarakv-statement-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#journal::entry_v::capybarakv::journal::entry_v::lemma_parse_journal_entries_append"
+        ],
+        "new_failures": [
+          "0#journal::entry_v::capybarakv::journal::entry_v::lemma_parse_journal_entries_append"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          51.1,
+          46.7,
+          38.2
+        ]
+      },
+      "capybarakv-statement-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#pmem::power_v::capybarakv::pmem::power_v::SimplePermissionAdapter::apply"
+        ],
+        "new_failures": [
+          "0#pmem::power_v::capybarakv::pmem::power_v::SimplePermissionAdapter::apply"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          46.5,
+          38.3,
+          51.5
+        ]
+      },
+      "capybarakv-statement-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#common::util_v::capybarakv::common::util_v::lemma_set_to_seq_has_same_length_with_no_duplicates"
+        ],
+        "new_failures": [
+          "0#common::util_v::capybarakv::common::util_v::lemma_set_to_seq_has_same_length_with_no_duplicates"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          30.4,
+          57.6,
+          53.1
+        ]
+      }
+    },
+    "runs": 3,
+    "stock_verus": "0.2026.10.18.7d82994",
+    "timeout_secs": 1800
+  },
+  "per_class": 5,
+  "project": "verified-storage",
+  "schema_version": 1,
+  "seed": 20261020,
+  "unit": "verified-storage/capybaraKV/capybarakv"
+}

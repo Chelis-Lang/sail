@@ -74,6 +74,22 @@ semantic versioning once the API is published.
   exact `cargo update -p … --precise …` commands and vstd feature edit that
   let the project use the proof; Vest with vstd `0.0.0-2026-10-18-0147`
   needs three updates and vstd's default features (#237).
+- A seeded mutation suite (ADR 0063, #284): `cargo xtask gen-mutants`
+  generates catalogues of nine mutation classes from a seed,
+  `sail-bench mutants oracle` settles each mutant's outcome from three stock
+  Verus runs, and `sail-bench mutants run` runs the edit loop with one Sail
+  daemon across every mutant, compares every result with stock (counting
+  false verified separately), checks that the restored original gets its own
+  answers, and reports speedups with bootstrap intervals. Catalogues for
+  human-eval-verus, IronKV, Vest and CapybaraKV are in `corpus/mutants/`; the
+  local standard and deep conformance tiers run them. See the
+  [record](docs/validation/mutation-suite.md).
+
+- Conformance recognises the fork's VI-0003 fix as an accepted divergence:
+  a function whose `by (bit_vector)` assertion failed is reported failed by
+  Sail where stock says it succeeded, with identical diagnostics and exit
+  code. Only exactly that case is accepted; see
+  [divergences](docs/divergences.md).
 
 - Check instant revert's workspace sources and namespace facts on several
   workers, and skip a graph reread that repeated the one just done (#232).

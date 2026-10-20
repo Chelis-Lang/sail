@@ -1,0 +1,1775 @@
+{
+  "base_commit": "bbe93f73b0a5802c438501f9a2106f9126bd2eea",
+  "candidate_sites": {
+    "arith": 1718,
+    "compare": 3336,
+    "constant": 2837,
+    "invariant": 383,
+    "logic": 553,
+    "rare-region": 45,
+    "spec-strengthen": 373,
+    "spec-weaken": 261,
+    "statement": 1193
+  },
+  "candidates_sha256": "046911e80c658222557ad6b90c056f534a7ad0bdb63afeff2c7c54827b64e9da",
+  "files": 168,
+  "generated": {
+    "arith": 6,
+    "compare": 6,
+    "constant": 6,
+    "invariant": 6,
+    "logic": 6,
+    "rare-region": 6,
+    "spec-strengthen": 6,
+    "spec-weaken": 6,
+    "statement": 6
+  },
+  "generator": "gen-mutants 1",
+  "mutants": {
+    "human-eval-arith-001": {
+      "class": "arith",
+      "column": 22,
+      "file": "tasks/human_eval_034.rs",
+      "function": "swap_preserves_multiset_helper",
+      "kind": "body",
+      "line": 29,
+      "mode": "proof"
+    },
+    "human-eval-arith-002": {
+      "class": "arith",
+      "column": 86,
+      "file": "tasks/human_eval_100.rs",
+      "function": "make_a_pile",
+      "kind": "body",
+      "line": 28,
+      "mode": "exec"
+    },
+    "human-eval-arith-003": {
+      "class": "arith",
+      "column": 67,
+      "file": "tasks/human_eval_025.rs",
+      "function": "lemma_first_divisor_is_prime",
+      "kind": "body",
+      "line": 243,
+      "mode": "proof"
+    },
+    "human-eval-arith-004": {
+      "class": "arith",
+      "column": 22,
+      "file": "tasks/human_eval_066.rs",
+      "function": "digit_sum",
+      "kind": "body",
+      "line": 47,
+      "mode": "exec"
+    },
+    "human-eval-arith-005": {
+      "class": "arith",
+      "column": 32,
+      "file": "tasks/human_eval_126.rs",
+      "function": "lemma_les_eq_big_concat_eq_original_seq",
+      "kind": "body",
+      "line": 245,
+      "mode": "proof"
+    },
+    "human-eval-arith-006": {
+      "class": "arith",
+      "column": 29,
+      "file": "tasks/human_eval_126.rs",
+      "function": "lemma_subseq_sorted_are_sorted",
+      "kind": "body",
+      "line": 273,
+      "mode": "proof"
+    },
+    "human-eval-compare-001": {
+      "class": "compare",
+      "column": 79,
+      "file": "tasks/human_eval_026.rs",
+      "function": "remove_duplicates",
+      "kind": "body",
+      "line": 60,
+      "mode": "exec"
+    },
+    "human-eval-compare-002": {
+      "class": "compare",
+      "column": 38,
+      "file": "tasks/human_eval_087.rs",
+      "function": "coords_sound",
+      "kind": "body",
+      "line": 68,
+      "mode": "spec"
+    },
+    "human-eval-compare-003": {
+      "class": "compare",
+      "column": 65,
+      "file": "tasks/human_eval_050.rs",
+      "function": "decode_shift",
+      "kind": "spec",
+      "line": 82,
+      "mode": "exec"
+    },
+    "human-eval-compare-004": {
+      "class": "compare",
+      "column": 49,
+      "file": "tasks/human_eval_057.rs",
+      "function": "monotonic",
+      "kind": "spec",
+      "line": 14,
+      "mode": "exec"
+    },
+    "human-eval-compare-005": {
+      "class": "compare",
+      "column": 26,
+      "file": "tasks/human_eval_004.rs",
+      "function": "lemma_sum_bound",
+      "kind": "spec",
+      "line": 60,
+      "mode": "proof"
+    },
+    "human-eval-compare-006": {
+      "class": "compare",
+      "column": 35,
+      "file": "tasks/human_eval_096.rs",
+      "function": "check_prime",
+      "kind": "body",
+      "line": 54,
+      "mode": "exec"
+    },
+    "human-eval-constant-001": {
+      "class": "constant",
+      "column": 88,
+      "file": "tasks/human_eval_160.rs",
+      "function": "eval_by_stack_a",
+      "kind": "body",
+      "line": 612,
+      "mode": "exec"
+    },
+    "human-eval-constant-002": {
+      "class": "constant",
+      "column": 34,
+      "file": "tasks/human_eval_092.rs",
+      "function": "any_int",
+      "kind": "body",
+      "line": 38,
+      "mode": "exec"
+    },
+    "human-eval-constant-003": {
+      "class": "constant",
+      "column": 21,
+      "file": "tasks/human_eval_025.rs",
+      "function": "lemma_fold_right_pull_out_hybrid",
+      "kind": "body",
+      "line": 84,
+      "mode": "proof"
+    },
+    "human-eval-constant-004": {
+      "class": "constant",
+      "column": 21,
+      "file": "tasks/human_eval_110.rs",
+      "function": "exists_even_index",
+      "kind": "body",
+      "line": 236,
+      "mode": "proof"
+    },
+    "human-eval-constant-005": {
+      "class": "constant",
+      "column": 79,
+      "file": "tasks/human_eval_003b.rs",
+      "function": "below_zero",
+      "kind": "body",
+      "line": 31,
+      "mode": "exec"
+    },
+    "human-eval-constant-006": {
+      "class": "constant",
+      "column": 14,
+      "file": "tasks/human_eval_020.rs",
+      "function": "closest_pair",
+      "kind": "spec",
+      "line": 21,
+      "mode": "exec"
+    },
+    "human-eval-invariant-001": {
+      "class": "invariant",
+      "column": 1,
+      "file": "tasks/human_eval_004.rs",
+      "function": "mean_absolute_deviation",
+      "kind": "body",
+      "line": 439,
+      "mode": "exec"
+    },
+    "human-eval-invariant-002": {
+      "class": "invariant",
+      "column": 1,
+      "file": "tasks/human_eval_010.rs",
+      "function": "make_palindrome",
+      "kind": "body",
+      "line": 97,
+      "mode": "exec"
+    },
+    "human-eval-invariant-003": {
+      "class": "invariant",
+      "column": 1,
+      "file": "tasks/human_eval_025.rs",
+      "function": "factorize",
+      "kind": "body",
+      "line": 332,
+      "mode": "exec"
+    },
+    "human-eval-invariant-004": {
+      "class": "invariant",
+      "column": 1,
+      "file": "tasks/human_eval_075.rs",
+      "function": "is_multiply_prime",
+      "kind": "body",
+      "line": 92,
+      "mode": "exec"
+    },
+    "human-eval-invariant-005": {
+      "class": "invariant",
+      "column": 1,
+      "file": "tasks/human_eval_087.rs",
+      "function": "get_row",
+      "kind": "body",
+      "line": 139,
+      "mode": "exec"
+    },
+    "human-eval-invariant-006": {
+      "class": "invariant",
+      "column": 1,
+      "file": "tasks/human_eval_005.rs",
+      "function": "intersperse",
+      "kind": "body",
+      "line": 105,
+      "mode": "exec"
+    },
+    "human-eval-logic-001": {
+      "class": "logic",
+      "column": 38,
+      "file": "tasks/human_eval_051.rs",
+      "function": "is_vowel_spec",
+      "kind": "body",
+      "line": 14,
+      "mode": "spec"
+    },
+    "human-eval-logic-002": {
+      "class": "logic",
+      "column": 16,
+      "file": "tasks/human_eval_129.rs",
+      "function": "min_path",
+      "kind": "body",
+      "line": 449,
+      "mode": "exec"
+    },
+    "human-eval-logic-003": {
+      "class": "logic",
+      "column": 14,
+      "file": "tasks/human_eval_150.rs",
+      "function": "spec_prime",
+      "kind": "body",
+      "line": 17,
+      "mode": "spec"
+    },
+    "human-eval-logic-004": {
+      "class": "logic",
+      "column": 12,
+      "file": "tasks/human_eval_054.rs",
+      "function": "same_chars",
+      "kind": "body",
+      "line": 77,
+      "mode": "exec"
+    },
+    "human-eval-logic-005": {
+      "class": "logic",
+      "column": 45,
+      "file": "tasks/human_eval_043.rs",
+      "function": "pairs_sum_to_zero",
+      "kind": "body",
+      "line": 35,
+      "mode": "exec"
+    },
+    "human-eval-logic-006": {
+      "class": "logic",
+      "column": 55,
+      "file": "tasks/human_eval_163.rs",
+      "function": "generate_integers",
+      "kind": "spec",
+      "line": 40,
+      "mode": "exec"
+    },
+    "human-eval-rare-region-001": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "tasks/human_eval_052.rs",
+      "function": "below_threshold",
+      "kind": "body",
+      "line": 15,
+      "mode": "exec"
+    },
+    "human-eval-rare-region-002": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "tasks/human_eval_163.rs",
+      "function": "min",
+      "kind": "body",
+      "line": 16,
+      "mode": "exec"
+    },
+    "human-eval-rare-region-003": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "tasks/human_eval_097.rs",
+      "function": "unit_digit",
+      "kind": "body",
+      "line": 29,
+      "mode": "exec"
+    },
+    "human-eval-rare-region-004": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "tasks/human_eval_127.rs",
+      "function": "min",
+      "kind": "body",
+      "line": 16,
+      "mode": "exec"
+    },
+    "human-eval-rare-region-005": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "tasks/human_eval_045.rs",
+      "function": "triangle_area",
+      "kind": "body",
+      "line": 20,
+      "mode": "exec"
+    },
+    "human-eval-rare-region-006": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "tasks/human_eval_059.rs",
+      "function": "largest_prime_factor",
+      "kind": "body",
+      "line": 51,
+      "mode": "exec"
+    },
+    "human-eval-spec-strengthen-001": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "tasks/human_eval_120.rs",
+      "function": "sort_seq",
+      "kind": "spec",
+      "line": 82,
+      "mode": "exec"
+    },
+    "human-eval-spec-strengthen-002": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "tasks/human_eval_026.rs",
+      "function": "remove_duplicates",
+      "kind": "spec",
+      "line": 55,
+      "mode": "exec"
+    },
+    "human-eval-spec-strengthen-003": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "tasks/human_eval_050.rs",
+      "function": "encode_shift",
+      "kind": "spec",
+      "line": 60,
+      "mode": "exec"
+    },
+    "human-eval-spec-strengthen-004": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "tasks/human_eval_035.rs",
+      "function": "max_element",
+      "kind": "spec",
+      "line": 17,
+      "mode": "exec"
+    },
+    "human-eval-spec-strengthen-005": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "tasks/human_eval_160.rs",
+      "function": "lemma_base",
+      "kind": "spec",
+      "line": 299,
+      "mode": "proof"
+    },
+    "human-eval-spec-strengthen-006": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "tasks/human_eval_051.rs",
+      "function": "remove_vowels",
+      "kind": "spec",
+      "line": 30,
+      "mode": "exec"
+    },
+    "human-eval-spec-weaken-001": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "tasks/human_eval_010.rs",
+      "function": "palidrome_sandwich_reverse",
+      "kind": "spec",
+      "line": 50,
+      "mode": "proof"
+    },
+    "human-eval-spec-weaken-002": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "tasks/human_eval_129.rs",
+      "function": "lemma_less_than_step_even",
+      "kind": "spec",
+      "line": 264,
+      "mode": "proof"
+    },
+    "human-eval-spec-weaken-003": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "tasks/human_eval_129.rs",
+      "function": "min_path",
+      "kind": "spec",
+      "line": 374,
+      "mode": "exec"
+    },
+    "human-eval-spec-weaken-004": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "tasks/human_eval_110.rs",
+      "function": "exchange",
+      "kind": "spec",
+      "line": 389,
+      "mode": "exec"
+    },
+    "human-eval-spec-weaken-005": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "tasks/human_eval_073.rs",
+      "function": "smallest_change",
+      "kind": "spec",
+      "line": 29,
+      "mode": "exec"
+    },
+    "human-eval-spec-weaken-006": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "tasks/human_eval_025.rs",
+      "function": "lemma_unfold_right_fold_new",
+      "kind": "spec",
+      "line": 131,
+      "mode": "proof"
+    },
+    "human-eval-statement-001": {
+      "class": "statement",
+      "column": 1,
+      "file": "tasks/human_eval_074.rs",
+      "function": "checked_total_str_len",
+      "kind": "body",
+      "line": 53,
+      "mode": "exec"
+    },
+    "human-eval-statement-002": {
+      "class": "statement",
+      "column": 1,
+      "file": "tasks/human_eval_120.rs",
+      "function": "static_checks",
+      "kind": "body",
+      "line": 278,
+      "mode": "exec"
+    },
+    "human-eval-statement-003": {
+      "class": "statement",
+      "column": 1,
+      "file": "tasks/human_eval_151.rs",
+      "function": "static_checks",
+      "kind": "body",
+      "line": 83,
+      "mode": "exec"
+    },
+    "human-eval-statement-004": {
+      "class": "statement",
+      "column": 1,
+      "file": "tasks/human_eval_126.rs",
+      "function": "lemma_big_part_all_big",
+      "kind": "body",
+      "line": 191,
+      "mode": "proof"
+    },
+    "human-eval-statement-005": {
+      "class": "statement",
+      "column": 1,
+      "file": "tasks/human_eval_013.rs",
+      "function": "lemma_div",
+      "kind": "body",
+      "line": 73,
+      "mode": "proof"
+    },
+    "human-eval-statement-006": {
+      "class": "statement",
+      "column": 1,
+      "file": "tasks/human_eval_085.rs",
+      "function": "add",
+      "kind": "body",
+      "line": 45,
+      "mode": "exec"
+    }
+  },
+  "oracle": {
+    "dropped": {
+      "human-eval-arith-004": "does not compile",
+      "human-eval-arith-005": "does not compile"
+    },
+    "finished_unix": 1792503355,
+    "kept": 52,
+    "machine": {
+      "cpus": "32",
+      "host": "x86_64-unknown-linux-gnu",
+      "uname": "Linux 7.0.0-1014-aws x86_64"
+    },
+    "original": {
+      "failing": [],
+      "outcome": "verified",
+      "wall_s": 83.0
+    },
+    "platform": "x86_64-unknown-linux-gnu",
+    "results": {
+      "human-eval-arith-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_034::human_eval_verus_mutants::human_eval_034::swap_preserves_multiset_helper"
+        ],
+        "new_failures": [
+          "0#human_eval_034::human_eval_verus_mutants::human_eval_034::swap_preserves_multiset_helper"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          27.6,
+          27.0,
+          28.1
+        ]
+      },
+      "human-eval-arith-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_100::human_eval_verus_mutants::human_eval_100::make_a_pile"
+        ],
+        "new_failures": [
+          "0#human_eval_100::human_eval_verus_mutants::human_eval_100::make_a_pile"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          28.3,
+          27.9,
+          27.7
+        ]
+      },
+      "human-eval-arith-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::lemma_first_divisor_is_prime"
+        ],
+        "new_failures": [
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::lemma_first_divisor_is_prime"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          28.2,
+          27.6,
+          28.0
+        ]
+      },
+      "human-eval-arith-004": {
+        "dropped": "does not compile",
+        "exits": [
+          101
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "stillborn"
+        ],
+        "wall_s": [
+          2.5
+        ]
+      },
+      "human-eval-arith-005": {
+        "dropped": "does not compile",
+        "exits": [
+          101
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "stillborn"
+        ],
+        "wall_s": [
+          2.3
+        ]
+      },
+      "human-eval-arith-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_126::human_eval_verus_mutants::human_eval_126::lemma_subseq_sorted_are_sorted"
+        ],
+        "new_failures": [
+          "0#human_eval_126::human_eval_verus_mutants::human_eval_126::lemma_subseq_sorted_are_sorted"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          28.0,
+          27.2,
+          28.1
+        ]
+      },
+      "human-eval-compare-001": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          29.4,
+          28.3,
+          28.7
+        ]
+      },
+      "human-eval-compare-002": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          28.1,
+          27.6,
+          29.4
+        ]
+      },
+      "human-eval-compare-003": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          27.9,
+          28.7,
+          28.3
+        ]
+      },
+      "human-eval-compare-004": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          28.3,
+          27.9,
+          28.7
+        ]
+      },
+      "human-eval-compare-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_004::human_eval_verus_mutants::human_eval_004::lemma_sum_bound",
+          "0#human_eval_004::human_eval_verus_mutants::human_eval_004::lemma_sum_ratio_bound"
+        ],
+        "new_failures": [
+          "0#human_eval_004::human_eval_verus_mutants::human_eval_004::lemma_sum_bound",
+          "0#human_eval_004::human_eval_verus_mutants::human_eval_004::lemma_sum_ratio_bound"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          27.7,
+          27.0,
+          27.9
+        ]
+      },
+      "human-eval-compare-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_096::human_eval_verus_mutants::human_eval_096::check_prime"
+        ],
+        "new_failures": [
+          "0#human_eval_096::human_eval_verus_mutants::human_eval_096::check_prime"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          27.6,
+          28.0,
+          27.8
+        ]
+      },
+      "human-eval-constant-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::eval_by_stack_a"
+        ],
+        "new_failures": [
+          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::eval_by_stack_a"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          26.9,
+          27.9,
+          26.8
+        ]
+      },
+      "human-eval-constant-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_092::human_eval_verus_mutants::human_eval_092::any_int"
+        ],
+        "new_failures": [
+          "0#human_eval_092::human_eval_verus_mutants::human_eval_092::any_int"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          28.2,
+          27.4,
+          27.3
+        ]
+      },
+      "human-eval-constant-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::lemma_fold_right_pull_out_hybrid"
+        ],
+        "new_failures": [
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::lemma_fold_right_pull_out_hybrid"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          27.1,
+          26.3,
+          27.3
+        ]
+      },
+      "human-eval-constant-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_110::human_eval_verus_mutants::human_eval_110::exists_even_index"
+        ],
+        "new_failures": [
+          "0#human_eval_110::human_eval_verus_mutants::human_eval_110::exists_even_index"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          27.0,
+          26.8,
+          28.2
+        ]
+      },
+      "human-eval-constant-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_003b::human_eval_verus_mutants::human_eval_003b::below_zero"
+        ],
+        "new_failures": [
+          "0#human_eval_003b::human_eval_verus_mutants::human_eval_003b::below_zero"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          27.3,
+          26.7,
+          26.9
+        ]
+      },
+      "human-eval-constant-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_020::human_eval_verus_mutants::human_eval_020::closest_pair"
+        ],
+        "new_failures": [
+          "0#human_eval_020::human_eval_verus_mutants::human_eval_020::closest_pair"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          25.8,
+          27.8,
+          25.5
+        ]
+      },
+      "human-eval-invariant-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_004::human_eval_verus_mutants::human_eval_004::mean_absolute_deviation"
+        ],
+        "new_failures": [
+          "0#human_eval_004::human_eval_verus_mutants::human_eval_004::mean_absolute_deviation"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          23.9,
+          27.2,
+          23.1
+        ]
+      },
+      "human-eval-invariant-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_010::human_eval_verus_mutants::human_eval_010::make_palindrome"
+        ],
+        "new_failures": [
+          "0#human_eval_010::human_eval_verus_mutants::human_eval_010::make_palindrome"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          22.3,
+          22.1,
+          20.5
+        ]
+      },
+      "human-eval-invariant-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::factorize"
+        ],
+        "new_failures": [
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::factorize"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          23.4,
+          27.0,
+          23.3
+        ]
+      },
+      "human-eval-invariant-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_075::human_eval_verus_mutants::human_eval_075::is_multiply_prime"
+        ],
+        "new_failures": [
+          "0#human_eval_075::human_eval_verus_mutants::human_eval_075::is_multiply_prime"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          23.5,
+          23.3,
+          22.4
+        ]
+      },
+      "human-eval-invariant-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_087::human_eval_verus_mutants::human_eval_087::get_row"
+        ],
+        "new_failures": [
+          "0#human_eval_087::human_eval_verus_mutants::human_eval_087::get_row"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          22.6,
+          22.8,
+          22.5
+        ]
+      },
+      "human-eval-invariant-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_005::human_eval_verus_mutants::human_eval_005::intersperse"
+        ],
+        "new_failures": [
+          "0#human_eval_005::human_eval_verus_mutants::human_eval_005::intersperse"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          20.6,
+          20.7,
+          21.1
+        ]
+      },
+      "human-eval-logic-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_051::human_eval_verus_mutants::human_eval_051::is_vowel"
+        ],
+        "new_failures": [
+          "0#human_eval_051::human_eval_verus_mutants::human_eval_051::is_vowel"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          25.0,
+          27.4,
+          26.4
+        ]
+      },
+      "human-eval-logic-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_129::human_eval_verus_mutants::human_eval_129::min_path"
+        ],
+        "new_failures": [
+          "0#human_eval_129::human_eval_verus_mutants::human_eval_129::min_path"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          100.7,
+          94.8,
+          76.7
+        ]
+      },
+      "human-eval-logic-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_150::human_eval_verus_mutants::human_eval_150::is_prime",
+          "0#human_eval_150::human_eval_verus_mutants::human_eval_150::x_or_y"
+        ],
+        "new_failures": [
+          "0#human_eval_150::human_eval_verus_mutants::human_eval_150::is_prime",
+          "0#human_eval_150::human_eval_verus_mutants::human_eval_150::x_or_y"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          26.2,
+          27.8,
+          26.6
+        ]
+      },
+      "human-eval-logic-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_054::human_eval_verus_mutants::human_eval_054::same_chars"
+        ],
+        "new_failures": [
+          "0#human_eval_054::human_eval_verus_mutants::human_eval_054::same_chars"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          23.1,
+          21.7,
+          21.2
+        ]
+      },
+      "human-eval-logic-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_043::human_eval_verus_mutants::human_eval_043::pairs_sum_to_zero"
+        ],
+        "new_failures": [
+          "0#human_eval_043::human_eval_verus_mutants::human_eval_043::pairs_sum_to_zero"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          23.1,
+          21.6,
+          21.5
+        ]
+      },
+      "human-eval-logic-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_163::human_eval_verus_mutants::human_eval_163::generate_integers"
+        ],
+        "new_failures": [
+          "0#human_eval_163::human_eval_verus_mutants::human_eval_163::generate_integers"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          22.3,
+          23.7,
+          27.3
+        ]
+      },
+      "human-eval-rare-region-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_052::human_eval_verus_mutants::human_eval_052::below_threshold"
+        ],
+        "new_failures": [
+          "0#human_eval_052::human_eval_verus_mutants::human_eval_052::below_threshold"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          21.1,
+          20.8,
+          20.5
+        ]
+      },
+      "human-eval-rare-region-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_163::human_eval_verus_mutants::human_eval_163::min"
+        ],
+        "new_failures": [
+          "0#human_eval_163::human_eval_verus_mutants::human_eval_163::min"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          16.4,
+          16.5,
+          16.7
+        ]
+      },
+      "human-eval-rare-region-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_097::human_eval_verus_mutants::human_eval_097::unit_digit"
+        ],
+        "new_failures": [
+          "0#human_eval_097::human_eval_verus_mutants::human_eval_097::unit_digit"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          20.9,
+          21.0,
+          21.1
+        ]
+      },
+      "human-eval-rare-region-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_127::human_eval_verus_mutants::human_eval_127::min"
+        ],
+        "new_failures": [
+          "0#human_eval_127::human_eval_verus_mutants::human_eval_127::min"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          17.6,
+          17.4,
+          17.7
+        ]
+      },
+      "human-eval-rare-region-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_045::human_eval_verus_mutants::human_eval_045::triangle_area"
+        ],
+        "new_failures": [
+          "0#human_eval_045::human_eval_verus_mutants::human_eval_045::triangle_area"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          20.5,
+          20.2,
+          20.7
+        ]
+      },
+      "human-eval-rare-region-006": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          17.1,
+          17.1,
+          17.2
+        ]
+      },
+      "human-eval-spec-strengthen-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_120::human_eval_verus_mutants::human_eval_120::maximum"
+        ],
+        "new_failures": [
+          "0#human_eval_120::human_eval_verus_mutants::human_eval_120::maximum"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          21.0,
+          21.1,
+          20.9
+        ]
+      },
+      "human-eval-spec-strengthen-002": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          21.9,
+          21.7,
+          21.5
+        ]
+      },
+      "human-eval-spec-strengthen-003": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          21.4,
+          21.4,
+          21.8
+        ]
+      },
+      "human-eval-spec-strengthen-004": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          17.3,
+          17.3,
+          17.2
+        ]
+      },
+      "human-eval-spec-strengthen-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::Expr::lemma_append"
+        ],
+        "new_failures": [
+          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::Expr::lemma_append"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          21.4,
+          21.2,
+          21.0
+        ]
+      },
+      "human-eval-spec-strengthen-006": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          21.6,
+          18.3,
+          19.3
+        ]
+      },
+      "human-eval-spec-weaken-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_010::human_eval_verus_mutants::human_eval_010::palidrome_sandwich_reverse"
+        ],
+        "new_failures": [
+          "0#human_eval_010::human_eval_verus_mutants::human_eval_010::palidrome_sandwich_reverse"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          23.3,
+          23.7,
+          22.7
+        ]
+      },
+      "human-eval-spec-weaken-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_129::human_eval_verus_mutants::human_eval_129::lemma_less_than_step_even",
+          "0#human_eval_129::human_eval_verus_mutants::human_eval_129::min_path"
+        ],
+        "new_failures": [
+          "0#human_eval_129::human_eval_verus_mutants::human_eval_129::lemma_less_than_step_even",
+          "0#human_eval_129::human_eval_verus_mutants::human_eval_129::min_path"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          137.3,
+          133.5,
+          111.1
+        ]
+      },
+      "human-eval-spec-weaken-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_129::human_eval_verus_mutants::human_eval_129::min_path"
+        ],
+        "new_failures": [
+          "0#human_eval_129::human_eval_verus_mutants::human_eval_129::min_path"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          22.2,
+          20.9,
+          20.6
+        ]
+      },
+      "human-eval-spec-weaken-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_110::human_eval_verus_mutants::human_eval_110::exchange"
+        ],
+        "new_failures": [
+          "0#human_eval_110::human_eval_verus_mutants::human_eval_110::exchange"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          21.1,
+          21.5,
+          21.0
+        ]
+      },
+      "human-eval-spec-weaken-005": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          22.9,
+          21.2,
+          21.5
+        ]
+      },
+      "human-eval-spec-weaken-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::lemma_unfold_right_fold_new"
+        ],
+        "new_failures": [
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::lemma_unfold_right_fold_new"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          16.6,
+          16.6,
+          16.5
+        ]
+      },
+      "human-eval-statement-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_074::human_eval_verus_mutants::human_eval_074::checked_total_str_len"
+        ],
+        "new_failures": [
+          "0#human_eval_074::human_eval_verus_mutants::human_eval_074::checked_total_str_len"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          23.5,
+          21.9,
+          21.5
+        ]
+      },
+      "human-eval-statement-002": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          22.1,
+          21.7,
+          23.1
+        ]
+      },
+      "human-eval-statement-003": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          22.1,
+          22.0,
+          23.0
+        ]
+      },
+      "human-eval-statement-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_126::human_eval_verus_mutants::human_eval_126::lemma_big_part_all_big"
+        ],
+        "new_failures": [
+          "0#human_eval_126::human_eval_verus_mutants::human_eval_126::lemma_big_part_all_big"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          23.1,
+          23.2,
+          23.2
+        ]
+      },
+      "human-eval-statement-005": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          21.8,
+          21.9,
+          23.3
+        ]
+      },
+      "human-eval-statement-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#human_eval_085::human_eval_verus_mutants::human_eval_085::add"
+        ],
+        "new_failures": [
+          "0#human_eval_085::human_eval_verus_mutants::human_eval_085::add"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          23.2,
+          27.3,
+          23.2
+        ]
+      }
+    },
+    "runs": 3,
+    "stock_verus": "0.2026.10.18.7d82994",
+    "timeout_secs": 1800
+  },
+  "per_class": 6,
+  "project": "human-eval-verus",
+  "schema_version": 1,
+  "seed": 20261020,
+  "unit": "human-eval-verus/tasks/lib.rs"
+}

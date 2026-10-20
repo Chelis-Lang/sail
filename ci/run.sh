@@ -39,6 +39,9 @@
 #                        daemon, then with the cache on (fill, then warm),
 #                        then the source-engine arm (validated prebuilt
 #                        engine vs plain Verus on verdicts and diagnostics).
+#                        standard and deep (without a selection) then run
+#                        the mutation suite (ADR 0063): two mutants per
+#                        class of human-eval, or every catalogue;
 #                        `pr` limits the fast tier to the guide examples;
 #                        otherwise extra arguments (for example
 #                        `--project anvil`) are passed to sail-conformance
@@ -46,7 +49,8 @@
 #                        own machine (macOS or Linux): clippy and the
 #                        non-solver tests
 #   bench WORKLOAD TIER ROUNDS
-#                        a sail-bench workload (cold|warm|edit)
+#                        a sail-bench workload (cold|warm|edit); `bench
+#                        mutants NAME ROUNDS` runs corpus/mutants/NAME.toml
 #   release              local-only: stage the Linux release tree (binaries
 #                        and the prebuilt engine) in $SAIL_RELEASE_OUT for
 #                        scripts/release.sh
@@ -420,11 +424,28 @@ RS
       ./target/release/sail-conformance engine "${select[@]}" --jobs "$jobs" \
         --engine-build "$SAIL_ENGINE_BUILD" --out "$out/engine"
     fi
+    # Mutation suite (ADR 0063), one round, as a soundness probe: standard
+    # runs two mutants per class of human-eval, deep every catalogue. Any
+    # difference, false verified or failed revert check fails the step.
+    # Skipped with a project selection, which names corpus projects only.
+    if [ "$tier" != fast ] && [ "$#" -eq 0 ]; then
+      cargo build --release --locked -p sail-bench
+      if [ "$tier" = standard ]; then
+        ./target/release/sail-bench mutants run --catalogue corpus/mutants/human-eval.toml \
+          --per-class 2 --rounds 1 --out "$out/mutants/human-eval"
+      else
+        for catalogue in corpus/mutants/*.toml; do
+          name="$(basename "$catalogue" .toml)"
+          ./target/release/sail-bench mutants run --catalogue "$catalogue" \
+            --rounds 1 --out "$out/mutants/$name"
+        done
+      fi
+    fi
     ;;
 
   bench)
     local_only bench "$@"
-    workload="${1:?bench needs a workload: cold|warm|edit}"
+    workload="${1:?bench needs a workload: cold|warm|edit|mutants}"
     tier="${2:-fast}"
     rounds="${3:-3}"
     release_build -p sail-bench
@@ -432,6 +453,10 @@ RS
     case "$workload" in
       cold|warm) ./target/release/sail-bench "$workload" --tier "$tier" --rounds "$rounds" --name "$name" ;;
       edit) ./target/release/sail-bench edit --rounds "$rounds" --name "$name" ;;
+      # `bench mutants NAME ROUNDS`: corpus/mutants/NAME.toml (ADR 0063);
+      # timings only on a native host.
+      mutants) ./target/release/sail-bench mutants run --catalogue "corpus/mutants/$tier.toml" \
+        --rounds "$rounds" --out "${SAIL_BENCH_OUT:-$HOME/sail-mutants}/$tier-$(date -u +%Y%m%dT%H%M%S)" ;;
       *) echo "unknown workload $workload" >&2; exit 2 ;;
     esac
     ;;

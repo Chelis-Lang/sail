@@ -1,0 +1,1767 @@
+{
+  "base_commit": "7e35ed097c4089b9fbda483ea2629a0033f4d874",
+  "candidate_sites": {
+    "arith": 470,
+    "compare": 1276,
+    "constant": 681,
+    "invariant": 125,
+    "logic": 409,
+    "rare-region": 5,
+    "spec-strengthen": 302,
+    "spec-weaken": 200,
+    "statement": 1015
+  },
+  "candidates_sha256": "bdf3ab08f37ded42c62fa496e809fef497b049dc3720a99ae013401afcb2693c",
+  "files": 33,
+  "generated": {
+    "arith": 6,
+    "compare": 6,
+    "constant": 6,
+    "invariant": 6,
+    "logic": 6,
+    "rare-region": 5,
+    "spec-strengthen": 6,
+    "spec-weaken": 6,
+    "statement": 6
+  },
+  "generator": "gen-mutants 1",
+  "mutants": {
+    "ironkv-arith-001": {
+      "class": "arith",
+      "column": 84,
+      "file": "ironsht/src/marshal_ironsht_specific_v.rs",
+      "function": "lemma_is_marshalable_CKeyHashMap",
+      "kind": "body",
+      "line": 290,
+      "mode": "proof"
+    },
+    "ironkv-arith-002": {
+      "class": "arith",
+      "column": 120,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialize",
+      "kind": "body",
+      "line": 170,
+      "mode": "exec"
+    },
+    "ironkv-arith-003": {
+      "class": "arith",
+      "column": 28,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "greatest_lower_bound_index",
+      "kind": "body",
+      "line": 785,
+      "mode": "exec"
+    },
+    "ironkv-arith-004": {
+      "class": "arith",
+      "column": 22,
+      "file": "ironsht/src/verus_extra/set_lib_ext_v.rs",
+      "function": "lemma_to_set_distributes_over_addition",
+      "kind": "body",
+      "line": 183,
+      "mode": "proof"
+    },
+    "ironkv-arith-005": {
+      "class": "arith",
+      "column": 39,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "lemma_serialized_elements_decompose",
+      "kind": "body",
+      "line": 603,
+      "mode": "proof"
+    },
+    "ironkv-arith-006": {
+      "class": "arith",
+      "column": 17,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialized_size",
+      "kind": "body",
+      "line": 761,
+      "mode": "exec"
+    },
+    "ironkv-compare-001": {
+      "class": "compare",
+      "column": 78,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "is_marshalable",
+      "kind": "body",
+      "line": 652,
+      "mode": "spec"
+    },
+    "ironkv-compare-002": {
+      "class": "compare",
+      "column": 22,
+      "file": "ironsht/src/io_t.rs",
+      "function": "send_internal_wrapper",
+      "kind": "spec",
+      "line": 396,
+      "mode": "exec"
+    },
+    "ironkv-compare-003": {
+      "class": "compare",
+      "column": 59,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "lemma_same_views_serialize_the_same",
+      "kind": "body",
+      "line": 1003,
+      "mode": "proof"
+    },
+    "ironkv-compare-004": {
+      "class": "compare",
+      "column": 31,
+      "file": "ironsht/src/verus_extra/set_lib_ext_v.rs",
+      "function": "lemma_flatten_set_seq_spec",
+      "kind": "body",
+      "line": 104,
+      "mode": "proof"
+    },
+    "ironkv-compare-005": {
+      "class": "compare",
+      "column": 45,
+      "file": "ironsht/src/verus_extra/seq_lib_v.rs",
+      "function": "some_differing_index_for_unequal_seqs",
+      "kind": "body",
+      "line": 264,
+      "mode": "proof"
+    },
+    "ironkv-compare-006": {
+      "class": "compare",
+      "column": 27,
+      "file": "ironsht/src/net_sht_v.rs",
+      "function": "outbound_packet_seq_has_correct_srcs",
+      "kind": "body",
+      "line": 325,
+      "mode": "spec"
+    },
+    "ironkv-constant-001": {
+      "class": "constant",
+      "column": 90,
+      "file": "ironsht/src/verus_extra/seq_lib_v.rs",
+      "function": "lemma_seq_fold_left_merge_right_assoc",
+      "kind": "spec",
+      "line": 31,
+      "mode": "proof"
+    },
+    "ironkv-constant-002": {
+      "class": "constant",
+      "column": 22,
+      "file": "ironsht/src/host_protocol_t.rs",
+      "function": "receive_packet_next",
+      "kind": "body",
+      "line": 190,
+      "mode": "exec"
+    },
+    "ironkv-constant-003": {
+      "class": "constant",
+      "column": 28,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "truncate",
+      "kind": "body",
+      "line": 162,
+      "mode": "exec"
+    },
+    "ironkv-constant-004": {
+      "class": "constant",
+      "column": 30,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "greatest_lower_bound_index",
+      "kind": "body",
+      "line": 785,
+      "mode": "exec"
+    },
+    "ironkv-constant-005": {
+      "class": "constant",
+      "column": 121,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialize",
+      "kind": "body",
+      "line": 358,
+      "mode": "exec"
+    },
+    "ironkv-constant-006": {
+      "class": "constant",
+      "column": 16,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "lemma_seqno_in_un_acked_list",
+      "kind": "body",
+      "line": 135,
+      "mode": "proof"
+    },
+    "ironkv-invariant-001": {
+      "class": "invariant",
+      "column": 1,
+      "file": "ironsht/src/single_delivery_model_v.rs",
+      "function": "retransmit_un_acked_packets_for_dst",
+      "kind": "body",
+      "line": 136,
+      "mode": "exec"
+    },
+    "ironkv-invariant-002": {
+      "class": "invariant",
+      "column": 1,
+      "file": "ironsht/src/seq_is_unique_v.rs",
+      "function": "test_unique",
+      "kind": "body",
+      "line": 81,
+      "mode": "exec"
+    },
+    "ironkv-invariant-003": {
+      "class": "invariant",
+      "column": 13,
+      "file": "ironsht/src/single_delivery_model_v.rs",
+      "function": "retransmit_un_acked_packets",
+      "kind": "body",
+      "line": 569,
+      "mode": "exec"
+    },
+    "ironkv-invariant-004": {
+      "class": "invariant",
+      "column": 1,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialize",
+      "kind": "body",
+      "line": 807,
+      "mode": "exec"
+    },
+    "ironkv-invariant-005": {
+      "class": "invariant",
+      "column": 1,
+      "file": "ironsht/src/main_t.rs",
+      "function": "sht_main",
+      "kind": "body",
+      "line": 58,
+      "mode": "exec"
+    },
+    "ironkv-invariant-006": {
+      "class": "invariant",
+      "column": 1,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "truncate",
+      "kind": "body",
+      "line": 181,
+      "mode": "exec"
+    },
+    "ironkv-logic-001": {
+      "class": "logic",
+      "column": 13,
+      "file": "ironsht/src/io_t.rs",
+      "function": "send",
+      "kind": "spec",
+      "line": 403,
+      "mode": "exec"
+    },
+    "ironkv-logic-002": {
+      "class": "logic",
+      "column": 84,
+      "file": "ironsht/src/marshal_ironsht_specific_v.rs",
+      "function": "lemma_serialization_is_not_a_prefix_of",
+      "kind": "body",
+      "line": 211,
+      "mode": "proof"
+    },
+    "ironkv-logic-003": {
+      "class": "logic",
+      "column": 103,
+      "file": "ironsht/src/seq_is_unique_v.rs",
+      "function": "seq_is_unique",
+      "kind": "body",
+      "line": 17,
+      "mode": "spec"
+    },
+    "ironkv-logic-004": {
+      "class": "logic",
+      "column": 47,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "deliver_packet_seq",
+      "kind": "body",
+      "line": 512,
+      "mode": "exec"
+    },
+    "ironkv-logic-005": {
+      "class": "logic",
+      "column": 10,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "greatest_lower_bound_spec",
+      "kind": "body",
+      "line": 748,
+      "mode": "spec"
+    },
+    "ironkv-logic-006": {
+      "class": "logic",
+      "column": 9,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "host_next_receive_packet",
+      "kind": "spec",
+      "line": 666,
+      "mode": "exec"
+    },
+    "ironkv-rare-region-001": {
+      "class": "rare-region",
+      "column": 6,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "insert",
+      "kind": "body",
+      "line": 231,
+      "mode": "exec"
+    },
+    "ironkv-rare-region-002": {
+      "class": "rare-region",
+      "column": 6,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "truncate",
+      "kind": "body",
+      "line": 161,
+      "mode": "exec"
+    },
+    "ironkv-rare-region-003": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "vec_erase",
+      "kind": "body",
+      "line": 424,
+      "mode": "exec"
+    },
+    "ironkv-rare-region-004": {
+      "class": "rare-region",
+      "column": 6,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "erase",
+      "kind": "body",
+      "line": 206,
+      "mode": "exec"
+    },
+    "ironkv-rare-region-005": {
+      "class": "rare-region",
+      "column": 6,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "set",
+      "kind": "body",
+      "line": 155,
+      "mode": "exec"
+    },
+    "ironkv-spec-strengthen-001": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "ironsht/src/net_sht_v.rs",
+      "function": "receive_with_demarshal",
+      "kind": "spec",
+      "line": 176,
+      "mode": "exec"
+    },
+    "ironkv-spec-strengthen-002": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "ironsht/src/hashmap_t.rs",
+      "function": "clone_up_to_view",
+      "kind": "spec",
+      "line": 156,
+      "mode": "exec"
+    },
+    "ironkv-spec-strengthen-003": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "lemma_seqno_in_un_acked_list",
+      "kind": "spec",
+      "line": 130,
+      "mode": "proof"
+    },
+    "ironkv-spec-strengthen-004": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "is_eq",
+      "kind": "spec",
+      "line": 46,
+      "mode": "exec"
+    },
+    "ironkv-spec-strengthen-005": {
+      "class": "spec-strengthen",
+      "column": 1,
+      "file": "ironsht/src/verus_extra/seq_lib_v.rs",
+      "function": "lemma_fold_left_on_equiv_seqs",
+      "kind": "spec",
+      "line": 220,
+      "mode": "proof"
+    },
+    "ironkv-spec-strengthen-006": {
+      "class": "spec-strengthen",
+      "column": 7,
+      "file": "ironsht/src/hashmap_t.rs",
+      "function": "lemma_from_vec",
+      "kind": "spec",
+      "line": 150,
+      "mode": "exec"
+    },
+    "ironkv-spec-weaken-001": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "values_agree",
+      "kind": "spec",
+      "line": 565,
+      "mode": "exec"
+    },
+    "ironkv-spec-weaken-002": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "truncate",
+      "kind": "spec",
+      "line": 154,
+      "mode": "exec"
+    },
+    "ironkv-spec-weaken-003": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "ironsht/src/verus_extra/seq_lib_v.rs",
+      "function": "lemma_fold_left_on_equiv_seqs",
+      "kind": "spec",
+      "line": 217,
+      "mode": "proof"
+    },
+    "ironkv-spec-weaken-004": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "ironsht/src/marshal_ironsht_specific_v.rs",
+      "function": "lemma_is_marshalable_CKeyHashMap",
+      "kind": "spec",
+      "line": 238,
+      "mode": "proof"
+    },
+    "ironkv-spec-weaken-005": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "greatest_lower_bound",
+      "kind": "spec",
+      "line": 853,
+      "mode": "exec"
+    },
+    "ironkv-spec-weaken-006": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "host_next_receive_packet",
+      "kind": "spec",
+      "line": 665,
+      "mode": "exec"
+    },
+    "ironkv-statement-001": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "deliver_packet_seq",
+      "kind": "body",
+      "line": 485,
+      "mode": "exec"
+    },
+    "ironkv-statement-002": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "range_consistent_impl",
+      "kind": "body",
+      "line": 1597,
+      "mode": "exec"
+    },
+    "ironkv-statement-003": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "set",
+      "kind": "body",
+      "line": 1248,
+      "mode": "exec"
+    },
+    "ironkv-statement-004": {
+      "class": "statement",
+      "column": 20,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "host_model_next_set_request",
+      "kind": "body",
+      "line": 1332,
+      "mode": "exec"
+    },
+    "ironkv-statement-005": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialize",
+      "kind": "body",
+      "line": 1258,
+      "mode": "exec"
+    },
+    "ironkv-statement-006": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "deserialize",
+      "kind": "body",
+      "line": 903,
+      "mode": "exec"
+    }
+  },
+  "oracle": {
+    "dropped": {
+      "ironkv-arith-001": "does not compile",
+      "ironkv-arith-004": "does not compile",
+      "ironkv-arith-005": "does not compile"
+    },
+    "finished_unix": 1792502514,
+    "kept": 50,
+    "machine": {
+      "cpus": "32",
+      "host": "x86_64-unknown-linux-gnu",
+      "uname": "Linux 7.0.0-1014-aws x86_64"
+    },
+    "original": {
+      "failing": [],
+      "outcome": "verified",
+      "wall_s": 70.3
+    },
+    "platform": "x86_64-unknown-linux-gnu",
+    "results": {
+      "ironkv-arith-001": {
+        "dropped": "does not compile",
+        "exits": [
+          101
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "stillborn"
+        ],
+        "wall_s": [
+          1.8
+        ]
+      },
+      "ironkv-arith-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_v::ironsht::marshal_v::impl&%0::serialize"
+        ],
+        "new_failures": [
+          "0#marshal_v::ironsht::marshal_v::impl&%0::serialize"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.4,
+          14.1,
+          9.9
+        ]
+      },
+      "ironkv-arith-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.4,
+          12.7,
+          10.7
+        ]
+      },
+      "ironkv-arith-004": {
+        "dropped": "does not compile",
+        "exits": [
+          101
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "stillborn"
+        ],
+        "wall_s": [
+          1.8
+        ]
+      },
+      "ironkv-arith-005": {
+        "dropped": "does not compile",
+        "exits": [
+          101
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "stillborn"
+        ],
+        "wall_s": [
+          2.0
+        ]
+      },
+      "ironkv-arith-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_v::alloc::vec::Vec::serialized_size"
+        ],
+        "new_failures": [
+          "0#marshal_v::alloc::vec::Vec::serialized_size"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          9.5,
+          13.4,
+          9.6
+        ]
+      },
+      "ironkv-compare-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_v::alloc::vec::Vec::_is_marshalable",
+          "0#marshal_v::alloc::vec::Vec::deserialize"
+        ],
+        "new_failures": [
+          "0#marshal_v::alloc::vec::Vec::_is_marshalable",
+          "0#marshal_v::alloc::vec::Vec::deserialize"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.0,
+          13.8,
+          10.3
+        ]
+      },
+      "ironkv-compare-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#io_t::ironsht::io_t::NetClient::send"
+        ],
+        "new_failures": [
+          "0#io_t::ironsht::io_t::NetClient::send"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          9.8,
+          14.1,
+          10.0
+        ]
+      },
+      "ironkv-compare-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_v::alloc::vec::Vec::lemma_same_views_serialize_the_same"
+        ],
+        "new_failures": [
+          "0#marshal_v::alloc::vec::Vec::lemma_same_views_serialize_the_same"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          9.6,
+          13.3,
+          10.7
+        ]
+      },
+      "ironkv-compare-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#verus_extra::set_lib_ext_v::ironsht::verus_extra::set_lib_ext_v::lemma_flatten_set_seq_spec"
+        ],
+        "new_failures": [
+          "0#verus_extra::set_lib_ext_v::ironsht::verus_extra::set_lib_ext_v::lemma_flatten_set_seq_spec"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          14.2,
+          10.2,
+          9.4
+        ]
+      },
+      "ironkv-compare-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#verus_extra::seq_lib_v::ironsht::verus_extra::seq_lib_v::some_differing_index_for_unequal_seqs"
+        ],
+        "new_failures": [
+          "0#verus_extra::seq_lib_v::ironsht::verus_extra::seq_lib_v::some_differing_index_for_unequal_seqs"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          14.1,
+          10.3,
+          11.4
+        ]
+      },
+      "ironkv-compare-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#net_sht_v::ironsht::net_sht_v::send_packet_seq"
+        ],
+        "new_failures": [
+          "0#net_sht_v::ironsht::net_sht_v::send_packet_seq"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.0,
+          12.7,
+          10.1
+        ]
+      },
+      "ironkv-constant-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#verus_extra::seq_lib_v::ironsht::verus_extra::seq_lib_v::lemma_seq_fold_left_merge_right_assoc"
+        ],
+        "new_failures": [
+          "0#verus_extra::seq_lib_v::ironsht::verus_extra::seq_lib_v::lemma_seq_fold_left_merge_right_assoc"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          12.2,
+          10.3,
+          10.0
+        ]
+      },
+      "ironkv-constant-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::host_next_receive_packet",
+          "0#host_impl_v::ironsht::host_impl_v::HostState::receive_packet_next"
+        ],
+        "new_failures": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::host_next_receive_packet",
+          "0#host_impl_v::ironsht::host_impl_v::HostState::receive_packet_next"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          13.5,
+          10.1,
+          14.7
+        ]
+      },
+      "ironkv-constant-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CAckState::truncate"
+        ],
+        "new_failures": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CAckState::truncate"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          12.0,
+          9.7,
+          14.3
+        ]
+      },
+      "ironkv-constant-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          14.0,
+          10.6,
+          11.2
+        ]
+      },
+      "ironkv-constant-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_v::alloc::vec::Vec::serialize"
+        ],
+        "new_failures": [
+          "0#marshal_v::alloc::vec::Vec::serialize"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          14.0,
+          10.0,
+          12.3
+        ]
+      },
+      "ironkv-constant-006": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          11.7,
+          14.1,
+          11.6
+        ]
+      },
+      "ironkv-invariant-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#single_delivery_model_v::ironsht::single_delivery_state_v::CSingleDelivery::retransmit_un_acked_packets_for_dst"
+        ],
+        "new_failures": [
+          "0#single_delivery_model_v::ironsht::single_delivery_state_v::CSingleDelivery::retransmit_un_acked_packets_for_dst"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          11.6,
+          9.5,
+          14.0
+        ]
+      },
+      "ironkv-invariant-002": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          14.5,
+          10.8,
+          14.8
+        ]
+      },
+      "ironkv-invariant-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#single_delivery_model_v::ironsht::single_delivery_state_v::CSingleDelivery::retransmit_un_acked_packets"
+        ],
+        "new_failures": [
+          "0#single_delivery_model_v::ironsht::single_delivery_state_v::CSingleDelivery::retransmit_un_acked_packets"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          13.7,
+          9.8,
+          14.0
+        ]
+      },
+      "ironkv-invariant-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_v::alloc::vec::Vec::serialize"
+        ],
+        "new_failures": [
+          "0#marshal_v::alloc::vec::Vec::serialize"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          9.6,
+          12.9,
+          10.1
+        ]
+      },
+      "ironkv-invariant-005": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          11.3,
+          13.6,
+          11.1
+        ]
+      },
+      "ironkv-invariant-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CAckState::truncate"
+        ],
+        "new_failures": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CAckState::truncate"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          9.7,
+          13.1,
+          9.7
+        ]
+      },
+      "ironkv-logic-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#net_sht_v::ironsht::net_sht_v::send_packet"
+        ],
+        "new_failures": [
+          "0#net_sht_v::ironsht::net_sht_v::send_packet"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.1,
+          13.5,
+          10.8
+        ]
+      },
+      "ironkv-logic-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_ironsht_specific_v::ironsht::hashmap_t::CKeyHashMap::lemma_serialization_is_not_a_prefix_of"
+        ],
+        "new_failures": [
+          "0#marshal_ironsht_specific_v::ironsht::hashmap_t::CKeyHashMap::lemma_serialization_is_not_a_prefix_of"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          11.6,
+          10.5,
+          14.6
+        ]
+      },
+      "ironkv-logic-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#seq_is_unique_v::ironsht::seq_is_unique_v::test_unique"
+        ],
+        "new_failures": [
+          "0#seq_is_unique_v::ironsht::seq_is_unique_v::test_unique"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          11.5,
+          9.4,
+          14.2
+        ]
+      },
+      "ironkv-logic-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::deliver_packet_seq"
+        ],
+        "new_failures": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::deliver_packet_seq"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.4,
+          13.5,
+          9.7
+        ]
+      },
+      "ironkv-logic-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::get_internal",
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::range_consistent_impl",
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::set",
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::get_internal",
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::range_consistent_impl",
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::set",
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.0,
+          12.8,
+          9.8
+        ]
+      },
+      "ironkv-logic-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::host_next_receive_packet",
+          "0#host_impl_v::ironsht::host_impl_v::HostState::receive_packet_next"
+        ],
+        "new_failures": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::host_next_receive_packet",
+          "0#host_impl_v::ironsht::host_impl_v::HostState::receive_packet_next"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.1,
+          13.3,
+          10.4
+        ]
+      },
+      "ironkv-rare-region-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CTombstoneTable::insert"
+        ],
+        "new_failures": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CTombstoneTable::insert"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          11.4,
+          10.3,
+          13.8
+        ]
+      },
+      "ironkv-rare-region-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CAckState::truncate"
+        ],
+        "new_failures": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CAckState::truncate"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          8.6,
+          10.9,
+          8.7
+        ]
+      },
+      "ironkv-rare-region-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::vec_erase"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::vec_erase"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          8.7,
+          11.2,
+          8.8
+        ]
+      },
+      "ironkv-rare-region-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedVec::erase"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedVec::erase"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.0,
+          12.0,
+          10.1
+        ]
+      },
+      "ironkv-rare-region-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedVec::set"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedVec::set"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.4,
+          12.2,
+          10.1
+        ]
+      },
+      "ironkv-spec-strengthen-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::receive_packet_next"
+        ],
+        "new_failures": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::receive_packet_next"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          11.9,
+          10.4,
+          13.8
+        ]
+      },
+      "ironkv-spec-strengthen-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#cmessage_v::ironsht::cmessage_v::CMessage::clone_up_to_view"
+        ],
+        "new_failures": [
+          "0#cmessage_v::ironsht::cmessage_v::CMessage::clone_up_to_view"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          12.4,
+          10.3,
+          10.5
+        ]
+      },
+      "ironkv-spec-strengthen-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#single_delivery_model_v::ironsht::single_delivery_state_v::CSingleDelivery::send_single_cmessage"
+        ],
+        "new_failures": [
+          "0#single_delivery_model_v::ironsht::single_delivery_state_v::CSingleDelivery::send_single_cmessage"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          12.4,
+          10.3,
+          11.0
+        ]
+      },
+      "ironkv-spec-strengthen-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::range_consistent_impl",
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::find_key"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::range_consistent_impl",
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::find_key"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.9,
+          12.0,
+          10.6
+        ]
+      },
+      "ironkv-spec-strengthen-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_v::alloc::vec::Vec::lemma_same_views_serialize_the_same",
+          "0#marshal_v::alloc::vec::Vec::lemma_serialization_is_not_a_prefix_of"
+        ],
+        "new_failures": [
+          "0#marshal_v::alloc::vec::Vec::lemma_same_views_serialize_the_same",
+          "0#marshal_v::alloc::vec::Vec::lemma_serialization_is_not_a_prefix_of"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.0,
+          11.9,
+          11.0
+        ]
+      },
+      "ironkv-spec-strengthen-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_ironsht_specific_v::ironsht::hashmap_t::CKeyHashMap::deserialize"
+        ],
+        "new_failures": [
+          "0#marshal_ironsht_specific_v::ironsht::hashmap_t::CKeyHashMap::deserialize"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          12.2,
+          11.2,
+          14.0
+        ]
+      },
+      "ironkv-spec-weaken-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::values_agree"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::values_agree"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.3,
+          12.5,
+          10.9
+        ]
+      },
+      "ironkv-spec-weaken-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CAckState::truncate"
+        ],
+        "new_failures": [
+          "0#single_delivery_state_v::ironsht::single_delivery_state_v::CAckState::truncate"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          12.7,
+          10.4,
+          10.0
+        ]
+      },
+      "ironkv-spec-weaken-003": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#verus_extra::seq_lib_v::ironsht::verus_extra::seq_lib_v::lemma_fold_left_on_equiv_seqs"
+        ],
+        "new_failures": [
+          "0#verus_extra::seq_lib_v::ironsht::verus_extra::seq_lib_v::lemma_fold_left_on_equiv_seqs"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          12.5,
+          10.2,
+          10.5
+        ]
+      },
+      "ironkv-spec-weaken-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#marshal_ironsht_specific_v::ironsht::marshal_ironsht_specific_v::lemma_is_marshalable_CKeyHashMap"
+        ],
+        "new_failures": [
+          "0#marshal_ironsht_specific_v::ironsht::marshal_ironsht_specific_v::lemma_is_marshalable_CKeyHashMap"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          9.8,
+          13.3,
+          10.5
+        ]
+      },
+      "ironkv-spec-weaken-005": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          9.9,
+          13.4,
+          10.4
+        ]
+      },
+      "ironkv-spec-weaken-006": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::host_next_receive_packet"
+        ],
+        "new_failures": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::host_next_receive_packet"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          12.0,
+          10.4,
+          13.4
+        ]
+      },
+      "ironkv-statement-001": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::deliver_packet_seq"
+        ],
+        "new_failures": [
+          "0#host_impl_v::ironsht::host_impl_v::HostState::deliver_packet_seq"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          10.7,
+          13.7,
+          10.3
+        ]
+      },
+      "ironkv-statement-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::range_consistent_impl"
+        ],
+        "new_failures": [
+          "0#delegation_map_v::ironsht::delegation_map_v::DelegationMap::range_consistent_impl"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          13.7,
+          9.9,
+          14.0
+        ]
+      },
+      "ironkv-statement-003": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          13.7,
+          11.4,
+          13.2
+        ]
+      },
+      "ironkv-statement-004": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          11.0,
+          14.7,
+          10.3
+        ]
+      },
+      "ironkv-statement-005": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          11.4,
+          14.0,
+          10.6
+        ]
+      },
+      "ironkv-statement-006": {
+        "dropped": null,
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "failing": [],
+        "new_failures": [],
+        "outcomes": [
+          "verified",
+          "verified",
+          "verified"
+        ],
+        "wall_s": [
+          11.0,
+          11.3,
+          14.0
+        ]
+      }
+    },
+    "runs": 3,
+    "stock_verus": "0.2026.10.18.7d82994",
+    "timeout_secs": 1800
+  },
+  "per_class": 6,
+  "project": "verified-ironkv",
+  "schema_version": 1,
+  "seed": 20261020,
+  "unit": "verified-ironkv/ironsht"
+}

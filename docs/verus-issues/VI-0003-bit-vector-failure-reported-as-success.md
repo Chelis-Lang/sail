@@ -53,6 +53,11 @@ that failed bit-vector and Singular queries take now adds the function to
 `func_fails`, as the other error paths do, so its timing entry reports
 `"success": false`. Diagnostics and error counts are unchanged.
 
+The resulting difference from stock is an accepted default-mode divergence
+(owner decision 2026-10-20, [divergences](../divergences.md)); the
+conformance comparison recognises exactly this case and counts nothing else
+with it.
+
 Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md) Sail runs the fork for every verification, default mode included. Stock runs remain only as the conformance oracle and under the `SAIL_CARGO_VERUS` development override. Sail's attribution of the spun-off
 bit-vector obligation and its conservative `unknown` policy stay for stock
 runs; they are consistent with the fork's corrected field.

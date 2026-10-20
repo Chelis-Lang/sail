@@ -8,6 +8,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **CapybaraKV: `sail verify` re-verifies the patched vstd after every edit**
+  (#292). It prints one more verification summary than stock and costs
+  about 10 s per edit, so the mutation suite's CapybaraKV edit loop runs at
+  0.63× and every step is `different`; the project crate's results equal
+  stock's. Cause not yet established. See the
+  [mutation-suite record](validation/mutation-suite.md).
+
 - **The original focused Anvil benchmark never reached verification.** All
   18 retained Sail rows used non-JSON `sail verify` with `--verify-module`,
   which intentionally refuses partial verification. The benchmark correction

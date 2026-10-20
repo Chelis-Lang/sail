@@ -54,7 +54,8 @@ pub struct Edit {
     pub file: String,
     /// What the edit does, for the report.
     pub description: String,
-    /// Plain Verus's outcome on the edited file: `verified` or `errors`.
+    /// Plain Verus's outcome on the edited file: `verified` or `errors`
+    /// (`pending` in a generated mutation catalogue before its oracle run).
     pub expected: String,
     /// Text that occurs exactly once in the file.
     pub find: String,
@@ -92,8 +93,13 @@ impl Catalogue {
             if !matches!(e.kind.as_str(), "body" | "spec") {
                 return Err(format!("{}: kind must be `body` or `spec`", e.id));
             }
-            if !matches!(e.expected.as_str(), "verified" | "errors") {
-                return Err(format!("{}: expected must be `verified` or `errors`", e.id));
+            // `pending`: a generated mutant not yet settled by the oracle
+            // (ADR 0063); the workloads refuse to run it.
+            if !matches!(e.expected.as_str(), "verified" | "errors" | "pending") {
+                return Err(format!(
+                    "{}: expected must be `verified`, `errors` or `pending`",
+                    e.id
+                ));
             }
             if e.find.is_empty() || e.find == e.replace {
                 return Err(format!("{}: the edit changes nothing", e.id));

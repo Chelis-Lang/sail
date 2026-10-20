@@ -65,6 +65,12 @@ pub struct Comparison {
     pub rlimit_drift: Vec<(String, u64, u64)>,
     /// Number of functions compared.
     pub functions: usize,
+    /// Accepted divergences (`docs/divergences.md`), one line each; not
+    /// differences. Today only VI-0003: stock reports a function whose
+    /// `by (bit_vector)` assertion failed as `success: true`, Sail's fork as
+    /// `false`, with everything else identical.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub accepted: Vec<String>,
 }
 
 impl Comparison {
@@ -140,11 +146,17 @@ pub fn compare(plain: &RunRecord, sail: &RunRecord) -> Comparison {
     };
     let (p, s) = (index(plain), index(sail));
     c.functions = p.len();
+    // Everything compared so far (exit code, diagnostics, other stdout, each
+    // document's results and details) is identical: only then can a
+    // function's status flip be VI-0003.
+    let rest_identical = c.differences.is_empty();
+    let mut flips = Vec::new();
     for (key, (p_ok, p_rlimit)) in &p {
         match s.get(key) {
             None => c
                 .differences
                 .push(format!("function {} missing from sail run", key.2)),
+            Some((false, _)) if *p_ok => flips.push(key.2.clone()),
             Some((s_ok, _)) if s_ok != p_ok => c.differences.push(format!(
                 "function {}: plain success={p_ok} / sail success={s_ok}",
                 key.2
@@ -159,8 +171,39 @@ pub fn compare(plain: &RunRecord, sail: &RunRecord) -> Comparison {
         c.differences
             .push(format!("function {} missing from plain run", key.2));
     }
+    // VI-0003 (accepted divergence, docs/divergences.md): stock leaves a
+    // function whose only failure is a `by (bit_vector)` assertion at
+    // `success: true`; the fork records it as failed. Accepted only when
+    // nothing else differs, stock failed (non-zero exit), and both sides
+    // report at least as many failed bit-vector assertions as there are
+    // flipped functions. Any other flip stays a difference.
+    let bitvector_failures = plain
+        .stderr
+        .lines()
+        .filter(|l| *l == VI0003_MESSAGE)
+        .count();
+    let vi0003 = rest_identical
+        && c.differences.is_empty()
+        && plain.exit_code != Some(0)
+        && !flips.is_empty()
+        && flips.len() <= bitvector_failures;
+    for f in flips {
+        if vi0003 {
+            c.accepted.push(format!(
+                "function {f}: plain success=true / sail success=false after a failed bit-vector assertion (VI-0003)"
+            ));
+        } else {
+            c.differences.push(format!(
+                "function {f}: plain success=true / sail success=false"
+            ));
+        }
+    }
     c
 }
+
+/// The diagnostic stock and the fork both print for a failed
+/// `by (bit_vector)` assertion.
+const VI0003_MESSAGE: &str = "error: bitvector assertion not satisfied";
 
 /// The verdict for one unit given one or more plain runs and a sail run.
 #[derive(Debug, Clone, Serialize)]
@@ -250,6 +293,41 @@ pub fn classify(plains: &[RunRecord], sail: &RunRecord) -> Classification {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    fn vi0003_run(exit: i32, stderr: &str, f_ok: bool) -> RunRecord {
+        RunRecord {
+            exit_code: Some(exit),
+            stderr: stderr.to_owned(),
+            outputs: vec![doc(&[("f", f_ok, 1), ("g", true, 1)])],
+            stdout_rest: String::new(),
+            wall_ms: 0.0,
+            user_s: None,
+            sys_s: None,
+            max_rss_bytes: None,
+        }
+    }
+
+    #[test]
+    fn accepts_exactly_the_vi0003_divergence() {
+        let bv = "error: bitvector assertion not satisfied\n   --> a.rs:3:5\n\nerror: aborting due to 1 previous error\n";
+        // Stock: success=true despite the failed bit-vector assertion.
+        let c = compare(&vi0003_run(1, bv, true), &vi0003_run(1, bv, false));
+        assert_eq!(c.verdict(), Verdict::Same, "{c:?}");
+        assert_eq!(c.accepted.len(), 1);
+        // No bit-vector failure reported: a real difference.
+        let other = "error: assertion failed\n   --> a.rs:3:5\n\n";
+        let c = compare(&vi0003_run(1, other, true), &vi0003_run(1, other, false));
+        assert_eq!(c.verdict(), Verdict::Different);
+        // Diagnostics differ too: a difference.
+        let c = compare(&vi0003_run(1, bv, true), &vi0003_run(1, other, false));
+        assert_eq!(c.verdict(), Verdict::Different);
+        // Stock passed: a difference.
+        let c = compare(&vi0003_run(0, bv, true), &vi0003_run(0, bv, false));
+        assert_eq!(c.verdict(), Verdict::Different);
+        // The other direction (Sail more permissive) is never accepted.
+        let c = compare(&vi0003_run(1, bv, false), &vi0003_run(1, bv, true));
+        assert_eq!(c.verdict(), Verdict::Different);
+    }
 
     fn doc(fns: &[(&str, bool, u64)]) -> serde_json::Value {
         let breakdown: Vec<_> = fns

@@ -50,6 +50,7 @@ release matrix (`scripts/perf-matrix.py`) has not yet run on the candidate.
 | Small project small edit | Linux | 0.79 s | 1.04 s | — | Overhead to trim (#156) |
 | Vest unchanged rerun | Linux / macOS | 0.19 / 0.22 s | 0.48 / 0.73 s | — | Overhead to trim (#156) |
 | One-module and spec-wide edits, IronKV, CapybaraKV, Anvil, Verismo | Linux | — | — | — | Unmeasured on the current product |
+| Mutation edit loop (ADR 0063; 125 mutants, 3 rounds, source-patched Verus deps) | Linux | 7.8–34.9 s per mutant | 4.1–34.2 s | 0.63× CapybaraKV, 1.12× Vest, 1.49× IronKV, 2.39× human-eval | **Slower** on CapybaraKV (#292, blocker); Vest 1.12× accepted as current; no false verified ([record](validation/mutation-suite.md)) |
 
 Corpus: Vest, Anvil, IronKV, CapybaraKV and Verismo are the real-project
 corpus (`corpus/`). "Small project" is the `sail new` template.
