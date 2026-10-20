@@ -62,7 +62,10 @@ def main():
         print(f'timeout: invalid arguments: {error}', file=sys.stderr)
         return 125
     try:
-        child = subprocess.Popen(command, process_group=0)
+        # Its own process group, so a signal reaches every descendant.
+        # start_new_session, not process_group (Python 3.11), because
+        # stock macOS ships Python 3.9.
+        child = subprocess.Popen(command, start_new_session=True)
     except PermissionError:
         return 126
     except OSError:
