@@ -42,6 +42,8 @@ release bar.
 The [miss-replies record](validation/vstd-miss-replies.md) measures the
 release's shipped vstd solver replies on a shipped-proof miss and breaks down
 what a miss costs.
+The [shipped-miss hashing record](validation/shipped-miss-hashing.md) measures
+refusing the shipped vstd proof on its sysroot shape before hashing.
 [Output failure evidence](e2e-output-evidence.md) describes bounded original
 E2E streams and producer records retained for diagnosis.
 [Managed output ordering](validation/managed-output-order.md) tracks the

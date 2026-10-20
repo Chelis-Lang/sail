@@ -244,6 +244,13 @@ whose only toolchain is `1.99.1` does not by itself qualify the selection from
 a newer default, which needs its own first-use measurement.
 The compiler identity conservatively includes all installed target libraries;
 an extra target therefore produces a different proof key even for a host build.
+The bundle's `manifest.json` also records `sysroot_shape`: the name and size of
+every library that identity hashes, without their contents. A consumer whose
+sysroot has another shape (an extra component such as `rustc-dev`, or a
+resized library) cannot have the proof's identity, so it refuses the proof
+before hashing anything (#286). A matching shape grants nothing; the complete
+identity still decides. A bundle without the field is decided by the identity
+alone.
 The Linux `ci/local.sh release` recipe removes the CI image's bare-metal target
 inside its disposable container before recording. The shared image and its
 conformance prerequisites remain intact. The factory refuses to record unless

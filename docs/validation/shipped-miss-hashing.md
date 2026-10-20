@@ -1,0 +1,90 @@
+# Hashing on a shipped-proof miss (#286)
+
+**Status:** measured; the toolchain-component miss goes from 3.8% slower than
+stock to 0.8% slower (−1.04 s). The bundle hit and the lock-closure miss do
+not regress (−0.29 s and −0.36 s). Admission is unchanged: every refusal the
+new check makes is one the complete identity makes too, and every run's
+output matches main's. The per-unit driver rehash that the
+[miss-replies record](vstd-miss-replies.md) attributed most of the cost to is
+smaller than estimated and is left unchanged (see below).
+
+| Field | Evidence |
+|---|---|
+| Source | Main `2293db1f` (before the shipped solver replies of #287; this change does not touch them) against branch `perf/miss-hashing` (this PR), each staged by `ci/local.sh release` with its own shipped vstd proof (archives sha256 `07f3eda6…` main, `00af742b…` branch). Both proofs have identity `0391f755…`; the branch's manifest also records `sysroot_shape` |
+| Runtime | Fork `f8589ed4`, variant `7d829946…-81186034d2e137a2`, pinned Z3 4.16.0; stock Verus `0.2026.10.18.7d82994` x86-linux |
+| Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, lane `hash1020`. Rustup with default 1.99.0 and pinned 1.99.1 |
+| Toolchains | *Minimal*: 1.99.1 minimal profile plus `rust-src` (676 MB). *Developer*: the same plus `rustc-dev` and `llvm-tools` (1.6 GB) |
+| Arms | Hit: minimal toolchain. Component miss: developer toolchain. Lock miss: minimal toolchain, `cargo update -p proc-macro2 --precise 1.0.106` after `sail new`. Stock runs `cargo verus` on the toolchain of the arm it is compared with (minimal for hit and lock) |
+| Isolation | Fresh `HOME`, `CARGO_HOME` and `SAIL_CACHE_DIR`, own project name and root per run; human output |
+| Scope | Demo `--lib` project, first `verify` after `new` (not timed). Three rounds, arm order rotated per round. Linux only |
+
+## Results
+
+Wall seconds of `verify`: median (min–max) of three rounds. All 24 runs exit
+0; no sample is dropped.
+
+| Arm | Stock | Main | Branch | Branch − main | Branch vs stock |
+|---|---:|---:|---:|---:|---:|
+| Bundle hit (minimal) | 35.42 (35.42–35.62) | 14.32 (13.96–14.52) | 14.03 (13.72–14.07) | −0.29 | 2.52× faster |
+| Component miss (developer) | 35.34 (35.13–35.68) | 36.68 (36.46–36.85) | 35.64 (35.60–35.78) | −1.04 | +0.8% (main +3.8%) |
+| Lock miss (minimal) | 35.42 (35.42–35.62) | 34.67 (34.41–34.68) | 34.31 (34.28–34.33) | −0.36 | −3.1% (main −2.1%) |
+
+`sail new` on the developer toolchain takes 0.08 s instead of 1.12 s (three
+runs each, all equal to two decimals); it writes the same project and, as on
+main, no lock file.
+
+**Output.** After removing the run root, the project name and Cargo's
+`Finished … in` time, every branch run's stdout equals main's in the same
+round and arm, and its stderr equals main's as a set of lines. Against stock,
+stdout is equal; stderr differs only by `note[SAIL3138]` on the miss arms and
+the lock arm's `Compiling proc-macro2` version. All report `2060 verified` and
+`1 verified`.
+
+## What changed
+
+- **Sysroot shape before the identity.** The shipped proof's identity hashes
+  every library in the verifier's sysroot (`shipped::sysroot_identity`):
+  about 640 MB on the minimal toolchain and 1.4 GB on the developer one,
+  sequentially in `sail` before Cargo starts. The bundle manifest now records
+  the name and size of each of those inputs (`sysroot_shape`). Sizes are part
+  of what the identity hashes, so a different shape can never have the
+  recorded identity; such a sysroot is refused before anything is hashed.
+  A matching shape grants nothing, and a bundle without the field is decided
+  by the identity alone. `sail new` uses the same check.
+- **Sysroot hashing on several workers** when the identity is computed (hit
+  and lock arms). The digest is unchanged: both stages above record the same
+  identity.
+- **One runtime read per run.** The shipped identity and instant revert's
+  runtime admission (`retained::selection`, through `Installed::at`) each
+  hashed all runtime files. A run now reads them once and shares the digests
+  between the two (`source_build::RunDigests`); a new run, or another build
+  directory, reads afresh.
+
+## What did not change, and why
+
+An `strace` read census of one component miss on main (in the evidence):
+
+| Reader | Bytes | What |
+|---|---:|---|
+| `sail` (daemon) | 1,947 MB | The pinned Z3, read in full on every solver handshake (#213/#219) |
+| `sail` | 1,428 MB | Sysroot libraries for the shipped identity, now skipped on this miss |
+| Driver proxies | 721 MB | `verus` (4.7 MB) and `rust_verify` (26.5 MB), about 23 times |
+| Driver proxies | 344 MB | Dependency artifacts and instant revert's graph copies |
+
+The runtime is 130 MB on Linux, not 530 MB; the 530 MB the earlier record
+counted is the drivers' repeated reads of the two executables. They come from
+instant revert's native admission (`retained::Plan::compiler_matches`), which
+hashes the actual launcher and compiler before and after each native compile.
+The hit arm reads them too, through the shipped proof's native observation.
+Passing the parent's digest, or checking stat stamps, instead would accept
+compiler bytes that were not read at the point of use. ADR 0050 rules out
+timestamps as content evidence for retention after mapped-write ABA
+counterexamples, so this stays as it is; reducing it needs an owner decision
+on that trust boundary. The daemon's per-handshake solver read is lever 1.3.
+
+## Raw evidence
+
+Native evidence bucket, `experiments/2026-10-20/miss-hashing/miss-hashing-evidence.tgz`,
+SHA-256 `90843d8d556dd66ce0dcc89acbc6896b37621d1b0242e2cc993c51175259cd1a`:
+scripts, `results.tsv`, per-run stdout and stderr, output comparison, read
+census summaries and host/stage identities.
