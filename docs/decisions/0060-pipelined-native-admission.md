@@ -95,6 +95,32 @@ which they miss. A verified target whose graph contains an uncertified input
 fails `established` and is neither retained nor restored. It then compiles
 and verifies normally. Every refusal therefore costs only reuse.
 
+## Prototype measurement
+
+These are native c7i.8xlarge runs in us-east-1 with runtime `9c0ca7e7`, three
+interleaved rounds each, comparing the prototype (`7e0dde85`) with the #256
+branch (`8c318739`) and stock. Values are medians in seconds, with the range.
+
+| Scenario | Stock | #256 | Prototype |
+|---|---:|---:|---:|
+| Demo, first run | 31.88 (31.60–31.97) | 34.36 (34.35–34.50), +7.8% | 33.86 (33.68–33.91), +6.2% |
+| Demo, unchanged rerun | — | 0.215 | 0.217 |
+| Vest A, cold | 72.54 (72.35–73.15) | 75.91 (75.70–76.44), +4.6% | 75.27 (74.91–75.54), +3.8% |
+| Vest B, edit | 40.58 | 25.83 | 25.86 |
+| Vest A, returned | 40.51 | 1.643 | 1.656 |
+| Vest A, unchanged | 0.222 | 0.528 | 0.531 |
+| Vest, comment no-op | 40.44 | 24.74 | 24.69 |
+
+Vest uses the public profile with `-- --rlimit 100`. The default rlimit fails
+`parse_cbor_with_child` in stock and Sail alike
+(VI-0032, added by #257). Every call
+exits 0, and every Sail run's stdout and stderr equal stock's after
+normalization. A fresh demo run certifies the same 29 producer outputs and
+retains the project target in both arms. On the demo, vstd starts about
+0.55 s earlier. In the prototype's first version the extern-name check still
+ran before the compile, and certification stopped after the first pipelined
+dependent. That check now runs after the producers settle.
+
 ## Consequences
 
 - Cargo's metadata pipelining is kept for native units. The wait moves to
@@ -114,3 +140,7 @@ and verifies normally. Every refusal therefore costs only reuse.
   solver, e2e `managed` and `managed-copies` phases, fast and standard
   conformance in every arm, the instant-revert Vest cycle, and paired
   cold/warm timings on Linux and macOS.
+
+Raw evidence: native evidence bucket,
+`experiments/2026-10-20/pipelined-admission/pipe-evidence.tgz`, SHA-256
+`9d043354596540526003ce545e3bb075c7618e154773b7dbb82a4eb143745d77`.
