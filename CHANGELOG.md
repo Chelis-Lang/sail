@@ -30,7 +30,7 @@ semantic versioning once the API is published.
   and `note[SAIL3138]` names it; use `--fwd-verus-args-to roots` to keep
   flags off vstd. Vest at its corpus pin still misses the proof: its vstd
   closure differs from the shipped one (vstd's default features are off, and
-  its lock has `unicode-ident` 1.0.24 rather than 1.0.27).
+  three locked versions differ); its note names the edits that align it.
 
 - Print one `note[SAIL3138]` when a release's preverified vstd proof does not
   apply to a new project, naming the reason, such as a wrapper or loader
