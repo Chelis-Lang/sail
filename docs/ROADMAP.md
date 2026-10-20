@@ -39,7 +39,7 @@ release matrix (`scripts/perf-matrix.py`) has not yet run on the candidate.
 | First use, shipped vstd miss (extra toolchain components) | Linux | 29.4 s | 33.1 s | 0.89× | **Slower** (#232, #236) |
 | Small project cold, bundle miss | Linux | 31.31 s | 33.89 s | 0.92× | **Slower** (#232) |
 | Small project cold | macOS | 16.66 s | 19.86 s | 0.84× | **Slower** (#278) |
-| Vest cold | Linux | 66.59 s | 69.84 s | 0.95× | **Slower**: Vest misses the bundle (lock closure, `--rlimit 100`) |
+| Vest cold | Linux | 66.59 s | 69.84 s | 0.95× | **Slower**: Vest misses the bundle on its vstd closure (default features off, `unicode-ident` 1.0.24; #238). Its `--rlimit 100` is served since ADR 0060 |
 | Vest cold | macOS | 40.16 s | 47.91 s | 0.84× | **Slower** (#278) |
 | Vest edit | Linux | 37.36 s | 23.93 s | 1.56× | Win |
 | Vest revert to verified content | Linux | 37.5 s | 1.43 s | 26× | Win |
@@ -82,8 +82,8 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 | Determinism | Done: Linux 146/146, macOS 320/320 | — |
 | Instant revert qualified | Done: Linux and macOS on `f8589ed4` | — |
 | macOS `main` green | #281 (macOS host gate passes) | Merge |
-| Bundle-miss note | #275 | Merge |
-| Vest-class projects hit the bundle | #276 (closure alignment hint), #268 (raised `--rlimit`, ADR 0060 approved 2026-10-20) | Merge |
+| Bundle-miss note | Done (#275); names forwarded Verus flags too (#268) | — |
+| Vest-class projects hit the bundle | Raised `--rlimit` served (#268, ADR 0060 accepted 2026-10-20; a `--lib` project with `-- --rlimit 100` is 12.6 s against stock's 30.1 s). Vest still misses on its closure | #276 (closure alignment hint); whether to ship an alloc/std proof is an owner question |
 | Cold runs never slower than stock | **Open**: Linux miss path and macOS cold are slower | #278, #232, #236 |
 | Sub-second overhead modest | **Open** | #156 |
 | Realistic edit-loop suite: seeded mutations over Vest, IronKV, CapybaraKV and HumanEval, one daemon across all mutants, plain Verus as oracle | **Open** (#284); the single scripted edit per project is too narrow to back an edit-loop claim | Build, then use as the matrix's edit rows and as a conformance soundness probe |
