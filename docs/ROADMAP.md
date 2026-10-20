@@ -86,7 +86,8 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 | Vest-class projects hit the bundle | #276 (closure alignment hint), #268 (raised `--rlimit`, ADR 0060 approved 2026-10-20) | Merge |
 | Cold runs never slower than stock | **Open**: Linux miss path and macOS cold are slower | #278, #232, #236 |
 | Sub-second overhead modest | **Open** | #156 |
-| Release matrix, Linux and macOS | **Open**: Linux baseline running | `scripts/perf-matrix.py`, every row |
+| Realistic edit-loop suite: seeded mutations over Vest, IronKV, CapybaraKV and HumanEval, one daemon across all mutants, plain Verus as oracle | **Open** (#284); the single scripted edit per project is too narrow to back an edit-loop claim | Build, then use as the matrix's edit rows and as a conformance soundness probe |
+| Release matrix, Linux and macOS | **Open**: Linux baseline running | `scripts/perf-matrix.py`, every row, edit rows from #284 |
 | Deep conformance and `deep-rvt` | Open | On the rc.6 source |
 | Docs from the matrix (`performance.md`, CHANGELOG, `known-issues.md`, README) | Open | After the matrix |
 | rc.6 draft, clean Linux and macOS walkthroughs including Claude Code | Open | `scripts/release.sh` |
