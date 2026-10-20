@@ -70,6 +70,24 @@ the owner's.**
   still gains nothing over the first (ADR 0053). Rust installation is not
   included. This is one consumer host.
 
+- **macOS.** Apple-silicon bundle for runtime `7d829946…-7faa35e5238b9bfc`,
+  recorded by `ci/run.sh release` at `4e4b34f5` on an EC2 mac-m4.metal
+  (us-east-1d, macOS 27.0) in a Rustup home composed like the CI image's
+  (default 1.99.0; pinned 1.99.1 minimal with `rust-src`). Proof identity
+  `cb4f272f…`, bundle manifest `eeb2309b…`. `libvstd.vir` has 0 local and
+  9,627 `/rustc/58cf8f9c…` spans, no bundle member names a home-directory
+  path, and the boundary trace has 25 `native-output-established` records.
+  Three alternating paired rounds, each with a fresh `HOME` and `CARGO_HOME`
+  and freshly unpacked trees, timed stock `cargo +1.99.1 verus verify` and
+  the staged `sail verify` on one five-function `cargo verus new --lib`
+  project (creation untimed); all 30 samples exit 0. Medians: first project
+  17.62 → 10.19 s (1.73×), second new project 16.59 → 9.29 s (1.79×),
+  `git worktree` of the first 16.83 → 9.23 s (1.82×), one added function
+  0.44 → 0.70 s and an unchanged rerun 0.17 → 0.30 s (Sail slower). The
+  byte comparison probes, shapes and admission witnesses were not run on
+  macOS. Evidence: `d17-mac64.tgz` sha256
+  `f0c9acaf94495d1e3ec2e8148b9d651c89a1d5e9e71a48f7040fb8012938baa4`.
+
 Raw evidence: `rq2-evidence.tgz` sha256
 `6daeee5f03f6ef2741fcc51b235091c29f010e5daabca283cee5cdb0c6f15f70`
 (recording, bundle, trace, probe streams, first-use and revert rows); driver
