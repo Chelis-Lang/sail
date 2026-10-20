@@ -606,7 +606,14 @@ mod refresh_tests {
     fn complete_ca_bytes_and_validity_are_checked_before_loopback_reuse() {
         let mut fixture = Fixture::new();
         let ca = fixture.root.join("ca.pem");
-        let pem = include_bytes!("../tests/fixtures/http-ca.pem");
+        // A CA generated for this run; no key is committed and nothing expires.
+        let mut params = rcgen::CertificateParams::new(Vec::<String>::new()).unwrap();
+        params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
+        let generated = params
+            .self_signed(&rcgen::KeyPair::generate().unwrap())
+            .unwrap()
+            .pem();
+        let pem = generated.as_bytes();
         std::fs::write(&ca, pem).unwrap();
         fixture.config.ca_file = Some(ca.clone());
         let timeout = Duration::from_millis(250);
