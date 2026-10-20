@@ -58,6 +58,29 @@ is the owner's.**
 
   Sail's spread is 13.691–14.070 s for the first project. Rust installation
   is not included. This is one consumer host.
+- **macOS.** Apple-silicon bundle for runtime `7d829946…-e9b69a75ea390499`
+  (manifest `67589de3…`), staged by `scripts/release.sh stage` from
+  candidate/r3-runtime `3d8185cd` with PR #271's notices change on an EC2
+  mac-m4.metal (us-east-1d, macOS 27.0), in a fresh Rustup home with default
+  1.99.0 and pinned 1.99.1 minimal with `rust-src`. The 1.99.1 component set
+  was the same before staging, after it, and after the consumer runs below.
+  Proof identity `ca0d4988…`, bundle manifest `67f10f7e…`. `libvstd.vir` has
+  9,627 `/rustc/58cf8f9c…` spans and no local or home path; the boundary
+  trace has 25 `native-output-established` records. A fresh `sail new`
+  project in that home replays the shipped proof (`SAIL3132`, outcome
+  `served`). The probes of the
+  [`64baccbb` record](#verus-7d82994-bundle-on-runtime-64baccbb) ran against
+  this stage in the same home: stdout, exit code (101) and diagnostics are
+  identical to stock in all nine cases, and progress lines match as a set.
+  With `rust-src` the four plain probes replay the shipped proof and the
+  `--expand-errors` probe misses; without it every probe notes `SAIL3137`.
+  The extension impls print the same `verifier.rs:113:17` line as stock in
+  both states. On macOS, `CARGO_HOME` and the project must be under physical
+  paths: under `/tmp` (a symbolic link to `/private/tmp`) native provenance
+  is refused and the proof misses for any bundle. The shapes and admission
+  witnesses were not run on this macOS stage. Evidence:
+  `r3-bundle-probes.tgz` sha256
+  `0370168596f63fecfaaec266bb9631061719ef9bd61efe1147a7b780ac8d2d34`.
 
 Raw evidence: `r3l-evidence.tgz` sha256
 `6594bd503f8fb56725b05628cc9cc11b4758eb1add2b7d8faa823b2b6d89137e`.
@@ -71,6 +94,10 @@ Attempts:
   compiler identity (`bbe3d350…`) matched no minimal toolchain (fixed by
   PR #272). Evidence `run1-1ae17585.tgz` sha256
   `44d97390d748aec7cbaea535378af8f05870438a66c383064c7331aa2257abb8`.
+- `3d8185cd`, 2026-10-20, macOS, FAIL: the same notices-check cause added
+  `rustc-dev`, `llvm-tools` and `rustfmt` to the release home's 1.99.1 (proof
+  identity `99efc080…`); in a minimal home the proof had no plan (no
+  `SAIL3132`). Fixed by PR #271; evidence in `r3-bundle-probes.tgz`.
 
 ## Verus 7d82994 bundle on runtime `64baccbb`
 
