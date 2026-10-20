@@ -8,6 +8,13 @@ fast-tier conformance run.
 
 **Machine:** macOS 26 arm64, Apple M3.
 
+**Source and licence:** `query.smt2` is generated from
+[`examples/imo_1988_6.rs`](https://github.com/verus-lang/verus/blob/426d8b01e7ffb910a36c15e1f870ff985bb61eef/examples/imo_1988_6.rs)
+in the Verus repository at `426d8b01`, which is MIT-licensed
+([Verus LICENSE](https://github.com/verus-lang/verus/blob/426d8b01e7ffb910a36c15e1f870ff985bb61eef/LICENSE),
+Copyright (c) 2021 The Verus Contributors). The file is kept byte for byte
+as Verus emitted it, so the notice is here rather than in its header.
+
 ## What happens
 
 `query.smt2` is the exact byte stream plain Verus sent to one Z3 process
