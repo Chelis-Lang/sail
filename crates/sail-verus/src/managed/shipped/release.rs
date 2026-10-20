@@ -182,6 +182,11 @@ fn expected_files(bundle: &Path, manifest: &Manifest, members: &Files) -> Option
                 return None;
             }
         }
+        // The optional rlimit witness (ADR 0060), when the index binds one.
+        let witness = format!("{prefix}{}", super::RLIMIT_WITNESS);
+        if members.contains_key(&witness) && !expected.insert(witness) {
+            return None;
+        }
     }
     Some(expected)
 }
@@ -335,6 +340,19 @@ impl Admission {
     pub(super) fn read_unit(&self, bundle: &Path, key: &str) -> Option<Vec<u8>> {
         let raw = bytes(&bundle.join("units").join(key).join("unit.json"))?;
         self.unit_matches(bundle, key, &raw).then_some(raw)
+    }
+
+    /// Another file stored beside a unit, read only if the index binds it.
+    pub(super) fn read_unit_file(&self, bundle: &Path, key: &str, name: &str) -> Option<Vec<u8>> {
+        let raw = bytes(&bundle.join("units").join(key).join(name))?;
+        (self.intact(bundle)
+            && self
+                .members
+                .get(&format!("units/{key}/{name}"))
+                .is_some_and(|member| {
+                    member.bytes == raw.len() as u64 && member.sha256 == digest(&raw)
+                }))
+        .then_some(raw)
     }
 
     /// Bind precisely the bytes `try_serve` will deserialize, never a second read.
@@ -504,6 +522,28 @@ mod tests {
                 release: Some(self.admit()?),
             })
         }
+    }
+
+    #[test]
+    fn bound_rlimit_witness_is_admitted_and_read_only_while_bound() -> Result {
+        let mut fixture = Installation::new()?;
+        let name = format!("deps/variant/units/{KEY}/{}", super::super::RLIMIT_WITNESS);
+        // Present but not bound by the index: the whole installation refuses.
+        std::fs::write(fixture.root.join(&name), b"witness")?;
+        assert!(fixture.admit().is_none());
+        fixture.add(&name, b"witness")?;
+        fixture.write_index()?;
+        let admission = fixture.admit().ok_or("bound witness admitted")?;
+        assert_eq!(
+            admission.read_unit_file(&fixture.bundle, KEY, super::super::RLIMIT_WITNESS),
+            Some(b"witness".to_vec())
+        );
+        std::fs::write(fixture.root.join(&name), b"changed")?;
+        assert_eq!(
+            admission.read_unit_file(&fixture.bundle, KEY, super::super::RLIMIT_WITNESS),
+            None
+        );
+        Ok(())
     }
 
     #[test]

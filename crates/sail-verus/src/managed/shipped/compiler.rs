@@ -100,14 +100,27 @@ pub(super) fn publication(
     ))
 }
 
+#[cfg(test)]
 pub(super) fn stored(call: &Call<'_>, unit: &super::Unit) -> bool {
+    stored_for(call, unit, &call.key, None)
+}
+
+/// Whether the unit stored under `key` holds valid compiler reads, with one variable read as
+/// `recorded` (`(name, value)`): a unit served under a raised rlimit was
+/// compiled without it (ADR 0060).
+pub(super) fn stored_for(
+    call: &Call<'_>,
+    unit: &super::Unit,
+    key: &str,
+    recorded: Option<(&str, &str)>,
+) -> bool {
     call.adapter_intact()
         && (call.plan.closure.is_none()
             || unit
                 .compiler_reads
                 .as_ref()
                 .and_then(|reads| reads.mapped(call, true))
-                .is_some_and(|reads| reads.valid(call, &unit.establishing_run)))
+                .is_some_and(|reads| reads.valid_for(call, key, &unit.establishing_run, recorded)))
 }
 
 impl Observation {
@@ -187,7 +200,17 @@ impl Document {
     }
 
     pub(super) fn valid(&self, call: &Call<'_>, establishing_run: &str) -> bool {
-        if !self.header(&call.key, establishing_run) {
+        self.valid_for(call, &call.key, establishing_run, None)
+    }
+
+    fn valid_for(
+        &self,
+        call: &Call<'_>,
+        key: &str,
+        establishing_run: &str,
+        recorded: Option<(&str, &str)>,
+    ) -> bool {
+        if !self.header(key, establishing_run) {
             return false;
         }
         let Some(closure) = &call.plan.closure else {
@@ -200,10 +223,13 @@ impl Document {
                         (path.as_str(), source.checksum.as_str(), source.size)
                     }),
                 )
-                && phase
-                    .tracked_environment
-                    .iter()
-                    .all(|(name, value)| call.vars.get(name) == value.as_ref())
+                && phase.tracked_environment.iter().all(|(name, value)| {
+                    let current = match recorded {
+                        Some((recorded_name, recorded)) if recorded_name == name => Some(recorded),
+                        _ => call.vars.get(name).map(String::as_str),
+                    };
+                    current == value.as_deref()
+                })
         })
     }
 
