@@ -551,7 +551,7 @@ fn bundle_dir(variant: &OsStr) -> Option<PathBuf> {
 /// difference, the exact `cargo update` commands and vstd feature edit that
 /// align it. Sail never applies them itself: they change the user's lock and
 /// manifest, and so what stock Cargo builds too.
-fn closure_miss(metadata: &Value) -> Option<String> {
+pub(crate) fn closure_miss(metadata: &Value) -> Option<String> {
     let difference = admission::closure_difference(metadata)?;
     let list = |items: &[String], last: &str| match items {
         [] => String::new(),
