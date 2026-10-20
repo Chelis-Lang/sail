@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Print one `note[SAIL3138]` when a release's preverified vstd proof does not
+  apply to a new project, naming the reason, such as a wrapper or loader
+  variable, extra toolchain components like `rustc-dev`, or vstd dependency
+  versions that differ from the shipped build (#238, #264). Output is
+  otherwise unchanged, and verification is unaffected.
+
 - Check instant revert's workspace sources and namespace facts on several
   workers, and skip a graph reread that repeated the one just done (#232).
   Public-profile Vest's cold run is 0.48 s shorter (now 4.9% slower than stock)
