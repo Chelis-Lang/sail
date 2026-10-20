@@ -43,7 +43,7 @@ Raw evidence: `r3l-evidence.tgz` sha256
 
 ## Closure-scoped source check (#278)
 
-Branch `perf/cold-retention` `ea5f4d66` (rebased unchanged as `86cbe1be`) narrows the retained source snapshot
+Branch `perf/cold-retention` `ea5f4d66` (rebased unchanged as `0514c265`) narrows the retained source snapshot
 to the selected targets' dependency closure (accepted
 [ADR 0050 amendment](../decisions/0050-retained-proofs-instant-revert.md#amendment-2026-10-20-the-source-snapshot-reads-the-selected-closure-278)).
 Retained keys change, so the protocol was rerun on the same runtimes as the

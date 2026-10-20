@@ -139,7 +139,7 @@ Instant revert stays intact and gets faster. The change is an accepted
 
 | Field | Evidence |
 |---|---|
-| Source | Main `006ee5d0`; branch `perf/cold-retention` `ea5f4d66` (main plus the scoping commit). The branch was then rebased onto main `2293db1f` as `86cbe1be` with the same diff; main's three new commits change a shipped-proof note, a macOS test and docs. That rebase was not re-measured |
+| Source | Main `006ee5d0`; branch `perf/cold-retention` `ea5f4d66` (main plus the scoping commit). The branch was then rebased onto main `e45f9031` as `0514c265` with the same diff. Main by then serves the shipped vstd proof under a raised `--rlimit` (#268) and ships vstd solver replies (#287), which change Vest's absolute cold times; that rebase was not re-measured |
 | Runtime | macOS `7d829946…-e9b69a75ea390499`, Linux `7d829946…-81186034d2e137a2` (fork `f8589ed4`); stock oracle 0.2026.10.18.7d82994, Rust 1.99.1 |
 | Environment | macOS: EC2 mac-m4.metal, us-east-1d, macOS 27.0, idle apart from the cohort. Linux: native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, Linux release trees staged by `ci/run.sh release`, run inside the CI image (`core`) with the verifier toolchain reduced to the README profile |
 | Scope | Demo first run; public-profile Vest cycle (A cold, B edit, A returned, A unchanged), `-p vest_lib -- --rlimit 100` |
