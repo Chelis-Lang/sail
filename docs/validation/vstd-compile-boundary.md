@@ -14,6 +14,60 @@
 | Default regression gates | 7d82994 candidate (`a12beb53`, runtime `9c0ca7e7`): native Linux gate (811 tests), solver, all end-to-end phases plus extra and the PR conformance subset (33/33 same in every arm) pass; full FAST/STANDARD conformance pending. The previous `426d8b0` candidate passed Mac host clippy and 779 tests and full FAST/STANDARD. Earlier `83128ad0` full Linux results retain their original source scope |
 | Selection | Candidate release activation is not yet platform-qualified or selected; v1 remains quarantined |
 
+## Verus 7d82994 bundle on runtime `64baccbb`
+
+Linux x86-64 bundle for runtime `7d829946…-5fcf72e8d6cc0786` (fork
+`64baccbb`, manifest `cd78756b…`), recorded by `ci/local.sh release` at
+`08134b6e` on native EC2 c7i.8xlarge (us-east-1, Ubuntu 24.04, lane `rq2`).
+`08134b6e` differs from `92f7ed6b` only in documentation and the `SAIL3137`
+note's wording. Proof identity `54c15f1d…`, bundle manifest `b7bf2445…`.
+Status: **recorded; diagnostic identity passes on every probe with and
+without `rust-src`; first use and shape witness pass; release selection is
+the owner's.**
+
+- **Paths.** `libvstd.vir` (sha256 `ad5b9b2a…`) has 9,611 `/rustc/58cf8f9c…`
+  standard-library spans, 148,645 `/rustc-dev/` vstd spans and no local
+  `rust-src`, `/opt/rustup` or home path. The other bundle members contain no
+  host path either.
+- **Byte comparison.** The five probes of the
+  [earlier record](#verus-7d82994-bundle-and-standard-library-paths-vi-0031)
+  ran on a user-like host (rustup in `~/.rustup`, default 1.99.0, pinned
+  1.99.1, fresh `CARGO_HOME` and Sail cache), stock `cargo verus verify`
+  against the staged `sail verify`. Stdout, exit codes and diagnostics are
+  identical in every case. The two extension impls print stock's
+  `verifier.rs:113:17` and stock's path:
+
+  | Probe | With `rust-src` | Without |
+  |---|---|---|
+  | `DisplaySpecImpl for &'a S`, `DebugSpecImpl for &'a mut S` | Same, shipped proof served (`SAIL3132`) | Same (`SAIL3137`) |
+  | `external_type_specification` of `PhantomPinned` | Same, served | Same |
+  | vstd lemma, std op, `unwrap` and index preconditions | Same, served | Same |
+  | The same with `--expand-errors` | Same (the bundle misses on the extra flag) | Same |
+
+  The only raw byte difference is the order of Cargo's parallel progress
+  lines on a cold build; they match as a set.
+- **Native shapes.** The recording's boundary trace has 25
+  `native-output-established` records across 14 packages (tuples sha256
+  `bdfc36d2…`); `actual_retained_native_shapes` passes on them.
+- **First use (README path).** Four alternating paired rounds on `rq2`, the
+  protocol of the earlier record. Every Sail first verification replayed the
+  shipped proof (`SAIL3132`); no `SAIL3136` or `SAIL3137`.
+
+  | Median new + verify | Stock | Sail | Speedup |
+  |---|---:|---:|---:|
+  | First project | 31.338 s | 16.244 s | 1.93× |
+  | Second new project, same home | 31.076 s | 15.770 s | 1.97× |
+
+  Sail's spread is 16.230–16.256 s for the first project. The second project
+  still gains nothing over the first (ADR 0053). Rust installation is not
+  included. This is one consumer host.
+
+Raw evidence: `rq2-evidence.tgz` sha256
+`6daeee5f03f6ef2741fcc51b235091c29f010e5daabca283cee5cdb0c6f15f70`
+(recording, bundle, trace, probe streams, first-use and revert rows); driver
+`rq-all.sh` `7c76ac1e…`, log `ae23979e…`, with `bench.py` `b612732f…`,
+`analyze.py` `c1578803…` and `compare.sh` `c613ed9d…`.
+
 ## Verus 7d82994 bundle and standard-library paths (VI-0031)
 
 Linux x86-64 bundle for runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`),

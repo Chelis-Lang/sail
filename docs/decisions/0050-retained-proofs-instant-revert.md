@@ -273,9 +273,9 @@ on x86-64 Linux with one exact normal-runtime manifest, which must equal the
 Linux pin's `manifest_sha256` (a unit test enforces it). The `83128ad0` gates
 below used manifest `a845cd2f…` (fork `e5365c05`). The authority is now
 `cd78756b462127d2551fd35dfc4dd1259a26aeb2501428b5702fa30bcdc96a04` (fork
-`64baccbb` on Verus `7d82994`); its requalification for ordinary Linux public
-alloc/std reuse is pending. The previous authority `f4568e29…` (fork
-`9c0ca7e7`) was requalified
+`64baccbb` on Verus `7d82994`), requalified for ordinary Linux public
+alloc/std reuse ([record](../validation/instant-revert.md#runtime-64baccbb-requalification)).
+The previous authority `f4568e29…` (fork `9c0ca7e7`) was requalified too
 ([record](../validation/instant-revert.md#verus-7d82994-runtime-requalification)). A valid engine with
 another manifest compiles normally and notes `SAIL3136`. It calls existing `Installed::at` with fresh complete artifact reads and binds
 the actual selected launcher and Z3. Config currently has no held fresh
