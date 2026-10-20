@@ -186,12 +186,14 @@ fn collect(
     let Ok(canonical) = path.canonicalize() else {
         return false;
     };
-    if !visited.insert(canonical.clone()) {
-        return true;
-    }
+    // A link is a root even when its target was already collected, so the
+    // snapshot does not depend on the order of its inputs.
     if std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
         roots.push(canonical.clone());
         roots.push(path.to_owned());
+    }
+    if !visited.insert(canonical.clone()) {
+        return true;
     }
     if canonical.is_file() {
         files.push(canonical);
@@ -1205,12 +1207,12 @@ mod tests {
         let Ok(canonical) = path.canonicalize() else {
             return false;
         };
-        if !visited.insert(canonical.clone()) {
-            return true;
-        }
         if std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
             roots.push(canonical.clone());
             roots.push(path.to_owned());
+        }
+        if !visited.insert(canonical.clone()) {
+            return true;
         }
         if canonical.is_file() {
             files.insert(canonical);
@@ -1274,6 +1276,8 @@ mod tests {
         assert_eq!((complete, &found), (reference, &expected));
         assert!(!complete, "a dangling link leaves the walk incomplete");
         assert_eq!(found.0.len(), 5, "{:?}", found.0);
+        // A link back into collected content is still a root of its own.
+        assert!(found.2.contains(&package.join("src/nested/cycle")));
         std::fs::remove_dir_all(root)
     }
 
@@ -1346,6 +1350,57 @@ mod tests {
         let scoped = super::closure_scope(&snapshot, &nested, Some(&only_lib));
         assert!(scoped.roots.contains(&ws.join("lib")));
         assert!(!scoped.roots.contains(&ws));
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn the_order_of_extra_inputs_does_not_change_a_snapshot() {
+        // The runner sorts build-script paths so an unchanged invocation keeps
+        // its snapshot hint; that is only sound if the order never mattered.
+        let root = std::env::temp_dir().join(format!("sail-extras-order-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let ws = root.join("ws");
+        for (path, text) in [
+            ("ws/Cargo.toml", "[package]\nname = \"ws\"\n"),
+            ("ws/src/lib.rs", ""),
+            ("one/build.rs", "fn main() {}"),
+            ("one/data/x", "x"),
+            ("two/build.rs", "fn main() {}"),
+        ] {
+            let file = root.join(path);
+            assert!(
+                file.parent()
+                    .is_some_and(|d| std::fs::create_dir_all(d).is_ok())
+            );
+            assert!(std::fs::write(&file, text).is_ok());
+        }
+        // Alias one input through a link, so first-seen spellings would show.
+        #[cfg(unix)]
+        assert!(std::os::unix::fs::symlink(root.join("one"), root.join("alias")).is_ok());
+        let data = serde_json::json!({
+            "workspace_root": ws,
+            "packages": [{"manifest_path": ws.join("Cargo.toml")}],
+        });
+        let extras = [
+            root.join("two/build.rs"),
+            root.join("alias"),
+            root.join("one/build.rs"),
+            root.join("one"),
+        ];
+        let reference = super::snapshot_metadata_home(&data, &extras, None);
+        assert!(reference.complete);
+        let mut reversed = extras.to_vec();
+        reversed.reverse();
+        let mut sorted = extras.to_vec();
+        sorted.sort();
+        for order in [reversed, sorted] {
+            let snapshot = super::snapshot_metadata_home(&data, &order, None);
+            assert_eq!(snapshot.revision, reference.revision);
+            assert_eq!(snapshot.digests, reference.digests);
+            assert_eq!(snapshot.roots, reference.roots);
+            assert_eq!(snapshot.observation_paths, reference.observation_paths);
+            assert_eq!(snapshot.complete, reference.complete);
+        }
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
 }

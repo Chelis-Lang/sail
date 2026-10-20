@@ -2460,6 +2460,11 @@ pub(crate) fn run_engine_held(
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
     extras.extend(script_roots.clone());
+    // Build-script records keep Cargo's emission order, which varies from run
+    // to run; the snapshot does not depend on it. A sorted list keeps an
+    // unchanged invocation's selection equal to its hint (#156).
+    extras.sort();
+    extras.dedup();
     let selection = super::input::SnapshotHint {
         version: super::input::SNAPSHOT_HINT_VERSION,
         projection: snapshot_projection(&data, &data["sail_source_inputs"]),
@@ -2753,6 +2758,8 @@ pub(crate) fn run_engine_held(
         let (_, mut after_extras, after_coverage) =
             super::build_inputs::stale_after(&paths.build_inputs, &data, &unscheduled);
         after_extras.extend(script_roots.iter().cloned());
+        after_extras.sort();
+        after_extras.dedup();
         let sources = serde_json::to_value(sources).unwrap_or_default();
         // Without metadata in hand, the snapshot is taken while Cargo reads it,
         // from the package list before the run, and kept only if the metadata
