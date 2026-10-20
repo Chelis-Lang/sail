@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Release archives carry `LICENSE` and `THIRD-PARTY-NOTICES`. The notices
+  cover Z3, Sail's Verus with its copies of Rust compiler crates, the crates
+  compiled into the runtime, the shipped vstd proof and `sail`/`sail-z3`, and
+  the Rust standard library. `scripts/third-party-notices.py` generates them
+  from the locks and the pinned fork.
+
 - Move Sail's Verus to upstream 0.2026.10.18.7d82994 (Rust 1.99.1, Z3 4.16.0
   unchanged), with the fork rebased onto it. Install Rust with
   `rustup toolchain install 1.99.1 --profile minimal --component rust-src`.
