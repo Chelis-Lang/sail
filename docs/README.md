@@ -36,6 +36,9 @@ projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
+The [cold first-run record](validation/cold-first-run.md) compares first runs
+with stock, explains where the gap went and states what still exceeds the
+release bar.
 [Output failure evidence](e2e-output-evidence.md) describes bounded original
 E2E streams and producer records retained for diagnosis.
 [Managed output ordering](validation/managed-output-order.md) tracks the

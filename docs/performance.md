@@ -264,6 +264,11 @@ minutes).
 
 ## 5. Cold first run
 
+Current measurement on the 7d82994 runtime (three native rounds, c7i.8xlarge,
+us-east-1; [record](validation/cold-first-run.md)): demo 33.89 s against stock
+31.31 s (+8.2%), and public-profile Vest 74.11 s against 70.73 s (+4.8%). The
+historical figures below predate instant revert's native admission.
+
 The `cold` columns above: a new copy, an empty Sail cache, and every
 dependency compiled and vstd verified. On Linux `sail verify` is 2–3 s slower
 than plain Verus (demo 36.6 s against 35.0 s, vest 80.5 s against 77.9 s);

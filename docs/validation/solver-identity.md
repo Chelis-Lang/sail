@@ -5,7 +5,10 @@ HELLO instead of retaining it under `(path, length, mtime)`. Each handshake
 runs the version command and reads the complete executable bytes, reusing a
 digest only after full fresh-byte equality as described below. A launch,
 version-parse or read error refuses the handshake; the shim's existing fallback
-is unchanged. This removes the demonstrated stale-metadata memo, not every
+is unchanged. Since #232 the comparison reads the file through a 256 KiB buffer
+while the version command runs, with no executable-sized allocation; a
+mismatch still reads and hashes the whole file
+([cold first run](cold-first-run.md)). This removes the demonstrated stale-metadata memo, not every
 possible concurrent executable-mutation race.
 
 On shared macOS arm64, the retained private CLI built from `af339f8a` returned

@@ -366,6 +366,26 @@ fn shutdown_works_after_the_socket_file_is_removed() {
     assert_eq!(on_disk(&disk, &key(1)), Some(reply_for(1)));
 }
 
+#[test]
+fn pipelined_puts_store_every_entry_in_order_across_windows() {
+    let dir = Scratch::new("pipelined");
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    let mut c = r.client();
+    // More than one window of requests, and a connection that stays usable.
+    let n = 300;
+    assert!(
+        c.put_all((0..n).map(|i| (key(i).0, meta("get-model"), reply_for(i))))
+            .is_ok()
+    );
+    for i in 0..n {
+        assert_eq!(c.get(&key(i).0).ok().flatten(), Some(reply_for(i)));
+    }
+    assert!(c.put_all(std::iter::empty()).is_ok());
+    assert_eq!(c.stats().map(|s| s.puts).ok(), Some(u64::from(n)));
+    drop(c);
+    r.stop();
+}
+
 fn put_all_and_get(r: &Running) {
     let mut c = r.client();
     for i in 0..3 {

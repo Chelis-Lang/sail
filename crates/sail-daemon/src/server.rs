@@ -162,13 +162,21 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 // Equal path, length and mtime do not establish equal executable bytes (#213).
-// Identify every handshake afresh; any read or launch failure rejects the
-// handshake so the shim takes its fail-safe path.
+// Identify every handshake afresh from the complete current bytes; any read or
+// launch failure rejects the handshake so the shim takes its fail-safe path.
 fn identify(path: &Path, digests: &DigestMemo) -> Result<Identity, String> {
-    let out = std::process::Command::new(path)
+    let cannot_run = |e: std::io::Error| format!("cannot run {}: {e}", path.display());
+    let version_process = std::process::Command::new(path)
         .arg("--version")
-        .output()
-        .map_err(|e| format!("cannot run {}: {e}", path.display()))?;
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(cannot_run)?;
+    // Compare the current bytes in place while the version command runs:
+    // no executable-sized allocation per handshake.
+    let current = digests.current(path);
+    let out = version_process.wait_with_output().map_err(cannot_run)?;
     let text = String::from_utf8_lossy(&out.stdout);
     let mut words = text.split_whitespace();
     let mut version = None;
@@ -180,11 +188,16 @@ fn identify(path: &Path, digests: &DigestMemo) -> Result<Identity, String> {
     }
     let version =
         version.ok_or_else(|| format!("cannot read a version from {}", path.display()))?;
-    let binary = std::fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let digest = match current {
+        Some(digest) => digest,
+        None => digests.digest(
+            std::fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?,
+        ),
+    };
     Ok(Identity {
         name: "z3".to_owned(),
         version,
-        binary_sha256: hex(&digests.digest(binary)),
+        binary_sha256: hex(&digest),
         platform: SolverIdentity::host_platform(),
         protocol_version: sail_api::protocol::PROTOCOL_VERSION,
     })
