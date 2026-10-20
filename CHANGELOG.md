@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- An unchanged rerun no longer takes its input snapshot twice when Cargo
+  ran build scripts in a different order than last time: the snapshot hint
+  now lists build-script inputs in sorted order (#156). On Vest, the second
+  unchanged rerun after a cold run fell from 0.69 s to 0.57 s.
+
 - Cut fixed overhead on small managed runs (#156). Instant-revert
   retention now skips a target whose last compile cost less than four times
   retention's own checks, which on a one-function project took 1.5 s per
