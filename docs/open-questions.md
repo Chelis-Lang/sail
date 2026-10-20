@@ -434,3 +434,14 @@ planned for releases after 0.1.0. The owner answered all twelve on
     estimated 1.5–3 s per fresh project, but a broken local compiler (for
     example a user's `cc`) would then no longer fail Sail as it fails stock
     Verus (#187). Is that divergence acceptable for exact-match pinned tools?
+36. **A trust root inside the release archive.** Signed vstd solver replies
+    in the archive save 1.4–1.8 s on every shipped-proof miss and bring a
+    toolchain-component miss to stock parity
+    ([record](validation/vstd-miss-replies.md)). ADR 0017 trusts only keys
+    in the user's cache `trust/` directory. ADR 0062 proposes that each
+    release sign its replies with a one-off key, then destroy the secret,
+    and that the daemon trust that key only for the archive's own store.
+    Is a public key bound by the archive's checksum an acceptable trust root
+    for that store? It is the same trust boundary as the shipped `sail`, Z3
+    and vstd proof. The record recommends fixing the managed path's hashing
+    first: it costs about 2.4 s on the same miss and needs no trust decision.
