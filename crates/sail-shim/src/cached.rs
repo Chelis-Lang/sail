@@ -8,11 +8,19 @@
 //! commands already served from cache, and from then on forwards the
 //! solver's output byte for byte. While the solver runs, replies are paired
 //! with their commands and stored in the cache.
+//!
+//! A solver is also started ahead of need when the session opens (ADR
+//! 0061), so its process start and prelude parsing overlap the daemon
+//! handshake and the first lookup. It is fed only commands that produce no
+//! output, in order, so on a miss it has received exactly the bytes the
+//! lazy start would have written, and its stderr is held until it is
+//! adopted. The first served reply discards it; any failure of it falls back
+//! to the lazy start.
 
 use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::path::Path;
-use std::process::{Child, ChildStdin, Command, ExitCode, Stdio};
+use std::process::{Child, ChildStdin, ChildStdout, Command, ExitCode, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
@@ -503,7 +511,6 @@ fn start_solver(
     // disable publication when its silence cannot be established.
     let (stderr, child_stderr) = crate::cached_stderr::Monitor::new()
         .map_or_else(|_| (None, Stdio::inherit()), |(m, io)| (Some(m), io));
-    let client = stderr.as_ref().and(client);
     let mut child = Command::new(solver)
         .args(args)
         .stdin(Stdio::piped())
@@ -516,6 +523,22 @@ fn start_solver(
         let _ = child.wait();
         return None;
     };
+    solve(child, stdin, stdout, stderr, raw, skip, first, client)
+}
+
+/// Hands a started solver its output side, queues `first` and writes `raw`.
+#[allow(clippy::too_many_arguments, reason = "the parts of one started solver")]
+fn solve(
+    child: Child,
+    stdin: ChildStdin,
+    stdout: ChildStdout,
+    stderr: Option<crate::cached_stderr::Monitor>,
+    raw: &[u8],
+    skip: u64,
+    first: Expect,
+    client: Option<Client>,
+) -> Option<Solving> {
+    let client = stderr.as_ref().and(client);
     let (tx, rx) = std::sync::mpsc::channel();
     // Queued before the solver sees any input, so it precedes its reply.
     let _ = tx.send(first);
@@ -535,6 +558,180 @@ fn start_solver(
     };
     s.write(raw);
     Some(s)
+}
+
+/// A solver started when the session opened, before any lookup (ADR 0061).
+/// A feeder thread writes the output-free commands it is given, so the
+/// session never waits on the solver's reading; nothing reads its stdout
+/// and its stderr is held until [`Prestart::adopt`].
+struct Prestart {
+    child: Child,
+    feed: Sender<Vec<u8>>,
+    feeder: JoinHandle<Option<ChildStdin>>,
+    stdout: ChildStdout,
+    stderr: crate::cached_stderr::Monitor,
+    /// Bytes of the session input queued for the solver so far.
+    fed: usize,
+}
+
+impl Prestart {
+    /// `None` on any failure; the session then starts its solver lazily.
+    fn start(solver: &Path, args: &[std::ffi::OsString]) -> Option<Self> {
+        // Without a held stderr the solver could not be discarded silently.
+        let (stderr, child_stderr) = crate::cached_stderr::Monitor::held().ok()?;
+        let mut child = Command::new(solver)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(child_stderr)
+            .spawn()
+            .ok()?;
+        let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
+            discard(child);
+            return None;
+        };
+        let (feed, chunks) = std::sync::mpsc::channel::<Vec<u8>>();
+        let Ok(feeder) = std::thread::Builder::new()
+            .name("sail-z3-feed".to_owned())
+            .spawn(move || {
+                let mut stdin = stdin;
+                for chunk in chunks {
+                    stdin.write_all(&chunk).ok()?;
+                }
+                Some(stdin)
+            })
+        else {
+            discard(child);
+            return None;
+        };
+        Some(Self {
+            child,
+            feed,
+            feeder,
+            stdout,
+            stderr,
+            fed: 0,
+        })
+    }
+
+    /// Queues `raw[self.fed..end]`, the input through an output-free command.
+    /// `false` if the feeder has stopped: the solver must then be discarded.
+    fn feed(&mut self, raw: &[u8], end: usize) -> bool {
+        let Some(bytes) = raw.get(self.fed..end) else {
+            return false;
+        };
+        if self.feed.send(bytes.to_vec()).is_err() {
+            return false;
+        }
+        self.fed = end;
+        true
+    }
+
+    /// Makes this the session's solver for the miss whose expectation is
+    /// `first`, writing the rest of `raw`. Nothing has been served yet, so
+    /// every reply is forwarded. `Err` returns the client if the solver
+    /// could not take every byte, and the caller then starts one lazily.
+    fn adopt(
+        self,
+        raw: &[u8],
+        first: Expect,
+        client: Option<Client>,
+    ) -> Result<Option<Solving>, (Expect, Option<Client>)> {
+        let Self {
+            child,
+            feed,
+            feeder,
+            stdout,
+            mut stderr,
+            fed,
+        } = self;
+        // Release stderr before waiting on the feeder: a solver blocked on a
+        // full stderr socket would otherwise never finish reading its input.
+        if stderr.release().is_err() {
+            drop(feed);
+            discard(child);
+            return Err((first, client));
+        }
+        drop(feed);
+        let Some(stdin) = feeder.join().ok().flatten() else {
+            discard(child);
+            return Err((first, client));
+        };
+        let rest = raw.get(fed..).unwrap_or_default();
+        Ok(solve(
+            child,
+            stdin,
+            stdout,
+            Some(stderr),
+            rest,
+            0,
+            first,
+            client,
+        ))
+    }
+}
+
+/// Discards the prestarted solver, if any.
+fn drop_prestart(prestart: &mut Option<Prestart>) {
+    if let Some(p) = prestart.take() {
+        discard(p.child);
+    }
+}
+
+/// The cached reply to an output-producing command, if one may be served.
+/// A daemon error drops the connection for the rest of the session.
+fn lookup(
+    expects: Output,
+    client: &mut Option<Client>,
+    prefix: &PrefixHasher,
+    command: &[u8],
+) -> Option<Vec<u8>> {
+    if expects != Output::One {
+        return None;
+    }
+    let Ok(found) = client.as_mut()?.get_with_effort(&prefix.key().0) else {
+        *client = None;
+        return None;
+    };
+    found
+        .filter(|(r, e)| !unservable(command, r, e.as_ref()))
+        .map(|(r, _)| r)
+}
+
+/// Queues input through an output-free command for the prestarted solver,
+/// discarding it if it can take no more.
+fn feed_prestart(prestart: &mut Option<Prestart>, raw: &[u8], end: usize) {
+    if let Some(p) = prestart
+        && !p.feed(raw, end)
+        && let Some(p) = prestart.take()
+    {
+        discard(p.child);
+    }
+}
+
+/// The solver for a miss: the prestarted one, which has had exactly the
+/// output-free input so far, or else one started with the whole input.
+fn start_for_miss(
+    prestart: Option<Prestart>,
+    (solver, args): (&Path, &[std::ffi::OsString]),
+    (raw, served): (&[u8], u64),
+    first: Expect,
+    client: Option<Client>,
+) -> Option<Solving> {
+    let adopted = match prestart {
+        Some(p) => p.adopt(raw, first, client),
+        None => Err((first, client)),
+    };
+    match adopted {
+        Ok(started) => started,
+        Err((first, client)) => start_solver(solver, args, raw, served, first, client),
+    }
+}
+
+/// Ends a solver whose output no one will read.
+fn discard(mut child: Child) {
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 impl Solving {
@@ -638,7 +835,12 @@ fn observe(
 /// reused, so a late reply can never be read as the answer to a later
 /// request.
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
-    let (client, mut prefix) = connect(socket, solver)?;
+    // Started first, so its launch overlaps the handshake below.
+    let mut prestart = Prestart::start(solver, args);
+    let Some((client, mut prefix)) = connect(socket, solver) else {
+        drop_prestart(&mut prestart);
+        return None;
+    };
     let mut session = Session::new();
     let mut splitter = CommandSplitter::new();
     let mut raw: Vec<u8> = Vec::new();
@@ -675,6 +877,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 {
                     s.write(&chunk);
                 }
+                drop_prestart(&mut prestart);
                 return finish_run(
                     solving,
                     client,
@@ -691,29 +894,32 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 }
                 continue;
             }
-            let hit = match expects {
-                Output::None => continue,
-                Output::One => match client.as_mut().map(|c| c.get_with_effort(&prefix.key().0)) {
-                    Some(Ok(found)) => found
-                        .filter(|(r, e)| !unservable(&item.bytes, r, e.as_ref()))
-                        .map(|(r, _)| r),
-                    Some(Err(_)) => {
-                        client = None;
-                        None
-                    }
-                    None => None,
-                },
-                Output::Unknown => None,
-            };
+            if expects == Output::None {
+                let end =
+                    usize::try_from(item.offset + item.bytes.len() as u64).unwrap_or(usize::MAX);
+                feed_prestart(&mut prestart, &raw, end);
+                continue;
+            }
+            let hit = lookup(expects, &mut client, &prefix, &item.bytes);
             if let Some(reply) = hit {
-                if !write_out(&reply) {
+                let delivered = write_out(&reply);
+                // A served reply would be answered again by a solver that
+                // was never told of it: the prestarted one is now unusable.
+                drop_prestart(&mut prestart);
+                if !delivered {
                     return Some(ExitCode::SUCCESS);
                 }
                 served += 1;
                 continue;
             }
             // Miss: start the solver with the whole input so far.
-            let Some(s) = start_solver(solver, args, &raw, served, expect, client.take()) else {
+            let Some(s) = start_for_miss(
+                prestart.take(),
+                (solver, args),
+                (&raw, served),
+                expect,
+                client.take(),
+            ) else {
                 return Some(ExitCode::from(1));
             };
             solving = Some(s);
@@ -725,6 +931,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             s.write(&chunk);
         }
     }
+    drop_prestart(&mut prestart);
     // At the end of input while serving, incomplete trailing input goes to
     // the solver, which decides what it means.
     finish_run(

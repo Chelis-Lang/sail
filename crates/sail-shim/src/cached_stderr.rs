@@ -65,6 +65,16 @@ pub(super) struct Monitor {
 
 impl Monitor {
     pub(super) fn new() -> std::io::Result<(Self, Stdio)> {
+        let (mut monitor, stdio) = Self::held()?;
+        monitor.release()?;
+        Ok((monitor, stdio))
+    }
+
+    /// A monitor that forwards nothing until [`Self::release`]: a solver
+    /// started ahead of need may be discarded, and then its stderr must never
+    /// reach the client. Unforwarded bytes stay in the socket; dropping the
+    /// monitor discards them.
+    pub(super) fn held() -> std::io::Result<(Self, Stdio)> {
         let (reader, writer) = UnixStream::pair()?;
         reader.set_nonblocking(true)?;
         let state = Arc::new(Mutex::new(State {
@@ -73,9 +83,23 @@ impl Monitor {
             eof: false,
             failed: false,
         }));
-        let stop = Arc::new(AtomicBool::new(false));
-        let shared = Arc::clone(&state);
-        let stopping = Arc::clone(&stop);
+        Ok((
+            Self {
+                state,
+                stop: Arc::new(AtomicBool::new(false)),
+                thread: None,
+            },
+            Stdio::from(OwnedFd::from(writer)),
+        ))
+    }
+
+    /// Starts forwarding, once.
+    pub(super) fn release(&mut self) -> std::io::Result<()> {
+        if self.thread.is_some() {
+            return Ok(());
+        }
+        let shared = Arc::clone(&self.state);
+        let stopping = Arc::clone(&self.stop);
         let thread = std::thread::Builder::new()
             .name("sail-z3-stderr".to_owned())
             .spawn(move || {
@@ -92,14 +116,8 @@ impl Monitor {
                     std::thread::park_timeout(Duration::from_millis(10));
                 }
             })?;
-        Ok((
-            Self {
-                state,
-                stop,
-                thread: Some(thread),
-            },
-            Stdio::from(OwnedFd::from(writer)),
-        ))
+        self.thread = Some(thread);
+        Ok(())
     }
 
     /// Drain bytes already written before forwarding the next stdout chunk.
