@@ -39,8 +39,9 @@ executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs
 with stock, explains where the gap went and states what still exceeds the
 release bar.
-The [miss-replies record](validation/vstd-miss-replies.md) measures seeded
-vstd solver replies on a shipped-proof miss and breaks down what a miss costs.
+The [miss-replies record](validation/vstd-miss-replies.md) measures the
+release's shipped vstd solver replies on a shipped-proof miss and breaks down
+what a miss costs.
 [Output failure evidence](e2e-output-evidence.md) describes bounded original
 E2E streams and producer records retained for diagnosis.
 [Managed output ordering](validation/managed-output-order.md) tracks the
