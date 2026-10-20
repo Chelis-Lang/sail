@@ -1,14 +1,15 @@
 # Seeded vstd solver replies on a shipped-bundle miss (#236)
 
-**Status:** experiment complete; nothing built. Seeding a fresh machine's
-solver cache with signed vstd replies serves every vstd solver query (20,208
-of 20,208) and saves 1.4–1.8 s on a cold run that misses the shipped vstd
-proof. That brings a toolchain-component miss from 3.3–4.4% slower than stock
-to parity, but not faster. Most of a miss is Verus's own vstd frontend and
-query generation, which no reply cache touches. The rest of the gap to stock
-is Sail's own hashing on the managed path. Shipping the replies needs the
-owner's trust decision ([ADR 0062](../decisions/0062-shipped-vstd-solver-replies.md),
-proposed; [question 36](../open-questions.md)).
+**Status:** built and measured on Linux ([ADR 0062](../decisions/0062-shipped-vstd-solver-replies.md),
+accepted by the owner on 2026-10-20). A release archive now ships
+signed vstd solver replies. On a shipped-proof miss they answer every vstd
+query (20,197 of the run's 20,208 lookups; the other 11 are the user crate's
+own queries). The cost of a toolchain-component miss falls from 6.5% slower
+than stock to stock parity (+0.4%), and lock-file and loader-variable misses
+run 7–10% faster than stock. A bundle hit is unchanged. The
+[implementation section](#shipped-replies-implementation) has the numbers.
+macOS is not measured. The earlier experiment below, with a seeded team
+store, motivated the change.
 
 | Field | Evidence |
 |---|---|
@@ -145,6 +146,52 @@ traces; the code path responsible has not been located.
   would plausibly bring the component miss to about the loader-miss time
   (34.1 s against stock's 34.1–36.2 s). That is an estimate, not a
   measurement. It needs no new trust decision (#286, roadmap lever 1.15).
+
+## Shipped replies (implementation)
+
+| Field | Evidence |
+|---|---|
+| Source | Branch `perf/vstd-miss-replies` `c44fe25b` (main `2293db1f` plus ADR 0062), staged by `ci/local.sh release` as `0.1.0-replies`. The factory's `bundle-replies` step packed 20,208 entries (18.4 MB, key `bc2f6595896e5213`, pack SHA-256 `6b9690ae…`, `release-files.json` `3cafc9bb…`) |
+| Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, lane `missr2`, with the same host install and isolation as above. `release-shipped.py verify` passes on the stage |
+| Arms | Stock; developer-toolchain miss with the tier on and with `SAIL_BUNDLED_REPLIES=0`; lock-file miss (`proc-macro2` downgraded, minimal toolchain); loader-variable run (`LD_LIBRARY_PATH`, minimal toolchain); bundle hit (minimal toolchain), with the tier on and off |
+
+Wall seconds of `verify`: median (min–max), three rotated rounds (four for
+the hit pair).
+
+| Arm | Wall | vs stock |
+|---|---:|---:|
+| Stock (developer toolchain) | 29.82 (29.76–29.85) | |
+| Sail, component miss, replies off | 31.76 (31.48–31.81) | +6.5% |
+| Sail, component miss, **replies on** | **29.93 (29.88–30.19)** | +0.4% |
+| Sail, lock-file miss | 27.76 (27.71–27.81) | −6.9% |
+| Sail, loader-variable run (`SAIL3112`) | 26.95 (26.95–27.06) | −9.6% |
+| Sail, bundle hit, replies on | 12.63 (12.61–12.66) | 2.36× faster |
+| Sail, bundle hit, replies off | 12.63 (12.51–12.64) | |
+
+- **Hit rate.** Every miss arm made 20,197 bundled lookups, all hits, none
+  rejected. Its 11 puts are the user crate's own queries. With the tier
+  off, the same run made 20,208 puts. The factory's recording uses the
+  boundary research path and another project and Cargo home. Its vstd
+  queries are still byte-identical to a consumer's, with no normalization.
+- **Identity.** Every run's stdout equals stock's, and its stderr equals
+  stock's as a set of lines. The only differences are Sail's expected notes
+  (`SAIL3138` naming why the proof was not used, `SAIL3112`) and the lock
+  arm's `proc-macro2 v1.0.106` line.
+- **Bundle hit.** On, 12.63 s; off, 12.63 s. The pack loads on a helper
+  thread when the daemon starts, and it stays resident (about 18 MB).
+- **Tests.**
+  - `crates/sail-daemon/tests/bundled.rs`, five tests against a real
+    daemon. Each of these is a counted miss: a modified entry, an entry for
+    another solver, an entry signed by another key, and a misfiled entry.
+    Each of these turns the tier off: a key outside the index, a pack
+    outside the index, a swapped key, a modified or malformed pack, and a
+    missing index. Release and team trust never cross.
+  - `sail_cache::pack` unit tests.
+  - `crates/sail-cli/tests/shared_ops.rs`, for `bundle-replies`.
+  - `scripts/test-release-shipped.py`, for the factory and `verify`.
+
+Evidence: `experiments/2026-10-20/miss-replies/replies-impl-evidence.tgz`,
+SHA-256 `d5d6c863a8a2f075899355c6a1a1381137b08c68788ced91d5035af215dee5b4`.
 
 ## Raw evidence
 
