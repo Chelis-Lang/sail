@@ -1254,7 +1254,7 @@ pub(crate) fn forwarded_miss(cargo_args: &[String]) -> Option<String> {
     match split_rlimit(&verus) {
         Some((kept, n)) if kept.is_empty() => (n < DEFAULT_RLIMIT).then(|| {
             format!(
-                "`{}` reaches vstd and is below the default rlimit {DEFAULT_RLIMIT} the proof was recorded at, so it could change vstd's results ({keep_off} it off vstd)",
+                "`{}` reaches vstd and is below the default rlimit {DEFAULT_RLIMIT} the proof was recorded at, which can change vstd's results ({keep_off} it off vstd)",
                 verus.join(" ")
             )
         }),
