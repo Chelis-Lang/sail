@@ -9,6 +9,11 @@ semantic versioning once the API is published.
   approved bit-vector exception to its reproduced function and location,
   enforce one daemon per round and identify retained restores from receipts.
   Both oracle and runner support release registry setup through `--vstd-lock`.
+- Avoid injecting a duplicate progress option into the pinned dispatch-order
+  regression. Require the exact test identity and full original source hash.
+- Preserve independently verified dependencies after a requested proof fails
+  when platform-disabled build scripts have no current Cargo execution unit.
+  Keep conservative cleanup for unknown plans and reject unexpected units.
 - Add the neutral-to-Verus lowering library for a supported complete scalar
   source file. It emits an immutable owned shadow and exact source/requirement
   mapping, preserves checked arithmetic definedness, and reuses the managed
