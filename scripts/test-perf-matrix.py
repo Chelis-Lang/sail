@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import re
 import tempfile
+import subprocess
+import sys
 import unittest
 
 SPEC = importlib.util.spec_from_file_location("perf_matrix", Path(__file__).with_name("perf-matrix.py"))
@@ -340,12 +342,23 @@ class MutationRows(unittest.TestCase):
         self.assertEqual(code, 1)
 
 
+class IsolatedCommands(unittest.TestCase):
+    def test_registry_helper_runs_in_isolated_python(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "Cargo.lock"
+            lock.write_text('[[package]]\nname = "vstd"\nversion = "1.2.3"\n')
+            output = subprocess.check_output([sys.executable, "-I", str(pm.HERE / "perf-matrix.py"),
+                                              "vstd-versions", str(lock)], cwd=directory, text=True)
+        self.assertEqual(output.strip(), "vstd=1.2.3")
+
+
 class SmallSequence(unittest.TestCase):
     def test_runs_every_scenario_and_matches_stock(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             tools = d / "tools"; tools.mkdir()
             body = TOOL.replace("TEMPLATE)", repr(TEMPLATE) + ")")
+            body = body.replace("args = sys.argv[1:]", f"assert os.environ.get('RUSTUP_TOOLCHAIN') == {pm.pinned_toolchain()!r}\nargs = sys.argv[1:]")
             for name in ("cargo", "sail"):
                 (tools / name).write_text(body); (tools / name).chmod(0o755)
             install = d / "install"; (install / "bin").mkdir(parents=True)

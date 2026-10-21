@@ -112,7 +112,7 @@ in the S3 evidence bucket, SHA-256
 `7e475df2d3efa0ae4cd10000c818e482affe6b77aed6bd45529d33fc4a813c61`.
 The registry preparation and obligation-count comparison are unchanged
 since the source used for those conformance runs. The final report changes
-pass a fresh Linux workspace gate and 22 behavioral Python tests; the Mac
+pass a fresh Linux workspace gate and 23 behavioral Python tests; the Mac
 host gate passes 849 tests, with 37 skipped and Clippy clean.
 
 The installed-release matrix and version-2 mutation measurements remain
