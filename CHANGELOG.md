@@ -9,6 +9,12 @@ semantic versioning once the API is published.
   approved bit-vector exception to its reproduced function and location,
   enforce one daemon per round and identify retained restores from receipts.
   Both oracle and runner support release registry setup through `--vstd-lock`.
+- Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
+  comparisons across stock Verus, the plain fork, and Sail.
+  Support fresh verification, unchanged runs, proof edits, and daemon restarts.
+  Record source and runtime identities, cache states, raw samples, and separate
+  scenario results. Invalid scenarios retain evidence without timing aggregates.
+  Include a generic proof workload and behavioral checks in CI.
 - Accept human coauthor email addresses ending in `.ai` in the authorship guard,
   while continuing to reject tool identities and generated-attribution markers.
 
