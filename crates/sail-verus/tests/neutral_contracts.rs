@@ -1,0 +1,226 @@
+//! Source admission, arithmetic definedness and actual native lowering oracles.
+use sail_verus::contracts::lower;
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+const ADD_ONE: &str = include_str!("fixtures/neutral-contracts/add_one.rs");
+const SHORT_CIRCUIT: &str = include_str!("fixtures/neutral-contracts/short_circuit.rs");
+const NEGATED: &str = include_str!("fixtures/neutral-contracts/negated_overflow.rs");
+const OLD: &str = include_str!("fixtures/neutral-contracts/old_overflow.rs");
+const SIGNED: &str = include_str!("fixtures/neutral-contracts/signed_min.rs");
+const WALLET: &str = include_str!("fixtures/neutral-contracts/wallet.rs");
+
+mod runtime_add_one {
+    include!("fixtures/neutral-contracts/add_one.rs");
+}
+mod runtime_short {
+    include!("fixtures/neutral-contracts/short_circuit.rs");
+}
+mod runtime_negated {
+    include!("fixtures/neutral-contracts/negated_overflow.rs");
+}
+mod runtime_old {
+    include!("fixtures/neutral-contracts/old_overflow.rs");
+}
+mod runtime_signed {
+    include!("fixtures/neutral-contracts/signed_min.rs");
+}
+mod runtime_wallet {
+    include!("fixtures/neutral-contracts/wallet.rs");
+}
+
+#[test]
+fn identical_source_lowers_identically_and_binds_actual_requirement() -> TestResult {
+    let first = lower(ADD_ONE, "neutral")?;
+    assert_eq!(first, lower(ADD_ONE, "neutral")?);
+    assert_eq!(first.manifest.bindings.len(), 1);
+    assert_eq!(first.manifest.bindings[0].requirement_id, "ADD-ONE");
+    assert_eq!(
+        first.manifest.bindings[0].lowered_function,
+        "neutral::candidate"
+    );
+    assert_ne!(
+        first.manifest.original_sha256,
+        first.manifest.lowered_sha256
+    );
+    let changed = lower(&ADD_ONE.replace("input + 1\n", "input\n"), "neutral")?;
+    assert_ne!(
+        first.manifest.original_sha256,
+        changed.manifest.original_sha256
+    );
+    assert_ne!(
+        first.manifest.lowered_sha256,
+        changed.manifest.lowered_sha256
+    );
+    assert_eq!(first.manifest.bindings, changed.manifest.bindings);
+    Ok(())
+}
+
+#[test]
+fn checked_predicate_definedness_survives_negation_and_old_does_not_narrow_entry() -> TestResult {
+    let negated = lower(NEGATED, "neutral")?;
+    assert!(negated.source.contains("__sail_defined_overflowing"));
+    let old = lower(OLD, "neutral")?;
+    assert!(!old.source.contains("requires"));
+    assert!(old.source.contains("assert"));
+    let wallet = lower(WALLET, "neutral")?;
+    assert!(wallet.source.contains("old (self)"));
+    assert_eq!(wallet.manifest.bindings.len(), 2);
+    Ok(())
+}
+
+#[test]
+fn runtime_of_the_exact_lowered_fixtures_matches_bounded_expectations() {
+    for input in 0..100u8 {
+        assert_eq!(runtime_add_one::candidate(input), input + 1);
+        assert!(runtime_add_one::next_value(input, input + 1));
+    }
+    for input in u8::MIN..=u8::MAX {
+        assert_eq!(runtime_short::candidate(input), input);
+    }
+    for input in i8::MIN..=i8::MAX {
+        assert_eq!(runtime_signed::candidate(input), input);
+    }
+    assert!(std::panic::catch_unwind(runtime_negated::candidate).is_err());
+    assert!(std::panic::catch_unwind(|| runtime_negated::overflowing(255)).is_err());
+    assert!(std::panic::catch_unwind(|| runtime_old::candidate(255)).is_err());
+    for balance in 0..8u64 {
+        for amount in 0..=balance {
+            let mut wallet = runtime_wallet::Wallet::new(balance);
+            assert_eq!(wallet.withdraw(amount), balance - amount);
+            assert_eq!(wallet.calls, 1);
+        }
+    }
+}
+
+#[test]
+fn whole_source_refuses_hidden_resolution_effects_and_unsupported_arithmetic() {
+    for prefix in [
+        "trait Hidden {}",
+        "type Alias = u64;",
+        "const HIDDEN:u64=0;",
+        "use other::thing;",
+        "mod external;",
+        "fn helper() {}",
+        "impl core::ops::Deref for Hidden {}",
+    ] {
+        assert!(
+            lower(&format!("{prefix}\n{SHORT_CIRCUIT}"), "neutral").is_err(),
+            "{prefix}"
+        );
+    }
+    for predicate in [
+        "#[derive(Clone,Copy)] struct Hidden { value: Custom }",
+        "#[derive(Clone,Copy)] struct Hidden { value: u64 } impl core::ops::Deref for Hidden {}",
+    ] {
+        assert!(lower(&format!("{predicate}\n{SHORT_CIRCUIT}"), "neutral").is_err());
+    }
+    let division = "#[sail_contracts::satisfies(\"R\")] #[sail_contracts::ensures(|ret| ret / 2 > 0)] fn f(x:i8)->i8{x}";
+    assert!(lower(division, "neutral").is_err());
+    let integer = "#[sail_contracts::satisfies(\"R\")] #[sail_contracts::ensures(|ret| true)] fn f(x: Int)->Int{x}";
+    assert!(lower(integer, "neutral").is_err());
+}
+
+#[test]
+#[ignore = "requires actual pinned fork and stock runtimes; run explicitly in native acceptance"]
+fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
+    use std::process::Command;
+    let pins = sail_verus::toolchain::Pins::embedded()?;
+    let fork = sail_verus::engine::Installed::locate_verified(&sail_verus::cache_dir()?, &pins)?;
+    let stock = sail_verus::toolchain::Installed::locate_release(pins)?;
+    let root = oracle_directory()?;
+    for (label, source, expected) in [
+        ("add-one", ADD_ONE, true),
+        ("short-circuit", SHORT_CIRCUIT, true),
+        ("signed-min", SIGNED, true),
+        ("wallet", WALLET, true),
+        ("negated-overflow", NEGATED, false),
+        ("old-overflow", OLD, false),
+    ] {
+        let lowered = lower(source, "neutral")?;
+        let path = root.join(format!("{label}.rs"));
+        std::fs::write(&path, &lowered.source)?;
+        std::fs::write(
+            root.join(format!("{label}.mapping.json")),
+            serde_json::to_vec_pretty(&lowered.manifest)?,
+        )?;
+        let mut observed = Vec::new();
+        for (backend, executable) in [("fork", &fork.verus), ("stock", &stock.verus)] {
+            let output = Command::new(executable)
+                .env(
+                    "VERUS_Z3_PATH",
+                    std::env::var_os("SAIL_TEST_Z3")
+                        .map_or_else(|| stock.z3.clone(), std::path::PathBuf::from),
+                )
+                .arg(&path)
+                .args([
+                    "--crate-type",
+                    "lib",
+                    "--crate-name",
+                    "neutral",
+                    "--output-json",
+                    "--time",
+                    "--no-report-long-running",
+                ])
+                .output()?;
+            std::fs::write(
+                root.join(format!("{label}.{backend}.stdout")),
+                &output.stdout,
+            )?;
+            std::fs::write(
+                root.join(format!("{label}.{backend}.stderr")),
+                &output.stderr,
+            )?;
+            assert_eq!(
+                output.status.success(),
+                expected,
+                "{label}/{backend}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let document = serde_json::Deserializer::from_slice(&output.stdout)
+                .into_iter::<serde_json::Value>()
+                .next()
+                .ok_or("no actual verifier JSON document")??;
+            let result = document
+                .get("verification-results")
+                .ok_or("missing actual verification result")?
+                .clone();
+            assert_eq!(
+                result
+                    .get("encountered-vir-error")
+                    .and_then(serde_json::Value::as_bool),
+                Some(false),
+                "{label}/{backend}: source/compiler error is not a property refutation"
+            );
+            assert_eq!(
+                result.get("success").and_then(serde_json::Value::as_bool),
+                Some(expected)
+            );
+            observed.push(result);
+        }
+        assert_eq!(
+            observed[0], observed[1],
+            "{label}: fork and stock verdict/count mismatch"
+        );
+    }
+    Ok(())
+}
+
+fn oracle_directory() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    if let Some(path) = std::env::var_os("SAIL_NEUTRAL_ORACLE_OUT") {
+        let path = std::path::PathBuf::from(path);
+        std::fs::create_dir(&path)?;
+        return Ok(path);
+    }
+    for suffix in 0..1000 {
+        let path = std::env::temp_dir().join(format!(
+            "sail-neutral-oracle-{}-{suffix}",
+            std::process::id()
+        ));
+        match std::fs::create_dir(&path) {
+            Ok(()) => return Ok(path),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Err("cannot allocate a fresh native oracle evidence directory".into())
+}

@@ -42,3 +42,21 @@ does not claim quantified, trait, generic or arbitrary-effect support. A later
 multi-property slice must isolate proof failures before attributing mutation
 kills to individual requirements. Runtime fixtures and actual backend
 conformance are separate acceptance gates.
+
+## First Verus lowering implementation
+
+The new `sail-verus::contracts` module consumes the shared IR, admits the entire
+single-file source closure and emits a content-bound immutable shadow. No
+existing managed or performance implementation changes. The owned runner reuses
+the actual managed backend with forced attribution and validates its original
+mapping before and after execution. Whole-source admission rejects unannotated
+effects, trait implementations, aliases and non-scalar fields, including hidden
+autodereferencing. The API and shim do not depend on this backend.
+
+Checked specification expressions carry a separate value and definedness.
+Short-circuit branches guard their own definedness; negation cannot turn an
+overflow into success. Eager old-value definedness is an entry assertion under
+the original requires, not a stronger precondition. Division, remainder and
+executable neutral `Int` remain unsupported until separately qualified.
+The [lowering interface](../spec/neutral-verus-lowering.md) separates ordinary
+runtime/source fixtures from actual native fork/stock acceptance.
