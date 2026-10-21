@@ -58,7 +58,7 @@ existing job-output seal, the original submission's exact source hash, crate
 identity, and the returned manifest. Retained contract metadata is never
 reconstructed from source positions or legacy function tiers. The public
 baseline adds optional typed contract evidence. A neutral baseline independently
-retains the original source submission and worker bytes outside job pruning,
+retains the original source submission and exact worker stdout/stderr bytes outside job pruning,
 with exact SHA-256 seals checked on every read. Its public metadata and historical
 backend projection must agree with that original evidence. Ordinary baseline
 encoding and behavior are unchanged.

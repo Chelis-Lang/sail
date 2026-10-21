@@ -190,6 +190,11 @@ pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
         || state
             .root
             .join("baselines")
+            .join(format!("{name}.contracts-stderr"))
+            .exists()
+        || state
+            .root
+            .join("baselines")
             .join(format!("{name}.contracts-seal"))
             .exists()
         || state

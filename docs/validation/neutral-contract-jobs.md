@@ -42,6 +42,19 @@ process-group cancellation. A real shell control with a reaped leader and a
 remaining descendant proves both deadline and cancellation release inherited
 output pipes. These injected checks do not establish a backend proof.
 
+## Final-source hardening
+
+The subsequent source seals neutral job stderr at worker completion and retains
+its exact bytes and hash with each independent baseline. Tampering before save
+or after original-job pruning is an explicit integrity error. The compiled
+service acceptance checks exact diagnostic bytes after pruning and verifies
+that changing them refuses readback. Diagnostic text establishes no proof.
+
+| Source | Gate scope | Result |
+|---|---|---|
+| `72e433c2` | Full native gate, pinned solver, macOS host | Passed: 927 native tests, 39 solver tests and 916 Mac tests |
+| `72e433c2` | Complete e2e sequence | Continued unchanged to its boundary before the stderr hardening; no final-source claim |
+
 ## Limits
 
 The proof is conditional on the declared preconditions and the qualified scalar

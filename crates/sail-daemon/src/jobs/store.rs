@@ -28,6 +28,8 @@ pub(super) struct Stored {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct Projection {
     stdout_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    stderr_sha256: Option<String>,
     workspace: String,
     context_sha256: String,
     input_revision: String,
@@ -37,11 +39,19 @@ impl Projection {
     pub(super) fn validated(bytes: &[u8], project: &sail_api::project::ProjectResult) -> Self {
         Self {
             stdout_sha256: stdout_digest(bytes),
+            stderr_sha256: None,
             workspace: project.workspace.clone(),
             context_sha256: project.context_sha256.clone(),
             input_revision: project.input_revision.clone(),
             currentness: project.currentness,
         }
+    }
+    pub(super) fn with_stderr(mut self, bytes: &[u8]) -> Self {
+        self.stderr_sha256 = Some(stdout_digest(bytes));
+        self
+    }
+    pub(super) fn matches_stderr(&self, bytes: &[u8]) -> bool {
+        self.stderr_sha256.as_ref() == Some(&stdout_digest(bytes))
     }
 }
 fn stdout_digest(bytes: &[u8]) -> String {
