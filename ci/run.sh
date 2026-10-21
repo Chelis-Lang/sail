@@ -140,6 +140,7 @@ case "$step" in
     python3 ci/test-timeout.py
     python3 scripts/check-links.py
     python3 scripts/test-perf-matrix.py
+    python3 scripts/test-bench-cargo-compare.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
