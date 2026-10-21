@@ -142,6 +142,33 @@ fn raw_spelling_cannot_shadow_reserved_translation_or_scalar_names() {
 }
 
 #[test]
+fn passive_attributes_cannot_hide_compile_time_macro_expansion() {
+    for attribute in [
+        "#[doc = include_str!(\"unreviewed.txt\")]",
+        "#[must_use = concat!(\"unreviewed\")]",
+        "#[inline(unresolved!())]",
+    ] {
+        assert!(lower(&format!("{attribute}\n{SHORT_CIRCUIT}"), "neutral").is_err());
+    }
+    assert!(
+        lower(
+            &format!("#![doc = include_str!(\"unreviewed.txt\")]\n{SHORT_CIRCUIT}"),
+            "neutral"
+        )
+        .is_err()
+    );
+    assert!(
+        lower(
+            &format!("#[doc = \"plain documentation\"]\n#[inline(always)]\n{SHORT_CIRCUIT}"),
+            "neutral"
+        )
+        .is_ok()
+    );
+    let parameter = "#[sail_contracts::satisfies(\"P\")] #[sail_contracts::ensures(|ret| ret == input)] fn f(#[cfg(any())] input: u8)->u8 { input }";
+    assert!(lower(parameter, "neutral").is_err());
+}
+
+#[test]
 fn invalid_rust_literals_cannot_turn_into_vacuous_verified_preconditions() {
     for condition in [
         "input == 256",
