@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add private neutral contract libraries for requirement-tagged scalar Rust
+  functions and methods. Runtime preconditions, postconditions, old scalar
+  snapshots and checked specification arithmetic remain enabled in release
+  builds. Shared source admission rechecks actual predicate definitions;
+  runtime checks do not constitute an SMT proof.
+
 - Measure real-project unchanged reruns without adding source comments. Mark
   older comment-edit rows separately and show nonzero verification exit codes.
 - Preserve Cargo metadata pipelining while observing native compiles for

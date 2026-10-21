@@ -1,0 +1,15 @@
+[package]
+name = "sail-contracts"
+description = "Neutral Rust contracts and checked scalar runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+sail-contracts-macros.workspace = true
+
+[lints]
+workspace = true

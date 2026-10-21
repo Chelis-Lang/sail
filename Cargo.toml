@@ -12,6 +12,12 @@ repository = "https://github.com/Chelis-Lang/sail"
 license = "MIT"
 
 [workspace.dependencies]
+proc-macro2 = { version = "=1.0.107", features = ["span-locations"] }
+quote = "=1.0.47"
+syn = { version = "=2.0.119", features = ["full", "fold", "visit", "extra-traits"] }
+sail-contracts-ir = { path = "crates/sail-contracts-ir" }
+sail-contracts-macros = { path = "crates/sail-contracts-macros" }
+sail-contracts = { path = "crates/sail-contracts" }
 # Safe bounded Unix RPC connection setup, including listener backlog pressure.
 socket2 = "=0.6.5"
 inotify = { version = "=0.11.5", default-features = false }
