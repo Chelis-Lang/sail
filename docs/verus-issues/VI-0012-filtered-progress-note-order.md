@@ -113,3 +113,20 @@ did; the test makes 20 such runs (stock passes all of them about 1% of the
 time).
 
 Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md) Sail runs the fork for every verification, default mode included. Stock runs remain only as the conformance oracle and under the `SAIL_CARGO_VERUS` development override. No stock-mode workaround is adopted, as before.
+
+## Anvil control on 7d82994, 2026-10-21
+
+A standard cache-warm comparison stopped at Anvil because stock printed
+`proof::predicate` before `proof::liveness::terminate`, while the fork used
+queue order. Fresh stock-only Anvil controls using identical source, command
+and runtime reproduce further note reorderings (including `composition` /
+`helper_lemmas` and `spec` / `terminate`). Verdicts, errors and exits agree.
+The original strict failure remains failed. The owner subsequently accepted
+only progress-note ordering with exact text and counts; ADR 0064 records the
+comparison contract. No general diagnostic or verdict exception is introduced.
+
+The bounded native control and its ten stock transcripts are retained at
+`experiments/2026-10-21/anvil-progress-control.tgz` in the S3 evidence bucket,
+SHA-256 `bd169963334e1e6b871c6a4513157bfdd53dac3bb83b1513801c86ff60862656`.
+The controller stopped after the first conformance arm; the subsequently
+started cache-fill arm was interrupted and is not a completed qualification.
