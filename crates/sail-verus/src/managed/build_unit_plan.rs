@@ -98,7 +98,10 @@ impl Plan {
             let mut finished = 0;
             for line in std::fs::read_to_string(stdout).ok()?.lines() {
                 let Ok(value) = serde_json::from_str::<Value>(line) else {
-                    if line.trim_start().starts_with('{') {
+                    // Verus's forwarded pretty JSON also uses this stream.
+                    // Only a malformed Cargo event with its reason tag is an
+                    // interrupted scheduling report, not a verifier fragment.
+                    if line.trim_start().starts_with('{') && line.contains("\"reason\":") {
                         return None;
                     }
                     continue;
@@ -213,6 +216,16 @@ mod tests {
         std::fs::write(&stdout, finished)?;
         std::fs::write(&artifacts, original)?;
         assert!(plan.confirms(&stdout, &artifacts));
+        std::fs::write(
+            &stdout,
+            format!("{{\n  \"verification-results\": {{}}\n}}\n{finished}"),
+        )?;
+        assert!(plan.confirms(&stdout, &artifacts));
+        std::fs::write(
+            &stdout,
+            format!("{{\"reason\":\"compiler-message\",\n{finished}"),
+        )?;
+        assert!(!plan.confirms(&stdout, &artifacts));
         std::fs::write(
             &stdout,
             format!(
