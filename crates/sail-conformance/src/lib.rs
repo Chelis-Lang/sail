@@ -5,7 +5,8 @@
 //! checks, for one unit:
 //! - the exit code;
 //! - stderr (diagnostics), under ADR 0042: complete diagnostic messages as
-//!   a multiset with exact bytes, everything else byte for byte and in order
+//!   a multiset with exact bytes; only standalone verification-progress block
+//!   ordering has the owner-approved ADR 0064 exception; all other text stays exact
 //!   ([`diagnostics`]);
 //! - the number of `--output-json` documents (one per verified crate) and,
 //!   document by document in stdout order, Verus's `verification-results`
@@ -65,6 +66,9 @@ pub struct Comparison {
     pub rlimit_drift: Vec<(String, u64, u64)>,
     /// Number of functions compared.
     pub functions: usize,
+    /// Owner-approved differences, reported separately from failures.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub accepted: Vec<String>,
 }
 
 impl Comparison {
@@ -104,8 +108,14 @@ pub fn compare(plain: &RunRecord, sail: &RunRecord) -> Comparison {
             plain.exit_code, sail.exit_code
         ));
     }
-    c.differences
-        .extend(diagnostics::compare_stderr(&plain.stderr, &sail.stderr));
+    let stderr_differences = diagnostics::compare_stderr(&plain.stderr, &sail.stderr);
+    if stderr_differences.is_empty()
+        && diagnostics::progress_order_differs(&plain.stderr, &sail.stderr)
+    {
+        c.accepted
+            .push("verification-progress note order (VI-0012, ADR 0064)".to_owned());
+    }
+    c.differences.extend(stderr_differences);
     if plain.stdout_rest != sail.stdout_rest {
         c.differences.push(format!(
             "non-JSON stdout differs at {}",
@@ -307,6 +317,27 @@ mod tests {
             classify(std::slice::from_ref(&a), &a).verdict,
             Verdict::Same
         );
+    }
+
+    #[test]
+    fn accepted_progress_order_does_not_accept_changed_verdicts_or_exit_codes() {
+        let a = record(
+            0,
+            "note: verifying module a\n\nnote: verifying module b\n\n",
+            &[("m::f", false, 10)],
+        );
+        let mut b = record(
+            0,
+            "note: verifying module b\n\nnote: verifying module a\n\n",
+            &[("m::f", false, 10)],
+        );
+        let comparison = compare(&a, &b);
+        assert_eq!(comparison.verdict(), Verdict::Same);
+        assert_eq!(comparison.accepted.len(), 1);
+        b.exit_code = Some(1);
+        assert_eq!(compare(&a, &b).verdict(), Verdict::Different);
+        let promoted = record(0, &b.stderr, &[("m::f", true, 10)]);
+        assert_eq!(compare(&a, &promoted).verdict(), Verdict::Different);
     }
 
     #[test]

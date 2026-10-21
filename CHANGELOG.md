@@ -7,6 +7,9 @@ semantic versioning once the API is published.
 
 - Measure real-project unchanged reruns without adding source comments. Mark
   older comment-edit rows separately and show nonzero verification exit codes.
+- Compare standalone verification-progress notes independent of worker order,
+  with exact text and counts, under the owner-approved VI-0012 exception.
+  Verdicts, errors and other output retain their exact checks.
 
 - Measure real-project release scenarios with the shipped registry vstd
   versions, record bundle reuse and dependency adjustments, and report slower
