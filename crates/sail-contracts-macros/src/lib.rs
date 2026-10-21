@@ -53,10 +53,10 @@ fn runtime(function: ContractFunction) -> syn::Result<proc_macro2::TokenStream> 
                 },
                 syn::FnArg::Receiver(_) => None,
             });
-        let body = item.block;
+        let body = item.block.stmts;
         item.block = Box::new(syn::parse2(quote! {{
             #(let _ = ::sail_contracts::__private::snapshot(&#inputs);)*
-            #body
+            #(#body)*
         }})?);
         let mut entry = item.clone();
         entry.attrs.clear();
