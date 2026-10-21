@@ -19,7 +19,9 @@ WB_L='(^|[^[:alnum:]])'
 WB_R='([^[:alnum:]]|$)'
 MSG_PATTERNS=(
   "(co-)?authored-by:.*(${TOKENS})"
-  "(co-)?authored-by:.*${WB_L}(ai|llm|assistant)${WB_R}"
+  # Generic role words describe the author name, not a human mailbox TLD.
+  # Branded tool/provider names below still inspect the entire trailer.
+  "(co-)?authored-by:[^<]*${WB_L}(ai|llm|assistant)${WB_R}"
   "generated (with|by).*((${TOKENS})|gpt-[0-9]+|${WB_L}ai${WB_R}|${WB_L}llm${WB_R})"
   "noreply@(anthropic|openai)\\.com"
 )

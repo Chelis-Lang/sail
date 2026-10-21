@@ -8,6 +8,8 @@ semantic versioning once the API is published.
 - Preserve Cargo metadata pipelining while observing native compiles for
   shipped vstd. Require producer certificates after compilation, before
   publishing any reusable result.
+- Accept human coauthor email addresses ending in `.ai` in the authorship guard,
+  while continuing to reject tool identities and generated-attribution markers.
 
 - Reuse saved proofs when unchanged build scripts declare supported
   `CARGO_FEATURE_*` or `CARGO_CFG_*` inputs (#298). Use exact Cargo units
