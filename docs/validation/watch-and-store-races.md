@@ -3,8 +3,8 @@
 **Status:** the final composed Mac gate passes 905 tests (37 skipped,
 Clippy clean), including the directory-symlink regression. Native Linux
 workspace gate, solver, full e2e plus extra and PR conformance pass on the
-final watch correction before the symlink-only addition; its fresh workspace
-gate is running. The exact store correction passes full fast and standard
+final watch correction; the symlink-only addition also passes its fresh
+workspace gate. The exact store correction passes full fast and standard
 conformance: 147 and 159 Same respectively in all four arms, zero Different
 or infrastructure errors. No solver, key or proof-admission rule changes.
 
