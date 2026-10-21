@@ -135,9 +135,12 @@ fn output_matches(record: &BuildInput, target: &Path) -> bool {
 fn matches(record: &BuildInput, data: &Value, target: &Path) -> bool {
     record.covered
         && output_matches(record, target)
-        && record.env.keys().all(|key| allowed_environment(key))
+        && record.env.keys().all(|key| {
+            allowed_environment(key)
+                || super::super::build_environment::value(data, &record.package_id, key).is_some()
+        })
         && package_matches(record, data)
-        && current(record, None) == (record.digest.clone(), true)
+        && current(record, None, data) == (record.digest.clone(), true)
 }
 
 // Parent values do not describe Cargo-injected or removed child variables.
@@ -516,13 +519,25 @@ mod tests {
                 paths: vec![input.to_owned()],
                 env: keys
                     .iter()
-                    .map(|k| ((*k).to_owned(), super::super::effective_value(k, None)))
+                    .map(|k| {
+                        let value = if super::super::generated_environment(k) {
+                            super::super::super::build_environment::value(
+                                &self.data,
+                                "registry-pkg",
+                                k,
+                            )
+                            .flatten()
+                        } else {
+                            super::super::effective_value(k, None)
+                        };
+                        ((*k).to_owned(), value)
+                    })
                     .collect(),
                 covered: true,
                 digest: String::new(),
                 output: Some((output, digest(text.as_bytes()))),
             };
-            record.digest = current(&record, None).0;
+            record.digest = current(&record, None, &self.data).0;
             Ok(record)
         }
         fn export(&self, records: &[BuildInput]) -> Result<()> {
@@ -818,12 +833,18 @@ mod tests {
         let record = f.record("host", &f.input, &["RUSTC_BOOTSTRAP"])?;
         let parent =
             BTreeMap::from([("RUSTC_BOOTSTRAP".to_owned(), "different-parent".to_owned())]);
-        assert_eq!(current(&record, Some(&parent)), current(&record, None));
+        assert_eq!(
+            current(&record, Some(&parent), &f.data),
+            current(&record, None, &f.data)
+        );
         assert_eq!(record.env["RUSTC_BOOTSTRAP"].as_deref(), Some("1"));
         let ordinary = f.record("env", &f.input, &["LANG"])?;
         let changed =
             BTreeMap::from([("LANG".to_owned(), "sail-changed-language-input".to_owned())]);
-        assert_ne!(current(&ordinary, Some(&changed)).0, ordinary.digest);
+        assert_ne!(
+            current(&ordinary, Some(&changed), &f.data).0,
+            ordinary.digest
+        );
         f.export(&[record])?;
         f.begin(&f.local, "compiler")?;
         assert_eq!(
@@ -879,8 +900,8 @@ mod tests {
             f.target.join("caller-selected").display().to_string(),
         )]);
         assert_ne!(
-            current(&record, Some(&absent)).0,
-            current(&record, Some(&present)).0
+            current(&record, Some(&absent), &f.data).0,
+            current(&record, Some(&present), &f.data).0
         );
         let changed = if record.env["CARGO_TARGET_DIR"].is_none() {
             &present
@@ -888,7 +909,7 @@ mod tests {
             &absent
         };
         let mut stale = record;
-        stale.digest = current(&stale, Some(changed)).0;
+        stale.digest = current(&stale, Some(changed), &f.data).0;
         assert!(!matches(&stale, &f.data, &f.target));
         f.export(&[stale])?;
         f.begin(&f.local, "compiler")?;
@@ -1051,7 +1072,7 @@ mod tests {
                 covered: true,
                 output: Some((output, digest(b""))),
             };
-            record.digest = current(&record, None).0;
+            record.digest = current(&record, None, &Value::Null).0;
             records.push(record);
             by_package.insert(name.to_owned(), vec![source]);
             packages.push(
@@ -1105,7 +1126,7 @@ mod tests {
         );
         // A change to the shared dependency refuses everything above it.
         for record in &mut records {
-            record.digest = current(record, None).0;
+            record.digest = current(record, None, &data).0;
         }
         json(&local, &records)?;
         publish(&export, "compiler", &target, &local, &data);
@@ -1121,6 +1142,112 @@ mod tests {
             BTreeSet::from(["vstd".to_owned()])
         );
         std::fs::remove_dir_all(&root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn generated_contracts_require_exact_authority_and_invalidate_dependents() -> TestResult {
+        let mut f = Fixture::new("generated-environment")?;
+        f.data["sail_build_environment"] = serde_json::json!({
+            "version": 1,
+            "packages": {"registry-pkg": {"values": {
+                "CARGO_FEATURE_FAST": "1",
+                "CARGO_CFG_TARGET_ARCH": "aarch64"
+            }}}
+        });
+        let keys = [
+            "CARGO_FEATURE_FAST",
+            "CARGO_FEATURE_DISABLED",
+            "CARGO_CFG_TARGET_ARCH",
+            "CARGO_CFG_UNKNOWN",
+            "LANG",
+        ];
+        let record = f.record("generated", &f.input, &keys)?;
+        let contracts = vec![serde_json::to_value(&record)?];
+        assert!(super::super::contracts_current(&contracts, &f.data));
+        f.export(std::slice::from_ref(&record))?;
+        f.begin(&f.local, "compiler")?;
+        assert_eq!(
+            super::super::stale(&f.local, &f.data).0,
+            Vec::<String>::new()
+        );
+
+        let mut dependent = f.record("dependent", &f.input, &[])?;
+        dependent.package_id = "dependent".to_owned();
+        dependent.package_name = "dependent".to_owned();
+        let mut package = f.data["packages"][0].clone();
+        package["id"] = serde_json::json!("dependent");
+        package["name"] = serde_json::json!("dependent");
+        f.data["packages"]
+            .as_array_mut()
+            .ok_or("packages")?
+            .push(package);
+        f.data["resolve"] = serde_json::json!({"nodes": [
+            {"id": "registry-pkg", "dependencies": []},
+            {"id": "dependent", "dependencies": ["registry-pkg"]}
+        ]});
+        let records = vec![record.clone(), dependent];
+        assert_eq!(eligible(records.clone(), &f.data, &f.target).len(), 2);
+        let mut changed_environment = records.clone();
+        let parent = BTreeMap::from([(
+            "LANG".to_owned(),
+            format!("sail-language-change-{:?}", record.env["LANG"]),
+        )]);
+        changed_environment[0].digest = current(&record, Some(&parent), &f.data).0;
+        assert!(eligible(changed_environment, &f.data, &f.target).is_empty());
+        let mut variants = Vec::new();
+        for (key, value) in [
+            ("CARGO_FEATURE_FAST", Value::Null),
+            ("CARGO_FEATURE_DISABLED", serde_json::json!("1")),
+            ("CARGO_CFG_TARGET_ARCH", serde_json::json!("x86_64")),
+            ("CARGO_CFG_UNKNOWN", serde_json::json!("")),
+        ] {
+            let mut changed = f.data.clone();
+            changed["sail_build_environment"]["packages"]["registry-pkg"]["values"][key] = value;
+            variants.push(changed);
+        }
+        let mut missing = f.data.clone();
+        missing["sail_build_environment"] = Value::Null;
+        variants.push(missing);
+        let mut missing_package = f.data.clone();
+        missing_package["sail_build_environment"]["packages"] = serde_json::json!({});
+        variants.push(missing_package);
+        for data in variants {
+            assert!(!super::super::contracts_current(&contracts, &data));
+            assert!(eligible(records.clone(), &data, &f.target).is_empty());
+            json(&f.local, &records)?;
+            assert_eq!(
+                recheck(&f.local, &data, &f.target)?,
+                vec!["dependent", "registry-script"]
+            );
+        }
+        for key in ["CARGO_UNKNOWN", "CARGO_PKG_NAME", "CARGO_FEATURE"] {
+            let unknown = f.record("unknown", &f.input, &[key])?;
+            assert!(!matches(&unknown, &f.data, &f.target));
+        }
+
+        let artifacts = f.root.join("artifacts.jsonl");
+        let output = &record.output.as_ref().ok_or("output")?.0;
+        std::fs::write(
+            &artifacts,
+            serde_json::to_vec(&serde_json::json!({
+                "reason": "build-script-executed",
+                "package_id": "registry-pkg",
+                "out_dir": output.parent().ok_or("unit")?.join("out")
+            }))?,
+        )?;
+        let updated = f.root.join("updated.json");
+        super::super::update(&updated, &artifacts, &f.data)?;
+        let observed: Vec<BuildInput> = super::super::read(&updated).ok_or("updated")?;
+        assert_eq!(observed.len(), 1);
+        assert_eq!(observed[0].env, record.env);
+        assert_eq!(observed[0].digest, record.digest);
+        assert!(observed[0].covered);
+        let mut missing = f.data.clone();
+        missing["sail_build_environment"] = Value::Null;
+        super::super::update(&updated, &artifacts, &missing)?;
+        let refused: Vec<BuildInput> = super::super::read(&updated).ok_or("refused")?;
+        assert!(!refused[0].covered);
         Ok(())
     }
 }
