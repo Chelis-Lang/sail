@@ -7,6 +7,11 @@ semantic versioning once the API is published.
 
 - Avoid injecting a duplicate progress option into the pinned dispatch-order
   regression. Require the exact test identity and full original source hash.
+- Add the neutral-to-Verus lowering library for a supported complete scalar
+  source file. It emits an immutable owned shadow and exact source/requirement
+  mapping, preserves checked arithmetic definedness, and reuses the managed
+  backend with actual obligation logging. Ordinary Verus verification is
+  unchanged; native oracle qualification is a separate acceptance gate.
 
 - Add private neutral contract libraries for requirement-tagged scalar Rust
   functions and methods. Runtime preconditions, postconditions, old scalar
