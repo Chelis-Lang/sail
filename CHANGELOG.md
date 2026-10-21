@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Reserve dependency-publication staging directories exclusively, leaving
+  another publisher’s files untouched on a collision.
+
 - Discover initial watch inputs before starting filesystem notifications.
   Cargo's startup creation of `Cargo.lock` no longer cancels the first
   verification when macOS delivers that notification late. Later input edits
