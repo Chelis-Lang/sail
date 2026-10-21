@@ -1684,6 +1684,7 @@ fn target_records(
                 && target.replace('-', "_") == name.replace('-', "_")
                 && kind.contains(target_kind)
         });
+        let partial_args = partial_args.filter(|_| requested);
         let force = force && requested;
         let input_revision = revisions
             .get(package_id)
@@ -1714,7 +1715,7 @@ fn target_records(
             );
             let hashes = digests.hashes(&artifact_paths)?;
             let reusable =
-                paths.reuse && call.success && complete(&call.report) && !input_revision.is_empty();
+                paths.reuse && call.successful_for(partial_args) && !input_revision.is_empty();
             if reusable {
                 json(
                     &paths

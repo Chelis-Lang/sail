@@ -62,6 +62,21 @@ pub(crate) struct Invocation {
 }
 
 impl Invocation {
+    /// Whole proofs retain their success authority. A partial report has a
+    /// separate authority: exact recorded arguments, successful verifier output
+    /// and no source-engine fallback. It never turns `success` into true.
+    pub(super) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
+        match partial_args {
+            None => self.success && complete(&self.report),
+            Some(args) => {
+                super::runner::focused(args)
+                    && self.report.command == args
+                    && self.report.engine.is_none()
+                    && complete(&self.report)
+            }
+        }
+    }
+
     /// Original proof provenance; the local invocation run remains separately sealed.
     pub(crate) fn establishing_run(&self) -> &str {
         self.retained_from.as_deref().unwrap_or_else(|| {
@@ -135,8 +150,7 @@ impl Receipt {
             })
             && self.checksum == checksum
             && self.context == context
-            && self.invocation.success
-            && complete(&self.invocation.report)
+            && self.invocation.successful_for(partial_args)
             && !self.artifact_hashes.is_empty()
             && {
                 // Both sets are read together, as one overlapping batch.
@@ -400,6 +414,8 @@ mod tests {
         ];
         let mut receipt = fixture(&path, path.with_extension("commit"));
         receipt.partial_args = Some(args.clone());
+        receipt.invocation.report.command.clone_from(&args);
+        receipt.invocation.success = false;
         let receipt = receipt.seal();
         json(
             &receipt.committed,
