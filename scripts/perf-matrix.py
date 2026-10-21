@@ -58,9 +58,10 @@ report is compared through the counts its Verus run printed (Verus counts
 checks, not functions: a function with a separate loop query counts twice),
 after checking them against the report's per-function verdicts. When Cargo answers a stock
 rerun without running Verus, Sail may match that no-op or the copy's
-previous verifying stock output. Rows are judged when the report is generated: a row
-passes only if every sample in it exists, exited as stock did and passed its
-identity check, and the medians meet its bar.
+previous verifying stock output. A comparison is valid only when each round
+has exactly one sample per arm, both exited as stock did and both passed
+identity checks. Speed is reported separately under the owner's relative bar;
+every slower median requires review, including tiny overheads.
 
 Portable to Linux and macOS: Python 3 standard library, git and the tools
 `scripts/perf-real.sh` needs (perl, jq).
