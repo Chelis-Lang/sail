@@ -38,3 +38,18 @@ Raw logs remain outside the repository, identified by SHA-256:
 Full macOS host, native Linux gate and existing Verus conformance/end-to-end
 qualification remain separate gates. These controls do not qualify temporal
 execution, neutral contracts, Rust-code assurance or hard aggregate RAM bounds.
+
+The final macOS host gate at source `ff2f4366` passed all 891 non-solver tests
+with 43 explicit skips and workspace Clippy, using two Cargo jobs and two
+nextest threads. The sealed-environment followup from `612745eb` is included as
+`c67ae9a5`; all eleven focused runtime tests also passed with the actual pinned
+solver, including the ambient-environment regression. Host log SHA-256 is
+`1cee3648ff6be8c154beb93b28500c7d46b3664ff65ebdb4e25d598b28c6db0a`;
+focused runtime log SHA-256 is
+`6e5ad0be295846245568340715706a18c138d962db6f704610450f96ae5c56c9`.
+Native Linux and full Verus integration acceptance remain pending for this slice.
+
+Earlier attempt: `c67ae9a5`, macOS host, 889 passed and two failed. Both failures
+were exact MCP tool inventories missing the two implemented runtime tools;
+the corrected inventories preserve exact full-list checks. No solver verdict
+or backend evidence check was relaxed.
