@@ -11,6 +11,9 @@ semantic versioning once the API is published.
   Record source and runtime identities, cache states, raw samples, and separate
   scenario results. Invalid scenarios retain evidence without timing aggregates.
   Include a generic proof workload and behavioral checks in CI.
+- Accept human coauthor email addresses ending in `.ai` in the authorship guard,
+  while continuing to reject tool identities and generated-attribution markers.
+
 - Reuse saved proofs when unchanged build scripts declare supported
   `CARGO_FEATURE_*` or `CARGO_CFG_*` inputs (#298). Use exact Cargo units
   and compiler cfg queries instead of parent values. Unknown Cargo versions
