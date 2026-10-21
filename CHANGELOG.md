@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Measure real-project unchanged reruns without adding source comments. Mark
+  older comment-edit rows separately and show nonzero verification exit codes.
+
 - Measure real-project release scenarios with the shipped registry vstd
   versions, record bundle reuse and dependency adjustments, and report slower
   rows for review under the relative performance bar. Missing or duplicated

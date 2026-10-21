@@ -456,6 +456,14 @@ Scripted module/spec edits remain diagnostic; they do not substitute for this
 breadth. A new full matrix remains incomplete until all four mutation projects
 are attached.
 
+Real-project `unchanged` now means an immediate rerun with no source edit.
+The older `perf-real.sh` `noop1` phase added a comment and triggered compilation;
+its timings cannot qualify unchanged reuse. Historical rows without the explicit
+`unchanged` phase are marked invalid for this scenario. Matching nonzero exit
+codes are shown in the report so failed-proof timings cannot be mistaken for
+successful verification. Vest’s default-limit failure is recorded in VI-0032;
+a passing raised-limit profile must be reported separately.
+
 Real projects take vstd as a user of the release would (`--vstd registry`,
 the default): from crates.io, at the versions in the release's shipped vstd
 build (`deps/*/Cargo.lock` of `--sail-install`). A project that pins other
