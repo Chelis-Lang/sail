@@ -153,6 +153,24 @@ fn exact_source_and_worker_evidence_survive_restart_and_baseline_outlives_jobs()
         return Err("retained baseline response".into());
     };
     assert_eq!(retained, saved);
+    for name in [
+        "snapshot.contracts-stdout",
+        "snapshot.contracts-stderr",
+        "snapshot.contracts-seal",
+    ] {
+        let path = fixture.root.join("jobs/baselines").join(name);
+        let original = std::fs::read(&path)?;
+        std::fs::write(&path, b"changed")?;
+        assert!(
+            client
+                .call(&Request::GetBaseline {
+                    name: "snapshot".into()
+                })
+                .is_err(),
+            "{name}"
+        );
+        std::fs::write(path, original)?;
+    }
     let path = fixture.root.join("jobs/baselines/snapshot.json");
     let mut edited: serde_json::Value = serde_json::from_slice(&std::fs::read(&path)?)?;
     edited
@@ -179,7 +197,7 @@ fn tampered_source_output_manifest_or_proof_never_returns_evidence() -> TestResu
     let job = client.submit_contracts(input.clone())?;
     assert_eq!(finished(&client, &job.id)?.state, Lifecycle::Completed);
     let directory = fixture.root.join("jobs").join(&job.id);
-    for name in ["stdout", "contract-source.json"] {
+    for name in ["stdout", "stderr", "contract-source.json"] {
         let path = directory.join(name);
         let original = std::fs::read(&path)?;
         std::fs::write(&path, b"changed")?;

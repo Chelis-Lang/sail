@@ -270,6 +270,27 @@ fn main() -> TestResult {
         if *baseline != saved {
             return Err("baseline changed after job pruning".into());
         }
+        let raw = output
+            .join("cache/projects/jobs/baselines")
+            .join(format!("{label}.contracts-stderr"));
+        let retained = std::fs::read(&raw)?;
+        if retained != std::fs::read(output.join(format!("{label}.worker.stderr")))? {
+            return Err("baseline did not preserve exact original worker diagnostics".into());
+        }
+        std::fs::write(&raw, b"changed diagnostics")?;
+        if client
+            .call(&Request::GetBaseline { name: label.into() })
+            .is_ok()
+        {
+            return Err("tampered retained diagnostics were accepted".into());
+        }
+        std::fs::write(&raw, retained)?;
+        if !matches!(
+            client.call(&Request::GetBaseline { name: label.into() })?,
+            Response::Baseline(_)
+        ) {
+            return Err("restored exact baseline did not read".into());
+        }
     }
     drop(service);
     println!(

@@ -146,6 +146,25 @@ fn decode(bytes: &[u8], input: &Submission) -> io::Result<WorkerResult> {
     Ok(result)
 }
 
+fn stderr(state: &State, job: &store::Stored) -> io::Result<Vec<u8>> {
+    let path = state.root.join(&job.status.id).join("stderr");
+    if !std::fs::symlink_metadata(&path)?.file_type().is_file() {
+        return Err(error("neutral diagnostics are not a regular file"));
+    }
+    let bytes = store::read_bytes(&path)?;
+    if bytes.len() > sail_api::contracts::MAX_STDERR_BYTES
+        || !job
+            .projection
+            .as_ref()
+            .is_some_and(|p| p.matches_stderr(&bytes))
+    {
+        return Err(error(
+            "retained neutral diagnostics differ from their exact output seal",
+        ));
+    }
+    Ok(bytes)
+}
+
 fn read(state: &State, job: &store::Stored) -> io::Result<(Submission, Vec<u8>, WorkerResult)> {
     if job.projection.is_none() {
         return Err(error("neutral result has no validated output seal"));
@@ -157,6 +176,7 @@ fn read(state: &State, job: &store::Stored) -> io::Result<(Submission, Vec<u8>, 
         return Err(error("neutral worker output is not a regular file"));
     }
     let input = source(state, job)?;
+    stderr(state, job)?;
     let bytes = store::project_bytes(state, job)?;
     let result = decode(&bytes, &input)?;
     Ok((input, bytes, result))

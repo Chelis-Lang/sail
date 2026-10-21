@@ -7,12 +7,13 @@ use sail_api::contracts::Submission;
 use sail_api::evidence::Baseline;
 use serde::{Deserialize, Serialize};
 
-use super::{State, decode, error, read, sha, store};
+use super::{State, decode, error, read, sha, stderr, store};
 
 #[derive(Serialize, Deserialize)]
 struct Seal {
     source: Submission,
     stdout_sha256: String,
+    stderr_sha256: String,
     baseline_sha256: String,
 }
 
@@ -28,6 +29,7 @@ pub(in crate::jobs) fn save_baseline(state: &State, id: &str, name: &str) -> io:
         return Err(error("neutral evidence is not completed"));
     }
     let (input, stdout, original) = read(state, &job)?;
+    let diagnostics = stderr(state, &job)?;
     let baseline = Baseline {
         version: sail_api::evidence::VERSION,
         name: name.into(),
@@ -42,6 +44,7 @@ pub(in crate::jobs) fn save_baseline(state: &State, id: &str, name: &str) -> io:
     let seal = Seal {
         source: input,
         stdout_sha256: sha(&stdout),
+        stderr_sha256: sha(&diagnostics),
         baseline_sha256: sha(&bytes),
     };
     let directory = state.root.join("baselines");
@@ -61,7 +64,8 @@ pub(in crate::jobs) fn save_baseline(state: &State, id: &str, name: &str) -> io:
     let public = directory.join(format!("{name}.json"));
     let raw = directory.join(format!("{name}.contracts-stdout"));
     let sealed = directory.join(format!("{name}.contracts-seal"));
-    if [&public, &raw, &sealed].iter().any(|p| p.exists()) {
+    let errors = directory.join(format!("{name}.contracts-stderr"));
+    if [&public, &raw, &sealed, &errors].iter().any(|p| p.exists()) {
         return Err(error(
             "immutable baseline name already exists or has an incomplete retained artifact",
         ));
@@ -69,6 +73,7 @@ pub(in crate::jobs) fn save_baseline(state: &State, id: &str, name: &str) -> io:
     // The public record is the commit point. Partial crash-surviving artifacts
     // remain explicit rather than being overwritten by a later request.
     install(&raw, &stdout)?;
+    install(&errors, &diagnostics)?;
     install(&sealed, &serde_json::to_vec(&seal).map_err(error)?)?;
     let temporary = directory.join(format!(".{name}.contracts-publishing"));
     install(&temporary, &bytes)?;
@@ -122,6 +127,15 @@ pub(in crate::jobs) fn validate_baseline(
     if seal.stdout_sha256 != sha(&stdout) {
         return Err(error(
             "retained original neutral worker output differs from its seal",
+        ));
+    }
+    let diagnostics =
+        regular_bytes(&directory.join(format!("{}.contracts-stderr", baseline.name)))?;
+    if diagnostics.len() > sail_api::contracts::MAX_STDERR_BYTES
+        || seal.stderr_sha256 != sha(&diagnostics)
+    {
+        return Err(error(
+            "retained original neutral diagnostics differ from their seal",
         ));
     }
     let original = decode(&stdout, &seal.source)?;

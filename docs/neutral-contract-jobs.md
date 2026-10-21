@@ -44,7 +44,7 @@ snapshot. The managed backend's currentness describes Sail's owned snapshot.
 It does not establish that the caller's source still matches.
 
 The existing baseline save/read operations retain neutral source and exact
-worker output independently of job pruning. Every read verifies their hashes
+worker stdout/stderr independently of job pruning. Every read verifies their hashes
 and agreement with the public metadata and historical project report. Generic
 comparison and function explanation refuse this evidence family until those
 operations have contract-specific semantics. See the [service specification](spec/neutral-contract-jobs.md)

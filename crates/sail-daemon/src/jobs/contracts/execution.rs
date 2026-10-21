@@ -100,7 +100,8 @@ pub(in crate::jobs) fn execute(
     if result.backend.exit_code != status.code() {
         return Err(error("neutral backend and process exit status disagree"));
     }
-    let projection = store::Projection::validated(&bytes, &result.backend);
+    let stderr = store::read_bytes(&directory.join("stderr"))?;
+    let projection = store::Projection::validated(&bytes, &result.backend).with_stderr(&stderr);
     Ok((status.code(), result.backend, projection))
 }
 
