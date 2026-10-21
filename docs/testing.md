@@ -100,7 +100,7 @@ To run a catalogue (Sail's Verus from `SAIL_VERUS_BUILD`, or the CI image's
 
 ```sh
 ./target/release/sail-bench mutants run --catalogue corpus/mutants/vest.toml \
-  --rounds 3 [--per-class N] [--filter SUBSTR] --out ~/mut/vest --machine "EC2 c7i.8xlarge, us-east-1"
+  --vstd-lock scripts/shipped-deps/Cargo.lock --rounds 3 [--per-class N] [--filter SUBSTR] --out ~/mut/vest --machine "EC2 c7i.8xlarge, us-east-1"
 ./target/release/sail-bench mutants report ~/mut/vest      # the tables again
 ```
 
@@ -113,8 +113,8 @@ command exits non-zero on any difference, false verified (a function stock
 rejects that Sail reports verified), failed revert check or step that could
 not run, and copies those steps' logs to `<out>/failing/`. Every sample is in
 `<out>/samples.jsonl`; `report.md` has per-class medians, total and geomean
-speedups with 95% bootstrap intervals, the share of replies the solver cache
-served and the share of Sail runs restored without a solver session.
+speedups with 95% bootstrap intervals, the cache hit share of solver lookups and the share of Sail runs with a
+newly published retained-proof receipt.
 
 Tiers: `ci/local.sh conformance standard` ends with two mutants per class of
 `human-eval` for one round; `ci/local.sh conformance deep` runs every
@@ -124,9 +124,11 @@ host (`ci/run.sh bench mutants NAME ROUNDS`, three rounds for a release).
 For release-product mutation measurements, pass `--vstd-lock release-out/deps/<bundle>/Cargo.lock` to both `mutants oracle` and
 `mutants run`. Both arms then use the release's registry Verus crate versions;
 workspace adjustments and the selected release lock are retained with the run.
-Without that option, the suite keeps source-patched preparation for corpus
-conformance. The two setups are reported separately. Regenerate the stock
-oracle for the selected setup before measuring it.
+Without that option, the suite keeps source-patched preparation for explicit
+diagnostic runs. The standard and deep mutation probes use the registry lock,
+matching the checked-in catalogues. The runner refuses an oracle from another
+platform, stock release or preparation, or one with fewer than three runs.
+Regenerate the stock oracle for the selected setup before measuring it.
 
 A round fails if its daemon disappears or changes. Retained-proof share uses
 newly published retained receipts; a run with no solver sessions alone is not

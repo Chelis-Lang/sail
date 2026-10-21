@@ -432,12 +432,12 @@ RS
       cargo build --release --locked -p sail-bench
       if [ "$tier" = standard ]; then
         ./target/release/sail-bench mutants run --catalogue corpus/mutants/human-eval.toml \
-          --per-class 2 --rounds 1 --out "$out/mutants/human-eval"
+          --per-class 2 --rounds 1 --vstd-lock scripts/shipped-deps/Cargo.lock --out "$out/mutants/human-eval"
       else
         for catalogue in corpus/mutants/*.toml; do
           name="$(basename "$catalogue" .toml)"
           ./target/release/sail-bench mutants run --catalogue "$catalogue" \
-            --rounds 1 --out "$out/mutants/$name"
+            --rounds 1 --vstd-lock scripts/shipped-deps/Cargo.lock --out "$out/mutants/$name"
         done
       fi
     fi
@@ -455,7 +455,7 @@ RS
       edit) ./target/release/sail-bench edit --rounds "$rounds" --name "$name" ;;
       # `bench mutants NAME ROUNDS`: corpus/mutants/NAME.toml (ADR 0063);
       # timings only on a native host.
-      mutants) ./target/release/sail-bench mutants run --catalogue "corpus/mutants/$tier.toml" \
+      mutants) ./target/release/sail-bench mutants run --catalogue "corpus/mutants/$tier.toml" --vstd-lock scripts/shipped-deps/Cargo.lock \
         --rounds "$rounds" --out "${SAIL_BENCH_OUT:-$HOME/sail-mutants}/$tier-$(date -u +%Y%m%dT%H%M%S)" ;;
       *) echo "unknown workload $workload" >&2; exit 2 ;;
     esac

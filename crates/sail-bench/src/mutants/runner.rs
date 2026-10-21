@@ -546,6 +546,26 @@ fn run_header(
     }))
 }
 
+fn require_oracle(meta: &Value, registry: bool, release: &str) -> Result<(), String> {
+    let mode = if registry { "registry" } else { "source" };
+    let oracle = meta.get("oracle").ok_or("catalogue has no stock oracle")?;
+    let oracle_mode = oracle
+        .get("vstd_mode")
+        .and_then(Value::as_str)
+        .unwrap_or("source");
+    if oracle_mode != mode
+        || oracle.get("platform").and_then(Value::as_str) != Some(sail_verus::toolchain::host())
+        || oracle.get("stock_verus").and_then(Value::as_str) != Some(release)
+        || oracle
+            .get("runs")
+            .and_then(Value::as_u64)
+            .is_none_or(|runs| runs < 3)
+    {
+        return Err("rerun mutants oracle with three runs on this platform, stock release and vstd preparation".to_owned());
+    }
+    Ok(())
+}
+
 /// Entry point for `sail-bench mutants run`.
 ///
 /// # Errors
@@ -562,12 +582,17 @@ pub fn main(args: &[String]) -> Result<(), String> {
             e.id
         ));
     }
-    let meta = load_meta(&sidecar(&o.catalogue)).unwrap_or(Value::Null);
+    let meta = load_meta(&sidecar(&o.catalogue))?;
     let edits = select(&catalogue.edits, &meta, o.per_class, o.filter.as_deref());
     if edits.is_empty() {
         return Err("no mutants selected".to_owned());
     }
     let setup = Setup::new(&catalogue, o.scratch.clone())?;
+    require_oracle(
+        &meta,
+        o.vstd_lock.is_some(),
+        &setup.installed.pins.verus.release,
+    )?;
     let sail = crate::daemon::locate_sail(o.sail.clone())?;
     let verus_build = verus_build_from_env();
     let name = o.catalogue.file_stem().map_or_else(
@@ -665,6 +690,21 @@ mod tests {
             find: "a".to_owned(),
             replace: "b".to_owned(),
         }
+    }
+
+    #[test]
+    fn refuses_an_oracle_for_a_different_preparation_or_runtime() {
+        let meta = json!({"oracle": {"vstd_mode": "registry", "platform": sail_verus::toolchain::host(),
+            "stock_verus": "pinned", "runs": 3}});
+        assert!(require_oracle(&meta, true, "pinned").is_ok());
+        assert!(require_oracle(&meta, false, "pinned").is_err());
+        assert!(require_oracle(&meta, true, "different").is_err());
+        for (key, value) in [("platform", json!("other-platform")), ("runs", json!(2))] {
+            let mut changed = meta.clone();
+            changed["oracle"][key] = value;
+            assert!(require_oracle(&changed, true, "pinned").is_err());
+        }
+        assert!(require_oracle(&Value::Null, true, "pinned").is_err());
     }
 
     #[test]

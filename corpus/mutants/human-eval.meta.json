@@ -11,7 +11,7 @@
     "spec-weaken": 261,
     "statement": 1193
   },
-  "candidates_sha256": "046911e80c658222557ad6b90c056f534a7ad0bdb63afeff2c7c54827b64e9da",
+  "candidates_sha256": "b570666dba7ea624f178d2c8c6eac4db9a96e29658b467ebdbc23286ed69edf4",
   "files": 168,
   "generated": {
     "arith": 6,
@@ -24,7 +24,7 @@
     "spec-weaken": 6,
     "statement": 6
   },
-  "generator": "gen-mutants 1",
+  "generator": "gen-mutants 2",
   "mutants": {
     "human-eval-arith-001": {
       "class": "arith",
@@ -352,57 +352,57 @@
     },
     "human-eval-spec-strengthen-001": {
       "class": "spec-strengthen",
-      "column": 1,
-      "file": "tasks/human_eval_120.rs",
-      "function": "sort_seq",
+      "column": 9,
+      "file": "tasks/human_eval_013.rs",
+      "function": "gcd_is_gcd",
       "kind": "spec",
-      "line": 82,
-      "mode": "exec"
+      "line": 210,
+      "mode": "proof"
     },
     "human-eval-spec-strengthen-002": {
       "class": "spec-strengthen",
-      "column": 1,
-      "file": "tasks/human_eval_026.rs",
-      "function": "remove_duplicates",
+      "column": 9,
+      "file": "tasks/human_eval_075.rs",
+      "function": "is_multiply_prime",
       "kind": "spec",
-      "line": 55,
+      "line": 72,
       "mode": "exec"
     },
     "human-eval-spec-strengthen-003": {
       "class": "spec-strengthen",
-      "column": 1,
-      "file": "tasks/human_eval_050.rs",
-      "function": "encode_shift",
+      "column": 9,
+      "file": "tasks/human_eval_127.rs",
+      "function": "intersection",
       "kind": "spec",
-      "line": 60,
+      "line": 79,
       "mode": "exec"
     },
     "human-eval-spec-strengthen-004": {
       "class": "spec-strengthen",
-      "column": 1,
-      "file": "tasks/human_eval_035.rs",
-      "function": "max_element",
+      "column": 9,
+      "file": "tasks/human_eval_085.rs",
+      "function": "add",
       "kind": "spec",
-      "line": 17,
+      "line": 40,
       "mode": "exec"
     },
     "human-eval-spec-strengthen-005": {
       "class": "spec-strengthen",
-      "column": 1,
-      "file": "tasks/human_eval_160.rs",
-      "function": "lemma_base",
+      "column": 9,
+      "file": "tasks/human_eval_126.rs",
+      "function": "lemma_count_concat",
       "kind": "spec",
-      "line": 299,
+      "line": 25,
       "mode": "proof"
     },
     "human-eval-spec-strengthen-006": {
       "class": "spec-strengthen",
-      "column": 1,
-      "file": "tasks/human_eval_051.rs",
-      "function": "remove_vowels",
+      "column": 9,
+      "file": "tasks/human_eval_077.rs",
+      "function": "lemma_no_cube_exists_after_an_i_that_is_already_bigger",
       "kind": "spec",
-      "line": 30,
-      "mode": "exec"
+      "line": 79,
+      "mode": "proof"
     },
     "human-eval-spec-weaken-001": {
       "class": "spec-weaken",
@@ -518,7 +518,7 @@
       "human-eval-arith-004": "does not compile",
       "human-eval-arith-005": "does not compile"
     },
-    "finished_unix": 1792503355,
+    "finished_unix": 1792584519,
     "kept": 52,
     "machine": {
       "cpus": "32",
@@ -528,7 +528,7 @@
     "original": {
       "failing": [],
       "outcome": "verified",
-      "wall_s": 83.0
+      "wall_s": 67.0
     },
     "platform": "x86_64-unknown-linux-gnu",
     "results": {
@@ -551,9 +551,9 @@
           "errors"
         ],
         "wall_s": [
-          27.6,
-          27.0,
-          28.1
+          24.9,
+          24.5,
+          24.0
         ]
       },
       "human-eval-arith-002": {
@@ -575,9 +575,9 @@
           "errors"
         ],
         "wall_s": [
-          28.3,
-          27.9,
-          27.7
+          25.4,
+          24.3,
+          24.2
         ]
       },
       "human-eval-arith-003": {
@@ -599,9 +599,9 @@
           "errors"
         ],
         "wall_s": [
-          28.2,
-          27.6,
-          28.0
+          24.7,
+          24.2,
+          24.5
         ]
       },
       "human-eval-arith-004": {
@@ -615,7 +615,7 @@
           "stillborn"
         ],
         "wall_s": [
-          2.5
+          2.1
         ]
       },
       "human-eval-arith-005": {
@@ -629,7 +629,7 @@
           "stillborn"
         ],
         "wall_s": [
-          2.3
+          2.1
         ]
       },
       "human-eval-arith-006": {
@@ -651,9 +651,9 @@
           "errors"
         ],
         "wall_s": [
-          28.0,
-          27.2,
-          28.1
+          23.8,
+          24.2,
+          23.8
         ]
       },
       "human-eval-compare-001": {
@@ -671,9 +671,9 @@
           "verified"
         ],
         "wall_s": [
-          29.4,
-          28.3,
-          28.7
+          24.6,
+          25.2,
+          24.5
         ]
       },
       "human-eval-compare-002": {
@@ -691,9 +691,9 @@
           "verified"
         ],
         "wall_s": [
-          28.1,
-          27.6,
-          29.4
+          25.4,
+          24.9,
+          24.8
         ]
       },
       "human-eval-compare-003": {
@@ -711,9 +711,9 @@
           "verified"
         ],
         "wall_s": [
-          27.9,
-          28.7,
-          28.3
+          24.5,
+          25.0,
+          24.5
         ]
       },
       "human-eval-compare-004": {
@@ -731,9 +731,9 @@
           "verified"
         ],
         "wall_s": [
-          28.3,
-          27.9,
-          28.7
+          25.0,
+          24.8,
+          25.7
         ]
       },
       "human-eval-compare-005": {
@@ -757,9 +757,9 @@
           "errors"
         ],
         "wall_s": [
-          27.7,
-          27.0,
-          27.9
+          23.9,
+          23.9,
+          24.9
         ]
       },
       "human-eval-compare-006": {
@@ -781,9 +781,9 @@
           "errors"
         ],
         "wall_s": [
-          27.6,
-          28.0,
-          27.8
+          23.4,
+          24.1,
+          23.8
         ]
       },
       "human-eval-constant-001": {
@@ -805,9 +805,9 @@
           "errors"
         ],
         "wall_s": [
-          26.9,
-          27.9,
-          26.8
+          23.6,
+          24.0,
+          24.4
         ]
       },
       "human-eval-constant-002": {
@@ -829,9 +829,9 @@
           "errors"
         ],
         "wall_s": [
-          28.2,
-          27.4,
-          27.3
+          24.6,
+          23.4,
+          23.2
         ]
       },
       "human-eval-constant-003": {
@@ -853,9 +853,9 @@
           "errors"
         ],
         "wall_s": [
-          27.1,
-          26.3,
-          27.3
+          24.8,
+          23.3,
+          23.2
         ]
       },
       "human-eval-constant-004": {
@@ -877,9 +877,9 @@
           "errors"
         ],
         "wall_s": [
-          27.0,
-          26.8,
-          28.2
+          23.9,
+          23.9,
+          24.6
         ]
       },
       "human-eval-constant-005": {
@@ -901,9 +901,9 @@
           "errors"
         ],
         "wall_s": [
-          27.3,
-          26.7,
-          26.9
+          24.7,
+          23.2,
+          23.1
         ]
       },
       "human-eval-constant-006": {
@@ -925,9 +925,9 @@
           "errors"
         ],
         "wall_s": [
-          25.8,
-          27.8,
-          25.5
+          23.9,
+          23.9,
+          23.3
         ]
       },
       "human-eval-invariant-001": {
@@ -949,9 +949,9 @@
           "errors"
         ],
         "wall_s": [
-          23.9,
-          27.2,
-          23.1
+          24.6,
+          24.9,
+          25.0
         ]
       },
       "human-eval-invariant-002": {
@@ -973,9 +973,9 @@
           "errors"
         ],
         "wall_s": [
-          22.3,
-          22.1,
-          20.5
+          25.3,
+          24.6,
+          23.0
         ]
       },
       "human-eval-invariant-003": {
@@ -997,9 +997,9 @@
           "errors"
         ],
         "wall_s": [
-          23.4,
-          27.0,
-          23.3
+          24.4,
+          25.0,
+          24.4
         ]
       },
       "human-eval-invariant-004": {
@@ -1021,9 +1021,9 @@
           "errors"
         ],
         "wall_s": [
-          23.5,
-          23.3,
-          22.4
+          25.5,
+          25.3,
+          25.3
         ]
       },
       "human-eval-invariant-005": {
@@ -1045,9 +1045,9 @@
           "errors"
         ],
         "wall_s": [
-          22.6,
-          22.8,
-          22.5
+          25.4,
+          25.1,
+          25.6
         ]
       },
       "human-eval-invariant-006": {
@@ -1069,9 +1069,9 @@
           "errors"
         ],
         "wall_s": [
-          20.6,
-          20.7,
-          21.1
+          22.9,
+          23.0,
+          22.7
         ]
       },
       "human-eval-logic-001": {
@@ -1093,9 +1093,9 @@
           "errors"
         ],
         "wall_s": [
-          25.0,
-          27.4,
-          26.4
+          24.0,
+          23.8,
+          23.3
         ]
       },
       "human-eval-logic-002": {
@@ -1117,9 +1117,9 @@
           "errors"
         ],
         "wall_s": [
-          100.7,
-          94.8,
-          76.7
+          89.4,
+          88.1,
+          85.0
         ]
       },
       "human-eval-logic-003": {
@@ -1143,9 +1143,9 @@
           "errors"
         ],
         "wall_s": [
-          26.2,
-          27.8,
-          26.6
+          23.8,
+          24.2,
+          23.3
         ]
       },
       "human-eval-logic-004": {
@@ -1167,9 +1167,9 @@
           "errors"
         ],
         "wall_s": [
-          23.1,
-          21.7,
-          21.2
+          23.2,
+          24.1,
+          23.7
         ]
       },
       "human-eval-logic-005": {
@@ -1191,9 +1191,9 @@
           "errors"
         ],
         "wall_s": [
-          23.1,
-          21.6,
-          21.5
+          23.3,
+          24.1,
+          23.6
         ]
       },
       "human-eval-logic-006": {
@@ -1215,9 +1215,9 @@
           "errors"
         ],
         "wall_s": [
-          22.3,
-          23.7,
-          27.3
+          24.6,
+          24.7,
+          24.8
         ]
       },
       "human-eval-rare-region-001": {
@@ -1239,9 +1239,9 @@
           "errors"
         ],
         "wall_s": [
-          21.1,
-          20.8,
-          20.5
+          22.7,
+          22.5,
+          22.7
         ]
       },
       "human-eval-rare-region-002": {
@@ -1263,9 +1263,9 @@
           "errors"
         ],
         "wall_s": [
-          16.4,
-          16.5,
-          16.7
+          17.9,
+          18.2,
+          18.0
         ]
       },
       "human-eval-rare-region-003": {
@@ -1287,9 +1287,9 @@
           "errors"
         ],
         "wall_s": [
-          20.9,
-          21.0,
-          21.1
+          21.7,
+          21.4,
+          21.4
         ]
       },
       "human-eval-rare-region-004": {
@@ -1311,9 +1311,9 @@
           "errors"
         ],
         "wall_s": [
-          17.6,
-          17.4,
-          17.7
+          19.2,
+          19.1,
+          19.2
         ]
       },
       "human-eval-rare-region-005": {
@@ -1335,9 +1335,9 @@
           "errors"
         ],
         "wall_s": [
-          20.5,
-          20.2,
-          20.7
+          23.5,
+          22.5,
+          21.6
         ]
       },
       "human-eval-rare-region-006": {
@@ -1355,9 +1355,9 @@
           "verified"
         ],
         "wall_s": [
-          17.1,
-          17.1,
-          17.2
+          18.9,
+          18.8,
+          18.9
         ]
       },
       "human-eval-spec-strengthen-001": {
@@ -1368,10 +1368,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_120::human_eval_verus_mutants::human_eval_120::maximum"
+          "0#human_eval_013::human_eval_verus_mutants::human_eval_013::gcd_is_gcd"
         ],
         "new_failures": [
-          "0#human_eval_120::human_eval_verus_mutants::human_eval_120::maximum"
+          "0#human_eval_013::human_eval_verus_mutants::human_eval_013::gcd_is_gcd"
         ],
         "outcomes": [
           "errors",
@@ -1379,69 +1379,77 @@
           "errors"
         ],
         "wall_s": [
-          21.0,
-          21.1,
-          20.9
+          22.9,
+          22.9,
+          22.8
         ]
       },
       "human-eval-spec-strengthen-002": {
         "dropped": null,
         "exits": [
-          0,
-          0,
-          0
+          101,
+          101,
+          101
         ],
-        "failing": [],
-        "new_failures": [],
+        "failing": [
+          "0#human_eval_075::human_eval_verus_mutants::human_eval_075::is_multiply_prime"
+        ],
+        "new_failures": [
+          "0#human_eval_075::human_eval_verus_mutants::human_eval_075::is_multiply_prime"
+        ],
         "outcomes": [
-          "verified",
-          "verified",
-          "verified"
+          "errors",
+          "errors",
+          "errors"
         ],
         "wall_s": [
-          21.9,
-          21.7,
-          21.5
+          23.2,
+          21.5,
+          21.3
         ]
       },
       "human-eval-spec-strengthen-003": {
         "dropped": null,
         "exits": [
-          0,
-          0,
-          0
+          101,
+          101,
+          101
         ],
         "failing": [],
         "new_failures": [],
         "outcomes": [
-          "verified",
-          "verified",
-          "verified"
+          "errors",
+          "errors",
+          "errors"
         ],
         "wall_s": [
-          21.4,
-          21.4,
-          21.8
+          1.2,
+          2.3,
+          1.5
         ]
       },
       "human-eval-spec-strengthen-004": {
         "dropped": null,
         "exits": [
-          0,
-          0,
-          0
+          101,
+          101,
+          101
         ],
-        "failing": [],
-        "new_failures": [],
+        "failing": [
+          "0#human_eval_085::human_eval_verus_mutants::human_eval_085::add"
+        ],
+        "new_failures": [
+          "0#human_eval_085::human_eval_verus_mutants::human_eval_085::add"
+        ],
         "outcomes": [
-          "verified",
-          "verified",
-          "verified"
+          "errors",
+          "errors",
+          "errors"
         ],
         "wall_s": [
-          17.3,
-          17.3,
-          17.2
+          18.2,
+          18.1,
+          18.1
         ]
       },
       "human-eval-spec-strengthen-005": {
@@ -1452,10 +1460,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::Expr::lemma_append"
+          "0#human_eval_126::human_eval_verus_mutants::human_eval_126::lemma_count_concat"
         ],
         "new_failures": [
-          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::Expr::lemma_append"
+          "0#human_eval_126::human_eval_verus_mutants::human_eval_126::lemma_count_concat"
         ],
         "outcomes": [
           "errors",
@@ -1463,29 +1471,33 @@
           "errors"
         ],
         "wall_s": [
-          21.4,
-          21.2,
-          21.0
+          23.6,
+          23.3,
+          23.1
         ]
       },
       "human-eval-spec-strengthen-006": {
         "dropped": null,
         "exits": [
-          0,
-          0,
-          0
+          101,
+          101,
+          101
         ],
-        "failing": [],
-        "new_failures": [],
+        "failing": [
+          "0#human_eval_077::human_eval_verus_mutants::human_eval_077::lemma_no_cube_exists_after_an_i_that_is_already_bigger"
+        ],
+        "new_failures": [
+          "0#human_eval_077::human_eval_verus_mutants::human_eval_077::lemma_no_cube_exists_after_an_i_that_is_already_bigger"
+        ],
         "outcomes": [
-          "verified",
-          "verified",
-          "verified"
+          "errors",
+          "errors",
+          "errors"
         ],
         "wall_s": [
-          21.6,
-          18.3,
-          19.3
+          21.2,
+          19.5,
+          20.4
         ]
       },
       "human-eval-spec-weaken-001": {
@@ -1507,9 +1519,9 @@
           "errors"
         ],
         "wall_s": [
-          23.3,
-          23.7,
-          22.7
+          25.0,
+          25.2,
+          25.2
         ]
       },
       "human-eval-spec-weaken-002": {
@@ -1533,9 +1545,9 @@
           "errors"
         ],
         "wall_s": [
-          137.3,
-          133.5,
-          111.1
+          151.9,
+          140.9,
+          118.3
         ]
       },
       "human-eval-spec-weaken-003": {
@@ -1557,9 +1569,9 @@
           "errors"
         ],
         "wall_s": [
-          22.2,
-          20.9,
-          20.6
+          25.1,
+          23.1,
+          22.8
         ]
       },
       "human-eval-spec-weaken-004": {
@@ -1581,9 +1593,9 @@
           "errors"
         ],
         "wall_s": [
-          21.1,
-          21.5,
-          21.0
+          22.9,
+          23.8,
+          23.3
         ]
       },
       "human-eval-spec-weaken-005": {
@@ -1601,9 +1613,9 @@
           "verified"
         ],
         "wall_s": [
-          22.9,
-          21.2,
-          21.5
+          26.1,
+          23.7,
+          23.5
         ]
       },
       "human-eval-spec-weaken-006": {
@@ -1625,9 +1637,9 @@
           "errors"
         ],
         "wall_s": [
-          16.6,
-          16.6,
-          16.5
+          18.1,
+          18.1,
+          18.1
         ]
       },
       "human-eval-statement-001": {
@@ -1649,9 +1661,9 @@
           "errors"
         ],
         "wall_s": [
-          23.5,
-          21.9,
-          21.5
+          23.0,
+          24.2,
+          23.8
         ]
       },
       "human-eval-statement-002": {
@@ -1669,9 +1681,9 @@
           "verified"
         ],
         "wall_s": [
-          22.1,
-          21.7,
-          23.1
+          24.1,
+          24.0,
+          26.0
         ]
       },
       "human-eval-statement-003": {
@@ -1689,9 +1701,9 @@
           "verified"
         ],
         "wall_s": [
-          22.1,
-          22.0,
-          23.0
+          24.2,
+          24.0,
+          25.8
         ]
       },
       "human-eval-statement-004": {
@@ -1713,9 +1725,9 @@
           "errors"
         ],
         "wall_s": [
-          23.1,
-          23.2,
-          23.2
+          25.2,
+          25.6,
+          25.6
         ]
       },
       "human-eval-statement-005": {
@@ -1733,9 +1745,9 @@
           "verified"
         ],
         "wall_s": [
-          21.8,
-          21.9,
-          23.3
+          24.1,
+          24.1,
+          25.6
         ]
       },
       "human-eval-statement-006": {
@@ -1757,15 +1769,16 @@
           "errors"
         ],
         "wall_s": [
-          23.2,
-          27.3,
-          23.2
+          24.4,
+          24.9,
+          24.5
         ]
       }
     },
     "runs": 3,
     "stock_verus": "0.2026.10.18.7d82994",
-    "timeout_secs": 1800
+    "timeout_secs": 1800,
+    "vstd_mode": "registry"
   },
   "per_class": 6,
   "project": "human-eval-verus",
