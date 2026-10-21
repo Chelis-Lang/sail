@@ -54,3 +54,10 @@ The next main merge includes native pipelining correction `dee05795`.
 The complete native workspace gate passed again with the runtime unchanged.
 Its `sail-m10-contracts-pipelining-main-gate.log` SHA-256 is
 `20f673da9e61f5fe7842c8dfefbf7ecb826797d880d7115548e7b99866a80702`.
+
+Main `90de38a7` changes benchmark scripts and documentation only; the Rust and
+Cargo inputs remain byte-identical to the preceding native gate checkpoint.
+The changed native benchmark regression suite passed, shell syntax validation
+passed, and documentation links passed. The native
+`sail-m10-contracts-benchmark-main-tests.log` SHA-256 is
+`06374e6ff95480759d8c6077672afc0640dbc2e422a3574a1d7588e5c6cc2caa`.
