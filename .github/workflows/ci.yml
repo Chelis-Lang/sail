@@ -135,7 +135,7 @@ jobs:
     # Preserve the required check name and reject failed, cancelled or skipped phases.
     name: End to end
     if: ${{ always() }}
-    needs: [e2e-legacy, e2e-managed, e2e-managed-copies, e2e-managed-native, e2e-scripts, e2e-repair, e2e-output, e2e-flags, e2e-loader]
+    needs: [e2e-legacy, e2e-managed, e2e-managed-copies, e2e-managed-native, e2e-contracts, e2e-scripts, e2e-repair, e2e-output, e2e-flags, e2e-loader]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -148,12 +148,13 @@ jobs:
           MANAGED: ${{ needs.e2e-managed.result }}
           MANAGED_COPIES: ${{ needs.e2e-managed-copies.result }}
           MANAGED_NATIVE: ${{ needs.e2e-managed-native.result }}
+          CONTRACTS: ${{ needs.e2e-contracts.result }}
           SCRIPTS: ${{ needs.e2e-scripts.result }}
           REPAIR: ${{ needs.e2e-repair.result }}
           OUTPUT: ${{ needs.e2e-output.result }}
           FLAGS: ${{ needs.e2e-flags.result }}
           LOADER: ${{ needs.e2e-loader.result }}
-        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED" "$MANAGED_COPIES" "$MANAGED_NATIVE" "$SCRIPTS" "$REPAIR" "$OUTPUT" "$FLAGS" "$LOADER"
+        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED" "$MANAGED_COPIES" "$MANAGED_NATIVE" "$CONTRACTS" "$SCRIPTS" "$REPAIR" "$OUTPUT" "$FLAGS" "$LOADER"
 
   e2e-build:
     # The release binaries every e2e phase runs, built once per CI run
@@ -416,6 +417,40 @@ jobs:
         with:
           name: managed-native-acceptance
           path: ${{ runner.temp }}/managed-native-acceptance
+          if-no-files-found: ignore
+
+  e2e-contracts:
+    # Actual installed neutral source service, snapshot proof and retained evidence.
+    name: End to end (neutral contracts)
+    needs: [no-ai-authorship, image, e2e-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: e2e-bin
+          path: target/e2e-bin
+      - run: ci/run.sh e2e contracts
+        env:
+          SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
+          SAIL_CONTRACT_JOBS_OUT: ${{ runner.temp }}/neutral-contract-jobs
+      - name: Retain neutral contract service evidence
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: neutral-contract-jobs
+          path: ${{ runner.temp }}/neutral-contract-jobs
           if-no-files-found: ignore
 
   e2e-scripts:

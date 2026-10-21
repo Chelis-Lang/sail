@@ -132,10 +132,14 @@ fn response_value(response: sail_api::jobs::Response) -> serde_json::Result<Valu
     };
     let sail_api::jobs::ResultDocument {
         repair,
+        contracts,
         job,
         result,
     } = document;
     let mut body = Map::new();
+    if let Some(contracts) = contracts {
+        body.insert("contracts".to_owned(), serde_json::to_value(contracts)?);
+    }
     if let Some(repair) = repair {
         body.insert("repair".to_owned(), serde_json::to_value(repair)?);
     }

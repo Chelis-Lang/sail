@@ -1319,6 +1319,7 @@ dependencies = [
  "notify",
  "sail-api",
  "sail-cache",
+ "sail-contracts",
  "sail-daemon",
  "sail-key",
  "sail-mcp",
