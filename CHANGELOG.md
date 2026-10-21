@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add private neutral contract libraries for requirement-tagged scalar Rust
+  functions and methods. Runtime preconditions, postconditions, old scalar
+  snapshots and checked specification arithmetic remain enabled in release
+  builds. Shared source admission rechecks actual predicate definitions;
+  runtime checks do not constitute an SMT proof.
+
 - Accept human coauthor email addresses ending in `.ai` in the authorship guard,
   while continuing to reject tool identities and generated-attribution markers.
 
