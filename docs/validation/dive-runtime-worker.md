@@ -1,7 +1,8 @@
 # Native temporal worker
 
-Status: focused native-library, isolated-process and full macOS host checks
-passed. Native Linux and common-runtime integration qualification remain required.
+Status: focused native-library, isolated-process, full macOS host and native
+Linux workspace/solver/end-to-end/conformance checks passed. Common-runtime
+integration and private-dependency protected CI remain required.
 The candidate is based on Sail `0581d6f4` and pins D.I.V.E.
 `1025cd6a0510183bc16abc1e6e3eea4f9305c5a9`. No TLC, Java or D.I.V.E.
 command executes in these checks. Existing Verus routes are unchanged.
@@ -97,4 +98,30 @@ complete graph. The regression pins both observations explicitly.
   an existing watch-startup fixture. The corrected cancellation test observes
   this test process's actual worker with the host process inventory before
   requesting cancellation. Its production and fixture deadlines are unchanged.
-  The watch-startup failure is retained without attributing a cause.
+  The global Cargo vendor override made the existing watcher scan Cargo
+  home. Scoping the override to this workspace restored the unchanged watch
+  fixture (1.97 seconds), and the complete gate then passed.
+
+## Native Linux qualification
+
+Source `b6a370fe` passed the complete native `ci/run.sh gate`, `solver`, all
+`e2e` phases plus `extra`, and `conformance fast pr` on a dedicated
+`c7i.4xlarge` in `us-east-1`, using MCP image `b66b86dca7b240b2`.
+The workspace gate passed 895 tests and the solver lane passed 35 tests.
+Pass-through, cache fill, warm cache and engine conformance each compared
+33 units and 311 functions with no verdict/diagnostic differences or
+infrastructure errors; six units retain reported rlimit drift.
+
+The private Git source was externally vendored from the exact locked revision.
+A read-only workspace-scoped Cargo source replacement selected it, preserving
+ordinary registry access for the verifier fixtures. No credential entered the
+host, image, source or retained logs. Tests used two threads and unchanged
+assertions and deadlines. This qualifies the native backend and worker, not
+Oyster's production route or a requirement assurance tier.
+
+| Retained artifact | SHA-256 |
+|---|---|
+| `sail-m10-dive-native-gate.log` | `c3fd78d253bbb0e145814b29985a801322553b9de8bc8d51350f3fc2b93ec330` |
+| `sail-m10-dive-native-solver.log` | `f31d215f93e64cbc4b39a5805ceaae221dc1998c49f378783b1714a5fed415d4` |
+| `sail-m10-dive-native-e2e.log` | `06ff4692ba313470f1e7690eb56ac46f120ce50744b056e99f3d5e9bbf002499` |
+| `sail-m10-dive-native-conformance.log` | `2744022b6ae69f639c7a0d33a8e93227fc40d1d92315a0320fc2e13bcdeb3518` |
