@@ -380,6 +380,9 @@ pub fn execute(cmd: &mut Command, limit: Duration, log: &Path) -> Result<RunReco
     }
     let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
     let status = outcome?;
+    if status.code().is_none() {
+        return Err("command terminated by a signal; never a verification outcome".to_owned());
+    }
     let stdout = std::fs::read(stdout_path).map_err(|e| e.to_string())?;
     let stderr = std::fs::read(stderr_path).map_err(|e| e.to_string())?;
     let (outputs, stdout_rest) = parse_outputs(&stdout);
@@ -633,6 +636,26 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(std::fs::read(directory.join("stdout.txt"))?, b"started");
         assert_eq!(std::fs::read(directory.join("stderr.txt"))?, b"diagnostic");
+        std::fs::remove_dir_all(directory)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_signal_after_json_output_is_not_a_verification_outcome()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let directory =
+            std::env::temp_dir().join(format!("sail-mutant-signal-{}", std::process::id()));
+        let mut command = Command::new("sh");
+        command.args([
+            "-c",
+            r#"printf '{"verification-results":{"verified":1,"errors":0}}'; kill -TERM $$"#,
+        ]);
+        assert!(execute(&mut command, Duration::from_secs(3), &directory).is_err());
+        assert_eq!(
+            std::fs::read(directory.join("stdout.txt"))?,
+            br#"{"verification-results":{"verified":1,"errors":0}}"#
+        );
         std::fs::remove_dir_all(directory)?;
         Ok(())
     }
