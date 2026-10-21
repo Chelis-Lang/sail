@@ -51,6 +51,13 @@ sys.exit(3)
 '''
 
 
+class SelectedScenarios(unittest.TestCase):
+    def test_cold_and_unchanged_do_not_run_unrequested_edits(self):
+        self.assertEqual(pm.real_edits({"cold", "unchanged"}), "none")
+        self.assertEqual(pm.real_edits(set(pm.REAL)), "body-early spec-wide")
+        self.assertEqual(pm.real_edits({"module-edit"}), "body-early")
+
+
 class Performance(unittest.TestCase):
     def test_direction_does_not_accept_a_fixed_overhead_allowance(self):
         self.assertEqual(pm.performance(10.0, 10.4), "slower: review")

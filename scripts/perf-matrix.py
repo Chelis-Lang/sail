@@ -291,6 +291,11 @@ def installed_targets(toolchain):
 
 # --- Running -----------------------------------------------------------------
 
+def real_edits(scenarios):
+    """Only execute the real-project edits requested by the selected rows."""
+    return " ".join(PERF_REAL_PHASE[s] for s in ("module-edit", "spec-wide") if s in scenarios) or "none"
+
+
 def scrubbed_env(extra=None, keep=None):
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(("SAIL_", "VERUS_")) and k != "CARGO_TARGET_DIR"}
@@ -412,7 +417,7 @@ class Runner:
         shutil.rmtree(out, ignore_errors=True)
         modes = " ".join("plain" if a == "stock" else "sail" for a in order)
         env = scrubbed_env(keep=self.extra, extra={"PATH": self.path, "SAIL_PERF_OUT": str(out), "SAIL_PERF_MODES": modes,
-                            "SAIL_PERF_EDITS": "body-early spec-wide", "SAIL_PERF_NOOPS": "0",
+                            "SAIL_PERF_EDITS": real_edits(scenarios), "SAIL_PERF_NOOPS": "0",
                             "SAIL_PERF_UNCHANGED": "1",
                             "SAIL_PERF_SETTLE": str(self.settle),
                             "SAIL_PERF_MACHINE": os.environ.get("SAIL_PERF_MACHINE", ""),
