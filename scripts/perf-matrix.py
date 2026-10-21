@@ -585,7 +585,7 @@ def cmd_run(args):
         for project in projects:
             if project != "small":
                 r.real_round(rnd, project, order, scenarios)
-    cmd_report(argparse.Namespace(dir=str(out), markdown=str(out / "matrix.md")))
+    return cmd_report(argparse.Namespace(dir=str(out), markdown=str(out / "matrix.md")))
 
 
 def version(cmd):
