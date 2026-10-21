@@ -7,6 +7,7 @@
 //! sail-bench fragility [--tier T] [--project P]... [--filter S] [--seeds N] [--shuffles K]
 //!                      [--jobs J] [--verus-arg A]... [--name NAME] [--shim PATH]
 //! sail-bench repair prepare|run ...   (M7 repair acceptance; see sail_bench::repair)
+//! sail-bench mutants oracle|run|report ...   (seeded mutation suite; ADR 0063)
 //! sail-bench report [--out docs/benchmarks.md] FILE...
 //! sail-bench profile <trace-dir>... [--json out.json]
 //! ```
@@ -46,6 +47,7 @@ const USAGE: &str = "usage:
                     [--project ID]... [--filter CYCLE_SUBSTR] [--timeout-secs S] [--resume]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
+  sail-bench mutants oracle|run|report ...   (the seeded mutation suite; ADR 0063)
   sail-bench profile <trace-dir>... [--json PATH]";
 
 /// Which corpus units to run.
@@ -358,6 +360,12 @@ fn edit_cmd(args: &[String]) -> Result<(), String> {
         return Err("--rounds must be at least 1".to_owned());
     }
     let catalogue = edit::Catalogue::load(&o.edits)?;
+    if let Some(e) = catalogue.edits.iter().find(|e| e.expected == "pending") {
+        return Err(format!(
+            "{}: `expected` is pending; run `sail-bench mutants oracle` first",
+            e.id
+        ));
+    }
     let p = prepare(o.shim.clone())?;
     let sail = daemon::locate_sail(o.sail.clone())?;
     // Edits name their units: select from every tier, limited to their
@@ -957,6 +965,7 @@ fn main() -> ExitCode {
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
         Some("repair") => repair_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
+        Some("mutants") => sail_bench::mutants::main(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),
     };
     match result {

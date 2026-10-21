@@ -393,3 +393,14 @@ Accepted by the owner. Native units no longer wait for their dependencies'
 certificates or for other units' scratch directories before compiling; they
 are certified after their compile by the same checks. See
 [ADR 0061](0061-pipelined-native-admission.md).
+
+## Quiet verification logging
+
+`--no-report-long-running` is admitted with the existing JSON/time logging
+flags. It only disables wall-time progress notices in the pinned verifier;
+proof selection and solver input are unchanged. Its literal token remains in
+the retained compiler identity, so quiet and ordinary invocations cannot share
+a retained key. Every archive, compiler-input and output check still applies.
+This lets the mutation workload request deterministic diagnostics without
+artificially disabling retained reuse. Native real-project qualification is
+required before release claims for this instrumentation profile.

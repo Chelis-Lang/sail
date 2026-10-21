@@ -62,3 +62,86 @@ GitHub's hard job timeout can bypass that upload step, so a missing artifact
 does not locate the blocked command or establish a product failure. The original
 containment cancellation and the revised layout's completed native scope are in
 the [containment record](validation/dependency-store-fail-closed.md).
+
+## Mutation suite
+
+Both stock and managed commands explicitly use the pinned runtime's Rust
+Cargo toolchain, including projects with a checked-in nightly override.
+The run header records `cargo_toolchain`; attaching it to a release matrix
+requires the same pin. This is a controlled comparison, not a claim that Sail
+ignores a user's project toolchain in ordinary use.
+
+The seeded mutation suite ([ADR 0063](decisions/0063-seeded-mutation-suite.md))
+is both a soundness probe and the release benchmark's edit loop. Catalogues
+live in `corpus/mutants/` (`<name>.toml` in the `corpus/edits.toml` format,
+plus a `<name>.meta.json` sidecar); results are in the
+[validation record](validation/mutation-suite.md).
+
+| Catalogue | Unit | Generated with |
+|---|---|---|
+| `human-eval` | `human-eval-verus/tasks/lib.rs` (wrapped as a Cargo library) | `--project human-eval-verus --name human-eval --per-class 6` |
+| `ironkv` | `verified-ironkv/ironsht` | `--project verified-ironkv --name ironkv --per-class 6` |
+| `vest` | `vest/vest_lib` | `--project vest --name vest --per-class 5` |
+| `capybarakv` | `verified-storage/capybaraKV/capybarakv` | `--project verified-storage --unit verified-storage/capybaraKV/capybarakv --name capybarakv --per-class 5` |
+
+All use `--seed 20261020`. To make or extend a catalogue:
+
+```sh
+sail-conformance fetch --tier standard --project vest       # the pinned source
+cargo xtask gen-mutants --project vest --name vest --seed 20261020 --per-class 5
+# On native Linux x86-64 (the reference platform), with stock Verus installed
+# (`cargo xtask fetch-verus`): three stock runs per mutant settle `expected`
+# and drop mutants that vary, never compile or do not finish.
+cargo build --release -p sail-cli -p sail-shim -p sail-bench
+./target/release/sail-bench mutants oracle --catalogue corpus/mutants/vest.toml --jobs 4
+```
+
+Generation reads only the source text and is byte-identical for the same
+seed, generator version and pin on macOS and Linux; the sidecar records the
+generated catalogue's sha256. The oracle rewrites the catalogue in place,
+keeping only settled mutants, and records every run in the sidecar.
+
+To run a catalogue (Sail's Verus from `SAIL_VERUS_BUILD`, or the CI image's
+`SAIL_ENGINE_BUILD`; otherwise Sail's own lookup):
+
+```sh
+./target/release/sail-bench mutants run --catalogue corpus/mutants/vest.toml \
+  --vstd-lock scripts/shipped-deps/Cargo.lock --rounds 3 [--per-class N] [--filter SUBSTR] --out ~/mut/vest --machine "EC2 c7i.8xlarge, us-east-1"
+./target/release/sail-bench mutants report ~/mut/vest      # the tables again
+```
+
+Per round it keeps one working copy and one Sail cache, so one daemon serves
+every mutant; stock `cargo verus verify` and `sail verify` run in the same
+tree with separate target directories, alternating order. After the last
+mutant the original is restored and verified ordinarily and with
+`SAIL_MANAGED_FORCE=1`; Sail must match stock and its own cold result. The
+command exits non-zero on any difference, false verified (a function stock
+rejects that Sail reports verified), failed revert check or step that could
+not run, and copies those steps' logs to `<out>/failing/`. Every sample is in
+`<out>/samples.jsonl`; `report.md` has per-class medians, total and geomean
+speedups with 95% bootstrap intervals, the cache hit share of solver lookups and the share of Sail runs with a
+newly published retained-proof receipt.
+
+Tiers: `ci/local.sh conformance standard` ends with two mutants per class of
+`human-eval` for one round; `ci/local.sh conformance deep` runs every
+catalogue for one round. Both are local-only. Timings come only from a native
+host (`ci/run.sh bench mutants NAME ROUNDS`, three rounds for a release).
+
+For release-product mutation measurements, pass `--vstd-lock release-out/deps/<bundle>/Cargo.lock` to both `mutants oracle` and
+`mutants run`. Both arms then use the release's registry Verus crate versions;
+workspace adjustments and the selected release lock are retained with the run.
+Without that option, the suite keeps source-patched preparation for explicit
+diagnostic runs. The standard and deep mutation probes use the registry lock,
+matching the checked-in catalogues. The runner refuses an oracle from another
+platform, stock release or preparation, or one with fewer than three runs.
+Regenerate the stock oracle for the selected setup before measuring it.
+
+Root-only JSON/time logging leaves vstd's product path intact. Both arms ask
+Verus to suppress wall-time notices; the reader preserves all stderr. The
+oracle must match protocol `roots-json-strict-2`, not merely the generator
+version. Historical all-crate logging runs do not qualify this protocol.
+
+A round fails if its daemon disappears or changes. Retained-proof share uses
+newly published retained receipts; a run with no solver sessions alone is not
+evidence of instant revert. Timeouts retain partial logs and stop descendant
+processes, including when their original parent has already exited.

@@ -59,7 +59,8 @@
 #   SAIL_PERF_VERUS_BUILD  Sail's Verus for the Sail modes, passed as
 #                      SAIL_VERUS_BUILD (each Sail run has its own empty cache,
 #                      so Sail cannot find a runtime installed in ~/.cache/sail)
-#   SAIL_PERF_EDITS    edits to run (default: all of the project's)
+#   SAIL_PERF_EDITS    edits to run (default: all of the project's; `none`
+#                      selects only cold and requested unchanged calls)
 #   SAIL_PERF_CATALOGUE  incidental: frozen comment/blank/helper/rename edits
 #   SAIL_PERF_BASELINE directory holding the old fork for `sail` mode only;
 #                      `plain` stays the stock conformance oracle on PATH
@@ -218,6 +219,7 @@ fi
 vargs+=(${SAIL_PERF_VERUS_ARGS:-})
 
 selected_edits() {
+  [ "${SAIL_PERF_EDITS:-}" != none ] || return 0
   if [ -n "${SAIL_PERF_EDITS:-}" ]; then
     local e
     for e in $SAIL_PERF_EDITS; do
@@ -670,9 +672,11 @@ run_mode() { # ROUND MODE
     run_one "$round" "$mode" "$dir" "$name"
   done <"$out/selected-edits.txt"
   reset_files "$dir"
-  apply_op "$dir" noop "$noop_file" end
-  run_one "$round" "$mode" "$dir" noopend
-  reset_files "$dir"
+  if [ "${SAIL_PERF_NOOPS:-3}" -gt 0 ]; then
+    apply_op "$dir" noop "$noop_file" end
+    run_one "$round" "$mode" "$dir" noopend
+    reset_files "$dir"
+  fi
   if [ "$mode" = fork-shim ]; then
     cleanup_shim
     unset SAIL_DAEMON_SOCKET
