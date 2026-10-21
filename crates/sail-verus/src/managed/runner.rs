@@ -824,13 +824,7 @@ fn cargo_clean(config: &Config, build_target: &Path, packages: &[String]) -> Res
     Ok(())
 }
 
-fn invoke(
-    config: &Config,
-    paths: &Paths,
-    out: &mut Option<&mut dyn Write>,
-    err: &mut dyn Write,
-    seeded: &[super::store::Seeded],
-) -> Result<Option<i32>> {
+fn invocation_command(config: &Config, paths: &Paths, show_output: bool) -> Result<Command> {
     let split = config
         .args
         .iter()
@@ -859,7 +853,7 @@ fn invoke(
         // Cargo writes to Sail's pipe, not the terminal, so it would print
         // no colour; ask for it as plain Cargo-Verus would on this terminal.
         // An argument, not CARGO_TERM_COLOR, so it is not a proof input.
-        .args((out.is_some() && terminal_colour(&config.args[..split])).then_some("--color=always"))
+        .args((show_output && terminal_colour(&config.args[..split])).then_some("--color=always"))
         .args(&config.args[split..])
         .env("RUSTC_BOOTSTRAP", "1")
         .env("CARGO", &paths.cargo_alias)
@@ -874,6 +868,7 @@ fn invoke(
         .env("VERUS_Z3_PATH", &config.shim)
         .env("SAIL_Z3_PATH", &config.z3)
         .env("SAIL_SOLVER_MODE", "default")
+        .env_remove(super::build_environment::REQUEST)
         .env_remove(super::shipped::PLAN_ENV)
         .env_remove(super::shipped::SOURCE_BASE_ENV)
         .env_remove(super::shipped::SPAN_REMAP_ENV)
@@ -899,6 +894,42 @@ fn invoke(
     if let Some(remap) = &paths.span_remap {
         cmd.env(super::shipped::SPAN_REMAP_ENV, remap);
     }
+    Ok(cmd)
+}
+
+fn build_environment(config: &Config, paths: &Paths, data: &Value) -> Option<Value> {
+    if !data["packages"].as_array()?.iter().any(|package| {
+        package["targets"].as_array().is_some_and(|targets| {
+            targets.iter().any(|target| {
+                target["kind"]
+                    .as_array()
+                    .is_some_and(|kinds| kinds.iter().any(|kind| kind == "custom-build"))
+            })
+        })
+    }) {
+        return None;
+    }
+    let directory = paths.run.join("build-environment");
+    std::fs::create_dir(&directory).ok()?;
+    let output = invocation_command(config, paths, false)
+        .ok()?
+        .env(super::build_environment::REQUEST, &directory)
+        .output()
+        .ok()?;
+    std::fs::write(directory.join("frontend.stdout"), &output.stdout).ok()?;
+    std::fs::write(directory.join("frontend.stderr"), &output.stderr).ok()?;
+    output.status.success().then_some(())?;
+    super::build_environment::load(&directory, data)
+}
+
+fn invoke(
+    config: &Config,
+    paths: &Paths,
+    out: &mut Option<&mut dyn Write>,
+    err: &mut dyn Write,
+    seeded: &[super::store::Seeded],
+) -> Result<Option<i32>> {
+    let mut cmd = invocation_command(config, paths, out.is_some())?;
     #[cfg(unix)]
     let visible = super::visible_output::Receiver::bind()
         .map_err(|error| Error::new("SAIL3106", error.to_string()))?;
@@ -2415,6 +2446,10 @@ pub(crate) fn run_engine_held(
         Vec::new()
     };
     let new_target = super::store::new_target(&paths.target);
+    if paths.reuse {
+        data["sail_build_environment"] =
+            build_environment(config, &paths, &data).unwrap_or(Value::Null);
+    }
     // Sail's Verus names the shipped build's registry sources by this
     // machine's registry directory, in every managed run (ADR 0048): a target
     // or store entry may hold shipped units from an earlier run.
@@ -2840,6 +2875,7 @@ pub(crate) fn run_engine_held(
         let mut after_data = after_data?;
         after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
         after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
+        after_data["sail_build_environment"] = data["sail_build_environment"].clone();
         after_data["sail_source_inputs"] = sources;
         after_data["sail_source_inputs_by_package"] =
             serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
