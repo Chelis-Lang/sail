@@ -316,6 +316,7 @@ fn sibling_dependency_receipt_needs_identical_fresh_bytes_and_never_covers_a_sel
         true,
         &BTreeSet::new(),
         &[],
+        None,
     )?;
     assert_eq!(targets, Vec::<TargetResult>::new());
     assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
