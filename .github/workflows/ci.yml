@@ -103,6 +103,8 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh gate
+        env:
+          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
 
   solver-tests:
     # The suites that need the pinned Z3: real-solver replay, cached sessions
@@ -130,6 +132,8 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh solver
+        env:
+          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
 
   end-to-end:
     # Preserve the required check name and reject failed, cancelled or skipped phases.
@@ -178,6 +182,8 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh e2e-build target/e2e-bin
+        env:
+          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-bin
@@ -524,6 +530,7 @@ jobs:
       - name: Run conformance
         env:
           SAIL_CONFORMANCE_OUT: ${{ runner.temp }}/conformance-out
+          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
         run: ci/run.sh conformance fast pr
       - name: Upload reports
         if: failure()

@@ -16,6 +16,8 @@
 
 /// `(crate, internal crates it may depend on directly)`.
 pub const ALLOWED: &[(&str, &[&str])] = &[
+    ("sail-dive", &[]),
+    ("sail-runtime-worker", &["sail-dive"]),
     ("sail-smtlib", &[]),
     ("sail-session", &["sail-smtlib"]),
     ("sail-key", &["sail-smtlib", "sail-session"]),

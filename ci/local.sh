@@ -29,6 +29,9 @@ for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OU
     sail_runtime_env+=(-e "$sail_env_name=$sail_env_value")
   fi
 done
+if [ -n "${SAIL_DEPENDENCY_READ_TOKEN:-}" ]; then
+  sail_runtime_env+=(-e SAIL_DEPENDENCY_READ_TOKEN)
+fi
 tty=()
 [ -t 1 ] && tty=(-t)
 sail_fault_options=()

@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add isolated native temporal jobs through a pinned D.I.V.E. library:
+  exhaustive finite checking, admitted temporal properties, sampled simulation
+  and complete-trace validation. Authenticate worker bytes and request identity,
+  enforce parent deadlines and cancellation, retain native evidence alongside
+  reversible admitted ITF values, and refuse unsupported host capabilities.
+  This developer API does not change Verus commands or introduce a TLC backend.
+
 - Accept human coauthor email addresses ending in `.ai` in the authorship guard,
   while continuing to reject tool identities and generated-attribution markers.
 
