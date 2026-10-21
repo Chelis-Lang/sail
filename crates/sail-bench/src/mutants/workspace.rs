@@ -313,6 +313,24 @@ pub(super) fn parse_outputs(stdout: &[u8]) -> (Vec<Value>, String) {
     (docs, String::from_utf8_lossy(&rest).trim().to_owned())
 }
 
+/// Separates the CLI's intentional bundle-miss notice from Verus diagnostics.
+/// Raw stderr remains in the captured log; every other byte stays comparable.
+pub(super) fn separate_sail_notes(run: &mut RunRecord) -> Vec<String> {
+    const PREFIX: &str = "note[SAIL3138]: Sail's preverified vstd proof was not used because ";
+    let mut diagnostics = String::new();
+    let mut notices = Vec::new();
+    for line in run.stderr.split_inclusive('\n') {
+        let text = line.trim_end_matches(['\r', '\n']);
+        if text.starts_with(PREFIX) && text.ends_with("verification is unaffected") {
+            notices.push(text.to_owned());
+        } else {
+            diagnostics.push_str(line);
+        }
+    }
+    run.stderr = diagnostics;
+    notices
+}
+
 /// Runs `cmd` to completion, retaining its streams in `log` and stopping
 /// process-group descendants even when the group leader exits first.
 ///
@@ -704,6 +722,25 @@ mod tests {
             parse_outputs(b"ordinary text with {braces}\n{not json}\n{\"ok\":true}\n");
         assert_eq!(docs.len(), 1);
         assert_eq!(rest, "ordinary text with {braces}\n{not json}");
+    }
+
+    #[test]
+    fn cli_notices_do_not_hide_verifier_or_timing_diagnostics() {
+        let mut run = RunRecord {exit_code: Some(0), outputs: vec![], stdout_rest: String::new(),
+            wall_ms: 0.0, user_s: None, sys_s: None, max_rss_bytes: None,
+            stderr: "note[SAIL3138]: Sail's preverified vstd proof was not used because features differ; verification is unaffected\nnote: function body check finished in 3 seconds\n\nerror: failed\n".to_owned()};
+        let notices = separate_sail_notes(&mut run);
+        assert_eq!(notices.len(), 1);
+        assert_eq!(
+            run.stderr,
+            "note: function body check finished in 3 seconds\n\nerror: failed\n"
+        );
+        run.stderr = "note[SAIL3138]: unexpected text\nnote[SAIL9999]: other note\n".to_owned();
+        assert_eq!(separate_sail_notes(&mut run), Vec::<String>::new());
+        assert_eq!(
+            run.stderr,
+            "note[SAIL3138]: unexpected text\nnote[SAIL9999]: other note\n"
+        );
     }
 
     #[test]

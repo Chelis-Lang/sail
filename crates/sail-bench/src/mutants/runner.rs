@@ -30,8 +30,8 @@ use sail_verus::run::RunRecord;
 use serde_json::{Value, json};
 
 use super::workspace::{
-    DaemonState, PROTOCOL, Workspace, daemon_state, execute, retained_receipts, stop_daemon,
-    verus_build_from_env, write_fresh,
+    DaemonState, PROTOCOL, Workspace, daemon_state, execute, retained_receipts,
+    separate_sail_notes, stop_daemon, verus_build_from_env, write_fresh,
 };
 use super::{Setup, class_of, false_verified, load_meta, plain_outcome, sidecar, value};
 use crate::cold::{Judgement, judge};
@@ -246,7 +246,7 @@ impl Round<'_> {
         if !pair.observed_stats || !daemon_continuity(&mut self.daemon_pid, pair.pid) {
             sample["daemon_error"] = json!("daemon missing or changed within the round");
         }
-        let (stock, sail) = match (pair.stock, pair.sail) {
+        let (stock, mut sail) = match (pair.stock, pair.sail) {
             (Ok(p), Ok(s)) => (p, s),
             (p, s) => {
                 let msg = [p.err(), s.err()]
@@ -263,6 +263,12 @@ impl Round<'_> {
                 return None;
             }
         };
+        let notices = separate_sail_notes(&mut sail);
+        if notices.len() > 1 {
+            sample["diagnostic_error"] =
+                json!("more than one bundle-miss notice in one invocation");
+        }
+        sample["sail_operational_notes"] = json!(notices);
         let plains = self.plains.entry(step.clone()).or_default();
         plains.push(stock.clone());
         let (j, functions, differences) = judge(plains, &sail);
@@ -295,7 +301,8 @@ impl Round<'_> {
                 sample["own_differences"] = json!(d);
             }
         }
-        let bad = sample.get("provenance_error").is_some()
+        let bad = sample.get("diagnostic_error").is_some()
+            || sample.get("provenance_error").is_some()
             || sample.get("daemon_error").is_some()
             || mismatch
             || judgement == "different"

@@ -125,7 +125,10 @@ Both sides pass `--fwd-verus-args-to roots -- --output-json --time
 --no-report-long-running`: only requested roots receive diagnostic logging
 flags, so vstd still follows the installed product's shipped-proof path. The
 quiet flag suppresses wall-time notices in Verus itself on both sides;
-**no stderr messages are stripped by the reader**. The quiet flag remains in
+**no Verus diagnostics are stripped by the reader**. The intentional CLI
+bundle-miss notice (SAIL3138, introduced by #275) is recorded separately from
+Verus diagnostics; malformed, unknown or repeated notices remain failures.
+Complete raw stderr remains in the logs. The quiet flag remains in
 retained identity keys, like the existing JSON/time flags; it changes no proof
 scope and cannot authorize a skipped check. Ordinary dependency output before
 root JSON remains part of the comparison.

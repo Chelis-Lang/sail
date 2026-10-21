@@ -56,7 +56,7 @@ def analyse(directory, matrix):
         issues.append("all nine mutation classes must be measured")
     if any(s.get("stock_exit") is None or s.get("stock_exit") != s.get("sail_exit")
            or s.get("judgement") != "same" or s.get("false_verified")
-           or s.get("expected_mismatch") or s.get("daemon_error") or s.get("provenance_error")
+           or s.get("expected_mismatch") or s.get("daemon_error") or s.get("provenance_error") or s.get("diagnostic_error")
            or (s.get("phase") in ("revert", "revert-forced") and s.get("own_answers") is not True)
            for s in samples):
         issues.append("comparison, oracle, provenance or revert check failed")
