@@ -283,7 +283,7 @@ pub fn report_dir(dir: &Path) -> Result<String, String> {
         let c = s.get("cache").cloned().unwrap_or(Value::Null);
         let hits = c.get("hits").and_then(Value::as_u64).unwrap_or(0);
         m.hits += hits;
-        m.replies += hits + c.get("puts").and_then(Value::as_u64).unwrap_or(0);
+        m.replies += c.get("gets").and_then(Value::as_u64).unwrap_or(0);
         m.runs += 1;
         if get_s(s, "served") == "retained" {
             m.restored += 1;
@@ -300,7 +300,7 @@ pub fn report_dir(dir: &Path) -> Result<String, String> {
     );
     let _ = writeln!(
         t,
-        "Speedup is stock/Sail. *Total* is the ratio of summed per-mutant medians (the loop's wall time); *geomean* is the geometric mean of per-mutant ratios. Intervals are 95% bootstrap intervals over mutants ({RESAMPLES} resamples). *Served* is the share of solver replies the cache served; *restored* is the share of Sail runs with a newly published retained-proof receipt. No solver sessions alone does not establish instant revert.\n"
+        "Speedup is stock/Sail. *Total* is the ratio of summed per-mutant medians (the loop's wall time); *geomean* is the geometric mean of per-mutant ratios. Intervals are 95% bootstrap intervals over mutants ({RESAMPLES} resamples). *Served* is the cache hit share of solver lookup requests (including misses whose results were not cached); *restored* is the share of Sail runs with a newly published retained-proof receipt. No solver sessions alone does not establish instant revert.\n"
     );
     let _ = writeln!(
         t,
@@ -398,7 +398,7 @@ mod tests {
             lines.push(serde_json::json!({
                 "round": round, "phase": "mutant", "id": id, "class": "arith", "judgement": "same",
                 "stock_s": stock, "sail_s": sail, "false_verified": [], "served": "mixed",
-                "cache": {"hits": 3, "puts": 1}, "daemon_pid": 7
+                "cache": {"gets": 4, "hits": 3, "puts": 1}, "daemon_pid": 7
             }).to_string());
         }
         lines.push(serde_json::json!({"round": 0, "phase": "revert", "judgement": "same", "own_answers": true,

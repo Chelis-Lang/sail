@@ -311,7 +311,7 @@ impl Round<'_> {
             stock.wall_ms / 1000.0,
             sail.wall_ms / 1000.0,
             pair.cache.hits,
-            pair.cache.hits + pair.cache.puts,
+            pair.cache.gets,
             if fv.is_empty() {
                 String::new()
             } else {
@@ -482,6 +482,70 @@ fn version_of(cmd: &Path, args: &[&str]) -> String {
         .unwrap_or_default()
 }
 
+fn run_header(
+    o: &Options,
+    setup: &Setup,
+    sail: &Path,
+    edits: &[&Edit],
+    meta: &Value,
+    verus_build: Option<&Path>,
+) -> Result<Value, String> {
+    let digest_file = |path: &Path| -> Result<String, String> {
+        std::fs::read(path)
+            .map(|bytes| crate::repair::sha256_hex(&bytes))
+            .map_err(|error| format!("{}: {error}", path.display()))
+    };
+    let runtime_manifest = if let Some(build) = verus_build {
+        Some(build.join("sail-build.json"))
+    } else {
+        let engine = sail
+            .parent()
+            .and_then(Path::parent)
+            .map(|root| root.join("engine"));
+        engine.and_then(|root| {
+            let manifests: Vec<_> = std::fs::read_dir(root)
+                .ok()?
+                .flatten()
+                .map(|entry| entry.path().join("sail-build.json"))
+                .filter(|path| path.is_file())
+                .collect();
+            if manifests.len() == 1 {
+                manifests.into_iter().next()
+            } else {
+                None
+            }
+        })
+    };
+    let catalogue_sha = fingerprint(&std::fs::read(&o.catalogue).unwrap_or_default());
+    Ok(json!({
+       "catalogue": o.catalogue.display().to_string(),
+       "catalogue_fingerprint": catalogue_sha,
+       "unit": setup.unit.id,
+       "mutants": edits.iter().map(|e| e.id.clone()).collect::<Vec<_>>(),
+       "rounds": o.rounds,
+       "machine": o.machine,
+       "machine_info": sail_verus::run::machine_info(),
+       "platform": sail_verus::toolchain::host(),
+       "sail": sail.display().to_string(),
+       "sail_version": version_of(sail, &["--version"]),
+       "sail_sha256": digest_file(sail)?,
+       "stock_cargo_verus_sha256": digest_file(&setup.installed.cargo_verus)?,
+       "runtime_manifest_sha256": runtime_manifest.as_deref().map(digest_file).transpose()?,
+       "corpus_sha256": digest_file(Path::new("corpus/corpus.toml"))?,
+       "vstd_lock_sha256": o.vstd_lock.as_deref().map(digest_file).transpose()?,
+       "generator": meta.get("generator"),
+       "oracle_runs": meta.pointer("/oracle/runs"),
+       "oracle_kept": meta.pointer("/oracle/kept"),
+       "oracle_vstd_mode": meta.pointer("/oracle/vstd_mode"),
+       "vstd_mode": if o.vstd_lock.is_some() { "registry" } else { "source" },
+       "vstd_lock": o.vstd_lock,
+
+       "sail_verus_build": verus_build.as_ref().map(|p| p.display().to_string()),
+       "stock_verus": setup.installed.pins.verus.release,
+       "stock_cargo_verus": setup.installed.cargo_verus.display().to_string(),
+    }))
+}
+
 /// Entry point for `sail-bench mutants run`.
 ///
 /// # Errors
@@ -515,24 +579,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
         .clone()
         .unwrap_or_else(|| setup.scratch.join("out").join(&name));
     std::fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
-    let catalogue_sha = fingerprint(&std::fs::read(&o.catalogue).unwrap_or_default());
-    let header = json!({
-        "catalogue": o.catalogue.display().to_string(),
-        "catalogue_fingerprint": catalogue_sha,
-        "unit": setup.unit.id,
-        "mutants": edits.iter().map(|e| e.id.clone()).collect::<Vec<_>>(),
-        "rounds": o.rounds,
-        "machine": o.machine,
-        "machine_info": sail_verus::run::machine_info(),
-        "sail": sail.display().to_string(),
-        "sail_version": version_of(&sail, &["--version"]),
-        "vstd_mode": if o.vstd_lock.is_some() { "registry" } else { "source" },
-        "vstd_lock": o.vstd_lock,
-
-        "sail_verus_build": verus_build.as_ref().map(|p| p.display().to_string()),
-        "stock_verus": setup.installed.pins.verus.release,
-        "stock_cargo_verus": setup.installed.cargo_verus.display().to_string(),
-    });
+    let header = run_header(&o, &setup, &sail, &edits, &meta, verus_build.as_deref())?;
     std::fs::write(
         out.join("header.json"),
         serde_json::to_string_pretty(&header).unwrap_or_default(),
