@@ -53,7 +53,9 @@ Old captures are eager entry computations, including inside a short-circuited
 guarantee branch. Their definedness is asserted at entry under the original
 preconditions. Adding a stronger precondition instead could make a failing
 capture verify vacuously. Mutable receiver old values use Verus's actual
-`old(self)` state. No reference alias substitutes for a copied scalar snapshot.
+`old(self)` state; ordinary mutable receiver projections in guarantees use
+`final(self)`. Entry preconditions and capture assertions use the entry state.
+No reference alias substitutes for a copied scalar snapshot.
 The original executable body is preserved; its arithmetic safety remains a real
 proof obligation. No proof scaffolding or weakened condition makes a body pass.
 
@@ -139,3 +141,6 @@ SAIL_NEUTRAL_ORACLE_OUT=/fresh/evidence/directory \
 Without the optional output variable the fixture allocates a fresh temporary
 directory. Missing runtimes or malformed evidence fail. Local ordinary fixture
 success does not establish actual backend compatibility.
+
+The [native qualification record](../validation/neutral-verus-lowering.md)
+retains actual fork/stock results and failed setup/lowering attempts.

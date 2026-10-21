@@ -171,7 +171,7 @@ fn function_source(
     environment
         .values
         .insert(result.ident.to_string(), output.clone());
-    let post = environment.translate(&guarantee.body, Some(&Type::Bool), Phase::Current)?;
+    let post = environment.translate(&guarantee.body, Some(&Type::Bool), Phase::Post)?;
     if post.ty != Type::Bool {
         return Err(unsupported("postcondition is not Boolean"));
     }

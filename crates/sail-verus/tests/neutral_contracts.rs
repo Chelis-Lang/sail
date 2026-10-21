@@ -64,6 +64,7 @@ fn checked_predicate_definedness_survives_negation_and_old_does_not_narrow_entry
     assert!(old.source.contains("assert"));
     let wallet = lower(WALLET, "neutral")?;
     assert!(wallet.source.contains("old (self)"));
+    assert!(wallet.source.contains("final (self)"));
     assert_eq!(wallet.manifest.bindings.len(), 2);
     Ok(())
 }
@@ -142,7 +143,13 @@ fn invalid_rust_literals_cannot_turn_into_vacuous_verified_preconditions() {
 fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
     use std::process::Command;
     let pins = sail_verus::toolchain::Pins::embedded()?;
-    let fork = sail_verus::engine::Installed::locate_verified(&sail_verus::cache_dir()?, &pins)?;
+    // The CI image installs the qualified engine outside the mutable Sail cache.
+    let fork = match std::env::var_os("SAIL_VERUS_BUILD")
+        .or_else(|| std::env::var_os("SAIL_ENGINE_BUILD"))
+    {
+        Some(build) => sail_verus::engine::Installed::at(std::path::Path::new(&build), &pins)?,
+        None => sail_verus::engine::Installed::locate_verified(&sail_verus::cache_dir()?, &pins)?,
+    };
     let stock = sail_verus::toolchain::Installed::locate_release(pins)?;
     let root = oracle_directory()?;
     for (label, source, expected) in [
@@ -211,6 +218,21 @@ fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
             assert_eq!(
                 result.get("success").and_then(serde_json::Value::as_bool),
                 Some(expected)
+            );
+            assert_eq!(
+                result
+                    .get("is-verifying-entire-crate")
+                    .and_then(serde_json::Value::as_bool),
+                Some(true),
+                "{label}/{backend}: partial verification does not qualify a control"
+            );
+            let completed = result
+                .get(if expected { "verified" } else { "errors" })
+                .and_then(serde_json::Value::as_u64)
+                .ok_or("missing actual verification count")?;
+            assert!(
+                completed > 0,
+                "{label}/{backend}: empty verification is not evidence"
             );
             observed.push(result);
         }
