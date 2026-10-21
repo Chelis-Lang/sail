@@ -239,3 +239,9 @@ Each entry names the charter text it qualifies and the ADR that records it.
    `--target-dir`, Verus log options, Cargo `--config`, loader variables)
    are verified as plain Cargo-Verus verifies them, with one note and no
    proof reuse. See ADR 0046.
+
+7. *Correctness rule 1* (owner decision, 2026-10-21). Verification-progress
+   notes may reorder with identical text and counts, addressing stock's
+   worker-arrival ordering (VI-0012). Only complete standalone progress blocks
+   within one uninterrupted run may reorder. Errors, warnings, other output,
+   per-function verdicts and exit codes retain their exact checks. See ADR 0064.

@@ -16,7 +16,9 @@ acting. The charter's appendix records corrections made since it was written.
   is not negotiable for speed. In default mode, `sail` must produce the same
   per-function verdicts and the same diagnostics as plain Verus with the pinned
   Z3. The differential harness (`sail-conformance`) is the definition of
-  correctness.
+  correctness. The owner-approved ADR 0064 exception permits only reordered
+  verification-progress notes with identical text and counts; other output
+  and verdict checks remain exact.
 - **Never weaken a check.** Never weaken a conformance check, golden, test or
   benchmark baseline to make a change pass. If a check looks wrong, raise it
   with evidence.
