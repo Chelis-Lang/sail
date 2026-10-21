@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Avoid injecting a duplicate progress option into the pinned dispatch-order
+  regression. Require the exact test identity and full original source hash.
 - Preserve independently verified dependencies after a requested proof fails
   when platform-disabled build scripts have no current Cargo execution unit.
   Keep conservative cleanup for unknown plans and reject unexpected units.

@@ -11,3 +11,11 @@ case. This fixture tests option selection; it is not compiled or counted as
 native Verus regression coverage. The original fork test and its assertions
 remain unchanged. Changed or missing source and unrelated cases retain the
 runner's default.
+
+The dispatch-order fixture is the unmodified
+`source/rust_verify_test/tests/sail_vi0012_dispatch_order.rs` from the pinned
+fork runtime source `f8589ed4345f147d8fb43d8cb7992921944b91f0`, under the same
+MIT license. SHA-256:
+`0eaec1bc54d7821f3026e4151bc07d7eafeff7b69cf3dc92e7a5c608536160db`.
+Only its `sail_vi0012_dispatch_order_keeps_start_note_order` case supplies the
+progress flag. Its other cases retain the runner default.

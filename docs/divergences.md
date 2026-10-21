@@ -38,3 +38,8 @@ The source engine is not a verdict-changing mode: its reports keep
 `mode: default` and record `engine` provenance, and `sail-conformance engine`
 compares its full phase with plain Verus. It has no opt-in options: it
 prepares no lowering for reuse.
+
+Owner decision, 2026-10-21: ignore the six random temporary SMT-log-directory
+characters in the exact pinned dispatch query regression's printed rerun
+commands. This applies only to its source-hash-bound test scaffolding; query
+bytes, diagnostics and outcomes remain checked. See ADR 0042.

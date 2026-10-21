@@ -256,3 +256,8 @@ Each entry names the charter text it qualifies and the ADR that records it.
    correctness and performance contract. See ADR 0065. The owner's direction:
 
    > largely agreed. you can start building features on branches that safely merge into main via green builds inside sail that help get oyster integrated. i dont want to do a bunch of wiring up direct calls to smt or direct calls to tlc when I just want sail to handle it all. so, no tlc backing allowed. dive is the plan of record. but build what you can yourself now and get this stuff into sail, while the other agent continues to grind on perf
+
+9. *Source-suite comparison* (owner, 2026-10-21). The exact pinned dispatch
+   query test's printed rerun commands may differ in their six random temporary
+   SMT-log directory characters. All functional output and assertions remain
+   checked. See ADR 0042.
