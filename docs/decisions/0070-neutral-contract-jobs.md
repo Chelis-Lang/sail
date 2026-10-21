@@ -21,7 +21,7 @@ from the backend helper, and retain unchanged project reports alongside optional
 typed contract evidence. Sail alone chooses the shadow, tools and controls.
 Reuse the existing worker process, adding explicit neutral deadline and stream
 bounds. The CLI acceptance example depends on the runtime contract library only to compile a separate body-edit sample witness; the API request never carries an executable or verifier path. Refuse older endpoints without fallback. Preserve contract source and
-metadata with sealed worker evidence in independently retained baselines.
+metadata with sealed worker stdout and stderr evidence in independently retained baselines.
 
 The job's live-source currentness is unknown: the client must compare its actual
 source with the returned original hash. A proof under requires is neither
