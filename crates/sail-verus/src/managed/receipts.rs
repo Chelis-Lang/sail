@@ -62,6 +62,21 @@ pub(crate) struct Invocation {
 }
 
 impl Invocation {
+    /// Whole proofs retain their success authority. A partial report has a
+    /// separate authority: exact recorded arguments, successful verifier output
+    /// and no source-engine fallback. It never turns `success` into true.
+    pub(super) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
+        match partial_args {
+            None => self.success && complete(&self.report),
+            Some(args) => {
+                super::runner::focused(args)
+                    && self.report.command == args
+                    && self.report.engine.is_none()
+                    && complete(&self.report)
+            }
+        }
+    }
+
     /// Original proof provenance; the local invocation run remains separately sealed.
     pub(crate) fn establishing_run(&self) -> &str {
         self.retained_from.as_deref().unwrap_or_else(|| {
@@ -77,6 +92,9 @@ impl Invocation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Receipt {
     pub version: u32,
+    /// Exact ordered invocation arguments for a partial report; never a full proof.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub partial_args: Option<Vec<String>>,
     pub checksum: String,
     pub package_id: String,
     pub name: String,
@@ -94,8 +112,8 @@ pub(crate) struct Receipt {
     pub declared_environment: BTreeMap<String, Option<Vec<u8>>>,
 }
 
-/// Receipts before version 3 did not bind declared environment variables.
-pub(crate) const RECEIPT_VERSION: u32 = 3;
+/// Version 4 distinguishes exact-scope reports from whole-target proof receipts.
+pub(crate) const RECEIPT_VERSION: u32 = 4;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
@@ -109,8 +127,21 @@ impl Receipt {
 
     /// [`Receipt::valid`], reading each file at most once in `digests`' phase.
     pub(super) fn valid_in(&self, context: &str, digests: &PhaseDigests) -> bool {
+        self.valid_scoped_in(context, digests, None)
+    }
+
+    /// A partial report is usable only by the exact ordered partial invocation.
+    /// Ordinary proof consumers always call `valid_in`, which refuses it.
+    pub(super) fn valid_scoped_in(
+        &self,
+        context: &str,
+        digests: &PhaseDigests,
+        partial_args: Option<&[String]>,
+    ) -> bool {
         let checksum = self.clone().seal().checksum;
-        self.version == RECEIPT_VERSION
+        self.partial_args.as_deref() == partial_args
+            && partial_args.is_none_or(super::runner::focused)
+            && self.version == RECEIPT_VERSION
             && super::environment::unchanged(&self.declared_environment)
             && read::<Commit>(&self.committed).is_some_and(|commit| {
                 commit.context == self.context
@@ -119,8 +150,7 @@ impl Receipt {
             })
             && self.checksum == checksum
             && self.context == context
-            && self.invocation.success
-            && complete(&self.invocation.report)
+            && self.invocation.successful_for(partial_args)
             && !self.artifact_hashes.is_empty()
             && {
                 // Both sets are read together, as one overlapping batch.
@@ -345,6 +375,7 @@ mod tests {
         });
         Receipt {
             version: RECEIPT_VERSION,
+            partial_args: None,
             committed,
             checksum: String::new(),
             package_id: "input".to_owned(),
@@ -370,6 +401,48 @@ mod tests {
             declared_environment: BTreeMap::new(),
         }
         .seal()
+    }
+
+    #[test]
+    fn partial_receipt_cannot_authorize_a_whole_or_different_scope()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let path = std::env::temp_dir().join(format!("sail-scope-receipt-{}", std::process::id()));
+        let args = vec![
+            "--".to_owned(),
+            "--verify-module".to_owned(),
+            "selected".to_owned(),
+        ];
+        let mut receipt = fixture(&path, path.with_extension("commit"));
+        receipt.partial_args = Some(args.clone());
+        receipt.invocation.report.command.clone_from(&args);
+        receipt.invocation.success = false;
+        let receipt = receipt.seal();
+        json(
+            &receipt.committed,
+            &Commit {
+                context: receipt.context.clone(),
+                run_id: receipt.invocation.run_id.clone(),
+                receipt_checksums: BTreeSet::from([receipt.checksum.clone()]),
+            },
+        )?;
+        let check = |scope: Option<&[String]>| {
+            receipt.valid_scoped_in("ctx", &PhaseDigests::default(), scope)
+        };
+        assert!(check(Some(&args)));
+        assert!(!receipt.valid("ctx"));
+        assert!(!check(None));
+        assert!(!check(Some(&[])));
+        let mut changed = args.clone();
+        changed[2] = "other".to_owned();
+        assert!(!check(Some(&changed)));
+        changed = args.clone();
+        changed.swap(1, 2);
+        assert!(!check(Some(&changed)));
+        std::fs::write(&path, "changed artifact")?;
+        assert!(!check(Some(&args)));
+        std::fs::remove_file(&path)?;
+        std::fs::remove_file(&receipt.committed)?;
+        Ok(())
     }
 
     #[test]

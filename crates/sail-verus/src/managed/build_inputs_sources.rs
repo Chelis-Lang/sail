@@ -277,6 +277,7 @@ mod tests {
                 digest: String::new(),
                 covered: true,
                 output: Some((target.join("unit/output"), "seal".to_owned())),
+                unit_out_dir: None,
             };
             Ok(Self {
                 root,

@@ -455,6 +455,7 @@ fn unbound_project(
                 kind: Vec::new(),
                 establishing_run: run_id.clone(),
                 reused: false,
+                scope_reuse: None,
                 requested: true,
                 // Cargo-Verus skips crates it finds up to date, so the report
                 // need not cover every selected target.

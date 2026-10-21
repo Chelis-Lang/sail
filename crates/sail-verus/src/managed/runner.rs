@@ -1587,7 +1587,9 @@ fn target_records(
     force: bool,
     expected: &BTreeSet<(String, String, String)>,
     seeded: &[super::store::Seeded],
+    partial_args: Option<&[String]>,
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
+    let scoped_run = partial_args.is_some();
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
     let calls = invocations(paths);
@@ -1690,6 +1692,7 @@ fn target_records(
                 && target.replace('-', "_") == name.replace('-', "_")
                 && kind.contains(target_kind)
         });
+        let partial_args = partial_args.filter(|_| requested);
         let force = force && requested;
         let input_revision = revisions
             .get(package_id)
@@ -1720,7 +1723,7 @@ fn target_records(
             );
             let hashes = digests.hashes(&artifact_paths)?;
             let reusable =
-                paths.reuse && call.success && complete(&call.report) && !input_revision.is_empty();
+                paths.reuse && call.successful_for(partial_args) && !input_revision.is_empty();
             if reusable {
                 json(
                     &paths
@@ -1729,6 +1732,7 @@ fn target_records(
                         .join(path.file_name().unwrap_or_default()),
                     &Receipt {
                         version: RECEIPT_VERSION,
+                        partial_args: partial_args.map(<[String]>::to_vec),
                         committed: paths.run.join("committed.json"),
                         checksum: String::new(),
                         package_id: package_id.to_owned(),
@@ -1753,8 +1757,9 @@ fn target_records(
                 kind,
                 establishing_run: call.establishing_run().to_owned(),
                 reused: call.retained_from.is_some(),
+                scope_reuse: None,
                 requested,
-                complete: call.success && complete(&call.report),
+                complete: partial_args.is_none() && call.success && complete(&call.report),
                 report: call.report.clone(),
             });
         } else if let Some((receipt, store_key)) = {
@@ -1789,7 +1794,7 @@ fn target_records(
                     && r.name == name
                     && r.kind == kind
                     && r.artifact_hashes.keys().cloned().collect::<BTreeSet<_>>() == observed
-                    && r.valid_in(context, &digests)
+                    && r.valid_scoped_in(context, &digests, partial_args)
             };
             stored
                 .remove(&path)
@@ -1845,12 +1850,16 @@ fn target_records(
                 target: name.to_owned(),
                 kind,
                 establishing_run: receipt.invocation.establishing_run().to_owned(),
-                reused: true,
+                reused: partial_args.is_none(),
+                scope_reuse: partial_args.map(<[String]>::to_vec),
                 requested,
-                complete: true,
+                complete: partial_args.is_none(),
                 report: receipt.invocation.report,
             });
-        } else {
+        } else if !scoped_run || requested {
+            // Cargo-Verus focus deliberately compiles dependencies without
+            // verifying them. An absent dependency report supplies no proof;
+            // it is not a reason to rebuild the requested partial scope.
             missing.insert(package["name"].as_str().unwrap_or_default().to_owned());
         }
     }
@@ -1886,10 +1895,11 @@ fn target_records(
                     .to_owned(),
                 establishing_run: call.establishing_run().to_owned(),
                 reused: call.retained_from.is_some(),
+                scope_reuse: None,
                 target: call.identity.name,
                 kind: vec![call.identity.crate_type],
                 requested,
-                complete: call.success && complete(&call.report),
+                complete: partial_args.is_none() && call.success && complete(&call.report),
                 report: call.report,
             });
         }
@@ -2698,7 +2708,6 @@ pub(crate) fn run_engine_held(
     let cleanup = diagnostics.phase(Phase::TargetCleanup);
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
-        || focused(&config.args)
         || !before.complete
         || !absent.ready();
     let names: BTreeSet<String> = data["packages"]
@@ -2723,6 +2732,11 @@ pub(crate) fn run_engine_held(
         .filter_map(|entry| Some((entry.path(), read::<ReceiptRevision>(&entry.path())?)))
         .collect();
     let dirty = dirty_receipt_packages(&receipt_revisions, &data);
+    event(&serde_json::json!({
+        "kind":"managed-cleanup-decision", "forced":forced,
+        "changed_receipt_packages":dirty, "stale_scripts":stale_scripts,
+        "late_scripts":late_scripts
+    }));
     if paths.reuse && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
@@ -2971,7 +2985,15 @@ pub(crate) fn run_engine_held(
                 (None, Some(after_inputs(None)))
             }
         });
-        let records = target_records(&paths, &data, &hash, forced, &expected, &seeded);
+        let records = target_records(
+            &paths,
+            &data,
+            &hash,
+            forced,
+            &expected,
+            &seeded,
+            focused(&config.args).then_some(config.args.as_slice()),
+        );
         (records, after.join())
     });
     let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
@@ -2993,7 +3015,15 @@ pub(crate) fn run_engine_held(
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
         exit = invoke(config, &paths, &mut out, err, &[])?;
         outside_scope |= !units_in_scope(&paths);
-        let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected, &seeded)?;
+        let (retried, missing) = target_records(
+            &paths,
+            &data,
+            &hash,
+            forced,
+            &expected,
+            &seeded,
+            focused(&config.args).then_some(config.args.as_slice()),
+        )?;
         targets = retried;
         if !missing.is_empty() {
             return Err(Error::new(
@@ -3123,7 +3153,7 @@ pub(crate) fn run_engine_held(
     }
     if focused(&config.args) {
         notes.push(
-            "Requested function/module scope is partial; whole-target reuse is disabled".to_owned(),
+            "Requested function/module scope is partial; exact-scope reports may be reused, never whole-target proofs".to_owned(),
         );
     }
     for target in targets.iter().filter(|t| t.dependency_build.is_some()) {
@@ -3870,6 +3900,7 @@ mod tests {
         });
         Receipt {
             version: RECEIPT_VERSION,
+            partial_args: None,
             checksum: String::new(),
             committed: paths.run.join("committed.json"),
             package_id: "input".to_owned(),
@@ -4510,7 +4541,8 @@ mod tests {
         assert!(coverage);
         f.result.exit_code = Some(101);
         assert!(f.eligible());
-        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected, &[])?;
+        let (targets, _) =
+            target_records(&f.paths, &f.data, "negative", true, &f.expected, &[], None)?;
         assert_eq!(targets.len(), 1);
         assert!(!targets[0].complete && !targets[0].reused);
         assert_eq!(targets[0].report.exit_code, Some(1));
@@ -4740,7 +4772,8 @@ mod tests {
         };
         assert!(stock(&f, &[]));
         assert!(f.eligible(), "the engine arm takes the same branch");
-        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected, &[])?;
+        let (targets, _) =
+            target_records(&f.paths, &f.data, "negative", true, &f.expected, &[], None)?;
         assert_eq!(targets.len(), 1);
         assert!(!targets[0].complete && !targets[0].reused);
         assert_eq!(std::fs::read_dir(&f.paths.receipts)?.count(), 0);
@@ -4912,9 +4945,30 @@ mod tests {
             }))?,
         )?;
         let expected = BTreeSet::from([("input".to_owned(), "input".to_owned(), "lib".to_owned())]);
-        let (targets, missing) = target_records(&paths, &data, "missing", false, &expected, &[])?;
+        let (targets, missing) =
+            target_records(&paths, &data, "missing", false, &expected, &[], None)?;
         assert_eq!(targets, Vec::<TargetResult>::new());
         assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
+        let scope = ["--".to_owned(), "--verify-root".to_owned()];
+        let unrequested = BTreeSet::new();
+        let (unproved, missing_dependency) = target_records(
+            &paths,
+            &data,
+            "missing",
+            false,
+            &unrequested,
+            &[],
+            Some(&scope),
+        )?;
+        assert!(unproved.is_empty(), "native-only dependency gains no proof");
+        assert!(
+            missing_dependency.is_empty(),
+            "focus never required a dependency proof"
+        );
+        let (unproved, missing_dependency) =
+            target_records(&paths, &data, "missing", false, &unrequested, &[], None)?;
+        assert_eq!(unproved.len(), 0);
+        assert_eq!(missing_dependency, BTreeSet::from(["input".to_owned()]));
         assert_eq!(std::fs::read_dir(&paths.receipts)?.count(), 0);
         assert_eq!(
             std::fs::read_dir(paths.run.join("pending-receipts"))?.count(),
@@ -4935,12 +4989,14 @@ mod tests {
         super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
         assert!(receipt.valid("selected"));
         assert_eq!(receipt.input_revision, target_revision(&data, "input"));
-        let (targets, missing) = target_records(&paths, &data, "selected", false, &expected, &[])?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
         assert_eq!(targets.len(), 1);
         assert!(targets[0].reused);
         assert!(missing.is_empty());
         for (context, force) in [("missing", false), ("selected", true)] {
-            let (targets, missing) = target_records(&paths, &data, context, force, &expected, &[])?;
+            let (targets, missing) =
+                target_records(&paths, &data, context, force, &expected, &[], None)?;
             assert_eq!(targets, Vec::<TargetResult>::new());
             assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
         }
@@ -4986,7 +5042,7 @@ mod tests {
         let invocation = paths.run.join("invocations/call.json");
         json(&invocation, &call)?;
         let empty = BTreeSet::new();
-        let (first, missing) = target_records(&paths, &data, "selected", false, &empty, &[])?;
+        let (first, missing) = target_records(&paths, &data, "selected", false, &empty, &[], None)?;
         assert_eq!(missing, BTreeSet::<String>::new());
         assert_eq!(first.len(), 1);
         assert!(!first[0].reused);
@@ -4995,7 +5051,8 @@ mod tests {
         super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
         std::fs::remove_file(invocation)?;
         json(&paths.run.join("artifacts.jsonl"), &artifact_record(true))?;
-        let (reused, missing) = target_records(&paths, &data, "selected", false, &empty, &[])?;
+        let (reused, missing) =
+            target_records(&paths, &data, "selected", false, &empty, &[], None)?;
         assert_eq!(missing, BTreeSet::<String>::new());
         assert_eq!(reused.len(), 1);
         assert!(reused[0].reused);
@@ -5012,7 +5069,8 @@ mod tests {
             placed: true,
             shown_stdout: Vec::new(),
         }];
-        let (stored, missing) = target_records(&paths, &data, "other", false, &empty, &seeds)?;
+        let (stored, missing) =
+            target_records(&paths, &data, "other", false, &empty, &seeds, None)?;
         assert_eq!(missing, BTreeSet::<String>::new());
         assert_eq!(stored.len(), 1);
         assert_eq!(stored[0].dependency_store.as_deref(), Some("store-key"));
@@ -5030,7 +5088,7 @@ mod tests {
             target_revision(&data, "input"),
             seeds[0].receipt.clone(),
         )?;
-        let (adopted, _) = target_records(&paths, &data, "other", false, &empty, &[])?;
+        let (adopted, _) = target_records(&paths, &data, "other", false, &empty, &[], None)?;
         assert_eq!(adopted.len(), 1);
         assert_eq!(adopted[0].establishing_run, first[0].establishing_run);
         assert_eq!(adopted[0].dependency_build, first[0].dependency_build);
@@ -5179,6 +5237,7 @@ mod tests {
         let before = snapshot_metadata(&data, &[]);
         let receipt = Receipt {
             version: RECEIPT_VERSION,
+            partial_args: None,
             checksum: String::new(),
             package_id: "vstd".to_owned(),
             name: "vstd".to_owned(),

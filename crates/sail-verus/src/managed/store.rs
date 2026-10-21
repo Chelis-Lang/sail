@@ -557,7 +557,8 @@ fn validated(
         return Err(damaged("manifest checksum or binding mismatch"));
     }
     let receipt = &manifest.receipt;
-    if receipt.version != RECEIPT_VERSION
+    if receipt.partial_args.is_some()
+        || receipt.version != RECEIPT_VERSION
         || receipt.clone().seal().checksum != receipt.checksum
         || receipt.package_id != candidate.root
         || !receipt.invocation.success
@@ -1369,6 +1370,7 @@ mod tests {
             });
             let receipt = Receipt {
                 version: RECEIPT_VERSION,
+                partial_args: None,
                 checksum: String::new(),
                 package_id: VSTD.to_owned(),
                 name: "vstd".to_owned(),

@@ -387,3 +387,10 @@ There is no compatibility mode.
 - Each counterexample assignment has a new `itf`.
 - The managed project-result envelope is version 2, since it embeds these
   reports.
+
+A managed target may additionally include `scope_reuse`, the exact ordered
+arguments of a reused partial verification report. Such a target has
+`complete: false` and `reused: false`; it supplies no whole-target proof and
+does not increment `execution.reused_targets`. The original report and
+establishing run remain attached. Whole-target proof fields retain their
+existing meaning.

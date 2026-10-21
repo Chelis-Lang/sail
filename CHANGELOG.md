@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep unchanged build-script outputs when declared Cargo package metadata
+  and the exact unit's `OUT_DIR` remain valid, avoiding redundant TLS rebuilds.
+
+- Reuse successful partial reports only for their exact invocation scope.
+  Keep partial targets explicitly incomplete and exclude their receipts from
+  whole-target, shared dependency and instant-revert proof admission.
 - Mutation comparisons preserve repeated function entries, constrain the
   approved bit-vector exception to its reproduced function and location,
   enforce one daemon per round and identify retained restores from receipts.
@@ -43,6 +49,7 @@ semantic versioning once the API is published.
   unknown, timeout, cancellation and malformed responses remain explicit.
 - Avoid duplicate watch startup jobs from replayed macOS creation events.
   Preserve cancellation for real edits, including edit-and-restore changes.
+
 - Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
   comparisons across stock Verus, the plain fork, and Sail.
   Support fresh verification, unchanged runs, proof edits, and daemon restarts.

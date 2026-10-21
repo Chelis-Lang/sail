@@ -176,6 +176,11 @@
         "reused": {
           "type": "boolean"
         },
+        "scope_reuse": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
         "requested": {
           "type": "boolean"
         },
