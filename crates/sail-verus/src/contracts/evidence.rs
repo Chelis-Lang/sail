@@ -2,7 +2,9 @@
 
 use std::collections::BTreeSet;
 
-use sail_api::output::{AnswerName, EstablishmentName, FunctionReport, OutcomeName, VerdictName};
+use sail_api::output::{
+    AnswerName, AttributionStatus, EstablishmentName, FunctionReport, OutcomeName, VerdictName,
+};
 use sail_api::project::{Currentness, ProjectResult};
 use serde::{Deserialize, Serialize};
 
@@ -93,6 +95,12 @@ pub(super) fn summarize(manifest: &LoweringManifest, backend: &ProjectResult) ->
         && backend.error.is_none()
         && backend.no_reuse.is_none()
         && backend.exit_code == Some(0)
+        && backend.targets.iter().all(|t| {
+            t.complete
+                && t.report.attribution.status == AttributionStatus::Complete
+                && t.report.attribution.unmatched_sessions == 0
+                && t.report.invariant_violations().is_empty()
+        })
         && !targets.is_empty()
         && targets.iter().all(|t| {
             t.complete
@@ -100,7 +108,9 @@ pub(super) fn summarize(manifest: &LoweringManifest, backend: &ProjectResult) ->
                 && t.report.exit_code == Some(0)
                 && !t.report.crates.is_empty()
                 && t.report.crates.iter().all(|c| {
-                    c.verus.success == Some(true) && c.verus.encountered_vir_error == Some(false)
+                    c.verus.success == Some(true)
+                        && c.verus.encountered_vir_error == Some(false)
+                        && c.verus.errors == Some(0)
                 })
         })
         && !manifest.bindings.is_empty()
@@ -130,6 +140,7 @@ fn function_proved(function: &FunctionReport) -> bool {
         || function.establishment != EstablishmentName::Confirmed
         || function.unstable
         || function.verus_success != Some(true)
+        || function.provenance.checks_unrecorded != 0
     {
         return false;
     }
@@ -181,6 +192,9 @@ mod tests {
         let mut wrong = good.clone();
         wrong.targets[0].report.crates[0].functions[0].function = "neutral::other".into();
         assert_eq!(summarize(&manifest, &wrong).state, ProofState::NotProved);
+        let mut partial = good.clone();
+        partial.targets[0].report.attribution.status = AttributionStatus::Partial;
+        assert_eq!(summarize(&manifest, &partial).state, ProofState::NotProved);
         let mut advisory = good;
         for obligation in advisory.targets[0].report.crates[0].functions[0]
             .obligations

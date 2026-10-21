@@ -82,7 +82,8 @@ The helper currently accepts default whole-target controls and forces obligation
 logging. It returns `ContractRun` with the lowering and actual `ProjectResult`,
 including failures and unknowns. Shadow drift/setup errors use `SAIL3141`.
 The `proof` projection has only `Proved` and `NotProved`. Proved requires current,
-complete requested-target verification and exactly attributed bound functions,
+complete requested-target verification, complete attribution without unmatched
+sessions across observed targets, and exactly attributed bound functions,
 each confirmed verified with nonempty proved nonadvisory obligations and
 recorded unsatisfiable checks. Any underlying unknown, SAT, missing answer or
 missing source prevents proof. Counts include advisory and dependency checks;
