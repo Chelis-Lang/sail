@@ -32,3 +32,7 @@ scope reuse, changed selectors, a failing edit, forced fresh verification,
 missing proof receipts and restored-mtime content changes. Receipt controls
 reject whole-proof consumption, different or reordered arguments and changed
 artifacts. Final composed full gates and paired matrix rows remain pending.
+
+Raw bounded control: `experiments/2026-10-21/anvil-scope-control.tgz` in the
+S3 evidence bucket, SHA-256
+`c2e59a81c4855735dd59ae7e18957d9e76b0a13d304f3b3668460ddb44dac288`.
