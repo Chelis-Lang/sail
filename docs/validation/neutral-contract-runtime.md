@@ -44,3 +44,8 @@ the merge retains the separate Cargo benchmark feature and its gate checks.
 The merged-source gate log `sail-m10-contracts-main-gate.log` has SHA-256
 `25d8238754ac3d62894e2631b561478bb0c19b19a9752691681109df15010515`.
 Documentation links were checked after adding this record.
+
+A later current-main merge includes watch/store race correction `35b09255`.
+The complete native workspace gate passed again on that merged source, with
+all assertions unchanged. Its `sail-m10-contracts-watch-main-gate.log` SHA-256 is
+`a4f26a41a24a8c4654ef8ecd844bb49232990ebf317ac2d4816cf1ea6cc74abf`.
