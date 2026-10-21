@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Discover initial watch inputs before starting filesystem notifications.
+  Cargo's startup creation of `Cargo.lock` no longer cancels the first
+  verification when macOS delivers that notification late. Later input edits
+  retain the existing invalidation behavior.
+
 - Instant revert certifies each native dependency right after its own compile
   instead of making it wait for its dependencies' certificates and for other
   crates' scratch directories first, so Cargo's metadata pipelining is kept
