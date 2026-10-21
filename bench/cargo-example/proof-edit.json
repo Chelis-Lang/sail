@@ -1,0 +1,5 @@
+{
+  "path": "src/lib.rs",
+  "before": "    assert((((slot as u64) | ((generation as u64) << 32u64)) & 0xFFFF_FFFFu64) as u32 == slot) by(bit_vector);",
+  "after": "    assert((((generation as u64) << 32u64) & 0xFFFF_FFFFu64) == 0) by(bit_vector);\n    assert((((slot as u64) | ((generation as u64) << 32u64)) & 0xFFFF_FFFFu64) as u32 == slot) by(bit_vector);"
+}
