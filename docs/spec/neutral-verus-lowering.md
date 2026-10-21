@@ -14,7 +14,10 @@ The backend rechecks the [neutral source syntax](neutral-contracts.md). It
 admits Boolean and fixed-width scalar parameters and owned results, inline
 modules, and nongeneric named structs deriving exactly `Copy` and `Clone`,
 with direct scalar fields. Inherent constructors and shared or mutable receiver
-methods are supported. Bodies are loop-free and call-free. Each executable
+methods are supported. Passive attributes accept only literal documentation/must-use strings, `doc(hidden)`,
+and plain `inline`, `inline(always)` or `inline(never)`. Macro expressions in
+attribute payloads and all parameter attributes are unsupported.
+Bodies are loop-free and call-free. Each executable
 function has one requirement identity and one guarantee.
 
 Admission covers the entire file, including unannotated items. It rejects

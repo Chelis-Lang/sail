@@ -58,6 +58,7 @@ pub(super) fn admit(text: &str) -> Result<Admitted> {
     }
     let mut predicates = BTreeMap::new();
     for value in &model.functions {
+        passive(&value.function.item.attrs)?;
         if value
             .function
             .item
@@ -138,8 +139,19 @@ pub(super) fn signature(
     let mut inputs = Vec::new();
     for input in &value.function.item.sig.inputs {
         match input {
-            syn::FnArg::Receiver(_) => {}
+            syn::FnArg::Receiver(receiver) => {
+                if !receiver.attrs.is_empty() {
+                    return Err(unsupported(
+                        "attributes on receiver parameters are unsupported",
+                    ));
+                }
+            }
             syn::FnArg::Typed(input) => {
+                if !input.attrs.is_empty() {
+                    return Err(unsupported(
+                        "attributes on input parameters are unsupported",
+                    ));
+                }
                 let syn::Pat::Ident(pattern) = input.pat.as_ref() else {
                     return Err(unsupported("contracted inputs require identifiers"));
                 };
@@ -222,16 +234,33 @@ fn scalar_struct(value: &syn::ItemStruct) -> Result<()> {
 }
 
 fn passive(attributes: &[syn::Attribute]) -> Result<()> {
-    if attributes.iter().any(|a| {
-        !["doc", "inline", "must_use"]
-            .iter()
-            .any(|name| a.path().is_ident(name))
-    }) {
+    if attributes
+        .iter()
+        .any(|attribute| !literal_passive(attribute))
+    {
         return Err(unsupported(
             "conditional, effectful and unresolved source attributes are unsupported",
         ));
     }
     Ok(())
+}
+
+fn literal_passive(attribute: &syn::Attribute) -> bool {
+    match &attribute.meta {
+        syn::Meta::Path(path) => path.is_ident("inline") || path.is_ident("must_use"),
+        syn::Meta::NameValue(value)
+            if value.path.is_ident("doc") || value.path.is_ident("must_use") =>
+        {
+            matches!(&value.value, syn::Expr::Lit(value) if matches!(value.lit, syn::Lit::Str(_)))
+        }
+        syn::Meta::List(list) if list.path.is_ident("inline") => list
+            .parse_args::<syn::Ident>()
+            .is_ok_and(|name| name == "always" || name == "never"),
+        syn::Meta::List(list) if list.path.is_ident("doc") => list
+            .parse_args::<syn::Ident>()
+            .is_ok_and(|name| name == "hidden"),
+        _ => false,
+    }
 }
 
 fn annotated(attributes: &[syn::Attribute]) -> bool {
