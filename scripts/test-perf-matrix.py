@@ -227,6 +227,15 @@ class Report(unittest.TestCase):
         self.assertFalse(row["valid"])
         self.assertFalse(row["complete"])
 
+    def test_a_completely_missing_selected_scenario_is_invalid(self):
+        samples = [sample(r, arm, "cold", wall, self.V, project="vest")
+                   for r in (1, 2, 3) for arm, wall in (("stock", 10.0), ("sail", 5.0))]
+        rows = {row["scenario"]: row for row in pm.rows_of(
+            samples, 3, [("vest", "cold"), ("vest", "unchanged")])}
+        self.assertTrue(rows["cold"]["valid"])
+        self.assertFalse(rows["unchanged"]["valid"])
+        self.assertEqual(rows["unchanged"]["n"], (0, 0))
+
     def test_a_stock_no_op_also_matches_a_sail_no_op(self):
         s = [sample(1, "stock", "unchanged", 0.1, [], ref=self.V), sample(1, "sail", "unchanged", 0.2, [])]
         pm.judge(s)
@@ -252,7 +261,81 @@ class Report(unittest.TestCase):
             code = pm.cmd_report(argparse.Namespace(dir=d, markdown=str(out)))
             text = out.read_text()
         self.assertEqual(code, 0)
-        self.assertIn("| vest | module-edit | 41.00 s [41.00-41.00] | 30.00 s [30.00-30.00] | 1.37x | 3/3 | -11.00 s | - | faster |", text)
+        self.assertIn("| vest | scripted-module-edit | 41.00 s [41.00-41.00] | 30.00 s [30.00-30.00] | 1.37x | 3/3 | -11.00 s | - | faster |", text)
+
+
+class MutationRows(unittest.TestCase):
+    def fixture(self, directory):
+        identity = {key: key + "-digest" for key in pm.perf_matrix_mutants.IDENTITIES}
+        identity.update(platform="x86_64-unknown-linux-gnu", rounds=3)
+        classes = sorted(pm.perf_matrix_mutants.CLASSES)
+        header = dict(identity, unit="vest/vest_lib", generator="gen-mutants 2",
+                      vstd_mode="registry", oracle_vstd_mode="registry", oracle_runs=3, oracle_kept=len(classes),
+                      mutants=["edit-" + cls for cls in classes])
+        samples = []
+        for r in range(3):
+            for phase in ("cold", "revert", "revert-forced"):
+                samples.append(dict(round=r, phase=phase, id="original", judgement="same",
+                    stock_exit=0, sail_exit=0, own_answers=True, daemon_pid=100 + r,
+                    stock_s=10.0, sail_s=5.0, false_verified=[]))
+            for cls in classes:
+                samples.append(dict(round=r, phase="mutant", id="edit-" + cls,
+                    judgement="same", stock_exit=0, sail_exit=0, daemon_pid=100 + r,
+                    stock_s=3.0, sail_s=1.5, false_verified=[], **{"class": cls}))
+        self.write(directory, header, samples)
+        return identity, header, samples
+
+    @staticmethod
+    def write(directory, header, samples):
+        Path(directory, "header.json").write_text(json.dumps(header))
+        Path(directory, "samples.jsonl").write_text("\n".join(json.dumps(s) for s in samples))
+
+    def test_breadth_uses_the_full_loop_and_three_rotated_rounds(self):
+        with tempfile.TemporaryDirectory() as directory:
+            identity, _, _ = self.fixture(directory)
+            row = pm.perf_matrix_mutants.analyse(directory, identity)
+        self.assertTrue(row["valid"])
+        self.assertTrue(row["pass"])
+        self.assertEqual(row["stock_med"], 27.0)
+        self.assertEqual(row["sail_med"], 13.5)
+        self.assertEqual(row["n"], (3, 3))
+
+    def test_invalid_evidence_cannot_qualify_an_edit_claim(self):
+        for broken in ("missing", "duplicate", "binary", "oracle", "class", "daemon", "revert", "false-verified", "signal"):
+            with self.subTest(broken=broken), tempfile.TemporaryDirectory() as directory:
+                identity, header, samples = self.fixture(directory)
+                if broken == "missing": samples.pop()
+                elif broken == "duplicate": samples.append(samples[-1])
+                elif broken == "binary": header["sail_sha256"] = "other-build"
+                elif broken == "oracle": header["oracle_runs"] = 2
+                elif broken == "class":
+                    for sample in samples:
+                        if sample.get("class") == "rare-region": sample["class"] = "arith"
+                elif broken == "daemon": samples[-1]["daemon_pid"] = 999
+                elif broken == "revert": samples[1]["own_answers"] = False
+                elif broken == "false-verified": samples[-1]["false_verified"] = ["f"]
+                elif broken == "signal": samples[-1]["stock_exit"] = None
+                self.write(directory, header, samples)
+                row = pm.perf_matrix_mutants.analyse(directory, identity)
+                self.assertFalse(row["valid"], row)
+
+    def test_a_slower_edit_is_visible_even_when_the_full_loop_is_faster(self):
+        with tempfile.TemporaryDirectory() as directory:
+            identity, header, samples = self.fixture(directory)
+            for sample in samples:
+                if sample.get("class") == "arith": sample["sail_s"] = 4.0
+            self.write(directory, header, samples)
+            row = pm.perf_matrix_mutants.analyse(directory, identity)
+        self.assertTrue(row["valid"])
+        self.assertEqual(row["performance"], "faster")
+        self.assertFalse(row["pass"])
+        self.assertEqual(len(row["slower_mutants"]), 1)
+
+    def test_the_matrix_requires_its_selected_mutation_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "header.json").write_text(json.dumps({"rounds": 3, "required_mutations": ["vest"]}))
+            code = pm.cmd_report(argparse.Namespace(dir=directory, markdown=None, mutants=[]))
+        self.assertEqual(code, 1)
 
 
 class SmallSequence(unittest.TestCase):

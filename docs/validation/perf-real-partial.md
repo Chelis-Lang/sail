@@ -101,6 +101,20 @@ binary and per-timing runtime identity checks pass; the later workload guard
 is unrun. Final receipt SHA-256:
 `cf727b1ac956c2ec6eec8d828be3097e01a0f000811a0909543eff94d0ec3ebe`.
 
-Native Anvil acceptance and full required harness qualification remain pending.
-Nothing here accepts partial verification as whole-target completeness or
-changes a benchmark baseline.
+Native harness qualification on 2026-10-21 (c7i.8xlarge, us-east-1,
+pinned Linux CI images) passes the workspace gate, 35 pinned-solver tests,
+full end-to-end suite including extra, and all four PR and full-fast
+conformance arms (33 and 147 units). Standard conformance completes all
+four arms: pass-through and engine have 159 Same; fill and warm have
+158 Same and one stock-unstable unit, with zero Different or infrastructure
+errors. Raw evidence is `experiments/2026-10-21/matrix-harness-checks.tgz`
+in the S3 evidence bucket, SHA-256
+`7e475df2d3efa0ae4cd10000c818e482affe6b77aed6bd45529d33fc4a813c61`.
+The registry preparation and obligation-count comparison are unchanged
+since the source used for those conformance runs. The final report changes
+pass a fresh Linux workspace gate and 22 behavioral Python tests; the Mac
+host gate passes 849 tests, with 37 skipped and Clippy clean.
+
+The installed-release matrix and version-2 mutation measurements remain
+pending. Nothing here accepts partial verification as whole-target
+completeness or changes a benchmark baseline.

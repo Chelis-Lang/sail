@@ -72,19 +72,15 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
         diagnostics_drained: false,
         events_drained: false,
     };
-    let mut monitoring = monitor::Monitoring::new(err);
     let mut inputs = Inputs::default();
     let mut subscriptions = BTreeMap::new();
     let mut extra = Vec::new();
-    refresh_roots(
-        &mut monitoring,
-        &mut inputs,
-        &mut subscriptions,
-        &root,
-        &args,
-        &extra,
-        err,
-    );
+    // Cargo metadata may create Cargo.lock. Finish that discovery before
+    // starting native notifications, so startup's own writes cannot arrive
+    // as delayed edits and cancel the first verification on macOS.
+    refresh_inputs(&mut inputs, &root, &args, &extra);
+    let mut monitoring = monitor::Monitoring::new(err);
+    monitoring.subscribe(&inputs.roots, &inputs.excluded, &mut subscriptions, err);
     while !stop.load(Ordering::SeqCst) {
         if monitoring.changed(&inputs.roots, err) {
             live.cancel(true)?;
@@ -162,6 +158,11 @@ fn refresh_roots(
     extra: &[PathBuf],
     err: &mut dyn Write,
 ) {
+    refresh_inputs(inputs, project, args, extra);
+    monitoring.subscribe(&inputs.roots, &inputs.excluded, subscriptions, err);
+}
+
+fn refresh_inputs(inputs: &mut Inputs, project: &Path, args: &[String], extra: &[PathBuf]) {
     let snapshot = crate::jobs::revision(project, args);
     let mut next = snapshot.map_or_else(
         || vec![project.to_path_buf()],
@@ -198,7 +199,6 @@ fn refresh_roots(
     }
     path_aliases(&mut next);
     path_aliases(&mut inputs.excluded);
-    monitoring.subscribe(&next, &inputs.excluded, subscriptions, err);
     inputs.roots = next;
 }
 // Native notifications can use physical paths while Cargo preserves a supplied

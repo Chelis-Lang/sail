@@ -10,6 +10,7 @@ rounds, with every sample recorded and its output checked against stock's.
     scripts/perf-matrix.py report DIR [--markdown FILE]
     scripts/perf-matrix.py list
 
+`--out` must be outside any Cargo project, so generated projects are independent.
 `--sail-install` is an unpacked release archive (`bin/sail`, `bin/sail-z3`,
 `engine/`, `deps/`), installed as the README says; `--stock-verus` holds the
 stock release's `cargo-verus`, `verus` and `z3` (`cargo xtask fetch-verus`).
@@ -67,6 +68,7 @@ Portable to Linux and macOS: Python 3 standard library, git and the tools
 `scripts/perf-real.sh` needs (perl, jq).
 """
 import argparse
+import hashlib
 import json
 import os
 import platform
@@ -77,6 +79,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+import perf_matrix_mutants
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -406,6 +410,7 @@ class Runner:
                             "SAIL_PERF_SETTLE": str(self.settle),
                             "SAIL_PERF_MACHINE": os.environ.get("SAIL_PERF_MACHINE", ""),
                             "SAIL_PERF_VSTD": self.vstd,
+                            "SAIL_PERF_STOCK_HOME": str(self.stock.parent),
                             # No Verus flags after `--`: cargo-verus forwards
                             # them to vstd too, which a user's run does not do.
                             "SAIL_PERF_VERUS_TIMES": "0"})
@@ -554,6 +559,8 @@ MIN_FN = """pub fn min(a: u64, b: u64) -> (r: u64)
 
 def cmd_run(args):
     out = Path(args.out)
+    if any((parent / "Cargo.toml").is_file() for parent in [out.resolve(), *out.resolve().parents]):
+        sys.exit("--out must be outside a Cargo project so fresh projects form independent workspaces")
     out.mkdir(parents=True, exist_ok=True)
     # Sail's daemon socket lives under the cache; Unix socket paths are short.
     if len(str(out.resolve() / "r1" / "small-stock" / "sail-cache" / "daemon.sock")) > 100:
@@ -566,11 +573,24 @@ def cmd_run(args):
     scenarios = set(args.scenario or SMALL + REAL)
     projects = args.project or ["small"] + PROJECTS
     r = Runner(args)
+    if any(project != "small" for project in projects):
+        for tool in ("sail-conformance", "jq", "perl", "git"):
+            if not shutil.which(tool, path=r.path):
+                sys.exit(f"missing {tool}; build the release tools or add it to PATH before real-project runs")
     header = dict(started_unix=int(time.time()), machine=args.machine or platform.platform(),
                   host=platform.machine(), system=platform.system(), rounds=args.rounds,
                   sail=version([str(Path(args.sail_install) / "bin" / "sail"), "--version"]),
                   stock=version([str(Path(args.stock_verus) / "verus"), "--version"]),
                   scenarios=sorted(scenarios), projects=projects, env=args.env or [],
+                  platform=("aarch64-apple-darwin" if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64")
+                            else platform.machine() + "-unknown-linux-gnu"),
+                  sail_sha256=file_sha256(r.install / "bin/sail"),
+                  stock_cargo_verus_sha256=file_sha256(r.stock / "cargo-verus"),
+                  runtime_manifest_sha256=file_sha256(runtime_manifest(r.install, r.extra)),
+                  corpus_sha256=file_sha256(ROOT / "corpus/corpus.toml"),
+                  vstd_lock_sha256=file_sha256(r.vstd_lock),
+                  required_mutations=(["human-eval", "ironkv", "vest", "capybarakv"] if not args.project
+                                      else [p for p in projects if p in ("ironkv", "vest", "capybarakv")]),
                   vstd=args.vstd, vstd_lock=str(r.vstd_lock) if r.vstd_lock else None,
                   vstd_versions=verus_versions(r.vstd_lock.read_text()) if r.vstd_lock else [],
                   rust_toolchain=r.toolchain,
@@ -594,6 +614,23 @@ def version(cmd):
         return " ".join(l.strip() for l in out.splitlines() if l.strip())[:200] or "unknown"
     except (OSError, subprocess.SubprocessError):
         return "unknown"
+
+
+def file_sha256(path):
+    if path is None:
+        return None
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def runtime_manifest(install, extra):
+    if extra.get("SAIL_VERUS_BUILD"):
+        return Path(extra["SAIL_VERUS_BUILD"]) / "sail-build.json"
+    manifests = list((Path(install) / "engine").glob("*/sail-build.json"))
+    return manifests[0] if len(manifests) == 1 else None
 
 
 # --- Report --------------------------------------------------------------------
@@ -626,11 +663,13 @@ def judge(samples):
     return samples
 
 
-def rows_of(samples, rounds):
+def rows_of(samples, rounds, expected=()):
     judge(samples)
     groups = {}
     for s in samples:
         groups.setdefault((s["project"], s["scenario"]), {}).setdefault(s["arm"], []).append(s)
+    for key in expected:
+        groups.setdefault(key, {})
     order = {p: i for i, p in enumerate(["small"] + PROJECTS)}
     small_sc = {s: i for i, s in enumerate(SMALL)}
     real_sc = {s: i for i, s in enumerate(REAL + ["worktree"])}
@@ -659,11 +698,32 @@ def rows_of(samples, rounds):
     return rows
 
 
+def missing_mutation_row(project, reason):
+    return dict(project=project, scenario="mutation-loop", n=(0, 0), complete=False,
+                failures=[], vstd_proof="-", valid=False, performance="unmeasured",
+                mutation_issues=[reason], **{"pass": False})
+
+
 def cmd_report(args):
     d = Path(args.dir)
     header = json.loads((d / "header.json").read_text()) if (d / "header.json").exists() else {}
     rounds = header.get("rounds", 3)
-    rows = rows_of(load(d), rounds)
+    expected = []
+    for project in header.get("projects", []):
+        offered = SMALL if project == "small" else REAL + (["worktree"] if project in WORKTREE_PROJECTS else [])
+        expected.extend((project, scenario) for scenario in offered
+                        if scenario in header.get("scenarios", offered))
+    rows = rows_of(load(d), rounds, expected)
+    mutation_rows = []
+    for directory in getattr(args, "mutants", None) or []:
+        try:
+            mutation_rows.append(perf_matrix_mutants.analyse(directory, header))
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            mutation_rows.append(missing_mutation_row(Path(directory).name, str(error)))
+    for project in header.get("required_mutations", []):
+        if not any(row["project"] == project for row in mutation_rows):
+            mutation_rows.append(missing_mutation_row(project, "realistic mutation results not attached"))
+    rows += mutation_rows
     lines = [f"# Performance matrix: stock Verus vs Sail", "",
              f"- Machine: {header.get('machine', '?')} ({header.get('system', '?')} {header.get('host', '?')})",
              f"- Sail: `{header.get('sail', '?')}`; stock: `{header.get('stock', '?')}`",
@@ -689,14 +749,27 @@ def cmd_report(args):
             why.append("incomplete")
         if r["failures"]:
             why.append(f"{len(r['failures'])} failed sample(s)")
+        why.extend(r.get("mutation_issues", [])[:3])
         if not r["valid"]:
             result = "**INVALID**" + (f" ({', '.join(why)})" if why else "")
         else:
             result = r["performance"]
+            if r.get("slower_mutants"):
+                result += f" ({len(r['slower_mutants'])} edits slower: review)"
         delta = f"{r['delta_s']:+.2f} s" if "delta_s" in r else "-"
-        lines.append(f"| {r['project']} | {r['scenario']} | {st} | {sa} | {ratio} | "
+        scenario = "scripted-" + r["scenario"] if r["scenario"] in ("module-edit", "spec-wide") else r["scenario"]
+        lines.append(f"| {r['project']} | {scenario} | {st} | {sa} | {ratio} | "
                      f"{r['n'][0]}/{r['n'][1]} | {delta} | {r['vstd_proof']} | {result} |")
     lines += setup_notes(load(d))
+    lines += ["", "Scripted edits are diagnostic. Edit-loop claims require the corrected mutation suite; "
+              "mutation-loop times are totals for the full set of edits per round."]
+    for row in mutation_rows:
+        if row.get("mutation_source"):
+            lines += ["", f"Mutation details ({row['project']}): `{row['mutation_source']}/report.md`."]
+        if row.get("slower_mutants"):
+            lines += ["", f"Slower edits requiring review ({row['project']}):", ""]
+            for edit, stock, sail in row["slower_mutants"]:
+                lines.append(f"- {edit}: stock {stock:.3f} s, Sail {sail:.3f} s ({sail - stock:+.3f} s)")
     failed = [s for r in rows for s in r["failures"]]
     if failed:
         lines += ["", "Failed samples:", ""]
@@ -776,6 +849,8 @@ def main():
     rep = sub.add_parser("report")
     rep.add_argument("dir")
     rep.add_argument("--markdown")
+    rep.add_argument("--mutants", action="append", metavar="DIR",
+                     help="attach a realistic mutation run from the same candidate; repeat for each project")
     sub.add_parser("list")
     # Helpers for scripts/perf-real.sh.
     vv = sub.add_parser("vstd-versions")

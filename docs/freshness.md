@@ -219,3 +219,11 @@ The M7 reader gate (four clients, 200 Status and Result reads, p95 below
 200 ms, every sample Current while another verification runs) is measured
 with `scripts/reader-gate.sh`; see
 [M7 validation, gate 5](validation/m7.md#gate-5-responsive-reads).
+
+### Watch startup
+
+`sail watch` completes its initial Cargo metadata discovery before starting
+filesystem notifications. Creating the initial `Cargo.lock` is setup work and
+does not cancel the first verification when macOS delivers a delayed event.
+Subsequent lockfile, source and declared-input changes keep the existing
+invalidation and cancellation behavior.
