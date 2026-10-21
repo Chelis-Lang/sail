@@ -1169,7 +1169,7 @@ mod tests {
 
     #[test]
     fn fresh_target_requires_absence_or_an_empty_directory()
-    -> Result<(), Box<dyn std::error::Error>> {
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-fresh-target-{}", std::process::id()));
         std::fs::create_dir(&root)?;
         let target = root.join("target");
