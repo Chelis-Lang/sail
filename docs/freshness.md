@@ -101,6 +101,20 @@ finished, so its content at the end of the run is the content compiled, and
 that content is bound into the proof receipts and the read-time record like
 any other input ([#120](https://github.com/Chelis-Lang/sail/issues/120)).
 
+### Explicit native include directories
+
+For a dependency with Cargo's `links` name, Sail preobserves existing absolute
+include directories configured through `<LINKS>_DIR/include` or
+`<LINKS>_INCLUDE_DIR` (uppercase links name). For example, `OPENSSL_DIR` lets
+Sail read those headers before the first build, rather than discover them only
+when the build script declares them afterwards.
+
+These paths add input coverage. The script's actual declarations, complete
+content reads, mutation guards and before/after scheduling checks still decide
+whether reports can be reused. Other directory layouts use ordinary declaration
+learning. Relative and absent hints supply no coverage. See the
+[Anvil control](validation/exact-scope-reuse.md#first-recheck-after-native-header-discovery).
+
 ### What these checks do not catch
 
 These cases can change what a run verified without changing any content
