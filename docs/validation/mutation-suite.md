@@ -31,7 +31,7 @@ recover its own results; solver hits do not imply retained-proof restoration.
   1.93× faster than stock in every round (about 1,272 → 659 s); cold medians
   56.7 → 55.7 s. Ordinary/forced reverts use the solver cache, not retained
   proofs. This qualifies the rebuild correction, not the later frozen binary.
-  [Record](cargo-unit-script-scope.md).
+  [Correction PR](https://github.com/Chelis-Lang/sail/pull/321).
 - **HumanEval smoke:** cold, mutation and both revert comparisons pass with
   one daemon. Its `path` identifiers fall outside retained source admission,
   so its cache hits do not qualify instant revert.
