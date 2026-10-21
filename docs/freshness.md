@@ -268,3 +268,10 @@ keeps partial results explicitly incomplete. A report may be reused only for
 its exact ordered arguments and unchanged source, runtime and artifact bytes.
 Whole-target, shared dependency and instant-revert proof consumers refuse it.
 The implementation is awaiting native and real-project qualification.
+
+With the pinned Cargo, a requested proof failure keeps independently verified
+dependencies when the current input checks pass. Platform-disabled packages
+with no Cargo execution unit need no observed build-script contract. Missing
+or unsupported planning evidence retains conservative cleanup; unexpected
+actual units prevent a Current result.
+

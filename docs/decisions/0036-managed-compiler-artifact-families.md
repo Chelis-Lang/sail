@@ -402,3 +402,26 @@ load 21–40, the demo shows the same pattern: compile errors 0.6–0.7 s, the
 fixed run 0.7 s, vstd verified only by the first run. Every run above read
 Current; compile-error runs started one driver and kept no receipt for the
 failing crate. Measured by L41.
+
+## Conditional packages omitted from the current Cargo unit graph (#292)
+
+The same pinned Cargo planning authority used for generated script environment
+values can distinguish packages that have no execution unit. Metadata's resolved
+package closure includes platform-disabled build-script packages. Requiring an
+observed contract for them after a requested proof fails made the whole run
+Unknown and discarded independently verified vstd receipts.
+
+Use only a run-local complete graph from the recognized Cargo/compiler-query
+boundary. Its root target identities must equal the requested targets; every
+unit names a known package and every dependency index exists. An unseen script
+may be exempted only when its whole package is absent from that graph. Existing
+script contracts retain all content and environment checks. No failed run
+publishes a saved scheduling memo.
+
+Cargo must finish reporting its run, successfully or unsuccessfully, and every
+reported compiler artifact and package-bearing Cargo event must belong to the
+plan. Unexpected units, incomplete reports, unknown Cargo or graph formats,
+changed inputs and missing observations withhold Current or retain the original
+cleanup path. The full before/after input snapshot and runtime checks still
+apply. This supplies scheduling evidence, never a compiler certificate, proof
+receipt or whole-target verification result.
