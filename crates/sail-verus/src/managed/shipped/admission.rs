@@ -62,6 +62,16 @@ pub(super) struct Closure {
 }
 
 impl Closure {
+    /// A cheap rejection only; full source checks remain in `resolve`.
+    pub(super) fn metadata_admits(metadata: &Value, registry: &Path) -> bool {
+        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+            return false;
+        };
+        policy.kind == "sail-vstd-boundary-source-policy"
+            && policy.schema == 2
+            && resolved_packages(metadata, registry, &policy).is_some()
+    }
+
     /// Reject path patches, different versions/features and extra dependencies.
     pub(super) fn resolve(metadata: &Value, registry: &Path) -> Option<Self> {
         let policy: Policy = serde_json::from_str(POLICY).ok()?;
