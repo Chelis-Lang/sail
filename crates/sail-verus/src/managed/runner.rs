@@ -897,7 +897,12 @@ fn invocation_command(config: &Config, paths: &Paths, show_output: bool) -> Resu
     Ok(cmd)
 }
 
-fn build_environment(config: &Config, paths: &Paths, data: &Value) -> Option<Value> {
+fn build_environment(
+    config: &Config,
+    paths: &Paths,
+    data: &Value,
+    expected: &BTreeSet<(String, String, String)>,
+) -> Option<(Value, Option<super::build_unit_plan::Plan>)> {
     if !data["packages"].as_array()?.iter().any(|package| {
         package["targets"].as_array().is_some_and(|targets| {
             targets.iter().any(|target| {
@@ -919,7 +924,9 @@ fn build_environment(config: &Config, paths: &Paths, data: &Value) -> Option<Val
     std::fs::write(directory.join("frontend.stdout"), &output.stdout).ok()?;
     std::fs::write(directory.join("frontend.stderr"), &output.stderr).ok()?;
     output.status.success().then_some(())?;
-    super::build_environment::load(&directory, data)
+    let environment = super::build_environment::load(&directory, data)?;
+    let plan = super::build_unit_plan::Plan::load(&directory, data, expected);
+    Some((environment, plan))
 }
 
 fn invoke(
@@ -2446,10 +2453,14 @@ pub(crate) fn run_engine_held(
         Vec::new()
     };
     let new_target = super::store::new_target(&paths.target);
-    if paths.reuse {
-        data["sail_build_environment"] =
-            build_environment(config, &paths, &data).unwrap_or(Value::Null);
-    }
+    let unit_plan = if paths.reuse {
+        let (environment, plan) =
+            build_environment(config, &paths, &data, &expected).unwrap_or((Value::Null, None));
+        data["sail_build_environment"] = environment;
+        plan
+    } else {
+        None
+    };
     // Sail's Verus names the shipped build's registry sources by this
     // machine's registry directory, in every managed run (ADR 0048): a target
     // or store entry may hold shipped units from an earlier run.
@@ -2608,11 +2619,14 @@ pub(crate) fn run_engine_held(
         context: &hash,
         compiler: &compiler_hash,
     };
-    let skipped_scripts = if paths.reuse {
+    let mut skipped_scripts = if paths.reuse {
         super::build_inputs::family::schedule::load(&schedule_path, &schedule_before)
     } else {
         BTreeSet::new()
     };
+    if let Some(plan) = &unit_plan {
+        skipped_scripts.extend(plan.absent_scripts(&data));
+    }
     let (stale_scripts, script_coverage) = if skipped_scripts.is_empty() {
         (stale_scripts, script_coverage)
     } else {
@@ -2636,7 +2650,14 @@ pub(crate) fn run_engine_held(
     let scope = selected_closure(&data, &expected);
     let script_scope = super::build_inputs::selection_closure(&data);
     let units_in_scope = |paths: &Paths| {
-        artifacts_within(paths, scope.as_ref()) && artifacts_within(paths, script_scope.as_ref())
+        artifacts_within(paths, scope.as_ref())
+            && artifacts_within(paths, script_scope.as_ref())
+            && unit_plan.as_ref().is_none_or(|plan| {
+                plan.confirms(
+                    &paths.run.join("cargo.stdout"),
+                    &paths.run.join("artifacts.jsonl"),
+                )
+            })
     };
     let mut outside_scope = false;
     // Imported observations were first checked before guard acquisition. Check
@@ -2838,12 +2859,23 @@ pub(crate) fn run_engine_held(
         let (sources, source_coverage) =
             super::source_inputs::update(&source_state, &paths.run.join("artifacts.jsonl"), &data)?;
         // Coverage after the run needs a contract for every script Cargo ran.
-        let unscheduled = super::build_inputs::unscheduled(
+        let mut unscheduled = super::build_inputs::unscheduled(
             &paths.run.join("cargo.stdout"),
             &paths.run.join("artifacts.jsonl"),
             &data,
         )
         .unwrap_or_default();
+        // A failed requested proof cannot establish an absence merely because
+        // Cargo stopped early. A fresh complete unit graph can establish only
+        // packages that were never planned, with actual reports checked too.
+        if let Some(plan) = &unit_plan
+            && plan.confirms(
+                &paths.run.join("cargo.stdout"),
+                &paths.run.join("artifacts.jsonl"),
+            )
+        {
+            unscheduled.extend(plan.absent_scripts(&data));
+        }
         let (_, mut after_extras, after_coverage) =
             super::build_inputs::stale_after(&paths.build_inputs, &data, &unscheduled);
         after_extras.extend(script_roots.iter().cloned());
