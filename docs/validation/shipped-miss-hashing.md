@@ -124,3 +124,16 @@ and zero unstable, Different or infrastructure errors in all four arms; its
 18-mutant HumanEval probe and both reverts also pass. Raw gate logs:
 `experiments/2026-10-21/early-refusal-gates.tgz` in the S3 evidence bucket,
 SHA-256 `778b7f167bf235a9d1cca8498d2d29a9e5081f6114001abe887edf75e5b1c899`.
+### Unservable native lookup graphs
+
+A native observation now checks whether lookup artifacts have current-run producer
+records or running marks before reading compiler and source bytes. A refusal uses
+ordinary compilation; passing this preliminary check grants no reuse and keeps the
+complete graph capture and final provenance checks unchanged. No lookup entries are
+filtered. The filesystem regression covers a foreign artifact refusal and verifies
+that the ordinary capture still includes both artifacts.
+
+Initial native Mac diagnostic (mac-m4.metal, us-east-1a, one paired round):
+CapybaraKV cold took 30.78 s in Sail versus 31.50 s stock, with matching output and
+a shipped-proof miss. This is diagnostic scope, not three-round release acceptance.
+Full native gates and final combined measurements remain required.
