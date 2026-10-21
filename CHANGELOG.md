@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve Cargo metadata pipelining while observing native compiles for
+  shipped vstd. Require producer certificates after compilation, before
+  publishing any reusable result.
 - Avoid duplicate watch startup jobs from replayed macOS creation events.
   Preserve cancellation for real edits, including edit-and-restore changes.
 - Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
