@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
+  SMT batches and incremental transcripts through Sail's bundled pinned Z3.
+  Complete solver evidence is attributed and cached separately from Verus;
+  unknown, timeout, cancellation and malformed responses remain explicit.
+
+
 - Accept human coauthor email addresses ending in `.ai` in the authorship guard,
   while continuing to reject tool identities and generated-attribution markers.
 
