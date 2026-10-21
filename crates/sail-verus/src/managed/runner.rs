@@ -1582,6 +1582,7 @@ fn target_records(
     seeded: &[super::store::Seeded],
     partial_args: Option<&[String]>,
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
+    let scoped_run = partial_args.is_some();
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
     let calls = invocations(paths);
@@ -1848,7 +1849,10 @@ fn target_records(
                 complete: partial_args.is_none(),
                 report: receipt.invocation.report,
             });
-        } else {
+        } else if !scoped_run || requested {
+            // Cargo-Verus focus deliberately compiles dependencies without
+            // verifying them. An absent dependency report supplies no proof;
+            // it is not a reason to rebuild the requested partial scope.
             missing.insert(package["name"].as_str().unwrap_or_default().to_owned());
         }
     }
@@ -4908,6 +4912,26 @@ mod tests {
             target_records(&paths, &data, "missing", false, &expected, &[], None)?;
         assert_eq!(targets, Vec::<TargetResult>::new());
         assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
+        let scope = ["--".to_owned(), "--verify-root".to_owned()];
+        let unrequested = BTreeSet::new();
+        let (unproved, missing_dependency) = target_records(
+            &paths,
+            &data,
+            "missing",
+            false,
+            &unrequested,
+            &[],
+            Some(&scope),
+        )?;
+        assert!(unproved.is_empty(), "native-only dependency gains no proof");
+        assert!(
+            missing_dependency.is_empty(),
+            "focus never required a dependency proof"
+        );
+        let (unproved, missing_dependency) =
+            target_records(&paths, &data, "missing", false, &unrequested, &[], None)?;
+        assert!(unproved.is_empty());
+        assert_eq!(missing_dependency, BTreeSet::from(["input".to_owned()]));
         assert_eq!(std::fs::read_dir(&paths.receipts)?.count(), 0);
         assert_eq!(
             std::fs::read_dir(paths.run.join("pending-receipts"))?.count(),

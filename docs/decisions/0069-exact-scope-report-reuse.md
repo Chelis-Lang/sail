@@ -19,7 +19,10 @@ instant-revert archives refuse tagged receipts. Both fresh and reused partial
 results have `complete: false`. Cached partial reports use the additive
 `scope_reuse` argument list; existing `reused` and `reused_targets` fields
 retain their whole-proof meaning. Explicit force-fresh still runs verification.
-Missing, corrupt, stale or mismatched scope reports force fresh verification.
+Missing, corrupt, stale or mismatched requested-scope reports force fresh
+verification. Cargo-Verus focus compiles dependencies without verifying them;
+an unverified dependency has no report or proof to require or reuse. Whole
+verification retains its existing dependency-report requirement.
 The existing focused cleanup regression remains a force-fresh test.
 
 Receipt version 4 records this distinction; older receipts require fresh
