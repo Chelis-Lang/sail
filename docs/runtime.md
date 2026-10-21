@@ -66,7 +66,9 @@ transcript. An apparently successful prefix is never returned as complete.
 
 The default cache lives below Sail's cache directory in `runtime/`; `--cache DIR`
 selects a different runtime cache root. Entries bind exact script bytes,
-effective options, limits, protocol and pinned solver identity. Complete
+effective options, limits, protocol, fixed execution environment and pinned solver identity.
+The solver environment is cleared and sets `LC_ALL=C`; ambient loader or solver
+settings are not forwarded. Complete
 transcripts containing only decided answers may be reused; timeouts,
 cancellation, output overflow, infrastructure failures and unknown answers are
 not cached as successful evidence. Reuse preserves original solver bytes and

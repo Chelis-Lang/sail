@@ -408,3 +408,35 @@ fn corrupt(path: &Path) -> std::io::Result<()> {
     }
     Ok(())
 }
+
+#[test]
+#[cfg(unix)]
+fn ambient_environment_cannot_change_authenticated_execution() -> TestResult {
+    const MARKER: &str = "SAIL_TEST_AMBIENT_RUNTIME";
+    if std::env::var_os(MARKER).is_some() {
+        let captured = process::run(
+            Path::new("/bin/sh"),
+            &["-c".into(), format!("printf '%s' \"${{{MARKER}-unset}}\"")],
+            b"",
+            &Limits::default(),
+            &Cancellation::default(),
+        );
+        assert_eq!(captured.outcome, Outcome::Completed);
+        assert_eq!(captured.stdout, b"unset");
+        return Ok(());
+    }
+    let child = std::process::Command::new(std::env::current_exe()?)
+        .args([
+            "--exact",
+            "tests::ambient_environment_cannot_change_authenticated_execution",
+            "--nocapture",
+        ])
+        .env(MARKER, "must-not-reach-backend")
+        .output()?;
+    assert!(
+        child.status.success(),
+        "{}",
+        String::from_utf8_lossy(&child.stderr)
+    );
+    Ok(())
+}

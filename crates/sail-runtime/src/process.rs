@@ -25,6 +25,7 @@ fn kill(child: &mut Child) {
     #[cfg(unix)]
     {
         let _ = Command::new("/bin/kill")
+            .env_clear()
             .args(["-KILL", "--", &format!("-{}", child.id())])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -112,6 +113,8 @@ pub(crate) fn run(
     }
     let started = Instant::now();
     let mut command = Command::new(path);
+    // Ambient loader and solver settings cannot alter authenticated execution.
+    command.env_clear().env("LC_ALL", "C");
     command
         .args(args)
         .stdin(Stdio::piped())
