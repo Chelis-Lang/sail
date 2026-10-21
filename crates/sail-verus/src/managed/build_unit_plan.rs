@@ -98,6 +98,9 @@ impl Plan {
             let mut finished = 0;
             for line in std::fs::read_to_string(stdout).ok()?.lines() {
                 let Ok(value) = serde_json::from_str::<Value>(line) else {
+                    if line.trim_start().starts_with('{') {
+                        return None;
+                    }
                     continue;
                 };
                 if value["reason"] == "build-finished" {
