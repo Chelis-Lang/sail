@@ -30,6 +30,28 @@ use std::ffi::{OsStr, OsString};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+/// Exact compiler-loaded vstd and macro source closure for neutral translation.
+/// This exposes admission only; it does not enable any proof reuse path.
+pub(crate) struct ContractSourceClosure(admission::Closure);
+
+/// Admit actual Cargo resolution against the independently qualified source policy.
+pub(crate) fn contract_source_closure(metadata: &Value) -> Option<ContractSourceClosure> {
+    let registry = registry_dir(metadata)?;
+    admission::Closure::resolve(metadata, &registry).map(ContractSourceClosure)
+}
+
+impl ContractSourceClosure {
+    /// Rehash every admitted source file, including the proc-macro implementation.
+    pub(crate) fn intact(&self) -> bool {
+        self.0.check_sources()
+    }
+
+    /// Exact source policy which admitted this closure.
+    pub(crate) fn policy_sha256(&self) -> &str {
+        self.0.policy_sha256()
+    }
+}
+
 /// Layout version of a shipped build and of its keys.
 const SCHEMA: u32 = 12;
 const KIND: &str = "sail-vstd-compile-boundary";

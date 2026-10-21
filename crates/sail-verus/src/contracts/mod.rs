@@ -7,12 +7,14 @@ mod admission;
 mod expression;
 mod lower;
 mod runner;
+mod trust;
 mod types;
 
 use serde::{Deserialize, Serialize};
 
 pub use lower::lower;
 pub use runner::{ContractRun, verify};
+pub use trust::TranslationTrust;
 
 /// The exact neutral source lowering semantics version.
 pub const LOWERING_VERSION: u32 = 1;
