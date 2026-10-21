@@ -9,6 +9,9 @@ semantic versioning once the API is published.
   approved bit-vector exception to its reproduced function and location,
   enforce one daemon per round and identify retained restores from receipts.
   Both oracle and runner support release registry setup through `--vstd-lock`.
+- Accept human coauthor email addresses ending in `.ai` in the authorship guard,
+  while continuing to reject tool identities and generated-attribution markers.
+
 - Reuse saved proofs when unchanged build scripts declare supported
   `CARGO_FEATURE_*` or `CARGO_CFG_*` inputs (#298). Use exact Cargo units
   and compiler cfg queries instead of parent values. Unknown Cargo versions
