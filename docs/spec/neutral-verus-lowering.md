@@ -39,6 +39,9 @@ definedness condition. Fixed-width arithmetic retains signedness and width
 through explicit range checks. A predicate produces separate value and
 definedness specification functions. Calls require both. A checked overflow
 cannot become a false predicate that then becomes true under negation.
+Out-of-range source literals and unsigned negation are rejected before lowering.
+They cannot become impossible preconditions that make uncompilable Rust appear
+vacuously verified. Signed minimum literals remain supported.
 
 Definedness preserves short-circuit evaluation: the right side of `&&` is
 required only when the left is true; the right side of `||` only when the left

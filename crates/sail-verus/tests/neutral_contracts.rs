@@ -121,6 +121,23 @@ fn whole_source_refuses_hidden_resolution_effects_and_unsupported_arithmetic() {
 }
 
 #[test]
+fn invalid_rust_literals_cannot_turn_into_vacuous_verified_preconditions() {
+    for condition in [
+        "input == 256",
+        "input == 256u8",
+        "input == -0u8",
+        "input > -1",
+        "input == 340282366920938463463374607431768211456",
+    ] {
+        let source = format!(
+            "#[sail_contracts::requires({condition})] #[sail_contracts::ensures(|result| result == input)] #[sail_contracts::satisfies(\"LITERAL\")] fn candidate(input:u8)->u8 {{input}}"
+        );
+        assert!(lower(&source, "neutral").is_err(), "{condition}");
+    }
+    assert!(lower(SIGNED, "neutral").is_ok());
+}
+
+#[test]
 #[ignore = "requires actual pinned fork and stock runtimes; run explicitly in native acceptance"]
 fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
     use std::process::Command;
