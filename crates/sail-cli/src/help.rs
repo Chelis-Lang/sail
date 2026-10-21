@@ -60,6 +60,19 @@ USAGE:
 /// Help for the commands whose usage is fixed text.
 const HELP: &[(&str, &str)] = &[
     (
+        "runtime",
+        "Execute versioned raw SMT transcripts through Sail's bundled pinned Z3.
+
+USAGE:
+    sail runtime capabilities [--cache DIR]
+    sail runtime execute --file FILE|- [--cache DIR]
+
+Input and output are JSON (docs/runtime.md). Complete sat/unsat transcripts
+exit 0; unknown or incomplete execution exits 1; admission or setup errors
+exit 2. Ctrl-C cancels and reaps active solvers. No Rust proof is implied.
+",
+    ),
+    (
         "repair-check",
         "\
 Focus a repair on one function, then independently verify the full target

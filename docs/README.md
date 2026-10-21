@@ -13,6 +13,7 @@ experimental features and validation limits are identified explicitly.
 | Restore a previously verified revision after undoing an edit | [Instant revert](instant-revert.md), with qualified platform/profile and cost limits |
 | Check one repair, follow proof events, explain failures and compare saved baselines | [Walkthrough](proof-repair-walkthrough.md), [repair contract](proof-repair.md) — M7 remains experimental |
 | Integrate an agent through stdio MCP | [MCP tools](mcp.md) |
+| Execute raw SMT transcripts through the pinned runtime | [Runtime](runtime.md), [version-one protocol](spec/runtime.md) |
 | Read job Status and Results from Rust | [Result client](result-client.md) |
 | Run isolated native model checks, simulation and independent trace validation from Rust | [Temporal jobs](temporal-jobs.md) |
 | Consume structured reports and provenance | [Output schema](output-schema.md) |

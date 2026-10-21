@@ -1586,6 +1586,7 @@ dependencies = [
  "sail-key",
  "sail-mcp",
  "sail-portfolio",
+ "sail-runtime",
  "sail-verus",
  "serde",
  "serde_json",
@@ -1696,6 +1697,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "sail-runtime"
+version = "0.1.0"
+dependencies = [
+ "sail-api",
+ "sail-cache",
+ "sail-key",
+ "sail-smtlib",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "toml",
+]
+
+[[package]]
 name = "sail-runtime-worker"
 version = "0.1.0"
 dependencies = [
@@ -1746,13 +1761,18 @@ name = "sail-verus"
 version = "0.1.0"
 dependencies = [
  "inotify",
+ "proc-macro2",
+ "quote",
  "rustix",
  "sail-api",
+ "sail-contracts",
+ "sail-contracts-ir",
  "sail-ledger",
  "sail-smtlib",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "syn 2.0.119",
  "toml",
  "toml_edit",
 ]
