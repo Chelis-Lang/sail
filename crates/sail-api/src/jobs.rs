@@ -113,6 +113,9 @@ pub struct Status {
 /// A job result preserving the managed runner's versioned document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResultDocument {
+    /// Qualified contract snapshot metadata; absent for ordinary project jobs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contracts: Option<Box<crate::contracts::Evidence>>,
     /// Independent focus/full repair evidence, when this was an engine batch.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repair: Option<Box<crate::repair::ResultDocument>>,
@@ -139,6 +142,8 @@ pub struct Chunk {
 pub enum Request {
     /// Fail-closed negotiation before any non-stock submission.
     Capabilities,
+    /// Submit exact neutral source with Sail-owned execution controls.
+    SubmitContracts(crate::contracts::Submission),
     /// Read bounded version-one proof observations using a resumable cursor.
     ProofEvents {
         /// Durable job identity.
@@ -231,6 +236,9 @@ pub enum Response {
     Capabilities {
         /// Independent proof stream version.
         proof_version: u32,
+        /// Neutral source submission version; absent on older services.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        neutral_contracts_version: Option<u32>,
         /// Non-stock submission modes are understood and never ignored.
         /// Absent from services without the engine, which decode as false.
         #[serde(default)]
@@ -459,6 +467,31 @@ pub struct Client {
 }
 #[cfg(unix)]
 impl Client {
+    /// Submit neutral source only after explicit capability negotiation.
+    /// # Errors
+    /// Refuses older services, invalid source or transport failures without fallback.
+    pub fn submit_contracts(&self, submission: crate::contracts::Submission) -> io::Result<Status> {
+        submission.validate().map_err(io::Error::other)?;
+        if !matches!(
+            self.call(&Request::Capabilities)?,
+            Response::Capabilities {
+                neutral_contracts_version: Some(crate::contracts::VERSION),
+                ..
+            }
+        ) {
+            return Err(io::Error::other(
+                "SAIL3142: endpoint does not support neutral contract jobs",
+            ));
+        }
+        match self.call(&Request::SubmitContracts(submission))? {
+            Response::Status(status) => Ok(status),
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other(
+                "SAIL3142: unexpected neutral submission response",
+            )),
+        }
+    }
+
     /// A client for `socket`; no connection or side effect until a call.
     #[must_use]
     pub fn new(socket: impl Into<PathBuf>) -> Self {
@@ -490,7 +523,8 @@ impl Client {
                 self.call(&Request::Capabilities)?,
                 Response::Capabilities {
                     proof_version: crate::proof::VERSION,
-                    repair: true
+                    repair: true,
+                    ..
                 }
             )
         {

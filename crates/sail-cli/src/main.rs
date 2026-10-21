@@ -5,6 +5,7 @@
 //! contributors run but are not listed by `sail --help`.
 #![forbid(unsafe_code)]
 
+mod contract_worker;
 mod engine_cli;
 mod fragility;
 mod fragility_join;
@@ -120,6 +121,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         Some("engine") => engine_cli::run(&args[1..], out, err),
         Some("runtime") => runtime_cli::run(&args[1..], out, err),
         Some("repair-check") => product_cli::repair(&args[1..], out, err),
+        Some("_contracts-worker") => contract_worker::run(&args[1..], out, err),
         Some("_repair-worker") => product_cli::worker(&args[1..], out, err),
         Some("explain" | "baseline" | "compare") => product_cli::evidence(args, out, err),
         Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), out, err),

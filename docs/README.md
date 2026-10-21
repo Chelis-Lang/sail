@@ -8,6 +8,7 @@ experimental features and validation limits are identified explicitly.
 
 | Task | Guide |
 |---|---|
+| Submit neutral Rust source to Sail-owned verification jobs | [Neutral source jobs](neutral-contract-jobs.md), [service specification](spec/neutral-contract-jobs.md) |
 | Check scalar contracts on ordinary Rust functions with explicit requirement IDs | [Neutral contracts](neutral-contracts.md), [source specification](spec/neutral-contracts.md) |
 | Verify, reuse complete reports, watch edits, inspect and cancel jobs | [Workspace verification](workspace-verification.md) |
 | Restore a previously verified revision after undoing an edit | [Instant revert](instant-revert.md), with qualified platform/profile and cost limits |

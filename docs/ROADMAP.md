@@ -4,6 +4,14 @@ Current state and next work. Evidence lives in the linked validation records
 and reports; this page holds only status and gates. Status words follow
 AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 
+## Neutral contract service
+
+| Gate | State | Evidence |
+|---|---|---|
+| Shared neutral source and actual backend helper | Qualified separately | [Lowering](spec/neutral-verus-lowering.md) |
+| Negotiated source-only job route and immutable baselines | Implemented; installed-service qualification pending | [Service](neutral-contract-jobs.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
+| Source-semantic requirement entailment, requirement tiers and mutation establishment | Separate remaining work | [Service boundary](spec/neutral-contract-jobs.md) |
+
 ## Goal
 
 The first public release must be clearly faster than plain `cargo verus
