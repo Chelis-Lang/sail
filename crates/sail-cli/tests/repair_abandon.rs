@@ -53,6 +53,7 @@ fn fake_service(
         let response = match request {
             Request::List { .. } => Response::List(vec![]),
             Request::Capabilities => Response::Capabilities {
+                neutral_contracts_version: None,
                 proof_version: 1,
                 repair: true,
             },

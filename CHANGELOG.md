@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add negotiated source-only neutral contract jobs with bounded Sail-owned workers,
+  exact retained evidence, conservative proof summaries and independently retained
+  immutable baselines.
+
 - Add the neutral-to-Verus lowering library for a supported complete scalar
   source file. It emits an immutable owned shadow and exact source/requirement
   mapping, preserves checked arithmetic definedness, and reuses the managed

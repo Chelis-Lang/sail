@@ -2,52 +2,13 @@
 
 use std::collections::BTreeSet;
 
+use super::{CheckCounts, ContractProof, ProofState};
 use sail_api::output::{
     AnswerName, AttributionStatus, EstablishmentName, FunctionReport, OutcomeName, VerdictName,
 };
 use sail_api::project::{Currentness, ProjectResult};
-use serde::{Deserialize, Serialize};
 
 use super::LoweringManifest;
-
-/// Whether the submitted contracts were proved under their stated preconditions.
-/// This does not establish requirement entailment, feasibility or a mutation kill.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ProofState {
-    /// Complete attributed proof evidence for every bound function.
-    Proved,
-    /// Missing, failed, unknown, unstable or incomplete evidence; not a refutation.
-    NotProved,
-}
-
-/// Underlying check counts, including advisory obligations and dependency targets.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CheckCounts {
-    /// Recorded unsatisfiable answers.
-    pub unsat: usize,
-    /// Recorded satisfiable answers; no source-level refutation is inferred.
-    pub sat: usize,
-    /// Recorded unknown answers, even when a legacy verdict says failed.
-    pub unknown: usize,
-    /// Checks with no recorded answer.
-    pub missing_answer: usize,
-    /// Checks with no recorded establishment source.
-    pub missing_source: usize,
-}
-
-/// Exact-function proof projection; the complete original backend report is retained.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ContractProof {
-    /// Conservative aggregate result, with no refuted state.
-    pub state: ProofState,
-    /// Every underlying recorded check, not just bound-function checks.
-    pub checks: CheckCounts,
-    /// Sorted distinct verbatim unknown reasons; null reasons remain in the backend.
-    pub unknown_reasons: Vec<String>,
-    /// Sorted exact bound functions with complete nonadvisory proof evidence.
-    pub proved_functions: Vec<String>,
-}
 
 pub(super) fn summarize(manifest: &LoweringManifest, backend: &ProjectResult) -> ContractProof {
     let mut checks = CheckCounts::default();

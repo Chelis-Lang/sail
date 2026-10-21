@@ -5,21 +5,10 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use serde::{Deserialize, Serialize};
+use super::TranslationTrust;
 
 use super::{digest, unsupported};
 use crate::{Result, managed};
-
-/// Exact source-policy and resolution evidence for neutral translation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TranslationTrust {
-    /// Independently qualified complete vstd and builtin macro source policy.
-    pub source_policy_sha256: String,
-    /// Actual Cargo metadata bytes used to admit all selected dependency features.
-    pub metadata_sha256: String,
-    /// Exact dependency lockfile used by the managed verification.
-    pub cargo_lock_sha256: String,
-}
 
 pub(super) struct Admission {
     controls: Controls,

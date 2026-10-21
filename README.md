@@ -26,6 +26,8 @@ For contracts on ordinary Rust functions, the private
 [`sail-contracts` library](docs/neutral-contracts.md) provides explicit
 requirement IDs and checked scalar preconditions, postconditions and old
 values. These runtime checks are separate from SMT verification.
+[Neutral source jobs](docs/neutral-contract-jobs.md) submit supported source
+through Sail's private service and retain its actual contract proof evidence.
 
 ## Install
 
