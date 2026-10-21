@@ -176,7 +176,12 @@ target values. Each unit's profile supplies its debug-assertion setting.
 This model uses Cargo source `5f94df4789f005f9a352888e8355ffc645b7ed0e`.
 Unknown Cargo versions, missing observations, and conflicting unit values
 refuse reuse. A declared name with an inherited parent value also refuses
-reuse. Other Cargo-generated variables retain the original refusal.
+reuse. Package declarations `CARGO_MANIFEST_DIR`, `CARGO_MANIFEST_LINKS`,
+`CARGO_PKG_NAME` and `CARGO_PKG_VERSION` (including its major, minor, patch
+and prerelease components) use the current package metadata. `OUT_DIR` uses
+Cargo's recorded directory for that exact build unit, bound to its checked
+output file inside the owned target. Other Cargo-generated variables retain
+the original refusal.
 
 The generated values participate in each script's content digest. Feature,
 target, cfg, or declared environment changes invalidate affected records.

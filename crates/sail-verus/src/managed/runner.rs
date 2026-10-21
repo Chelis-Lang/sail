@@ -4935,7 +4935,7 @@ mod tests {
         );
         let (unproved, missing_dependency) =
             target_records(&paths, &data, "missing", false, &unrequested, &[], None)?;
-        assert!(unproved.is_empty());
+        assert_eq!(unproved.len(), 0);
         assert_eq!(missing_dependency, BTreeSet::from(["input".to_owned()]));
         assert_eq!(std::fs::read_dir(&paths.receipts)?.count(), 0);
         assert_eq!(

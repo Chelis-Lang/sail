@@ -748,13 +748,22 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 (package / "src").mkdir(parents=True)
                 (package / "Cargo.toml").write_text(
                     f'[package]\nname = "sail-schedule-fixture"\nversion = "{version}"\n'
-                    'edition = "2021"\n')
+                    f'edition = "2021"\nlinks = "sail_fixture_{label}"\n')
                 (package / "src/lib.rs").write_text("")
                 (package / "build.rs").write_text(
                     'fn main() {\n'
                     '    println!("cargo::rerun-if-changed=build.rs");\n'
                     '    println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_OS");\n'
                     '    println!("cargo::rerun-if-env-changed=CARGO_FEATURE_SAIL_FIXTURE");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_MANIFEST_DIR");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_MANIFEST_LINKS");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_NAME");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION_MAJOR");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION_MINOR");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION_PATCH");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION_PRE");\n'
+                    '    println!("cargo::rerun-if-env-changed=OUT_DIR");\n'
                     '    let rustc = std::env::var_os("RUSTC").unwrap();\n'
                     '    let wrapper = std::env::var_os("RUSTC_WRAPPER").unwrap();\n'
                     '    let probe = std::process::Command::new(wrapper).arg(rustc)\n'

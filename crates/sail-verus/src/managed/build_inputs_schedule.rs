@@ -315,6 +315,7 @@ mod tests {
             digest: String::new(),
             covered: true,
             output: None,
+            unit_out_dir: None,
         };
         record.digest = current(&record, None, &fixture.data).0;
         json(&state, &vec![record])?;

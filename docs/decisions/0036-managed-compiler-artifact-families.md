@@ -185,7 +185,11 @@ are derived from exact Cargo execution units and native compiler cfg queries
 under Cargo source `5f94df4789f005f9a352888e8355ffc645b7ed0e` (#298).
 Unknown Cargo sources, missing or ambiguous observations, and inherited parent
 values refuse reuse. The generated values bind script content digests at
-creation, family admission and dependency-store validation; they grant no
+creation, family admission and dependency-store validation. The same pinned
+boundary binds `CARGO_MANIFEST_DIR`, `CARGO_MANIFEST_LINKS`, `CARGO_PKG_NAME`,
+and `CARGO_PKG_VERSION` with its major/minor/patch/prerelease components to
+current package metadata. `OUT_DIR` binds Cargo's actual per-unit output
+directory to the checked output file in the owned target. These values grant no
 proof or Currentness. No process environment is mutated.
 Sharing also refuses Cargo's dynamic-library path variables, resolved `RUSTDOC`
 and `RUSTC_LINKER`, removed `RUSTFLAGS`, and `DEP_` metadata: their child values

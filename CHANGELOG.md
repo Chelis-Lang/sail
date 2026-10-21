@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep unchanged build-script outputs when declared Cargo package metadata
+  and the exact unit's `OUT_DIR` remain valid, avoiding redundant TLS rebuilds.
+
 - Reuse successful partial reports only for their exact invocation scope.
   Keep partial targets explicitly incomplete and exclude their receipts from
   whole-target, shared dependency and instant-revert proof admission.
