@@ -530,8 +530,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn dispatch_progress_default_is_source_and_case_bound() -> Result<(), Box<dyn std::error::Error>>
-    {
+    fn dispatch_progress_default_is_source_and_case_bound()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
         const ORIGINAL: &[u8] =
             include_bytes!("../tests/fixtures/rvt-progress/sail_vi0012_dispatch_order.rs");
         let dir = std::env::temp_dir().join(format!("sail-rvt-dispatch-{}", std::process::id()));
