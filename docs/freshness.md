@@ -163,6 +163,21 @@ Cargo's own. Two parts of the environment bind a result:
   `rerun-if-env-changed`. Each receipt records their values, and it is reused
   only while every one is unchanged.
 
+For build-script declarations, Sail binds `CARGO_FEATURE_*` and `CARGO_CFG_*`
+to Cargo's generated values, not the parent process values. A private Cargo
+unit graph supplies exact unit features. Native compiler cfg queries supply
+target values. Each unit's profile supplies its debug-assertion setting.
+
+This model uses Cargo source `5f94df4789f005f9a352888e8355ffc645b7ed0e`.
+Unknown Cargo versions, missing observations, and conflicting unit values
+refuse reuse. A declared name with an inherited parent value also refuses
+reuse. Other Cargo-generated variables retain the original refusal.
+
+The generated values participate in each script's content digest. Feature,
+target, cfg, or declared environment changes invalidate affected records.
+Output ownership, source-content checks, receipt checks, and dependent
+invalidation remain unchanged.
+
 `RUSTUP_TOOLCHAIN` binds its effective value. When the caller made no
 toolchain choice, Sail runs Cargo with the engine's pinned toolchain
 ([ADR 0058](decisions/0058-managed-builds-use-the-pinned-cargo.md)) and the

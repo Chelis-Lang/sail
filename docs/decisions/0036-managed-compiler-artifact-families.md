@@ -178,9 +178,15 @@ observations and checked; any invalid unit disqualifies the entire package. A
 valid package version cannot hide another invalid version with the same name.
 
 Cargo-injected or proof-specific declared environment variables conservatively
-refuse sharing. The one audited exception is `RUSTC_BOOTSTRAP=1`, set by the
-pinned Cargo-Verus and explicitly bound by the managed child command; old
-parent-value observations become stale. No process environment is mutated.
+refuse sharing, except the explicitly bound values below. `RUSTC_BOOTSTRAP=1`
+is set by the pinned Cargo-Verus and bound by the managed child command; old
+parent-value observations become stale. `CARGO_FEATURE_*` and `CARGO_CFG_*`
+are derived from exact Cargo execution units and native compiler cfg queries
+under Cargo source `5f94df4789f005f9a352888e8355ffc645b7ed0e` (#298).
+Unknown Cargo sources, missing or ambiguous observations, and inherited parent
+values refuse reuse. The generated values bind script content digests at
+creation, family admission and dependency-store validation; they grant no
+proof or Currentness. No process environment is mutated.
 Sharing also refuses Cargo's dynamic-library path variables, resolved `RUSTDOC`
 and `RUSTC_LINKER`, removed `RUSTFLAGS`, and `DEP_` metadata: their child values
 cannot be certified from the parent environment. The bootstrap and ordinary
