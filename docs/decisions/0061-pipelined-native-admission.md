@@ -150,3 +150,23 @@ dependent. That check now runs after the producers settle.
 Raw evidence: native evidence bucket,
 `experiments/2026-10-20/pipelined-admission/pipe-evidence.tgz`, SHA-256
 `9d043354596540526003ce545e3bb075c7618e154773b7dbb82a4eb143745d77`.
+
+## Shipped-proof producer path (2026-10-21)
+
+The same native-producer ordering applies when observing native units for a
+shipped vstd lookup. That observer previously retained the precompile waits.
+It now captures the present regular artifacts with `capture_pipelined` and
+compiles against the private copies. After successful compilation, publication
+still waits for the copied inputs' producer records and requires the existing
+complete graph, source, environment, compiler and output checks. The vstd
+consumer's certificate and consumed-byte requirements are unchanged. A missing
+or failed producer therefore still prevents reuse. Native performance and
+both-platform qualification of this implementation are pending.
+
+Shipped observers also use run-bound, exclusively created producer marks.
+Missing certificates wait only while their admitted producer can still publish;
+no producer, an older run's mark or a producer that finishes without a
+certificate causes an immediate miss. A stale current-run mark is bounded at
+120 seconds, as on the retained path. Marks never authorize a proof: the
+existing certificate, original/copy bytes and consumed-input checks remain
+mandatory after waiting.

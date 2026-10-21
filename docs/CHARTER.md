@@ -246,7 +246,18 @@ Each entry names the charter text it qualifies and the ADR that records it.
    within one uninterrupted run may reorder. Errors, warnings, other output,
    per-function verdicts and exit codes retain their exact checks. See ADR 0064.
 
-8. *Source-suite comparison* (owner, 2026-10-21). The exact pinned dispatch
+8. *Appendix entry 5, M10 ordering and temporal backend* (owner direction,
+   2026-10-21). Oyster integration may proceed on independent branches alongside
+   the Verus performance program, merging only through green protected builds.
+   This supersedes the M10 hold until M11 completes. Clients use one Sail
+   runtime: raw SMT uses Sail's existing bundled pinned Z3, contracts use its
+   Verus runtime, and temporal jobs use D.I.V.E. exclusively. No TLC adapter or
+   fallback is authorized for this route. The existing Verus path retains its
+   correctness and performance contract. See ADR 0065. The owner's direction:
+
+   > largely agreed. you can start building features on branches that safely merge into main via green builds inside sail that help get oyster integrated. i dont want to do a bunch of wiring up direct calls to smt or direct calls to tlc when I just want sail to handle it all. so, no tlc backing allowed. dive is the plan of record. but build what you can yourself now and get this stuff into sail, while the other agent continues to grind on perf
+
+9. *Source-suite comparison* (owner, 2026-10-21). The exact pinned dispatch
    query test's printed rerun commands may differ in their six random temporary
    SMT-log directory characters. All functional output and assertions remain
    checked. See ADR 0042.

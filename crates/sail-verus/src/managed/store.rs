@@ -854,15 +854,28 @@ pub(super) fn publish(candidate: &Candidate, publication: &Publication<'_>) {
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos())
     ));
-    let staged = stage(candidate, publication, &staging);
+    publish_at(candidate, publication, &store, &staging);
+}
+
+fn publish_at(candidate: &Candidate, publication: &Publication<'_>, store: &Path, staging: &Path) {
+    // A colliding name belongs to another publisher. Never write into it or
+    // remove it on failure, even when the wall clock returned the same time.
+    if let Err(error) = std::fs::create_dir_all(store).and_then(|()| std::fs::create_dir(staging)) {
+        super::files::event(&serde_json::json!({
+            "event": "dependency-store-skipped", "package_id": candidate.root,
+            "key": candidate.key, "reason": error.to_string(),
+        }));
+        return;
+    }
+    let staged = stage(candidate, publication, staging);
     let published = staged.and_then(|()| {
-        std::fs::rename(&staging, store.join(&candidate.key))
+        std::fs::rename(staging, store.join(&candidate.key))
             .map_err(|e| Error::new("SAIL3102", e.to_string()))
     });
     if let Err(error) = published {
         // Another run may have published the same key first; either way the
         // staging copy is discarded. The reason is observable for diagnosis.
-        let _ = std::fs::remove_dir_all(&staging);
+        let _ = std::fs::remove_dir_all(staging);
         super::files::event(&serde_json::json!({
             "event": "dependency-store-skipped", "package_id": candidate.root,
             "key": candidate.key, "reason": error.message,
@@ -872,7 +885,7 @@ pub(super) fn publish(candidate: &Candidate, publication: &Publication<'_>) {
     super::files::event(&serde_json::json!({
         "event": "dependency-stored", "package_id": candidate.root, "key": candidate.key,
     }));
-    evict(&store, &candidate.key, capacity());
+    evict(store, &candidate.key, capacity());
 }
 
 /// The packages of `closure` that have a build script.
@@ -1716,6 +1729,37 @@ mod tests {
             candidates[0].root,
             data["packages"][2]["id"].as_str().unwrap_or_default()
         );
+    }
+
+    #[test]
+    fn publication_never_touches_another_publishers_staging_directory() {
+        let fixture = Fixture::new("staging-owner");
+        let (target, candidate, receipt) = fixture.build("old");
+        let store = root(&fixture.cache());
+        assert!(std::fs::remove_dir_all(store.join(&candidate.key)).is_ok());
+        let staging = store.join(".staging-other-publisher");
+        let marker = staging.join("owned");
+        write(&marker, b"another publisher");
+        publish_at(
+            &candidate,
+            &Publication {
+                cache: &fixture.cache(),
+                target: &target,
+                artifacts: &fixture.root.join("old-artifacts.jsonl"),
+                build_inputs: &fixture.root.join("old-build-inputs.json"),
+                receipt,
+                sidecar: fixture.root.join("old-sidecar"),
+                data: &fixture.data,
+            },
+            &store,
+            &staging,
+        );
+        assert_eq!(
+            std::fs::read(&marker).unwrap_or_default(),
+            b"another publisher"
+        );
+        assert!(!store.join(&candidate.key).exists());
+        assert_eq!(std::fs::read_dir(&staging).map_or(0, Iterator::count), 1);
     }
 
     #[test]

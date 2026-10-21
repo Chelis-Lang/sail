@@ -63,7 +63,8 @@
 #   SAIL_PERF_CATALOGUE  incidental: frozen comment/blank/helper/rename edits
 #   SAIL_PERF_BASELINE directory holding the old fork for `sail` mode only;
 #                      `plain` stays the stock conformance oracle on PATH
-#   SAIL_PERF_NOOPS    unchanged reruns after cold (default 3)
+#   SAIL_PERF_NOOPS    comment-only edits after cold (default 3)
+#   SAIL_PERF_UNCHANGED 1: measure an unmodified rerun immediately after cold
 #   SAIL_PERF_STOCK_HOME stock release install root for corpus fetching only
 #   SAIL_PERF_CORPUS   fetched corpus (default ~/.cache/sail/corpus)
 #   SAIL_PERF_VERUS_ARGS  extra Verus arguments for every run (e.g. "-V spinoff-all")
@@ -651,6 +652,9 @@ run_mode() { # ROUND MODE
     [ "$ready" = 1 ] || { echo "fork-shim daemon did not start; see $out/r$round/$mode.daemon.log" >&2; exit 2; }
   fi
   run_one "$round" "$mode" "$dir" cold
+  if [ "${SAIL_PERF_UNCHANGED:-0}" = 1 ]; then
+    run_one "$round" "$mode" "$dir" unchanged
+  fi
   case "$mode" in
     sail | fork-sail | incremental)
       python3 -I "$here/perf-matrix.py" vstd-proof "$cache" "$out/r$round/$mode.cold.log" \

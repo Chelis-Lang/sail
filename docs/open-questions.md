@@ -451,3 +451,14 @@ planned for releases after 0.1.0. The owner answered all twelve on
     acceptable trust root for that archive's own vstd reply store, and
     only that store. Sail builds ADR 0062: every entry is still checked as
     a shared entry is, and any doubt means the solver answers.
+
+37. **Oyster integration ordering and runtime ownership.**
+
+    **Answered 2026-10-21 (owner):** implement the Oyster critical path in
+    independent vertical slices alongside the performance program, merging
+    through green protected builds. Sail owns the bundled pinned Z3, Verus
+    contracts and D.I.V.E. temporal worker. Oyster calls Sail rather than
+    wiring separate solver or checker runtimes. No TLC backend or fallback.
+    The earlier M10 hold until M11 completes is superseded. Private dependency
+    access uses a dedicated read-only credential; secrets never enter source,
+    images or artifact URLs. See ADR 0065 and charter appendix entry 8.
