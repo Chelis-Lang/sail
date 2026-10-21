@@ -1323,6 +1323,7 @@ dependencies = [
  "sail-key",
  "sail-mcp",
  "sail-portfolio",
+ "sail-runtime",
  "sail-verus",
  "serde",
  "serde_json",
@@ -1337,6 +1338,32 @@ dependencies = [
  "sail-verus",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "sail-contracts"
+version = "0.1.0"
+dependencies = [
+ "sail-contracts-macros",
+]
+
+[[package]]
+name = "sail-contracts-ir"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "sail-contracts-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "sail-contracts-ir",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1392,6 +1419,20 @@ dependencies = [
  "sail-smtlib",
  "sail-solver",
  "serde",
+]
+
+[[package]]
+name = "sail-runtime"
+version = "0.1.0"
+dependencies = [
+ "sail-api",
+ "sail-cache",
+ "sail-key",
+ "sail-smtlib",
+ "serde",
+ "serde_json",
+ "sha2",
+ "toml",
 ]
 
 [[package]]
