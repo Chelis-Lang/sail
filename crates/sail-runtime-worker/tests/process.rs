@@ -115,18 +115,45 @@ fn isolated_counterexample_matches_direct_library_and_both_validate() -> TestRes
 }
 
 #[test]
-fn actual_worker_is_cancelled_during_large_assumption_binding() {
+fn actual_worker_is_cancelled_after_spawn_for_large_assumption_input() -> TestResult {
     let (worker, hash) = worker();
     let mut request = request();
     request.model.files.insert("M.tla".into(),"---- MODULE M ----\nEXTENDS Naturals\nVARIABLE x\nASSUME \\A n \\in 1..1000000000: n >= 0\nInit == x = 0\nNext == x' = x\n====\n".into());
     let cancel = AtomicBool::new(false);
-    let result = std::thread::scope(|scope| {
-        scope.spawn(|| {
-            std::thread::sleep(Duration::from_millis(150));
+    let (result, observed) = std::thread::scope(|scope| {
+        let monitor = scope.spawn(|| {
+            // Hashing and freezing the real binary can exceed a fixed sleep on
+            // a busy runner. Observe this test process's actual owned worker.
+            let prefix = format!("sail-runtime-image-{}-", std::process::id());
+            let started = std::time::Instant::now();
+            let observed = loop {
+                let processes = std::process::Command::new("/bin/ps")
+                    .args(["-axo", "command="])
+                    .output();
+                if processes.is_ok_and(|p| {
+                    p.status.success()
+                        && String::from_utf8_lossy(&p.stdout).lines().any(|line| {
+                            line.contains(&prefix)
+                                && line.trim_end().ends_with("/sail-runtime-worker")
+                        })
+                }) {
+                    break true;
+                }
+                if started.elapsed() >= Duration::from_secs(5) {
+                    break false;
+                }
+                std::thread::sleep(Duration::from_millis(5));
+            };
             cancel.store(true, Ordering::Release);
+            observed
         });
-        run(worker, &hash, &request, Duration::from_secs(10), &cancel)
+        let result = run(worker, &hash, &request, Duration::from_secs(10), &cancel);
+        (result, monitor.join())
     });
+    assert!(
+        observed.map_err(|_| "worker observer panicked")?,
+        "actual worker was not observed"
+    );
     assert!(
         matches!(
             result,
@@ -136,6 +163,7 @@ fn actual_worker_is_cancelled_during_large_assumption_binding() {
         ),
         "{result:?}"
     );
+    Ok(())
 }
 
 fn control(marker: &str, deadline: Duration) -> RunResult {

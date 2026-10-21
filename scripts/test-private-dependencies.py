@@ -25,7 +25,7 @@ class Credentials(unittest.TestCase):
                 for suffix in ("", ".git"):
                     result = subprocess.run([str(WRAPPER), "git", "credential", "fill"],
                         input=f"protocol=https\nhost=github.com\npath=Chelis-Lang/{repository}{suffix}\n\n",
-                        text=True, capture_output=True, env=env, check=True)
+                        text=True, capture_output=True, env=env, cwd=directory, check=True)
                     self.assertIn("password=synthetic-test-credential", result.stdout)
                     self.assertEqual(result.stderr, "")
             for protocol, host, path in (("https", "elsewhere.example", "Chelis-Lang/dive"),
@@ -33,11 +33,11 @@ class Credentials(unittest.TestCase):
                                          ("https", "github.com", "Chelis-Lang/other")):
                 result = subprocess.run([str(WRAPPER), "git", "credential", "fill"],
                     input=f"protocol={protocol}\nhost={host}\npath={path}\n\n",
-                    text=True, capture_output=True, env=env)
+                    text=True, capture_output=True, env=env, cwd=directory)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertNotIn("synthetic-test-credential", result.stdout + result.stderr)
             result = subprocess.run([str(WRAPPER), "git", "config", "--list"],
-                                    text=True, capture_output=True, env=env, check=True)
+                                    text=True, capture_output=True, env=env, cwd=directory, check=True)
             self.assertNotIn("synthetic-test-credential", result.stdout + result.stderr)
             self.assertFalse(Path(directory, "global").exists())
 
