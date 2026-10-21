@@ -164,3 +164,27 @@ and inherited-pipe cleanup.
 | `sail-m10-dive-current-main-gate.log` | `537576a459848b7a35af8c94f8f43dc6ab00eab3fc418a89c6dfb93d3d1076ba` |
 | `sail-m10-dive-release-tests.log` | `7165744a9a3ceb518fb714becbb5032977f37b645007e11b2b61ab1d882baa11` |
 | `sail-m10-dive-current-macos-host.log` | `341c7569b719008f28152fc965070995c3221c3032d187e1e1061c3c2fa8f2c4` |
+
+## Current-main bound-role qualification
+
+Implementation `5ffc4a01`, including main `29ad230c` and the bound-role routing
+fix, passed the complete native Linux gate with 946 tests and 44 explicit
+skips. The corresponding full Mac host gate passed 935 tests and 44 explicit
+skips, including strict workspace Clippy. The focused library/process suite
+also passed all 16 controls. Production and fixture deadlines remain unchanged.
+These current-source gates are separate from the earlier complete solver,
+end-to-end and PR conformance sequence at `b6a370fe` above. Protected CI still
+requires private dependency authentication before this draft can merge.
+
+An initial native setup attempt omitted the repository's Cargo `xtask` alias
+from the external workspace source-replacement configuration. It failed at
+alias resolution. Preserving that alias in the external configuration fixed
+the setup; no source, test or verifier check changed. The pinned private source
+was externally vendored, with public registry resolution unchanged and no
+credential installed on the host.
+
+| Current-source artifact | SHA-256 |
+|---|---|
+| `sail-root-dive-role-native-gate.log` | `13ffe6759e2265b72f254a5c3de354b7e022c4ac2aa0845e70a17b134c058b03` |
+| `sail-dive-role-main-macos-host.log` | `3fbca457ba9abf38757080801e32a3a3bef8e481f71a54c05a8176f24965639f` |
+| `sail-root-dive-role-native-gate-setup-attempt1.log` | `98f60bd5106c3503fc42408645c3f9ed576829bc6f2ce0817167c47a4d0a938f` |
