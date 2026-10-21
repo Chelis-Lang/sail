@@ -2,6 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Private local runtime transport, independent of cache and project-job RPC.
+#[cfg(unix)]
+pub mod transport;
+
 /// Public runtime protocol version.
 pub const VERSION: u32 = 1;
 /// Maximum number of independently executed queries in one request.

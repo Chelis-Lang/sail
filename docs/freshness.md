@@ -255,3 +255,10 @@ When native notification coverage is incomplete, watch uses only its documented
 content scans; delayed native events do not queue the same edit again. The
 startup snapshot includes empty input directories, while declared build-output
 subtrees remain excluded.
+
+With the pinned Cargo, a requested proof failure keeps independently verified
+dependencies when the current input checks pass. Platform-disabled packages
+with no Cargo execution unit need no observed build-script contract. Missing
+or unsupported planning evidence retains conservative cleanup; unexpected
+actual units prevent a Current result.
+
