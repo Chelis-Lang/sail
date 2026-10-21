@@ -30,7 +30,7 @@ use sail_verus::run::RunRecord;
 use serde_json::{Value, json};
 
 use super::workspace::{
-    DaemonState, Workspace, daemon_state, execute, retained_receipts, stop_daemon,
+    DaemonState, PROTOCOL, Workspace, daemon_state, execute, retained_receipts, stop_daemon,
     verus_build_from_env, write_fresh,
 };
 use super::{Setup, class_of, false_verified, load_meta, plain_outcome, sidecar, value};
@@ -533,7 +533,7 @@ fn run_header(
        "runtime_manifest_sha256": runtime_manifest.as_deref().map(digest_file).transpose()?,
        "corpus_sha256": digest_file(Path::new("corpus/corpus.toml"))?,
        "vstd_lock_sha256": o.vstd_lock.as_deref().map(digest_file).transpose()?,
-       "protocol": super::workspace::PROTOCOL,
+       "protocol": PROTOCOL,
        "oracle_protocol": meta.pointer("/oracle/protocol"),
        "generator": meta.get("generator"),
        "oracle_runs": meta.pointer("/oracle/runs"),
@@ -555,7 +555,7 @@ fn require_oracle(meta: &Value, registry: bool, release: &str) -> Result<(), Str
         .get("vstd_mode")
         .and_then(Value::as_str)
         .unwrap_or("source");
-    if oracle.get("protocol").and_then(Value::as_str) != Some(super::workspace::PROTOCOL)
+    if oracle.get("protocol").and_then(Value::as_str) != Some(PROTOCOL)
         || oracle_mode != mode
         || oracle.get("platform").and_then(Value::as_str) != Some(sail_verus::toolchain::host())
         || oracle.get("stock_verus").and_then(Value::as_str) != Some(release)
@@ -697,7 +697,7 @@ mod tests {
 
     #[test]
     fn refuses_an_oracle_for_a_different_preparation_or_runtime() {
-        let meta = json!({"oracle": {"protocol": super::workspace::PROTOCOL, "vstd_mode": "registry", "platform": sail_verus::toolchain::host(),
+        let meta = json!({"oracle": {"protocol": PROTOCOL, "vstd_mode": "registry", "platform": sail_verus::toolchain::host(),
             "stock_verus": "pinned", "runs": 3}});
         assert!(require_oracle(&meta, true, "pinned").is_ok());
         assert!(require_oracle(&meta, false, "pinned").is_err());

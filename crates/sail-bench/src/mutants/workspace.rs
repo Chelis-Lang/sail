@@ -14,9 +14,9 @@ use sail_verus::run::{RunRecord, copy_tree, prepare_unit};
 use sail_verus::toolchain::Installed;
 use serde_json::Value;
 
-/// Verus flags both sides pass. They are the two flags `sail verify`
-/// itself adds, so neither changes what Sail's managed driver accepts for
-/// proof reuse, and neither changes a byte sent to Z3.
+/// Diagnostic flags both sides pass to requested roots only. They request
+/// structured results and suppress wall-time notices, without changing proofs
+/// or solver input bytes. Retained identity still binds their literal tokens.
 pub const FLAGS: &[&str] = &["--output-json", "--time", "--no-report-long-running"];
 
 /// Command/comparison protocol: instrument roots only and preserve diagnostics.
