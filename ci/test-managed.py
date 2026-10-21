@@ -111,6 +111,18 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
     (workspace / "helper/src/lib.rs").write_text("")
     (workspace / "Cargo.toml").write_text(
         '[workspace]\nresolver = "2"\nmembers = ["demo", "helper"]\n')
+    # A platform-disabled dependency remains in Cargo metadata's resolved
+    # graph but has no execution unit. It must never run or make a failed
+    # requested proof withdraw the independently verified vstd receipt.
+    (root / "dormant/src").mkdir(parents=True)
+    (root / "dormant/Cargo.toml").write_text(
+        '[package]\nname = "dormant"\nversion = "0.1.0"\nedition = "2021"\n')
+    (root / "dormant/src/lib.rs").write_text("")
+    (root / "dormant/build.rs").write_text(
+        'fn main() { panic!("platform-disabled script must never execute"); }\n')
+    with (workspace / "demo/Cargo.toml").open("a") as manifest:
+        manifest.write("\n[target.'cfg(windows)'.dependencies]\n"
+                       'dormant = { path = "../../dormant" }\n')
     socket = root / "d.sock"
     env["SAIL_DAEMON_SOCKET"] = str(socket)
     daemon = subprocess.Popen([sail,"serve","--cache",str(root / "cache"),
@@ -780,7 +792,15 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 marker = markers[0].read_text()
                 assert marker.startswith("new:"), marker
                 return marker
+            def schedule_binding(result):
+                memos = list((root / "cache/projects").glob(
+                    f'*/{result["context_sha256"]}/unscheduled-scripts.json'))
+                current = [json.loads(memo.read_text()) for memo in memos]
+                current = [memo for memo in current if memo["run_id"] == result["run_id"]]
+                assert len(current) == 1, current
+                return current[0]["binding"]
             script_execution = schedule_marker()
+            script_binding = schedule_binding(scripts)
             unchanged_run, unchanged, unchanged_target = managed()
             assert unchanged_run.returncode == 0 and unchanged["currentness"] == "current", diagnostic(unchanged)
             assert unchanged["execution"]["verifier_invocations"] == 0, diagnostic(unchanged)
@@ -799,7 +819,11 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             assert not edited_target["reused"] and edited_target["complete"], diagnostic(edited)
             assert vstd(edited)["reused"], diagnostic(edited)
             assert b"Compiling vstd" not in edited_run.stderr, edited_run.stderr.decode()
-            assert schedule_marker() != script_execution, "changed source incorrectly kept old scheduling memo"
+            # The current Cargo graph now establishes the dev-only package's
+            # absence. A source edit must replace the saved input binding, but
+            # must not rebuild an observed dependency whose inputs are unchanged.
+            assert schedule_binding(edited) != script_binding, "changed source kept an old scheduling binding"
+            assert schedule_marker() == script_execution, "source edit rebuilt an unchanged dependency script"
 
             # #294/#298: the already observed dependency script probes
             # metadata on stdout and declares Cargo-generated inputs. After
