@@ -279,7 +279,7 @@ The M11 reliability items in #168 are closed.
 
 ## Later
 
-- **M10 verification runtime (backburnered).** One runtime and ledger for
+- **M10 verification runtime (Oyster integration authorized alongside M11).** One runtime and ledger for
   Rust, SMT-LIB and TLA+ jobs ([scope](scope/verification-runtime.md), #146).
   Interfaces (#127–#129), then the SMT-LIB service (#137), then backends
   (#130–#136), certificates (#138), D.I.V.E. TLA+ jobs (#139), mutation

@@ -346,3 +346,18 @@ portfolios, with separate keys.
   `engine-lacks-feature`, never same or different.
   [Reproduction](../corpus/repros/engine-without-singular/) (kept),
   [deep-tier record](validation/deep-tier.md).
+
+
+## A failed Verus function can retain an unknown check
+
+The neutral add-one reproduction requires `input < 100`, ensures the result is
+`input + 1`, and changes the implementation from `input + 1` to `input`.
+On the pinned native engine, the actual managed function is labeled failed
+while its primary obligation records unknown with reason `(incomplete quantifiers)`,
+then unsat. A model returned after the unknown answer is not a SAT witness.
+The neutral contract projection conservatively returns `NotProved` and retains
+the underlying unknown count and reason. Legacy report semantics are unchanged.
+The compiled body edit independently violates its postcondition at input 1,
+which satisfies the precondition. This is a runtime sample, not a solver
+refutation or mutation-gate result. See the [native qualification record](validation/neutral-verus-lowering.md)
+and the [minimal emitted-source reproduction](../corpus/repros/neutral-contract-unknown/README.md).

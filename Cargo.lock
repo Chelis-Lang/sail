@@ -1277,6 +1277,7 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 name = "sail-api"
 version = "0.1.0"
 dependencies = [
+ "rustix",
  "sail-key",
  "sail-ledger",
  "serde",
@@ -1323,6 +1324,7 @@ dependencies = [
  "sail-key",
  "sail-mcp",
  "sail-portfolio",
+ "sail-runtime",
  "sail-verus",
  "serde",
  "serde_json",
@@ -1379,6 +1381,7 @@ dependencies = [
  "sail-api",
  "sail-cache",
  "sail-key",
+ "sail-runtime",
  "sail-verus",
  "serde",
  "serde_json",
@@ -1418,6 +1421,20 @@ dependencies = [
  "sail-smtlib",
  "sail-solver",
  "serde",
+]
+
+[[package]]
+name = "sail-runtime"
+version = "0.1.0"
+dependencies = [
+ "sail-api",
+ "sail-cache",
+ "sail-key",
+ "sail-smtlib",
+ "serde",
+ "serde_json",
+ "sha2",
+ "toml",
 ]
 
 [[package]]
@@ -1463,13 +1480,18 @@ name = "sail-verus"
 version = "0.1.0"
 dependencies = [
  "inotify",
+ "proc-macro2",
+ "quote",
  "rustix",
  "sail-api",
+ "sail-contracts",
+ "sail-contracts-ir",
  "sail-ledger",
  "sail-smtlib",
  "serde",
  "serde_json",
  "sha2",
+ "syn 2.0.119",
  "toml",
  "toml_edit",
 ]

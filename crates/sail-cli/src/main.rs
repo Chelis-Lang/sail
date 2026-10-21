@@ -20,6 +20,7 @@ mod product_cli;
 mod projects_cli;
 mod remote_cache;
 mod report;
+mod runtime_cli;
 #[cfg(test)]
 mod scope;
 mod shared_ops;
@@ -49,6 +50,10 @@ const COMMANDS: &[(&str, &str)] = &[
     (
         "engine",
         "install or inspect Sail's Verus (fork runtime and repair engine)",
+    ),
+    (
+        "runtime",
+        "execute versioned raw SMT requests with Sail's pinned solver",
     ),
     ("watch", "re-verify the workspace as files change"),
     ("jobs", "inspect, follow, or cancel local verification jobs"),
@@ -113,6 +118,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
             verify::portfolio_attempt(args.get(1..).unwrap_or_default(), out, err)
         }
         Some("engine") => engine_cli::run(&args[1..], out, err),
+        Some("runtime") => runtime_cli::run(&args[1..], out, err),
         Some("repair-check") => product_cli::repair(&args[1..], out, err),
         Some("_repair-worker") => product_cli::worker(&args[1..], out, err),
         Some("explain" | "baseline" | "compare") => product_cli::evidence(args, out, err),
@@ -342,6 +348,18 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
         }
     };
     let mut job_server = job_server;
+    let mut runtime_service =
+        match runtime_cli::start_service(&socket, root.join("runtime"), job_server.activity()) {
+            Ok(handle) => handle,
+            Err(error) => {
+                job_server.shutdown();
+                let _ = writeln!(
+                    err,
+                    "error[SAIL6201]: cannot start runtime endpoint: {error}"
+                );
+                return ExitCode::from(2);
+            }
+        };
     let activity = job_server.activity();
     let handle = server.handle();
     let signals = signal_hook::iterator::Signals::new([
@@ -359,6 +377,7 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
             });
     }
     let result = server.run_with_activity(activity);
+    runtime_service.shutdown();
     job_server.shutdown();
     match result {
         Ok(()) => ExitCode::SUCCESS,

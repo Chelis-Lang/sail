@@ -69,4 +69,6 @@ Use [the template](0000-template.md) for a new decision.
 - [0063: A seeded mutation suite as soundness probe and edit-loop benchmark (accepted)](0063-seeded-mutation-suite.md)
 
 - [0064: Accept verification-progress note ordering (accepted)](0064-verification-progress-note-order.md)
+- [0065: One verification runtime for Oyster](0065-oyster-runtime.md)
 - [0066: Shared neutral contract syntax and checked runtime (runtime implemented; backend qualification separate)](0066-neutral-contract-runtime.md)
+- [0068: Shared runtime transport and agent tools](0068-runtime-daemon.md)
