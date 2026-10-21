@@ -6,6 +6,7 @@ import io
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -46,6 +47,26 @@ def main():
         assert b'required validation needs Python without -O or PYTHONOPTIMIZE' in refused.stderr
     with tempfile.TemporaryDirectory(prefix='sail-release-members-', dir='/tmp') as temporary:
         root = Path(temporary).resolve()
+        owned = root/'endpoints';owned.mkdir()
+        endpoints = module.owned_endpoints(owned/'daemon.sock')
+        sockets = []
+        try:
+            for path in endpoints:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                listener = socket.socket(socket.AF_UNIX)
+                sockets.append(listener)
+                listener.bind(str(path));path.chmod(0o600)
+            assert module.owned_size(owned, endpoints) == 0
+            unexpected = owned/'unknown.sock'
+            listener = socket.socket(socket.AF_UNIX);sockets.append(listener)
+            listener.bind(str(unexpected));unexpected.chmod(0o600)
+            refuses(lambda: module.owned_size(owned, endpoints))
+            unexpected.unlink()
+            runtime = next(path for path in endpoints if path.name == 'v1.sock')
+            runtime.chmod(0o666)
+            refuses(lambda: module.owned_size(owned, endpoints))
+        finally:
+            for listener in sockets:listener.close()
         release = root/'sail-fixture';bundle = release/'deps/variant'
         (release/'bin').mkdir(parents=True)
         for name in ('sail', 'sail-z3'):

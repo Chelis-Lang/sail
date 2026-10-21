@@ -83,6 +83,13 @@ def directories(root):
             for path, meta in paths(root) if stat.S_ISDIR(meta.st_mode)}
 
 
+def owned_endpoints(socket):
+    """Exact cache, jobs and runtime addresses owned by this recorder's daemon."""
+    jobs = socket.with_name('jobs-v1-proof-v1-'+hashlib.sha256(os.fsencode(socket)).hexdigest()[:8]+'.sock')
+    runtime = jobs.with_name('rt-'+hashlib.sha256(os.fsencode(jobs)).hexdigest()[:16])/'v1.sock'
+    return {socket, jobs, runtime}
+
+
 def owned_size(root, endpoints):
     total = 0
     for path in root.rglob('*'):
@@ -590,7 +597,7 @@ def record(root, evidence):
                        SAIL_DAEMON_SOCKET=str(socket), SAIL_VSTD_BOUNDARY_RESEARCH='1',
                        SAIL_SHIPPED_RECORD=str(bundle),
                        SAIL_SHIPPED_TRACE=str(evidence/'boundary-trace'))
-            endpoints = {socket, socket.with_name('jobs-v1-proof-v1-'+hashlib.sha256(str(socket).encode()).hexdigest()[:8]+'.sock')}
+            endpoints = owned_endpoints(socket)
             def command(label, argv, cwd=project, cap=240, command_env=None):
                 started = time.monotonic()
                 remaining = min(cap, end-time.monotonic()-30)
