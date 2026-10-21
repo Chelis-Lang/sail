@@ -1,0 +1,13 @@
+[package]
+name = "cargo-benchmark-example"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+vstd = "=0.0.0-2026-10-18-0147"
+
+[package.metadata.verus]
+verify = true

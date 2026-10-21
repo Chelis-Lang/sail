@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
+  comparisons across stock Verus, the plain fork, and Sail.
+  Support fresh verification, unchanged runs, proof edits, and daemon restarts.
+  Record source and runtime identities, cache states, raw samples, and separate
+  scenario results. Invalid scenarios retain evidence without timing aggregates.
+  Include a generic proof workload and behavioral checks in CI.
+
 - Instant revert certifies each native dependency right after its own compile
   instead of making it wait for its dependencies' certificates and for other
   crates' scratch directories first, so Cargo's metadata pipelining is kept
