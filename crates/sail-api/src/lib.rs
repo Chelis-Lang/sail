@@ -29,3 +29,6 @@ pub mod schema;
 
 #[cfg(unix)]
 pub mod client;
+
+/// Neutral source job requests and source-bound contract evidence.
+pub mod contracts;

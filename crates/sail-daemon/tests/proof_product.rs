@@ -137,7 +137,7 @@ fn stock_jobs_have_an_explicitly_empty_terminal_proof_journal()
     );
     assert!(matches!(
         client.call(&Request::Capabilities)?,
-        Response::Capabilities { proof_version, repair: true } if proof_version == sail_api::proof::VERSION
+        Response::Capabilities { proof_version, repair: true, .. } if proof_version == sail_api::proof::VERSION
     ));
     server.shutdown();
     Ok(())

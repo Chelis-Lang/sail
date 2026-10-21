@@ -11,6 +11,11 @@ use super::{State, get, store};
 
 fn completed(state: &State, id: &str) -> io::Result<ProjectResult> {
     let job = get(state, id)?;
+    if job.contracts.is_some() {
+        return Err(io::Error::other(
+            "SAIL3142: use typed neutral contract result; generic comparison/explanation is unsupported",
+        ));
+    }
     if job.status.state != sail_api::jobs::Lifecycle::Completed {
         return Err(io::Error::other(
             "SAIL0904: complete job evidence is not yet available",
@@ -87,10 +92,14 @@ fn valid_name(name: &str) -> io::Result<()> {
 
 pub(super) fn save_baseline(state: &State, id: &str, name: &str) -> io::Result<Baseline> {
     valid_name(name)?;
+    if get(state, id)?.contracts.is_some() {
+        return super::contracts::save_baseline(state, id, name);
+    }
     let mut result = completed(state, id)?;
     result.currentness = sail_api::project::Currentness::Historical;
     result.notes.push("Immutable baseline evidence applies only to its recorded input revision, not current workspace inputs.".into());
     let baseline = Baseline {
+        contracts: None,
         version: VERSION,
         name: name.into(),
         job_id: id.into(),
@@ -177,13 +186,40 @@ pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
             "SAIL0905: baseline must retain historical evidence",
         ));
     }
+    if baseline.contracts.is_some()
+        || state
+            .root
+            .join("baselines")
+            .join(format!("{name}.contracts-stderr"))
+            .exists()
+        || state
+            .root
+            .join("baselines")
+            .join(format!("{name}.contracts-seal"))
+            .exists()
+        || state
+            .root
+            .join("baselines")
+            .join(format!("{name}.contracts-stdout"))
+            .exists()
+    {
+        super::contracts::validate_baseline(state, &baseline, &bytes)?;
+    }
     Ok(baseline)
 }
 
 pub(super) fn compare(state: &State, before: &Reference, after: &str) -> io::Result<Comparison> {
     let before = match before {
         Reference::Job(id) => completed(state, id)?,
-        Reference::Baseline(name) => baseline(state, name)?.result,
+        Reference::Baseline(name) => {
+            let saved = baseline(state, name)?;
+            if saved.contracts.is_some() {
+                return Err(io::Error::other(
+                    "SAIL3142: generic comparison is unsupported for neutral evidence",
+                ));
+            }
+            saved.result
+        }
     };
     let after = completed(state, after)?;
     Ok(sail_api::evidence::compare(&before, &after))
