@@ -12,6 +12,14 @@ This page lists every code in the tools. A test
 listed here but no longer used. Renamed and removed codes are listed in
 `CHANGELOG.md`.
 
+## Neutral contracts
+
+| Code | Meaning | Action |
+|---|---|---|
+| `SAIL0701` | Unsupported or invalid neutral contract, source or requirement identity | Use the admitted scalar contract subset described in the neutral-contract guide |
+| `SAIL0702` | Runtime precondition or postcondition failed | Inspect the named requirement and the actual implementation inputs and output |
+| `SAIL0703` | Specification arithmetic overflow or invalid division | Correct the expression or narrow the admitted domain explicitly; checks remain enabled in release builds |
+
 ## Native temporal jobs
 
 | Code | Meaning | Action |
