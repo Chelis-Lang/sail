@@ -17,6 +17,18 @@ owner-approved exceptions. Daemon continuity and retained restores now require
 observed process identity and published receipts. No final edit-loop claim is
 made from the historical tables.
 
+## Current installed-product controls (2026-10-21)
+
+A root-only HumanEval smoke passes cold, mutation, ordinary revert and forced
+revert comparisons, with one observed daemon. The fresh A → B → A control
+records native producer certificates on its initial ordinary run; it does not
+exhibit the forced-first-run defect (#285). HumanEval's `path` variable names
+fall outside the retained proof's deliberately conservative source grammar,
+which rejects that identifier before recording. Its returned A therefore uses
+the solver cache, not a retained proof. The suite reports that distinction.
+Supported-profile retained/shipped coexistence remains a separate required
+acceptance check; these results do not qualify it.
+
 ## Historical run (2026-10-20)
 
 | Field | Value |
