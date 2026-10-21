@@ -6,7 +6,10 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
+import subprocess
+import sys
 import unittest
 
 SPEC = importlib.util.spec_from_file_location("perf_matrix", Path(__file__).with_name("perf-matrix.py"))
@@ -48,23 +51,13 @@ sys.exit(3)
 '''
 
 
-class Bars(unittest.TestCase):
-    def test_kinds(self):
-        self.assertEqual(pm.bar_of("cold-first", "small"), ("speedup", 2.0))
-        self.assertEqual(pm.bar_of("fresh-project", "small"), ("speedup", 2.0))
-        self.assertEqual(pm.bar_of("module-edit", "vest"), ("speedup", 1.3))
-        self.assertEqual(pm.bar_of("spec-wide", "vest"), ("not-slower", None))
-        self.assertEqual(pm.bar_of("small-edit", "small"), ("not-slower", None))
-
-    def test_thresholds(self):
-        ns = ("not-slower", None)
-        self.assertTrue(pm.meets(ns, 10.0, 10.5))
-        self.assertFalse(pm.meets(ns, 10.0, 10.51))
-        self.assertTrue(pm.meets(ns, 0.5, 0.6))
-        self.assertFalse(pm.meets(ns, 0.5, 0.61))
-        self.assertTrue(pm.meets(("speedup", 2.0), 30.0, 15.0))
-        self.assertFalse(pm.meets(("speedup", 2.0), 30.0, 15.1))
-        self.assertFalse(pm.meets(("speedup", 1.3), 30.0, 0.0))
+class Performance(unittest.TestCase):
+    def test_direction_does_not_accept_a_fixed_overhead_allowance(self):
+        self.assertEqual(pm.performance(10.0, 10.4), "slower: review")
+        self.assertEqual(pm.performance(0.1, 0.15), "slower: review")
+        self.assertEqual(pm.performance(30.0, 16.0), "faster")
+        self.assertEqual(pm.performance(30.0, 30.0), "equal")
+        self.assertEqual(pm.performance(30.0, 0.0), "invalid timing")
 
 
 class Normalize(unittest.TestCase):
@@ -77,12 +70,123 @@ class Normalize(unittest.TestCase):
         self.assertEqual(pm.normalize(text), ["error: assertion failed", "--> src/lib.rs:7:12",
                                               "verification results:: 1 verified, 1 errors"])
 
-    def test_project_result_counts_requested_targets(self):
-        doc = {"kind": "sail-project-result", "targets": [
-            {"requested": True, "report": {"summary": {"verified": 144, "failed": 0}}},
-            {"requested": False, "report": {"summary": {"verified": 9, "failed": 0}}}]}
-        text = "   Checking anvil\n" + json.dumps(doc, indent=2) + "\n"
-        self.assertEqual(pm.normalize(text), ["verification results:: 144 verified, 0 errors"])
+    @staticmethod
+    def project_doc(verified=3, errors=0, outcomes=(("f", ["proved"]), ("g", ["proved", "proved"])),
+                    failed=0, partial=True):
+        """A sail-project-result shaped like anvil's: Verus counts checks
+        (`crates[].verus`), the report lists functions and their obligations."""
+        fns = [{"function": name, "verdict": "failed" if "failed" in obs else "verified",
+                "obligations": [{"kind": "Function-Def", "advisory": False, "outcome": o} for o in obs]
+                + [{"kind": "Function-Def", "advisory": True, "outcome": "proved"}]}
+               for name, obs in outcomes]
+        requested = {"requested": True, "target": "anvil", "complete": not partial, "report": {
+            "summary": {"functions": len(fns), "verified": len(fns) - failed, "failed": failed},
+            "crates": [{"verus": {"verified": verified, "errors": errors}, "functions": fns}]}}
+        other = {"requested": False, "target": "vstd", "report": {
+            "summary": {"verified": 9, "failed": 0}, "crates": [{"verus": {"verified": 9, "errors": 0}}]}}
+        notes = ["Requested function/module scope is partial; whole-target reuse is disabled"] if partial else []
+        return {"kind": "sail-project-result", "targets": [other, requested], "notes": notes}
+
+    def test_project_result_uses_verus_check_counts_of_requested_targets(self):
+        # Two functions, three checks (one function's loop is its own query):
+        # Verus prints 3, as stock does, with the partial-verification suffix.
+        text = "   Checking anvil\n" + json.dumps(self.project_doc(), indent=2) + "\n"
+        self.assertEqual(pm.normalize(text), [
+            "verification results:: 3 verified, 0 errors (partial verification with `--verify-*`)"])
+        stock = "verification results:: 3 verified, 0 errors (partial verification with `--verify-*`)\n"
+        self.assertEqual(pm.normalize(text), pm.normalize(stock))
+
+    def test_project_result_counts_must_agree_with_function_verdicts(self):
+        # A Verus count that the report's obligations do not account for (a
+        # missing function verdict) is never papered over.
+        text = json.dumps(self.project_doc(verified=4)) + "\n"
+        got = pm.normalize(text)
+        self.assertEqual(got[0], "verification results:: 4 verified, 0 errors (partial verification with `--verify-*`)")
+        self.assertEqual(len(got), 2, got)
+        self.assertTrue(got[1].startswith("sail-report-inconsistent: anvil: 3 proved obligations, Verus counted 4"), got)
+        # Failures must agree too.
+        text = json.dumps(self.project_doc(verified=2, errors=0, outcomes=(("f", ["proved"]), ("g", ["proved", "failed"])),
+                                           failed=1)) + "\n"
+        self.assertIn("1 failed functions, Verus counted 0 errors", pm.normalize(text)[1])
+        # A report without Verus's counts is inconsistent, not zero.
+        doc = self.project_doc()
+        del doc["targets"][1]["report"]["crates"][0]["verus"]
+        self.assertTrue(pm.normalize(json.dumps(doc) + "\n")[1].endswith("no Verus counts; 3 proved obligations, Verus counted 0 verified"))
+
+    def test_whole_project_result_has_no_partial_suffix(self):
+        text = json.dumps(self.project_doc(partial=False)) + "\n"
+        self.assertEqual(pm.normalize(text), ["verification results:: 3 verified, 0 errors"])
+
+    def test_copy_roots_are_normalized(self):
+        warning = ("warning: the following packages contain code that will be rejected by a future version "
+                   "of Rust: verismo v0.1.0 ({}/source/verismo)\n")
+        with tempfile.TemporaryDirectory() as d:
+            plain, sail = Path(d, "r1", "plain-proj"), Path(d, "r1", "sail-proj")
+            a = pm.normalize(warning.format(plain), [plain])
+            b = pm.normalize(warning.format(sail), [sail])
+            self.assertEqual(a, b)
+            self.assertIn("(<copy>/source/verismo)", a[0])
+            # Only the arm's own root is replaced: another path still differs.
+            self.assertNotEqual(pm.normalize(warning.format(sail), [plain]), a)
+
+
+SHIPPED_LOCK = """version = 4
+
+[[package]]
+name = "sail-shipped-dependencies"
+version = "0.1.0"
+
+[[package]]
+name = "syn"
+version = "2.0.119"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "verus_builtin"
+version = "0.0.0-b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "vstd"
+version = "0.0.0-v"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+"""
+
+
+class ShippedVstd(unittest.TestCase):
+    def test_versions_and_lock_diff(self):
+        self.assertEqual(pm.verus_versions(SHIPPED_LOCK), ["verus_builtin=0.0.0-b", "vstd=0.0.0-v"])
+        self.assertEqual(pm.lock_diff(SHIPPED_LOCK, SHIPPED_LOCK.replace("sail-shipped-dependencies", "p")),
+                         ["lock: vstd's closure resolves to the shipped versions"])
+        older = SHIPPED_LOCK.replace('version = "2.0.119"', 'version = "2.0.100"')
+        self.assertEqual(pm.lock_diff(SHIPPED_LOCK, older), ["lock: syn 2.0.100 (shipped 2.0.119)"])
+
+    def test_proof_detection(self):
+        with tempfile.TemporaryDirectory() as d:
+            cache, log = Path(d, "cache"), Path(d, "cold.log")
+            log.write_text("   Compiling vstd\n")
+            self.assertEqual(pm.vstd_proof(cache, log), "not offered")
+            log.write_text("note[SAIL3138]: the release ships a preverified vstd proof, but ... vstd that is not from crates.io\n")
+            self.assertTrue(pm.vstd_proof(cache, log).startswith("miss: the release ships"))
+            receipts = cache / "projects" / "x" / "receipts"
+            receipts.mkdir(parents=True)
+            (receipts / "a.json").write_text(json.dumps({"name": "demo", "invocation": {"dependency_build": None}}))
+            (receipts / "b.json").write_text(json.dumps(
+                {"name": "vstd", "invocation": {"dependency_build": {"kind": "release", "establishing_run": "r"}}}))
+            self.assertEqual(pm.vstd_proof(cache, log), "served")
+
+    def test_proof_summary(self):
+        self.assertEqual(pm.proof_summary([]), "-")
+        self.assertEqual(pm.proof_summary(["served", "served", "miss: x"]), "miss 1/3, served 2/3")
+
+    def test_rust_targets_match_the_corpus(self):
+        corpus = (pm.ROOT / "corpus" / "corpus.toml").read_text()
+        entries = {"verismo": "verismo-main"}
+        for project, entry in entries.items():
+            block = corpus.split(f'name = "{entry}"', 1)[1].split("[[project]]", 1)[0]
+            requires = re.search(r"(?m)^requires = \[(.*)\]", block).group(1)
+            targets = re.findall(r'"rust-target:([^"]+)"', requires)
+            self.assertEqual(pm.RUST_TARGETS.get(project, []), targets)
 
 
 def sample(rnd, arm, scenario, wall, norm, ref=None, code=0, project="small", note=""):
@@ -99,8 +203,10 @@ class Report(unittest.TestCase):
             s += [sample(r, "stock", "small-edit", 1.0, self.V), sample(r, "sail", "small-edit", 1.04, self.V)]
             s += [sample(r, "stock", "cold-first", 30.0, self.V), sample(r, "sail", "cold-first", 16.0, self.V)]
         rows = {r["scenario"]: r for r in pm.rows_of(s, 3)}
-        self.assertTrue(rows["small-edit"]["pass"])
-        self.assertFalse(rows["cold-first"]["pass"])  # 1.875x < 2x
+        self.assertFalse(rows["small-edit"]["pass"])
+        self.assertTrue(rows["small-edit"]["valid"])
+        self.assertEqual(rows["small-edit"]["performance"], "slower: review")
+        self.assertTrue(rows["cold-first"]["pass"])  # measured faster; no fixed speedup gate
         self.assertAlmostEqual(rows["cold-first"]["ratio"], 30.0 / 16.0)
 
     def test_a_different_output_or_missing_sample_fails_the_row(self):
@@ -115,6 +221,22 @@ class Report(unittest.TestCase):
         self.assertEqual({(f["round"], f["identity"]) for f in row["failures"]},
                          {(2, "different"), (3, "unpaired")})
         self.assertEqual(s[0]["identity"], "same")
+
+    def test_duplicate_round_does_not_replace_a_missing_round(self):
+        samples = [sample(r, arm, "cold", wall, self.V, project="vest")
+                   for r in (1, 1, 3) for arm, wall in (("stock", 10.0), ("sail", 5.0))]
+        row = pm.rows_of(samples, 3)[0]
+        self.assertFalse(row["valid"])
+        self.assertFalse(row["complete"])
+
+    def test_a_completely_missing_selected_scenario_is_invalid(self):
+        samples = [sample(r, arm, "cold", wall, self.V, project="vest")
+                   for r in (1, 2, 3) for arm, wall in (("stock", 10.0), ("sail", 5.0))]
+        rows = {row["scenario"]: row for row in pm.rows_of(
+            samples, 3, [("vest", "cold"), ("vest", "unchanged")])}
+        self.assertTrue(rows["cold"]["valid"])
+        self.assertFalse(rows["unchanged"]["valid"])
+        self.assertEqual(rows["unchanged"]["n"], (0, 0))
 
     def test_a_stock_no_op_also_matches_a_sail_no_op(self):
         s = [sample(1, "stock", "unchanged", 0.1, [], ref=self.V), sample(1, "sail", "unchanged", 0.2, [])]
@@ -141,7 +263,91 @@ class Report(unittest.TestCase):
             code = pm.cmd_report(argparse.Namespace(dir=d, markdown=str(out)))
             text = out.read_text()
         self.assertEqual(code, 0)
-        self.assertIn("| vest | module-edit | 41.00 s [41.00-41.00] | 30.00 s [30.00-30.00] | 1.37x | 3/3 | >= 1.3x | pass |", text)
+        self.assertIn("| vest | scripted-module-edit | 41.00 s [41.00-41.00] | 30.00 s [30.00-30.00] | 1.37x | 3/3 | -11.00 s | - | faster |", text)
+
+
+class MutationRows(unittest.TestCase):
+    def fixture(self, directory):
+        identity = {key: key + "-digest" for key in pm.perf_matrix_mutants.IDENTITIES}
+        identity.update(platform="x86_64-unknown-linux-gnu", rounds=3)
+        classes = sorted(pm.perf_matrix_mutants.CLASSES)
+        header = dict(identity, unit="vest/vest_lib", generator="gen-mutants 2",
+                      vstd_mode="registry", oracle_vstd_mode="registry", oracle_runs=3, oracle_kept=len(classes),
+                      mutants=["edit-" + cls for cls in classes])
+        samples = []
+        for r in range(3):
+            for phase in ("cold", "revert", "revert-forced"):
+                samples.append(dict(round=r, phase=phase, id="original", judgement="same",
+                    stock_exit=0, sail_exit=0, own_answers=True, daemon_pid=100 + r,
+                    stock_s=10.0, sail_s=5.0, false_verified=[]))
+            for cls in classes:
+                samples.append(dict(round=r, phase="mutant", id="edit-" + cls,
+                    judgement="same", stock_exit=0, sail_exit=0, daemon_pid=100 + r,
+                    stock_s=3.0, sail_s=1.5, false_verified=[], **{"class": cls}))
+        self.write(directory, header, samples)
+        return identity, header, samples
+
+    @staticmethod
+    def write(directory, header, samples):
+        Path(directory, "header.json").write_text(json.dumps(header))
+        Path(directory, "samples.jsonl").write_text("\n".join(json.dumps(s) for s in samples))
+
+    def test_breadth_uses_the_full_loop_and_three_rotated_rounds(self):
+        with tempfile.TemporaryDirectory() as directory:
+            identity, _, _ = self.fixture(directory)
+            row = pm.perf_matrix_mutants.analyse(directory, identity)
+        self.assertTrue(row["valid"])
+        self.assertTrue(row["pass"])
+        self.assertEqual(row["stock_med"], 27.0)
+        self.assertEqual(row["sail_med"], 13.5)
+        self.assertEqual(row["n"], (3, 3))
+
+    def test_invalid_evidence_cannot_qualify_an_edit_claim(self):
+        for broken in ("missing", "duplicate", "binary", "oracle", "class", "daemon", "revert", "false-verified", "signal"):
+            with self.subTest(broken=broken), tempfile.TemporaryDirectory() as directory:
+                identity, header, samples = self.fixture(directory)
+                if broken == "missing": samples.pop()
+                elif broken == "duplicate": samples.append(samples[-1])
+                elif broken == "binary": header["sail_sha256"] = "other-build"
+                elif broken == "oracle": header["oracle_runs"] = 2
+                elif broken == "class":
+                    for sample in samples:
+                        if sample.get("class") == "rare-region": sample["class"] = "arith"
+                elif broken == "daemon": samples[-1]["daemon_pid"] = 999
+                elif broken == "revert": samples[1]["own_answers"] = False
+                elif broken == "false-verified": samples[-1]["false_verified"] = ["f"]
+                elif broken == "signal": samples[-1]["stock_exit"] = None
+                self.write(directory, header, samples)
+                row = pm.perf_matrix_mutants.analyse(directory, identity)
+                self.assertFalse(row["valid"], row)
+
+    def test_a_slower_edit_is_visible_even_when_the_full_loop_is_faster(self):
+        with tempfile.TemporaryDirectory() as directory:
+            identity, header, samples = self.fixture(directory)
+            for sample in samples:
+                if sample.get("class") == "arith": sample["sail_s"] = 4.0
+            self.write(directory, header, samples)
+            row = pm.perf_matrix_mutants.analyse(directory, identity)
+        self.assertTrue(row["valid"])
+        self.assertEqual(row["performance"], "faster")
+        self.assertFalse(row["pass"])
+        self.assertEqual(len(row["slower_mutants"]), 1)
+
+    def test_the_matrix_requires_its_selected_mutation_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "header.json").write_text(json.dumps({"rounds": 3, "required_mutations": ["vest"]}))
+            code = pm.cmd_report(argparse.Namespace(dir=directory, markdown=None, mutants=[]))
+        self.assertEqual(code, 1)
+
+
+class IsolatedCommands(unittest.TestCase):
+    def test_registry_helper_runs_in_isolated_python(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "Cargo.lock"
+            lock.write_text('[[package]]\nname = "vstd"\nversion = "1.2.3"\n')
+            output = subprocess.check_output([sys.executable, "-I", str(pm.HERE / "perf-matrix.py"),
+                                              "vstd-versions", str(lock)], cwd=directory, text=True)
+        self.assertEqual(output.strip(), "vstd=1.2.3")
 
 
 class SmallSequence(unittest.TestCase):
@@ -150,12 +356,14 @@ class SmallSequence(unittest.TestCase):
             d = Path(d)
             tools = d / "tools"; tools.mkdir()
             body = TOOL.replace("TEMPLATE)", repr(TEMPLATE) + ")")
+            body = body.replace("args = sys.argv[1:]", f"assert os.environ.get('RUSTUP_TOOLCHAIN') == {pm.pinned_toolchain()!r}\nargs = sys.argv[1:]")
             for name in ("cargo", "sail"):
                 (tools / name).write_text(body); (tools / name).chmod(0o755)
             install = d / "install"; (install / "bin").mkdir(parents=True)
             stock = d / "stock"; stock.mkdir()
             args = argparse.Namespace(out=str(d / "out"), sail_install=str(install), env=None,
-                                      stock_verus=str(stock), tools=str(d / "none"), settle=0.0)
+                                      stock_verus=str(stock), tools=str(d / "none"), settle=0.0,
+                                      vstd="source")
             (d / "out").mkdir()
             r = pm.Runner(args)
             r.path = os.pathsep.join([str(tools), os.environ["PATH"]])
@@ -171,6 +379,7 @@ class SmallSequence(unittest.TestCase):
         self.assertEqual(got[("stock", "unchanged")]["reference_from"], "previous verifying stock output")
         self.assertEqual(got[("sail", "small-edit")]["normalized"],
                          ["verification results:: 2 verified, 0 errors"])
+        self.assertEqual(got[("sail", "cold-first")]["vstd_proof"], "not offered")
 
 
 if __name__ == "__main__":

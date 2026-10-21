@@ -76,12 +76,45 @@ progress note after expecting only the selected parent-module note. The raw
 reports contain 45 module/function bucket notes and an identical 143-function
 verdict multiset in every row. They also retain 144 successful Verus checks
 and six near-limit instability flags; those fields are not silently replaced
-with function counts or zeros. Their reader-contract audit remains pending.
+with function counts or zeros.
+
+**Reader contract: 143 functions and 144 checks are different units.**
+Verus's `verification results::` count is one per successful first check of
+an error-level query (`count_verified` in `rust_verify/src/verifier.rs`), not
+one per function. In the 2026-10-20 Linux release matrix, every Sail anvil
+report lists 143 functions, all verified, with 144 non-advisory proved
+obligations: 141 functions with one query each, `spec_before_phase_n` with
+only its termination check, and `objects_to_vrs_list` with two `Function-Def`
+queries (the function, `exec/reconciler.rs:340`, and its loop,
+`exec/reconciler.rs:357`). The report's own Verus count
+(`crates[].verus.verified`) is 144, as stock prints, with 0 errors on both
+sides; the 15 Sail samples of all three rounds agree. No verdict is missing.
+`scripts/perf-matrix.py` therefore compares Sail's Verus count with stock's
+line and fails the sample when the obligations do not account for that
+count. Evidence: matrix archive SHA-256
+`8aa95b2ddc3df5deba80166bb413bec3b48df66d3e291b28436f4ad55e1756ed`
+(round 1 cold logs: Sail
+`f35562bd9523d110eb135f33e4e6382a5e6803e78137414f4cfa28386803d692`, stock
+`a666334c4c115705f0ebf985f603466132bd5bdb68b60dfbd07166ba579fe8a5`).
 The Anvil stock matrix and full FAST arms are unrun. Source, input, built
 binary and per-timing runtime identity checks pass; the later workload guard
 is unrun. Final receipt SHA-256:
 `cf727b1ac956c2ec6eec8d828be3097e01a0f000811a0909543eff94d0ec3ebe`.
 
-Native Anvil acceptance and full required harness qualification remain pending.
-Nothing here accepts partial verification as whole-target completeness or
-changes a benchmark baseline.
+Native harness qualification on 2026-10-21 (c7i.8xlarge, us-east-1,
+pinned Linux CI images) passes the workspace gate, 35 pinned-solver tests,
+full end-to-end suite including extra, and all four PR and full-fast
+conformance arms (33 and 147 units). Standard conformance completes all
+four arms: pass-through and engine have 159 Same; fill and warm have
+158 Same and one stock-unstable unit, with zero Different or infrastructure
+errors. Raw evidence is `experiments/2026-10-21/matrix-harness-checks.tgz`
+in the S3 evidence bucket, SHA-256
+`7e475df2d3efa0ae4cd10000c818e482affe6b77aed6bd45529d33fc4a813c61`.
+The registry preparation and obligation-count comparison are unchanged
+since the source used for those conformance runs. The final report changes
+pass a fresh Linux workspace gate and 23 behavioral Python tests; the Mac
+host gate passes 849 tests, with 37 skipped and Clippy clean.
+
+The installed-release matrix and version-2 mutation measurements remain
+pending. Nothing here accepts partial verification as whole-target
+completeness or changes a benchmark baseline.
