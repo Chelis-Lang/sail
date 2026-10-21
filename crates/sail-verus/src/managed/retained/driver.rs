@@ -833,7 +833,9 @@ fn closed_verus_options(arguments: &[String], is_vstd: bool, imports: &BTreeSet<
                 }
                 index += 2;
             }
-            "--output-json" | "--time" | "--time-expanded" => index += 1,
+            "--output-json" | "--time" | "--time-expanded" | "--no-report-long-running" => {
+                index += 1
+            }
             "--rlimit" | "--multiple-errors" | "--num-threads" => {
                 if arguments
                     .get(index + 1)
@@ -1388,6 +1390,7 @@ mod tests {
                 "--VIA-CARGO".into(),
                 "compile-when-not-primary-package".into(),
                 "--output-json".into(),
+                "--no-report-long-running".into(),
                 "--rlimit".into(),
                 "10".into()
             ],

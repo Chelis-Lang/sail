@@ -305,6 +305,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());
     let oracle = json!({
+        "protocol": super::workspace::PROTOCOL,
         "platform": sail_verus::toolchain::host(),
         "machine": sail_verus::run::machine_info(),
         "stock_verus": setup.installed.pins.verus.release,

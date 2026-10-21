@@ -130,6 +130,11 @@ matching the checked-in catalogues. The runner refuses an oracle from another
 platform, stock release or preparation, or one with fewer than three runs.
 Regenerate the stock oracle for the selected setup before measuring it.
 
+Root-only JSON/time logging leaves vstd's product path intact. Both arms ask
+Verus to suppress wall-time notices; the reader preserves all stderr. The
+oracle must match protocol `roots-json-strict-2`, not merely the generator
+version. Historical all-crate logging runs do not qualify this protocol.
+
 A round fails if its daemon disappears or changes. Retained-proof share uses
 newly published retained receipts; a run with no solver sessions alone is not
 evidence of instant revert. Timeouts retain partial logs and stop descendant

@@ -268,20 +268,12 @@ pub fn recheck(dir: &Path) -> Result<String, String> {
     let load = |p: &Path, exit: Option<i32>| -> Option<RunRecord> {
         let stdout = std::fs::read(p.join("stdout.txt")).ok()?;
         let stderr = std::fs::read_to_string(p.join("stderr.txt")).unwrap_or_default();
-        let mut stream = serde_json::Deserializer::from_slice(&stdout).into_iter::<Value>();
-        let mut outputs = Vec::new();
-        let mut end = 0;
-        while let Some(Ok(doc)) = stream.next() {
-            outputs.push(doc);
-            end = stream.byte_offset();
-        }
+        let (outputs, stdout_rest) = workspace::parse_outputs(&stdout);
         Some(RunRecord {
             exit_code: exit,
-            stderr: workspace::drop_progress_notes(&stderr),
+            stderr,
             outputs,
-            stdout_rest: String::from_utf8_lossy(stdout.get(end..).unwrap_or_default())
-                .trim()
-                .to_owned(),
+            stdout_rest,
             wall_ms: 0.0,
             user_s: None,
             sys_s: None,

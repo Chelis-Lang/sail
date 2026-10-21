@@ -25,6 +25,8 @@ def analyse(directory, matrix):
             issues.append(f"{key} missing or different")
     if not matrix.get("platform") or header.get("platform") != matrix["platform"]:
         issues.append("platform missing or different")
+    if header.get("protocol") != "roots-json-strict-2" or header.get("oracle_protocol") != "roots-json-strict-2":
+        issues.append("requires root-only logging and strict diagnostic comparison")
     if header.get("generator") != "gen-mutants 2":
         issues.append("requires the corrected version 2 generator")
     if header.get("vstd_mode") != "registry" or header.get("oracle_vstd_mode") != "registry":

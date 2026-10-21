@@ -121,21 +121,23 @@ runs, per round:
    copy's crate rebuilt), so Verus runs and every check goes through the
    solver cache rather than a restored proof.
 
-Both sides pass `-- --output-json --time` (the flags `sail verify` adds
-itself, which keep proof reuse eligible), run in the same source tree with
-separate Cargo target directories, and alternate which runs first. Every
-Sail run is judged against the same step's stock run under ADR 0009 and ADR
-0042 (with earlier rounds' stock runs of the step for `unstable`). False
-verified is counted separately: a function stock reports failed and Sail
-reports verified (counted per entry, since several functions can share a
-path), or Sail exiting 0 where stock failed. `sail-bench mutants recheck`
-repeats that count from a run's kept outputs. The revert steps must
-also equal Sail's own cold result. Accepted divergences
-([divergences](../divergences.md); today VI-0003) are recognised by the shared
-comparison, recorded per sample and counted in their own report column. Verus's long-running progress notes
-(`... has been running for N seconds`, `... finished in N seconds`) are
-removed from both sides' stderr before comparison: they depend on wall time,
-never on a verdict, and every other byte is compared.
+Both sides pass `--fwd-verus-args-to roots -- --output-json --time
+--no-report-long-running`: only requested roots receive diagnostic logging
+flags, so vstd still follows the installed product's shipped-proof path. The
+quiet flag suppresses wall-time notices in Verus itself on both sides;
+**no stderr messages are stripped by the reader**. The quiet flag remains in
+retained identity keys, like the existing JSON/time flags; it changes no proof
+scope and cannot authorize a skipped check. Ordinary dependency output before
+root JSON remains part of the comparison.
+
+Both arms use the same source with separate Cargo targets and alternate order.
+Every Sail run is judged against the same step's stock run under ADR 0009 and
+ADR 0042, plus the owner-approved default differences. False verified is
+counted per function entry, including repeated names, and on an erroneous
+successful exit. Reverts also compare their function results with Sail's cold
+original. The oracle and workload carry protocol `roots-json-strict-2`; older
+qualification does not authorize this workload. The earlier candidate's
+all-crate logging and progress-note stripping remain historical limitations.
 
 Every sample goes to `samples.jsonl` as it finishes; none is dropped. The
 report gives, per class and overall: median per-mutant wall time of both
@@ -173,8 +175,7 @@ catalogue for one round. Timings are taken only on a native host (ADR 0038):
   as another base with its own generator.
 
 The oracle and runner also accept `--vstd-lock FILE`: scratch copies pin Verus
-crates to the release lock's registry versions. Omitting it retains the source
-setup for conformance. The run records the setup and source adjustments; oracle
+crates to the release lock's registry versions. Omitting it retains source preparation for explicit diagnostic controls. The run records the setup and source adjustments; oracle
 results must be regenerated for the selected setup. Every round requires the
 same observed daemon PID. Retained-proof share requires a new published receipt,
 not merely zero solver sessions. Interrupted commands keep their partial logs

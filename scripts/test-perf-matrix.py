@@ -270,6 +270,7 @@ class MutationRows(unittest.TestCase):
         identity.update(platform="x86_64-unknown-linux-gnu", rounds=3)
         classes = sorted(pm.perf_matrix_mutants.CLASSES)
         header = dict(identity, unit="vest/vest_lib", generator="gen-mutants 2",
+                      protocol="roots-json-strict-2", oracle_protocol="roots-json-strict-2",
                       vstd_mode="registry", oracle_vstd_mode="registry", oracle_runs=3, oracle_kept=len(classes),
                       mutants=["edit-" + cls for cls in classes])
         samples = []
@@ -301,13 +302,14 @@ class MutationRows(unittest.TestCase):
         self.assertEqual(row["n"], (3, 3))
 
     def test_invalid_evidence_cannot_qualify_an_edit_claim(self):
-        for broken in ("missing", "duplicate", "binary", "oracle", "class", "daemon", "revert", "false-verified", "signal"):
+        for broken in ("missing", "duplicate", "binary", "oracle", "protocol", "class", "daemon", "revert", "false-verified", "signal"):
             with self.subTest(broken=broken), tempfile.TemporaryDirectory() as directory:
                 identity, header, samples = self.fixture(directory)
                 if broken == "missing": samples.pop()
                 elif broken == "duplicate": samples.append(samples[-1])
                 elif broken == "binary": header["sail_sha256"] = "other-build"
                 elif broken == "oracle": header["oracle_runs"] = 2
+                elif broken == "protocol": header["oracle_protocol"] = "old-protocol"
                 elif broken == "class":
                     for sample in samples:
                         if sample.get("class") == "rare-region": sample["class"] = "arith"

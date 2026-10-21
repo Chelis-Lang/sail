@@ -17,7 +17,10 @@ use serde_json::Value;
 /// Verus flags both sides pass. They are the two flags `sail verify`
 /// itself adds, so neither changes what Sail's managed driver accepts for
 /// proof reuse, and neither changes a byte sent to Z3.
-pub const FLAGS: &[&str] = &["--output-json", "--time"];
+pub const FLAGS: &[&str] = &["--output-json", "--time", "--no-report-long-running"];
+
+/// Command/comparison protocol: instrument roots only and preserve diagnostics.
+pub const PROTOCOL: &str = "roots-json-strict-2";
 
 /// Environment that would make Cargo behave differently from a clean shell.
 const CARGO_ENV_REMOVED: &[&str] = &[
@@ -173,6 +176,7 @@ impl Workspace {
         cmd.arg("verus")
             .arg("verify")
             .args(&self.cargo_args)
+            .args(["--fwd-verus-args-to", "roots"])
             .arg("--")
             .args(&self.verus_args)
             .args(FLAGS)
@@ -236,6 +240,7 @@ impl Workspace {
         scrub_sail_env(&mut cmd);
         cmd.arg("verify")
             .args(&self.cargo_args)
+            .args(["--fwd-verus-args-to", "roots"])
             .arg("--")
             .args(&self.verus_args)
             .args(FLAGS)
@@ -283,53 +288,29 @@ pub fn verus_build_from_env() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// Splits stdout into its JSON documents and whatever follows the last one.
-fn parse_outputs(stdout: &[u8]) -> (Vec<Value>, String) {
-    let mut stream = serde_json::Deserializer::from_slice(stdout).into_iter::<Value>();
+/// Splits root JSON documents from surrounding dependency output, retaining all text.
+pub(super) fn parse_outputs(stdout: &[u8]) -> (Vec<Value>, String) {
     let mut docs = Vec::new();
-    let mut end = 0;
-    while let Some(Ok(doc)) = stream.next() {
-        docs.push(doc);
-        end = stream.byte_offset();
-    }
-    let rest = stdout.get(end..).unwrap_or_default();
-    (docs, String::from_utf8_lossy(rest).trim().to_owned())
-}
-
-/// Removes Verus's long-running progress notes (`note: ... has been running
-/// for N seconds` and `note: ... finished in N seconds`, each a complete
-/// message up to its blank line). They depend on wall time, and so on the
-/// machine's load, never on a verdict; every other byte is kept.
-#[must_use]
-pub fn drop_progress_notes(stderr: &str) -> String {
-    let mut out = String::with_capacity(stderr.len());
-    let mut skipping = false;
-    for line in stderr.split_inclusive('\n') {
-        if skipping {
-            if line.trim().is_empty() {
-                skipping = false;
+    let mut rest = Vec::new();
+    let mut offset = 0;
+    while offset < stdout.len() {
+        let remaining = &stdout[offset..];
+        if remaining.iter().copied().find(|b| !b.is_ascii_whitespace()) == Some(b'{') {
+            let mut stream = serde_json::Deserializer::from_slice(remaining).into_iter::<Value>();
+            if let Some(Ok(doc)) = stream.next() {
+                docs.push(doc);
+                offset += stream.byte_offset();
+                continue;
             }
-            continue;
         }
-        if line.starts_with("note: ") && is_progress(line.trim_end()) {
-            skipping = true;
-            continue;
-        }
-        out.push_str(line);
+        let length = remaining
+            .iter()
+            .position(|b| *b == b'\n')
+            .map_or(remaining.len(), |n| n + 1);
+        rest.extend_from_slice(&remaining[..length]);
+        offset += length;
     }
-    out
-}
-
-fn is_progress(line: &str) -> bool {
-    let seconds = |rest: &str| {
-        rest.strip_suffix(" seconds")
-            .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
-    };
-    line.split_once(" has been running for ")
-        .is_some_and(|(_, rest)| seconds(rest))
-        || line
-            .rsplit_once(" finished in ")
-            .is_some_and(|(_, rest)| seconds(rest))
+    (docs, String::from_utf8_lossy(&rest).trim().to_owned())
 }
 
 /// Runs `cmd` to completion, retaining its streams in `log` and stopping
@@ -388,7 +369,7 @@ pub fn execute(cmd: &mut Command, limit: Duration, log: &Path) -> Result<RunReco
     let (outputs, stdout_rest) = parse_outputs(&stdout);
     Ok(RunRecord {
         exit_code: status.code(),
-        stderr: drop_progress_notes(&String::from_utf8_lossy(&stderr)),
+        stderr: String::from_utf8_lossy(&stderr).into_owned(),
         outputs,
         stdout_rest,
         wall_ms,
@@ -712,12 +693,17 @@ mod tests {
     }
 
     #[test]
-    fn drops_only_progress_notes() {
-        let s = "error: x\n --> a.rs:1:1\n\nnote: function body check has been running for 2 seconds\nreporting errors as they are discovered (they may not be in source order)\n --> a.rs:3:1\n  |\n\nnote: function body check finished in 3 seconds\n --> a.rs:3:1\n\nnote: kept finished in time\n --> a.rs:5:1\n\nend\n";
+    fn parses_root_json_without_losing_dependency_output() {
+        let (docs, rest) = parse_outputs(b"verification results:: 2060 verified, 0 errors\n{\"verification-results\":{\"success\":true}}\ntrailing text\n");
+        assert_eq!(docs.len(), 1);
         assert_eq!(
-            drop_progress_notes(s),
-            "error: x\n --> a.rs:1:1\n\nnote: kept finished in time\n --> a.rs:5:1\n\nend\n"
+            rest,
+            "verification results:: 2060 verified, 0 errors\n\ntrailing text"
         );
+        let (docs, rest) =
+            parse_outputs(b"ordinary text with {braces}\n{not json}\n{\"ok\":true}\n");
+        assert_eq!(docs.len(), 1);
+        assert_eq!(rest, "ordinary text with {braces}\n{not json}");
     }
 
     #[test]
