@@ -1,20 +1,22 @@
 # Mutation suite (#284, ADR 0063)
 
-**Status: built and run once on native Linux, with source-patched Verus
-dependencies. Soundness: no false verified in 411 comparisons and the
-cross-mutant revert check passes on all four projects. One difference remains
-open (#292, a 0.1.0 blocker); the VI-0003 difference is an accepted
-divergence (owner, 2026-10-20). Edit loop: from 0.63× (CapybaraKV) to 2.39×
-(human-eval) against stock; Vest's 1.12× is accepted as the current number.**
-Generator version 2 fixes postcondition strengthening; its regenerated
-catalogues and fresh oracle are pending. Registry preparation is implemented
-through `--vstd-lock`; rerunning its stock
-oracle and measurements on the integrated candidate remains pending, after #292.
-The runner now enforces daemon continuity and observes published retained
-receipts rather than inferring retention from absent solver sessions. Historical
-results below predate those checks and do not qualify the integrated candidate.
+**Status: corrected implementation built; installed-product qualification is in
+progress.** Generator version 2 produces byte-identical catalogues on macOS
+and Linux. Three-run native stock qualification with root-only logging is
+complete for HumanEval (52 kept) and IronKV (48 kept); Vest and CapybaraKV are
+running. The installed candidate's mutation and revert checks remain pending.
 
-## Run
+The 2026-10-20 results below are historical. They used source-patched Verus,
+forwarded logging options to dependencies (preventing shipped-vstd reuse),
+and removed timing-progress notes during comparison. They do not establish
+release performance or exact diagnostic conformance. The corrected protocol
+instruments requested roots only and asks both verifiers to suppress timing
+notices themselves; other diagnostics remain exact, apart from the two explicit
+owner-approved exceptions. Daemon continuity and retained restores now require
+observed process identity and published receipts. No final edit-loop claim is
+made from the historical tables.
+
+## Historical run (2026-10-20)
 
 | Field | Value |
 |---|---|
