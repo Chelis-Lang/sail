@@ -10,6 +10,7 @@ rounds, with every sample recorded and its output checked against stock's.
     scripts/perf-matrix.py report DIR [--markdown FILE]
     scripts/perf-matrix.py list
 
+`--out` must be outside any Cargo project, so generated projects are independent.
 `--sail-install` is an unpacked release archive (`bin/sail`, `bin/sail-z3`,
 `engine/`, `deps/`), installed as the README says; `--stock-verus` holds the
 stock release's `cargo-verus`, `verus` and `z3` (`cargo xtask fetch-verus`).
@@ -557,6 +558,8 @@ MIN_FN = """pub fn min(a: u64, b: u64) -> (r: u64)
 
 def cmd_run(args):
     out = Path(args.out)
+    if any((parent / "Cargo.toml").is_file() for parent in [out.resolve(), *out.resolve().parents]):
+        sys.exit("--out must be outside a Cargo project so fresh projects form independent workspaces")
     out.mkdir(parents=True, exist_ok=True)
     # Sail's daemon socket lives under the cache; Unix socket paths are short.
     if len(str(out.resolve() / "r1" / "small-stock" / "sail-cache" / "daemon.sock")) > 100:
