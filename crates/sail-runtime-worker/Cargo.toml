@@ -1,0 +1,15 @@
+[package]
+name = "sail-runtime-worker"
+description = "Isolated native verification worker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+sail-dive = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

@@ -22,6 +22,11 @@ verification falls back to the pinned Z3 and stays correct.
 Sail supports Linux on x86-64 and macOS on Apple silicon. It works on Cargo
 projects (see [Limits](#limits)).
 
+Rust callers can also run [isolated native temporal jobs](docs/temporal-jobs.md):
+model checking, finite simulation and independent trace validation through a
+pinned D.I.V.E. library. This developer API is separate from Verus commands
+and is not yet part of the release archive or daemon interface.
+
 ## Install
 
 Sail is a prebuilt archive per platform on

@@ -66,6 +66,12 @@
 # and every benchmark is local-only: run them with ci/local.sh
 # (`host` runs directly: ci/run.sh host).
 set -euo pipefail
+# Only command-time Git access receives the read-only private-dependency secret.
+# It is never a Docker build argument or a persisted Git URL/configuration.
+if [ -n "${SAIL_DEPENDENCY_READ_TOKEN:-}" ] && [ "${SAIL_PRIVATE_GIT_READY:-}" != 1 ]; then
+  exec "$(dirname "$0")/../scripts/with-private-dependencies.sh" "$0" "$@"
+fi
+
 cd "$(dirname "$0")/.."
 
 # CI runs only the fast, per-PR steps (ADR 0013). Long runs are local-only.
@@ -140,6 +146,7 @@ case "$step" in
     python3 ci/test-timeout.py
     python3 scripts/check-links.py
     python3 scripts/test-perf-matrix.py
+    python3 scripts/test-private-dependencies.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci

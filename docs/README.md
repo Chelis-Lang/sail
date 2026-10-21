@@ -13,6 +13,7 @@ experimental features and validation limits are identified explicitly.
 | Check one repair, follow proof events, explain failures and compare saved baselines | [Walkthrough](proof-repair-walkthrough.md), [repair contract](proof-repair.md) — M7 remains experimental |
 | Integrate an agent through stdio MCP | [MCP tools](mcp.md) |
 | Read job Status and Results from Rust | [Result client](result-client.md) |
+| Run isolated native model checks, simulation and independent trace validation from Rust | [Temporal jobs](temporal-jobs.md) |
 | Consume structured reports and provenance | [Output schema](output-schema.md) |
 | Share signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
 | Interpret Current, Historical and Unknown evidence | [Freshness](freshness.md) |
@@ -29,6 +30,11 @@ requirements and gates. [Testing](testing.md) lists the parallel end-to-end
 phases and their local entry points. The [charter](CHARTER.md) and its corrections define
 the correctness contract. [ADRs](decisions/README.md) explain implementation
 decisions; proposed candidates are distinguished from accepted decisions.
+
+[Private dependencies](private-dependencies.md) describes ephemeral read-only
+authentication for the pinned D.I.V.E. source dependency.
+[Native worker validation](validation/dive-runtime-worker.md) records the
+focused checking, replay and process-isolation evidence and its limits.
 
 The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
