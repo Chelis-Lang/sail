@@ -9,6 +9,7 @@
 
 pub mod adapter;
 pub mod attribution;
+pub mod contracts;
 pub mod corpus;
 pub mod diagnostics;
 pub mod engine;
