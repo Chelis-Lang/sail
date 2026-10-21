@@ -1,22 +1,73 @@
 # Performance
 
-What Sail does and does not speed up, compared with plain
-`cargo verus verify`. Each claim below comes from a run you can repeat with
-the command given under it.
+Sail speeds up new projects by shipping a verified vstd and speeds up edits by
+reusing byte-identical solver answers. Returning to a previously verified
+revision can also restore its proof. Unchanged calls return structured reports
+and cost more than Cargo's no-op.
 
-Sail caches the Z3 solver's answers. Rust compilation and Verus's own
-frontend still run every time, so Sail helps only where the solver is a large
-share of the work. On a small project or a first run, expect about the same
-time as plain Verus.
+The combined 0.1.0 release is still being measured. The table below is a
+three-round baseline of the installed candidate, not acceptance of the later
+performance fixes or a promise that every project is faster. Linux uses
+c7i.8xlarge in us-east-1; macOS uses mac-m4.metal in us-east-1a. Both use
+Sail's f8589ed4 runtime, based on Verus 7d82994, and Rust/Cargo 1.99.1.
 
-The v1 compiled-dependency store is disabled after a native compiler-input
-mismatch ([ADR 0053](decisions/0053-disable-unqualified-native-store.md)). The
-store-enabled figures below describe the stated historical builds, including
-rc.5, and do not apply to fresh targets with the quarantine. In three native
-Linux rounds, a fresh small project had a median of 32.57 s, versus 1.28 s with
-v1 seeding and 34.36 s for fresh stock. This is a safety containment cost, with
-first-run performance still to recover; see the
-[assessment](validation/dependency-store-fail-closed.md) for scope and raw evidence.
+| Workflow | Linux stock → Sail | macOS stock → Sail |
+|---|---:|---:|
+| New small project and first verification | 31.84 → 13.19 s | 16.78 → 10.42 s |
+| IronKV cold | 40.06 → 21.13 s | 20.36 → 14.05 s |
+| CapybaraKV cold | 57.33 → 56.56 s | 31.27 → 33.36 s |
+| Anvil cold, selected module | 183.80 → 181.71 s | 100.02 → 104.53 s |
+| Verismo cold | 82.84 → 79.42 s | 49.76 → 49.53 s |
+| Vest cold, default resource limit | 68.13 → 64.84 s | 37.26 → 39.05 s |
+
+Vest's default-limit runs fail the same proofs in both arms. They measure the
+failing workflow, not successful verification. A separate Linux successful
+Vest control with `--rlimit 100` serves the shipped vstd: cold verification
+takes 51.01 s against stock's 72.04 s, an edit 25.21 s against 39.50 s, and
+returning to the original proof 2.08 s against 39.62 s. The Mac counterpart
+is pending.
+
+The full seeded mutation suite exercises nine classes, including proof errors,
+compile errors, specification changes and edits across modules. Each project
+uses a single daemon across all mutants and restores the original afterward.
+Completed Linux CapybaraKV and IronKV runs match stock in all 168 and 153
+comparisons respectively. CapybaraKV's three full edit-loop speedups are
+1.93×, 1.92× and 1.92×. HumanEval's full run also matches; Vest and the
+combined Mac suite are still running. These are broader tests than the single
+scripted edits in older reports. See the [mutation suite](testing.md#mutation-suite).
+
+Baseline source and raw data: [combined release measurements](validation/release-matrix.md).
+
+## Remaining costs
+
+The baseline's small-project edit is 1.13 s versus stock's 0.76 s on Linux,
+and 1.17 s versus 0.45 s on Mac. Its unchanged call is 0.42 s versus 0.11 s
+on Linux, and 0.58 s versus 0.21 s on Mac. Anvil's corrected unchanged
+partial-scope control takes about 2 s with no verifier invocation, against
+stock's 0.3 s. Receipt and input validation still need work.
+
+Mac cold losses remain release blockers while fixes are qualified. A known
+slowdown is not accepted merely because other rows are faster. The release
+bar is relative: most scenarios should improve, with only modest overhead
+on already tiny, unoptimizable work.
+
+The scripts keep every sample and compare functional results with stock.
+Run the full matrix from an installed archive on a native host:
+
+```sh
+python3 scripts/perf-matrix.py run --out /tmp/sail-matrix \
+  --sail-install /path/to/unpacked/sail --stock-verus /path/to/stock-verus \
+  --rounds 3 --machine 'instance type, region, operating system'
+```
+
+The release also needs the separate three-round mutation cohorts from the
+[suite guide](testing.md#mutation-suite), bound to the same installed binary.
+The matrix reports missing cohorts and slower rows explicitly.
+
+## Historical measurements
+
+The sections below describe their stated earlier sources and runtimes. They
+do not override the combined candidate's results above.
 
 ## Claims
 

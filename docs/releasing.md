@@ -1,18 +1,18 @@
 # Releasing Sail
 
-The compiler-source portability candidate has passing actual Mac staged
-first-use components and full native Linux regression qualification. Its latest
-clean Linux consumer passes first-use, public/native controls and all 36 Vest
-calls, but fails requested-target instant revert. Release selection awaits the
-coexistence fix and requalification. Its portable native
-path requires the pinned verifier toolchain's canonical `lib/rustlib/src/rust`
-tree; a missing, aliased or changed tree declines proof reuse and runs genuine
-verification. The candidate binds every source byte and the exact compiler
-remap option. Earlier native panic/backtrace controls retain their recorded
-source scope. The current [qualification record](validation/vstd-compile-boundary.md)
-distinguishes those controls, composed Mac acceptance and remaining release
-gates. The candidate does not change the
-machine-local research mode or permit user-supplied compiler remap flags.
+The combined 0.1.0 candidate is being qualified on native Linux and macOS.
+The installed Linux coexistence control serves the shipped vstd, verifies an
+edit, and restores the original target's own retained proof. Its Mac counterpart
+and the final combined performance decision remain pending. Do not substitute
+component measurements for the [release matrix](validation/release-matrix.md)
+or the installed artifact's full mutation cohorts.
+
+The portable native path requires the pinned verifier toolchain's canonical
+`lib/rustlib/src/rust` tree; a missing, aliased or changed tree declines proof
+reuse and runs genuine verification. The bundle binds every source byte and
+the exact compiler remap option. It does not permit user-supplied remap flags
+or change machine-local research mode. See the
+[compiler-boundary record](validation/vstd-compile-boundary.md).
 
 Sail ships prebuilt binaries for Linux and macOS as GitHub release assets on
 `Chelis-Lang/sail`. Each archive includes the repair engine runtime. Until

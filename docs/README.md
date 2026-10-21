@@ -33,6 +33,9 @@ the correctness contract. [ADRs](decisions/README.md) explain implementation
 decisions; proposed candidates are distinguished from accepted decisions.
 
 The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
+The [combined release matrix](validation/release-matrix.md) states current
+Linux/Mac measurements and remaining gates; [mutation qualification](validation/mutation-suite.md)
+covers the broader edit loops and soundness checks.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.

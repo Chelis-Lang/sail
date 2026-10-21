@@ -23,6 +23,34 @@ remain failures. The approved VI-0003 exception matches only the reproduced
 function, assertion and conservative verdict direction. Returned source must
 recover its own results; solver hits do not imply retained-proof restoration.
 
+## Completed frozen candidate cohorts
+
+Native Linux c7i.8xlarge/us-east-1, frozen source `5636fa3e`, installed CLI
+`3c5b4267ab5c1a401dcdbe2be3bdc685baf4a1de9bd8b6553657e315b10f796f`,
+runtime f8589ed4 on upstream 7d82994:
+
+| Project | Mutants × rounds | Matching comparisons | Full loop speedup by round |
+|---|---:|---:|---|
+| HumanEval | 52 × 3 | 165/165 | 2.67×, 2.70×, 2.72× |
+| IronKV | 48 × 3 | 153/153 | 1.32×, 1.32×, 1.32× |
+| CapybaraKV | 53 × 3 | 168/168 | 1.93×, 1.92×, 1.92× |
+
+No false verified result, infrastructure failure or unstable result occurs in
+these completed cohorts. Every round keeps one daemon; each revert recovers
+its own results. Reverts use the solver cache, with no retained-proof restore.
+Vest and Mac remain pending. Later performance changes require cohorts bound
+to their own installed binary; these results cannot clear another artifact's
+release matrix.
+
+Raw reports, headers, samples and logs in the S3 evidence bucket:
+
+- `experiments/2026-10-21/human-eval-final-3c.tgz`, SHA-256
+  `598355353ebd6557fc34c1ef9700bd82f47022108ce03597f8f373ce4635891d`.
+- `experiments/2026-10-21/ironkv-final-3c.tgz`, SHA-256
+  `c7aef01b16195abd7f8788cb49721e8812becc26428b9a03a0991ceed679103f`.
+- `experiments/2026-10-21/capybara-final-3c.tgz`, SHA-256
+  `2e65545ff43835351a813d8da36eb96f813032e8b60e07b788f697d49c94144a`.
+
 ## Completed installed controls
 
 - **CapybaraKV correction:** runtime f8589ed4 on upstream 7d82994, native

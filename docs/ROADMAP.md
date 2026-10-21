@@ -25,35 +25,19 @@ verification runtime (#146).
 
 ### Current standing against stock Verus
 
-Ratio = stock time ÷ Sail time; above 1 means Sail is faster. Medians of
-three rotated rounds on fork runtime `f8589ed4` (Verus 0.2026.10.18.7d82994),
-Linux on c7i.8xlarge and macOS on mac-m4.metal, both us-east-1, human
-output. These are component screens from the 0.1.0 qualification
-([handover #279](https://github.com/Chelis-Lang/sail/issues/279)); the full
-release matrix (`scripts/perf-matrix.py`) has not yet run on the candidate.
+The installed baseline has now run the full three-round matrix on native Linux
+and Mac hosts. Linux cold medians improve across all five real projects. Mac
+small-project first use is 1.6× faster; CapybaraKV, Vest and Anvil cold losses
+remain under repair. Anvil's repeated partial verification is removed, with
+remaining setup overhead visible. Current numbers and limits are in
+[performance](performance.md).
 
-| Scenario | Platform | Stock | Sail | Ratio | Standing |
-|---|---|---:|---:|---:|---|
-| First use, new project (shipped vstd hit) | Linux | 31.5 s | 13.9 s | 2.27× | Win |
-| First use, new project | macOS | 17.6 s | 10.2 s | 1.73× | Win |
-| First use, shipped vstd miss (extra toolchain components) | Linux | 29.82 s | 29.93 s | 1.00× | Parity with shipped replies (ADR 0062; 31.76 s without them); #286 remains |
-| First use, shipped vstd miss (lock file or loader variable) | Linux | 29.82 s | 27.76 / 26.95 s | 1.07× / 1.11× | Win (ADR 0062) |
-| Small project cold, bundle miss | Linux | 31.31 s | 33.89 s | 0.92× | **Slower** (#232) |
-| Small project cold | macOS | 16.66 s | 19.86 s | 0.84× | **Slower** (#278) |
-| Vest cold | Linux | 66.59 s | 69.84 s | 0.95× | **Slower**: Vest misses the bundle on its vstd closure (default features off, three locked versions; #238, and #276's note names the alignment). Its `--rlimit 100` is served since ADR 0060 |
-| Vest cold | macOS | 40.16 s | 47.91 s | 0.84× | **Slower** (#278) |
-| Vest edit | Linux | 37.36 s | 23.93 s | 1.56× | Win |
-| Vest revert to verified content | Linux | 37.5 s | 1.43 s | 26× | Win |
-| Vest edit/revert cycle | Linux | 151.6 s | 100.3 s | 1.51× | Win |
-| Vest edit/revert cycle | macOS | 83.3 s | 63.3 s | 1.32× | Win |
-| Small project unchanged rerun | Linux | 0.12 s | 0.22 s | — | Modest overhead |
-| Small project small edit | Linux | 0.79 s | 1.04 s | — | Overhead to trim (#156) |
-| Vest unchanged rerun | Linux / macOS | 0.19 / 0.22 s | 0.48 / 0.73 s | — | Overhead to trim (#156) |
-| One-module and spec-wide edits, IronKV, CapybaraKV, Anvil, Verismo | Linux | — | — | — | Unmeasured on the current product |
-| Mutation edit loop (ADR 0063; 125 mutants, 3 rounds, source-patched Verus deps) | Linux | 7.8–34.9 s per mutant | 4.1–34.2 s | 0.63× CapybaraKV, 1.12× Vest, 1.49× IronKV, 2.39× human-eval | **Slower** on CapybaraKV (#292, blocker); Vest 1.12× accepted as current; no false verified ([record](validation/mutation-suite.md)) |
-
-Corpus: Vest, Anvil, IronKV, CapybaraKV and Verismo are the real-project
-corpus (`corpus/`). "Small project" is the `sail new` template.
+The broader mutation suite is implemented (#295). Full Linux CapybaraKV,
+IronKV and HumanEval runs match stock throughout, using one daemon across
+each complete mutation sequence. CapybaraKV's edit loop is about 1.9× faster.
+Vest and the combined Mac cohorts are still running. These supersede the
+earlier source-patched pilot; only cohorts bound to the actual release
+artifact can qualify that artifact.
 
 ## 0.1.0
 
@@ -83,14 +67,14 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 | Conformance fast and standard on `f8589ed4` | Done: fast 147/147, standard 159/159 (one unstable unit is stock's own note-order race) | Rerun on rc.6 |
 | Determinism | Done: Linux 146/146, macOS 320/320 | — |
 | Instant revert qualified | Done: Linux and macOS on `f8589ed4` | — |
-| macOS `main` green | #281 (macOS host gate passes) | Merge |
+| macOS `main` green | Done (#281); combined candidate host gate: 949 tests pass | — |
 | Bundle-miss note | Done (#275); names forwarded Verus flags too (#268) | — |
-| Vest-class projects hit the bundle | Raised `--rlimit` served (#268, ADR 0060 accepted 2026-10-20; a `--lib` project with `-- --rlimit 100` is 12.6 s against stock's 30.1 s). Vest still misses on its closure | #276 (closure alignment hint); whether to ship an alloc/std proof is an owner question |
-| Cold runs never slower than stock | **Open**: Linux miss path and macOS cold are slower | #278, #232, #236 |
+| Vest-class projects hit the bundle | Raised limit and closure hint merged (#268, #276); successful Linux coexistence and retained revert pass | Mac coexistence control |
+| Cold runs never slower than stock | **Open**: complete Linux baseline improves; Mac corrections being measured | #278, #232 |
 | Sub-second overhead modest | **Open** | #156 |
-| Realistic edit-loop suite: seeded mutations over Vest, IronKV, CapybaraKV and HumanEval, one daemon across all mutants, plain Verus as oracle | **Open** (#284); the single scripted edit per project is too narrow to back an edit-loop claim | Build, then use as the matrix's edit rows and as a conformance soundness probe |
-| Release matrix, Linux and macOS | **Open**: Linux baseline running | `scripts/perf-matrix.py`, every row, edit rows from #284 |
-| Deep conformance and `deep-rvt` | Open | On the rc.6 source |
+| Realistic edit-loop suite (#284) | Implemented (#295); full Linux cohorts finishing, Mac pending | Bind all four projects to final installed artifact |
+| Release matrix, Linux and macOS | Baseline complete; corrected combined Mac run in progress | Final artifact, all rows and mutation cohorts |
+| Deep conformance and `deep-rvt` | Native corpus: 159 Same in each of four arms; full source-suite rerun passes | Complete final mutation tier and release source binding |
 | Docs from the matrix (`performance.md`, CHANGELOG, `known-issues.md`, README) | Open | After the matrix |
 | rc.6 draft, clean Linux and macOS walkthroughs including Claude Code | Open | `scripts/release.sh` |
 | Owner review and publication | Not started | — |

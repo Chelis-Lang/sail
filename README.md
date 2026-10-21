@@ -2,11 +2,11 @@
 
 Sail (S.A.I.L., the Satisfiability Analysis & Inference Layer) makes
 [Verus](https://github.com/verus-lang/verus) verification loops faster for
-developers and coding agents, without changing what Verus tells you. The gain
-is largest on solver-heavy projects. A preverified vstd for a new project's
-first run is measured on the 0.1.0 candidate but not yet accepted. Small edits
-and unchanged reruns currently cost a little more than plain Verus
-([Limits](#limits), [performance](docs/performance.md)).
+developers and coding agents. It ships a preverified vstd for matching new
+projects, caches solver answers across edits, and can restore a previous proof
+when you undo an edit. The 0.1.0 release candidate is still being benchmarked
+on Linux and macOS; current results and remaining costs are in
+[performance](docs/performance.md).
 
 `sail verify` runs `cargo verus verify` with the same arguments and puts a
 cache in front of the Z3 solver that Verus uses. Sail ships its own Verus,
@@ -111,9 +111,8 @@ answers byte-identical solver queries from signed replies shipped in the archive
 ([trust model](docs/trust.md#bundled-tier-the-releases-own-replies)). Keep that toolchain to the components above: `rustc-dev` or another
 component that adds compiler libraries changes files rustc loads, so the proof
 is not used. Whenever the preverified vstd does not apply to a new project,
-`sail verify` prints one `note[SAIL3138]` line saying why. The proof-bundle release path is still unqualified: its measured
-first-use gain (below) is not accepted yet. See
-[release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use).
+`sail verify` prints one `note[SAIL3138]` line saying why. See [release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use)
+for how the shipped proof is recorded and checked.
 
 **From source (contributors).** With rustup, a C toolchain and `git`:
 
@@ -150,8 +149,8 @@ Verus's `verify` flag, and a `src/lib.rs` (or `src/main.rs`) with one
 verified function. It refuses a path that exists and is not an empty
 directory. Sail makes the project with its own Verus and never puts that
 Verus's `cargo-verus` on `PATH`, so your own `cargo verus` is unaffected.
-When a release includes an admitted adjacent proof bundle, a new project also
-gets that bundle's matching dependency lock. A lock already written by the
+When the release includes a matching preverified vstd, a new project also
+gets its dependency lock. A lock already written by the
 generator is preserved; ordinary installs without an admitted bundle keep the
 generator's behavior.
 
@@ -171,16 +170,12 @@ a proof receipt run without proof reuse, with one note line
 It builds in its own Cargo target under
 the Sail cache and never touches your `target/`.
 
-With a release that ships a preverified vstd proof, a new project or worktree
-starts from it, when the pinned Rust toolchain with `rust-src` is installed
-(see [Install](#install)) and the project uses the vstd `sail new` writes. On
-the 0.1.0 candidate this is measured but not yet accepted
-([record](docs/validation/vstd-compile-boundary.md#verus-7d82994-bundle-and-standard-library-paths-vi-0031)). On Linux (EC2 c7i.8xlarge), the first `sail new` plus
-`sail verify` took 15.3 s against 30.4 s for plain Verus, about 2×. On Apple
-silicon, verification alone (project creation not timed) took 10.2 s against
-17.3 s, 1.7×. Your project's other
-compiled dependencies are still built once per project and worktree: sharing
-them between projects is disabled until it is sound
+A new project or worktree can start from the release's preverified vstd when
+the pinned Rust toolchain with `rust-src` is installed and its vstd dependencies
+match (see [Install](#install)). Otherwise vstd is verified normally, with
+signed solver replies available as a fallback cache. Other compiled dependencies
+are still built once per project and worktree: sharing them between projects
+is disabled until it is sound
 ([ADR 0053](docs/decisions/0053-disable-unqualified-native-store.md)).
 `sail verify` starts the Sail cache daemon on demand; you never need to
 start it yourself. Run it again
