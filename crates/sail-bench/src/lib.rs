@@ -5,7 +5,9 @@
 //! - [`warm`]: the warm, no-change workload with the cache on;
 //! - [`edit`]: the single-function body and specification edit workloads;
 //! - [`report`]: the generated `docs/benchmarks.md`;
-//! - [`repair`]: the M7 repair acceptance workload, recorded then judged.
+//! - [`repair`]: the M7 repair acceptance workload, recorded then judged;
+//! - [`mutants`]: the seeded mutation suite, a soundness probe and the
+//!   edit-loop benchmark (ADR 0063).
 //!
 //! Trace analysis over the shim's captured sessions (`SAIL_TRACE_DIR`),
 //! driven by the `sail-bench` binary ([`cli`]):
@@ -25,6 +27,7 @@ pub mod edit;
 pub mod error;
 pub mod fragility;
 pub mod hits;
+pub mod mutants;
 pub mod profile;
 pub mod repair;
 pub mod replay;
