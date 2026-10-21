@@ -1157,12 +1157,33 @@ fn holds_units(target: &Path) -> bool {
 /// Whether `target` is a Cargo target this run creates: it does not exist yet
 /// or holds nothing.
 pub(super) fn new_target(target: &Path) -> bool {
-    std::fs::read_dir(target).map_or(true, |mut entries| entries.next().is_none())
+    match std::fs::read_dir(target) {
+        Ok(mut entries) => entries.next().is_none(),
+        Err(error) => error.kind() == std::io::ErrorKind::NotFound,
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fresh_target_requires_absence_or_an_empty_directory()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-fresh-target-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let target = root.join("target");
+        assert!(new_target(&target));
+        std::fs::create_dir(&target)?;
+        assert!(new_target(&target));
+        std::fs::write(target.join("artifact"), "existing output")?;
+        assert!(!new_target(&target));
+        std::fs::remove_dir_all(&target)?;
+        std::fs::write(&target, "not a directory")?;
+        assert!(!new_target(&target));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn unit_hashes_come_from_cargo_output_names() {

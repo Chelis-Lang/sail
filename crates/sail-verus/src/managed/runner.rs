@@ -2462,6 +2462,9 @@ pub(crate) fn run_engine_held(
     } else {
         Vec::new()
     };
+    // The family is exclusively owned. The pinned metadata query creates no
+    // compiled outputs, and seeding happens after cleanup. A fresh family has
+    // nothing that any pre-invocation clean could invalidate.
     let new_target = super::store::new_target(&paths.target);
     let unit_plan = if paths.reuse {
         let (environment, plan) =
@@ -2652,7 +2655,7 @@ pub(crate) fn run_engine_held(
     // Sail's targeted cleans exist to observe what a receipt binds. A run
     // without reuse records no receipt, so Cargo's own freshness decides, as
     // for plain Cargo-Verus.
-    if paths.reuse && !stale_scripts.is_empty() {
+    if paths.reuse && !new_target && !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
     let absent = super::absent::Observer::begin(&before_run, &paths.run.join("observer"));
@@ -2683,7 +2686,7 @@ pub(crate) fn run_engine_held(
         .into_iter()
         .filter(|name| !stale_scripts.contains(name))
         .collect();
-    if paths.reuse {
+    if paths.reuse && !new_target {
         clean(config, &paths.target, &late_scripts)?;
     }
     let stamp_before = super::input::mutation_stamp(&before_run);
@@ -2725,7 +2728,7 @@ pub(crate) fn run_engine_held(
         })
         .filter_map(|p| p["name"].as_str().map(str::to_owned))
         .collect();
-    if forced && paths.reuse {
+    if forced && paths.reuse && !new_target {
         clean(config, &paths.target, &selected(&config.args, &names))?;
     }
     let receipt_revisions: BTreeMap<PathBuf, ReceiptRevision> = std::fs::read_dir(&paths.receipts)
@@ -2740,7 +2743,7 @@ pub(crate) fn run_engine_held(
         "changed_receipt_packages":dirty, "stale_scripts":stale_scripts,
         "late_scripts":late_scripts
     }));
-    if paths.reuse && !dirty.is_empty() {
+    if paths.reuse && !new_target && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);
