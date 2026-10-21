@@ -241,6 +241,7 @@ impl Workspace {
             .args(FLAGS)
             .current_dir(&self.package)
             .env("SAIL_CACHE_DIR", cache)
+            .env("SAIL_DAEMON_IDLE_TIMEOUT", "0")
             .env("CARGO_TARGET_DIR", self.root.join("target-sail"))
             .envs(&self.env);
         if let Some(build) = verus_build {
