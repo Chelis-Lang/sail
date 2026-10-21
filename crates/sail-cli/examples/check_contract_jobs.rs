@@ -193,6 +193,9 @@ fn runtime_witness(output: &Path, changed: &str) -> TestResult {
     if reference != 2 {
         return Err("reference output".into());
     }
+    eprintln!(
+        "Reexecuting the deliberate body edit: the caught ADD-ONE postcondition violation is expected."
+    );
     let failure = std::panic::catch_unwind(|| changed_runtime::candidate(1))
         .err()
         .ok_or("missing runtime violation")?;
@@ -205,7 +208,8 @@ fn runtime_witness(output: &Path, changed: &str) -> TestResult {
         return Err("not the expected bound postcondition violation".into());
     }
     let input = serde_json::json!({"input":1,"type":"u8"});
-    let witness = serde_json::json!({"kind":"runtime-sample-violation","source_sha256":sha(changed.as_bytes()),"input":input,"input_sha256":sha(&serde_json::to_vec(&input)?),"diagnostic":message,"diagnostic_sha256":sha(message.as_bytes()),"reference_output":reference,"preconditions_satisfied":true,"assurance":"one compiled runtime sample; no SMT refutation or mutation-gate verdict"});
+    let observed = serde_json::json!({"kind":"postcondition-violation", "message":message});
+    let witness = serde_json::json!({"kind":"runtime-sample-violation","source_sha256":sha(changed.as_bytes()),"input":input,"input_sha256":sha(&serde_json::to_vec(&input)?),"observed":observed,"observed_sha256":sha(&serde_json::to_vec(&observed)?),"diagnostic":message,"diagnostic_sha256":sha(message.as_bytes()),"reference_output":reference,"preconditions_satisfied":true,"assurance":"one compiled runtime sample; no SMT refutation or mutation-gate verdict"});
     std::fs::write(
         output.join("body-edit.runtime-witness.json"),
         serde_json::to_vec_pretty(&witness)?,

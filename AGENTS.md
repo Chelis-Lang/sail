@@ -201,7 +201,7 @@ release-style checks belong in the local tiers below, never in CI.
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
 gate, including image creation, to have succeeded. Branches must be current
-with `main` before merging. The `End to end` check aggregates nine parallel
+with `main` before merging. The `End to end` check aggregates ten parallel
 phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
   warm, `--output json`, one MCP `verify` call and the portfolio;
@@ -216,6 +216,8 @@ phases and succeeds only when all complete successfully:
 - `managed-native`: fresh plain output and an actual native compiler replacement
   at unchanged `PATH`, rejected by both stock and Sail;
 - `scripts`: managed reuse across build scripts and generated includes;
+- `contracts`: negotiated neutral source verification, original worker evidence,
+  conservative proof state, restart and independently retained baselines;
 - `repair`: the repair CLI/MCP against the prebuilt engine.
 
 CI builds the release binaries once per run (`End to end (build)`,
