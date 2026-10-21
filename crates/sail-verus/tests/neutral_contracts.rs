@@ -122,6 +122,21 @@ fn whole_source_refuses_hidden_resolution_effects_and_unsupported_arithmetic() {
 }
 
 #[test]
+fn raw_spelling_cannot_shadow_reserved_translation_or_scalar_names() {
+    for declaration in [
+        "#[sail_contracts::requirement(\"RESERVED\")] fn r#old(value:bool)->bool{value}",
+        "#[sail_contracts::requirement(\"RESERVED\")] fn r#__sail_defined_fake(value:bool)->bool{value}",
+        "#[derive(Clone,Copy)] struct r#u8 { value: bool }",
+        "#[derive(Clone,Copy)] struct r#Int { value: bool }",
+    ] {
+        assert!(
+            lower(&format!("{declaration}\n{SHORT_CIRCUIT}"), "neutral").is_err(),
+            "{declaration}"
+        );
+    }
+}
+
+#[test]
 fn invalid_rust_literals_cannot_turn_into_vacuous_verified_preconditions() {
     for condition in [
         "input == 256",

@@ -74,7 +74,9 @@ caller's workspace. The shadow contains an isolated Cargo manifest, pinned
 `vstd`, generated `src/lib.rs` and mapping manifest. Different existing bytes
 are drift, not permission to overwrite evidence. Symbolic links and unexpected
 input files are refused. A held shadow lock covers setup, actual `managed::run`
-and a final complete readback.
+and a final complete readback. The managed backend uses a separate Sail-owned
+sibling cache namespace, so source packages and verification bookkeeping remain
+physically disjoint under the existing managed-runner invariant.
 
 The helper currently accepts default whole-target controls and forces obligation
 logging. It returns `ContractRun` with the lowering and actual `ProjectResult`,

@@ -1,6 +1,6 @@
 # 0066: Shared neutral contract syntax and checked runtime
 
-- **Status:** runtime implemented; backend qualification separate
+- **Status:** implemented for the documented scalar subset
 - **Date:** 2026-10-21
 
 ## Context
@@ -68,3 +68,11 @@ are refused before metadata; full source and lockfile hashes are rechecked after
 verification. This bridge exposes pure admission only and does not change managed
 proof reuse or performance behavior. The exact refusals and returned trust hashes
 are specified in [neutral Verus lowering](../spec/neutral-verus-lowering.md).
+
+Actual native qualification covers both the identical-source fork/stock oracle
+and the managed helper with a passing original and a refuted body edit. The
+managed helper keeps its owned source and backend cache physically disjoint;
+all existing managed checks remain intact. The
+[qualification record](../validation/neutral-verus-lowering.md) retains the
+original outcomes, failed attempts and exact evidence digests. Per-requirement
+establishment still requires actual obligation mapping and original currentness.

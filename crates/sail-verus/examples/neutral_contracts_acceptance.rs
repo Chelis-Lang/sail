@@ -26,7 +26,7 @@ fn main() -> TestResult {
         cache: output.join("cache"),
         sail: workspace.join("target/release/sail"),
         cargo_verus: installed.cargo_verus,
-        cargo: "cargo".into(),
+        cargo: cargo()?,
         cargo_toolchain: CargoToolchain::Pinned(pins.verus.rust_toolchain),
         shim: workspace.join("target/release/sail-z3"),
         z3: stock.z3,
@@ -133,4 +133,12 @@ fn validate(run: &ContractRun, expected: bool) -> TestResult {
 fn sha(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     format!("{:x}", Sha256::digest(bytes))
+}
+
+fn cargo() -> TestResult<PathBuf> {
+    let path = std::env::var_os("PATH").ok_or("native acceptance has no PATH")?;
+    std::env::split_paths(&path)
+        .map(|directory| directory.join("cargo"))
+        .find(|candidate| candidate.is_file())
+        .ok_or_else(|| "native acceptance cannot locate the actual Cargo executable".into())
 }

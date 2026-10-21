@@ -62,7 +62,7 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
     let mut live = Live {
         client: crate::jobs::connect_or_start()?,
         status: None,
-        pending: Some(Instant::now()),
+        pending: None,
         diagnostic_offset: 0,
         event_offset: 0,
         event_tail: String::new(),
@@ -81,6 +81,9 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
     refresh_inputs(&mut inputs, &root, &args, &extra);
     let mut monitoring = monitor::Monitoring::new(err);
     monitoring.subscribe(&inputs.roots, &inputs.excluded, &mut subscriptions, err);
+    // Initial metadata and subscriptions can outlast SETTLE. Start the first
+    // debounce window only once they are ready, just as for later edits.
+    live.pending = Some(Instant::now());
     while !stop.load(Ordering::SeqCst) {
         if monitoring.changed(&inputs.roots, err) {
             live.cancel(true)?;
@@ -318,7 +321,7 @@ impl Live {
                     id: status.id.clone(),
                     superseded,
                 })
-                .map_err(|error| error.to_string())?;
+                .map_err(|error| format!("cannot cancel job: {error}"))?;
         }
         Ok(())
     }
@@ -336,7 +339,7 @@ impl Live {
             let Response::Status(status) = self
                 .client
                 .call(&Request::Status { id: id.clone() })
-                .map_err(|error| error.to_string())?
+                .map_err(|error| format!("cannot read job status: {error}"))?
             else {
                 return Err("SAIL0802: unexpected status response".to_owned());
             };
@@ -357,7 +360,7 @@ impl Live {
                 id: id.clone(),
                 offset: self.diagnostic_offset,
             })
-            .map_err(|error| error.to_string())?
+            .map_err(|error| format!("cannot read job diagnostics: {error}"))?
         {
             self.diagnostics_drained = chunk.complete && chunk.next == self.diagnostic_offset;
             self.diagnostic_offset = chunk.next;
@@ -370,7 +373,7 @@ impl Live {
                     id,
                     offset: self.event_offset,
                 })
-                .map_err(|error| error.to_string())?
+                .map_err(|error| format!("cannot read job events: {error}"))?
         {
             self.events_drained = chunk.complete && chunk.next == self.event_offset;
             self.event_offset = chunk.next;
@@ -394,7 +397,7 @@ impl Live {
                 .call(&Request::Result {
                     id: status.id.clone(),
                 })
-                .map_err(|error| error.to_string())?
+                .map_err(|error| format!("cannot read job result: {error}"))?
                 && let Some(result) = document.result
                 && let Ok(result) =
                     serde_json::from_value::<sail_api::project::ProjectResult>(result)

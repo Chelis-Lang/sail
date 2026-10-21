@@ -100,6 +100,13 @@ pub fn verify(
         lowering.source.as_bytes(),
         &manifest,
     )?;
+    // Source and managed bookkeeping must be physically disjoint. In particular,
+    // the configured parent cache cannot also be the backend cache of its shadow.
+    let mut backend_config = config.clone();
+    backend_config.workspace.clone_from(&shadow);
+    backend_config.cache = root.with_file_name("neutral-contract-backend-v1");
+    backend_config.attribution_logs = true;
+    directory(&backend_config.cache)?;
     // Refuse environmental code selection before any metadata or lockfile probe.
     let controls = super::trust::Controls::capture(&shadow, &pins.verus.rust_toolchain)?;
     let lockfile = shadow.join("Cargo.lock");
@@ -108,16 +115,13 @@ pub fn verify(
     {
         install(&lockfile, seed.as_bytes())?;
     }
-    let trust = super::trust::Admission::resolve(config, &shadow, controls)?;
+    let trust = super::trust::Admission::resolve(&backend_config, &shadow, controls)?;
     check(
         &shadow,
         cargo.as_bytes(),
         lowering.source.as_bytes(),
         &manifest,
     )?;
-    let mut backend_config = config.clone();
-    backend_config.workspace.clone_from(&shadow);
-    backend_config.attribution_logs = true;
     let result = crate::managed::run(&backend_config, err);
     // Even a failed backend cannot turn a modified shadow into established evidence.
     check(
