@@ -73,8 +73,20 @@ def main():
         (bundle/'manifest.json').write_text(json.dumps({'schema':12,'kind':'sail-vstd-compile-boundary',
                 'runtime':'variant','identity':'b'*64,'virtual_base':'/rustc-dev/fixture','units':{key:'vstd fixture'}}))
         proof = module.check_bundle(bundle, 'variant', module.digest(runtime/'sail-build.json'), 'run')
+        replies = release/module.REPLIES;replies.mkdir()
+        record = b'k'*32+(3).to_bytes(4,'little')+b'one'
+        (replies/'vstd.pack').write_bytes(module.PACK_MAGIC+record)
+        (replies/'release.pub').write_text('sail-ed25519-public-v1 '+'ab'*32+'\n')
         index = {'schema':1,'proof':proof,'files':module.inventory(release),'directories':module.directories(release)}
         (release/module.INDEX).write_text(json.dumps(index));module.verify(release)
+        # The shipped replies (ADR 0062) are bound and checked like every member.
+        pack = replies/'vstd.pack';held = pack.read_bytes()
+        pack.write_bytes(held[:-1]+b'X');refuses(lambda:module.verify(release));pack.write_bytes(held)
+        stray = replies/'other.pub';stray.write_text('x');refuses(lambda:module.verify(release));stray.unlink()
+        module.verify(release)
+        for broken in (module.PACK_MAGIC, held[:-1], held+b'x', module.PACK_MAGIC+record+record):
+            pack.write_bytes(broken);refuses(lambda:module.check_replies(replies))
+        pack.write_bytes(held)
         # Every member including a stored proof body is bound, not only the runtime.
         path = entry/'files/libvstd.vir';old = path.read_bytes();path.write_bytes(b'changed VIR')
         refuses(lambda:module.verify(release));path.write_bytes(old)
@@ -141,6 +153,13 @@ elif sys.argv[1]=='verify':
   observed=Path(os.environ['CARGO_HOME']).parent/directory/'fixture';observed.mkdir(parents=True);(observed/'inputs.json').write_text('{}')
  shutil.copytree(cfg['template'],os.environ['SAIL_SHIPPED_RECORD'])
  value=cfg['report'];value['currentness']=cfg['currentness'];print(json.dumps(value))
+elif sys.argv[1]=='status':
+ print(json.dumps({'running':True,'info':{'queue':{'entries':0}}}))
+elif sys.argv[1:3]==['cache','bundle-replies']:
+ out=Path(sys.argv[sys.argv.index('--out')+1]);out.mkdir()
+ pack=b'sail-reply-pack-v1\n'+b'k'*32+(3).to_bytes(4,'little')+b'one'
+ (out/'vstd.pack').write_bytes(pack);(out/'release.pub').write_text('sail-ed25519-public-v1 '+'ab'*32+'\n')
+ print(json.dumps({'publish':{'published':1,'failed':0},'pack_bytes':len(pack)}))
 else:raise SystemExit(3)
 '''
         # Certificate-only retention has a complete per-path content-once index.
@@ -284,6 +303,8 @@ else:raise SystemExit(3)
                 assert result['passed']==(case=='current')
                 if case=='current':
                     assert module.verify(stage)['proof']['members']['Cargo.lock']['mode']==0o644
+                    assert result['replies']['entries']==1
+                else:assert not (stage/module.REPLIES).exists()
                 if case=='certificate-missing':retained(evidence)
                 if case=='scratch-cleanup-failure':
                     scratch=json.loads((evidence/'scratch-root.json').read_text())

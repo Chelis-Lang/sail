@@ -91,8 +91,19 @@ Without `rust-src`, Sail runs your default Cargo and its JSON result notes
 `SAIL3137` with the command above. Sail never installs a toolchain itself
 ([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
 
+Verus flags after `--` reach vstd too, as with `cargo verus verify`, so a
+forwarded flag normally means vstd is verified again. A raised `--rlimit N`
+(N at least the default 10) still uses the preverified proof when the release
+recorded its rlimit witness
+([ADR 0060](docs/decisions/0060-shipped-vstd-under-a-raised-rlimit.md)). To
+keep other flags off vstd, pass `--fwd-verus-args-to roots` before `--`, as
+with stock: `sail verify --fwd-verus-args-to roots -- --rlimit 100`.
+
 Without `rust-src` everything still works; only the preverified vstd is
-skipped. Keep that toolchain to the components above: `rustc-dev` or another
+skipped. When the preverified vstd does not apply (no `rust-src`, extra
+toolchain components, another lock or Cargo), Sail still verifies vstd, but
+answers byte-identical solver queries from signed replies shipped in the archive
+([trust model](docs/trust.md#bundled-tier-the-releases-own-replies)). Keep that toolchain to the components above: `rustc-dev` or another
 component that adds compiler libraries changes files rustc loads, so the proof
 is not used. Whenever the preverified vstd does not apply to a new project,
 `sail verify` prints one `note[SAIL3138]` line saying why. The proof-bundle release path is still unqualified: its measured

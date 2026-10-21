@@ -262,6 +262,11 @@ struct Manifest {
     virtual_base: String,
     /// Recorded invocations: key to `<crate> <package>`.
     units: BTreeMap<String, String>,
+    /// The recording sysroot's [`sysroot_shape`], which lets a consumer whose
+    /// sysroot differs refuse the proof before hashing it. Absent in bundles
+    /// recorded before #286; those are decided by the complete identity alone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    sysroot_shape: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -412,6 +417,34 @@ fn runtime_root(cargo_verus: &Path) -> Option<PathBuf> {
 /// and target libraries), including target libraries' nested linker inputs.
 /// Unreadable files and unsupported filesystem entries decline reuse.
 fn sysroot_identity(sysroot: &Path) -> Option<String> {
+    // Several files at once; any unreadable one still declines reuse.
+    let inputs: Vec<_> = sysroot_inputs(sysroot)?.into_iter().collect();
+    let hashes = crate::parallel::in_order(&inputs, |(_, path)| sha256_file(path));
+    let portable = inputs
+        .into_iter()
+        .zip(hashes)
+        .map(|((relative, _), hash)| Some((relative, hash?)))
+        .collect::<Option<BTreeMap<_, _>>>()?;
+    Some(digest(&serde_json::to_vec(&portable).ok()?))
+}
+
+/// The portable name and size of every input [`sysroot_identity`] hashes,
+/// without reading any of them (#286). Sizes are part of what that identity
+/// binds, so two sysroots with different shapes never share an identity:
+/// a shape that differs from the recorded one refuses the shipped proof
+/// exactly as the complete hash would, before reading about a gigabyte of
+/// libraries. A matching shape proves nothing; the complete hash still
+/// decides.
+fn sysroot_shape(sysroot: &Path) -> Option<String> {
+    let mut shape = BTreeMap::new();
+    for (relative, path) in sysroot_inputs(sysroot)? {
+        shape.insert(relative, std::fs::metadata(&path).ok()?.len());
+    }
+    Some(digest(&serde_json::to_vec(&shape).ok()?))
+}
+
+/// Every input of [`sysroot_identity`], keyed by its sysroot-relative name.
+fn sysroot_inputs(sysroot: &Path) -> Option<BTreeMap<String, PathBuf>> {
     fn files(directory: &Path, out: &mut Vec<PathBuf>, recursive: bool) -> Option<()> {
         for entry in std::fs::read_dir(directory).ok()? {
             let entry = entry.ok()?;
@@ -448,12 +481,10 @@ fn sysroot_identity(sysroot: &Path) -> Option<String> {
             _ => return None,
         }
     }
-    let mut portable = BTreeMap::new();
-    for path in inputs {
-        let relative = path.strip_prefix(sysroot).ok()?.to_str()?.to_owned();
-        portable.insert(relative, sha256_file(&path)?);
-    }
-    Some(digest(&serde_json::to_vec(&portable).ok()?))
+    inputs
+        .into_iter()
+        .map(|path| Some((path.strip_prefix(sysroot).ok()?.to_str()?.to_owned(), path)))
+        .collect()
 }
 
 /// The rustup components besides the compiler, its standard library, Cargo
@@ -507,19 +538,28 @@ fn extra_components(sysroot: &Path) -> Vec<String> {
     extra
 }
 
-/// The identity a shipped build must have to be used with a runtime: its
-/// build manifest, actual installed compiler/sysroot bytes and virtual base.
-fn identity(root: &Path, virtual_base: &str) -> Option<String> {
-    // Without rustup the launcher may load another system's compiler
-    // libraries. That configuration cannot establish this portable binding.
+/// The sysroot of the compiler the runtime at `root` runs. Without rustup
+/// the launcher may load another system's compiler libraries. That
+/// configuration cannot establish this portable binding.
+fn compiler_sysroot(root: &Path) -> Option<PathBuf> {
     if std::env::var_os("VERUS_USE_RUSTUP").is_some_and(|value| value == "0") {
         return None;
     }
-    let manifest = std::fs::read(root.join(crate::source_build::MANIFEST)).ok()?;
-    let runtime = crate::source_build::artifact_hashes(root).ok()?;
     let wrapper = root.join("verus/source/target-verus/release/verus");
-    let sysroot = super::runner::verifier_sysroot(&wrapper, Path::new(".")).ok()?;
-    let compiler = sysroot_identity(&sysroot)?;
+    super::runner::verifier_sysroot(&wrapper, Path::new(".")).ok()
+}
+
+/// The identity a shipped build must have to be used with a runtime: its
+/// build manifest, actual installed compiler/sysroot bytes and virtual base.
+fn identity_at(
+    root: &Path,
+    sysroot: &Path,
+    virtual_base: &str,
+    digests: &crate::source_build::RunDigests,
+) -> Option<String> {
+    let manifest = std::fs::read(root.join(crate::source_build::MANIFEST)).ok()?;
+    let runtime = digests.of(root)?;
+    let compiler = sysroot_identity(sysroot)?;
     Some(digest(
         format!(
             "{KIND}-v{SCHEMA}\n{}\n{}\n{virtual_base}\n{compiler}\n",
@@ -528,6 +568,17 @@ fn identity(root: &Path, virtual_base: &str) -> Option<String> {
         )
         .as_bytes(),
     ))
+}
+
+/// Whether `sysroot` can still have the identity `manifest` was recorded
+/// with: false only when its recorded sysroot shape differs from this one
+/// ([`sysroot_shape`]). A bundle recorded without a shape, or a shape that
+/// matches, leaves the decision to the complete identity.
+fn shape_admits(manifest: &Manifest, sysroot: &Path) -> bool {
+    manifest
+        .sysroot_shape
+        .as_ref()
+        .is_none_or(|expected| sysroot_shape(sysroot).as_ref() == Some(expected))
 }
 
 /// The shipped build beside the running `sail` (`<release>/deps/<variant>`)
@@ -544,6 +595,50 @@ fn bundle_dir(variant: &OsStr) -> Option<PathBuf> {
         return Some(PathBuf::from(explicit));
     }
     adjacent_bundle(variant)
+}
+
+/// The SAIL3138 reason when Cargo resolved vstd's closure differently from
+/// the shipped build's (#237): what differs and, when that covers every
+/// difference, the exact `cargo update` commands and vstd feature edit that
+/// align it. Sail never applies them itself: they change the user's lock and
+/// manifest, and so what stock Cargo builds too.
+pub(crate) fn closure_miss(metadata: &Value) -> Option<String> {
+    let difference = admission::closure_difference(metadata)?;
+    let list = |items: &[String], last: &str| match items {
+        [] => String::new(),
+        [only] => only.clone(),
+        [init @ .., tail] => format!("{} {last} {tail}", init.join(", ")),
+    };
+    if !difference.alignable
+        && difference.packages.len() == 1
+        && difference.packages[0].starts_with("this project uses vstd ")
+    {
+        return Some(difference.packages[0].clone());
+    }
+    let mut reason = format!(
+        "vstd's dependencies differ from the shipped build's: {}",
+        list(&difference.packages, "and")
+    );
+    if difference.alignable {
+        let commands: Vec<String> = difference
+            .commands
+            .iter()
+            .map(|command| format!("`{command}`"))
+            .collect();
+        let feature = "enabling vstd's default features, that is removing `default-features = false` from its dependency";
+        let advice = match (commands.is_empty(), difference.vstd_default_off) {
+            (false, false) => format!("align them with {}", list(&commands, "and")),
+            (false, true) => format!(
+                "align them with {}, and by {feature}",
+                list(&commands, "and")
+            ),
+            (true, _) => format!("align them by {feature}"),
+        };
+        reason.push_str(" (");
+        reason.push_str(&advice);
+        reason.push(')');
+    }
+    Some(reason)
 }
 
 /// Cheap source-name configuration for an installed bundle, including warm
@@ -612,8 +707,17 @@ pub fn new_project_lockfile(cargo_verus: &Path, name: &str) -> Option<String> {
     let virtual_base = virtual_base()?;
     let root = runtime_root(cargo_verus)?;
     // An ordinary install without a bundle needs no shipped-input probe.
-    read_manifest(&bundle_dir(root.file_name()?)?)?;
-    let identity = identity(&root, &virtual_base)?;
+    let manifest = read_manifest(&bundle_dir(root.file_name()?)?)?;
+    let sysroot = compiler_sysroot(&root)?;
+    if !shape_admits(&manifest, &sysroot) {
+        return None;
+    }
+    let identity = identity_at(
+        &root,
+        &sysroot,
+        &virtual_base,
+        &crate::source_build::RunDigests::default(),
+    )?;
     let (bundle, _) = accepted_bundle(&root, &identity, &virtual_base)?;
     let lock = std::fs::read_to_string(bundle.join(LOCKFILE)).ok()?;
     rename_root(&lock, RECORD_PACKAGE, name)
@@ -674,6 +778,7 @@ pub(crate) fn plan(
     workspace: &Path,
     cargo_args: &[String],
     metadata: &Value,
+    digests: &crate::source_build::RunDigests,
 ) -> Option<Plan> {
     let research = research_enabled();
     if !research && !has_adjacent_bundle(cargo_verus) {
@@ -713,10 +818,21 @@ pub(crate) fn plan(
         return None;
     }
     let root = runtime_root(cargo_verus)?;
-    if recording.is_none() && local.is_none() {
-        read_manifest(&bundle_dir(root.file_name()?)?)?;
+    let recorded = if recording.is_none() && local.is_none() {
+        Some(read_manifest(&bundle_dir(root.file_name()?)?)?)
+    } else {
+        None
+    };
+    let sysroot = compiler_sysroot(&root)?;
+    // A sysroot whose shape already differs from the recorded one cannot have
+    // the bundle's identity: refuse before hashing it (#286).
+    if recorded
+        .as_ref()
+        .is_some_and(|manifest| !shape_admits(manifest, &sysroot))
+    {
+        return None;
     }
-    let identity = identity(&root, &virtual_base)?;
+    let identity = identity_at(&root, &sysroot, &virtual_base, digests)?;
     let (mode, release) = if let Some(out) = local {
         (
             Mode::MachineLocal {
@@ -746,11 +862,6 @@ pub(crate) fn plan(
     let compiler_source = if matches!(mode, Mode::MachineLocal { .. }) {
         None
     } else {
-        let sysroot = super::runner::verifier_sysroot(
-            &root.join("verus/source/target-verus/release/verus"),
-            Path::new("."),
-        )
-        .ok()?;
         Some(CompilerSource::capture(
             &sysroot,
             &virtual_base,
@@ -828,7 +939,7 @@ pub(crate) fn plan_miss(
             if reason == TOOLCHAIN_MISS
                 && admission::Closure::resolve(metadata, registry).is_none() =>
         {
-            CLOSURE_MISS.to_owned()
+            closure_miss(metadata).unwrap_or_else(|| CLOSURE_MISS.to_owned())
         }
         _ => reason.to_owned(),
     }
@@ -914,9 +1025,18 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
             "no verified registry dependency was recorded".to_owned(),
         ));
     }
-    let runtime = runtime_root(cargo_verus)
+    let root = runtime_root(cargo_verus);
+    let runtime = root
+        .as_ref()
         .and_then(|root| root.file_name().map(|n| n.to_string_lossy().into_owned()))
         .unwrap_or_default();
+    // The shape of the sysroot the plan's identity hashed (#286).
+    let sysroot_shape = root
+        .as_deref()
+        .and_then(compiler_sysroot)
+        .as_deref()
+        .and_then(sysroot_shape)
+        .ok_or_else(|| failed("cannot read the recording sysroot's shape".to_owned()))?;
     let manifest = Manifest {
         schema: SCHEMA,
         kind: KIND.to_owned(),
@@ -924,6 +1044,7 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
         runtime,
         virtual_base: plan.virtual_base.clone(),
         units,
+        sysroot_shape: Some(sysroot_shape),
     };
     std::fs::write(
         out.join(MANIFEST),
@@ -1167,6 +1288,165 @@ fn bound_name(name: &str, package: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// cargo-verus's separator before each argument it packs into one variable.
+const ARGS_SEP: &str = "__VERUS_DRIVER_ARGS_SEP__";
+/// The rlimit witness the release recorder stores beside a unit (ADR 0060).
+pub(super) const RLIMIT_WITNESS: &str = "rlimit.json";
+
+/// Verus's default `--rlimit`, the one the release records the shipped proof
+/// at (its witness's `recorded_rlimit`).
+const DEFAULT_RLIMIT: f64 = 10.0;
+
+/// `items` without their one `--rlimit N` (or `--rlimit=N`), and N, when they
+/// hold exactly one such flag with a finite positive decimal N (ADR 0060).
+/// Anything else returns `None`.
+fn split_rlimit<'a>(items: &[&'a str]) -> Option<(Vec<&'a str>, f64)> {
+    let mut found = None;
+    let mut kept = Vec::with_capacity(items.len());
+    let mut rest = items.iter();
+    while let Some(&item) = rest.next() {
+        let value = if item == "--rlimit" {
+            Some(*rest.next()?)
+        } else {
+            item.strip_prefix("--rlimit=")
+        };
+        match value {
+            Some(value) => {
+                if found.is_some()
+                    || value.is_empty()
+                    || !value.bytes().all(|b| b.is_ascii_digit() || b == b'.')
+                {
+                    return None;
+                }
+                let n: f64 = value.parse().ok()?;
+                if !n.is_finite() || n <= 0.0 {
+                    return None;
+                }
+                found = Some(n);
+            }
+            None => kept.push(item),
+        }
+    }
+    Some((kept, found?))
+}
+
+/// A package's packed forwarded Verus arguments without its one `--rlimit N`
+/// (or `--rlimit=N`), and N, when they hold exactly one such flag with a
+/// finite positive decimal N (ADR 0060). Anything else returns `None`.
+fn without_rlimit(packed: &str) -> Option<(String, f64)> {
+    let items: Vec<&str> = packed.strip_prefix(ARGS_SEP)?.split(ARGS_SEP).collect();
+    let (kept, n) = split_rlimit(&items)?;
+    if kept.is_empty() {
+        return None;
+    }
+    let packed = kept.iter().fold(String::new(), |mut packed, item| {
+        packed.push_str(ARGS_SEP);
+        packed.push_str(item);
+        packed
+    });
+    Some((packed, n))
+}
+
+/// Why the shipped vstd proof missed because of the Verus flags this run's
+/// Cargo arguments forward to vstd (`cargo verus verify` forwards everything
+/// after `--` to every verified package unless `--fwd-verus-args-to` says
+/// otherwise). Exact keys bind those flags; only one raised `--rlimit` is
+/// served under the proof's rlimit witness (ADR 0060), so that case returns
+/// `None`, as does a run that forwards nothing to vstd.
+pub(crate) fn forwarded_miss(cargo_args: &[String]) -> Option<String> {
+    let split = cargo_args.iter().position(|arg| arg == "--")?;
+    let (cargo, verus) = cargo_args.split_at(split);
+    let verus: Vec<&str> = verus.iter().skip(1).map(String::as_str).collect();
+    let mut to = None;
+    let mut rest = cargo.iter();
+    while let Some(arg) = rest.next() {
+        if arg == "--fwd-verus-args-to" {
+            to = rest.next().map(String::as_str);
+        } else if let Some(value) = arg.strip_prefix("--fwd-verus-args-to=") {
+            to = Some(value);
+        }
+    }
+    if verus.is_empty() || to.is_some_and(|to| to != "all") {
+        return None;
+    }
+    let keep_off = "pass `--fwd-verus-args-to roots` before `--` to keep";
+    match split_rlimit(&verus) {
+        Some((kept, n)) if kept.is_empty() => (n < DEFAULT_RLIMIT).then(|| {
+            format!(
+                "`{}` reaches vstd and is below the default rlimit {DEFAULT_RLIMIT} the proof was recorded at, which can change vstd's results ({keep_off} it off vstd)",
+                verus.join(" ")
+            )
+        }),
+        _ => Some(format!(
+            "the Verus flags after `--` (`{}`) reach vstd too and the proof binds them; only a raised `--rlimit` is exempt ({keep_off} them off vstd)",
+            verus.join(" ")
+        )),
+    }
+}
+
+/// The record a raised `--rlimit` is served under (ADR 0060): the package's
+/// forwarded-arguments variable, its value without the flag (as recorded) and
+/// as this invocation has it, and the requested rlimit.
+struct Subsumed {
+    name: String,
+    recorded: String,
+    current: String,
+    requested: f64,
+}
+
+/// Which stored unit a lookup serves: the invocation's own key, or the key of
+/// the same invocation without its `--rlimit`.
+struct Lookup<'k> {
+    key: &'k str,
+    rlimit: Option<Subsumed>,
+}
+
+/// What `units/<key>/rlimit.json` records: the recorder verified the same
+/// recipe as recorded and with a raised `--rlimit`, and compared every solver
+/// process (ADR 0060).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RlimitWitness {
+    schema: u32,
+    kind: String,
+    key: String,
+    recorded_rlimit: f64,
+    witness_rlimit: f64,
+    recorded_solver_limit: u64,
+    witness_solver_limit: u64,
+    max_query: u64,
+    max_query_limit: u64,
+    over_limit_queries: u64,
+    queries: u64,
+    unknown_answers: u64,
+    solver_processes: u64,
+    inputs_equal: bool,
+    answers_and_counts_equal: bool,
+    normalized_inputs_sha256: String,
+}
+
+impl RlimitWitness {
+    /// Whether this witness lets a unit recorded at `recorded_rlimit` serve
+    /// an invocation that asks for `requested`.
+    fn admits(&self, key: &str, requested: f64) -> bool {
+        self.schema == 1
+            && self.kind == "sail-rlimit-witness"
+            && self.key == key
+            && self.inputs_equal
+            && self.answers_and_counts_equal
+            && self.unknown_answers == 0
+            && self.queries > 0
+            && self.solver_processes > 0
+            && self.normalized_inputs_sha256.len() == 64
+            && self.over_limit_queries == 0
+            && self.max_query < self.max_query_limit
+            && self.witness_rlimit > self.recorded_rlimit
+            && self.witness_solver_limit > self.recorded_solver_limit
+            && self.recorded_rlimit > 0.0
+            && requested >= self.recorded_rlimit
+    }
 }
 
 /// One compiler invocation of a registry package under a plan.
@@ -1985,12 +2265,88 @@ impl<'a> Call<'a> {
             Mode::Record { .. } => return None,
         };
         let entry = bundle.join(UNITS).join(&self.key);
-        let outcome = self.try_serve(&entry);
+        let exact = Lookup {
+            key: &self.key,
+            rlimit: None,
+        };
+        let mut outcome = self.try_serve(&entry, &exact);
+        let mut served = "served".to_owned();
+        // Only when nothing is stored under the exact key: a unit recorded
+        // without the invocation's one `--rlimit N` (ADR 0060).
+        if !entry.exists()
+            && let Some((key, subsumed)) = self.rlimit_subsumption()
+        {
+            let entry = bundle.join(UNITS).join(&key);
+            let lookup = Lookup {
+                key: &key,
+                rlimit: Some(subsumed),
+            };
+            outcome = self
+                .rlimit_witness(bundle, &lookup)
+                .and_then(|()| self.try_serve(&entry, &lookup))
+                .map_err(|refusal| match refusal {
+                    Refusal::Miss(reason) => Refusal::Miss(format!("rlimit-subsumed: {reason}")),
+                    Refusal::Damaged(reason) => {
+                        Refusal::Damaged(format!("rlimit-subsumed: {reason}"))
+                    }
+                });
+            served = format!("served rlimit-subsumed {key}");
+        }
         self.trace(match &outcome {
-            Ok(_) => "served",
+            Ok(_) => &served,
             Err(Refusal::Miss(reason) | Refusal::Damaged(reason)) => reason,
         });
         outcome.ok()
+    }
+
+    /// The key of this vstd invocation without its forwarded `--rlimit N`, when
+    /// its forwarded arguments hold exactly one (ADR 0060). Every other argument
+    /// and variable is keyed as before.
+    fn rlimit_subsumption(&self) -> Option<(String, Subsumed)> {
+        if !self.verifying {
+            return None;
+        }
+        let package = package_id(&|name: &str| self.vars.get(name).cloned())?;
+        let name = format!("{}{package}", VERUS_OWN[0]);
+        let current = self.vars.get(&name)?.clone();
+        let (recorded, requested) = without_rlimit(&current)?;
+        let mut vars = self.vars.clone();
+        vars.insert(name.clone(), recorded.clone());
+        let alternative = Self::keyed(self.plan, self.arguments, self.verifying, vars).ok()?;
+        (alternative.key != self.key).then_some((
+            alternative.key,
+            Subsumed {
+                name,
+                recorded,
+                current,
+                requested,
+            },
+        ))
+    }
+
+    /// The unit's rlimit witness admits the requested rlimit.
+    fn rlimit_witness(
+        &self,
+        bundle: &Path,
+        lookup: &Lookup<'_>,
+    ) -> std::result::Result<(), Refusal> {
+        let Some(subsumed) = &lookup.rlimit else {
+            return Ok(());
+        };
+        let raw = match &self.plan.release {
+            Some(release) => release.read_unit_file(bundle, lookup.key, RLIMIT_WITNESS),
+            None => std::fs::read(bundle.join(UNITS).join(lookup.key).join(RLIMIT_WITNESS)).ok(),
+        }
+        .ok_or_else(|| Refusal::Miss("no rlimit witness".to_owned()))?;
+        let witness: RlimitWitness = serde_json::from_slice(&raw)
+            .map_err(|e| Refusal::Damaged(format!("unreadable rlimit witness: {e}")))?;
+        if witness.admits(lookup.key, subsumed.requested) {
+            Ok(())
+        } else {
+            Err(Refusal::Miss(
+                "the rlimit witness does not admit this rlimit".to_owned(),
+            ))
+        }
     }
 
     /// Writes this lookup's keyed inputs and outcome under [`TRACE_ENV`].
@@ -2018,6 +2374,7 @@ impl<'a> Call<'a> {
     fn proof_origin(
         &self,
         unit: &Unit,
+        key: &str,
     ) -> std::result::Result<sail_api::project::DependencyBuildOrigin, Refusal> {
         let local = matches!(self.plan.mode, Mode::MachineLocal { .. });
         if local && unit.establishing_run.is_empty() {
@@ -2031,26 +2388,32 @@ impl<'a> Call<'a> {
             } else {
                 sail_api::project::DependencyBuildKind::Release
             },
-            identity: format!("{}/{}", self.plan.identity, self.key),
+            identity: format!("{}/{key}", self.plan.identity),
             establishing_run: if local {
                 unit.establishing_run.clone()
             } else {
-                format!("shipped:{}/{}", self.plan.identity, self.key)
+                format!("shipped:{}/{key}", self.plan.identity)
             },
         })
     }
 
-    fn check_declared_environment(&self, unit: &Unit) -> std::result::Result<(), Refusal> {
+    fn check_declared_environment(
+        &self,
+        unit: &Unit,
+        lookup: &Lookup<'_>,
+    ) -> std::result::Result<(), Refusal> {
         for (name, value) in &unit.declared {
             let name = if matches!(self.plan.mode, Mode::MachineLocal { .. }) {
                 self.normalizer.localize(name)
             } else {
                 self.environment_name(name, true)
             };
-            let current = self
-                .vars
-                .get(&name)
-                .map(|v| self.environment_value(&name, v, false));
+            // Under a raised rlimit the unit records the arguments without it.
+            let current = match &lookup.rlimit {
+                Some(subsumed) if subsumed.name == name => Some(&subsumed.recorded),
+                _ => self.vars.get(&name),
+            }
+            .map(|v| self.environment_value(&name, v, false));
             if current != *value {
                 return Err(Refusal::Miss(format!("declared variable {name} differs")));
             }
@@ -2058,7 +2421,7 @@ impl<'a> Call<'a> {
         Ok(())
     }
 
-    fn read_unit_bytes(&self, entry: &Path) -> std::result::Result<Vec<u8>, Refusal> {
+    fn read_unit_bytes(&self, entry: &Path, key: &str) -> std::result::Result<Vec<u8>, Refusal> {
         if let Some(release) = &self.plan.release {
             let Mode::Serve { bundle } = &self.plan.mode else {
                 return Err(Refusal::Miss(
@@ -2066,7 +2429,7 @@ impl<'a> Call<'a> {
                 ));
             };
             release
-                .read_unit(bundle, &self.key)
+                .read_unit(bundle, key)
                 .ok_or_else(|| Refusal::Miss("release index or unit changed".to_owned()))
         } else {
             std::fs::read(entry.join(UNIT))
@@ -2078,11 +2441,11 @@ impl<'a> Call<'a> {
         clippy::too_many_lines,
         reason = "Keep fresh compiler/source, unit, artifact and release admission in one ordered restore boundary."
     )]
-    fn try_serve(&self, entry: &Path) -> std::result::Result<Replay, Refusal> {
-        let bytes = self.read_unit_bytes(entry)?;
+    fn try_serve(&self, entry: &Path, lookup: &Lookup<'_>) -> std::result::Result<Replay, Refusal> {
+        let bytes = self.read_unit_bytes(entry, lookup.key)?;
         let unit: Unit = serde_json::from_slice(&bytes)
             .map_err(|e| Refusal::Damaged(format!("unreadable entry: {e}")))?;
-        if unit.schema != SCHEMA || unit.key != self.key || unit.verifying != self.verifying {
+        if unit.schema != SCHEMA || unit.key != lookup.key || unit.verifying != self.verifying {
             return Err(Refusal::Damaged("entry of another key".to_owned()));
         }
         if self
@@ -2094,13 +2457,17 @@ impl<'a> Call<'a> {
                 "vstd package file set or bytes differ".to_owned(),
             ));
         }
-        if !compiler::stored(self, &unit) {
+        let recorded = lookup
+            .rlimit
+            .as_ref()
+            .map(|subsumed| (subsumed.name.as_str(), subsumed.recorded.as_str()));
+        if !compiler::stored_for(self, &unit, lookup.key, recorded) {
             return Err(Refusal::Miss(
                 "compiler-read verification and compilation observations are unavailable"
                     .to_owned(),
             ));
         }
-        let origin = self.proof_origin(&unit)?;
+        let origin = self.proof_origin(&unit, lookup.key)?;
         // Validate every destination before placing any output. A malformed
         // later filename must not leave earlier copied artifacts behind.
         if let Some(file) = unit
@@ -2134,7 +2501,7 @@ impl<'a> Call<'a> {
                 return Err(Refusal::Miss(format!("source {path} differs")));
             }
         }
-        self.check_declared_environment(&unit)?;
+        self.check_declared_environment(&unit, lookup)?;
         let read_text = |path: &Path, file: &StoredFile| -> std::result::Result<String, Refusal> {
             let bytes =
                 std::fs::read(path).map_err(|e| Refusal::Damaged(format!("{}: {e}", file.name)))?;
@@ -2161,6 +2528,38 @@ impl<'a> Call<'a> {
                     let text = self.mapped_dep_info(&text, true).ok_or_else(|| {
                         Refusal::Damaged("unsupported or ambiguous dep-info environment".to_owned())
                     })?;
+                    // Name the arguments as this invocation has them, as a
+                    // compilation with its `--rlimit` would record them.
+                    let text = match &lookup.rlimit {
+                        Some(subsumed) => {
+                            let recorded = format!(
+                                "# env-dep:{}={}",
+                                subsumed.name,
+                                escape_environment(&subsumed.recorded)
+                            );
+                            // vstd's dep-info does not declare them today; a
+                            // repeated declaration is not a recorded shape.
+                            let lines = text.lines().filter(|line| *line == recorded).count();
+                            if lines > 1 || (lines == 1 && text.contains('\r')) {
+                                return Err(Refusal::Damaged(
+                                    "dep-info declares the forwarded arguments twice".to_owned(),
+                                ));
+                            }
+                            let current = format!(
+                                "# env-dep:{}={}",
+                                subsumed.name,
+                                escape_environment(&subsumed.current)
+                            );
+                            text.split_inclusive('\n')
+                                .map(|line| match line.strip_suffix('\n') {
+                                    Some(body) if body == recorded => format!("{current}\n"),
+                                    None if line == recorded => current.clone(),
+                                    _ => line.to_owned(),
+                                })
+                                .collect::<String>()
+                        }
+                        None => text,
+                    };
                     write_new(&to, text.as_bytes(), false)
                         .map_err(|e| Refusal::Damaged(e.to_string()))
                 })
@@ -2187,7 +2586,7 @@ impl<'a> Call<'a> {
             stdout: stdout.into_bytes(),
             stderr: stderr.into_bytes(),
             origin,
-            retained: RetainedProof::new(self, &bytes, &unit),
+            retained: RetainedProof::new(self, lookup.key, &bytes, &unit),
         })
     }
 }
@@ -2225,7 +2624,7 @@ impl RetainedProof {
         &self.plan.native_compiler_sha256
     }
 
-    fn new(call: &Call<'_>, raw: &[u8], unit: &Unit) -> Option<Self> {
+    fn new(call: &Call<'_>, key: &str, raw: &[u8], unit: &Unit) -> Option<Self> {
         if call.plan.release.is_none()
             || !matches!(call.plan.mode, Mode::Serve { .. })
             || !unit.verifying
@@ -2247,7 +2646,7 @@ impl RetainedProof {
             .collect::<Option<_>>()?;
         Some(Self {
             plan: call.plan.clone(),
-            key: call.key.clone(),
+            key: key.to_owned(),
             unit_sha256: digest(raw),
             outputs,
         })
@@ -2555,6 +2954,48 @@ mod tests {
     }
 
     #[test]
+    fn closure_misses_name_differences_and_the_commands_that_align_them()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let shipped = admission::policy_metadata(Path::new("/r"))?;
+        assert_eq!(closure_miss(&shipped), None);
+        let shipped_version = |name: &str| -> std::result::Result<String, &str> {
+            let mut copy = shipped.clone();
+            admission::test_entry(&mut copy, name, "packages")?["version"]
+                .as_str()
+                .map(str::to_owned)
+                .ok_or("no version")
+        };
+        let unicode = shipped_version("unicode-ident")?;
+        let mut vest = shipped.clone();
+        admission::test_version(&mut vest, "unicode-ident", "1.0.24")?;
+        admission::test_features(&mut vest, "vstd", &["alloc", "std"])?;
+        assert_eq!(
+            closure_miss(&vest).ok_or("no reason")?,
+            format!(
+                "vstd's dependencies differ from the shipped build's: unicode-ident is 1.0.24 instead of {unicode} and vstd's default features are off (align them with `cargo update -p unicode-ident --precise {unicode}`, and by enabling vstd's default features, that is removing `default-features = false` from its dependency)"
+            )
+        );
+        let mut defaults = shipped.clone();
+        admission::test_features(&mut defaults, "vstd", &["alloc", "std"])?;
+        assert!(closure_miss(&defaults).ok_or("no reason")?.ends_with(
+            "vstd's default features are off (align them by enabling vstd's default features, that is removing `default-features = false` from its dependency)"
+        ));
+        let mut verismo = shipped.clone();
+        admission::test_features(&mut verismo, "vstd", &["alloc", "allow_panic"])?;
+        let reason = closure_miss(&verismo).ok_or("no reason")?;
+        assert!(
+            !reason.contains("cargo update") && !reason.contains("align"),
+            "{reason}"
+        );
+        let mut release = shipped;
+        admission::test_version(&mut release, "vstd", "0.0.0-2026-09-06-0133")?;
+        assert!(closure_miss(&release).ok_or("no reason")?.starts_with(
+            "this project uses vstd 0.0.0-2026-09-06-0133 and the proof is for vstd "
+        ));
+        Ok(())
+    }
+
+    #[test]
     fn shipped_misses_name_the_first_refusal_that_holds() {
         let registry = Path::new("/home/user/.cargo/registry/src/index.crates.io-1");
         let target = Path::new("/tmp/target");
@@ -2700,6 +3141,7 @@ mod tests {
             runtime: "variant".into(),
             virtual_base: call.virtual_base.clone(),
             units: BTreeMap::new(),
+            sysroot_shape: None,
         };
         assert!(ordinary_serve(&call, &adjacent, &manifest));
         assert!(!ordinary_serve(&call, &root.join("other"), &manifest));
@@ -3532,7 +3974,61 @@ mod tests {
             let path = b.join("lib/rustlib/host/lib/dangling.rlib");
             std::os::unix::fs::symlink("absent", path)?;
             assert!(sysroot_identity(&b).is_none());
+            assert!(sysroot_shape(&b).is_none());
         }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    /// The shape refuses only sysroots the complete identity refuses too: an
+    /// added, removed or resized library changes both, while equal-size bytes
+    /// keep the shape and are left to the identity (#286).
+    #[test]
+    fn sysroot_shape_refuses_only_what_the_identity_refuses() -> TestResult {
+        let root = std::env::temp_dir().join(format!("sail-shipped-shape-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (a, b) = (root.join("machine-a"), root.join("machine-b"));
+        for machine in [&a, &b] {
+            for path in ["bin/rustc", "bin/cargo", "lib/rustlib/host/lib/libstd.rlib"] {
+                let path = machine.join(path);
+                std::fs::create_dir_all(path.parent().ok_or("no parent")?)?;
+                std::fs::write(path, b"matching toolchain bytes")?;
+            }
+        }
+        let recorded = |sysroot: &Path| -> std::result::Result<Manifest, &'static str> {
+            Ok(Manifest {
+                schema: SCHEMA,
+                kind: KIND.into(),
+                identity: String::new(),
+                runtime: String::new(),
+                virtual_base: String::new(),
+                units: BTreeMap::new(),
+                sysroot_shape: Some(sysroot_shape(sysroot).ok_or("no shape")?),
+            })
+        };
+        let manifest = recorded(&a)?;
+        assert!(shape_admits(&manifest, &b));
+        // Same names and sizes, other bytes: admitted by the shape, refused
+        // by the identity.
+        let library = b.join("lib/rustlib/host/lib/libstd.rlib");
+        std::fs::write(&library, b"matching toolchain BYTES")?;
+        assert!(shape_admits(&manifest, &b));
+        assert_ne!(sysroot_identity(&a), sysroot_identity(&b));
+        // A developer component's extra library, a resized one, a removed one.
+        let extra = b.join("lib/rustlib/host/lib/librustc_driver.rlib");
+        std::fs::write(&extra, b"rustc-dev")?;
+        assert!(!shape_admits(&manifest, &b));
+        std::fs::remove_file(&extra)?;
+        std::fs::write(&library, b"a longer standard library")?;
+        assert!(!shape_admits(&manifest, &b));
+        std::fs::remove_file(&library)?;
+        assert!(!shape_admits(&manifest, &b));
+        // A bundle recorded without a shape leaves everything to the identity.
+        let unshaped = Manifest {
+            sysroot_shape: None,
+            ..recorded(&a)?
+        };
+        assert!(shape_admits(&unshaped, &b));
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
@@ -3776,6 +4272,182 @@ mod tests {
             "literal registry root is a key input"
         );
         assert!(changed.serve().is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn forwarded_flags_name_the_miss_unless_only_a_raised_rlimit() {
+        let args = |items: &[&str]| -> Vec<String> {
+            items.iter().map(|item| (*item).to_owned()).collect()
+        };
+        for none in [
+            args(&["-p", "vest_lib"]),
+            args(&["--"]),
+            args(&["--", "--rlimit", "100"]),
+            args(&["--", "--rlimit=10"]),
+            args(&["--fwd-verus-args-to", "roots", "--", "--rlimit", "5"]),
+            args(&["--fwd-verus-args-to=roots", "--", "--expand-errors"]),
+        ] {
+            assert_eq!(forwarded_miss(&none), None, "{none:?}");
+        }
+        let low = forwarded_miss(&args(&["--", "--rlimit", "5"])).unwrap_or_default();
+        assert!(low.contains("`--rlimit 5`") && low.contains("below the default rlimit 10"));
+        for flags in [
+            args(&["--", "--expand-errors"]),
+            args(&["--", "--rlimit", "100", "--expand-errors"]),
+            args(&["--fwd-verus-args-to", "all", "--", "--rlimit", "inf"]),
+        ] {
+            let reason = forwarded_miss(&flags).unwrap_or_default();
+            assert!(
+                reason.contains("the proof binds them"),
+                "{flags:?}: {reason}"
+            );
+            assert!(reason.contains("--fwd-verus-args-to roots"));
+        }
+    }
+
+    #[test]
+    fn rlimit_flag_is_removed_only_when_exactly_one_finite_value_is_present() {
+        let pack = |items: &[&str]| -> String {
+            items.iter().fold(String::new(), |mut packed, item| {
+                packed.push_str(ARGS_SEP);
+                packed.push_str(item);
+                packed
+            })
+        };
+        let base = pack(&["--is-vstd"]);
+        assert_eq!(
+            without_rlimit(&pack(&["--is-vstd", "--rlimit", "100"])),
+            Some((base.clone(), 100.0))
+        );
+        assert_eq!(
+            without_rlimit(&pack(&["--rlimit=12.5", "--is-vstd"])),
+            Some((base.clone(), 12.5))
+        );
+        for refused in [
+            pack(&["--is-vstd"]),
+            pack(&["--is-vstd", "--rlimit"]),
+            pack(&["--is-vstd", "--rlimit", "100", "--rlimit", "200"]),
+            pack(&["--is-vstd", "--rlimit", "inf"]),
+            pack(&["--is-vstd", "--rlimit", "1e9"]),
+            pack(&["--is-vstd", "--rlimit", "0"]),
+            pack(&["--is-vstd", "--rlimit="]),
+            pack(&["--rlimit", "100"]),
+            String::new(),
+        ] {
+            assert_eq!(without_rlimit(&refused), None, "{refused}");
+        }
+    }
+
+    fn witness(key: &str) -> serde_json::Value {
+        serde_json::json!({
+            "schema": 1, "kind": "sail-rlimit-witness", "key": key,
+            "recorded_rlimit": 10.0, "witness_rlimit": 100.0,
+            "recorded_solver_limit": 30_000_000_u64, "witness_solver_limit": 300_000_000_u64,
+            "max_query": 12_941_218_u64, "max_query_limit": 30_000_000_u64,
+            "over_limit_queries": 0, "queries": 4000, "unknown_answers": 0,
+            "solver_processes": 30, "inputs_equal": true, "answers_and_counts_equal": true,
+            "normalized_inputs_sha256": "a".repeat(64),
+        })
+    }
+
+    #[test]
+    fn rlimit_witness_admits_only_complete_unchanged_proofs_at_a_higher_rlimit() -> TestResult {
+        let key = "k".repeat(64);
+        let admits = |value: serde_json::Value,
+                      requested: f64|
+         -> std::result::Result<bool, Box<dyn std::error::Error>> {
+            let witness: RlimitWitness = serde_json::from_value(value)?;
+            Ok(witness.admits(&key, requested))
+        };
+        assert!(admits(witness(&key), 100.0)?);
+        assert!(admits(witness(&key), 10.0)?);
+        assert!(
+            !admits(witness(&key), 9.5)?,
+            "a lower rlimit is never subsumed"
+        );
+        for (field, value) in [
+            ("key", serde_json::json!("other")),
+            ("inputs_equal", serde_json::json!(false)),
+            ("answers_and_counts_equal", serde_json::json!(false)),
+            ("unknown_answers", serde_json::json!(1)),
+            ("max_query", serde_json::json!(30_000_000_u64)),
+            ("over_limit_queries", serde_json::json!(1)),
+            ("queries", serde_json::json!(0)),
+            ("witness_rlimit", serde_json::json!(10.0)),
+            ("schema", serde_json::json!(2)),
+        ] {
+            let mut changed = witness(&key);
+            changed[field] = value;
+            assert!(!admits(changed, 100.0)?, "{field}");
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn raised_rlimit_serves_the_unit_recorded_without_it_only_with_a_witness() -> TestResult {
+        let machine = Machine::new("rlimit-subsumption", |root| Mode::MachineLocal {
+            out: root.join("local-cache"),
+        })?;
+        let manifest = machine.plan.registry.join("demo-0.1.0");
+        let package = package_id(&|name: &str| match name {
+            "CARGO_PKG_NAME" => Some("demo".to_owned()),
+            "CARGO_PKG_VERSION" => Some("0.1.0".to_owned()),
+            "CARGO_MANIFEST_DIR" => Some(manifest.to_string_lossy().into_owned()),
+            _ => None,
+        })
+        .ok_or("no package id")?;
+        let name = format!("{}{package}", VERUS_OWN[0]);
+        let recorded_args = format!("{ARGS_SEP}--is-vstd");
+        let call = |value: &str| {
+            Call::new(
+                &machine.plan,
+                &machine.args,
+                true,
+                vars(&machine.root, &[(&name, value)]).into_iter(),
+            )
+        };
+        let recorded = call(&recorded_args).ok_or("no recorded call")?;
+        machine.compile()?;
+        recorded.record(b"verified\n", machine.stderr().as_bytes(), Some(0));
+        let unit = machine
+            .out()
+            .ok_or("no cache")?
+            .join(UNITS)
+            .join(&recorded.key);
+        assert!(
+            unit.join(UNIT).is_file(),
+            "the default-rlimit proof is recorded"
+        );
+        let remove_outputs = || -> TestResult {
+            for path in recorded.outputs() {
+                let _ = std::fs::remove_file(path);
+            }
+            Ok(())
+        };
+        let raised_args = format!("{recorded_args}{ARGS_SEP}--rlimit{ARGS_SEP}100");
+        let raised = call(&raised_args).ok_or("no raised call")?;
+        assert_ne!(
+            raised.key, recorded.key,
+            "the exact key still binds --rlimit"
+        );
+        remove_outputs()?;
+        assert!(raised.serve().is_none(), "no witness, no subsumption");
+        std::fs::write(
+            unit.join(RLIMIT_WITNESS),
+            serde_json::to_vec(&witness(&recorded.key))?,
+        )?;
+        let replay = raised.serve().ok_or("not served under a raised rlimit")?;
+        assert_eq!(replay.stdout, b"verified\n");
+        let lower = call(&format!("{recorded_args}{ARGS_SEP}--rlimit{ARGS_SEP}5"))
+            .ok_or("no lower call")?;
+        remove_outputs()?;
+        assert!(lower.serve().is_none(), "a lower rlimit is never subsumed");
+        let other = call(&format!(
+            "{recorded_args}{ARGS_SEP}--rlimit{ARGS_SEP}100{ARGS_SEP}--expand-errors"
+        ))
+        .ok_or("no other call")?;
+        assert!(other.serve().is_none(), "every other flag stays keyed");
         Ok(())
     }
 

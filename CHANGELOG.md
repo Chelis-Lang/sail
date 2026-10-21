@@ -16,11 +16,70 @@ semantic versioning once the API is published.
   This prevents source directory timestamp changes from compiler probes.
   Pass metadata filenames through `-o` so cache paths can contain commas.
 
+- Instant revert certifies each native dependency right after its own compile
+  instead of making it wait for its dependencies' certificates and for other
+  crates' scratch directories first, so Cargo's metadata pipelining is kept
+  (ADR 0061). A crate whose certificate fails is never reused. A run whose
+  dependencies were built without certificates (for example after a forced
+  first run) no longer waits 2 s for them on every later run (#285). Linux
+  public-profile Vest's cold run falls from 71.31 s to 69.91 s (stock
+  71.45 s); see the
+  [record](docs/validation/cold-first-run.md#pipelined-native-admission-adr-0061).
+
+- Instant revert's source check reads only the packages the selected
+  targets depend on, plus every workspace member's manifest, instead of every
+  package in the workspace and registry (#278; ADR 0050
+  amendment). On public-profile Vest, a cold run takes this check five times,
+  and each one falls from 200–265 ms to 25–50 ms on macOS. Editing a package
+  outside that closure no longer invalidates a retained proof. Verdicts,
+  diagnostics and receipts are unchanged. See the
+  [record](docs/validation/cold-first-run.md#follow-up-closure-scoped-retained-source-check-278).
+
+- When a toolchain's extra components (such as `rustc-dev`) make the shipped
+  vstd proof inapplicable, `sail verify` and `sail new` now see that from the
+  sysroot's file names and sizes instead of hashing about a gigabyte of
+  libraries and the runtime first (#286). The toolchain's libraries are hashed
+  on several workers when the full check does run, and one run reads Sail's
+  Verus runtime once for both the shipped proof and instant revert. Admission,
+  verdicts and output are unchanged; see the
+  [record](docs/validation/shipped-miss-hashing.md).
+
+- The release archive ships signed solver replies for its pinned vstd
+  (`replies/vstd.pack` and `replies/release.pub`, ADR 0062). When the
+  preverified vstd proof does not apply, the daemon answers vstd's solver
+  queries from them instead of running Z3. Examples are extra toolchain
+  components, another lock file or a loader variable. On Linux, a first run
+  that misses the proof because of `rustc-dev` and `llvm-tools` took
+  29.93 s, against 31.76 s without the replies and 29.82 s for stock.
+  Lock-file and loader-variable misses run 7–10% faster than stock.
+  - **Trust.** The daemon trusts the release's key only for that pack, and
+    only if both files match `release-files.json`.
+  - **Checks.** Every entry passes the shared tier's signature, solver and
+    shape checks; anything else is solved normally.
+  - **Diagnostics.** `sail status` shows the pack, and
+    `SAIL_BUNDLED_REPLIES=0` turns it off. Verdicts and diagnostics are
+    unchanged.
+
+- The shipped vstd proof also applies when the only Verus flag forwarded to
+  vstd is a raised `--rlimit N` (N at least the default 10).
+  The release recorder now proves, for its own unit, that raising the limit
+  changes nothing but the limit (`units/<key>/rlimit.json`;
+  [ADR 0060](docs/decisions/0060-shipped-vstd-under-a-raised-rlimit.md)).
+  Any other forwarded flag, or a lower `--rlimit`, still verifies vstd again,
+  and `note[SAIL3138]` names it; use `--fwd-verus-args-to roots` to keep
+  flags off vstd. Vest at its corpus pin still misses the proof: its vstd
+  closure differs from the shipped one (vstd's default features are off, and
+  three locked versions differ); its note names the edits that align it.
+
 - Print one `note[SAIL3138]` when a release's preverified vstd proof does not
   apply to a new project, naming the reason, such as a wrapper or loader
   variable, extra toolchain components like `rustc-dev`, or vstd dependency
   versions that differ from the shipped build (#238, #264). Output is
-  otherwise unchanged, and verification is unaffected.
+  otherwise unchanged, and verification is unaffected. For differing vstd
+  dependencies the note lists each package and, when that is enough, the
+  exact `cargo update -p … --precise …` commands and vstd feature edit that
+  let the project use the proof; Vest with vstd `0.0.0-2026-10-18-0147`
+  needs three updates and vstd's default features (#237).
 
 - Check instant revert's workspace sources and namespace facts on several
   workers, and skip a graph reread that repeated the one just done (#232).

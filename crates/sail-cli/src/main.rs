@@ -276,6 +276,7 @@ fn serve_config(
         }
     }
     config.log = Some(root.join("daemon.log"));
+    config.bundled = sail_daemon::BundledConfig::discover();
     config.shared = shared_store.map(|store| sail_daemon::SharedConfig {
         store,
         trust_dir: sail_cache::shared::trust_dir(&root),

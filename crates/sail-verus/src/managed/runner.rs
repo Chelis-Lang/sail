@@ -2481,6 +2481,9 @@ pub(crate) fn run_engine_held(
     // remap that names them as this machine's, its diagnostics could differ
     // from stock, so the bundle is not served (VI-0031).
     let remap_missing = paths.source_base.is_some() && paths.span_remap.is_none();
+    // The shipped proof's identity and retained reuse's admission both bind
+    // the complete runtime; this run reads it once for both (#286).
+    let runtime_digests = crate::source_build::RunDigests::default();
     let shipped_plan = if focused(&config.args)
         || remap_missing
         || engine.is_some()
@@ -2500,6 +2503,7 @@ pub(crate) fn run_engine_held(
             &config.workspace,
             &config.args,
             &data,
+            &runtime_digests,
         )
     };
     // An installed release offers its proof to every new target. When it does
@@ -2785,6 +2789,7 @@ pub(crate) fn run_engine_held(
                 &config.z3,
                 &run_id,
                 &mut retained_notes,
+                &runtime_digests,
             )
         } else {
             None
@@ -3101,7 +3106,13 @@ pub(crate) fn run_engine_held(
             .iter()
             .any(|t| t.target == "vstd" && !t.reused && t.dependency_build.is_none())
     {
-        shipped_miss.get_or_insert_with(|| super::shipped::CLOSURE_MISS.to_owned());
+        // Verus flags forwarded to vstd are keyed, apart from one raised
+        // `--rlimit` (ADR 0060), so they explain the miss before the closure.
+        shipped_miss.get_or_insert_with(|| {
+            super::shipped::forwarded_miss(&config.args)
+                .or_else(|| super::shipped::closure_miss(&data))
+                .unwrap_or_else(|| super::shipped::CLOSURE_MISS.to_owned())
+        });
     }
     if let Some(reason) = shipped_miss {
         let message = shipped_miss_message(&reason);

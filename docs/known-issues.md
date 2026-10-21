@@ -26,13 +26,18 @@ are in the `archive/m7-contracts-f7103bf` tag.
   pins are selected on main through merged #223, with all required CI checks green. See the
   [qualification record](validation/spec-parameter-names.md).
 
-- **The demo's first run is 8.2% slower than stock** (#232; the release bar
-  is 5%). Most of the remainder is instant revert's native admission: each
-  native unit waits for every dependency's producer certificate and for other
-  units' compiler scratch directories, which undoes Cargo's rmeta pipelining.
-  Changing that is an ADR 0050 design change awaiting owner review.
-  Public-profile Vest is 4.8% slower. See the
+- **The demo's first run was slower than stock when vstd is verified**
+  (#232, #278): +8.2% on a Linux host build and +12.3% on macOS without the
+  shipped bundle, before pipelined native admission (ADR 0061). With the
+  release's shipped bundle the demo is 1.6–2.3× faster than stock; the
+  no-bundle case has not been re-measured since ADR 0061. Public-profile Vest
+  is within the bar (macOS +4.3%, Linux −2.2%). See the
   [record](validation/cold-first-run.md).
+
+- **A first run without a retention plan never gets instant revert** (#285).
+  After, for example, a forced first run, the native units and vstd have no
+  producer certificates, so later runs refuse retention (at once since
+  ADR 0061) until the project's dependencies are rebuilt.
 
 - **The preverified vstd is not used on a toolchain with `rustc-dev`** (#264).
   On Rust 1.99.1 with `rustc-dev`, a traced fresh compile loads `rustc-dev`'s

@@ -224,3 +224,89 @@ fn keys_trust_publish_and_a_shared_hit_end_to_end() {
     let listed = ok(&["cache", "--cache", s(&reader), "trust", "list"]);
     assert!(listed.contains(": 0"), "{listed}");
 }
+
+/// The release factory's step (ADR 0062): a pack of every exportable entry,
+/// signed with a key whose secret never reaches the disk, and its public
+/// half. Every packed entry verifies under that public key.
+#[test]
+fn bundle_replies_packs_exportable_entries_with_a_one_off_key() {
+    let dir = Scratch::new("bundle");
+    let (cache, out) = (dir.path("cache"), dir.path("replies"));
+    let (_, solver) = fake_solver(&dir.0);
+    let disk = DiskCache::new(&cache);
+    for (i, provenance) in [
+        (1u8, "pinned-solver"),
+        (2, "pinned-solver"),
+        (3, "shared:abc"),
+    ] {
+        assert!(
+            disk.put(
+                &QueryKey([i; 32]),
+                b"unsat\n",
+                "check-sat",
+                &solver.summary(),
+                provenance,
+                None
+            )
+            .is_ok()
+        );
+    }
+    let report: serde_json::Value = serde_json::from_str(&ok(&[
+        "cache",
+        "bundle-replies",
+        "--cache",
+        s(&cache),
+        "--out",
+        s(&out),
+    ]))
+    .unwrap_or_default();
+    assert_eq!(report["publish"]["published"], 2);
+    assert_eq!(report["publish"]["from_shared"], 1);
+    let mut names: Vec<_> = std::fs::read_dir(&out)
+        .map(|d| d.filter_map(|e| e.ok().map(|e| e.file_name())).collect())
+        .unwrap_or_default();
+    names.sort();
+    assert_eq!(
+        names,
+        ["release.pub", "vstd.pack"],
+        "no secret key is written"
+    );
+    let public = sail_cache::shared::PublicKey::read_file(&out.join("release.pub"));
+    let Ok(public) = public else {
+        unreachable!("release.pub is a public key")
+    };
+    assert_eq!(report["signer"], public.id());
+    let pack =
+        sail_cache::pack::Pack::parse(std::fs::read(out.join("vstd.pack")).unwrap_or_default());
+    let Some(pack) = pack else {
+        unreachable!("the pack parses")
+    };
+    let mut trusted = sail_cache::shared::TrustedKeys::default();
+    trusted.insert(public);
+    assert_eq!(pack.len(), 2);
+    for i in [1u8, 2] {
+        let k = QueryKey([i; 32]);
+        let entry = pack.get(&k).unwrap_or_default();
+        assert!(sail_cache::shared::verify_entry(entry, &k, &trusted, &solver).is_ok());
+    }
+    // An existing output directory is never reused or overwritten.
+    let again = sail(&[
+        "cache",
+        "bundle-replies",
+        "--cache",
+        s(&cache),
+        "--out",
+        s(&out),
+    ]);
+    assert!(!again.status.success());
+    // A cache with nothing to export is a failure, not an empty release store.
+    let empty = sail(&[
+        "cache",
+        "bundle-replies",
+        "--cache",
+        s(&dir.path("empty")),
+        "--out",
+        s(&dir.path("none")),
+    ]);
+    assert!(!empty.status.success());
+}

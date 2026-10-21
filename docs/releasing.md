@@ -78,6 +78,10 @@ sail-VERSION-TARGET/
     sail-build.json             its build manifest (provenance and digests)
     verus/source/target-verus/release/
                                 cargo-verus, verus, rust_verify, z3, vstd.vir, ...
+  deps/<variant>/               the shipped vstd proof (see below)
+  replies/vstd.pack             signed solver replies for the pinned vstd (ADR 0062)
+  replies/release.pub           the public key they are signed with
+  release-files.json            the index binding every member's SHA-256, size and mode
 ```
 
 `<variant>` is the engine's source-variant name: the pinned Verus commit
@@ -179,6 +183,26 @@ Verus, and prove the second unchanged call invokes no verifier. A native-byte or
 key mismatch is a safe miss, not a first-use gain. See the
 [boundary record](validation/vstd-compile-boundary.md).
 
+## Shipped vstd solver replies
+
+The release factory also ships the pinned solver's replies from its own vstd
+recording ([ADR 0062](decisions/0062-shipped-vstd-solver-replies.md)). After
+`record` verifies vstd, it drains and stops its daemon, then runs
+`sail cache bundle-replies --cache <recording cache> --out <dir>`. That
+command signs every exportable entry with a key it generates in memory,
+writes `vstd.pack` and `release.pub`, and never writes the secret. The
+factory moves both into `replies/` before writing `release-files.json`.
+`release-shipped.py verify`, `package` and the smoke test require exactly
+these two files, a well-formed, non-empty pack and a public key.
+
+When the shipped vstd proof misses (another toolchain component set, lock
+closure, loader variable or Cargo), the daemon serves byte-identical vstd
+solver queries from the pack. It trusts the key only for that pack, and only
+if both files match the index. Every entry is still verified. The solver
+answers anything else. `sail status` shows the pack under `bundled`, and
+`SAIL_BUNDLED_REPLIES=0` turns it off. See the
+[trust model](trust.md#bundled-tier-the-releases-own-replies).
+
 ## Proof-bundle prerequisites and first use
 
 Ordinary releases without a qualified dependency proof bundle keep the README's
@@ -220,6 +244,13 @@ whose only toolchain is `1.99.1` does not by itself qualify the selection from
 a newer default, which needs its own first-use measurement.
 The compiler identity conservatively includes all installed target libraries;
 an extra target therefore produces a different proof key even for a host build.
+The bundle's `manifest.json` also records `sysroot_shape`: the name and size of
+every library that identity hashes, without their contents. A consumer whose
+sysroot has another shape (an extra component such as `rustc-dev`, or a
+resized library) cannot have the proof's identity, so it refuses the proof
+before hashing anything (#286). A matching shape grants nothing; the complete
+identity still decides. A bundle without the field is decided by the identity
+alone.
 The Linux `ci/local.sh release` recipe removes the CI image's bare-metal target
 inside its disposable container before recording. The shared image and its
 conformance prerequisites remain intact. The factory refuses to record unless

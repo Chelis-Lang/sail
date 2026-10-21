@@ -1,5 +1,6 @@
 //! `sail cache keygen`, `sail cache trust` and `sail cache publish`: key
-//! management and publishing for the shared tier (ADR 0017).
+//! management and publishing for the shared tier (ADR 0017); and the
+//! release factory's `sail cache bundle-replies` (ADR 0062).
 //!
 //! Exit codes: 0 success; 2 usage error; 1 any other failure
 //! (`SAIL0601`..`SAIL0605`).
@@ -229,4 +230,80 @@ pub fn publish(
         );
     }
     ExitCode::SUCCESS
+}
+
+/// `sail cache bundle-replies --out DIR`: the release factory's step
+/// (ADR 0062). Signs every exportable local entry with a fresh key into
+/// `DIR/vstd.pack`, writes the key's public half to `DIR/release.pub`, and
+/// keeps the secret only in memory, so it is gone when the command exits.
+/// `DIR` must not exist.
+pub fn bundle_replies(
+    disk: &DiskCache,
+    a: &CacheArgs,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+) -> ExitCode {
+    let Some(dir) = &a.out else {
+        return usage_error(err, "`sail cache bundle-replies` needs --out DIR");
+    };
+    let secret = match SecretKey::generate() {
+        Ok(k) => k,
+        Err(e) => return failure(err, "SAIL0601", &format!("cannot generate a key: {e}")),
+    };
+    let policy = |e: Option<&sail_cache::Effort>| {
+        let wire = e.map(|e| sail_api::protocol::Effort {
+            limit: e.limit,
+            used: e.used,
+            reason: e.reason.clone(),
+        });
+        sail_api::policy::unknown_servable(wire.as_ref())
+    };
+    let (pack, r) = sail_cache::pack::build(disk, &secret, &PublishOptions::default(), &policy);
+    let public = secret.public();
+    drop(secret);
+    let written = std::fs::create_dir(dir).and_then(|()| {
+        write_new(&dir.join("vstd.pack"), &pack)?;
+        write_new(&dir.join("release.pub"), public.to_text().as_bytes())
+    });
+    if let Err(e) = written {
+        return failure(
+            err,
+            "SAIL0605",
+            &format!("cannot write {}: {e}", dir.display()),
+        );
+    }
+    let _ = writeln!(
+        out,
+        "{}",
+        serde_json::to_string_pretty(&serde_json::json!({
+            "root": disk.root().display().to_string(),
+            "out": dir.display().to_string(),
+            "signer": public.id(),
+            "pack_bytes": pack.len(),
+            "publish": r,
+        }))
+        .unwrap_or_default()
+    );
+    if r.published == 0 || r.failed > 0 {
+        return failure(
+            err,
+            "SAIL0605",
+            &format!(
+                "{} entries packed, {} left out as too large",
+                r.published, r.failed
+            ),
+        );
+    }
+    ExitCode::SUCCESS
+}
+
+/// Writes a new file (never replacing one), readable by everyone.
+fn write_new(path: &Path, data: &[u8]) -> std::io::Result<()> {
+    use std::io::Write as _;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)?;
+    file.write_all(data)?;
+    file.sync_all()
 }

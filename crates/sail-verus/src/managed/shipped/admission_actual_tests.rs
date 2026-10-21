@@ -81,6 +81,7 @@ fn actual_native_admission_child() -> Result<(), Failure> {
                 &root,
                 &[],
                 &metadata,
+                &crate::source_build::RunDigests::default(),
             )
             .ok_or("real plan resolver refused the unchanged complete closure")?;
             let plan_path = root.join("actual-outer-plan.json");

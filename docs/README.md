@@ -39,6 +39,11 @@ executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs
 with stock, explains where the gap went and states what still exceeds the
 release bar.
+The [miss-replies record](validation/vstd-miss-replies.md) measures the
+release's shipped vstd solver replies on a shipped-proof miss and breaks down
+what a miss costs.
+The [shipped-miss hashing record](validation/shipped-miss-hashing.md) measures
+refusing the shipped vstd proof on its sysroot shape before hashing.
 [Output failure evidence](e2e-output-evidence.md) describes bounded original
 E2E streams and producer records retained for diagnosis.
 [Managed output ordering](validation/managed-output-order.md) tracks the
@@ -48,6 +53,8 @@ MCP test-server cancellation regression and its remaining validation scope.
 [Solver-continuation findings](reports/2026-10-16-solver-snapshots.md) and their
 [qualification record](validation/solver-snapshots.md) preserve the blocked
 exactness experiment; no continuation implementation is selected.
+The [rlimit record](validation/rlimit-subsumption.md) tracks the validation of
+serving the shipped vstd proof under a raised `--rlimit` (ADR 0060).
 The [function-spelling record](validation/smt-function-spellings.md) tracks the
 unselected native Vest edit candidate and its remaining qualification.
 The [source-suite integrity record](validation/source-suite-integrity.md) tracks
