@@ -736,6 +736,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 (package / "build.rs").write_text(
                     'fn main() {\n'
                     '    println!("cargo::rerun-if-changed=build.rs");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_OS");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_FEATURE_SAIL_FIXTURE");\n'
                     '    let out = std::env::var("OUT_DIR").unwrap();\n'
                     '    let time = std::time::SystemTime::now().duration_since('
                     'std::time::UNIX_EPOCH).unwrap().as_nanos();\n'
