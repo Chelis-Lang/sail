@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add the neutral-to-Verus lowering library for a supported complete scalar
+  source file. It emits an immutable owned shadow and exact source/requirement
+  mapping, preserves checked arithmetic definedness, and reuses the managed
+  backend with actual obligation logging. Ordinary Verus verification is
+  unchanged; native oracle qualification is a separate acceptance gate.
+
 - Add private neutral contract libraries for requirement-tagged scalar Rust
   functions and methods. Runtime preconditions, postconditions, old scalar
   snapshots and checked specification arithmetic remain enabled in release
@@ -1196,3 +1202,7 @@ semantic versioning once the API is published.
   enforce parent deadlines and cancellation, retain native evidence alongside
   reversible admitted ITF values, and refuse unsupported host capabilities.
   This developer API does not change Verus commands or introduce a TLC backend.
+- Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
+  SMT batches and incremental transcripts through Sail's bundled pinned Z3.
+  Complete solver evidence is attributed and cached separately from Verus;
+  unknown, timeout, cancellation and malformed responses remain explicit.

@@ -37,6 +37,7 @@ sail-ledger = { path = "crates/sail-ledger" }
 sail-portfolio = { path = "crates/sail-portfolio" }
 sail-daemon = { path = "crates/sail-daemon" }
 sail-api = { path = "crates/sail-api" }
+sail-runtime = { path = "crates/sail-runtime" }
 sail-mcp = { path = "crates/sail-mcp" }
 sail-cli = { path = "crates/sail-cli" }
 sail-conformance = { path = "crates/sail-conformance" }
