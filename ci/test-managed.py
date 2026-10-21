@@ -613,12 +613,28 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             # forced cleanup must clean that directory; cleaning the outer target
             # left the crate fresh, ran no verifier and failed with SAIL3107.
             source.write_text(good)
+            env["SAIL_MANAGED_FORCE"] = "1"
             for attempt in range(3):
                 focus_run, focused, focus_target = managed("--", "--verify-root", "--verify-function", "max")
                 assert focus_run.returncode == 0 and focused["exit_code"] == 0, (attempt, diagnostic(focused))
                 assert focused["execution"]["verifier_invocations"] >= 1, (attempt, focused["execution"])
                 assert not focus_target["reused"], (attempt, focus_target)
                 source.write_text(good)
+
+            env.pop("SAIL_MANAGED_FORCE")
+            scope_args = ("--", "--verify-root", "--verify-function", "max")
+            _, _, scoped_target = managed(*scope_args)
+            assert not scoped_target["complete"], scoped_target
+            repeated_run, repeated, scoped_target = managed(*scope_args)
+            assert repeated_run.returncode == 0 and scoped_target["reused"], diagnostic(repeated)
+            assert not scoped_target["complete"] and repeated["execution"]["verifier_invocations"] == 0, repeated
+            # A different selector and a changed proof cannot use this report.
+            _, different_scope, different_target = managed("--", "--verify-root")
+            assert not different_target["reused"] and not different_target["complete"], different_scope
+            source.write_text(bad)
+            failed_scope_run, failed_scope, failed_scope_target = managed(*scope_args)
+            assert failed_scope_run.returncode != 0 and not failed_scope_target["reused"], failed_scope
+            assert not failed_scope_target["complete"], failed_scope
 
             # Plain `sail verify` asks Verus for no attribution logs (ADR 0047):
             # its output is plain Cargo-Verus's, it writes no logs, and a later

@@ -134,6 +134,7 @@ impl Entry {
                 .clone()
                 .seal()
                 .is_some_and(|sealed| sealed.checksum == self.checksum)
+            && self.receipt.partial_args.is_none()
             && self.receipt.version == RECEIPT_VERSION
             && self.receipt.clone().seal().checksum == self.receipt.checksum
             && self.receipt.context == self.basis.context
@@ -870,6 +871,7 @@ mod tests {
         });
         let receipt = Receipt {
             version: RECEIPT_VERSION,
+            partial_args: None,
             checksum: String::new(),
             package_id: "unit".into(),
             name: "unit".into(),

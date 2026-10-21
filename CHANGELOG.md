@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Reuse successful partial reports only for their exact invocation scope.
+  Keep partial targets explicitly incomplete and exclude their receipts from
+  whole-target, shared dependency and instant-revert proof admission.
+
 - Avoid duplicate watch startup jobs from replayed macOS creation events.
   Preserve cancellation for real edits, including edit-and-restore changes.
 - Add `scripts/bench-cargo-compare.py` for repeated Cargo verification

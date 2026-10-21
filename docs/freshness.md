@@ -255,3 +255,11 @@ When native notification coverage is incomplete, watch uses only its documented
 content scans; delayed native events do not queue the same edit again. The
 startup snapshot includes empty input directories, while declared build-output
 subtrees remain excluded.
+
+### Partial verification reports
+
+The proposed [exact-scope report reuse](decisions/0069-exact-scope-report-reuse.md)
+keeps partial results explicitly incomplete. A report may be reused only for
+its exact ordered arguments and unchanged source, runtime and artifact bytes.
+Whole-target, shared dependency and instant-revert proof consumers refuse it.
+The implementation is awaiting native and real-project qualification.
