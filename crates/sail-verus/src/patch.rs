@@ -263,6 +263,152 @@ pub fn patch_verus_deps(target: &Path, repo_root: &Path, verus_repo: &Path) -> R
     })
 }
 
+/// Source keys a dependency on a registry version must not carry.
+const NON_REGISTRY_KEYS: [&str; 6] = ["git", "branch", "tag", "rev", "path", "registry"];
+
+/// Rewrites one dependency entry `name` to the exact registry version
+/// `version`, keeping its other keys (features, `default-features`,
+/// `optional`). Returns the old and new entry when it changed; `workspace =
+/// true` entries are left to the workspace's own entry.
+fn pin_item(dep: &mut toml_edit::Item, version: &str) -> Option<(String, String)> {
+    let exact = format!("={version}");
+    let before = dep.to_string().trim().to_owned();
+    if let Some(value) = dep.as_value_mut().filter(|v| v.is_str()) {
+        if value.as_str() == Some(exact.as_str()) {
+            return None;
+        }
+        let decor = value.decor().clone();
+        *value = toml_edit::Value::from(exact);
+        *value.decor_mut() = decor;
+    } else {
+        let table = dep.as_table_like_mut()?;
+        if table
+            .get("workspace")
+            .and_then(toml_edit::Item::as_bool)
+            .unwrap_or(false)
+        {
+            return None;
+        }
+        let pinned = table.get("version").and_then(toml_edit::Item::as_str) == Some(exact.as_str());
+        if pinned && NON_REGISTRY_KEYS.iter().all(|k| !table.contains_key(k)) {
+            return None;
+        }
+        for key in NON_REGISTRY_KEYS {
+            table.remove(key);
+        }
+        table.insert("version", toml_edit::value(exact));
+    }
+    Some((before, dep.to_string().trim().to_owned()))
+}
+
+/// Points the Verus dependencies of the Cargo package in `target` (inside the
+/// scratch repository `repo_root`) at exact crates.io versions, as a user
+/// moving a project to another published Verus would: every direct
+/// dependency named in `versions` (in `[dependencies]`, `[dev-dependencies]`,
+/// `[build-dependencies]` and `[workspace.dependencies]` of the workspace root
+/// and target manifests) becomes `{ version = "=V", ... }`, dropping any git or
+/// path source. Each name in `git_names` that reaches the build only through
+/// Verus's git repository (a git dependency's own vstd, for example) is
+/// patched in the root manifest's `[patch."<Verus git URL>"]` to the same
+/// registry version. Returns one line per change, for the run's record.
+///
+/// # Errors
+///
+/// `SAIL3016` if a manifest cannot be read, parsed or written, its `[patch]`
+/// is not a table, or a name in `git_names` has no version in `versions`.
+pub fn pin_verus_deps_to_registry(
+    target: &Path,
+    repo_root: &Path,
+    versions: &BTreeMap<String, String>,
+    git_names: &BTreeSet<String>,
+) -> Result<Vec<String>> {
+    let root = workspace_root(target, repo_root);
+    let root_manifest = root.join("Cargo.toml");
+    let target_manifest = target.join("Cargo.toml");
+    let mut manifests = vec![root_manifest.clone()];
+    if target_manifest != root_manifest && target_manifest.is_file() {
+        manifests.push(target_manifest);
+    }
+    let mut changes = Vec::new();
+    for path in &manifests {
+        let mut doc = load_doc(path)?;
+        let rel = path
+            .strip_prefix(repo_root)
+            .unwrap_or(path)
+            .display()
+            .to_string();
+        let mut edited = false;
+        let mut pin_in = |section: &str, deps: &mut toml_edit::Table| {
+            for (name, version) in versions {
+                if let Some((before, after)) = deps.get_mut(name).and_then(|d| pin_item(d, version))
+                {
+                    changes.push(format!("{rel} [{section}] {name}: {before} -> {after}"));
+                    edited = true;
+                }
+            }
+        };
+        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+            if let Some(deps) = doc.get_mut(section).and_then(toml_edit::Item::as_table_mut) {
+                pin_in(section, deps);
+            }
+        }
+        if let Some(deps) = doc
+            .get_mut("workspace")
+            .and_then(toml_edit::Item::as_table_mut)
+            .and_then(|w| w.get_mut("dependencies"))
+            .and_then(toml_edit::Item::as_table_mut)
+        {
+            pin_in("workspace.dependencies", deps);
+        }
+        if edited {
+            write_doc(path, &doc)?;
+        }
+    }
+    if !git_names.is_empty() {
+        let mut doc = load_doc(&root_manifest)?;
+        let rel = root_manifest
+            .strip_prefix(repo_root)
+            .unwrap_or(&root_manifest)
+            .display()
+            .to_string();
+        let not_table = || {
+            Error::new(
+                "SAIL3016",
+                format!("[patch] in {} is not a table", root_manifest.display()),
+            )
+        };
+        let table = doc
+            .entry("patch")
+            .or_insert_with(|| {
+                let mut t = toml_edit::Table::new();
+                t.set_implicit(true);
+                toml_edit::Item::Table(t)
+            })
+            .as_table_mut()
+            .ok_or_else(not_table)?
+            .entry(VERUS_GIT_URL)
+            .or_insert_with(toml_edit::table)
+            .as_table_mut()
+            .ok_or_else(not_table)?;
+        for name in git_names {
+            let version = versions.get(name).ok_or_else(|| {
+                Error::new(
+                    "SAIL3016",
+                    format!("{name} reaches the build from Verus's git repository but has no registry version"),
+                )
+            })?;
+            let mut entry = toml_edit::InlineTable::new();
+            entry.insert("version", toml_edit::Value::from(format!("={version}")));
+            table.insert(name, toml_edit::Item::Value(entry.into()));
+            changes.push(format!(
+                "{rel} [patch.\"{VERUS_GIT_URL}\"] {name}: added {{ version = \"={version}\" }}"
+            ));
+        }
+        write_doc(&root_manifest, &doc)?;
+    }
+    Ok(changes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -399,5 +545,90 @@ mod tests {
             ("verus_builtin".to_owned(), "0.0.0-b".to_owned()),
         ]);
         assert!(!relax_pins(&mut doc, &local));
+    }
+
+    fn registry_versions() -> BTreeMap<String, String> {
+        BTreeMap::from([
+            ("vstd".to_owned(), "0.0.0-new".to_owned()),
+            ("verus_builtin".to_owned(), "0.0.0-b".to_owned()),
+        ])
+    }
+
+    #[test]
+    fn registry_pins_git_and_other_versions_and_keeps_features() {
+        let s = Scratch::new("registry");
+        s.write(
+            "repo/Cargo.toml",
+            "[workspace]\nmembers = [\"a\"]\n\n[workspace.dependencies]\nverus_builtin = { version = \"=0.0.0-old\", default-features = false }\nvstd = { version = \"=0.0.0-old\", features = [\"alloc\"], default-features = false } # keep\n",
+        );
+        s.write(
+            "repo/a/Cargo.toml",
+            "[package]\nname = \"a\"\n\n[dependencies]\nverus_builtin = { workspace = true }\nvstd = { workspace = true, features = [\"std\"] }\nserde = \"1\"\n",
+        );
+        let repo = s.0.join("repo");
+        let changes = pin_verus_deps_to_registry(
+            &repo.join("a"),
+            &repo,
+            &registry_versions(),
+            &BTreeSet::new(),
+        );
+        assert_eq!(changes.as_ref().map(Vec::len), Ok(2), "{changes:?}");
+        let root = s.read("repo/Cargo.toml");
+        assert!(
+            root.contains("verus_builtin = { version = \"=0.0.0-b\", default-features = false }"),
+            "{root}"
+        );
+        assert!(
+            root.contains("vstd = { version = \"=0.0.0-new\", features = [\"alloc\"], default-features = false } # keep"),
+            "{root}"
+        );
+        assert!(!root.contains("[patch"), "{root}");
+        let member = s.read("repo/a/Cargo.toml");
+        assert!(
+            member.contains("vstd = { workspace = true, features = [\"std\"] }"),
+            "{member}"
+        );
+    }
+
+    #[test]
+    fn registry_replaces_a_git_source_and_patches_git_only_crates() {
+        let s = Scratch::new("registry-git");
+        s.write(
+            "repo/Cargo.toml",
+            "[package]\nname = \"p\"\n\n[dependencies]\nvstd = { git = \"https://github.com/verus-lang/verus.git\", rev = \"abc\" }\nother = { git = \"https://example.invalid/other\" }\n\n[patch.crates-io]\nfoo = { path = \"x\" }\n",
+        );
+        let repo = s.0.join("repo");
+        let git = BTreeSet::from(["vstd".to_owned(), "verus_builtin".to_owned()]);
+        let changes = pin_verus_deps_to_registry(&repo, &repo, &registry_versions(), &git);
+        assert_eq!(changes.as_ref().map(Vec::len), Ok(3), "{changes:?}");
+        let text = s.read("repo/Cargo.toml");
+        assert!(
+            text.contains("vstd = { version = \"=0.0.0-new\" }"),
+            "{text}"
+        );
+        assert!(!text.contains("rev"), "{text}");
+        assert!(
+            text.contains("other = { git = \"https://example.invalid/other\" }"),
+            "{text}"
+        );
+        assert!(text.contains("foo = { path = \"x\" }"), "{text}");
+        assert!(
+            text.contains("[patch.\"https://github.com/verus-lang/verus.git\"]\nverus_builtin = { version = \"=0.0.0-b\" }\nvstd = { version = \"=0.0.0-new\" }"),
+            "{text}"
+        );
+        // Already pinned: nothing more to do.
+        let again =
+            pin_verus_deps_to_registry(&repo, &repo, &registry_versions(), &BTreeSet::new());
+        assert_eq!(again, Ok(Vec::new()));
+    }
+
+    #[test]
+    fn registry_refuses_a_git_crate_without_a_version() {
+        let s = Scratch::new("registry-unknown");
+        s.write("repo/Cargo.toml", "[package]\nname = \"p\"\n");
+        let repo = s.0.join("repo");
+        let git = BTreeSet::from(["verus_state_machines_macros".to_owned()]);
+        let got = pin_verus_deps_to_registry(&repo, &repo, &registry_versions(), &git);
+        assert!(got.is_err(), "{got:?}");
     }
 }
