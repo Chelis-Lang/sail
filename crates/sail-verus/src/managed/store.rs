@@ -1157,8 +1157,11 @@ fn holds_units(target: &Path) -> bool {
 /// Whether `target` is a Cargo target this run creates: it does not exist yet
 /// or holds nothing.
 pub(super) fn new_target(target: &Path) -> bool {
-    match std::fs::read_dir(target) {
-        Ok(mut entries) => entries.next().is_none(),
+    match std::fs::symlink_metadata(target) {
+        Ok(metadata) if metadata.is_dir() => {
+            std::fs::read_dir(target).is_ok_and(|mut entries| entries.next().is_none())
+        }
+        Ok(_) => false,
         Err(error) => error.kind() == std::io::ErrorKind::NotFound,
     }
 }
@@ -1181,6 +1184,15 @@ mod tests {
         std::fs::remove_dir_all(&target)?;
         std::fs::write(&target, "not a directory")?;
         assert!(!new_target(&target));
+        #[cfg(unix)]
+        {
+            std::fs::remove_file(&target)?;
+            std::os::unix::fs::symlink(root.join("missing"), &target)?;
+            assert!(!new_target(&target));
+            std::fs::remove_file(&target)?;
+            std::os::unix::fs::symlink(&root, &target)?;
+            assert!(!new_target(&target));
+        }
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
