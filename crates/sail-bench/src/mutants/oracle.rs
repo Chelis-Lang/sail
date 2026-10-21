@@ -36,6 +36,7 @@ struct Options {
     jobs: usize,
     timeout: Duration,
     scratch: Option<PathBuf>,
+    vstd_lock: Option<PathBuf>,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -45,6 +46,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
         jobs: 4,
         timeout: Duration::from_mins(30),
         scratch: None,
+        vstd_lock: None,
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -58,6 +60,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--jobs" => o.jobs = usize::try_from(number(value(&mut it, arg)?)?).unwrap_or(1),
             "--timeout-secs" => o.timeout = Duration::from_secs(number(value(&mut it, arg)?)?),
             "--scratch" => o.scratch = Some(value(&mut it, arg)?.into()),
+            "--vstd-lock" => o.vstd_lock = Some(value(&mut it, arg)?.into()),
             _ => return Err(format!("unknown argument `{arg}`\n{}", super::USAGE)),
         }
     }
@@ -196,6 +199,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
             let (setup, edits, results, original, errors) =
                 (&setup, &edits, &results, &original, &errors);
             let (runs, timeout) = (o.runs, o.timeout);
+            let vstd_lock = o.vstd_lock.as_deref();
             s.spawn(move || {
                 let mine: Vec<&Edit> = edits.iter().skip(w).step_by(jobs).collect();
                 let ws = Workspace::prepare(
@@ -203,6 +207,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
                     &setup.unit,
                     &setup.verus_source,
                     &setup.scratch.join(format!("oracle-{w}")),
+                    vstd_lock,
                 );
                 let ws = match ws {
                     Ok(ws) => ws,
@@ -303,6 +308,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
         "platform": sail_verus::toolchain::host(),
         "machine": sail_verus::run::machine_info(),
         "stock_verus": setup.installed.pins.verus.release,
+        "vstd_mode": if o.vstd_lock.is_some() { "registry" } else { "source" },
         "runs": o.runs,
         "timeout_secs": o.timeout.as_secs(),
         "finished_unix": now,

@@ -171,3 +171,11 @@ catalogue for one round. Timings are taken only on a native host (ADR 0038):
 - Results on human-eval-verus are not evidence of generalisation; Sail has
   been measured on it. FPBench (PR #205's translations) can be added later
   as another base with its own generator.
+
+The oracle and runner also accept `--vstd-lock FILE`: scratch copies pin Verus
+crates to the release lock's registry versions. Omitting it retains the source
+setup for conformance. The run records the setup and source adjustments; oracle
+results must be regenerated for the selected setup. Every round requires the
+same observed daemon PID. Retained-proof share requires a new published receipt,
+not merely zero solver sessions. Interrupted commands keep their partial logs
+and have their owned process-group descendants stopped.

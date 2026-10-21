@@ -183,9 +183,9 @@ pub fn plain_outcome(r: &RunRecord) -> Plain {
     }
 }
 
-/// Functions a run reports as failed, as `module::function` (by output).
+/// Failed entries as `module::function` (by output), preserving multiplicity.
 #[must_use]
-pub fn failing(r: &RunRecord) -> BTreeSet<String> {
+pub fn failing(r: &RunRecord) -> Vec<String> {
     r.functions()
         .into_iter()
         .filter(|f| !f.success)

@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Mutation comparisons preserve repeated function entries, constrain the
+  approved bit-vector exception to its reproduced function and location,
+  enforce one daemon per round and identify retained restores from receipts.
+  Both oracle and runner support release registry setup through `--vstd-lock`.
+
 - Measure real-project release scenarios with the shipped registry vstd
   versions, record bundle reuse and dependency adjustments, and report slower
   rows for review under the relative performance bar. Missing or duplicated

@@ -120,3 +120,16 @@ Tiers: `ci/local.sh conformance standard` ends with two mutants per class of
 `human-eval` for one round; `ci/local.sh conformance deep` runs every
 catalogue for one round. Both are local-only. Timings come only from a native
 host (`ci/run.sh bench mutants NAME ROUNDS`, three rounds for a release).
+
+For release-product mutation measurements, pass `--vstd-lock
+/path/to/release/deps/<bundle>/Cargo.lock` to both `mutants oracle` and
+`mutants run`. Both arms then use the release's registry Verus crate versions;
+workspace adjustments and the selected release lock are retained with the run.
+Without that option, the suite keeps source-patched preparation for corpus
+conformance. The two setups are reported separately. Regenerate the stock
+oracle for the selected setup before measuring it.
+
+A round fails if its daemon disappears or changes. Retained-proof share uses
+newly published retained receipts; a run with no solver sessions alone is not
+evidence of instant revert. Timeouts retain partial logs and stop descendant
+processes, including when their original parent has already exited.

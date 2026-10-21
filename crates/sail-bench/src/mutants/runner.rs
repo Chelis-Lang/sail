@@ -48,6 +48,7 @@ struct Options {
     timeout: Duration,
     scratch: Option<PathBuf>,
     machine: String,
+    vstd_lock: Option<PathBuf>,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -61,6 +62,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
         timeout: Duration::from_mins(30),
         scratch: None,
         machine: String::new(),
+        vstd_lock: None,
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -80,6 +82,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--timeout-secs" => o.timeout = Duration::from_secs(number(value(&mut it, arg)?)?),
             "--scratch" => o.scratch = Some(value(&mut it, arg)?.into()),
             "--machine" => o.machine = value(&mut it, arg)?,
+            "--vstd-lock" => o.vstd_lock = Some(value(&mut it, arg)?.into()),
             _ => return Err(format!("unknown argument `{arg}`\n{}", super::USAGE)),
         }
     }
@@ -123,6 +126,7 @@ struct Round<'a> {
     plains: &'a mut BTreeMap<String, Vec<RunRecord>>,
     failures: usize,
     daemon_pid: Option<u64>,
+    vstd_lock: Option<&'a Path>,
 }
 
 /// One step's two runs.
@@ -133,6 +137,7 @@ struct Pair {
     pid: Option<u64>,
     stock_first: bool,
     retained: Result<usize, String>,
+    observed_stats: bool,
 }
 
 impl Round<'_> {
@@ -168,6 +173,7 @@ impl Round<'_> {
             (go_stock(), t)
         };
         let after: DaemonState = daemon_state(self.sail, &self.cache);
+        let observed_stats = after.stats.is_some();
         let cache = CacheRun::between(
             step,
             &before.stats.unwrap_or_default(),
@@ -177,6 +183,7 @@ impl Round<'_> {
             retained_receipts(&self.cache).map(|after| after.difference(&before).count())
         });
         Pair {
+            observed_stats,
             retained,
             stock,
             sail,
@@ -236,7 +243,7 @@ impl Round<'_> {
             Ok(count) => sample["retained_restores"] = json!(count),
             Err(error) => sample["provenance_error"] = json!(error),
         }
-        if !daemon_continuity(&mut self.daemon_pid, pair.pid) {
+        if !pair.observed_stats || !daemon_continuity(&mut self.daemon_pid, pair.pid) {
             sample["daemon_error"] = json!("daemon missing or changed within the round");
         }
         let (stock, sail) = match (pair.stock, pair.sail) {
@@ -290,6 +297,7 @@ impl Round<'_> {
         }
         let bad = sample.get("provenance_error").is_some()
             || sample.get("daemon_error").is_some()
+            || mismatch
             || judgement == "different"
             || !fv.is_empty()
             || sample.get("own_answers") == Some(&Value::Bool(false));
@@ -401,7 +409,15 @@ fn run_round(r: &mut Round, edits: &[&Edit], meta: &Value) -> Result<(), String>
         &r.setup.unit,
         &r.setup.verus_source,
         &r.setup.scratch.join(format!("r{}", r.index)),
+        r.vstd_lock,
     )?;
+    let setup_dir = r.out.join(format!("setup-r{}", r.index));
+    std::fs::create_dir_all(&setup_dir).map_err(|e| e.to_string())?;
+    for name in ["vstd-adjustments.txt", "vstd-release.lock"] {
+        if ws.root.join(name).is_file() {
+            std::fs::copy(ws.root.join(name), setup_dir.join(name)).map_err(|e| e.to_string())?;
+        }
+    }
     let _ = std::fs::remove_dir_all(&r.cache);
     std::fs::create_dir_all(&r.cache).map_err(|e| e.to_string())?;
     let pair = r.run_pair(&ws, "cold:original", 0, false);
@@ -510,6 +526,9 @@ pub fn main(args: &[String]) -> Result<(), String> {
         "machine_info": sail_verus::run::machine_info(),
         "sail": sail.display().to_string(),
         "sail_version": version_of(&sail, &["--version"]),
+        "vstd_mode": if o.vstd_lock.is_some() { "registry" } else { "source" },
+        "vstd_lock": o.vstd_lock,
+
         "sail_verus_build": verus_build.as_ref().map(|p| p.display().to_string()),
         "stock_verus": setup.installed.pins.verus.release,
         "stock_cargo_verus": setup.installed.cargo_verus.display().to_string(),
@@ -551,6 +570,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
             plains: &mut plains,
             failures: 0,
             daemon_pid: None,
+            vstd_lock: o.vstd_lock.as_deref(),
         };
         let result = run_round(&mut r, &edits, &meta);
         failures += r.failures;

@@ -14,7 +14,7 @@ owner-approved default-mode correction is recorded separately below.
 ## Accepted default-mode differences
 
 Default mode runs Sail's Verus fork (ADR 0043). One fork fix makes Sail
-stricter than stock in a field that is not a verdict stock prints, and the
+stricter than stock in stock's per-function JSON status, and the
 owner accepted it on 2026-10-20:
 
 | Difference | Mode | What differs | What stays identical | Recognised by |

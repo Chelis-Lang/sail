@@ -82,14 +82,31 @@ impl Workspace {
         unit: &Unit,
         verus_source: &Path,
         root: &Path,
+        registry_lock: Option<&Path>,
     ) -> Result<Self, String> {
         let root = std::path::absolute(root).map_err(|e| e.to_string())?;
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root).map_err(|e| format!("{}: {e}", root.display()))?;
         match unit.build {
             Build::CargoVerus => {
-                let prepared = prepare_unit(installed, unit, Some(verus_source), &root)
-                    .map_err(|e| e.to_string())?;
+                let prepared = if let Some(lock) = registry_lock {
+                    let mut prepared = unit.clone();
+                    prepared.source_dir = root.join("src");
+                    copy_tree(&unit.source_dir, &prepared.source_dir).map_err(|e| e.to_string())?;
+                    pin_registry(
+                        &prepared.source_dir.join(&unit.root),
+                        &prepared.source_dir,
+                        lock,
+                        &root,
+                    )?;
+                    prepared
+                } else {
+                    prepare_unit(installed, unit, Some(verus_source), &root)
+                        .map_err(|e| e.to_string())?
+                };
+                if registry_lock.is_some() {
+                    metadata_at(installed, &prepared.source_dir.join(&prepared.root), &root)?;
+                }
                 Ok(Self {
                     src: prepared.source_dir.clone(),
                     package: prepared.source_dir.join(&prepared.root),
@@ -134,24 +151,10 @@ impl Workspace {
                         .collect(),
                     env: unit.env.clone(),
                 };
-                let mut cmd = Command::new("cargo");
-                clean_cargo_env(&mut cmd);
-                let out = cmd
-                    .args(["metadata", "--format-version", "1"])
-                    .current_dir(&ws.package)
-                    .env("RUSTUP_TOOLCHAIN", &installed.pins.verus.rust_toolchain)
-                    .env("CARGO_TARGET_DIR", ws.root.join("metadata-target"))
-                    .stdin(Stdio::null())
-                    .output()
-                    .map_err(|e| format!("cannot run cargo metadata: {e}"))?;
-                let _ = std::fs::remove_dir_all(ws.root.join("metadata-target"));
-                if !out.status.success() {
-                    return Err(format!(
-                        "cargo metadata failed for the wrapper of {}: {}",
-                        unit.id,
-                        String::from_utf8_lossy(&out.stderr).trim()
-                    ));
+                if let Some(lock) = registry_lock {
+                    pin_registry(&ws.package, &ws.src, lock, &ws.root)?;
                 }
+                metadata_at(installed, &ws.package, &ws.root)?;
                 Ok(ws)
             }
             Build::LibcVerus | Build::Script => Err(format!(
@@ -464,6 +467,81 @@ pub fn retained_receipts(cache: &Path) -> Result<BTreeSet<(PathBuf, String)>, St
     Ok(found)
 }
 
+fn metadata_at(installed: &Installed, package: &Path, root: &Path) -> Result<(), String> {
+    let mut command = Command::new("cargo");
+    clean_cargo_env(&mut command);
+    let output = command
+        .args(["metadata", "--format-version", "1"])
+        .current_dir(package)
+        .env("RUSTUP_TOOLCHAIN", &installed.pins.verus.rust_toolchain)
+        .env("CARGO_TARGET_DIR", root.join("metadata-target"))
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|e| e.to_string())?;
+    let _ = std::fs::remove_dir_all(root.join("metadata-target"));
+    if !output.status.success() {
+        return Err(format!(
+            "workspace metadata failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    Ok(())
+}
+
+/// Pin scratch-copy Verus dependencies to a release's registry versions.
+fn pin_registry(package: &Path, source: &Path, lock: &Path, root: &Path) -> Result<(), String> {
+    let text = std::fs::read_to_string(lock).map_err(|e| format!("{}: {e}", lock.display()))?;
+    let versions = registry_versions(&text)?;
+    let changes =
+        sail_verus::patch::pin_verus_deps_to_registry(package, source, &versions, &BTreeSet::new())
+            .map_err(|e| e.to_string())?;
+    std::fs::write(root.join("vstd-adjustments.txt"), changes.join("\n"))
+        .map_err(|e| e.to_string())?;
+    // Preserve the exact input lock alongside the source adjustments. This is
+    // release setup, not a request to replace unrelated project dependencies.
+    std::fs::write(root.join("vstd-release.lock"), text).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn registry_versions(text: &str) -> Result<BTreeMap<String, String>, String> {
+    let document: toml::Table = toml::from_str(text).map_err(|e| e.to_string())?;
+    let packages = document
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .ok_or("release lock has no packages")?;
+    let mut versions = BTreeMap::new();
+    for package in packages {
+        let name = package
+            .get("name")
+            .and_then(toml::Value::as_str)
+            .ok_or("package has no name")?;
+        if name != "vstd" && !name.starts_with("verus_") {
+            continue;
+        }
+        if !package
+            .get("source")
+            .and_then(toml::Value::as_str)
+            .is_some_and(|value| value.starts_with("registry+"))
+        {
+            return Err(format!("release package {name} is not from the registry"));
+        }
+        let version = package
+            .get("version")
+            .and_then(toml::Value::as_str)
+            .ok_or("package has no version")?;
+        if versions
+            .insert(name.to_owned(), version.to_owned())
+            .is_some()
+        {
+            return Err(format!("release lock contains multiple versions of {name}"));
+        }
+    }
+    if !versions.contains_key("vstd") {
+        return Err("release lock has no registry vstd".to_owned());
+    }
+    Ok(versions)
+}
+
 /// The cache daemon serving `cache`, as `sail status --json` reports it.
 #[derive(Debug, Clone, Default)]
 pub struct DaemonState {
@@ -623,6 +701,32 @@ mod tests {
         let (docs, rest) = parse_outputs(b"{\"a\":1}\n{\"b\":2}\ntail");
         assert_eq!(docs.len(), 2);
         assert_eq!(rest, "tail");
+    }
+
+    #[test]
+    fn registry_setup_requires_one_registry_version_per_verus_crate() {
+        let lock = r#"[[package]]
+name = "vstd"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+"#;
+        assert_eq!(
+            registry_versions(lock)
+                .ok()
+                .and_then(|mut versions| versions.remove("vstd")),
+            Some("0.0.1".to_owned())
+        );
+        assert!(registry_versions(&format!("{lock}\n{lock}")).is_err());
+        assert!(registry_versions(&lock.replace("registry+", "git+")).is_err());
+        assert!(
+            registry_versions(
+                r#"[[package]]
+name = "other"
+version = "1"
+"#
+            )
+            .is_err()
+        );
     }
 
     #[test]
