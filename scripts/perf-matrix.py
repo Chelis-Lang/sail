@@ -81,7 +81,6 @@ import sys
 import time
 from pathlib import Path
 
-import perf_matrix_mutants
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
