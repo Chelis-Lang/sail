@@ -222,8 +222,11 @@ with `scripts/reader-gate.sh`; see
 
 ### Watch startup
 
-`sail watch` completes its initial Cargo metadata discovery before starting
-filesystem notifications. Creating the initial `Cargo.lock` is setup work and
-does not cancel the first verification when macOS delivers a delayed event.
-Subsequent lockfile, source and declared-input changes keep the existing
-invalidation and cancellation behavior.
+`sail watch` completes initial Cargo metadata discovery and subscriptions
+before starting its first debounce window. macOS can replay earlier creation
+notifications. During startup these are ignored only when a complete snapshot
+still matches the initial input bytes and file identities, including change
+times. Real edits still cancel verification, including edits whose bytes and
+modification time are restored. After the first actual input change, native
+notifications retain their unconditional cancellation behavior. Unreadable
+state remains conservative; proof admission checks do not use this filter.

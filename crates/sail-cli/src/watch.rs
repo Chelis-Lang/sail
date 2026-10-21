@@ -62,7 +62,7 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
     let mut live = Live {
         client: crate::jobs::connect_or_start()?,
         status: None,
-        pending: Some(Instant::now()),
+        pending: None,
         diagnostic_offset: 0,
         event_offset: 0,
         event_tail: String::new(),
@@ -81,6 +81,9 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
     refresh_inputs(&mut inputs, &root, &args, &extra);
     let mut monitoring = monitor::Monitoring::new(err);
     monitoring.subscribe(&inputs.roots, &inputs.excluded, &mut subscriptions, err);
+    // Initial metadata and subscriptions can outlast SETTLE. Start the first
+    // debounce window only once they are ready, just as for later edits.
+    live.pending = Some(Instant::now());
     while !stop.load(Ordering::SeqCst) {
         if monitoring.changed(&inputs.roots, err) {
             live.cancel(true)?;

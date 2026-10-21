@@ -17,6 +17,7 @@ pub(super) struct Monitoring {
     fallback: bool,
     scanned: Instant,
     baseline: Option<[u8; 32]>,
+    startup_epoch: Option<[u8; 32]>,
     excluded: Vec<PathBuf>,
 }
 impl Monitoring {
@@ -31,6 +32,7 @@ impl Monitoring {
             fallback: false,
             scanned: Instant::now(),
             baseline: None,
+            startup_epoch: None,
             excluded: vec![],
         };
         if monitoring.native.is_none() {
@@ -54,6 +56,7 @@ impl Monitoring {
         subscriptions: &mut BTreeMap<PathBuf, bool>,
         err: &mut dyn Write,
     ) {
+        let initial = subscriptions.is_empty();
         let desired = super::desired_subscriptions(roots);
         let mut failed = false;
         if let Some(native) = &mut self.native {
@@ -85,7 +88,11 @@ impl Monitoring {
         *subscriptions = desired;
         // Capture once when input coverage changes, never every native poll.
         self.excluded = excluded.to_vec();
-        self.baseline = fingerprint(roots, excluded).ok();
+        let captured = capture(roots, excluded).ok();
+        self.baseline = captured.map(|(contents, _)| contents);
+        if initial && cfg!(unix) {
+            self.startup_epoch = captured.map(|(_, epoch)| epoch);
+        }
         self.scanned = Instant::now();
     }
     pub(super) fn changed(&mut self, roots: &[PathBuf], err: &mut dyn Write) -> bool {
@@ -98,6 +105,16 @@ impl Monitoring {
                     edited |= super::changed(&receiver, roots, &self.excluded);
                 }
                 _ => self.degrade(err),
+            }
+        }
+        // FSEvents may replay creation notifications from before subscription.
+        // Ignore those only while the complete initial input state is still
+        // unchanged, including inode/change times so edit-and-restore counts.
+        // After the first actual edit, native invalidation stays unconditional.
+        if edited && let Some(initial) = self.startup_epoch {
+            match capture(roots, &self.excluded) {
+                Ok((_, current)) if current == initial => edited = false,
+                _ => self.startup_epoch = None,
             }
         }
         if self.fallback && self.scanned.elapsed() >= SCAN_INTERVAL {
@@ -117,6 +134,10 @@ impl Monitoring {
 }
 
 fn fingerprint(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<[u8; 32]> {
+    capture(roots, excluded).map(|(contents, _)| contents)
+}
+
+fn capture(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<([u8; 32], [u8; 32])> {
     let mut files = Vec::new();
     for root in roots {
         let declared_output = excluded.iter().any(|output| root.starts_with(output));
@@ -125,6 +146,7 @@ fn fingerprint(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<[u8; 
     files.sort();
     files.dedup();
     let mut hash = Sha256::new();
+    let mut epoch = Sha256::new();
     let mut buffer = vec![0; 64 * 1024];
     for path in files {
         let bytes = path.as_os_str().as_encoded_bytes();
@@ -135,6 +157,19 @@ fn fingerprint(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<[u8; 
             continue;
         }
         let mut file = std::fs::File::open(&path)?;
+        #[cfg(unix)]
+        for metadata in [std::fs::symlink_metadata(&path)?, file.metadata()?] {
+            use std::os::unix::fs::MetadataExt as _;
+            // Access times change when we read; modification/change identity
+            // must change for a real edit even when bytes and mtime return.
+            epoch.update(metadata.dev().to_le_bytes());
+            epoch.update(metadata.ino().to_le_bytes());
+            epoch.update(metadata.mode().to_le_bytes());
+            epoch.update(metadata.mtime().to_le_bytes());
+            epoch.update(metadata.mtime_nsec().to_le_bytes());
+            epoch.update(metadata.ctime().to_le_bytes());
+            epoch.update(metadata.ctime_nsec().to_le_bytes());
+        }
         hash.update(file.metadata()?.len().to_le_bytes());
         loop {
             let count = file.read(&mut buffer)?;
@@ -145,7 +180,9 @@ fn fingerprint(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<[u8; 
         }
         hash.update(b"end");
     }
-    Ok(hash.finalize().into())
+    let contents: [u8; 32] = hash.finalize().into();
+    epoch.update(contents);
+    Ok((contents, epoch.finalize().into()))
 }
 
 fn collect(
@@ -184,6 +221,61 @@ fn collect(
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
+    #[test]
+    fn startup_replays_are_ignored_but_edit_and_restore_still_cancels()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use notify::EventKind;
+        use notify::event::{CreateKind, DataChange, ModifyKind};
+        let root = std::env::temp_dir().join(format!("sail-watch-epoch-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let source = root.join("lib.rs");
+        std::fs::write(&source, "pub fn a() {}")?;
+        let modified = std::fs::metadata(&source)?.modified()?;
+        let output = root.join("output");
+        let roots = vec![root.clone()];
+        let (sender, changes) = channel();
+        let mut monitoring = Monitoring {
+            native: None,
+            changes,
+            fallback: false,
+            scanned: Instant::now(),
+            baseline: None,
+            startup_epoch: None,
+            excluded: vec![],
+        };
+        monitoring.subscribe(
+            &roots,
+            std::slice::from_ref(&output),
+            &mut BTreeMap::new(),
+            &mut Vec::new(),
+        );
+        sender.send(Ok(
+            Event::new(EventKind::Create(CreateKind::File)).add_path(source.clone())
+        ))?;
+        assert!(!monitoring.changed(&roots, &mut Vec::new()));
+        std::fs::create_dir_all(&output)?;
+        std::fs::write(output.join("generated.rs"), "output")?;
+        sender.send(Ok(
+            Event::new(EventKind::Create(CreateKind::Folder)).add_path(root.clone())
+        ))?;
+        assert!(!monitoring.changed(&roots, &mut Vec::new()));
+        std::fs::write(&source, "pub fn b() {}")?;
+        std::fs::write(&source, "pub fn a() {}")?;
+        std::fs::File::open(&source)?.set_modified(modified)?;
+        sender.send(Ok(Event::new(EventKind::Modify(ModifyKind::Data(
+            DataChange::Content,
+        )))
+        .add_path(source.clone())))?;
+        assert!(monitoring.changed(&roots, &mut Vec::new()));
+        sender.send(Ok(
+            Event::new(EventKind::Create(CreateKind::File)).add_path(source)
+        ))?;
+        assert!(monitoring.changed(&roots, &mut Vec::new()));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[test]
     fn fallback_detects_restored_mtime_edits_without_reverifying_unchanged_inputs() {
         let root = std::env::temp_dir().join(format!("sail-watch-poll-{}", std::process::id()));
@@ -200,6 +292,7 @@ mod tests {
             fallback: true,
             scanned: Instant::now(),
             baseline: None,
+            startup_epoch: None,
             excluded: vec![],
         };
         let roots = vec![root.clone()];

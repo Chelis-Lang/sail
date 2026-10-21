@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Avoid duplicate watch startup jobs from replayed macOS creation events.
+  Preserve cancellation for real edits, including edit-and-restore changes.
+
 - Measure real-project release scenarios with the shipped registry vstd
   versions, record bundle reuse and dependency adjustments, and report slower
   rows for review under the relative performance bar. Missing or duplicated
