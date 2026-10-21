@@ -350,6 +350,18 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
         }
     };
     let mut job_server = job_server;
+    let mut runtime_service =
+        match runtime_cli::start_service(&socket, root.join("runtime"), job_server.activity()) {
+            Ok(handle) => handle,
+            Err(error) => {
+                job_server.shutdown();
+                let _ = writeln!(
+                    err,
+                    "error[SAIL6201]: cannot start runtime endpoint: {error}"
+                );
+                return ExitCode::from(2);
+            }
+        };
     let activity = job_server.activity();
     let handle = server.handle();
     let signals = signal_hook::iterator::Signals::new([
@@ -367,6 +379,7 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
             });
     }
     let result = server.run_with_activity(activity);
+    runtime_service.shutdown();
     job_server.shutdown();
     match result {
         Ok(()) => ExitCode::SUCCESS,

@@ -53,7 +53,7 @@ that changing them refuses readback. Diagnostic text establishes no proof.
 | Source | Gate scope | Result |
 |---|---|---|
 | `72e433c2` | Full native gate, pinned solver, macOS host | Passed: 927 native tests, 39 solver tests and 916 Mac tests |
-| `72e433c2` | Complete e2e sequence | Continued unchanged to its boundary before the stderr hardening; no final-source claim |
+| `72e433c2` | Complete e2e sequence | Interrupted after its actual neutral service phase to retain sealed stderr; no complete-e2e pass claim |
 
 ## Limits
 
