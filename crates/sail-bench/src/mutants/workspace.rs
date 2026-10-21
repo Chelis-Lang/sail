@@ -737,11 +737,11 @@ mod tests {
             run.stderr,
             "note: function body check finished in 3 seconds\n\nerror: failed\n"
         );
-        run.stderr = "note[SAIL3138]: unexpected text\nnote[SAIL9999]: other note\n".to_owned();
+        run.stderr = "note[SAIL3138]: unexpected text\nnote[SAIL3102]: other note\n".to_owned();
         assert_eq!(separate_sail_notes(&mut run), Vec::<String>::new());
         assert_eq!(
             run.stderr,
-            "note[SAIL3138]: unexpected text\nnote[SAIL9999]: other note\n"
+            "note[SAIL3138]: unexpected text\nnote[SAIL3102]: other note\n"
         );
     }
 
