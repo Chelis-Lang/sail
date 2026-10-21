@@ -4,8 +4,8 @@ Registry of opt-in modes that can produce a verdict plain Verus would not
 (charter rule 8). Each entry names the flag, what can differ, how output labels
 it, and how its cache keys are kept apart from default-mode keys.
 
-The following portfolio mode requires explicit selection. The narrow
-owner-approved default-mode correction is recorded separately below.
+The following portfolio mode requires explicit selection. Owner-approved
+default-mode differences are recorded separately below.
 
 | Mode | Flag | What can differ | Output label | Key separation |
 |---|---|---|---|---|
@@ -24,6 +24,17 @@ owner accepted it on 2026-10-20:
 The mutation suite found it on Vest (`vest-logic-003`,
 [record](validation/mutation-suite.md)). Any other status flip is still a
 difference.
+
+## Accepted default-mode progress ordering
+
+Owner decision, 2026-10-21: complete standalone `note: verifying module ...`
+blocks may reorder within one uninterrupted run, including notes naming a
+function. Their complete bytes and counts must match; other output and all
+verdict and exit-code checks remain exact. Diagnostic-message, summary and
+other-output boundaries cannot be crossed. This addresses the stock scheduling
+defect [VI-0012](verus-issues/VI-0012-filtered-progress-note-order.md); Sail's
+fork already emits these notes deterministically. Corpus comparisons record
+the accepted ordering separately. See [ADR 0064](decisions/0064-verification-progress-note-order.md).
 
 The explicit `--engine interactive` source engine also adapts supported Cargo
 `no-vstd = true` metadata to the launcher's equivalent literal option (VI-0011).

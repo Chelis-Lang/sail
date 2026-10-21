@@ -6,8 +6,11 @@
 //! - **messages**: complete diagnostics that carry a source location, each
 //!   compared as exact bytes, as a multiset (every message the same number of
 //!   times on both sides, in any order);
+//! - **progress**: complete standalone `note: verifying module ...` blocks
+//!   may reorder within one uninterrupted run, with identical bytes and counts
+//!   (owner decision 2026-10-21, ADR 0064);
 //! - **the rest**: everything else (summary lines such as `error: aborting
-//!   due to 3 previous errors`, notes without a location, panic text, any
+//!   due to 3 previous errors`, other notes without a location, panic text, any
 //!   other output), compared byte for byte and in order. Each run of
 //!   consecutive messages stands in the rest as one placeholder line, so text
 //!   that moves from after the messages to before them is still a difference.
@@ -134,6 +137,48 @@ fn identity(message: &str) -> (Option<&str>, Option<&str>) {
     (lines.next(), lines.next())
 }
 
+// Only complete standalone progress blocks in one uninterrupted run may
+// move. Message bodies, separators, summaries and arbitrary notes stay exact.
+fn ordered_progress(rest: &str) -> String {
+    let lines: Vec<_> = rest.split_inclusive('\n').collect();
+    let progress_at = |i: usize| {
+        lines.get(i).is_some_and(|line| {
+            line.strip_prefix("note: verifying module ")
+                .is_some_and(|module| !module.trim().is_empty())
+        }) && lines.get(i + 1).is_some_and(|line| is_blank(line))
+    };
+    let mut out = String::new();
+    let mut i = 0;
+    while i < lines.len() {
+        if !progress_at(i) {
+            out.push_str(lines[i]);
+            i += 1;
+            continue;
+        }
+        let mut blocks = Vec::new();
+        while progress_at(i) {
+            blocks.push(format!("{}{}", lines[i], lines[i + 1]));
+            i += 2;
+        }
+        blocks.sort_unstable();
+        for block in blocks {
+            out.push_str(&block);
+        }
+    }
+    out
+}
+
+/// Whether standalone verification-progress blocks changed order within an
+/// uninterrupted run (VI-0012, owner-approved ADR 0064).
+///
+/// This does not compare complete diagnostic messages. Use [`compare_stderr`]
+/// as well to establish that the full stderr satisfies the contract.
+#[must_use]
+pub fn progress_order_differs(plain: &str, sail: &str) -> bool {
+    let (p, s) = (split(plain), split(sail));
+    p.rest != s.rest && ordered_progress(&p.rest) == ordered_progress(&s.rest)
+}
+
 /// Every diagnostics difference between a plain and a sail stderr under ADR
 /// 0042, one line each; empty if they match.
 #[must_use]
@@ -143,7 +188,7 @@ pub fn compare_stderr(plain: &str, sail: &str) -> Vec<String> {
     }
     let (p, s) = (split(plain), split(sail));
     let mut d = Vec::new();
-    if p.rest != s.rest {
+    if ordered_progress(&p.rest) != ordered_progress(&s.rest) {
         d.push(format!(
             "diagnostics (stderr) outside messages differ at {} (messages collapsed to one line per run)",
             first_difference(&p.rest, &s.rest)
@@ -220,6 +265,62 @@ mod tests {
 
     fn cat(parts: &[&str]) -> String {
         parts.concat()
+    }
+
+    const PROGRESS_A: &str = "note: verifying module a\n\n";
+    const PROGRESS_B: &str = "note: verifying module b, function b::f\n\n";
+
+    #[test]
+    fn progress_reordering_keeps_exact_text_counts_and_boundaries() {
+        let plain = cat(&[PROGRESS_A, PROGRESS_B, A, SUMMARY]);
+        let reordered = cat(&[PROGRESS_B, PROGRESS_A, A, SUMMARY]);
+        assert_eq!(compare_stderr(&plain, &reordered), Vec::<String>::new());
+        assert!(progress_order_differs(&plain, &reordered));
+        for changed in [
+            cat(&[PROGRESS_A, A, SUMMARY]),
+            cat(&[PROGRESS_A, PROGRESS_A, A, SUMMARY]),
+            cat(&[PROGRESS_B, PROGRESS_A, PROGRESS_A, A, SUMMARY]),
+            reordered.replace("b::f", "b::g"),
+            reordered.replace("assert(x)", "assert(y)"),
+            reordered.replace(SUMMARY, "error: aborting due to 1 previous error\n\n"),
+        ] {
+            assert_ne!(
+                compare_stderr(&plain, &changed),
+                Vec::<String>::new(),
+                "{changed}"
+            );
+        }
+        assert_ne!(
+            compare_stderr(
+                &cat(&[PROGRESS_A, SUMMARY, PROGRESS_B]),
+                &cat(&[PROGRESS_B, SUMMARY, PROGRESS_A])
+            ),
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn progress_like_text_inside_diagnostics_and_unterminated_notes_stay_exact() {
+        let spanned = "note: verifying module a\n --> a.rs:1:1\n  |\n\n";
+        assert_ne!(
+            compare_stderr(spanned, &spanned.replace("module a", "module b")),
+            Vec::<String>::new()
+        );
+        assert_ne!(
+            compare_stderr(
+                "note: verifying module a\nnote: verifying module b\n",
+                "note: verifying module b\nnote: verifying module a\n"
+            ),
+            Vec::<String>::new()
+        );
+        let other = "note: other information\n\n";
+        assert_ne!(
+            compare_stderr(
+                &cat(&[PROGRESS_A, other, PROGRESS_B]),
+                &cat(&[PROGRESS_B, other, PROGRESS_A])
+            ),
+            Vec::<String>::new()
+        );
     }
 
     #[test]

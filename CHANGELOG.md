@@ -14,6 +14,11 @@ semantic versioning once the API is published.
   versions, record bundle reuse and dependency adjustments, and report slower
   rows for review under the relative performance bar. Missing or duplicated
   rounds and output differences invalidate the comparison.
+
+- Compare standalone verification-progress notes independent of worker order,
+  with exact text and counts, under the owner-approved VI-0012 exception.
+  Verdicts, errors and other output retain their exact checks.
+
 - Discover initial watch inputs before starting filesystem notifications.
   Cargo's startup creation of `Cargo.lock` no longer cancels the first
   verification when macOS delivers that notification late. Later input edits

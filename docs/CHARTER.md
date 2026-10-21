@@ -240,7 +240,13 @@ Each entry names the charter text it qualifies and the ADR that records it.
    are verified as plain Cargo-Verus verifies them, with one note and no
    proof reuse. See ADR 0046.
 
-7. *Correctness rule 1* (owner decision, 2026-10-20). Sail may report a
+7. *Correctness rule 1* (owner decision, 2026-10-21). Verification-progress
+   notes may reorder with identical text and counts, addressing stock's
+   worker-arrival ordering (VI-0012). Only complete standalone progress blocks
+   within one uninterrupted run may reorder. Errors, warnings, other output,
+   per-function verdicts and exit codes retain their exact checks. See ADR 0064.
+
+8. *Correctness rule 1* (owner decision, 2026-10-20). Sail may report a
    function as failed where stock incorrectly records a failed bit-vector
    assertion as successful (VI-0003). This exception is strictly in the
    conservative direction: diagnostics, error counts and exit codes remain

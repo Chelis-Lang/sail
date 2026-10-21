@@ -67,3 +67,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0061: Certify native units after their compile (accepted)](0061-pipelined-native-admission.md)
 - [0062: Ship the pinned vstd's solver replies in the release archive (accepted)](0062-shipped-vstd-solver-replies.md)
 - [0063: A seeded mutation suite as soundness probe and edit-loop benchmark (accepted)](0063-seeded-mutation-suite.md)
+
+- [0064: Accept verification-progress note ordering (accepted)](0064-verification-progress-note-order.md)
