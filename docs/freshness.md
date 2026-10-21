@@ -143,6 +143,11 @@ artifact bytes against an established receipt. The candidate's
 [qualification record](validation/managed-selection-family.md) identifies the
 remaining gates and the original failed diagnostic.
 
+Concurrent dependency publishers reserve a private staging directory before
+writing. A name collision leaves the other publisher's files untouched; a
+failed publication cannot remove a directory it did not create. This does not
+change receipt, source or artifact admission checks.
+
 ## Which environment variables are proof inputs
 
 A managed proof follows the input model of plain `cargo verus`, which is
