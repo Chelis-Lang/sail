@@ -104,3 +104,7 @@ cargo test -p sail-contracts -p sail-contracts-ir -p sail-contracts-macros --rel
 
 [ADR 0066](decisions/0066-neutral-contract-runtime.md) records the crate boundary
 and the separate acceptance required for actual Verus lowering.
+
+The [runtime qualification record](validation/neutral-contract-runtime.md)
+records native gates and their exact evidence hashes. Runtime checks remain
+distinct from proof establishment.

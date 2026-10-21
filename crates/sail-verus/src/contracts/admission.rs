@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use quote::ToTokens;
 use sail_contracts_ir::{SourceFunction, SourceModel};
+use syn::ext::IdentExt;
 use syn::visit::Visit;
 
 use super::types::{Struct, Type, qualify};
@@ -62,9 +63,10 @@ pub(super) fn admit(text: &str) -> Result<Admitted> {
             .item
             .sig
             .ident
+            .unraw()
             .to_string()
             .starts_with("__sail_")
-            || value.function.item.sig.ident == "old"
+            || value.function.item.sig.ident.unraw() == "old"
         {
             return Err(unsupported(
                 "old and __sail_ names are reserved by neutral lowering",
@@ -179,7 +181,7 @@ fn scalar_struct(value: &syn::ItemStruct) -> Result<()> {
     if [
         "bool", "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128", "Int",
     ]
-    .contains(&value.ident.to_string().as_str())
+    .contains(&value.ident.unraw().to_string().as_str())
     {
         return Err(unsupported(
             "a source struct cannot shadow a neutral scalar type",

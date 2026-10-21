@@ -58,3 +58,52 @@ The retained oracle archive, including the original failed attempts, has SHA-256
 The explicit `neutral_contracts_acceptance` example checks the separate public
 managed helper. Its library invocation is independent of the direct verifier
 oracle; a matching direct-verifier result does not establish that helper path.
+
+## Actual managed helper
+
+The native library acceptance example called `contracts::verify` on the original
+add-one source and then on a body edit that returns the unchanged input. Both
+completed through the real managed runner and pinned runtime. The original
+source files remained byte-identical. Post-run original, emitted-source and
+lockfile digests agreed with the returned manifests and translation trust.
+
+| Case | Exit | Currentness | Requested target | Verified / errors | Compiler error |
+| --- | --- | --- | --- | --- | --- |
+| Original | 0 | Current | Complete | 1 / 0 | False |
+| Body edit | 101 | Current | Incomplete | 0 / 1 | False |
+
+The source policy SHA-256 in both runs is
+`77cfe09e6aec9d1934662198c343800bcde4c53b6cda2ed1011fe43f180fc12a`.
+The exact lockfile SHA-256 in both runs is
+`132a4290419ad4e598e1adc1227b3a4e473d29545d4c6a237ecd0b67fce511ee`.
+Actual metadata digests remain separate per shadow and are preserved in the
+complete returned records:
+
+| Original evidence file | SHA-256 |
+| --- | --- |
+| `positive.run.json` | `eefbcde69b645d739c808f380958e36627bc3e14106fc3fb6ae8fa7bbad15c08` |
+| `body-edit.run.json` | `dea68029c895bc4b295b21543ea2ee0b3a939e94739b9dfa8f2021b2b9da7fa7` |
+| `sail-neutral-managed-acceptance.log` | `03988b22c4e88dad2f2b4f7f96eae19d73d888bd21f8d0c8e0ef7f45a0a8d8ea` |
+
+An initial real helper call correctly refused overlapping source and cache
+namespaces with `SAIL3112`. The helper now creates separate owned sibling shadow
+and backend-cache namespaces. No existing managed disjointness check changed.
+A separate harness setup attempt passed a bare Cargo name where the existing
+managed interface requires its actual executable path; the harness now resolves
+the absolute rustup-proxy path without changing its dispatch filename. Both
+failed attempts and their original diagnostics remain retained. Raw identifier
+spelling is also checked against reserved translation and scalar names before
+a backend runs.
+
+To reproduce the library acceptance, build the example and the actual Sail/shim
+binaries in the native CI image, then invoke the example directly with a fresh
+evidence directory and the image's validated engine. Clear Cargo's test-only
+loader environment; the helper deliberately refuses such overrides:
+
+```sh
+cargo build --locked -p sail-verus --example neutral_contracts_acceptance
+cargo build --locked --release -p sail-cli -p sail-shim
+export SAIL_VERUS_BUILD="$SAIL_ENGINE_BUILD"
+unset RUSTUP_TOOLCHAIN LD_LIBRARY_PATH DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH
+./target/debug/examples/neutral_contracts_acceptance /fresh/evidence/directory
+```
