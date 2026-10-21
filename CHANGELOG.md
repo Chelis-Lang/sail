@@ -14,6 +14,9 @@ semantic versioning once the API is published.
   rounds and output differences invalidate the comparison.
 - Reserve dependency-publication staging directories exclusively, leaving
   another publisher’s files untouched on a collision.
+- Compare standalone verification-progress notes independent of worker order,
+  with exact text and counts, under the owner-approved VI-0012 exception.
+  Verdicts, errors and other output retain their exact checks.
 
 - Discover initial watch inputs before starting filesystem notifications.
   Cargo's startup creation of `Cargo.lock` no longer cancels the first
