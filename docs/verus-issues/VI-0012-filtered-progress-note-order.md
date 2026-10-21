@@ -124,3 +124,9 @@ and runtime reproduce further note reorderings (including `composition` /
 The original strict failure remains failed. The owner subsequently accepted
 only progress-note ordering with exact text and counts; ADR 0064 records the
 comparison contract. No general diagnostic or verdict exception is introduced.
+
+The bounded native control and its ten stock transcripts are retained at
+`experiments/2026-10-21/anvil-progress-control.tgz` in the S3 evidence bucket,
+SHA-256 `bd169963334e1e6b871c6a4513157bfdd53dac3bb83b1513801c86ff60862656`.
+The controller stopped after the first conformance arm; the subsequently
+started cache-fill arm was interrupted and is not a completed qualification.
