@@ -5,6 +5,24 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add the neutral-to-Verus lowering library for a supported complete scalar
+  source file. It emits an immutable owned shadow and exact source/requirement
+  mapping, preserves checked arithmetic definedness, and reuses the managed
+  backend with actual obligation logging. Ordinary Verus verification is
+  unchanged; native oracle qualification is a separate acceptance gate.
+
+- Add private neutral contract libraries for requirement-tagged scalar Rust
+  functions and methods. Runtime preconditions, postconditions, old scalar
+  snapshots and checked specification arithmetic remain enabled in release
+  builds. Shared source admission rechecks actual predicate definitions;
+  runtime checks do not constitute an SMT proof.
+
+- Measure real-project unchanged reruns without adding source comments. Mark
+  older comment-edit rows separately and show nonzero verification exit codes.
+- Preserve Cargo metadata pipelining while observing native compiles for
+  shipped vstd. Require producer certificates after compilation, before
+  publishing any reusable result.
+
 - Serve raw SMT runtime requests through an owner-private, separately versioned
   daemon endpoint, CLI `--socket`, and MCP `runtime_capabilities` and
   `runtime_execute`. Preserve exact evidence and cancellation without local
@@ -14,9 +32,6 @@ semantic versioning once the API is published.
   SMT batches and incremental transcripts through Sail's bundled pinned Z3.
   Complete solver evidence is attributed and cached separately from Verus;
   unknown, timeout, cancellation and malformed responses remain explicit.
-
-
-
 - Avoid duplicate watch startup jobs from replayed macOS creation events.
   Preserve cancellation for real edits, including edit-and-restore changes.
 - Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
@@ -1191,3 +1206,7 @@ semantic versioning once the API is published.
 - `sail-conformance`: `cargo-verus` corpus units (with Verus dependencies
   patched to the pinned source in a scratch copy), project requirements
   (skipped and reported when unavailable), and the standard-tier corpus.
+- Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
+  SMT batches and incremental transcripts through Sail's bundled pinned Z3.
+  Complete solver evidence is attributed and cached separately from Verus;
+  unknown, timeout, cancellation and malformed responses remain explicit.

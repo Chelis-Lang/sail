@@ -22,6 +22,11 @@ verification falls back to the pinned Z3 and stays correct.
 Sail supports Linux on x86-64 and macOS on Apple silicon. It works on Cargo
 projects (see [Limits](#limits)).
 
+For contracts on ordinary Rust functions, the private
+[`sail-contracts` library](docs/neutral-contracts.md) provides explicit
+requirement IDs and checked scalar preconditions, postconditions and old
+values. These runtime checks are separate from SMT verification.
+
 ## Install
 
 Sail is a prebuilt archive per platform on

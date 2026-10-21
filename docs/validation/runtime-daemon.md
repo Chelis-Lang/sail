@@ -47,9 +47,43 @@ solver, including the ambient-environment regression. Host log SHA-256 is
 `1cee3648ff6be8c154beb93b28500c7d46b3664ff65ebdb4e25d598b28c6db0a`;
 focused runtime log SHA-256 is
 `6e5ad0be295846245568340715706a18c138d962db6f704610450f96ae5c56c9`.
-Native Linux and full Verus integration acceptance remain pending for this slice.
+Native Linux and full Verus integration qualification follows below.
 
 Earlier attempt: `c67ae9a5`, macOS host, 889 passed and two failed. Both failures
 were exact MCP tool inventories missing the two implemented runtime tools;
 the corrected inventories preserve exact full-list checks. No solver verdict
 or backend evidence check was relaxed.
+
+
+Native Linux source `e4a384dd` completed the full required sequence with exit
+zero: gate, solver, full end-to-end plus extra, PR conformance, full fast and
+standard conformance. Gate passed 907 tests; the solver lane passed 41 tests.
+All four PR arms matched 33 units and 311 functions. All four full-fast arms
+matched 147 units and 3,449 functions. All four standard arms matched 159 units
+and 12,725 functions, with no differences, instability or infrastructure errors;
+19 standard units had recorded resource-limit drift. The engine arm included
+158 focused units. This qualification is correctness evidence, not a
+performance measurement.
+
+The original gate attempt passed its tests but failed the installed MCP
+inventory example. The corrected exact inventory was rerun through the full
+sequence above. Complete original logs and conformance reports are retained in
+`sail-daemon-full-native-evidence.tar.gz`, SHA-256
+`ad814460d9a648ab1e12e93874883deb0efc7c9d10379b6f6c27edf77cad2e17`.
+
+The branch then merged main `ee362574`, including independently qualified raw
+runtime and neutral-contract lowering. The merged implementation `f35156e4` passed its current-source native full
+gate with 930 tests and all formatting, strict workspace Clippy, documentation,
+layering, dependency and benchmark-page checks. Its current-source macOS host
+gate passed 919 tests with 44 explicit skips and strict workspace Clippy.
+Actual pinned runtime, RPC and CLI/MCP followups passed 11, 9 and 2 controls,
+respectively. The complete standard result above belongs specifically to
+`e4a384dd`; it is not represented as a standard run of the later merge.
+
+Current-main logs, retained outside the repository:
+
+| Record | SHA-256 |
+| --- | --- |
+| Native full gate | `72f984002a06586608c81684c224fff7daf6a99e6dfe6330a7ffd2ec3fa955e4` |
+| macOS host gate | `c59cab2386c5f5826966cabba005fca1d8e6c8f741cb68b85dd908b07710c3a3` |
+| Actual pinned macOS runtime/RPC/CLI | `44b934ac16411b1099cebfe29971fb9787d588d09ec679ca52bff5f724a0ce0c` |
