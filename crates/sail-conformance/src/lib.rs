@@ -189,12 +189,7 @@ pub fn compare(plain: &RunRecord, sail: &RunRecord) -> Comparison {
         && flips
             .iter()
             .all(|(key, count)| *count == 1 && key.1 == VI0003_MODULE && key.2 == VI0003_FUNCTION)
-        && plain
-            .stderr
-            .lines()
-            .collect::<Vec<_>>()
-            .windows(2)
-            .any(|lines| lines[0] == VI0003_MESSAGE && lines[1].trim() == VI0003_LOCATION);
+        && recorded_bitvector_assertion(&plain.stderr);
     for (key, _) in flips {
         if vi0003 {
             c.accepted.push(format!(
@@ -216,6 +211,14 @@ const VI0003_MESSAGE: &str = "error: bitvector assertion not satisfied";
 const VI0003_MODULE: &str = "combinators::uints::spec";
 const VI0003_FUNCTION: &str = "vest_lib::combinators::uints::spec::lemma_u24_be_bytes_roundtrip";
 const VI0003_LOCATION: &str = "--> vest_lib/src/combinators/uints/spec.rs:212:5";
+
+fn recorded_bitvector_assertion(stderr: &str) -> bool {
+    stderr
+        .lines()
+        .collect::<Vec<_>>()
+        .windows(2)
+        .any(|lines| lines[0] == VI0003_MESSAGE && lines[1].trim() == VI0003_LOCATION)
+}
 
 type FunctionKey = (usize, String, String);
 type FunctionIndex = BTreeMap<FunctionKey, Vec<(bool, u64)>>;
