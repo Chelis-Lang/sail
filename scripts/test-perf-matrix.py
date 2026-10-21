@@ -344,6 +344,7 @@ class SmallSequence(unittest.TestCase):
             d = Path(d)
             tools = d / "tools"; tools.mkdir()
             body = TOOL.replace("TEMPLATE)", repr(TEMPLATE) + ")")
+            body = body.replace("args = sys.argv[1:]", f"assert os.environ.get('RUSTUP_TOOLCHAIN') == {pm.pinned_toolchain()!r}\nargs = sys.argv[1:]")
             for name in ("cargo", "sail"):
                 (tools / name).write_text(body); (tools / name).chmod(0o755)
             install = d / "install"; (install / "bin").mkdir(parents=True)

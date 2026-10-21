@@ -312,6 +312,8 @@ class Runner:
         self.vstd = args.vstd
         self.vstd_lock = shipped_lock(self.install) if args.vstd == "registry" else None
         self.toolchain = pinned_toolchain()
+        if self.toolchain:
+            self.extra.setdefault("RUSTUP_TOOLCHAIN", self.toolchain)
 
     def record(self, **sample):
         with open(self.samples, "a") as f:
@@ -593,7 +595,7 @@ def cmd_run(args):
                                       else [p for p in projects if p in ("ironkv", "vest", "capybarakv")]),
                   vstd=args.vstd, vstd_lock=str(r.vstd_lock) if r.vstd_lock else None,
                   vstd_versions=verus_versions(r.vstd_lock.read_text()) if r.vstd_lock else [],
-                  rust_toolchain=r.toolchain,
+                  rust_toolchain=r.toolchain, cargo_toolchain=r.extra.get("RUSTUP_TOOLCHAIN"),
                   rust_targets={p: RUST_TARGETS[p] for p in projects if p in RUST_TARGETS})
     (out / "header.json").write_text(json.dumps(header, indent=1) + "\n")
     for rnd in range(1, args.rounds + 1):

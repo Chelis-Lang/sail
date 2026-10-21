@@ -402,7 +402,8 @@ or `scripts/perf-agents.sh demo 4 3`.
 one run: an installed release archive's `sail verify` against plain `cargo
 verus verify`, in at least three paired rounds whose order rotates (stock
 first in odd rounds). Every arm of every round starts from fresh copies and
-an empty Sail cache.
+an empty Sail cache. Both arms select the verifier’s pinned Rust/Cargo
+toolchain, as ADR 0058 requires; the header records this selection.
 
 | Project | Scenarios | Bar |
 |---|---|---|
