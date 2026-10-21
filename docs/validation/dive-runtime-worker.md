@@ -3,7 +3,7 @@
 Status: focused native-library, isolated-process, full macOS host and native
 Linux workspace/solver/end-to-end/conformance checks passed. Common-runtime
 integration and private-dependency protected CI remain required.
-The candidate is based on Sail `0581d6f4` and pins D.I.V.E.
+The current implementation includes main `616cc8ad` and pins D.I.V.E.
 `1025cd6a0510183bc16abc1e6e3eea4f9305c5a9`. No TLC, Java or D.I.V.E.
 command executes in these checks. Existing Verus routes are unchanged.
 
@@ -89,9 +89,9 @@ original report's `property` and trace ending's `name`; its separate trace
 property list is empty. The transport preserves those fields verbatim. Tests
 assert the actual name and exact ending instead of inventing a populated list.
 The first new test incorrectly expected that list to be populated and failed;
-the original native output established the correct metadata location. An
-protocol fault controls also timed out during concurrent host compilation;
-its unchanged deadline and expectation remain in use for the followup checks.
+the original native output established the correct metadata location.
+Protocol fault controls also timed out during concurrent host compilation;
+their unchanged deadlines and expectations remain in use for the followup checks.
 The unchanged focused suite subsequently passed all 16 controls with one test
 thread on macOS. Strict all-target Clippy also passed. These focused checks
 precede the current-source full Mac and native Linux gates; they do not replace
@@ -188,3 +188,15 @@ credential installed on the host.
 | `sail-root-dive-role-native-gate.log` | `13ffe6759e2265b72f254a5c3de354b7e022c4ac2aa0845e70a17b134c058b03` |
 | `sail-dive-role-main-macos-host.log` | `3fbca457ba9abf38757080801e32a3a3bef8e481f71a54c05a8176f24965639f` |
 | `sail-root-dive-role-native-gate-setup-attempt1.log` | `98f60bd5106c3503fc42408645c3f9ed576829bc6f2ce0817167c47a4d0a938f` |
+
+
+After performance PR #321 landed, implementation `5051d96a` merged main
+`616cc8ad` and passed the complete native Linux gate with 949 tests and the
+full Mac host gate with 938 tests. Both retain 44 explicit skips, strict
+workspace Clippy and unchanged deadlines. These followup gates do not relabel
+the earlier solver, end-to-end or conformance runs.
+
+| Latest-main artifact | SHA-256 |
+|---|---|
+| `sail-root-dive-role-main321-native-gate.log` | `d3ef82e2b2d1c8a59f3e7c9da0df05eb40a67b4044516177102dd906d6a9d1e1` |
+| `sail-dive-role-main321-macos-host.log` | `521d558700d7641384ab3f071b7b63e7a9ff8bb73570599ce51737ded830325a` |
