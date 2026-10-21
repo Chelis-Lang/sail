@@ -39,3 +39,7 @@ The producer witness covers metadata preceding its certificate, exact output
 bytes, absent producers, old-run marks and producers exiting without a record.
 The composed Mac host gate passes 905 tests with 37 skipped and Clippy clean;
 clean Mac performance remains pending.
+
+Raw A/B samples, controls and first-use witness:
+`experiments/2026-10-21/shipped-pipelining.tgz` in the evidence S3 bucket,
+SHA-256 `66be7e6fc3bffefe4dc4237bd44ee76d738b35bef019b139eaaff6b763a3c1ad`.
