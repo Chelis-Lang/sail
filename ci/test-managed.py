@@ -785,6 +785,9 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                     '    assert!(probe.status.success(), "{:?}", probe);\n'
                     '    assert!(!probe.stdout.is_empty());\n'
                     '    let out = std::env::var("OUT_DIR").unwrap();\n'
+                    '    let keys = ["CARGO_MANIFEST_DIR", "CARGO_MANIFEST_LINKS", "CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_PKG_VERSION_MAJOR", "CARGO_PKG_VERSION_MINOR", "CARGO_PKG_VERSION_PATCH", "CARGO_PKG_VERSION_PRE", "OUT_DIR"];\n'
+                    '    let observed: String = keys.iter().map(|key| format!("{key}={}\\n", std::env::var(key).unwrap())).collect();\n'
+                    '    std::fs::write(format!("{out}/sail-script-environment"), observed).unwrap();\n'
                     '    let time = std::time::SystemTime::now().duration_since('
                     'std::time::UNIX_EPOCH).unwrap().as_nanos();\n'
                     f'    std::fs::write(format!("{{out}}/sail-schedule-marker"), '
@@ -815,6 +818,14 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 markers = list((root / "cache/projects").glob(
                     "*/compiler-artifacts/*/target/**/out/sail-schedule-marker"))
                 assert len(markers) == 1, markers
+                observed = dict(line.split("=", 1) for line in
+                    (markers[0].parent / "sail-script-environment").read_text().splitlines())
+                contracts = [record for ledger in (root / "cache/projects").glob("*/*/build-inputs.json")
+                    for record in json.loads(ledger.read_text())
+                    if record["manifest"].endswith("/schedule-new/Cargo.toml")]
+                assert contracts, "missing observed script contract"
+                for record in contracts:
+                    assert {key: record["env"][key] for key in observed} == observed, observed
                 marker = markers[0].read_text()
                 assert marker.startswith("new:"), marker
                 return marker
