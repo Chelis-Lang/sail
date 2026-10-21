@@ -16,12 +16,16 @@ pub struct ContractRun {
     pub shadow: PathBuf,
     /// Actual complete managed backend result, including failures and unknowns.
     pub backend: sail_api::project::ProjectResult,
+    /// Exact compiler-loaded implementation and dependency resolution admission.
+    pub translation_trust: super::TranslationTrust,
 }
 
 /// Lower one exact source snapshot and run its immutable owned shadow on pinned Verus.
 ///
 /// This returns actual backend records, not per-requirement assurance. Consumers
 /// must map observed obligations and independently recheck original currentness.
+/// `config` must be constructed by Sail from its owned runtime configuration,
+/// never from client-supplied executable paths.
 /// # Errors
 /// `SAIL3140` for unsupported source or request controls; `SAIL3141` for shadow
 /// drift; existing managed/runtime codes for unavailable execution or backend faults.
@@ -38,6 +42,11 @@ pub fn verify(
         ));
     }
     let pins = crate::toolchain::Pins::embedded()?;
+    if config.cargo_toolchain.selected() != Some(pins.verus.rust_toolchain.as_str()) {
+        return Err(unsupported(
+            "neutral translation requires Sail-selected pinned Cargo",
+        ));
+    }
     let installed = crate::engine::Installed::locate_verified(&config.cache, &pins)?;
     if canonical(&installed.cargo_verus)? != canonical(&config.cargo_verus)? {
         return Err(unsupported(
@@ -91,6 +100,21 @@ pub fn verify(
         lowering.source.as_bytes(),
         &manifest,
     )?;
+    // Refuse environmental code selection before any metadata or lockfile probe.
+    let controls = super::trust::Controls::capture(&shadow, &pins.verus.rust_toolchain)?;
+    let lockfile = shadow.join("Cargo.lock");
+    if !lockfile.exists()
+        && let Some(seed) = crate::managed::new_project_lockfile(&config.cargo_verus, crate_name)
+    {
+        install(&lockfile, seed.as_bytes())?;
+    }
+    let trust = super::trust::Admission::resolve(config, &shadow, controls)?;
+    check(
+        &shadow,
+        cargo.as_bytes(),
+        lowering.source.as_bytes(),
+        &manifest,
+    )?;
     let mut backend_config = config.clone();
     backend_config.workspace.clone_from(&shadow);
     backend_config.attribution_logs = true;
@@ -102,12 +126,14 @@ pub fn verify(
         lowering.source.as_bytes(),
         &manifest,
     )?;
+    trust.intact(&shadow)?;
     let backend = result?;
     drop(lock);
     Ok(ContractRun {
         lowering,
         shadow,
         backend,
+        translation_trust: trust.evidence,
     })
 }
 

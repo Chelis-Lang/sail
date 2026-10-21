@@ -82,6 +82,37 @@ currentness from a borrowed string. The caller rechecks original currentness
 and maps actual obligations. Contract-to-requirement entailment remains an
 independent Oyster query.
 
+## Translation implementation trust
+
+The helper accepts only Sail-owned executable configuration and an explicitly
+selected pinned Cargo toolchain. Client protocol fields never choose executable
+paths. Before any metadata child or lockfile probe, it refuses Cargo configuration
+files in the shadow's lexical and physical ancestors and Cargo home, including
+symbolic links and unreadable files. It refuses compiler wrappers, compiler or
+linker-loader overrides, Rust flags, Cargo patch/source/registry/build/target/profile
+and unstable selectors, Verus selectors, and Sail private or research selectors.
+A mismatched explicit `RUSTUP_TOOLCHAIN` is unsupported. Resource-only build jobs
+and the target directory, which Sail overrides, do not change admission. This
+first slice refuses even benign Cargo configuration files rather than inferring
+that an unreviewed configuration preserves translation.
+
+The optional qualified new-project lockfile seeds resolution when available.
+Actual Cargo metadata then passes through the existing independent vstd source
+policy admission. That policy checks the complete compiler-loaded dependency
+closure, including builtin proc macros, exact versions, selected features,
+registry locations and every actual source file against independent hashes.
+Mutable checksum sidecars and package version strings alone do not qualify it.
+If a new dependency resolution differs, the helper reports `SAIL3140`; it does
+not relax policy or claim a neutral proof from an otherwise valid backend run.
+No second copy of the source-policy checker is maintained.
+
+`ContractRun.translation_trust` records the admitted source policy, actual metadata
+and exact Cargo lockfile digests. The helper rechecks the control observations,
+configuration absence, complete source closure, lockfile and immutable shadow
+after the managed backend, including failure paths. A changed translation input
+leaves the backend evidence unqualified. Original source currentness and actual
+obligation mapping remain the caller's responsibility.
+
 ## Qualification
 
 Ordinary tests compile the exact neutral fixtures with the real runtime macros

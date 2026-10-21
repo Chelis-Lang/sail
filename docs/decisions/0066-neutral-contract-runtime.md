@@ -60,3 +60,11 @@ the original requires, not a stronger precondition. Division, remainder and
 executable neutral `Int` remain unsupported until separately qualified.
 The [lowering interface](../spec/neutral-verus-lowering.md) separates ordinary
 runtime/source fixtures from actual native fork/stock acceptance.
+
+The managed neutral helper additionally admits the actual compiler-loaded vstd and
+builtin macro source closure through the existing independent source policy.
+Version pins alone do not establish translation trust. Unreviewed Cargo controls
+are refused before metadata; full source and lockfile hashes are rechecked after
+verification. This bridge exposes pure admission only and does not change managed
+proof reuse or performance behavior. The exact refusals and returned trust hashes
+are specified in [neutral Verus lowering](../spec/neutral-verus-lowering.md).
