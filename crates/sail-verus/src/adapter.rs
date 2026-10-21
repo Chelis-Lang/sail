@@ -11,6 +11,9 @@ use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
+#[path = "adapter_metadata_stdout.rs"]
+mod metadata_stdout;
+
 /// Only Cargo-Verus's own metadata probe receives this private marker. The
 /// build subprocess removes it so nested user commands retain their environment.
 pub(crate) const CARGO_METADATA_ENV: &str = "SAIL_MANAGED_CARGO_METADATA";
@@ -149,6 +152,32 @@ fn cargo() -> Result<ExitCode> {
     }
     cmd.env("SAIL_MANAGED_WRAPPER", required("RUSTC_WRAPPER")?)
         .env("RUSTC_WRAPPER", required("SAIL_MANAGED_PROXY")?);
+    if let Some(directory) = std::env::var_os(crate::managed::build_environment::REQUEST) {
+        let directory = PathBuf::from(directory);
+        let version = Command::new(cmd.get_program())
+            .args(["--version", "--verbose"])
+            .output()
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        if !version.status.success() {
+            return Ok(status(version.status));
+        }
+        std::fs::write(directory.join("cargo-version.txt"), version.stdout)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        cmd.args(["--unit-graph", "-Z", "unstable-options"])
+            .env("CARGO_CACHE_RUSTC_INFO", "0")
+            .stdin(Stdio::null());
+        let output = cmd
+            .output()
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        std::io::stderr()
+            .write_all(&output.stderr)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        if output.status.success() {
+            std::fs::write(directory.join("graph.json"), output.stdout)
+                .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        }
+        return Ok(status(output.status));
+    }
     // Cargo messages remain on stdout; target Verus documents live in sidecars.
     cmd.stdout(Stdio::piped()).stderr(Stdio::inherit());
     let path = PathBuf::from(required("SAIL_MANAGED_ARTIFACTS")?);
@@ -411,22 +440,39 @@ fn retained_runtime(mode: crate::managed::research::Mode) -> Option<Runtime> {
 )]
 fn driver() -> Result<ExitCode> {
     let research = crate::managed::research::selected()?;
-    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let mut args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
+    if let Some(result) = crate::managed::build_environment::probe(&wrapper, &args) {
+        return result;
+    }
     // Native prerequisites always execute through Cargo's real compiler. The
     // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
+        let metadata_stdout = if let Some(index) = metadata_stdout::metadata_output(&args) {
+            let artifacts = PathBuf::from(required("SAIL_MANAGED_ARTIFACTS")?);
+            let run = artifacts
+                .parent()
+                .ok_or_else(|| Error::new("SAIL3111", "managed artifacts have no run directory"))?;
+            Some(metadata_stdout::MetadataStdout::prepare(
+                &mut args, index, run,
+            )?)
+        } else {
+            None
+        };
         let runtime = retained_runtime(research);
         let plan = (research != crate::managed::research::Mode::RetainedContent)
             .then(crate::managed::shipped::active)
             .flatten();
         if research == crate::managed::research::Mode::Off && runtime.is_none() && plan.is_none() {
-            return Command::new(wrapper)
-                .args(args)
+            let actual = Command::new(wrapper)
+                .args(&args)
                 .env_remove(crate::managed::visible_output::ENV)
                 .status()
-                .map(status)
-                .map_err(|e| Error::new("SAIL3111", e.to_string()));
+                .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+            if let Some(metadata) = &metadata_stdout {
+                metadata.replay(&mut std::io::stdout().lock())?;
+            }
+            return Ok(status(actual));
         }
         // Dependents Cargo starts on this unit's metadata wait while it runs.
         let _running = runtime
@@ -471,6 +517,9 @@ fn driver() -> Result<ExitCode> {
         let actual = child
             .wait()
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        if let Some(metadata) = &metadata_stdout {
+            metadata.replay(&mut std::io::stdout().lock())?;
+        }
         if actual.success()
             && let Some(observation) = observation
         {

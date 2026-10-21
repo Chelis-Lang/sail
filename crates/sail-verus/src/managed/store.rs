@@ -570,7 +570,7 @@ fn validated(
     // input is an ordinary miss, as plain Cargo would rebuild.
     if revision(data, candidate).as_deref() != Some(manifest.revision.as_str())
         || !super::environment::unchanged(&receipt.declared_environment)
-        || !super::build_inputs::contracts_current(&manifest.contracts)
+        || !super::build_inputs::contracts_current(&manifest.contracts, data)
     {
         return Err(Refusal::Miss);
     }
