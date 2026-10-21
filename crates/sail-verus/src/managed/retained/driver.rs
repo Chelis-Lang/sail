@@ -834,7 +834,7 @@ fn closed_verus_options(arguments: &[String], is_vstd: bool, imports: &BTreeSet<
                 index += 2;
             }
             "--output-json" | "--time" | "--time-expanded" | "--no-report-long-running" => {
-                index += 1
+                index += 1;
             }
             "--rlimit" | "--multiple-errors" | "--num-threads" => {
                 if arguments
