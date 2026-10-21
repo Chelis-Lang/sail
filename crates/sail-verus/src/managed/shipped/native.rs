@@ -101,29 +101,14 @@ impl<'a> Observation<'a> {
             .recursive(true)
             .create(&base)
             .map_err(|_| "native observation directory unavailable")?;
-        // A metadata-ready producer can still be linking its rlib. Wait for
-        // qualified producers, then take a new complete snapshot so the child
-        // never receives a graph missing that producer's later output.
-        let first =
-            Snapshot::capture_ready(&plan.target, &base.join("first"), args).ok_or_else(|| {
-                trace_inventory(&call, "first");
+        // Let Cargo keep metadata pipelining (ADR 0061). The child sees only
+        // private copies of inputs already present. Missing producer
+        // certificates still refuse publication after the child finishes.
+        let graph = Snapshot::capture_pipelined(&plan.target, &base.join("graph"), args)
+            .ok_or_else(|| {
+                trace_inventory(&call, "pipelined");
                 "native graph capture refused"
             })?;
-        if !await_graph_records(&call, &first) {
-            return Err("native graph producer did not complete");
-        }
-        drop(first);
-        let graph =
-            Snapshot::capture_ready(&plan.target, &base.join("graph"), args).ok_or_else(|| {
-                trace_inventory(&call, "final");
-                "native graph recapture refused"
-            })?;
-        // Completion emits a separate record for each output. Recapture can
-        // discover an rlib after its rmeta record but before its own record.
-        // Wait on the final inventory too; hash each body only after arrival.
-        if !await_graph_records(&call, &graph) || !graph_established(&call, &graph) {
-            return Err("native graph lacks consumed-input provenance");
-        }
         let reads = native_reads::Observation::begin(&base.join("read"), &plan.run_id, &call.key)
             .ok_or("native read request unavailable")?;
         let mut arguments = graph.arguments().to_vec();
@@ -173,7 +158,10 @@ impl<'a> Observation<'a> {
 
     fn try_complete(&self) -> Option<()> {
         let plan = self.call.plan;
-        if !self.graph.intact() || !graph_established(&self.call, &self.graph) {
+        if !await_graph_records(&self.call, &self.graph)
+            || !self.graph.intact()
+            || !graph_established(&self.call, &self.graph)
+        {
             return None;
         }
         let source_observation_sha256 = self.reads.finish(

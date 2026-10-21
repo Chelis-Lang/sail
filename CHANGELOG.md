@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve Cargo metadata pipelining while observing native compiles for
+  shipped vstd. Require producer certificates after compilation, before
+  publishing any reusable result.
+
 - Reuse saved proofs when unchanged build scripts declare supported
   `CARGO_FEATURE_*` or `CARGO_CFG_*` inputs (#298). Use exact Cargo units
   and compiler cfg queries instead of parent values. Unknown Cargo versions
