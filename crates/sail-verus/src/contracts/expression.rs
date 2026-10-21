@@ -92,6 +92,7 @@ impl Environment<'_> {
             syn::Lit::Bool(value) => Ok(value_of(Type::Bool, quote!(#value))),
             syn::Lit::Int(value) => {
                 let ty = literal_type(value, hint)?;
+                validate_literal(value, &ty, false)?;
                 let expression = quote!((#value as int));
                 let defined = ty.bounds(&expression)?;
                 Ok(Value {
@@ -112,6 +113,21 @@ impl Environment<'_> {
             }) if value.suffix().is_empty() => Ok(None),
             syn::Expr::Paren(value) => self.infer(&value.expr),
             syn::Expr::Group(value) => self.infer(&value.expr),
+            syn::Expr::Unary(value) if matches!(value.op, syn::UnOp::Neg(_)) => {
+                match value.expr.as_ref() {
+                    syn::Expr::Lit(syn::ExprLit {
+                        lit: syn::Lit::Int(literal),
+                        ..
+                    }) => {
+                        if literal.suffix().is_empty() {
+                            Ok(None)
+                        } else {
+                            literal_type(literal, None).map(Some)
+                        }
+                    }
+                    inner => self.infer(inner),
+                }
+            }
             syn::Expr::Unary(value) => self.infer(&value.expr),
             syn::Expr::Binary(value) if numeric(&value.op) => {
                 Ok(self.infer(&value.left)?.or(self.infer(&value.right)?))
@@ -225,6 +241,7 @@ impl Environment<'_> {
             }) = source.expr.as_ref()
         {
             let ty = literal_type(literal, hint)?;
+            validate_literal(literal, &ty, true)?;
             let literal = syn::LitInt::new(literal.base10_digits(), literal.span());
             let expression = quote!((-(#literal as int)));
             let defined = ty.bounds(&expression)?;
@@ -386,6 +403,34 @@ fn literal_type(value: &syn::LitInt, hint: Option<&Type>) -> Result<Type> {
         }
     }
     Err(unsupported("unsupported integer literal type"))
+}
+
+fn validate_literal(literal: &syn::LitInt, ty: &Type, negative: bool) -> Result<()> {
+    let Type::Integer { signed, bits } = ty else {
+        return Err(unsupported("integer literal used with a non-integer type"));
+    };
+    if negative && !signed {
+        return Err(unsupported(
+            "unsigned negation is not valid neutral Rust source",
+        ));
+    }
+    let magnitude = literal
+        .base10_parse::<u128>()
+        .map_err(|_| unsupported("integer literal exceeds every supported source type"))?;
+    let maximum = if *signed {
+        let magnitude = 1u128 << (bits - 1);
+        if negative { magnitude } else { magnitude - 1 }
+    } else if *bits == 128 {
+        u128::MAX
+    } else {
+        (1u128 << bits) - 1
+    };
+    if magnitude > maximum {
+        return Err(unsupported(
+            "integer literal is outside its source type; it cannot become an impossible precondition",
+        ));
+    }
+    Ok(())
 }
 
 fn numeric(operation: &syn::BinOp) -> bool {
