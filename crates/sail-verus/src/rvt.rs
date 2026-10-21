@@ -369,19 +369,26 @@ fn extra_args(threads: Option<u32>, progress_supplied: bool) -> String {
 }
 
 fn supplies_progress_flag(test: &TestCase, build: &Path) -> bool {
-    if test.binary == "sail_vi0012_progress_order"
-        && test.name == "sail_vi0012_bucket_start_notes_in_bucket_order"
-    {
-        // This original regression passes the flag directly to verify_one_file.
-        // Bind its entire source: a name-only exemption could silently lose
-        // suppression if a later revision removes that argument. Do not parse
-        // or normalize arbitrary test arguments, including explicit threads.
+    // These original regressions supply the flag directly to verify_one_file.
+    // Bind the whole source, binary and case; never parse arbitrary arguments.
+    let original = match (test.binary.as_str(), test.name.as_str()) {
+        ("sail_vi0012_progress_order", "sail_vi0012_bucket_start_notes_in_bucket_order") => Some((
+            "sail_vi0012_progress_order.rs",
+            "046f7fb964c3a6dcb4cbccca1ec9cd61e4d4ed603d09b7976353f930fb6d8a63",
+        )),
+        ("sail_vi0012_dispatch_order", "sail_vi0012_dispatch_order_keeps_start_note_order") => {
+            Some((
+                "sail_vi0012_dispatch_order.rs",
+                "0eaec1bc54d7821f3026e4151bc07d7eafeff7b69cf3dc92e7a5c608536160db",
+            ))
+        }
+        _ => None,
+    };
+    if let Some((file, expected)) = original {
         return crate::source_build::hash_file(
-            &build.join("verus/source/rust_verify_test/tests/sail_vi0012_progress_order.rs"),
+            &build.join("verus/source/rust_verify_test/tests").join(file),
         )
-        .is_ok_and(|sha| {
-            sha == "046f7fb964c3a6dcb4cbccca1ec9cd61e4d4ed603d09b7976353f930fb6d8a63"
-        });
+        .is_ok_and(|sha| sha == expected);
     }
     test.binary == "examples"
         && test.name == "examples_assert_by_compute"
@@ -521,6 +528,42 @@ pub fn kept_input_dir(stderr: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dispatch_progress_default_is_source_and_case_bound() -> Result<(), Box<dyn std::error::Error>>
+    {
+        const ORIGINAL: &[u8] =
+            include_bytes!("../tests/fixtures/rvt-progress/sail_vi0012_dispatch_order.rs");
+        let dir = std::env::temp_dir().join(format!("sail-rvt-dispatch-{}", std::process::id()));
+        let source = dir.join("verus/source/rust_verify_test/tests/sail_vi0012_dispatch_order.rs");
+        std::fs::create_dir_all(source.parent().ok_or("source directory")?)?;
+        let mut test = TestCase {
+            binary: "sail_vi0012_dispatch_order".to_owned(),
+            path: PathBuf::new(),
+            name: "sail_vi0012_dispatch_order_keeps_start_note_order".to_owned(),
+            ignored: false,
+        };
+        assert!(!supplies_progress_flag(&test, &dir));
+        std::fs::write(&source, ORIGINAL)?;
+        assert!(supplies_progress_flag(&test, &dir));
+        assert_eq!(extra_args(None, supplies_progress_flag(&test, &dir)), "");
+        assert_eq!(
+            extra_args(Some(4), supplies_progress_flag(&test, &dir)),
+            "--num-threads 4"
+        );
+        test.name = "sail_vi0012_dispatch_order_keeps_queries".to_owned();
+        assert!(!supplies_progress_flag(&test, &dir));
+        test.name = "sail_vi0012_dispatch_order_keeps_start_note_order".to_owned();
+        test.binary = "foreign_binary".to_owned();
+        assert!(!supplies_progress_flag(&test, &dir));
+        test.binary = "sail_vi0012_dispatch_order".to_owned();
+        let mut changed = ORIGINAL.to_vec();
+        changed.extend_from_slice(b"\n// changed fixture\n");
+        std::fs::write(&source, changed)?;
+        assert!(!supplies_progress_flag(&test, &dir));
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
 
     #[test]
     fn fork_progress_default_requires_exact_original_source_and_case() {

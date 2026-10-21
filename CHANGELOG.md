@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Avoid injecting a duplicate progress option into the pinned dispatch-order
+  regression. Require the exact test identity and full original source hash.
+
 - Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
   comparisons across stock Verus, the plain fork, and Sail.
   Support fresh verification, unchanged runs, proof edits, and daemon restarts.
