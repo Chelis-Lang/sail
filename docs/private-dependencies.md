@@ -4,6 +4,11 @@ Sail's temporal worker links the D.I.V.E. library at the full revision recorded
 in `Cargo.toml` and `Cargo.lock`. Both repositories remain private. CI needs
 read access to that source independently of the checkout token for Sail.
 
+GitHub CLI can install secrets but cannot create a fine-grained personal
+access token. These repositories disable deploy keys, so creating a repository
+SSH credential through the API is unavailable. Create the token in GitHub
+settings and install it directly as an Actions secret; never send it in chat.
+
 Create a fine-grained GitHub personal access token restricted to the private
 `Chelis-Lang/sail` and `Chelis-Lang/dive` repositories, with **Contents: read**.
 Save it as the Actions secret `SAIL_DEPENDENCY_READ_TOKEN` in Sail and Oyster.
