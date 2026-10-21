@@ -12,6 +12,12 @@ repository = "https://github.com/Chelis-Lang/sail"
 license = "MIT"
 
 [workspace.dependencies]
+proc-macro2 = { version = "=1.0.107", features = ["span-locations"] }
+quote = "=1.0.47"
+syn = { version = "=2.0.119", features = ["full", "fold", "visit", "extra-traits"] }
+sail-contracts-ir = { path = "crates/sail-contracts-ir" }
+sail-contracts-macros = { path = "crates/sail-contracts-macros" }
+sail-contracts = { path = "crates/sail-contracts" }
 dive-api = { git = "https://github.com/Chelis-Lang/dive", rev = "1025cd6a0510183bc16abc1e6e3eea4f9305c5a9" }
 dive-ir = { git = "https://github.com/Chelis-Lang/dive", rev = "1025cd6a0510183bc16abc1e6e3eea4f9305c5a9" }
 sail-dive = { path = "crates/sail-dive" }

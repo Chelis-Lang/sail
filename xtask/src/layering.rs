@@ -16,6 +16,9 @@
 
 /// `(crate, internal crates it may depend on directly)`.
 pub const ALLOWED: &[(&str, &[&str])] = &[
+    ("sail-contracts-ir", &[]),
+    ("sail-contracts-macros", &["sail-contracts-ir"]),
+    ("sail-contracts", &["sail-contracts-macros"]),
     ("sail-dive", &[]),
     ("sail-runtime-worker", &["sail-dive"]),
     ("sail-smtlib", &[]),
