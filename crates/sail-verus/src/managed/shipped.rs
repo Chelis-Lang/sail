@@ -839,6 +839,12 @@ pub(crate) fn plan(
     if !plain_directory(registry) || !plain_directory(target) || loader_variables() {
         return None;
     }
+    // A known resolution mismatch needs neither runtime/sysroot hashing nor
+    // compiler-source capture. This grants no admission: resolve() below
+    // still checks the complete source policy at its original point.
+    if !admission::Closure::metadata_admits(metadata, registry) {
+        return None;
+    }
     let root = runtime_root(cargo_verus)?;
     let recorded = if recording.is_none() && local.is_none() {
         Some(read_manifest(&bundle_dir(root.file_name()?)?)?)

@@ -100,3 +100,27 @@ Native evidence bucket, `experiments/2026-10-20/miss-hashing/miss-hashing-eviden
 SHA-256 `90843d8d556dd66ce0dcc89acbc6896b37621d1b0242e2cc993c51175259cd1a`:
 scripts, `results.tsv`, per-run stdout and stderr, output comparison, read
 census summaries and host/stage identities.
+
+## Reject known resolution misses first
+
+The runtime/sysroot identity was still computed before checking whether vstd's
+resolved versions and features could match the source policy. The same
+resolution check now runs first. A match still requires the original complete
+source, compiler, runtime, solver and adapter checks; this precheck only refuses.
+
+A three-round native Mac control (mac-m4.metal, us-east-1a, macOS 27.0,
+Cargo/Rust 1.99.1, runtime f8589ed4 on upstream 7d82994) records Vest cold at
+37.57 seconds against stock's 37.59 seconds. The earlier combined baseline was
+39.05 seconds against 37.26 seconds. The default-limit proof fails equally in
+both arms (VI-0032); this is a valid failed-proof comparison, not a passing proof
+claim. CLI SHA-256 `4824ed857071b26a2b998123e3ef9ca74cc53659b9de00a5d3a3091ff6dc6b49`.
+
+That control contains an unselected lookup-isolation experiment, but this row
+rejects the resolution before any native observer runs. It qualifies only this
+refusal optimization. Fresh complete installed-product release measurements
+remain separate. Native standalone source `1701eacb` passes workspace, solver, full e2e
+including extra, PR/full-fast and standard conformance. Standard has 159 Same
+and zero unstable, Different or infrastructure errors in all four arms; its
+18-mutant HumanEval probe and both reverts also pass. Raw gate logs:
+`experiments/2026-10-21/early-refusal-gates.tgz` in the S3 evidence bucket,
+SHA-256 `778b7f167bf235a9d1cca8498d2d29a9e5081f6114001abe887edf75e5b1c899`.
