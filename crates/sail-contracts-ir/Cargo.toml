@@ -1,0 +1,17 @@
+[package]
+name = "sail-contracts-ir"
+description = "Validated shared syntax for neutral Rust contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
+
+[lints]
+workspace = true
