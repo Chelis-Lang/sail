@@ -60,7 +60,7 @@ The pilot itself had flaws that this decision fixes:
   with a sidecar `<name>.meta.json` recording the generator version, seed,
   base commit, the sha256 of the generated catalogue, the candidate-site
   counts and, per mutant, its class, function, mode and location.
-- The same seed, generator version (`gen-mutants 1`) and base commit give a
+- The same seed, generator version (`gen-mutants 2`) and base commit give a
   byte-identical generated catalogue; its digest is in the sidecar.
 - Generated mutants carry `expected = "pending"`. The workloads refuse
   pending mutants.
@@ -80,7 +80,7 @@ Functions marked `external`/`external_body` get no body mutants.
 | `statement` | delete one `;`-terminated statement of an exec or proof body (never a `let`, `return`, `break` or `continue`) |
 | `invariant` | delete one loop `invariant` item |
 | `spec-weaken` | delete one `requires` item |
-| `spec-strengthen` | delete one `ensures` item, or tighten one of its `<=`/`>=` to `<`/`>` |
+| `spec-strengthen` | conjoin `false` with one `ensures` item, or tighten one of its `<=`/`>=` to `<`/`>` |
 | `rare-region` | in an exec function with `ensures`, an integer parameter and an integer, `bool` or unit result: `if p == k { return w; }` first in the body |
 
 ### Oracle
@@ -179,3 +179,9 @@ results must be regenerated for the selected setup. Every round requires the
 same observed daemon PID. Retained-proof share requires a new published receipt,
 not merely zero solver sessions. Interrupted commands keep their partial logs
 and have their owned process-group descendants stopped.
+
+Generator version 2 corrects the strengthening class: deleting an `ensures`
+item weakens a postcondition and cannot stand in for strengthening it. Version
+2 instead tightens a bound or adds a false conjunct to one postcondition.
+Version 1's pilot catalogues and measurements remain historical evidence;
+release coverage requires regenerated catalogues and a fresh stock oracle.

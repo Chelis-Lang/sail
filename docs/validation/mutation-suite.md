@@ -6,7 +6,9 @@ cross-mutant revert check passes on all four projects. One difference remains
 open (#292, a 0.1.0 blocker); the VI-0003 difference is an accepted
 divergence (owner, 2026-10-20). Edit loop: from 0.63× (CapybaraKV) to 2.39×
 (human-eval) against stock; Vest's 1.12× is accepted as the current number.**
-Registry preparation is implemented through `--vstd-lock`; rerunning its stock
+Generator version 2 fixes postcondition strengthening; its regenerated
+catalogues and fresh oracle are pending. Registry preparation is implemented
+through `--vstd-lock`; rerunning its stock
 oracle and measurements on the integrated candidate remains pending, after #292.
 The runner now enforces daemon continuity and observes published retained
 receipts rather than inferring retention from absent solver sessions. Historical

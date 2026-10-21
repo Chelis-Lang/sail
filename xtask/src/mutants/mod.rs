@@ -25,7 +25,7 @@ use sites::{CLASSES, Site};
 
 /// The generator's version, recorded in every sidecar. Bump it whenever
 /// the same seed could produce different mutants.
-pub const GENERATOR: &str = "gen-mutants 1";
+pub const GENERATOR: &str = "gen-mutants 2";
 
 const USAGE: &str =
     "usage: cargo xtask gen-mutants --project NAME [--unit UNIT] --seed N --per-class N

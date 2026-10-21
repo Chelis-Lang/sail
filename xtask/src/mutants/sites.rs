@@ -788,6 +788,15 @@ fn sites_of(file: &File, func: &Func, key: &dyn Fn(&str, usize) -> u64, out: &mu
                     ));
                     continue;
                 }
+                out.push(site(
+                    class,
+                    "spec",
+                    file.start(a),
+                    file.end(b - 1),
+                    format!("({text}) && false"),
+                    format!("strengthen ensures `{}` with a false conjunct", short(text)),
+                ));
+                continue;
             }
             let (s, e) = clause_item_range(file, *kwi, items, n, a, b);
             out.push(site(
@@ -1018,6 +1027,19 @@ fn not_verus(x: u8) -> u8 { x + 1 }
             .collect();
         assert_eq!(rare.len(), 1);
         assert!(rare.iter().all(|m| m.contains("{\n    if ")));
+    }
+
+    #[test]
+    fn strengthening_never_deletes_a_postcondition() {
+        let source = "verus! { fn f(x: u64) -> (r: u64) ensures r == x, { x } }";
+        let sites = find(source, &|_, _| 1);
+        let strengthened: Vec<_> = sites
+            .iter()
+            .filter(|site| site.class == "spec-strengthen")
+            .collect();
+        assert_eq!(strengthened.len(), 1);
+        assert_eq!(strengthened[0].replacement, "(r == x) && false");
+        assert!(!strengthened[0].what.starts_with("delete"));
     }
 
     #[test]
