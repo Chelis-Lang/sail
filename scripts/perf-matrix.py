@@ -572,6 +572,10 @@ def cmd_run(args):
     scenarios = set(args.scenario or SMALL + REAL)
     projects = args.project or ["small"] + PROJECTS
     r = Runner(args)
+    if any(project != "small" for project in projects):
+        for tool in ("sail-conformance", "jq", "perl", "git"):
+            if not shutil.which(tool, path=r.path):
+                sys.exit(f"missing {tool}; build the release tools or add it to PATH before real-project runs")
     header = dict(started_unix=int(time.time()), machine=args.machine or platform.platform(),
                   host=platform.machine(), system=platform.system(), rounds=args.rounds,
                   sail=version([str(Path(args.sail_install) / "bin" / "sail"), "--version"]),
