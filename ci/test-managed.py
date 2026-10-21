@@ -792,7 +792,13 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 marker = markers[0].read_text()
                 assert marker.startswith("new:"), marker
                 return marker
+            def schedule_binding(result):
+                memos = list((root / "cache/projects").glob(
+                    f'*/{result["context_sha256"]}/unscheduled-scripts.json'))
+                assert len(memos) == 1, memos
+                return json.loads(memos[0].read_text())["binding"]
             script_execution = schedule_marker()
+            script_binding = schedule_binding(scripts)
             unchanged_run, unchanged, unchanged_target = managed()
             assert unchanged_run.returncode == 0 and unchanged["currentness"] == "current", diagnostic(unchanged)
             assert unchanged["execution"]["verifier_invocations"] == 0, diagnostic(unchanged)
@@ -811,7 +817,11 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             assert not edited_target["reused"] and edited_target["complete"], diagnostic(edited)
             assert vstd(edited)["reused"], diagnostic(edited)
             assert b"Compiling vstd" not in edited_run.stderr, edited_run.stderr.decode()
-            assert schedule_marker() != script_execution, "changed source incorrectly kept old scheduling memo"
+            # The current Cargo graph now establishes the dev-only package's
+            # absence. A source edit must replace the saved input binding, but
+            # must not rebuild an observed dependency whose inputs are unchanged.
+            assert schedule_binding(edited) != script_binding, "changed source kept an old scheduling binding"
+            assert schedule_marker() == script_execution, "source edit rebuilt an unchanged dependency script"
 
             # #294/#298: the already observed dependency script probes
             # metadata on stdout and declares Cargo-generated inputs. After

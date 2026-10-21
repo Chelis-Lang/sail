@@ -22,5 +22,15 @@ failure, source-edit and reuse assertions remain intact.
 
 The graph is read from the current pinned Cargo request. It is not a cross-run
 absence memo. Ordinary receipt, byte, environment, mutation and before/after
-input checks remain in force. No release performance claim follows from these
-correctness checks; the full CapybaraKV mutation loop is still required.
+input checks remain in force. The installed composed product passes a bounded CapybaraKV cold/edit/revert/
+forced-revert comparison with identical stock results. Cold 57.1 → 56.3 s;
+failed edit 23.3 → 9.6 s; ordinary revert 25.9 → 11.5 s; forced revert
+26.1 → 11.6 s. Full three-round mutation qualification is running.
+
+The first full e2e attempt stopped on an old assertion requiring an unchanged
+observed sibling script to rebuild after a root comment edit. The fresh Cargo
+graph now proves the dev-only package absent without that rebuild. The check
+instead requires a new scheduling input binding, unchanged sibling script
+execution, exactly one fresh root verifier, vstd reuse and Current inputs.
+The original generated-input and environment-mutation controls remain intact.
+This failed attempt stays recorded; full e2e must pass on the corrected check.
