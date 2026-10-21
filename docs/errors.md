@@ -20,6 +20,25 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL0702` | Runtime precondition or postcondition failed | Inspect the named requirement and the actual implementation inputs and output |
 | `SAIL0703` | Specification arithmetic overflow or invalid division | Correct the expression or narrow the admitted domain explicitly; checks remain enabled in release builds |
 
+## Native temporal jobs
+
+| Code | Meaning | Action |
+|---|---|---|
+| `SAIL4200` | Invalid worker protocol or payload identity | Submit the supported worker version and exact immutable input |
+| `SAIL4201` | Invalid or incomplete temporal source closure | Supply unique relative module/configuration files and the explicit root |
+| `SAIL4202` | Host-capable or unsupported temporal source | Use admitted pure native modules and operations |
+| `SAIL4203` | Unsupported, malformed or lossy trace value | Supply complete, reversible ITF values in the admitted subset |
+| `SAIL4204` | Native backend rejected or could not execute the model | Read the preserved native diagnostic; no model verdict is established |
+| `SAIL4205` | Counterexample absent or failed independent replay | Treat the result as incomplete and retain the native evidence |
+| `SAIL4206` | Success lacks complete exploration evidence | Increase explicit exploration bounds or address the native diagnostic |
+| `SAIL4207` | Invalid simulation count or depth | Supply positive finite admitted limits |
+| `SAIL4208` | Simulation evidence is absent or not exhaustive | Use concrete sampled traces; simulation does not establish a proof |
+| `SAIL4210` | Worker input, execution or output failure | Inspect the bounded worker diagnostic |
+| `SAIL4211` | Worker output exceeds its byte bound | Reduce requested evidence; truncated output is not a verdict |
+| `SAIL4212` | Worker identity, lifecycle or protocol failure | Use the pinned worker and inspect the reported failure |
+| `SAIL4213` | Private dependency command or Git configuration is invalid | Use the documented ephemeral credential wrapper |
+| `SAIL4214` | Duplicate JSON object member | Submit a unique field at every object depth |
+
 ## Command line (`sail`)
 
 | Code | Meaning | What to do |

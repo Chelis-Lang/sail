@@ -1209,6 +1209,12 @@ semantic versioning once the API is published.
 - `sail-conformance`: `cargo-verus` corpus units (with Verus dependencies
   patched to the pinned source in a scratch copy), project requirements
   (skipped and reported when unavailable), and the standard-tier corpus.
+- Add isolated native temporal jobs through a pinned D.I.V.E. library:
+  exhaustive finite checking, admitted temporal properties, sampled simulation
+  and complete-trace validation. Authenticate worker bytes and request identity,
+  enforce parent deadlines and cancellation, retain native evidence alongside
+  reversible admitted ITF values, and refuse unsupported host capabilities.
+  This developer API does not change Verus commands or introduce a TLC backend.
 - Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
   SMT batches and incremental transcripts through Sail's bundled pinned Z3.
   Complete solver evidence is attributed and cached separately from Verus;
