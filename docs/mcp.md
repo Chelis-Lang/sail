@@ -54,6 +54,23 @@ Keep MCP client transcripts and redirected tool output outside watched package
 roots and declared inputs during verification. Creating or updating those files
 inside the project can correctly invalidate the proof's input freshness.
 
+## Raw SMT runtime
+
+`runtime_capabilities` accepts `{}` and reports actual backend installation
+readiness. `runtime_execute` accepts `{"request": ...}`, where the request is
+the versioned document in [Runtime](runtime.md). Both tools connect directly
+to the daemon's separate runtime endpoint and autostart `sail serve` when no
+daemon is running. An older running daemon must be restarted; there is no
+embedded solver fallback. Set the same absolute `SAIL_CACHE_DIR` and
+`SAIL_DAEMON_SOCKET` for MCP and CLI clients.
+
+Results retain exact solver output, caller obligation and requirement IDs,
+limits, pinned solver identity and per-check products. Unknown answers and
+incomplete executions set `isError`; capability readiness alone never proves
+a formula. Cancellation uses the endpoint's separate control connection.
+These answers concern submitted SMT formulas and do not establish Rust
+implementation correctness. See [ADR 0068](decisions/0068-runtime-daemon.md).
+
 ## Reading completed evidence
 
 Tool replies are agent-sized by default; see [reply size](#reply-size-and-detail).

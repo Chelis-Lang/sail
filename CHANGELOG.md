@@ -26,6 +26,16 @@ semantic versioning once the API is published.
 - Preserve Cargo metadata pipelining while observing native compiles for
   shipped vstd. Require producer certificates after compilation, before
   publishing any reusable result.
+
+- Serve raw SMT runtime requests through an owner-private, separately versioned
+  daemon endpoint, CLI `--socket`, and MCP `runtime_capabilities` and
+  `runtime_execute`. Preserve exact evidence and cancellation without local
+  fallback on endpoint errors.
+
+- Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
+  SMT batches and incremental transcripts through Sail's bundled pinned Z3.
+  Complete solver evidence is attributed and cached separately from Verus;
+  unknown, timeout, cancellation and malformed responses remain explicit.
 - Avoid duplicate watch startup jobs from replayed macOS creation events.
   Preserve cancellation for real edits, including edit-and-restore changes.
 - Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
