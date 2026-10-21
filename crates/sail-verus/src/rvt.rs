@@ -444,10 +444,15 @@ fn blank_dispatch_log_path(stderr: &str, temp: &Path) -> String {
             {
                 return line.to_owned();
             }
-            format!(
-                "{prefix}{threads}{options}{directory}<random>{}",
-                &random[6..]
-            )
+            [
+                prefix,
+                threads,
+                options,
+                &directory,
+                "<random>",
+                &random[6..],
+            ]
+            .concat()
         })
         .collect()
 }
