@@ -1,8 +1,12 @@
 # Watch startup and publication staging
 
-**Status:** the latest Mac gate passes 856 tests (37 skipped, Clippy clean).
-Native standard conformance of the store correction is running before merge;
-the final directory/fallback watch correction awaits its fresh native gate. No solver, key or proof-admission rule changes.
+**Status:** the final composed Mac gate passes 905 tests (37 skipped,
+Clippy clean), including the directory-symlink regression. Native Linux
+workspace gate, solver, full e2e plus extra and PR conformance pass on the
+final watch correction before the symlink-only addition; its fresh workspace
+gate is running. The exact store correction passes full fast and standard
+conformance: 147 and 159 Same respectively in all four arms, zero Different
+or infrastructure errors. No solver, key or proof-admission rule changes.
 
 The watch correction distinguishes replayed startup notifications from real
 edits using the complete initial file bytes and filesystem identity. An actual
@@ -16,7 +20,7 @@ iterations; startup and edit-and-restore checks pass 20. Source `d7a975da`
 passes the full Mac host gate: 854 passed, 37 skipped, Clippy clean.
 Native Linux c7i.8xlarge, us-east-1, passes the workspace gate (865 tests),
 solver (35), full e2e plus extra, PR conformance (33 in all four arms), and
-full fast conformance (147 in all four arms). Standard remains pending.
+full fast conformance (147 in all four arms). The store correction subsequently passed standard conformance in all four arms.
 
 Mac raw logs: `experiments/2026-10-21/watch-store-mac.tgz` in the S3 evidence
 bucket, SHA-256
