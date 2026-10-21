@@ -1,6 +1,6 @@
 # 0066: Shared neutral contract syntax and checked runtime
 
-- **Status:** runtime implemented; backend qualification separate
+- **Status:** implemented for the documented scalar subset
 - **Date:** 2026-10-21
 
 ## Context
@@ -42,3 +42,37 @@ does not claim quantified, trait, generic or arbitrary-effect support. A later
 multi-property slice must isolate proof failures before attributing mutation
 kills to individual requirements. Runtime fixtures and actual backend
 conformance are separate acceptance gates.
+
+## First Verus lowering implementation
+
+The new `sail-verus::contracts` module consumes the shared IR, admits the entire
+single-file source closure and emits a content-bound immutable shadow. No
+existing managed or performance implementation changes. The owned runner reuses
+the actual managed backend with forced attribution and validates its original
+mapping before and after execution. Whole-source admission rejects unannotated
+effects, trait implementations, aliases and non-scalar fields, including hidden
+autodereferencing. The API and shim do not depend on this backend.
+
+Checked specification expressions carry a separate value and definedness.
+Short-circuit branches guard their own definedness; negation cannot turn an
+overflow into success. Eager old-value definedness is an entry assertion under
+the original requires, not a stronger precondition. Division, remainder and
+executable neutral `Int` remain unsupported until separately qualified.
+The [lowering interface](../spec/neutral-verus-lowering.md) separates ordinary
+runtime/source fixtures from actual native fork/stock acceptance.
+
+The managed neutral helper additionally admits the actual compiler-loaded vstd and
+builtin macro source closure through the existing independent source policy.
+Version pins alone do not establish translation trust. Unreviewed Cargo controls
+are refused before metadata; full source and lockfile hashes are rechecked after
+verification. This bridge exposes pure admission only and does not change managed
+proof reuse or performance behavior. The exact refusals and returned trust hashes
+are specified in [neutral Verus lowering](../spec/neutral-verus-lowering.md).
+
+Actual native qualification covers both the identical-source fork/stock oracle
+and the managed helper with a proved original and a body edit that was not proved. The
+managed helper keeps its owned source and backend cache physically disjoint;
+all existing managed checks remain intact. The
+[qualification record](../validation/neutral-verus-lowering.md) retains the
+original outcomes, failed attempts and exact evidence digests. Per-requirement
+establishment still requires actual obligation mapping and original currentness.

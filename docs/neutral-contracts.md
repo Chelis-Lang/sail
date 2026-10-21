@@ -5,6 +5,11 @@ code runs. The checks also run in release builds. A runtime check establishes
 the behavior exercised by that execution; it does not establish an SMT proof.
 The ordinary `sail verify` Verus input route is unchanged.
 
+The [Verus lowering library](spec/neutral-verus-lowering.md) admits a complete
+supported scalar source file, emits a content-bound shadow and can run the
+actual managed backend. Its native oracle acceptance is separate from runtime
+checks. Matching requirement IDs do not establish contract faithfulness.
+
 Use the crate from the Sail workspace or a pinned private Git revision. It is
 not published to crates.io. The [version-one specification](spec/neutral-contracts.md)
 defines the accepted source subset and the separate backend boundary.
