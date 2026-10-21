@@ -1,6 +1,6 @@
 # 0069: Reuse successful reports only within their exact partial scope
 
-- **Status:** proposed; implementation and real-project qualification pending
+- **Status:** implemented; bounded native qualification passes, final release qualification pending
 - **Date:** 2026-10-21
 
 ## Decision
@@ -34,6 +34,7 @@ remains intact.
 
 Anvil's unchanged partial call currently takes 39.53 seconds against stock's
 0.32 seconds (#314). Avoiding redundant verification addresses the real loss
-without presenting unverified functions as verified. Native gates, changed
-scope/input and whole-proof negative controls, and a paired Anvil run must pass
-before acceptance. No speedup is claimed from this implementation alone.
+without presenting unverified functions as verified. The bounded installed correction removes repeated verification: unchanged
+Anvil calls take 1.89–2.05 seconds with zero verifier invocations. Stock's
+0.287-second baseline still exposes overhead; final paired measurements and
+release acceptance remain pending. See [validation](../validation/exact-scope-reuse.md).
