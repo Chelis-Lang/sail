@@ -260,6 +260,8 @@ pub fn definitions() -> Value {
     if let Some(list) = definitions.as_array_mut() {
         list.extend(crate::job_tools::definitions(&run_schema()));
         list.extend(crate::proof_tools::definitions());
+        #[cfg(unix)]
+        list.extend(crate::runtime_tools::definitions());
         crate::compact::add_schema(list);
     }
     definitions
@@ -290,6 +292,10 @@ fn dispatch(
     cancel: &Cancel,
 ) -> Option<ToolResult> {
     Some(match name {
+        #[cfg(unix)]
+        "runtime_capabilities" | "runtime_execute" => {
+            crate::runtime_tools::call(ctx, name, args, cancel)
+        }
         "start_verification"
         | "verification_status"
         | "verification_result"

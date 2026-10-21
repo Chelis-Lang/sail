@@ -72,11 +72,47 @@ cancellation, output overflow, infrastructure failures and unknown answers are
 not cached as successful evidence. Reuse preserves original solver bytes and
 reattributes them to the current caller's identities.
 
+## Shared daemon and MCP
+
+`sail serve` binds a separate version-one runtime endpoint beside its cache
+and Cargo-job endpoints. The runtime shares the daemon's idle-activity guard
+and shuts down with it. To use that service explicitly from the CLI:
+
+```sh
+sail serve --socket /path/to/cache.sock
+# In another terminal:
+sail runtime capabilities --socket /path/to/cache.sock
+sail runtime execute --file query.json --socket /path/to/cache.sock
+```
+
+`--socket` names the cache socket, from which the runtime endpoint is derived.
+It connects without autostart or local fallback. Without `--socket`, runtime
+commands retain their embedded execution path. `--cache` and `--socket` are
+mutually exclusive. Both paths use the same executor and cache grammar.
+
+The MCP tools `runtime_capabilities` and `runtime_execute` use this service
+directly. The first tool accepts no arguments; the second takes one `request`
+object in the format above. MCP resolves `SAIL_CACHE_DIR` and
+`SAIL_DAEMON_SOCKET` from its working directory and starts the configured
+`sail serve` when no daemon is running. A running older daemon without a
+compatible endpoint must be restarted; MCP does not bypass it with an embedded
+solver. The shared daemon outlives an individual tool call.
+
+The runtime socket is mode 0600 inside an owner-owned real directory of mode
+0700. Symlink parents and permissive endpoints are refused. Each framed request
+has a separate transport version and identity; incomplete frames, excess size,
+changed attribution and incompatible responses fail closed. The default
+service admits eight client connections and two active executions, reserving
+capacity for cancellation and capability requests. These are service admission
+bounds, not a global memory guarantee. Disconnecting an execution cancels its
+work. MCP cancellation sends a separate control request and never publishes a
+cancelled call as completed proof.
+
 Exit 0 means every transcript completed with decided answers; either `sat` or
 `unsat` qualifies. Exit 1 means unknown or incomplete execution. Exit 2 means
 invalid input or setup failure. Ctrl-C cancels active work and reaps its solver
 processes. Capabilities are descriptive and exit 0 even if a backend is missing.
 
-This slice implements Z3 only. Daemon runtime submission, MCP runtime tools,
-D.I.V.E. jobs, neutral-contract verification and requirement assurance are
-separate integration slices. None is implied by raw SMT completion.
+This slice implements Z3 only. D.I.V.E. jobs, neutral-contract verification and
+requirement assurance are separate integration slices. None is implied by raw
+SMT completion. See [ADR 0068](decisions/0068-runtime-daemon.md).

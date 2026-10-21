@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Serve raw SMT runtime requests through an owner-private, separately versioned
+  daemon endpoint, CLI `--socket`, and MCP `runtime_capabilities` and
+  `runtime_execute`. Preserve exact evidence and cancellation without local
+  fallback on endpoint errors.
+
 - Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
   SMT batches and incremental transcripts through Sail's bundled pinned Z3.
   Complete solver evidence is attributed and cached separately from Verus;

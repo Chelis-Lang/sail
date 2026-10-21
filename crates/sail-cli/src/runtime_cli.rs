@@ -19,32 +19,84 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
 }
 
 fn command(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
-    let (action, file, cache) = options(args)?;
-    // Resolve Sail's existing runtime, never search PATH or install another solver.
-    // Absence stays a structured backend capability/result, not a skipped query.
-    let cache_root = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let pins = sail_verus::toolchain::Pins::embedded().map_err(|e| e.to_string())?;
-    let z3 = sail_verus::engine::Installed::locate(&cache_root, &pins)
-        .ok()
-        .and_then(|installed| installed.verus.parent().map(|dir| dir.join("z3")));
-    let runtime = Runtime::new(Config {
-        z3,
-        cache_directory: Some(cache.unwrap_or_else(|| cache_root.join("runtime"))),
-        workers: 2,
-    })
-    .map_err(|e| e.to_string())?;
-    if action == "capabilities" {
+    let options = options(args)?;
+    let request = options.file.as_deref().map(read_request).transpose()?;
+    let cancellation = Cancellation::default();
+    if request.is_some() {
+        let signal = cancellation.clone();
+        ctrlc::set_handler(move || signal.cancel())
+            .map_err(|e| format!("error[SAIL6102]: cannot install cancellation handler: {e}"))?;
+    }
+    #[cfg(unix)]
+    if let Some(socket) = &options.socket {
+        let client = sail_api::runtime::transport::Client::new(
+            sail_api::runtime::transport::socket_path(socket),
+        );
+        if options.action == "capabilities" {
+            write_json(out, &client.capabilities().map_err(|e| e.to_string())?)?;
+            return Ok(0);
+        }
+        let response = client
+            .execute_cancellable(request.as_ref().ok_or_else(usage)?, || {
+                cancellation.is_cancelled()
+            })
+            .map_err(|e| e.to_string())?;
+        return result(out, &response);
+    }
+    #[cfg(not(unix))]
+    if options.socket.is_some() {
+        return Err("error[SAIL6201]: runtime sockets require Unix".into());
+    }
+    let cache = options.cache.unwrap_or(
+        sail_verus::cache_dir()
+            .map_err(|e| e.to_string())?
+            .join("runtime"),
+    );
+    let runtime = Runtime::new(configuration(cache)?).map_err(|e| e.to_string())?;
+    if options.action == "capabilities" {
         write_json(out, &runtime.capabilities())?;
         return Ok(0);
     }
-    let request = read_request(file.as_deref().ok_or_else(usage)?)?;
-    let cancellation = Cancellation::default();
-    let signal = cancellation.clone();
-    ctrlc::set_handler(move || signal.cancel())
-        .map_err(|e| format!("error[SAIL6102]: cannot install cancellation handler: {e}"))?;
     let response = runtime
-        .execute(&request, &cancellation)
+        .execute(request.as_ref().ok_or_else(usage)?, &cancellation)
         .map_err(|e| e.to_string())?;
+    result(out, &response)
+}
+
+/// Resolve only the existing bundle path; the executor authenticates solver bytes.
+/// No Verus process or whole-engine validation runs on daemon startup.
+pub(crate) fn configuration(cache: PathBuf) -> Result<Config, String> {
+    let root = sail_verus::cache_dir().map_err(|e| e.to_string())?;
+    let pins = sail_verus::toolchain::Pins::embedded().map_err(|e| e.to_string())?;
+    let build = sail_verus::engine::resolve_build(&root, &pins);
+    let z3 = sail_verus::source_build::checkout_dir(&build).join("source/target-verus/release/z3");
+    Ok(Config {
+        z3: Some(z3),
+        cache_directory: Some(cache),
+        workers: 2,
+    })
+}
+
+#[cfg(unix)]
+pub(crate) fn start_service(
+    cache_socket: &Path,
+    cache: PathBuf,
+    activity: std::sync::Arc<std::sync::atomic::AtomicU64>,
+) -> Result<sail_daemon::runtime::Handle, String> {
+    let runtime = configuration(cache)?;
+    sail_daemon::runtime::bind(
+        &sail_api::runtime::transport::socket_path(cache_socket),
+        &sail_daemon::runtime::Config {
+            runtime,
+            ..sail_daemon::runtime::Config::default()
+        },
+    )
+    .and_then(|server| server.with_activity(activity))
+    .and_then(sail_daemon::runtime::Server::spawn)
+    .map_err(|error| error.to_string())
+}
+
+fn result(out: &mut dyn Write, response: &sail_api::runtime::Response) -> Result<u8, String> {
     let Output::Smt { results } = &response.output;
     let complete = results.iter().all(|result| {
         result.outcome == Outcome::Completed
@@ -53,34 +105,50 @@ fn command(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
                 .iter()
                 .all(|check| check.answer != Answer::Unknown)
     });
-    write_json(out, &response)?;
+    write_json(out, response)?;
     Ok(u8::from(!complete))
 }
 
 fn usage() -> String {
-    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR] | sail runtime execute --file FILE|- [--cache DIR]".into()
+    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET]".into()
 }
 
-fn options(args: &[String]) -> Result<(&str, Option<PathBuf>, Option<PathBuf>), String> {
+struct Options<'a> {
+    action: &'a str,
+    file: Option<PathBuf>,
+    cache: Option<PathBuf>,
+    socket: Option<PathBuf>,
+}
+
+fn options(args: &[String]) -> Result<Options<'_>, String> {
     let action = args.first().map(String::as_str).ok_or_else(usage)?;
     if !matches!(action, "capabilities" | "execute") {
         return Err(usage());
     }
-    let mut file = None;
-    let mut cache = None;
+    let mut result = Options {
+        action,
+        file: None,
+        cache: None,
+        socket: None,
+    };
     let mut options = args[1..].iter();
     while let Some(option) = options.next() {
         let value = options.next().ok_or_else(usage)?;
         match option.as_str() {
-            "--file" if action == "execute" && file.is_none() => file = Some(value.into()),
-            "--cache" if cache.is_none() => cache = Some(value.into()),
+            "--file" if action == "execute" && result.file.is_none() => {
+                result.file = Some(value.into());
+            }
+            "--cache" if result.cache.is_none() => result.cache = Some(value.into()),
+            "--socket" if result.socket.is_none() => result.socket = Some(value.into()),
             _ => return Err(usage()),
         }
     }
-    if action == "execute" && file.is_none() {
+    if (action == "execute" && result.file.is_none())
+        || (result.socket.is_some() && result.cache.is_some())
+    {
         return Err(usage());
     }
-    Ok((action, file, cache))
+    Ok(result)
 }
 
 fn read_request(path: &Path) -> Result<Request, String> {

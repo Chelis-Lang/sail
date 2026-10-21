@@ -106,3 +106,40 @@ the requirement ledger and higher assurance tiers are not advertised by this
 slice. Temporal execution will use D.I.V.E. through S.A.I.L.; no TLC backend is
 introduced. The original Verus path and all existing public schemas retain
 their meanings.
+
+## Local transport version 1
+
+The existing `sail serve` process owns a separate runtime endpoint beside its
+cache and Cargo-job endpoints. No cache RPC opcode or Cargo-job mode changes.
+`sail-api::runtime::transport::socket_path(cache_socket)` derives a stable
+`rt-<16 hex digits>/v1.sock` endpoint from the canonical cache endpoint. Its
+immediate directory is a real directory owned by the current user with mode
+0700; the socket is owned by that user with mode 0600. Client and server check
+these properties before use. Existing symlinks and foreign-owned directories
+or sockets are refused. No independently deployed solver server is required.
+
+Frames contain a four-byte big-endian length followed by a JSON envelope
+`{version: 1, body: ...}`. Request bodies are tagged operations `capabilities`,
+`execute {id, request}`, and `cancel {id}`. Execute embeds the unchanged public
+runtime request. Responses are tagged `capabilities`, `completed {id,response}`,
+`cancelled {id,found}`, and `error`. Identifiers are transport-only, excluded
+from solver keys and proof data. An execute response must echo its exact ID.
+Duplicate active IDs are refused, with RAII registration cleanup on every exit.
+
+Requests are bounded to 128 MiB encoded bytes; responses to 640 MiB. Serialization
+uses a bounded writer, not an unbounded temporary buffer. A result too large for
+the response frame becomes an explicit transport error; no partial result is
+reported as a completed transcript. Malformed and oversized frames fail closed.
+Each connection accepts one request. Idle input and blocked output have bounded
+timeouts. At most eight client connections and two active executions are admitted
+by default; cancellation and capability requests do not wait behind solver
+work. An execution beyond the active cap receives an explicit busy error.
+
+The client negotiates capabilities before executing, rejects an absent or
+incompatible endpoint with a restart/unavailable diagnostic, and never silently
+executes SMT itself. A cancellable client forwards explicit cancellation on a
+separate bounded control connection. Disconnecting an execution connection
+cancels its actual backend work. Shutdown cancels active tokens, joins every
+started connection and monitor worker, then removes the endpoint. Activity
+excludes idle control connections and tracks active execution lifetimes for the
+existing daemon idle guard.

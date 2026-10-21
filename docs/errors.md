@@ -175,6 +175,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 |---|---|---|
 | `SAIL6101` | Invalid runtime configuration, request, limits or unsupported SMT command/option | Read the specific `kind` and message; submit a supported version-one request with positive bounded limits |
 | `SAIL6102` | Backend unavailable, incomplete execution or response integrity failure | Inspect the structured result; install the existing pinned Sail runtime if unavailable, or address the recorded cancellation, timeout, output or process failure |
+| `SAIL6201` | Runtime transport framing, ownership, overload, cancellation or service failure | Check the structured category and endpoint permissions; restart the existing Sail daemon when it lacks the runtime endpoint; no direct solver fallback occurs |
 
 ## Benchmarks (`sail-bench`)
 
