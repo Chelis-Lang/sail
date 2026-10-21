@@ -111,6 +111,18 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
     (workspace / "helper/src/lib.rs").write_text("")
     (workspace / "Cargo.toml").write_text(
         '[workspace]\nresolver = "2"\nmembers = ["demo", "helper"]\n')
+    # A platform-disabled dependency remains in Cargo metadata's resolved
+    # graph but has no execution unit. It must never run or make a failed
+    # requested proof withdraw the independently verified vstd receipt.
+    (root / "dormant/src").mkdir(parents=True)
+    (root / "dormant/Cargo.toml").write_text(
+        '[package]\nname = "dormant"\nversion = "0.1.0"\nedition = "2021"\n')
+    (root / "dormant/src/lib.rs").write_text("")
+    (root / "dormant/build.rs").write_text(
+        'fn main() { panic!("platform-disabled script must never execute"); }\n')
+    with (workspace / "demo/Cargo.toml").open("a") as manifest:
+        manifest.write("\n[target.'cfg(windows)'.dependencies]\n"
+                       'dormant = { path = "../../dormant" }\n')
     socket = root / "d.sock"
     env["SAIL_DAEMON_SOCKET"] = str(socket)
     daemon = subprocess.Popen([sail,"serve","--cache",str(root / "cache"),
