@@ -141,3 +141,14 @@ What they show:
 - 2026-10-20: the first runner trial judged reverts against Sail's cold run
   including the dependency documents the cold run alone prints; fixed to
   compare the package's documents.
+
+## Recovery checks (2026-10-21)
+
+The updated comparison rechecked all retained Vest failure outputs: the three
+`vest-logic-003` steps match the reproduced VI-0003 function and assertion
+location, and the remaining steps match without that exception. All report
+zero false verified. Local conformance-library tests (35) and mutation tests
+(15), including unrelated bit-vector diagnostics, repeated function names,
+daemon continuity, published receipt provenance, timeouts and descendant
+cleanup, pass. This is harness validation, not a new project benchmark or
+acceptance of the integrated candidate.

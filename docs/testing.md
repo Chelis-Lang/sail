@@ -121,8 +121,7 @@ Tiers: `ci/local.sh conformance standard` ends with two mutants per class of
 catalogue for one round. Both are local-only. Timings come only from a native
 host (`ci/run.sh bench mutants NAME ROUNDS`, three rounds for a release).
 
-For release-product mutation measurements, pass `--vstd-lock
-/path/to/release/deps/<bundle>/Cargo.lock` to both `mutants oracle` and
+For release-product mutation measurements, pass `--vstd-lock release-out/deps/<bundle>/Cargo.lock` to both `mutants oracle` and
 `mutants run`. Both arms then use the release's registry Verus crate versions;
 workspace adjustments and the selected release lock are retained with the run.
 Without that option, the suite keeps source-patched preparation for corpus

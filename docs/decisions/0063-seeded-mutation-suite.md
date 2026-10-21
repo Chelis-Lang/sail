@@ -1,6 +1,6 @@
 # 0063: A seeded mutation suite as soundness probe and edit-loop benchmark
 
-- **Status:** accepted (implemented; first results, two open differences, in the
+- **Status:** accepted (implemented; first results and remaining blockers in the
   [validation record](../validation/mutation-suite.md))
 - **Date:** 2026-10-20
 - **Credits:** the design is PR #205's proposal (its ADR, then numbered
