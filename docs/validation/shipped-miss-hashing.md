@@ -137,3 +137,17 @@ Initial native Mac diagnostic (mac-m4.metal, us-east-1a, one paired round):
 CapybaraKV cold took 30.78 s in Sail versus 31.50 s stock, with matching output and
 a shipped-proof miss. This is diagnostic scope, not three-round release acceptance.
 Full native gates and final combined measurements remain required.
+
+### Fresh compiler families
+
+Under the exclusive compiler-family lock, remember whether the owned target is
+genuinely absent or an empty directory before metadata and store seeding. Such
+a target has no old compiled artifacts to clean before its first invocation.
+Existing targets, filesystem aliases, inaccessible paths and all retries retain
+the ordinary cleanup. A filesystem regression covers the target lifecycle,
+including files and both dangling and live directory symlinks.
+
+Native Mac Anvil diagnostic: the input-preparation phase fell from 3.78 s to
+2.18 s; a full cold run took 104.48 s, with matching successful verification.
+This remains slower than the earlier stock baseline near 100 s; it is not
+release performance acceptance. Repeated final measurements remain required.
