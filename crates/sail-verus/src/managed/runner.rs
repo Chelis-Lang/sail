@@ -2711,6 +2711,11 @@ pub(crate) fn run_engine_held(
         .filter_map(|entry| Some((entry.path(), read::<ReceiptRevision>(&entry.path())?)))
         .collect();
     let dirty = dirty_receipt_packages(&receipt_revisions, &data);
+    event(&serde_json::json!({
+        "kind":"managed-cleanup-decision", "forced":forced,
+        "changed_receipt_packages":dirty, "stale_scripts":stale_scripts,
+        "late_scripts":late_scripts
+    }));
     if paths.reuse && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
