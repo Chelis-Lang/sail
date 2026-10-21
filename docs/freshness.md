@@ -143,6 +143,11 @@ artifact bytes against an established receipt. The candidate's
 [qualification record](validation/managed-selection-family.md) identifies the
 remaining gates and the original failed diagnostic.
 
+Concurrent dependency publishers reserve a private staging directory before
+writing. A name collision leaves the other publisher's files untouched; a
+failed publication cannot remove a directory it did not create. This does not
+change receipt, source or artifact admission checks.
+
 ## Which environment variables are proof inputs
 
 A managed proof follows the input model of plain `cargo verus`, which is
@@ -237,8 +242,16 @@ with `scripts/reader-gate.sh`; see
 
 ### Watch startup
 
-`sail watch` completes its initial Cargo metadata discovery before starting
-filesystem notifications. Creating the initial `Cargo.lock` is setup work and
-does not cancel the first verification when macOS delivers a delayed event.
-Subsequent lockfile, source and declared-input changes keep the existing
-invalidation and cancellation behavior.
+`sail watch` completes initial Cargo metadata discovery and subscriptions
+before starting its first debounce window. macOS can replay earlier creation
+notifications. During startup these are ignored only when a complete snapshot
+still matches the initial input bytes and file identities, including change
+times. Real edits still cancel verification, including edits whose bytes and
+modification time are restored. After the first actual input change, native
+notifications retain their unconditional cancellation behavior. Unreadable
+state remains conservative; proof admission checks do not use this filter.
+
+When native notification coverage is incomplete, watch uses only its documented
+content scans; delayed native events do not queue the same edit again. The
+startup snapshot includes empty input directories, while declared build-output
+subtrees remain excluded.
