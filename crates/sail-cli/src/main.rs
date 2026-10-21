@@ -20,6 +20,7 @@ mod product_cli;
 mod projects_cli;
 mod remote_cache;
 mod report;
+mod runtime_cli;
 #[cfg(test)]
 mod scope;
 mod shared_ops;
@@ -49,6 +50,10 @@ const COMMANDS: &[(&str, &str)] = &[
     (
         "engine",
         "install or inspect Sail's Verus (fork runtime and repair engine)",
+    ),
+    (
+        "runtime",
+        "execute versioned raw SMT requests with Sail's pinned solver",
     ),
     ("watch", "re-verify the workspace as files change"),
     ("jobs", "inspect, follow, or cancel local verification jobs"),
@@ -113,6 +118,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
             verify::portfolio_attempt(args.get(1..).unwrap_or_default(), out, err)
         }
         Some("engine") => engine_cli::run(&args[1..], out, err),
+        Some("runtime") => runtime_cli::run(&args[1..], out, err),
         Some("repair-check") => product_cli::repair(&args[1..], out, err),
         Some("_repair-worker") => product_cli::worker(&args[1..], out, err),
         Some("explain" | "baseline" | "compare") => product_cli::evidence(args, out, err),

@@ -335,3 +335,7 @@ MIT. See [LICENSE](LICENSE).
 
 Sail does not accept outside pull requests at this time; issues are welcome.
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Submit complete raw SMT transcripts through Sail's pinned solver with
+[`sail runtime`](docs/runtime.md). Its versioned answers retain exact solver
+evidence and are separate from Rust verification reports.
