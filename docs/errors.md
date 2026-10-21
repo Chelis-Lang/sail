@@ -179,6 +179,13 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL5101` | A portfolio file or directory cannot be read | Check the path |
 | `SAIL5102` | Invalid portfolio options | Fix the options, for example a non-zero number of configurations |
 
+## Raw SMT runtime
+
+| Code | Meaning | Action |
+|---|---|---|
+| `SAIL6101` | Invalid runtime configuration, request, limits or unsupported SMT command/option | Read the specific `kind` and message; submit a supported version-one request with positive bounded limits |
+| `SAIL6102` | Backend unavailable, incomplete execution or response integrity failure | Inspect the structured result; install the existing pinned Sail runtime if unavailable, or address the recorded cancellation, timeout, output or process failure |
+
 ## Benchmarks (`sail-bench`)
 
 | Code | Meaning | What to do |
