@@ -285,7 +285,7 @@ pub fn report_dir(dir: &Path) -> Result<String, String> {
         m.hits += hits;
         m.replies += hits + c.get("puts").and_then(Value::as_u64).unwrap_or(0);
         m.runs += 1;
-        if get_s(s, "served") == "restored" {
+        if get_s(s, "served") == "retained" {
             m.restored += 1;
         }
         let r = per_round
@@ -300,7 +300,7 @@ pub fn report_dir(dir: &Path) -> Result<String, String> {
     );
     let _ = writeln!(
         t,
-        "Speedup is stock/Sail. *Total* is the ratio of summed per-mutant medians (the loop's wall time); *geomean* is the geometric mean of per-mutant ratios. Intervals are 95% bootstrap intervals over mutants ({RESAMPLES} resamples). *Served* is the share of solver replies the cache served; *restored* is the share of Sail runs that started no solver session (a restored proof).\n"
+        "Speedup is stock/Sail. *Total* is the ratio of summed per-mutant medians (the loop's wall time); *geomean* is the geometric mean of per-mutant ratios. Intervals are 95% bootstrap intervals over mutants ({RESAMPLES} resamples). *Served* is the share of solver replies the cache served; *restored* is the share of Sail runs with a newly published retained-proof receipt. No solver sessions alone does not establish instant revert.\n"
     );
     let _ = writeln!(
         t,
@@ -402,11 +402,11 @@ mod tests {
             }).to_string());
         }
         lines.push(serde_json::json!({"round": 0, "phase": "revert", "judgement": "same", "own_answers": true,
-            "stock_s": 9.0, "sail_s": 1.0, "served": "restored", "false_verified": [], "daemon_pid": 7}).to_string());
+            "stock_s": 9.0, "sail_s": 1.0, "served": "retained", "false_verified": [], "daemon_pid": 7}).to_string());
         let _ = std::fs::write(dir.join("samples.jsonl"), lines.join("\n"));
         let r = report_dir(&dir).unwrap_or_default();
         assert!(r.contains("| 5 | 5 | 0 | 0 | 0 / 0 | 0 | 0 | 0 |"), "{r}");
-        assert!(r.contains("same / yes / restored"), "{r}");
+        assert!(r.contains("same / yes / retained"), "{r}");
         assert!(r.contains("| **all** | 2 |"), "{r}");
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -4,7 +4,8 @@ Registry of opt-in modes that can produce a verdict plain Verus would not
 (charter rule 8). Each entry names the flag, what can differ, how output labels
 it, and how its cache keys are kept apart from default-mode keys.
 
-Default mode remains unchanged. The following mode requires explicit selection.
+The following portfolio mode requires explicit selection. The narrow
+owner-approved default-mode correction is recorded separately below.
 
 | Mode | Flag | What can differ | Output label | Key separation |
 |---|---|---|---|---|
@@ -18,7 +19,7 @@ owner accepted it on 2026-10-20:
 
 | Difference | Mode | What differs | What stays identical | Recognised by |
 |---|---|---|---|---|
-| [VI-0003](verus-issues/VI-0003-bit-vector-failure-reported-as-success.md): a function whose `by (bit_vector)` assertion failed | default (fork fix `8a5d3655`) | Verus's `--output-json` timing entry: stock `success: true`, Sail `false` (Sail is stricter, never more permissive) | Diagnostics (`error: bitvector assertion not satisfied`), error counts, every other function and the exit code | `sail_conformance::compare`: counted under `accepted`, not as a difference, only when everything else is identical, stock failed, the flip is stock `true` to Sail `false`, and stock printed at least as many bit-vector failures as functions flipped |
+| [VI-0003](verus-issues/VI-0003-bit-vector-failure-reported-as-success.md): a function whose `by (bit_vector)` assertion failed | default (fork fix `8a5d3655`) | Verus's `--output-json` timing entry: stock `success: true`, Sail `false` (Sail is stricter, never more permissive) | Diagnostics (`error: bitvector assertion not satisfied`), error counts, every other function and the exit code | `sail_conformance::compare`: counted under `accepted`, not as a difference, only when everything else is identical, stock failed, the flip is stock `true` to Sail `false`, and the unique function and assertion location match the recorded Vest reproduction; missing exit status or ambiguous function identities refuse the exception |
 
 The mutation suite found it on Vest (`vest-logic-003`,
 [record](validation/mutation-suite.md)). Any other status flip is still a

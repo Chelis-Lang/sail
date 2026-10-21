@@ -142,8 +142,8 @@ report gives, per class and overall: median per-mutant wall time of both
 arms, the ratio of summed per-mutant medians and the geometric mean of
 per-mutant ratios, each with a 95% percentile bootstrap interval over
 mutants (2,000 deterministic resamples); the share of solver replies served
-by the cache; and the share of Sail runs that started no solver session (a
-restored proof, ADR 0050). Per-round totals show the rotation. The command
+by the cache; and the share of Sail runs with a newly published retained-proof receipt
+(ADR 0050); no solver sessions alone does not establish instant revert. Per-round totals show the rotation. The command
 fails on any difference, false verified, failed revert check or step that
 could not run, and keeps those steps' logs under `failing/`.
 

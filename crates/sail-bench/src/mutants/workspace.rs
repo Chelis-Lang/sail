@@ -3,8 +3,7 @@
 //! source tree, each with its own Cargo target directory, so the edit loop
 //! keeps Cargo's and Sail's incremental state between mutants.
 
-use std::collections::BTreeMap;
-use std::io::Read as _;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -329,77 +328,56 @@ fn is_progress(line: &str) -> bool {
             .is_some_and(|(_, rest)| seconds(rest))
 }
 
-/// Runs `cmd` to completion (killing its process group after `limit`),
-/// keeping its streams in `log` (best effort).
+/// Runs `cmd` to completion, retaining its streams in `log` and stopping
+/// process-group descendants even when the group leader exits first.
 ///
 /// # Errors
 ///
-/// A message if it cannot start or exceeds `limit`: never a result.
-pub fn execute(
-    cmd: &mut Command,
-    limit: Duration,
-    log: Option<&Path>,
-) -> Result<RunRecord, String> {
+/// A message if it cannot start, capture output, or finish within `limit`:
+/// an unfinished invocation is never a verification outcome.
+pub fn execute(cmd: &mut Command, limit: Duration, log: &Path) -> Result<RunRecord, String> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt as _;
         cmd.process_group(0);
     }
+    std::fs::create_dir_all(log).map_err(|e| format!("{}: {e}", log.display()))?;
+    let stdout_path = log.join("stdout.txt");
+    let stderr_path = log.join("stderr.txt");
+    let stdout = std::fs::File::create(&stdout_path).map_err(|e| e.to_string())?;
+    let stderr = std::fs::File::create(&stderr_path).map_err(|e| e.to_string())?;
     let started = Instant::now();
     let mut child = cmd
         .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stdout(stdout)
+        .stderr(stderr)
         .spawn()
         .map_err(|e| format!("cannot run {}: {e}", Path::new(cmd.get_program()).display()))?;
-    let drain = |r: Option<Box<dyn std::io::Read + Send>>| {
-        std::thread::spawn(move || {
-            let mut buf = Vec::new();
-            if let Some(mut r) = r {
-                let _ = r.read_to_end(&mut buf);
-            }
-            buf
-        })
-    };
-    let out = drain(
-        child
-            .stdout
-            .take()
-            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
-    );
-    let err = drain(
-        child
-            .stderr
-            .take()
-            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
-    );
     let deadline = started + limit;
-    let status = loop {
+    let outcome = loop {
         match child.try_wait() {
-            Ok(Some(status)) => break status,
+            Ok(Some(status)) => break Ok(status),
             Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(20)),
-            Ok(None) => {
-                let _ = Command::new("kill")
-                    .args(["-s", "KILL", "--", &format!("-{}", child.id())])
-                    .status();
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(format!(
-                    "did not finish within {} s (process group killed)",
-                    limit.as_secs()
-                ));
-            }
-            Err(e) => return Err(format!("lost the child process: {e}")),
+            Ok(None) => break Err(format!("did not finish within {} s", limit.as_secs())),
+            Err(e) => break Err(format!("lost the child process: {e}")),
         }
     };
-    let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
-    let stdout = out.join().unwrap_or_default();
-    let stderr = err.join().unwrap_or_default();
-    if let Some(dir) = log {
-        let _ = std::fs::create_dir_all(dir);
-        let _ = std::fs::write(dir.join("stdout.txt"), &stdout);
-        let _ = std::fs::write(dir.join("stderr.txt"), &stderr);
+    // Files rather than pipes prevent a descendant retaining stdout from
+    // blocking collection after the command or its deadline has finished.
+    #[cfg(unix)]
+    let _ = Command::new("kill")
+        .args(["-s", "KILL", "--", &format!("-{}", child.id())])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    if outcome.is_err() {
+        let _ = child.kill();
+        let _ = child.wait();
     }
+    let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
+    let status = outcome?;
+    let stdout = std::fs::read(stdout_path).map_err(|e| e.to_string())?;
+    let stderr = std::fs::read(stderr_path).map_err(|e| e.to_string())?;
     let (outputs, stdout_rest) = parse_outputs(&stdout);
     Ok(RunRecord {
         exit_code: status.code(),
@@ -411,6 +389,79 @@ pub fn execute(
         sys_s: None,
         max_rss_bytes: None,
     })
+}
+
+/// Published retained-proof receipts, identified by receipt path and run.
+/// Reading only project/context/receipts avoids walking compiler build trees.
+///
+/// # Errors
+///
+/// A message if existing provenance cannot be read or parsed.
+pub fn retained_receipts(cache: &Path) -> Result<BTreeSet<(PathBuf, String)>, String> {
+    let projects = cache.join("projects");
+    let mut found = BTreeSet::new();
+    if !projects.exists() {
+        return Ok(found);
+    }
+    let entries = |path: &Path| -> Result<Vec<PathBuf>, String> {
+        std::fs::read_dir(path)
+            .map_err(|e| e.to_string())?
+            .map(|entry| entry.map(|e| e.path()).map_err(|e| e.to_string()))
+            .collect()
+    };
+    for workspace in entries(&projects)? {
+        if !workspace.is_dir() {
+            continue;
+        }
+        for context in entries(&workspace)? {
+            let receipts = context.join("receipts");
+            if !receipts.is_dir() {
+                continue;
+            }
+            for path in entries(&receipts)? {
+                if path.extension().is_none_or(|extension| extension != "json") {
+                    continue;
+                }
+                let receipt: Value =
+                    serde_json::from_slice(&std::fs::read(&path).map_err(|e| e.to_string())?)
+                        .map_err(|e| e.to_string())?;
+                if receipt
+                    .pointer("/invocation/retained_from")
+                    .and_then(Value::as_str)
+                    .is_none_or(str::is_empty)
+                {
+                    continue;
+                }
+                let run = receipt
+                    .pointer("/invocation/run_id")
+                    .and_then(Value::as_str)
+                    .ok_or("retained receipt has no run id")?;
+                let committed = receipt
+                    .get("committed")
+                    .and_then(Value::as_str)
+                    .ok_or("retained receipt has no commit marker")?;
+                let marker: Value =
+                    serde_json::from_slice(&std::fs::read(committed).map_err(|e| e.to_string())?)
+                        .map_err(|e| e.to_string())?;
+                let checksum = receipt
+                    .get("checksum")
+                    .and_then(Value::as_str)
+                    .ok_or("retained receipt has no checksum")?;
+                if receipt.pointer("/invocation/success") == Some(&Value::Bool(true))
+                    && marker.get("run_id").and_then(Value::as_str) == Some(run)
+                    && marker
+                        .get("receipt_checksums")
+                        .and_then(Value::as_array)
+                        .is_some_and(|values| {
+                            values.iter().any(|value| value.as_str() == Some(checksum))
+                        })
+                {
+                    found.insert((path, run.to_owned()));
+                }
+            }
+        }
+    }
+    Ok(found)
 }
 
 /// The cache daemon serving `cache`, as `sail status --json` reports it.
@@ -490,6 +541,73 @@ pub fn write_fresh(file: &Path, text: &str) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn deadline_keeps_partial_logs_and_is_not_an_outcome() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let directory =
+            std::env::temp_dir().join(format!("sail-mutant-timeout-{}", std::process::id()));
+        let mut command = Command::new("sh");
+        command.args(["-c", "printf started; printf diagnostic >&2; sleep 30"]);
+        let result = execute(&mut command, Duration::from_millis(100), &directory);
+        assert!(result.is_err());
+        assert_eq!(std::fs::read(directory.join("stdout.txt"))?, b"started");
+        assert_eq!(std::fs::read(directory.join("stderr.txt"))?, b"diagnostic");
+        std::fs::remove_dir_all(directory)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn leader_exit_stops_descendants_holding_output() -> Result<(), Box<dyn std::error::Error>> {
+        let directory =
+            std::env::temp_dir().join(format!("sail-mutant-descendant-{}", std::process::id()));
+        std::fs::create_dir_all(&directory)?;
+        let mut command = Command::new("sh");
+        command
+            .current_dir(&directory)
+            .args(["-c", "sleep 30 & echo $! > child.pid; printf done"]);
+        let record = execute(&mut command, Duration::from_secs(3), &directory)?;
+        assert_eq!(record.exit_code, Some(0));
+        let pid = std::fs::read_to_string(directory.join("child.pid"))?;
+        let status = Command::new("ps")
+            .args(["-o", "stat=", "-p", pid.trim()])
+            .output()?;
+        let state = String::from_utf8_lossy(&status.stdout);
+        assert!(
+            state.trim().is_empty() || state.trim().starts_with('Z'),
+            "descendant still live: {state}"
+        );
+        std::fs::remove_dir_all(directory)?;
+        Ok(())
+    }
+
+    #[test]
+    fn retained_share_requires_a_published_retained_receipt()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let directory =
+            std::env::temp_dir().join(format!("sail-mutant-receipts-{}", std::process::id()));
+        let receipts = directory.join("projects/workspace/context/receipts");
+        std::fs::create_dir_all(&receipts)?;
+        let marker = directory.join("committed.json");
+        let path = receipts.join("target.json");
+        let receipt = serde_json::json!({"checksum":"abc", "committed":marker,
+            "invocation":{"retained_from":"original", "run_id":"current", "success":true}});
+        std::fs::write(&path, serde_json::to_vec(&receipt)?)?;
+        std::fs::write(
+            &marker,
+            br#"{"run_id":"current","receipt_checksums":["abc"]}"#,
+        )?;
+        assert_eq!(retained_receipts(&directory)?.len(), 1);
+        std::fs::write(
+            &marker,
+            br#"{"run_id":"other","receipt_checksums":["abc"]}"#,
+        )?;
+        assert!(retained_receipts(&directory)?.is_empty());
+        std::fs::remove_dir_all(directory)?;
+        Ok(())
+    }
 
     #[test]
     fn drops_only_progress_notes() {

@@ -239,3 +239,11 @@ Each entry names the charter text it qualifies and the ADR that records it.
    `--target-dir`, Verus log options, Cargo `--config`, loader variables)
    are verified as plain Cargo-Verus verifies them, with one note and no
    proof reuse. See ADR 0046.
+
+7. *Correctness rule 1* (owner decision, 2026-10-20). Sail may report a
+   function as failed where stock incorrectly records a failed bit-vector
+   assertion as successful (VI-0003). This exception is strictly in the
+   conservative direction: diagnostics, error counts and exit codes remain
+   identical. Conformance records accepted cases separately, binds them to
+   the reproduced function and assertion location, and rejects ambiguous or
+   unrelated status changes. See `docs/divergences.md`.

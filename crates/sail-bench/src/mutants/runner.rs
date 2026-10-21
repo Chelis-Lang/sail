@@ -30,7 +30,8 @@ use sail_verus::run::RunRecord;
 use serde_json::{Value, json};
 
 use super::workspace::{
-    DaemonState, Workspace, daemon_state, execute, stop_daemon, verus_build_from_env, write_fresh,
+    DaemonState, Workspace, daemon_state, execute, retained_receipts, stop_daemon,
+    verus_build_from_env, write_fresh,
 };
 use super::{Setup, class_of, false_verified, load_meta, plain_outcome, sidecar, value};
 use crate::cold::{Judgement, judge};
@@ -121,6 +122,7 @@ struct Round<'a> {
     /// Stock runs of each step in earlier rounds (and this one), by step.
     plains: &'a mut BTreeMap<String, Vec<RunRecord>>,
     failures: usize,
+    daemon_pid: Option<u64>,
 }
 
 /// One step's two runs.
@@ -130,6 +132,7 @@ struct Pair {
     cache: CacheRun,
     pid: Option<u64>,
     stock_first: bool,
+    retained: Result<usize, String>,
 }
 
 impl Round<'_> {
@@ -142,11 +145,12 @@ impl Round<'_> {
             .join(step);
         let stock_first = (self.index + position).is_multiple_of(2);
         let before = daemon_state(self.sail, &self.cache);
+        let receipts_before = retained_receipts(&self.cache);
         let go_stock = || {
             execute(
                 &mut ws.stock(&self.setup.installed),
                 self.timeout,
-                Some(&logs.join("stock")),
+                &logs.join("stock"),
             )
         };
         let go_sail = || {
@@ -154,7 +158,7 @@ impl Round<'_> {
             if force {
                 cmd.env("SAIL_MANAGED_FORCE", "1");
             }
-            execute(&mut cmd, self.timeout, Some(&logs.join("sail")))
+            execute(&mut cmd, self.timeout, &logs.join("sail"))
         };
         let (stock, sail) = if stock_first {
             let s = go_stock();
@@ -169,7 +173,11 @@ impl Round<'_> {
             &before.stats.unwrap_or_default(),
             &after.stats.unwrap_or_default(),
         );
+        let retained = receipts_before.and_then(|before| {
+            retained_receipts(&self.cache).map(|after| after.difference(&before).count())
+        });
         Pair {
+            retained,
             stock,
             sail,
             cache,
@@ -195,8 +203,10 @@ impl Round<'_> {
     ) -> Option<RunRecord> {
         let id = edit.map_or("original", |e| e.id.as_str());
         let step = format!("{phase}:{id}");
-        let served = if pair.cache.sessions == 0 {
-            "restored"
+        let served = if pair.retained.as_ref().is_ok_and(|count| *count > 0) {
+            "retained"
+        } else if pair.cache.sessions == 0 {
+            "no-solver"
         } else if pair.cache.hits > 0 && pair.cache.puts == 0 {
             "cache"
         } else if pair.cache.hits > 0 {
@@ -222,6 +232,13 @@ impl Round<'_> {
             "served": served,
             "daemon_pid": pair.pid,
         });
+        match &pair.retained {
+            Ok(count) => sample["retained_restores"] = json!(count),
+            Err(error) => sample["provenance_error"] = json!(error),
+        }
+        if !daemon_continuity(&mut self.daemon_pid, pair.pid) {
+            sample["daemon_error"] = json!("daemon missing or changed within the round");
+        }
         let (stock, sail) = match (pair.stock, pair.sail) {
             (Ok(p), Ok(s)) => (p, s),
             (p, s) => {
@@ -234,6 +251,7 @@ impl Round<'_> {
                 sample["error"] = json!(msg);
                 eprintln!("r{} {phase:<13} {id:<32} INFRA: {msg}", self.index);
                 self.failures += 1;
+                self.keep_logs(&step);
                 self.write(&sample);
                 return None;
             }
@@ -270,7 +288,9 @@ impl Round<'_> {
                 sample["own_differences"] = json!(d);
             }
         }
-        let bad = judgement == "different"
+        let bad = sample.get("provenance_error").is_some()
+            || sample.get("daemon_error").is_some()
+            || judgement == "different"
             || !fv.is_empty()
             || sample.get("own_answers") == Some(&Value::Bool(false));
         if bad {
@@ -300,7 +320,10 @@ impl Round<'_> {
     }
 
     fn write(&mut self, sample: &Value) {
-        let _ = writeln!(self.samples, "{sample}");
+        if let Err(error) = writeln!(self.samples, "{sample}") {
+            self.failures += 1;
+            eprintln!("cannot retain mutation sample: {error}");
+        }
     }
 
     /// Copies a failing step's logs into `<out>/failing/`.
@@ -316,6 +339,18 @@ impl Round<'_> {
                 .join("failing")
                 .join(format!("r{}-{}", self.index, step.replace(':', "-")));
         let _ = sail_verus::run::copy_tree(&from, &to);
+    }
+}
+
+fn daemon_continuity(expected: &mut Option<u64>, actual: Option<u64>) -> bool {
+    let Some(actual) = actual else {
+        return false;
+    };
+    if let Some(previous) = *expected {
+        previous == actual
+    } else {
+        *expected = Some(actual);
+        true
     }
 }
 
@@ -515,6 +550,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
             samples,
             plains: &mut plains,
             failures: 0,
+            daemon_pid: None,
         };
         let result = run_round(&mut r, &edits, &meta);
         failures += r.failures;
@@ -582,5 +618,20 @@ mod tests {
             ["x-compare-001"]
         );
         assert_eq!(select(&edits, &Value::Null, None, None).len(), 4);
+    }
+}
+
+#[cfg(test)]
+mod continuity_tests {
+    use super::daemon_continuity;
+
+    #[test]
+    fn one_round_requires_the_same_observed_daemon() {
+        let mut expected = None;
+        assert!(!daemon_continuity(&mut expected, None));
+        assert!(daemon_continuity(&mut expected, Some(42)));
+        assert!(daemon_continuity(&mut expected, Some(42)));
+        assert!(!daemon_continuity(&mut expected, Some(43)));
+        assert!(!daemon_continuity(&mut expected, None));
     }
 }

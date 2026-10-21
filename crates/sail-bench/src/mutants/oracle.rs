@@ -127,7 +127,7 @@ fn run_mutant(setup: &Setup, ws: &Workspace, edit: &Edit, runs: usize, timeout: 
         match execute(
             &mut ws.stock(&setup.installed),
             timeout,
-            Some(&logs.join(format!("run{k}"))),
+            &logs.join(format!("run{k}")),
         ) {
             Ok(rec) => {
                 let p = plain_outcome(&rec);
@@ -216,7 +216,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
                 let cold = execute(
                     &mut ws.stock(&setup.installed),
                     timeout,
-                    Some(&setup.scratch.join(format!("oracle-logs/original-{w}"))),
+                    &setup.scratch.join(format!("oracle-logs/original-{w}")),
                 );
                 match cold {
                     Ok(rec) => {
