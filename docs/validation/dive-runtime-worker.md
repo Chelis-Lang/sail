@@ -125,3 +125,16 @@ Oyster's production route or a requirement assurance tier.
 | `sail-m10-dive-native-solver.log` | `f31d215f93e64cbc4b39a5805ceaae221dc1998c49f378783b1714a5fed415d4` |
 | `sail-m10-dive-native-e2e.log` | `06ff4692ba313470f1e7690eb56ac46f120ce50744b056e99f3d5e9bbf002499` |
 | `sail-m10-dive-native-conformance.log` | `2744022b6ae69f639c7a0d33a8e93227fc40d1d92315a0320fc2e13bcdeb3518` |
+
+After the main merge, source `2862d138` also passed the complete native gate
+(900 tests), all 14 native/backend and process controls in the release profile,
+and the full macOS host gate (889 tests). No assertions or deadlines changed.
+The release process controls include actual-child cancellation, native parity,
+request/worker identity, malformed and oversized output, unexpected stderr,
+and inherited-pipe cleanup.
+
+| Additional artifact | SHA-256 |
+|---|---|
+| `sail-m10-dive-current-main-gate.log` | `537576a459848b7a35af8c94f8f43dc6ab00eab3fc418a89c6dfb93d3d1076ba` |
+| `sail-m10-dive-release-tests.log` | `7165744a9a3ceb518fb714becbb5032977f37b645007e11b2b61ab1d882baa11` |
+| `sail-m10-dive-current-macos-host.log` | `341c7569b719008f28152fc965070995c3221c3032d187e1e1061c3c2fa8f2c4` |

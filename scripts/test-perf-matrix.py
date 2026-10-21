@@ -197,6 +197,23 @@ def sample(rnd, arm, scenario, wall, norm, ref=None, code=0, project="small", no
 class Report(unittest.TestCase):
     V = ["verification results:: 1 verified, 0 errors"]
 
+    def test_comment_edits_cannot_qualify_unchanged_rows(self):
+        samples = [sample(r, arm, "unchanged", wall, [], ref=self.V, project="capybarakv")
+                   for r in (1, 2, 3) for arm, wall in (("stock", 0.2), ("sail", 0.5))]
+        for phase in (None, "noop1", "unchanged"):
+            for entry in samples:
+                entry["measurement_phase"] = phase
+            row = pm.rows_of(samples, 3)[0]
+            self.assertEqual(row["valid"], phase == "unchanged")
+        self.assertEqual(pm.PERF_REAL_PHASE["unchanged"], "unchanged")
+
+    def test_matching_failures_keep_their_observed_exit_codes(self):
+        samples = [sample(r, arm, "cold", wall, self.V, code=101, project="vest")
+                   for r in (1, 2, 3) for arm, wall in (("stock", 30.0), ("sail", 25.0))]
+        row = pm.rows_of(samples, 3)[0]
+        self.assertTrue(row["valid"])
+        self.assertEqual(row["exit_codes"], {"stock": ["101"], "sail": ["101"]})
+
     def test_pairs_and_judges_rows(self):
         s = []
         for r in (1, 2, 3):

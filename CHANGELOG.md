@@ -5,13 +5,8 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- Add isolated native temporal jobs through a pinned D.I.V.E. library:
-  exhaustive finite checking, admitted temporal properties, sampled simulation
-  and complete-trace validation. Authenticate worker bytes and request identity,
-  enforce parent deadlines and cancellation, retain native evidence alongside
-  reversible admitted ITF values, and refuse unsupported host capabilities.
-  This developer API does not change Verus commands or introduce a TLC backend.
-
+- Measure real-project unchanged reruns without adding source comments. Mark
+  older comment-edit rows separately and show nonzero verification exit codes.
 - Preserve Cargo metadata pipelining while observing native compiles for
   shipped vstd. Require producer certificates after compilation, before
   publishing any reusable result.
@@ -1189,3 +1184,9 @@ semantic versioning once the API is published.
 - `sail-conformance`: `cargo-verus` corpus units (with Verus dependencies
   patched to the pinned source in a scratch copy), project requirements
   (skipped and reported when unavailable), and the standard-tier corpus.
+- Add isolated native temporal jobs through a pinned D.I.V.E. library:
+  exhaustive finite checking, admitted temporal properties, sampled simulation
+  and complete-trace validation. Authenticate worker bytes and request identity,
+  enforce parent deadlines and cancellation, retain native evidence alongside
+  reversible admitted ITF values, and refuse unsupported host capabilities.
+  This developer API does not change Verus commands or introduce a TLC backend.
