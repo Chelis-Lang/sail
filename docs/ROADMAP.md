@@ -9,7 +9,7 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 | Gate | State | Evidence |
 |---|---|---|
 | Shared neutral source and actual backend helper | Qualified separately | [Lowering](spec/neutral-verus-lowering.md) |
-| Negotiated source-only job route and immutable baselines | Implemented; installed-service qualification pending | [Service](neutral-contract-jobs.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
+| Negotiated source-only job route and immutable baselines | Installed-service acceptance passed; final full gates required | [Acceptance](validation/neutral-contract-jobs.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
 | Source-semantic requirement entailment, requirement tiers and mutation establishment | Separate remaining work | [Service boundary](spec/neutral-contract-jobs.md) |
 
 ## Goal
