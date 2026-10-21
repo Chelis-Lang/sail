@@ -545,3 +545,22 @@ and sample range; it is never automatically accepted by a percentage allowance.
 review, and 0 for valid rows whose medians are no slower. These exit codes do
 not grant release acceptance. Realistic edit-loop claims additionally require
 the seeded mutation suite (#284), rather than a single scripted edit.
+
+Attach the realistic edit-loop measurements when producing the release report:
+
+```sh
+python3 scripts/perf-matrix.py report matrix-out --markdown matrix-out/matrix.md \
+  --mutants mutants-out/human-eval --mutants mutants-out/ironkv \
+  --mutants mutants-out/vest --mutants mutants-out/capybarakv
+```
+
+Run both workloads against the same installed release. The report checks the
+Sail and stock Cargo-Verus binaries, runtime manifest, corpus pins, registry
+lock and platform before combining results. Mutation coverage requires the
+complete version 2 catalogue, three stock oracle runs, all nine classes and
+three measured rounds with one daemon per round. Missing samples, changed
+verdicts, failed reverts or mixed builds invalidate that evidence. A slower
+individual edit remains visible even when its complete loop is faster.
+Scripted module/spec edits remain diagnostic; they do not substitute for this
+breadth. A new full matrix remains incomplete until all four mutation projects
+are attached.
