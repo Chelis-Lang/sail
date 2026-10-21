@@ -242,3 +242,9 @@ filesystem notifications. Creating the initial `Cargo.lock` is setup work and
 does not cancel the first verification when macOS delivers a delayed event.
 Subsequent lockfile, source and declared-input changes keep the existing
 invalidation and cancellation behavior.
+
+With the pinned Cargo, a requested proof failure keeps independently verified
+dependencies when the current input checks pass. Platform-disabled packages
+with no Cargo execution unit need no observed build-script contract. Missing
+or unsupported planning evidence retains conservative cleanup; unexpected
+actual units prevent a Current result.

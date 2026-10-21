@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve independently verified dependencies after a requested proof fails
+  when platform-disabled build scripts have no current Cargo execution unit.
+  Keep conservative cleanup for unknown plans and reject unexpected units.
+
 - Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
   comparisons across stock Verus, the plain fork, and Sail.
   Support fresh verification, unchanged runs, proof edits, and daemon restarts.
