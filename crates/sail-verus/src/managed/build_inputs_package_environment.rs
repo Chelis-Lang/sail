@@ -25,9 +25,18 @@ pub(super) fn key(key: &str) -> bool {
 }
 
 pub(super) fn value(record: &BuildInput, data: &Value, key: &str) -> Option<Option<String>> {
+    authority_value(record, data, key, std::env::var_os(key).is_some())
+}
+
+fn authority_value(
+    record: &BuildInput,
+    data: &Value,
+    key: &str,
+    inherited: bool,
+) -> Option<Option<String>> {
     // Never infer child values from caller environment. A collision or an
     // unknown Cargo execution boundary remains ineligible for shared reuse.
-    (self::key(key) && std::env::var_os(key).is_none()).then_some(())?;
+    (self::key(key) && !inherited).then_some(())?;
     super::super::build_environment::package_values(data, &record.package_id)?;
     let mut packages = data["packages"]
         .as_array()?
@@ -107,6 +116,10 @@ mod tests {
     #[test]
     fn cargo_package_and_unit_values_are_exact() {
         let (record, mut data) = fixture();
+        assert_eq!(
+            authority_value(&record, &data, "CARGO_PKG_NAME", true),
+            None
+        );
         for (key, expected) in [
             ("CARGO_MANIFEST_DIR", "/registry/script"),
             ("CARGO_PKG_NAME", "script"),
@@ -118,17 +131,23 @@ mod tests {
             ("CARGO_PKG_VERSION_PRE", "beta.4"),
             ("OUT_DIR", "/target/build/script/out"),
         ] {
-            assert_eq!(value(&record, &data, key), Some(Some(expected.to_owned())));
+            assert_eq!(
+                authority_value(&record, &data, key, false),
+                Some(Some(expected.to_owned()))
+            );
         }
         data["packages"][0]["links"] = Value::Null;
-        assert_eq!(value(&record, &data, "CARGO_MANIFEST_LINKS"), Some(None));
+        assert_eq!(
+            authority_value(&record, &data, "CARGO_MANIFEST_LINKS", false),
+            Some(None)
+        );
         data["packages"][0]["version"] = json!("2.0.1");
         assert_eq!(
-            value(&record, &data, "CARGO_PKG_VERSION_PRE"),
+            authority_value(&record, &data, "CARGO_PKG_VERSION_PRE", false),
             Some(Some(String::new()))
         );
         assert_eq!(
-            value(&record, &data, "CARGO_PKG_VERSION_MAJOR"),
+            authority_value(&record, &data, "CARGO_PKG_VERSION_MAJOR", false),
             Some(Some("2".to_owned()))
         );
     }
@@ -142,23 +161,38 @@ mod tests {
             "/target/build/script/not-out",
         ] {
             record.unit_out_dir = Some(raw.to_owned());
-            assert_eq!(value(&record, &data, "OUT_DIR"), None);
+            assert_eq!(authority_value(&record, &data, "OUT_DIR", false), None);
         }
         record.unit_out_dir = None;
-        assert_eq!(value(&record, &data, "OUT_DIR"), None);
-        assert_eq!(value(&record, &data, "CARGO_UNKNOWN"), None);
+        assert_eq!(authority_value(&record, &data, "OUT_DIR", false), None);
+        assert_eq!(
+            authority_value(&record, &data, "CARGO_UNKNOWN", false),
+            None
+        );
         data["packages"][0]["version"] = json!("01.2.3");
-        assert_eq!(value(&record, &data, "CARGO_PKG_VERSION_MAJOR"), None);
+        assert_eq!(
+            authority_value(&record, &data, "CARGO_PKG_VERSION_MAJOR", false),
+            None
+        );
         data["packages"][0]["manifest_path"] = json!("/other/Cargo.toml");
-        assert_eq!(value(&record, &data, "CARGO_PKG_NAME"), None);
+        assert_eq!(
+            authority_value(&record, &data, "CARGO_PKG_NAME", false),
+            None
+        );
         let (record, mut data) = fixture();
         let duplicate = data["packages"][0].clone();
         if let Some(packages) = data["packages"].as_array_mut() {
             packages.push(duplicate);
         }
-        assert_eq!(value(&record, &data, "CARGO_PKG_NAME"), None);
+        assert_eq!(
+            authority_value(&record, &data, "CARGO_PKG_NAME", false),
+            None
+        );
         let (record, mut data) = fixture();
         data["sail_build_environment"]["version"] = json!(2);
-        assert_eq!(value(&record, &data, "CARGO_PKG_NAME"), None);
+        assert_eq!(
+            authority_value(&record, &data, "CARGO_PKG_NAME", false),
+            None
+        );
     }
 }
