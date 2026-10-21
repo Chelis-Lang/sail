@@ -42,6 +42,7 @@ fn key(query: &Query, solver: &SolverIdentity) -> Option<QueryKey> {
         &query.limits,
         "smt.random_seed=0",
         "sat.random_seed=0",
+        "sail-process-env-v1:clear:LC_ALL=C",
     ))
     .ok()?;
     Some(QueryKey(sail_key::sha256(&content)))

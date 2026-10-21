@@ -107,6 +107,13 @@ slice. Temporal execution will use D.I.V.E. through S.A.I.L.; no TLC backend is
 introduced. The original Verus path and all existing public schemas retain
 their meanings.
 
+## Execution environment
+
+The solver receives a cleared environment with `LC_ALL=C`. Ambient loader,
+locale and solver settings cannot change the authenticated executable's behavior.
+This fixed environment policy is part of the cache key; entries created under
+an earlier environment policy cannot be reused.
+
 ## Local transport version 1
 
 The existing `sail serve` process owns a separate runtime endpoint beside its
