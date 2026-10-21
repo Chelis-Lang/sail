@@ -144,6 +144,15 @@ def target_summary(target, partial):
     if (failed > 0) != (errors > 0):
         problems.append(f"{failed} failed functions, Verus counted {errors} errors")
     extra = [f"sail-report-inconsistent: {target.get('target')}: {'; '.join(problems)}"] if problems else []
+    # A scoped replay exposes the established report as structured provenance.
+    # Cargo did not run a verifier or print a new verification summary.
+    if target.get("scope_reuse") is not None:
+        scope = target["scope_reuse"]
+        if not (partial and isinstance(scope, list) and scope
+                and all(isinstance(arg, str) for arg in scope)
+                and target.get("complete") is False and not target.get("reused")):
+            extra.append("sail-report-inconsistent: invalid scoped-replay marker")
+        return extra
     return [line] + extra
 
 

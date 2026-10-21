@@ -113,6 +113,16 @@ class Normalize(unittest.TestCase):
         del doc["targets"][1]["report"]["crates"][0]["verus"]
         self.assertTrue(pm.normalize(json.dumps(doc) + "\n")[1].endswith("no Verus counts; 3 proved obligations, Verus counted 0 verified"))
 
+    def test_scoped_replay_keeps_report_checks_without_inventing_fresh_output(self):
+        doc = self.project_doc()
+        target = doc["targets"][1]
+        target["scope_reuse"] = ["--verify-module", "m"]
+        self.assertEqual(pm.normalize(json.dumps(doc)), pm.normalize("Finished dev profile"))
+        target["report"]["crates"][0]["verus"]["verified"] = 4
+        self.assertIn("3 proved obligations, Verus counted 4", pm.normalize(json.dumps(doc))[0])
+        target["complete"] = True
+        self.assertIn("sail-report-inconsistent: invalid scoped-replay marker", pm.normalize(json.dumps(doc)))
+
     def test_whole_project_result_has_no_partial_suffix(self):
         text = json.dumps(self.project_doc(partial=False)) + "\n"
         self.assertEqual(pm.normalize(text), ["verification results:: 3 verified, 0 errors"])
