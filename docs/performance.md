@@ -91,6 +91,152 @@ time divided by concurrent jobs), from medians of three rounds.
   before and after Cargo runs and checks every reused receipt. Its value is
   the report, not the time.
 
+## Repeatable Cargo comparison
+
+Use `scripts/bench-cargo-compare.py` to compare stock Verus, the plain verifier
+fork, and Sail on a fixed source commit.
+The runner changes only a private Git worktree, not the operator's source files.
+
+Supply an unpacked stock release with the upstream commit from `sail engine status`.
+Stock and fork runtimes must use identical Z3 bytes.
+The runner selects the fork from Sail's validated engine.
+Use `--engine-build` to select an external engine build.
+Install its Rust toolchain before the run.
+The selected project must contain a committed `Cargo.lock`.
+
+### Scenarios
+
+| Scenario | Cargo and proof state | Measured work |
+| --- | --- | --- |
+| `fresh` | New Cargo target per command, warm Sail solver cache | Complete fresh verification |
+| `unchanged` | Retain artifacts after a successful baseline | CLI latency, new verification, or confirmed proof reuse |
+| `proof-edit` | Retain baseline artifacts, then apply one declared edit | Fresh verification of the edited library |
+| `daemon-restart` | New Cargo targets, retained disk cache, empty daemon memory | Complete verification plus new-daemon startup |
+
+Select scenarios with `--scenarios`. The default is `fresh`.
+Each scenario has its own solver cache and separate results.
+
+Runs are serial. Six measured rounds cover all six execution orders.
+Fresh, unchanged, and restart scenarios start with one warmup per verifier.
+Each proof-edit round creates its own successful baseline per verifier.
+
+Workflow scenarios (`unchanged` and `proof-edit`) need one selected library package.
+For a workspace, set `--project` to the member directory.
+The runner records its full package identity and uses its name for CLI selection.
+An ambiguous workspace root is an error.
+
+From the Sail checkout, the generic workload exercises all four scenarios:
+
+```sh
+REVISION="$(git rev-parse HEAD)"
+python3 scripts/bench-cargo-compare.py \
+  --project bench/cargo-example \
+  --revision "$REVISION" \
+  --stock-runtime ../verus-stock/verus-arm64-macos \
+  --sail target/release/sail \
+  --cargo "$CARGO_HOME/bin/cargo" \
+  --cargo-home "$CARGO_HOME" \
+  --rustup-home "$RUSTUP_HOME" \
+  --scenarios fresh unchanged proof-edit daemon-restart \
+  --edit-spec bench/cargo-example/proof-edit.json \
+  --rounds 6 --threads 4 --jobs 4 --rlimit 20 \
+  --out ../benchmark-results/cargo-workflows-1
+```
+
+Use the matching Linux stock archive on a native Linux host.
+The output directory must be new.
+Use another output directory for each sample set.
+
+### Proof edits
+
+The `proof-edit` scenario needs `--edit-spec`.
+Its JSON object contains `path`, `before`, and `after` strings.
+The path is relative to the selected Cargo project.
+The runner replaces one exact match in a tracked Rust source file.
+It rejects traversal, symlinks, empty or ambiguous matches, and identical replacements.
+
+The generic [edit fixture](../bench/cargo-example/proof-edit.json) adds a bit-mask
+fact to `low_bits_roundtrip` without a contract change.
+Every verifier receives the same edit.
+Each round uses an independent baseline artifact context.
+An earlier edited receipt cannot replace fresh proof work in the next round.
+The metadata records both source hashes and the complete edit specification.
+
+Native proof counts can change when an edit adds an obligation.
+The report compares stock and fork counts for the same source state.
+It checks Sail's requested-root function count and identity against that pair's baseline.
+Native obligation counts and Sail function counts remain separate.
+These checks do not establish formal per-function conformance.
+
+### Controls and timing
+
+The runner records source, lock-file, executable, runtime, and implementation identities.
+It checks source and runtime state before and after each command.
+It uses an isolated home and Cargo configuration.
+It shares only registry and Git download caches with the operator.
+Verification uses `--frozen` and fixed thread, job, and resource limits.
+
+The runtime identity includes the solver shim and the Cargo and rustc executables behind rustup proxies.
+Local dependencies must remain inside the pinned Git worktree.
+Ancestor Cargo configuration outside that worktree is an error.
+
+Fresh and restart commands use new Cargo targets and disable incremental compilation.
+Workflow commands retain normal Cargo artifacts and profile settings.
+Managed Sail workflows retain proof receipts.
+Fresh and restart cases disable whole-target reuse through explicit Cargo targets.
+Wall time includes Cargo, dependency builds, verification, and output capture.
+
+Before a measured restart, the runner drains writes and stops its private daemon.
+The new daemon must retain disk entries, start with empty memory, and record disk hits.
+Wall time includes new-daemon startup and readiness checks, but excludes old-daemon shutdown.
+Each sample also records startup time separately.
+Client CPU excludes the separate daemon process.
+
+### Results and limits
+
+`samples.jsonl` and `logs/` retain every baseline and measured sample.
+`metadata.json` records the run configuration and provenance.
+`summary.json` uses schema version 2 and separate results for each scenario.
+`summary.md` includes raw sample paths, medians, ranges, sample standard deviations, and paired speedups.
+There is no combined timing aggregate across scenarios.
+
+Reports distinguish fresh proof work, confirmed root reuse, and native Cargo no-ops.
+Workflow baselines must be Current, complete, and successful.
+Fresh proof evidence must identify the current run, not an earlier baseline.
+Missing proof evidence, failed proofs, timeouts, source changes, and incomplete sample sets invalidate the affected scenario.
+Invalid scenarios retain evidence without timing aggregates.
+Any invalid scenario produces a nonzero exit code.
+
+Use an idle native host for comparative performance claims.
+A local smoke run checks the protocol, not release performance.
+Metadata and logs can contain project paths, source identities, and host details.
+Review them before publication.
+Keep raw results and private project configurations outside the repository.
+
+### Local protocol validation
+
+A native macOS run used the generic workload over two measured rounds per verifier.
+All 39 expected invocations passed across all four scenarios.
+The run used the fixed runtime from #299.
+
+Unchanged Sail samples reused both targets without verifier invocations.
+Proof edits produced fresh root verification in each round.
+Restarted daemons started with empty memory and served retained disk entries.
+
+All 51 behavioral tests passed.
+Six review regression tests failed before correction and passed after correction.
+The macOS host gate passed 846 workspace tests, with 37 skipped.
+Clippy, example formatting, shell syntax, and documentation links passed.
+
+The run does not qualify release performance.
+The host was not isolated, and client CPU excludes the daemon.
+The protocol did not run on native Linux locally.
+
+The external archive is `sail-cargo-benchmark-publication-evidence.tar.gz`.
+Its SHA-256 is `7bd5f431fcad4380cc2562aac8cd5baec3593c9895b39b10c4686aa123c24e03`.
+It contains the generic workload, benchmark source, reports, raw logs, and regression failure evidence.
+It excludes compiled Cargo artifacts and solver caches.
+
 ## Setup
 
 Every `sail verify` is managed verification
