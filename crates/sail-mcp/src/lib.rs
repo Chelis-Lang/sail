@@ -20,9 +20,12 @@
 //!   events, recorded failure details and comparisons (ADR 0027).
 //! - `save_baseline`, `list_baselines` and `get_baseline`: immutable named
 //!   historical evidence, independent of rolling job retention.
+//! - `runtime_capabilities` and `runtime_execute`: exact raw SMT requests
+//!   through the daemon's separate versioned runtime endpoint.
 //!
-//! Verification always runs the `sail` binary as a child process, so this
-//! crate depends only on `sail-api` for report types and read-only job clients
+//! Cargo verification runs the `sail` binary as a child process; raw runtime
+//! tools connect directly to the daemon. This crate depends only on `sail-api`
+//! for report types and service clients
 //! (ADR 0016). The installed MCP server receives a fresh service reply for every
 //! status/result lookup, with bounded decoded-frame reuse across calls.
 //! Charter rule 7 holds throughout: a provisional result is never presented
@@ -36,6 +39,8 @@ mod job_tools;
 pub mod jsonrpc;
 mod proof_tools;
 mod run;
+#[cfg(unix)]
+mod runtime_tools;
 pub mod server;
 pub mod store;
 mod summary;

@@ -246,6 +246,8 @@ exit 1
             "list_baselines",
             "get_baseline",
             "start_repair_validation",
+            "runtime_capabilities",
+            "runtime_execute",
         ]
     );
 

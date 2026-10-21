@@ -71,7 +71,7 @@ fn exchange(sail: &str, project: &str) -> Result<Vec<Value>, String> {
     Ok(out)
 }
 
-const TOOL_NAMES: [&str; 15] = [
+const TOOL_NAMES: &[&str] = &[
     "verify",
     "counterexample",
     "cached_result",
@@ -87,6 +87,10 @@ const TOOL_NAMES: [&str; 15] = [
     "list_baselines",
     "get_baseline",
     "start_repair_validation",
+    #[cfg(unix)]
+    "runtime_capabilities",
+    #[cfg(unix)]
+    "runtime_execute",
 ];
 
 /// The installed `sail mcp` must list exactly the tools this build defines,
