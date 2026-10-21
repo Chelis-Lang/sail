@@ -44,6 +44,42 @@ pub(crate) struct Observation<'a> {
     cwd: PathBuf,
     arguments: Vec<OsString>,
     compiler_options: Vec<String>,
+    _producer: Producer,
+}
+
+/// Marks only an admitted observation that can publish these outputs. Marks
+/// control waiting, never whether a producer certificate is accepted.
+struct Producer {
+    marks: Vec<PathBuf>,
+}
+
+impl Producer {
+    fn begin(plan: &Plan, outputs: &[PathBuf]) -> Self {
+        let mut marks = Vec::new();
+        if std::fs::create_dir_all(plan.native_records.join("running")).is_ok() {
+            for output in outputs {
+                let (_, mark) = producer_paths(&plan.native_records, output);
+                if let Ok(mut file) = std::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&mark)
+                {
+                    use std::io::Write as _;
+                    marks.push(mark);
+                    let _ = file.write_all(plan.run_id.as_bytes());
+                }
+            }
+        }
+        Self { marks }
+    }
+}
+
+impl Drop for Producer {
+    fn drop(&mut self) {
+        for mark in &self.marks {
+            let _ = std::fs::remove_file(mark);
+        }
+    }
 }
 
 impl<'a> Observation<'a> {
@@ -113,6 +149,7 @@ impl<'a> Observation<'a> {
             .ok_or("native read request unavailable")?;
         let mut arguments = graph.arguments().to_vec();
         arguments.extend(compiler_options.iter().map(OsString::from));
+        let producer = Producer::begin(plan, &outputs);
         Ok(Self {
             call,
             generated,
@@ -122,6 +159,7 @@ impl<'a> Observation<'a> {
             cwd: std::env::current_dir().map_err(|_| "native cwd unavailable")?,
             arguments,
             compiler_options,
+            _producer: producer,
         })
     }
 
@@ -378,14 +416,15 @@ fn trace_inventory(call: &Call<'_>, phase: &str) {
 }
 
 fn await_graph_records(call: &Call<'_>, graph: &Snapshot) -> bool {
-    await_records(
-        || {
-            graph
-                .original_inputs()
-                .keys()
-                .all(|path| record_path(call.plan, path).is_file())
-        },
-        std::time::Duration::from_secs(2),
+    let paths = graph
+        .original_inputs()
+        .keys()
+        .map(|path| producer_paths(&call.plan.native_records, path))
+        .collect::<Vec<_>>();
+    await_producers(
+        &paths,
+        &call.plan.run_id,
+        std::time::Duration::from_secs(120),
     )
 }
 
@@ -655,10 +694,15 @@ pub(super) fn launcher_matches(plan: &Plan, wrapper: &Path) -> bool {
 }
 
 fn record_path(plan: &Plan, output: &Path) -> PathBuf {
-    plan.native_records.join(format!(
-        "{}.json",
-        super::digest(output.as_os_str().as_encoded_bytes())
-    ))
+    producer_paths(&plan.native_records, output).0
+}
+
+fn producer_paths(records: &Path, output: &Path) -> (PathBuf, PathBuf) {
+    let key = super::digest(output.as_os_str().as_encoded_bytes());
+    (
+        records.join(format!("{key}.json")),
+        records.join("running").join(key),
+    )
 }
 
 /// Every explicit library must have been emitted by a successful owned native
@@ -672,15 +716,16 @@ pub(super) fn externs_are_fresh(call: &Call<'_>) -> bool {
         .iter()
         .map(|(argument, _, _)| {
             let (_, path) = external(call, argument)?;
-            Some(record_path(call.plan, &path))
+            Some(producer_paths(&call.plan.native_records, &path))
         })
         .collect::<Option<Vec<_>>>()
     else {
         return false;
     };
-    let ready = await_records(
-        || records.iter().all(|path| path.is_file()),
-        std::time::Duration::from_secs(2),
+    let ready = await_producers(
+        &records,
+        &call.plan.run_id,
+        std::time::Duration::from_secs(120),
     );
     // Hash actual libraries only once after the records arrive. A producer's
     // metadata-ready notification must not cause a busy loop hashing libraries.
@@ -689,10 +734,24 @@ pub(super) fn externs_are_fresh(call: &Call<'_>) -> bool {
 
 // Native successful observations can trail Cargo's metadata-ready message.
 // Waiting is optional and bounded; missing/invalid provenance always misses.
-fn await_records(mut ready: impl FnMut() -> bool, maximum: std::time::Duration) -> bool {
+fn await_producers(
+    paths: &[(PathBuf, PathBuf)],
+    run_id: &str,
+    maximum: std::time::Duration,
+) -> bool {
     let started = std::time::Instant::now();
     loop {
-        if ready() {
+        let mut complete = true;
+        for (record, mark) in paths {
+            if record.is_file() {
+                continue;
+            }
+            complete = false;
+            if !std::fs::read(mark).is_ok_and(|bytes| bytes == run_id.as_bytes()) {
+                return false;
+            }
+        }
+        if complete {
             return true;
         }
         let Some(remaining) = maximum.checked_sub(started.elapsed()) else {
@@ -1027,21 +1086,48 @@ mod tests {
             std::env::temp_dir().join(format!("sail-native-pipeline-{}", std::process::id()));
         std::fs::create_dir_all(&root)?;
         let record = root.join("producer.json");
+        let mark = root.join("running");
+        let paths = vec![(record.clone(), mark.clone())];
+        std::fs::write(&mark, b"this-run")?;
         let producer_record = record.clone();
         let producer = std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_millis(30));
             std::fs::write(producer_record, b"compiler exited successfully")
         });
-        assert!(await_records(
-            || std::fs::read(&record).is_ok_and(|bytes| bytes == b"compiler exited successfully"),
-            std::time::Duration::from_secs(2),
+        assert!(await_producers(
+            &paths,
+            "this-run",
+            std::time::Duration::from_secs(2)
         ));
         assert!(producer.join().is_ok_and(|result| result.is_ok()));
+        assert_eq!(std::fs::read(&record)?, b"compiler exited successfully");
         std::fs::remove_file(&record)?;
-        assert!(!await_records(
-            || record.exists(),
-            std::time::Duration::ZERO,
+        std::fs::remove_file(&mark)?;
+        let started = std::time::Instant::now();
+        assert!(!await_producers(
+            &paths,
+            "this-run",
+            std::time::Duration::from_secs(2)
         ));
+        assert!(started.elapsed() < std::time::Duration::from_secs(1));
+        std::fs::write(&mark, b"older-run")?;
+        assert!(!await_producers(
+            &paths,
+            "this-run",
+            std::time::Duration::from_secs(2)
+        ));
+        std::fs::write(&mark, b"this-run")?;
+        let producer_mark = mark.clone();
+        let failed_producer = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(30));
+            std::fs::remove_file(producer_mark)
+        });
+        assert!(!await_producers(
+            &paths,
+            "this-run",
+            std::time::Duration::from_secs(2)
+        ));
+        assert!(failed_producer.join().is_ok_and(|result| result.is_ok()));
         std::fs::remove_dir_all(root)
     }
 

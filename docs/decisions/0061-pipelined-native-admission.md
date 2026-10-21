@@ -162,3 +162,11 @@ complete graph, source, environment, compiler and output checks. The vstd
 consumer's certificate and consumed-byte requirements are unchanged. A missing
 or failed producer therefore still prevents reuse. Native performance and
 both-platform qualification of this implementation are pending.
+
+Shipped observers also use run-bound, exclusively created producer marks.
+Missing certificates wait only while their admitted producer can still publish;
+no producer, an older run's mark or a producer that finishes without a
+certificate causes an immediate miss. A stale current-run mark is bounded at
+120 seconds, as on the retained path. Marks never authorize a proof: the
+existing certificate, original/copy bytes and consumed-input checks remain
+mandatory after waiting.
