@@ -159,7 +159,12 @@ impl Round<'_> {
             )
         };
         let go_sail = || {
-            let mut cmd = ws.sail(self.sail, &self.cache, self.verus_build);
+            let mut cmd = ws.sail(
+                self.sail,
+                &self.cache,
+                self.verus_build,
+                &self.setup.installed.pins.verus.rust_toolchain,
+            );
             if force {
                 cmd.env("SAIL_MANAGED_FORCE", "1");
             }
@@ -541,6 +546,7 @@ fn run_header(
        "corpus_sha256": digest_file(Path::new("corpus/corpus.toml"))?,
        "vstd_lock_sha256": o.vstd_lock.as_deref().map(digest_file).transpose()?,
        "protocol": PROTOCOL,
+       "cargo_toolchain": setup.installed.pins.verus.rust_toolchain,
        "oracle_protocol": meta.pointer("/oracle/protocol"),
        "generator": meta.get("generator"),
        "oracle_runs": meta.pointer("/oracle/runs"),

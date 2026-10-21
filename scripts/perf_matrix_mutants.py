@@ -33,6 +33,8 @@ def analyse(directory, matrix):
         issues.append("requires registry preparation for the oracle and workload")
     if not isinstance(header.get("oracle_runs"), int) or header["oracle_runs"] < 3:
         issues.append("requires three stock oracle runs")
+    if not matrix.get("rust_toolchain") or header.get("cargo_toolchain") != matrix["rust_toolchain"]:
+        issues.append("both mutation arms must use the matrix's pinned Cargo toolchain")
     rounds = header.get("rounds", 0)
     if not isinstance(rounds, int) or rounds < 3 or rounds != matrix.get("rounds"):
         issues.append("missing or incompatible measured rounds")

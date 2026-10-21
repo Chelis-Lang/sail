@@ -65,6 +65,12 @@ the [containment record](validation/dependency-store-fail-closed.md).
 
 ## Mutation suite
 
+Both stock and managed commands explicitly use the pinned runtime's Rust
+Cargo toolchain, including projects with a checked-in nightly override.
+The run header records `cargo_toolchain`; attaching it to a release matrix
+requires the same pin. This is a controlled comparison, not a claim that Sail
+ignores a user's project toolchain in ordinary use.
+
 The seeded mutation suite ([ADR 0063](decisions/0063-seeded-mutation-suite.md))
 is both a soundness probe and the release benchmark's edit loop. Catalogues
 live in `corpus/mutants/` (`<name>.toml` in the `corpus/edits.toml` format,

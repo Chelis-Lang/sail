@@ -181,9 +181,9 @@ impl Workspace {
             .args(&self.verus_args)
             .args(FLAGS)
             .current_dir(&self.package)
-            .env("RUSTUP_TOOLCHAIN", &installed.pins.verus.rust_toolchain)
             .env("CARGO_TARGET_DIR", self.root.join("target-stock"))
-            .envs(&self.env);
+            .envs(&self.env)
+            .env("RUSTUP_TOOLCHAIN", &installed.pins.verus.rust_toolchain);
         if !installed.z3_bundled {
             cmd.env("VERUS_Z3_PATH", &installed.z3);
         }
@@ -232,9 +232,15 @@ impl Workspace {
     }
 
     /// The `sail verify` command, with Sail's cache (and so its daemon) in
-    /// `cache`.
+    /// `cache`, using the same explicit Rust toolchain as the stock arm.
     #[must_use]
-    pub fn sail(&self, sail: &Path, cache: &Path, verus_build: Option<&Path>) -> Command {
+    pub fn sail(
+        &self,
+        sail: &Path,
+        cache: &Path,
+        verus_build: Option<&Path>,
+        toolchain: &str,
+    ) -> Command {
         let mut cmd = Command::new(sail);
         clean_cargo_env(&mut cmd);
         scrub_sail_env(&mut cmd);
@@ -248,7 +254,8 @@ impl Workspace {
             .env("SAIL_CACHE_DIR", cache)
             .env("SAIL_DAEMON_IDLE_TIMEOUT", "0")
             .env("CARGO_TARGET_DIR", self.root.join("target-sail"))
-            .envs(&self.env);
+            .envs(&self.env)
+            .env("RUSTUP_TOOLCHAIN", toolchain);
         if let Some(build) = verus_build {
             cmd.env("SAIL_VERUS_BUILD", build);
         }
@@ -624,6 +631,24 @@ pub fn write_fresh(file: &Path, text: &str) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sail_uses_the_oracles_toolchain_even_with_a_project_override() {
+        let workspace = Workspace {
+            root: PathBuf::from("scratch"),
+            src: PathBuf::from("source"),
+            package: PathBuf::from("project-with-nightly-toolchain"),
+            cargo_args: Vec::new(),
+            verus_args: Vec::new(),
+            env: BTreeMap::from([("RUSTUP_TOOLCHAIN".to_owned(), "nightly".to_owned())]),
+        };
+        let command = workspace.sail(Path::new("sail"), Path::new("cache"), None, "1.99.1");
+        let selected = command
+            .get_envs()
+            .find(|(name, _)| *name == "RUSTUP_TOOLCHAIN")
+            .and_then(|(_, value)| value);
+        assert_eq!(selected, Some(std::ffi::OsStr::new("1.99.1")));
+    }
 
     #[cfg(unix)]
     #[test]

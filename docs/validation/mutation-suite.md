@@ -17,6 +17,18 @@ owner-approved exceptions. Daemon continuity and retained restores now require
 observed process identity and published receipts. No final edit-loop claim is
 made from the historical tables.
 
+The runner now binds both arms explicitly to the runtime's Rust toolchain,
+records it in `cargo_toolchain`, and the matrix refuses missing or different
+bindings. Earlier installed-product mutation attempts without this binding
+remain diagnostic only.
+
+- 2026-10-21, CLI `99bada10`: CapybaraKV's Sail arm followed its old nightly
+  project pin while stock used Rust 1.99.1, failing metadata before verification
+  (#312). The attempt was stopped, not counted as a product disagreement or a
+  performance result. The corrected runner binds both arms identically; final
+  mutation runs restart with that runner. The partial Vest attempt also stays
+  diagnostic rather than being mixed into the corrected cohort.
+
 ## Current installed-product controls (2026-10-21)
 
 A root-only HumanEval smoke passes cold, mutation, ordinary revert and forced
