@@ -12,6 +12,14 @@ This page lists every code in the tools. A test
 listed here but no longer used. Renamed and removed codes are listed in
 `CHANGELOG.md`.
 
+## Neutral contracts
+
+| Code | Meaning | Action |
+|---|---|---|
+| `SAIL0701` | Unsupported or invalid neutral contract, source or requirement identity | Use the admitted scalar contract subset described in the neutral-contract guide |
+| `SAIL0702` | Runtime precondition or postcondition failed | Inspect the named requirement and the actual implementation inputs and output |
+| `SAIL0703` | Specification arithmetic overflow or invalid division | Correct the expression or narrow the admitted domain explicitly; checks remain enabled in release builds |
+
 ## Command line (`sail`)
 
 | Code | Meaning | What to do |
@@ -168,6 +176,13 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL5001` | A solver process could not be started or driven | Check the Z3 path |
 | `SAIL5101` | A portfolio file or directory cannot be read | Check the path |
 | `SAIL5102` | Invalid portfolio options | Fix the options, for example a non-zero number of configurations |
+
+## Raw SMT runtime
+
+| Code | Meaning | Action |
+|---|---|---|
+| `SAIL6101` | Invalid runtime configuration, request, limits or unsupported SMT command/option | Read the specific `kind` and message; submit a supported version-one request with positive bounded limits |
+| `SAIL6102` | Backend unavailable, incomplete execution or response integrity failure | Inspect the structured result; install the existing pinned Sail runtime if unavailable, or address the recorded cancellation, timeout, output or process failure |
 
 ## Benchmarks (`sail-bench`)
 
