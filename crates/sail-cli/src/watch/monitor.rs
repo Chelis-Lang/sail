@@ -173,6 +173,12 @@ fn capture(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<([u8; 32]
             // Include empty input directories and their identity. Directory
             // times also change for writes inside excluded output subtrees.
             hash.update(b"directory");
+            if std::fs::symlink_metadata(&path)?.file_type().is_symlink() {
+                let target = std::fs::read_link(&path)?;
+                let bytes = target.as_os_str().as_encoded_bytes();
+                hash.update((bytes.len() as u64).to_le_bytes());
+                hash.update(bytes);
+            }
             #[cfg(unix)]
             {
                 use std::os::unix::fs::MetadataExt as _;
@@ -226,6 +232,7 @@ fn collect(
     if path.is_dir() {
         // Directory symlinks are supplied as resolved metadata roots, never followed recursively.
         if std::fs::symlink_metadata(path)?.file_type().is_symlink() {
+            files.push(path.to_path_buf());
             return Ok(());
         }
         files.push(path.to_path_buf());
@@ -248,6 +255,32 @@ fn collect(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn directory_links_are_observed_without_following_their_contents()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-watch-links-{}", std::process::id()));
+        let inputs = root.join("inputs");
+        let a = root.join("a");
+        let b = root.join("b");
+        for path in [&inputs, &a, &b] {
+            std::fs::create_dir_all(path)?;
+        }
+        let roots = vec![inputs.clone()];
+        let before = fingerprint(&roots, &[])?;
+        let link = inputs.join("linked");
+        std::os::unix::fs::symlink(&a, &link)?;
+        let linked = fingerprint(&roots, &[])?;
+        assert_ne!(linked, before);
+        std::fs::write(a.join("unobserved.rs"), "outside the input roots")?;
+        assert_eq!(fingerprint(&roots, &[])?, linked);
+        std::fs::remove_file(&link)?;
+        std::os::unix::fs::symlink(&b, &link)?;
+        assert_ne!(fingerprint(&roots, &[])?, linked);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn fallback_does_not_repeat_an_already_scanned_native_edit()
