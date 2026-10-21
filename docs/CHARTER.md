@@ -245,3 +245,8 @@ Each entry names the charter text it qualifies and the ADR that records it.
    worker-arrival ordering (VI-0012). Only complete standalone progress blocks
    within one uninterrupted run may reorder. Errors, warnings, other output,
    per-function verdicts and exit codes retain their exact checks. See ADR 0064.
+
+8. *Source-suite comparison* (owner, 2026-10-21). The exact pinned dispatch
+   query test's printed rerun commands may differ in their six random temporary
+   SMT-log directory characters. All functional output and assertions remain
+   checked. See ADR 0042.
