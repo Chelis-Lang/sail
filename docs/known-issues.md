@@ -30,9 +30,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   (#232, #278): +8.2% on a Linux host build and +12.3% on macOS without the
   shipped bundle, before pipelined native admission (ADR 0061). With the
   release's shipped bundle the demo is 1.6–2.3× faster than stock; the
-  no-bundle case has not been re-measured since ADR 0061. Public-profile Vest
-  is within the bar (macOS +4.3%, Linux −2.2%). See the
-  [record](validation/cold-first-run.md).
+  complete current no-bundle matrix remains pending. Earlier public-profile
+  Vest measured macOS +4.3% and Linux −2.2%; the Mac slowdown remains open
+  under the owner's relative bar. The shipped observer's additional pipeline
+  defect (#307) has a controlled Linux correction: CapybaraKV cold falls from
+  67.23 s to 53.19 s against stock's 54.12 s over three paired rounds. This
+  does not settle other projects or Mac performance. See the
+  [cold record](validation/cold-first-run.md) and
+  [pipeline correction](validation/shipped-native-pipelining.md).
 
 - **A first run without a retention plan never gets instant revert** (#285).
   After, for example, a forced first run, the native units and vstd have no
@@ -334,3 +339,18 @@ portfolios, with separate keys.
   `engine-lacks-feature`, never same or different.
   [Reproduction](../corpus/repros/engine-without-singular/) (kept),
   [deep-tier record](validation/deep-tier.md).
+
+
+## A failed Verus function can retain an unknown check
+
+The neutral add-one reproduction requires `input < 100`, ensures the result is
+`input + 1`, and changes the implementation from `input + 1` to `input`.
+On the pinned native engine, the actual managed function is labeled failed
+while its primary obligation records unknown with reason `(incomplete quantifiers)`,
+then unsat. A model returned after the unknown answer is not a SAT witness.
+The neutral contract projection conservatively returns `NotProved` and retains
+the underlying unknown count and reason. Legacy report semantics are unchanged.
+The compiled body edit independently violates its postcondition at input 1,
+which satisfies the precondition. This is a runtime sample, not a solver
+refutation or mutation-gate result. See the [native qualification record](validation/neutral-verus-lowering.md)
+and `crates/sail-verus/tests/fixtures/neutral-contracts/body_edit.rs`.

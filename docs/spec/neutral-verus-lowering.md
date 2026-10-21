@@ -81,6 +81,17 @@ physically disjoint under the existing managed-runner invariant.
 The helper currently accepts default whole-target controls and forces obligation
 logging. It returns `ContractRun` with the lowering and actual `ProjectResult`,
 including failures and unknowns. Shadow drift/setup errors use `SAIL3141`.
+The `proof` projection has only `Proved` and `NotProved`. Proved requires current,
+complete requested-target verification and exactly attributed bound functions,
+each confirmed verified with nonempty proved nonadvisory obligations and
+recorded unsatisfiable checks. Any underlying unknown, SAT, missing answer or
+missing source prevents proof. Counts include advisory and dependency checks;
+verbatim unknown reasons and the entire original backend report are retained.
+A failed legacy verdict or a model returned after unknown is never promoted to
+a source-level refutation. This proves contracts under their stated requires,
+not requirement entailment, precondition feasibility, vacuity freedom or a
+mutation kill. A separately recorded runtime sample can show a postcondition
+violation for its exact compiled source and input; it is not SMT evidence.
 It does not publish per-requirement assurance or establish a caller file's
 currentness from a borrowed string. The caller rechecks original currentness
 and maps actual obligations. Contract-to-requirement entailment remains an

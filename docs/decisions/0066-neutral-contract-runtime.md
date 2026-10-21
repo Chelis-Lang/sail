@@ -70,7 +70,7 @@ proof reuse or performance behavior. The exact refusals and returned trust hashe
 are specified in [neutral Verus lowering](../spec/neutral-verus-lowering.md).
 
 Actual native qualification covers both the identical-source fork/stock oracle
-and the managed helper with a passing original and a refuted body edit. The
+and the managed helper with a proved original and a body edit that was not proved. The
 managed helper keeps its owned source and backend cache physically disjoint;
 all existing managed checks remain intact. The
 [qualification record](../validation/neutral-verus-lowering.md) retains the

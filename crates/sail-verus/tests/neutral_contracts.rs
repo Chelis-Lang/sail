@@ -28,6 +28,10 @@ mod runtime_wallet {
     include!("fixtures/neutral-contracts/wallet.rs");
 }
 
+mod runtime_body_edit {
+    include!("fixtures/neutral-contracts/body_edit.rs");
+}
+
 #[test]
 fn identical_source_lowers_identically_and_binds_actual_requirement() -> TestResult {
     let first = lower(ADD_ONE, "neutral")?;
@@ -81,6 +85,7 @@ fn runtime_of_the_exact_lowered_fixtures_matches_bounded_expectations() {
     for input in i8::MIN..=i8::MAX {
         assert_eq!(runtime_signed::candidate(input), input);
     }
+    assert!(std::panic::catch_unwind(|| runtime_body_edit::candidate(1)).is_err());
     assert!(std::panic::catch_unwind(runtime_negated::candidate).is_err());
     assert!(std::panic::catch_unwind(|| runtime_negated::overflowing(255)).is_err());
     assert!(std::panic::catch_unwind(|| runtime_old::candidate(255)).is_err());
