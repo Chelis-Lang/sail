@@ -69,6 +69,7 @@ Portable to Linux and macOS: Python 3 standard library, git and the tools
 """
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import platform
@@ -80,10 +81,12 @@ import sys
 import time
 from pathlib import Path
 
-import perf_matrix_mutants
-
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
+
+MUTANTS_SPEC = importlib.util.spec_from_file_location("perf_matrix_mutants", HERE / "perf_matrix_mutants.py")
+perf_matrix_mutants = importlib.util.module_from_spec(MUTANTS_SPEC)
+MUTANTS_SPEC.loader.exec_module(perf_matrix_mutants)
 
 SMALL = ["cold-first", "unchanged", "small-edit", "revert", "fresh-project", "worktree"]
 REAL = ["cold", "unchanged", "module-edit", "spec-wide"]

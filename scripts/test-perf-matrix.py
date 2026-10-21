@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import re
 import tempfile
+import subprocess
+import sys
 import unittest
 
 SPEC = importlib.util.spec_from_file_location("perf_matrix", Path(__file__).with_name("perf-matrix.py"))
@@ -336,6 +338,16 @@ class MutationRows(unittest.TestCase):
             Path(directory, "header.json").write_text(json.dumps({"rounds": 3, "required_mutations": ["vest"]}))
             code = pm.cmd_report(argparse.Namespace(dir=directory, markdown=None, mutants=[]))
         self.assertEqual(code, 1)
+
+
+class IsolatedCommands(unittest.TestCase):
+    def test_registry_helper_runs_in_isolated_python(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "Cargo.lock"
+            lock.write_text('[[package]]\nname = "vstd"\nversion = "1.2.3"\n')
+            output = subprocess.check_output([sys.executable, "-I", str(pm.HERE / "perf-matrix.py"),
+                                              "vstd-versions", str(lock)], cwd=directory, text=True)
+        self.assertEqual(output.strip(), "vstd=1.2.3")
 
 
 class SmallSequence(unittest.TestCase):
