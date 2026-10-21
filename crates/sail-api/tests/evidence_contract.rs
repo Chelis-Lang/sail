@@ -24,6 +24,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
             kind: vec!["lib".into()],
             establishing_run: "run".into(),
             reused: false,
+            scope_reuse: None,
             requested: true,
             complete: true,
             report,

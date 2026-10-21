@@ -625,12 +625,29 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             # forced cleanup must clean that directory; cleaning the outer target
             # left the crate fresh, ran no verifier and failed with SAIL3107.
             source.write_text(good)
+            env["SAIL_MANAGED_FORCE"] = "1"
             for attempt in range(3):
                 focus_run, focused, focus_target = managed("--", "--verify-root", "--verify-function", "max")
                 assert focus_run.returncode == 0 and focused["exit_code"] == 0, (attempt, diagnostic(focused))
                 assert focused["execution"]["verifier_invocations"] >= 1, (attempt, focused["execution"])
                 assert not focus_target["reused"], (attempt, focus_target)
                 source.write_text(good)
+
+            env.pop("SAIL_MANAGED_FORCE")
+            scope_args = ("--", "--verify-root", "--verify-function", "max")
+            _, _, scoped_target = managed(*scope_args)
+            assert not scoped_target["complete"], scoped_target
+            repeated_run, repeated, scoped_target = managed(*scope_args)
+            assert repeated_run.returncode == 0 and scoped_target.get("scope_reuse") == list(scope_args), diagnostic(repeated)
+            assert not scoped_target["reused"], scoped_target
+            assert not scoped_target["complete"] and repeated["execution"]["verifier_invocations"] == 0, repeated
+            # A different selector and a changed proof cannot use this report.
+            _, different_scope, different_target = managed("--", "--verify-root")
+            assert not different_target["reused"] and not different_target["complete"], different_scope
+            source.write_text(bad)
+            failed_scope_run, failed_scope, failed_scope_target = managed(*scope_args)
+            assert failed_scope_run.returncode != 0 and not failed_scope_target["reused"], failed_scope
+            assert not failed_scope_target["complete"], failed_scope
 
             # Plain `sail verify` asks Verus for no attribution logs (ADR 0047):
             # its output is plain Cargo-Verus's, it writes no logs, and a later
@@ -743,13 +760,22 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 (package / "src").mkdir(parents=True)
                 (package / "Cargo.toml").write_text(
                     f'[package]\nname = "sail-schedule-fixture"\nversion = "{version}"\n'
-                    'edition = "2021"\n')
+                    f'edition = "2021"\nlinks = "sail_fixture_{label}"\n')
                 (package / "src/lib.rs").write_text("")
                 (package / "build.rs").write_text(
                     'fn main() {\n'
                     '    println!("cargo::rerun-if-changed=build.rs");\n'
                     '    println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_OS");\n'
                     '    println!("cargo::rerun-if-env-changed=CARGO_FEATURE_SAIL_FIXTURE");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_MANIFEST_DIR");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_MANIFEST_LINKS");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_NAME");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION_MAJOR");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION_MINOR");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION_PATCH");\n'
+                    '    println!("cargo::rerun-if-env-changed=CARGO_PKG_VERSION_PRE");\n'
+                    '    println!("cargo::rerun-if-env-changed=OUT_DIR");\n'
                     '    let rustc = std::env::var_os("RUSTC").unwrap();\n'
                     '    let wrapper = std::env::var_os("RUSTC_WRAPPER").unwrap();\n'
                     '    let probe = std::process::Command::new(wrapper).arg(rustc)\n'
@@ -759,6 +785,9 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                     '    assert!(probe.status.success(), "{:?}", probe);\n'
                     '    assert!(!probe.stdout.is_empty());\n'
                     '    let out = std::env::var("OUT_DIR").unwrap();\n'
+                    '    let keys = ["CARGO_MANIFEST_DIR", "CARGO_MANIFEST_LINKS", "CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_PKG_VERSION_MAJOR", "CARGO_PKG_VERSION_MINOR", "CARGO_PKG_VERSION_PATCH", "CARGO_PKG_VERSION_PRE", "OUT_DIR"];\n'
+                    '    let observed: String = keys.iter().map(|key| format!("{key}={}\\n", std::env::var(key).unwrap())).collect();\n'
+                    '    std::fs::write(format!("{out}/sail-script-environment"), observed).unwrap();\n'
                     '    let time = std::time::SystemTime::now().duration_since('
                     'std::time::UNIX_EPOCH).unwrap().as_nanos();\n'
                     f'    std::fs::write(format!("{{out}}/sail-schedule-marker"), '
@@ -789,6 +818,14 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 markers = list((root / "cache/projects").glob(
                     "*/compiler-artifacts/*/target/**/out/sail-schedule-marker"))
                 assert len(markers) == 1, markers
+                observed = dict(line.split("=", 1) for line in
+                    (markers[0].parent / "sail-script-environment").read_text().splitlines())
+                contracts = [record for ledger in (root / "cache/projects").glob("*/*/build-inputs.json")
+                    for record in json.loads(ledger.read_text())
+                    if record["manifest"].endswith("/schedule-new/Cargo.toml")]
+                assert contracts, "missing observed script contract"
+                for record in contracts:
+                    assert {key: record["env"][key] for key in observed} == observed, observed
                 marker = markers[0].read_text()
                 assert marker.startswith("new:"), marker
                 return marker

@@ -136,8 +136,7 @@ fn matches(record: &BuildInput, data: &Value, target: &Path) -> bool {
     record.covered
         && output_matches(record, target)
         && record.env.keys().all(|key| {
-            allowed_environment(key)
-                || super::super::build_environment::value(data, &record.package_id, key).is_some()
+            allowed_environment(key) || super::generated_value(record, data, key).is_some()
         })
         && package_matches(record, data)
         && current(record, None, data) == (record.digest.clone(), true)
@@ -536,6 +535,7 @@ mod tests {
                 covered: true,
                 digest: String::new(),
                 output: Some((output, digest(text.as_bytes()))),
+                unit_out_dir: None,
             };
             record.digest = current(&record, None, &self.data).0;
             Ok(record)
@@ -595,6 +595,7 @@ mod tests {
                 digest: "recorded".to_owned(),
                 covered,
                 output: None,
+                unit_out_dir: None,
             };
             let local = root.join("context.json");
             json(&local, &[record])?;
@@ -1071,6 +1072,7 @@ mod tests {
                 digest: String::new(),
                 covered: true,
                 output: Some((output, digest(b""))),
+                unit_out_dir: None,
             };
             record.digest = current(&record, None, &Value::Null).0;
             records.push(record);
