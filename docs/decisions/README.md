@@ -67,4 +67,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0061: Certify native units after their compile (accepted)](0061-pipelined-native-admission.md)
 - [0062: Ship the pinned vstd's solver replies in the release archive (accepted)](0062-shipped-vstd-solver-replies.md)
 - [0064: Accept verification-progress note ordering (accepted)](0064-verification-progress-note-order.md)
+- [0065: One verification runtime for Oyster](0065-oyster-runtime.md)
 - [0066: Shared neutral contract syntax and checked runtime (runtime implemented; backend qualification separate)](0066-neutral-contract-runtime.md)

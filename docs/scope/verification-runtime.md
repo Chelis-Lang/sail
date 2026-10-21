@@ -1,12 +1,10 @@
 # Scope: Sail as a general verification runtime
 
-- **Status:** planned for releases after 0.1.0. The one part that moves into
-  0.1.0 is output schema v2 (question 22, #149). M10 work starts only after the
-  0.1.0 performance scope (the vstd fix in #125, managed-by-default mode and
-  pre-verified vstd) has landed and is ready for brittonr's review.
-- **Backburnered (owner, 2026-10-15):** M10 waits until M11, Verus core and
-  performance (#168), completes; this supersedes the parallel start in
-  question 27 and the dependency graph's start condition below.
+- **Status:** the owner authorized the Oyster integration path alongside M11 on
+  2026-10-21. The earlier hold until M11 completes is superseded by charter
+  appendix entry 8 and [ADR 0065](../decisions/0065-oyster-runtime.md). Each
+  slice requires an executable interface, native qualification and green
+  protected builds before merging.
 - **Owner answers:** questions 16–29 in [open questions](../open-questions.md),
   answered 2026-10-15.
 - **Source:** owner direction, 2026-10-15.
@@ -26,7 +24,8 @@ conflict, the charter wins; the conflicts found so far are listed under
 
 ## Current state
 
-None of this scope is implemented. What exists and is reused:
+The Oyster runtime slices are being implemented on independent branches.
+The existing Verus path supplies these reusable components:
 
 - one verifier (Verus) and one solver (Z3), with solver identity already
   explicit in keys, the cache and the verdict model;
@@ -42,8 +41,9 @@ None of this scope is implemented. What exists and is reused:
 - the daemon, persistent jobs, watch and the MCP server;
 - the differential conformance harness and benchmark suite.
 
-No interface specification under `docs/spec/` has been written yet. Each is a
-tracked work item.
+The first raw-SMT interface is specified in [runtime v1](../spec/runtime.md).
+Contract and temporal specifications land with their implementations; a
+specification alone does not establish backend support.
 
 ## Mission
 
@@ -162,7 +162,7 @@ protocol and the MCP server.
 
 ### TLA+ job interface
 
-Defined in Sail, with a TLC adapter behind it (see
+Defined in Sail, with D.I.V.E. as its exclusive backend (see
 [TLA+ jobs](#tla-jobs-through-dive)), so D.I.V.E. and Sail build against it
 concurrently.
 
@@ -266,10 +266,11 @@ Embedded through D.I.V.E.'s library API, for these job kinds:
 
 Jobs are cached by spec content, configuration and engine identity. Results
 become ledger verdicts: bounded tier where configuration bounds the state
-space, with bounds as qualifiers. A TLC adapter behind the same interface lets
-the job path, ledger integration and caching be built and tested against the
-canonical tool first, and later serves as a parity check on D.I.V.E. through
-Sail.
+space, with bounds as qualifiers. A Sail-owned worker links the pinned
+D.I.V.E. Rust library. Sail controls cancellation and deadlines by terminating
+and reaping that worker, including during binding. No TLC backend, fallback
+or Java execution is part of this route. Backend conformance compares against
+the pinned D.I.V.E. library directly.
 
 ### Mutation gate
 
@@ -321,14 +322,9 @@ different audience from this mission.
 
 ## Dependency graph
 
-**Start condition.** No M10 work starts until the 0.1.0 performance scope
-(the vstd fix in #125, managed-by-default mode and pre-verified vstd) has
-landed and is ready for brittonr's review of the fully performance-improved
-Sail.
-
-The Verus-path items in the [roadmap](../ROADMAP.md#later) and the
-interface specifications share no dependencies and run in parallel; the
-specifications do not wait behind the Verus items (question 27).
+**Start condition.** The owner authorized the Oyster critical path on
+2026-10-21 alongside Verus performance work. New runtime code remains outside
+the existing Verus hot path. The older hold until M11 completes is historical.
 
 1. **Interface specifications first:** the contract syntax, the request and
    verdict API, and the TLA+ job interface. They are documents that Oyster
@@ -336,7 +332,7 @@ specifications do not wait behind the Verus items (question 27).
 2. **Then the SMT-LIB service first,** because Oyster depends on it first.
    The backend workstreams fan out alongside it: each verifier backend
    independently; certificate checking (on the SMT-LIB service); the TLA+ job
-   path with its TLC adapter; the Verus-aware mutator (needs no
+   path with its D.I.V.E. worker; the Verus-aware mutator (needs no
    specification); packaging modes.
 3. **Dependent work:**
    - the mutation gate's generic layer depends on the backends it drives;
@@ -357,7 +353,7 @@ All are on milestone *M10: Verification runtime*, under umbrella
 |---|---|---|
 | Specification | Neutral contract syntax crate | [#127](https://github.com/Chelis-Lang/sail/issues/127) |
 | Specification | Request and verdict API, evidence tiers, ITF values | [#128](https://github.com/Chelis-Lang/sail/issues/128) |
-| Specification | TLA+ job interface and TLC adapter | [#129](https://github.com/Chelis-Lang/sail/issues/129) |
+| Specification | TLA+ job interface and D.I.V.E. worker | [#129](https://github.com/Chelis-Lang/sail/issues/129) |
 | First after specifications | SMT-LIB service (Z3, cvc5) | [#137](https://github.com/Chelis-Lang/sail/issues/137) |
 | Parallel | Verus lowering | [#130](https://github.com/Chelis-Lang/sail/issues/130) |
 | Parallel | Kernel-checked prover interface (Lean, Rocq) | [#131](https://github.com/Chelis-Lang/sail/issues/131) |
