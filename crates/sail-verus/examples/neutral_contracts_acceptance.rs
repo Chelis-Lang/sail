@@ -4,6 +4,7 @@
 
 use std::path::PathBuf;
 
+use sail_api::output::VerdictName;
 use sail_api::project::Currentness;
 use sail_verus::contracts::{ContractRun, ProofState, verify};
 use sail_verus::managed::{CargoToolchain, Config};
@@ -104,6 +105,22 @@ fn validate(run: &ContractRun, expected: bool) -> TestResult {
     if targets.is_empty() {
         return Err("no actual requested target was verified".into());
     }
+    for binding in &run.lowering.manifest.bindings {
+        let functions = targets
+            .iter()
+            .flat_map(|t| &t.report.crates)
+            .flat_map(|c| &c.functions)
+            .filter(|f| f.function == binding.lowered_function)
+            .collect::<Vec<_>>();
+        let expected_verdict = if expected {
+            VerdictName::Verified
+        } else {
+            VerdictName::Failed
+        };
+        if functions.len() != 1 || functions[0].verdict != expected_verdict {
+            return Err("actual requested function attribution or legacy verdict is wrong".into());
+        }
+    }
     let mut completed = 0;
     for target in targets {
         if target.complete != expected
@@ -182,6 +199,7 @@ fn runtime_witness(output: &std::path::Path, changed: &str) -> TestResult {
         "source_sha256":sha(changed.as_bytes()),
         "input_sha256":sha(&serde_json::to_vec(&input)?),
         "observed_sha256":sha(&serde_json::to_vec(&observed)?),
+        "diagnostic_sha256":sha(message.as_bytes()),
         "input":input, "observed":observed, "reference_output":reference,
         "preconditions_satisfied":1 < 100,
         "assurance":"one compiled runtime sample; no SMT refutation or mutation-gate verdict"

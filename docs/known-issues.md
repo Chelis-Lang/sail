@@ -353,4 +353,4 @@ the underlying unknown count and reason. Legacy report semantics are unchanged.
 The compiled body edit independently violates its postcondition at input 1,
 which satisfies the precondition. This is a runtime sample, not a solver
 refutation or mutation-gate result. See the [native qualification record](validation/neutral-verus-lowering.md)
-and `crates/sail-verus/tests/fixtures/neutral-contracts/body_edit.rs`.
+and the [minimal emitted-source reproduction](../corpus/repros/neutral-contract-unknown/README.md).
