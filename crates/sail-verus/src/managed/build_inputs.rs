@@ -31,17 +31,37 @@ struct BuildInput {
     output: Option<(PathBuf, String)>,
 }
 
-fn current(record: &BuildInput, environment: Option<&BTreeMap<String, String>>) -> (String, bool) {
-    let (files, complete) = snapshot_paths(&record.paths);
+fn current(
+    record: &BuildInput,
+    environment: Option<&BTreeMap<String, String>>,
+    data: &Value,
+) -> (String, bool) {
+    let (files, mut complete) = snapshot_paths(&record.paths);
     let env: BTreeMap<String, Option<String>> = record
         .env
         .keys()
-        .map(|k| (k.clone(), effective_value(k, environment)))
+        .map(|k| {
+            let value = if generated_environment(k) {
+                if let Some(value) = super::build_environment::value(data, &record.package_id, k) {
+                    value
+                } else {
+                    complete = false;
+                    None
+                }
+            } else {
+                effective_value(k, environment)
+            };
+            (k.clone(), value)
+        })
         .collect();
     (
         digest(&serde_json::to_vec(&(files, env)).unwrap_or_default()),
         complete,
     )
+}
+
+fn generated_environment(key: &str) -> bool {
+    key.starts_with("CARGO_FEATURE_") || key.starts_with("CARGO_CFG_")
 }
 
 fn effective_value(key: &str, environment: Option<&BTreeMap<String, String>>) -> Option<String> {
@@ -211,7 +231,7 @@ fn stale_scheduled(
     let mut extras = Vec::new();
     let mut covered = true;
     for record in &previous {
-        let (hash, complete) = current(record, environment);
+        let (hash, complete) = current(record, environment, data);
         if !record.covered || !complete || hash != record.digest {
             clean.insert(record.package_name.clone());
         }
@@ -282,10 +302,10 @@ pub(super) fn contracts_for(
 
 /// Whether every stored contract still describes the current inputs: each
 /// declared path and variable has the recorded content (never timestamps).
-pub(super) fn contracts_current(records: &[Value]) -> bool {
+pub(super) fn contracts_current(records: &[Value], data: &Value) -> bool {
     records.iter().all(|value| {
         serde_json::from_value::<BuildInput>(value.clone()).is_ok_and(|record| {
-            let (hash, complete) = current(&record, None);
+            let (hash, complete) = current(&record, None, data);
             record.covered && complete && hash == record.digest
         })
     })
@@ -361,7 +381,17 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
                 paths.push(package_dir.join(p));
             }
             if let Some(key) = line.strip_prefix("rerun-if-env-changed=") {
-                env.insert(key.to_owned(), effective_value(key, None));
+                let value = if generated_environment(key) {
+                    super::build_environment::value(
+                        data,
+                        package["id"].as_str().unwrap_or_default(),
+                        key,
+                    )
+                    .flatten()
+                } else {
+                    effective_value(key, None)
+                };
+                env.insert(key.to_owned(), value);
             }
         }
         // With no declaration Cargo watches the entire package. Hash that same
@@ -379,7 +409,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
             covered: true,
             output: Some((output, digest(text.as_bytes()))),
         };
-        let (hash, complete) = current(&record, None);
+        let (hash, complete) = current(&record, None, data);
         record.digest = hash;
         record.covered = complete;
         // Cargo can emit separate host/target units for one package. Keep
@@ -499,7 +529,7 @@ mod tests {
             output: None,
         };
         std::fs::write(root.join("build.rs"), "fn main() {}")?;
-        record.digest = current(&record, None).0;
+        record.digest = current(&record, None, &Value::Null).0;
         json(&state, &vec![record])?;
         let unit = |reason: &str, id: &str| {
             serde_json::json!({"reason": reason, "package_id": id}).to_string()
@@ -653,7 +683,7 @@ mod tests {
             covered: true,
             output: None,
         };
-        record.digest = current(&record, None).0;
+        record.digest = current(&record, None, &Value::Null).0;
         let selected_state = root.join("selected.json");
         let missing_state = root.join("missing.json");
         json(&selected_state, &vec![record])?;
@@ -694,7 +724,7 @@ mod tests {
             covered: true,
             output: None,
         };
-        record.digest = current(&record, None).0;
+        record.digest = current(&record, None, &Value::Null).0;
         let state = root.join("state.json");
         assert!(json(&state, &vec![record]).is_ok());
         let data = serde_json::json!({"packages":[]});
