@@ -36,10 +36,7 @@ fn real_safety_temporal_and_stopped_outcomes_are_distinct() {
             .as_ref()
             .is_some_and(|c| c.properties.is_empty())
     );
-    // Pinned native JSON classifies the explicitly selected final route as
-    // temporal even when its private typed result is ordinary safety success.
-    assert_eq!(safe.native_report["check_kind"], "temporal");
-    assert_eq!(safe.native_report["execution"]["capture_completed"], false);
+    assert_eq!(safe.native_report["check_kind"], "safety");
     let fair = BOOLEAN.replace("====", "Spec == Init /\\ [][Next]_x /\\ WF_x(Next)\n====");
     let temporal = sail_dive::execute(&request(&fair, "SPECIFICATION Spec\nPROPERTY P\n"));
     assert_eq!(temporal.outcome, Outcome::Holds, "{temporal:?}");
@@ -175,7 +172,7 @@ fn direct_pinned_library_parity_preserves_deciding_native_outcome() -> TestResul
             seed: Some(0),
             fp: Some(0),
             workers: Some(1),
-            temporal: dive_api::TemporalMode::FinalShort,
+            temporal: dive_api::TemporalMode::Ordinary,
             max_states: Some(100),
             max_depth: Some(100),
             time_limit: dive_api::BudgetSetting::Unlimited,
@@ -212,4 +209,46 @@ fn wire_refuses_duplicates_trailing_documents_and_unknown_payload_fields() -> Te
         String::from_utf8(encoded)?.replacen("\"version\":1", "\"version\":1,\"version\":1", 1);
     assert!(sail_dive::decode_request(duplicate.as_bytes()).is_err());
     Ok(())
+}
+
+#[test]
+fn generated_step_properties_and_within_monitor_select_typed_safety_roles() -> TestResult {
+    let req = oyster_step_within();
+    let result = sail_dive::execute(&req);
+    assert_eq!(result.outcome, Outcome::Holds, "{result:?}");
+    assert_eq!(result.completion, sail_dive::Completion::Safety);
+    assert_eq!(result.native_report["check_kind"], "safety");
+    sail_dive::validate_response(&req, &result)?;
+    Ok(())
+}
+fn oyster_step_within() -> Request {
+    let files = [
+        (
+            "Signal.tla",
+            include_str!("../fixtures/oyster-step-within/Signal.tla"),
+        ),
+        (
+            "SignalRequirements.tla",
+            include_str!("../fixtures/oyster-step-within/SignalRequirements.tla"),
+        ),
+        (
+            "Signal.cfg",
+            include_str!("../fixtures/oyster-step-within/Signal.cfg"),
+        ),
+    ];
+    Request {
+        version: VERSION,
+        model: Model {
+            files: files
+                .into_iter()
+                .map(|(k, v)| (k.into(), v.into()))
+                .collect(),
+            root: "Signal.tla".into(),
+            config: "Signal.cfg".into(),
+        },
+        operation: Operation::Check {
+            max_states: 100,
+            max_depth: 100,
+        },
+    }
 }

@@ -51,9 +51,9 @@ host-capable `TLC`, `Json` and `Randomization`, refuse before binding.
 There are no external search paths or host grants.
 
 Model checking uses mathematical integers, exact states, seed zero,
-fingerprint zero and one worker. Temporal checking uses final analysis and
-independently validated short lassos, not TLC's lasso choice or periodic
-timing. A holding verdict requires actual typed complete exploration evidence;
+fingerprint zero and one worker. Bound safety-only properties use ordinary
+native checking; genuine temporal properties use final analysis and
+independently validated short lassos. A holding verdict requires actual typed complete exploration evidence;
 the native report's `check_kind` alone is not completion evidence. A state or
 depth limit returns `Stopped`, not Holds. Temporal evaluator/product limits
 remain those reported by the pinned backend. There is no hard RAM guarantee.

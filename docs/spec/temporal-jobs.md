@@ -23,8 +23,11 @@ overrides match module names even for user-provided files, so a substituted
 `TLC.tla` cannot grant printing or other host capabilities.
 
 The fixed semantic profile is native D.I.V.E.: mathematical integers, exact
-states, seed zero, fingerprint zero and one worker. Temporal checking selects
-final analysis with independently validated short lassos. These choices are
+states, seed zero, fingerprint zero and one worker. Checking selects the native
+safety route when the frozen model binds no temporal property and final analysis
+with independently validated short lassos otherwise. Configured action
+properties remain safety checks. This selection uses bound roles before search,
+never diagnostic text or retry. These choices are
 part of the backend identity, not claims of TLC-equivalent arithmetic or timing.
 Requested state/depth limits are explicit; reaching a limit establishes no
 holding property. Simulation names positive finite trace count and depth and

@@ -115,6 +115,100 @@ fn isolated_counterexample_matches_direct_library_and_both_validate() -> TestRes
 }
 
 #[test]
+fn action_only_requirement_model_checks_and_violations_replay_in_owned_worker() -> TestResult {
+    let files = [
+        (
+            "Signal.tla",
+            include_str!("../../sail-dive/fixtures/oyster-step-within/Signal.tla"),
+        ),
+        (
+            "SignalRequirements.tla",
+            include_str!("../../sail-dive/fixtures/oyster-step-within/SignalRequirements.tla"),
+        ),
+        (
+            "Signal.cfg",
+            include_str!("../../sail-dive/fixtures/oyster-step-within/Signal.cfg"),
+        ),
+    ];
+    let mut request = Request {
+        version: VERSION,
+        model: Model {
+            files: files
+                .into_iter()
+                .map(|(k, v)| (k.into(), v.into()))
+                .collect(),
+            root: "Signal.tla".into(),
+            config: "Signal.cfg".into(),
+        },
+        operation: Operation::Check {
+            max_states: 100,
+            max_depth: 100,
+        },
+    };
+    let (worker, hash) = worker();
+    for violating in [false, true] {
+        if violating {
+            let source = request
+                .model
+                .files
+                .get_mut("SignalRequirements.tla")
+                .ok_or("source")?;
+            *source = source.replace(
+                "Always_Req_464c4f572d303031 == [][Req_464c4f572d303031]_vars",
+                "Always_Req_464c4f572d303031 == [][UNCHANGED vars]_vars",
+            );
+        }
+        let result = run(
+            worker,
+            &hash,
+            &request,
+            Duration::from_secs(10),
+            &AtomicBool::new(false),
+        );
+        let RunResult::Completed(response) = result else {
+            return Err(format!("{result:?}").into());
+        };
+        assert_eq!(
+            response.outcome,
+            if violating {
+                Outcome::Refuted
+            } else {
+                Outcome::Holds
+            },
+            "{response:?}"
+        );
+        if violating {
+            assert_eq!(
+                response.native_report["verdict"],
+                "action-property-violation"
+            );
+            assert_eq!(
+                response.native_report["property"],
+                "Always_Req_464c4f572d303031"
+            );
+            assert_eq!(
+                response.itf_traces[0].ending["name"],
+                "Always_Req_464c4f572d303031"
+            );
+            assert_eq!(
+                response.itf_traces[0].ending,
+                response.native_traces[0]["ending"]
+            );
+            assert_eq!(
+                response.native_traces[0],
+                response.native_report["counterexample"]["trace"]
+            );
+            assert!(response.validations.iter().all(|v| v["result"] == "valid"));
+            assert_eq!(response.validations.len(), 1);
+        } else {
+            assert_eq!(response.completion, sail_dive::Completion::Safety);
+            assert_eq!(response.native_report["check_kind"], "safety");
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn actual_worker_is_cancelled_after_spawn_for_large_assumption_input() -> TestResult {
     let (worker, hash) = worker();
     let mut request = request();

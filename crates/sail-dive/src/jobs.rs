@@ -111,6 +111,16 @@ fn run(request: &Request) -> Result<Response, Failure> {
 }
 
 fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response, Failure> {
+    // Configured PROPERTYs include initial, state and action safety roles. Only
+    // the binder's implied temporal roles require final graph analysis. The
+    // pinned final checker refuses safety-only PROPERTYs rather than routing
+    // them to its ordinary engine, so choose once before any search.
+    let bound = model(input)?;
+    let temporal = if bound.model().implied_temporals.is_empty() {
+        TemporalMode::Ordinary
+    } else {
+        TemporalMode::FinalShort
+    };
     let report = dive_api::check_file(&CheckRequest {
         file: input.root.clone(),
         config: Some(input.config.clone()),
@@ -119,7 +129,7 @@ fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response, Failure> {
         seed: Some(0),
         fp: Some(0),
         workers: Some(1),
-        temporal: TemporalMode::FinalShort,
+        temporal,
         time_limit: BudgetSetting::Unlimited,
         max_memory: BudgetSetting::Unlimited,
         max_states: Some(states),

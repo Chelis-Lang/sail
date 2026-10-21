@@ -67,9 +67,35 @@ empty remaining queue. Its original JSON says `check_kind: "temporal"` and
 there are no temporal properties. Those bytes remain unchanged in evidence.
 The adapter records `Completion::Safety`, an empty requested PROPERTY list
 and the actual requested checks. It does not infer a temporal proof from the
-JSON discriminator or invent a completed temporal graph. The fairness-qualified
+JSON discriminator or invent a completed temporal graph. This discrepancy
+records the original explicit-final route. The worker now selects ordinary
+safety checking when the bound model has no temporal roles, so its safety
+reports use the native safety discriminator. The fairness-qualified
 positive control records `Completion::Temporal`, PROPERTY `P`, and a real
-complete graph. The regression pins both observations explicitly.
+complete graph. The regressions pin each route's actual typed completion.
+
+## Bound-role routing followup
+
+The production Oyster CLI exposed action-only PROPERTYs with a bounded-response
+INVARIANT being refused by the always-final route as `DIVE-L0035`. The worker
+now selects once from the admitted model's bound temporal roles: ordinary
+checking for safety-only properties, final/short otherwise. It never retries
+based on a diagnostic. The original three-file Oyster model is retained as a
+fixture, along with a property edit that produces an independently replayed
+action-property violation.
+
+The pinned native action counterexample names the violated property in the
+original report's `property` and trace ending's `name`; its separate trace
+property list is empty. The transport preserves those fields verbatim. Tests
+assert the actual name and exact ending instead of inventing a populated list.
+The first new test incorrectly expected that list to be populated and failed;
+the original native output established the correct metadata location. An
+protocol fault controls also timed out during concurrent host compilation;
+its unchanged deadline and expectation remain in use for the followup checks.
+The unchanged focused suite subsequently passed all 16 controls with one test
+thread on macOS. Strict all-target Clippy also passed. These focused checks
+precede the current-source full Mac and native Linux gates; they do not replace
+those gates or protected private-dependency CI.
 
 ## Earlier attempts
 
