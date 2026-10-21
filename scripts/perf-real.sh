@@ -64,6 +64,7 @@
 #   SAIL_PERF_BASELINE directory holding the old fork for `sail` mode only;
 #                      `plain` stays the stock conformance oracle on PATH
 #   SAIL_PERF_NOOPS    unchanged reruns after cold (default 3)
+#   SAIL_PERF_STOCK_HOME stock release install root for corpus fetching only
 #   SAIL_PERF_CORPUS   fetched corpus (default ~/.cache/sail/corpus)
 #   SAIL_PERF_VERUS_ARGS  extra Verus arguments for every run (e.g. "-V spinoff-all")
 #   SAIL_PERF_MACHINE  free-text machine description for the header
@@ -290,7 +291,11 @@ now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
 # --- Source preparation ------------------------------------------------------
 
 if [ ! -d "$corpus/$src" ] || [ ! -d "$verus_src" ]; then
-  sail-conformance fetch --tier standard --project "$entry" >&2
+  if [ -n "${SAIL_PERF_STOCK_HOME:-}" ]; then
+    SAIL_VERUS_HOME="$SAIL_PERF_STOCK_HOME" sail-conformance fetch --tier standard --project "$entry" >&2
+  else
+    sail-conformance fetch --tier standard --project "$entry" >&2
+  fi
 fi
 
 prepare_pristine() {

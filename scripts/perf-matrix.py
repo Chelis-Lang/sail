@@ -410,6 +410,7 @@ class Runner:
                             "SAIL_PERF_SETTLE": str(self.settle),
                             "SAIL_PERF_MACHINE": os.environ.get("SAIL_PERF_MACHINE", ""),
                             "SAIL_PERF_VSTD": self.vstd,
+                            "SAIL_PERF_STOCK_HOME": str(self.stock.parent),
                             # No Verus flags after `--`: cargo-verus forwards
                             # them to vstd too, which a user's run does not do.
                             "SAIL_PERF_VERUS_TIMES": "0"})
