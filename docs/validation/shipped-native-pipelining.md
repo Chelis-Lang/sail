@@ -1,8 +1,10 @@
 # Shipped-proof native pipelining
 
-**Status:** fixes the controlled CapybaraKV cold regression (#307). Final
-native conformance and composed release qualification remain in progress.
-This is a bounded Linux result, not acceptance of the complete release matrix.
+**Status:** fixes the controlled CapybaraKV cold regression (#307); native
+workspace, solver, full e2e plus extra, PR/fast/standard conformance pass.
+Fast and standard record 147 and 159 Same respectively in all four arms,
+zero Different, Unstable or infrastructure errors. The composed release
+matrix remains in progress; this is a bounded Linux result.
 
 The shipped-proof observer now applies accepted ADR 0061's ordering: capture
 present compiler inputs privately, run the compiler, then require complete
@@ -43,3 +45,8 @@ clean Mac performance remains pending.
 Raw A/B samples, controls and first-use witness:
 `experiments/2026-10-21/shipped-pipelining.tgz` in the evidence S3 bucket,
 SHA-256 `66be7e6fc3bffefe4dc4237bd44ee76d738b35bef019b139eaaff6b763a3c1ad`.
+
+Native gate logs: `experiments/2026-10-21/shipped-pipeline-checks.tgz`,
+SHA-256 `a7f0b14c1a43cbc968e3315fed8a52aec910a335e53563b0317e880be366d5d8`.
+Composed Mac host log: `experiments/2026-10-21/composed-macos-host.log`,
+SHA-256 `5426a3042b8340341c7b81b40ccb56d456245ffdf89bc20abba6238dcf8b29fc`.
