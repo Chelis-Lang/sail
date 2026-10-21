@@ -48,6 +48,7 @@ impl Monitoring {
             );
         }
         self.fallback = true;
+        self.native = None;
     }
     pub(super) fn subscribe(
         &mut self,
@@ -97,9 +98,16 @@ impl Monitoring {
     }
     pub(super) fn changed(&mut self, roots: &[PathBuf], err: &mut dyn Write) -> bool {
         let mut edited = false;
+        let mut replayable = true;
         while let Ok(event) = self.changes.try_recv() {
             match event {
+                Ok(_) if self.fallback => {}
                 Ok(event) if !event.need_rescan() => {
+                    replayable &= !matches!(
+                        event.kind,
+                        notify::EventKind::Remove(_)
+                            | notify::EventKind::Modify(notify::event::ModifyKind::Name(_))
+                    );
                     let (sender, receiver) = channel();
                     let _ = sender.send(Ok(event));
                     edited |= super::changed(&receiver, roots, &self.excluded);
@@ -107,13 +115,18 @@ impl Monitoring {
                 _ => self.degrade(err),
             }
         }
+        // Once coverage is incomplete, use one observation channel. Mixing
+        // delayed native events with scans can invalidate the same edit twice.
+        if self.fallback {
+            edited = false;
+        }
         // FSEvents may replay creation notifications from before subscription.
         // Ignore those only while the complete initial input state is still
         // unchanged, including inode/change times so edit-and-restore counts.
         // After the first actual edit, native invalidation stays unconditional.
         if edited && let Some(initial) = self.startup_epoch {
             match capture(roots, &self.excluded) {
-                Ok((_, current)) if current == initial => edited = false,
+                Ok((_, current)) if replayable && current == initial => edited = false,
                 _ => self.startup_epoch = None,
             }
         }
@@ -154,6 +167,20 @@ fn capture(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<([u8; 32]
         hash.update(bytes);
         if !path.exists() {
             hash.update(b"missing");
+            continue;
+        }
+        if path.is_dir() {
+            // Include empty input directories and their identity. Directory
+            // times also change for writes inside excluded output subtrees.
+            hash.update(b"directory");
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt as _;
+                let metadata = std::fs::symlink_metadata(&path)?;
+                epoch.update(metadata.dev().to_le_bytes());
+                epoch.update(metadata.ino().to_le_bytes());
+                epoch.update(metadata.mode().to_le_bytes());
+            }
             continue;
         }
         let mut file = std::fs::File::open(&path)?;
@@ -201,6 +228,7 @@ fn collect(
         if std::fs::symlink_metadata(path)?.file_type().is_symlink() {
             return Ok(());
         }
+        files.push(path.to_path_buf());
         for entry in std::fs::read_dir(path)? {
             let entry = entry?;
             if path.file_name().is_some_and(|name| name == ".cargo")
@@ -220,6 +248,48 @@ fn collect(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fallback_does_not_repeat_an_already_scanned_native_edit()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-watch-mixed-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let source = root.join("lib.rs");
+        std::fs::write(&source, "pub fn a() {}")?;
+        let roots = vec![root.clone()];
+        let (sender, changes) = channel();
+        let mut monitoring = Monitoring {
+            native: None,
+            changes,
+            fallback: true,
+            scanned: Instant::now()
+                .checked_sub(SCAN_INTERVAL)
+                .ok_or("scan clock is too young")?,
+            baseline: Some(fingerprint(&roots, &[])?),
+            startup_epoch: None,
+            excluded: vec![],
+        };
+        std::fs::write(&source, "pub fn b() {}")?;
+        let event = || Event::new(notify::EventKind::Any).add_path(source.clone());
+        sender.send(Ok(event()))?;
+        assert!(monitoring.changed(&roots, &mut Vec::new()));
+        sender.send(Ok(event()))?;
+        assert!(!monitoring.changed(&roots, &mut Vec::new()));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn new_empty_input_directories_invalidate_startup() -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-watch-empty-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let initial = capture(std::slice::from_ref(&root), &[])?.1;
+        std::fs::create_dir(root.join("new-input"))?;
+        assert_ne!(capture(std::slice::from_ref(&root), &[])?.1, initial);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[cfg(unix)]
     #[test]

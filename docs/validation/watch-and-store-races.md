@@ -1,7 +1,8 @@
 # Watch startup and publication staging
 
-**Status:** Mac qualification passes; native standard conformance is running
-before merge. No solver, key or proof-admission rule changes.
+**Status:** the latest Mac gate passes 856 tests (37 skipped, Clippy clean).
+Native standard conformance of the store correction is running before merge;
+the final directory/fallback watch correction awaits its fresh native gate. No solver, key or proof-admission rule changes.
 
 The watch correction distinguishes replayed startup notifications from real
 edits using the complete initial file bytes and filesystem identity. An actual
@@ -32,3 +33,10 @@ Failed attempts remain failed:
   the subsequent full gate pass without changing cancellation assertions.
 - An earlier concurrent-publication test failed intermittently. The staging
   witness establishes its own ownership defect, not that failure's cause.
+
+The final watch correction also records empty input directory entries and uses
+polling alone after native coverage degrades. Twenty repetitions of all four
+monitor regressions pass. An earlier full Mac run after directory capture
+passed 853/855: it exposed duplicate native/poll invalidations, and a repair
+fixture independently missed its mock-worker deadline (cause unknown). Neither
+timeout nor cancellation assertions were changed.
