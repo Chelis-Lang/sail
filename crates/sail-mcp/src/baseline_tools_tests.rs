@@ -28,6 +28,7 @@ fn baseline(name: &str) -> Baseline {
                 kind: vec!["lib".into()],
                 establishing_run: "recorded-run".into(),
                 reused: false,
+                scope_reuse: None,
                 requested: true,
                 complete: false,
                 report: crate::store::tests::report(vec![crate::store::tests::function(

@@ -134,6 +134,11 @@ pub struct TargetResult {
     pub establishing_run: String,
     /// True when Cargo's fresh artifact and its complete proof receipt matched.
     pub reused: bool,
+    /// Exact invocation arguments when an unchanged partial-scope report was
+    /// reused. This never establishes a complete target proof and does not
+    /// contribute to `Execution::reused_targets`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope_reuse: Option<Vec<String>>,
     /// True for an explicitly selected verification target; false for dependencies.
     #[serde(default)]
     pub requested: bool,

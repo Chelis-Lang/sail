@@ -626,7 +626,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             _, _, scoped_target = managed(*scope_args)
             assert not scoped_target["complete"], scoped_target
             repeated_run, repeated, scoped_target = managed(*scope_args)
-            assert repeated_run.returncode == 0 and scoped_target["reused"], diagnostic(repeated)
+            assert repeated_run.returncode == 0 and scoped_target.get("scope_reuse") == list(scope_args), diagnostic(repeated)
+            assert not scoped_target["reused"], scoped_target
             assert not scoped_target["complete"] and repeated["execution"]["verifier_invocations"] == 0, repeated
             # A different selector and a changed proof cannot use this report.
             _, different_scope, different_target = managed("--", "--verify-root")

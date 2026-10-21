@@ -82,6 +82,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
             kind: target.kind.clone(),
             establishing_run: "mock-run".into(),
             reused: false,
+            scope_reuse: None,
             requested: true,
             complete: false,
             report,

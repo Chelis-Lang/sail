@@ -16,7 +16,9 @@ Tag such receipts with the complete partial invocation arguments. Ordinary
 whole-proof validators refuse every tagged receipt; only the selected target's
 exact context and argument list may consume it. Shared dependency proofs and
 instant-revert archives refuse tagged receipts. Both fresh and reused partial
-results have `complete: false`. Explicit force-fresh still runs verification.
+results have `complete: false`. Cached partial reports use the additive
+`scope_reuse` argument list; existing `reused` and `reused_targets` fields
+retain their whole-proof meaning. Explicit force-fresh still runs verification.
 Missing, corrupt, stale or mismatched scope reports force fresh verification.
 The existing focused cleanup regression remains a force-fresh test.
 
