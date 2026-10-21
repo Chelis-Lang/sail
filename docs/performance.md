@@ -402,20 +402,88 @@ or `scripts/perf-agents.sh demo 4 3`.
 one run: an installed release archive's `sail verify` against plain `cargo
 verus verify`, in at least three paired rounds whose order rotates (stock
 first in odd rounds). Every arm of every round starts from fresh copies and
-an empty Sail cache.
+an empty Sail cache. Both arms select the verifier’s pinned Rust/Cargo
+toolchain, as ADR 0058 requires; the header records this selection.
 
 | Project | Scenarios | Bar |
 |---|---|---|
-| Small (the `sail new --lib` template) | first use: fresh Cargo home and cache, `new` + `verify` (`cold-first`); `unchanged`; `small-edit`; `revert`; `fresh-project` after the first; `worktree` (a new `git worktree`) | `cold-first` and `fresh-project` at least 2× faster; others no more than 5% (0.1 s sub-second) slower |
-| vest, ironkv, capybarakv, anvil, verismo (`scripts/perf-real.sh` definitions) | `cold`, `unchanged`, `module-edit` (a body edit in one module), `spec-wide`; vest also `worktree` | `module-edit` at least 1.3× faster; others no more than 5% slower |
+| Small (the `sail new --lib` template) | first use: fresh Cargo home and cache, `new` + `verify` (`cold-first`); `unchanged`; `small-edit`; `revert`; `fresh-project` after the first; `worktree` (a new `git worktree`) | Relative bar below; tiny overheads require review |
+| vest, ironkv, capybarakv, anvil, verismo (`scripts/perf-real.sh` definitions) | `cold`, `unchanged`, `module-edit` (a body edit in one module), `spec-wide`; vest also `worktree` | Relative bar below; scripted edits are diagnostic |
 
 Every sample goes to `samples.jsonl` as it finishes, failures and Sail
 refusals included. A sample passes when its exit code and normalized output
 (verification summaries, diagnostic headlines and locations) equal its
-round's stock sample. When Cargo answers a stock rerun without Verus, Sail
-may match that no-op or the copy's previous verifying output. A row passes only when
-all its samples exist and pass and its medians meet the bar; the run writes
-`matrix.md` with medians, ranges and ratios.
+round's stock sample. Each arm's own copy directory is replaced by `<copy>`
+first, since Cargo's future-incompatibility warning names the package's
+path. For partial verification (anvil's `--verify-module`), Sail prints its
+JSON report; the matrix compares the counts of Sail's own Verus run
+(`crates[].verus`, with Verus's partial-verification suffix) with stock's
+line, and fails the sample if those counts disagree with the report's
+per-function verdicts. Verus counts checks, not functions: anvil's 144
+verified are 143 functions, one of which (`objects_to_vrs_list`) has its
+loop checked as a separate query. When Cargo answers a stock rerun without
+Verus, Sail may match that no-op or the copy's previous verifying output. A
+row is valid only when all its samples exist and compare successfully. Speed
+is reported separately under the relative bar; `matrix.md` includes medians,
+ranges and ratios.
+
+The matrix reports sample validity separately from speed. The owner replaced
+fixed percentage and speedup gates on 2026-10-20: most scenarios should be
+faster, overhead on tiny cases must remain modest, and real slowdowns block
+release. Every slower median is marked for review with its absolute delta
+and sample range; it is never automatically accepted by a percentage allowance.
+`report` exits 1 for invalid/incomplete comparisons, 2 for slower rows needing
+review, and 0 for valid rows whose medians are no slower. These exit codes do
+not grant release acceptance. Realistic edit-loop claims additionally require
+the seeded mutation suite (#284), rather than a single scripted edit.
+
+Attach the realistic edit-loop measurements when producing the release report:
+
+```sh
+python3 scripts/perf-matrix.py report matrix-out --markdown matrix-out/matrix.md \
+  --mutants mutants-out/human-eval --mutants mutants-out/ironkv \
+  --mutants mutants-out/vest --mutants mutants-out/capybarakv
+```
+
+Run both workloads against the same installed release. The report checks the
+Sail and stock Cargo-Verus binaries, runtime manifest, corpus pins, registry
+lock and platform before combining results. Mutation coverage requires the
+complete version 2 catalogue, three stock oracle runs, all nine classes and
+three measured rounds with one daemon per round. Missing samples, changed
+verdicts, failed reverts or mixed builds invalidate that evidence. A slower
+individual edit remains visible even when its complete loop is faster.
+Scripted module/spec edits remain diagnostic; they do not substitute for this
+breadth. A new full matrix remains incomplete until all four mutation projects
+are attached.
+
+Real projects take vstd as a user of the release would (`--vstd registry`,
+the default): from crates.io, at the versions in the release's shipped vstd
+build (`deps/*/Cargo.lock` of `--sail-install`). A project that pins other
+Verus versions, or takes vstd from Verus's git repository, has only those
+dependencies adjusted (`scripts/perf-real.sh` with `SAIL_PERF_VSTD=registry`;
+git dependencies' own Verus crates are patched to the same versions; anvil's
+verus-tla takes vstd from Verus's git head, which does not resolve beside
+the registry crates, so every Verus crate of the shipped lock is patched
+there, and the run refuses if any such patch goes unused), and
+`matrix.md` lists every adjustment and every package whose resolved version
+differs from the shipped lock. The Shipped vstd column says whether Sail's
+first run of each copy served the release's preverified vstd proof (a vstd
+receipt replaying the release build), missed it (the reasons from Sail's
+`SAIL3138` note follow the table) or was not offered it (partial
+verification never uses it). `--vstd source` restores the older setup, which
+patches every project to the pinned Verus source on disk and so can never
+use the shipped proof. Real-project runs pass no Verus flags after `--`
+(`SAIL_PERF_VERUS_TIMES=0`, so no `--time-expanded`): `cargo verus verify`
+forwards such flags to vstd as well, and the shipped proof binds them, so the
+older harness's `--time-expanded` alone kept every Sail run from using it.
+
+verismo needs the `x86_64-unknown-none` target on the pinned toolchain. The
+matrix adds it before verismo's rows and removes it afterwards if it added
+it, so the other projects see the toolchain a user would have. An installed
+extra target changes the toolchain's identity, so verismo's Sail runs cannot
+use the shipped vstd proof; the report says so. verismo also builds vstd
+with other features (`alloc`, `allow_panic`, no `std`), which Sail's note
+names as the first reason for the miss.
 
 ```sh
 scripts/perf-matrix.py list                       # scenarios and bars
@@ -427,11 +495,13 @@ scripts/perf-matrix.py report ~/pm                # the table again
 ```
 
 It needs the setup below (the pinned Rust toolchain with `rust-src`, the
-stock baseline, and `target/release/sail-conformance` for the corpus), and
+stock baseline, and `target/release/sail-conformance` for the corpus, built
+with `cargo build --release -p sail-conformance`), and
 runs on Linux and on an EC2 Mac (`--stock-verus` then names
-`verus-arm64-macos`). Keep `--out` short: Sail's daemon socket lives under
+`verus-arm64-macos`). Put `--out` outside any Cargo project and keep it short: Sail's daemon socket lives under
 it. `--project` and `--scenario` select a subset, and `--allow-fewer-rounds`
-allows a trial with fewer than three rounds. `python3
+allows a trial with fewer than three rounds. The real-project rows also need
+`jq`, `perl`, crates.io access and, for verismo, `cmake` and `ninja`. `python3
 scripts/test-perf-matrix.py` checks the bars, normalization, pairing and
 report with stand-in tools.
 

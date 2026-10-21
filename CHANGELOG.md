@@ -9,6 +9,10 @@ semantic versioning once the API is published.
   with exact text and counts, under the owner-approved VI-0012 exception.
   Verdicts, errors and other output retain their exact checks.
 
+- Measure real-project release scenarios with the shipped registry vstd
+  versions, record bundle reuse and dependency adjustments, and report slower
+  rows for review under the relative performance bar. Missing or duplicated
+  rounds and output differences invalidate the comparison.
 - Discover initial watch inputs before starting filesystem notifications.
   Cargo's startup creation of `Cargo.lock` no longer cancels the first
   verification when macOS delivers that notification late. Later input edits
