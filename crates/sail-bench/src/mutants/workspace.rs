@@ -321,7 +321,9 @@ pub(super) fn separate_sail_notes(run: &mut RunRecord) -> Vec<String> {
     let mut notices = Vec::new();
     for line in run.stderr.split_inclusive('\n') {
         let text = line.trim_end_matches(['\r', '\n']);
-        if text.starts_with(PREFIX) && text.ends_with("verification is unaffected") {
+        if text.starts_with(PREFIX)
+            && text.ends_with(", so this run verified vstd itself; verification is unaffected")
+        {
             notices.push(text.to_owned());
         } else {
             diagnostics.push_str(line);
@@ -728,7 +730,7 @@ mod tests {
     fn cli_notices_do_not_hide_verifier_or_timing_diagnostics() {
         let mut run = RunRecord {exit_code: Some(0), outputs: vec![], stdout_rest: String::new(),
             wall_ms: 0.0, user_s: None, sys_s: None, max_rss_bytes: None,
-            stderr: "note[SAIL3138]: Sail's preverified vstd proof was not used because features differ; verification is unaffected\nnote: function body check finished in 3 seconds\n\nerror: failed\n".to_owned()};
+            stderr: "note[SAIL3138]: Sail's preverified vstd proof was not used because features differ, so this run verified vstd itself; verification is unaffected\nnote: function body check finished in 3 seconds\n\nerror: failed\n".to_owned()};
         let notices = separate_sail_notes(&mut run);
         assert_eq!(notices.len(), 1);
         assert_eq!(

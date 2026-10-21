@@ -288,13 +288,14 @@ pub fn recheck(dir: &Path) -> Result<String, String> {
             .unwrap_or_default();
         let (pe, se) = exits.get(&name).copied().unwrap_or_default();
         match (load(&step.join("stock"), pe), load(&step.join("sail"), se)) {
-            (Some(p), Some(s)) => {
+            (Some(p), Some(mut s)) => {
+                let notices = workspace::separate_sail_notes(&mut s);
                 let fv = false_verified(&p, &s);
                 let c = sail_conformance::compare(&p, &s);
                 let _ = writeln!(
                     t,
                     "{name}: false verified {fv:?}; {} ({} accepted divergences){}",
-                    if c.differences.is_empty() {
+                    if c.differences.is_empty() && notices.len() <= 1 {
                         "same"
                     } else {
                         "different"
