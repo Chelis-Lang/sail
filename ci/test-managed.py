@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import select
@@ -789,6 +790,40 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             assert vstd(edited)["reused"], diagnostic(edited)
             assert b"Compiling vstd" not in edited_run.stderr, edited_run.stderr.decode()
             assert schedule_marker() != script_execution, "changed source incorrectly kept old scheduling memo"
+
+            # #294/#298: rustix probes metadata on stdout and declares
+            # Cargo-generated inputs. The probe must not churn the package
+            # directory or force every script and vstd to rebuild next time.
+            probe_script = workspace / "schedule-new/build.rs"
+            original_probe_script = probe_script.read_text()
+            probe_script.write_text(
+                'fn main() {\n'
+                '    println!("cargo::rerun-if-changed=build.rs");\n'
+                '    println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_OS");\n'
+                '    println!("cargo::rerun-if-env-changed=CARGO_FEATURE_SAIL_FIXTURE");\n'
+                '    let rustc = std::env::var_os("RUSTC").unwrap();\n'
+                '    let probe = std::process::Command::new(rustc)\n'
+                '        .args(["src/lib.rs", "--crate-type", "lib", "--emit=metadata",\n'
+                '               "--crate-name", "sail_probe", "-o", "-"])\n'
+                '        .output().unwrap();\n'
+                '    assert!(probe.status.success(), "{:?}", probe);\n'
+                '    assert!(!probe.stdout.is_empty());\n'
+                '    let out = std::env::var("OUT_DIR").unwrap();\n'
+                '    let time = std::time::SystemTime::now().duration_since('
+                'std::time::UNIX_EPOCH).unwrap().as_nanos();\n'
+                '    std::fs::write(format!("{out}/sail-schedule-marker"), '
+                'format!("new:{time}")).unwrap();\n'
+                '}\n')
+            probe_run, probe, _ = managed()
+            assert probe_run.returncode == 0 and probe["currentness"] == "current", diagnostic(probe)
+            probe_execution = schedule_marker()
+            for label in ("first", "second"):
+                quiet_run, quiet, quiet_target = managed()
+                assert quiet_run.returncode == 0 and quiet["currentness"] == "current", (label, diagnostic(quiet))
+                assert quiet["execution"]["verifier_invocations"] == 0 and quiet_target["reused"], (label, diagnostic(quiet))
+                assert not re.search(rb"(?m)^ *(Compiling|Checking) ", quiet_run.stderr), (label, quiet_run.stderr.decode())
+                assert schedule_marker() == probe_execution, f"{label} run repeated the compiler probe"
+            probe_script.write_text(original_probe_script)
 
             # Generated files stay bound by content (#120): the build script
             # declares an environment variable and writes its value into a file
