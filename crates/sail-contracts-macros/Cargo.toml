@@ -1,0 +1,21 @@
+[package]
+name = "sail-contracts-macros"
+description = "Checked runtime expansion for neutral Rust contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
+sail-contracts-ir.workspace = true
+
+[lints]
+workspace = true

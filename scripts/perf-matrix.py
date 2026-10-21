@@ -94,7 +94,7 @@ REAL = ["cold", "unchanged", "module-edit", "spec-wide"]
 PROJECTS = ["vest", "ironkv", "capybarakv", "anvil", "verismo"]
 WORKTREE_PROJECTS = {"vest"}
 # perf-real.sh phase names for the real-project scenarios.
-PERF_REAL_PHASE = {"cold": "cold", "unchanged": "noop1", "module-edit": "body-early",
+PERF_REAL_PHASE = {"cold": "cold", "unchanged": "unchanged", "module-edit": "body-early",
                    "spec-wide": "spec-wide"}
 def performance(stock, sail):
     """Describe measured direction; release acceptance requires review."""
@@ -412,7 +412,8 @@ class Runner:
         shutil.rmtree(out, ignore_errors=True)
         modes = " ".join("plain" if a == "stock" else "sail" for a in order)
         env = scrubbed_env(keep=self.extra, extra={"PATH": self.path, "SAIL_PERF_OUT": str(out), "SAIL_PERF_MODES": modes,
-                            "SAIL_PERF_EDITS": "body-early spec-wide", "SAIL_PERF_NOOPS": "1",
+                            "SAIL_PERF_EDITS": "body-early spec-wide", "SAIL_PERF_NOOPS": "0",
+                            "SAIL_PERF_UNCHANGED": "1",
                             "SAIL_PERF_SETTLE": str(self.settle),
                             "SAIL_PERF_MACHINE": os.environ.get("SAIL_PERF_MACHINE", ""),
                             "SAIL_PERF_VSTD": self.vstd,
@@ -458,6 +459,7 @@ class Runner:
                 else:
                     wall, code, note = 0.0, None, f"perf-real.sh produced no {phase} row (exit {p.returncode})"
                 extra = dict(setup)
+                extra["measurement_phase"] = phase
                 if arm == "sail":
                     proof = read_lines(out / "r1" / f"{mode}.vstd-proof.txt")
                     extra["vstd_proof"] = proof[0] if proof else "unrecorded"
@@ -698,7 +700,13 @@ def rows_of(samples, rounds, expected=()):
             row["delta_s"] = row["sail_med"] - row["stock_med"]
         else:
             row["performance"] = "unmeasured"
-        row["valid"] = complete and not failures and row["performance"] != "invalid timing"
+        correct_phase = project == "small" or scenario != "unchanged" or all(
+            s.get("measurement_phase") == "unchanged" for s in stock + sail)
+        if not correct_phase:
+            row["measurement_issue"] = "comment-edit or unrecorded phase is not an unchanged rerun"
+        row["exit_codes"] = {arm: sorted({str(s["exit"]) for s in entries})
+                             for arm, entries in (("stock", stock), ("sail", sail))}
+        row["valid"] = complete and not failures and correct_phase and row["performance"] != "invalid timing"
         row["pass"] = row["valid"] and row["performance"] in ("faster", "equal")
         rows.append(row)
     return rows
@@ -756,14 +764,21 @@ def cmd_report(args):
         if r["failures"]:
             why.append(f"{len(r['failures'])} failed sample(s)")
         why.extend(r.get("mutation_issues", [])[:3])
+        if r.get("measurement_issue"):
+            why.append(r["measurement_issue"])
         if not r["valid"]:
             result = "**INVALID**" + (f" ({', '.join(why)})" if why else "")
         else:
             result = r["performance"]
             if r.get("slower_mutants"):
                 result += f" ({len(r['slower_mutants'])} edits slower: review)"
+        exits = r.get("exit_codes", {})
+        if any(code != "0" for codes in exits.values() for code in codes):
+            result += f"; exit codes stock={exits.get('stock')}, Sail={exits.get('sail')}"
         delta = f"{r['delta_s']:+.2f} s" if "delta_s" in r else "-"
         scenario = "scripted-" + r["scenario"] if r["scenario"] in ("module-edit", "spec-wide") else r["scenario"]
+        if r.get("measurement_issue"):
+            scenario = "scripted-comment-edit (not unchanged)"
         lines.append(f"| {r['project']} | {scenario} | {st} | {sa} | {ratio} | "
                      f"{r['n'][0]}/{r['n'][1]} | {delta} | {r['vstd_proof']} | {result} |")
     lines += setup_notes(load(d))
