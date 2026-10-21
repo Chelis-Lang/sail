@@ -17,7 +17,7 @@ The pinned Rust toolchain (corpus/toolchain.toml) must be installed, with
 `rust-src` (README step 2). `--tools` holds `sail-conformance`, which the
 real-project rows need to fetch the corpus (default: `target/release`).
 
-Scenarios (`list` prints them with their bars):
+Scenarios (`list` prints them):
 
 - the small project (the `sail new` / `cargo verus new --lib` template), per
   arm and round, in this order: `cold-first` (first use: a fresh Cargo home
@@ -87,32 +87,11 @@ WORKTREE_PROJECTS = {"vest"}
 # perf-real.sh phase names for the real-project scenarios.
 PERF_REAL_PHASE = {"cold": "cold", "unchanged": "noop1", "module-edit": "body-early",
                    "spec-wide": "spec-wide"}
-# Bars (ROADMAP goal and #168): "speedup" needs stock/sail >= the factor;
-# "not-slower" allows Sail +5%, or +0.1 s when stock is sub-second.
-FIRST_USE = 2.0
-REAL_EDIT = 1.3
-
-
-def bar_of(scenario, project):
-    if scenario in ("cold-first", "fresh-project"):
-        return ("speedup", FIRST_USE)
-    if scenario == "module-edit" and project != "small":
-        return ("speedup", REAL_EDIT)
-    return ("not-slower", None)
-
-
-def bar_text(bar):
-    kind, factor = bar
-    return f">= {factor:g}x" if kind == "speedup" else "<= +5% (+0.1 s sub-second)"
-
-
-def meets(bar, stock, sail):
-    kind, factor = bar
-    if kind == "speedup":
-        return sail > 0 and stock / sail >= factor
-    if stock < 1.0:
-        return sail <= stock + 0.1
-    return sail <= stock * 1.05
+def performance(stock, sail):
+    """Describe measured direction; release acceptance requires review."""
+    if stock <= 0 or sail <= 0:
+        return "invalid timing"
+    return "faster" if sail < stock else "equal" if sail == stock else "slower: review"
 
 
 # --- Output normalization ----------------------------------------------------
@@ -658,10 +637,10 @@ def rows_of(samples, rounds):
     rows = []
     for (project, scenario), arms in sorted(groups.items(), key=lambda kv: (order.get(kv[0][0], 99), sc(*kv[0]))):
         stock, sail = arms.get("stock", []), arms.get("sail", [])
-        bar = bar_of(scenario, project)
         failures = [s for s in stock + sail if not s.get("ok")]
-        complete = len(stock) >= rounds and len(sail) >= rounds
-        row = dict(project=project, scenario=scenario, n=(len(stock), len(sail)), bar=bar,
+        expected = list(range(1, rounds + 1))
+        complete = all(sorted(s["round"] for s in arm) == expected for arm in (stock, sail))
+        row = dict(project=project, scenario=scenario, n=(len(stock), len(sail)),
                    failures=failures, complete=complete,
                    vstd_proof=proof_summary([s["vstd_proof"] for s in sail if "vstd_proof" in s]))
         if stock and sail:
@@ -669,10 +648,12 @@ def rows_of(samples, rounds):
             row.update(stock_med=statistics.median(ws), stock_rng=(min(ws), max(ws)),
                        sail_med=statistics.median(wa), sail_rng=(min(wa), max(wa)))
             row["ratio"] = row["stock_med"] / row["sail_med"] if row["sail_med"] > 0 else 0.0
-            row["meets"] = meets(bar, row["stock_med"], row["sail_med"])
+            row["performance"] = performance(row["stock_med"], row["sail_med"])
+            row["delta_s"] = row["sail_med"] - row["stock_med"]
         else:
-            row["meets"] = False
-        row["pass"] = row["meets"] and complete and not failures
+            row["performance"] = "unmeasured"
+        row["valid"] = complete and not failures and row["performance"] != "invalid timing"
+        row["pass"] = row["valid"] and row["performance"] in ("faster", "equal")
         rows.append(row)
     return rows
 
@@ -690,7 +671,10 @@ def cmd_report(args):
              "Ratio = stock median / Sail median (above 1: Sail faster). Ranges are min-max. "
              "Shipped vstd: whether Sail's first run of the copy (`cold`, `cold-first`) served the "
              "release's preverified vstd proof; later rows of a copy follow from it.", "",
-             "| Project | Scenario | Stock median [range] | Sail median [range] | Ratio | n | Bar | Shipped vstd | Result |",
+             "The release bar is relative (owner, 2026-10-20): most scenarios faster, modest overhead "
+             "only on tiny cases, no real slowdown. Every slower median requires review of samples "
+             "and variability; this report does not grant release acceptance.", "",
+             "| Project | Scenario | Stock median [range] | Sail median [range] | Ratio | n | Delta | Shipped vstd | Result |",
              "|---|---|---:|---:|---:|---:|---|---|---|"]
     for r in rows:
         if "stock_med" in r:
@@ -704,11 +688,13 @@ def cmd_report(args):
             why.append("incomplete")
         if r["failures"]:
             why.append(f"{len(r['failures'])} failed sample(s)")
-        if "stock_med" in r and not r["meets"]:
-            why.append("misses bar")
-        result = "pass" if r["pass"] else "**FAIL**" + (f" ({', '.join(why)})" if why else "")
+        if not r["valid"]:
+            result = "**INVALID**" + (f" ({', '.join(why)})" if why else "")
+        else:
+            result = r["performance"]
+        delta = f"{r['delta_s']:+.2f} s" if "delta_s" in r else "-"
         lines.append(f"| {r['project']} | {r['scenario']} | {st} | {sa} | {ratio} | "
-                     f"{r['n'][0]}/{r['n'][1]} | {bar_text(r['bar'])} | {r['vstd_proof']} | {result} |")
+                     f"{r['n'][0]}/{r['n'][1]} | {delta} | {r['vstd_proof']} | {result} |")
     lines += setup_notes(load(d))
     failed = [s for r in rows for s in r["failures"]]
     if failed:
@@ -716,13 +702,16 @@ def cmd_report(args):
         for s in failed:
             what = s.get("note") or (f"identity {s.get('identity')}" if s.get("identity") != "same" else f"exit {s['exit']}")
             lines.append(f"- r{s['round']} {s['arm']} {s['project']} {s['scenario']}: {what} (`{s['log']}`)")
-    passed = sum(r["pass"] for r in rows)
-    lines += ["", f"{passed} of {len(rows)} rows pass."]
+    valid = sum(r["valid"] for r in rows)
+    review = sum(r["valid"] and not r["pass"] for r in rows)
+    lines += ["", f"{valid} of {len(rows)} rows have valid comparisons; {review} slower rows require review."]
     text = "\n".join(lines) + "\n"
     if getattr(args, "markdown", None):
         Path(args.markdown).write_text(text)
     print(text, end="")
-    return 0 if rows and passed == len(rows) else 1
+    if not rows or valid != len(rows):
+        return 1
+    return 2 if review else 0
 
 
 def vstd_text(header):
@@ -761,10 +750,10 @@ def setup_notes(samples):
 
 def cmd_list(_args):
     for s in SMALL:
-        print(f"small      {s:13} {bar_text(bar_of(s, 'small'))}")
+        print(f"small      {s:13}")
     for p in PROJECTS:
         for s in REAL + (["worktree"] if p in WORKTREE_PROJECTS else []):
-            print(f"{p:10} {s:13} {bar_text(bar_of(s, p))}")
+            print(f"{p:10} {s:13}")
 
 
 def main():

@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Measure real-project release scenarios with the shipped registry vstd
+  versions, record bundle reuse and dependency adjustments, and report slower
+  rows for review under the relative performance bar. Missing or duplicated
+  rounds and output differences invalidate the comparison.
+
 - Instant revert certifies each native dependency right after its own compile
   instead of making it wait for its dependencies' certificates and for other
   crates' scratch directories first, so Cargo's metadata pipelining is kept

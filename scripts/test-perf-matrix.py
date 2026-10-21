@@ -49,23 +49,13 @@ sys.exit(3)
 '''
 
 
-class Bars(unittest.TestCase):
-    def test_kinds(self):
-        self.assertEqual(pm.bar_of("cold-first", "small"), ("speedup", 2.0))
-        self.assertEqual(pm.bar_of("fresh-project", "small"), ("speedup", 2.0))
-        self.assertEqual(pm.bar_of("module-edit", "vest"), ("speedup", 1.3))
-        self.assertEqual(pm.bar_of("spec-wide", "vest"), ("not-slower", None))
-        self.assertEqual(pm.bar_of("small-edit", "small"), ("not-slower", None))
-
-    def test_thresholds(self):
-        ns = ("not-slower", None)
-        self.assertTrue(pm.meets(ns, 10.0, 10.5))
-        self.assertFalse(pm.meets(ns, 10.0, 10.51))
-        self.assertTrue(pm.meets(ns, 0.5, 0.6))
-        self.assertFalse(pm.meets(ns, 0.5, 0.61))
-        self.assertTrue(pm.meets(("speedup", 2.0), 30.0, 15.0))
-        self.assertFalse(pm.meets(("speedup", 2.0), 30.0, 15.1))
-        self.assertFalse(pm.meets(("speedup", 1.3), 30.0, 0.0))
+class Performance(unittest.TestCase):
+    def test_direction_does_not_accept_a_fixed_overhead_allowance(self):
+        self.assertEqual(pm.performance(10.0, 10.4), "slower: review")
+        self.assertEqual(pm.performance(0.1, 0.15), "slower: review")
+        self.assertEqual(pm.performance(30.0, 16.0), "faster")
+        self.assertEqual(pm.performance(30.0, 30.0), "equal")
+        self.assertEqual(pm.performance(30.0, 0.0), "invalid timing")
 
 
 class Normalize(unittest.TestCase):
@@ -211,8 +201,10 @@ class Report(unittest.TestCase):
             s += [sample(r, "stock", "small-edit", 1.0, self.V), sample(r, "sail", "small-edit", 1.04, self.V)]
             s += [sample(r, "stock", "cold-first", 30.0, self.V), sample(r, "sail", "cold-first", 16.0, self.V)]
         rows = {r["scenario"]: r for r in pm.rows_of(s, 3)}
-        self.assertTrue(rows["small-edit"]["pass"])
-        self.assertFalse(rows["cold-first"]["pass"])  # 1.875x < 2x
+        self.assertFalse(rows["small-edit"]["pass"])
+        self.assertTrue(rows["small-edit"]["valid"])
+        self.assertEqual(rows["small-edit"]["performance"], "slower: review")
+        self.assertTrue(rows["cold-first"]["pass"])  # measured faster; no fixed speedup gate
         self.assertAlmostEqual(rows["cold-first"]["ratio"], 30.0 / 16.0)
 
     def test_a_different_output_or_missing_sample_fails_the_row(self):
@@ -227,6 +219,13 @@ class Report(unittest.TestCase):
         self.assertEqual({(f["round"], f["identity"]) for f in row["failures"]},
                          {(2, "different"), (3, "unpaired")})
         self.assertEqual(s[0]["identity"], "same")
+
+    def test_duplicate_round_does_not_replace_a_missing_round(self):
+        samples = [sample(r, arm, "cold", wall, self.V, project="vest")
+                   for r in (1, 1, 3) for arm, wall in (("stock", 10.0), ("sail", 5.0))]
+        row = pm.rows_of(samples, 3)[0]
+        self.assertFalse(row["valid"])
+        self.assertFalse(row["complete"])
 
     def test_a_stock_no_op_also_matches_a_sail_no_op(self):
         s = [sample(1, "stock", "unchanged", 0.1, [], ref=self.V), sample(1, "sail", "unchanged", 0.2, [])]
@@ -253,7 +252,7 @@ class Report(unittest.TestCase):
             code = pm.cmd_report(argparse.Namespace(dir=d, markdown=str(out)))
             text = out.read_text()
         self.assertEqual(code, 0)
-        self.assertIn("| vest | module-edit | 41.00 s [41.00-41.00] | 30.00 s [30.00-30.00] | 1.37x | 3/3 | >= 1.3x | - | pass |", text)
+        self.assertIn("| vest | module-edit | 41.00 s [41.00-41.00] | 30.00 s [30.00-30.00] | 1.37x | 3/3 | -11.00 s | - | faster |", text)
 
 
 class SmallSequence(unittest.TestCase):
