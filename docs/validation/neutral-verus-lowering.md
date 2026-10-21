@@ -116,3 +116,41 @@ export SAIL_VERUS_BUILD="$SAIL_ENGINE_BUILD"
 unset RUSTUP_TOOLCHAIN LD_LIBRARY_PATH DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH
 ./target/debug/examples/neutral_contracts_acceptance /fresh/evidence/directory
 ```
+
+
+## Conservative proof projection and runtime witness
+
+A fresh actual managed acceptance run uses the new neutral projection without
+changing legacy reports. Its original is `Proved`, with 2061 underlying unsat
+checks and no unknown, SAT, missing-answer or missing-source checks. Its actual
+body edit is `NotProved`, with 2062 unsat and one unknown check; the verbatim
+reason remains `(:reason-unknown "(incomplete quantifiers)")`. Every count includes
+advisory and dependency checks. Exact requested-function attribution is checked
+for both runs, and the original, shadow and lockfile hashes are checked after
+execution. These outcomes establish contract proof under requires, not
+requirement entailment, feasibility or a mutation-gate result.
+
+The separately compiled original returns 2 at input 1. Reexecuting the actual
+edited fixture with that same precondition-satisfying input triggers exactly
+`SAIL0702: postcondition failed for requirement ADD-ONE`. A compiler error,
+precondition failure or arithmetic panic does not satisfy this acceptance.
+The separate runtime-sample record retains the edited source digest, typed
+input and digest, observed diagnostic and digest, and reference output. This is
+one runtime counterexample sample, independently of the unknown SMT answer.
+The [minimal reproduction](../../corpus/repros/neutral-contract-unknown/README.md)
+retains the exact emitted source and links the original requested-target record.
+
+| Original final evidence file | SHA-256 |
+| --- | --- |
+| `positive.run.json` | `554200023dd60e212c4b222ac7a419c265c39bf961658195ad21a5cf08399f87` |
+| `body-edit.run.json` | `ef55fb414e6ed55adddda0b34a02e84666512b11659e276fd19bd239e8fafb99` |
+| `body-edit.runtime-witness.json` | `47549b644688198355826b34467085af7e9c5d11b2f881192789c9ededadf9a7` |
+| `sail-neutral-proof-managed-final.log` | `3543fa894c0f832cf9186ca2eae422f6c910d64922f07ea40d0c103c42552dd5` |
+
+The conservative projection and regression passed the native full gate and
+solver lane, including the actual fork/stock oracle. The corresponding original
+logs are `sail-neutral-proof-gate.log` (SHA-256
+`0db79d18bb2237e889fc366ac4b9557fff455f207dc20ef341c11dcfaf5797d8`)
+and `sail-neutral-proof-solver.log` (SHA-256
+`62fae9ec52d0061572059cac2f7d93b9f1def62596de7b69692bf494774b934c`).
+Final PR validation additionally covers the exact final harness and reproduction.
