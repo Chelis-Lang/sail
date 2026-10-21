@@ -1,6 +1,7 @@
 //! Managed Cargo artifacts and successful per-target verification receipts.
 
 mod absent;
+pub(crate) mod build_environment;
 mod build_inputs;
 pub mod cargo_toolchain;
 mod configuration;

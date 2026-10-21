@@ -7,6 +7,16 @@ semantic versioning once the API is published.
 
 - Measure real-project unchanged reruns without adding source comments. Mark
   older comment-edit rows separately and show nonzero verification exit codes.
+- Reuse saved proofs when unchanged build scripts declare supported
+  `CARGO_FEATURE_*` or `CARGO_CFG_*` inputs (#298). Use exact Cargo units
+  and compiler cfg queries instead of parent values. Unknown Cargo versions
+  and ambiguous or missing observations still refuse reuse. Preserve content,
+  output, environment, and receipt checks.
+
+- Keep native compiler metadata files in the owned Sail run directory.
+  Preserve stdout bytes, diagnostics, exit status, and source-relative paths.
+  This prevents source directory timestamp changes from compiler probes.
+  Pass metadata filenames through `-o` so cache paths can contain commas.
 - Compare standalone verification-progress notes independent of worker order,
   with exact text and counts, under the owner-approved VI-0012 exception.
   Verdicts, errors and other output retain their exact checks.

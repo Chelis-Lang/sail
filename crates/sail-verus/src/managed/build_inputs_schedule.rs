@@ -316,7 +316,7 @@ mod tests {
             covered: true,
             output: None,
         };
-        record.digest = current(&record, None).0;
+        record.digest = current(&record, None, &fixture.data).0;
         json(&state, &vec![record])?;
         assert_eq!(stale(&state, &fixture.data).0, vec!["same-name"]);
         fixture.establish(&memo);
