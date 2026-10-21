@@ -499,7 +499,11 @@ mod tests {
                 "save_baseline",
                 "list_baselines",
                 "get_baseline",
-                "start_repair_validation"
+                "start_repair_validation",
+                #[cfg(unix)]
+                "runtime_capabilities",
+                #[cfg(unix)]
+                "runtime_execute"
             ]
         );
         assert!(by_id(&r, 3)["result"].is_object());

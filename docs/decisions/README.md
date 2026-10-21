@@ -70,3 +70,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0065: One verification runtime for Oyster](0065-oyster-runtime.md)
 - [0066: Shared neutral contract syntax and checked runtime (runtime implemented; backend qualification separate)](0066-neutral-contract-runtime.md)
 - [0069: Exact-scope report reuse](0069-exact-scope-report-reuse.md)
+- [0068: Shared runtime transport and agent tools](0068-runtime-daemon.md)

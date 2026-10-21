@@ -11,6 +11,16 @@ semantic versioning once the API is published.
 - Reuse successful partial reports only for their exact invocation scope.
   Keep partial targets explicitly incomplete and exclude their receipts from
   whole-target, shared dependency and instant-revert proof admission.
+- Avoid injecting a duplicate progress option into the pinned dispatch-order
+  regression. Require the exact test identity and full original source hash.
+- Preserve independently verified dependencies after a requested proof fails
+  when platform-disabled build scripts have no current Cargo execution unit.
+  Keep conservative cleanup for unknown plans and reject unexpected units.
+- Add the neutral-to-Verus lowering library for a supported complete scalar
+  source file. It emits an immutable owned shadow and exact source/requirement
+  mapping, preserves checked arithmetic definedness, and reuses the managed
+  backend with actual obligation logging. Ordinary Verus verification is
+  unchanged; native oracle qualification is a separate acceptance gate.
 
 - Add private neutral contract libraries for requirement-tagged scalar Rust
   functions and methods. Runtime preconditions, postconditions, old scalar
@@ -23,11 +33,18 @@ semantic versioning once the API is published.
 - Preserve Cargo metadata pipelining while observing native compiles for
   shipped vstd. Require producer certificates after compilation, before
   publishing any reusable result.
+
+- Serve raw SMT runtime requests through an owner-private, separately versioned
+  daemon endpoint, CLI `--socket`, and MCP `runtime_capabilities` and
+  `runtime_execute`. Preserve exact evidence and cancellation without local
+  fallback on endpoint errors.
+
+- Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
+  SMT batches and incremental transcripts through Sail's bundled pinned Z3.
+  Complete solver evidence is attributed and cached separately from Verus;
+  unknown, timeout, cancellation and malformed responses remain explicit.
 - Avoid duplicate watch startup jobs from replayed macOS creation events.
   Preserve cancellation for real edits, including edit-and-restore changes.
-- Preserve independently verified dependencies after a requested proof fails
-  when platform-disabled build scripts have no current Cargo execution unit.
-  Keep conservative cleanup for unknown plans and reject unexpected units.
 
 - Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
   comparisons across stock Verus, the plain fork, and Sail.
