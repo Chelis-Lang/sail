@@ -17,8 +17,8 @@ controls.
 | Short-circuit arithmetic guard | Verified | 1 / 0 |
 | Signed minimum | Verified | 1 / 0 |
 | Mutable wallet and old scalar state | Verified | 3 / 0 |
-| Negated overflowing predicate | Refuted | 0 / 1 |
-| Overflowing eager old capture | Refuted | 0 / 1 |
+| Negated overflowing predicate | Not proved | 0 / 1 |
+| Overflowing eager old capture | Not proved | 0 / 1 |
 
 These are whole-crate backend counts, not requirement establishment counts.
 The runtime fixtures compile with the real neutral macros and check the same
@@ -71,6 +71,15 @@ lockfile digests agreed with the returned manifests and translation trust.
 | --- | --- | --- | --- | --- | --- |
 | Original | 0 | Current | Complete | 1 / 0 | False |
 | Body edit | 101 | Current | Incomplete | 0 / 1 | False |
+
+The failed body edit contains one underlying `unknown` answer with reason
+`(incomplete quantifiers)`, followed by `unsat`. Its legacy function label is
+`failed` with an SMT tier, and a model is retained for the unknown check. That
+model is not a SAT result or a concrete SMT refutation. The new neutral
+projection reports `NotProved`, not a mutation kill. The original contains
+no unknown checks and meets the complete attributed proof conditions.
+Requested-target projections of these original records are retained as
+regression fixtures; the complete raw archive remains unchanged.
 
 The source policy SHA-256 in both runs is
 `77cfe09e6aec9d1934662198c343800bcde4c53b6cda2ed1011fe43f180fc12a`.

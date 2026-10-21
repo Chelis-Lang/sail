@@ -4,6 +4,7 @@
 //! must remain current when actual managed backend evidence is consumed.
 
 mod admission;
+mod evidence;
 mod expression;
 mod lower;
 mod runner;
@@ -12,6 +13,7 @@ mod types;
 
 use serde::{Deserialize, Serialize};
 
+pub use evidence::{CheckCounts, ContractProof, ProofState};
 pub use lower::lower;
 pub use runner::{ContractRun, verify};
 pub use trust::TranslationTrust;

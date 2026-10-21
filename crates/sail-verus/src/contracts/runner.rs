@@ -18,6 +18,8 @@ pub struct ContractRun {
     pub backend: sail_api::project::ProjectResult,
     /// Exact compiler-loaded implementation and dependency resolution admission.
     pub translation_trust: super::TranslationTrust,
+    /// Conservative proof under requires; never a requirement entailment or refutation.
+    pub proof: super::ContractProof,
 }
 
 /// Lower one exact source snapshot and run its immutable owned shadow on pinned Verus.
@@ -29,6 +31,10 @@ pub struct ContractRun {
 /// # Errors
 /// `SAIL3140` for unsupported source or request controls; `SAIL3141` for shadow
 /// drift; existing managed/runtime codes for unavailable execution or backend faults.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep source, translation trust and actual managed execution in one locked boundary."
+)]
 pub fn verify(
     original: &str,
     crate_name: &str,
@@ -132,12 +138,14 @@ pub fn verify(
     )?;
     trust.intact(&shadow)?;
     let backend = result?;
+    let proof = super::evidence::summarize(&lowering.manifest, &backend);
     drop(lock);
     Ok(ContractRun {
         lowering,
         shadow,
         backend,
         translation_trust: trust.evidence,
+        proof,
     })
 }
 

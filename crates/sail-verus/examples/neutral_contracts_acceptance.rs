@@ -5,8 +5,15 @@
 use std::path::PathBuf;
 
 use sail_api::project::Currentness;
-use sail_verus::contracts::{ContractRun, verify};
+use sail_verus::contracts::{ContractRun, ProofState, verify};
 use sail_verus::managed::{CargoToolchain, Config};
+
+mod original_runtime {
+    include!("../tests/fixtures/neutral-contracts/add_one.rs");
+}
+mod changed_runtime {
+    include!("../tests/fixtures/neutral-contracts/body_edit.rs");
+}
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -36,14 +43,12 @@ fn main() -> TestResult {
         attribution_logs: true,
     };
     let original = include_str!("../tests/fixtures/neutral-contracts/add_one.rs");
-    let changed = original.replace("    input + 1\n", "    input\n");
-    if changed == original {
-        return Err("body edit did not change the fixture".into());
+    let changed = include_str!("../tests/fixtures/neutral-contracts/body_edit.rs");
+    if changed != original.replace("    input + 1\n", "    input\n") {
+        return Err("body edit fixture does not match the intended mutation".into());
     }
-    for (label, source, expected) in [
-        ("positive", original, true),
-        ("body-edit", changed.as_str(), false),
-    ] {
+    runtime_witness(&output, changed)?;
+    for (label, source, expected) in [("positive", original, true), ("body-edit", changed, false)] {
         let source_path = output.join(format!("{label}.original.rs"));
         std::fs::write(&source_path, source)?;
         let mut diagnostics = Vec::new();
@@ -76,6 +81,14 @@ fn main() -> TestResult {
 }
 
 fn validate(run: &ContractRun, expected: bool) -> TestResult {
+    let expected_proof = if expected {
+        ProofState::Proved
+    } else {
+        ProofState::NotProved
+    };
+    if run.proof.state != expected_proof {
+        return Err("conservative contract proof disagrees with expected evidence".into());
+    }
     if run.backend.error.is_some()
         || run.backend.currentness != Currentness::Current
         || run.backend.no_reuse.is_some()
@@ -141,4 +154,41 @@ fn cargo() -> TestResult<PathBuf> {
         .map(|directory| directory.join("cargo"))
         .find(|candidate| candidate.is_file())
         .ok_or_else(|| "native acceptance cannot locate the actual Cargo executable".into())
+}
+
+fn runtime_witness(output: &std::path::Path, changed: &str) -> TestResult {
+    let reference = original_runtime::candidate(1);
+    if reference != 2 {
+        return Err("original runtime reference is wrong".into());
+    }
+    eprintln!(
+        "Reexecuting deliberate body-edit violation at input 1; the caught contract failure is expected."
+    );
+    let failure = std::panic::catch_unwind(|| changed_runtime::candidate(1))
+        .err()
+        .ok_or("body edit had no concrete runtime contract violation")?;
+    let message = failure
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| failure.downcast_ref::<&str>().copied())
+        .ok_or("runtime failure has no recorded contract diagnostic")?;
+    if !message.contains("SAIL0702: postcondition failed for requirement ADD-ONE") {
+        return Err("runtime failure was not the bound contract postcondition violation".into());
+    }
+    let input = serde_json::json!({"name":"input", "type":"u8", "value":1});
+    let observed = serde_json::json!({"kind":"postcondition-violation", "message":message});
+    let witness = serde_json::json!({
+        "kind":"runtime-sample-violation",
+        "source_sha256":sha(changed.as_bytes()),
+        "input_sha256":sha(&serde_json::to_vec(&input)?),
+        "observed_sha256":sha(&serde_json::to_vec(&observed)?),
+        "input":input, "observed":observed, "reference_output":reference,
+        "preconditions_satisfied":1 < 100,
+        "assurance":"one compiled runtime sample; no SMT refutation or mutation-gate verdict"
+    });
+    std::fs::write(
+        output.join("body-edit.runtime-witness.json"),
+        serde_json::to_vec_pretty(&witness)?,
+    )?;
+    Ok(())
 }
