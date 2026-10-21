@@ -518,7 +518,7 @@
       "vest-arith-001": "does not compile",
       "vest-arith-002": "does not compile"
     },
-    "finished_unix": 1792587247,
+    "finished_unix": 1792595448,
     "kept": 52,
     "machine": {
       "cpus": "32",
@@ -527,12 +527,13 @@
     },
     "original": {
       "failing": [
-        "1#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+        "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
       ],
       "outcome": "errors",
-      "wall_s": 102.3
+      "wall_s": 102.2
     },
     "platform": "x86_64-unknown-linux-gnu",
+    "protocol": "roots-json-strict-2",
     "results": {
       "vest-arith-001": {
         "dropped": "does not compile",
@@ -559,7 +560,7 @@
           "stillborn"
         ],
         "wall_s": [
-          5.8
+          6.0
         ]
       },
       "vest-arith-003": {
@@ -574,8 +575,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::datetime::vest_lib::asn1::datetime::decimal4_bytes",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::datetime::vest_lib::asn1::datetime::decimal4_bytes"
         ],
         "outcomes": [
           "errors",
@@ -583,9 +583,9 @@
           "errors"
         ],
         "wall_s": [
-          55.5,
-          55.0,
-          54.7
+          56.3,
+          55.3,
+          55.7
         ]
       },
       "vest-arith-004": {
@@ -602,8 +602,7 @@
         ],
         "new_failures": [
           "0#asn1::datetime::vest_lib::asn1::datetime::decimal2_bytes",
-          "0#asn1::datetime::vest_lib::asn1::datetime::lemma_decimal4_canonical",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::datetime::vest_lib::asn1::datetime::lemma_decimal4_canonical"
         ],
         "outcomes": [
           "errors",
@@ -611,9 +610,9 @@
           "errors"
         ],
         "wall_s": [
-          56.5,
+          55.7,
           55.2,
-          54.4
+          56.3
         ]
       },
       "vest-arith-005": {
@@ -632,7 +631,6 @@
           "0#primitives::base256::vest_lib::primitives::base256::usize_to_be_bytes_len"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#primitives::base256::vest_lib::primitives::base256::lemma_usize_shr8_is_div256",
           "0#primitives::base256::vest_lib::primitives::base256::u64_to_be_bytes_first",
           "0#primitives::base256::vest_lib::primitives::base256::usize_to_be_bytes_exec",
@@ -645,9 +643,9 @@
           "errors"
         ],
         "wall_s": [
+          55.1,
           55.3,
-          54.1,
-          55.1
+          55.4
         ]
       },
       "vest-arith-006": {
@@ -662,7 +660,6 @@
           "0#combinators::star::proof::vest_lib::combinators::star::RepeatN::lemma_parse_non_malleable_rec"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::star::proof::vest_lib::combinators::star::RepeatN::lemma_parse_non_malleable_rec"
         ],
         "outcomes": [
@@ -671,9 +668,9 @@
           "errors"
         ],
         "wall_s": [
-          55.0,
+          54.5,
           55.4,
-          54.7
+          54.8
         ]
       },
       "vest-compare-001": {
@@ -688,7 +685,6 @@
           "0#combinators::mapped::proof::vest_lib::combinators::mapped::Mapped::lemma_parse_non_malleable"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::mapped::proof::vest_lib::combinators::mapped::Mapped::lemma_parse_non_malleable"
         ],
         "outcomes": [
@@ -697,9 +693,9 @@
           "errors"
         ],
         "wall_s": [
-          54.9,
-          56.3,
-          55.9
+          55.9,
+          55.4,
+          56.0
         ]
       },
       "vest-compare-002": {
@@ -714,7 +710,6 @@
           "0#combinators::uints::exec::vest_lib::combinators::uints::U24Le::parse"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::uints::exec::vest_lib::combinators::uints::U24Le::parse"
         ],
         "outcomes": [
@@ -723,9 +718,9 @@
           "errors"
         ],
         "wall_s": [
-          54.9,
-          56.3,
-          56.1
+          54.4,
+          54.7,
+          54.4
         ]
       },
       "vest-compare-003": {
@@ -740,8 +735,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::integer::vest_lib::asn1::integer::i64_to_be_bytes_in_place",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::integer::vest_lib::asn1::integer::i64_to_be_bytes_in_place"
         ],
         "outcomes": [
           "errors",
@@ -749,8 +743,8 @@
           "errors"
         ],
         "wall_s": [
-          54.2,
-          56.0,
+          55.3,
+          54.3,
           55.8
         ]
       },
@@ -770,7 +764,6 @@
         "new_failures": [
           "0#asn1::integer::vest_lib::asn1::integer::i64_to_be_bytes_in_place",
           "0#asn1::length::vest_lib::asn1::LengthFmt::serialize_into",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#primitives::base256::vest_lib::primitives::base256::usize_to_be_bytes_in_place"
         ],
         "outcomes": [
@@ -779,9 +772,9 @@
           "errors"
         ],
         "wall_s": [
-          54.5,
-          54.9,
-          55.9
+          56.0,
+          54.1,
+          55.6
         ]
       },
       "vest-compare-005": {
@@ -794,18 +787,16 @@
         "failing": [
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
-        "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
-        ],
+        "new_failures": [],
         "outcomes": [
           "errors",
           "errors",
           "errors"
         ],
         "wall_s": [
-          55.8,
-          56.5,
-          56.7
+          55.0,
+          54.9,
+          55.8
         ]
       },
       "vest-compare-006": {
@@ -820,8 +811,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::der_ord::vest_lib::asn1::GeneralizedTimeFmt::der_next",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::der_ord::vest_lib::asn1::GeneralizedTimeFmt::der_next"
         ],
         "outcomes": [
           "errors",
@@ -829,9 +819,9 @@
           "errors"
         ],
         "wall_s": [
-          56.0,
-          57.1,
-          57.0
+          54.6,
+          55.4,
+          55.5
         ]
       },
       "vest-constant-001": {
@@ -850,7 +840,6 @@
         "new_failures": [
           "0#asn1::integer::vest_lib::asn1::integer::lemma_integer_from_to_bytes",
           "0#asn1::length::vest_lib::asn1::length::lemma_length_wire_long_form_roundtrip",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#primitives::base256::vest_lib::primitives::base256::lemma_from_to_be_bytes_roundtrip"
         ],
         "outcomes": [
@@ -859,9 +848,9 @@
           "errors"
         ],
         "wall_s": [
-          55.3,
-          56.3,
-          56.8
+          54.0,
+          55.2,
+          55.0
         ]
       },
       "vest-constant-002": {
@@ -876,8 +865,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::tag::vest_lib::asn1::TagFmt::parse",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::tag::vest_lib::asn1::TagFmt::parse"
         ],
         "outcomes": [
           "errors",
@@ -885,9 +873,9 @@
           "errors"
         ],
         "wall_s": [
-          55.9,
-          56.0,
-          56.4
+          54.5,
+          55.6,
+          54.8
         ]
       },
       "vest-constant-003": {
@@ -904,8 +892,7 @@
         ],
         "new_failures": [
           "0#asn1::real::vest_lib::asn1::real::ber_real_binary_wf_exec",
-          "0#asn1::real::vest_lib::asn1::real::lemma_ber_real_bytes_cases",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::real::vest_lib::asn1::real::lemma_ber_real_bytes_cases"
         ],
         "outcomes": [
           "errors",
@@ -913,9 +900,9 @@
           "errors"
         ],
         "wall_s": [
-          57.2,
-          56.9,
-          57.2
+          56.7,
+          56.1,
+          56.4
         ]
       },
       "vest-constant-004": {
@@ -930,7 +917,6 @@
           "0#cbor::head::vest_lib::cbor::head::CborHeadFmt::parse"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#cbor::head::vest_lib::cbor::head::CborHeadFmt::parse"
         ],
         "outcomes": [
@@ -939,9 +925,9 @@
           "errors"
         ],
         "wall_s": [
-          55.6,
-          57.3,
-          57.6
+          56.3,
+          56.7,
+          54.6
         ]
       },
       "vest-constant-005": {
@@ -956,7 +942,6 @@
           "0#primitives::btcvarint::vest_lib::primitives::btcvarint::VarInt::parse"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#primitives::btcvarint::vest_lib::primitives::btcvarint::VarInt::parse"
         ],
         "outcomes": [
@@ -965,9 +950,9 @@
           "errors"
         ],
         "wall_s": [
-          56.9,
-          57.2,
-          56.9
+          55.7,
+          56.4,
+          56.6
         ]
       },
       "vest-constant-006": {
@@ -982,7 +967,6 @@
           "0#combinators::uints::spec::vest_lib::combinators::uints::spec::lemma_u64_le_bytes_roundtrip"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::uints::spec::vest_lib::combinators::uints::spec::lemma_u64_le_bytes_roundtrip"
         ],
         "outcomes": [
@@ -991,9 +975,9 @@
           "errors"
         ],
         "wall_s": [
-          56.9,
-          56.9,
-          57.6
+          55.8,
+          56.1,
+          56.4
         ]
       },
       "vest-invariant-001": {
@@ -1008,7 +992,6 @@
           "0#primitives::base128::vest_lib::primitives::base128::uint_to_base128_in_place"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#primitives::base128::vest_lib::primitives::base128::uint_to_base128_in_place"
         ],
         "outcomes": [
@@ -1017,9 +1000,9 @@
           "errors"
         ],
         "wall_s": [
-          56.1,
-          56.4,
-          57.4
+          60.4,
+          60.3,
+          59.8
         ]
       },
       "vest-invariant-002": {
@@ -1034,8 +1017,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::real::vest_lib::asn1::real::scan_ascii_digits_exec",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::real::vest_lib::asn1::real::scan_ascii_digits_exec"
         ],
         "outcomes": [
           "errors",
@@ -1043,9 +1025,9 @@
           "errors"
         ],
         "wall_s": [
-          55.8,
-          55.7,
-          56.8
+          60.3,
+          60.0,
+          60.5
         ]
       },
       "vest-invariant-003": {
@@ -1060,8 +1042,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::numericstring::vest_lib::asn1::numericstring::NumericStringChars::test",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::numericstring::vest_lib::asn1::numericstring::NumericStringChars::test"
         ],
         "outcomes": [
           "errors",
@@ -1069,9 +1050,9 @@
           "errors"
         ],
         "wall_s": [
-          55.4,
-          55.7,
-          56.4
+          60.7,
+          60.0,
+          60.0
         ]
       },
       "vest-invariant-004": {
@@ -1086,8 +1067,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::ber::any::vest_lib::asn1::ber::any::flatten_captured_any_contents",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::ber::any::vest_lib::asn1::ber::any::flatten_captured_any_contents"
         ],
         "outcomes": [
           "errors",
@@ -1095,9 +1075,9 @@
           "errors"
         ],
         "wall_s": [
-          55.6,
-          56.3,
-          56.9
+          60.1,
+          60.1,
+          60.6
         ]
       },
       "vest-invariant-005": {
@@ -1112,7 +1092,6 @@
           "0#combinators::star::exec::vest_lib::combinators::star::Star::parse"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::star::exec::vest_lib::combinators::star::Star::parse"
         ],
         "outcomes": [
@@ -1121,9 +1100,9 @@
           "errors"
         ],
         "wall_s": [
-          57.3,
-          57.3,
-          58.4
+          60.6,
+          60.9,
+          61.1
         ]
       },
       "vest-invariant-006": {
@@ -1138,8 +1117,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::real::vest_lib::asn1::real::scan_decimal_mantissa",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::real::vest_lib::asn1::real::scan_decimal_mantissa"
         ],
         "outcomes": [
           "errors",
@@ -1147,9 +1125,9 @@
           "errors"
         ],
         "wall_s": [
-          57.8,
-          57.0,
-          57.3
+          60.2,
+          60.6,
+          60.4
         ]
       },
       "vest-logic-001": {
@@ -1166,7 +1144,6 @@
         ],
         "new_failures": [
           "0#asn1::ber::sequence_of::derived_proofs::vest_lib::asn1::ber::sequence_of::BerSequenceOfFmt::theorem_serialize_dps_parse_roundtrip",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#core::proof::vest_lib::core::proof::impl&%0::C::theorem_serialize_parse_roundtrip"
         ],
         "outcomes": [
@@ -1175,9 +1152,9 @@
           "errors"
         ],
         "wall_s": [
-          57.4,
-          54.8,
-          55.1
+          56.1,
+          56.4,
+          56.6
         ]
       },
       "vest-logic-002": {
@@ -1192,8 +1169,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::ber::char_string::vest_lib::asn1::Ia5StringFmt::decode_owned",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::ber::char_string::vest_lib::asn1::Ia5StringFmt::decode_owned"
         ],
         "outcomes": [
           "errors",
@@ -1201,9 +1177,9 @@
           "errors"
         ],
         "wall_s": [
-          56.3,
-          58.0,
-          54.9
+          57.0,
+          57.1,
+          57.2
         ]
       },
       "vest-logic-003": {
@@ -1216,18 +1192,16 @@
         "failing": [
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
-        "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
-        ],
+        "new_failures": [],
         "outcomes": [
           "errors",
           "errors",
           "errors"
         ],
         "wall_s": [
-          56.3,
-          57.3,
-          55.2
+          55.6,
+          55.8,
+          56.9
         ]
       },
       "vest-logic-004": {
@@ -1242,7 +1216,6 @@
           "0#cbor::head::vest_lib::cbor::head::CborHeadFmt::parse"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#cbor::head::vest_lib::cbor::head::CborHeadFmt::parse"
         ],
         "outcomes": [
@@ -1251,9 +1224,9 @@
           "errors"
         ],
         "wall_s": [
-          56.9,
-          57.5,
-          54.8
+          56.0,
+          56.3,
+          57.0
         ]
       },
       "vest-logic-005": {
@@ -1268,8 +1241,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::tag::vest_lib::asn1::tag::lemma_first_byte_from_parts_roundtrip",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::tag::vest_lib::asn1::tag::lemma_first_byte_from_parts_roundtrip"
         ],
         "outcomes": [
           "errors",
@@ -1277,9 +1249,9 @@
           "errors"
         ],
         "wall_s": [
-          55.3,
-          55.7,
-          56.5
+          56.9,
+          59.6,
+          61.1
         ]
       },
       "vest-logic-006": {
@@ -1294,7 +1266,6 @@
           "0#core::exec::bridge_lemmas::vest_lib::core::exec::bridge_lemmas::lemma_repeat_parser_exec_inv"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#core::exec::bridge_lemmas::vest_lib::core::exec::bridge_lemmas::lemma_repeat_parser_exec_inv"
         ],
         "outcomes": [
@@ -1303,9 +1274,9 @@
           "errors"
         ],
         "wall_s": [
-          57.0,
-          56.8,
-          56.9
+          59.1,
+          61.2,
+          62.7
         ]
       },
       "vest-rare-region-001": {
@@ -1320,8 +1291,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::real::vest_lib::asn1::real::has_nonzero_octet",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::real::vest_lib::asn1::real::has_nonzero_octet"
         ],
         "outcomes": [
           "errors",
@@ -1329,9 +1299,9 @@
           "errors"
         ],
         "wall_s": [
-          55.3,
-          55.4,
-          54.3
+          55.1,
+          55.8,
+          55.7
         ]
       },
       "vest-rare-region-002": {
@@ -1346,7 +1316,6 @@
           "0#combinators::recursive::exec::vest_lib::combinators::recursive::FixWith::serialize_gas"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::recursive::exec::vest_lib::combinators::recursive::FixWith::serialize_gas"
         ],
         "outcomes": [
@@ -1355,9 +1324,9 @@
           "errors"
         ],
         "wall_s": [
-          55.2,
-          55.2,
-          54.5
+          55.1,
+          55.9,
+          55.8
         ]
       },
       "vest-rare-region-003": {
@@ -1372,7 +1341,6 @@
           "0#primitives::base256::vest_lib::primitives::base256::usize_to_be_bytes_in_place"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#primitives::base256::vest_lib::primitives::base256::usize_to_be_bytes_in_place"
         ],
         "outcomes": [
@@ -1381,9 +1349,9 @@
           "errors"
         ],
         "wall_s": [
-          54.8,
-          53.4,
-          53.5
+          56.9,
+          57.2,
+          57.3
         ]
       },
       "vest-rare-region-004": {
@@ -1398,7 +1366,6 @@
           "0#primitives::base256::vest_lib::primitives::base256::u64_to_be_bytes_len"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#primitives::base256::vest_lib::primitives::base256::u64_to_be_bytes_len"
         ],
         "outcomes": [
@@ -1407,9 +1374,9 @@
           "errors"
         ],
         "wall_s": [
-          54.4,
-          53.3,
-          53.4
+          56.0,
+          56.5,
+          57.3
         ]
       },
       "vest-rare-region-005": {
@@ -1424,8 +1391,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::real::vest_lib::asn1::real::scan_decimal_mantissa",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::real::vest_lib::asn1::real::scan_decimal_mantissa"
         ],
         "outcomes": [
           "errors",
@@ -1433,9 +1399,9 @@
           "errors"
         ],
         "wall_s": [
-          54.0,
-          53.2,
-          53.0
+          56.1,
+          56.7,
+          57.0
         ]
       },
       "vest-rare-region-006": {
@@ -1448,18 +1414,16 @@
         "failing": [
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
-        "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
-        ],
+        "new_failures": [],
         "outcomes": [
           "errors",
           "errors",
           "errors"
         ],
         "wall_s": [
-          54.4,
-          52.8,
-          52.7
+          56.2,
+          56.7,
+          57.1
         ]
       },
       "vest-spec-strengthen-001": {
@@ -1474,7 +1438,6 @@
           "0#core::exec::bridge_lemmas::vest_lib::core::exec::bridge_lemmas::lemma_ref_fn_byte_len_congruence"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#core::exec::bridge_lemmas::vest_lib::core::exec::bridge_lemmas::lemma_ref_fn_byte_len_congruence"
         ],
         "outcomes": [
@@ -1483,9 +1446,9 @@
           "errors"
         ],
         "wall_s": [
-          53.4,
-          52.7,
-          54.2
+          58.8,
+          56.4,
+          54.7
         ]
       },
       "vest-spec-strengthen-002": {
@@ -1500,8 +1463,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::bitstring::vest_lib::asn1::bitstring::BitString::unused",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::bitstring::vest_lib::asn1::bitstring::BitString::unused"
         ],
         "outcomes": [
           "errors",
@@ -1509,9 +1471,9 @@
           "errors"
         ],
         "wall_s": [
-          56.8,
-          55.1,
-          55.9
+          61.4,
+          58.9,
+          56.4
         ]
       },
       "vest-spec-strengthen-003": {
@@ -1526,7 +1488,6 @@
           "0#core::exec::bridge_lemmas::vest_lib::core::exec::bridge_lemmas::lemma_opt_parser_exec_inv"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#core::exec::bridge_lemmas::vest_lib::core::exec::bridge_lemmas::lemma_opt_parser_exec_inv"
         ],
         "outcomes": [
@@ -1535,9 +1496,9 @@
           "errors"
         ],
         "wall_s": [
-          56.0,
-          55.2,
-          55.6
+          61.3,
+          58.7,
+          56.0
         ]
       },
       "vest-spec-strengthen-004": {
@@ -1552,7 +1513,6 @@
           "0#combinators::congruence::vest_lib::combinators::congruence::lemma_cond_prepare_congruence"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::congruence::vest_lib::combinators::congruence::lemma_cond_prepare_congruence"
         ],
         "outcomes": [
@@ -1561,9 +1521,9 @@
           "errors"
         ],
         "wall_s": [
-          57.4,
-          54.7,
-          55.6
+          61.0,
+          58.7,
+          55.2
         ]
       },
       "vest-spec-strengthen-005": {
@@ -1578,8 +1538,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::real::vest_lib::asn1::real::scan_ascii_digits_exec",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::real::vest_lib::asn1::real::scan_ascii_digits_exec"
         ],
         "outcomes": [
           "errors",
@@ -1587,9 +1546,9 @@
           "errors"
         ],
         "wall_s": [
-          56.6,
-          55.9,
-          54.7
+          55.8,
+          56.3,
+          56.1
         ]
       },
       "vest-spec-strengthen-006": {
@@ -1604,7 +1563,6 @@
           "0#primitives::base256::vest_lib::primitives::base256::u64_to_be_bytes"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#primitives::base256::vest_lib::primitives::base256::u64_to_be_bytes"
         ],
         "outcomes": [
@@ -1613,9 +1571,9 @@
           "errors"
         ],
         "wall_s": [
-          56.0,
-          55.5,
-          54.6
+          54.6,
+          55.6,
+          56.0
         ]
       },
       "vest-spec-weaken-001": {
@@ -1630,7 +1588,6 @@
           "0#combinators::disjoint::vest_lib::combinators::disjoint::lemma_disjoint_repeat_till_end"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::disjoint::vest_lib::combinators::disjoint::lemma_disjoint_repeat_till_end"
         ],
         "outcomes": [
@@ -1639,9 +1596,9 @@
           "errors"
         ],
         "wall_s": [
-          57.9,
-          56.9,
-          57.9
+          60.2,
+          60.8,
+          61.0
         ]
       },
       "vest-spec-weaken-002": {
@@ -1656,8 +1613,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::bmpstring::vest_lib::asn1::bmpstring::lemma_encode_bmp_string_valid",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::bmpstring::vest_lib::asn1::bmpstring::lemma_encode_bmp_string_valid"
         ],
         "outcomes": [
           "errors",
@@ -1665,9 +1621,9 @@
           "errors"
         ],
         "wall_s": [
-          57.5,
-          56.8,
-          57.4
+          60.3,
+          60.8,
+          61.1
         ]
       },
       "vest-spec-weaken-003": {
@@ -1680,18 +1636,16 @@
         "failing": [
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
-        "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
-        ],
+        "new_failures": [],
         "outcomes": [
           "errors",
           "errors",
           "errors"
         ],
         "wall_s": [
-          57.1,
-          56.9,
-          56.8
+          60.9,
+          61.3,
+          61.5
         ]
       },
       "vest-spec-weaken-004": {
@@ -1706,7 +1660,6 @@
           "0#core::proof::vest_lib::core::proof::impl&%1::C::lemma_serialize_injective"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#core::proof::vest_lib::core::proof::impl&%1::C::lemma_serialize_injective"
         ],
         "outcomes": [
@@ -1715,9 +1668,9 @@
           "errors"
         ],
         "wall_s": [
-          58.9,
-          56.5,
-          56.8
+          61.2,
+          61.5,
+          61.3
         ]
       },
       "vest-spec-weaken-005": {
@@ -1732,8 +1685,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::datetime::vest_lib::asn1::datetime::normalize_offset",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::datetime::vest_lib::asn1::datetime::normalize_offset"
         ],
         "outcomes": [
           "errors",
@@ -1741,9 +1693,9 @@
           "errors"
         ],
         "wall_s": [
-          59.0,
-          56.7,
-          57.0
+          61.3,
+          60.6,
+          62.1
         ]
       },
       "vest-spec-weaken-006": {
@@ -1762,8 +1714,7 @@
         "new_failures": [
           "0#asn1::der_ord::vest_lib::asn1::GeneralizedTimeFmt::lemma_der_serialize_len",
           "0#asn1::der_ord::vest_lib::asn1::UtcTimeFmt::lemma_der_serialize_len",
-          "0#asn1::der_ord::vest_lib::combinators::star::Star::lemma_der_serialize_len",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::der_ord::vest_lib::combinators::star::Star::lemma_der_serialize_len"
         ],
         "outcomes": [
           "errors",
@@ -1771,9 +1722,9 @@
           "errors"
         ],
         "wall_s": [
-          59.0,
-          56.9,
-          57.1
+          61.1,
+          61.4,
+          61.4
         ]
       },
       "vest-statement-001": {
@@ -1788,8 +1739,7 @@
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
         "new_failures": [
-          "0#asn1::ber::any::derived_proofs::vest_lib::asn1::ber::any::BerAnyFmt::lemma_serialize_equiv",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
+          "0#asn1::ber::any::derived_proofs::vest_lib::asn1::ber::any::BerAnyFmt::lemma_serialize_equiv"
         ],
         "outcomes": [
           "errors",
@@ -1797,9 +1747,9 @@
           "errors"
         ],
         "wall_s": [
-          55.0,
-          56.3,
-          55.8
+          57.0,
+          59.7,
+          61.2
         ]
       },
       "vest-statement-002": {
@@ -1812,18 +1762,16 @@
         "failing": [
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
-        "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
-        ],
+        "new_failures": [],
         "outcomes": [
           "errors",
           "errors",
           "errors"
         ],
         "wall_s": [
-          55.1,
-          55.6,
-          55.8
+          56.9,
+          60.0,
+          61.4
         ]
       },
       "vest-statement-003": {
@@ -1836,18 +1784,16 @@
         "failing": [
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
-        "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
-        ],
+        "new_failures": [],
         "outcomes": [
           "errors",
           "errors",
           "errors"
         ],
         "wall_s": [
-          55.5,
-          55.4,
-          55.3
+          60.6,
+          60.5,
+          60.6
         ]
       },
       "vest-statement-004": {
@@ -1860,18 +1806,16 @@
         "failing": [
           "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
         ],
-        "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
-        ],
+        "new_failures": [],
         "outcomes": [
           "errors",
           "errors",
           "errors"
         ],
         "wall_s": [
-          54.7,
-          55.0,
-          55.0
+          60.4,
+          60.3,
+          59.9
         ]
       },
       "vest-statement-005": {
@@ -1886,7 +1830,6 @@
           "0#combinators::uints::spec::vest_lib::combinators::uints::spec::lemma_u24_le_value_roundtrip"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::uints::spec::vest_lib::combinators::uints::spec::lemma_u24_le_value_roundtrip"
         ],
         "outcomes": [
@@ -1895,9 +1838,9 @@
           "errors"
         ],
         "wall_s": [
-          55.9,
-          55.3,
-          55.4
+          60.2,
+          60.6,
+          60.9
         ]
       },
       "vest-statement-006": {
@@ -1912,7 +1855,6 @@
           "0#combinators::star::exec::vest_lib::combinators::star::exec::serialize_slice"
         ],
         "new_failures": [
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
           "0#combinators::star::exec::vest_lib::combinators::star::exec::serialize_slice"
         ],
         "outcomes": [
@@ -1921,9 +1863,9 @@
           "errors"
         ],
         "wall_s": [
-          54.0,
-          55.6,
-          55.6
+          60.0,
+          60.0,
+          60.5
         ]
       }
     },

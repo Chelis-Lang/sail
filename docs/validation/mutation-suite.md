@@ -1,10 +1,11 @@
 # Mutation suite (#284, ADR 0063)
 
 **Status: corrected implementation built; installed-product qualification is in
-progress.** Generator version 2 produces byte-identical catalogues on macOS
-and Linux. Three-run native stock qualification with root-only logging is
-complete for HumanEval (52 kept) and IronKV (48 kept); Vest and CapybaraKV are
-running. The installed candidate's mutation and revert checks remain pending.
+progress.** Generator version 2 produces byte-identical catalogues before oracle
+qualification on macOS and Linux; the qualified outcomes are Linux-only. Three-run native stock qualification with root-only logging is
+complete for HumanEval (52 kept), IronKV (48), Vest (52) and CapybaraKV (53).
+All nine classes are represented in each qualified catalogue. The installed
+candidate's full mutation and revert qualification remains pending.
 
 The 2026-10-20 results below are historical. They used source-patched Verus,
 forwarded logging options to dependencies (preventing shipped-vstd reuse),
