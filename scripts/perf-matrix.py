@@ -626,11 +626,13 @@ def judge(samples):
     return samples
 
 
-def rows_of(samples, rounds):
+def rows_of(samples, rounds, expected=()):
     judge(samples)
     groups = {}
     for s in samples:
         groups.setdefault((s["project"], s["scenario"]), {}).setdefault(s["arm"], []).append(s)
+    for key in expected:
+        groups.setdefault(key, {})
     order = {p: i for i, p in enumerate(["small"] + PROJECTS)}
     small_sc = {s: i for i, s in enumerate(SMALL)}
     real_sc = {s: i for i, s in enumerate(REAL + ["worktree"])}
@@ -663,7 +665,12 @@ def cmd_report(args):
     d = Path(args.dir)
     header = json.loads((d / "header.json").read_text()) if (d / "header.json").exists() else {}
     rounds = header.get("rounds", 3)
-    rows = rows_of(load(d), rounds)
+    expected = []
+    for project in header.get("projects", []):
+        offered = SMALL if project == "small" else REAL + (["worktree"] if project in WORKTREE_PROJECTS else [])
+        expected.extend((project, scenario) for scenario in offered
+                        if scenario in header.get("scenarios", offered))
+    rows = rows_of(load(d), rounds, expected)
     lines = [f"# Performance matrix: stock Verus vs Sail", "",
              f"- Machine: {header.get('machine', '?')} ({header.get('system', '?')} {header.get('host', '?')})",
              f"- Sail: `{header.get('sail', '?')}`; stock: `{header.get('stock', '?')}`",

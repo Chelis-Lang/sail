@@ -227,6 +227,15 @@ class Report(unittest.TestCase):
         self.assertFalse(row["valid"])
         self.assertFalse(row["complete"])
 
+    def test_a_completely_missing_selected_scenario_is_invalid(self):
+        samples = [sample(r, arm, "cold", wall, self.V, project="vest")
+                   for r in (1, 2, 3) for arm, wall in (("stock", 10.0), ("sail", 5.0))]
+        rows = {row["scenario"]: row for row in pm.rows_of(
+            samples, 3, [("vest", "cold"), ("vest", "unchanged")])}
+        self.assertTrue(rows["cold"]["valid"])
+        self.assertFalse(rows["unchanged"]["valid"])
+        self.assertEqual(rows["unchanged"]["n"], (0, 0))
+
     def test_a_stock_no_op_also_matches_a_sail_no_op(self):
         s = [sample(1, "stock", "unchanged", 0.1, [], ref=self.V), sample(1, "sail", "unchanged", 0.2, [])]
         pm.judge(s)
