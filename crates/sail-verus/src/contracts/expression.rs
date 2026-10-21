@@ -12,6 +12,7 @@ use crate::Result;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Phase {
     Current,
+    Post,
     Old,
 }
 
@@ -45,8 +46,12 @@ impl Environment<'_> {
                     .get(&name)
                     .cloned()
                     .ok_or_else(|| unsupported("unresolved specification binding"))?;
-                let source = if name == "self" && phase == Phase::Old && self.mutable_receiver {
-                    quote!(old(self))
+                let source = if name == "self" && self.mutable_receiver {
+                    match phase {
+                        Phase::Old => quote!(old(self)),
+                        Phase::Post => quote!(final(self)),
+                        Phase::Current => quote!(#value),
+                    }
                 } else {
                     quote!(#value)
                 };
