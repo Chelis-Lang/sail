@@ -9,8 +9,8 @@ are in the `archive/m7-contracts-f7103bf` tag.
 ## Open M7 defects and failing gates
 
 - **Deep source-suite dispatch checks are not yet qualified.** The duplicate
-  progress option has a bounded harness correction; independently random SMT
-  log paths still differ in printed rerun commands. The full run remains
+  progress option and the approved incidental log-path difference have bounded
+  harness corrections awaiting qualification. The earlier full run remains
   failed and later arms did not run. See the
   [record](validation/rvt-dispatch-tests.md).
 

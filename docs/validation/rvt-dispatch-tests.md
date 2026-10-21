@@ -1,7 +1,7 @@
 # Deep source-suite dispatch regressions
 
-**Status:** duplicate progress-option correction built; native qualification
-pending. The independent random SMT-log-path comparison is unresolved.
+**Status:** duplicate progress-option and owner-approved temporary-log-path
+corrections built; native qualification pending.
 
 On native c7i.8xlarge in us-east-1, the first full fork pass-through run tested
 4,901 cases: 4,899 Same, 2 Different, 0 Unstable, 0 infrastructure errors,
@@ -18,8 +18,10 @@ thread overrides remain intact.
 
 The dispatch query test passes its query-byte assertions on both sides but
 prints independently randomized tempfile log paths in its rerun commands.
-Eleven plain retries reproduce the changing output. That stderr comparison
-remains failed. Progress-order approval does not permit changing these paths.
+Eleven plain retries reproduce the changing output. The owner accepted ignoring only the six random log-directory characters in
+this exact source-hash-bound test and printed command format (2026-10-21).
+Every other byte and test assertion remains checked. The earlier run stays
+failed; this correction requires a new run.
 
 Failed attempt: 2026-10-21, composed source `36cbfdec`, first full fork
 pass-through: 4,899/4,901 Same, duplicate-option and random-log-path failures;

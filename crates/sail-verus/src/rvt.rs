@@ -344,6 +344,18 @@ impl Suite {
                 "cargo_new_builds" | "cargo_new_verifies"
             ) {
             blank_cargo_new_path(&stderr, &std::env::temp_dir())
+        } else if test.binary == "sail_vi0012_dispatch_order"
+            && test.name == "sail_vi0012_dispatch_order_keeps_queries"
+            && crate::source_build::hash_file(
+                &self
+                    .build
+                    .join("verus/source/rust_verify_test/tests/sail_vi0012_dispatch_order.rs"),
+            )
+            .is_ok_and(|sha| {
+                sha == "0eaec1bc54d7821f3026e4151bc07d7eafeff7b69cf3dc92e7a5c608536160db"
+            })
+        {
+            blank_dispatch_log_path(&stderr, &std::env::temp_dir())
         } else {
             stderr
         };
@@ -402,6 +414,42 @@ fn supplies_progress_flag(test: &TestCase, build: &Path) -> bool {
                     "no-report-long-running",
                 ])
             })
+}
+
+/// Owner-approved removal of only the random component in the pinned dispatch
+/// test's printed rerun commands. Diagnostics and all other bytes remain intact.
+fn blank_dispatch_log_path(stderr: &str, temp: &Path) -> String {
+    let prefix =
+        "vargo run -p rust_verify -- --crate-type=lib --sail-raw=--num-threads --sail-raw=";
+    let options = " --sail-raw=--log --sail-raw=smt --sail-raw=--log-dir --sail-raw=";
+    let directory = format!("{}/.tmp", temp.display().to_string().trim_end_matches('/'));
+    stderr
+        .split_inclusive('\n')
+        .map(|line| {
+            let Some(rest) = line.strip_prefix(prefix) else {
+                return line.to_owned();
+            };
+            let Some((threads, rest)) = rest.split_once(options) else {
+                return line.to_owned();
+            };
+            if !matches!(threads, "1" | "4") {
+                return line.to_owned();
+            }
+            let Some(random) = rest.strip_prefix(&directory) else {
+                return line.to_owned();
+            };
+            if random.len() < 7
+                || !random.as_bytes()[..6].iter().all(u8::is_ascii_alphanumeric)
+                || !random[6..].starts_with(' ')
+            {
+                return line.to_owned();
+            }
+            format!(
+                "{prefix}{threads}{options}{directory}<random>{}",
+                &random[6..]
+            )
+        })
+        .collect()
 }
 
 /// Blanks only the six-character tempfile component in the two cargo-new
@@ -528,6 +576,30 @@ pub fn kept_input_dir(stderr: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dispatch_log_paths_preserve_functional_output() {
+        let command = "vargo run -p rust_verify -- --crate-type=lib --sail-raw=--num-threads --sail-raw=1 --sail-raw=--log --sail-raw=smt --sail-raw=--log-dir --sail-raw=/tmp/.tmpAb123z /owned/test.rs\n";
+        let other = command.replace("Ab123z", "Zx987q");
+        assert_eq!(
+            blank_dispatch_log_path(command, Path::new("/tmp")),
+            blank_dispatch_log_path(&other, Path::new("/tmp"))
+        );
+        for line in [
+            format!("error: {command}"),
+            command.replace("--sail-raw=1 ", "--sail-raw=2 "),
+            command.replace(".tmpAb123z", ".tmpAb123zz"),
+        ] {
+            assert_eq!(blank_dispatch_log_path(&line, Path::new("/tmp")), line);
+        }
+        assert_ne!(
+            blank_dispatch_log_path(command, Path::new("/tmp")),
+            blank_dispatch_log_path(
+                &command.replace("--sail-raw=1 ", "--sail-raw=4 "),
+                Path::new("/tmp")
+            )
+        );
+    }
 
     #[test]
     fn dispatch_progress_default_is_source_and_case_bound()
