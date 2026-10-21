@@ -5,11 +5,8 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
-  SMT batches and incremental transcripts through Sail's bundled pinned Z3.
-  Complete solver evidence is attributed and cached separately from Verus;
-  unknown, timeout, cancellation and malformed responses remain explicit.
-
+- Measure real-project unchanged reruns without adding source comments. Mark
+  older comment-edit rows separately and show nonzero verification exit codes.
 - Preserve Cargo metadata pipelining while observing native compiles for
   shipped vstd. Require producer certificates after compilation, before
   publishing any reusable result.
@@ -1187,3 +1184,7 @@ semantic versioning once the API is published.
 - `sail-conformance`: `cargo-verus` corpus units (with Verus dependencies
   patched to the pinned source in a scratch copy), project requirements
   (skipped and reported when unavailable), and the standard-tier corpus.
+- Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
+  SMT batches and incremental transcripts through Sail's bundled pinned Z3.
+  Complete solver evidence is attributed and cached separately from Verus;
+  unknown, timeout, cancellation and malformed responses remain explicit.
