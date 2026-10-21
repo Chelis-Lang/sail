@@ -25,12 +25,16 @@ def analyse(directory, matrix):
             issues.append(f"{key} missing or different")
     if not matrix.get("platform") or header.get("platform") != matrix["platform"]:
         issues.append("platform missing or different")
+    if header.get("protocol") != "roots-json-strict-2" or header.get("oracle_protocol") != "roots-json-strict-2":
+        issues.append("requires root-only logging and strict diagnostic comparison")
     if header.get("generator") != "gen-mutants 2":
         issues.append("requires the corrected version 2 generator")
     if header.get("vstd_mode") != "registry" or header.get("oracle_vstd_mode") != "registry":
         issues.append("requires registry preparation for the oracle and workload")
     if not isinstance(header.get("oracle_runs"), int) or header["oracle_runs"] < 3:
         issues.append("requires three stock oracle runs")
+    if not matrix.get("rust_toolchain") or header.get("cargo_toolchain") != matrix["rust_toolchain"]:
+        issues.append("both mutation arms must use the matrix's pinned Cargo toolchain")
     rounds = header.get("rounds", 0)
     if not isinstance(rounds, int) or rounds < 3 or rounds != matrix.get("rounds"):
         issues.append("missing or incompatible measured rounds")
@@ -54,7 +58,7 @@ def analyse(directory, matrix):
         issues.append("all nine mutation classes must be measured")
     if any(s.get("stock_exit") is None or s.get("stock_exit") != s.get("sail_exit")
            or s.get("judgement") != "same" or s.get("false_verified")
-           or s.get("expected_mismatch") or s.get("daemon_error") or s.get("provenance_error")
+           or s.get("expected_mismatch") or s.get("daemon_error") or s.get("provenance_error") or s.get("diagnostic_error")
            or (s.get("phase") in ("revert", "revert-forced") and s.get("own_answers") is not True)
            for s in samples):
         issues.append("comparison, oracle, provenance or revert check failed")

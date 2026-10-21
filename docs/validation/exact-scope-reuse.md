@@ -26,12 +26,19 @@ acceptance. Coarse setup timings attribute the remaining time to input and
 receipt validation, Cargo invocation, and publication; no diagnostic comparison
 change is responsible for the improvement.
 
-Native workspace gate: 910 tests pass, 40 skipped, Clippy clean. Build-script
-acceptance passes. Earlier composed managed acceptance covers repeated exact
+The composed installed candidate passes the native workspace, solver, full e2e,
+PR/full-fast and standard conformance gates. Each standard corpus arm has
+159 Same and zero disagreements or infrastructure errors; its bounded
+HumanEval mutation controls also pass. The Mac host gate passes 946 tests,
+Clippy clean. Build-script acceptance passes. Managed acceptance covers repeated exact
 scope reuse, changed selectors, a failing edit, forced fresh verification,
 missing proof receipts and restored-mtime content changes. Receipt controls
 reject whole-proof consumption, different or reordered arguments and changed
-artifacts. Final composed full gates and paired matrix rows remain pending.
+artifacts. The three-round Mac matrix still finds a first unchanged Anvil run
+that rebuilds dependencies (about 35 seconds). A separate repeated-call control
+then reaches 2.1 seconds with zero verifier invocations. This first-rerun defect
+and the remaining setup overhead remain open; these results do not authorize
+release acceptance.
 
 Raw bounded control: `experiments/2026-10-21/anvil-scope-control.tgz` in the
 S3 evidence bucket, SHA-256

@@ -4,12 +4,26 @@ Registry of opt-in modes that can produce a verdict plain Verus would not
 (charter rule 8). Each entry names the flag, what can differ, how output labels
 it, and how its cache keys are kept apart from default-mode keys.
 
-The following portfolio mode requires explicit selection. The owner-approved
-progress-order exception for default mode is recorded below.
+The following portfolio mode requires explicit selection. Owner-approved
+default-mode differences are recorded separately below.
 
 | Mode | Flag | What can differ | Output label | Key separation |
 |---|---|---|---|---|
 | accept-first-proof | `sail verify --portfolio accept-first-proof` | An independent seeded Verus run may prove a scope that the baseline cannot. A single complete run must prove the entire requested scope. | Human output labels the mode and selected seed; JSON includes every attempt and selected configuration. | `Mode::OptIn("accept-first-proof")` prefix keys, negotiated protocol-v4 mode, mode-bound disk and memory entries. Shared reads and publishing are disabled for these entries. |
+
+## Accepted default-mode differences
+
+Default mode runs Sail's Verus fork (ADR 0043). One fork fix makes Sail
+stricter than stock in stock's per-function JSON status, and the
+owner accepted it on 2026-10-20:
+
+| Difference | Mode | What differs | What stays identical | Recognised by |
+|---|---|---|---|---|
+| [VI-0003](verus-issues/VI-0003-bit-vector-failure-reported-as-success.md): a function whose `by (bit_vector)` assertion failed | default (fork fix `8a5d3655`) | Verus's `--output-json` timing entry: stock `success: true`, Sail `false` (Sail is stricter, never more permissive) | Diagnostics (`error: bitvector assertion not satisfied`), error counts, every other function and the exit code | `sail_conformance::compare`: counted under `accepted`, not as a difference, only when everything else is identical, stock failed, the flip is stock `true` to Sail `false`, and the unique function and assertion location match the recorded Vest reproduction; missing exit status or ambiguous function identities refuse the exception |
+
+The mutation suite found it on Vest (`vest-logic-003`,
+[record](validation/mutation-suite.md)). Any other status flip is still a
+difference.
 
 ## Accepted default-mode progress ordering
 
