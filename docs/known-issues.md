@@ -17,13 +17,15 @@ release work; linked validation pages preserve the scope of each result.
   measurements are in progress. Small edits and unchanged runs retain visible
   overhead. See [performance](performance.md).
 
+- **IronKV's larger edit losses are removed by the tighter retention budget**
+  (#330; candidate qualification in progress). All 153 comparisons match and
+  its complete loop is 1.48× faster, versus 1.31× before. Two medians still
+  add 0.03–0.10 s on roughly 9–10 s runs. Cheap-target undo uses ordinary
+  solver caching (4.7 s), while the successful public Vest control retains
+  instant undo (1.98 s). The earlier 1.43× result accidentally disabled
+  fresh-target retention and cannot qualify the corrected product.
 
 ## Corrected defects and historical measurements
-
-- **IronKV's larger per-edit losses no longer reproduce** (#330). The
-  corrected installed candidate matches all 153 comparisons and its complete
-  loop is about 1.43× faster. Two slower medians differ by less than 0.1 s,
-  with mixed paired results; the six baseline losses were 0.4–1.1 s.
 
 - **CapybaraKV's repeated vstd rebuild is fixed** (#321, #292). The native
   three-round full mutation run now has 168 matching comparisons, no false

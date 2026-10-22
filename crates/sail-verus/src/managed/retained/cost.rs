@@ -19,7 +19,7 @@ const VERSION: u32 = 1;
 
 /// Retention is kept only while it costs at most `1 / RATIO` of the compile
 /// a restore would avoid.
-const RATIO: u128 = 4;
+const RATIO: u128 = 16;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 struct Cost {
@@ -141,7 +141,7 @@ mod tests {
             &receipts,
             manifest,
             "demo_lib",
-            Duration::from_secs(6),
+            Duration::from_secs(30),
             None,
         );
         assert!(pays(&receipts, [(manifest, "demo_lib")]));
@@ -152,12 +152,12 @@ mod tests {
     fn the_ratio_boundary_and_damaged_records() {
         assert!(worth(Cost {
             version: VERSION,
-            compile_ms: 4000,
+            compile_ms: 16_000,
             retention_ms: Some(1000),
         }));
         assert!(!worth(Cost {
             version: VERSION,
-            compile_ms: 3999,
+            compile_ms: 15_999,
             retention_ms: Some(1000),
         }));
         assert!(worth(Cost {

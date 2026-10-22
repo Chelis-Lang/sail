@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Limit optional proof retention to targets whose measured compile cost is at
+  least sixteen times its retention cost. Cheaper targets use ordinary solver
+  caching on undo; unknown costs still capture the first proof.
+
 - Discard completed benchmark caches so a full matrix does not exhaust the host disk.
 
 - Overlap independent Cargo setup reads and completed-input observations with
