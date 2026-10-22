@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Discard completed benchmark caches so a full matrix does not exhaust the host disk.
+
 - Overlap independent Cargo setup reads and completed-input observations with
   receipt validation. Retries discard the earlier snapshot and read inputs again.
 

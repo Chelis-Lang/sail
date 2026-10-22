@@ -5,6 +5,9 @@ Run Linux checks on a native EC2 host with `ci/local.sh`; use `ci/run.sh host`
 for the macOS platform check. Performance measurements require a quiet native
 host, separate from builds and gates.
 
+Real-project benchmarks keep their timings and logs and delete each completed
+arm's temporary source, build artifacts and cache before starting the next arm.
+
 The e2e shell scripts need no GNU tools on macOS: fixture edits use portable
 `sed`, and bounded steps use coreutils' `timeout` where it is installed or
 `ci/timeout.py` (the same options and exit statuses, checked against GNU by
