@@ -61,7 +61,7 @@ toolchain, Sail and Verus, Cargo configuration, relevant environment and
 (`-p`, `--workspace`, `--exclude`, `--lib`, `--bin`, `--bins`): `sail verify
 -p a` in a workspace starts from the vstd a single-package project stored.
 On a native Linux host
-(`c7i.4xlarge`, the method under [performance](performance.md#5-cold-first-run)):
+(`c7i.4xlarge`, the method under [performance](performance.md#running-comparisons)):
 
 | First managed run of | Before | With the store | Plain `cargo verus verify` |
 |---|---:|---:|---:|
