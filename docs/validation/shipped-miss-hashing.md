@@ -163,5 +163,7 @@ now passes all four steps: cold 39.17 → 33.74 s, edit 22.52 → 15.79 s, rever
 22.54 → 1.97 s and unchanged 0.23 → 1.00 s (stock → Sail). The revert restores
 the cold run's complete proof with zero verifier invocations. This is one
 functional coexistence control, not the final three-round performance matrix.
-The Mac host gate passes all 950 tests, Clippy clean. Native Linux workspace
-and solver gates pass; full e2e and conformance are finishing before merge.
+The Mac host gate passes all 950 tests, Clippy clean. Native Linux workspace, solver and full e2e gates pass. PR/full-fast and
+standard conformance pass: every standard arm has 159 Same, zero Different,
+unstable or infrastructure errors; its 18-mutant HumanEval probe and both
+reverts also pass.
