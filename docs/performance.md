@@ -30,11 +30,10 @@ is pending.
 The full seeded mutation suite exercises nine classes, including proof errors,
 compile errors, specification changes and edits across modules. Each project
 uses a single daemon across all mutants and restores the original afterward.
-Completed Linux CapybaraKV and IronKV runs match stock in all 168 and 153
-comparisons respectively. CapybaraKV's three full edit-loop speedups are
-1.93×, 1.92× and 1.92×. HumanEval and Vest also complete successfully: all 651 comparisons match.
-Vest's full edit loop is 1.12× faster, with its default-limit proof failures
-preserved. The combined Mac suite remains pending. These are broader tests than the single
+All four full Linux baseline cohorts match stock in 651 comparisons. Full
+edit-loop gains are 2.7× on HumanEval, 1.32× on IronKV, 1.92× on CapybaraKV
+and 1.12× on Vest. Vest's default-limit proof failures are preserved. The
+combined Mac suite remains pending. These are broader tests than the single
 scripted edits in older reports. See the [mutation suite](testing.md#mutation-suite).
 
 Baseline source and raw data: [combined release measurements](validation/release-matrix.md).
@@ -47,8 +46,10 @@ on Linux, and 0.58 s versus 0.21 s on Mac. Anvil's corrected unchanged
 partial-scope control takes about 2 s with no verifier invocation, against
 stock's 0.3 s. Receipt and input validation still need work.
 
-Six individual IronKV edits still add 0.38–1.14 s despite the aggregate gain;
-these are tracked in [#330](https://github.com/Chelis-Lang/sail/issues/330).
+The baseline had six slower IronKV edits. The corrected candidate removes
+those losses: its complete 153 comparisons match stock and its edit loop is
+1.43× faster. Two medians differ by less than 0.1 s; the larger baseline
+losses no longer reproduce. See [#330](https://github.com/Chelis-Lang/sail/issues/330).
 
 Mac cold losses remain release blockers while fixes are qualified. A known
 slowdown is not accepted merely because other rows are faster. The release

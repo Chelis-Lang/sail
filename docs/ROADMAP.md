@@ -31,12 +31,12 @@ remain under repair. Anvil's repeated partial verification is removed, with
 remaining setup overhead visible. Current numbers and limits are in
 [performance](performance.md).
 
-The broader mutation suite is implemented (#295). All 651 comparisons in the full Linux runs of CapybaraKV, IronKV, HumanEval
-and Vest match stock, using one daemon across each complete sequence. CapybaraKV's edit loop is about 1.9× faster.
-Six slower IronKV edits are tracked in #330; combined Mac cohorts remain
-pending. These supersede the
-earlier source-patched pilot; only cohorts bound to the actual release
-artifact can qualify that artifact.
+The broader mutation suite is implemented (#295). All 651 comparisons in the
+full Linux baseline match stock, using one daemon across each complete
+sequence. The corrected candidate's IronKV loop is 1.43× faster and removes
+the larger individual losses tracked in #330. The other corrected cohorts
+and combined Mac cohorts are pending. Only cohorts bound to the actual
+release artifact qualify that artifact.
 
 ## 0.1.0
 
@@ -71,8 +71,8 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 | Vest-class projects hit the bundle | Raised limit and closure hint merged (#268, #276); successful Linux coexistence and retained revert pass | Mac coexistence control |
 | Cold runs never slower than stock | **Open**: complete Linux baseline improves; Mac corrections being measured | #278, #232 |
 | Sub-second overhead modest | **Open** | #156 |
-| Realistic edit-loop suite (#284) | Implemented (#295); full Linux cohorts finishing, Mac pending | Bind all four projects to final installed artifact |
-| Release matrix, Linux and macOS | Baseline complete; corrected combined Mac run in progress | Final artifact, all rows and mutation cohorts |
+| Realistic edit-loop suite (#284) | Implemented (#295); full Linux baseline passes; corrected cohorts and Mac pending | Bind all four projects to final installed artifact |
+| Release matrix, Linux and macOS | Baseline complete; corrected Mac cold losses being addressed | Final artifact, all rows and mutation cohorts |
 | Deep conformance and `deep-rvt` | Native corpus: 159 Same in each of four arms; full source-suite rerun passes | Complete final mutation tier and release source binding |
 | Docs from the matrix (`performance.md`, CHANGELOG, `known-issues.md`, README) | Open | After the matrix |
 | rc.6 draft, clean Linux and macOS walkthroughs including Claude Code | Open | `scripts/release.sh` |

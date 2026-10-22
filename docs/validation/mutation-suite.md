@@ -41,14 +41,14 @@ these completed cohorts. Every round keeps one daemon; each revert recovers
 its own results. Reverts use the solver cache, with no retained-proof restore.
 All 651 Linux comparisons match. Vest retains the same default-limit proof
 failure in both arms; it measures the failed-proof edit loop. Mac and the
-corrected candidate remain pending. Later performance changes require cohorts bound
-to their own installed binary; these results cannot clear another artifact's
+other corrected cohorts remain pending. Later performance changes require
+cohorts bound to their own installed binary; these results cannot clear another artifact's
 release matrix.
 
 The combined baseline matrix accepts all four cohorts: 31/31 rows have valid
 functional comparisons. Six IronKV edits are individually slower despite its
 aggregate gain ([#330](https://github.com/Chelis-Lang/sail/issues/330)); these
-remain open for rechecking and attribution.
+are rechecked below.
 
 Raw reports, headers, samples and logs in the S3 evidence bucket:
 
@@ -60,6 +60,21 @@ Raw reports, headers, samples and logs in the S3 evidence bucket:
   `2e65545ff43835351a813d8da36eb96f813032e8b60e07b788f697d49c94144a`.
 - `experiments/2026-10-21/vest-final-3c.tgz`, SHA-256
   `0d0a7d916f1ee5c605f2ca37cb7c3d2ee4c0f1d8b0b4b83bb96e81aed244f690`.
+
+## Corrected IronKV candidate
+
+The corrected source `36d90083`, installed CLI SHA-256
+`4e0a31dbd78ee69dbfb14230f2f52100d42a7f8534a3faeaea5885c98c244df4`,
+passes all 153 comparisons on native c7i.8xlarge/us-east-1 with the same
+runtime, catalogue and three rotated rounds. Full-loop gains are 1.42×,
+1.43× and 1.44×. The six larger baseline losses no longer reproduce. Only
+`statement-001` and `logic-002` have slower medians, by 0.083 s and 0.064 s;
+their paired rounds are mixed. No baseline or mutant was removed (#330).
+
+Raw header, samples and report:
+`experiments/2026-10-22/ironkv-corrected.tgz`, SHA-256
+`227758fc58d103abdb1e920f5eb4d5bdc0db45ec4cea812bb30e81bda4e7b288`.
+The other corrected cohorts and combined Mac suite remain pending.
 
 ## Completed installed controls
 
