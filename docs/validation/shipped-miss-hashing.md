@@ -167,3 +167,33 @@ The Mac host gate passes all 950 tests, Clippy clean. Native Linux workspace, so
 standard conformance pass: every standard arm has 159 Same, zero Different,
 unstable or infrastructure errors; its 18-mutant HumanEval probe and both
 reverts also pass.
+
+### Independent setup and post-invocation reads
+
+The Cargo execution-unit query now overlaps runtime admission. A first source
+snapshot may overlap that query, but is kept only for the exact final selection
+and unchanged observation; discovered inputs require the ordinary full read.
+Completed-input observations also overlap receipt validation. Any receipt retry
+discards that snapshot and reads all inputs again after its actual compiler run.
+No compiler byte check, source selection or final Current check is removed.
+
+The native prototype (`940dbeed`) passes the workspace and solver gates and the
+actual retry source-mutation control: changing a proof to `assert(false)` during
+Cargo cleanup yields a failed proof and Historical result, never Current. Full
+e2e also passes, including extra. PR/full-fast conformance passes; all four
+full-fast arms have 147 Same and zero Different, unstable or infrastructure
+errors. Standard also passes: 159 Same in each arm, zero Different, unstable
+or infrastructure errors, with all 18 HumanEval mutations and both reverts
+matching. The installed Linux public Vest control also
+passes shipped-proof use, an edit and restoration of the original retained
+proof; the permanent retry control confirms the two Cargo checks bracket
+the source-changing cleanup. The combined Mac prototype passes its 950-test
+host gate and both functional controls. Its three-round Anvil diagnostic remains
+slower cold (102.48 versus stock 99.50 seconds); the complete final matrix and
+mutation cohorts remain in progress. This is not release acceptance.
+
+Run the focused control with an installed release and a new output directory:
+
+```sh
+python3 scripts/check-managed-retry.py /path/to/unpacked/sail /tmp/sail-retry-control
+```

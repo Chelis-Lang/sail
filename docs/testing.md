@@ -145,3 +145,9 @@ A round fails if its daemon disappears or changes. Retained-proof share uses
 newly published retained receipts; a run with no solver sessions alone is not
 evidence of instant revert. Timeouts retain partial logs and stop descendant
 processes, including when their original parent has already exited.
+
+For changes that overlap managed input checks and receipt reads, also run
+`python3 scripts/check-managed-retry.py SAIL_INSTALL NEW_OUTPUT_DIRECTORY` on a
+native host. It removes only the selected receipt, mutates the proof during the
+actual retry's Cargo cleanup, and requires a real failed proof with no Current
+result. This is a local acceptance control, outside CI and timed benchmarks.
