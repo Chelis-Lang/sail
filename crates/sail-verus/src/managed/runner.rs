@@ -663,7 +663,10 @@ fn prepare(
         source_base: None,
         span_remap: None,
     };
+    // Retained admission canonicalizes this owned directory before Cargo runs.
+    // Creating it must not depend on the side effects of optional cleanup.
     for dir in [
+        &paths.target,
         &paths.receipts,
         &paths.run,
         &paths.run.join("invocations"),
@@ -3782,7 +3785,8 @@ mod tests {
             std::env::temp_dir().join(format!("sail-compiler-family-{}", std::process::id()));
         let config = compiler_fixture(&root)?;
         let (selected, ownership) = prepare(&config, &root, "selected", "compiler", "first")?;
-        std::fs::create_dir_all(&selected.target)?;
+        assert!(selected.target.canonicalize().is_ok());
+        assert!(super::super::store::new_target(&selected.target));
         let dependency = selected.target.join("ordinary-dependency.rlib");
         std::fs::write(&dependency, "ordinary dependency")?;
         // A concurrent run of the same family waits for the owner, then proceeds.

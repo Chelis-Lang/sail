@@ -151,3 +151,11 @@ Native Mac Anvil diagnostic: the input-preparation phase fell from 3.78 s to
 2.18 s; a full cold run took 104.48 s, with matching successful verification.
 This remains slower than the earlier stock baseline near 100 s; it is not
 release performance acceptance. Repeated final measurements remain required.
+
+The first successful public-profile Mac coexistence control exposed an omitted
+cleanup side effect: retained admission canonicalizes the target before Cargo
+runs, so the family must create its empty target explicitly. Without that,
+the cold run verified correctly but retained no producer certificates and
+subsequent reverts reverified. Family preparation now creates that directory;
+its filesystem regression requires a canonical, still-fresh target. The
+combined coexistence control is being rerun before this change can merge.
