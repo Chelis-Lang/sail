@@ -663,10 +663,7 @@ fn prepare(
         source_base: None,
         span_remap: None,
     };
-    // Retained admission canonicalizes this owned directory before Cargo runs.
-    // Creating it must not depend on the side effects of optional cleanup.
     for dir in [
-        &paths.target,
         &paths.receipts,
         &paths.run,
         &paths.run.join("invocations"),
@@ -714,6 +711,19 @@ fn cargo_build_target(target: &Path, args: &[String]) -> PathBuf {
 const CACHEDIR_TAG: &[u8] = b"Signature: 8a477f597d28d172789f06886806bc55\n\
 # This file is a cache directory tag created by cargo.\n\
 # For information about cache directory tags see https://bford.info/cachedir/\n";
+
+/// Establish the owned empty directory before retained admission canonicalizes
+/// it. Cleanup used to create this directory as a side effect. Preserve Cargo's
+/// cache tag too: a manually created untagged target cannot be cleaned later.
+fn prepare_fresh_target(target: &Path) -> Result<bool> {
+    let fresh = super::store::new_target(target);
+    if fresh {
+        std::fs::create_dir_all(target)
+            .and_then(|()| std::fs::write(target.join("CACHEDIR.TAG"), CACHEDIR_TAG))
+            .map_err(|e| Error::new("SAIL3105", e.to_string()))?;
+    }
+    Ok(fresh)
+}
 
 /// Forces Cargo to compile `packages` again in Sail's target.
 ///
@@ -2468,7 +2478,7 @@ pub(crate) fn run_engine_held(
     // The family is exclusively owned. The pinned metadata query creates no
     // compiled outputs, and seeding happens after cleanup. A fresh family has
     // nothing that any pre-invocation clean could invalidate.
-    let new_target = super::store::new_target(&paths.target);
+    let new_target = prepare_fresh_target(&paths.target)?;
     let unit_plan = if paths.reuse {
         let (environment, plan) =
             build_environment(config, &paths, &data, &expected).unwrap_or((Value::Null, None));
@@ -3779,14 +3789,32 @@ mod tests {
     }
 
     #[test]
+    fn fresh_target_is_canonical_and_tagged_before_admission()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "sail-fresh-target-admission-{}",
+            std::process::id()
+        ));
+        let target = root.join("family/target");
+        assert!(prepare_fresh_target(&target)?);
+        assert!(target.canonicalize().is_ok());
+        assert_eq!(std::fs::read(target.join("CACHEDIR.TAG"))?, CACHEDIR_TAG);
+        let artifact = target.join("retained-input.rmeta");
+        std::fs::write(&artifact, b"preserved")?;
+        assert!(!prepare_fresh_target(&target)?);
+        assert_eq!(std::fs::read(artifact)?, b"preserved");
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn shared_compiler_target_has_exclusive_ownership_and_private_proof_paths()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root =
             std::env::temp_dir().join(format!("sail-compiler-family-{}", std::process::id()));
         let config = compiler_fixture(&root)?;
         let (selected, ownership) = prepare(&config, &root, "selected", "compiler", "first")?;
-        assert!(selected.target.canonicalize().is_ok());
-        assert!(super::super::store::new_target(&selected.target));
+        std::fs::create_dir_all(&selected.target)?;
         let dependency = selected.target.join("ordinary-dependency.rlib");
         std::fs::write(&dependency, "ordinary dependency")?;
         // A concurrent run of the same family waits for the owner, then proceeds.
