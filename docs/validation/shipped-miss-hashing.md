@@ -167,3 +167,26 @@ The Mac host gate passes all 950 tests, Clippy clean. Native Linux workspace, so
 standard conformance pass: every standard arm has 159 Same, zero Different,
 unstable or infrastructure errors; its 18-mutant HumanEval probe and both
 reverts also pass.
+
+### Independent setup and post-invocation reads
+
+The Cargo execution-unit query now overlaps runtime admission. A first source
+snapshot may overlap that query, but is kept only for the exact final selection
+and unchanged observation; discovered inputs require the ordinary full read.
+Completed-input observations also overlap receipt validation. Any receipt retry
+discards that snapshot and reads all inputs again after its actual compiler run.
+No compiler byte check, source selection or final Current check is removed.
+
+The native prototype (`940dbeed`) passes the workspace and solver gates and the
+actual retry source-mutation control: changing a proof to `assert(false)` during
+Cargo cleanup yields a failed proof and Historical result, never Current. Full
+e2e also passes, including extra; PR/full-fast and standard conformance are
+running. The preceding query/snapshot-only Mac prototype
+passes its host gate; the combined post-invocation change still needs its Mac
+qualification and paired timings before selection. This is not release acceptance.
+
+Run the focused control with an installed release and a new output directory:
+
+```sh
+python3 scripts/check-managed-retry.py /path/to/unpacked/sail /tmp/sail-retry-control
+```

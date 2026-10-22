@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Overlap independent Cargo setup reads and completed-input observations with
+  receipt validation. Retries discard the earlier snapshot and read inputs again.
+
 - Reject a known vstd dependency or feature mismatch before hashing the runtime
   and Rust sysroot for an unusable shipped proof.
 - Recognize the daemon's runtime endpoint while staging release archives.
