@@ -17,12 +17,13 @@ release work; linked validation pages preserve the scope of each result.
   measurements are in progress. Small edits and unchanged runs retain visible
   overhead. See [performance](performance.md).
 
-- **Six IronKV edits remain slower** (#330, reopened). The corrected installed
-  candidate matches all 153 comparisons and its complete loop is about 1.31×
-  faster, but individual losses remain. The earlier 1.43× result used an
-  artifact with retained proof capture accidentally disabled by fresh-target
-  setup. It cannot qualify the corrected product. A tighter retention cost
-  budget is being measured against the full mutation catalogue.
+- **IronKV's larger edit losses are removed by the tighter retention budget**
+  (#330; candidate qualification in progress). All 153 comparisons match and
+  its complete loop is 1.48× faster, versus 1.31× before. Two medians still
+  add 0.03–0.10 s on roughly 9–10 s runs. Cheap-target undo uses ordinary
+  solver caching (4.7 s), while the successful public Vest control retains
+  instant undo (1.98 s). The earlier 1.43× result accidentally disabled
+  fresh-target retention and cannot qualify the corrected product.
 
 ## Corrected defects and historical measurements
 

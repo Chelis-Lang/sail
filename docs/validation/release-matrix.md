@@ -3,10 +3,17 @@
 **Status:** baseline measured; final corrected candidate is still being qualified.
 The release is not accepted while known cold losses remain.
 
-The 2026-10-22 IronKV follow-up with working fresh-target retention has 153
-matching comparisons and a 1.31× overall edit-loop gain, but six individual
-edit losses remain (#330, reopened). The preceding 1.43× result accidentally
-disabled retention and cannot qualify the corrected product.
+The 2026-10-22 tighter-retention-budget IronKV run has 153 matching
+comparisons, zero differences, false verified results, unstable cases or
+infrastructure failures. Its complete edit loop is 1.48× faster, versus
+1.31× before. The six larger losses in #330 are removed; two medians retain
+0.03 and 0.10 s overhead on roughly 9–10 s runs. Undo uses ordinary solver
+caching (9.1 → 4.7 s). One daemon serves each complete sequence, and all
+ordinary and forced returns receive the original's own answers. Raw report,
+header and every sample: `experiments/2026-10-22/cost-full-iron.tgz`, SHA-256
+`9dd66b6962d76eba56c3e02f36740893be75794c2b8b1b2abaae8dfa27e82650`.
+The preceding 1.43× result accidentally disabled fresh-target retention and
+cannot qualify the corrected product.
 
 - Interrupted Mac matrix, 2026-10-22, source `940dbeed` (installed CLI
   `1faa7c1fc72c4129dd41313bf9f164633155f55491bf1fc96bc2949047e951e0`):
@@ -23,11 +30,19 @@ The focused three-round IronKV check has 12 matching comparisons. The actual
 retry-mutation control passes. Successful public Vest at resource limit 100
 serves the released vstd and restores its original proof on undo with zero
 verifier invocations (40.05 → 1.98 s). Workspace, solver and full E2E gates
-pass; full conformance, four full mutation cohorts and the matrix remain in
-progress. These controls do not establish final performance acceptance.
+pass; full FAST passes in all four arms (147 matching units each), and full
+STANDARD passes in all four arms (159 matching units, 13,166 functions each;
+zero differences, unstable cases or infrastructure failures). The other three
+full mutation cohorts and the matrix remain in progress. Raw gate logs:
+`experiments/2026-10-22/cost-gate-results.tgz`, SHA-256
+`34c36128c9d31dde6fddc0e5f0a923242dbc8fda0aaad9d0d741b05e74709ba1`.
+The combined Mac consumer also preserves successful public Vest undo with
+zero verifier invocations (22.58 → 1.88 s); its separately recorded exact
+resource-limit profile is qualified independently. These controls do not
+establish final performance acceptance.
 
-The frozen combined source is `5636fa3e`, runtime f8589ed4 based on Verus
-7d82994, Rust/Cargo 1.99.1. Three rotated rounds use the installed archive,
+The completed baseline used frozen source `5636fa3e`, runtime f8589ed4 based
+on Verus 7d82994 and Rust/Cargo 1.99.1. Three rotated rounds use the installed archive,
 registry vstd setup and stock as functional oracle. The Linux CLI SHA-256 is
 `3c5b4267ab5c1a401dcdbe2be3bdc685baf4a1de9bd8b6553657e315b10f796f`.
 The Mac artifact identity is recorded in its matrix header.

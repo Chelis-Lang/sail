@@ -33,11 +33,12 @@ remaining setup overhead visible. Current numbers and limits are in
 
 The broader mutation suite is implemented (#295). All 651 comparisons in the
 full Linux baseline match stock, using one daemon across each complete
-sequence. With fresh-target retention working, IronKV's loop is 1.31× faster,
-but six individual edit losses remain open in #330. The earlier 1.43× result
-had retention accidentally disabled. Other corrected cohorts and combined
-Mac cohorts are pending. Only cohorts bound to the actual
-release artifact qualify that artifact.
+sequence. The tighter retention budget improves IronKV's complete loop to
+1.48× with all 153 comparisons matching; two medians retain 0.03–0.10 s of
+overhead. The earlier 1.43× result had retention accidentally disabled and
+cannot qualify the corrected product. Other corrected cohorts and combined
+Mac cohorts are pending. Only cohorts bound to the actual release artifact
+qualify that artifact.
 
 ## 0.1.0
 

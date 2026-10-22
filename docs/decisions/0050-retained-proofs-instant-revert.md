@@ -366,8 +366,9 @@ uses the ordinary solver cache, about 4.9 s, instead of the retained proof's
 1.3 s. The successful public Vest control still restores its original proof
 with zero verifier invocations in 1.98 s, versus stock's 40.05 s. This
 tradeoff favors repeated edits while preserving instant revert for expensive
-targets. The full IronKV catalogue and remaining conformance gates are pending;
-these focused controls alone do not establish release performance acceptance.
+targets. The full three-round IronKV catalogue now has 153 matching comparisons
+and a 1.48× edit-loop gain, with two remaining median overheads of 0.03–0.10 s.
+The other cohorts and platform gates remain separate release requirements.
 
 ## Amendment 2026-10-20: the source snapshot reads the selected closure (#278)
 
