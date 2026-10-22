@@ -137,3 +137,33 @@ Initial native Mac diagnostic (mac-m4.metal, us-east-1a, one paired round):
 CapybaraKV cold took 30.78 s in Sail versus 31.50 s stock, with matching output and
 a shipped-proof miss. This is diagnostic scope, not three-round release acceptance.
 Full native gates and final combined measurements remain required.
+
+### Fresh compiler families
+
+Under the exclusive compiler-family lock, remember whether the owned target is
+genuinely absent or an empty directory before metadata and store seeding. Such
+a target has no old compiled artifacts to clean before its first invocation.
+Existing targets, filesystem aliases, inaccessible paths and all retries retain
+the ordinary cleanup. A filesystem regression covers the target lifecycle,
+including files and both dangling and live directory symlinks.
+
+Native Mac Anvil diagnostic: the input-preparation phase fell from 3.78 s to
+2.18 s; a full cold run took 104.48 s, with matching successful verification.
+This remains slower than the earlier stock baseline near 100 s; it is not
+release performance acceptance. Repeated final measurements remain required.
+
+The first successful public-profile Mac coexistence control exposed an omitted
+cleanup side effect: retained admission canonicalizes the target before Cargo
+runs, so the family must create its empty target explicitly. Without that,
+the cold run verified correctly but retained no producer certificates and
+subsequent reverts reverified. Fresh-target initialization now creates that directory and Cargo cache tag
+before retained admission. Its filesystem regression requires a canonical,
+tagged target and preserves existing artifact bytes. The composed Mac control
+now passes all four steps: cold 39.17 → 33.74 s, edit 22.52 → 15.79 s, revert
+22.54 → 1.97 s and unchanged 0.23 → 1.00 s (stock → Sail). The revert restores
+the cold run's complete proof with zero verifier invocations. This is one
+functional coexistence control, not the final three-round performance matrix.
+The Mac host gate passes all 950 tests, Clippy clean. Native Linux workspace, solver and full e2e gates pass. PR/full-fast and
+standard conformance pass: every standard arm has 159 Same, zero Different,
+unstable or infrastructure errors; its 18-mutant HumanEval probe and both
+reverts also pass.

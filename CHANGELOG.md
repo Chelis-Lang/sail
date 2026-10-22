@@ -13,6 +13,8 @@ semantic versioning once the API is published.
 - Decline native proof observation before compiler and source hashing when
   lookup artifacts have no current producer provenance. Normal compilation and
   complete admission checks remain unchanged.
+- Skip pre-invocation artifact cleanup in a genuinely absent or empty compiler
+  target. Existing targets and every retry keep their cleanup checks.
 
 - Keep unchanged build-script outputs when declared Cargo package metadata
   and the exact unit's `OUT_DIR` remain valid, avoiding redundant TLS rebuilds.
