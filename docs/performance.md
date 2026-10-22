@@ -32,8 +32,9 @@ compile errors, specification changes and edits across modules. Each project
 uses a single daemon across all mutants and restores the original afterward.
 Completed Linux CapybaraKV and IronKV runs match stock in all 168 and 153
 comparisons respectively. CapybaraKV's three full edit-loop speedups are
-1.93×, 1.92× and 1.92×. HumanEval's full run also matches; Vest and the
-combined Mac suite are still running. These are broader tests than the single
+1.93×, 1.92× and 1.92×. HumanEval and Vest also complete successfully: all 651 comparisons match.
+Vest's full edit loop is 1.12× faster, with its default-limit proof failures
+preserved. The combined Mac suite remains pending. These are broader tests than the single
 scripted edits in older reports. See the [mutation suite](testing.md#mutation-suite).
 
 Baseline source and raw data: [combined release measurements](validation/release-matrix.md).
@@ -45,6 +46,9 @@ and 1.17 s versus 0.45 s on Mac. Its unchanged call is 0.42 s versus 0.11 s
 on Linux, and 0.58 s versus 0.21 s on Mac. Anvil's corrected unchanged
 partial-scope control takes about 2 s with no verifier invocation, against
 stock's 0.3 s. Receipt and input validation still need work.
+
+Six individual IronKV edits still add 0.38–1.14 s despite the aggregate gain;
+these are tracked in [#330](https://github.com/Chelis-Lang/sail/issues/330).
 
 Mac cold losses remain release blockers while fixes are qualified. A known
 slowdown is not accepted merely because other rows are faster. The release

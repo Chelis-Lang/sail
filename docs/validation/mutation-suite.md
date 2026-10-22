@@ -34,13 +34,21 @@ runtime f8589ed4 on upstream 7d82994:
 | HumanEval | 52 × 3 | 165/165 | 2.67×, 2.70×, 2.72× |
 | IronKV | 48 × 3 | 153/153 | 1.32×, 1.32×, 1.32× |
 | CapybaraKV | 53 × 3 | 168/168 | 1.93×, 1.92×, 1.92× |
+| Vest | 52 × 3 | 165/165 | 1.12×, 1.12×, 1.12× |
 
 No false verified result, infrastructure failure or unstable result occurs in
 these completed cohorts. Every round keeps one daemon; each revert recovers
 its own results. Reverts use the solver cache, with no retained-proof restore.
-Vest and Mac remain pending. Later performance changes require cohorts bound
+All 651 Linux comparisons match. Vest retains the same default-limit proof
+failure in both arms; it measures the failed-proof edit loop. Mac and the
+corrected candidate remain pending. Later performance changes require cohorts bound
 to their own installed binary; these results cannot clear another artifact's
 release matrix.
+
+The combined baseline matrix accepts all four cohorts: 31/31 rows have valid
+functional comparisons. Six IronKV edits are individually slower despite its
+aggregate gain ([#330](https://github.com/Chelis-Lang/sail/issues/330)); these
+remain open for rechecking and attribution.
 
 Raw reports, headers, samples and logs in the S3 evidence bucket:
 
@@ -50,6 +58,8 @@ Raw reports, headers, samples and logs in the S3 evidence bucket:
   `c7aef01b16195abd7f8788cb49721e8812becc26428b9a03a0991ceed679103f`.
 - `experiments/2026-10-21/capybara-final-3c.tgz`, SHA-256
   `2e65545ff43835351a813d8da36eb96f813032e8b60e07b788f697d49c94144a`.
+- `experiments/2026-10-21/vest-final-3c.tgz`, SHA-256
+  `0d0a7d916f1ee5c605f2ca37cb7c3d2ee4c0f1d8b0b4b83bb96e81aed244f690`.
 
 ## Completed installed controls
 

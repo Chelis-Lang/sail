@@ -9,10 +9,12 @@ registry vstd setup and stock as functional oracle. The Linux CLI SHA-256 is
 `3c5b4267ab5c1a401dcdbe2be3bdc685baf4a1de9bd8b6553657e315b10f796f`.
 The Mac artifact identity is recorded in its matrix header.
 
-Both baseline matrices have 27 valid scripted scenario rows and four separate
-mutation rows still missing. No scripted comparison has a functional mismatch.
-The report exits nonzero for missing cohorts and slower rows. Do not combine
-mutation data from another binary to clear that result.
+The completed Linux baseline has 31/31 valid rows after attaching all four
+full mutation cohorts from the same binary. Its report exits 2 for slower
+rows requiring review, including six individual IronKV edits (#330). The Mac
+baseline has 27 valid scripted rows and four mutation rows pending. No scripted
+comparison has a functional mismatch. Do not attach cohorts from another
+binary to clear missing results.
 
 Linux cold medians improve across all five real projects. Mac cold CapybaraKV,
 Vest and Anvil are slower. The later early-resolution refusal, native-producer
@@ -36,3 +38,7 @@ explicit optional Singular projects are skipped. Its raw report and log:
 `experiments/2026-10-21/deep-corpus-final.tgz`, SHA-256
 `07dcbae8a56740d12fa37734e5e4c559c8751029ccb4d54b03e4895bbab586d6`.
 This corpus result alone does not complete the separate full mutation tier.
+
+- Interrupted intermediate source `8080730d`, 2026-10-21: workspace, stage,
+  solver, full e2e and PR/full-fast passed; standard was stopped to qualify the
+  newer corrected source. This is not a completed standard qualification.

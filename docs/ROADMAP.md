@@ -14,8 +14,7 @@ optimized, and must never make a run genuinely slower, cold runs included
 [question 32](open-questions.md)). Verdicts, diagnostics and exit codes stay
 identical to stock. Sail's Verus fork is an accepted way to get speed (ADR
 0039, ADR 0043). The release is a CLI with Linux and macOS binaries. M10
-(multi-backend verification runtime, Oyster) stays backburnered (owner
-direction 2026-10-15 and 2026-10-19).
+(multi-backend verification runtime, Oyster) is outside this release.
 
 Milestones: the GitHub milestone **0.1.0** holds the release blockers. M11
 is *Verus core and performance*, with its ordered backlog
@@ -32,10 +31,10 @@ remain under repair. Anvil's repeated partial verification is removed, with
 remaining setup overhead visible. Current numbers and limits are in
 [performance](performance.md).
 
-The broader mutation suite is implemented (#295). Full Linux CapybaraKV,
-IronKV and HumanEval runs match stock throughout, using one daemon across
-each complete mutation sequence. CapybaraKV's edit loop is about 1.9× faster.
-Vest and the combined Mac cohorts are still running. These supersede the
+The broader mutation suite is implemented (#295). All 651 comparisons in the full Linux runs of CapybaraKV, IronKV, HumanEval
+and Vest match stock, using one daemon across each complete sequence. CapybaraKV's edit loop is about 1.9× faster.
+Six slower IronKV edits are tracked in #330; combined Mac cohorts remain
+pending. These supersede the
 earlier source-patched pilot; only cohorts bound to the actual release
 artifact can qualify that artifact.
 

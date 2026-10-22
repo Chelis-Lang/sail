@@ -17,6 +17,10 @@ release work; linked validation pages preserve the scope of each result.
   measurements are in progress. Small edits and unchanged runs retain visible
   overhead. See [performance](performance.md).
 
+- **Six IronKV mutation edits are slower** (#330), adding about 0.4–1.1 s
+  on 8–9 s stock calls despite an overall 1.32× loop gain. Functional results
+  match. Rechecking and attribution on the corrected candidate are pending.
+
 ## Corrected defects and historical measurements
 
 - **CapybaraKV's repeated vstd rebuild is fixed** (#321, #292). The native
