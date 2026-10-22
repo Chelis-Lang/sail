@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Historical witness qualification below; current Mac recordings use exact default/100 profiles after a reproduced resource-count variation. Native Linux qualification of the new loader is running.** |
+| Status | **Historical witness qualification below; current Mac recordings use exact default/100 profiles after a reproduced resource-count variation. Native Linux and Mac qualification of the new loader pass; final performance matrices remain separate gates.** |
 | Source | Sail `feat/rlimit-subsumption` on `main` `3b9ec170`; runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`); stock release 0.2026.10.18.7d82994; Z3 4.16.0 |
 | Host | native EC2 c7i.8xlarge (us-east-1, Xeon Platinum 8488C, 32 vCPUs), Ubuntu 24.04, Rust 1.99.1 |
 | Tool | `scripts/rlimit-subsumption.py --runs 3 --rlimit 100` |
@@ -33,7 +33,18 @@ Installed CLI SHA-256:
 Raw producer reports, host log and consumer outputs:
 `experiments/2026-10-22/mac-exact-profiles.tgz`, SHA-256
 `6ccdc437960825451238b0abd0c59ea7d6dcfb02bdf5b2d858347b4c610fedfe`.
-Full native Linux gates and final performance matrix remain separate gates.
+Native EC2 c7i.8xlarge (us-east-1, Ubuntu 24.04) qualification passes on
+`ccc01205`: workspace gate, solver, full E2E including extra, PR conformance,
+full fast and standard conformance. Each standard arm compares 159 units and
+13,166 functions: all Same, zero different, unstable or infrastructure errors.
+Producer fixtures and cancellation controls pass. A freshly staged combined
+Linux payload also passes the README new/cold/unchanged walkthrough and the
+real Claude Code MCP connection, listing 17 tools. The final performance
+matrices remain separate gates.
+
+Raw native logs and walkthrough:
+`experiments/2026-10-22/exact-profile-native-gates.tgz`, SHA-256
+`6e58d3fb2e78b3ee93b8b6d57eba5b82a52bd344ee75bcc9b4936116ccd7272d`.
 
 The prior staged Mac witness fails on resource counts: three default and
 three raised runs preserve inputs and answers, but one process's count varies
