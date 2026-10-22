@@ -63,6 +63,7 @@ pub struct Config {
     pub attribution_logs: bool,
 }
 
+#[derive(Clone)]
 struct Paths {
     target: PathBuf,
     cargo_alias: PathBuf,
@@ -2479,70 +2480,123 @@ pub(crate) fn run_engine_held(
     // compiled outputs, and seeding happens after cleanup. A fresh family has
     // nothing that any pre-invocation clean could invalidate.
     let new_target = prepare_fresh_target(&paths.target)?;
-    let unit_plan = if paths.reuse {
-        let (environment, plan) =
-            build_environment(config, &paths, &data, &expected).unwrap_or((Value::Null, None));
-        data["sail_build_environment"] = environment;
-        plan
+    // A new family's first snapshot has no saved hint. Its known package and
+    // configured-header inventory can still overlap the read-only Cargo query.
+    // It is usable only under the same exact selection and unchanged-source
+    // checks as the ordinary early snapshot; discovered inputs force a reread.
+    let first_snapshot = if new_target && !hint_path.is_file() && !paths.build_inputs.exists() {
+        let mut extras = script_roots(&data);
+        extras.extend(super::native_include_hints::roots(&data, |name| {
+            std::env::var_os(name)
+        }));
+        let hint = super::input::SnapshotHint {
+            version: super::input::SNAPSHOT_HINT_VERSION,
+            projection: snapshot_projection(&data, &serde_json::json!([])),
+            extras: ordered_extras(extras),
+        };
+        std::thread::Builder::new()
+            .name("sail-first-inputs".to_owned())
+            .spawn(move || {
+                let (snapshot, stamp) =
+                    super::input::snapshot_metadata_stamped(&hint.projection, &hint.extras);
+                Some((hint, snapshot, stamp))
+            })
+            .ok()
     } else {
         None
     };
-    // Sail's Verus names the shipped build's registry sources by this
-    // machine's registry directory, in every managed run (ADR 0048): a target
-    // or store entry may hold shipped units from an earlier run.
-    let registry = super::shipped::registry_dir(&data);
-    paths.source_base = registry
-        .as_deref()
-        .filter(|_| research != super::research::Mode::RetainedContent)
-        .filter(|_| {
-            super::shipped::research_enabled()
-                || super::shipped::has_adjacent_bundle(&config.cargo_verus)
-        })
-        .filter(|_| {
-            !super::shipped::research_enabled()
-                || std::env::var_os(super::shipped::LOCAL_ENV).is_none()
-        })
-        .filter(|_| super::shipped::portable_context(&config.workspace, &config.args))
-        .and_then(|registry| {
-            Some(super::shipped::source_base(
-                &super::shipped::virtual_base()?,
+    // The exact Cargo execution-unit query and shipped-runtime admission are
+    // independent observations. Keep the query's original Paths (before span
+    // remapping or a shipped plan is installed) and finish both before any
+    // family contract, source snapshot or compiler invocation can use them.
+    let query_paths = paths.clone();
+    let (unit_environment, registry, remap_missing, runtime_digests, shipped_plan) =
+        std::thread::scope(|scope| {
+            let query = std::thread::Builder::new()
+                .name("sail-build-environment".to_owned())
+                .spawn_scoped(scope, || {
+                    if query_paths.reuse {
+                        build_environment(config, &query_paths, &data, &expected)
+                    } else {
+                        None
+                    }
+                })
+                .ok();
+            // Sail's Verus names the shipped build's registry sources by this
+            // machine's registry directory, in every managed run (ADR 0048): a target
+            // or store entry may hold shipped units from an earlier run.
+            let registry = super::shipped::registry_dir(&data);
+            paths.source_base = registry
+                .as_deref()
+                .filter(|_| research != super::research::Mode::RetainedContent)
+                .filter(|_| {
+                    super::shipped::research_enabled()
+                        || super::shipped::has_adjacent_bundle(&config.cargo_verus)
+                })
+                .filter(|_| {
+                    !super::shipped::research_enabled()
+                        || std::env::var_os(super::shipped::LOCAL_ENV).is_none()
+                })
+                .filter(|_| super::shipped::portable_context(&config.workspace, &config.args))
+                .and_then(|registry| {
+                    Some(super::shipped::source_base(
+                        &super::shipped::virtual_base()?,
+                        registry,
+                    ))
+                });
+            paths.span_remap = paths
+                .source_base
+                .as_ref()
+                .and(registry.as_deref())
+                .and_then(|registry| super::shipped::span_remap(registry, rust_src.as_deref()));
+            // A shipped bundle's stored span strings name virtual paths; without the
+            // remap that names them as this machine's, its diagnostics could differ
+            // from stock, so the bundle is not served (VI-0031).
+            let remap_missing = paths.source_base.is_some() && paths.span_remap.is_none();
+            // The shipped proof's identity and retained reuse's admission both bind
+            // the complete runtime; this run reads it once for both (#286).
+            let runtime_digests = crate::source_build::RunDigests::default();
+            let shipped_plan = if focused(&config.args)
+                || remap_missing
+                || engine.is_some()
+                || !paths.reuse
+                || research == super::research::Mode::RetainedContent
+            {
+                None
+            } else {
+                super::shipped::plan(
+                    &config.cargo_verus,
+                    &paths.target,
+                    registry.as_deref(),
+                    new_target,
+                    &config.z3,
+                    &config.shim,
+                    &run_id,
+                    &config.workspace,
+                    &config.args,
+                    &data,
+                    &runtime_digests,
+                )
+            };
+            let unit_environment = match query {
+                Some(query) => query.join().ok().flatten(),
+                None if query_paths.reuse => {
+                    build_environment(config, &query_paths, &data, &expected)
+                }
+                None => None,
+            };
+            (
+                unit_environment,
                 registry,
-            ))
+                remap_missing,
+                runtime_digests,
+                shipped_plan,
+            )
         });
-    paths.span_remap = paths
-        .source_base
-        .as_ref()
-        .and(registry.as_deref())
-        .and_then(|registry| super::shipped::span_remap(registry, rust_src.as_deref()));
-    // A shipped bundle's stored span strings name virtual paths; without the
-    // remap that names them as this machine's, its diagnostics could differ
-    // from stock, so the bundle is not served (VI-0031).
-    let remap_missing = paths.source_base.is_some() && paths.span_remap.is_none();
-    // The shipped proof's identity and retained reuse's admission both bind
-    // the complete runtime; this run reads it once for both (#286).
-    let runtime_digests = crate::source_build::RunDigests::default();
-    let shipped_plan = if focused(&config.args)
-        || remap_missing
-        || engine.is_some()
-        || !paths.reuse
-        || research == super::research::Mode::RetainedContent
-    {
-        None
-    } else {
-        super::shipped::plan(
-            &config.cargo_verus,
-            &paths.target,
-            registry.as_deref(),
-            new_target,
-            &config.z3,
-            &config.shim,
-            &run_id,
-            &config.workspace,
-            &config.args,
-            &data,
-            &runtime_digests,
-        )
-    };
+    let (environment, unit_plan) = unit_environment.unwrap_or((Value::Null, None));
+    if paths.reuse {
+        data["sail_build_environment"] = environment;
+    }
     // An installed release offers its proof to every new target. When it does
     // not apply, the run says why in one note (#238); SAIL3137 already
     // explains a missing pinned toolchain.
@@ -2597,24 +2651,22 @@ pub(crate) fn run_engine_held(
         projection: snapshot_projection(&data, &data["sail_source_inputs"]),
         extras: extras.clone(),
     };
-    let mut before = match speculative_before
-        .and_then(|thread| thread.join().ok())
+    let speculative = [speculative_before, first_snapshot]
+        .map(|thread| thread.and_then(|thread| thread.join().ok()).flatten())
+        .into_iter()
         .flatten()
-    {
-        // Cargo may have written inputs while it read the metadata (a lockfile
-        // update, extracted registry sources): the snapshot must be unchanged.
-        Some((hint, snapshot, stamp))
-            if hint == selection && super::input::unchanged_since(&snapshot, stamp.as_ref()) =>
-        {
-            snapshot
-        }
-        _ => {
-            // A hint is only ever a hint: failing to record one changes nothing.
-            let _ = std::fs::create_dir_all(hint_path.parent().unwrap_or(&config.cache))
-                .map_err(|e| Error::new("SAIL3102", e.to_string()))
-                .and_then(|()| json(&hint_path, &selection));
-            snapshot_metadata(&data, &extras)
-        }
+        .find(|(hint, snapshot, stamp)| {
+            *hint == selection && super::input::unchanged_since(snapshot, stamp.as_ref())
+        });
+    if speculative.is_none() || !hint_path.is_file() {
+        // A hint is only ever a hint: failing to record one changes nothing.
+        let _ = std::fs::create_dir_all(hint_path.parent().unwrap_or(&config.cache))
+            .map_err(|e| Error::new("SAIL3102", e.to_string()))
+            .and_then(|()| json(&hint_path, &selection));
+    }
+    let mut before = match speculative {
+        Some((_, snapshot, _)) => snapshot,
+        None => snapshot_metadata(&data, &extras),
     };
     before.complete &= source_coverage;
     before.roots.extend(native_includes.iter().cloned());
@@ -2982,30 +3034,13 @@ pub(crate) fn run_engine_held(
     // lacks those targets.
     let shown = out.is_some();
     let retry_possible = paths.reuse && !shown && exit == Some(0);
-    // The post-run Cargo metadata starts once the verifier invocation has
-    // ended and overlaps the receipt checks, which never read it. When no
-    // retry can follow, the rest of the inputs after the run overlap them
-    // too: neither reads what the other writes, and the stamp that brackets
-    // every content read of both is taken once both have finished. A retry
-    // discards the metadata and reads everything again after its own
-    // invocation.
+    // Once the invocation has ended, complete input observations and receipt
+    // reads are independent. Their cache updates describe that completed
+    // invocation, never proof authority. Join both before deciding on retry;
+    // a retry discards the observation and rereads all inputs after its own
+    // invocation. No snapshot or receipt is committed as Current until then.
     let (records, after_thread) = std::thread::scope(|threads| {
-        let after = threads.spawn(|| {
-            if retry_possible {
-                (
-                    Some(metadata(
-                        &config.workspace,
-                        &config.args,
-                        &config.cargo,
-                        &config.cargo_toolchain,
-                        &config.cache,
-                    )),
-                    None,
-                )
-            } else {
-                (None, Some(after_inputs(None)))
-            }
-        });
+        let after = threads.spawn(|| after_inputs(None));
         let records = target_records(
             &paths,
             &data,
@@ -3018,15 +3053,10 @@ pub(crate) fn run_engine_held(
         (records, after.join())
     });
     let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
-    let (mut after_metadata, overlapped) = after_thread.unwrap_or_else(|_| {
-        (
-            Some(Err(reader_failed())),
-            (!retry_possible).then(|| Err(reader_failed())),
-        )
-    });
+    let mut overlapped = Some(after_thread.unwrap_or_else(|_| Err(reader_failed())));
     let (mut targets, missing) = records?;
     if retry_possible && !missing.is_empty() {
-        after_metadata = None;
+        overlapped = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
         std::fs::write(paths.run.join("artifacts.jsonl"), [])
@@ -3063,7 +3093,7 @@ pub(crate) fn run_engine_held(
         source_coverage,
     } = match overlapped {
         Some(inputs) => inputs?,
-        None => after_inputs(after_metadata)?,
+        None => after_inputs(None)?,
     };
     // Resolve fresh receipt bindings while the input stamp still brackets every
     // content read. A newly discovered include may already belong to another
