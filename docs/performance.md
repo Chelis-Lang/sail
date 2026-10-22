@@ -52,10 +52,18 @@ on Linux, and 0.58 s versus 0.21 s on Mac. Anvil's corrected unchanged
 partial-scope control takes about 2 s with no verifier invocation, against
 stock's 0.3 s. Receipt and input validation still need work.
 
-The baseline had six slower IronKV edits. The corrected candidate removes
-those losses: its complete 153 comparisons match stock and its edit loop is
-1.43× faster. Two medians differ by less than 0.1 s; the larger baseline
-losses no longer reproduce. See [#330](https://github.com/Chelis-Lang/sail/issues/330).
+Six slower IronKV edits remain under investigation. The earlier 1.43× result
+used an artifact whose fresh-target setup accidentally disabled retained
+proofs, so it does not qualify the corrected product. With retention working,
+all 153 comparisons match stock and the overall loop is 1.31× faster, but
+individual edits still lose. See [#330](https://github.com/Chelis-Lang/sail/issues/330).
+
+Retention has an adaptive cost budget: after its first measurement, Sail
+keeps it only when the compile costs at least sixteen times as much as the
+retention checks. On cheaper targets undo uses the ordinary solver cache
+instead. Missing or unreadable measurements keep initial proof capture.
+This changes which optimization is attempted; proof admission checks remain
+the same. Qualification of the tighter budget is still in progress.
 
 Mac cold losses remain release blockers while fixes are qualified. A known
 slowdown is not accepted merely because other rows are faster. The release

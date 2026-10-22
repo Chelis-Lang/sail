@@ -3,6 +3,29 @@
 **Status:** baseline measured; final corrected candidate is still being qualified.
 The release is not accepted while known cold losses remain.
 
+The 2026-10-22 IronKV follow-up with working fresh-target retention has 153
+matching comparisons and a 1.31× overall edit-loop gain, but six individual
+edit losses remain (#330, reopened). The preceding 1.43× result accidentally
+disabled retention and cannot qualify the corrected product.
+
+- Interrupted Mac matrix, 2026-10-22, source `940dbeed` (installed CLI
+  `1faa7c1fc72c4129dd41313bf9f164633155f55491bf1fc96bc2949047e951e0`):
+  disk exhaustion stopped the run after two rounds. This is not the required
+  three-round acceptance. Preserved logs and partial samples:
+  `experiments/2026-10-22/mac-qualification-interrupted.tgz`, SHA-256
+  `6c9d81b21d3629dab7a3fe701eae051450532942baedc7ff5f472fda452af154`.
+  Completed benchmark caches are now discarded by #333.
+
+The tighter retention-budget candidate is based on `ff63d032`, with installed
+Linux CLI SHA-256
+`06cf3abe148a416afc09e42b8578f6d927320d66e6bb90f81943fdcdd32945f5`.
+The focused three-round IronKV check has 12 matching comparisons. The actual
+retry-mutation control passes. Successful public Vest at resource limit 100
+serves the released vstd and restores its original proof on undo with zero
+verifier invocations (40.05 → 1.98 s). Workspace, solver and full E2E gates
+pass; full conformance, four full mutation cohorts and the matrix remain in
+progress. These controls do not establish final performance acceptance.
+
 The frozen combined source is `5636fa3e`, runtime f8589ed4 based on Verus
 7d82994, Rust/Cargo 1.99.1. Three rotated rounds use the installed archive,
 registry vstd setup and stock as functional oracle. The Linux CLI SHA-256 is

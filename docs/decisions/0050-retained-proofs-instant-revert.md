@@ -351,6 +351,24 @@ normally, so verdicts, diagnostics, receipts, cache keys and every check
 compare the same bytes. Timing makes only the cost decision vary from run to
 run. The threshold is the constant `RATIO` in `managed/retained/cost.rs`.
 
+## Amendment 2026-10-22: budget retention across edit sequences
+
+The four-times budget still enables retention on frontend-bound IronKV edits
+whose solver-cache saving is smaller than the retention checks. The current
+policy requires a measured compile cost of at least sixteen times retention
+cost. This is an internal optimization budget, not a release performance
+threshold. Unknown costs still retain the first proof, and all proof admission
+checks are unchanged.
+
+On native c7i.8xlarge, three paired runs of `spec-strengthen-002` reduce Sail's
+edit from about 10.6 s to 9.8 s (stock about 9.5 s). Undo on this cheaper target
+uses the ordinary solver cache, about 4.9 s, instead of the retained proof's
+1.3 s. The successful public Vest control still restores its original proof
+with zero verifier invocations in 1.98 s, versus stock's 40.05 s. This
+tradeoff favors repeated edits while preserving instant revert for expensive
+targets. The full IronKV catalogue and remaining conformance gates are pending;
+these focused controls alone do not establish release performance acceptance.
+
 ## Amendment 2026-10-20: the source snapshot reads the selected closure (#278)
 
 **Status:** accepted by the owner 2026-10-20 (#289).

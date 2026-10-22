@@ -17,13 +17,14 @@ release work; linked validation pages preserve the scope of each result.
   measurements are in progress. Small edits and unchanged runs retain visible
   overhead. See [performance](performance.md).
 
+- **Six IronKV edits remain slower** (#330, reopened). The corrected installed
+  candidate matches all 153 comparisons and its complete loop is about 1.31×
+  faster, but individual losses remain. The earlier 1.43× result used an
+  artifact with retained proof capture accidentally disabled by fresh-target
+  setup. It cannot qualify the corrected product. A tighter retention cost
+  budget is being measured against the full mutation catalogue.
 
 ## Corrected defects and historical measurements
-
-- **IronKV's larger per-edit losses no longer reproduce** (#330). The
-  corrected installed candidate matches all 153 comparisons and its complete
-  loop is about 1.43× faster. Two slower medians differ by less than 0.1 s,
-  with mixed paired results; the six baseline losses were 0.4–1.1 s.
 
 - **CapybaraKV's repeated vstd rebuild is fixed** (#321, #292). The native
   three-round full mutation run now has 168 matching comparisons, no false
