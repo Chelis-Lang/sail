@@ -409,7 +409,7 @@ When the installed stages have already passed the native matrix, full mutation
 cohorts and walkthroughs, package those same bytes on an Apple-silicon Mac:
 
 ```sh
-scripts/release.sh package VERSION /path/to/linux-stage /path/to/macos-stage
+scripts/release.sh package VERSION dist/stage/linux dist/stage/macos
 ```
 
 This checks both complete release indexes and their platform runtime pins,
