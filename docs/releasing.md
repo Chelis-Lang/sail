@@ -1,9 +1,9 @@
 # Releasing Sail
 
 The combined 0.1.0 candidate is being qualified on native Linux and macOS.
-The installed Linux coexistence control serves the shipped vstd, verifies an
-edit, and restores the original target's own retained proof. Its Mac counterpart
-and the final combined performance decision remain pending. Do not substitute
+The installed Linux and corrected Mac controls serve the shipped vstd, verify
+an edit, and restore the original target's own retained proof. The final
+combined performance decision remains pending. Do not substitute
 component measurements for the [release matrix](validation/release-matrix.md)
 or the installed artifact's full mutation cohorts.
 

@@ -42,3 +42,15 @@ This corpus result alone does not complete the separate full mutation tier.
 - Interrupted intermediate source `8080730d`, 2026-10-21: workspace, stage,
   solver, full e2e and PR/full-fast passed; standard was stopped to qualify the
   newer corrected source. This is not a completed standard qualification.
+
+The corrected Mac shipped/retained coexistence control (`d3f60a51`, CLI
+`55fa686b012737e2c45185f8f0a22d486c7390f1304a59bdeb94e91e53d939f4`)
+passes cold, edit, reverted and unchanged public Vest at resource limit 100.
+The returned proof restores its original establishing run with no verifier
+invocation. Cold is 39.17 → 33.74 s, edit 22.52 → 15.79 s and return
+22.54 → 1.97 s (stock → Sail). This is one functional control, not a
+three-round performance claim. The corrected candidate also passes the
+clean README new/verify/reuse walkthrough and real Claude Code MCP listing.
+Raw control, scripts, outputs and host log:
+`experiments/2026-10-22/mac-proof-coexistence.tgz`, SHA-256
+`a4726b493060707597e8402776cf2c0e9782c957159b94995f9344b9bb9930a9`.

@@ -68,14 +68,14 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 | Instant revert qualified | Done: Linux and macOS on `f8589ed4` | — |
 | macOS `main` green | Done (#281); combined candidate host gate: 949 tests pass | — |
 | Bundle-miss note | Done (#275); names forwarded Verus flags too (#268) | — |
-| Vest-class projects hit the bundle | Raised limit and closure hint merged (#268, #276); successful Linux coexistence and retained revert pass | Mac coexistence control |
+| Vest-class projects hit the bundle | Raised limit and closure hint merged (#268, #276); Linux and corrected Mac shipped/retained coexistence pass | Final installed artifact qualification |
 | Cold runs never slower than stock | **Open**: complete Linux baseline improves; Mac corrections being measured | #278, #232 |
 | Sub-second overhead modest | **Open** | #156 |
 | Realistic edit-loop suite (#284) | Implemented (#295); full Linux baseline passes; corrected cohorts and Mac pending | Bind all four projects to final installed artifact |
 | Release matrix, Linux and macOS | Baseline complete; corrected Mac cold losses being addressed | Final artifact, all rows and mutation cohorts |
 | Deep conformance and `deep-rvt` | Native corpus: 159 Same in each of four arms; full source-suite rerun passes | Complete final mutation tier and release source binding |
 | Docs from the matrix (`performance.md`, CHANGELOG, `known-issues.md`, README) | Open | After the matrix |
-| rc.6 draft, clean Linux and macOS walkthroughs including Claude Code | Open | `scripts/release.sh` |
+| rc.6 draft, clean Linux and macOS walkthroughs including Claude Code | README and real MCP listing pass on both platforms; final artifact and draft pending | `scripts/release.sh` |
 | Owner review and publication | Not started | — |
 
 **Merged on main for 0.1.0** (implemented; release qualification is the

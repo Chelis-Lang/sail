@@ -21,11 +21,17 @@ Sail's f8589ed4 runtime, based on Verus 7d82994, and Rust/Cargo 1.99.1.
 | Vest cold, default resource limit | 68.13 → 64.84 s | 37.26 → 39.05 s |
 
 Vest's default-limit runs fail the same proofs in both arms. They measure the
-failing workflow, not successful verification. A separate Linux successful
-Vest control with `--rlimit 100` serves the shipped vstd: cold verification
-takes 51.01 s against stock's 72.04 s, an edit 25.21 s against 39.50 s, and
-returning to the original proof 2.08 s against 39.62 s. The Mac counterpart
-is pending.
+failing workflow. Separate successful Vest controls use `--rlimit 100` and
+serve the shipped vstd:
+
+| Platform | Cold, stock → Sail | Edit, stock → Sail | Return to original, stock → Sail |
+|---|---:|---:|---:|
+| Linux | 72.04 → 51.01 s | 39.50 → 25.21 s | 39.62 → 2.08 s |
+| macOS | 39.17 → 33.74 s | 22.52 → 15.79 s | 22.54 → 1.97 s |
+
+Both returns restore the original complete proof with zero verifier
+invocations. The Mac control includes the corrected fresh-target setup;
+these are individual functional controls, separate from the full matrix.
 
 The full seeded mutation suite exercises nine classes, including proof errors,
 compile errors, specification changes and edits across modules. Each project
