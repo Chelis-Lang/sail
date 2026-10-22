@@ -180,8 +180,12 @@ No compiler byte check, source selection or final Current check is removed.
 The native prototype (`940dbeed`) passes the workspace and solver gates and the
 actual retry source-mutation control: changing a proof to `assert(false)` during
 Cargo cleanup yields a failed proof and Historical result, never Current. Full
-e2e also passes, including extra; PR/full-fast and standard conformance are
-running. The preceding query/snapshot-only Mac prototype
+e2e also passes, including extra. PR/full-fast conformance passes; all four
+full-fast arms have 147 Same and zero Different, unstable or infrastructure
+errors. Standard is running. The installed Linux public Vest control also
+passes shipped-proof use, an edit and restoration of the original retained
+proof; the permanent retry control confirms the two Cargo checks bracket
+the source-changing cleanup. The preceding query/snapshot-only Mac prototype
 passes its host gate; the combined post-invocation change still needs its Mac
 qualification and paired timings before selection. This is not release acceptance.
 
