@@ -156,6 +156,12 @@ The first successful public-profile Mac coexistence control exposed an omitted
 cleanup side effect: retained admission canonicalizes the target before Cargo
 runs, so the family must create its empty target explicitly. Without that,
 the cold run verified correctly but retained no producer certificates and
-subsequent reverts reverified. Family preparation now creates that directory;
-its filesystem regression requires a canonical, still-fresh target. The
-combined coexistence control is being rerun before this change can merge.
+subsequent reverts reverified. Fresh-target initialization now creates that directory and Cargo cache tag
+before retained admission. Its filesystem regression requires a canonical,
+tagged target and preserves existing artifact bytes. The composed Mac control
+now passes all four steps: cold 39.17 → 33.74 s, edit 22.52 → 15.79 s, revert
+22.54 → 1.97 s and unchanged 0.23 → 1.00 s (stock → Sail). The revert restores
+the cold run's complete proof with zero verifier invocations. This is one
+functional coexistence control, not the final three-round performance matrix.
+The Mac host gate passes all 950 tests, Clippy clean. Native Linux workspace
+and solver gates pass; full e2e and conformance are finishing before merge.
