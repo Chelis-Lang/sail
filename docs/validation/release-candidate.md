@@ -22,6 +22,21 @@ pre-verified vstd. Clean-macOS validation has its own record
 | Environment | Native EC2 c7i.8xlarge hosts (32 vCPU), us-east-1, Ubuntu 24.04, one suite or shard per host (layouts below); the developer Mac (Apple M3, macOS 26.5, shared with other lanes) |
 | Limits | Correctness only; wall times are indicative, not benchmarks, except the repair benchmark (one round per catalogue, a regression check, not an acceptance run). Walkthrough times are one sample each. rc.2's and rc.3's walkthroughs ran in a fresh `ubuntu:24.04` container |
 
+## Qualified-stage packaging control, 2026-10-22
+
+Source: `release/package-qualified-stages` on `ccc01205`, runtime f8589ed4 /
+Verus 7d82994. Native EC2 mac-m4.metal, us-east-1c, macOS 27.0.
+The new packaging-only command produces both platform archives with the
+original CLI, shim and release-index bytes, the expected single top directory,
+root-owned entries and correct checksum files. A swapped platform is refused
+before any output; existing assets are refused without changing their bytes.
+Both source stages remain unchanged. This qualifies packaging, not release
+performance or publication. The input Linux CLI is `06cf3abe…32945f5` and Mac
+CLI `8fb73ac6…15e33b`; complete digests and control results are in
+`experiments/2026-10-22/qualified-package-control.tgz`, SHA-256
+`4cd0633ab87d37a1cbd238e1248f80a4e12ff3571c6d9a78fe85eb8ed1260ee8`.
+Native Linux gates and the Mac host gate are separate.
+
 ## v0.1.0-rc.5
 
 **Post-validation correction (#184).** The exact draft rc.5 macOS asset
