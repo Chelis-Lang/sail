@@ -2572,6 +2572,8 @@ pub(crate) fn run_engine_held(
     let (stale_scripts, mut extras, script_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
+    let native_includes = super::native_include_hints::roots(&data, |name| std::env::var_os(name));
+    extras.extend(native_includes.iter().cloned());
     extras.extend(script_roots.clone());
     let extras = ordered_extras(extras);
     let selection = super::input::SnapshotHint {
@@ -2599,6 +2601,7 @@ pub(crate) fn run_engine_held(
         }
     };
     before.complete &= source_coverage;
+    before.roots.extend(native_includes.iter().cloned());
     before.roots.extend(super::input::configuration_paths(
         &invocation,
         std::env::var_os("CARGO_HOME")
@@ -2893,6 +2896,7 @@ pub(crate) fn run_engine_held(
         let (_, mut after_extras, after_coverage) =
             super::build_inputs::stale_after(&paths.build_inputs, &data, &unscheduled);
         after_extras.extend(script_roots.iter().cloned());
+        after_extras.extend(native_includes.iter().cloned());
         let after_extras = ordered_extras(after_extras);
         let sources = serde_json::to_value(sources).unwrap_or_default();
         // Without metadata in hand, the snapshot is taken while Cargo reads it,
@@ -2937,6 +2941,7 @@ pub(crate) fn run_engine_held(
             }
             _ => snapshot_metadata(&after_data, &after_extras),
         };
+        after.roots.extend(native_includes.iter().cloned());
         after.roots.extend(super::input::configuration_paths(
             &invocation,
             std::env::var_os("CARGO_HOME")
