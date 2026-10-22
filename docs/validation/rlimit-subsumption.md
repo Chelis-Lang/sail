@@ -2,10 +2,56 @@
 
 | | |
 |---|---|
-| Status | **Linux and macOS validation pass; ADR 0060 accepted (owner decision, 2026-10-20). Re-recorded on fork `f8589ed4`: the staged witness passes** |
+| Status | **Historical witness qualification below; current Mac recordings use exact default/100 profiles after a reproduced resource-count variation. Native Linux qualification of the new loader is running.** |
 | Source | Sail `feat/rlimit-subsumption` on `main` `3b9ec170`; runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`); stock release 0.2026.10.18.7d82994; Z3 4.16.0 |
 | Host | native EC2 c7i.8xlarge (us-east-1, Xeon Platinum 8488C, 32 vCPUs), Ubuntu 24.04, Rust 1.99.1 |
 | Tool | `scripts/rlimit-subsumption.py --runs 3 --rlimit 100` |
+
+## Exact-profile fallback, 2026-10-22
+
+Source: main `ff63d032` plus this change; the combined Mac consumer also uses
+retention-budget candidate `c308bda4`. Runtime f8589ed4 / Verus 7d82994,
+Rust/Cargo 1.99.1, EC2 mac-m4.metal in us-east-1c, macOS 27.0 (26A428).
+
+The new consumer passes the Mac host gate (963 tests, clippy clean). The real
+producer records two complete Current vstd proofs, each under its exact
+flags and source run. Their keys and all stored members pass release-index
+verification. Public Vest with released registry versions, default vstd
+features and limit 100 serves the exact raised-profile proof. Cold, edit,
+undo and unchanged all succeed. Undo restores the original complete proof
+with zero verifier invocations. These are individual functional controls:
+
+| Step | Stock | Sail |
+|---|---:|---:|
+| Cold | 38.87 s | 32.50 s |
+| Edit | 22.50 s | 15.78 s |
+| Undo | 22.58 s | 1.88 s |
+| Unchanged | 0.22 s | 0.94 s |
+
+Installed CLI SHA-256:
+`8fb73ac60ac70d941e1f9c860913049edbd1739d2b0e3f0cc6281f8fbc15e33b`.
+Raw producer reports, host log and consumer outputs:
+`experiments/2026-10-22/mac-exact-profiles.tgz`, SHA-256
+`6ccdc437960825451238b0abd0c59ea7d6dcfb02bdf5b2d858347b4c610fedfe`.
+Full native Linux gates and final performance matrix remain separate gates.
+
+The prior staged Mac witness fails on resource counts: three default and
+three raised runs preserve inputs and answers, but one process's count varies
+by 14. Fresh direct Z3 replays reproduce it. The complete comparison is
+`experiments/2026-10-22/mac-vstd-rlimit-repro.tgz`, SHA-256
+`1384a85de5721675143268bc8fa4844b3f65c4e9d12fa4f40e645583040277dc`;
+direct replay log `experiments/2026-10-22/mac-vstd-rlimit-direct.tgz`, SHA-256
+`726b04aabfcc019083ffa5da5067f4c5378e0d69aa44427a3c4f6c1649c746ad`.
+The single-process input and replay command are in the
+[corpus reproduction](../../corpus/repros/z3-resource-count-variation/README.md).
+The same 48 direct Linux replays did not reproduce variation; this does not
+establish that every Linux query has deterministic resource counts.
+
+- `c308bda4`, 2026-10-22: first Mac coexistence control stopped after cold;
+  both verifiers succeeded, but the expected shipped proof was absent because
+  its resource-count witness failed. No retained-undo acceptance from that
+  attempt. Raw `experiments/2026-10-22/mac-cost-controls-first.tgz`, SHA-256
+  `ee6a948c3b1effec193e2b0a8de15415906b75a2192909e67b94f7a064f9d704`.
 
 ## Re-recording on fork `f8589ed4` (Linux)
 
