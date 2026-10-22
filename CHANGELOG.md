@@ -10,6 +10,9 @@ semantic versioning once the API is published.
 - Recognize the daemon's runtime endpoint while staging release archives.
 - Observe explicitly configured native headers before the first build, allowing
   the first unchanged recheck to reuse reports once all inputs are confirmed.
+- Decline native proof observation before compiler and source hashing when
+  lookup artifacts have no current producer provenance. Normal compilation and
+  complete admission checks remain unchanged.
 
 - Keep unchanged build-script outputs when declared Cargo package metadata
   and the exact unit's `OUT_DIR` remain valid, avoiding redundant TLS rebuilds.
