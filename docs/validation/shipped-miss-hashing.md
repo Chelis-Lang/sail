@@ -182,12 +182,15 @@ actual retry source-mutation control: changing a proof to `assert(false)` during
 Cargo cleanup yields a failed proof and Historical result, never Current. Full
 e2e also passes, including extra. PR/full-fast conformance passes; all four
 full-fast arms have 147 Same and zero Different, unstable or infrastructure
-errors. Standard is running. The installed Linux public Vest control also
+errors. Standard also passes: 159 Same in each arm, zero Different, unstable
+or infrastructure errors, with all 18 HumanEval mutations and both reverts
+matching. The installed Linux public Vest control also
 passes shipped-proof use, an edit and restoration of the original retained
 proof; the permanent retry control confirms the two Cargo checks bracket
-the source-changing cleanup. The preceding query/snapshot-only Mac prototype
-passes its host gate; the combined post-invocation change still needs its Mac
-qualification and paired timings before selection. This is not release acceptance.
+the source-changing cleanup. The combined Mac prototype passes its 950-test
+host gate and both functional controls. Its three-round Anvil diagnostic remains
+slower cold (102.48 versus stock 99.50 seconds); the complete final matrix and
+mutation cohorts remain in progress. This is not release acceptance.
 
 Run the focused control with an installed release and a new output directory:
 
