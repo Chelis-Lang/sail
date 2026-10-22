@@ -712,6 +712,19 @@ const CACHEDIR_TAG: &[u8] = b"Signature: 8a477f597d28d172789f06886806bc55\n\
 # This file is a cache directory tag created by cargo.\n\
 # For information about cache directory tags see https://bford.info/cachedir/\n";
 
+/// Establish the owned empty directory before retained admission canonicalizes
+/// it. Cleanup used to create this directory as a side effect. Preserve Cargo's
+/// cache tag too: a manually created untagged target cannot be cleaned later.
+fn prepare_fresh_target(target: &Path) -> Result<bool> {
+    let fresh = super::store::new_target(target);
+    if fresh {
+        std::fs::create_dir_all(target)
+            .and_then(|()| std::fs::write(target.join("CACHEDIR.TAG"), CACHEDIR_TAG))
+            .map_err(|e| Error::new("SAIL3105", e.to_string()))?;
+    }
+    Ok(fresh)
+}
+
 /// Forces Cargo to compile `packages` again in Sail's target.
 ///
 /// `cargo clean -p` also deletes the packages' rustc incremental state. That
@@ -2462,7 +2475,10 @@ pub(crate) fn run_engine_held(
     } else {
         Vec::new()
     };
-    let new_target = super::store::new_target(&paths.target);
+    // The family is exclusively owned. The pinned metadata query creates no
+    // compiled outputs, and seeding happens after cleanup. A fresh family has
+    // nothing that any pre-invocation clean could invalidate.
+    let new_target = prepare_fresh_target(&paths.target)?;
     let unit_plan = if paths.reuse {
         let (environment, plan) =
             build_environment(config, &paths, &data, &expected).unwrap_or((Value::Null, None));
@@ -2652,7 +2668,7 @@ pub(crate) fn run_engine_held(
     // Sail's targeted cleans exist to observe what a receipt binds. A run
     // without reuse records no receipt, so Cargo's own freshness decides, as
     // for plain Cargo-Verus.
-    if paths.reuse && !stale_scripts.is_empty() {
+    if paths.reuse && !new_target && !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
     let absent = super::absent::Observer::begin(&before_run, &paths.run.join("observer"));
@@ -2683,7 +2699,7 @@ pub(crate) fn run_engine_held(
         .into_iter()
         .filter(|name| !stale_scripts.contains(name))
         .collect();
-    if paths.reuse {
+    if paths.reuse && !new_target {
         clean(config, &paths.target, &late_scripts)?;
     }
     let stamp_before = super::input::mutation_stamp(&before_run);
@@ -2725,7 +2741,7 @@ pub(crate) fn run_engine_held(
         })
         .filter_map(|p| p["name"].as_str().map(str::to_owned))
         .collect();
-    if forced && paths.reuse {
+    if forced && paths.reuse && !new_target {
         clean(config, &paths.target, &selected(&config.args, &names))?;
     }
     let receipt_revisions: BTreeMap<PathBuf, ReceiptRevision> = std::fs::read_dir(&paths.receipts)
@@ -2740,7 +2756,7 @@ pub(crate) fn run_engine_held(
         "changed_receipt_packages":dirty, "stale_scripts":stale_scripts,
         "late_scripts":late_scripts
     }));
-    if paths.reuse && !dirty.is_empty() {
+    if paths.reuse && !new_target && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);
@@ -3770,6 +3786,25 @@ mod tests {
             force: true,
             attribution_logs: true,
         })
+    }
+
+    #[test]
+    fn fresh_target_is_canonical_and_tagged_before_admission()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "sail-fresh-target-admission-{}",
+            std::process::id()
+        ));
+        let target = root.join("family/target");
+        assert!(prepare_fresh_target(&target)?);
+        assert!(target.canonicalize().is_ok());
+        assert_eq!(std::fs::read(target.join("CACHEDIR.TAG"))?, CACHEDIR_TAG);
+        let artifact = target.join("retained-input.rmeta");
+        std::fs::write(&artifact, b"preserved")?;
+        assert!(!prepare_fresh_target(&target)?);
+        assert_eq!(std::fs::read(artifact)?, b"preserved");
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[test]
