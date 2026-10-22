@@ -43,3 +43,38 @@ release acceptance.
 Raw bounded control: `experiments/2026-10-21/anvil-scope-control.tgz` in the
 S3 evidence bucket, SHA-256
 `c2e59a81c4855735dd59ae7e18957d9e76b0a13d304f3b3668460ddb44dac288`.
+
+## First recheck after native-header discovery
+
+The Mac cold Anvil call discovered OpenSSL headers only after compilation.
+Nothing changed, but the scheduling snapshot gained external input paths, so
+it withheld Current status and the reusable state. The first unchanged call
+therefore compiled and verified again (34.9 seconds); only the next call reused
+its reports.
+
+Preobserving the explicitly configured OpenSSL include tree makes the first
+call Current. A staged native Mac control (mac-m4.metal, us-east-1a, macOS 27.0,
+Cargo/Rust 1.99.1, runtime f8589ed4 on upstream 7d82994) now records:
+
+| Call | Seconds | Verifier invocations |
+|---|---:|---:|
+| Cold | 105.79 | 3 |
+| First unchanged | 2.41 | 0 |
+| Second unchanged | 2.15 | 0 |
+
+CLI SHA-256 `718f93a74db86aff9e56dea7c338d8023ddda9bdd968a2e504115d5fabac7971`.
+All three calls exit zero. Partial requested targets remain incomplete; the
+unchanged calls reuse their exact-scope reports. This corrects first-recheck
+rebuilding, not the remaining setup overhead or final release acceptance.
+
+The filesystem control reproduces the newly declared external header, verifies
+that the initial hinted and later declared inventories agree, and still detects
+a same-length header change. Relative and missing hints remain ordinary misses.
+
+The standalone first-recheck correction (`e581205c`) passes native Linux
+workspace, solver, full e2e including extra, PR/full-fast and standard gates.
+Standard records 159 Same and zero unstable, Different or infrastructure errors
+in all four arms; its 18 HumanEval mutation controls and both reverts pass.
+The composed Mac host build, lint and tests pass. Raw native gate logs:
+`experiments/2026-10-21/anvil-first-recheck-gates.tgz` in the S3 evidence bucket,
+SHA-256 `993581d78e83a5904d710d7b6075f87b775b9da91ec5b38cdcd947876501cc4a`.
