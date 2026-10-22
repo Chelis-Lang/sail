@@ -120,6 +120,8 @@ package_stages() {
   [ "$#" = 3 ] || die "usage: scripts/release.sh package VERSION LINUX_STAGE MACOS_STAGE"
   local version="$1" linux="$2" macos="$3" workspace target
   [ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] || die "package on an Apple-silicon Mac"
+  linux="$(cd "$linux" && pwd -P)" || die "cannot open Linux stage"
+  macos="$(cd "$macos" && pwd -P)" || die "cannot open macOS stage"
   workspace="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
   case "$version" in "$workspace"|"$workspace"-*) ;; *) die "VERSION must start with the workspace version $workspace" ;; esac
   case "$version" in *[!a-zA-Z0-9.+-]*) die "invalid package version" ;; esac

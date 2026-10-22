@@ -28,14 +28,17 @@ Source: `release/package-qualified-stages` on `ccc01205`, runtime f8589ed4 /
 Verus 7d82994. Native EC2 mac-m4.metal, us-east-1c, macOS 27.0.
 The new packaging-only command produces both platform archives with the
 original CLI, shim and release-index bytes, the expected single top directory,
-root-owned entries and correct checksum files. A swapped platform is refused
+root-owned entries and correct checksum files, including stages reached through
+directory aliases. A swapped platform is refused
 before any output; existing assets are refused without changing their bytes.
 Both source stages remain unchanged. This qualifies packaging, not release
 performance or publication. The input Linux CLI is `06cf3abe…32945f5` and Mac
 CLI `8fb73ac6…15e33b`; complete digests and control results are in
-`experiments/2026-10-22/qualified-package-control.tgz`, SHA-256
-`4cd0633ab87d37a1cbd238e1248f80a4e12ff3571c6d9a78fe85eb8ed1260ee8`.
-Native Linux gates and the Mac host gate are separate.
+`experiments/2026-10-22/qualified-package-alias-control.tgz`, SHA-256
+`96c432daf9e2b1dfeef0fe8b98446b5a471be4a738e3a9374455f61b053aa86f`.
+The Mac host gate passes: clippy clean, 963 tests passed. Its first attempt
+stopped before tests because cargo-nextest was missing; the pinned tool was
+installed before the successful rerun. Native Linux gates remain separate.
 
 ## v0.1.0-rc.5
 
