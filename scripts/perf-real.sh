@@ -685,7 +685,9 @@ run_mode() { # ROUND MODE
   fi
   sleep 1
   unset SAIL_CACHE_DIR
-  rm -rf "$dir"
+  # Timings, solver statistics and the shipped-proof note are already saved.
+  # This arm is finished: keep its logs, discard its source/build/cache work.
+  rm -rf "$dir" "$cache"
 }
 
 cpu() { sed -n 's/^model name[[:space:]]*: //p' /proc/cpuinfo 2>/dev/null | head -1 || sysctl -n machdep.cpu.brand_string; }
