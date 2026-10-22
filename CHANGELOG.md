@@ -7,6 +7,7 @@ semantic versioning once the API is published.
 
 - Reject a known vstd dependency or feature mismatch before hashing the runtime
   and Rust sysroot for an unusable shipped proof.
+- Recognize the daemon's runtime endpoint while staging release archives.
 
 - Keep unchanged build-script outputs when declared Cargo package metadata
   and the exact unit's `OUT_DIR` remain valid, avoiding redundant TLS rebuilds.
