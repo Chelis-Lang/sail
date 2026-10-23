@@ -34,6 +34,10 @@ semantic versioning once the API is published.
   nonverified function evidence, missing or nonzero verifier error counts, or
   partial-scope reuse.
 
+- Keep distinct Cargo binary target names such as `foo-bar` and `foo_bar`
+  separate in proof reports, receipts and selected-target coverage. Ambiguous
+  compiler observations cannot authorize reuse.
+
 - Keep Rustc artifact metadata out of structured diagnostic text, including
   the final verification-progress note. Verifier messages retain their text.
 

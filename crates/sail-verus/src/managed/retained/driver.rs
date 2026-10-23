@@ -333,10 +333,7 @@ impl Plan {
         ) {
             return None;
         }
-        let actual_source = package["targets"].as_array()?.iter().find_map(|target| {
-            (target["name"].as_str()?.replace('-', "_") == identity.name)
-                .then(|| target["src_path"].as_str().map(PathBuf::from))?
-        })?;
+        let actual_source = PathBuf::from(identity.cargo_target(package)?["src_path"].as_str()?);
         if cwd.join(source_argument).canonicalize().ok()? != actual_source.canonicalize().ok()? {
             return None;
         }
@@ -1296,6 +1293,7 @@ mod tests {
             name: name.into(),
             crate_type: "lib".into(),
             rustc_args_sha256: "actual arguments".into(),
+            cargo_name: None,
         };
         assert!(plan.requested(&identity("/project/Cargo.toml", "project")));
         assert!(!plan.requested(&identity("/registry/vstd/Cargo.toml", "vstd")));

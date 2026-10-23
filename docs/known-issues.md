@@ -322,6 +322,13 @@ for the failed strict attempt and required future evidence.
   supplied a failed function with unchanged successful summary counts; no
   ordinary producer creating that state or accepted false theorem was established.
 
+- **Cargo binary target-name collision (#344).** Reports and receipts retain
+  Cargo's exact target name, so `foo-bar` and `foo_bar` no longer share compiler
+  observations. Failed sibling invocations remain separate and ambiguous old
+  identities require fresh verification. The reproduction supplied verifier
+  report fixtures to actual target aggregation; it demonstrated lost failure
+  reporting, not a false overall verification exit or accepted theorem.
+
 - **Fork JSON proof-note order (#185).** The selected `cc7bbce4` runtime
   contains producer fix `5793253c`, which serializes both arrays lexically
   without changing internal membership, verdicts or diagnostic bytes. The full
