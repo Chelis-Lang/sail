@@ -180,6 +180,7 @@ fn colliding_cargo_names_keep_distinct_complete_receipts() -> TestResult {
         .ok_or("receipts")?;
     assert_eq!(receipts.len(), 2);
     for receipt in receipts {
+        assert_eq!(receipt.invocation.identity.target_name(), receipt.name);
         assert_eq!(
             receipt.invocation.identity.cargo_name.as_deref(),
             Some(receipt.name.as_str())
