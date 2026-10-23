@@ -114,7 +114,7 @@ fn record(context: &Path, project: &Path) -> String {
     let revision = "fixture-revision".to_owned();
     write(
         &context.join("read-check.json"),
-        &serde_json::json!({"version":1,"revision":revision,"files":files}),
+        &serde_json::json!({"version":2,"revision":revision,"files":files,"bindings":{}}),
     );
     revision
 }
