@@ -24,21 +24,13 @@ verification runtime (#146).
 
 ### Current standing against stock Verus
 
-The installed baseline has now run the full three-round matrix on native Linux
-and Mac hosts. Linux cold medians improve across all five real projects. Mac
-small-project first use is 1.6× faster; CapybaraKV, Vest and Anvil cold losses
-remain under repair. Anvil's repeated partial verification is removed, with
-remaining setup overhead visible. Current numbers and limits are in
-[performance](performance.md).
-
-The broader mutation suite is implemented (#295). All 651 comparisons in the
-full Linux baseline match stock, using one daemon across each complete
-sequence. The tighter retention budget improves IronKV's complete loop to
-1.48× with all 153 comparisons matching; two medians retain 0.03–0.10 s of
-overhead. The earlier 1.43× result had retention accidentally disabled and
-cannot qualify the corrected product. Other corrected cohorts and combined
-Mac cohorts are pending. Only cohorts bound to the actual release artifact
-qualify that artifact.
+Both exact installed consumers complete all 31 matrix rows and all four
+three-round mutation cohorts: 651 matching comparisons per platform, zero
+false verified or functional differences. Complete edit-loop speedups are
+1.13–2.62× on Linux and 1.38–2.84× on Mac. Runtime 7d9d5410 fixes the Mac
+HumanEval proof regression found by that suite (#338). Mac cold Anvil and
+Vest, plus unchanged/tiny-edit overhead, keep release acceptance open.
+Current numbers and limits are in [performance](performance.md).
 
 ## 0.1.0
 
@@ -53,8 +45,8 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
   bundle, served only after exact admission (#249,
   [ADR 0048](decisions/0048-shipped-dependency-build.md)); any mismatch
   verifies vstd normally.
-- Fork runtime `f8589ed4` on upstream Verus 0.2026.10.18.7d82994 (Rust
-  1.99.1), Linux and macOS (#267).
+- Fork runtime `7d9d5410` on upstream Verus 0.2026.10.18.7d82994 (Rust
+  1.99.1), Linux and macOS (#267, #338).
 - Proof coexistence, so shipped and locally verified vstd proofs share one
   cache.
 - Managed builds use the engine's pinned Cargo
@@ -63,21 +55,18 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 
 | Gate | Status | Next |
 |---|---|---|
-| Runtime rebased onto upstream 7d82994, Linux and macOS | Done (#249, #251, #267) | — |
-| Shipped bundle re-recorded, admission witnesses, identical output to stock | Done on `f8589ed4`, both platforms | — |
-| Conformance fast and standard on `f8589ed4` | Done: fast 147/147, standard 159/159 (one unstable unit is stock's own note-order race) | Rerun on rc.6 |
-| Determinism | Done: Linux 146/146, macOS 320/320 | — |
-| Instant revert qualified | Done: Linux and macOS on `f8589ed4` | — |
-| macOS `main` green | Done (#281); combined candidate host gate: 949 tests pass | — |
-| Bundle-miss note | Done (#275); names forwarded Verus flags too (#268) | — |
-| Vest-class projects hit the bundle | Raised limit and closure hint merged (#268, #276); Linux and corrected Mac shipped/retained coexistence pass | Final installed artifact qualification |
-| Cold runs never slower than stock | **Open**: complete Linux baseline improves; Mac corrections being measured | #278, #232 |
-| Sub-second overhead modest | **Open** | #156 |
-| Realistic edit-loop suite (#284) | Implemented (#295); full Linux baseline passes; corrected cohorts and Mac pending | Bind all four projects to final installed artifact |
-| Release matrix, Linux and macOS | Baseline complete; corrected Mac cold losses being addressed | Final artifact, all rows and mutation cohorts |
-| Deep conformance and `deep-rvt` | Native corpus: 159 Same in each of four arms; full source-suite rerun passes | Complete final mutation tier and release source binding |
-| Docs from the matrix (`performance.md`, CHANGELOG, `known-issues.md`, README) | Open | After the matrix |
-| rc.6 draft, clean Linux and macOS walkthroughs including Claude Code | README and real MCP listing pass on both platforms; final artifact and draft pending | `scripts/release.sh` |
+| Runtime rebased onto upstream 7d82994, Linux and macOS | Done; corrected 7d9d5410 manifests selected (#338) | — |
+| Shipped default/100 proofs and signed replies | Both platform factories and public Vest proof/undo controls pass | — |
+| Consumer gates and conformance | Full native gate, solver, E2E+extra, PR/full fast and standard pass | — |
+| Mac host gate | Pass: 963 tests, clippy clean | — |
+| Determinism | Mac: 320 stable query streams; strict output 319/320, one existing resource-count variation | Recorded in runtime qualification |
+| Realistic edit-loop suite (#284) | All four complete cohorts pass on each installed platform: 651 comparisons each | — |
+| Release matrices | Both complete: 31/31 valid rows | Resolve remaining losses |
+| Cold runs never slower than stock | Open: Mac Anvil and Vest; Linux Anvil medians overlap | #314, #278, #232 |
+| Sub-second overhead modest | Open: unchanged calls and tiny edits | #156, #314 |
+| Deep corpus and fork source suite | Four corpus arms pass; pass-through/cache-fill/cache-warm each 4,901 Same; stock control retains known debug-order instability | — |
+| Actual archives, clean README and Claude Code | Both platform archives pass; real MCP lists 17 tools | — |
+| Performance/docs review and rc.6 draft | Performance acceptance open; no draft created | Close real slowdowns |
 | Owner review and publication | Not started | — |
 
 **Merged on main for 0.1.0** (implemented; release qualification is the

@@ -1,9 +1,10 @@
 # Signature-sized spec-formal runtime qualification
 
-Status: both runtimes are built. Backend fixtures and the original failing Mac
-compiler case pass; complete consumer, mutation and release qualification is
-pending. The previous Mac release cohort remains failed. No rc.6 draft has
-been created and release acceptance remains open.
+Status: both rebuilt runtimes pass backend and installed-consumer functional
+qualification, including all four complete mutation cohorts on each platform.
+The matrices are complete; Mac cold and unchanged overhead keep performance
+acceptance open. The previous failed Mac cohort remains failed. No rc.6 draft
+has been created.
 
 Source: reviewed fork `7d9d5410159a7baa2c74868ce1f591678788eb23`, whose complete
 source tree equals squash merge `a6240baab374c6d687e919730c957a0a8512943f`
@@ -22,12 +23,12 @@ query normalization, solver flags or accepted verdict exceptions change.
 | Engine and cancellation fixtures, both platforms | Pass |
 | Mac determinism, three runs over 320 direct inputs | All solver streams stable; strict output check: 319/320, one existing NLA resource-count variation on `imo_1988_6.rs` (82,316 vs 82,314), unchanged inputs and verdict |
 | Native full fast corpus conformance | Pass: each arm 147 Same; engine arm 3,451 functions, zero different/unstable/infra |
-| Native full standard backend corpus conformance | Pass in all four arms; consumer standard mutation subset is finishing |
+| Native full standard backend corpus conformance | Pass in all four arms; consumer standard and its mutation subset pass |
 | Ordinary retained reuse on both new runtime manifests | Pass: fresh successful public Vest, edit, original proof restored, unchanged; zero verifier invocations on restored proof |
 | Consumer workspace/solver/full E2E and Mac host gate | Native workspace/solver/full E2E including extra pass; Mac clippy and all 963 host tests pass |
 | Shipped exact proof/default-100 profiles and signed replies | Both platform factories pass; Mac independently records both exact profiles; actual public Vest limit-100 proof served on both |
-| Full selected mutation cohorts | Mac HumanEval: 165 Same; Mac IronKV and Linux IronKV: 153 Same each; remaining cohorts running |
-| Deep source suite and release matrix | Fork pass-through: 4,901 Same, all 4,838 nonignored tests pass; cache rounds and corpus/matrices running |
+| Full selected mutation cohorts | Pass on both platforms: HumanEval 165, IronKV 153, Vest 165 and CapybaraKV 168 Same each; zero false verified, different, unstable or infrastructure errors |
+| Deep source suite and release matrix | Pass: deep corpus 159 Same in each of four arms; fork pass-through, cache-fill and cache-warm each 4,901 Same; both matrices 31/31 valid, performance acceptance open |
 
 | Platform | Runtime manifest SHA-256 | Runtime archive SHA-256 |
 |---|---|---|
@@ -39,8 +40,8 @@ build-host home-path scans. Platform SDK builds use isolated toolchains without
 rust-src; consumer runs use the documented minimal toolchain with rust-src.
 The ordinary-reuse selectors now pass the actual successful public Vest
 controls on both platform manifests. These are functional controls; their
-elapsed times are not a release benchmark. Full mutation and release checks
-remain separate.
+elapsed times are not a release benchmark. Installed mutation and matrix
+results are recorded in the [release matrix](release-matrix.md).
 
 Raw bounded Mac compiler controls:
 `experiments/2026-10-23/human004-compiler-controls.tgz`, SHA-256
@@ -55,8 +56,10 @@ controls: `experiments/2026-10-23/signature-mac-controls.tgz`, SHA-256
 Native Linux workspace, solver, full E2E, release/fast checks and public-Vest
 control: `experiments/2026-10-23/signature-linux-controls.tgz`, SHA-256
 `92910b2af5c4acac0590edc57a35d7511e9a75dd6cf0ddde40e597ec20a10357`.
-The Linux capture precedes completion of full standard conformance; that result
-is recorded separately when it completes.
+The Linux capture precedes completion of full standard conformance. Complete
+consumer gates and actual Linux archive/Claude Code MCP checks are in
+`experiments/2026-10-23/signature-consumer-complete.tgz`, SHA-256
+`870f63fc777ee341502af2c0aafdd074b88f37a04323a94f3568e7e05b9b4755`.
 
 Completed three-round installed mutation cohorts: Mac HumanEval 165/165 and
 IronKV 153/153 Same, with zero differences, unstable cases, false verified or
@@ -73,7 +76,14 @@ The full fork source-suite pass-through has 4,901 Same, 63 ignored, 4,838
 nonignored tests passing, zero differences or infrastructure errors. The
 stock-only control retains VI-0008/VI-0021 JSON debug-order instability
 (4 Unstable and 1 Different); its two failing libtests match on both sides.
-That command stopped before the fork cache rounds, which are being run
-separately with unchanged checks. Raw source-suite reports and logs:
+That command stopped before the fork cache rounds. Separate unchanged
+cache-fill and cache-warm runs each pass all 4,901 comparisons; all 4,838
+nonignored fork tests pass. Raw source-suite reports and logs:
 `experiments/2026-10-23/signature-deep-rvt.tgz`, SHA-256
 `5f964efc198b720d6ecec7b5df131acbeefdb958fbbf9611ad197f906d985bd6`.
+
+Complete backend deep corpus, cache-fill/cache-warm and source-build logs:
+`experiments/2026-10-23/signature-backend-qualification.tgz`, SHA-256
+`1fec6da9529a2d56c7f60c7a59bdc80eae8c6f898073a387d49dd9292bc45e9a`.
+The two optional Singular projects are excluded from this binary-runtime
+qualification. Stock-only debug-order failures remain recorded separately.
