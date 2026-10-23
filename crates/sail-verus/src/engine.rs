@@ -811,7 +811,7 @@ pub fn repair(
             if let Some(target) = full.targets.iter().find(|target| {
                 target.requested
                     && target.package_id == focus.package_id
-                    && target.target.replace('-', "_") == focus.target
+                    && target.target == focus.target
                     && target.kind.contains(&focus.kind)
             }) {
                 let mut target = target.clone();
@@ -934,7 +934,7 @@ fn launcher_notes(run: &Path, result: &mut sail_api::project::ProjectResult) {
         if record.matches(&result.run_id, &result.context_sha256)
             && result.targets.iter().any(|target| {
                 target.package_id == record.project_package_id
-                    && target.target.replace('-', "_") == record.target
+                    && target.target == record.target
                     && target.kind.contains(&record.kind)
             })
         {

@@ -48,6 +48,11 @@ impl TargetIdentity {
         digest(&serde_json::to_vec(self).unwrap_or_default())
     }
 
+    /// Cargo-facing target name; legacy unambiguous identities retain their name.
+    pub(crate) fn target_name(&self) -> &str {
+        self.cargo_name.as_deref().unwrap_or(&self.name)
+    }
+
     /// Resolve one metadata target, refusing legacy or malformed ambiguous names.
     pub(crate) fn cargo_target<'a>(
         &self,

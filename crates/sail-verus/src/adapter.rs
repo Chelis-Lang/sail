@@ -583,7 +583,7 @@ fn driver() -> Result<ExitCode> {
             &serde_json::json!({
                 "version":1,"run_id":runtime.run_id,"context_sha256":runtime.context_sha256,
                 "package_id":cargo_package_id(),"project_package_id":runtime.packages.get(&identity.manifest),
-                "target":identity.name,"kind":identity.crate_type,
+                "target":identity.target_name(),"kind":identity.crate_type,
                 "forwarded":["--no-vstd"],"source":"effective-cargo-driver-options","engine_only":true,
                 "original_arguments":args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
                 "launcher_arguments":launcher_args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
@@ -612,7 +612,7 @@ fn driver() -> Result<ExitCode> {
         && let Some(replay) = call.as_ref().and_then(crate::managed::shipped::Call::serve)
     {
         event(
-            &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),
+            &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.target_name()}),
         );
         crate::managed::visible_output::emit(
             crate::managed::visible_output::Stream::Stderr,
@@ -752,11 +752,11 @@ fn driver() -> Result<ExitCode> {
     let invocation_log = InvocationLog {
         directory: &runtime.invocations,
         run_id: &runtime.run_id,
-        target: &identity.name,
+        target: identity.target_name(),
     };
     invocation_log.record(&mut child)?;
     event(
-        &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),
+        &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.target_name()}),
     );
     let stdout = child.stdout.take().map(|mut pipe| {
         std::thread::spawn(move || {
@@ -831,7 +831,7 @@ fn driver() -> Result<ExitCode> {
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
     let invocation_key = identity.key();
-    let measured = (identity.manifest.clone(), identity.name.clone());
+    let measured = (identity.manifest.clone(), identity.target_name().to_owned());
     finish(
         &runtime,
         identity,
@@ -1098,7 +1098,7 @@ fn finish(
         &invocation,
     )?;
     event(
-        &serde_json::json!({"event":"target-complete","run_id":runtime.run_id,"target":invocation.identity.name,"success":success}),
+        &serde_json::json!({"event":"target-complete","run_id":runtime.run_id,"target":invocation.identity.target_name(),"success":success}),
     );
     // Solver bytes are evidence, never a transformed input.
     if !verifier_readable {
@@ -1276,7 +1276,7 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
                 .get(&identity.manifest)
                 .cloned()
                 .unwrap_or_default(),
-            target: identity.name.clone(),
+            target: identity.target_name().to_owned(),
             kind: if identity.crate_type == "rlib" {
                 "lib".into()
             } else {

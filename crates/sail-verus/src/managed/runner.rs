@@ -1340,7 +1340,7 @@ fn negative_compiler_generation(
         let mut names: Vec<_> = calls
             .values()
             .filter(|call| call.dependency_build.is_none())
-            .map(|call| call.identity.name.clone())
+            .map(|call| call.identity.target_name().to_owned())
             .collect();
         names.sort();
         starts.sort();
