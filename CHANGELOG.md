@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Update Tokio to 1.53.3 for RUSTSEC-2026-0386 (Unix AsyncFd I/O safety).
+
 - Keep Rustc artifact metadata out of structured diagnostic text, including
   the final verification-progress note. Verifier messages retain their text.
 
