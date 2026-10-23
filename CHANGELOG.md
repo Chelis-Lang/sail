@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Require a successful solver/mode handshake before cache reads or writes.
+  Reject failed or repeated handshakes and isolate older daemons under the
+  version-five socket; status remains available without a solver.
+
 - Update Tokio to 1.53.3 for RUSTSEC-2026-0386 (Unix AsyncFd I/O safety).
 
 - Keep Rustc artifact metadata out of structured diagnostic text, including

@@ -128,10 +128,22 @@ fn reply_for(i: u32) -> Vec<u8> {
     format!("(model {i})\n").into_bytes()
 }
 
-fn put_all(socket: &Path, n: u32) {
+fn cache_client(socket: &Path) -> Client {
+    use std::os::unix::fs::PermissionsExt as _;
+    let solver = socket.with_extension("solver");
+    if !solver.exists() {
+        assert!(std::fs::write(&solver, b"#!/bin/sh\necho 'Z3 version 4.16.0'\n").is_ok());
+        assert!(std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o700)).is_ok());
+    }
     let Ok(mut c) = Client::connect(socket) else {
         unreachable!("cannot connect")
     };
+    assert!(c.hello(&solver.to_string_lossy()).is_ok());
+    c
+}
+
+fn put_all(socket: &Path, n: u32) {
+    let mut c = cache_client(socket);
     for i in 0..n {
         let meta = PutMeta {
             command: "get-model".to_owned(),
@@ -217,9 +229,7 @@ fn status_and_cache_commands_against_a_running_daemon() {
     assert_eq!(out.status.code(), Some(0));
     assert!(!bad.exists());
     // The daemon now misses that key, and still serves the others exactly.
-    let Ok(mut c) = Client::connect(&s.socket()) else {
-        unreachable!("cannot connect")
-    };
+    let mut c = cache_client(&s.socket());
     assert!(matches!(c.get(&key(3).0), Ok(None)));
     assert_eq!(c.get(&key(4).0).ok().flatten(), Some(reply_for(4)));
     // gc to half the bytes, then clear.
@@ -282,9 +292,7 @@ fn killed_daemon_with_queued_writes_loses_entries_but_stores_nothing_wrong() {
     );
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stdout));
     let _serve = Serve::start(&s, &[], &[]);
-    let Ok(mut c) = Client::connect(&s.socket()) else {
-        unreachable!("cannot connect")
-    };
+    let mut c = cache_client(&s.socket());
     for i in 0..n {
         let got = c.get(&key(i).0).ok().flatten();
         assert!(got.is_none() || got == Some(reply_for(i)), "key {i}");

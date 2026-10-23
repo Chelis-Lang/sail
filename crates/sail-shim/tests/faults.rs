@@ -729,6 +729,7 @@ fn memory_tier_never_serves_what_the_disk_does_not_hold() {
     let Ok(mut c) = sail_api::client::Client::connect(&rig.socket) else {
         unreachable!("cannot connect")
     };
+    assert!(c.hello(&rig.solver.to_string_lossy()).is_ok());
     for (k, on_disk) in stored.iter().zip(&snapshot) {
         let got = c.get(&k.0).ok().flatten();
         assert_eq!(&got, on_disk, "GET {k}");
