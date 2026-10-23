@@ -261,12 +261,12 @@ pub fn classify(
     if backend.currentness != crate::project::Currentness::Current
         || backend.error.is_some()
         || backend.no_reuse.is_some()
-        || backend.exit_code != Some(1)
+        || !matches!(backend.exit_code, Some(1 | 101))
         || counts.unknown != 0
         || counts.missing_answer != 0
         || counts.missing_source != 0
         || !backend.targets.iter().all(|t| {
-            t.complete
+            admitted_target_completion(t)
                 && t.report.attribution.status == AttributionStatus::Complete
                 && t.report.attribution.unmatched_sessions == 0
                 && t.report.error.is_none()
@@ -307,8 +307,9 @@ pub fn classify(
     let functions = backend
         .targets
         .iter()
-        .filter(|t| t.requested)
+        .filter(|t| t.requested && t.report.exit_code == Some(1) && !t.complete)
         .flat_map(|t| &t.report.crates)
+        .filter(|c| c.verus.success == Some(false) && c.verus.errors.is_some_and(|n| n > 0))
         .flat_map(|c| &c.functions)
         .filter(|f| f.function == binding.lowered_function)
         .collect::<Vec<_>>();
@@ -336,6 +337,7 @@ pub fn classify(
                 || o.checks.is_empty()
                 || o.checks.iter().any(|c| {
                     c.source.is_none()
+                        || c.reason_unknown.is_some()
                         || !matches!(c.answer, Some(AnswerName::Sat | AnswerName::Unsat))
                 })
         })
@@ -349,6 +351,37 @@ pub fn classify(
         return (Outcome::Killed, "actual fully attributed SAT verifier rejection under the unchanged admitted contract; not a concrete source counterexample".into());
     }
     inconclusive("NotProved without an attributed conclusive SAT rejection is not killed")
+}
+
+// TargetResult.complete denotes successful complete verification, not completeness
+// of a failed report. Source jobs select the whole owned target and never a focus.
+// A failed target instead needs explicit completed Verus verification totals and
+// its own known failure status; Cargo's wrapper may return 101 for that failure.
+fn admitted_target_completion(target: &crate::project::TargetResult) -> bool {
+    let report = &target.report;
+    if target.scope_reuse.is_some()
+        || report.crates.is_empty()
+        || report.summary.unknown != 0
+        || report.summary.provisional != 0
+        || report.summary.unstable != 0
+        || !report.crates.iter().all(|c| {
+            c.verus.verified.is_some()
+                && c.verus.errors.is_some()
+                && c.verus.success == c.verus.errors.map(|errors| errors == 0)
+                && c.verus.encountered_vir_error == Some(false)
+        })
+    {
+        return false;
+    }
+    match report.exit_code {
+        Some(0) => target.complete && report.crates.iter().all(|c| c.verus.success == Some(true)),
+        Some(1) => {
+            target.requested
+                && !target.complete
+                && report.crates.iter().any(|c| c.verus.success == Some(false))
+        }
+        _ => false,
+    }
 }
 
 /// Decode and verify self-consistency of an exact retained original worker stream.
@@ -577,7 +610,9 @@ pub fn attach_assurance(
     }
     for requirement in &mut assurance.requirements {
         for evidence in &mut requirement.evidence {
-            if evidence.source_sha256 != campaign.plan.baseline_source_sha256 {
+            if evidence.source_sha256 != campaign.plan.baseline_source_sha256
+                || evidence.backend_sha256 != campaign.baseline_backend_sha256
+            {
                 return Err(invalid());
             }
             let observations = campaign

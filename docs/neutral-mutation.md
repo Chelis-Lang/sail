@@ -39,7 +39,10 @@ states distinguish completion, cancellation, timeout and interruption.
 `killed` requires original fully attributed stable SAT verifier rejection under
 the unchanged admitted contract, with exact original tool/configuration
 identities and no unknown, missing or unrecorded relevant evidence. It does
-not assert a concrete source counterexample. `survived` requires a complete
+not assert a concrete source counterexample. A failed target has `complete =
+false`; complete failure evidence comes from its explicit Verus verification
+totals, failed report status and exact attributed rejection, not the success
+flag or enclosing Cargo exit code alone. `survived` requires a complete
 whole-source proof of the actual mutant. Every other result is `inconclusive`,
 including a NotProved report whose underlying answer is unknown. Passing
 requires all selected candidates killed and no omitted or unsupported scope.

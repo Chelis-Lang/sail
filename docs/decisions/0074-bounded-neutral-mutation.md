@@ -19,6 +19,11 @@ report contains a conclusive SAT verifier rejection of its mapped function,
 with unchanged non-target proofs and no unknown, missing or unrecorded checks.
 This means verifier rejection under the unchanged admitted contract. It does
 not mean a concrete source-level counterexample. Whole-source proof is survived.
+The target success flag is not failure-completion evidence: a rejected target
+correctly has `complete = false`. Require its completed Verus verification
+totals and explicit failed report exit status, accepting only the known direct
+failure status or Cargo wrapper failure status at the enclosing process.
+Compiler failures, missing totals and partial-scope reports remain inconclusive.
 All other evidence, including generic NotProved, is inconclusive. A passing
 campaign requires every policy candidate killed, with no unsupported, omitted,
 unexecuted, survived or inconclusive scope.
