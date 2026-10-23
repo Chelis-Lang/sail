@@ -405,6 +405,22 @@ qualifying the macOS runtime against it).
    accepted, with no engine fault.
 5. The owner reviews the draft and decides when to publish.
 
+When the installed stages have already passed the native matrix, full mutation
+cohorts and walkthroughs, package those same bytes on an Apple-silicon Mac:
+
+```sh
+scripts/release.sh package VERSION dist/stage/linux dist/stage/macos
+```
+
+This checks both complete release indexes and their platform runtime pins,
+then writes the same four assets under `dist/`. It refuses existing output
+names. It does not rebuild, record new proofs, upload, create a tag or publish.
+Keep the stages' native `sail --version` results and CLI hashes with their
+qualification results; `VERSION` must match the version they report. Review
+and create the draft from these assets only after the release gates pass.
+The one-command build-and-draft route above remains available for a new build;
+its output needs qualification before publication.
+
 `scripts/release.sh stage OUT ENGINE_BUILD` is the staging step alone: it
 copies `target/release/sail` and `sail-z3` (stripped of the release
 profile's line tables with `strip -S`; function symbols stay), and the engine build's manifest

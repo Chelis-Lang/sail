@@ -3,6 +3,8 @@
 # (docs/releasing.md). Local only: CI never builds or publishes releases.
 #
 #   scripts/release.sh VERSION       build both platforms, package, draft release
+#   scripts/release.sh package VERSION LINUX_STAGE MACOS_STAGE
+#                                    package already qualified stages, no rebuild or upload
 #   scripts/release.sh stage OUT ENGINE_BUILD
 #                                    copy this checkout's release binaries
 #                                    (target/release) and Sail's Verus (the
@@ -112,6 +114,38 @@ package() {
   (cd dist && shasum -a 256 "$name.tar.gz" >"$name.tar.gz.sha256")
 }
 
+# Preserve the exact bodies used by native qualification. Each stage has
+# already passed native self-checks and its recorded version was checked there.
+package_stages() {
+  [ "$#" = 3 ] || die "usage: scripts/release.sh package VERSION LINUX_STAGE MACOS_STAGE"
+  local version="$1" linux="$2" macos="$3" workspace target
+  [ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] || die "package on an Apple-silicon Mac"
+  linux="$(cd "$linux" && pwd -P)" || die "cannot open Linux stage"
+  macos="$(cd "$macos" && pwd -P)" || die "cannot open macOS stage"
+  workspace="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+  case "$version" in "$workspace"|"$workspace"-*) ;; *) die "VERSION must start with the workspace version $workspace" ;; esac
+  case "$version" in *[!a-zA-Z0-9.+-]*) die "invalid package version" ;; esac
+  # Verify both complete indexes before creating either archive, and refuse
+  # platform swaps by the pinned runtime manifest, never by directory names.
+  "$release_python" -B scripts/release-shipped.py verify "$linux" >/dev/null
+  "$release_python" -B scripts/release-shipped.py verify "$macos" >/dev/null
+  "$release_python" - "$linux" "$macos" <<'PYCODE'
+import json, sys
+from pathlib import Path
+for platform, stage in zip(('linux', 'macos'), sys.argv[1:]):
+    pin = json.loads(Path(f'engine/verus/artifact-{platform}.json').read_bytes())
+    index = json.loads((Path(stage)/'release-files.json').read_bytes())
+    assert index['proof']['runtime_manifest_sha256'] == pin['manifest_sha256'], f'{platform} runtime mismatch'
+PYCODE
+  for target in x86_64-unknown-linux-gnu aarch64-apple-darwin; do
+    [ ! -e "dist/sail-$version-$target.tar.gz" ] && [ ! -e "dist/sail-$version-$target.tar.gz.sha256" ] \
+      || die "package already exists for $target"
+  done
+  mkdir -p dist
+  package "$linux" "sail-$version-x86_64-unknown-linux-gnu"
+  package "$macos" "sail-$version-aarch64-apple-darwin"
+}
+
 release() {
   local version="$1" workspace commit lane
   workspace="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
@@ -168,6 +202,7 @@ Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/s
 
 case "${1:-}" in
   stage) shift; stage "$@" ;;
+  package) shift; package_stages "$@" ;;
   ""|-h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
   *) release "$1" ;;
 esac
