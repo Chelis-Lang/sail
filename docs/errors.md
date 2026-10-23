@@ -146,7 +146,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3104` | Cannot identify the toolchain, or the target stayed in use past `SAIL_MANAGED_LOCK_WAIT_SECS` | Check the Rust and Verus installs; wait or raise the limit |
 | `SAIL3105` | Cleaning the edited package failed | Fix the error Cargo reports |
 | `SAIL3106` | Cannot run Cargo or capture its output | Check the Cargo install |
-| `SAIL3107` | Verification produced no complete proof receipt for a target | Re-run; the result is not reused |
+| `SAIL3107` | Verification produced no complete or unambiguous proof observation for a Cargo target | Re-run; the result is not reused |
 | `SAIL3108` | No Current run is recorded for this project and settings | Verify once; later reads can then be Current |
 | `SAIL3111` | The managed adapter failed (solver capture, receipts or Cargo wrapper) | Read the message; re-run |
 | `SAIL3112` | A setup managed verification cannot bind to a proof receipt: `--target-dir`, Verus `--log` options, `--no-verify`, `-v`, `--message-format`, `--sysroot`, tests, benches or examples, Cargo `--config` or configuration Sail cannot identify, `RUSTC_WORKSPACE_WRAPPER`, a loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_*`), or no target with `verify = true`. A `note` from `sail verify`, a job, `watch` or MCP: the run is verified as plain `cargo verus verify` verifies it, without proof reuse; a job's project result carries `no_reuse` and a `SAIL3112:` note and is never `current`. Still an error from `--engine interactive` | Nothing. Remove the setting to get proof reuse |

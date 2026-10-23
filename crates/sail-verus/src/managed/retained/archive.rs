@@ -967,6 +967,7 @@ mod tests {
             name: "unit".into(),
             crate_type: "lib".into(),
             rustc_args_sha256: digest(b"actual argv fixture"),
+            cargo_name: None,
         };
         let receipt = receipt_fixture(root, &artifact, identity.clone(), declared)?;
         let basis = Basis {

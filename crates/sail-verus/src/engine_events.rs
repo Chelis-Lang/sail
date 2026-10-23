@@ -136,11 +136,11 @@ fn identity(runtime: &Runtime, target: &TargetIdentity, ordinal: u64) -> InputEv
                 .get(&target.manifest)
                 .cloned()
                 .unwrap_or_default(),
-            name: target.name.clone(),
+            name: target.target_name().to_owned(),
             kind: runtime
                 .target_kinds
                 .get(&target.manifest)
-                .and_then(|targets| targets.get(&target.name))
+                .and_then(|targets| targets.get(target.target_name()))
                 .cloned()
                 .unwrap_or_default(),
         },
