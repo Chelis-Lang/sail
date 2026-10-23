@@ -1,6 +1,6 @@
 name: ci
 
-# Every push to main and every PR: the six required checks, and nothing
+# Every push and PR to main or the release branch: the six required checks, and nothing
 # else. Jobs after the authorship check run inside the CI image
 # (ci/Dockerfile, ADR 0013), through ci/run.sh, the same steps `ci/local.sh`
 # runs locally. CI serves rapid iteration: each job should finish in about
@@ -10,9 +10,9 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, release/0.1.0]
   pull_request:
-    branches: [main]
+    branches: [main, release/0.1.0]
   workflow_dispatch:
 
 permissions:

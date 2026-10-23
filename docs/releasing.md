@@ -1,11 +1,22 @@
 # Releasing Sail
 
-The combined 0.1.0 candidate is being qualified on native Linux and macOS.
-The installed Linux and corrected Mac controls serve the shipped vstd, verify
-an edit, and restore the original target's own retained proof. The final
-combined performance decision remains pending. Do not substitute
-component measurements for the [release matrix](validation/release-matrix.md)
-or the installed artifact's full mutation cohorts.
+The 0.1.0-rc.6 artifacts are frozen on `release/0.1.0`, starting at
+`fc29023a`. Their Rust/Cargo/runtime inputs equal the qualified `cda42861`
+consumer. Later Oyster integration on main is outside this candidate.
+Both frozen archives pass first-use proof reuse, an edit, actual repair and
+real Claude Code MCP checks. All mutation comparisons pass; remaining cold
+and unchanged costs keep performance acceptance open. The
+[release record](validation/release-candidate.md) binds the exact artifacts.
+
+For private draft review, collaborators can download the archives and checksums
+with GitHub CLI, then follow the README's checksum and extraction commands:
+
+```sh
+gh release download v0.1.0-rc.6 --repo Chelis-Lang/sail \
+  --pattern 'sail-0.1.0-rc.6-*.tar.gz*'
+```
+
+The ordinary release download URLs become available when the owner publishes.
 
 The portable native path requires the pinned verifier toolchain's canonical
 `lib/rustlib/src/rust` tree; a missing, aliased or changed tree declines proof
