@@ -94,6 +94,32 @@ def main():
         (bundle/'manifest.json').write_text(json.dumps({'schema':12,'kind':'sail-vstd-compile-boundary',
                 'runtime':'variant','identity':'b'*64,'virtual_base':'/rustc-dev/fixture','units':{key:'vstd fixture'}}))
         proof = module.check_bundle(bundle, 'variant', module.digest(runtime/'sail-build.json'), 'run')
+        # Each exact profile needs its own complete source run and remains
+        # fully bound; joining one cannot hide a corrupt second profile.
+        original = root/'profile-original';raised = root/'profile-raised'
+        shutil.copytree(bundle, original);shutil.copytree(bundle, raised)
+        raised_key = 'b'*64
+        (raised/'units'/key).rename(raised/'units'/raised_key)
+        raised_unit = copy.deepcopy(unit)
+        raised_unit.update(key=raised_key, establishing_run='raised-run',
+                           environment={' __VERUS_DRIVER_ARGS_FOR_@@sail-package@@':
+                                        '__VERUS_DRIVER_ARGS_SEP__--rlimit__VERUS_DRIVER_ARGS_SEP__100'})
+        (raised/'units'/raised_key/'unit.json').write_text(json.dumps(raised_unit))
+        raised_manifest = json.loads((raised/'manifest.json').read_text())
+        raised_manifest['units'] = {raised_key:'vstd fixture'}
+        (raised/'manifest.json').write_text(json.dumps(raised_manifest))
+        original_unit = copy.deepcopy(unit);original_unit['environment'] = {}
+        (original/'units'/key/'unit.json').write_text(json.dumps(original_unit))
+        joined, runs = module.join_exact_profiles(original, raised, 'variant',
+                                                  module.digest(runtime/'sail-build.json'), 'run', 'raised-run')
+        assert len(runs) == 2 and len(joined['members']) > len(proof['members'])
+        refuses(lambda:module.check_bundle(original, 'variant', 'unused', 'run'))
+        refuses(lambda:module.check_bundle(original, 'variant', 'unused', {key:'run'}))
+        bad_runs = dict(runs);bad_runs[raised_key] = 'foreign'
+        refuses(lambda:module.check_bundle(original, 'variant', 'unused', bad_runs))
+        second = original/'units'/raised_key/'files/libvstd.vir'
+        second.write_bytes(b'corrupt second proof')
+        refuses(lambda:module.check_bundle(original, 'variant', 'unused', runs))
         replies = release/module.REPLIES;replies.mkdir()
         record = b'k'*32+(3).to_bytes(4,'little')+b'one'
         (replies/'vstd.pack').write_bytes(module.PACK_MAGIC+record)
@@ -168,12 +194,22 @@ elif sys.argv[1]=='serve':
 elif sys.argv[1]=='verify':
  assert os.environ['RUSTUP_TOOLCHAIN']==cfg['toolchain']
  trace=Path(os.environ['SAIL_SHIPPED_TRACE']);assert trace==Path(cfg['evidence'])/'boundary-trace'
- trace.mkdir();(trace/'fixture.json').write_text(json.dumps({'event':'actual-owned-mock-verify-entry'}))
+ trace.mkdir(exist_ok=True);(trace/'fixture.json').write_text(json.dumps({'event':'actual-owned-mock-verify-entry'}))
  for directory in ('.sail-boundary-inputs','.sail-boundary-native-reads'):
   if cfg.get('missing_certificate') and directory=='.sail-boundary-inputs':continue
-  observed=Path(os.environ['CARGO_HOME']).parent/directory/'fixture';observed.mkdir(parents=True);(observed/'inputs.json').write_text('{}')
- shutil.copytree(cfg['template'],os.environ['SAIL_SHIPPED_RECORD'])
- value=cfg['report'];value['currentness']=cfg['currentness'];print(json.dumps(value))
+  observed=Path(os.environ['CARGO_HOME']).parent/directory/'fixture';observed.mkdir(parents=True,exist_ok=True);(observed/'inputs.json').write_text('{}')
+ bundle=Path(os.environ['SAIL_SHIPPED_RECORD']);shutil.copytree(cfg['template'],bundle)
+ value=cfg['report'];value['currentness']=cfg['currentness']
+ if '--rlimit' in sys.argv:
+  manifest=json.loads((bundle/'manifest.json').read_text());[old_key]=manifest['units'];key='b'*64
+  (bundle/'units'/old_key).rename(bundle/'units'/key)
+  unit_path=bundle/'units'/key/'unit.json';unit=json.loads(unit_path.read_text())
+  unit.update(key=key,establishing_run='raised-run',environment={' __VERUS_DRIVER_ARGS_FOR_@@sail-package@@':
+      '__VERUS_DRIVER_ARGS_SEP__--rlimit__VERUS_DRIVER_ARGS_SEP__100'})
+  unit_path.write_text(json.dumps(unit));manifest['units']={key:manifest['units'][old_key]}
+  (bundle/'manifest.json').write_text(json.dumps(manifest));value['run_id']='raised-run'
+  for target in value['targets']:target['establishing_run']='raised-run'
+ print(json.dumps(value))
 elif sys.argv[1]=='status':
  print(json.dumps({'running':True,'info':{'queue':{'entries':0}}}))
 elif sys.argv[1:3]==['cache','bundle-replies']:
@@ -325,6 +361,7 @@ else:raise SystemExit(3)
                 if case=='current':
                     assert module.verify(stage)['proof']['members']['Cargo.lock']['mode']==0o644
                     assert result['replies']['entries']==1
+                    assert result['exact_raised_profile'] and len(result['profile_establishing_runs'])==2
                 else:assert not (stage/module.REPLIES).exists()
                 if case=='certificate-missing':retained(evidence)
                 if case=='scratch-cleanup-failure':

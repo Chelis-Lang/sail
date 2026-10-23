@@ -9,6 +9,11 @@ semantic versioning once the API is published.
   least sixteen times its retention cost. Cheaper targets use ordinary solver
   caching on undo; unknown costs still capture the first proof.
 
+- Record a separate exact vstd proof at resource limit 100 when a subsumption
+  witness is unavailable. macOS uses independently verified default and 100
+  profiles because its pinned solver's resource counts can vary. Both profiles
+  retain complete member checks and exact keys.
+
 - Discard completed benchmark caches so a full matrix does not exhaust the host disk.
 
 - Overlap independent Cargo setup reads and completed-input observations with

@@ -5,6 +5,13 @@ release work; linked validation pages preserve the scope of each result.
 
 ## Release performance
 
+- **Mac resource-limit subsumption is unavailable on the current solver.**
+  Resource counts vary for one captured vstd query, while inputs and answers
+  agree. The recorder uses separately verified exact default and limit-100
+  profiles; other limits safely miss. See the
+  [reproduction](../corpus/repros/z3-resource-count-variation/README.md) and
+  [qualification](validation/rlimit-subsumption.md).
+
 - **Anvil unchanged partial verification still has setup overhead** (#314).
   Exact-scope report reuse has removed repeat verification on Linux. The Mac
   first-recheck correction is being qualified: a native control falls from

@@ -128,3 +128,28 @@ Linux so far:
 - Revisit if Verus starts using `--rlimit` for anything but the per-query
   limit, for example scaling another option. The byte check would then fail
   and the witness would not be stored.
+
+
+## Amendment 2026-10-22: separately recorded exact profiles
+
+The deterministic-counter argument in the original context is not a universal
+property of the pinned macOS solver. A captured vstd query returns the same
+answer with a final resource count of either 114117 or 114131 in fresh
+processes. The full three-default/three-raised vstd comparison preserves every
+input apart from limits and every answer, but one process's counts vary.
+See the [reproduction](../../corpus/repros/z3-resource-count-variation/README.md).
+
+The current macOS recorder therefore declines subsumption witnesses. When a
+witness is unavailable, it records a second complete proof with the exact
+`--rlimit 100` invocation. The default and raised profiles have distinct
+unchanged keys, individually confirmed source runs, complete compiler reads
+and separately bound output members. The release index accepts at most two
+profiles and validates every unit. Each lookup still matches its exact flags;
+other flags and limits safely miss unless an independently valid witness
+admits them. Linux retains its existing strict witness checks.
+
+This uses ordinary exact-key replay, adding no normalization exception. Both
+recordings must be Current and fully verified before either is published.
+Their solver replies are packaged together after both runs complete. One
+runtime and one vstd version remain supported. New-format consumer and real
+producer qualification are recorded in the [validation](../validation/rlimit-subsumption.md).

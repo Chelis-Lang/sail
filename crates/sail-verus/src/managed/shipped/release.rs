@@ -146,7 +146,9 @@ fn mode(_: &std::fs::Metadata) -> Option<u32> {
 
 fn expected_files(bundle: &Path, manifest: &Manifest, members: &Files) -> Option<BTreeSet<String>> {
     let mut expected = BTreeSet::from(["manifest.json".to_owned(), "Cargo.lock".to_owned()]);
-    if manifest.units.len() != 1 {
+    // A release may carry its default proof and one independently recorded
+    // raised-limit proof. Both keep exact keys and complete member admission.
+    if !(1..=2).contains(&manifest.units.len()) {
         return None;
     }
     for key in manifest.units.keys() {
@@ -782,6 +784,45 @@ mod tests {
             &fixture.runtime,
             &executable
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn two_profiles_bind_each_unit_and_reject_a_third() -> Result {
+        let mut fixture = Installation::new()?;
+        for key in ["b".repeat(64), "c".repeat(64)] {
+            let original = fixture.bundle.join("units").join(KEY);
+            for name in ["files/libvstd.rmeta", "stdout", "stderr"] {
+                fixture.add(
+                    &format!("deps/variant/units/{key}/{name}"),
+                    &std::fs::read(original.join(name))?,
+                )?;
+            }
+            let mut unit: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(original.join("unit.json"))?)?;
+            unit["key"] = json!(key);
+            let name = format!("deps/variant/units/{key}/unit.json");
+            let raw = serde_json::to_vec(&unit)?;
+            fixture.add(&name, &raw)?;
+            let mut manifest: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(fixture.bundle.join("manifest.json"))?)?;
+            manifest["units"][&key] = json!("vstd registry");
+            fixture.add(
+                "deps/variant/manifest.json",
+                &serde_json::to_vec(&manifest)?,
+            )?;
+            fixture.write_index()?;
+            if key.starts_with('b') {
+                assert!(fixture.admit().is_some());
+                unit["establishing_run"] = json!("unbound");
+                std::fs::write(fixture.root.join(&name), serde_json::to_vec(&unit)?)?;
+                assert!(fixture.admit().is_none());
+                std::fs::write(fixture.root.join(&name), raw)?;
+                assert!(fixture.admit().is_some());
+            } else {
+                assert!(fixture.admit().is_none());
+            }
+        }
         Ok(())
     }
 }
