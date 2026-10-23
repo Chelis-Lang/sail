@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Benchmark Vest with its passing resource limit; matching failed verification
+  no longer qualifies a passing-workload performance row.
+
 - Avoid repeating verification when the compiler declares an alternate path to
   an already observed source file; preserve source-alias retarget checks.
 
