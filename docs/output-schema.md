@@ -282,6 +282,9 @@ Each top-level `error`, `warning`, `note` or `help` block on stderr becomes
 - `spans` lists its `-->` (primary) and `:::` locations.
 
 Nothing is reworded. Diagnostics are not yet linked to obligations.
+Standalone Rustc artifact events are build metadata and do not become part
+of a diagnostic's `rendered` text. Indented examples and unrecognized JSON
+remain verbatim diagnostic text.
 
 ## Attribution coverage
 

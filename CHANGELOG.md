@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep Rustc artifact metadata out of structured diagnostic text, including
+  the final verification-progress note. Verifier messages retain their text.
+
 - Correct a macOS HumanEval proof regression from positional spec-formal names.
   Include complete signature size in those names, preserving source-rename
   stability while restoring the proof that stock verifies. Rebuild both Verus

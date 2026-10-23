@@ -94,6 +94,26 @@ fn location(line: &str) -> Option<Span> {
     })
 }
 
+/// Rustc's standalone artifact events are build metadata, not diagnostics.
+/// Indented examples and unknown JSON records remain diagnostic text.
+fn compiler_artifact(line: &str) -> bool {
+    if !line.starts_with('{') {
+        return false;
+    }
+    let Ok(serde_json::Value::Object(fields)) = serde_json::from_str(line) else {
+        return false;
+    };
+    fields.len() == 3
+        && fields
+            .get("$message_type")
+            .and_then(serde_json::Value::as_str)
+            == Some("artifact")
+        && fields
+            .get("artifact")
+            .is_some_and(serde_json::Value::is_string)
+        && fields.get("emit").is_some_and(serde_json::Value::is_string)
+}
+
 /// Parses every diagnostic in `stderr`. Lines before the first header (for
 /// example Cargo's status lines) are not part of any diagnostic.
 #[must_use]
@@ -102,6 +122,9 @@ pub fn parse(stderr: &str) -> Vec<Diagnostic> {
     let mut out: Vec<Diagnostic> = Vec::new();
     let mut lines: Vec<&str> = Vec::new();
     let finish = |out: &mut Vec<Diagnostic>, lines: &mut Vec<&str>| {
+        if lines.is_empty() {
+            return;
+        }
         while lines.last().is_some_and(|l| l.trim().is_empty()) {
             lines.pop();
         }
@@ -111,7 +134,9 @@ pub fn parse(stderr: &str) -> Vec<Diagnostic> {
         lines.clear();
     };
     for line in text.lines() {
-        if let Some((level, code, message)) = header(line) {
+        if compiler_artifact(line) {
+            finish(&mut out, &mut lines);
+        } else if let Some((level, code, message)) = header(line) {
             finish(&mut out, &mut lines);
             out.push(Diagnostic {
                 level,
@@ -121,7 +146,9 @@ pub fn parse(stderr: &str) -> Vec<Diagnostic> {
                 rendered: String::new(),
             });
             lines.push(line);
-        } else if let Some(d) = out.last_mut() {
+        } else if !lines.is_empty()
+            && let Some(d) = out.last_mut()
+        {
             if let Some(span) = location(line) {
                 d.spans.push(span);
             }
@@ -196,5 +223,46 @@ error: could not compile `demo` (lib) due to 1 previous error
         assert_eq!(parse("just text\nmore\n"), []);
         assert_eq!(header("errors: x"), None);
         assert_eq!(header("error x"), None);
+    }
+
+    #[test]
+    fn compiler_artifacts_end_a_diagnostic_without_becoming_its_text() {
+        let stderr = concat!(
+            "note: verifying module example\n\n",
+            "{\"$message_type\":\"artifact\",\"artifact\":\"/cache/example.d\",\"emit\":\"dep-info\"}\n",
+            "{\"$message_type\":\"artifact\",\"artifact\":\"/cache/example.rmeta\",\"emit\":\"metadata\"}\n",
+            "build status\n",
+            "warning: unchanged warning\n --> example.rs:1:2\n",
+        );
+        let diagnostics = parse(stderr);
+        assert_eq!(diagnostics.len(), 2);
+        assert_eq!(diagnostics[0].rendered, "note: verifying module example");
+        assert_eq!(
+            diagnostics[1].rendered,
+            "warning: unchanged warning\n --> example.rs:1:2"
+        );
+        assert_eq!(diagnostics[1].spans[0].file, "example.rs");
+        assert_eq!(
+            parse(
+                stderr
+                    .lines()
+                    .take(4)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+                    .as_str()
+            ),
+            diagnostics[..1]
+        );
+    }
+
+    #[test]
+    fn artifact_examples_and_unknown_json_are_preserved() {
+        let stderr = concat!(
+            "error: example\n",
+            "  {\"$message_type\":\"artifact\",\"artifact\":\"example.d\",\"emit\":\"dep-info\"}\n",
+            "{\"$message_type\":\"diagnostic\",\"message\":\"keep this\"}\n",
+            "{\"$message_type\":\"artifact\",\"artifact\":4,\"emit\":\"metadata\"}\n",
+        );
+        assert_eq!(parse(stderr)[0].rendered, stderr.trim_end());
     }
 }

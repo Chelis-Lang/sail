@@ -1,27 +1,39 @@
 # Release-candidate validation
 
-**Current status:** corrected fork `7d9d5410` is staged on both platforms.
-The installed Mac candidate passes the complete three-round HumanEval cohort
-(165 matching comparisons), including the previously failing mutation. Full mutation
-cohorts, final source-suite checks and the new release matrices are running.
-Release acceptance remains open; no rc.6 draft has been created.
+**Current status:** corrected fork `7d9d5410` passes both installed platforms'
+functional qualification. All four mutation cohorts and both 31-row matrices
+are complete. Performance acceptance remains open because Mac cold and
+unchanged calls still have real overhead. No rc.6 draft has been created.
 
-The [runtime record](spec-signature-runtime.md) identifies the rebuilt SDKs
-and their scope. The [matrix](release-matrix.md) identifies the actual staged
-consumer binaries. Packaging must preserve these stages without rebuilding.
+The [runtime record](spec-signature-runtime.md) identifies SDKs and deep checks;
+the [matrix](release-matrix.md) binds each cohort to its actual consumer.
+Packaging preserves the qualified stages without rebuilding.
 
-| Current corrected-candidate gate | Result |
+| Corrected-candidate gate | Result |
 |---|---|
-| Native Linux workspace, solver, full E2E including extra, PR and full fast conformance | Pass |
-| Native Linux full standard conformance | Running |
+| Native Linux workspace, solver, full E2E including extra, PR/full fast and standard | Pass |
 | Mac host gate | Pass; 963 tests, clippy clean |
-| Platform proof factories and installed-runtime checks | Pass on Linux and Mac |
-| Ordinary public Vest edit/undo on both new runtime manifests | Pass; original complete proof restored with zero verifier invocations |
-| Mac original-failure regression, installed consumer, three rounds | Pass; 12 Same, zero different or false verified |
-| Full three-round installed mutation cohorts, both platforms | Mac HumanEval 165 Same; Mac/Linux IronKV 153 Same each; remaining cohorts running |
-| Final new-runtime deep corpus and full deep-RVT cache | Fork pass-through 4,901 Same; corpus and cache rounds running |
-| Corrected-candidate release matrices | Running/queued |
-| New-stage README/Claude Code MCP, final archive smoke and rc.6 draft | Pending |
+| Platform factories and exact default/100 proofs | Pass on both platforms |
+| Public Vest edit/undo, both new runtime manifests | Pass; restored original proof uses zero verifier invocations |
+| Four complete three-round installed mutation cohorts per platform | Pass; 651 matching comparisons on each platform, zero false verified, different, unstable or infrastructure results |
+| Deep corpus | Pass; four arms each 159 Same / 13,166 functions; two optional Singular projects excluded |
+| Full fork source suite | Pass-through, cache-fill and cache-warm each 4,901 Same; all 4,838 nonignored tests pass; separate stock debug-order limitation remains recorded |
+| Release matrices | Both complete: 31/31 valid; slower rows remain open |
+| Actual new Linux and Mac archives, README and real Claude Code MCP | Pass; first-use proof served, edited verification, repair, MCP lists 17 tools |
+| Release performance decision and rc.6 draft | Open |
+
+| Corrected archive | SHA-256 |
+|---|---|
+| `sail-0.1.0-rc.6-x86_64-unknown-linux-gnu.tar.gz` | `bca24a1bb7ca53256b13b4b1cad7ad8d79a0863f5a3a8e32339149e0516d8996` |
+| `sail-0.1.0-rc.6-aarch64-apple-darwin.tar.gz` | `30b5e45dfa42fc9e6f65dbfafb4ecc1b433102b2575b4762c3adcc4d4e076806` |
+
+Raw complete native consumer gates and Linux archive/MCP checks:
+`experiments/2026-10-23/signature-consumer-complete.tgz`, SHA-256
+`870f63fc777ee341502af2c0aafdd074b88f37a04323a94f3568e7e05b9b4755`.
+Actual Mac archive, README and MCP checks:
+`experiments/2026-10-23/signature-mac-smoke.tgz`, SHA-256
+`f06e5604e7ff3d05077075a43e647da43286a67415bbac8e9f55cb562a99bf0a`.
+These checks qualify the binaries above, not a later rebuilt consumer.
 
 ## Previous unaccepted candidate
 
