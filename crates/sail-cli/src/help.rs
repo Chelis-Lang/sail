@@ -30,6 +30,7 @@ pub(crate) const EXPERIMENTAL: &[&str] = &[
     "explain",
     "baseline",
     "compare",
+    "assurance",
     "serve",
     "fragility",
     "cache shared",
@@ -59,6 +60,10 @@ USAGE:
 
 /// Help for the commands whose usage is fixed text.
 const HELP: &[(&str, &str)] = &[
+    (
+        "assurance",
+        "Read requirement-aware contract-to-code evidence for an exact neutral source job.\n\nUSAGE:\n    sail assurance JOB [--output json]\n\nThe view preserves source-snapshot scope, actual evidence tier and provenance.\nLive-source currentness, requirement entailment and mutation remain separate.\n",
+    ),
     (
         "runtime",
         "Execute versioned raw SMT transcripts through Sail's bundled pinned Z3.

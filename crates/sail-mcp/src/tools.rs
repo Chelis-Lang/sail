@@ -306,6 +306,7 @@ fn dispatch(
         | "save_baseline"
         | "list_baselines"
         | "get_baseline"
+        | "requirement_assurance"
         | "start_repair_validation" => crate::proof_tools::call(ctx, name, args, cancel),
         "verify" => verify(ctx, args, cancel),
         "counterexample" => counterexample(ctx, args, cancel),

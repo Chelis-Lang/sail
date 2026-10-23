@@ -24,11 +24,14 @@ if ! docker image inspect "$image" >/dev/null 2>&1; then
     --target "$sail_image_target" -t "$image" --load .
 fi
 sail_runtime_env=()
-for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_RELEASE_OUT SAIL_VERSION SAIL_BUILD_JOBS SAIL_BENCH_LABEL SAIL_E2E_OUTPUT_OUT; do
+for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_RELEASE_OUT SAIL_VERSION SAIL_BUILD_JOBS SAIL_BENCH_LABEL SAIL_E2E_OUTPUT_OUT SAIL_CONTRACT_JOBS_OUT; do
   if sail_env_value="$(printenv "$sail_env_name")"; then
     sail_runtime_env+=(-e "$sail_env_name=$sail_env_value")
   fi
 done
+if [ -n "${SAIL_DEPENDENCY_READ_TOKEN:-}" ]; then
+  sail_runtime_env+=(-e SAIL_DEPENDENCY_READ_TOKEN)
+fi
 tty=()
 [ -t 1 ] && tty=(-t)
 sail_fault_options=()

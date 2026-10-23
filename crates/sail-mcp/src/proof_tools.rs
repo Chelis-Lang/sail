@@ -7,6 +7,7 @@ pub(super) fn definitions() -> Vec<Value> {
     let string = || json!({"type":"string","minLength":1});
     let target = json!({"type":"object","additionalProperties":false,"required":["job_id","package_id","target","kind","function"],"properties":{"job_id":string(),"package_id":string(),"target":string(),"kind":{"type":"string","enum":["lib","bin"]},"function":string(),"obligation":string()}});
     vec![
+        json!({"name":"requirement_assurance","title":"Read requirement assurance","description":"Read versioned contract-to-code evidence grouped by requirement identity for an exact neutral source job. Source-snapshot scope, unknown live currentness, actual tiers and mutation limitations remain explicit.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string()}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"verification_events","title":"Read proof observations","description":"Read one bounded page from proof stream v1. Resume using next.stream_id/after. Gap is explicit; early observations remain provisional. Completed target reports independently seal final proof evidence.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"stream_id":string(),"after":{"type":"integer","minimum":0}}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"explain_failure","title":"Explain exact failure evidence","description":"Return a function/obligation report, raw models, diagnostics and establishing provenance for an exact package/target/kind identity. Unattributed diagnostics remain explicitly unattributed. No proof edits are generated.","inputSchema":target,"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"compare_verification","title":"Compare verification evidence","description":"Compare a completed job with an explicit earlier job or immutable named baseline. Scope/configuration mismatches are descriptive, never labelled proof regressions; partial scopes cannot prove removal.","inputSchema":{"type":"object","additionalProperties":false,"required":["after_job"],"properties":{"after_job":string(),"before_job":string(),"baseline":baseline_schema()}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
@@ -37,6 +38,7 @@ pub(super) fn call(
             match serde_json::from_slice::<Value>(&outcome.stdout) {
                 Ok(document)
                     if valid(name, &document)
+                        && requested_assurance_matches(name, args, &document)
                         && requested_baseline_matches(name, args, &document) => ToolResult::ok(
                     "Scoped proof evidence; provisional observations do not authorize a repair."
                         .into(),
@@ -103,6 +105,7 @@ fn arguments(
     args: &Map<String, Value>,
 ) -> Result<(Vec<String>, Option<String>), String> {
     let allowed: &[&str] = match name {
+        "requirement_assurance" => &["job_id"],
         "verification_events" => &["job_id", "stream_id", "after"],
         "explain_failure" => &[
             "job_id",
@@ -132,6 +135,7 @@ fn arguments(
         return Err(format!("unknown argument {key}"));
     }
     let out = match name {
+        "requirement_assurance" => vec!["assurance".into(), value(args, "job_id")?],
         "save_baseline" => vec![
             "baseline".into(),
             "save".into(),
@@ -267,6 +271,13 @@ fn repair(args: &Map<String, Value>) -> Result<(Vec<String>, Option<String>), St
 }
 fn valid(name: &str, document: &Value) -> bool {
     match name {
+        "requirement_assurance" => {
+            matches!(serde_json::from_value::<sail_api::jobs::Response>(document.clone()),
+            Ok(sail_api::jobs::Response::Assurance(view))
+            if view.version == sail_api::assurance::VERSION
+                && view.currentness == sail_api::project::Currentness::Unknown
+                && !view.job_id.is_empty())
+        }
         "verification_events" => serde_json::from_value::<sail_api::proof::Page>(document.clone())
             .is_ok_and(|page| page.version == 1),
         "start_repair_validation" => {
@@ -299,6 +310,12 @@ fn valid(name: &str, document: &Value) -> bool {
     }
 }
 
+fn requested_assurance_matches(name: &str, args: &Map<String, Value>, document: &Value) -> bool {
+    name != "requirement_assurance"
+        || document.pointer("/value/job_id").and_then(Value::as_str)
+            == args.get("job_id").and_then(Value::as_str)
+}
+
 #[cfg(test)]
 #[path = "baseline_tools_tests.rs"]
 mod baseline_tests;
@@ -306,6 +323,43 @@ mod baseline_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn assurance_tool_binds_the_requested_job_and_preserves_snapshot_scope()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let args = json!({"job_id":"job-123"});
+        assert_eq!(
+            arguments("requirement_assurance", args.as_object().ok_or("args")?)?.0,
+            vec!["assurance", "job-123", "--output", "json"]
+        );
+        let document = serde_json::to_value(sail_api::jobs::Response::Assurance(Box::new(
+            sail_api::assurance::View {
+                version: sail_api::assurance::VERSION,
+                job_id: "job-123".into(),
+                currentness: sail_api::project::Currentness::Unknown,
+                requirements: Vec::new(),
+            },
+        )))?;
+        assert!(valid("requirement_assurance", &document));
+        assert!(requested_assurance_matches(
+            "requirement_assurance",
+            args.as_object().ok_or("args")?,
+            &document
+        ));
+        assert!(!requested_assurance_matches(
+            "requirement_assurance",
+            json!({"job_id":"other"}).as_object().ok_or("args")?,
+            &document
+        ));
+        assert!(
+            arguments(
+                "requirement_assurance",
+                json!({"job_id":"--help"}).as_object().ok_or("args")?
+            )
+            .is_err()
+        );
+        Ok(())
+    }
     fn parse(name: &str, value: &Value) -> Result<(Vec<String>, Option<String>), String> {
         arguments(name, value.as_object().ok_or("expected object")?)
     }

@@ -14,8 +14,8 @@ use std::{
 
 pub(super) fn definitions() -> Vec<Value> {
     vec![
-        json!({"name":"runtime_capabilities","title":"Inspect verification runtime","description":"Inspect actual implemented and installed raw-SMT backends through Sail's shared daemon. Readiness is not theorem evidence.","inputSchema":{"type":"object","additionalProperties":false,"properties":{}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
-        json!({"name":"runtime_execute","title":"Execute exact SMT transcripts","description":"Execute one versioned raw-SMT batch through Sail's shared daemon. Preserve exact backend evidence, caller identities and failure outcomes; satisfiability does not prove Rust code.","inputSchema":{"type":"object","additionalProperties":false,"required":["request"],"properties":{"request":{"type":"object","description":"Version-one runtime request: version=1, input={kind:smt, queries:[{obligation_id,requirement_ids,backend:z3,script,limits?}]}. Limits and transcript admission are enforced before dispatch."}}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
+        json!({"name":"runtime_capabilities","title":"Inspect verification runtime","description":"Inspect actual implemented and installed SMT and native temporal backends through Sail's shared daemon. Readiness is not theorem evidence.","inputSchema":{"type":"object","additionalProperties":false,"properties":{}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
+        json!({"name":"runtime_execute","title":"Execute verification runtime request","description":"Execute one versioned SMT batch or native temporal job through Sail's shared daemon. Preserve exact backend evidence, caller identities and failure outcomes; satisfiability does not prove Rust code.","inputSchema":{"type":"object","additionalProperties":false,"required":["request"],"properties":{"request":{"type":"object","description":"Version-one runtime request: version=1, input={kind:smt, queries:[{obligation_id,requirement_ids,backend:z3,script,limits?}]}. Limits and transcript admission are enforced before dispatch."}}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
     ]
 }
 
@@ -128,18 +128,45 @@ fn run(ctx: &Context, request: Option<&Request>, cancel: &Cancel) -> Result<Tool
     let response = client
         .execute_cancellable(request, || cancel.is_cancelled())
         .map_err(|e| e.to_string())?;
-    let Output::Smt { results } = &response.output;
-    let decided = results
-        .iter()
-        .filter(|r| {
-            r.outcome == Outcome::Completed && r.checks.iter().all(|c| c.answer != Answer::Unknown)
-        })
-        .count();
-    let text = format!(
-        "{decided}/{} SMT transcripts completed with decided answers; each answer concerns its exact formula.",
-        results.len()
-    );
-    let is_error = decided != results.len();
+    let (text, is_error) = match &response.output {
+        Output::Smt { results } => {
+            let decided = results
+                .iter()
+                .filter(|r| {
+                    r.outcome == Outcome::Completed
+                        && r.checks.iter().all(|c| c.answer != Answer::Unknown)
+                })
+                .count();
+            (
+                format!(
+                    "{decided}/{} SMT transcripts completed with decided answers; each answer concerns its exact formula.",
+                    results.len()
+                ),
+                decided != results.len(),
+            )
+        }
+        Output::Temporal { result } => {
+            let native = result.response.as_ref().map(|r| r.outcome);
+            let complete = result.outcome == Outcome::Completed
+                && matches!(
+                    native,
+                    Some(
+                        sail_api::temporal::Outcome::Holds
+                            | sail_api::temporal::Outcome::Refuted
+                            | sail_api::temporal::Outcome::Sampled
+                            | sail_api::temporal::Outcome::Valid
+                            | sail_api::temporal::Outcome::Invalid
+                    )
+                );
+            (
+                format!(
+                    "Native temporal execution {:?}; original evidence and bounded scope are retained.",
+                    result.outcome
+                ),
+                !complete,
+            )
+        }
+    };
     let value = serde_json::to_value(response).map_err(|e| e.to_string())?;
     Ok(if is_error {
         ToolResult::error(text, value)

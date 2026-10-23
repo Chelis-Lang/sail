@@ -69,8 +69,9 @@ def main():
             for listener in sockets:listener.close()
         release = root/'sail-fixture';bundle = release/'deps/variant'
         (release/'bin').mkdir(parents=True)
-        for name in ('sail', 'sail-z3'):
+        for name in ('sail', 'sail-z3', 'sail-runtime-worker'):
             path = release/'bin'/name;path.write_bytes(b'fixture executable');path.chmod(0o755)
+        (release/'bin/sail-runtime-worker.json').write_text(json.dumps({'version':1,'protocol':1,'sha256':module.digest(release/'bin/sail-runtime-worker')}))
         runtime = release/'engine/variant';runtime.mkdir(parents=True)
         (runtime/'sail-build.json').write_text(json.dumps({'rust_toolchain':PIN}))
         key = 'a'*64;entry = bundle/'units'/key
@@ -328,8 +329,9 @@ else:raise SystemExit(3)
                 stage=root/('producer-'+case)
                 (stage/'bin').mkdir(parents=True)
                 shutil.copytree(runtime,stage/'engine/variant')
-                for name in ('sail','sail-z3'):
+                for name in ('sail','sail-z3','sail-runtime-worker'):
                     path=stage/'bin'/name;path.write_text(executable);path.chmod(0o755)
+                (stage/'bin/sail-runtime-worker.json').write_text(json.dumps({'version':1,'protocol':1,'sha256':module.digest(stage/'bin/sail-runtime-worker')}))
                 pid_record=root/(case+'-server-pid')
                 (stage/'bin/fixture-config.json').write_text(json.dumps({'runtime':str(stage/'engine/variant'),'toolchain':PIN,
                     'runtime_hash':module.digest(stage/'engine/variant/sail-build.json'),

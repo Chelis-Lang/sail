@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+sail-dive.workspace = true
 sail-api.workspace = true
 sail-cache.workspace = true
 sail-key.workspace = true

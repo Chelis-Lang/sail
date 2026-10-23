@@ -67,7 +67,9 @@ fn endpoint_serves_capabilities_and_unavailable_without_a_false_answer() -> Test
     let mut handle = bind(&socket, &Config::default())?.spawn()?;
     let client = Client::new(&socket);
     assert!(!client.capabilities()?.backends[0].installed);
-    let Output::Smt { results } = client.execute(&request("(check-sat)"))?.output;
+    let Output::Smt { results } = client.execute(&request("(check-sat)"))?.output else {
+        return Err("expected SMT family".into());
+    };
     assert_eq!(results[0].outcome, Outcome::Unavailable);
     assert_eq!(results[0].checks, []);
     assert!(
@@ -250,8 +252,12 @@ fn actual_pinned_service_matches_embedding_and_reuses_the_same_cache() -> TestRe
     )?
     .spawn()?;
     let response = Client::new(&socket).execute(&query)?;
-    let Output::Smt { results } = &response.output;
-    let Output::Smt { results: original } = &expected.output;
+    let Output::Smt { results } = &response.output else {
+        return Err("expected SMT family".into());
+    };
+    let Output::Smt { results: original } = &expected.output else {
+        return Err("expected SMT family".into());
+    };
     assert_eq!(results[0].outcome, Outcome::Completed);
     assert_eq!(results[0].stdout, original[0].stdout);
     assert_eq!(results[0].checks, original[0].checks);
@@ -261,13 +267,15 @@ fn actual_pinned_service_matches_embedding_and_reuses_the_same_cache() -> TestRe
     Ok(())
 }
 
-fn hard_request() -> api::Request {
+fn hard_request() -> Result<api::Request, Box<dyn std::error::Error>> {
     let mut request = request(
         "(declare-fun f (Int) Int) (assert (forall ((x Int)) (> (f x) 0))) (assert (forall ((x Int)) (> (f x) (f (+ x 1))))) (check-sat)",
     );
-    let Input::Smt { queries } = &mut request.input;
+    let Input::Smt { queries } = &mut request.input else {
+        return Err("expected SMT family".into());
+    };
     queries[0].limits.resource_limit = 1_000_000_000;
-    request
+    Ok(request)
 }
 
 #[test]
@@ -285,8 +293,10 @@ fn actual_client_cancellation_and_disconnect_leave_no_active_execution() -> Test
     let mut handle = bind(&socket, &config)?.spawn()?;
     let activity = handle.activity();
     let response = Client::new(&socket)
-        .execute_cancellable(&hard_request(), || activity.load(Ordering::SeqCst) != 0)?;
-    let Output::Smt { results } = response.output;
+        .execute_cancellable(&hard_request()?, || activity.load(Ordering::SeqCst) != 0)?;
+    let Output::Smt { results } = response.output else {
+        return Err("expected SMT family".into());
+    };
     assert_eq!(results[0].outcome, Outcome::Cancelled);
     assert_eq!(results[0].checks, []);
     let stream = UnixStream::connect(&socket)?;
@@ -294,7 +304,7 @@ fn actual_client_cancellation_and_disconnect_leave_no_active_execution() -> Test
         &mut Deadline::new(&stream, IO_TIMEOUT),
         &Request::Execute {
             id: "disconnect-id".into(),
-            request: hard_request(),
+            request: hard_request()?,
         },
         MAX_REQUEST_BYTES,
     )?;
@@ -341,7 +351,9 @@ fn execution_registration_covers_blocked_response_delivery() -> TestResult {
     socket2::SockRef::from(&server).set_send_buffer_size(1024)?;
     let worker = std::thread::spawn(move || super::connection(&server, &state));
     let mut payload = request("(check-sat)");
-    let Input::Smt { queries } = &mut payload.input;
+    let Input::Smt { queries } = &mut payload.input else {
+        return Err("expected SMT family".into());
+    };
     queries[0].requirement_ids = (0..1024)
         .map(|index| format!("{index:04}-{}", "a".repeat(1000)))
         .collect();

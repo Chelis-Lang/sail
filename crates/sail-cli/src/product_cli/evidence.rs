@@ -2,6 +2,7 @@
 use sail_api::evidence::{Change, Comparison, Reference};
 use sail_api::jobs::{Request, Response};
 use sail_api::proof::Target;
+use std::fmt::Write as _;
 use std::io::Write;
 use std::process::ExitCode;
 
@@ -9,7 +10,16 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
     let mut run = || -> Result<(), String> {
         let (json, rest) = output(args)?;
         let request = request(&rest)?;
-        let response = super::call(&crate::jobs::connect_or_start()?, &request)?;
+        let client = crate::jobs::connect_or_start()?;
+        let response = if let Request::Assurance { id } = &request {
+            Response::Assurance(Box::new(
+                client
+                    .requirement_assurance(id)
+                    .map_err(|e| e.to_string())?,
+            ))
+        } else {
+            super::call(&client, &request)?
+        };
         let text = if json {
             serde_json::to_string_pretty(&response).map_err(|error| error.to_string())?
         } else {
@@ -46,6 +56,12 @@ fn output(args: &[String]) -> Result<(bool, Vec<String>), String> {
 }
 fn request(args: &[String]) -> Result<Request, String> {
     match args.first().map(String::as_str) {
+        Some("assurance") => match args {
+            [_, id] if !id.is_empty() && !id.starts_with('-') => {
+                Ok(Request::Assurance { id: id.clone() })
+            }
+            _ => Err("usage: assurance JOB [--output json]".into()),
+        },
         Some("explain") => explain(&args[1..]),
         Some("baseline") => match args.get(1).map(String::as_str) {
             Some("list") if args.len() == 2 => Ok(Request::Baselines),
@@ -117,6 +133,29 @@ fn explain(args: &[String]) -> Result<Request, String> {
 }
 fn human(response: &Response) -> String {
     match response {
+        Response::Assurance(view) => {
+            let mut text = format!(
+                "Requirement assurance for source job {} (snapshot evidence; live currentness unknown)",
+                view.job_id
+            );
+            for requirement in &view.requirements {
+                for evidence in &requirement.evidence {
+                    let _ = write!(
+                        text,
+                        "\n{} {}: {:?}, tier {:?}; mutation {:?}",
+                        requirement.requirement_id,
+                        evidence.function,
+                        evidence.outcome,
+                        evidence.tier,
+                        evidence.mutation
+                    );
+                    for qualifier in &evidence.qualifiers {
+                        let _ = write!(text, "\n  {qualifier}");
+                    }
+                }
+            }
+            text
+        }
         Response::Explanation(explanation) => format!(
             "{} {} {:?}: {:?}; established by {} ({:?})\n{}",
             explanation.target.name,
@@ -207,6 +246,22 @@ fn comparison_text(comparison: &Comparison) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn assurance_requires_one_explicit_job_identity() {
+        let arguments =
+            |values: &[&str]| values.iter().map(|v| (*v).to_owned()).collect::<Vec<_>>();
+        assert!(
+            matches!(request(&arguments(&["assurance", "job-123"])), Ok(Request::Assurance { id }) if id == "job-123")
+        );
+        for values in [
+            vec!["assurance"],
+            vec!["assurance", "--job"],
+            vec!["assurance", "one", "two"],
+        ] {
+            assert!(request(&arguments(&values)).is_err());
+        }
+    }
 
     #[test]
     fn comparisons_count_unchanged_functions_and_list_the_changed_ones() {

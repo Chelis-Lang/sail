@@ -113,6 +113,9 @@ pub struct Status {
 /// A job result preserving the managed runner's versioned document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResultDocument {
+    /// Qualified contract snapshot metadata; absent for ordinary project jobs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contracts: Option<Box<crate::contracts::Evidence>>,
     /// Independent focus/full repair evidence, when this was an engine batch.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repair: Option<Box<crate::repair::ResultDocument>>,
@@ -139,6 +142,25 @@ pub struct Chunk {
 pub enum Request {
     /// Fail-closed negotiation before any non-stock submission.
     Capabilities,
+    /// Start a bounded owned mutation campaign over an authenticated source job.
+    SubmitMutation(crate::mutation::Submission),
+    /// Reauthenticate and read a retained mutation campaign.
+    Mutation {
+        /// Exact retained campaign identity.
+        id: String,
+    },
+    /// Cancel actual source jobs in one campaign.
+    CancelMutation {
+        /// Exact retained campaign identity.
+        id: String,
+    },
+    /// Read requirement-aware assurance for an authenticated neutral source job.
+    Assurance {
+        /// Exact durable source-job identity.
+        id: String,
+    },
+    /// Submit exact neutral source with Sail-owned execution controls.
+    SubmitContracts(crate::contracts::Submission),
     /// Read bounded version-one proof observations using a resumable cursor.
     ProofEvents {
         /// Durable job identity.
@@ -231,15 +253,28 @@ pub enum Response {
     Capabilities {
         /// Independent proof stream version.
         proof_version: u32,
+        /// Neutral source submission version; absent on older services.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        neutral_contracts_version: Option<u32>,
+        /// Requirement assurance view version; absent on older services.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        assurance_version: Option<u32>,
+        /// Bounded mutation protocol, absent on older services.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        mutation_version: Option<u32>,
         /// Non-stock submission modes are understood and never ignored.
         /// Absent from services without the engine, which decode as false.
         #[serde(default)]
         repair: bool,
     },
+    /// Authenticated bounded mutation evidence, independent of proof tiers.
+    Mutation(Box<crate::mutation::View>),
     /// Ordered, resumable proof observations.
     ProofEvents(crate::proof::Page),
     /// Exact establishing evidence for a failure or proof.
     Explanation(Box<crate::evidence::Explanation>),
+    /// Snapshot-scoped contract-to-code evidence grouped by requirement identity.
+    Assurance(Box<crate::assurance::View>),
     /// Independently retained immutable evidence.
     Baseline(Box<crate::evidence::Baseline>),
     /// Immutable baseline names.
@@ -459,6 +494,124 @@ pub struct Client {
 }
 #[cfg(unix)]
 impl Client {
+    /// Submit a bounded owned mutation campaign through the existing job service.
+    /// # Errors
+    /// Refuses incompatible services, invalid baselines or invalid budgets.
+    pub fn submit_mutation(
+        &self,
+        submission: crate::mutation::Submission,
+    ) -> io::Result<crate::mutation::View> {
+        if !matches!(
+            self.call(&Request::Capabilities)?,
+            Response::Capabilities {
+                mutation_version: Some(crate::mutation::VERSION),
+                ..
+            }
+        ) {
+            return Err(io::Error::other(
+                "SAIL3144: running service has no compatible mutation API",
+            ));
+        }
+        let expected = submission.clone();
+        let result = self.mutation_call(&Request::SubmitMutation(submission))?;
+        if result.submission != expected {
+            return Err(io::Error::other(
+                "SAIL3144: mutation submission attribution differs",
+            ));
+        }
+        Ok(result)
+    }
+    /// Reauthenticate an exact durable campaign and all original result links.
+    /// # Errors
+    /// Missing, changed or incompatible evidence is an explicit error.
+    pub fn mutation(&self, id: &str) -> io::Result<crate::mutation::View> {
+        let result = self.mutation_call(&Request::Mutation { id: id.into() })?;
+        if result.id != id {
+            return Err(io::Error::other(
+                "SAIL3144: mutation campaign attribution differs",
+            ));
+        }
+        Ok(result)
+    }
+    /// Request cancellation of actual campaign jobs; inspect the returned lifecycle.
+    /// # Errors
+    /// Missing campaigns and service failures remain explicit.
+    pub fn cancel_mutation(&self, id: &str) -> io::Result<crate::mutation::View> {
+        let result = self.mutation_call(&Request::CancelMutation { id: id.into() })?;
+        if result.id != id {
+            return Err(io::Error::other(
+                "SAIL3144: mutation cancellation attribution differs",
+            ));
+        }
+        Ok(result)
+    }
+    fn mutation_call(&self, request: &Request) -> io::Result<crate::mutation::View> {
+        match self.call(request)? {
+            Response::Mutation(view) if view.version == crate::mutation::VERSION => {
+                crate::mutation::validate_view(&view).map_err(io::Error::other)?;
+                Ok(*view)
+            }
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other("SAIL3144: incompatible mutation response")),
+        }
+    }
+    /// Read source-snapshot requirement assurance after version negotiation.
+    ///
+    /// # Errors
+    /// Refuses unsupported services, unknown jobs and invalid stored evidence.
+    pub fn requirement_assurance(&self, id: &str) -> io::Result<crate::assurance::View> {
+        if id.is_empty() || id.len() > 256 || id.contains('\0') {
+            return Err(io::Error::other("SAIL3143: invalid assurance job identity"));
+        }
+        if !matches!(
+            self.call(&Request::Capabilities)?,
+            Response::Capabilities {
+                assurance_version: Some(crate::assurance::VERSION),
+                ..
+            }
+        ) {
+            return Err(io::Error::other(
+                "SAIL3143: endpoint does not support requirement assurance",
+            ));
+        }
+        match self.call(&Request::Assurance { id: id.into() })? {
+            Response::Assurance(view)
+                if view.version == crate::assurance::VERSION && view.job_id == id =>
+            {
+                Ok(*view)
+            }
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other(
+                "SAIL3143: invalid assurance response attribution",
+            )),
+        }
+    }
+
+    /// Submit neutral source only after explicit capability negotiation.
+    /// # Errors
+    /// Refuses older services, invalid source or transport failures without fallback.
+    pub fn submit_contracts(&self, submission: crate::contracts::Submission) -> io::Result<Status> {
+        submission.validate().map_err(io::Error::other)?;
+        if !matches!(
+            self.call(&Request::Capabilities)?,
+            Response::Capabilities {
+                neutral_contracts_version: Some(crate::contracts::VERSION),
+                ..
+            }
+        ) {
+            return Err(io::Error::other(
+                "SAIL3142: endpoint does not support neutral contract jobs",
+            ));
+        }
+        match self.call(&Request::SubmitContracts(submission))? {
+            Response::Status(status) => Ok(status),
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other(
+                "SAIL3142: unexpected neutral submission response",
+            )),
+        }
+    }
+
     /// A client for `socket`; no connection or side effect until a call.
     #[must_use]
     pub fn new(socket: impl Into<PathBuf>) -> Self {
@@ -490,7 +643,8 @@ impl Client {
                 self.call(&Request::Capabilities)?,
                 Response::Capabilities {
                     proof_version: crate::proof::VERSION,
-                    repair: true
+                    repair: true,
+                    ..
                 }
             )
         {

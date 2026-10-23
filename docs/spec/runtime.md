@@ -1,7 +1,7 @@
 # Runtime protocol 1: exact SMT execution
 
 This specification defines the first implemented verification-runtime slice.
-It leaves the existing Verus command, cache protocol and project-job protocol
+The additive native temporal family is specified below. It leaves the existing Verus command, cache protocol and project-job protocol
 unchanged. S.A.I.L. owns execution; clients supply requests and consume evidence.
 
 ## Interfaces
@@ -99,12 +99,12 @@ overflow, unavailable and infrastructure failures never become cache successes.
 
 ## Scope and compatibility
 
-Capabilities advertise only Z3 complete transcripts and bounded batches.
+The SMT capability advertises Z3 complete transcripts and bounded batches.
 Incrementality is push/pop within one complete transcript, not retained remote
-session handles. cvc5, certificates, Rust contract lowering, temporal execution,
+session handles. cvc5, certificates, Rust contract lowering,
 the requirement ledger and higher assurance tiers are not advertised by this
-slice. Temporal execution will use D.I.V.E. through S.A.I.L.; no TLC backend is
-introduced. The original Verus path and all existing public schemas retain
+SMT slice. Native temporal execution is an additive family using only D.I.V.E.;
+no TLC backend is introduced. The original Verus path and all existing public schemas retain
 their meanings.
 
 ## Execution environment
@@ -150,3 +150,37 @@ cancels its actual backend work. Shutdown cancels active tokens, joins every
 started connection and monitor worker, then removes the endpoint. Activity
 excludes idle control connections and tracks active execution lifetimes for the
 existing daemon idle guard.
+
+## Additive native temporal family
+
+`Input::Temporal { job }` and `Output::Temporal { result }` carry the public
+`sail-api::temporal` records. One job binds nonempty obligation identity, sorted
+unique requirement IDs, an exact native request and a positive whole-worker
+`wall_time_ms` no greater than 300,000. Identity bounds match SMT. Native JSON
+payloads retain the worker's 16 MiB encoded bound and its source admission.
+Unknown request fields, duplicate nested JSON fields and changed response
+families fail closed.
+
+`Capabilities.temporal` is optional/defaulted and omitted by old services.
+New temporal clients refuse services without implementation support. Legacy
+SMT clients ignore this additive field; the SMT payload and protocol versions
+retain their exact meanings. Transport identity, cancellation, disconnect
+monitoring, concurrency bounds and idle lifetime are shared with SMT.
+
+The result binds original caller IDs, canonical native request SHA-256, backend
+revision, actual authenticated worker SHA-256, and unchanged deadline. Complete
+execution retains the original native response. Process timeout, cancellation,
+unavailable worker and infrastructure errors retain no logical response.
+Native outcome and typed complete exploration remain separate from process
+completion. The client validates evidence identity and operation-compatible
+native evidence before returning it. The native adapter additionally binds the
+actual configured property inventory and independently validates every witness.
+
+Trusted configuration resolves only the fixed installed worker and versioned
+sibling manifest. The manifest binds platform, worker protocol, source revision
+and final executable digest; release inventory binds both files. Caller wire
+fields never select executable paths or tool versions. Authentication and
+admission consume the same whole-worker deadline. No temporal cache, evidence
+tier or requirement assurance relationship is established by this slice.
+Original reports may contain operational paths and elapsed measurements;
+semantic projections must not treat these fields as model identity.
