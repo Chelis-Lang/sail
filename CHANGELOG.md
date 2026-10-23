@@ -25,6 +25,10 @@ semantic versioning once the API is published.
   semantics, retaining exact unaffected version-one evidence and refusing
   affected history without changing its original backend reports.
 
+- Stage rc.6 Linux and Apple-silicon Mac archives from the qualified frozen
+  consumer, with complete realistic edit-loop and installation checks.
+  Performance acceptance remains open for cold and unchanged overhead.
+
 - Benchmark Vest with its passing resource limit; matching failed verification
   no longer qualifies a passing-workload performance row.
 

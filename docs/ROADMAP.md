@@ -48,7 +48,8 @@ crates.io until the owner's rollout; the release is open source under the
 MIT License with macOS and Linux binaries on GitHub releases. The last draft
 candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 
-**Scope** (owner, 2026-10-19), on main:
+**Scope** (owner, 2026-10-19), frozen on `release/0.1.0` from `fc29023a`:
+Later Oyster integration on main is outside these rc.6 artifacts.
 
 - Verified vstd shipped in release archives as a compiler-boundary proof
   bundle, served only after exact admission (#249,
@@ -67,15 +68,15 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 | Runtime rebased onto upstream 7d82994, Linux and macOS | Done; corrected 7d9d5410 manifests selected (#338) | — |
 | Shipped default/100 proofs and signed replies | Both platform factories and public Vest proof/undo controls pass | — |
 | Consumer gates and conformance | Full native gate, solver, E2E+extra, PR/full fast and standard pass | — |
-| Mac host gate | Pass: 963 tests, clippy clean | — |
+| Mac host gate | Pass: 981 tests, clippy clean | — |
 | Determinism | Mac: 320 stable query streams; strict output 319/320, one existing resource-count variation | Recorded in runtime qualification |
-| Realistic edit-loop suite (#284) | All four complete cohorts pass on each installed platform: 651 comparisons each | — |
-| Release matrices | Both complete: 31/31 valid rows | Resolve remaining losses |
-| Cold runs never slower than stock | Open: Mac Anvil and Vest; Linux Anvil medians overlap | #314, #278, #232 |
+| Realistic edit-loop suite (#284) | Pass: four full three-round cohorts per platform, 651 matching comparisons each | — |
+| Release matrices | Complete: 31/31 selected comparisons valid per platform, corrected Vest subsets retained separately | Review slower rows |
+| Cold runs never slower than stock | Linux cold rows at parity or faster; Mac Anvil adds 2.86 s, Vest adds 0.74 s | #314, #278, #232 |
 | Sub-second overhead modest | Open: unchanged calls and tiny edits | #156, #314 |
-| Deep corpus and fork source suite | Four corpus arms pass; pass-through/cache-fill/cache-warm each 4,901 Same; stock control retains known debug-order instability | — |
-| Actual archives, clean README and Claude Code | Both platform archives pass; real MCP lists 17 tools | — |
-| Performance/docs review and rc.6 draft | Performance acceptance open; no draft created | Close real slowdowns |
+| Deep corpus and fork source suite | Four corpus arms pass; fork direct/cache-fill/cache-warm each 4,901 Same; stock-only control has four unstable debug-order cases | — |
+| Actual archives, clean README and Claude Code | Both frozen archives pass first proof, edit, actual repair and real MCP with 17 tools | — |
+| Performance/docs review and rc.6 draft | Qualified artifacts staged for private rc.6 review; performance acceptance remains open | Owner review of cold and unchanged costs |
 | Owner review and publication | Not started | — |
 
 **Merged on main for 0.1.0** (implemented; release qualification is the
