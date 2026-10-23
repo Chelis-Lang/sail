@@ -316,6 +316,12 @@ for the failed strict attempt and required future evidence.
   negotiation retires the connection. This closes the protocol binding gap,
   not the separate trusted-writer assumption for reply correctness.
 
+- **Repair acceptance trusted inconsistent summaries (#345).** The acceptance
+  boundary now checks report invariants, confirmed verified function verdicts,
+  explicit zero verifier errors and whole-target scope. The reproduced case
+  supplied a failed function with unchanged successful summary counts; no
+  ordinary producer creating that state or accepted false theorem was established.
+
 - **Fork JSON proof-note order (#185).** The selected `cc7bbce4` runtime
   contains producer fix `5793253c`, which serializes both arrays lexically
   without changing internal membership, verdicts or diagnostic bytes. The full
