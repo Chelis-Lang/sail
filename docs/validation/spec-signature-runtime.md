@@ -22,11 +22,12 @@ query normalization, solver flags or accepted verdict exceptions change.
 | Engine and cancellation fixtures, both platforms | Pass |
 | Mac determinism, three runs over 320 direct inputs | All solver streams stable; strict output check: 319/320, one existing NLA resource-count variation on `imo_1988_6.rs` (82,316 vs 82,314), unchanged inputs and verdict |
 | Native full fast corpus conformance | Pass: each arm 147 Same; engine arm 3,451 functions, zero different/unstable/infra |
-| Native full standard corpus conformance | Running |
+| Native full standard backend corpus conformance | Pass in all four arms; consumer standard mutation subset is finishing |
 | Ordinary retained reuse on both new runtime manifests | Pass: fresh successful public Vest, edit, original proof restored, unchanged; zero verifier invocations on restored proof |
 | Consumer workspace/solver/full E2E and Mac host gate | Native workspace/solver/full E2E including extra pass; Mac clippy and all 963 host tests pass |
 | Shipped exact proof/default-100 profiles and signed replies | Both platform factories pass; Mac independently records both exact profiles; actual public Vest limit-100 proof served on both |
-| Full selected mutation cohorts, deep source suite and release matrix | Pending |
+| Full selected mutation cohorts | Mac HumanEval: 165 Same; Mac IronKV and Linux IronKV: 153 Same each; remaining cohorts running |
+| Deep source suite and release matrix | Fork pass-through: 4,901 Same, all 4,838 nonignored tests pass; cache rounds and corpus/matrices running |
 
 | Platform | Runtime manifest SHA-256 | Runtime archive SHA-256 |
 |---|---|---|
@@ -56,3 +57,23 @@ control: `experiments/2026-10-23/signature-linux-controls.tgz`, SHA-256
 `92910b2af5c4acac0590edc57a35d7511e9a75dd6cf0ddde40e597ec20a10357`.
 The Linux capture precedes completion of full standard conformance; that result
 is recorded separately when it completes.
+
+Completed three-round installed mutation cohorts: Mac HumanEval 165/165 and
+IronKV 153/153 Same, with zero differences, unstable cases, false verified or
+infrastructure errors. One daemon serves each round; ordinary and forced
+returns get the original's own answers. Edit-loop speedups are 2.84×
+[2.14–3.87] and 1.41× [1.34–1.50], respectively. Raw reports, headers and every
+sample: `experiments/2026-10-23/signature-mac-human-iron.tgz`, SHA-256
+`da7c8662a7e7c74248da61dc2e6b67b0378236342e3bb4674b662d518b725d4b`.
+Linux IronKV likewise passes all 153 comparisons, with a 1.48× [1.38–1.59]
+edit loop: `experiments/2026-10-23/signature-linux-ironkv.tgz`, SHA-256
+`ea81442700e2a838ae6b1588d0128b9e78755313eaeb99805fe7b3a3e628ecf2`.
+
+The full fork source-suite pass-through has 4,901 Same, 63 ignored, 4,838
+nonignored tests passing, zero differences or infrastructure errors. The
+stock-only control retains VI-0008/VI-0021 JSON debug-order instability
+(4 Unstable and 1 Different); its two failing libtests match on both sides.
+That command stopped before the fork cache rounds, which are being run
+separately with unchanged checks. Raw source-suite reports and logs:
+`experiments/2026-10-23/signature-deep-rvt.tgz`, SHA-256
+`5f964efc198b720d6ecec7b5df131acbeefdb958fbbf9611ad197f906d985bd6`.

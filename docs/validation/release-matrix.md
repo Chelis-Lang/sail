@@ -11,9 +11,9 @@ same installed consumer. The release performance decision remains open.
 | Native macOS 27.0 arm64, EC2 mac-m4.metal | `cf55a904f130baff1dc876636d7d8ec38e532041519ac678265a6fc06b13f5fc` |
 
 Both stages include freshly recorded exact vstd proofs and signed replies for
-the rebuilt runtime. The installed Mac regression control passes all 12
-comparisons for the former `human-eval-constant-004` failure; it is a bounded
-control, not the full 165-comparison cohort. Public successful Vest edit/undo
+the rebuilt runtime. The installed Mac candidate passes all 165 comparisons in the complete
+three-round HumanEval cohort, including `human-eval-constant-004`. Mac and
+Linux IronKV pass all 153 comparisons each. Remaining cohorts are running. Public successful Vest edit/undo
 controls pass on both platforms, including restoration of the original proof
 with zero verifier invocations. Their elapsed times are diagnostic controls,
 not release performance measurements. See [runtime qualification](spec-signature-runtime.md).

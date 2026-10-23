@@ -9,8 +9,9 @@ release work; linked validation pages preserve the scope of each result.
   ([#337](https://github.com/Chelis-Lang/sail/issues/337)). The preceding
   f8589ed4 candidate rejects `exists_even_index` where stock verifies it,
   in all three full HumanEval rounds. Corrected runtime 7d9d5410 and its
-  installed consumer now pass the three-round regression control (12 Same).
-  The complete Mac cohorts are running before release acceptance. The
+  installed consumer now pass the full three-round HumanEval cohort (165 Same)
+  and IronKV cohort (153 Same). Vest and CapybaraKV are running before
+  release acceptance. The
   [reproduction](../corpus/repros/verus-spec-formal-context/README.md) and
   [runtime record](validation/spec-signature-runtime.md) preserve the cause,
   original failure and current scope. No functional comparison is relaxed.

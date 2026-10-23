@@ -1,8 +1,8 @@
 # Release-candidate validation
 
 **Current status:** corrected fork `7d9d5410` is staged on both platforms.
-The installed Mac candidate passes all 12 comparisons in the three-round
-regression control for the previously failing HumanEval mutation. Full mutation
+The installed Mac candidate passes the complete three-round HumanEval cohort
+(165 matching comparisons), including the previously failing mutation. Full mutation
 cohorts, final source-suite checks and the new release matrices are running.
 Release acceptance remains open; no rc.6 draft has been created.
 
@@ -18,8 +18,8 @@ consumer binaries. Packaging must preserve these stages without rebuilding.
 | Platform proof factories and installed-runtime checks | Pass on Linux and Mac |
 | Ordinary public Vest edit/undo on both new runtime manifests | Pass; original complete proof restored with zero verifier invocations |
 | Mac original-failure regression, installed consumer, three rounds | Pass; 12 Same, zero different or false verified |
-| Full three-round installed mutation cohorts, both platforms | Running |
-| Final new-runtime deep corpus and full deep-RVT cache | Running/queued |
+| Full three-round installed mutation cohorts, both platforms | Mac HumanEval 165 Same; Mac/Linux IronKV 153 Same each; remaining cohorts running |
+| Final new-runtime deep corpus and full deep-RVT cache | Fork pass-through 4,901 Same; corpus and cache rounds running |
 | Corrected-candidate release matrices | Running/queued |
 | New-stage README/Claude Code MCP, final archive smoke and rc.6 draft | Pending |
 

@@ -2,7 +2,7 @@
 
 Status: fork defect, release blocker [#337](https://github.com/Chelis-Lang/sail/issues/337).
 The signature-size correction passes the bounded compiler control and the
-installed Mac three-round regression (12 Same). Its rebuilt platform stages
+full installed Mac three-round HumanEval cohort (165 Same). Its rebuilt platform stages
 pass ordinary public Vest undo and factory checks. Full qualification remains
 in progress; see [the runtime record](../validation/spec-signature-runtime.md).
 
