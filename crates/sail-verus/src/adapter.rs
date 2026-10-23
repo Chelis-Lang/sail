@@ -551,6 +551,7 @@ fn driver() -> Result<ExitCode> {
     let identity = target_identity(
         &args,
         PathBuf::from(required("CARGO_MANIFEST_DIR")?).join("Cargo.toml"),
+        std::env::var("CARGO_BIN_NAME").ok(),
     );
     crate::managed::retire_receipts(&runtime, &identity)?;
     let dir = runtime.sidecars.join(identity.key());
@@ -1286,11 +1287,17 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
     )
 }
 
-fn target_identity(args: &[OsString], manifest: PathBuf) -> TargetIdentity {
+fn target_identity(
+    args: &[OsString],
+    manifest: PathBuf,
+    cargo_bin_name: Option<String>,
+) -> TargetIdentity {
+    let crate_type = argument(args, "--crate-type").unwrap_or_default();
     TargetIdentity {
         manifest,
         name: argument(args, "--crate-name").unwrap_or_default(),
-        crate_type: argument(args, "--crate-type").unwrap_or_default(),
+        cargo_name: (crate_type == "bin").then_some(cargo_bin_name).flatten(),
+        crate_type,
         rustc_args_sha256: digest(
             &args
                 .iter()
@@ -1448,23 +1455,23 @@ mod tests {
             args.push(value.as_str().ok_or("lint argument")?.into());
         }
         let manifest = std::path::PathBuf::from("/owned/Cargo.toml");
-        let original = super::target_identity(&args, manifest.clone());
+        let original = super::target_identity(&args, manifest.clone(), None);
         let mut repeated = args.clone();
         repeated.push("--warn=unexpected_cfgs".into());
         assert_ne!(
             original.key(),
-            super::target_identity(&repeated, manifest.clone()).key()
+            super::target_identity(&repeated, manifest.clone(), None).key()
         );
         let mut reversed = args.clone();
         reversed[lint_start..].reverse();
         assert_ne!(
             original.key(),
-            super::target_identity(&reversed, manifest.clone()).key()
+            super::target_identity(&reversed, manifest.clone(), None).key()
         );
         args.push("--deny=unexpected_cfgs".into());
         assert_ne!(
             original.key(),
-            super::target_identity(&args, manifest).key()
+            super::target_identity(&args, manifest, None).key()
         );
         Ok(())
     }

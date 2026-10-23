@@ -29,6 +29,10 @@ proof receipts bound to the verification context and actual Cargo artifacts.
 When Cargo reports an artifact fresh and its receipt matches, Sail returns the
 complete establishing report without invoking Verus for that target. A missing
 or incompatible receipt requires fresh verification.
+Reports and receipts bind Cargo's exact target name. Binaries named `foo-bar`
+and `foo_bar` remain distinct even though Rust uses the crate name `foo_bar`
+for both. An observation that cannot identify one Cargo target supplies no
+reusable proof; a failing target retains its own report.
 When the dependency store seeds a new Cargo target, each dependency's exact
 validated displayed stdout is restored at its fresh Cargo artifact event,
 before its dependents' output. An ordinary unchanged target emits nothing.

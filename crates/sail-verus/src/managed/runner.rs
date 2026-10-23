@@ -1200,6 +1200,10 @@ fn relay_stdout(bytes: &[u8], out: &mut Option<&mut dyn Write>) -> std::io::Resu
 #[path = "visible_output_tests.rs"]
 mod visible_output_tests;
 
+#[cfg(all(test, unix))]
+#[path = "runner_target_identity_tests.rs"]
+mod target_identity_tests;
+
 /// Restores a seeded root's exact output at Cargo's fresh-artifact boundary,
 /// before a dependent target's output. Existing targets and rebuilt units do
 /// not replay; each newly seeded root can emit at most once.
@@ -1211,13 +1215,13 @@ fn seeded_stdout<'a>(
     if artifact["reason"] != "compiler-artifact" || artifact["fresh"] != true {
         return None;
     }
-    let name = artifact["target"]["name"].as_str()?.replace('-', "_");
+    let name = artifact["target"]["name"].as_str()?;
     let kind = artifact["target"]["kind"].as_array()?;
     let (index, seed) = seeded.iter().enumerate().find(|(index, seed)| {
         seed.placed
             && !emitted.contains(index)
             && artifact["package_id"].as_str() == Some(seed.receipt.package_id.as_str())
-            && name == seed.receipt.invocation.identity.name
+            && name == seed.receipt.name
             && kind.len() == seed.receipt.kind.len()
             && seed.receipt.kind.iter().all(|kind| {
                 artifact["target"]["kind"].as_array().is_some_and(|kinds| {
@@ -1374,10 +1378,22 @@ fn selected_call(data: &Value, (id, name, kind): (&str, &str, &str), call: &Invo
                 && package["manifest_path"]
                     .as_str()
                     .is_some_and(|manifest| Path::new(manifest) == call.identity.manifest)
-                && name.replace('-', "_") == call.identity.name
-                && (kind == call.identity.crate_type
-                    || (kind == "lib" && call.identity.crate_type == "rlib"))
+                && call.identity.cargo_target(package).is_some_and(|target| {
+                    target["name"] == name
+                        && target["kind"]
+                            .as_array()
+                            .is_some_and(|kinds| kinds.iter().any(|candidate| candidate == kind))
+                })
         })
+}
+
+/// Join a compiler observation to exactly one Cargo target in its package.
+fn observed_target<'a>(data: &'a Value, call: &Invocation) -> Option<(&'a Value, &'a Value)> {
+    data["packages"].as_array()?.iter().find_map(|package| {
+        call.identity
+            .cargo_target(package)
+            .map(|target| (package, target))
+    })
 }
 
 /// A run that failed only because a selected crate did not compile, as
@@ -1607,6 +1623,18 @@ fn target_records(
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
     let calls = invocations(paths);
+    let bindings: Vec<_> = calls
+        .iter()
+        .map(|call| {
+            observed_target(data, call).ok_or_else(|| {
+                Error::new(
+                    "SAIL3107",
+                    "compiler observation has no unambiguous Cargo target",
+                )
+            })
+        })
+        .collect::<Result<_>>()?;
+    let mut represented = BTreeSet::new();
     let siblings = sibling_receipts(paths, context);
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
@@ -1702,9 +1730,7 @@ fn target_records(
             .collect();
         let package_id = artifact["package_id"].as_str().unwrap_or_default();
         let requested = expected.iter().any(|(id, target, target_kind)| {
-            id == package_id
-                && target.replace('-', "_") == name.replace('-', "_")
-                && kind.contains(target_kind)
+            id == package_id && target == name && kind.contains(target_kind)
         });
         let partial_args = partial_args.filter(|_| requested);
         let force = force && requested;
@@ -1713,14 +1739,21 @@ fn target_records(
             .cloned()
             .unwrap_or_else(|| target_revision(data, package_id));
         let path = receipt_path(paths, package_id, name, &kind);
-        let call = calls.iter().find(|c| {
-            c.identity.manifest == Path::new(package["manifest_path"].as_str().unwrap_or_default())
-                && c.identity.name == name.replace('-', "_")
-                && kind.iter().any(|k| {
-                    k == &c.identity.crate_type || (k == "lib" && c.identity.crate_type == "rlib")
-                })
+        let mut matching = calls.iter().enumerate().filter(|(index, _)| {
+            let (bound_package, target) = bindings[*index];
+            bound_package["id"] == package_id
+                && target["name"] == name
+                && target["kind"] == artifact["target"]["kind"]
         });
-        if let Some(call) = call {
+        let call = matching.next();
+        if matching.next().is_some() {
+            return Err(Error::new(
+                "SAIL3107",
+                "multiple compiler observations name one Cargo target",
+            ));
+        }
+        if let Some((index, call)) = call {
+            represented.insert(index);
             let mut artifact_paths: Vec<PathBuf> = artifact["filenames"]
                 .as_array()
                 .into_iter()
@@ -1801,6 +1834,10 @@ fn target_records(
                     && r.invocation.identity.manifest
                         == Path::new(package["manifest_path"].as_str().unwrap_or_default())
                     && r.invocation.identity.name == name.replace('-', "_")
+                    && r.invocation
+                        .identity
+                        .cargo_target(package)
+                        .is_some_and(|target| target["name"] == name)
                     && kind.iter().any(|k| {
                         k == &r.invocation.identity.crate_type
                             || (k == "lib" && r.invocation.identity.crate_type == "rlib")
@@ -1843,6 +1880,10 @@ fn target_records(
                             && r.invocation.identity.manifest
                                 == Path::new(package["manifest_path"].as_str().unwrap_or_default())
                             && r.invocation.identity.name == name.replace('-', "_")
+                            && r.invocation
+                                .identity
+                                .cargo_target(package)
+                                .is_some_and(|target| target["name"] == name)
                             && r.name == name
                             && r.kind == kind
                             && r.artifact_hashes.keys().cloned().collect::<BTreeSet<_>>()
@@ -1878,40 +1919,35 @@ fn target_records(
         }
     }
     // A failing compiler may not emit an artifact; preserve its observed target report.
-    for call in calls {
-        if !results.iter().any(|r| {
-            r.establishing_run == call.establishing_run()
-                && r.target.replace('-', "_") == call.identity.name
-                && r.kind.iter().any(|k| {
-                    k == &call.identity.crate_type
-                        || (k == "lib" && call.identity.crate_type == "rlib")
-                })
-        }) {
-            let package = data["packages"].as_array().into_iter().flatten().find(|p| {
-                p["manifest_path"]
-                    .as_str()
-                    .is_some_and(|s| Path::new(s) == call.identity.manifest)
-            });
-            let requested = package.is_some_and(|p| {
+    for (index, call) in calls.into_iter().enumerate() {
+        if !represented.contains(&index) {
+            let (package, target) = bindings[index];
+            let name = target["name"].as_str().unwrap_or_default();
+            let kind: Vec<String> = target["kind"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect();
+            let requested = {
                 expected.iter().any(|(id, name, kind)| {
-                    p["id"].as_str() == Some(id.as_str())
-                        && name.replace('-', "_") == call.identity.name
-                        && (kind == &call.identity.crate_type
-                            || (kind == "lib" && call.identity.crate_type == "rlib"))
+                    package["id"].as_str() == Some(id.as_str())
+                        && target["name"] == *name
+                        && target["kind"]
+                            .as_array()
+                            .is_some_and(|kinds| kinds.iter().any(|candidate| candidate == kind))
                 })
-            });
+            };
             results.push(TargetResult {
                 dependency_store: None,
                 dependency_build: call.dependency_build.clone(),
-                package_id: package
-                    .and_then(|p| p["id"].as_str())
-                    .unwrap_or_default()
-                    .to_owned(),
+                package_id: package["id"].as_str().unwrap_or_default().to_owned(),
                 establishing_run: call.establishing_run().to_owned(),
                 reused: call.retained_from.is_some(),
                 scope_reuse: None,
-                target: call.identity.name,
-                kind: vec![call.identity.crate_type],
+                target: name.to_owned(),
+                kind,
                 requested,
                 complete: partial_args.is_none() && call.success && complete(&call.report),
                 report: call.report,
@@ -1921,8 +1957,16 @@ fn target_records(
     results.sort_by(|a, b| {
         (&a.package_id, &a.target, &a.kind).cmp(&(&b.package_id, &b.target, &b.kind))
     });
-    results
-        .dedup_by(|a, b| a.package_id == b.package_id && a.target == b.target && a.kind == b.kind);
+    if results.windows(2).any(|pair| {
+        pair[0].package_id == pair[1].package_id
+            && pair[0].target == pair[1].target
+            && pair[0].kind == pair[1].kind
+    }) {
+        return Err(Error::new(
+            "SAIL3107",
+            "multiple proof reports name one Cargo target",
+        ));
+    }
     Ok((results, missing))
 }
 
@@ -2863,7 +2907,7 @@ pub(crate) fn run_engine_held(
                         .flatten()
                         .filter_map(|target| {
                             Some((
-                                target["name"].as_str()?.replace('-', "_"),
+                                target["name"].as_str()?.to_owned(),
                                 target["kind"]
                                     .as_array()?
                                     .iter()
@@ -3155,11 +3199,9 @@ pub(crate) fn run_engine_held(
         && !shown
         && exit == Some(0)
         && expected.iter().any(|(id, name, kind)| {
-            !targets.iter().any(|t| {
-                &t.package_id == id
-                    && t.target.replace('-', "_") == name.replace('-', "_")
-                    && t.kind.contains(kind)
-            })
+            !targets
+                .iter()
+                .any(|t| &t.package_id == id && &t.target == name && t.kind.contains(kind))
         })
     {
         return Err(Error::new(
@@ -3798,7 +3840,7 @@ mod tests {
         Ok(())
     }
 
-    fn compiler_fixture(root: &Path) -> std::result::Result<Config, std::io::Error> {
+    pub(super) fn compiler_fixture(root: &Path) -> std::result::Result<Config, std::io::Error> {
         std::fs::create_dir_all(root)?;
         let sail = root.join("sail");
         std::fs::write(&sail, b"owned executable")?;
@@ -3954,7 +3996,7 @@ mod tests {
         Ok(())
     }
 
-    fn compiler_receipt(paths: &Paths, data: &Value, artifact: &Path) -> Receipt {
+    pub(super) fn compiler_receipt(paths: &Paths, data: &Value, artifact: &Path) -> Receipt {
         let mut report = crate::report::setup_failure(&[], "SAIL3100", "fixture");
         report.error = None;
         report.exit_code = Some(0);
@@ -3989,6 +4031,7 @@ mod tests {
                     name: "input".to_owned(),
                     crate_type: "lib".to_owned(),
                     rustc_args_sha256: "args".to_owned(),
+                    cargo_name: None,
                 },
                 run_id: "run".to_owned(),
                 report,
@@ -4188,7 +4231,8 @@ mod tests {
             let config = compiler_fixture(&root)?;
             let (paths, ownership) = prepare(&config, &root, "negative", "compiler", "run")?;
             let data = serde_json::json!({"packages":[{
-                "id":"input", "name":"input", "manifest_path":root.join("Cargo.toml")
+                "id":"input", "name":"input", "manifest_path":root.join("Cargo.toml"),
+                "targets":[{"name":"input","kind":["lib"]}]
             }]});
             let mut call = compiler_receipt(&paths, &data, &root.join("absent")).invocation;
             call.success = false;
@@ -5321,6 +5365,7 @@ mod tests {
                     name: "vstd".to_owned(),
                     crate_type: "lib".to_owned(),
                     rustc_args_sha256: "args".to_owned(),
+                    cargo_name: None,
                 },
                 run_id: "run".to_owned(),
                 report: crate::report::setup_failure(&[], "SAIL3100", "fixture"),

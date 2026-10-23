@@ -7,6 +7,10 @@ semantic versioning once the API is published.
 
 - Update Tokio to 1.53.3 for RUSTSEC-2026-0386 (Unix AsyncFd I/O safety).
 
+- Keep distinct Cargo binary target names such as `foo-bar` and `foo_bar`
+  separate in proof reports, receipts and selected-target coverage. Ambiguous
+  compiler observations cannot authorize reuse.
+
 - Keep Rustc artifact metadata out of structured diagnostic text, including
   the final verification-progress note. Verifier messages retain their text.
 
