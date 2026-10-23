@@ -13,7 +13,7 @@ mod types;
 
 use serde::{Deserialize, Serialize};
 
-pub use lower::lower;
+pub use lower::{lower, validate_manifest};
 pub use runner::{ContractRun, verify};
 pub use sail_api::contracts::{
     CheckCounts, ContractBinding, ContractProof, LoweringManifest, ProofState, SourceRange,
@@ -21,7 +21,7 @@ pub use sail_api::contracts::{
 };
 
 /// The exact neutral source lowering semantics version.
-pub const LOWERING_VERSION: u32 = 1;
+pub const LOWERING_VERSION: u32 = 2;
 
 /// Deterministic Verus source and its original-source binding.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -97,6 +97,11 @@ pub(in crate::jobs) fn execute(
         )));
     }
     let result = decode(&bytes, &input)?;
+    if result.contracts.manifest.version != sail_verus::contracts::LOWERING_VERSION {
+        return Err(error(
+            "new neutral jobs require corrected lowering version two",
+        ));
+    }
     if result.backend.exit_code != status.code() {
         return Err(error("neutral backend and process exit status disagree"));
     }

@@ -259,3 +259,192 @@ fn cancellation_cleans_descendant_held_pipes_without_blocking_the_endpoint() -> 
     assert!(started.elapsed() < Duration::from_secs(3));
     Ok(())
 }
+
+// These are synthetic retained records, not solver evidence. Re-sealing lets the
+// test distinguish a semantic migration refusal from an ordinary byte-drift check.
+fn retain_version_one(fixture: &Fixture, source: &str, manifest: &str) -> TestResult<String> {
+    let original = fixture.input()?;
+    let mut server = fixture.server()?;
+    let client = fixture.client();
+    let job = client.submit_contracts(original)?;
+    assert_eq!(finished(&client, &job.id)?.state, Lifecycle::Completed);
+    server.shutdown();
+    let input = Submission {
+        source: source.into(),
+        source_sha256: sail_key::QueryKey(sail_key::sha256(source.as_bytes())).to_string(),
+        crate_name: "neutral".into(),
+    };
+    let mut worker: WorkerResult =
+        serde_json::from_slice(&std::fs::read(fixture.root.join("fixture.json"))?)?;
+    worker.contracts.manifest = serde_json::from_str(manifest)?;
+    worker.contracts.proof =
+        sail_verus::contracts::observed_proof(&worker.contracts.manifest, &worker.backend);
+    let stdout = serde_json::to_vec(&worker)?;
+    let directory = fixture.root.join("jobs").join(&job.id);
+    let record = directory.join("record.json");
+    let mut stored: serde_json::Value = serde_json::from_slice(&std::fs::read(&record)?)?;
+    stored["contracts"] = serde_json::to_value(&input)?;
+    stored["status"]["input_revision"] = input.source_sha256.clone().into();
+    stored["submission"]["input_revision"] = input.source_sha256.clone().into();
+    stored["projection"]["stdout_sha256"] = sail_key::QueryKey(sail_key::sha256(&stdout))
+        .to_string()
+        .into();
+    std::fs::write(record, serde_json::to_vec(&stored)?)?;
+    std::fs::write(directory.join("stdout"), stdout)?;
+    std::fs::write(
+        directory.join("contract-source.json"),
+        serde_json::to_vec(&input)?,
+    )?;
+    Ok(job.id)
+}
+
+fn retain_legacy_baseline(fixture: &Fixture, id: &str) -> TestResult {
+    let job = fixture.root.join("jobs").join(id);
+    let input: Submission =
+        serde_json::from_slice(&std::fs::read(job.join("contract-source.json"))?)?;
+    let stdout = std::fs::read(job.join("stdout"))?;
+    let stderr = std::fs::read(job.join("stderr"))?;
+    let original: WorkerResult = serde_json::from_slice(&stdout)?;
+    let mut backend = original.backend;
+    backend.currentness = sail_api::project::Currentness::Historical;
+    backend.notes.push("Immutable baseline evidence applies only to its recorded input revision, not current workspace inputs.".into());
+    let baseline = sail_api::evidence::Baseline {
+        version: sail_api::evidence::VERSION,
+        name: "legacy".into(),
+        job_id: id.into(),
+        result: backend,
+        contracts: Some(Box::new(original.contracts)),
+    };
+    let bytes = serde_json::to_vec(&baseline)?;
+    let digest = |data: &[u8]| sail_key::QueryKey(sail_key::sha256(data)).to_string();
+    let seal = serde_json::json!({"source":input,"stdout_sha256":digest(&stdout),
+        "stderr_sha256":digest(&stderr),"baseline_sha256":digest(&bytes)});
+    let directory = fixture.root.join("jobs/baselines");
+    std::fs::create_dir_all(&directory)?;
+    for (name, bytes) in [
+        ("legacy.json", bytes),
+        ("legacy.contracts-stdout", stdout),
+        ("legacy.contracts-stderr", stderr),
+        ("legacy.contracts-seal", serde_json::to_vec(&seal)?),
+    ] {
+        std::fs::write(directory.join(name), bytes)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn safe_version_one_results_and_baselines_keep_the_original_bytes() -> TestResult {
+    let fixture = Fixture::new()?;
+    let job = retain_version_one(
+        &fixture,
+        include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.rs"),
+        include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"),
+    )?;
+    let raw = fixture.root.join("jobs").join(&job).join("stdout");
+    let original = std::fs::read(&raw)?;
+    retain_legacy_baseline(&fixture, &job)?;
+    let mut server = fixture.server()?;
+    let client = fixture.client();
+    assert!(matches!(
+        client.call(&Request::GetBaseline {
+            name: "legacy".into()
+        })?,
+        Response::Baseline(_)
+    ));
+    let result = read(&client, &job)?;
+    assert_eq!(
+        result.contracts.as_ref().map(|c| c.manifest.version),
+        Some(1)
+    );
+    let Response::Baseline(saved) = client.call(&Request::SaveBaseline {
+        id: job.clone(),
+        name: "v1".into(),
+    })?
+    else {
+        return Err("baseline response".into());
+    };
+    assert_eq!(std::fs::read(&raw)?, original);
+    server.shutdown();
+    std::fs::remove_dir_all(fixture.root.join("jobs").join(job))?;
+    let mut server = fixture.server()?;
+    let Response::Baseline(retained) = client.call(&Request::GetBaseline { name: "v1".into() })?
+    else {
+        return Err("retained response".into());
+    };
+    assert_eq!(saved, retained);
+    assert_eq!(
+        std::fs::read(fixture.root.join("jobs/baselines/v1.contracts-stdout"))?,
+        original
+    );
+    server.shutdown();
+    Ok(())
+}
+
+#[test]
+fn affected_version_one_history_is_refused_even_with_intact_content_seals() -> TestResult {
+    for (source, manifest) in [
+        (
+            include_str!("../../sail-verus/tests/fixtures/neutral-contracts/compound_field.rs"),
+            include_str!(
+                "../../sail-verus/tests/fixtures/neutral-contracts/compound_field.v1-manifest.json"
+            ),
+        ),
+        (
+            include_str!(
+                "../../sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs"
+            ),
+            include_str!(
+                "../../sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.v1-manifest.json"
+            ),
+        ),
+    ] {
+        let fixture = Fixture::new()?;
+        let job = retain_version_one(&fixture, source, manifest)?;
+        let raw = fixture.root.join("jobs").join(&job).join("stdout");
+        let original = std::fs::read(&raw)?;
+        retain_legacy_baseline(&fixture, &job)?;
+        let mut server = fixture.server()?;
+        let client = fixture.client();
+        assert!(read(&client, &job).is_err());
+        assert!(
+            client
+                .call(&Request::GetBaseline {
+                    name: "legacy".into()
+                })
+                .is_err()
+        );
+        assert!(
+            client
+                .call(&Request::SaveBaseline {
+                    id: job,
+                    name: "affected".into()
+                })
+                .is_err()
+        );
+        assert_eq!(std::fs::read(raw)?, original);
+        server.shutdown();
+    }
+    Ok(())
+}
+
+#[test]
+fn a_new_worker_cannot_supply_even_an_unaffected_version_one_projection() -> TestResult {
+    let fixture = Fixture::new()?;
+    let input = fixture.input()?;
+    let path = fixture.root.join("fixture.json");
+    let mut worker: WorkerResult = serde_json::from_slice(&std::fs::read(&path)?)?;
+    worker.contracts.manifest = serde_json::from_str(include_str!(
+        "../../sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"
+    ))?;
+    std::fs::write(path, serde_json::to_vec(&worker)?)?;
+    let mut server = fixture.server()?;
+    let client = fixture.client();
+    let job = client.submit_contracts(input)?;
+    assert_eq!(
+        finished(&client, &job.id)?.state,
+        Lifecycle::InfrastructureError
+    );
+    assert!(read(&client, &job.id)?.contracts.is_none());
+    server.shutdown();
+    Ok(())
+}

@@ -74,7 +74,11 @@ impl Environment<'_> {
                     .cloned()
                     .ok_or_else(|| unsupported("unresolved or non-scalar source field"))?;
                 let base_value = base.expression;
-                Ok(value_of(ty, quote!((#base_value).#field)))
+                let mut projected = value_of(ty, quote!((#base_value).#field));
+                // Selecting a field still evaluates its base, including conditional
+                // guards. Keep the scalar cast and the exact base definedness.
+                projected.defined = base.defined;
+                Ok(projected)
             }
             syn::Expr::Paren(value) => self.translate(&value.expr, hint, phase),
             syn::Expr::Group(value) => self.translate(&value.expr, hint, phase),

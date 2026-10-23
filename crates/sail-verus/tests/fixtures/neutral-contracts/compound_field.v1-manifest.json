@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "contract_version": 1,
+  "crate_name": "neutral",
+  "original_sha256": "974896601ccda53ecc2e17458e897761f026fa7f5b8a3364761a27f8d114530a",
+  "lowered_sha256": "8117e27bf2b35e20f8139e2c259f076c9f3c4d16738bdecf084964b1407e2d81",
+  "arithmetic": "fixed-width checked specification arithmetic; executable overflow is a proof obligation; mathematical intermediate values with explicit bounds",
+  "bindings": [
+    {
+      "requirement_id": "FIELD-DEFINED",
+      "function": "neutral::candidate",
+      "lowered_function": "neutral::candidate",
+      "guarantee_sha256": "216c74bee203846f393dd8dd1bb2c44110c9aef126657a88b55c671cb17538e9",
+      "source": {
+        "line": 7,
+        "column": 0,
+        "end_line": 9,
+        "end_column": 1
+      }
+    }
+  ]
+}

@@ -11,6 +11,12 @@ mod original_runtime {
 mod changed_runtime {
     include!("../../sail-verus/tests/fixtures/neutral-contracts/body_edit.rs");
 }
+mod compound_runtime {
+    include!("../../sail-verus/tests/fixtures/neutral-contracts/compound_field.rs");
+}
+mod guarded_compound_runtime {
+    include!("../../sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs");
+}
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn sha(bytes: &[u8]) -> String {
     sail_key::QueryKey(sail_key::sha256(bytes)).to_string()
@@ -116,6 +122,7 @@ fn one(
         .as_deref()
         .ok_or("missing typed contract evidence")?;
     if evidence.proof.state != expected
+        || evidence.manifest.version != 2
         || evidence.manifest.original_sha256 != digest
         || document.job.currentness != Currentness::Unknown
         || document.job.input_revision.as_deref() != Some(digest.as_str())
@@ -129,7 +136,9 @@ fn one(
         {
             return Err("positive has incomplete attributed proof".into());
         }
-    } else if evidence.proof.checks.unknown == 0 || evidence.proof.unknown_reasons.is_empty() {
+    } else if label == "body-edit"
+        && (evidence.proof.checks.unknown == 0 || evidence.proof.unknown_reasons.is_empty())
+    {
         return Err("body edit did not retain the actual underlying unknown".into());
     }
     let backend: sail_api::project::ProjectResult = serde_json::from_value(
@@ -144,6 +153,7 @@ fn one(
     {
         return Err("owned snapshot has no qualified backend evidence".into());
     }
+    validate_compound_failure(label, &backend)?;
     std::fs::write(
         output.join(format!("{label}.result.json")),
         serde_json::to_vec_pretty(&document)?,
@@ -188,6 +198,27 @@ fn one(
     );
     Ok(job.id)
 }
+fn validate_compound_failure(
+    label: &str,
+    backend: &sail_api::project::ProjectResult,
+) -> TestResult {
+    if label == "compound-field"
+        && !backend
+            .targets
+            .iter()
+            .filter(|target| target.requested)
+            .flat_map(|target| &target.report.crates)
+            .any(|krate| {
+                krate.verus.encountered_vir_error == Some(false)
+                    && krate.verus.success == Some(false)
+                    && krate.verus.errors.is_some_and(|errors| errors > 0)
+            })
+    {
+        return Err("overflow control did not reach an actual failed property check".into());
+    }
+    Ok(())
+}
+
 fn runtime_witness(output: &Path, changed: &str) -> TestResult {
     let reference = original_runtime::candidate(1);
     if reference != 2 {
@@ -216,6 +247,78 @@ fn runtime_witness(output: &Path, changed: &str) -> TestResult {
     )?;
     Ok(())
 }
+fn compound_runtime_witness(output: &Path, source: &str) -> TestResult {
+    let a = compound_runtime::Row { flag: true };
+    let b = compound_runtime::Row { flag: false };
+    if !compound_runtime::candidate(254, a, b) {
+        return Err("compound reference output".into());
+    }
+    let panic = std::panic::catch_unwind(|| compound_runtime::candidate(255, a, b))
+        .err()
+        .ok_or("compound field lost runtime overflow")?;
+    let message = panic
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| panic.downcast_ref::<&str>().copied())
+        .ok_or("untyped arithmetic panic")?;
+    if message != "SAIL0703: specification arithmetic overflow or invalid division" {
+        return Err("unexpected compound runtime failure".into());
+    }
+    for x in 0..255u8 {
+        if !guarded_compound_runtime::candidate(
+            x,
+            guarded_compound_runtime::Row { flag: true },
+            guarded_compound_runtime::Row { flag: false },
+        ) {
+            return Err("guarded compound reference output".into());
+        }
+    }
+    let witness = serde_json::json!({"source_sha256":sha(source.as_bytes()),
+        "input":{"x":255,"a":{"flag":true},"b":{"flag":false}},
+        "observed":message,"preconditions_satisfied":true,
+        "assurance":"one compiled arithmetic failure; separate from SMT evidence"});
+    std::fs::write(
+        output.join("compound-field.runtime-witness.json"),
+        serde_json::to_vec_pretty(&witness)?,
+    )?;
+    Ok(())
+}
+
+fn validate_pruned_baseline(client: &Client, output: &Path, label: &str) -> TestResult {
+    let Response::Baseline(baseline) = client.call(&Request::GetBaseline { name: label.into() })?
+    else {
+        return Err("pruned baseline".into());
+    };
+    let saved: sail_api::evidence::Baseline = serde_json::from_slice(&std::fs::read(
+        output.join(format!("{label}.baseline.json")),
+    )?)?;
+    if *baseline != saved {
+        return Err("baseline changed after job pruning".into());
+    }
+    let raw = output
+        .join("cache/projects/jobs/baselines")
+        .join(format!("{label}.contracts-stderr"));
+    let retained = std::fs::read(&raw)?;
+    if retained != std::fs::read(output.join(format!("{label}.worker.stderr")))? {
+        return Err("baseline did not preserve exact original worker diagnostics".into());
+    }
+    std::fs::write(&raw, b"changed diagnostics")?;
+    if client
+        .call(&Request::GetBaseline { name: label.into() })
+        .is_ok()
+    {
+        return Err("tampered retained diagnostics were accepted".into());
+    }
+    std::fs::write(&raw, retained)?;
+    if !matches!(
+        client.call(&Request::GetBaseline { name: label.into() })?,
+        Response::Baseline(_)
+    ) {
+        return Err("restored exact baseline did not read".into());
+    }
+    Ok(())
+}
+
 fn main() -> TestResult {
     let mut args = std::env::args_os().skip(1);
     let sail = PathBuf::from(
@@ -234,6 +337,11 @@ fn main() -> TestResult {
         return Err("body edit differs beyond intended implementation".into());
     }
     runtime_witness(&output, changed)?;
+    let compound =
+        include_str!("../../sail-verus/tests/fixtures/neutral-contracts/compound_field.rs");
+    let guarded =
+        include_str!("../../sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs");
+    compound_runtime_witness(&output, compound)?;
     let (service, client) = start(&sail, &output)?;
     let positive = one(&client, &output, "positive", original, ProofState::Proved)?;
     let negative = one(
@@ -243,9 +351,24 @@ fn main() -> TestResult {
         changed,
         ProofState::NotProved,
     )?;
+    let unsafe_field = one(
+        &client,
+        &output,
+        "compound-field",
+        compound,
+        ProofState::NotProved,
+    )?;
+    let guarded_field = one(
+        &client,
+        &output,
+        "compound-field-guarded",
+        guarded,
+        ProofState::Proved,
+    )?;
+    let jobs = [positive, negative, unsafe_field, guarded_field];
     drop(service);
     let (service, client) = start(&sail, &output)?;
-    for id in [&positive, &negative] {
+    for id in &jobs {
         let Response::Result(result) = client.call(&Request::Result { id: id.clone() })? else {
             return Err("restart result".into());
         };
@@ -254,43 +377,17 @@ fn main() -> TestResult {
         }
     }
     drop(service);
-    for id in [positive, negative] {
+    for id in jobs {
         std::fs::remove_dir_all(output.join("cache/projects/jobs").join(id))?;
     }
     let (service, client) = start(&sail, &output)?;
-    for label in ["positive", "body-edit"] {
-        let Response::Baseline(baseline) =
-            client.call(&Request::GetBaseline { name: label.into() })?
-        else {
-            return Err("pruned baseline".into());
-        };
-        let saved: sail_api::evidence::Baseline = serde_json::from_slice(&std::fs::read(
-            output.join(format!("{label}.baseline.json")),
-        )?)?;
-        if *baseline != saved {
-            return Err("baseline changed after job pruning".into());
-        }
-        let raw = output
-            .join("cache/projects/jobs/baselines")
-            .join(format!("{label}.contracts-stderr"));
-        let retained = std::fs::read(&raw)?;
-        if retained != std::fs::read(output.join(format!("{label}.worker.stderr")))? {
-            return Err("baseline did not preserve exact original worker diagnostics".into());
-        }
-        std::fs::write(&raw, b"changed diagnostics")?;
-        if client
-            .call(&Request::GetBaseline { name: label.into() })
-            .is_ok()
-        {
-            return Err("tampered retained diagnostics were accepted".into());
-        }
-        std::fs::write(&raw, retained)?;
-        if !matches!(
-            client.call(&Request::GetBaseline { name: label.into() })?,
-            Response::Baseline(_)
-        ) {
-            return Err("restored exact baseline did not read".into());
-        }
+    for label in [
+        "positive",
+        "body-edit",
+        "compound-field",
+        "compound-field-guarded",
+    ] {
+        validate_pruned_baseline(&client, &output, label)?;
     }
     drop(service);
     println!(

@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve record-base arithmetic definedness through scalar field selection in
+  neutral lowering version two. Recheck retained manifests with corrected
+  semantics, retaining exact unaffected version-one evidence and refusing
+  affected history without changing its original backend reports.
+
 - Keep Rustc artifact metadata out of structured diagnostic text, including
   the final verification-progress note. Verifier messages retain their text.
 

@@ -125,13 +125,12 @@ fn source(state: &State, job: &store::Stored) -> io::Result<Submission> {
 fn decode(bytes: &[u8], input: &Submission) -> io::Result<WorkerResult> {
     input.validate().map_err(error)?;
     let result: WorkerResult = serde_json::from_slice(bytes).map_err(error)?;
-    let expected = sail_verus::contracts::lower(&input.source, &input.crate_name).map_err(error)?;
-    if result.contracts.manifest != expected.manifest
-        || result.version != VERSION
+    sail_verus::contracts::validate_manifest(&input.source, &result.contracts.manifest)
+        .map_err(error)?;
+    if result.version != VERSION
         || result.contracts.version != VERSION
         || result.contracts.manifest.original_sha256 != input.source_sha256
         || result.contracts.manifest.crate_name != input.crate_name
-        || result.contracts.manifest.version != sail_verus::contracts::LOWERING_VERSION
         || result.backend.kind != "sail-project-result"
         || result.backend.schema_version != sail_api::project::SCHEMA_VERSION
         || result.backend.error.is_some()

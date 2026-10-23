@@ -38,6 +38,10 @@ backend. The original project result remains the existing result payload;
 for ordinary jobs. It contains the manifest, conservative proof and translation
 trust, not a fabricated per-requirement verdict.
 
+Every newly executed job requires lowering semantics version two; protocol
+version one and neutral syntax version one remain unchanged. A worker cannot
+supply even an unaffected historical lowering for a new job.
+
 Successful processing with a backend result is `Completed`, including a failing
 body whose contract is `NotProved`. Unsupported source, missing tools, setup,
 process, deadline and output failures retain their exact error codes through the
@@ -60,7 +64,11 @@ reconstructed from source positions or legacy function tiers. The public
 baseline adds optional typed contract evidence. A neutral baseline independently
 retains the original source submission and exact worker stdout/stderr bytes outside job pruning,
 with exact SHA-256 seals checked on every read. Its public metadata and historical
-backend projection must agree with that original evidence. Ordinary baseline
+backend projection must agree with that original evidence. Retained version-one
+lowerings are admitted only when their exact original manifest matches the
+corrected projection under its original header. Affected version-one evidence
+fails closed without changing the original report, source or output bytes.
+Ordinary baseline
 encoding and behavior are unchanged.
 
 Neutral jobs support status, result, cancellation, logs and baseline save/read.
@@ -79,3 +87,8 @@ body edit through `sail-api` only. The original is `Proved`; the edited body is
 records the precondition-satisfying input and exact postcondition violation.
 Source and output artifact hashes are retained. This actual service acceptance
 runs in the end-to-end tier, alongside full gate, solver and conformance checks.
+The compound-record-field regression separately submits the original unsafe
+source (`NotProved`) and an entry-guarded source (`Proved`), retains their original
+solver outcomes and records the exact runtime overflow at the admitted input 255.
+Historical controls admit unchanged safe version-one jobs and baselines and
+refuse affected records even with otherwise intact content seals.

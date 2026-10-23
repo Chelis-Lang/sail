@@ -44,7 +44,10 @@ snapshot. The managed backend's currentness describes Sail's owned snapshot.
 It does not establish that the caller's source still matches.
 
 The existing baseline save/read operations retain neutral source and exact
-worker stdout/stderr independently of job pruning. Every read verifies their hashes
+worker stdout/stderr independently of job pruning. New jobs use corrected
+lowering version two. Unaffected historical version-one evidence remains
+readable with its original bytes; records affected by the compound-field
+translation defect are refused without rewriting them. Every read verifies their hashes
 and agreement with the public metadata and historical project report. Generic
 comparison and function explanation refuse this evidence family until those
 operations have contract-specific semantics. See the [service specification](spec/neutral-contract-jobs.md)
@@ -54,4 +57,6 @@ Run `ci/local.sh e2e contracts` to exercise the installed Sail service with a
 proved positive source and an edited body whose underlying unknown remains
 `NotProved`, followed by restart and baseline readback after job pruning. The
 compiled runtime body-edit witness is recorded separately; it does not turn an
-SMT unknown into a refutation.
+SMT unknown into a refutation. The same runner checks an overflowing
+compound-record-field guarantee (`NotProved`) and its entry-guarded counterpart
+(`Proved`), recording the compiled overflow separately.

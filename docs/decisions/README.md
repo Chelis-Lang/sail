@@ -75,3 +75,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0068: Shared runtime transport and agent tools](0068-runtime-daemon.md)
 
 - [0070: Owned neutral source verification jobs (accepted)](0070-neutral-contract-jobs.md)
+
+- [0073: Preserve compound-field definedness and qualify retained lowering](0073-compound-field-definedness.md)

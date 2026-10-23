@@ -8,6 +8,25 @@ const NEGATED: &str = include_str!("fixtures/neutral-contracts/negated_overflow.
 const OLD: &str = include_str!("fixtures/neutral-contracts/old_overflow.rs");
 const SIGNED: &str = include_str!("fixtures/neutral-contracts/signed_min.rs");
 const WALLET: &str = include_str!("fixtures/neutral-contracts/wallet.rs");
+const COMPOUND: &str = include_str!("fixtures/neutral-contracts/compound_field.rs");
+const GUARDED_COMPOUND: &str = include_str!("fixtures/neutral-contracts/compound_field_guarded.rs");
+mod runtime_compound {
+    include!("fixtures/neutral-contracts/compound_field.rs");
+}
+mod runtime_guarded_compound {
+    include!("fixtures/neutral-contracts/compound_field_guarded.rs");
+}
+
+const NATIVE_CASES: [(&str, &str, bool); 8] = [
+    ("add-one", ADD_ONE, true),
+    ("short-circuit", SHORT_CIRCUIT, true),
+    ("signed-min", SIGNED, true),
+    ("wallet", WALLET, true),
+    ("negated-overflow", NEGATED, false),
+    ("old-overflow", OLD, false),
+    ("compound-field-overflow", COMPOUND, false),
+    ("compound-field-guarded", GUARDED_COMPOUND, true),
+];
 
 mod runtime_add_one {
     include!("fixtures/neutral-contracts/add_one.rs");
@@ -30,6 +49,40 @@ mod runtime_wallet {
 
 mod runtime_body_edit {
     include!("fixtures/neutral-contracts/body_edit.rs");
+}
+
+#[test]
+fn retained_version_one_manifests_are_checked_against_corrected_semantics() -> TestResult {
+    let original: sail_verus::contracts::LoweringManifest = serde_json::from_str(include_str!(
+        "fixtures/neutral-contracts/add_one.v1-manifest.json"
+    ))?;
+    sail_verus::contracts::validate_manifest(ADD_ONE, &original)?;
+    assert_eq!(original.version, 1);
+    assert_eq!(lower(ADD_ONE, "neutral")?.manifest.version, 2);
+    for (source, frozen) in [
+        (
+            COMPOUND,
+            include_str!("fixtures/neutral-contracts/compound_field.v1-manifest.json"),
+        ),
+        (
+            GUARDED_COMPOUND,
+            include_str!("fixtures/neutral-contracts/compound_field_guarded.v1-manifest.json"),
+        ),
+    ] {
+        let original = serde_json::from_str(frozen)?;
+        assert!(sail_verus::contracts::validate_manifest(source, &original).is_err());
+        let corrected = lower(source, "neutral")?;
+        assert_eq!(corrected.manifest.version, 2);
+        sail_verus::contracts::validate_manifest(source, &corrected.manifest)?;
+    }
+    let mut changed = original.clone();
+    changed.version = 99;
+    assert!(sail_verus::contracts::validate_manifest(ADD_ONE, &changed).is_err());
+    changed = original.clone();
+    changed.lowered_sha256 = "0".repeat(64);
+    assert!(sail_verus::contracts::validate_manifest(ADD_ONE, &changed).is_err());
+    assert!(sail_verus::contracts::validate_manifest(COMPOUND, &original).is_err());
+    Ok(())
 }
 
 #[test]
@@ -96,6 +149,63 @@ fn runtime_of_the_exact_lowered_fixtures_matches_bounded_expectations() {
             assert_eq!(wallet.calls, 1);
         }
     }
+}
+
+#[test]
+fn compound_field_runtime_preserves_overflow_and_entry_guards() -> TestResult {
+    for flag in [false, true] {
+        for x in 0..255u8 {
+            assert_eq!(
+                runtime_compound::candidate(
+                    x,
+                    runtime_compound::Row { flag },
+                    runtime_compound::Row { flag: !flag }
+                ),
+                flag
+            );
+            assert_eq!(
+                runtime_guarded_compound::candidate(
+                    x,
+                    runtime_guarded_compound::Row { flag },
+                    runtime_guarded_compound::Row { flag: !flag }
+                ),
+                flag
+            );
+        }
+    }
+    let overflow = std::panic::catch_unwind(|| {
+        runtime_compound::candidate(
+            255,
+            runtime_compound::Row { flag: true },
+            runtime_compound::Row { flag: false },
+        )
+    })
+    .err()
+    .ok_or("compound field failed to evaluate its guard")?;
+    assert_eq!(
+        panic_message(&overflow),
+        Some("SAIL0703: specification arithmetic overflow or invalid division")
+    );
+    let rejected = std::panic::catch_unwind(|| {
+        runtime_guarded_compound::candidate(
+            255,
+            runtime_guarded_compound::Row { flag: true },
+            runtime_guarded_compound::Row { flag: false },
+        )
+    })
+    .err()
+    .ok_or("entry guard admitted overflowing input")?;
+    assert!(panic_message(&rejected).is_some_and(
+        |message| message == "SAIL0702: precondition failed for requirement FIELD-DEFINED"
+    ));
+    Ok(())
+}
+
+fn panic_message(value: &Box<dyn std::any::Any + Send>) -> Option<&str> {
+    value
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| value.downcast_ref::<&str>().copied())
 }
 
 #[test]
@@ -199,14 +309,7 @@ fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
     };
     let stock = sail_verus::toolchain::Installed::locate_release(pins)?;
     let root = oracle_directory()?;
-    for (label, source, expected) in [
-        ("add-one", ADD_ONE, true),
-        ("short-circuit", SHORT_CIRCUIT, true),
-        ("signed-min", SIGNED, true),
-        ("wallet", WALLET, true),
-        ("negated-overflow", NEGATED, false),
-        ("old-overflow", OLD, false),
-    ] {
+    for (label, source, expected) in NATIVE_CASES {
         let lowered = lower(source, "neutral")?;
         let path = root.join(format!("{label}.rs"));
         std::fs::write(&path, &lowered.source)?;
