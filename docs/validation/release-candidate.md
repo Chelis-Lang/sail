@@ -38,7 +38,10 @@ CLI `8fb73ac6…15e33b`; complete digests and control results are in
 `96c432daf9e2b1dfeef0fe8b98446b5a471be4a738e3a9374455f61b053aa86f`.
 The Mac host gate passes: clippy clean, 963 tests passed. Its first attempt
 stopped before tests because cargo-nextest was missing; the pinned tool was
-installed before the successful rerun. Native Linux gates remain separate.
+installed before the successful rerun. Native c7i.8xlarge workspace gate,
+solver, full E2E including extra and PR conformance also pass. Their raw logs:
+`experiments/2026-10-22/package-native-gates.tgz`, SHA-256
+`1a4e31493729d3a8e1d350d3751c43b6a1e9814e5dfd719539ce3ebe0ee09200`.
 
 ## v0.1.0-rc.5
 
