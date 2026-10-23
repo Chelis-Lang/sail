@@ -260,20 +260,7 @@ pub(super) fn cancel(state: &State, id: &str) -> io::Result<View> {
     read(state, id)
 }
 
-pub(super) fn read(state: &State, id: &str) -> io::Result<View> {
-    let value = record(state, id)?;
-    let baseline_name = name(id, None);
-    if product::baseline(state, &baseline_name)?.job_id != value.submission.baseline_job_id {
-        return Err(error("baseline job identity differs"));
-    }
-    let (source, baseline) = contracts::original_baseline(state, &baseline_name)?;
-    let expected = sail_verus::contracts::mutation::plan(&source, value.submission.max_mutants)
-        .map_err(error)?;
-    if expected != value.plan {
-        return Err(error(
-            "retained mutation inventory differs from exact original source",
-        ));
-    }
+fn completion(state: &State, id: &str) -> io::Result<Lifecycle> {
     let ending = path(state, id)?.join("end.json");
     let terminal = if ending.exists() {
         let bytes = regular(&ending)?;
@@ -296,6 +283,24 @@ pub(super) fn read(state: &State, id: &str) -> io::Result<View> {
     } else {
         Lifecycle::Interrupted
     };
+    Ok(terminal)
+}
+
+pub(super) fn read(state: &State, id: &str) -> io::Result<View> {
+    let value = record(state, id)?;
+    let baseline_name = name(id, None);
+    if product::baseline(state, &baseline_name)?.job_id != value.submission.baseline_job_id {
+        return Err(error("baseline job identity differs"));
+    }
+    let (source, baseline) = contracts::original_baseline(state, &baseline_name)?;
+    let expected = sail_verus::contracts::mutation::plan(&source, value.submission.max_mutants)
+        .map_err(error)?;
+    if expected != value.plan {
+        return Err(error(
+            "retained mutation inventory differs from exact original source",
+        ));
+    }
+    let terminal = completion(state, id)?;
     let baseline_original = contracts::export_baseline(state, &baseline_name)?;
     let mut export_bytes = encode(&baseline_original)?.len();
     if export_bytes > sail_api::jobs::MAX_FRAME / 2 {
