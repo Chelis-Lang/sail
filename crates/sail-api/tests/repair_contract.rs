@@ -1,5 +1,5 @@
 //! Focus success never authorizes full-target regression, historical or partial evidence.
-use sail_api::output::{EstablishmentName, Report, VerdictName};
+use sail_api::output::{EstablishmentName, EvidenceTierName, Report, Summary, VerdictName};
 use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
 use sail_api::repair::BatchResult;
 
@@ -40,9 +40,6 @@ fn success(mut project: ProjectResult) -> ProjectResult {
     let report = &mut project.targets[0].report;
     report.exit_code = Some(0);
     report.error = None;
-    report.summary.failed = 0;
-    report.summary.unknown = 0;
-    report.summary.provisional = 0;
     for c in &mut report.crates {
         c.verus.success = Some(true);
         c.verus.errors = Some(0);
@@ -50,8 +47,78 @@ fn success(mut project: ProjectResult) -> ProjectResult {
     for f in report.crates.iter_mut().flat_map(|c| &mut c.functions) {
         f.establishment = EstablishmentName::Confirmed;
         f.verdict = VerdictName::Verified;
+        f.evidence_tier = Some(EvidenceTierName::SmtVerified);
     }
+    report.summary = Summary::of(&report.crates);
     project
+}
+
+#[test]
+fn inconsistent_success_summaries_cannot_authorize_repairs()
+-> Result<(), Box<dyn std::error::Error>> {
+    let control = success(project()?);
+    assert_eq!(
+        control.targets[0].report.invariant_violations(),
+        Vec::<String>::new()
+    );
+    assert!(sail_api::repair::accepted(&control));
+    for verdict in [
+        VerdictName::Failed,
+        VerdictName::Unknown,
+        VerdictName::Provisional,
+    ] {
+        let mut full = control.clone();
+        let function = &mut full.targets[0].report.crates[0].functions[0];
+        function.verdict = verdict;
+        function.establishment = if verdict == VerdictName::Provisional {
+            EstablishmentName::Provisional
+        } else {
+            EstablishmentName::Confirmed
+        };
+        function.evidence_tier = EvidenceTierName::for_smt(verdict, function.establishment);
+        assert_eq!(full.targets[0].report.summary.failed, 0);
+        assert_eq!(full.targets[0].report.summary.unknown, 0);
+        assert_eq!(full.targets[0].report.summary.provisional, 0);
+        assert!(!sail_api::repair::accepted(&full), "{verdict:?}");
+    }
+    // A matching success count cannot promote provisional evidence either.
+    let mut full = control.clone();
+    full.targets[0].report.crates[0].functions[0].establishment = EstablishmentName::Provisional;
+    assert!(!sail_api::repair::accepted(&full));
+    let mut full = control;
+    full.targets[0].report.summary.verified += 1;
+    assert!(!sail_api::repair::accepted(&full));
+    Ok(())
+}
+
+#[test]
+fn repair_acceptance_requires_explicit_error_free_whole_target_evidence()
+-> Result<(), Box<dyn std::error::Error>> {
+    let control = success(project()?);
+    for errors in [None, Some(1)] {
+        let mut full = control.clone();
+        full.targets[0].report.crates[0].verus.errors = errors;
+        assert!(!sail_api::repair::accepted(&full), "{errors:?}");
+    }
+    let mut full = control.clone();
+    full.targets[0].scope_reuse = Some(vec!["--".into(), "--verify-root".into()]);
+    assert!(!sail_api::repair::accepted(&full));
+    let mut full = control.clone();
+    full.targets[0].report.schema_version += 1;
+    assert!(!sail_api::repair::accepted(&full));
+    // A valid complete target need not declare any functions.
+    let mut empty = control;
+    for report in &mut empty.targets[0].report.crates {
+        report.functions.clear();
+        report.verus.verified = Some(0);
+    }
+    empty.targets[0].report.summary = Summary::of(&empty.targets[0].report.crates);
+    assert_eq!(
+        empty.targets[0].report.invariant_violations(),
+        Vec::<String>::new()
+    );
+    assert!(sail_api::repair::accepted(&empty));
+    Ok(())
 }
 #[test]
 fn focused_success_does_not_hide_full_regression_late_compiler_failure_or_edits()

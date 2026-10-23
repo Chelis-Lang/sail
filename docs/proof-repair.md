@@ -117,6 +117,10 @@ report: successful, complete requested targets, whole-target verification and
 Current input evidence after compiler completion. A passing focus phase remains
 provisional. A failing full phase, late compiler failure, edited inputs or
 incomplete input coverage cannot authorize a repair.
+Acceptance also checks each requested target's report invariants and actual
+function verdicts: every reported function must be confirmed verified, Verus
+must explicitly report zero errors, and partial-scope reuse cannot establish
+whole-target evidence. An inconsistent success summary never authorizes a repair.
 A missing or ambiguous exact function records `batch.selection_error` with a
 stable code and prevents acceptance while retaining the independent full report.
 
