@@ -26,7 +26,7 @@ skipped job all fail the aggregate.
 | `output` | Edit-loop output, compile errors and partial verification | core |
 | `flags` | Cargo/Verus invocation flags | core |
 | `loader` | Loader-variable fallback | core |
-| `managed` | Failing-first vstd reuse, complete receipts, jobs/MCP, missing evidence, edits, prune and Cargo metadata | mcp |
+| `managed` | Failing-first vstd reuse, complete receipts, jobs/MCP, missing evidence, edits, source-alias retargeting, prune and Cargo metadata | mcp |
 | `managed-copies` | Own passing donor, two fresh workspace-member proofs, Current adoption and each project's own receipt reuse | core |
 | `managed-native` | Own passing donor, fresh plain summaries, unchanged silence and same-PATH compiler replacement against Sail and stock | core |
 | `scripts` | Generated includes, build scripts and declared environment inputs | core |

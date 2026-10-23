@@ -1099,6 +1099,7 @@ mod tests {
         json(
             &source_state,
             &crate::managed::source_inputs::Inputs {
+                version: 2,
                 paths,
                 covered: true,
                 by_package: Some(by_package),
