@@ -3134,6 +3134,7 @@ pub(crate) fn run_engine_held(
     {
         Currentness::Unknown
     } else if before_run.digests == after_run.digests
+        && before_run.bindings == after_run.bindings
         && stamp_before == stamp_after
         && !absent.changed
     {
@@ -3143,6 +3144,7 @@ pub(crate) fn run_engine_held(
     };
     let scripts_unchanged = currentness == Currentness::Historical
         && !absent.changed
+        && before_run.bindings == after_run.bindings
         && super::build_inputs::family::scripts_unchanged_by_run(
             &paths.build_inputs,
             &after_data,
@@ -3288,6 +3290,7 @@ pub(crate) fn run_engine_held(
             context,
             &result.input_revision,
             super::read_check::entries(&after, &after_data, scope.as_ref(), &configuration),
+            super::input::closure_bindings(&after, &after_data, scope.as_ref()),
         )?;
     }
     json(&paths.run.join("result.json"), &result)?;
@@ -3496,6 +3499,7 @@ fn without_generated(
             .retain(|path| !path.starts_with(target));
         view.roots.retain(|path| !path.starts_with(target));
         view.digests.retain(|path, _| !path.starts_with(target));
+        view.bindings.retain(|path, _| !path.starts_with(target));
     }
     view
 }
@@ -5619,7 +5623,14 @@ mod tests {
         let state = root.join("sources.json");
         let (paths, covered) = super::super::source_inputs::update(&state, &artifact_path, &data)
             .unwrap_or_else(|e| unreachable!("fixture: {e}"));
-        assert!(covered && paths.len() == 2);
+        assert!(covered);
+        assert_eq!(
+            paths.iter().cloned().collect::<BTreeSet<_>>(),
+            [&app_source, &dependency_source]
+                .into_iter()
+                .flat_map(|path| [path.clone(), path.canonicalize().unwrap_or_default()])
+                .collect()
+        );
         data["sail_source_inputs"] = serde_json::to_value(paths).unwrap_or_default();
         data["sail_source_inputs_by_package"] =
             serde_json::to_value(super::super::source_inputs::packages(&state)).unwrap_or_default();

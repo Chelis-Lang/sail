@@ -7,6 +7,10 @@ semantic versioning once the API is published.
 
 - Update Tokio to 1.53.3 for RUSTSEC-2026-0386 (Unix AsyncFd I/O safety).
 
+- Bind source symlinks and linked path ancestors to their destinations when
+  identifying proof inputs and rechecking retained results. Retargeting a link
+  invalidates old evidence even when both destinations were already hashed.
+
 - Keep Rustc artifact metadata out of structured diagnostic text, including
   the final verification-progress note. Verifier messages retain their text.
 

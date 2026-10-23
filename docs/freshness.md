@@ -32,13 +32,25 @@ invoking directory's ancestors, and the Cargo home configuration), including the
 ones that do not exist. The record is `read-check.json` in the run's proof
 context under the Sail cache.
 
+The record also binds source symlinks and linked ancestors of declared input
+paths to their resolved destinations. Changing `src/lib.rs` from a link to
+`variants/good.rs` into a link to `variants/bad.rs` changes input identity even
+when both destination files already belong to the package and neither file's
+contents changed. Directory symlinks and compiler-declared external includes
+receive the same checks. Restoring the original binding and contents restores
+the logical input identity.
+
 Each later read of the result (job Status or Result, `sail jobs`, MCP reads,
 watch) rereads every recorded file completely, in parallel, and compares
 digests. It also checks that the absent configuration paths are still absent.
+Every recorded source binding must still resolve to the same destination.
 
 - Every digest matches and nothing new appeared: **Current**.
 - Any file changed, disappeared or appeared: **Historical**.
 - A file cannot be read, or the record is missing or malformed: **Unknown**.
+
+Older read-check records without source bindings are refused as Unknown. Run
+verification again to establish a complete record.
 
 Nothing is inferred from timestamps, so an edit whose modification time was
 restored still reads as changed. Files of packages that the selection never
