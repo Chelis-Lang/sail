@@ -50,6 +50,7 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0031](VI-0031-rust-src-std-paths.md) | Exported VIR names the build host's rust-src copy of the standard library | Rust behaviour inherited by Verus, reproduced | Sail's engine build refuses `rust-src` and the pack/install check rejects such a `vstd.vir`; runtime `64baccbb` remaps a shipped vstd's span strings to the local names | `corpus/repros/rust-src-std-paths/` |
 | [VI-0032](VI-0032-vest-rlimit-on-7d82994.md) | vest_lib exceeds the default rlimit on 0.2026.10.18.7d82994 | open | — | corpus entry `vest` |
 | [VI-0033](VI-0033-crate-metadata-in-smt-names.md) | The fork's closure and alias SMT names carry Cargo's crate metadata | fork defect (VI-0019/VI-0030 renamings); stock unaffected | fixed: `bd79859c` fix: spell closure and alias SMT names without the stable crate ID (Linux pin `f8589ed4`) | `corpus/repros/verus-macro-profile-names/` |
+| [VI-0034](VI-0034-spec-formal-solver-context.md) | Positional spec-formal names change a later HumanEval proof from verified to failed on Mac | fork defect; release blocker #337 | signature-size correction passes installed Mac regression and both ordinary-undo controls; full qualification pending | `corpus/repros/verus-spec-formal-context/` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The

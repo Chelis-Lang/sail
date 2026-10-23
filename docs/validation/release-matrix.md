@@ -1,7 +1,73 @@
 # Combined release matrix
 
-**Status:** baseline measured; final corrected candidate is still being qualified.
-The release is not accepted while known cold losses remain.
+**Current status:** the corrected fork-7d9d5410 candidate is undergoing full
+native Linux and Mac release measurements. Each platform requires its own
+27 scripted rows and four complete three-round mutation cohorts from the
+same installed consumer. The release performance decision remains open.
+
+| Platform | Corrected staged CLI SHA-256 |
+|---|---|
+| Native Linux x86-64, EC2 c7i.8xlarge, Ubuntu 24.04 | `160ea5037436e7ef57c8fb2e8d3db50c07b41d27cc53cda61cb0ec946b2fb42b` |
+| Native macOS 27.0 arm64, EC2 mac-m4.metal | `cf55a904f130baff1dc876636d7d8ec38e532041519ac678265a6fc06b13f5fc` |
+
+Both stages include freshly recorded exact vstd proofs and signed replies for
+the rebuilt runtime. The installed Mac candidate passes all 165 comparisons in the complete
+three-round HumanEval cohort, including `human-eval-constant-004`. Mac and
+Linux IronKV pass all 153 comparisons each. Remaining cohorts are running. Public successful Vest edit/undo
+controls pass on both platforms, including restoration of the original proof
+with zero verifier invocations. Their elapsed times are diagnostic controls,
+not release performance measurements. See [runtime qualification](spec-signature-runtime.md).
+
+## Previous unaccepted fork-f8589ed4 measurements
+
+The results below belong to the preceding binaries and do not qualify the
+corrected candidate. That Linux matrix completed all 31 rows and 651 matching
+mutation comparisons. Its Mac counterpart has 28/31 valid rows: HumanEval has
+three functional disagreements, and IronKV/CapybaraKV did not run. Complete
+reports are `experiments/2026-10-23/selected-linux-complete-matrix.md` and
+`experiments/2026-10-23/selected-mac-incomplete-matrix.md`; the failed original
+Mac cohort remains preserved. Anvil cold/setup losses remain tracked by #314.
+
+**Status:** both final installed scripted matrices are complete. The Mac
+HumanEval mutation cohort fails: 162 Same / three functional disagreements
+([#337](https://github.com/Chelis-Lang/sail/issues/337)). Remaining mutation
+cohorts and the release performance decision remain open.
+
+The selected binaries combine the retention-budget correction (#334) and
+exact raised-limit profile consumer (#335), with runtime f8589ed4 on Verus
+7d82994 and Rust/Cargo 1.99.1:
+
+| Native host | Installed CLI SHA-256 |
+|---|---|
+| EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04 | `573cd8a37722c2b507586e5de4c461a038dcb750ac60b0d60dcc1e397ad0c71f` |
+| EC2 mac-m4.metal, us-east-1c, macOS 27.0 | `8fb73ac60ac70d941e1f9c860913049edbd1739d2b0e3f0cc6281f8fbc15e33b` |
+
+The Mac failure changes `exists_even_index`'s initial length test from zero to
+one. Stock verifies the mutant; Sail rejects its postcondition in all three
+rounds. A fresh single-mutant sequence also reproduces it. Bare-fork controls reproduce it without Sail or its cache. The
+[spec-formal context record](../verus-issues/VI-0034-spec-formal-solver-context.md)
+identifies the input-context sensitivity and the bounded Mac compiler correction;
+full qualification remains pending. The failed cohort, catalogue and exact output
+are preserved in `experiments/2026-10-23/mac-human-constant004-failure.tgz`,
+SHA-256 `369de45697d6255cf9d12e30326aec32477fa1771a4ed8820bfe7fd81431c1f7`.
+The comparison remains strict and the mutant remains in the catalogue.
+
+Each platform requires all 27 scripted rows and four full three-round mutation
+cohorts from its own selected binary. The Mac stock catalogues were separately
+qualified with three fresh stock runs per mutant. Native full workspace,
+solver, E2E, fast and standard conformance pass; the selected Mac consumer
+passes its 963-test host gate and shipped-proof/undo controls. Linux README
+and real Claude Code MCP pass. Final deep checks and Mac walkthrough are in
+progress. See [raised profiles](rlimit-subsumption.md) for the independent
+producer controls and native gate logs.
+
+- Incomplete Mac matrix, 2026-10-22, selected CLI `8fb73ac6…15e33b`:
+  23 scripted rows valid; four Verismo rows could not run because CMake and
+  Ninja were absent. No release acceptance. Prerequisites installed before
+  restarting the complete matrix. Raw `experiments/2026-10-22/final-mac-matrix.tgz`,
+  SHA-256 `8b12f4487a313b89246ee28f2b505c988d04f83bd98005204bffe45822d3e9e9`.
+
+## Prior qualifications
 
 The 2026-10-22 tighter-retention-budget IronKV run has 153 matching
 comparisons, zero differences, false verified results, unstable cases or

@@ -1,90 +1,49 @@
 # Performance
 
-Sail speeds up new projects by shipping a verified vstd and speeds up edits by
-reusing byte-identical solver answers. Returning to a previously verified
-revision can also restore its proof. Unchanged calls return structured reports
-and cost more than Cargo's no-op.
+Sail speeds up Verus verification by reusing a released vstd proof, previously
+verified targets and exact solver answers. Edits still pay Rust compilation
+and the Verus frontend for changed targets. Undoing an edit can restore an
+original complete proof when retaining that target was worth its cost.
 
-The combined 0.1.0 release is still being measured. The table below is a
-three-round baseline of the installed candidate, not acceptance of the later
-performance fixes or a promise that every project is faster. Linux uses
-c7i.8xlarge in us-east-1; macOS uses mac-m4.metal in us-east-1a. Both use
-Sail's f8589ed4 runtime, based on Verus 7d82994, and Rust/Cargo 1.99.1.
+The combined 0.1.0 candidate is being measured on native Linux and Apple-silicon
+Mac hosts. The release is not accepted until its full matrix and realistic
+edit loops have been reviewed. Current source, artifact identities, results
+and remaining gates are in the [release matrix](validation/release-matrix.md).
 
-| Workflow | Linux stock → Sail | macOS stock → Sail |
-|---|---:|---:|
-| New small project and first verification | 31.84 → 13.19 s | 16.78 → 10.42 s |
-| IronKV cold | 40.06 → 21.13 s | 20.36 → 14.05 s |
-| CapybaraKV cold | 57.33 → 56.56 s | 31.27 → 33.36 s |
-| Anvil cold, selected module | 183.80 → 181.71 s | 100.02 → 104.53 s |
-| Verismo cold | 82.84 → 79.42 s | 49.76 → 49.53 s |
-| Vest cold, default resource limit | 68.13 → 64.84 s | 37.26 → 39.05 s |
+## What to expect
 
-Vest's default-limit runs fail the same proofs in both arms. They measure the
-failing workflow. Separate successful Vest controls use `--rlimit 100` and
-serve the shipped vstd:
+- **First use.** A matching project skips vstd verification using the proof
+  in the release archive. Install Rust 1.99.1 with `rust-src`, as described in
+  the [README](../README.md#install). Extra compiler components, dependency
+  differences or forwarded Verus arguments can make that proof unavailable;
+  Sail explains the miss and verifies normally. Signed solver replies in the
+  archive can still answer exact matching queries.
+- **Edits.** Unchanged targets keep their reports. Changed targets run the
+  compiler and verifier, using cached solver answers where the exact query
+  bytes match. The result depends on module layout and the change: a common
+  specification can invalidate much more work than a local proof edit.
+- **Undo.** Expensive targets can restore a previously verified revision.
+  Cheaper targets use ordinary solver caching instead, avoiding the cost of
+  retaining every compiled revision. See [instant revert](instant-revert.md).
+- **Unchanged runs and tiny edits.** Sail still checks inputs and returns a
+  complete report. Plain Cargo can do less work on a no-op, so these calls
+  have visible overhead. Anvil's unchanged partial verification remains a
+  particular setup cost tracked in [known issues](known-issues.md).
 
-| Platform | Cold, stock → Sail | Edit, stock → Sail | Return to original, stock → Sail |
-|---|---:|---:|---:|
-| Linux | 72.04 → 51.01 s | 39.50 → 25.21 s | 39.62 → 2.08 s |
-| macOS | 39.17 → 33.74 s | 22.52 → 15.79 s | 22.54 → 1.97 s |
+The disabled v1 compiled-dependency store is not part of these claims. Other
+compiled dependencies are built separately for each project and worktree
+([ADR 0053](decisions/0053-disable-unqualified-native-store.md)).
 
-Both returns restore the original complete proof with zero verifier
-invocations. The Mac control includes the corrected fresh-target setup;
-these are individual functional controls, separate from the full matrix.
+The release benchmark uses seeded mutations over HumanEval, IronKV, Vest and
+CapybaraKV, with plain Verus as the oracle and one daemon across each complete
+edit sequence. It includes failed proofs and ordinary and forced returns to
+the original. A single scripted edit cannot establish an edit-loop claim.
 
-The full seeded mutation suite exercises nine classes, including proof errors,
-compile errors, specification changes and edits across modules. Each project
-uses a single daemon across all mutants and restores the original afterward.
-All four full Linux baseline cohorts match stock in 651 comparisons. Full
-edit-loop gains are 2.7× on HumanEval, 1.32× on IronKV, 1.92× on CapybaraKV
-and 1.12× on Vest. Vest's default-limit proof failures are preserved. The
-combined Mac suite remains pending. These are broader tests than the single
-scripted edits in older reports. See the [mutation suite](testing.md#mutation-suite).
-
-Baseline source and raw data: [combined release measurements](validation/release-matrix.md).
-
-## Remaining costs
-
-The baseline's small-project edit is 1.13 s versus stock's 0.76 s on Linux,
-and 1.17 s versus 0.45 s on Mac. Its unchanged call is 0.42 s versus 0.11 s
-on Linux, and 0.58 s versus 0.21 s on Mac. Anvil's corrected unchanged
-partial-scope control takes about 2 s with no verifier invocation, against
-stock's 0.3 s. Receipt and input validation still need work.
-
-The tighter retention budget improves IronKV's complete three-round edit
-loop from 1.31× to 1.48× faster than stock, with all 153 comparisons matching.
-The six larger individual losses are removed. Two medians remain 0.03 and
-0.10 s slower on roughly 9–10 s runs; the other 46 edits are faster.
-Undo uses ordinary solver caching here (9.1 → 4.7 s), rather than retained
-proof restoration. The earlier 1.43× measurement had fresh-target retention
-accidentally disabled and does not qualify the corrected product. See
-[#330](https://github.com/Chelis-Lang/sail/issues/330).
-
-Retention has an adaptive cost budget: after its first measurement, Sail
-keeps it only when the compile costs at least sixteen times as much as the
-retention checks. On cheaper targets undo uses the ordinary solver cache
-instead. Missing or unreadable measurements keep initial proof capture.
-This changes which optimization is attempted; proof admission checks remain
-the same. Qualification of the tighter budget is still in progress.
-
-Mac cold losses remain release blockers while fixes are qualified. A known
-slowdown is not accepted merely because other rows are faster. The release
-bar is relative: most scenarios should improve, with only modest overhead
-on already tiny, unoptimizable work.
-
-The scripts keep every sample and compare functional results with stock.
-Run the full matrix from an installed archive on a native host:
-
-```sh
-python3 scripts/perf-matrix.py run --out /tmp/sail-matrix \
-  --sail-install /path/to/unpacked/sail --stock-verus /path/to/stock-verus \
-  --rounds 3 --machine 'instance type, region, operating system'
-```
-
-The release also needs the separate three-round mutation cohorts from the
-[suite guide](testing.md#mutation-suite), bound to the same installed binary.
-The matrix reports missing cohorts and slower rows explicitly.
+Corpus projects use the release's pinned vstd versions; the matrix lists the
+changes from each project's own pins. Vest's pinned original already reports
+verification errors with stock, which Sail must preserve through the sequence.
+Successful shipped-proof reuse and instant undo have a separate public Vest
+control in the [profile qualification](validation/rlimit-subsumption.md).
 
 ## Repeatable Cargo comparison
 

@@ -1,26 +1,86 @@
 # Release-candidate validation
 
-This record covers the release candidate for Sail's first open-source release
-([roadmap](../ROADMAP.md#010)): the required gates,
-the standard and deep tiers, the release build and its smoke tests, and a
-repeat of the [new-user walkthrough](../reports/2026-10-13-new-user-walkthrough.md)
-on a clean Linux host, including the real Claude Code CLI, for `v0.1.0-rc.1`;
-then a short revalidation of `v0.1.0-rc.2` after the fixes for rc.1's
-findings; then `v0.1.0-rc.3`, the first candidate on which Sail runs its own
-Verus ([ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)), pinned
-to fork `73dea021`; then a short revalidation of `v0.1.0-rc.4` after the
-fix for rc.3's finding 12; then `v0.1.0-rc.5`, the 0.1.0 candidate, on
-which every `sail verify` is managed and new projects start from a
-pre-verified vstd. Clean-macOS validation has its own record
-([clean macOS](clean-macos.md)).
+**Current status:** corrected fork `7d9d5410` is staged on both platforms.
+The installed Mac candidate passes the complete three-round HumanEval cohort
+(165 matching comparisons), including the previously failing mutation. Full mutation
+cohorts, final source-suite checks and the new release matrices are running.
+Release acceptance remains open; no rc.6 draft has been created.
 
-| Field | Value |
+The [runtime record](spec-signature-runtime.md) identifies the rebuilt SDKs
+and their scope. The [matrix](release-matrix.md) identifies the actual staged
+consumer binaries. Packaging must preserve these stages without rebuilding.
+
+| Current corrected-candidate gate | Result |
 |---|---|
-| Status | **`v0.1.0-rc.5`** ([below](#v010-rc5)): original scoped checks passed; later validation found a dependency-store stdout defect ([#184](dependency-store-output.md)). The exact asset is not currently accepted; it remains a draft. Release build, both smoke tests, the README install and first use on Linux and macOS (with a second new project, a workspace member, a failing first run, MCP, a loader variable, `--verify-function` and the reproductions of #119–#121), the gate, solver, e2e, `ci/run.sh host` and the managed e2e on macOS, fast PR, fast, standard and deep conformance (0 Different in every arm) and one round of `deep-rvt` (0 Different) pass. The repair benchmark shows no regression, but its outcome check now fails on a schema mismatch in the harness (finding 13, issue #179). Supersedes rc.4, whose draft is deleted. **`v0.1.0-rc.4`** ([below](#v010-rc4)): pass. Release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR conformance and `ci/run.sh host` pass; a failing first managed run no longer makes the next one verify vstd again (finding 12 fixed: 0.7 s Linux, 1.4 s macOS, was 21–27 s). The standard and deep tiers, `deep-rvt` and the repair benchmark carry over from rc.3 unchanged. **`v0.1.0-rc.3`** ([below](#v010-rc3)): release build, both smoke tests, the new-user install, the gate, solver, e2e, fast PR, standard and deep conformance (0 Different in every arm) and the repair benchmark (no regression) pass. **`deep-rvt` is not clean**: some rounds report one `output_json` test Different, each a stock-Verus output-order variant ([VI-0008](../verus-issues/VI-0008-func-details-hash-order.md), finding 11); this arm runs the stock source build, which Sail no longer runs, and Sail's Verus fixes VI-0008; not a blocker. The README's First verification failed as written and was fixed (finding 10). Superseded by rc.4; its draft is deleted. **`v0.1.0-rc.2`:** pass; superseded by rc.3, its draft is deleted. **`v0.1.0-rc.1`:** code pass; its draft is deleted. **Clean macOS:** pass on rc.1 ([clean macOS](clean-macos.md)) |
-| Source | **`v0.1.0-rc.5`** (draft), built from `main` at `c3687990a8139b0f0453c6ef574b3787aded6e92`, which every rc.5 check ran. rc.4: `5d99671e0d17d164a1f53166a921c49a0fd984f8`. rc.3: `8bd4aed2c2c18b6956a4472863dac048530ef49b`. rc.2: `8f427e810dd613b9b476d09bb3eb3aea492f4ce4`. rc.1: `7782b136564ad810adf33c72749c6d75ee9483f8` for every suite; draft built from `958dee95321165f30cca25b5ebe95ac1251eb62e` |
-| Runtime | rc.3 to rc.5: CI image `sail-ci:3c02e445e25df766`, built on each host from the committed inputs; Sail's Verus from fork `73dea021` (Linux `engine-runtime-73dea021-linux`, manifest `4f0d0d3f…ccdd`; macOS `engine-runtime-73dea021-macos`, manifest `a42a7d19…b5c8`); oracle stock Verus `0.2026.10.04.426d8b0`, Z3 4.16.0; `rust_verify_test` from the stock source build of `426d8b0`. rc.1 and rc.2: image `sail-ci:14df87b176833bea`, stock Verus for default mode, engine `engine-runtime-13a1176c-linux` |
-| Environment | Native EC2 c7i.8xlarge hosts (32 vCPU), us-east-1, Ubuntu 24.04, one suite or shard per host (layouts below); the developer Mac (Apple M3, macOS 26.5, shared with other lanes) |
-| Limits | Correctness only; wall times are indicative, not benchmarks, except the repair benchmark (one round per catalogue, a regression check, not an acceptance run). Walkthrough times are one sample each. rc.2's and rc.3's walkthroughs ran in a fresh `ubuntu:24.04` container |
+| Native Linux workspace, solver, full E2E including extra, PR and full fast conformance | Pass |
+| Native Linux full standard conformance | Running |
+| Mac host gate | Pass; 963 tests, clippy clean |
+| Platform proof factories and installed-runtime checks | Pass on Linux and Mac |
+| Ordinary public Vest edit/undo on both new runtime manifests | Pass; original complete proof restored with zero verifier invocations |
+| Mac original-failure regression, installed consumer, three rounds | Pass; 12 Same, zero different or false verified |
+| Full three-round installed mutation cohorts, both platforms | Mac HumanEval 165 Same; Mac/Linux IronKV 153 Same each; remaining cohorts running |
+| Final new-runtime deep corpus and full deep-RVT cache | Fork pass-through 4,901 Same; corpus and cache rounds running |
+| Corrected-candidate release matrices | Running/queued |
+| New-stage README/Claude Code MCP, final archive smoke and rc.6 draft | Pending |
+
+## Previous unaccepted candidate
+
+The remainder records the preceding fork-f8589ed4 attempt. Its archive hashes,
+smoke checks and completed deep results do **not** qualify the corrected
+candidate above. Those rc.6 archives are superseded; the Mac HumanEval failure
+remains a failed attempt ([#337](https://github.com/Chelis-Lang/sail/issues/337)).
+
+**Status:** rc.6 archives are built and pass native installation smoke tests.
+Final deep checks pass. Mac mutation qualification has a functional failure
+tracked in [#337](https://github.com/Chelis-Lang/sail/issues/337); performance
+qualification also remains open.
+No rc.6 GitHub draft has been created and release acceptance remains open.
+
+The selected consumer combines the retention-budget correction (#334) and
+exact default/limit-100 proof support (#335), using fork f8589ed4 on Verus
+7d82994 and Rust/Cargo 1.99.1. Packaging (#336) preserves the exact qualified
+CLI, shim, runtime, proof and signed reply pack; it does not rebuild them.
+See the [combined matrix](release-matrix.md) for binary identities and the
+[raised-profile record](rlimit-subsumption.md) for source and producer checks.
+
+| Gate | Current result |
+|---|---|
+| Native Linux workspace, solver and full E2E including extra | Pass |
+| Full fast and standard conformance | Pass; each standard arm: 159 Same, 13,166 functions, zero different, unstable or infrastructure errors |
+| Mac host gate | Pass; clippy clean, 963 tests |
+| Exact default/100 Mac proof recording and successful public Vest undo | Pass; original proof restored with zero verifier invocations |
+| Actual Linux archive, fresh Ubuntu 24.04 host | Pass: bundled runtime, first-use proof served, edited verification and repair accepted |
+| Actual Mac archive, fresh extraction and empty cache | Pass: bundled runtime, first-use proof served, edited verification and repair accepted |
+| Linux README and real Claude Code MCP | Pass; 17 tools |
+| Mac README and real Claude Code MCP on selected artifact | Pass; 17 tools |
+| Final deep corpus and full source suite | Pass; all four deep corpus arms and full source-suite pass-through, cache-fill and cache-warm |
+| Final Linux/Mac matrices and all four mutation cohorts per platform | Both scripted matrices complete; Mac HumanEval fails with three functional disagreements (#337); remaining cohorts pending |
+| Release performance decision and rc.6 draft | Pending |
+
+The Mac archive smoke uses the native paid host with the documented Rust
+prerequisites already installed. Linux installs those prerequisites on a
+fresh native c7i.4xlarge, us-east-1, Ubuntu 24.04 host. Neither smoke uses a
+separate Verus installation. These are functional checks, not benchmarks.
+
+| Asset | SHA-256 |
+|---|---|
+| `sail-0.1.0-rc.6-x86_64-unknown-linux-gnu.tar.gz` | `fd1875e6ed2869d45577b06b747f4aeda85ba317d84a31e6b41a971747b48c40` |
+| `sail-0.1.0-rc.6-aarch64-apple-darwin.tar.gz` | `37018e5090925ff41aef3095f7f236651f25e51aec888fbbd5e3725eb60bce34` |
+
+Raw packaging and Mac smoke logs:
+`experiments/2026-10-23/rc6-packaging-smoke.tgz`, SHA-256
+`6f7720da12c2fb51e92c4ff2b4d27508dfb221be62c3f202cae8afe79df6948d`.
+Raw Linux smoke log, prerequisites and result documents:
+`experiments/2026-10-23/rc6-linux-smoke.tgz`, SHA-256
+`f7854d643affa53dd2321c8ff33af7265312d346332ec189f9e42476b817259f`.
+
+Final deep logs and reports: `experiments/2026-10-23/final-combined-deep.tgz`,
+SHA-256 `60f7131b23c2f5ed9a6519392e77e059f0ba7438254e3619b7b507f220fd49cd`.
+The selected fork has 4,901 matching tests in each source-suite arm, with
+4,838 nonignored tests passing. The stock control retains its separately
+recorded existing failures; no new shim disagreement is accepted.
+
+Historical candidate checks follow; rc.5 remains an unaccepted draft.
 
 ## Qualified-stage packaging control, 2026-10-22
 
