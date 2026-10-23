@@ -307,6 +307,11 @@ remain in the [runtime record](validation/spec-signature-runtime.md).
   supplied a failed function with unchanged successful summary counts; no
   ordinary producer creating that state or accepted false theorem was established.
 
+- **Unbound cache admission (#342).** Solver cache connections require a
+  successful single `HELLO` before reads or writes; failed or repeated
+  negotiation retires the connection. This closes the protocol binding gap,
+  not the separate trusted-writer assumption for reply correctness.
+
 - **Fork JSON proof-note order (#185).** The selected `cc7bbce4` runtime
   contains producer fix `5793253c`, which serializes both arrays lexically
   without changing internal membership, verdicts or diagnostic bytes. The full

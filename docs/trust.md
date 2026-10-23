@@ -223,6 +223,17 @@ pinned solver. The default socket name includes the version
 (`daemon-v<N>-workspace-v2-proof-v1.sock`), so an upgraded `sail verify` starts its own daemon
 instead of reusing a stale one.
 
+Protocol version 5 requires one successful `HELLO` before a connection can
+read or write replies. That handshake binds both solver identity and mode.
+A missing, failed or repeated handshake closes the connection; a client must
+connect again to retry or choose another solver/mode. `INFO` and `STATS` remain
+available without a handshake, so status never requires a solver.
+
+This is an admission boundary, not an independent proof of an answer. An
+identified local writer can still supply a plausible wrong `unsat` under a
+key; the local-writer and shared-signer trust assumptions above still apply.
+Checksums, identity negotiation and signatures do not establish SMT truth.
+
 ## Solver diagnostics and publication
 
 The stdout reply cache admits a session only after a clean solver exit with

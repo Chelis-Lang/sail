@@ -16,6 +16,10 @@
 //! publication (ADR 0022) and negotiates the mode in HELLO (ADR 0020). A daemon that predates
 //! one rejects it by closing that connection; nothing else changes.
 //!
+//! Version 5 requires exactly one successful `HELLO` before `GET` or `PUT`.
+//! Missing, failed or repeated handshakes close the connection without reading
+//! further requests. `STATS` and `INFO` remain available without a handshake.
+//!
 //! Frames larger than [`MAX_FRAME`] are rejected.
 
 use std::io::{self, Read, Write};
@@ -25,7 +29,7 @@ use serde::{Deserialize, Serialize};
 /// The protocol version. Bump on any incompatible change; the daemon reports
 /// it in `HELLO`, clients refuse a mismatch, and the default socket name
 /// includes it, so an upgraded client never talks to a stale daemon.
-pub const PROTOCOL_VERSION: u32 = 4;
+pub const PROTOCOL_VERSION: u32 = 5;
 
 /// A cache namespace negotiated for one solver connection.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,7 +53,7 @@ impl VerificationMode {
     }
 }
 
-/// A protocol-v4 solver handshake, including the cache namespace.
+/// A solver handshake, including the cache namespace.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hello {
     /// The exact solver executable to identify.

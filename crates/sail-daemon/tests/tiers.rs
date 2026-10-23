@@ -2,6 +2,7 @@
 //! daemon lifecycle (ADR 0015). No solver needed: replies are synthetic.
 #![cfg(unix)]
 
+use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -34,6 +35,7 @@ impl Drop for Scratch {
 struct Running {
     socket: PathBuf,
     cache: PathBuf,
+    solver: PathBuf,
     handle: sail_daemon::Handle,
     thread: std::thread::JoinHandle<std::io::Result<()>>,
 }
@@ -41,6 +43,9 @@ struct Running {
 impl Running {
     fn start(dir: &Path, config: &sail_daemon::Config) -> Self {
         let (socket, cache) = (dir.join("d.sock"), dir.join("cache"));
+        let solver = dir.join("cache-test-solver");
+        assert!(std::fs::write(&solver, b"#!/bin/sh\necho 'Z3 version 4.16.0'\n").is_ok());
+        assert!(std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o700)).is_ok());
         let stats = Arc::new(sail_daemon::Stats::default());
         let server = match sail_daemon::bind(&socket, &cache, stats, config) {
             Ok(s) => s,
@@ -51,6 +56,7 @@ impl Running {
         Self {
             socket,
             cache,
+            solver,
             handle,
             thread,
         }
@@ -61,6 +67,12 @@ impl Running {
             Ok(c) => c,
             Err(e) => unreachable!("cannot connect: {e}"),
         }
+    }
+
+    fn cache_client(&self) -> Client {
+        let mut client = self.client();
+        assert!(client.hello(&self.solver.to_string_lossy()).is_ok());
+        client
     }
 
     fn disk(&self) -> DiskCache {
@@ -119,7 +131,7 @@ fn drained(r: &Running) -> bool {
 fn memory_hits_always_match_disk() {
     let dir = Scratch::new("match");
     let r = Running::start(&dir.0, &sail_daemon::Config::default());
-    let mut c = r.client();
+    let mut c = r.cache_client();
     let disk = r.disk();
     let n = 24u32;
     for i in 0..n {
@@ -190,7 +202,7 @@ fn put_is_acknowledged_before_the_write_and_drained_on_shutdown() {
         ..sail_daemon::Config::default()
     };
     let r = Running::start(&dir.0, &config);
-    let mut c = r.client();
+    let mut c = r.cache_client();
     let n = 30u32;
     let start = Instant::now();
     for i in 0..n {
@@ -225,7 +237,7 @@ fn a_full_queue_drops_puts_without_storing_anything_wrong() {
         ..sail_daemon::Config::default()
     };
     let r = Running::start(&dir.0, &config);
-    let mut c = r.client();
+    let mut c = r.cache_client();
     for i in 0..5u32 {
         assert!(c.put(&key(i).0, meta("get-model"), reply_for(i)).is_ok());
     }
@@ -276,10 +288,12 @@ fn gc_and_clear_concurrent_with_reads_and_writes_only_cost_misses() {
         let clients: Vec<_> = (0..6u32)
             .map(|t| {
                 let socket = &r.socket;
+                let solver = &r.solver;
                 s.spawn(move || {
                     let Ok(mut client) = Client::connect(socket) else {
                         unreachable!("cannot connect")
                     };
+                    assert!(client.hello(&solver.to_string_lossy()).is_ok());
                     let (mut hits, mut misses) = (0u64, 0u64);
                     for round in 0..15u32 {
                         for j in 0..n {
@@ -370,7 +384,7 @@ fn shutdown_works_after_the_socket_file_is_removed() {
 fn pipelined_puts_store_every_entry_in_order_across_windows() {
     let dir = Scratch::new("pipelined");
     let r = Running::start(&dir.0, &sail_daemon::Config::default());
-    let mut c = r.client();
+    let mut c = r.cache_client();
     // More than one window of requests, and a connection that stays usable.
     let n = 300;
     assert!(
@@ -387,7 +401,7 @@ fn pipelined_puts_store_every_entry_in_order_across_windows() {
 }
 
 fn put_all_and_get(r: &Running) {
-    let mut c = r.client();
+    let mut c = r.cache_client();
     for i in 0..3 {
         assert!(c.put(&key(i).0, meta("get-model"), reply_for(i)).is_ok());
         assert_eq!(c.get(&key(i).0).ok().flatten(), Some(reply_for(i)));
@@ -397,7 +411,6 @@ fn put_all_and_get(r: &Running) {
 #[test]
 fn mode_isolation_survives_memory_and_disk_restarts() {
     use sail_api::protocol::VerificationMode;
-    use std::os::unix::fs::PermissionsExt as _;
     let dir = Scratch::new("mode");
     let solver = dir.0.join("z3");
     assert!(std::fs::write(&solver, b"#!/bin/sh\necho 'Z3 version 4.16.0'\n").is_ok());
@@ -449,8 +462,6 @@ fn mode_isolation_survives_memory_and_disk_restarts() {
 #[test]
 fn hello_rehashes_same_size_executables_with_restored_mtime()
 -> Result<(), Box<dyn std::error::Error>> {
-    use std::os::unix::fs::PermissionsExt as _;
-
     let dir = Scratch::new("identity-bytes");
     let solver = dir.0.join("solver");
     let old = b"#!/bin/sh\necho 'Z3 version 4.16.0'\n# A\n";
@@ -497,8 +508,6 @@ fn hello_rehashes_same_size_executables_with_restored_mtime()
 #[test]
 fn hello_keeps_unchanged_identity_and_refuses_missing_or_unlaunchable_solver()
 -> Result<(), Box<dyn std::error::Error>> {
-    use std::os::unix::fs::PermissionsExt as _;
-
     let dir = Scratch::new("identity-failure");
     let solver = dir.0.join("solver");
     std::fs::write(&solver, b"#!/bin/sh\necho 'Z3 version 4.16.0'\n")?;
@@ -516,8 +525,6 @@ fn hello_keeps_unchanged_identity_and_refuses_missing_or_unlaunchable_solver()
 
 #[test]
 fn equal_executable_bytes_never_memoize_version_output() -> Result<(), Box<dyn std::error::Error>> {
-    use std::os::unix::fs::PermissionsExt as _;
-
     let dir = Scratch::new("fresh-version");
     let solver = dir.0.join("solver");
     let body = b"#!/bin/sh\nread version < \"${0%/*}/version\"\nprintf 'Z3 version %s\\n' \"$version\"\nprintf '.' >> \"${0%/*}/called\"\n";
@@ -534,4 +541,103 @@ fn equal_executable_bytes_never_memoize_version_output() -> Result<(), Box<dyn s
     assert_eq!(std::fs::read(dir.0.join("called"))?, b"..");
     r.stop();
     Ok(())
+}
+
+#[test]
+fn cache_requests_require_a_successful_handshake_but_status_does_not() {
+    let dir = Scratch::new("hello-required");
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    let mut bound = r.cache_client();
+    assert!(
+        bound
+            .put(&key(901).0, meta("check-sat"), b"unsat\n".to_vec())
+            .is_ok()
+    );
+    assert_eq!(
+        bound.get(&key(901).0).ok().flatten(),
+        Some(b"unsat\n".to_vec())
+    );
+
+    // A real cache hit must not be available to an unbound connection.
+    let mut unbound = r.client();
+    assert!(unbound.info().is_ok());
+    assert!(unbound.stats().is_ok());
+    assert!(unbound.get(&key(901).0).is_err());
+    assert!(
+        unbound.stats().is_err(),
+        "a refused connection must be retired"
+    );
+    let mut unbound = r.client();
+    assert!(
+        unbound
+            .put(&key(902).0, meta("check-sat"), b"unsat\n".to_vec())
+            .is_err()
+    );
+    let mut unbound = r.client();
+    assert!(
+        unbound
+            .put_all([(key(903).0, meta("check-sat"), b"unsat\n".to_vec())])
+            .is_err()
+    );
+    assert_eq!(bound.get(&key(902).0).ok().flatten(), None);
+    assert_eq!(bound.get(&key(903).0).ok().flatten(), None);
+    assert_eq!(r.client().stats().map(|stats| stats.puts).ok(), Some(1));
+    wait_until(Duration::from_secs(10), "bound store", || drained(&r));
+    assert_eq!(r.disk().usage().entries, 1);
+    drop(bound);
+    r.stop();
+}
+
+#[test]
+fn failed_and_repeated_handshakes_cannot_admit_or_rebind_cache_entries() {
+    use sail_api::protocol::VerificationMode;
+    let dir = Scratch::new("hello-retired");
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    let mut failed = r.client();
+    assert!(
+        failed
+            .hello_in_mode(
+                "/nonexistent/sail-test-solver",
+                VerificationMode::AcceptFirstProof
+            )
+            .is_err()
+    );
+    assert!(
+        failed
+            .put(&key(910).0, meta("check-sat"), b"unsat\n".to_vec())
+            .is_err()
+    );
+
+    // Even a second valid HELLO cannot change an already bound connection.
+    for mode in [
+        VerificationMode::Default,
+        VerificationMode::AcceptFirstProof,
+    ] {
+        let mut repeated = r.cache_client();
+        assert!(
+            repeated
+                .hello_in_mode(&r.solver.to_string_lossy(), mode)
+                .is_err()
+        );
+        assert!(
+            repeated
+                .put(&key(911).0, meta("check-sat"), b"unsat\n".to_vec())
+                .is_err()
+        );
+    }
+    assert_eq!(r.client().stats().map(|stats| stats.puts).ok(), Some(0));
+    let mut bound = r.cache_client();
+    assert!(
+        bound
+            .put(&key(912).0, meta("check-sat"), b"unsat\n".to_vec())
+            .is_ok()
+    );
+    assert_eq!(
+        bound.get(&key(912).0).ok().flatten(),
+        Some(b"unsat\n".to_vec())
+    );
+    assert_eq!(bound.get(&key(910).0).ok().flatten(), None);
+    assert_eq!(bound.get(&key(911).0).ok().flatten(), None);
+    drop(bound);
+    r.stop();
 }

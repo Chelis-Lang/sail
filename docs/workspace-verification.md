@@ -337,7 +337,7 @@ worker. Results carry currentness, scope and establishing provenance so agents
 can distinguish finished work from current proof evidence.
 
 Existing solver-cache entries remain compatible. The automatic daemon socket
-is `<cache>/daemon-v4-workspace-v2-proof-v1.sock`, and the job socket beside it
+is `<cache>/daemon-v5-workspace-v2-proof-v1.sock`, and the job socket beside it
 is `jobs-v1-proof-v1-<hash>.sock`.
 
 Unix socket paths are limited to 107 bytes on Linux and 103 on macOS
