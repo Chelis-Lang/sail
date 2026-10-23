@@ -9,9 +9,9 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 | Gate | State | Evidence |
 |---|---|---|
 | Shared neutral source and actual backend helper | Qualified separately | [Lowering](spec/neutral-verus-lowering.md) |
-| Negotiated source-only job route and immutable baselines | Installed-service acceptance passed; final full gates required | [Acceptance](validation/neutral-contract-jobs.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
-| Source-semantic requirement entailment and full requirement tiers | Separate remaining work | [Service boundary](spec/neutral-contract-jobs.md) |
-| Bounded neutral-source body mutation | API candidate; native strong mutants remain Unknown and positive kills unestablished | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
+| Negotiated source-only job route and immutable baselines | Cumulative source qualified on native Linux and macOS | [Combined qualification](validation/integration-production.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
+| Source-semantic requirement entailment and full requirement tiers | Producer source-bound proof views implemented; independent links belong to Oyster | [Service boundary](spec/neutral-contract-jobs.md) |
+| Bounded neutral-source body mutation | Lifecycle qualified; native strong mutants remain Unknown and positive kills unestablished | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
 
 ## Goal
 
@@ -263,10 +263,16 @@ The M11 reliability items in #168 are closed.
 
 | Slice | Status | Remaining gate |
 |---|---|---|
-| Raw SMT shared runtime | Implemented | Consumer qualification |
-| Native D.I.V.E. worker and shared temporal route | Implemented, local correctness controls pass | Frozen-source Linux/macOS qualification, protected CI and independent review |
-| Neutral source jobs | Separate integration slice | Corrected definedness and source-job qualification |
-| Requirement assurance and mutation | Deferred | Public evidence interfaces and actual execution |
+| Raw SMT shared runtime | Implemented; original consumer slice delivered | Continued consumer qualification at its selected immutable SDK |
+| Native D.I.V.E. worker and shared temporal route | Linux installed-service and cumulative Linux/Mac host gates passed | Protected CI and exact-pin consumer delivery |
+| Neutral source jobs | Admitted source subset and original proof retention qualified | Broader Rust and contract admission |
+| Requirement assurance | Source-bound original proof and requirement views implemented | Consumer-owned independent links and complete current evidence |
+| Bounded neutral-source mutation | Lifecycle and conservative retention qualified | Positive native kills remain unestablished; strong mutants return Unknown |
+
+The [combined integration qualification](validation/integration-production.md)
+identifies exact cumulative source, actual platform scope, independent review,
+unchanged corpus components and retained failed attempts. It establishes no
+performance improvement, application trace capture or full realizability.
 
 ## Later
 

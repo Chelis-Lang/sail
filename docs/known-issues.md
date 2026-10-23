@@ -18,7 +18,8 @@ with no SAT rejection. Their public outcome remains inconclusive and the gate
 remains false. The optional observation runner qualifies only separately
 recorded API, survival, lifecycle and evidence-refusal controls. It does not
 complete the mutation milestone. See the [qualification record](validation/neutral-mutation.md)
-for the failed strict attempt and required future evidence.
+for the failed strict attempt and required future evidence. The [combined integration record](validation/integration-production.md)
+binds the latest cumulative source and preserves the same positive-kill limit.
 
 ## Release performance
 

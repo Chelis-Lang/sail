@@ -40,6 +40,9 @@ decisions; proposed candidates are distinguished from accepted decisions.
 authentication for the pinned D.I.V.E. source dependency.
 [Native worker validation](validation/dive-runtime-worker.md) records the
 focused checking, replay and process-isolation evidence and its limits.
+[Combined production integration](validation/integration-production.md) records the
+current cumulative source, native gates, source and temporal controls, unchanged
+corpus-component qualification and explicit mutation limits.
 [macOS integration acceptance](validation/integration-macos.md) records the
 native host gate and installed temporal/source controls, including the
 unestablished positive mutation-kill boundary.

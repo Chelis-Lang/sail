@@ -395,6 +395,61 @@ pub(super) fn unchanged_since(snapshot: &InputSnapshot, stamp: Option<&String>) 
         && stamp_paths(&snapshot.observation_paths).as_ref() == stamp
 }
 
+/// A selected revision from this run's complete source observation. Every
+/// selected path and directory must belong to that observation. The original
+/// content-read stamp is checked after selection; any mutation or uncertainty
+/// takes a new complete snapshot instead. Compiler identities are not memoized.
+#[cfg(test)]
+pub(super) fn snapshot_metadata_observed(
+    data: &Value,
+    extras: &[PathBuf],
+    observed: &InputSnapshot,
+    stamp: Option<&String>,
+) -> InputSnapshot {
+    if observed.complete
+        && stamp.is_some()
+        && let Some(snapshot) = snapshot_metadata_projected(data, extras, observed)
+        && unchanged_since(observed, stamp)
+    {
+        return snapshot;
+    }
+    snapshot_metadata(data, extras)
+}
+
+/// Reobserves this invocation's complete selection without a second content
+/// read when its entire namespace and original mutation stamp still agree.
+/// Preserve the original stamp; never bind old bytes to a newly taken stamp.
+pub(super) fn snapshot_metadata_reobserved(
+    data: &Value,
+    extras: &[PathBuf],
+    observed: &InputSnapshot,
+    stamp: Option<&String>,
+) -> (InputSnapshot, Option<String>) {
+    if observed.complete
+        && stamp.is_some()
+        && let Some(snapshot) = snapshot_metadata_projected(data, extras, observed)
+        && snapshot.observation_paths == observed.observation_paths
+        && unchanged_since(observed, stamp)
+    {
+        return (snapshot, stamp.cloned());
+    }
+    snapshot_metadata_stamped(data, extras)
+}
+
+/// Projects the same selected bytes without re-reading them. The caller must
+/// check the observation's original stamp after the entire projection batch;
+/// an unchecked projection never authorizes a receipt.
+pub(super) fn snapshot_metadata_projected(
+    data: &Value,
+    extras: &[PathBuf],
+    observed: &InputSnapshot,
+) -> Option<InputSnapshot> {
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    projected_snapshot(data, extras, home.as_deref(), observed)
+}
+
 fn stamped_snapshot(
     data: &Value,
     extras: &[PathBuf],
@@ -495,6 +550,216 @@ fn stamped_snapshot(
         },
         stamp_before,
     )
+}
+
+/// Selects a subset of a complete walk without walking those directories
+/// again. The caller must check the original walk's mutation stamp after
+/// selection. Uncovered roots and aliases retain the ordinary fresh walk.
+#[allow(
+    clippy::too_many_lines,
+    reason = "The selected namespace and complete-byte projection are validated together."
+)]
+fn projected_snapshot(
+    data: &Value,
+    extras: &[PathBuf],
+    cargo_home: Option<&Path>,
+    observed: &InputSnapshot,
+) -> Option<InputSnapshot> {
+    if !observed.complete {
+        return None;
+    }
+    let workspace = PathBuf::from(data["workspace_root"].as_str()?);
+    let invocation = Path::new(
+        data["sail_invocation_directory"]
+            .as_str()
+            .unwrap_or(workspace.to_str()?),
+    );
+    let mut roots: Vec<PathBuf> = data["packages"]
+        .as_array()?
+        .iter()
+        .map(|package| {
+            Some(
+                Path::new(package["manifest_path"].as_str()?)
+                    .parent()?
+                    .to_owned(),
+            )
+        })
+        .collect::<Option<_>>()?;
+    let source_inputs: Vec<PathBuf> = data["sail_source_inputs"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|path| path.as_str().map(PathBuf::from))
+        .collect::<Option<_>>()?;
+    let mut selected = HashSet::new();
+    for root in &roots {
+        if root.canonicalize().ok()? != *root || !observed.observation_paths.contains(root) {
+            return None;
+        }
+        selected.insert(root.clone());
+    }
+    for root in source_inputs.iter().chain(extras) {
+        if !observed.observation_paths.contains(root) {
+            // A declared directory can be reached through an ancestor alias
+            // (Homebrew's opt/openssl/include). The fresh collector walks its
+            // canonical directory too. Keep direct links on the strict alias
+            // path below, and refuse any previously unobserved destination.
+            if std::fs::symlink_metadata(root)
+                .ok()?
+                .file_type()
+                .is_symlink()
+            {
+                return None;
+            }
+            let canonical = root.canonicalize().ok()?;
+            if !observed.observation_paths.contains(&canonical) {
+                return None;
+            }
+            selected.insert(canonical);
+            continue;
+        }
+        // Compiler-loaded files already inside a selected canonical package
+        // need no second realpath. Their fresh bytes and namespace are in
+        // the observation, whose original stamp is checked by the caller.
+        if !root.ancestors().any(|parent| selected.contains(parent)) {
+            if root.canonicalize().ok()? != *root {
+                return None;
+            }
+            selected.insert(root.clone());
+        }
+    }
+    roots.extend(source_inputs);
+    let contains = |path: &Path| path.ancestors().any(|parent| selected.contains(parent));
+    // Disjoint canonical roots select contiguous ranges in Path's component
+    // order. Avoid a per-file scan of all package roots or ancestor hashes.
+    let mut ranges: Vec<PathBuf> = selected
+        .iter()
+        .filter(|root| {
+            !root
+                .ancestors()
+                .skip(1)
+                .any(|parent| selected.contains(parent))
+        })
+        .cloned()
+        .collect();
+    ranges.sort_unstable();
+    let mut files: BTreeSet<PathBuf> = ranges
+        .iter()
+        .flat_map(|root| {
+            observed
+                .digests
+                .range(root.clone()..)
+                .take_while(move |(path, _)| path.starts_with(root))
+                .map(|(path, _)| path.clone())
+        })
+        .collect();
+    let explicit: BTreeSet<PathBuf> = [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain",
+        "rust-toolchain.toml",
+    ]
+    .map(|name| workspace.join(name))
+    .into_iter()
+    .chain(configuration_paths(invocation, cargo_home))
+    .filter(|path| path.is_file())
+    .collect();
+    // Collector aliases are roots outside its canonical namespace. Explicit
+    // manifests/config files may instead be raw paths in that namespace, so
+    // inspect those too. Absent watch-only configuration names carry no bytes.
+    let candidates = observed
+        .bindings
+        .keys()
+        .chain(
+            observed
+                .roots
+                .iter()
+                .filter(|root| !observed.observation_paths.contains(*root)),
+        )
+        .chain(&explicit);
+    for alias in candidates {
+        let metadata = match std::fs::symlink_metadata(alias) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => return None,
+        };
+        if !metadata.file_type().is_symlink() || !(contains(alias) || explicit.contains(alias)) {
+            continue;
+        }
+        let target = alias.canonicalize().ok()?;
+        // An internal link adds no files beyond the selected complete walk.
+        // Its parent directory binds any replacement of that link. External
+        // aliases, and links without that parent observation, use fresh reads.
+        if !contains(&target) || !observed.observation_paths.contains(alias.parent()?) {
+            return None;
+        }
+        if contains(alias) {
+            roots.extend([alias.clone(), target]);
+        }
+    }
+    // Select exactly the aliases the fresh collector would observe. Include
+    // linked ancestors of declared inputs and internal links in selected
+    // package walks; foreign packages' links do not bind this revision.
+    let mut selected_bindings = Bindings::default();
+    for path in roots.iter().chain(extras).chain(&explicit) {
+        if !selected_bindings.observe(path) {
+            return None;
+        }
+    }
+    for alias in observed.bindings.keys().filter(|alias| contains(alias)) {
+        if !selected_bindings.observe(alias) {
+            return None;
+        }
+    }
+    if selected_bindings
+        .paths
+        .iter()
+        .any(|(alias, target)| observed.bindings.get(alias) != Some(target))
+    {
+        return None;
+    }
+    let bindings = selected_bindings.paths;
+    for path in explicit {
+        if !observed.digests.contains_key(&path) {
+            return None;
+        }
+        files.insert(path);
+    }
+    let mut observation_paths: BTreeSet<PathBuf> = ranges
+        .iter()
+        .flat_map(|root| {
+            observed
+                .observation_paths
+                .range(root.clone()..)
+                .take_while(move |path| path.starts_with(root))
+                .cloned()
+        })
+        .collect();
+    observation_paths.extend(files.iter().cloned());
+    observation_paths.extend(bindings.keys().cloned());
+    let (revision, complete, digests) = fold_contents(
+        &files,
+        &bindings,
+        files.iter().map(|path| {
+            observed
+                .digests
+                .get(path)
+                .cloned()
+                .ok_or_else(|| Error::new("SAIL3101", "missing observed input"))
+        }),
+    );
+    roots.sort();
+    roots.dedup();
+    Some(InputSnapshot {
+        workspace,
+        revision,
+        roots,
+        excluded: observed.excluded.clone(),
+        complete,
+        observation_paths,
+        digests,
+        bindings,
+    })
 }
 
 /// `snapshot` narrowed for proof-time kernel coverage of one selection.
@@ -641,11 +906,19 @@ fn contents_revision(
     files: &BTreeSet<PathBuf>,
     bindings: &BTreeMap<PathBuf, PathBuf>,
 ) -> (String, bool, BTreeMap<PathBuf, String>) {
+    let paths: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
+    fold_contents(files, bindings, digest_all(&paths))
+}
+
+fn fold_contents(
+    files: &BTreeSet<PathBuf>,
+    bindings: &BTreeMap<PathBuf, PathBuf>,
+    reads: impl IntoIterator<Item = Result<String>>,
+) -> (String, bool, BTreeMap<PathBuf, String>) {
     let mut complete = true;
     let mut recorded = Vec::with_capacity(files.len());
     let mut hasher = Sha256::new();
-    let paths: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
-    for (path, digest) in files.iter().zip(digest_all(&paths)) {
+    for (path, digest) in files.iter().zip(reads) {
         let bytes = path.as_os_str().as_encoded_bytes();
         hasher.update((bytes.len() as u64).to_le_bytes());
         hasher.update(bytes);
@@ -688,10 +961,10 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
     // home directory): each ancestor is examined once.
     let mut examined = HashSet::new();
     for path in &snapshot.roots {
-        paths.insert(path.clone());
-        if let Ok(canonical) = path.canonicalize() {
-            paths.insert(canonical);
-        }
+        // Compiler declarations may add an alternate spelling (src/../file)
+        // of a file already observed. Stamp the resolved file once; actual
+        // aliases remain separately stamped below and bound in the snapshot.
+        paths.insert(path.canonicalize().unwrap_or_else(|_| path.clone()));
         for alias in path.ancestors() {
             if examined.insert(alias)
                 && std::fs::symlink_metadata(alias).is_ok_and(|m| m.file_type().is_symlink())
@@ -1177,6 +1450,216 @@ mod tests {
         assert_ne!(snapshot.digests.get(&odd), refreshed.digests.get(&odd));
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
+    #[cfg(unix)]
+    #[test]
+    fn observed_revision_binds_retargeting_between_already_hashed_sources() -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-observed-binding-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        std::fs::write(root.join("Cargo.toml"), "fixture")?;
+        std::fs::write(root.join("good.rs"), "good")?;
+        std::fs::write(root.join("bad.rs"), "bad")?;
+        let alias = root.join("lib.rs");
+        std::os::unix::fs::symlink(root.join("good.rs"), &alias)?;
+        let data = serde_json::json!({"workspace_root":root,
+            "sail_invocation_directory":root,
+            "packages":[{"manifest_path":root.join("Cargo.toml")}]});
+        let (observed, stamp) = snapshot_metadata_stamped(&data, &[]);
+        let projected = snapshot_metadata_projected(&data, &[], &observed)
+            .ok_or_else(|| std::io::Error::other("complete source projection refused"))?;
+        assert_eq!(projected.revision, observed.revision);
+        assert_eq!(projected.bindings, observed.bindings);
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(root.join("bad.rs"), &alias)?;
+        let fresh = snapshot_metadata(&data, &[]);
+        let (reobserved, _) = snapshot_metadata_reobserved(&data, &[], &observed, stamp.as_ref());
+        assert_eq!(fresh.digests, observed.digests);
+        assert_ne!(fresh.bindings, observed.bindings);
+        assert_ne!(fresh.revision, observed.revision);
+        assert_eq!(reobserved.revision, fresh.revision);
+        assert_eq!(reobserved.bindings, fresh.bindings);
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(root.join("good.rs"), &alias)?;
+        assert_eq!(snapshot_metadata(&data, &[]).revision, observed.revision);
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
+    fn observed_subset_has_the_same_content_and_namespace_as_a_fresh_read() -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-observed-subset-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let a = root.join("a");
+        let b = root.join("a-b");
+        std::fs::create_dir_all(&a)?;
+        std::fs::create_dir_all(&b)?;
+        std::fs::write(a.join("Cargo.toml"), "a")?;
+        std::fs::write(a.join("lib.rs"), "first")?;
+        std::fs::write(b.join("Cargo.toml"), "b")?;
+        std::fs::write(b.join("lib.rs"), "second")?;
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(a.join("lib.rs"), a.join("internal.rs"))?;
+        let data = serde_json::json!({"workspace_root":root,
+            "sail_invocation_directory":root,
+            "packages":[{"manifest_path":a.join("Cargo.toml")},
+                        {"manifest_path":b.join("Cargo.toml")}]});
+        let (mut observed, stamp) = snapshot_metadata_stamped(&data, &[]);
+        assert!(observed.complete);
+        // The real runner adds absent configuration paths to its watch roots.
+        observed.roots.push(root.join(".cargo/config.toml"));
+        let mut subset = data.clone();
+        subset["workspace_root"] = serde_json::json!(a);
+        subset["packages"] = serde_json::json!([{"manifest_path":a.join("Cargo.toml")}]);
+        assert!(projected_snapshot(&subset, &[], None, &observed).is_some());
+        let projected = snapshot_metadata_observed(&subset, &[], &observed, stamp.as_ref());
+        let fresh = snapshot_metadata(&subset, &[]);
+        assert!(projected.complete && fresh.complete);
+        assert_eq!(projected.revision, fresh.revision);
+        assert_eq!(projected.digests, fresh.digests);
+        assert_eq!(projected.observation_paths, fresh.observation_paths);
+        assert_eq!(projected.roots, fresh.roots);
+        assert_eq!(projected.bindings, fresh.bindings);
+        assert_eq!(projected.excluded, fresh.excluded);
+        // A newly declared external include was absent from the observation.
+        // It must be freshly read, including after another content change.
+        let outside = root.join("external.rs");
+        std::fs::write(&outside, "new input")?;
+        let extras = [outside.clone()];
+        let projected = snapshot_metadata_observed(&subset, &extras, &observed, stamp.as_ref());
+        assert_eq!(
+            projected.revision,
+            snapshot_metadata(&subset, &extras).revision
+        );
+        std::fs::write(&outside, "changed input")?;
+        let changed = snapshot_metadata_observed(&subset, &extras, &observed, stamp.as_ref());
+        assert_ne!(projected.revision, changed.revision);
+        assert_eq!(
+            changed.revision,
+            snapshot_metadata(&subset, &extras).revision
+        );
+        #[cfg(unix)]
+        {
+            let (observed_before, stamp_before) = snapshot_metadata_stamped(&data, &[]);
+            let prior =
+                snapshot_metadata_observed(&subset, &[], &observed_before, stamp_before.as_ref());
+            let directory = std::fs::File::open(&a)?;
+            let modified = directory.metadata()?.modified()?;
+            std::fs::remove_file(a.join("internal.rs"))?;
+            std::os::unix::fs::symlink(&outside, a.join("internal.rs"))?;
+            directory.set_times(std::fs::FileTimes::new().set_modified(modified))?;
+            let changed =
+                snapshot_metadata_observed(&subset, &[], &observed_before, stamp_before.as_ref());
+            assert_ne!(prior.revision, changed.revision);
+            assert_eq!(changed.revision, snapshot_metadata(&subset, &[]).revision);
+            // A package symlink can read bytes outside its own directory.
+            // The observation must preserve that input even when its mtime
+            // is restored after an edit.
+            std::os::unix::fs::symlink(&outside, a.join("external.rs"))?;
+            let (observed, stamp) = snapshot_metadata_stamped(&data, &[]);
+            let prior = snapshot_metadata_observed(&subset, &[], &observed, stamp.as_ref());
+            assert_eq!(prior.revision, snapshot_metadata(&subset, &[]).revision);
+            let file = std::fs::OpenOptions::new().write(true).open(&outside)?;
+            let modified = file.metadata()?.modified()?;
+            std::fs::write(&outside, "another input")?;
+            file.set_times(std::fs::FileTimes::new().set_modified(modified))?;
+            let changed = snapshot_metadata_observed(&subset, &[], &observed, stamp.as_ref());
+            assert_ne!(prior.revision, changed.revision);
+            assert_eq!(changed.revision, snapshot_metadata(&subset, &[]).revision);
+        }
+        std::fs::remove_dir_all(root)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn declared_headers_through_an_ancestor_alias_match_fresh_reads() -> std::io::Result<()> {
+        use std::os::unix::fs::symlink;
+        let root = std::env::temp_dir().join(format!("sail-header-alias-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let app = root.join("app");
+        let native = root.join("native");
+        let other = root.join("other");
+        std::fs::create_dir_all(&app)?;
+        for directory in [&native, &other] {
+            std::fs::create_dir_all(directory.join("include"))?;
+        }
+        std::fs::write(app.join("Cargo.toml"), "manifest")?;
+        std::fs::write(native.join("include/header.h"), "first")?;
+        std::fs::write(other.join("include/header.h"), "second")?;
+        let alias = root.join("opt");
+        symlink(&native, &alias)?;
+        let extras = [alias.join("include")];
+        let data = serde_json::json!({"workspace_root":app,
+            "packages":[{"manifest_path":app.join("Cargo.toml")}]});
+        let (observed, stamp) = snapshot_metadata_stamped(&data, &extras);
+        assert!(snapshot_metadata_projected(&data, &extras, &observed).is_some());
+        let (same, same_stamp) =
+            snapshot_metadata_reobserved(&data, &extras, &observed, stamp.as_ref());
+        let fresh = snapshot_metadata(&data, &extras);
+        assert_eq!(same.revision, fresh.revision);
+        assert_eq!(same.roots, fresh.roots);
+        assert_eq!(same.observation_paths, fresh.observation_paths);
+        assert_eq!(same_stamp, stamp);
+        std::fs::remove_file(&alias)?;
+        symlink(&other, &alias)?;
+        assert!(snapshot_metadata_projected(&data, &extras, &observed).is_none());
+        let (changed, _) = snapshot_metadata_reobserved(&data, &extras, &observed, stamp.as_ref());
+        assert_ne!(changed.revision, observed.revision);
+        assert_eq!(changed.revision, snapshot_metadata(&data, &extras).revision);
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
+    fn observed_revisions_reread_mutations_even_when_modification_time_is_restored()
+    -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-observed-mutation-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let source = root.join("lib.rs");
+        std::fs::write(&source, "old")?;
+        let data = serde_json::json!({"workspace_root":root,
+            "packages":[{"manifest_path":root.join("Cargo.toml")}]});
+        let (observed, stamp) = snapshot_metadata_stamped(&data, &[]);
+        let (same, same_stamp) =
+            snapshot_metadata_reobserved(&data, &[], &observed, stamp.as_ref());
+        assert_eq!(same.revision, observed.revision);
+        assert_eq!(same.observation_paths, observed.observation_paths);
+        assert_eq!(same_stamp, stamp);
+        let file = std::fs::OpenOptions::new().write(true).open(&source)?;
+        let original_time = file.metadata()?.modified()?;
+        std::fs::write(&source, "new")?;
+        file.set_times(std::fs::FileTimes::new().set_modified(original_time))?;
+        let changed = snapshot_metadata_observed(&data, &[], &observed, stamp.as_ref());
+        assert!(changed.complete);
+        assert_ne!(changed.revision, observed.revision);
+        let (reobserved, new_stamp) =
+            snapshot_metadata_reobserved(&data, &[], &observed, stamp.as_ref());
+        assert_eq!(reobserved.revision, changed.revision);
+        assert_ne!(new_stamp, stamp);
+        assert_eq!(changed.revision, snapshot_metadata(&data, &[]).revision);
+        // New and removed names cannot reuse a former namespace.
+        let added = root.join("new-module.rs");
+        std::fs::write(&added, "module")?;
+        let with_new = snapshot_metadata_observed(&data, &[], &observed, stamp.as_ref());
+        assert_ne!(with_new.revision, changed.revision);
+        assert_eq!(with_new.revision, snapshot_metadata(&data, &[]).revision);
+        std::fs::remove_file(&source)?;
+        let removed = snapshot_metadata_observed(&data, &[], &observed, stamp.as_ref());
+        assert_eq!(removed.revision, snapshot_metadata(&data, &[]).revision);
+        assert!(!removed.digests.contains_key(&source));
+        // An incomplete observation is never a source of cached bytes.
+        let mut incomplete = observed.clone();
+        incomplete.complete = false;
+        assert_eq!(
+            snapshot_metadata_observed(&data, &[], &incomplete, stamp.as_ref()).revision,
+            snapshot_metadata(&data, &[]).revision
+        );
+        std::fs::remove_dir_all(root)
+    }
+
     #[test]
     fn relative_cargo_home_resolves_against_recorded_invocation() {
         let root =
@@ -1245,6 +1728,68 @@ mod tests {
         assert_eq!(before.revision, after.revision);
         assert_ne!(stamp_before, mutation_stamp(&after));
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discovering_a_declared_spelling_preserves_stamp_and_alias_guards() -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-declared-spelling-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("src"))?;
+        let root = root.canonicalize()?;
+        std::fs::create_dir_all(root.join("good/nested"))?;
+        std::fs::create_dir_all(root.join("bad/nested"))?;
+        std::fs::write(root.join("good/proof.rs"), "assert(true)")?;
+        std::fs::write(root.join("bad/proof.rs"), "assert(false)")?;
+        let alias = root.join("alias");
+        std::os::unix::fs::symlink(root.join("good/nested"), &alias)?;
+        let mut data = serde_json::json!({"workspace_root":root,
+            "packages":[{"manifest_path":root.join("Cargo.toml")}]});
+        let before = snapshot_metadata_home(&data, &[], None);
+        let stamp = mutation_stamp(&before);
+        assert!(before.complete && stamp.is_some());
+        // Resolve .. through the real filesystem: alias/../proof is good/proof,
+        // not root/proof. Discovering this declaration adds no unseen input.
+        data["sail_source_inputs"] = serde_json::json!([
+            root.join("src/../good/proof.rs"),
+            root.join("alias/../proof.rs")
+        ]);
+        let declared = snapshot_metadata_home(&data, &[], None);
+        assert!(declared.complete);
+        assert_eq!(declared.digests, before.digests);
+        assert_eq!(declared.bindings, before.bindings);
+        assert_eq!(declared.revision, before.revision);
+        assert_eq!(mutation_stamp(&declared), stamp);
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(root.join("bad/nested"), &alias)?;
+        let changed = snapshot_metadata_home(&data, &[], None);
+        assert_eq!(changed.digests, before.digests);
+        assert_ne!(changed.bindings, before.bindings);
+        assert_ne!(changed.revision, before.revision);
+        assert_ne!(mutation_stamp(&changed), stamp);
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(root.join("good/nested"), &alias)?;
+        let restored = snapshot_metadata_home(&data, &[], None);
+        assert_eq!(restored.revision, before.revision);
+        assert_ne!(mutation_stamp(&restored), stamp);
+        std::fs::remove_dir_all(root)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn mutation_stamp_keeps_absent_configuration_roots() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-absent-stamp-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let data = serde_json::json!({"workspace_root":root,"packages":[]});
+        let mut snapshot = snapshot_metadata_home(&data, &[], None);
+        let missing = root.join("config.toml");
+        snapshot.roots.push(missing.clone());
+        let stamp = mutation_stamp(&snapshot);
+        assert!(stamp.is_some());
+        std::fs::write(missing, "[build]\njobs=1\n")?;
+        assert_ne!(mutation_stamp(&snapshot), stamp);
+        std::fs::remove_dir_all(root)
     }
 
     #[cfg(unix)]
