@@ -1026,6 +1026,59 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 else:
                     assert ambiguous.get("currentness") != "current", diagnostic(ambiguous)
                     assert not (cache / "projects").exists(), "overlapping cache received managed proof state"
+            # Both proof variants already belong to the hashed package. Only
+            # the source alias changes: the union of canonical file bytes does
+            # not identify which proof the compiler actually sees (#343).
+            original_source = source.read_text()
+            assert "r >= b" in original_source
+            variants = project / "alias-variants"
+            variants.mkdir()
+            alias_good, alias_bad = variants / "good.rs", variants / "bad.rs"
+            alias_good.write_text(original_source)
+            alias_bad.write_text(original_source.replace("r >= b", "r >  b"))
+            source.unlink()
+            source.symlink_to(alias_good)
+            try:
+                alias_run, established_alias, _ = managed()
+                assert alias_run.returncode == 0, diagnostic(established_alias)
+                if established_alias["currentness"] != "current":
+                    alias_run, established_alias, _ = managed()
+                assert established_alias["currentness"] == "current", diagnostic(established_alias)
+                warm_run, warm_alias, warm_target = managed()
+                assert warm_run.returncode == 0 and warm_target["reused"], diagnostic(warm_alias)
+                assert warm_alias["execution"]["verifier_invocations"] == 0, diagnostic(warm_alias)
+                submitted = recorded_cli("alias-submit", [sail, "verify", "--background", "--output", "json"])
+                alias_job = json.loads(submitted.stdout)
+                deadline = time.monotonic() + 120
+                while True:
+                    inspected = recorded_cli("alias-job", [sail, "jobs", "result", alias_job["id"], "--output", "json"])
+                    completed_alias = json.loads(inspected.stdout)["value"]
+                    if completed_alias["result"] is not None:
+                        break
+                    assert completed_alias["job"]["state"] in ("queued", "running"), completed_alias
+                    assert time.monotonic() < deadline, "source-alias background job did not finish"
+                    time.sleep(.1)
+                assert completed_alias["result"]["currentness"] == "current", completed_alias
+                source.unlink()
+                source.symlink_to(alias_bad)
+                inspected = recorded_cli("alias-job-retargeted", [sail, "jobs", "result", alias_job["id"], "--output", "json"])
+                stale_alias = json.loads(inspected.stdout)["value"]
+                assert stale_alias["job"]["currentness"] == "historical", stale_alias
+                assert stale_alias["result"]["currentness"] == "historical", stale_alias
+                failed_run, failed_alias, failed_target = managed()
+                assert failed_run.returncode != 0 and not failed_target["reused"], diagnostic(failed_alias)
+                assert failed_target["report"]["summary"]["failed"] == 1, diagnostic(failed_alias)
+                assert failed_alias["input_revision"] != warm_alias["input_revision"], diagnostic(failed_alias)
+                assert errors(failed_run) == errors(plain), (errors(failed_run), errors(plain))
+                source.unlink()
+                source.symlink_to(alias_good)
+                restored_run, restored_alias, _ = managed()
+                assert restored_run.returncode == 0, diagnostic(restored_alias)
+                assert restored_alias["input_revision"] == warm_alias["input_revision"], diagnostic(restored_alias)
+            finally:
+                source.unlink(missing_ok=True)
+                source.write_text(original_source)
+            print("managed acceptance: source alias retarget rejects the invalid proof and withdraws retained job Current; unchanged and exact-revert controls passed")
             print("managed acceptance: failing first runs keep vstd, cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs and prune passed")
         if part in ("all", "scripts"):
             print("managed acceptance: build-script reuse passed")

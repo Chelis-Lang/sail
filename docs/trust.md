@@ -283,8 +283,11 @@ proof is ever reused or accepted unless its result is Current
 ([ADR 0041](decisions/0041-content-and-stat-currentness.md)). A run is Current
 only when its input content revision and the file stamps of those inputs are
 unchanged across the run, no absent Cargo configuration appeared, and every
-compiled unit lies inside the recorded closure. A later read rehashes exactly
-the recorded files: equal is Current, different is Historical, unreadable is
+compiled unit lies inside the recorded closure. Logical input revisions also
+bind source aliases and linked ancestors to their canonical destinations;
+the union of canonical file contents alone cannot identify which source a
+compiler path selects. A later read rehashes exactly the recorded files and
+rechecks those bindings: equal is Current, different is Historical, unreadable is
 Unknown. Toolchain and sysroot files are identified by device, inode, size and
 modification time; configuration is identified by content.
 

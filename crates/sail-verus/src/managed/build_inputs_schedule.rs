@@ -90,6 +90,7 @@ impl Scope<'_> {
             writer.0.update((digest.len() as u64).to_le_bytes());
             writer.0.update(digest.as_bytes());
         }
+        crate::managed::input::bind_paths(&mut writer.0, &self.snapshot.bindings);
         Some(format!("{:x}", writer.0.finalize()))
     }
 
@@ -228,6 +229,7 @@ mod tests {
                 complete: true,
                 observation_paths: BTreeSet::new(),
                 digests: BTreeMap::from([(script, digest(b"fn main() {}"))]),
+                bindings: BTreeMap::new(),
             };
             Ok(Self {
                 root,
