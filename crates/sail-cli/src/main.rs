@@ -123,7 +123,9 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         Some("repair-check") => product_cli::repair(&args[1..], out, err),
         Some("_contracts-worker") => contract_worker::run(&args[1..], out, err),
         Some("_repair-worker") => product_cli::worker(&args[1..], out, err),
-        Some("explain" | "baseline" | "compare") => product_cli::evidence(args, out, err),
+        Some("explain" | "baseline" | "compare" | "assurance") => {
+            product_cli::evidence(args, out, err)
+        }
         Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), out, err),
         Some("jobs") => jobs::run(args.get(1..).unwrap_or_default(), out, err),
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),

@@ -43,6 +43,11 @@ manifest's original SHA-256 with the actual current source before using the
 snapshot. The managed backend's currentness describes Sail's owned snapshot.
 It does not establish that the caller's source still matches.
 
+Read [requirement assurance](requirement-assurance.md) through `sail assurance
+JOB --output json` for stable requirement groups, exact snapshot relationships,
+original tool identities and qualified evidence tiers. This read never executes
+a verifier or establishes missing entailment, feasibility or mutation evidence.
+
 The existing baseline save/read operations retain neutral source and exact
 worker stdout/stderr independently of job pruning. New jobs use corrected
 lowering version two. Unaffected historical version-one evidence remains

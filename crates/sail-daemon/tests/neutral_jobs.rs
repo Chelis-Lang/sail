@@ -188,6 +188,43 @@ fn exact_source_and_worker_evidence_survive_restart_and_baseline_outlives_jobs()
     after_pruning.shutdown();
     Ok(())
 }
+
+#[test]
+fn assurance_reuses_authenticated_reads_without_promoting_incomplete_proofs() -> TestResult {
+    let fixture = Fixture::new()?;
+    let input = fixture.input()?;
+    let path = fixture.root.join("fixture.json");
+    let mut worker: WorkerResult = serde_json::from_slice(&std::fs::read(&path)?)?;
+    worker.contracts.translation_trust = TranslationTrust {
+        source_policy_sha256: "a".repeat(64),
+        metadata_sha256: "b".repeat(64),
+        cargo_lock_sha256: "c".repeat(64),
+    };
+    std::fs::write(&path, serde_json::to_vec(&worker)?)?;
+    let mut server = fixture.server()?;
+    let client = fixture.client();
+    let job = client.submit_contracts(input)?;
+    assert_eq!(finished(&client, &job.id)?.state, Lifecycle::Completed);
+    let view = client.requirement_assurance(&job.id)?;
+    assert_eq!(view.currentness, sail_api::project::Currentness::Unknown);
+    assert_eq!(view.requirements.len(), 1);
+    let evidence = &view.requirements[0].evidence[0];
+    assert_eq!(evidence.outcome, sail_api::contracts::ProofState::NotProved);
+    assert_eq!(evidence.tier, None);
+    assert_eq!(evidence.establishment, None);
+    let stdout = fixture.root.join("jobs").join(&job.id).join("stdout");
+    let original = std::fs::read(&stdout)?;
+    let mut altered = original.clone();
+    altered.push(b'\n');
+    std::fs::write(&stdout, altered)?;
+    assert!(client.requirement_assurance(&job.id).is_err());
+    std::fs::write(&stdout, original)?;
+    server.shutdown();
+    let mut restarted = fixture.server()?;
+    assert_eq!(client.requirement_assurance(&job.id)?, view);
+    restarted.shutdown();
+    Ok(())
+}
 #[test]
 fn tampered_source_output_manifest_or_proof_never_returns_evidence() -> TestResult {
     let fixture = Fixture::new()?;

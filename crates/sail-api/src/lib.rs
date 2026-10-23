@@ -16,6 +16,8 @@ pub const VERSION: &str = match option_env!("SAIL_VERSION") {
     _ => env!("CARGO_PKG_VERSION"),
 };
 
+/// Requirement-aware evidence views with explicit scope, strength and establishment.
+pub mod assurance;
 pub mod evidence;
 pub mod jobs;
 pub mod output;

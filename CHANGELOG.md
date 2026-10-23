@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Read requirement-aware neutral source evidence through `sail assurance JOB`,
+  the Rust client and MCP. Report exact snapshot relationships, original tool
+  identities, conservative proof outcomes and explicit missing assurance.
+
 - Preserve record-base arithmetic definedness through scalar field selection in
   neutral lowering version two. Recheck retained manifests with corrected
   semantics, retaining exact unaffected version-one evidence and refusing

@@ -280,7 +280,14 @@ fn dispatch(state: &State, request: Request) -> Response {
             proof_version: sail_api::proof::VERSION,
             repair: true,
             neutral_contracts_version: Some(sail_api::contracts::VERSION),
+            assurance_version: Some(sail_api::assurance::VERSION),
         }),
+        Request::Assurance { id } => get(state, &id)
+            .and_then(|job| store::result(state, &job))
+            .and_then(|document| {
+                sail_api::assurance::from_contract_result(&document).map_err(io::Error::other)
+            })
+            .map(|view| Response::Assurance(Box::new(view))),
         Request::ProofEvents { id, cursor, limit } => get(state, &id)
             .and_then(|job| {
                 state.proofs.page(
