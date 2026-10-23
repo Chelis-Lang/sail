@@ -9,7 +9,7 @@ experimental features and validation limits are identified explicitly.
 | Task | Guide |
 |---|---|
 | Submit neutral Rust source to Sail-owned verification jobs | [Neutral source jobs](neutral-contract-jobs.md), [service specification](spec/neutral-contract-jobs.md) |
-| Run and retain bounded neutral body-mutation campaigns | [Neutral mutation](neutral-mutation.md) |
+| Run and retain bounded neutral body-mutation campaigns | [Neutral mutation](neutral-mutation.md), [qualification limits](validation/neutral-mutation.md) |
 | Inspect requirement IDs, proof tiers and qualifiers from retained neutral jobs | [Requirement assurance](requirement-assurance.md) |
 | Check scalar contracts on ordinary Rust functions with explicit requirement IDs | [Neutral contracts](neutral-contracts.md), [source specification](spec/neutral-contracts.md) |
 | Verify, reuse complete reports, watch edits, inspect and cancel jobs | [Workspace verification](workspace-verification.md) |

@@ -112,6 +112,51 @@ fn save(output: &Path, name: &str, view: &View) -> TestResult {
     std::fs::write(output.join(name), serde_json::to_vec_pretty(view)?)?;
     Ok(())
 }
+fn observe_unknown(view: &View) -> TestResult {
+    if view.state != State::Completed || view.passed || view.observations.is_empty() {
+        return Err("observation mode requires a completed nonpassing strong campaign".into());
+    }
+    for observation in &view.observations {
+        let original = observation
+            .original
+            .as_ref()
+            .ok_or("original inconclusive worker evidence")?;
+        let result = mutation::decode_original(original)?;
+        if observation.outcome != Outcome::Inconclusive
+            || result.contracts.proof.state != ProofState::NotProved
+            || result.contracts.proof.checks.unknown == 0
+            || result.contracts.proof.checks.sat != 0
+            || !result
+                .contracts
+                .proof
+                .unknown_reasons
+                .iter()
+                .any(|r| r.contains("incomplete quantifiers"))
+        {
+            return Err("observation mode did not retain the actual expected solver unknown without a false kill".into());
+        }
+    }
+    Ok(())
+}
+fn qualification(
+    output: &Path,
+    observe: bool,
+    native_kill_qualified: bool,
+    controls_completed: bool,
+) -> TestResult {
+    std::fs::write(
+        output.join("qualification.json"),
+        serde_json::to_vec_pretty(&serde_json::json!({
+            "version":1,
+            "mode":if observe {"observe-inconclusive"} else {"strict"},
+            "native_kill_qualified":native_kill_qualified,
+            "lifecycle_and_evidence_controls_completed":controls_completed,
+            "scope":"bounded source API, survivor, deadline, cancellation, restart, pruning and tamper controls",
+            "qualifiers":["unknown remains inconclusive and never establishes a passing campaign","negative-path observation does not establish native kills or full mutation milestone completion"]
+        }))?,
+    )?;
+    Ok(())
+}
 fn walk(path: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
     for entry in std::fs::read_dir(path)? {
         let path = entry?.path();
@@ -129,8 +174,12 @@ fn walk(path: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
 )]
 fn main() -> TestResult {
     let args = std::env::args_os().skip(1).collect::<Vec<_>>();
-    if args.len() != 2 {
-        return Err("usage: check_mutation_jobs SAIL FRESH_EVIDENCE_DIRECTORY".into());
+    let observe = args.len() == 3 && args[2] == "--observe-inconclusive";
+    if args.len() != 2 && !observe {
+        return Err(
+            "usage: check_mutation_jobs SAIL FRESH_EVIDENCE_DIRECTORY [--observe-inconclusive]"
+                .into(),
+        );
     }
     let sail = PathBuf::from(&args[0]);
     let output = PathBuf::from(&args[1]);
@@ -140,19 +189,23 @@ fn main() -> TestResult {
     let strong_id = baseline(&client, strong_source)?;
     let strong = campaign(&client, &strong_id, 900_000)?;
     save(&output, "strong.json", &strong)?;
-    if !strong.passed
-        || strong
+    let native_kill_qualified = strong.passed
+        && !strong.observations.is_empty()
+        && strong
             .observations
             .iter()
-            .any(|o| o.outcome != Outcome::Killed)
-    {
+            .all(|o| o.outcome == Outcome::Killed);
+    qualification(&output, observe, native_kill_qualified, false)?;
+    if observe {
+        observe_unknown(&strong)?;
+    } else if !native_kill_qualified {
         return Err(
             "actual strong campaign did not establish conclusive kills; original evidence retained"
                 .into(),
         );
     }
     let assurance = client.requirement_assurance(&strong_id)?;
-    if assurance.requirements.iter().flat_map(|r| &r.evidence).any(|e| !matches!(&e.mutation,sail_api::assurance::MutationStatus::Bounded {campaign_id,passed:true,..} if campaign_id==&strong.id)) { return Err("authenticated mutation was not attached to matching assurance".into()); }
+    if assurance.requirements.iter().flat_map(|r| &r.evidence).any(|e| !matches!(&e.mutation,sail_api::assurance::MutationStatus::Bounded {campaign_id,passed,..} if campaign_id==&strong.id && *passed==strong.passed)) { return Err("authenticated mutation was not attached to matching assurance".into()); }
     let weak_source = "#[sail_contracts::satisfies(\"WEAK\")] #[sail_contracts::requires(value < 100)] #[sail_contracts::ensures(|ret| ret <= value + 2)] pub fn candidate(value:u8)->u8 {value}";
     let weak_id = baseline(&client, weak_source)?;
     let weak = campaign(&client, &weak_id, 900_000)?;
@@ -223,8 +276,9 @@ fn main() -> TestResult {
         return Err("restored original evidence changed".into());
     }
     drop(service);
+    qualification(&output, observe, native_kill_qualified, true)?;
     println!(
-        "actual bounded campaigns, original provenance, survivor, deadline, cancellation, restart, pruning and tamper refusal passed"
+        "native_kill_qualified={native_kill_qualified}; actual bounded source API, survivor, deadline, cancellation, restart, pruning and tamper controls passed"
     );
     Ok(())
 }

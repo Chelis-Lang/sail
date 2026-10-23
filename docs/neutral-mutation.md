@@ -76,16 +76,40 @@ mutation counts only after a campaign was requested for that exact baseline.
 Proof evidence without a campaign remains `not-established`. The tier and
 proof outcome remain unchanged.
 
-The separate installed-service acceptance runner is:
+The separate installed-service acceptance runner defaults to strict positive
+kill acceptance:
 
 ```sh
-cargo run -p sail-cli --example check_mutation_jobs --   path/to/installed/sail path/to/fresh-evidence-directory
+cargo run -p sail-cli --example check_mutation_jobs -- \
+  path/to/installed/sail path/to/fresh-evidence-directory
 ```
 
-It requests actual strong-contract kills and weak-contract survivors, records
-original streams, checks deadline and cancellation, restarts the service,
-prunes original jobs and refuses changed retained diagnostics. Fixture tests
-are classification and deterministic-source controls, not a claim that an
-actual backend campaign passed. Native acceptance remains required before
-integration qualification. [ADR 0074](decisions/0074-bounded-neutral-mutation.md)
+It fails unless the strong-contract mutants produce actual conclusive kills.
+It retains their complete original receipt and a `qualification.json` with
+`native_kill_qualified: false` when that condition is unestablished. A failing
+strict attempt remains failing; observation mode does not supersede it.
+
+To qualify the remaining API and evidence controls while recording the current
+actual incomplete-quantifiers solver unknown, run a separate fresh directory:
+
+```sh
+cargo run -p sail-cli --example check_mutation_jobs -- \
+  path/to/installed/sail path/to/fresh-observation-directory \
+  --observe-inconclusive
+```
+
+This mode permits continuation only if each strong mutant remains inconclusive,
+its original report is NotProved with unknown checks, no SAT check, and an
+original incomplete-quantifiers reason. It also requires actual weak-contract
+survivor evidence, aggregate deadline and cancellation, exact readback after
+restart and original-job pruning, and refusal of changed retained diagnostics.
+The output separates `native_kill_qualified` from completed lifecycle/evidence
+controls. Exit zero in observation mode can qualify these bounded negative
+paths with `native_kill_qualified: false`; it does not qualify positive kills or
+the complete mutation milestone. The public passing gate remains fail closed. Consumers requiring a passing
+campaign must reject `passed: false`.
+
+Fixture tests are classification and deterministic-source controls, not a claim
+that an actual backend campaign passed. The [native mutation record](validation/neutral-mutation.md)
+tracks the current backend gap and remaining acceptance. [ADR 0074](decisions/0074-bounded-neutral-mutation.md)
 records the bounded interpretation.

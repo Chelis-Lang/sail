@@ -10,6 +10,16 @@ platforms: 651 matching comparisons each. The preceding Mac HumanEval proof
 regression (#337) is fixed by #338; its original failure and reproduction
 remain in the [runtime record](validation/spec-signature-runtime.md).
 
+## Neutral source mutation
+
+Positive native mutation kills remain unestablished. The strong boolean-contract
+literal mutants returned original solver Unknown for incomplete quantifiers,
+with no SAT rejection. Their public outcome remains inconclusive and the gate
+remains false. The optional observation runner qualifies only separately
+recorded API, survival, lifecycle and evidence-refusal controls. It does not
+complete the mutation milestone. See the [qualification record](validation/neutral-mutation.md)
+for the failed strict attempt and required future evidence.
+
 ## Release performance
 
 - **Mac resource-limit subsumption is unavailable on the current solver.**

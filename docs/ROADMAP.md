@@ -11,7 +11,7 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 | Shared neutral source and actual backend helper | Qualified separately | [Lowering](spec/neutral-verus-lowering.md) |
 | Negotiated source-only job route and immutable baselines | Installed-service acceptance passed; final full gates required | [Acceptance](validation/neutral-contract-jobs.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
 | Source-semantic requirement entailment and full requirement tiers | Separate remaining work | [Service boundary](spec/neutral-contract-jobs.md) |
-| Bounded neutral-source body mutation | Implementation candidate; native installed-service acceptance required | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
+| Bounded neutral-source body mutation | API candidate; native strong mutants remain Unknown and positive kills unestablished | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
 
 ## Goal
 
