@@ -73,6 +73,13 @@ implementation correctness. See [ADR 0068](decisions/0068-runtime-daemon.md).
 
 ## Reading completed evidence
 
+`requirement_assurance` takes `{"job_id":"JOB"}` and reads the authenticated
+requirement groups from a completed neutral source job. It reports exact source
+relationships, conservative proof outcomes, original solver identities and
+explicit missing assurance. This read negotiates its own capability and fails
+for older services; it never synthesizes evidence or runs a verifier. See
+[requirement assurance](requirement-assurance.md).
+
 Tool replies are agent-sized by default; see [reply size](#reply-size-and-detail).
 The server moves owned result graphs through the
 response envelope and encodes each complete JSON-RPC frame before taking the

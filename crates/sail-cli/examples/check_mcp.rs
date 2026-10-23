@@ -80,6 +80,7 @@ const TOOL_NAMES: &[&str] = &[
     "verification_status",
     "verification_result",
     "cancel_verification",
+    "requirement_assurance",
     "verification_events",
     "explain_failure",
     "compare_verification",

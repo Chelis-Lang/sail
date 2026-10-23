@@ -239,6 +239,7 @@ exit 1
             "verification_status",
             "verification_result",
             "cancel_verification",
+            "requirement_assurance",
             "verification_events",
             "explain_failure",
             "compare_verification",
