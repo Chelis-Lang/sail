@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve floating-point values when decoding retained JSON evidence in both
+  producers and API consumers. Mutation receipt hashes no longer depend on a
+  consumer independently enabling `serde_json/float_roundtrip`. Inconsistent
+  older receipts remain rejected; their original evidence is never rewritten.
+
 - Add opt-in bounded neutral source mutation jobs with exact original worker
   receipts, explicit killed/survived/inconclusive outcomes and offline receipt
   validation. Requirement assurance version two attaches mutation counts

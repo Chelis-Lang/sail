@@ -40,6 +40,9 @@ decisions; proposed candidates are distinguished from accepted decisions.
 authentication for the pinned D.I.V.E. source dependency.
 [Native worker validation](validation/dive-runtime-worker.md) records the
 focused checking, replay and process-isolation evidence and its limits.
+[macOS integration acceptance](validation/integration-macos.md) records the
+native host gate and installed temporal/source controls, including the
+unestablished positive mutation-kill boundary.
 
 The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [combined release matrix](validation/release-matrix.md) states current

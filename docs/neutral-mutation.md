@@ -71,6 +71,14 @@ stored view. Matching campaign IDs without retained member evidence establish
 nothing. Raw backend timings, paths and campaign start time are operational
 receipt metadata; keep them out of semantic source identities.
 
+The API enables lossless `f64` JSON round trips for retained typed evidence.
+Producer and consumer must derive backend hashes from the same decoded values,
+including operational timings. Older receipts derived with a different parsed
+value can fail `SAIL3144` even when the verifier classification agrees. Preserve
+those originals and run a fresh campaign with a compatible producer; never
+rewrite their hashes or drop timing fields to make validation pass.
+[ADR 0075](decisions/0075-retained-json-roundtrip.md) records this boundary.
+
 [Requirement assurance](requirement-assurance.md) version two attaches bounded
 mutation counts only after a campaign was requested for that exact baseline.
 Proof evidence without a campaign remains `not-established`. The tier and

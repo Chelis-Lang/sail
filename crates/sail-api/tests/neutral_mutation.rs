@@ -215,6 +215,78 @@ fn complete_recorded_receipt_revalidates_and_refuses_member_or_gate_tampering() 
     Ok(())
 }
 
+#[test]
+fn retained_timing_roundtrips_without_changing_baseline_or_mutant_digest() -> TestResult {
+    // Recorded classification controls with a timing value observed in an actual
+    // campaign. This constructs receipts, not new verifier execution evidence.
+    // The two adjacent values decode differently without float_roundtrip.
+    let precise = f64::from_bits(0x40dc_0a0c_3276_74d2);
+    let lossy = f64::from_bits(0x40dc_0a0c_3276_74d1);
+    for baseline_timing in [true, false] {
+        let (mut view, mut baseline) = recorded_receipt()?;
+        let mut mutant = recorded(false)?;
+        let observation = &mut view.observations[0];
+        mutant.contracts.manifest.original_sha256 =
+            observation.candidate.source.source_sha256.clone();
+        mutant.contracts.proof = sail_api::assurance::observed_contract_proof(
+            &mutant.contracts.manifest,
+            &mutant.backend,
+        );
+        if baseline_timing {
+            baseline.backend.execution.wall_ms = precise;
+        } else {
+            mutant.backend.execution.wall_ms = precise;
+        }
+        view.baseline_original.worker_stdout = serde_json::to_string(&baseline)?;
+        view.baseline_backend_sha256 = mutation::digest(&serde_json::to_vec(&baseline.backend)?);
+        observation.original = Some(mutation::OriginalEvidence {
+            source: observation.candidate.source.clone(),
+            worker_stdout: serde_json::to_string(&mutant)?,
+            worker_stderr: String::new(),
+        });
+        observation.evidence_name = Some(format!("m-{}-0", view.id));
+        observation.backend_sha256 = Some(mutation::digest(&serde_json::to_vec(&mutant.backend)?));
+        (observation.outcome, observation.reason) =
+            mutation::classify(&baseline, &mutant, &observation.candidate);
+        assert_eq!(observation.outcome, Outcome::Inconclusive);
+        view.state = mutation::State::Completed;
+        let original = if baseline_timing {
+            &view.baseline_original
+        } else {
+            view.observations[0].original.as_ref().ok_or("original")?
+        };
+        assert!(original.worker_stdout.contains("28712.190580000002"));
+        assert_eq!(
+            mutation::decode_original(original)?
+                .backend
+                .execution
+                .wall_ms
+                .to_bits(),
+            precise.to_bits()
+        );
+        mutation::validate_view(&view)?;
+        for _ in 0..4 {
+            view = serde_json::from_slice(&serde_json::to_vec(&view)?)?;
+            mutation::validate_view(&view)?;
+            assert!(!view.passed);
+            assert_eq!(view.observations[0].outcome, Outcome::Inconclusive);
+        }
+        // Old lossy hashes remain inconsistent with the exact retained stream.
+        // No fallback, receipt rewriting or timing normalization is permitted.
+        if baseline_timing {
+            baseline.backend.execution.wall_ms = lossy;
+            view.baseline_backend_sha256 =
+                mutation::digest(&serde_json::to_vec(&baseline.backend)?);
+        } else {
+            mutant.backend.execution.wall_ms = lossy;
+            view.observations[0].backend_sha256 =
+                Some(mutation::digest(&serde_json::to_vec(&mutant.backend)?));
+        }
+        assert!(mutation::validate_view(&view).is_err());
+    }
+    Ok(())
+}
+
 // These are deliberately edited classification inputs, not an actual new SAT run.
 // Keep the real failed Cargo target shape: wrapper101/report1/completefalse.
 fn simulated_conclusive_failed_target() -> TestResult<WorkerResult> {

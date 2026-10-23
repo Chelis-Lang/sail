@@ -61,7 +61,8 @@ ctrlc = "3.5"
 ed25519-dalek = "2.2"
 proptest = { version = "1", default-features = false, features = ["std"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# Retained typed evidence must decode identically in producers and API consumers.
+serde_json = { version = "1", features = ["float_roundtrip"] }
 # Enable the dependency's CPU-dispatched SHA implementation on arm64 as well
 # as x86: complete content binding otherwise dominates managed verification.
 sha2 = { version = "0.10", features = ["asm"] }
