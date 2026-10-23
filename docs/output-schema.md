@@ -10,6 +10,11 @@ whose reports were reused; see
 requested targets' reports, and `sail verify --measure-fragility` and the
 opt-in portfolio print one schema-v2 report directly.
 
+Each managed target's `target` is Cargo's exact target name, including hyphens.
+Distinct binaries `foo-bar` and `foo_bar` have separate target reports and proof
+receipts. Compiler crate-name normalization does not establish target identity.
+An ambiguous observation produces `SAIL3107` rather than a reusable report.
+
 - JSON Schema: `crates/sail-api/schema/verify-output-v2.json` (draft 2020-12).
 - Rust types: `sail_api::output` (`Report` and the types it contains).
 - An example document: `crates/sail-cli/tests/fixtures/attr/report.golden.json`

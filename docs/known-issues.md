@@ -312,6 +312,13 @@ remain in the [runtime record](validation/spec-signature-runtime.md).
   negotiation retires the connection. This closes the protocol binding gap,
   not the separate trusted-writer assumption for reply correctness.
 
+- **Cargo binary target-name collision (#344).** Reports and receipts retain
+  Cargo's exact target name, so `foo-bar` and `foo_bar` no longer share compiler
+  observations. Failed sibling invocations remain separate and ambiguous old
+  identities require fresh verification. The reproduction supplied verifier
+  report fixtures to actual target aggregation; it demonstrated lost failure
+  reporting, not a false overall verification exit or accepted theorem.
+
 - **Fork JSON proof-note order (#185).** The selected `cc7bbce4` runtime
   contains producer fix `5793253c`, which serializes both arrays lexically
   without changing internal membership, verdicts or diagnostic bytes. The full
