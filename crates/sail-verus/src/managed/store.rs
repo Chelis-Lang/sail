@@ -1417,6 +1417,7 @@ mod tests {
                         name: "vstd".to_owned(),
                         crate_type: "lib".to_owned(),
                         rustc_args_sha256: "args".to_owned(),
+                        cargo_name: None,
                     },
                     run_id: "establishing-run".to_owned(),
                     dependency_build: None,
