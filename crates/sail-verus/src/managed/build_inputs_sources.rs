@@ -111,7 +111,7 @@ impl Inventory {
             return None;
         }
         let inputs: Inputs = serde_json::from_slice(&bytes(local)?).ok()?;
-        if !inputs.covered || inputs.paths.len() > MAX_PATHS {
+        if inputs.version != 2 || !inputs.covered || inputs.paths.len() > MAX_PATHS {
             return None;
         }
         let scoped = inputs.by_package?;
@@ -182,6 +182,7 @@ impl Inventory {
             scoped.insert(id.clone(), entry.paths.clone());
         }
         Some(Inputs {
+            version: 2,
             paths: paths.into_iter().collect(),
             covered: true,
             by_package: Some(scoped),
@@ -198,7 +199,7 @@ pub(super) fn merge(local: &Path, mut incoming: Inputs) -> Option<Inputs> {
     // Never drop earlier private declarations or upgrade an incomplete private
     // ledger merely because a different selector completed its own transaction.
     let previous: Inputs = serde_json::from_slice(&bytes(local)?).ok()?;
-    incoming.covered &= previous.covered && previous.by_package.is_some();
+    incoming.covered &= previous.version == 2 && previous.covered && previous.by_package.is_some();
     let mut scoped = incoming.by_package.take()?;
     let mut paths: BTreeSet<_> = incoming.paths.into_iter().collect();
     for (id, old) in previous.by_package.unwrap_or_default() {
@@ -263,6 +264,7 @@ mod tests {
             crate::managed::files::json(
                 &local,
                 &Inputs {
+                    version: 2,
                     paths: paths.clone(),
                     covered: true,
                     by_package: Some(BTreeMap::from([("fixture".to_owned(), paths)])),
