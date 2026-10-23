@@ -1302,6 +1302,7 @@ mod tests {
             name: "demo".into(),
             crate_type: "lib".into(),
             rustc_args_sha256: "args".into(),
+            cargo_name: None,
         };
         let sidecar = root.join("sidecars").join(identity.key());
         std::fs::create_dir_all(&sidecar)?;

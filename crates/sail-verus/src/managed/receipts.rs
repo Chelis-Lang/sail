@@ -38,11 +38,37 @@ pub(crate) struct TargetIdentity {
     pub name: String,
     pub crate_type: String,
     pub rustc_args_sha256: String,
+    /// Cargo's exact binary target name, before Rust crate-name normalization.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cargo_name: Option<String>,
 }
 
 impl TargetIdentity {
     pub(crate) fn key(&self) -> String {
         digest(&serde_json::to_vec(self).unwrap_or_default())
+    }
+
+    /// Resolve one metadata target, refusing legacy or malformed ambiguous names.
+    pub(crate) fn cargo_target<'a>(
+        &self,
+        package: &'a serde_json::Value,
+    ) -> Option<&'a serde_json::Value> {
+        if package["manifest_path"].as_str().map(Path::new) != Some(self.manifest.as_path()) {
+            return None;
+        }
+        let mut matches = package["targets"].as_array()?.iter().filter(|target| {
+            target["name"].as_str().is_some_and(|name| {
+                name.replace('-', "_") == self.name
+                    && self.cargo_name.as_deref().is_none_or(|exact| exact == name)
+            }) && target["kind"].as_array().is_some_and(|kinds| {
+                kinds.iter().any(|kind| {
+                    kind.as_str() == Some(self.crate_type.as_str())
+                        || (kind == "lib" && self.crate_type == "rlib")
+                })
+            })
+        });
+        let target = matches.next()?;
+        matches.next().is_none().then_some(target)
     }
 }
 
@@ -255,6 +281,9 @@ pub(crate) fn retire(runtime: &Runtime, identity: &TargetIdentity) -> Result<()>
             receipt.invocation.identity.manifest == identity.manifest
                 && receipt.invocation.identity.name == identity.name
                 && receipt.invocation.identity.crate_type == identity.crate_type
+                && (identity.cargo_name.is_none()
+                    || receipt.invocation.identity.cargo_name.is_none()
+                    || receipt.invocation.identity.cargo_name == identity.cargo_name)
         }) {
             std::fs::remove_file(entry.path())
                 .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -390,6 +419,7 @@ mod tests {
                     name: "input".to_owned(),
                     crate_type: "lib".to_owned(),
                     rustc_args_sha256: "args".to_owned(),
+                    cargo_name: None,
                 },
                 run_id: "run".to_owned(),
                 report,
