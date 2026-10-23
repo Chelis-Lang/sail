@@ -5,6 +5,26 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve floating-point values when decoding retained JSON evidence in both
+  producers and API consumers. Mutation receipt hashes no longer depend on a
+  consumer independently enabling `serde_json/float_roundtrip`. Inconsistent
+  older receipts remain rejected; their original evidence is never rewritten.
+
+- Add opt-in bounded neutral source mutation jobs with exact original worker
+  receipts, explicit killed/survived/inconclusive outcomes and offline receipt
+  validation. Requirement assurance version two attaches mutation counts
+  separately from proof outcomes and evidence tiers.
+
+- Shared runtime native temporal jobs preserve exact D.I.V.E. evidence through an authenticated installed worker.
+- Read requirement-aware neutral source evidence through `sail assurance JOB`,
+  the Rust client and MCP. Report exact snapshot relationships, original tool
+  identities, conservative proof outcomes and explicit missing assurance.
+
+- Preserve record-base arithmetic definedness through scalar field selection in
+  neutral lowering version two. Recheck retained manifests with corrected
+  semantics, retaining exact unaffected version-one evidence and refusing
+  affected history without changing its original backend reports.
+
 - Benchmark Vest with its passing resource limit; matching failed verification
   no longer qualifies a passing-workload performance row.
 
@@ -81,6 +101,10 @@ semantic versioning once the API is published.
 - Preserve independently verified dependencies after a requested proof fails
   when platform-disabled build scripts have no current Cargo execution unit.
   Keep conservative cleanup for unknown plans and reject unexpected units.
+- Add negotiated source-only neutral contract jobs with bounded Sail-owned workers,
+  exact retained evidence, conservative proof summaries and independently retained
+  immutable baselines.
+
 - Add the neutral-to-Verus lowering library for a supported complete scalar
   source file. It emits an immutable owned shadow and exact source/requirement
   mapping, preserves checked arithmetic definedness, and reuses the managed
@@ -1300,6 +1324,12 @@ semantic versioning once the API is published.
 - `sail-conformance`: `cargo-verus` corpus units (with Verus dependencies
   patched to the pinned source in a scratch copy), project requirements
   (skipped and reported when unavailable), and the standard-tier corpus.
+- Add isolated native temporal jobs through a pinned D.I.V.E. library:
+  exhaustive finite checking, admitted temporal properties, sampled simulation
+  and complete-trace validation. Authenticate worker bytes and request identity,
+  enforce parent deadlines and cancellation, retain native evidence alongside
+  reversible admitted ITF values, and refuse unsupported host capabilities.
+  This developer API does not change Verus commands or introduce a TLC backend.
 - Add `sail runtime capabilities` and `sail runtime execute` for versioned raw
   SMT batches and incremental transcripts through Sail's bundled pinned Z3.
   Complete solver evidence is attributed and cached separately from Verus;

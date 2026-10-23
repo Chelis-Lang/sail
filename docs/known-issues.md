@@ -10,6 +10,17 @@ platforms: 651 matching comparisons each. The preceding Mac HumanEval proof
 regression (#337) is fixed by #338; its original failure and reproduction
 remain in the [runtime record](validation/spec-signature-runtime.md).
 
+## Neutral source mutation
+
+Positive native mutation kills remain unestablished. The strong boolean-contract
+literal mutants returned original solver Unknown for incomplete quantifiers,
+with no SAT rejection. Their public outcome remains inconclusive and the gate
+remains false. The optional observation runner qualifies only separately
+recorded API, survival, lifecycle and evidence-refusal controls. It does not
+complete the mutation milestone. See the [qualification record](validation/neutral-mutation.md)
+for the failed strict attempt and required future evidence. The [combined integration record](validation/integration-production.md)
+binds the latest cumulative source and preserves the same positive-kill limit.
+
 ## Release performance
 
 - **Mac resource-limit subsumption is unavailable on the current solver.**
@@ -412,3 +423,15 @@ The compiled body edit independently violates its postcondition at input 1,
 which satisfies the precondition. This is a runtime sample, not a solver
 refutation or mutation-gate result. See the [native qualification record](validation/neutral-verus-lowering.md)
 and the [minimal emitted-source reproduction](../corpus/repros/neutral-contract-unknown/README.md).
+
+
+## Compound-field definedness in neutral lowering version one
+
+[Issue 323](https://github.com/Chelis-Lang/sail/issues/323) records an actual
+source-job proof for a guarantee whose checked runtime overflows while selecting
+a field from a conditional record. The original lowerer discarded definedness
+of the selected record expression. Lowering version two preserves that condition;
+new workers require version two, and retained reads refuse affected version-one
+projections without rewriting the original evidence. Safe historical projections
+remain byte-identical. Qualification of the correction, including actual unsafe
+and guarded source jobs, remains required before removing the source-job hold.

@@ -4,6 +4,15 @@ Current state and next work. Evidence lives in the linked validation records
 and reports; this page holds only status and gates. Status words follow
 AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 
+## Neutral contract service
+
+| Gate | State | Evidence |
+|---|---|---|
+| Shared neutral source and actual backend helper | Qualified separately | [Lowering](spec/neutral-verus-lowering.md) |
+| Negotiated source-only job route and immutable baselines | Cumulative source qualified on native Linux and macOS | [Combined qualification](validation/integration-production.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
+| Source-semantic requirement entailment and full requirement tiers | Producer source-bound proof views implemented; independent links belong to Oyster | [Service boundary](spec/neutral-contract-jobs.md) |
+| Bounded neutral-source body mutation | Lifecycle qualified; native strong mutants remain Unknown and positive kills unestablished | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
+
 ## Goal
 
 The first public release must be clearly faster than plain `cargo verus
@@ -249,6 +258,21 @@ cold runs" was never measured on real projects (lever 1.11).
 Caching, CLI, agent ergonomics, benchmarks, corpus tiers and CI from the
 charter's initial scope are done (ADRs 0009, 0011, 0013–0021, 0025).
 The M11 reliability items in #168 are closed.
+
+## Oyster integration
+
+| Slice | Status | Remaining gate |
+|---|---|---|
+| Raw SMT shared runtime | Implemented; original consumer slice delivered | Continued consumer qualification at its selected immutable SDK |
+| Native D.I.V.E. worker and shared temporal route | Linux installed-service and cumulative Linux/Mac host gates passed | Protected CI and exact-pin consumer delivery |
+| Neutral source jobs | Admitted source subset and original proof retention qualified | Broader Rust and contract admission |
+| Requirement assurance | Source-bound original proof and requirement views implemented | Consumer-owned independent links and complete current evidence |
+| Bounded neutral-source mutation | Lifecycle and conservative retention qualified | Positive native kills remain unestablished; strong mutants return Unknown |
+
+The [combined integration qualification](validation/integration-production.md)
+identifies exact cumulative source, actual platform scope, independent review,
+unchanged corpus components and retained failed attempts. It establishes no
+performance improvement, application trace capture or full realizability.
 
 ## Later
 

@@ -8,6 +8,9 @@ experimental features and validation limits are identified explicitly.
 
 | Task | Guide |
 |---|---|
+| Submit neutral Rust source to Sail-owned verification jobs | [Neutral source jobs](neutral-contract-jobs.md), [service specification](spec/neutral-contract-jobs.md) |
+| Run and retain bounded neutral body-mutation campaigns | [Neutral mutation](neutral-mutation.md), [qualification limits](validation/neutral-mutation.md) |
+| Inspect requirement IDs, proof tiers and qualifiers from retained neutral jobs | [Requirement assurance](requirement-assurance.md) |
 | Check scalar contracts on ordinary Rust functions with explicit requirement IDs | [Neutral contracts](neutral-contracts.md), [source specification](spec/neutral-contracts.md) |
 | Verify, reuse complete reports, watch edits, inspect and cancel jobs | [Workspace verification](workspace-verification.md) |
 | Restore a previously verified revision after undoing an edit | [Instant revert](instant-revert.md), with qualified platform/profile and cost limits |
@@ -15,6 +18,7 @@ experimental features and validation limits are identified explicitly.
 | Integrate an agent through stdio MCP | [MCP tools](mcp.md) |
 | Execute raw SMT transcripts through the pinned runtime, shared daemon or MCP | [Runtime](runtime.md), [version-one protocol](spec/runtime.md) |
 | Read job Status and Results from Rust | [Result client](result-client.md) |
+| Run isolated native model checks, simulation and independent trace validation from Rust | [Temporal jobs](temporal-jobs.md) |
 | Consume structured reports and provenance | [Output schema](output-schema.md) |
 | Share signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
 | Interpret Current, Historical and Unknown evidence | [Freshness](freshness.md) |
@@ -31,6 +35,17 @@ requirements and gates. [Testing](testing.md) lists the parallel end-to-end
 phases and their local entry points. The [charter](CHARTER.md) and its corrections define
 the correctness contract. [ADRs](decisions/README.md) explain implementation
 decisions; proposed candidates are distinguished from accepted decisions.
+
+[Private dependencies](private-dependencies.md) describes ephemeral read-only
+authentication for the pinned D.I.V.E. source dependency.
+[Native worker validation](validation/dive-runtime-worker.md) records the
+focused checking, replay and process-isolation evidence and its limits.
+[Combined production integration](validation/integration-production.md) records the
+current cumulative source, native gates, source and temporal controls, unchanged
+corpus-component qualification and explicit mutation limits.
+[macOS integration acceptance](validation/integration-macos.md) records the
+native host gate and installed temporal/source controls, including the
+unestablished positive mutation-kill boundary.
 
 The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [combined release matrix](validation/release-matrix.md) states current

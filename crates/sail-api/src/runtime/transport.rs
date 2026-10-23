@@ -138,7 +138,7 @@ pub fn read_frame<T: DeserializeOwned>(reader: &mut impl Read, bound: usize) -> 
     }
     let mut bytes = vec![0_u8; length];
     reader.read_exact(&mut bytes)?;
-    let envelope: Envelope<T> = serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+    let envelope: Envelope<T> = crate::temporal::decode(&bytes).map_err(io::Error::other)?;
     if envelope.version != VERSION {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,

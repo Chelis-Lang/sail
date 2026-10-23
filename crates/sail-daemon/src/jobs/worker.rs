@@ -12,7 +12,7 @@ use sail_api::project::ProjectResult;
 
 use super::{State, get, lock_error, store};
 
-struct Process(Child);
+pub(super) struct Process(pub(super) Child);
 impl std::ops::Deref for Process {
     type Target = Child;
     fn deref(&self) -> &Child {
@@ -47,9 +47,10 @@ pub(super) fn run(state: &State) {
             let result = execute(state, &id);
             // A run without proof reuse (SAIL3112) binds no context or
             // input revision, so it establishes no freshness record.
-            if result
-                .as_ref()
-                .is_ok_and(|(_, document, _)| document.no_reuse.is_none())
+            if job.contracts.is_none()
+                && result
+                    .as_ref()
+                    .is_ok_and(|(_, document, _)| document.no_reuse.is_none())
             {
                 store::establish_freshness(state, &job);
             }
@@ -63,11 +64,21 @@ pub(super) fn run(state: &State) {
                         job.projection = Some(projection);
                         job.status.exit_code = code;
                         job.status.state = Lifecycle::Completed;
-                        job.status.input_revision = Some(document.input_revision);
-                        job.status.currentness = match document.currentness {
-                            sail_api::project::Currentness::Current => Currentness::Current,
-                            sail_api::project::Currentness::Historical => Currentness::Historical,
-                            sail_api::project::Currentness::Unknown => Currentness::Unknown,
+                        job.status.input_revision = Some(
+                            job.contracts
+                                .as_ref()
+                                .map_or(document.input_revision, |s| s.source_sha256.clone()),
+                        );
+                        job.status.currentness = if job.contracts.is_some() {
+                            Currentness::Unknown
+                        } else {
+                            match document.currentness {
+                                sail_api::project::Currentness::Current => Currentness::Current,
+                                sail_api::project::Currentness::Historical => {
+                                    Currentness::Historical
+                                }
+                                sail_api::project::Currentness::Unknown => Currentness::Unknown,
+                            }
                         };
                     }
                     Err(error) => {
@@ -113,6 +124,9 @@ fn next(state: &State) -> Option<(String, std::path::PathBuf)> {
 }
 fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, store::Projection)> {
     let job = get(state, id)?;
+    if job.contracts.is_some() {
+        return super::contracts::execute(state, &job);
+    }
     if job.cancel.load(Ordering::SeqCst) {
         return Err(io::Error::other("cancelled"));
     }
@@ -208,7 +222,7 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, s
 /// Describes a worker that exited without writing a result, quoting its last
 /// `error[...]` line (for example a missing engine's `SAIL3120`) so the job
 /// error says what went wrong instead of reporting an unparsable result.
-fn no_result(directory: &std::path::Path, status: std::process::ExitStatus) -> String {
+pub(super) fn no_result(directory: &std::path::Path, status: std::process::ExitStatus) -> String {
     let stderr = store::read_bytes(&directory.join("stderr")).unwrap_or_default();
     let stderr = String::from_utf8_lossy(&stderr);
     let cause = stderr

@@ -16,8 +16,11 @@ pub const VERSION: &str = match option_env!("SAIL_VERSION") {
     _ => env!("CARGO_PKG_VERSION"),
 };
 
+/// Requirement-aware evidence views with explicit scope, strength and establishment.
+pub mod assurance;
 pub mod evidence;
 pub mod jobs;
+pub mod mutation;
 pub mod output;
 pub mod policy;
 pub mod project;
@@ -26,6 +29,10 @@ pub mod protocol;
 pub mod repair;
 pub mod runtime;
 pub mod schema;
+pub mod temporal;
 
 #[cfg(unix)]
 pub mod client;
+
+/// Neutral source job requests and source-bound contract evidence.
+pub mod contracts;

@@ -14,7 +14,7 @@
 #                        sail-z3, sail-conformance, check_output, check_mcp)
 #                        into DIR/e2e-bin.tar, which every e2e phase job
 #                        unpacks (SAIL_E2E_PREBUILT) instead of building
-#   e2e [legacy|managed|managed-copies|managed-native|scripts|repair|output|loader|flags|extra] Run all phases by default; CI runs them in parallel.
+#   e2e [legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra] Run all phases by default; CI runs them in parallel.
 #                        `sail new` writes what stock `cargo verus new`
 #                        writes, and its lib and bin projects verify;
 #                        `sail verify` (managed verification, the default,
@@ -70,6 +70,12 @@
 # and every benchmark is local-only: run them with ci/local.sh
 # (`host` runs directly: ci/run.sh host).
 set -euo pipefail
+# Only command-time Git access receives the read-only private-dependency secret.
+# It is never a Docker build argument or a persisted Git URL/configuration.
+if [ -n "${SAIL_DEPENDENCY_READ_TOKEN:-}" ] && [ "${SAIL_PRIVATE_GIT_READY:-}" != 1 ]; then
+  exec "$(dirname "$0")/../scripts/with-private-dependencies.sh" "$0" "$@"
+fi
+
 cd "$(dirname "$0")/.."
 
 # CI runs only the fast, per-PR steps (ADR 0013). Long runs are local-only.
@@ -84,14 +90,14 @@ step="${1:?usage: ci/run.sh gate|solver|boundary-witness|e2e-build|e2e|conforman
 shift
 
 release_build() {
-  cargo build --release --locked -p sail-cli -p sail-shim "$@"
+  cargo build --release --locked -p sail-cli -p sail-shim -p sail-runtime-worker "$@"
 }
 
 # The binaries every e2e phase uses, relative to target/release.
-e2e_binaries=(sail sail-z3 sail-conformance examples/check_output examples/check_mcp)
+e2e_binaries=(sail sail-z3 sail-runtime-worker sail-conformance examples/check_output examples/check_mcp examples/check_contract_jobs)
 
 e2e_build() {
-  release_build -p sail-conformance --bins --example check_output --example check_mcp
+  release_build -p sail-conformance --bins --example check_output --example check_mcp --example check_contract_jobs
 }
 
 # Unpacks the binaries `e2e-build` packed in this CI run, checking every
@@ -110,8 +116,9 @@ unpack_e2e_binaries() {
 install_runtime() {
   sail_runtime="$(mktemp -d /tmp/sail-e2e-runtime.XXXXXX)"
   trap 'rm -rf "$sail_runtime"' EXIT
-  cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_runtime/"
+  cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_checkout/target/release/sail-runtime-worker" "$sail_runtime/"
   chmod 700 "$sail_runtime/sail" "$sail_runtime/sail-z3"
+  python3 scripts/stage-temporal-worker.py "$sail_runtime/sail-runtime-worker" "$sail_runtime"
   sail="$sail_runtime/sail"
 }
 
@@ -144,6 +151,8 @@ case "$step" in
     python3 ci/test-timeout.py
     python3 scripts/check-links.py
     python3 scripts/test-perf-matrix.py
+    python3 scripts/test-private-dependencies.py
+    python3 scripts/test-stage-temporal-worker.py
     python3 scripts/test-bench-cargo-compare.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
@@ -200,12 +209,12 @@ case "$step" in
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed|managed-copies|managed-native|scripts|repair|output|loader|flags|extra' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed|managed-copies|managed-native|scripts|repair|output|loader|flags|extra) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|managed-copies|managed-native|scripts|repair|output|loader|flags|extra" >&2; exit 2 ;;
+      full|legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
     sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_checkout/target/e2e-output-evidence}"
@@ -222,6 +231,13 @@ case "$step" in
     fi
     install_runtime
     sail_managed_test="$sail_checkout/ci/test-managed.py"
+    if [ "$phase" = full ] || [ "$phase" = contracts ]; then
+      contract_out="${SAIL_CONTRACT_JOBS_OUT:-$(mktemp -d /tmp/sail-contract-jobs.XXXXXX)/evidence}"
+      echo "neutral service evidence: $contract_out"
+      SAIL_VERUS_BUILD="${SAIL_ENGINE_BUILD:?neutral service requires the pinned engine}" \
+        env -u LD_LIBRARY_PATH -u DYLD_LIBRARY_PATH -u DYLD_FRAMEWORK_PATH \
+        "$sail_checkout/target/release/examples/check_contract_jobs" "$sail" "$contract_out"
+    fi
     if [ "$phase" = full ] || [ "$phase" = legacy ]; then
       check_output="$PWD/target/release/examples/check_output"
       check_mcp="$PWD/target/release/examples/check_mcp"

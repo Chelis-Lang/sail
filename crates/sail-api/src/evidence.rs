@@ -38,6 +38,9 @@ pub struct Explanation {
 /// An immutable independently retained baseline snapshot.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Baseline {
+    /// Independently retained neutral contract snapshot evidence, when present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contracts: Option<Box<crate::contracts::Evidence>>,
     /// Baseline contract version.
     pub version: u32,
     /// Owner-selected immutable name.

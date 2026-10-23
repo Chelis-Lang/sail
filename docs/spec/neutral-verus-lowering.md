@@ -1,4 +1,4 @@
-# Neutral source to Verus, version 1
+# Neutral source to Verus, version 2
 
 Status: implemented library slice; actual fork/stock oracle qualification is a
 separate acceptance gate. The ordinary Verus input route is unchanged.
@@ -52,6 +52,10 @@ is false. Conditional branches are guarded similarly. Guarantees prove both
 definedness and their actual Boolean result. Requirements describe exactly
 accepted entry values, including their evaluation definedness.
 
+Field selection retains the complete base expression's definedness, including
+arithmetic in a conditional selecting a record. Reading a scalar field cannot
+discard an overflow obligation from evaluating that record expression.
+
 Old captures are eager entry computations, including inside a short-circuited
 guarantee branch. Their definedness is asserted at entry under the original
 preconditions. Adding a stronger precondition instead could make a failing
@@ -69,6 +73,15 @@ and emitted SHA-256, crate identity, arithmetic interpretation and sorted
 function-to-requirement bindings. Each binding names the exact generated symbol,
 canonical guarantee digest and original source range. It invents no obligation
 ID and asserts no proof. Actual attributed obligations must match that symbol.
+
+New lowering emits semantics version two. `validate_manifest(original, manifest)`
+checks retained version-one or version-two records against the corrected complete
+projection, preserving the recorded version in the source header. Unaffected
+version-one manifests and emitted bytes remain exact. A version-one record that
+dropped compound-field definedness differs from the corrected digest and is
+refused, including when a precondition makes its example safe. The original
+backend report is preserved; this read check neither rewrites history nor
+constructs new semantic evidence. Unknown versions are unsupported.
 
 `sail_verus::contracts::verify(original, crate_name, config, diagnostics)` lowers
 the original snapshot, validates Sail's installed Verus and exact Z3 pin, and
