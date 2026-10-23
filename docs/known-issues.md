@@ -311,6 +311,11 @@ for the failed strict attempt and required future evidence.
 
 ## Resolved defects
 
+- **Unbound cache admission (#342).** Solver cache connections require a
+  successful single `HELLO` before reads or writes; failed or repeated
+  negotiation retires the connection. This closes the protocol binding gap,
+  not the separate trusted-writer assumption for reply correctness.
+
 - **Fork JSON proof-note order (#185).** The selected `cc7bbce4` runtime
   contains producer fix `5793253c`, which serializes both arrays lexically
   without changing internal membership, verdicts or diagnostic bytes. The full

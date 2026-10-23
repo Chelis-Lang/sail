@@ -65,6 +65,9 @@ impl Client {
 
     /// Identifies a solver and negotiates the connection's cache namespace.
     ///
+    /// Call once before any cache lookup or store. A failed or repeated
+    /// handshake retires the connection; connect again to retry.
+    ///
     /// # Errors
     ///
     /// I/O errors, a rejected handshake, or a stale daemon protocol.
@@ -97,6 +100,7 @@ impl Client {
     }
 
     /// The cached reply for `key`, or `None` on a miss.
+    /// Requires a successful [`Self::hello`] or [`Self::hello_in_mode`].
     ///
     /// # Errors
     ///
@@ -127,6 +131,7 @@ impl Client {
     }
 
     /// Stores `reply` for `key`.
+    /// Requires a successful [`Self::hello`] or [`Self::hello_in_mode`].
     ///
     /// # Errors
     ///
