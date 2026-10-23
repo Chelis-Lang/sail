@@ -66,6 +66,13 @@ run of that context yet), requests never coalesce.
 
 ## How a run decides it is Current
 
+Every verification call reads the current input bytes. Its checks can share a
+complete source observation within that call while the original mutation
+stamps and selected paths still agree. Changes, newly discovered inputs,
+uncovered aliases or incomplete coverage require fresh reads. Source hashes
+are not carried between calls, and compiler identity checks still read the
+actual compiler bytes.
+
 A run is Current only when all of the following hold:
 
 - the content revision of its inputs (every source, manifest, lockfile,
