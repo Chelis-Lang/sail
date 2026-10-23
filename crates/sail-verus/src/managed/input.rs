@@ -964,7 +964,7 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
         // Compiler declarations may add an alternate spelling (src/../file)
         // of a file already observed. Stamp the resolved file once; actual
         // aliases remain separately stamped below and bound in the snapshot.
-        paths.insert(path.canonicalize().ok()?);
+        paths.insert(path.canonicalize().unwrap_or_else(|_| path.clone()));
         for alias in path.ancestors() {
             if examined.insert(alias)
                 && std::fs::symlink_metadata(alias).is_ok_and(|m| m.file_type().is_symlink())
@@ -1772,6 +1772,23 @@ mod tests {
         let restored = snapshot_metadata_home(&data, &[], None);
         assert_eq!(restored.revision, before.revision);
         assert_ne!(mutation_stamp(&restored), stamp);
+        std::fs::remove_dir_all(root)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn mutation_stamp_keeps_absent_configuration_roots() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-absent-stamp-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let data = serde_json::json!({"workspace_root":root,"packages":[]});
+        let mut snapshot = snapshot_metadata_home(&data, &[], None);
+        let missing = root.join("config.toml");
+        snapshot.roots.push(missing.clone());
+        let stamp = mutation_stamp(&snapshot);
+        assert!(stamp.is_some());
+        std::fs::write(missing, "[build]\njobs=1\n")?;
+        assert_ne!(mutation_stamp(&snapshot), stamp);
         std::fs::remove_dir_all(root)
     }
 
