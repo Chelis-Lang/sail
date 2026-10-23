@@ -30,6 +30,15 @@ Special `decreases_by`/`recommends_by` proof bodies are inserted into the spec
 function's scope; their matching formals use the same positions. This does not
 change ordinary callable proof/exec parameter lowering.
 
+The 2026-10-23 correction includes complete signature size as well as position
+in the reserved name, counting unused arguments. A captured macOS HumanEval
+mutation exposed a proof-search regression from position-only names in earlier
+termination queries; the later proof query itself was unchanged. Signature-size
+qualification preserves source-rename stability and separates those contexts.
+See [VI-0034](../verus-issues/VI-0034-spec-formal-solver-context.md) and the
+[new runtime qualification](../validation/spec-signature-runtime.md). This does
+not relax any functional comparison or introduce Sail-side normalization.
+
 Append the new VIR disambiguation variants. Build a matching compiler, vstd,
 exports and runtime; do not mix their serialized artifacts with older runtimes.
 No Sail query normalization or cache-key change is proposed.

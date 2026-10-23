@@ -81,6 +81,7 @@ import sys
 import time
 from pathlib import Path
 
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 
@@ -144,6 +145,15 @@ def target_summary(target, partial):
     if (failed > 0) != (errors > 0):
         problems.append(f"{failed} failed functions, Verus counted {errors} errors")
     extra = [f"sail-report-inconsistent: {target.get('target')}: {'; '.join(problems)}"] if problems else []
+    # A scoped replay exposes the established report as structured provenance.
+    # Cargo did not run a verifier or print a new verification summary.
+    if target.get("scope_reuse") is not None:
+        scope = target["scope_reuse"]
+        if not (partial and isinstance(scope, list) and scope
+                and all(isinstance(arg, str) for arg in scope)
+                and target.get("complete") is False and not target.get("reused")):
+            extra.append("sail-report-inconsistent: invalid scoped-replay marker")
+        return extra
     return [line] + extra
 
 
@@ -290,6 +300,11 @@ def installed_targets(toolchain):
 
 # --- Running -----------------------------------------------------------------
 
+def real_edits(scenarios):
+    """Only execute the real-project edits requested by the selected rows."""
+    return " ".join(PERF_REAL_PHASE[s] for s in ("module-edit", "spec-wide") if s in scenarios) or "none"
+
+
 def scrubbed_env(extra=None, keep=None):
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(("SAIL_", "VERUS_")) and k != "CARGO_TARGET_DIR"}
@@ -411,7 +426,7 @@ class Runner:
         shutil.rmtree(out, ignore_errors=True)
         modes = " ".join("plain" if a == "stock" else "sail" for a in order)
         env = scrubbed_env(keep=self.extra, extra={"PATH": self.path, "SAIL_PERF_OUT": str(out), "SAIL_PERF_MODES": modes,
-                            "SAIL_PERF_EDITS": "body-early spec-wide", "SAIL_PERF_NOOPS": "0",
+                            "SAIL_PERF_EDITS": real_edits(scenarios), "SAIL_PERF_NOOPS": "0",
                             "SAIL_PERF_UNCHANGED": "1",
                             "SAIL_PERF_SETTLE": str(self.settle),
                             "SAIL_PERF_MACHINE": os.environ.get("SAIL_PERF_MACHINE", ""),

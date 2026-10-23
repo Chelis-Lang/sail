@@ -95,6 +95,13 @@ impl<'a> Observation<'a> {
     }
 
     fn try_begin(plan: &'a Plan, args: &'a [OsString]) -> Result<Self, &'static str> {
+        if !Snapshot::pipelined_inputs_admitted(&plan.target, args, |output| {
+            let (record, running) = producer_paths(&plan.native_records, output);
+            record.is_file()
+                || std::fs::read(running).is_ok_and(|bytes| bytes == plan.run_id.as_bytes())
+        }) {
+            return Err("native lookup inputs lack current producer records or marks");
+        }
         let mut call =
             Call::new(plan, args, false, std::env::vars_os()).ok_or("unkeyed native unit")?;
         if !call.out_dir.starts_with(&plan.target) {

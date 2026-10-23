@@ -6,8 +6,9 @@ is validated against. Secondary pins are compatibility targets (ADR 0010),
 run locally with `SAIL_VERUS_RELEASE=<release>` (ADR 0013).
 
 **Sail's Verus.** Sail runs its own Verus, built from its fork
-(`engine/verus/fork.toml`, commit `64baccbb`, rebased onto the primary pin
-`7d829946`; its Linux and macOS runtimes are published and pinned, see [engine](../engine/verus/README.md) and
+(`engine/verus/fork.toml`, commit `7d9d5410`, rebased onto the primary pin
+`7d829946`; its Linux and macOS runtimes are rebuilt for the spec-formal correction;
+consumer qualification is tracked in [the runtime record](validation/spec-signature-runtime.md). See [engine](../engine/verus/README.md) and
 [macOS engine](validation/macos-engine.md)), for every verification
 ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). Stock releases
 are the conformance oracle: `sail-conformance run` compares Sail on its fork
@@ -18,7 +19,7 @@ configuration.
 
 | Release | Role | Z3 | Rust | sail conformance (fast tier) | Notes |
 |---|---|---|---|---|---|
-| `0.2026.10.18.7d82994` | primary | 4.16.0 (bundled, same bytes as 426d8b0's) | 1.99.1 | Not yet run | The corpus is validated against this release; Sail's Verus is built on it. See [the upgrade](#upgrade-to-0202610187d82994) |
+| `0.2026.10.18.7d82994` | primary | 4.16.0 (bundled, same bytes as 426d8b0's) | 1.99.1 | Candidate 7d9d5410: native Linux fast 147/147 and standard 159/159 Same in every corpus arm; deep corpus and all fork source-suite arms pass; complete installed mutation suites pass on Linux and Mac | The corpus is validated against this release; Sail's Verus is built on it. See [the upgrade](#upgrade-to-0202610187d82994) |
 | `0.2026.10.04.426d8b0` | secondary | 4.16.0 (bundled) | 1.98.1 | As primary: 147 of 147 the same (macOS arm64 and Linux x86-64); standard tier 159 of 159 (Linux), stock pass-through before ADR 0043; Sail on fork `73dea021`: see [the fork-default record](validation/fork-default.md). Not yet run as a secondary | Previous primary, kept as an A/B baseline; needs `rustup toolchain install 1.98.1` |
 | `0.2026.09.06.8dea4a2` | secondary | 4.16.0 (primary's build; VI-0006) | 1.98.0 | 147 of 147 the same (macOS arm64, 2026-10-09), against the 426d8b0 tree | See below |
 
@@ -49,8 +50,11 @@ Upstream changes that can show in corpus results:
 - Cargo 1.99.1 no longer passes a registry package's `[lints]` to the compiler
   under `--cap-lints allow`; the shipped native shapes were re-observed.
 
-The corpus tiers, determinism check and benchmarks on the new runtime are
-still to run.
+The corrected runtime's corpus tiers, source suite, installed mutation cohorts
+and matrices have completed. Mac solver input streams are stable over three
+runs of 320 direct inputs; one existing NLA resource-count variation leaves
+the strict output check at 319/320. Performance acceptance remains open; see
+the [runtime record](validation/spec-signature-runtime.md).
 
 ## Plain Verus under the secondary release (fast tier)
 

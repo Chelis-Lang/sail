@@ -14,8 +14,7 @@ optimized, and must never make a run genuinely slower, cold runs included
 [question 32](open-questions.md)). Verdicts, diagnostics and exit codes stay
 identical to stock. Sail's Verus fork is an accepted way to get speed (ADR
 0039, ADR 0043). The release is a CLI with Linux and macOS binaries. M10
-(multi-backend verification runtime, Oyster) stays backburnered (owner
-direction 2026-10-15 and 2026-10-19).
+(multi-backend verification runtime, Oyster) is outside this release.
 
 Milestones: the GitHub milestone **0.1.0** holds the release blockers. M11
 is *Verus core and performance*, with its ordered backlog
@@ -25,34 +24,13 @@ verification runtime (#146).
 
 ### Current standing against stock Verus
 
-Ratio = stock time ÷ Sail time; above 1 means Sail is faster. Medians of
-three rotated rounds on fork runtime `f8589ed4` (Verus 0.2026.10.18.7d82994),
-Linux on c7i.8xlarge and macOS on mac-m4.metal, both us-east-1, human
-output. These are component screens from the 0.1.0 qualification
-([handover #279](https://github.com/Chelis-Lang/sail/issues/279)); the full
-release matrix (`scripts/perf-matrix.py`) has not yet run on the candidate.
-
-| Scenario | Platform | Stock | Sail | Ratio | Standing |
-|---|---|---:|---:|---:|---|
-| First use, new project (shipped vstd hit) | Linux | 31.5 s | 13.9 s | 2.27× | Win |
-| First use, new project | macOS | 17.6 s | 10.2 s | 1.73× | Win |
-| First use, shipped vstd miss (extra toolchain components) | Linux | 29.82 s | 29.93 s | 1.00× | Parity with shipped replies (ADR 0062; 31.76 s without them); #286 remains |
-| First use, shipped vstd miss (lock file or loader variable) | Linux | 29.82 s | 27.76 / 26.95 s | 1.07× / 1.11× | Win (ADR 0062) |
-| Small project cold, bundle miss | Linux | 31.31 s | 33.89 s | 0.92× | **Slower** (#232) |
-| Small project cold | macOS | 16.66 s | 19.86 s | 0.84× | **Slower** (#278) |
-| Vest cold | Linux | 66.59 s | 69.84 s | 0.95× | **Slower**: Vest misses the bundle on its vstd closure (default features off, three locked versions; #238, and #276's note names the alignment). Its `--rlimit 100` is served since ADR 0060 |
-| Vest cold | macOS | 40.16 s | 47.91 s | 0.84× | **Slower** (#278) |
-| Vest edit | Linux | 37.36 s | 23.93 s | 1.56× | Win |
-| Vest revert to verified content | Linux | 37.5 s | 1.43 s | 26× | Win |
-| Vest edit/revert cycle | Linux | 151.6 s | 100.3 s | 1.51× | Win |
-| Vest edit/revert cycle | macOS | 83.3 s | 63.3 s | 1.32× | Win |
-| Small project unchanged rerun | Linux | 0.12 s | 0.22 s | — | Modest overhead |
-| Small project small edit | Linux | 0.79 s | 1.04 s | — | Overhead to trim (#156) |
-| Vest unchanged rerun | Linux / macOS | 0.19 / 0.22 s | 0.48 / 0.73 s | — | Overhead to trim (#156) |
-| One-module and spec-wide edits, IronKV, CapybaraKV, Anvil, Verismo | Linux | — | — | — | Unmeasured on the current product |
-
-Corpus: Vest, Anvil, IronKV, CapybaraKV and Verismo are the real-project
-corpus (`corpus/`). "Small project" is the `sail new` template.
+Both exact installed consumers complete all 31 matrix rows and all four
+three-round mutation cohorts: 651 matching comparisons per platform, zero
+false verified or functional differences. Complete edit-loop speedups are
+1.13–2.62× on Linux and 1.38–2.84× on Mac. Runtime 7d9d5410 fixes the Mac
+HumanEval proof regression found by that suite (#338). Mac cold Anvil and
+Vest, plus unchanged/tiny-edit overhead, keep release acceptance open.
+Current numbers and limits are in [performance](performance.md).
 
 ## 0.1.0
 
@@ -67,8 +45,8 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
   bundle, served only after exact admission (#249,
   [ADR 0048](decisions/0048-shipped-dependency-build.md)); any mismatch
   verifies vstd normally.
-- Fork runtime `f8589ed4` on upstream Verus 0.2026.10.18.7d82994 (Rust
-  1.99.1), Linux and macOS (#267).
+- Fork runtime `7d9d5410` on upstream Verus 0.2026.10.18.7d82994 (Rust
+  1.99.1), Linux and macOS (#267, #338).
 - Proof coexistence, so shipped and locally verified vstd proofs share one
   cache.
 - Managed builds use the engine's pinned Cargo
@@ -77,21 +55,18 @@ candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
 
 | Gate | Status | Next |
 |---|---|---|
-| Runtime rebased onto upstream 7d82994, Linux and macOS | Done (#249, #251, #267) | — |
-| Shipped bundle re-recorded, admission witnesses, identical output to stock | Done on `f8589ed4`, both platforms | — |
-| Conformance fast and standard on `f8589ed4` | Done: fast 147/147, standard 159/159 (one unstable unit is stock's own note-order race) | Rerun on rc.6 |
-| Determinism | Done: Linux 146/146, macOS 320/320 | — |
-| Instant revert qualified | Done: Linux and macOS on `f8589ed4` | — |
-| macOS `main` green | #281 (macOS host gate passes) | Merge |
-| Bundle-miss note | Done (#275); names forwarded Verus flags too (#268) | — |
-| Vest-class projects hit the bundle | Raised `--rlimit` served (#268, ADR 0060 accepted 2026-10-20; a `--lib` project with `-- --rlimit 100` is 12.6 s against stock's 30.1 s). Vest still misses on its closure | #276 (closure alignment hint); whether to ship an alloc/std proof is an owner question |
-| Cold runs never slower than stock | **Open**: Linux miss path and macOS cold are slower | #278, #232, #236 |
-| Sub-second overhead modest | **Open** | #156 |
-| Realistic edit-loop suite: seeded mutations over Vest, IronKV, CapybaraKV and HumanEval, one daemon across all mutants, plain Verus as oracle | **Open** (#284); the single scripted edit per project is too narrow to back an edit-loop claim | Build, then use as the matrix's edit rows and as a conformance soundness probe |
-| Release matrix, Linux and macOS | **Open**: Linux baseline running | `scripts/perf-matrix.py`, every row, edit rows from #284 |
-| Deep conformance and `deep-rvt` | Open | On the rc.6 source |
-| Docs from the matrix (`performance.md`, CHANGELOG, `known-issues.md`, README) | Open | After the matrix |
-| rc.6 draft, clean Linux and macOS walkthroughs including Claude Code | Open | `scripts/release.sh` |
+| Runtime rebased onto upstream 7d82994, Linux and macOS | Done; corrected 7d9d5410 manifests selected (#338) | — |
+| Shipped default/100 proofs and signed replies | Both platform factories and public Vest proof/undo controls pass | — |
+| Consumer gates and conformance | Full native gate, solver, E2E+extra, PR/full fast and standard pass | — |
+| Mac host gate | Pass: 963 tests, clippy clean | — |
+| Determinism | Mac: 320 stable query streams; strict output 319/320, one existing resource-count variation | Recorded in runtime qualification |
+| Realistic edit-loop suite (#284) | All four complete cohorts pass on each installed platform: 651 comparisons each | — |
+| Release matrices | Both complete: 31/31 valid rows | Resolve remaining losses |
+| Cold runs never slower than stock | Open: Mac Anvil and Vest; Linux Anvil medians overlap | #314, #278, #232 |
+| Sub-second overhead modest | Open: unchanged calls and tiny edits | #156, #314 |
+| Deep corpus and fork source suite | Four corpus arms pass; pass-through/cache-fill/cache-warm each 4,901 Same; stock control retains known debug-order instability | — |
+| Actual archives, clean README and Claude Code | Both platform archives pass; real MCP lists 17 tools | — |
+| Performance/docs review and rc.6 draft | Performance acceptance open; no draft created | Close real slowdowns |
 | Owner review and publication | Not started | — |
 
 **Merged on main for 0.1.0** (implemented; release qualification is the
@@ -227,7 +202,6 @@ dependency profiles, and lever 1.4 (its cold and cache cost, about 519 MB).
 
 | Decision | Who | Blocks |
 |---|---|---|
-| Pipelined native admission ([ADR 0061](https://github.com/Chelis-Lang/sail/pull/265), proposed): certify native units after their compile, about 0.5 s per cold run | Owner | 1.1 |
 | Closure-name determinism amendments to ADRs 0049 and 0056 (#247), accepted by the lead | Owner review | — |
 | Prebuilt macro crates under ADR 0053 parity ([question 35](open-questions.md)) | Owner | 1.10 |
 | Private solver copy on same-path replacement (ADR) | Lead | 1.3 variant |

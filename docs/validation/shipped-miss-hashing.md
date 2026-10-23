@@ -100,3 +100,100 @@ Native evidence bucket, `experiments/2026-10-20/miss-hashing/miss-hashing-eviden
 SHA-256 `90843d8d556dd66ce0dcc89acbc6896b37621d1b0242e2cc993c51175259cd1a`:
 scripts, `results.tsv`, per-run stdout and stderr, output comparison, read
 census summaries and host/stage identities.
+
+## Reject known resolution misses first
+
+The runtime/sysroot identity was still computed before checking whether vstd's
+resolved versions and features could match the source policy. The same
+resolution check now runs first. A match still requires the original complete
+source, compiler, runtime, solver and adapter checks; this precheck only refuses.
+
+A three-round native Mac control (mac-m4.metal, us-east-1a, macOS 27.0,
+Cargo/Rust 1.99.1, runtime f8589ed4 on upstream 7d82994) records Vest cold at
+37.57 seconds against stock's 37.59 seconds. The earlier combined baseline was
+39.05 seconds against 37.26 seconds. The default-limit proof fails equally in
+both arms (VI-0032); this is a valid failed-proof comparison, not a passing proof
+claim. CLI SHA-256 `4824ed857071b26a2b998123e3ef9ca74cc53659b9de00a5d3a3091ff6dc6b49`.
+
+That control contains an unselected lookup-isolation experiment, but this row
+rejects the resolution before any native observer runs. It qualifies only this
+refusal optimization. Fresh complete installed-product release measurements
+remain separate. Native standalone source `1701eacb` passes workspace, solver, full e2e
+including extra, PR/full-fast and standard conformance. Standard has 159 Same
+and zero unstable, Different or infrastructure errors in all four arms; its
+18-mutant HumanEval probe and both reverts also pass. Raw gate logs:
+`experiments/2026-10-21/early-refusal-gates.tgz` in the S3 evidence bucket,
+SHA-256 `778b7f167bf235a9d1cca8498d2d29a9e5081f6114001abe887edf75e5b1c899`.
+### Unservable native lookup graphs
+
+A native observation now checks whether lookup artifacts have current-run producer
+records or running marks before reading compiler and source bytes. A refusal uses
+ordinary compilation; passing this preliminary check grants no reuse and keeps the
+complete graph capture and final provenance checks unchanged. No lookup entries are
+filtered. The filesystem regression covers a foreign artifact refusal and verifies
+that the ordinary capture still includes both artifacts.
+
+Initial native Mac diagnostic (mac-m4.metal, us-east-1a, one paired round):
+CapybaraKV cold took 30.78 s in Sail versus 31.50 s stock, with matching output and
+a shipped-proof miss. This is diagnostic scope, not three-round release acceptance.
+Full native gates and final combined measurements remain required.
+
+### Fresh compiler families
+
+Under the exclusive compiler-family lock, remember whether the owned target is
+genuinely absent or an empty directory before metadata and store seeding. Such
+a target has no old compiled artifacts to clean before its first invocation.
+Existing targets, filesystem aliases, inaccessible paths and all retries retain
+the ordinary cleanup. A filesystem regression covers the target lifecycle,
+including files and both dangling and live directory symlinks.
+
+Native Mac Anvil diagnostic: the input-preparation phase fell from 3.78 s to
+2.18 s; a full cold run took 104.48 s, with matching successful verification.
+This remains slower than the earlier stock baseline near 100 s; it is not
+release performance acceptance. Repeated final measurements remain required.
+
+The first successful public-profile Mac coexistence control exposed an omitted
+cleanup side effect: retained admission canonicalizes the target before Cargo
+runs, so the family must create its empty target explicitly. Without that,
+the cold run verified correctly but retained no producer certificates and
+subsequent reverts reverified. Fresh-target initialization now creates that directory and Cargo cache tag
+before retained admission. Its filesystem regression requires a canonical,
+tagged target and preserves existing artifact bytes. The composed Mac control
+now passes all four steps: cold 39.17 → 33.74 s, edit 22.52 → 15.79 s, revert
+22.54 → 1.97 s and unchanged 0.23 → 1.00 s (stock → Sail). The revert restores
+the cold run's complete proof with zero verifier invocations. This is one
+functional coexistence control, not the final three-round performance matrix.
+The Mac host gate passes all 950 tests, Clippy clean. Native Linux workspace, solver and full e2e gates pass. PR/full-fast and
+standard conformance pass: every standard arm has 159 Same, zero Different,
+unstable or infrastructure errors; its 18-mutant HumanEval probe and both
+reverts also pass.
+
+### Independent setup and post-invocation reads
+
+The Cargo execution-unit query now overlaps runtime admission. A first source
+snapshot may overlap that query, but is kept only for the exact final selection
+and unchanged observation; discovered inputs require the ordinary full read.
+Completed-input observations also overlap receipt validation. Any receipt retry
+discards that snapshot and reads all inputs again after its actual compiler run.
+No compiler byte check, source selection or final Current check is removed.
+
+The native prototype (`940dbeed`) passes the workspace and solver gates and the
+actual retry source-mutation control: changing a proof to `assert(false)` during
+Cargo cleanup yields a failed proof and Historical result, never Current. Full
+e2e also passes, including extra. PR/full-fast conformance passes; all four
+full-fast arms have 147 Same and zero Different, unstable or infrastructure
+errors. Standard also passes: 159 Same in each arm, zero Different, unstable
+or infrastructure errors, with all 18 HumanEval mutations and both reverts
+matching. The installed Linux public Vest control also
+passes shipped-proof use, an edit and restoration of the original retained
+proof; the permanent retry control confirms the two Cargo checks bracket
+the source-changing cleanup. The combined Mac prototype passes its 950-test
+host gate and both functional controls. Its three-round Anvil diagnostic remains
+slower cold (102.48 versus stock 99.50 seconds); the complete final matrix and
+mutation cohorts remain in progress. This is not release acceptance.
+
+Run the focused control with an installed release and a new output directory:
+
+```sh
+python3 scripts/check-managed-retry.py /path/to/unpacked/sail /tmp/sail-retry-control
+```

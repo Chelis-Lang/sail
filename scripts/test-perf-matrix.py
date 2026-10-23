@@ -51,6 +51,13 @@ sys.exit(3)
 '''
 
 
+class SelectedScenarios(unittest.TestCase):
+    def test_cold_and_unchanged_do_not_run_unrequested_edits(self):
+        self.assertEqual(pm.real_edits({"cold", "unchanged"}), "none")
+        self.assertEqual(pm.real_edits(set(pm.REAL)), "body-early spec-wide")
+        self.assertEqual(pm.real_edits({"module-edit"}), "body-early")
+
+
 class Performance(unittest.TestCase):
     def test_direction_does_not_accept_a_fixed_overhead_allowance(self):
         self.assertEqual(pm.performance(10.0, 10.4), "slower: review")
@@ -112,6 +119,16 @@ class Normalize(unittest.TestCase):
         doc = self.project_doc()
         del doc["targets"][1]["report"]["crates"][0]["verus"]
         self.assertTrue(pm.normalize(json.dumps(doc) + "\n")[1].endswith("no Verus counts; 3 proved obligations, Verus counted 0 verified"))
+
+    def test_scoped_replay_keeps_report_checks_without_inventing_fresh_output(self):
+        doc = self.project_doc()
+        target = doc["targets"][1]
+        target["scope_reuse"] = ["--verify-module", "m"]
+        self.assertEqual(pm.normalize(json.dumps(doc)), pm.normalize("Finished dev profile"))
+        target["report"]["crates"][0]["verus"]["verified"] = 4
+        self.assertIn("3 proved obligations, Verus counted 4", pm.normalize(json.dumps(doc))[0])
+        target["complete"] = True
+        self.assertIn("sail-report-inconsistent: invalid scoped-replay marker", pm.normalize(json.dumps(doc)))
 
     def test_whole_project_result_has_no_partial_suffix(self):
         text = json.dumps(self.project_doc(partial=False)) + "\n"
@@ -286,9 +303,10 @@ class Report(unittest.TestCase):
 class MutationRows(unittest.TestCase):
     def fixture(self, directory):
         identity = {key: key + "-digest" for key in pm.perf_matrix_mutants.IDENTITIES}
-        identity.update(platform="x86_64-unknown-linux-gnu", rounds=3)
+        identity.update(platform="x86_64-unknown-linux-gnu", rounds=3, rust_toolchain="1.99.1")
         classes = sorted(pm.perf_matrix_mutants.CLASSES)
         header = dict(identity, unit="vest/vest_lib", generator="gen-mutants 2",
+                      protocol="roots-json-strict-2", oracle_protocol="roots-json-strict-2", cargo_toolchain="1.99.1",
                       vstd_mode="registry", oracle_vstd_mode="registry", oracle_runs=3, oracle_kept=len(classes),
                       mutants=["edit-" + cls for cls in classes])
         samples = []
@@ -320,13 +338,16 @@ class MutationRows(unittest.TestCase):
         self.assertEqual(row["n"], (3, 3))
 
     def test_invalid_evidence_cannot_qualify_an_edit_claim(self):
-        for broken in ("missing", "duplicate", "binary", "oracle", "class", "daemon", "revert", "false-verified", "signal"):
+        for broken in ("missing", "duplicate", "binary", "oracle", "protocol", "toolchain", "missing-toolchain", "class", "daemon", "revert", "false-verified", "signal"):
             with self.subTest(broken=broken), tempfile.TemporaryDirectory() as directory:
                 identity, header, samples = self.fixture(directory)
                 if broken == "missing": samples.pop()
                 elif broken == "duplicate": samples.append(samples[-1])
                 elif broken == "binary": header["sail_sha256"] = "other-build"
                 elif broken == "oracle": header["oracle_runs"] = 2
+                elif broken == "protocol": header["oracle_protocol"] = "old-protocol"
+                elif broken == "toolchain": header["cargo_toolchain"] = "nightly"
+                elif broken == "missing-toolchain": del header["cargo_toolchain"]
                 elif broken == "class":
                     for sample in samples:
                         if sample.get("class") == "rare-region": sample["class"] = "arith"

@@ -17,6 +17,9 @@ use std::path::{Path, PathBuf};
 #[path = "build_inputs_family.rs"]
 pub(super) mod family;
 
+#[path = "build_inputs_package_environment.rs"]
+mod package_environment;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct BuildInput {
@@ -29,6 +32,8 @@ struct BuildInput {
     covered: bool,
     #[serde(default)]
     output: Option<(PathBuf, String)>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    unit_out_dir: Option<String>,
 }
 
 fn current(
@@ -42,7 +47,7 @@ fn current(
         .keys()
         .map(|k| {
             let value = if generated_environment(k) {
-                if let Some(value) = super::build_environment::value(data, &record.package_id, k) {
+                if let Some(value) = generated_value(record, data, k) {
                     value
                 } else {
                     complete = false;
@@ -61,7 +66,21 @@ fn current(
 }
 
 fn generated_environment(key: &str) -> bool {
-    key.starts_with("CARGO_FEATURE_") || key.starts_with("CARGO_CFG_")
+    key.starts_with("CARGO_FEATURE_")
+        || key.starts_with("CARGO_CFG_")
+        || package_environment::key(key)
+}
+
+#[expect(
+    clippy::option_option,
+    reason = "Invalid authority differs from an absent value."
+)]
+fn generated_value(record: &BuildInput, data: &Value, key: &str) -> Option<Option<String>> {
+    if package_environment::key(key) {
+        package_environment::value(record, data, key)
+    } else {
+        super::build_environment::value(data, &record.package_id, key)
+    }
 }
 
 fn effective_value(key: &str, environment: Option<&BTreeMap<String, String>>) -> Option<String> {
@@ -364,51 +383,45 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
         // Registry scripts are immutable under Cargo.lock, but declared external
         // inputs are still inspected when Cargo exposes their build output.
         let manifest = PathBuf::from(package["manifest_path"].as_str().unwrap_or_default());
-        let package_dir = manifest.parent().unwrap_or(Path::new("."));
+        let package_dir = manifest.parent().unwrap_or(Path::new(".")).to_owned();
         let output = Path::new(value["out_dir"].as_str().unwrap_or_default())
             .parent()
             .unwrap_or(Path::new("."))
             .join("output");
         let text = std::fs::read_to_string(&output).unwrap_or_default();
-        let mut paths = Vec::new();
-        let mut env = BTreeMap::new();
+        let mut record = BuildInput {
+            package_id: package["id"].as_str().unwrap_or_default().to_owned(),
+            package_name: package["name"].as_str().unwrap_or_default().to_owned(),
+            manifest,
+            paths: Vec::new(),
+            env: BTreeMap::new(),
+            digest: String::new(),
+            covered: true,
+            output: Some((output, digest(text.as_bytes()))),
+            unit_out_dir: value["out_dir"].as_str().map(str::to_owned),
+        };
         for line in text.lines() {
             let line = line
                 .strip_prefix("cargo::")
                 .or_else(|| line.strip_prefix("cargo:"))
                 .unwrap_or(line);
             if let Some(p) = line.strip_prefix("rerun-if-changed=") {
-                paths.push(package_dir.join(p));
+                record.paths.push(package_dir.join(p));
             }
             if let Some(key) = line.strip_prefix("rerun-if-env-changed=") {
                 let value = if generated_environment(key) {
-                    super::build_environment::value(
-                        data,
-                        package["id"].as_str().unwrap_or_default(),
-                        key,
-                    )
-                    .flatten()
+                    generated_value(&record, data, key).flatten()
                 } else {
                     effective_value(key, None)
                 };
-                env.insert(key.to_owned(), value);
+                record.env.insert(key.to_owned(), value);
             }
         }
         // With no declaration Cargo watches the entire package. Hash that same
         // input contract and refresh on content changes, independent of mtime.
-        if paths.is_empty() && env.is_empty() {
-            paths.push(package_dir.to_owned());
+        if record.paths.is_empty() && record.env.is_empty() {
+            record.paths.push(package_dir.clone());
         }
-        let mut record = BuildInput {
-            package_id: package["id"].as_str().unwrap_or_default().to_owned(),
-            package_name: package["name"].as_str().unwrap_or_default().to_owned(),
-            manifest,
-            paths,
-            env,
-            digest: String::new(),
-            covered: true,
-            output: Some((output, digest(text.as_bytes()))),
-        };
         let (hash, complete) = current(&record, None, data);
         record.digest = hash;
         record.covered = complete;
@@ -527,6 +540,7 @@ mod tests {
             digest: String::new(),
             covered: true,
             output: None,
+            unit_out_dir: None,
         };
         std::fs::write(root.join("build.rs"), "fn main() {}")?;
         record.digest = current(&record, None, &Value::Null).0;
@@ -682,6 +696,7 @@ mod tests {
             digest: String::new(),
             covered: true,
             output: None,
+            unit_out_dir: None,
         };
         record.digest = current(&record, None, &Value::Null).0;
         let selected_state = root.join("selected.json");
@@ -723,6 +738,7 @@ mod tests {
             digest: String::new(),
             covered: true,
             output: None,
+            unit_out_dir: None,
         };
         record.digest = current(&record, None, &Value::Null).0;
         let state = root.join("state.json");

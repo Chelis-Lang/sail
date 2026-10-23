@@ -63,6 +63,7 @@ pub struct Config {
     pub attribution_logs: bool,
 }
 
+#[derive(Clone)]
 struct Paths {
     target: PathBuf,
     cargo_alias: PathBuf,
@@ -711,6 +712,19 @@ fn cargo_build_target(target: &Path, args: &[String]) -> PathBuf {
 const CACHEDIR_TAG: &[u8] = b"Signature: 8a477f597d28d172789f06886806bc55\n\
 # This file is a cache directory tag created by cargo.\n\
 # For information about cache directory tags see https://bford.info/cachedir/\n";
+
+/// Establish the owned empty directory before retained admission canonicalizes
+/// it. Cleanup used to create this directory as a side effect. Preserve Cargo's
+/// cache tag too: a manually created untagged target cannot be cleaned later.
+fn prepare_fresh_target(target: &Path) -> Result<bool> {
+    let fresh = super::store::new_target(target);
+    if fresh {
+        std::fs::create_dir_all(target)
+            .and_then(|()| std::fs::write(target.join("CACHEDIR.TAG"), CACHEDIR_TAG))
+            .map_err(|e| Error::new("SAIL3105", e.to_string()))?;
+    }
+    Ok(fresh)
+}
 
 /// Forces Cargo to compile `packages` again in Sail's target.
 ///
@@ -1587,7 +1601,9 @@ fn target_records(
     force: bool,
     expected: &BTreeSet<(String, String, String)>,
     seeded: &[super::store::Seeded],
+    partial_args: Option<&[String]>,
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
+    let scoped_run = partial_args.is_some();
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
     let calls = invocations(paths);
@@ -1690,6 +1706,7 @@ fn target_records(
                 && target.replace('-', "_") == name.replace('-', "_")
                 && kind.contains(target_kind)
         });
+        let partial_args = partial_args.filter(|_| requested);
         let force = force && requested;
         let input_revision = revisions
             .get(package_id)
@@ -1720,7 +1737,7 @@ fn target_records(
             );
             let hashes = digests.hashes(&artifact_paths)?;
             let reusable =
-                paths.reuse && call.success && complete(&call.report) && !input_revision.is_empty();
+                paths.reuse && call.successful_for(partial_args) && !input_revision.is_empty();
             if reusable {
                 json(
                     &paths
@@ -1729,6 +1746,7 @@ fn target_records(
                         .join(path.file_name().unwrap_or_default()),
                     &Receipt {
                         version: RECEIPT_VERSION,
+                        partial_args: partial_args.map(<[String]>::to_vec),
                         committed: paths.run.join("committed.json"),
                         checksum: String::new(),
                         package_id: package_id.to_owned(),
@@ -1753,8 +1771,9 @@ fn target_records(
                 kind,
                 establishing_run: call.establishing_run().to_owned(),
                 reused: call.retained_from.is_some(),
+                scope_reuse: None,
                 requested,
-                complete: call.success && complete(&call.report),
+                complete: partial_args.is_none() && call.success && complete(&call.report),
                 report: call.report.clone(),
             });
         } else if let Some((receipt, store_key)) = {
@@ -1789,7 +1808,7 @@ fn target_records(
                     && r.name == name
                     && r.kind == kind
                     && r.artifact_hashes.keys().cloned().collect::<BTreeSet<_>>() == observed
-                    && r.valid_in(context, &digests)
+                    && r.valid_scoped_in(context, &digests, partial_args)
             };
             stored
                 .remove(&path)
@@ -1845,12 +1864,16 @@ fn target_records(
                 target: name.to_owned(),
                 kind,
                 establishing_run: receipt.invocation.establishing_run().to_owned(),
-                reused: true,
+                reused: partial_args.is_none(),
+                scope_reuse: partial_args.map(<[String]>::to_vec),
                 requested,
-                complete: true,
+                complete: partial_args.is_none(),
                 report: receipt.invocation.report,
             });
-        } else {
+        } else if !scoped_run || requested {
+            // Cargo-Verus focus deliberately compiles dependencies without
+            // verifying them. An absent dependency report supplies no proof;
+            // it is not a reason to rebuild the requested partial scope.
             missing.insert(package["name"].as_str().unwrap_or_default().to_owned());
         }
     }
@@ -1886,10 +1909,11 @@ fn target_records(
                     .to_owned(),
                 establishing_run: call.establishing_run().to_owned(),
                 reused: call.retained_from.is_some(),
+                scope_reuse: None,
                 target: call.identity.name,
                 kind: vec![call.identity.crate_type],
                 requested,
-                complete: call.success && complete(&call.report),
+                complete: partial_args.is_none() && call.success && complete(&call.report),
                 report: call.report,
             });
         }
@@ -2452,71 +2476,127 @@ pub(crate) fn run_engine_held(
     } else {
         Vec::new()
     };
-    let new_target = super::store::new_target(&paths.target);
-    let unit_plan = if paths.reuse {
-        let (environment, plan) =
-            build_environment(config, &paths, &data, &expected).unwrap_or((Value::Null, None));
-        data["sail_build_environment"] = environment;
-        plan
+    // The family is exclusively owned. The pinned metadata query creates no
+    // compiled outputs, and seeding happens after cleanup. A fresh family has
+    // nothing that any pre-invocation clean could invalidate.
+    let new_target = prepare_fresh_target(&paths.target)?;
+    // A new family's first snapshot has no saved hint. Its known package and
+    // configured-header inventory can still overlap the read-only Cargo query.
+    // It is usable only under the same exact selection and unchanged-source
+    // checks as the ordinary early snapshot; discovered inputs force a reread.
+    let first_snapshot = if new_target && !hint_path.is_file() && !paths.build_inputs.exists() {
+        let mut extras = script_roots(&data);
+        extras.extend(super::native_include_hints::roots(&data, |name| {
+            std::env::var_os(name)
+        }));
+        let hint = super::input::SnapshotHint {
+            version: super::input::SNAPSHOT_HINT_VERSION,
+            projection: snapshot_projection(&data, &serde_json::json!([])),
+            extras: ordered_extras(extras),
+        };
+        std::thread::Builder::new()
+            .name("sail-first-inputs".to_owned())
+            .spawn(move || {
+                let (snapshot, stamp) =
+                    super::input::snapshot_metadata_stamped(&hint.projection, &hint.extras);
+                Some((hint, snapshot, stamp))
+            })
+            .ok()
     } else {
         None
     };
-    // Sail's Verus names the shipped build's registry sources by this
-    // machine's registry directory, in every managed run (ADR 0048): a target
-    // or store entry may hold shipped units from an earlier run.
-    let registry = super::shipped::registry_dir(&data);
-    paths.source_base = registry
-        .as_deref()
-        .filter(|_| research != super::research::Mode::RetainedContent)
-        .filter(|_| {
-            super::shipped::research_enabled()
-                || super::shipped::has_adjacent_bundle(&config.cargo_verus)
-        })
-        .filter(|_| {
-            !super::shipped::research_enabled()
-                || std::env::var_os(super::shipped::LOCAL_ENV).is_none()
-        })
-        .filter(|_| super::shipped::portable_context(&config.workspace, &config.args))
-        .and_then(|registry| {
-            Some(super::shipped::source_base(
-                &super::shipped::virtual_base()?,
+    // The exact Cargo execution-unit query and shipped-runtime admission are
+    // independent observations. Keep the query's original Paths (before span
+    // remapping or a shipped plan is installed) and finish both before any
+    // family contract, source snapshot or compiler invocation can use them.
+    let query_paths = paths.clone();
+    let (unit_environment, registry, remap_missing, runtime_digests, shipped_plan) =
+        std::thread::scope(|scope| {
+            let query = std::thread::Builder::new()
+                .name("sail-build-environment".to_owned())
+                .spawn_scoped(scope, || {
+                    if query_paths.reuse {
+                        build_environment(config, &query_paths, &data, &expected)
+                    } else {
+                        None
+                    }
+                })
+                .ok();
+            // Sail's Verus names the shipped build's registry sources by this
+            // machine's registry directory, in every managed run (ADR 0048): a target
+            // or store entry may hold shipped units from an earlier run.
+            let registry = super::shipped::registry_dir(&data);
+            paths.source_base = registry
+                .as_deref()
+                .filter(|_| research != super::research::Mode::RetainedContent)
+                .filter(|_| {
+                    super::shipped::research_enabled()
+                        || super::shipped::has_adjacent_bundle(&config.cargo_verus)
+                })
+                .filter(|_| {
+                    !super::shipped::research_enabled()
+                        || std::env::var_os(super::shipped::LOCAL_ENV).is_none()
+                })
+                .filter(|_| super::shipped::portable_context(&config.workspace, &config.args))
+                .and_then(|registry| {
+                    Some(super::shipped::source_base(
+                        &super::shipped::virtual_base()?,
+                        registry,
+                    ))
+                });
+            paths.span_remap = paths
+                .source_base
+                .as_ref()
+                .and(registry.as_deref())
+                .and_then(|registry| super::shipped::span_remap(registry, rust_src.as_deref()));
+            // A shipped bundle's stored span strings name virtual paths; without the
+            // remap that names them as this machine's, its diagnostics could differ
+            // from stock, so the bundle is not served (VI-0031).
+            let remap_missing = paths.source_base.is_some() && paths.span_remap.is_none();
+            // The shipped proof's identity and retained reuse's admission both bind
+            // the complete runtime; this run reads it once for both (#286).
+            let runtime_digests = crate::source_build::RunDigests::default();
+            let shipped_plan = if focused(&config.args)
+                || remap_missing
+                || engine.is_some()
+                || !paths.reuse
+                || research == super::research::Mode::RetainedContent
+            {
+                None
+            } else {
+                super::shipped::plan(
+                    &config.cargo_verus,
+                    &paths.target,
+                    registry.as_deref(),
+                    new_target,
+                    &config.z3,
+                    &config.shim,
+                    &run_id,
+                    &config.workspace,
+                    &config.args,
+                    &data,
+                    &runtime_digests,
+                )
+            };
+            let unit_environment = match query {
+                Some(query) => query.join().ok().flatten(),
+                None if query_paths.reuse => {
+                    build_environment(config, &query_paths, &data, &expected)
+                }
+                None => None,
+            };
+            (
+                unit_environment,
                 registry,
-            ))
+                remap_missing,
+                runtime_digests,
+                shipped_plan,
+            )
         });
-    paths.span_remap = paths
-        .source_base
-        .as_ref()
-        .and(registry.as_deref())
-        .and_then(|registry| super::shipped::span_remap(registry, rust_src.as_deref()));
-    // A shipped bundle's stored span strings name virtual paths; without the
-    // remap that names them as this machine's, its diagnostics could differ
-    // from stock, so the bundle is not served (VI-0031).
-    let remap_missing = paths.source_base.is_some() && paths.span_remap.is_none();
-    // The shipped proof's identity and retained reuse's admission both bind
-    // the complete runtime; this run reads it once for both (#286).
-    let runtime_digests = crate::source_build::RunDigests::default();
-    let shipped_plan = if focused(&config.args)
-        || remap_missing
-        || engine.is_some()
-        || !paths.reuse
-        || research == super::research::Mode::RetainedContent
-    {
-        None
-    } else {
-        super::shipped::plan(
-            &config.cargo_verus,
-            &paths.target,
-            registry.as_deref(),
-            new_target,
-            &config.z3,
-            &config.shim,
-            &run_id,
-            &config.workspace,
-            &config.args,
-            &data,
-            &runtime_digests,
-        )
-    };
+    let (environment, unit_plan) = unit_environment.unwrap_or((Value::Null, None));
+    if paths.reuse {
+        data["sail_build_environment"] = environment;
+    }
     // An installed release offers its proof to every new target. When it does
     // not apply, the run says why in one note (#238); SAIL3137 already
     // explains a missing pinned toolchain.
@@ -2562,6 +2642,8 @@ pub(crate) fn run_engine_held(
     let (stale_scripts, mut extras, script_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
+    let native_includes = super::native_include_hints::roots(&data, |name| std::env::var_os(name));
+    extras.extend(native_includes.iter().cloned());
     extras.extend(script_roots.clone());
     let extras = ordered_extras(extras);
     let selection = super::input::SnapshotHint {
@@ -2569,26 +2651,25 @@ pub(crate) fn run_engine_held(
         projection: snapshot_projection(&data, &data["sail_source_inputs"]),
         extras: extras.clone(),
     };
-    let mut before = match speculative_before
-        .and_then(|thread| thread.join().ok())
+    let speculative = [speculative_before, first_snapshot]
+        .map(|thread| thread.and_then(|thread| thread.join().ok()).flatten())
+        .into_iter()
         .flatten()
-    {
-        // Cargo may have written inputs while it read the metadata (a lockfile
-        // update, extracted registry sources): the snapshot must be unchanged.
-        Some((hint, snapshot, stamp))
-            if hint == selection && super::input::unchanged_since(&snapshot, stamp.as_ref()) =>
-        {
-            snapshot
-        }
-        _ => {
-            // A hint is only ever a hint: failing to record one changes nothing.
-            let _ = std::fs::create_dir_all(hint_path.parent().unwrap_or(&config.cache))
-                .map_err(|e| Error::new("SAIL3102", e.to_string()))
-                .and_then(|()| json(&hint_path, &selection));
-            snapshot_metadata(&data, &extras)
-        }
+        .find(|(hint, snapshot, stamp)| {
+            *hint == selection && super::input::unchanged_since(snapshot, stamp.as_ref())
+        });
+    if speculative.is_none() || !hint_path.is_file() {
+        // A hint is only ever a hint: failing to record one changes nothing.
+        let _ = std::fs::create_dir_all(hint_path.parent().unwrap_or(&config.cache))
+            .map_err(|e| Error::new("SAIL3102", e.to_string()))
+            .and_then(|()| json(&hint_path, &selection));
+    }
+    let mut before = match speculative {
+        Some((_, snapshot, _)) => snapshot,
+        None => snapshot_metadata(&data, &extras),
     };
     before.complete &= source_coverage;
+    before.roots.extend(native_includes.iter().cloned());
     before.roots.extend(super::input::configuration_paths(
         &invocation,
         std::env::var_os("CARGO_HOME")
@@ -2639,7 +2720,7 @@ pub(crate) fn run_engine_held(
     // Sail's targeted cleans exist to observe what a receipt binds. A run
     // without reuse records no receipt, so Cargo's own freshness decides, as
     // for plain Cargo-Verus.
-    if paths.reuse && !stale_scripts.is_empty() {
+    if paths.reuse && !new_target && !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
     let absent = super::absent::Observer::begin(&before_run, &paths.run.join("observer"));
@@ -2670,7 +2751,7 @@ pub(crate) fn run_engine_held(
         .into_iter()
         .filter(|name| !stale_scripts.contains(name))
         .collect();
-    if paths.reuse {
+    if paths.reuse && !new_target {
         clean(config, &paths.target, &late_scripts)?;
     }
     let stamp_before = super::input::mutation_stamp(&before_run);
@@ -2698,7 +2779,6 @@ pub(crate) fn run_engine_held(
     let cleanup = diagnostics.phase(Phase::TargetCleanup);
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
-        || focused(&config.args)
         || !before.complete
         || !absent.ready();
     let names: BTreeSet<String> = data["packages"]
@@ -2713,7 +2793,7 @@ pub(crate) fn run_engine_held(
         })
         .filter_map(|p| p["name"].as_str().map(str::to_owned))
         .collect();
-    if forced && paths.reuse {
+    if forced && paths.reuse && !new_target {
         clean(config, &paths.target, &selected(&config.args, &names))?;
     }
     let receipt_revisions: BTreeMap<PathBuf, ReceiptRevision> = std::fs::read_dir(&paths.receipts)
@@ -2723,7 +2803,12 @@ pub(crate) fn run_engine_held(
         .filter_map(|entry| Some((entry.path(), read::<ReceiptRevision>(&entry.path())?)))
         .collect();
     let dirty = dirty_receipt_packages(&receipt_revisions, &data);
-    if paths.reuse && !dirty.is_empty() {
+    event(&serde_json::json!({
+        "kind":"managed-cleanup-decision", "forced":forced,
+        "changed_receipt_packages":dirty, "stale_scripts":stale_scripts,
+        "late_scripts":late_scripts
+    }));
+    if paths.reuse && !new_target && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);
@@ -2879,6 +2964,7 @@ pub(crate) fn run_engine_held(
         let (_, mut after_extras, after_coverage) =
             super::build_inputs::stale_after(&paths.build_inputs, &data, &unscheduled);
         after_extras.extend(script_roots.iter().cloned());
+        after_extras.extend(native_includes.iter().cloned());
         let after_extras = ordered_extras(after_extras);
         let sources = serde_json::to_value(sources).unwrap_or_default();
         // Without metadata in hand, the snapshot is taken while Cargo reads it,
@@ -2923,6 +3009,7 @@ pub(crate) fn run_engine_held(
             }
             _ => snapshot_metadata(&after_data, &after_extras),
         };
+        after.roots.extend(native_includes.iter().cloned());
         after.roots.extend(super::input::configuration_paths(
             &invocation,
             std::env::var_os("CARGO_HOME")
@@ -2947,43 +3034,29 @@ pub(crate) fn run_engine_held(
     // lacks those targets.
     let shown = out.is_some();
     let retry_possible = paths.reuse && !shown && exit == Some(0);
-    // The post-run Cargo metadata starts once the verifier invocation has
-    // ended and overlaps the receipt checks, which never read it. When no
-    // retry can follow, the rest of the inputs after the run overlap them
-    // too: neither reads what the other writes, and the stamp that brackets
-    // every content read of both is taken once both have finished. A retry
-    // discards the metadata and reads everything again after its own
-    // invocation.
+    // Once the invocation has ended, complete input observations and receipt
+    // reads are independent. Their cache updates describe that completed
+    // invocation, never proof authority. Join both before deciding on retry;
+    // a retry discards the observation and rereads all inputs after its own
+    // invocation. No snapshot or receipt is committed as Current until then.
     let (records, after_thread) = std::thread::scope(|threads| {
-        let after = threads.spawn(|| {
-            if retry_possible {
-                (
-                    Some(metadata(
-                        &config.workspace,
-                        &config.args,
-                        &config.cargo,
-                        &config.cargo_toolchain,
-                        &config.cache,
-                    )),
-                    None,
-                )
-            } else {
-                (None, Some(after_inputs(None)))
-            }
-        });
-        let records = target_records(&paths, &data, &hash, forced, &expected, &seeded);
+        let after = threads.spawn(|| after_inputs(None));
+        let records = target_records(
+            &paths,
+            &data,
+            &hash,
+            forced,
+            &expected,
+            &seeded,
+            focused(&config.args).then_some(config.args.as_slice()),
+        );
         (records, after.join())
     });
     let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
-    let (mut after_metadata, overlapped) = after_thread.unwrap_or_else(|_| {
-        (
-            Some(Err(reader_failed())),
-            (!retry_possible).then(|| Err(reader_failed())),
-        )
-    });
+    let mut overlapped = Some(after_thread.unwrap_or_else(|_| Err(reader_failed())));
     let (mut targets, missing) = records?;
     if retry_possible && !missing.is_empty() {
-        after_metadata = None;
+        overlapped = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
         std::fs::write(paths.run.join("artifacts.jsonl"), [])
@@ -2993,7 +3066,15 @@ pub(crate) fn run_engine_held(
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
         exit = invoke(config, &paths, &mut out, err, &[])?;
         outside_scope |= !units_in_scope(&paths);
-        let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected, &seeded)?;
+        let (retried, missing) = target_records(
+            &paths,
+            &data,
+            &hash,
+            forced,
+            &expected,
+            &seeded,
+            focused(&config.args).then_some(config.args.as_slice()),
+        )?;
         targets = retried;
         if !missing.is_empty() {
             return Err(Error::new(
@@ -3012,7 +3093,7 @@ pub(crate) fn run_engine_held(
         source_coverage,
     } = match overlapped {
         Some(inputs) => inputs?,
-        None => after_inputs(after_metadata)?,
+        None => after_inputs(None)?,
     };
     // Resolve fresh receipt bindings while the input stamp still brackets every
     // content read. A newly discovered include may already belong to another
@@ -3123,7 +3204,7 @@ pub(crate) fn run_engine_held(
     }
     if focused(&config.args) {
         notes.push(
-            "Requested function/module scope is partial; whole-target reuse is disabled".to_owned(),
+            "Requested function/module scope is partial; exact-scope reports may be reused, never whole-target proofs".to_owned(),
         );
     }
     for target in targets.iter().filter(|t| t.dependency_build.is_some()) {
@@ -3738,6 +3819,25 @@ mod tests {
     }
 
     #[test]
+    fn fresh_target_is_canonical_and_tagged_before_admission()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "sail-fresh-target-admission-{}",
+            std::process::id()
+        ));
+        let target = root.join("family/target");
+        assert!(prepare_fresh_target(&target)?);
+        assert!(target.canonicalize().is_ok());
+        assert_eq!(std::fs::read(target.join("CACHEDIR.TAG"))?, CACHEDIR_TAG);
+        let artifact = target.join("retained-input.rmeta");
+        std::fs::write(&artifact, b"preserved")?;
+        assert!(!prepare_fresh_target(&target)?);
+        assert_eq!(std::fs::read(artifact)?, b"preserved");
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn shared_compiler_target_has_exclusive_ownership_and_private_proof_paths()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root =
@@ -3870,6 +3970,7 @@ mod tests {
         });
         Receipt {
             version: RECEIPT_VERSION,
+            partial_args: None,
             checksum: String::new(),
             committed: paths.run.join("committed.json"),
             package_id: "input".to_owned(),
@@ -4510,7 +4611,8 @@ mod tests {
         assert!(coverage);
         f.result.exit_code = Some(101);
         assert!(f.eligible());
-        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected, &[])?;
+        let (targets, _) =
+            target_records(&f.paths, &f.data, "negative", true, &f.expected, &[], None)?;
         assert_eq!(targets.len(), 1);
         assert!(!targets[0].complete && !targets[0].reused);
         assert_eq!(targets[0].report.exit_code, Some(1));
@@ -4740,7 +4842,8 @@ mod tests {
         };
         assert!(stock(&f, &[]));
         assert!(f.eligible(), "the engine arm takes the same branch");
-        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected, &[])?;
+        let (targets, _) =
+            target_records(&f.paths, &f.data, "negative", true, &f.expected, &[], None)?;
         assert_eq!(targets.len(), 1);
         assert!(!targets[0].complete && !targets[0].reused);
         assert_eq!(std::fs::read_dir(&f.paths.receipts)?.count(), 0);
@@ -4912,9 +5015,30 @@ mod tests {
             }))?,
         )?;
         let expected = BTreeSet::from([("input".to_owned(), "input".to_owned(), "lib".to_owned())]);
-        let (targets, missing) = target_records(&paths, &data, "missing", false, &expected, &[])?;
+        let (targets, missing) =
+            target_records(&paths, &data, "missing", false, &expected, &[], None)?;
         assert_eq!(targets, Vec::<TargetResult>::new());
         assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
+        let scope = ["--".to_owned(), "--verify-root".to_owned()];
+        let unrequested = BTreeSet::new();
+        let (unproved, missing_dependency) = target_records(
+            &paths,
+            &data,
+            "missing",
+            false,
+            &unrequested,
+            &[],
+            Some(&scope),
+        )?;
+        assert!(unproved.is_empty(), "native-only dependency gains no proof");
+        assert!(
+            missing_dependency.is_empty(),
+            "focus never required a dependency proof"
+        );
+        let (unproved, missing_dependency) =
+            target_records(&paths, &data, "missing", false, &unrequested, &[], None)?;
+        assert_eq!(unproved.len(), 0);
+        assert_eq!(missing_dependency, BTreeSet::from(["input".to_owned()]));
         assert_eq!(std::fs::read_dir(&paths.receipts)?.count(), 0);
         assert_eq!(
             std::fs::read_dir(paths.run.join("pending-receipts"))?.count(),
@@ -4935,12 +5059,14 @@ mod tests {
         super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
         assert!(receipt.valid("selected"));
         assert_eq!(receipt.input_revision, target_revision(&data, "input"));
-        let (targets, missing) = target_records(&paths, &data, "selected", false, &expected, &[])?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
         assert_eq!(targets.len(), 1);
         assert!(targets[0].reused);
         assert!(missing.is_empty());
         for (context, force) in [("missing", false), ("selected", true)] {
-            let (targets, missing) = target_records(&paths, &data, context, force, &expected, &[])?;
+            let (targets, missing) =
+                target_records(&paths, &data, context, force, &expected, &[], None)?;
             assert_eq!(targets, Vec::<TargetResult>::new());
             assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
         }
@@ -4986,7 +5112,7 @@ mod tests {
         let invocation = paths.run.join("invocations/call.json");
         json(&invocation, &call)?;
         let empty = BTreeSet::new();
-        let (first, missing) = target_records(&paths, &data, "selected", false, &empty, &[])?;
+        let (first, missing) = target_records(&paths, &data, "selected", false, &empty, &[], None)?;
         assert_eq!(missing, BTreeSet::<String>::new());
         assert_eq!(first.len(), 1);
         assert!(!first[0].reused);
@@ -4995,7 +5121,8 @@ mod tests {
         super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
         std::fs::remove_file(invocation)?;
         json(&paths.run.join("artifacts.jsonl"), &artifact_record(true))?;
-        let (reused, missing) = target_records(&paths, &data, "selected", false, &empty, &[])?;
+        let (reused, missing) =
+            target_records(&paths, &data, "selected", false, &empty, &[], None)?;
         assert_eq!(missing, BTreeSet::<String>::new());
         assert_eq!(reused.len(), 1);
         assert!(reused[0].reused);
@@ -5012,7 +5139,8 @@ mod tests {
             placed: true,
             shown_stdout: Vec::new(),
         }];
-        let (stored, missing) = target_records(&paths, &data, "other", false, &empty, &seeds)?;
+        let (stored, missing) =
+            target_records(&paths, &data, "other", false, &empty, &seeds, None)?;
         assert_eq!(missing, BTreeSet::<String>::new());
         assert_eq!(stored.len(), 1);
         assert_eq!(stored[0].dependency_store.as_deref(), Some("store-key"));
@@ -5030,7 +5158,7 @@ mod tests {
             target_revision(&data, "input"),
             seeds[0].receipt.clone(),
         )?;
-        let (adopted, _) = target_records(&paths, &data, "other", false, &empty, &[])?;
+        let (adopted, _) = target_records(&paths, &data, "other", false, &empty, &[], None)?;
         assert_eq!(adopted.len(), 1);
         assert_eq!(adopted[0].establishing_run, first[0].establishing_run);
         assert_eq!(adopted[0].dependency_build, first[0].dependency_build);
@@ -5179,6 +5307,7 @@ mod tests {
         let before = snapshot_metadata(&data, &[]);
         let receipt = Receipt {
             version: RECEIPT_VERSION,
+            partial_args: None,
             checksum: String::new(),
             package_id: "vstd".to_owned(),
             name: "vstd".to_owned(),

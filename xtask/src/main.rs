@@ -3,6 +3,7 @@
 
 mod error_codes;
 mod layering;
+mod mutants;
 mod verus;
 mod verus_source;
 
@@ -24,6 +25,9 @@ commands:
     build-verus-source [--force] [--keep-intermediates] [--fork] [--features=singular]
                     build the pinned Verus commit from source, with its
                     rust_verify_test binaries (deep tier; ADR 0019)
+    gen-mutants --project NAME --seed N --per-class N [--unit UNIT] [--source DIR]
+                [--name SHORT] [--out DIR]
+                    write a seeded mutation catalogue for a corpus unit (ADR 0063)
 ";
 
 type Result<T> = std::result::Result<T, String>;
@@ -40,6 +44,10 @@ fn main() -> ExitCode {
             let mut rest: Vec<String> = std::env::args().skip(2).collect();
             rest.push("--interactive-engine".to_owned());
             verus_source::build(&rest)
+        }
+        Some("gen-mutants") => {
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            mutants::run(&rest)
         }
         Some("build-verus-source") => {
             let rest: Vec<String> = std::env::args().skip(2).collect();

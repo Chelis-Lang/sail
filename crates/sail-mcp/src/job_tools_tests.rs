@@ -219,6 +219,7 @@ fn project(root: &Path) -> ProjectResult {
             kind: vec!["lib".to_owned()],
             establishing_run: "establishing-run".to_owned(),
             reused: false,
+            scope_reuse: None,
             requested: true,
             complete: false,
             report: crate::store::tests::report(vec![function]),

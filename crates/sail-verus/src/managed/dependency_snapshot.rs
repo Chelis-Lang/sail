@@ -432,6 +432,41 @@ impl Snapshot {
         Self::capture_with(owned_target, root, args, Scratch::Skip)
     }
 
+    /// A cheap refusal before compiler/source hashing. This never supplies a
+    /// graph or admission: the ordinary capture and complete final checks still
+    /// decide which exact bytes the compiler sees and which may be certified.
+    pub(super) fn pipelined_inputs_admitted(
+        owned_target: &Path,
+        args: &[OsString],
+        admitted: impl Fn(&Path) -> bool,
+    ) -> bool {
+        let check = || -> Option<()> {
+            let target = owned_target.canonicalize().ok()?;
+            let unit = Unit::parse(args)?;
+            let (directories, _) = lookups(&target, &unit, args)?;
+            (!directories.is_empty() && directories.len() <= 8).then_some(())?;
+            for directory in directories {
+                let mut entries = 0;
+                for entry in std::fs::read_dir(directory).ok()? {
+                    let entry = entry.ok()?;
+                    if unit.owns(&entry.path()) {
+                        continue;
+                    }
+                    entries += 1;
+                    (entries <= ENTRY_LIMIT).then_some(())?;
+                    let kind = entry.file_type().ok()?;
+                    if kind.is_dir() {
+                        continue;
+                    }
+                    (kind.is_file() && (!artifact(&entry.path()) || admitted(&entry.path())))
+                        .then_some(())?;
+                }
+            }
+            Some(())
+        };
+        check().is_some()
+    }
+
     fn capture_with(
         owned_target: &Path,
         root: &Path,
@@ -916,6 +951,32 @@ mod tests {
                 Snapshot::capture_pipelined(&target, &root.0.join("alias"), &root.args()).is_none()
             );
         }
+        Ok(())
+    }
+
+    #[test]
+    fn unadmitted_lookup_refuses_before_any_capture_without_changing_the_graph()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("unadmitted")?;
+        let deps = root.0.join("target/debug/deps");
+        let admitted = deps.join("libvstd-abcd.rmeta");
+        std::fs::write(&admitted, b"admitted metadata")?;
+        std::fs::write(deps.join("libforeign-abcd.rlib"), b"foreign bytes")?;
+        let target = root.0.join("target");
+        assert!(!Snapshot::pipelined_inputs_admitted(
+            &target,
+            &root.args(),
+            |path| path == admitted
+        ));
+        assert!(Snapshot::pipelined_inputs_admitted(
+            &target,
+            &root.args(),
+            |_| true
+        ));
+        let graph = Snapshot::capture_pipelined(&target, &root.0.join("all"), &root.args())
+            .ok_or("complete graph")?;
+        assert_eq!(graph.original_inputs().len(), 2);
+        assert!(graph.intact());
         Ok(())
     }
 

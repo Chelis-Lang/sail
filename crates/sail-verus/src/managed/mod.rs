@@ -12,6 +12,7 @@ mod environment;
 mod files;
 mod freshness;
 mod input;
+mod native_include_hints;
 pub mod projects;
 mod read_check;
 mod receipts;

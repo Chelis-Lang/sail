@@ -1,18 +1,18 @@
 # Releasing Sail
 
-The compiler-source portability candidate has passing actual Mac staged
-first-use components and full native Linux regression qualification. Its latest
-clean Linux consumer passes first-use, public/native controls and all 36 Vest
-calls, but fails requested-target instant revert. Release selection awaits the
-coexistence fix and requalification. Its portable native
-path requires the pinned verifier toolchain's canonical `lib/rustlib/src/rust`
-tree; a missing, aliased or changed tree declines proof reuse and runs genuine
-verification. The candidate binds every source byte and the exact compiler
-remap option. Earlier native panic/backtrace controls retain their recorded
-source scope. The current [qualification record](validation/vstd-compile-boundary.md)
-distinguishes those controls, composed Mac acceptance and remaining release
-gates. The candidate does not change the
-machine-local research mode or permit user-supplied compiler remap flags.
+The combined 0.1.0 candidate is being qualified on native Linux and macOS.
+The installed Linux and corrected Mac controls serve the shipped vstd, verify
+an edit, and restore the original target's own retained proof. The final
+combined performance decision remains pending. Do not substitute
+component measurements for the [release matrix](validation/release-matrix.md)
+or the installed artifact's full mutation cohorts.
+
+The portable native path requires the pinned verifier toolchain's canonical
+`lib/rustlib/src/rust` tree; a missing, aliased or changed tree declines proof
+reuse and runs genuine verification. The bundle binds every source byte and
+the exact compiler remap option. It does not permit user-supplied remap flags
+or change machine-local research mode. See the
+[compiler-boundary record](validation/vstd-compile-boundary.md).
 
 Sail ships prebuilt binaries for Linux and macOS as GitHub release assets on
 `Chelis-Lang/sail`. Each archive includes the repair engine runtime. Until
@@ -113,7 +113,13 @@ boundary.
 The record recipe is `scripts/shipped-deps`: exact vstd version, canonical
 Cargo-produced lock, one requested proof. `scripts/release-shipped.py record`
 uses a fresh private project/Cargo home and an owned daemon. Native prerequisites
-compile normally. It requires Current, complete verified targets and the original
+compile normally. A release carries the default-limit proof and, when a
+resource-limit subsumption witness is unavailable, a separately verified
+`--rlimit 100` proof. Both retain exact keys and their own establishing runs.
+The current macOS solver has reproduced resource-count variation, so its
+recorder uses these exact profiles. Other limits verify normally on Mac.
+Every member of both profiles is bound by the release index; an incomplete
+second recording stops packaging. It requires Current, complete verified targets and the original
 run before a complete dependency directory becomes discoverable. Refusals and
 failures stop release packaging. Evidence is retained beside the stage directory
 with `-proof-evidence` appended; it is not shipped or treated as proof authority.
@@ -398,6 +404,22 @@ qualifying the macOS runtime against it).
    verification says, and one `sail repair-check` through the engine to be
    accepted, with no engine fault.
 5. The owner reviews the draft and decides when to publish.
+
+When the installed stages have already passed the native matrix, full mutation
+cohorts and walkthroughs, package those same bytes on an Apple-silicon Mac:
+
+```sh
+scripts/release.sh package VERSION dist/stage/linux dist/stage/macos
+```
+
+This checks both complete release indexes and their platform runtime pins,
+then writes the same four assets under `dist/`. It refuses existing output
+names. It does not rebuild, record new proofs, upload, create a tag or publish.
+Keep the stages' native `sail --version` results and CLI hashes with their
+qualification results; `VERSION` must match the version they report. Review
+and create the draft from these assets only after the release gates pass.
+The one-command build-and-draft route above remains available for a new build;
+its output needs qualification before publication.
 
 `scripts/release.sh stage OUT ENGINE_BUILD` is the staging step alone: it
 copies `target/release/sail` and `sail-z3` (stripped of the release

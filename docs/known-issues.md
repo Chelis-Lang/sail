@@ -1,12 +1,55 @@
 # Known issues and acceptance limits
 
-This page lists the defects and validation failures that are open on the M7
-development branch, with one pointer each. Each gate's status, best evidence
-and indexed failed attempts are in [M7 validation](validation/m7.md); the
-[roadmap](ROADMAP.md) tracks the remaining work. Fixed and superseded issues
-are in the `archive/m7-contracts-f7103bf` tag.
+Open product defects and release limits. The [roadmap](ROADMAP.md) tracks
+release work; linked validation pages preserve the scope of each result.
 
-## Open M7 defects and failing gates
+## Functional release qualification
+
+The corrected 7d9d5410 runtime passes all four full mutation cohorts on both
+platforms: 651 matching comparisons each. The preceding Mac HumanEval proof
+regression (#337) is fixed by #338; its original failure and reproduction
+remain in the [runtime record](validation/spec-signature-runtime.md).
+
+## Release performance
+
+- **Mac resource-limit subsumption is unavailable on the current solver.**
+  Resource counts vary for one captured vstd query, while inputs and answers
+  agree. The recorder uses separately verified exact default and limit-100
+  profiles; other limits safely miss. See the
+  [reproduction](../corpus/repros/z3-resource-count-variation/README.md) and
+  [qualification](validation/rlimit-subsumption.md).
+
+- **Anvil cold and unchanged setup costs remain open** (#314). Exact-scope
+  reuse removes repeat verification without promoting partial reports to
+  whole-target proofs. The complete corrected matrix measures unchanged
+  calls at 2.04 s versus stock 0.33 s on Linux, and 2.39 s versus 0.28 s on
+  Mac. Mac cold is 103.79 s versus 99.91 s. See
+  [unchanged partial verification](validation/exact-scope-reuse.md).
+- **The release performance decision remains open** (#232, #278). Mac Vest
+  cold adds 0.87 s; tiny edits and other unchanged calls retain visible
+  overhead. CapybaraKV cold now matches stock on Mac. Both complete matrices
+  and all four realistic edit loops per platform are available in
+  [performance](performance.md); known losses are not accepted by documenting
+  them.
+
+- **IronKV's larger edit losses are removed by the tighter retention budget**
+  (#330; candidate qualification in progress). All 153 comparisons match and
+  its complete loop is 1.48× faster, versus 1.31× before. Two medians still
+  add 0.03–0.10 s on roughly 9–10 s runs. Cheap-target undo uses ordinary
+  solver caching (4.7 s), while the successful public Vest control retains
+  instant undo (1.98 s). The earlier 1.43× result accidentally disabled
+  fresh-target retention and cannot qualify the corrected product.
+
+## Corrected defects and historical measurements
+
+- **CapybaraKV's repeated vstd rebuild is fixed** (#321, #292). The native
+  three-round full mutation run now has 168 matching comparisons, no false
+  verified result and about 1.9× faster edit loops. This supersedes the older
+  0.63× failed cohort; it does not qualify another release artifact.
+- **The deep source-suite harness correction passes** (#320, #315). The
+  complete rerun has no shim disagreements or infrastructure failures. The
+  fork's nonignored tests pass; stock retains its recorded existing failures.
+  See the [source-suite record](validation/rvt-dispatch-tests.md).
 
 - **The original focused Anvil benchmark never reached verification.** All
   18 retained Sail rows used non-JSON `sail verify` with `--verify-module`,
@@ -25,19 +68,6 @@ are in the `archive/m7-contracts-f7103bf` tag.
   determinism, all four DEEP modes and final guards pass. The matching runtime
   pins are selected on main through merged #223, with all required CI checks green. See the
   [qualification record](validation/spec-parameter-names.md).
-
-- **The demo's first run was slower than stock when vstd is verified**
-  (#232, #278): +8.2% on a Linux host build and +12.3% on macOS without the
-  shipped bundle, before pipelined native admission (ADR 0061). With the
-  release's shipped bundle the demo is 1.6–2.3× faster than stock; the
-  complete current no-bundle matrix remains pending. Earlier public-profile
-  Vest measured macOS +4.3% and Linux −2.2%; the Mac slowdown remains open
-  under the owner's relative bar. The shipped observer's additional pipeline
-  defect (#307) has a controlled Linux correction: CapybaraKV cold falls from
-  67.23 s to 53.19 s against stock's 54.12 s over three paired rounds. This
-  does not settle other projects or Mac performance. See the
-  [cold record](validation/cold-first-run.md) and
-  [pipeline correction](validation/shipped-native-pipelining.md).
 
 - **A first run without a retention plan never gets instant revert** (#285).
   After, for example, a forced first run, the native units and vstd have no

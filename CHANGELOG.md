@@ -5,6 +5,51 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep Rustc artifact metadata out of structured diagnostic text, including
+  the final verification-progress note. Verifier messages retain their text.
+
+- Correct a macOS HumanEval proof regression from positional spec-formal names.
+  Include complete signature size in those names, preserving source-rename
+  stability while restoring the proof that stock verifies. Rebuild both Verus
+  runtimes, their exact shipped proofs and signed solver replies together.
+
+- Limit optional proof retention to targets whose measured compile cost is at
+  least sixteen times its retention cost. Cheaper targets use ordinary solver
+  caching on undo; unknown costs still capture the first proof.
+
+- Record a separate exact vstd proof at resource limit 100 when a subsumption
+  witness is unavailable. macOS uses independently verified default and 100
+  profiles because its pinned solver's resource counts can vary. Both profiles
+  retain complete member checks and exact keys.
+
+- Discard completed benchmark caches so a full matrix does not exhaust the host disk.
+
+- Overlap independent Cargo setup reads and completed-input observations with
+  receipt validation. Retries discard the earlier snapshot and read inputs again.
+
+- Reject a known vstd dependency or feature mismatch before hashing the runtime
+  and Rust sysroot for an unusable shipped proof.
+- Recognize the daemon's runtime endpoint while staging release archives.
+- Observe explicitly configured native headers before the first build, allowing
+  the first unchanged recheck to reuse reports once all inputs are confirmed.
+- Decline native proof observation before compiler and source hashing when
+  lookup artifacts have no current producer provenance. Normal compilation and
+  complete admission checks remain unchanged.
+- Skip pre-invocation artifact cleanup in a genuinely absent or empty compiler
+  target. Existing targets and every retry keep their cleanup checks.
+
+- Keep unchanged build-script outputs when declared Cargo package metadata
+  and the exact unit's `OUT_DIR` remain valid, avoiding redundant TLS rebuilds.
+
+- Reuse successful partial reports only for their exact invocation scope.
+  Keep partial targets explicitly incomplete and exclude their receipts from
+  whole-target, shared dependency and instant-revert proof admission.
+- Mutation comparisons preserve repeated function entries, constrain the
+  approved bit-vector exception to its reproduced function and location,
+  enforce one daemon per round and identify retained restores from receipts.
+  Both oracle and runner support release registry setup through `--vstd-lock`.
+- Avoid injecting a duplicate progress option into the pinned dispatch-order
+  regression. Require the exact test identity and full original source hash.
 - Preserve independently verified dependencies after a requested proof fails
   when platform-disabled build scripts have no current Cargo execution unit.
   Keep conservative cleanup for unknown plans and reject unexpected units.
@@ -37,6 +82,7 @@ semantic versioning once the API is published.
   unknown, timeout, cancellation and malformed responses remain explicit.
 - Avoid duplicate watch startup jobs from replayed macOS creation events.
   Preserve cancellation for real edits, including edit-and-restore changes.
+
 - Add `scripts/bench-cargo-compare.py` for repeated Cargo verification
   comparisons across stock Verus, the plain fork, and Sail.
   Support fresh verification, unchanged runs, proof edits, and daemon restarts.
@@ -64,6 +110,7 @@ semantic versioning once the API is published.
   versions, record bundle reuse and dependency adjustments, and report slower
   rows for review under the relative performance bar. Missing or duplicated
   rounds and output differences invalidate the comparison.
+
 - Reserve dependency-publication staging directories exclusively, leaving
   another publisher’s files untouched on a collision.
 - Compare standalone verification-progress notes independent of worker order,
@@ -139,6 +186,22 @@ semantic versioning once the API is published.
   exact `cargo update -p … --precise …` commands and vstd feature edit that
   let the project use the proof; Vest with vstd `0.0.0-2026-10-18-0147`
   needs three updates and vstd's default features (#237).
+- A seeded mutation suite (ADR 0063, #284): `cargo xtask gen-mutants`
+  generates catalogues of nine mutation classes from a seed,
+  `sail-bench mutants oracle` settles each mutant's outcome from three stock
+  Verus runs, and `sail-bench mutants run` runs the edit loop with one Sail
+  daemon across every mutant, compares every result with stock (counting
+  false verified separately), checks that the restored original gets its own
+  answers, and reports speedups with bootstrap intervals. Catalogues for
+  human-eval-verus, IronKV, Vest and CapybaraKV are in `corpus/mutants/`; the
+  local standard and deep conformance tiers run them. See the
+  [record](docs/validation/mutation-suite.md).
+
+- Conformance recognises the fork's VI-0003 fix as an accepted divergence:
+  a function whose `by (bit_vector)` assertion failed is reported failed by
+  Sail where stock says it succeeded, with identical diagnostics and exit
+  code. Only exactly that case is accepted; see
+  [divergences](docs/divergences.md).
 
 - Check instant revert's workspace sources and namespace facts on several
   workers, and skip a graph reread that repeated the one just done (#232).

@@ -39,6 +39,9 @@ authentication for the pinned D.I.V.E. source dependency.
 focused checking, replay and process-isolation evidence and its limits.
 
 The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
+The [combined release matrix](validation/release-matrix.md) states current
+Linux/Mac measurements and remaining gates; [mutation qualification](validation/mutation-suite.md)
+covers the broader edit loops and soundness checks.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
@@ -108,6 +111,10 @@ current default gates and the distinct retained-proof and explicit
 fresh-machine first use remains pending. The
 [incidental-edit record](validation/incidental-edits.md) tracks the frozen
 three-project edit catalogue and the combined runtime's remaining gates.
+The [mutation-suite record](validation/mutation-suite.md) gives the seeded
+mutation suite's soundness results and edit-loop timing against stock on four
+real projects ([ADR 0063](decisions/0063-seeded-mutation-suite.md); how to run
+it: [testing](testing.md#mutation-suite)).
 The [full closure-identity record](validation/closure-full-identity.md) tracks the
 subsequent runtime, its matched edit measurements and completed qualification
 with platform/scope limits.

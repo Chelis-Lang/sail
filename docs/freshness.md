@@ -101,6 +101,20 @@ finished, so its content at the end of the run is the content compiled, and
 that content is bound into the proof receipts and the read-time record like
 any other input ([#120](https://github.com/Chelis-Lang/sail/issues/120)).
 
+### Explicit native include directories
+
+For a dependency with Cargo's `links` name, Sail preobserves existing absolute
+include directories configured through `<LINKS>_DIR/include` or
+`<LINKS>_INCLUDE_DIR` (uppercase links name). For example, `OPENSSL_DIR` lets
+Sail read those headers before the first build, rather than discover them only
+when the build script declares them afterwards.
+
+These paths add input coverage. The script's actual declarations, complete
+content reads, mutation guards and before/after scheduling checks still decide
+whether reports can be reused. Other directory layouts use ordinary declaration
+learning. Relative and absent hints supply no coverage. See the
+[Anvil control](validation/exact-scope-reuse.md#first-recheck-after-native-header-discovery).
+
 ### What these checks do not catch
 
 These cases can change what a run verified without changing any content
@@ -176,7 +190,12 @@ target values. Each unit's profile supplies its debug-assertion setting.
 This model uses Cargo source `5f94df4789f005f9a352888e8355ffc645b7ed0e`.
 Unknown Cargo versions, missing observations, and conflicting unit values
 refuse reuse. A declared name with an inherited parent value also refuses
-reuse. Other Cargo-generated variables retain the original refusal.
+reuse. Package declarations `CARGO_MANIFEST_DIR`, `CARGO_MANIFEST_LINKS`,
+`CARGO_PKG_NAME` and `CARGO_PKG_VERSION` (including its major, minor, patch
+and prerelease components) use the current package metadata. `OUT_DIR` uses
+Cargo's recorded directory for that exact build unit, bound to its checked
+output file inside the owned target. Other Cargo-generated variables retain
+the original refusal.
 
 The generated values participate in each script's content digest. Feature,
 target, cfg, or declared environment changes invalidate affected records.
@@ -255,6 +274,14 @@ When native notification coverage is incomplete, watch uses only its documented
 content scans; delayed native events do not queue the same edit again. The
 startup snapshot includes empty input directories, while declared build-output
 subtrees remain excluded.
+
+### Partial verification reports
+
+The [exact-scope report reuse](decisions/0069-exact-scope-report-reuse.md)
+keeps partial results explicitly incomplete. A report may be reused only for
+its exact ordered arguments and unchanged source, runtime and artifact bytes.
+Whole-target, shared dependency and instant-revert proof consumers refuse it.
+Native bounded controls pass; final release qualification is pending.
 
 With the pinned Cargo, a requested proof failure keeps independently verified
 dependencies when the current input checks pass. Platform-disabled packages

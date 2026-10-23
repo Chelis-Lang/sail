@@ -355,6 +355,19 @@ fn authority_value(
     parent: bool,
 ) -> Option<Option<String>> {
     (generated_key(key) && !parent).then_some(())?;
+    let values = package_values(data, package_id)?;
+    Some(
+        values
+            .get(key)
+            .map(|value| value.as_str().unwrap_or_default().to_owned()),
+    )
+}
+
+/// Current execution-unit authority, installed only for the pinned Cargo boundary.
+pub(super) fn package_values<'a>(
+    data: &'a Value,
+    package_id: &str,
+) -> Option<&'a serde_json::Map<String, Value>> {
     let authority = data.get("sail_build_environment")?.as_object()?;
     (authority.len() == 2 && authority.get("version")?.as_u64()? == VERSION).then_some(())?;
     let package = authority
@@ -368,11 +381,7 @@ fn authority_value(
         .iter()
         .all(|(key, value)| generated_key(key) && value.is_string())
         .then_some(())?;
-    Some(
-        values
-            .get(key)
-            .map(|value| value.as_str().unwrap_or_default().to_owned()),
-    )
+    Some(values)
 }
 
 #[cfg(test)]

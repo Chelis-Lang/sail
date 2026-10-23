@@ -142,34 +142,99 @@ pub fn compare(plain: &RunRecord, sail: &RunRecord) -> Comparison {
             sail.outputs.len()
         ));
     }
-    let index = |r: &RunRecord| -> BTreeMap<(usize, String, String), (bool, u64)> {
-        r.functions()
-            .into_iter()
-            .map(|f| ((f.output, f.module, f.function), (f.success, f.rlimit)))
-            .collect()
-    };
-    let (p, s) = (index(plain), index(sail));
-    c.functions = p.len();
-    for (key, (p_ok, p_rlimit)) in &p {
-        match s.get(key) {
-            None => c
-                .differences
-                .push(format!("function {} missing from sail run", key.2)),
-            Some((s_ok, _)) if s_ok != p_ok => c.differences.push(format!(
-                "function {}: plain success={p_ok} / sail success={s_ok}",
-                key.2
-            )),
-            Some((_, s_rlimit)) if s_rlimit != p_rlimit => {
+    let (p, s) = (function_index(plain), function_index(sail));
+    c.functions = p.values().map(Vec::len).sum();
+    let rest_identical = c.differences.is_empty();
+    let mut flips = Vec::new();
+    for (key, plain_entries) in &p {
+        let Some(sail_entries) = s.get(key) else {
+            c.differences
+                .push(format!("function {} missing from sail run", key.2));
+            continue;
+        };
+        if plain_entries.len() != sail_entries.len() {
+            c.differences.push(format!(
+                "function {}: plain {} entries / sail {} entries",
+                key.2,
+                plain_entries.len(),
+                sail_entries.len()
+            ));
+            continue;
+        }
+        for ((p_ok, p_rlimit), (s_ok, s_rlimit)) in plain_entries.iter().zip(sail_entries) {
+            if *p_ok && !s_ok {
+                flips.push((key, plain_entries.len()));
+            } else if s_ok != p_ok {
+                c.differences.push(format!(
+                    "function {}: plain success={p_ok} / sail success={s_ok}",
+                    key.2
+                ));
+            } else if s_rlimit != p_rlimit {
                 c.rlimit_drift.push((key.2.clone(), *p_rlimit, *s_rlimit));
             }
-            Some(_) => {}
         }
     }
     for key in s.keys().filter(|k| !p.contains_key(*k)) {
         c.differences
             .push(format!("function {} missing from plain run", key.2));
     }
+    // The accepted reproduction identifies both the failing function and the
+    // assertion location. A bit-vector diagnostic elsewhere in the crate is
+    // never evidence for a different function's changed status. Duplicate
+    // names are ambiguous, so their flips remain differences.
+    let vi0003 = rest_identical
+        && c.differences.is_empty()
+        && plain.exit_code.is_some_and(|code| code != 0)
+        && flips.len() == 1
+        && flips
+            .iter()
+            .all(|(key, count)| *count == 1 && key.1 == VI0003_MODULE && key.2 == VI0003_FUNCTION)
+        && recorded_bitvector_assertion(&plain.stderr);
+    for (key, _) in flips {
+        if vi0003 {
+            c.accepted.push(format!(
+                "function {}: plain success=true / sail success=false at the recorded bit-vector assertion (VI-0003)", key.2
+            ));
+        } else {
+            c.differences.push(format!(
+                "function {}: plain success=true / sail success=false",
+                key.2
+            ));
+        }
+    }
     c
+}
+
+// Recorded in docs/validation/mutation-suite.md, vest-logic-003. Additional
+// reproductions need their own function/location evidence before acceptance.
+const VI0003_MESSAGE: &str = "error: bitvector assertion not satisfied";
+const VI0003_MODULE: &str = "combinators::uints::spec";
+const VI0003_FUNCTION: &str = "vest_lib::combinators::uints::spec::lemma_u24_be_bytes_roundtrip";
+const VI0003_LOCATION: &str = "--> vest_lib/src/combinators/uints/spec.rs:212:5";
+
+fn recorded_bitvector_assertion(stderr: &str) -> bool {
+    stderr
+        .lines()
+        .collect::<Vec<_>>()
+        .windows(2)
+        .any(|lines| lines[0] == VI0003_MESSAGE && lines[1].trim() == VI0003_LOCATION)
+}
+
+type FunctionKey = (usize, String, String);
+type FunctionIndex = BTreeMap<FunctionKey, Vec<(bool, u64)>>;
+
+fn function_index(run: &RunRecord) -> FunctionIndex {
+    let mut index = BTreeMap::<_, Vec<_>>::new();
+    for function in run.functions() {
+        index
+            .entry((function.output, function.module, function.function))
+            .or_default()
+            .push((function.success, function.rlimit));
+    }
+    for entries in index.values_mut() {
+        entries.sort_unstable();
+    }
+    index
 }
 
 /// The verdict for one unit given one or more plain runs and a sail run.
@@ -193,10 +258,15 @@ fn plain_variation(plains: &[RunRecord]) -> Vec<String> {
     let mut varying = std::collections::BTreeSet::new();
     let mut other = false;
     let base = plains.first();
-    let verdicts = |r: &RunRecord| -> BTreeMap<(usize, String, String), bool> {
-        r.functions()
+    let verdicts = |run: &RunRecord| -> BTreeMap<FunctionKey, Vec<bool>> {
+        function_index(run)
             .into_iter()
-            .map(|f| ((f.output, f.module, f.function), f.success))
+            .map(|(key, entries)| {
+                (
+                    key,
+                    entries.into_iter().map(|(success, _)| success).collect(),
+                )
+            })
             .collect()
     };
     if let Some(base) = base {
@@ -260,6 +330,86 @@ pub fn classify(plains: &[RunRecord], sail: &RunRecord) -> Classification {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    fn vi0003_run(exit: i32, stderr: &str, f_ok: bool) -> RunRecord {
+        RunRecord {
+            exit_code: Some(exit),
+            stderr: stderr.to_owned(),
+            outputs: vec![{
+                let mut output = doc(&[(VI0003_FUNCTION, f_ok, 1), ("g", true, 1)]);
+                output["times-ms"]["smt"]["smt-run-module-times"][0]["module"] =
+                    serde_json::json!(VI0003_MODULE);
+                output
+            }],
+            stdout_rest: String::new(),
+            wall_ms: 0.0,
+            user_s: None,
+            sys_s: None,
+            max_rss_bytes: None,
+        }
+    }
+
+    #[test]
+    fn accepts_exactly_the_vi0003_divergence() {
+        let bv = "error: bitvector assertion not satisfied\n   --> vest_lib/src/combinators/uints/spec.rs:212:5\n\nerror: aborting due to 1 previous error\n";
+        // Stock: success=true despite the failed bit-vector assertion.
+        let c = compare(&vi0003_run(1, bv, true), &vi0003_run(1, bv, false));
+        assert_eq!(c.verdict(), Verdict::Same, "{c:?}");
+        assert_eq!(c.accepted.len(), 1);
+        // No bit-vector failure reported: a real difference.
+        let other = "error: assertion failed\n   --> a.rs:3:5\n\n";
+        let c = compare(&vi0003_run(1, other, true), &vi0003_run(1, other, false));
+        assert_eq!(c.verdict(), Verdict::Different);
+        // Diagnostics differ too: a difference.
+        let c = compare(&vi0003_run(1, bv, true), &vi0003_run(1, other, false));
+        assert_eq!(c.verdict(), Verdict::Different);
+        // Stock passed: a difference.
+        let c = compare(&vi0003_run(0, bv, true), &vi0003_run(0, bv, false));
+        assert_eq!(c.verdict(), Verdict::Different);
+        // The other direction (Sail more permissive) is never accepted.
+        let c = compare(&vi0003_run(1, bv, false), &vi0003_run(1, bv, true));
+        assert_eq!(c.verdict(), Verdict::Different);
+    }
+
+    #[test]
+    fn bitvector_error_does_not_excuse_an_unrelated_function_or_location() {
+        let bv = format!("{VI0003_MESSAGE}\n   {VI0003_LOCATION}\n");
+        let plain = vi0003_run(1, &bv, true);
+        let mut sail = vi0003_run(1, &bv, true);
+        sail.outputs[0]["times-ms"]["smt"]["smt-run-module-times"][0]["function-breakdown"][1]["success"] =
+            serde_json::json!(false);
+        assert_eq!(compare(&plain, &sail).verdict(), Verdict::Different);
+        let wrong = bv.replace(":212:5", ":213:5");
+        assert_eq!(
+            compare(&vi0003_run(1, &wrong, true), &vi0003_run(1, &wrong, false)).verdict(),
+            Verdict::Different
+        );
+        let mut missing_exit = vi0003_run(1, &bv, true);
+        missing_exit.exit_code = None;
+        let mut missing_sail_exit = vi0003_run(1, &bv, false);
+        missing_sail_exit.exit_code = None;
+        assert_eq!(
+            compare(&missing_exit, &missing_sail_exit).verdict(),
+            Verdict::Different
+        );
+    }
+
+    #[test]
+    fn duplicate_function_entries_keep_every_verdict_and_occurrence() {
+        let plain = record(1, "", &[("f", false, 1), ("f", true, 2)]);
+        let same = record(1, "", &[("f", true, 2), ("f", false, 1)]);
+        let comparison = compare(&plain, &same);
+        assert_eq!(comparison.verdict(), Verdict::Same);
+        assert_eq!(comparison.functions, 2);
+        let wrong = record(1, "", &[("f", true, 1), ("f", true, 2)]);
+        assert_eq!(compare(&plain, &wrong).verdict(), Verdict::Different);
+        let missing = record(1, "", &[("f", true, 2)]);
+        assert_eq!(compare(&plain, &missing).verdict(), Verdict::Different);
+        assert_eq!(
+            classify(&[plain, wrong.clone()], &wrong).verdict,
+            Verdict::Unstable
+        );
+    }
 
     fn doc(fns: &[(&str, bool, u64)]) -> serde_json::Value {
         let breakdown: Vec<_> = fns

@@ -24,6 +24,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
             kind: vec!["lib".into()],
             establishing_run: "run".into(),
             reused: false,
+            scope_reuse: None,
             requested: true,
             complete: true,
             report,
@@ -88,6 +89,7 @@ fn focused_success_does_not_hide_full_regression_late_compiler_failure_or_edits(
     assert!(!batch.accepted_with(&full));
     full = success(project()?);
     full.targets[0].complete = false;
+    full.targets[0].scope_reuse = Some(vec!["--".into(), "--verify-root".into()]);
     assert!(!batch.accepted_with(&full));
     full = success(project()?);
     full.currentness = Currentness::Historical;

@@ -68,3 +68,10 @@ and the `rust_verify_test` runner (ADR 0019).
 - **The `rust_verify_test` runner no longer forces `--num-threads 1`**: with
   the multiset comparison, Verus's default threads lost nothing on the full
   suite and cover three more tests fully (ADR 0019, update of 2026-10-13).
+
+## Incidental source-test rerun paths (owner, 2026-10-21)
+
+For the exact source-hash-bound dispatch query regression, ignore only the six
+random tempfile characters in its printed SMT-log rerun commands. Preserve
+the command format, thread count, path surroundings, diagnostics, query-byte
+assertions and outcomes. This is test scaffolding, not a verifier diagnostic.
