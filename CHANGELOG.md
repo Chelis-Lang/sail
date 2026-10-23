@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add opt-in bounded neutral source mutation jobs with exact original worker
+  receipts, explicit killed/survived/inconclusive outcomes and offline receipt
+  validation. Requirement assurance version two attaches mutation counts
+  separately from proof outcomes and evidence tiers.
+
 - Read requirement-aware neutral source evidence through `sail assurance JOB`,
   the Rust client and MCP. Report exact snapshot relationships, original tool
   identities, conservative proof outcomes and explicit missing assurance.

@@ -76,5 +76,6 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0070: Owned neutral source verification jobs (accepted)](0070-neutral-contract-jobs.md)
 
+- [0074: Keep bounded neutral-source mutation evidence separate from proof](0074-bounded-neutral-mutation.md)
 - [0073: Preserve compound-field definedness and qualify retained lowering](0073-compound-field-definedness.md)
 - [0072: Derive requirement assurance from authenticated neutral evidence](0072-requirement-assurance.md)

@@ -117,6 +117,7 @@ fn absent_or_future_capability_refuses_before_any_submission() -> TestResult {
                     repair: false,
                     neutral_contracts_version: version,
                     assurance_version: None,
+                    mutation_version: None,
                 },
             )?;
             listener.set_nonblocking(true)?;

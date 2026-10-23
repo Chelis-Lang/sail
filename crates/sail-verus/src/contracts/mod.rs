@@ -7,6 +7,7 @@ mod admission;
 mod evidence;
 mod expression;
 mod lower;
+pub mod mutation;
 mod runner;
 mod trust;
 mod types;

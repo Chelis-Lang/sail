@@ -10,7 +10,7 @@ use sail_api::contracts::{Submission, VERSION, WorkerResult};
 use sail_api::jobs::{Currentness, Lifecycle, ResultDocument, Status};
 
 use super::{State, lock_error, schedule, store};
-pub(super) use baseline::{save_baseline, validate_baseline};
+pub(super) use baseline::{export_baseline, original_baseline, save_baseline, validate_baseline};
 pub(super) use execution::execute;
 
 fn error(message: impl std::fmt::Display) -> io::Error {
@@ -21,6 +21,12 @@ fn sha(bytes: &[u8]) -> String {
 }
 
 pub(super) fn submit(state: &State, source: &Submission) -> io::Result<Status> {
+    submit_inner(state, source, true)
+}
+pub(super) fn submit_mutant(state: &State, source: &Submission) -> io::Result<Status> {
+    submit_inner(state, source, false)
+}
+fn submit_inner(state: &State, source: &Submission, deduplicate: bool) -> io::Result<Status> {
     source.validate().map_err(error)?;
     if state.stop.load(Ordering::SeqCst) {
         return Err(error("job service is stopping"));
@@ -42,7 +48,7 @@ pub(super) fn submit(state: &State, source: &Submission) -> io::Result<Status> {
     let mut jobs = state.jobs.lock().map_err(lock_error)?;
     if let Some(job) = jobs
         .values()
-        .find(|j| !j.status.state.terminal() && j.contracts.as_ref() == Some(source))
+        .find(|j| deduplicate && !j.status.state.terminal() && j.contracts.as_ref() == Some(source))
     {
         return Ok(job.status.clone());
     }
@@ -105,7 +111,7 @@ fn environment() -> io::Result<BTreeMap<String, String>> {
         .collect()
 }
 
-fn source(state: &State, job: &store::Stored) -> io::Result<Submission> {
+pub(super) fn source(state: &State, job: &store::Stored) -> io::Result<Submission> {
     let expected = job
         .contracts
         .as_ref()

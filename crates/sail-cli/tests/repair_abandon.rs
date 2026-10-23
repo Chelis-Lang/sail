@@ -55,6 +55,7 @@ fn fake_service(
             Request::Capabilities => Response::Capabilities {
                 neutral_contracts_version: None,
                 assurance_version: None,
+                mutation_version: None,
                 proof_version: 1,
                 repair: true,
             },

@@ -7,7 +7,7 @@ an existing neutral source job. The API is
 source or run a verifier. The service authenticates the retained original source,
 worker output and public metadata before deriving the view.
 
-The version-one view groups evidence by stable requirement ID, with
+The version-two view groups evidence by stable requirement ID, with
 content-derived obligation identities and the exact source, guarantee, lowered
 source and backend report hashes. Each row states its relationship, conservative
 proof outcome, establishment, optional evidence tier, actual solver identities
@@ -25,10 +25,13 @@ Source currentness is `unknown`: the service cannot establish that the caller's
 working files still match its immutable snapshot. Consumers must check the
 current source hash and establish the separate contract-to-requirement entailment
 and required-input feasibility relationships. A matching requirement ID alone
-establishes none of these. Mutation status is explicitly `not-established`;
-reading proof evidence never creates a mutation result or termination claim.
+establishes none of these. Mutation status remains `not-established` unless an explicitly requested
+[bounded mutation campaign](neutral-mutation.md) matches the exact baseline.
+Its separate killed, survived and inconclusive counts never upgrade a proof
+outcome or tier. Reading proof evidence never creates a campaign or termination
+claim.
 
-The client negotiates `assurance_version = 1`. Older endpoints fail explicitly
+The client negotiates `assurance_version = 2`. Older endpoints fail explicitly
 without a fallback or synthesized view. This read interface applies to admitted
 [neutral source jobs](neutral-contract-jobs.md). It does not reinterpret ordinary
 project jobs, generic baseline comparisons or historical temporal evidence.

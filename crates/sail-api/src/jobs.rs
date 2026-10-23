@@ -142,6 +142,18 @@ pub struct Chunk {
 pub enum Request {
     /// Fail-closed negotiation before any non-stock submission.
     Capabilities,
+    /// Start a bounded owned mutation campaign over an authenticated source job.
+    SubmitMutation(crate::mutation::Submission),
+    /// Reauthenticate and read a retained mutation campaign.
+    Mutation {
+        /// Exact retained campaign identity.
+        id: String,
+    },
+    /// Cancel actual source jobs in one campaign.
+    CancelMutation {
+        /// Exact retained campaign identity.
+        id: String,
+    },
     /// Read requirement-aware assurance for an authenticated neutral source job.
     Assurance {
         /// Exact durable source-job identity.
@@ -247,11 +259,16 @@ pub enum Response {
         /// Requirement assurance view version; absent on older services.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         assurance_version: Option<u32>,
+        /// Bounded mutation protocol, absent on older services.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        mutation_version: Option<u32>,
         /// Non-stock submission modes are understood and never ignored.
         /// Absent from services without the engine, which decode as false.
         #[serde(default)]
         repair: bool,
     },
+    /// Authenticated bounded mutation evidence, independent of proof tiers.
+    Mutation(Box<crate::mutation::View>),
     /// Ordered, resumable proof observations.
     ProofEvents(crate::proof::Page),
     /// Exact establishing evidence for a failure or proof.
@@ -477,6 +494,67 @@ pub struct Client {
 }
 #[cfg(unix)]
 impl Client {
+    /// Submit a bounded owned mutation campaign through the existing job service.
+    /// # Errors
+    /// Refuses incompatible services, invalid baselines or invalid budgets.
+    pub fn submit_mutation(
+        &self,
+        submission: crate::mutation::Submission,
+    ) -> io::Result<crate::mutation::View> {
+        if !matches!(
+            self.call(&Request::Capabilities)?,
+            Response::Capabilities {
+                mutation_version: Some(crate::mutation::VERSION),
+                ..
+            }
+        ) {
+            return Err(io::Error::other(
+                "SAIL3144: running service has no compatible mutation API",
+            ));
+        }
+        let expected = submission.clone();
+        let result = self.mutation_call(&Request::SubmitMutation(submission))?;
+        if result.submission != expected {
+            return Err(io::Error::other(
+                "SAIL3144: mutation submission attribution differs",
+            ));
+        }
+        Ok(result)
+    }
+    /// Reauthenticate an exact durable campaign and all original result links.
+    /// # Errors
+    /// Missing, changed or incompatible evidence is an explicit error.
+    pub fn mutation(&self, id: &str) -> io::Result<crate::mutation::View> {
+        let result = self.mutation_call(&Request::Mutation { id: id.into() })?;
+        if result.id != id {
+            return Err(io::Error::other(
+                "SAIL3144: mutation campaign attribution differs",
+            ));
+        }
+        Ok(result)
+    }
+    /// Request cancellation of actual campaign jobs; inspect the returned lifecycle.
+    /// # Errors
+    /// Missing campaigns and service failures remain explicit.
+    pub fn cancel_mutation(&self, id: &str) -> io::Result<crate::mutation::View> {
+        let result = self.mutation_call(&Request::CancelMutation { id: id.into() })?;
+        if result.id != id {
+            return Err(io::Error::other(
+                "SAIL3144: mutation cancellation attribution differs",
+            ));
+        }
+        Ok(result)
+    }
+    fn mutation_call(&self, request: &Request) -> io::Result<crate::mutation::View> {
+        match self.call(request)? {
+            Response::Mutation(view) if view.version == crate::mutation::VERSION => {
+                crate::mutation::validate_view(&view).map_err(io::Error::other)?;
+                Ok(*view)
+            }
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other("SAIL3144: incompatible mutation response")),
+        }
+    }
     /// Read source-snapshot requirement assurance after version negotiation.
     ///
     /// # Errors

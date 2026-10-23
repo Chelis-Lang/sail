@@ -148,3 +148,58 @@ pub(in crate::jobs) fn validate_baseline(
     }
     Ok(())
 }
+
+/// Reauthenticate all immutable original source and output seals on every read.
+pub(in crate::jobs) fn original_baseline(
+    state: &State,
+    name: &str,
+) -> io::Result<(Submission, sail_api::contracts::WorkerResult)> {
+    let baseline = super::super::product::baseline(state, name)?;
+    let directory = state.root.join("baselines");
+    let seal: Seal = serde_json::from_slice(&regular_bytes(
+        &directory.join(format!("{name}.contracts-seal")),
+    )?)
+    .map_err(error)?;
+    let stdout = regular_bytes(&directory.join(format!("{name}.contracts-stdout")))?;
+    let stderr = regular_bytes(&directory.join(format!("{name}.contracts-stderr")))?;
+    if sha(&stdout) != seal.stdout_sha256
+        || sha(&stderr) != seal.stderr_sha256
+        || baseline
+            .contracts
+            .as_ref()
+            .is_none_or(|c| c.manifest.original_sha256 != seal.source.source_sha256)
+    {
+        return Err(error(
+            "original mutation evidence differs from its source or output seals",
+        ));
+    }
+    let original = decode(&stdout, &seal.source)?;
+    if baseline.contracts.as_deref() != Some(&original.contracts)
+        || baseline.result != historical(original.backend.clone())
+    {
+        return Err(error(
+            "original mutation evidence differs from retained baseline",
+        ));
+    }
+    Ok((seal.source, original))
+}
+
+/// Export exact already authenticated original streams, without lossy rendering.
+pub(in crate::jobs) fn export_baseline(
+    state: &State,
+    name: &str,
+) -> io::Result<sail_api::mutation::OriginalEvidence> {
+    let (source, _) = original_baseline(state, name)?;
+    let directory = state.root.join("baselines");
+    Ok(sail_api::mutation::OriginalEvidence {
+        source,
+        worker_stdout: String::from_utf8(regular_bytes(
+            &directory.join(format!("{name}.contracts-stdout")),
+        )?)
+        .map_err(error)?,
+        worker_stderr: String::from_utf8(regular_bytes(
+            &directory.join(format!("{name}.contracts-stderr")),
+        )?)
+        .map_err(error)?,
+    })
+}

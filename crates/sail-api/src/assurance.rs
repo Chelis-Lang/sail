@@ -16,7 +16,7 @@ use crate::output::{
 use crate::project::{Currentness, ProjectResult};
 
 /// Requirement assurance view contract version.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 /// Evidence strength, independent of establishment and source currentness.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -51,11 +51,26 @@ pub enum Scope {
 }
 
 /// Mutation observations remain distinct from the underlying proof verdict.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum MutationStatus {
     /// No mutation campaign is established by this source-job result.
     NotEstablished,
+    /// A reauthenticated bounded campaign, separate from the underlying proof tier.
+    Bounded {
+        /// Exact durable campaign identity.
+        campaign_id: String,
+        /// Versioned admitted mutation policy.
+        policy: String,
+        /// Whole campaign passes only with every candidate conclusively killed.
+        passed: bool,
+        /// Actual target-function conclusive verifier rejections.
+        killed: usize,
+        /// Actual target-function whole proofs.
+        survived: usize,
+        /// Missing, unknown or unexecuted target observations.
+        inconclusive: usize,
+    },
 }
 
 /// One exact guarantee, its implementation proof and retained provenance.
