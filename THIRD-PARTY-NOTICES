@@ -669,7 +669,7 @@ Crates compiled into bin/sail and bin/sail-z3
   LICENSE [text 113]
 * tinystr 0.8.4: Unicode-3.0 (https://github.com/unicode-org/icu4x)
   LICENSE [text 169]
-* tokio 1.53.2: MIT (https://github.com/tokio-rs/tokio)
+* tokio 1.53.3: MIT (https://github.com/tokio-rs/tokio)
   LICENSE [text 200]
 * tokio-rustls 0.26.6: MIT OR Apache-2.0 (https://github.com/rustls/tokio-rustls)
   LICENSE-APACHE [text 201], LICENSE-MIT [text 202]
