@@ -24,6 +24,37 @@ pub struct InputSnapshot {
     pub(crate) observation_paths: BTreeSet<PathBuf>,
     /// The content digest of every readable input file in `revision`.
     pub(super) digests: BTreeMap<PathBuf, String>,
+    /// Source path aliases and their canonical destinations, including linked ancestors.
+    pub(super) bindings: BTreeMap<PathBuf, PathBuf>,
+}
+
+#[derive(Default)]
+struct Bindings {
+    paths: BTreeMap<PathBuf, PathBuf>,
+    examined: HashSet<PathBuf>,
+}
+
+impl Bindings {
+    fn observe(&mut self, path: &Path) -> bool {
+        let mut complete = true;
+        for ancestor in path.ancestors() {
+            if !self.examined.insert(ancestor.to_owned()) {
+                continue;
+            }
+            match std::fs::symlink_metadata(ancestor) {
+                Ok(metadata) if metadata.file_type().is_symlink() => {
+                    if let Ok(target) = ancestor.canonicalize() {
+                        self.paths.insert(ancestor.to_owned(), target);
+                    } else {
+                        complete = false;
+                    }
+                }
+                Ok(_) => {}
+                Err(_) => complete = false,
+            }
+        }
+        complete
+    }
 }
 
 fn metadata_command(workspace: &Path, args: &[String], cargo: &Path) -> Command {
@@ -182,10 +213,12 @@ fn collect(
     files: &mut Vec<PathBuf>,
     visited: &mut Seen,
     roots: &mut Vec<PathBuf>,
+    bindings: &mut Bindings,
 ) -> bool {
     let Ok(canonical) = path.canonicalize() else {
         return false;
     };
+    let complete = bindings.observe(path);
     // A link is a root even when its target was already collected, so the
     // snapshot does not depend on the order of its inputs.
     if std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
@@ -193,13 +226,13 @@ fn collect(
         roots.push(path.to_owned());
     }
     if !visited.insert(canonical.clone()) {
-        return true;
+        return complete;
     }
     if canonical.is_file() {
         files.push(canonical);
-        return true;
+        return complete;
     }
-    collect_directory(&canonical, files, visited, roots)
+    collect_directory(&canonical, files, visited, roots, bindings) && complete
 }
 
 /// The entries of the canonical directory `directory`, as [`collect`] finds
@@ -211,6 +244,7 @@ fn collect_directory(
     files: &mut Vec<PathBuf>,
     visited: &mut Seen,
     roots: &mut Vec<PathBuf>,
+    bindings: &mut Bindings,
 ) -> bool {
     let Ok(entries) = std::fs::read_dir(directory) else {
         return false;
@@ -234,10 +268,10 @@ fn collect_directory(
             }
             Ok(kind) if kind.is_dir() => {
                 if visited.insert(path.clone()) {
-                    complete &= collect_directory(&path, files, visited, roots);
+                    complete &= collect_directory(&path, files, visited, roots, bindings);
                 }
             }
-            _ => complete &= collect(&path, files, visited, roots),
+            _ => complete &= collect(&path, files, visited, roots, bindings),
         }
     }
     complete
@@ -374,6 +408,7 @@ fn stamped_snapshot(
     );
     let mut files = Vec::new();
     let mut visited = Seen::new();
+    let mut bindings = Bindings::default();
     let mut excluded: Vec<PathBuf> = ["sail_cache_directory", "target_directory"]
         .into_iter()
         .filter_map(|name| data[name].as_str().map(|p| invocation.join(p)))
@@ -396,7 +431,7 @@ fn stamped_snapshot(
             .and_then(|s| Path::new(s).parent())
         {
             roots.push(parent.to_owned());
-            complete &= collect(parent, &mut files, &mut visited, &mut roots);
+            complete &= collect(parent, &mut files, &mut visited, &mut roots, &mut bindings);
         }
     }
     for name in [
@@ -411,11 +446,12 @@ fn stamped_snapshot(
         }
     }
 
-    files.extend(
-        configuration_paths(invocation, cargo_home)
-            .into_iter()
-            .filter(|p| p.is_file()),
-    );
+    for path in configuration_paths(invocation, cargo_home) {
+        if path.is_file() {
+            complete &= bindings.observe(&path);
+            files.push(path);
+        }
+    }
     let source_inputs: Vec<PathBuf> = data["sail_source_inputs"]
         .as_array()
         .into_iter()
@@ -425,9 +461,10 @@ fn stamped_snapshot(
         .collect();
     roots.extend(source_inputs.iter().cloned());
     for path in extras.iter().chain(&source_inputs) {
-        complete &= collect(path, &mut files, &mut visited, &mut roots);
+        complete &= collect(path, &mut files, &mut visited, &mut roots, &mut bindings);
     }
     let mut observation_paths = files.clone();
+    observation_paths.extend(bindings.paths.keys().cloned());
     observation_paths.extend(
         visited
             .into_iter()
@@ -436,9 +473,13 @@ fn stamped_snapshot(
     let observation_paths = path_set(observation_paths);
     let files = path_set(files);
     let stamp_before = stamp_paths(&observation_paths);
-    let (revision, readable, digests) = contents_revision(&files);
+    let (revision, readable, digests) = contents_revision(&files, &bindings.paths);
     complete &= readable;
     complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
+    complete &= bindings
+        .paths
+        .iter()
+        .all(|(alias, target)| alias.canonicalize().is_ok_and(|actual| actual == *target));
     roots.sort();
     roots.dedup();
     (
@@ -450,6 +491,7 @@ fn stamped_snapshot(
             complete,
             observation_paths,
             digests,
+            bindings: bindings.paths,
         },
         stamp_before,
     )
@@ -502,6 +544,26 @@ pub(super) fn closure_digests(
         .collect()
 }
 
+/// Source alias resolutions relevant to the selected dependency closure.
+pub(super) fn closure_bindings(
+    snapshot: &InputSnapshot,
+    data: &Value,
+    closure: Option<&BTreeSet<String>>,
+) -> BTreeMap<PathBuf, PathBuf> {
+    let Some(closure) = closure else {
+        return snapshot.bindings.clone();
+    };
+    let scope = Scope::new(data, closure);
+    snapshot
+        .bindings
+        .iter()
+        .filter(|(alias, _)| {
+            scope.contains(alias) || scope.declared.iter().any(|path| path.starts_with(alias))
+        })
+        .map(|(alias, target)| (alias.clone(), target.clone()))
+        .collect()
+}
+
 /// Package directories inside and outside one selection's closure, and the
 /// manifests Cargo reads to load the workspace.
 ///
@@ -513,6 +575,7 @@ struct Scope {
     inside: std::collections::HashSet<PathBuf>,
     outside: std::collections::HashSet<PathBuf>,
     manifests: std::collections::HashSet<PathBuf>,
+    declared: std::collections::HashSet<PathBuf>,
 }
 impl Scope {
     fn new(data: &Value, closure: &BTreeSet<String>) -> Self {
@@ -520,6 +583,15 @@ impl Scope {
             inside: std::collections::HashSet::new(),
             outside: std::collections::HashSet::new(),
             manifests: std::collections::HashSet::new(),
+            declared: data["sail_source_inputs_by_package"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .filter(|(id, _)| closure.contains(*id))
+                .flat_map(|(_, paths)| paths.as_array().into_iter().flatten())
+                .filter_map(Value::as_str)
+                .map(PathBuf::from)
+                .collect(),
         };
         for package in data["packages"].as_array().into_iter().flatten() {
             let Some(manifest) = package["manifest_path"].as_str().map(Path::new) else {
@@ -556,7 +628,8 @@ impl Scope {
     /// starts with a directory exactly when the directory is one of its
     /// ancestors (both compare by component).
     fn contains(&self, path: &Path) -> bool {
-        path.ancestors().any(|d| self.inside.contains(d))
+        self.declared.contains(path)
+            || path.ancestors().any(|d| self.inside.contains(d))
             || !path.ancestors().any(|d| self.outside.contains(d))
     }
 }
@@ -564,7 +637,10 @@ impl Scope {
 // Preserve the original exact sorted path spelling and digest encoding. Every
 // file is still read completely between the caller's stamps; only the reads
 // overlap, and their digests are folded in the original sorted order.
-fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool, BTreeMap<PathBuf, String>) {
+fn contents_revision(
+    files: &BTreeSet<PathBuf>,
+    bindings: &BTreeMap<PathBuf, PathBuf>,
+) -> (String, bool, BTreeMap<PathBuf, String>) {
     let mut complete = true;
     let mut recorded = Vec::with_capacity(files.len());
     let mut hasher = Sha256::new();
@@ -581,12 +657,27 @@ fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool, BTreeMap<PathB
             hasher.update(b"unreadable");
         }
     }
+    bind_paths(&mut hasher, bindings);
     // Already in the set's order: the map is built without ordered inserts.
     (
         format!("{:x}", hasher.finalize()),
         complete,
         recorded.into_iter().collect(),
     )
+}
+
+pub(super) fn bind_paths(hasher: &mut Sha256, bindings: &BTreeMap<PathBuf, PathBuf>) {
+    if bindings.is_empty() {
+        return;
+    }
+    hasher.update(b"sail-source-path-bindings-v1");
+    for (alias, target) in bindings {
+        for path in [alias, target] {
+            let bytes = path.as_os_str().as_encoded_bytes();
+            hasher.update((bytes.len() as u64).to_le_bytes());
+            hasher.update(bytes);
+        }
+    }
 }
 
 // A run-local mutation stamp is separate from logical proof keys: reverting an
@@ -1066,6 +1157,16 @@ mod tests {
             let contents = std::fs::read(path).unwrap_or_else(|e| unreachable!("fixture:{e}"));
             oracle.update(format!("{:x}", Sha256::digest(contents)).as_bytes());
         }
+        assert_eq!(
+            snapshot.bindings,
+            BTreeMap::from([(package.join("alias.rs"), outside.clone())])
+        );
+        oracle.update(b"sail-source-path-bindings-v1");
+        for path in [package.join("alias.rs"), outside.clone()] {
+            let bytes = path.as_os_str().as_encoded_bytes();
+            oracle.update((bytes.len() as u64).to_le_bytes());
+            oracle.update(bytes);
+        }
         assert_eq!(snapshot.revision, format!("{:x}", oracle.finalize()));
         // Every hashed file's digest is retained under its exact path.
         assert_eq!(snapshot.digests.keys().cloned().collect::<Vec<_>>(), files);
@@ -1263,7 +1364,13 @@ mod tests {
         symlink(root.join("missing"), package.join("src/dangling"))?;
         let mut walked = (Vec::new(), Seen::new(), Vec::new());
         let mut expected = (BTreeSet::new(), BTreeSet::new(), Vec::new());
-        let complete = collect(&package, &mut walked.0, &mut walked.1, &mut walked.2);
+        let complete = collect(
+            &package,
+            &mut walked.0,
+            &mut walked.1,
+            &mut walked.2,
+            &mut Bindings::default(),
+        );
         let mut found = (
             path_set(walked.0),
             walked.1.into_iter().collect::<BTreeSet<_>>(),
@@ -1325,6 +1432,7 @@ mod tests {
             complete: true,
             observation_paths: BTreeSet::new(),
             digests: std::collections::BTreeMap::new(),
+            bindings: std::collections::BTreeMap::new(),
         };
         let unchanged = super::closure_scope(&snapshot, &data, None);
         assert_eq!(unchanged.roots, snapshot.roots);

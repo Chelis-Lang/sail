@@ -9,6 +9,9 @@ use std::path::{Path, PathBuf};
 
 #[derive(Default, Serialize, Deserialize)]
 pub(super) struct Inputs {
+    /// Version two preserves the compiler's lexical source aliases.
+    #[serde(default)]
+    pub(super) version: u32,
     pub(super) paths: Vec<PathBuf>,
     pub(super) covered: bool,
     #[serde(default)]
@@ -20,12 +23,19 @@ pub(super) fn load(path: &Path) -> (Vec<PathBuf>, bool) {
     // Establish the scoped declarations before authorizing new current receipts.
     read::<Inputs>(path).map_or_else(
         || (Vec::new(), !path.exists()),
-        |v| (v.paths, v.covered && v.by_package.is_some()),
+        |v| {
+            (
+                v.paths,
+                v.version == 2 && v.covered && v.by_package.is_some(),
+            )
+        },
     )
 }
 
 pub(super) fn packages(path: &Path) -> Option<BTreeMap<String, Vec<PathBuf>>> {
-    read::<Inputs>(path).and_then(|v| v.by_package)
+    read::<Inputs>(path)
+        .filter(|v| v.version == 2)
+        .and_then(|v| v.by_package)
 }
 
 pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
@@ -106,11 +116,14 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
         };
         for input in inputs {
             let declared = workspace.join(input);
-            let resolved = declared.canonicalize().unwrap_or(declared);
+            // Retain the compiler's path through any symlink, as well as the
+            // resolved content. Canonical bytes alone lose source selection.
+            let resolved = declared.canonicalize().unwrap_or_else(|_| declared.clone());
             by_package
                 .entry(package.to_owned())
                 .or_default()
-                .insert(resolved.clone());
+                .extend([declared.clone(), resolved.clone()]);
+            paths.insert(declared);
             paths.insert(resolved);
         }
     }
@@ -118,6 +131,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
     super::files::json(
         path,
         &Inputs {
+            version: 2,
             paths: paths.clone(),
             covered,
             by_package: Some(
@@ -166,7 +180,14 @@ mod tests {
         let baseline = super::super::input::snapshot_metadata(&data, &[]);
         let (paths, covered) =
             update(&state, &artifacts, &data).unwrap_or_else(|e| unreachable!("fixture: {e}"));
-        assert!(covered && paths.len() == 1);
+        assert!(covered);
+        assert_eq!(
+            paths.iter().cloned().collect::<BTreeSet<_>>(),
+            BTreeSet::from([
+                project.join("../shared file.rs"),
+                external.canonicalize().unwrap_or_default(),
+            ])
+        );
         assert_eq!(
             packages(&state).unwrap_or_default().get("demo"),
             Some(&paths)
@@ -198,8 +219,51 @@ mod tests {
         assert!(std::fs::write(&path, r#"{"paths":[],"covered":true}"#).is_ok());
         assert!(!load(&path).1);
         assert!(packages(&path).is_none());
+        assert!(std::fs::write(&path, r#"{"paths":[],"covered":true,"by_package":{}}"#).is_ok());
+        assert!(
+            !load(&path).1,
+            "legacy scoped records omitted source aliases too"
+        );
+        assert!(packages(&path).is_none());
         assert!(std::fs::write(&path, "corrupt source observation").is_ok());
         assert!(!load(&path).1);
         assert!(std::fs::remove_file(path).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn compiler_source_alias_and_destination_are_both_persisted() -> std::io::Result<()> {
+        let root = std::env::temp_dir()
+            .canonicalize()?
+            .join(format!("sail-dep-alias-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let workspace = root.join("ws");
+        let target = root.join("target");
+        std::fs::create_dir_all(&workspace)?;
+        std::fs::create_dir_all(&target)?;
+        let destination = root.join("source.rs");
+        std::fs::write(&destination, "pub fn f() {}")?;
+        let alias = workspace.join("lib.rs");
+        std::os::unix::fs::symlink(&destination, &alias)?;
+        std::fs::write(target.join("demo.d"), "artifact: lib.rs\n")?;
+        let artifacts = root.join("artifacts.jsonl");
+        std::fs::write(
+            &artifacts,
+            serde_json::json!({"reason":"compiler-artifact",
+            "package_id":"demo","target":{"kind":["lib"]},
+            "filenames":[target.join("libdemo.rmeta")]})
+            .to_string(),
+        )?;
+        let state = root.join("sources.json");
+        let data = serde_json::json!({"workspace_root":workspace});
+        let (paths, covered) =
+            update(&state, &artifacts, &data).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert!(covered);
+        assert_eq!(
+            paths.into_iter().collect::<BTreeSet<_>>(),
+            BTreeSet::from([alias, destination])
+        );
+        assert!(load(&state).1);
+        std::fs::remove_dir_all(root)
     }
 }

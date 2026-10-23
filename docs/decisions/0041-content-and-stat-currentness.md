@@ -19,6 +19,14 @@
 
 ## Decision
 
+Source identity includes path resolution as well as content. Snapshots and
+retained read-check records bind each observed source symlink and linked
+ancestor to its canonical destination, including compiler-declared includes.
+Retargeting a source path changes its logical revision even if the set of
+canonical file contents is unchanged. Read-check format 2 requires those
+bindings; older records cannot authorize Current. This repairs #343 without
+changing the declared filesystem exclusions below.
+
 - **Read time.** A Current run records the content digests of the selected
   closure's input files and the presence or absence of every Cargo
   configuration path. Readers rehash exactly those files: equal is

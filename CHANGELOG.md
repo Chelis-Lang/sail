@@ -38,6 +38,10 @@ semantic versioning once the API is published.
   separate in proof reports, receipts and selected-target coverage. Ambiguous
   compiler observations cannot authorize reuse.
 
+- Bind source symlinks and linked path ancestors to their destinations when
+  identifying proof inputs and rechecking retained results. Retargeting a link
+  invalidates old evidence even when both destinations were already hashed.
+
 - Keep Rustc artifact metadata out of structured diagnostic text, including
   the final verification-progress note. Verifier messages retain their text.
 
