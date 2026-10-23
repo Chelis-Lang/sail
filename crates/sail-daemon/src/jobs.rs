@@ -1,6 +1,7 @@
 //! Durable project verification jobs on a separate local endpoint. Jobs run
 //! concurrently on a small worker pool, one at a time per Cargo workspace.
 
+mod contracts;
 mod product;
 mod result_cache;
 mod schedule;
@@ -278,7 +279,15 @@ fn dispatch(state: &State, request: Request) -> Response {
         Request::Capabilities => Ok(Response::Capabilities {
             proof_version: sail_api::proof::VERSION,
             repair: true,
+            neutral_contracts_version: Some(sail_api::contracts::VERSION),
+            assurance_version: Some(sail_api::assurance::VERSION),
         }),
+        Request::Assurance { id } => get(state, &id)
+            .and_then(|job| store::result(state, &job))
+            .and_then(|document| {
+                sail_api::assurance::from_contract_result(&document).map_err(io::Error::other)
+            })
+            .map(|view| Response::Assurance(Box::new(view))),
         Request::ProofEvents { id, cursor, limit } => get(state, &id)
             .and_then(|job| {
                 state.proofs.page(
@@ -305,6 +314,9 @@ fn dispatch(state: &State, request: Request) -> Response {
         }
         Request::Compare { before, after } => {
             product::compare(state, &before, &after).map(Response::Comparison)
+        }
+        Request::SubmitContracts(submission) => {
+            contracts::submit(state, &submission).map(Response::Status)
         }
         Request::Submit { submission } => submit(state, submission).map(Response::Status),
         Request::List { project_dir } => list(state, project_dir.as_deref()).map(Response::List),
@@ -381,6 +393,7 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     let mut jobs = state.jobs.lock().map_err(lock_error)?;
     if let Some(job) = jobs.values().find(|job| {
         !job.status.state.terminal()
+            && job.contracts.is_none()
             && submission.input_revision.is_some()
             && job.submission == submission
     }) {

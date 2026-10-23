@@ -1,6 +1,6 @@
 # 0071: Native temporal jobs through the shared runtime
 
-- **Status:** implemented; final qualification pending
+- **Status:** implemented; local gate passed, native qualification pending
 - **Date:** 2026-10-23
 
 ## Decision
@@ -40,3 +40,6 @@ exploration, rejected host modules, deadlines and installation drift. Existing
 worker process controls remain in force. Mixed old/new capability controls and
 SMT regression tests cover compatibility. Native Linux and macOS acceptance,
 protected CI and independent review remain required before merge.
+
+The [source-scoped validation record](../validation/shared-temporal-runtime.md)
+separates the passing local gate from remaining platform and service qualification.

@@ -19,6 +19,8 @@ pub(super) struct Stored {
     pub status: Status,
     pub submission: Submission,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contracts: Option<sail_api::contracts::Submission>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub projection: Option<Projection>,
     #[serde(skip)]
     pub cancel: Arc<AtomicBool>,
@@ -26,6 +28,8 @@ pub(super) struct Stored {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct Projection {
     stdout_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    stderr_sha256: Option<String>,
     workspace: String,
     context_sha256: String,
     input_revision: String,
@@ -35,11 +39,19 @@ impl Projection {
     pub(super) fn validated(bytes: &[u8], project: &sail_api::project::ProjectResult) -> Self {
         Self {
             stdout_sha256: stdout_digest(bytes),
+            stderr_sha256: None,
             workspace: project.workspace.clone(),
             context_sha256: project.context_sha256.clone(),
             input_revision: project.input_revision.clone(),
             currentness: project.currentness,
         }
+    }
+    pub(super) fn with_stderr(mut self, bytes: &[u8]) -> Self {
+        self.stderr_sha256 = Some(stdout_digest(bytes));
+        self
+    }
+    pub(super) fn matches_stderr(&self, bytes: &[u8]) -> bool {
+        self.stderr_sha256.as_ref() == Some(&stdout_digest(bytes))
     }
 }
 fn stdout_digest(bytes: &[u8]) -> String {
@@ -69,6 +81,7 @@ impl Stored {
                 error: None,
             },
             submission,
+            contracts: None,
             projection: None,
             cancel: Arc::new(AtomicBool::new(false)),
         }
@@ -130,6 +143,9 @@ pub(super) fn load(root: &Path) -> io::Result<BTreeMap<String, Stored>> {
     Ok(jobs)
 }
 pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> {
+    if job.contracts.is_some() {
+        return super::contracts::result(state, job);
+    }
     let mut status = job.status.clone();
     let mut repair = None;
     let result = if status.state == Lifecycle::Completed {
@@ -149,6 +165,7 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
         None
     };
     Ok(ResultDocument {
+        contracts: None,
         repair,
         job: status,
         result,
@@ -159,6 +176,9 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
 /// stdout contents and live freshness are still checked on every RPC.
 pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8>>> {
     use super::result_cache::Frames;
+    if job.contracts.is_some() {
+        return encode_result(super::contracts::result(state, job)?);
+    }
     if job.status.state != Lifecycle::Completed || job.projection.is_none() {
         return encode_result(result(state, job)?);
     }
@@ -200,6 +220,7 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
             envelope.accepted = envelope.batch.accepted_with(&project);
         }
         encode_result(ResultDocument {
+            contracts: None,
             job: status,
             result: Some(serde_json::to_value(project).map_err(io::Error::other)?),
             repair,
@@ -266,6 +287,9 @@ fn projected_currentness(state: &State, job: &Stored, projection: &Projection) -
 }
 
 pub(super) fn status(state: &State, job: &Stored) -> io::Result<Status> {
+    if job.contracts.is_some() {
+        return super::contracts::result(state, job).map(|r| r.job);
+    }
     if job.status.state != Lifecycle::Completed {
         return Ok(job.status.clone());
     }
@@ -317,7 +341,7 @@ pub(super) fn full_phase(
 fn repair_project(state: &State, job: &Stored) -> io::Result<sail_api::repair::ResultDocument> {
     serde_json::from_slice(&project_bytes(state, job)?).map_err(io::Error::other)
 }
-fn project_bytes(state: &State, job: &Stored) -> io::Result<Vec<u8>> {
+pub(super) fn project_bytes(state: &State, job: &Stored) -> io::Result<Vec<u8>> {
     let bytes = read_bytes(&state.root.join(&job.status.id).join("stdout"))?;
     if job
         .projection

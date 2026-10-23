@@ -1,5 +1,9 @@
 # Native temporal worker
 
+The later [shared runtime qualification](shared-temporal-runtime.md) records
+the additive service integration. Historical worker evidence below retains its
+original source scope.
+
 Status: focused native-library, isolated-process, full macOS host and native
 Linux workspace/solver/end-to-end/conformance checks passed. Common-runtime
 integration and private-dependency protected CI remain required.

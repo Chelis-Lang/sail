@@ -384,3 +384,15 @@ The compiled body edit independently violates its postcondition at input 1,
 which satisfies the precondition. This is a runtime sample, not a solver
 refutation or mutation-gate result. See the [native qualification record](validation/neutral-verus-lowering.md)
 and the [minimal emitted-source reproduction](../corpus/repros/neutral-contract-unknown/README.md).
+
+
+## Compound-field definedness in neutral lowering version one
+
+[Issue 323](https://github.com/Chelis-Lang/sail/issues/323) records an actual
+source-job proof for a guarantee whose checked runtime overflows while selecting
+a field from a conditional record. The original lowerer discarded definedness
+of the selected record expression. Lowering version two preserves that condition;
+new workers require version two, and retained reads refuse affected version-one
+projections without rewriting the original evidence. Safe historical projections
+remain byte-identical. Qualification of the correction, including actual unsafe
+and guarded source jobs, remains required before removing the source-job hold.

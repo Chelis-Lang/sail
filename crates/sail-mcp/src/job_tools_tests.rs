@@ -28,6 +28,7 @@ fn owned_result_projection_matches_typed_schema_and_moves_the_full_graph() {
                 .and_then(|value| value["model"].as_str())
                 .map(str::as_ptr);
             let response = Response::Result(ResultDocument {
+                contracts: None,
                 repair: repair.clone(),
                 job: status(root, Lifecycle::Completed, "id"),
                 result,
@@ -241,6 +242,7 @@ fn populate_job_fixture(fixture: &Fixture) {
     fixture.write(
         "running.json",
         &Response::Result(ResultDocument {
+            contracts: None,
             job: running.clone(),
             repair: None,
             result: None,
@@ -253,6 +255,7 @@ fn populate_job_fixture(fixture: &Fixture) {
     fixture.write(
         "empty.json",
         &Response::Result(ResultDocument {
+            contracts: None,
             repair: None,
             job: latest.clone(),
             result: None,
@@ -263,6 +266,7 @@ fn populate_job_fixture(fixture: &Fixture) {
         &Response::List(vec![completed.clone(), running.clone(), latest]),
     );
     let document = ResultDocument {
+        contracts: None,
         repair: None,
         job: completed,
         result: serde_json::to_value(project(&fixture.root)).ok(),
@@ -429,6 +433,7 @@ fn persistent_service_reads_preserve_fresh_models_and_do_not_spawn_cli() {
     let changed = changed_model(&fixture.root);
     let make = |value| {
         Response::Result(ResultDocument {
+            contracts: None,
             job: completed.clone(),
             repair: None,
             result: serde_json::to_value(value).ok(),
@@ -544,6 +549,7 @@ fn cli_read_responses_require_exact_job_identity_version_and_variant() {
     fixture.write(
         "result.json",
         &Response::Result(ResultDocument {
+            contracts: None,
             job: status(&fixture.root, Lifecycle::Completed, "other"),
             result: Some(json!({"complete":"foreign"})),
             repair: None,

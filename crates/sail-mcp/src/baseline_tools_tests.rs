@@ -8,6 +8,7 @@ use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
 
 fn baseline(name: &str) -> Baseline {
     Baseline {
+        contracts: None,
         version: sail_api::evidence::VERSION,
         name: name.into(),
         job_id: "recorded-job".into(),

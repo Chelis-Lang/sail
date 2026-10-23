@@ -6,6 +6,14 @@ semantic versioning once the API is published.
 ## 0.1.0 (unreleased)
 
 - Shared runtime native temporal jobs preserve exact D.I.V.E. evidence through an authenticated installed worker.
+- Read requirement-aware neutral source evidence through `sail assurance JOB`,
+  the Rust client and MCP. Report exact snapshot relationships, original tool
+  identities, conservative proof outcomes and explicit missing assurance.
+
+- Preserve record-base arithmetic definedness through scalar field selection in
+  neutral lowering version two. Recheck retained manifests with corrected
+  semantics, retaining exact unaffected version-one evidence and refusing
+  affected history without changing its original backend reports.
 
 - Keep Rustc artifact metadata out of structured diagnostic text, including
   the final verification-progress note. Verifier messages retain their text.
@@ -55,6 +63,10 @@ semantic versioning once the API is published.
 - Preserve independently verified dependencies after a requested proof fails
   when platform-disabled build scripts have no current Cargo execution unit.
   Keep conservative cleanup for unknown plans and reject unexpected units.
+- Add negotiated source-only neutral contract jobs with bounded Sail-owned workers,
+  exact retained evidence, conservative proof summaries and independently retained
+  immutable baselines.
+
 - Add the neutral-to-Verus lowering library for a supported complete scalar
   source file. It emits an immutable owned shadow and exact source/requirement
   mapping, preserves checked arithmetic definedness, and reuses the managed
