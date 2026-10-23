@@ -13,6 +13,20 @@ The e2e shell scripts need no GNU tools on macOS: fixture edits use portable
 `ci/timeout.py` (the same options and exit statuses, checked against GNU by
 `ci/test-timeout.py`) where it is not.
 
+## Release performance matrix
+
+`scripts/perf-matrix.py run` measures passing verification workflows. Both arms
+must exit zero and retain the existing strict identity checks. A matching pair
+of failed verifications keeps its observed exit codes and `same` identity,
+but its performance row is invalid; failures are never dropped.
+
+The matrix runs Vest with `--rlimit 100` on both stock and Sail, including
+the untimed baseline and timed new checkout in the worktree scenario. An
+unsuccessful baseline invalidates that scenario. Its default
+limit reproduces VI-0032 and cannot qualify a passing-workload speed claim.
+The ordinary conformance corpus retains that default-limit regression. The
+matrix header records additional project flags in `extra_verus_args_by_project`.
+
 ## End-to-end phases
 
 CI builds the release binaries once, then runs ten independent jobs. Each

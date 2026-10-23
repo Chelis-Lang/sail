@@ -4,8 +4,9 @@ Assessed October 23, 2026. Qualified executable source is
 `64a49aa5aa43f69b452424dd8c39bc9079d03569`, tree
 `7716977b53a74dae3de955964a43d656877e7541`. It combines native temporal jobs,
 neutral source assurance and bounded mutation retention with protected main
-`e03dfa0b0186a9a834c66d7ca7e349a2e36c78bb`. The final documentation amendment
-changes no non-Markdown Git entry. Protected delivery requires every hosted gate.
+`e03dfa0b0186a9a834c66d7ca7e349a2e36c78bb`. The final delivery preserves the qualified Rust, Cargo and runtime inputs.
+The benchmark-only main update below is separate from runtime qualification.
+Protected delivery requires every hosted gate.
 
 The native worker links D.I.V.E.
 `1025cd6a0510183bc16abc1e6e3eea4f9305c5a9`. Neutral macro and grammar bytes
@@ -15,6 +16,19 @@ improvement, positive native neutral-source mutation kill, application trace
 capture or full realizability.
 
 ## Current cumulative source
+
+The delivery also incorporates protected main
+`fc29023ae0578cf435aa295a604ee6d5a09f4a39`. Its only non-Markdown changes
+relative to the previously qualified integration are `scripts/perf-matrix.py`
+and `scripts/test-perf-matrix.py`. Passing-workload rows now require successful
+proofs, Vest receives the required proof limit on both arms, and a failed
+worktree baseline cannot qualify a benchmark. These benchmark entrypoints are outside the runtime
+compile and job-execution dependency paths. Rust, Cargo, runtime pins, corpus and
+conformance runners are unchanged. The affected Python checks, final native
+workspace gate and rebuilt installed-service controls have separate per-head
+receipts in [PR 353](https://github.com/Chelis-Lang/sail/pull/353). Existing
+Linux/Mac runtime and managed-path results retain their original source identity;
+this benchmark correction establishes no performance improvement.
 
 Exact Cargo target names stay distinct even when Rust normalizes their crate
 names; ambiguous legacy observations and duplicate reports are refused with
