@@ -961,10 +961,10 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
     // home directory): each ancestor is examined once.
     let mut examined = HashSet::new();
     for path in &snapshot.roots {
-        paths.insert(path.clone());
-        if let Ok(canonical) = path.canonicalize() {
-            paths.insert(canonical);
-        }
+        // Compiler declarations may add an alternate spelling (src/../file)
+        // of a file already observed. Stamp the resolved file once; actual
+        // aliases remain separately stamped below and bound in the snapshot.
+        paths.insert(path.canonicalize().ok()?);
         for alias in path.ancestors() {
             if examined.insert(alias)
                 && std::fs::symlink_metadata(alias).is_ok_and(|m| m.file_type().is_symlink())
@@ -1728,6 +1728,51 @@ mod tests {
         assert_eq!(before.revision, after.revision);
         assert_ne!(stamp_before, mutation_stamp(&after));
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discovering_a_declared_spelling_preserves_stamp_and_alias_guards() -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-declared-spelling-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("src"))?;
+        let root = root.canonicalize()?;
+        std::fs::create_dir_all(root.join("good/nested"))?;
+        std::fs::create_dir_all(root.join("bad/nested"))?;
+        std::fs::write(root.join("good/proof.rs"), "assert(true)")?;
+        std::fs::write(root.join("bad/proof.rs"), "assert(false)")?;
+        let alias = root.join("alias");
+        std::os::unix::fs::symlink(root.join("good/nested"), &alias)?;
+        let mut data = serde_json::json!({"workspace_root":root,
+            "packages":[{"manifest_path":root.join("Cargo.toml")}]});
+        let before = snapshot_metadata_home(&data, &[], None);
+        let stamp = mutation_stamp(&before);
+        assert!(before.complete && stamp.is_some());
+        // Resolve .. through the real filesystem: alias/../proof is good/proof,
+        // not root/proof. Discovering this declaration adds no unseen input.
+        data["sail_source_inputs"] = serde_json::json!([
+            root.join("src/../good/proof.rs"),
+            root.join("alias/../proof.rs")
+        ]);
+        let declared = snapshot_metadata_home(&data, &[], None);
+        assert!(declared.complete);
+        assert_eq!(declared.digests, before.digests);
+        assert_eq!(declared.bindings, before.bindings);
+        assert_eq!(declared.revision, before.revision);
+        assert_eq!(mutation_stamp(&declared), stamp);
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(root.join("bad/nested"), &alias)?;
+        let changed = snapshot_metadata_home(&data, &[], None);
+        assert_eq!(changed.digests, before.digests);
+        assert_ne!(changed.bindings, before.bindings);
+        assert_ne!(changed.revision, before.revision);
+        assert_ne!(mutation_stamp(&changed), stamp);
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(root.join("good/nested"), &alias)?;
+        let restored = snapshot_metadata_home(&data, &[], None);
+        assert_eq!(restored.revision, before.revision);
+        assert_ne!(mutation_stamp(&restored), stamp);
+        std::fs::remove_dir_all(root)
     }
 
     #[cfg(unix)]

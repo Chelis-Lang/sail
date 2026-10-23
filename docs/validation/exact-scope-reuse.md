@@ -5,6 +5,25 @@ Linux/Mac baseline. Anvil no longer repeats verification on unchanged calls;
 its remaining input-validation overhead is still open (#314). The
 [current matrix](release-matrix.md) binds the complete release measurements.
 
+## Compiler-declared path spellings (combined candidate)
+
+The combined source-alias and source-observation candidate `e627a4a0` regressed
+Anvil's first unchanged run: 61.94 seconds and three verifier invocations.
+Its initial cold run was Historical. A native c7i.8xlarge diagnostic confirmed
+identical before/after file digests and source bindings, with no changed
+existing path metadata. Compiler declarations added 166 alternate path
+spellings containing `..` to the mutation stamp, although their resolved files
+already belonged to the complete initial observation.
+
+The correction stamps each resolved root and separately stamps its actual
+symlink ancestors. Source binding identity remains exact; a newly discovered
+alias or file still changes the observation, and retargeting an alias during
+the run still changes its stamp. The regression fixture discovers both plain
+`src/../file` and symlink-dependent `alias/../file` declarations, then retargets
+the alias between already-hashed good and bad files and restores it. Logical
+identity restores on exact revert; the within-run mutation stamp does not.
+Installed Anvil cold/first-unchanged validation and combined gates are pending.
+
 ## Source observations within a call (candidate)
 
 The candidate projects receipt revisions from this invocation's complete

@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Avoid repeating verification when the compiler declares an alternate path to
+  an already observed source file; preserve source-alias retarget checks.
+
 - Require a successful solver/mode handshake before cache reads or writes.
   Reject failed or repeated handshakes and isolate older daemons under the
   version-five socket; status remains available without a solver.
