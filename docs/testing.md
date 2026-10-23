@@ -20,7 +20,9 @@ must exit zero and retain the existing strict identity checks. A matching pair
 of failed verifications keeps its observed exit codes and `same` identity,
 but its performance row is invalid; failures are never dropped.
 
-The matrix runs Vest with `--rlimit 100` on both stock and Sail. Its default
+The matrix runs Vest with `--rlimit 100` on both stock and Sail, including
+the untimed baseline and timed new checkout in the worktree scenario. An
+unsuccessful baseline invalidates that scenario. Its default
 limit reproduces VI-0032 and cannot qualify a passing-workload speed claim.
 The ordinary conformance corpus retains that default-limit regression. The
 matrix header records additional project flags in `extra_verus_args_by_project`.

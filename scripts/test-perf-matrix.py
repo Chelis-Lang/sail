@@ -391,6 +391,41 @@ class IsolatedCommands(unittest.TestCase):
         self.assertEqual(output.strip(), "vstd=1.2.3")
 
 
+class WorktreeSequence(unittest.TestCase):
+    def run_worktrees(self, baseline_fails=False):
+        with tempfile.TemporaryDirectory() as directory:
+            d = Path(directory)
+            tools = d / "tools"; tools.mkdir()
+            body = TOOL.replace("TEMPLATE)", repr(TEMPLATE) + ")")
+            body = body.replace("args = sys.argv[1:]", "args = sys.argv[1:]\nassert args[-3:] == ['--', '--rlimit', '100']")
+            if baseline_fails:
+                body = body.replace("args = sys.argv[1:]", "sys.exit(101)\nargs = sys.argv[1:]")
+            for name in ("cargo", "sail"):
+                p = tools / name; p.write_text(body); p.chmod(0o755)
+            out = d / "out"; out.mkdir()
+            real = d / "real"
+            src = real / "pristine/vest_lib/src"; src.mkdir(parents=True)
+            (src / "lib.rs").write_text(TEMPLATE)
+            (src.parent / ".gitignore").write_text("target/\n")
+            args = argparse.Namespace(out=str(out), sail_install=str(d / "install"),
+                stock_verus=str(d / "stock"), tools=str(tools), settle=0.0,
+                vstd="source", env=None)
+            runner = pm.Runner(args)
+            for arm in ("stock", "sail"):
+                runner.real_worktree(1, "vest", arm, real)
+            return pm.judge(pm.load(out))
+
+    def test_both_arms_require_the_limit_in_baseline_and_new_worktree(self):
+        samples = self.run_worktrees()
+        self.assertEqual(len(samples), 2)
+        self.assertTrue(all(s["ok"] and s["exit"] == 0 for s in samples), samples)
+
+    def test_failed_baseline_cannot_qualify_a_worktree_run(self):
+        samples = self.run_worktrees(baseline_fails=True)
+        self.assertTrue(all(not s["ok"] and s["exit"] is None for s in samples))
+        self.assertTrue(all("baseline verification failed (exit 101)" in s["note"] for s in samples))
+
+
 class SmallSequence(unittest.TestCase):
     def test_runs_every_scenario_and_matches_stock(self):
         with tempfile.TemporaryDirectory() as d:

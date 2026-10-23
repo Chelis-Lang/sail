@@ -301,6 +301,11 @@ def installed_targets(toolchain):
 
 # --- Running -----------------------------------------------------------------
 
+def real_verus_args(project):
+    """Required proof limits for passing workloads, shared by every path."""
+    return ["--rlimit", "100"] if project == "vest" else []
+
+
 def real_edits(scenarios):
     """Only execute the real-project edits requested by the selected rows."""
     return " ".join(PERF_REAL_PHASE[s] for s in ("module-edit", "spec-wide") if s in scenarios) or "none"
@@ -436,10 +441,10 @@ class Runner:
                             # Omit timing-only Verus flags; cargo-verus forwards
                             # them to vstd. Keep required proof limits below.
                             "SAIL_PERF_VERUS_TIMES": "0"})
-        if project == "vest":
+        if required := real_verus_args(project):
             # Its default rlimit reproduces VI-0032 in the conformance corpus.
             # Benchmark the supported passing workflow, on both arms.
-            env["SAIL_PERF_VERUS_ARGS"] = "--rlimit 100"
+            env["SAIL_PERF_VERUS_ARGS"] = " ".join(required)
         if self.vstd_lock:
             env["SAIL_PERF_VSTD_LOCK"] = str(self.vstd_lock)
         log = self.out / f"r{rnd}" / f"perf-real-{project}.log"
@@ -520,6 +525,8 @@ class Runner:
                             "GIT_AUTHOR_NAME": "perf", "GIT_AUTHOR_EMAIL": "perf@example.invalid",
                             "GIT_COMMITTER_NAME": "perf", "GIT_COMMITTER_EMAIL": "perf@example.invalid"})
         verify = ["sail", "verify"] if arm == "sail" else ["cargo", "verus", "verify"]
+        if required := real_verus_args(project):
+            verify += ["--", *required]
         log = base / "worktree.log"
         note, wall, code = "", 0.0, None
         try:
@@ -528,8 +535,10 @@ class Runner:
             shutil.copytree(pristine, base / "main", symlinks=True)
             # The first checkout is verified untimed; the new worktree is timed.
             with open(base / "main.log", "w") as f:
-                subprocess.run(verify, cwd=base / "main" / pkg, env=env, stdout=f,
-                               stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+                baseline = subprocess.run(verify, cwd=base / "main" / pkg, env=env, stdout=f,
+                                          stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+            if baseline.returncode != 0:
+                raise RuntimeError(f"worktree baseline verification failed (exit {baseline.returncode})")
             self.git_worktree(base / "main", base / "wt", env)
             wall, code = self.timed([(verify, base / "wt" / pkg)], env, log)
         except (RuntimeError, OSError, subprocess.SubprocessError) as e:
@@ -616,7 +625,7 @@ def cmd_run(args):
                   runtime_manifest_sha256=file_sha256(runtime_manifest(r.install, r.extra)),
                   corpus_sha256=file_sha256(ROOT / "corpus/corpus.toml"),
                   vstd_lock_sha256=file_sha256(r.vstd_lock),
-                  extra_verus_args_by_project=({"vest": ["--rlimit", "100"]} if "vest" in projects else {}),
+                  extra_verus_args_by_project={p: real_verus_args(p) for p in projects if real_verus_args(p)},
                   required_mutations=(["human-eval", "ironkv", "vest", "capybarakv"] if not args.project
                                       else [p for p in projects if p in ("ironkv", "vest", "capybarakv")]),
                   vstd=args.vstd, vstd_lock=str(r.vstd_lock) if r.vstd_lock else None,
