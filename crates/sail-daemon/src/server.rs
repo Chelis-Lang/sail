@@ -243,12 +243,7 @@ impl State {
     /// to a verified disk read, which refills the slot. A disk miss, for a
     /// session whose solver is known (`solver`), falls through to the
     /// shared tier.
-    fn get(
-        &self,
-        key: &QueryKey,
-        solver: Option<&Solver>,
-        mode: &str,
-    ) -> Option<(Arc<Value>, Source)> {
+    fn get(&self, key: &QueryKey, solver: &Solver, mode: &str) -> Option<(Arc<Value>, Source)> {
         if let Some((value, slot)) = self.memory.lookup(key) {
             if value.mode != mode {
                 return None;
@@ -279,7 +274,6 @@ impl State {
         if mode != "default" {
             return None;
         }
-        let solver = solver?;
         if let Some(bundled) = &self.bundled
             && let Some(value) = self.bundled_get(bundled, key, solver)
         {
@@ -450,7 +444,7 @@ impl State {
         key: QueryKey,
         meta: sail_api::protocol::PutMeta,
         reply: Vec<u8>,
-        solver: Option<&Solver>,
+        solver: &Solver,
         mode: &str,
     ) {
         if self.disk.contains(&key) {
@@ -469,7 +463,7 @@ impl State {
             }),
             command: meta.command,
             provenance: meta.provenance,
-            solver: solver.map(Solver::summary).unwrap_or_default(),
+            solver: solver.summary(),
         };
         if self.writer.submit(&self.memory, job, self.queue_wait) == Submitted::Dropped {
             self.stats.dropped_puts.fetch_add(1, Ordering::Relaxed);
@@ -524,28 +518,43 @@ impl State {
         let mut writer = BufWriter::new(stream);
         // The solver this connection's session runs, from its `HELLO`. It
         // scopes shared lookups and is recorded with every `PUT`.
-        let mut solver: Option<Solver> = None;
-        let mut mode = sail_api::protocol::VerificationMode::Default;
+        let mut session: Option<(Solver, sail_api::protocol::VerificationMode)> = None;
         loop {
             let Ok(Some(request)) = Request::read(&mut reader) else {
                 return;
             };
             let result = match request {
                 Request::Hello(hello) => {
-                    mode = hello.mode;
                     self.stats.hellos.fetch_add(1, Ordering::Relaxed);
-                    let r = identify(Path::new(&hello.solver_path), &self.binary_digests);
-                    solver = r.as_ref().ok().map(|id| Solver {
-                        name: id.name.clone(),
-                        version: id.version.clone(),
-                        binary_sha256: id.binary_sha256.clone(),
-                        platform: id.platform.clone(),
-                    });
-                    write_hello_response(&mut writer, r.as_ref().map_err(String::as_str))
+                    // One successful handshake binds this connection for life.
+                    // Renegotiation cannot silently switch its solver or mode.
+                    if session.is_some() {
+                        return;
+                    }
+                    let id = match identify(Path::new(&hello.solver_path), &self.binary_digests) {
+                        Ok(id) => id,
+                        Err(error) => {
+                            let _ = write_hello_response(&mut writer, Err(&error));
+                            return;
+                        }
+                    };
+                    session = Some((
+                        Solver {
+                            name: id.name.clone(),
+                            version: id.version.clone(),
+                            binary_sha256: id.binary_sha256.clone(),
+                            platform: id.platform.clone(),
+                        },
+                        hello.mode,
+                    ));
+                    write_hello_response(&mut writer, Ok(&id))
                 }
                 Request::Get(key) => {
+                    let Some((solver, mode)) = &session else {
+                        return;
+                    };
                     self.stats.gets.fetch_add(1, Ordering::Relaxed);
-                    let found = self.get(&QueryKey(key), solver.as_ref(), mode.name());
+                    let found = self.get(&QueryKey(key), solver, mode.name());
                     if let Some((_, source)) = &found {
                         self.stats.hits.fetch_add(1, Ordering::Relaxed);
                         if *source == Source::Memory {
@@ -564,9 +573,12 @@ impl State {
                     )
                 }
                 Request::Put { key, meta, reply } => {
+                    let Some((solver, mode)) = &session else {
+                        return;
+                    };
                     self.stats.puts.fetch_add(1, Ordering::Relaxed);
                     // A failed or dropped store only costs a future miss.
-                    self.put(QueryKey(key), meta, reply, solver.as_ref(), mode.name());
+                    self.put(QueryKey(key), meta, reply, solver, mode.name());
                     write_put_response(&mut writer)
                 }
                 Request::Stats => write_stats_response(&mut writer, &self.stats.snapshot()),
