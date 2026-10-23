@@ -113,7 +113,13 @@ boundary.
 The record recipe is `scripts/shipped-deps`: exact vstd version, canonical
 Cargo-produced lock, one requested proof. `scripts/release-shipped.py record`
 uses a fresh private project/Cargo home and an owned daemon. Native prerequisites
-compile normally. It requires Current, complete verified targets and the original
+compile normally. A release carries the default-limit proof and, when a
+resource-limit subsumption witness is unavailable, a separately verified
+`--rlimit 100` proof. Both retain exact keys and their own establishing runs.
+The current macOS solver has reproduced resource-count variation, so its
+recorder uses these exact profiles. Other limits verify normally on Mac.
+Every member of both profiles is bound by the release index; an incomplete
+second recording stops packaging. It requires Current, complete verified targets and the original
 run before a complete dependency directory becomes discoverable. Refusals and
 failures stop release packaging. Evidence is retained beside the stage directory
 with `-proof-evidence` appended; it is not shipped or treated as proof authority.

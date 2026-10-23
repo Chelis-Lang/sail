@@ -83,7 +83,7 @@ def case(root, helper, scenario):
     cargo=controlled/'cargo';cargo.write_text('#!/bin/sh\nexit 0\n');cargo.chmod(0o755)
     sysroot = root/'fixture-sysroot';rustlib = sysroot/'lib/rustlib'
     source = rustlib/'src/rust/library/lib.rs';source.parent.mkdir(parents=True);source.write_text('owned rust source')
-    (rustlib/'components').write_text('rust-src\n')
+    (rustlib/'components').write_text('cargo-x86_64-unknown-linux-gnu\nrustc-x86_64-unknown-linux-gnu\nrust-std-x86_64-unknown-linux-gnu\nrust-src\n')
     (rustlib/'manifest-rust-src').write_text('file:lib/rustlib/src/rust/library/lib.rs\n')
     rustup = controlled/'rustup'
     rustup.write_text('#!/bin/sh\n[ "$*" = "run '+PIN+' rustc --print sysroot" ] || exit 9\nprintf "%s\\n" '+str(sysroot)+'\n')

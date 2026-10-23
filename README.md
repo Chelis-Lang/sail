@@ -97,10 +97,11 @@ Without `rust-src`, Sail runs your default Cargo and its JSON result notes
 ([ADR 0058](docs/decisions/0058-managed-builds-use-the-pinned-cargo.md)).
 
 Verus flags after `--` reach vstd too, as with `cargo verus verify`, so a
-forwarded flag normally means vstd is verified again. A raised `--rlimit N`
-(N at least the default 10) still uses the preverified proof when the release
-recorded its rlimit witness
-([ADR 0060](docs/decisions/0060-shipped-vstd-under-a-raised-rlimit.md)). To
+forwarded flag normally means vstd is verified again. Releases support
+`--rlimit 100` through a separately verified proof or a recorded resource-limit
+witness. Other raised limits use the proof only when that witness covers them;
+otherwise vstd is verified normally
+([details](docs/decisions/0060-shipped-vstd-under-a-raised-rlimit.md)). To
 keep other flags off vstd, pass `--fwd-verus-args-to roots` before `--`, as
 with stock: `sail verify --fwd-verus-args-to roots -- --rlimit 100`.
 

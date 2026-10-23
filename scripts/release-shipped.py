@@ -207,7 +207,11 @@ def check_bundle(bundle, variant, manifest_sha256, run=None):
     manifest = json.loads((bundle/'manifest.json').read_bytes())
     assert manifest['schema'] == SCHEMA and manifest['kind'] == 'sail-vstd-compile-boundary'
     assert manifest['runtime'] == variant and len(manifest['identity']) == 64
-    assert (bundle/'Cargo.lock').is_file() and len(manifest['units']) == 1
+    assert (bundle/'Cargo.lock').is_file() and 1 <= len(manifest['units']) <= 2
+    if isinstance(run, dict):
+        assert set(run) == set(manifest['units']), 'missing per-profile source run'
+    elif run is not None:
+        assert len(manifest['units']) == 1, 'multiple profiles require separate source runs'
     expected = {'manifest.json', 'Cargo.lock'}
     for key, description in manifest['units'].items():
         assert len(key) == 64 and all(c in '0123456789abcdef' for c in key)
@@ -218,7 +222,8 @@ def check_bundle(bundle, variant, manifest_sha256, run=None):
         assert unit['schema'] == SCHEMA and unit['key'] == key
         assert unit['verifying'] is True and unit['crate_name'] == 'vstd'
         assert unit['source_tree'] and unit['sources']
-        assert run is None or unit['establishing_run'] == run
+        expected_run = run[key] if isinstance(run, dict) else run
+        assert expected_run is None or unit['establishing_run'] == expected_run
         reads = unit['compiler_reads']
         assert reads['complete'] is True and set(reads['phases']) == {'verification', 'compilation'}
         assert all(phase['sources'] for phase in reads['phases'].values())
@@ -238,6 +243,42 @@ def check_bundle(bundle, variant, manifest_sha256, run=None):
     return {'schema': SCHEMA, 'identity': manifest['identity'], 'runtime': variant,
             'runtime_manifest_sha256': manifest_sha256, 'manifest_sha256': digest(bundle/'manifest.json'),
             'members': tree}
+
+
+def recorded_rlimits(unit):
+    """The exact forwarded limits in this recorded compiler environment."""
+    tokens = [token for name, value in unit.get('environment', {}).items()
+              if name.startswith(' __VERUS_DRIVER_ARGS')
+              for token in value.split('__VERUS_DRIVER_ARGS_SEP__')]
+    limits = []
+    for i, token in enumerate(tokens):
+        if token == '--rlimit':
+            assert i+1 < len(tokens), 'missing recorded resource limit'
+            limits.append(tokens[i+1])
+        elif token.startswith('--rlimit='):
+            limits.append(token.partition('=')[2])
+    return limits
+
+
+def join_exact_profiles(bundle, raised, variant, manifest_sha256, original_run, raised_run):
+    """Join two independently confirmed proofs, preserving their exact keys."""
+    check_bundle(bundle, variant, manifest_sha256, original_run)
+    check_bundle(raised, variant, manifest_sha256, raised_run)
+    original = json.loads((bundle/'manifest.json').read_bytes())
+    additional = json.loads((raised/'manifest.json').read_bytes())
+    for field in ('schema', 'kind', 'runtime', 'identity', 'virtual_base'):
+        assert original[field] == additional[field], 'incompatible proof profiles'
+    assert (bundle/'Cargo.lock').read_bytes() == (raised/'Cargo.lock').read_bytes()
+    [original_key], [raised_key] = original['units'], additional['units']
+    assert original_key != raised_key, 'raised profile reused the default key'
+    for directory, key, expected in ((bundle, original_key, []), (raised, raised_key, [WITNESS_RLIMIT])):
+        unit = json.loads((directory/'units'/key/'unit.json').read_bytes())
+        assert recorded_rlimits(unit) == expected, 'unexpected recorded resource-limit profile'
+    shutil.copytree(raised/'units'/raised_key, bundle/'units'/raised_key)
+    original['units'].update(additional['units'])
+    (bundle/'manifest.json').write_text(json.dumps(original, indent=2)+'\n')
+    runs = {original_key: original_run, raised_key: raised_run}
+    return check_bundle(bundle, variant, manifest_sha256, runs), runs
 
 
 def check_replies(replies, report=None):
@@ -291,9 +332,12 @@ def first_use(root, doc):
     """Refuse SAFE_MISS: a proof-bundle smoke must actually serve its release."""
     index = verify(root)
     proof = index['proof']
-    manifest = json.loads((root/'deps'/proof['runtime']/'manifest.json').read_bytes())
-    assert len(manifest['units']) == 1
-    identity = proof['identity']+'/'+next(iter(manifest['units']))
+    bundle = root/'deps'/proof['runtime']
+    manifest = json.loads((bundle/'manifest.json').read_bytes())
+    defaults = [key for key in manifest['units']
+                if not recorded_rlimits(json.loads((bundle/'units'/key/'unit.json').read_bytes()))]
+    assert len(defaults) == 1, 'first use needs one exact default-limit profile'
+    identity = proof['identity']+'/'+defaults[0]
     origin = {'kind': 'release', 'identity': identity, 'establishing_run': 'shipped:'+identity}
     assert doc['kind'] == 'sail-project-result' and doc['schema_version'] == 2
     assert doc['currentness'] == 'current' and doc['exit_code'] == 0 and doc['error'] is None
@@ -636,6 +680,51 @@ def record(root, evidence):
                 assert lock.is_file() and not lock.is_symlink()
                 lock.chmod(0o644)
                 proof = check_bundle(bundle, variant, selected['manifest_sha256'], run)
+                # ADR 0060: the unit may also serve a raised --rlimit if the
+                # recipe's solver processes are unchanged apart from the limit.
+                end += 600
+                def witness_command(label, argv, cwd, command_env):
+                    command(label, argv, cwd=cwd, cap=600, command_env=command_env)
+                    return ((evidence/(label+'.stdout')).read_bytes(), (evidence/(label+'.stderr')).read_bytes())
+                [unit_key] = json.loads((bundle/'manifest.json').read_bytes())['units']
+                # The witness is optional: any failure leaves the unit exact-key only.
+                try:
+                    if sys.platform == 'darwin':
+                        # The pinned macOS solver has a captured counterexample
+                        # to stable resource counts. Use separately recorded
+                        # exact profiles until that solver is requalified.
+                        witness = None
+                        outcome['rlimit_witness_refusal'] = 'pinned macOS solver resource-count variation'
+                    else:
+                        witness = rlimit_witness(build, owned, env, evidence, unit_key, witness_command)
+                except Exception as error:
+                    witness = None
+                    outcome['rlimit_witness_error'] = repr(error)
+                if witness is not None:
+                    (bundle/'units'/unit_key/RLIMIT_WITNESS).write_text(json.dumps(witness, indent=2)+'\n')
+                    (bundle/'units'/unit_key/RLIMIT_WITNESS).chmod(0o644)
+                    proof = check_bundle(bundle, variant, selected['manifest_sha256'], run)
+                outcome['rlimit_witness'] = witness is not None
+                runs = run
+                if witness is None:
+                    # The witness is optional, but the common raised limit
+                    # still gets its own fully verified, exact-key proof.
+                    for label in ('default', 'raised'):
+                        target = owned/'rlimit-witness'/('target-'+label)
+                        if target.exists():shutil.rmtree(target)
+                    raised_bundle = owned/'bundle-raised'
+                    raised_env = dict(env, SAIL_SHIPPED_RECORD=str(raised_bundle))
+                    raw = command('record-raised', [str(binaries/'sail'), 'verify', '--locked',
+                                                   '--output', 'json', '--', '--rlimit', WITNESS_RLIMIT],
+                                  command_env=raised_env)
+                    raised_run = complete_report(json.loads(raw))
+                    lock = raised_bundle/'Cargo.lock'
+                    assert lock.is_file() and not lock.is_symlink()
+                    lock.chmod(0o644)
+                    proof, runs = join_exact_profiles(bundle, raised_bundle, variant,
+                                                     selected['manifest_sha256'], run, raised_run)
+                    outcome['exact_raised_profile'] = True
+                    outcome['profile_establishing_runs'] = runs
                 drain_queue(binaries, socket, env)
             finally:
                 stop_server()
@@ -643,37 +732,20 @@ def record(root, evidence):
             # that exists only inside this command, and ship them with its
             # public half. They serve byte-identical vstd queries after a
             # shipped-proof miss; every entry is still verified when served. Pack
-            # before the rlimit witness, which runs only for its own evidence.
+            # after every recorded profile. The plain witness uses its own
+            # tee and pinned solver, so it cannot add cache entries.
             replies_raw = command('bundle-replies', [str(binaries/'sail'), 'cache', 'bundle-replies',
                                                      '--cache', str(cache/'results'), '--out', str(owned/'replies')],
                                   cwd=owned, cap=120)
             replies = check_replies(owned/'replies', json.loads(replies_raw))
             outcome['replies'] = replies
-            # ADR 0060: the unit may also serve a raised --rlimit if the
-            # recipe's solver processes are unchanged apart from the limit.
-            end += 600
-            def witness_command(label, argv, cwd, command_env):
-                command(label, argv, cwd=cwd, cap=600, command_env=command_env)
-                return ((evidence/(label+'.stdout')).read_bytes(), (evidence/(label+'.stderr')).read_bytes())
-            [unit_key] = json.loads((bundle/'manifest.json').read_bytes())['units']
-            # The witness is optional: any failure leaves the unit exact-key only.
-            try:
-                witness = rlimit_witness(build, owned, env, evidence, unit_key, witness_command)
-            except Exception as error:
-                witness = None
-                outcome['rlimit_witness_error'] = repr(error)
-            if witness is not None:
-                (bundle/'units'/unit_key/RLIMIT_WITNESS).write_text(json.dumps(witness, indent=2)+'\n')
-                (bundle/'units'/unit_key/RLIMIT_WITNESS).chmod(0o644)
-                proof = check_bundle(bundle, variant, selected['manifest_sha256'], run)
-            outcome['rlimit_witness'] = witness is not None
             assert inventory(root) == before, 'staged source bytes changed during recording'
             # Build and check the complete private tree before it becomes discoverable.
             staging = root/('.deps-recording-'+str(os.getpid()))
             assert not staging.exists()
             try:
                 shutil.copytree(bundle, staging/variant)
-                assert check_bundle(staging/variant, variant, selected['manifest_sha256'], run) == proof
+                assert check_bundle(staging/variant, variant, selected['manifest_sha256'], runs) == proof
                 shutil.copytree(owned/'replies', staging/'.replies')
                 assert check_replies(staging/'.replies') == replies
                 staging.rename(root/'deps')
