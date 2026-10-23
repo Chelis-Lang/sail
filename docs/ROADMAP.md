@@ -202,7 +202,6 @@ dependency profiles, and lever 1.4 (its cold and cache cost, about 519 MB).
 
 | Decision | Who | Blocks |
 |---|---|---|
-| Pipelined native admission ([ADR 0061](https://github.com/Chelis-Lang/sail/pull/265), proposed): certify native units after their compile, about 0.5 s per cold run | Owner | 1.1 |
 | Closure-name determinism amendments to ADRs 0049 and 0056 (#247), accepted by the lead | Owner review | — |
 | Prebuilt macro crates under ADR 0053 parity ([question 35](open-questions.md)) | Owner | 1.10 |
 | Private solver copy on same-path replacement (ADR) | Lead | 1.3 variant |
