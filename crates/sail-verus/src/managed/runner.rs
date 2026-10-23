@@ -5747,9 +5747,8 @@ mod tests {
     fn discovered_workspace_sources_do_not_dirty_dependency_receipts() {
         let root =
             std::env::temp_dir().join(format!("sail-receipt-source-scope-{}", std::process::id()));
-        assert!(std::fs::create_dir_all(&root).is_ok());
-        let root = root
-            .canonicalize()
+        let root = std::fs::create_dir_all(&root)
+            .and_then(|()| root.canonicalize())
             .unwrap_or_else(|e| unreachable!("fixture: {e}"));
         let app = root.join("app");
         let dependency = root.join("registry/vstd");
