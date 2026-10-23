@@ -306,7 +306,10 @@ remain in the [runtime record](validation/spec-signature-runtime.md).
   Retargeting a file or directory link cannot preserve evidence merely because
   both destination files were already hashed. Regressions exercise production
   snapshot and read-check functions, including unchanged and exact-revert
-  controls; they are not an end-to-end false-theorem reproduction.
+  controls. The managed end-to-end phase also retargets a successful source
+  alias to an invalid proof, checks the rejection and the retained job's
+  Historical label, then restores the original binding. These controls do not
+  claim that the earlier defect accepted a false theorem end to end.
 
 - **Fork JSON proof-note order (#185).** The selected `cc7bbce4` runtime
   contains producer fix `5793253c`, which serializes both arrays lexically
