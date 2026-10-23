@@ -1,26 +1,9 @@
 //! Strict reversible ITF values, with separate native trace claim metadata.
 use dive_api::trace::{Ending, TraceDoc};
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
 
-/// Complete ITF states with explicit native claim metadata, never lossy values.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ItfTrace {
-    /// Complete ordered variable list.
-    pub vars: Vec<String>,
-    /// ITF value objects, one complete variable assignment per state.
-    pub states: Vec<Map<String, Value>>,
-    /// Explicit native ending claim, including zero-based loop index.
-    pub ending: Value,
-    /// All properties claimed false by a periodic word.
-    pub properties: Vec<String>,
-    /// Native action labels retained separately from ITF values.
-    pub actions: Vec<Value>,
-    /// Original optional claimed length.
-    pub length: Option<usize>,
-}
+pub use sail_api::temporal::ItfTrace;
 
 fn decimal(text: &str) -> bool {
     let digits = text.strip_prefix('-').unwrap_or(text);

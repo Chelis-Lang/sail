@@ -74,3 +74,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0067: Isolated native D.I.V.E. runtime worker (proposed)](0067-dive-runtime-worker.md)
 - [0068: Shared runtime transport and agent tools](0068-runtime-daemon.md)
 - [0069: Exact-scope report reuse](0069-exact-scope-report-reuse.md)
+- [0071: Native temporal jobs through the shared runtime](0071-shared-temporal-runtime.md)

@@ -4,8 +4,9 @@
 `sail-runtime-worker` process. It supports finite exhaustive model checking,
 the admitted final temporal subset, finite one-worker simulation, and
 independent validation of complete traces. It does not execute a D.I.V.E.
-command, TLC or Java. This library slice is separate from ordinary Verus
-verification; it is not yet a released CLI or daemon endpoint.
+command, TLC or Java. The payload is also available through the shared runtime endpoint; see
+[shared execution](runtime.md#native-temporal-jobs). Ordinary Verus
+verification retains its existing behavior.
 
 Build the worker with `cargo build --locked -p sail-runtime-worker`.
 Source builds need read access to the private pinned dependency; see

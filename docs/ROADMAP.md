@@ -250,6 +250,15 @@ Caching, CLI, agent ergonomics, benchmarks, corpus tiers and CI from the
 charter's initial scope are done (ADRs 0009, 0011, 0013–0021, 0025).
 The M11 reliability items in #168 are closed.
 
+## Oyster integration
+
+| Slice | Status | Remaining gate |
+|---|---|---|
+| Raw SMT shared runtime | Implemented | Consumer qualification |
+| Native D.I.V.E. worker and shared temporal route | Implemented, local correctness controls pass | Frozen-source Linux/macOS qualification, protected CI and independent review |
+| Neutral source jobs | Separate integration slice | Corrected definedness and source-job qualification |
+| Requirement assurance and mutation | Deferred | Public evidence interfaces and actual execution |
+
 ## Later
 
 - **M10 verification runtime (Oyster integration authorized alongside M11).** One runtime and ledger for

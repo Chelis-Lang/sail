@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Shared runtime native temporal jobs preserve exact D.I.V.E. evidence through an authenticated installed worker.
+
 - Keep Rustc artifact metadata out of structured diagnostic text, including
   the final verification-progress note. Verifier messages retain their text.
 

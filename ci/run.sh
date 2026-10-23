@@ -90,11 +90,11 @@ step="${1:?usage: ci/run.sh gate|solver|boundary-witness|e2e-build|e2e|conforman
 shift
 
 release_build() {
-  cargo build --release --locked -p sail-cli -p sail-shim "$@"
+  cargo build --release --locked -p sail-cli -p sail-shim -p sail-runtime-worker "$@"
 }
 
 # The binaries every e2e phase uses, relative to target/release.
-e2e_binaries=(sail sail-z3 sail-conformance examples/check_output examples/check_mcp)
+e2e_binaries=(sail sail-z3 sail-runtime-worker sail-conformance examples/check_output examples/check_mcp)
 
 e2e_build() {
   release_build -p sail-conformance --bins --example check_output --example check_mcp
@@ -116,8 +116,9 @@ unpack_e2e_binaries() {
 install_runtime() {
   sail_runtime="$(mktemp -d /tmp/sail-e2e-runtime.XXXXXX)"
   trap 'rm -rf "$sail_runtime"' EXIT
-  cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_runtime/"
+  cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_checkout/target/release/sail-runtime-worker" "$sail_runtime/"
   chmod 700 "$sail_runtime/sail" "$sail_runtime/sail-z3"
+  python3 scripts/stage-temporal-worker.py "$sail_runtime/sail-runtime-worker" "$sail_runtime"
   sail="$sail_runtime/sail"
 }
 
@@ -151,6 +152,7 @@ case "$step" in
     python3 scripts/check-links.py
     python3 scripts/test-perf-matrix.py
     python3 scripts/test-private-dependencies.py
+    python3 scripts/test-stage-temporal-worker.py
     python3 scripts/test-bench-cargo-compare.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings

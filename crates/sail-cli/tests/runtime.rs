@@ -185,7 +185,9 @@ fn actual_pinned_mcp_and_cli_share_exact_solver_evidence_and_cache() -> TestResu
         .ok_or("response")?
         .remove("summary");
     let original: Response = serde_json::from_value(original)?;
-    let Output::Smt { results: first } = original.output;
+    let Output::Smt { results: first } = original.output else {
+        return Err("expected SMT family".into());
+    };
     assert_eq!(first[0].outcome, Outcome::Completed);
     assert_eq!(first[0].checks[0].answer, Answer::Sat);
     assert_ne!(first[0].checks[0].products, []);
@@ -197,7 +199,9 @@ fn actual_pinned_mcp_and_cli_share_exact_solver_evidence_and_cache() -> TestResu
         String::from_utf8_lossy(&cli.stderr)
     );
     let response: Response = serde_json::from_slice(&cli.stdout)?;
-    let Output::Smt { results } = response.output;
+    let Output::Smt { results } = response.output else {
+        return Err("expected SMT family".into());
+    };
     assert!(results[0].cache_hit);
     assert_eq!(results[0].stdout, first[0].stdout);
     assert_eq!(results[0].checks, first[0].checks);

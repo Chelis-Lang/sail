@@ -26,6 +26,7 @@ pub mod protocol;
 pub mod repair;
 pub mod runtime;
 pub mod schema;
+pub mod temporal;
 
 #[cfg(unix)]
 pub mod client;
