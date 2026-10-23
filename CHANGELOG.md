@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Correct a macOS HumanEval proof regression from positional spec-formal names.
+  Include complete signature size in those names, preserving source-rename
+  stability while restoring the proof that stock verifies. Rebuild both Verus
+  runtimes, their exact shipped proofs and signed solver replies together.
+
 - Limit optional proof retention to targets whose measured compile cost is at
   least sixteen times its retention cost. Cheaper targets use ordinary solver
   caching on undo; unknown costs still capture the first proof.
