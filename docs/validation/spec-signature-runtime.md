@@ -1,10 +1,11 @@
 # Signature-sized spec-formal runtime qualification
 
-Status: both rebuilt runtimes pass backend and installed-consumer functional
-qualification, including all four complete mutation cohorts on each platform.
-The matrices are complete; Mac cold and unchanged overhead keep performance
-acceptance open. The previous failed Mac cohort remains failed. No rc.6 draft
-has been created.
+Status: both rebuilt runtimes pass backend qualification and the earlier
+signature-only consumer's full functional suite. This record preserves that
+baseline, including its open performance losses and the previous failed Mac
+cohort. The same runtimes remain selected in the final combined consumer;
+current installed results and draft status are in the
+[release-candidate record](release-candidate.md) and [matrix](release-matrix.md).
 
 Source: reviewed fork `7d9d5410159a7baa2c74868ce1f591678788eb23`, whose complete
 source tree equals squash merge `a6240baab374c6d687e919730c957a0a8512943f`

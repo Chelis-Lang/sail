@@ -1,4 +1,4 @@
-# 0039: The engine is built from a private Verus fork
+# 0039: The engine is built from Sail's Verus fork
 
 - **Status:** accepted
 - **Date:** 2026-10-12
@@ -14,7 +14,8 @@ The owner decided on 2026-10-12 that Sail fixes these itself and stays forked. U
 
 ## Decision
 
-- **Fork repository.** The fork is the private repository `Chelis-Lang/verus`.
+- **Fork repository.** The fork is `Chelis-Lang/verus`, public since
+  2026-10-14 (see the note below); it was private when this decision was made.
   - Branch `sail` is the pinned upstream commit, then one small commit per fix, each with a regression test, then the interactive engine.
   - Branches `upstream/<sha>` mark each upstream base.
   - Lanes push their own branches. The lead fast-forwards `sail` after review.
@@ -34,7 +35,8 @@ The owner decided on 2026-10-12 that Sail fixes these itself and stays forked. U
 
 - Determinism in the engine makes cached-versus-fresh comparisons exact, which the M8 bucket memo relies on.
 - Each Verus upgrade costs a rebase. Small, isolated commits keep that cost low.
-- Building the engine needs access to the private repository, through `gh auth token` or `SAIL_ENGINE_ARTIFACT_TOKEN`. CI uses only the prebuilt artifact and never builds Verus.
+- Source builds clone the pinned public fork anonymously. CI uses only the
+  prebuilt artifact and never builds Verus.
 
 ## Note (2026-10-14): runtimes are published on the public fork
 
