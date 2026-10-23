@@ -4,17 +4,17 @@ Sail (S.A.I.L., the Satisfiability Analysis & Inference Layer) makes
 [Verus](https://github.com/verus-lang/verus) verification loops faster for
 developers and coding agents. It ships a preverified vstd for matching new
 projects, caches solver answers across edits, and can restore a previous proof
-when you undo an edit. The 0.1.0 release candidate is still being benchmarked
-on Linux and macOS; current results and remaining costs are in
+when you undo an edit. The private 0.1.0-rc.6 candidate passes functional checks on Linux and
+macOS; measured speedups and remaining cold/unchanged costs are in
 [performance](docs/performance.md).
 
 `sail verify` runs `cargo verus verify` with the same arguments and puts a
 cache in front of the Z3 solver that Verus uses. Sail ships its own Verus,
 built from Sail's [Verus fork](https://github.com/Chelis-Lang/verus), which
 removes known run-to-run variation in the solver queries stock Verus sends
-for the same input (variation defeats caching). You get the same verdicts, the
-same errors and the same exit code as plain stock Verus with its pinned Z3;
-Sail's conformance suite checks exactly that. On top of that, Sail
+for the same input (variation defeats caching). Sail's conformance suite checks per-function verdicts, diagnostics and exit
+codes against plain stock Verus with its pinned Z3, with narrow
+[documented corrections to stock reporting](docs/divergences.md). On top of that, Sail
 adds complete per-target reports, durable background jobs, a file watcher and
 an MCP server for agents. When anything in Sail fails,
 verification falls back to the pinned Z3 and stays correct.

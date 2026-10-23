@@ -55,7 +55,18 @@ Full E2E including extra, PR conformance and full FAST pass. Mac clippy and all
 981 host tests pass. STANDARD passes all four arms: 159 Same and 13,166 functions per arm,
 with zero differences, instability, infrastructure errors or skipped projects.
 Its 18 mutation plus cold/revert/forced-revert controls also pass (21 Same).
-The corrected final Linux/Mac matrices remain pending.
+The final matrices confirm zero-verifier unchanged calls: 1.91 s on Linux
+and 1.82 s on Mac. Both platforms complete 31 valid selected comparisons;
+remaining cold and unchanged costs stay open in the [matrix](release-matrix.md).
+
+A separate unchanged-call CPU profile repeats the installed Anvil command
+five times: every result is Current with zero verifier invocations and two
+reused target reports. Remaining work includes SHA-256 input reads, path
+selection and filesystem mutation checks; this is not repeat verification.
+These instrumented calls diagnose cost and do not replace paired performance
+measurements. Raw summaries and results:
+`experiments/2026-10-23/noop-profile.tgz`, SHA-256
+`2ba1f90c557a34a19f812871e65adfe23d063eeeb1ff9bae4f14625d287b12a3`.
 
 The new regression discovers both plain and symlink-dependent `../`
 declarations, then retargets between already-hashed good and bad files and
