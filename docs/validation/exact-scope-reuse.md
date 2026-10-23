@@ -1,8 +1,40 @@
 # Unchanged partial verification
 
-**Status:** native implementation and focused controls pass; final release
-matrix and Mac measurements remain pending. Anvil's redundant verification is
-removed, but its remaining unchanged-run overhead is still visible.
+**Status:** exact-scope reuse is implemented and passes the complete installed
+Linux/Mac baseline. Anvil no longer repeats verification on unchanged calls;
+its remaining input-validation overhead is still open (#314). The
+[current matrix](release-matrix.md) binds the complete release measurements.
+
+## Source observations within a call (candidate)
+
+The candidate projects receipt revisions from this invocation's complete
+source observation, retaining the exact fresh-read SHA-256 encoding and full
+foreign dependency binding. A whole batch is accepted only after checking its
+original mutation stamp. The post-run snapshot can reuse the same bytes only
+when the complete observed namespace also agrees. Unknown includes, direct
+external aliases, mutations, incomplete observations and retries retain fresh
+reads. Declared headers through an ancestor alias use the same canonical
+namespace as the fresh collector; a newly selected destination refuses reuse.
+Compiler bytes and solver-query keys are unchanged.
+
+Native EC2 mac-m4.metal, us-east-1c, macOS 27.0, fork 7d9d5410 / Rust 1.99.1:
+nine paired rotated unchanged Anvil calls improve from 2.088 s to 1.494 s;
+three cold pairs are 102.353 s versus 102.103 s, with overlapping sample ranges.
+Every call is Current, all function reports match, and unchanged calls start
+zero verifiers. This is a component A/B, before the Tokio advisory update;
+it does not qualify a later release binary or close the cold-loss gate.
+The baseline CLI is `cf55a904f130baff1dc876636d7d8ec38e532041519ac678265a6fc06b13f5fc`;
+the candidate CLI is `87a5309c1b52a7e1eb22ef23163032479a4cf2cf9ac26c33d9acbea7bf86daa8`.
+
+The combined parser/source candidate passes Mac clippy and 968 host tests.
+Native combined gates and Linux timing are pending after updating Tokio for
+the newly published advisory. Tests compare selected revisions and namespace
+with fresh snapshots, retain foreign-source scoping, detect restored-mtime
+writes, added/removed files and retargeted aliases, and rebind newly discovered
+includes before publishing receipts. No conformance exception or threshold
+changes.
+
+## Original implementation qualification
 
 On native c7i.8xlarge in us-east-1, runtime f8589ed4 on upstream 7d82994,
 Cargo/Rust 1.99.1, the installed candidate at `486e46ff` verifies Anvil's

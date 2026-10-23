@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Reuse complete source observations between checks in one verification call,
+  with original mutation guards and fresh reads on uncertainty. This reduces
+  repeated source hashing without retaining source hashes between calls.
+
 - Update Tokio to 1.53.3 for RUSTSEC-2026-0386 (Unix AsyncFd I/O safety).
 
 - Keep Rustc artifact metadata out of structured diagnostic text, including

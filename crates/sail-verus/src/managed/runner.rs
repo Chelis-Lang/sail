@@ -1573,13 +1573,22 @@ fn receipt_covered_targets(
         })
 }
 
+/// Complete bytes observed in this invocation, with the stamp originally
+/// taken around those reads. Never carried into a retry or another run.
+#[derive(Clone, Copy)]
+struct RevisionObservation<'a> {
+    snapshot: &'a super::input::InputSnapshot,
+    stamp: Option<&'a String>,
+}
+
 fn dirty_receipt_packages(
     revisions: &BTreeMap<PathBuf, ReceiptRevision>,
     data: &Value,
+    observation: Option<RevisionObservation<'_>>,
 ) -> Vec<String> {
-    // Each current revision is its own complete snapshot; they overlap.
     let receipts: Vec<&ReceiptRevision> = revisions.values().collect();
-    let current = crate::parallel::in_order(&receipts, |r| target_revision(data, &r.package_id));
+    let ids: Vec<String> = receipts.iter().map(|r| r.package_id.clone()).collect();
+    let current = target_revisions(data, &ids, observation);
     receipts
         .into_iter()
         .zip(current)
@@ -1590,10 +1599,6 @@ fn dirty_receipt_packages(
         .collect()
 }
 
-#[allow(
-    clippy::too_many_lines,
-    reason = "Receipt matching is kept alongside the observed Cargo target that authorizes reuse."
-)]
 fn target_records(
     paths: &Paths,
     data: &Value,
@@ -1602,6 +1607,33 @@ fn target_records(
     expected: &BTreeSet<(String, String, String)>,
     seeded: &[super::store::Seeded],
     partial_args: Option<&[String]>,
+) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
+    target_records_in(
+        paths,
+        data,
+        context,
+        force,
+        expected,
+        seeded,
+        partial_args,
+        None,
+    )
+}
+
+#[allow(
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    reason = "Receipt matching retains its explicit authority and optional run-local source observation."
+)]
+fn target_records_in(
+    paths: &Paths,
+    data: &Value,
+    context: &str,
+    force: bool,
+    expected: &BTreeSet<(String, String, String)>,
+    seeded: &[super::store::Seeded],
+    partial_args: Option<&[String]>,
+    observation: Option<RevisionObservation<'_>>,
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
     let scoped_run = partial_args.is_some();
     let mut results = Vec::new();
@@ -1676,8 +1708,7 @@ fn target_records(
         .map(str::to_owned)
         .collect();
     let revisions: HashMap<String, String> = std::thread::scope(|scope| {
-        let current =
-            scope.spawn(|| crate::parallel::in_order(&ids, |id| target_revision(data, id)));
+        let current = scope.spawn(|| target_revisions(data, &ids, observation));
         digests.prefetch(
             batch
                 .iter()
@@ -1987,7 +2018,46 @@ fn artifacts_within(paths: &Paths, closure: Option<&BTreeSet<String>>) -> bool {
     })
 }
 
+/// One original-stamp validation for the complete batch, rather than a full
+/// global metadata scan for every small target. Any uncertain projection or
+/// mutation discards the batch and reads every revision from fresh bytes.
+fn target_revisions(
+    data: &Value,
+    ids: &[String],
+    observation: Option<RevisionObservation<'_>>,
+) -> Vec<String> {
+    if ids.is_empty() {
+        return Vec::new();
+    }
+    if let Some(source) = observation
+        && source.snapshot.complete
+        && source.stamp.is_some()
+    {
+        let projected = crate::parallel::in_order(ids, |id| {
+            target_revision_with(data, id, |selected, extras| {
+                super::input::snapshot_metadata_projected(selected, extras, source.snapshot)
+            })
+        });
+        if projected.iter().all(|revision| !revision.is_empty())
+            && super::input::unchanged_since(source.snapshot, source.stamp)
+        {
+            return projected;
+        }
+    }
+    crate::parallel::in_order(ids, |id| target_revision(data, id))
+}
+
 fn target_revision(data: &Value, package_id: &str) -> String {
+    target_revision_with(data, package_id, |selected, extras| {
+        Some(snapshot_metadata(selected, extras))
+    })
+}
+
+fn target_revision_with(
+    data: &Value,
+    package_id: &str,
+    snapshot: impl FnOnce(&Value, &[PathBuf]) -> Option<super::input::InputSnapshot>,
+) -> String {
     let closure = dependency_closure(data, [package_id]);
     // Only the fields the snapshot reads: copying the whole metadata (several
     // MB on vest) for each target cost more than the snapshot itself.
@@ -2054,7 +2124,9 @@ fn target_revision(data: &Value, package_id: &str) -> String {
                 Value::String(workspace.to_string_lossy().into_owned());
         }
     }
-    let snapshot = snapshot_metadata(&package_data, &extras);
+    let Some(snapshot) = snapshot(&package_data, &extras) else {
+        return String::new();
+    };
     if !snapshot.complete {
         return String::new();
     }
@@ -2664,9 +2736,9 @@ pub(crate) fn run_engine_held(
             .map_err(|e| Error::new("SAIL3102", e.to_string()))
             .and_then(|()| json(&hint_path, &selection));
     }
-    let mut before = match speculative {
-        Some((_, snapshot, _)) => snapshot,
-        None => snapshot_metadata(&data, &extras),
+    let (mut before, before_observation_stamp) = match speculative {
+        Some((_, snapshot, stamp)) => (snapshot, stamp),
+        None => super::input::snapshot_metadata_stamped(&data, &extras),
     };
     before.complete &= source_coverage;
     before.roots.extend(native_includes.iter().cloned());
@@ -2802,7 +2874,11 @@ pub(crate) fn run_engine_held(
         .flatten()
         .filter_map(|entry| Some((entry.path(), read::<ReceiptRevision>(&entry.path())?)))
         .collect();
-    let dirty = dirty_receipt_packages(&receipt_revisions, &data);
+    let observation = RevisionObservation {
+        snapshot: &before,
+        stamp: before_observation_stamp.as_ref(),
+    };
+    let dirty = dirty_receipt_packages(&receipt_revisions, &data, Some(observation));
     event(&serde_json::json!({
         "kind":"managed-cleanup-decision", "forced":forced,
         "changed_receipt_packages":dirty, "stale_scripts":stale_scripts,
@@ -2935,7 +3011,9 @@ pub(crate) fn run_engine_held(
     // The inputs after the run: Cargo metadata again, the build-script and
     // source-input records this run's artifacts update, and the complete
     // content snapshot they select.
-    let after_inputs = |after_metadata: Option<Result<Value>>| -> Result<AfterInputs> {
+    let after_inputs = |after_metadata: Option<Result<Value>>,
+                        source: Option<RevisionObservation<'_>>|
+     -> Result<AfterInputs> {
         super::build_inputs::update(
             &paths.build_inputs,
             &paths.run.join("artifacts.jsonl"),
@@ -2971,15 +3049,19 @@ pub(crate) fn run_engine_held(
         // from the package list before the run, and kept only if the metadata
         // after the run lists exactly the same packages: then it is the
         // snapshot that list selects. Otherwise it is taken again.
+        let snapshot = |selection: &Value| match source {
+            Some(source) => super::input::snapshot_metadata_reobserved(
+                selection,
+                &after_extras,
+                source.snapshot,
+                source.stamp,
+            ),
+            None => super::input::snapshot_metadata_stamped(selection, &after_extras),
+        };
         let (after_data, speculative) = match after_metadata {
             Some(after) => (after, None),
             None => std::thread::scope(|threads| {
-                let snapshot = threads.spawn(|| {
-                    super::input::snapshot_metadata_stamped(
-                        &snapshot_projection(&data, &sources),
-                        &after_extras,
-                    )
-                });
+                let snapshot = threads.spawn(|| snapshot(&snapshot_projection(&data, &sources)));
                 let after = metadata(
                     &config.workspace,
                     &config.args,
@@ -3000,14 +3082,14 @@ pub(crate) fn run_engine_held(
         super::files::json(&paths.input_state, &after_data)?;
         // Kept only if nothing it observed changed while Cargo read the
         // metadata (which may rewrite the lockfile).
-        let mut after = match speculative {
+        let (mut after, after_stamp) = match speculative {
             Some((snapshot, stamp))
                 if same_snapshot_selection(&data, &after_data)
                     && super::input::unchanged_since(&snapshot, stamp.as_ref()) =>
             {
-                snapshot
+                (snapshot, stamp)
             }
-            _ => snapshot_metadata(&after_data, &after_extras),
+            _ => snapshot(&after_data),
         };
         after.roots.extend(native_includes.iter().cloned());
         after.roots.extend(super::input::configuration_paths(
@@ -3020,6 +3102,7 @@ pub(crate) fn run_engine_held(
         Ok(AfterInputs {
             data: after_data,
             snapshot: after,
+            stamp: after_stamp,
             unscheduled,
             after_coverage,
             source_coverage,
@@ -3040,8 +3123,8 @@ pub(crate) fn run_engine_held(
     // a retry discards the observation and rereads all inputs after its own
     // invocation. No snapshot or receipt is committed as Current until then.
     let (records, after_thread) = std::thread::scope(|threads| {
-        let after = threads.spawn(|| after_inputs(None));
-        let records = target_records(
+        let after = threads.spawn(|| after_inputs(None, Some(observation)));
+        let records = target_records_in(
             &paths,
             &data,
             &hash,
@@ -3049,6 +3132,7 @@ pub(crate) fn run_engine_held(
             &expected,
             &seeded,
             focused(&config.args).then_some(config.args.as_slice()),
+            Some(observation),
         );
         (records, after.join())
     });
@@ -3088,18 +3172,26 @@ pub(crate) fn run_engine_held(
     let AfterInputs {
         data: after_data,
         snapshot: after,
+        stamp: after_stamp,
         unscheduled,
         after_coverage,
         source_coverage,
     } = match overlapped {
         Some(inputs) => inputs?,
-        None => after_inputs(None)?,
+        None => after_inputs(None, None)?,
     };
     // Resolve fresh receipt bindings while the input stamp still brackets every
     // content read. A newly discovered include may already belong to another
     // observed package, so global currentness alone does not imply that the
     // pre-invocation target revision contained that particular include.
-    let pending = completed_receipts(&paths.run, &after_data)?;
+    let pending = completed_receipts(
+        &paths.run,
+        &after_data,
+        Some(RevisionObservation {
+            snapshot: &after,
+            stamp: after_stamp.as_ref(),
+        }),
+    )?;
     let after_run = without_generated(&after, generated.as_deref());
     let schedule_after = super::build_inputs::family::schedule::Scope {
         data: &after_data,
@@ -3416,6 +3508,7 @@ fn same_snapshot_selection(before: &Value, after: &Value) -> bool {
 struct AfterInputs {
     data: Value,
     snapshot: super::input::InputSnapshot,
+    stamp: Option<String>,
     unscheduled: BTreeSet<String>,
     after_coverage: bool,
     source_coverage: bool,
@@ -3513,14 +3606,18 @@ fn engine_fallbacks(targets: &[TargetResult]) -> usize {
         .count()
 }
 
-fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)>> {
-    std::fs::read_dir(run.join("pending-receipts"))
+fn completed_receipts(
+    run: &Path,
+    data: &Value,
+    observation: Option<RevisionObservation<'_>>,
+) -> Result<Vec<(PathBuf, Receipt)>> {
+    let pending: Vec<(PathBuf, Receipt)> = std::fs::read_dir(run.join("pending-receipts"))
         .map_err(|e| Error::new("SAIL3107", e.to_string()))?
         .map(|entry| {
             let path = entry
                 .map_err(|e| Error::new("SAIL3107", e.to_string()))?
                 .path();
-            let mut receipt: Receipt = read(&path)
+            let receipt: Receipt = read(&path)
                 .ok_or_else(|| Error::new("SAIL3107", "staged proof receipt is unreadable"))?;
             if receipt.clone().seal().checksum != receipt.checksum {
                 return Err(Error::new(
@@ -3528,13 +3625,21 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
                     "staged proof receipt checksum failed",
                 ));
             }
-            receipt.input_revision = target_revision(data, &receipt.package_id);
-            if receipt.input_revision.is_empty() {
+            Ok((path, receipt))
+        })
+        .collect::<Result<_>>()?;
+    let ids: Vec<String> = pending.iter().map(|(_, r)| r.package_id.clone()).collect();
+    pending
+        .into_iter()
+        .zip(target_revisions(data, &ids, observation))
+        .map(|((path, mut receipt), revision)| {
+            if revision.is_empty() {
                 return Err(Error::new(
                     "SAIL3107",
                     "completed target input revision is unavailable",
                 ));
             }
+            receipt.input_revision = revision;
             Ok((path, receipt.seal()))
         })
         .collect()
@@ -4037,20 +4142,29 @@ mod tests {
             "selected",
             &load()
         ));
-        assert_eq!(dirty_receipt_packages(&load(), &data), Vec::<String>::new());
+        assert_eq!(
+            dirty_receipt_packages(&load(), &data, None),
+            Vec::<String>::new()
+        );
         // A matching header is explicitly not proof authority: this fixture
         // has no committed proof or artifact, and ordinary validation refuses.
         assert!(!original.valid("selected"));
         std::fs::write(&source, b"B")?;
-        assert_eq!(dirty_receipt_packages(&load(), &data), ["input"]);
+        assert_eq!(dirty_receipt_packages(&load(), &data, None), ["input"]);
         let edited = compiler_receipt(&paths, &data, &root.join("absent-artifact"));
         json(&path, &edited)?;
-        assert_eq!(dirty_receipt_packages(&load(), &data), Vec::<String>::new());
+        assert_eq!(
+            dirty_receipt_packages(&load(), &data, None),
+            Vec::<String>::new()
+        );
         std::fs::write(&source, b"A")?;
         // Returned A still needs restoration against B's currently held receipt.
-        assert_eq!(dirty_receipt_packages(&load(), &data), ["input"]);
+        assert_eq!(dirty_receipt_packages(&load(), &data, None), ["input"]);
         json(&path, &original)?;
-        assert_eq!(dirty_receipt_packages(&load(), &data), Vec::<String>::new());
+        assert_eq!(
+            dirty_receipt_packages(&load(), &data, None),
+            Vec::<String>::new()
+        );
         let mut missing = expected.clone();
         missing.insert(("other".into(), "other".into(), "lib".into()));
         assert!(!receipt_covered_targets(
@@ -5339,11 +5453,26 @@ mod tests {
         data["sail_source_inputs_by_package"] = serde_json::json!({"vstd":[external]});
         assert_eq!(before.revision, snapshot_metadata(&data, &[]).revision);
         let rebound =
-            completed_receipts(&run, &data).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+            completed_receipts(&run, &data, None).unwrap_or_else(|e| unreachable!("fixture: {e}"));
         assert_eq!(rebound.len(), 1);
         assert_ne!(rebound[0].1.input_revision, receipt.input_revision);
         assert_eq!(rebound[0].1.input_revision, target_revision(&data, "vstd"));
         assert_eq!(rebound[0].1.clone().seal().checksum, rebound[0].1.checksum);
+        let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let observation = Some(RevisionObservation {
+            snapshot: &observed,
+            stamp: stamp.as_ref(),
+        });
+        let projected = completed_receipts(&run, &data, observation)
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert_eq!(projected[0].1.input_revision, rebound[0].1.input_revision);
+        // An edit after the observation must rebind to fresh bytes, even
+        // though this include was already inside an observed package root.
+        assert!(std::fs::write(&external, "changed after observation").is_ok());
+        let changed = completed_receipts(&run, &data, observation)
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert_ne!(changed[0].1.input_revision, rebound[0].1.input_revision);
+        assert_eq!(changed[0].1.input_revision, target_revision(&data, "vstd"));
         assert_eq!(
             read::<Receipt>(&path).map(|r| r.checksum),
             Some(receipt.checksum.clone())
@@ -5351,7 +5480,7 @@ mod tests {
         let mut corrupt = receipt;
         corrupt.invocation.report.mode = "corrupted".to_owned();
         assert!(json(&path, &corrupt).is_ok());
-        assert!(completed_receipts(&run, &data).is_err());
+        assert!(completed_receipts(&run, &data, None).is_err());
         assert!(!run.join("committed.json").exists());
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
@@ -5569,6 +5698,10 @@ mod tests {
     fn discovered_workspace_sources_do_not_dirty_dependency_receipts() {
         let root =
             std::env::temp_dir().join(format!("sail-receipt-source-scope-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let root = root
+            .canonicalize()
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
         let app = root.join("app");
         let dependency = root.join("registry/vstd");
         let target = root.join("target");
@@ -5631,10 +5764,29 @@ mod tests {
                 whole_metadata_revision(&data, id)
             );
         }
+        let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let observation = Some(RevisionObservation {
+            snapshot: &observed,
+            stamp: stamp.as_ref(),
+        });
+        let ids = vec!["vstd".to_owned(), "app".to_owned()];
+        assert!(super::super::input::snapshot_metadata_projected(&data, &[], &observed).is_some());
+        assert_eq!(
+            target_revisions(&data, &ids, observation),
+            [dependency_before.clone(), app_before.clone()]
+        );
         assert!(std::fs::write(&app_source, "fail").is_ok());
+        assert_eq!(
+            target_revisions(&data, &ids, observation),
+            target_revisions(&data, &ids, None)
+        );
         assert_eq!(target_revision(&data, "vstd"), dependency_before);
         assert_ne!(target_revision(&data, "app"), app_before);
         assert!(std::fs::write(&dependency_source, "changed dependency").is_ok());
+        assert_eq!(
+            target_revisions(&data, &ids, observation),
+            target_revisions(&data, &ids, None)
+        );
         assert_ne!(target_revision(&data, "vstd"), dependency_before);
         assert_ne!(target_revision(&data, "app"), app_before);
         assert!(std::fs::remove_dir_all(root).is_ok());
