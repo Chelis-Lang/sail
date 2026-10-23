@@ -1,39 +1,55 @@
 # Release-candidate validation
 
-**Current status:** corrected fork `7d9d5410` passes both installed platforms'
-functional qualification. All four mutation cohorts and both 31-row matrices
-are complete. Performance acceptance remains open because Mac cold and
-unchanged calls still have real overhead. No rc.6 draft has been created.
+**Current status:** the frozen rc.6 artifacts pass functional qualification
+on both platforms and are staged for private review; performance acceptance
+remains open.
+The selected binaries include the source-alias, target-identity, repair and
+cache-session fixes and guarded source observations. Nothing is published and repository visibility is unchanged. The protected
+`release/0.1.0` branch starts at `fc29023a`; later Oyster work on main is
+outside this candidate.
 
-The [runtime record](spec-signature-runtime.md) identifies SDKs and deep checks;
-the [matrix](release-matrix.md) binds each cohort to its actual consumer.
-Packaging preserves the qualified stages without rebuilding.
+The stages were built from `cda42861`; all Rust, Cargo, engine, CI and script
+inputs equal merged source `e03dfa0b` (#347). Subsequent benchmark corrections
+supply Vest's required resource limit on both invocation paths and reject
+failed proofs in passing-workload rows; they do not change the selected
+consumer. Packaging preserves the qualified stages without rebuilding.
 
-| Corrected-candidate gate | Result |
+| Gate | Current result |
 |---|---|
-| Native Linux workspace, solver, full E2E including extra, PR/full fast and standard | Pass |
-| Mac host gate | Pass; 963 tests, clippy clean |
-| Platform factories and exact default/100 proofs | Pass on both platforms |
-| Public Vest edit/undo, both new runtime manifests | Pass; restored original proof uses zero verifier invocations |
-| Four complete three-round installed mutation cohorts per platform | Pass; 651 matching comparisons on each platform, zero false verified, different, unstable or infrastructure results |
-| Deep corpus | Pass; four arms each 159 Same / 13,166 functions; two optional Singular projects excluded |
-| Full fork source suite | Pass-through, cache-fill and cache-warm each 4,901 Same; all 4,838 nonignored tests pass; separate stock debug-order limitation remains recorded |
-| Release matrices | Both complete: 31/31 valid; slower rows remain open |
-| Actual new Linux and Mac archives, README and real Claude Code MCP | Pass; first-use proof served, edited verification, repair, MCP lists 17 tools |
-| Release performance decision and rc.6 draft | Open |
+| Native workspace, solver, full E2E including extra, PR/full FAST and STANDARD | Pass: workspace 992, solver 42; each STANDARD arm 159 Same/13,166 functions, plus 21 mutation/control comparisons |
+| Mac host gate | Pass: clippy clean, 981 tests |
+| Exact default/100 proofs and signed replies | Both platform factories pass |
+| Four full three-round mutation cohorts per platform | Pass: 651 matching comparisons per platform, no false verified/different/unstable/infra results; all 48 ordinary/forced reverts receive their own answers |
+| Mandatory deep corpus | Same 159-unit selection as completed STANDARD; two optional Singular projects excluded |
+| Full fork source suite | Direct, cache-fill and cache-warm each 4,901 Same; all 4,838 nonignored tests pass; stock-only control has four existing unstable debug-order cases |
+| Actual selected Linux archive | Pass: first-use proof served, edited verification, actual repair and real Claude Code MCP lists 17 tools |
+| Actual selected Mac archive | Pass: first-use proof served, edited verification, actual repair and real Claude Code MCP lists 17 tools |
+| Three-round performance matrices | Complete: all 31 selected rows valid per platform; corrected subsets and original failures remain visible |
+| Private rc.6 draft and owner review | Qualified archives prepared for owner review; performance and publication remain open |
 
-| Corrected archive | SHA-256 |
+| Selected archive | SHA-256 |
 |---|---|
-| `sail-0.1.0-rc.6-x86_64-unknown-linux-gnu.tar.gz` | `bca24a1bb7ca53256b13b4b1cad7ad8d79a0863f5a3a8e32339149e0516d8996` |
-| `sail-0.1.0-rc.6-aarch64-apple-darwin.tar.gz` | `30b5e45dfa42fc9e6f65dbfafb4ecc1b433102b2575b4762c3adcc4d4e076806` |
+| `sail-0.1.0-rc.6-x86_64-unknown-linux-gnu.tar.gz` | `bb27e097f9182c5ef0a0b7350f33eb27e5de7f3ed58db7edbf3c7a34d83d5109` |
+| `sail-0.1.0-rc.6-aarch64-apple-darwin.tar.gz` | `41e7ecf6acf42d0880e8dabd7704b6617436a94fbf56837f674b6dffde52dc99` |
 
-Raw complete native consumer gates and Linux archive/MCP checks:
+Raw results in the existing S3 evidence bucket:
+
+- Full native gates: `experiments/2026-10-23/declared-spelling-native-gates.tgz`,
+  SHA-256 `33d93b6863135fd6c42393e33aaae4ac147608cb59cb8aae3cfcdd9cca5d998e`.
+- Full deep source suite: `experiments/2026-10-23/spelling-rvt.tgz`, SHA-256
+  `6ca33768a18c2fe13c48dc944a32b2056315a27581c18984fb0dae7b54bfc2ae`.
+- Actual Linux archive: `experiments/2026-10-23/spelling-linux-archive-smoke.tgz`,
+  SHA-256 `1528a3ea5841d8130711b346db52ee528f2820f466b52b9dbe57afb297118035`.
+- Actual Mac archive: `experiments/2026-10-23/spelling-mac-archive-smoke.tgz`,
+  SHA-256 `160165e15c13586bf48dbb3af18d883de78ff34da2c90cf7d180e22dcca13158`.
+
+The earlier signature-only candidate passed its functional controls but did
+not meet the performance bar. Its superseded archives and checks remain in
 `experiments/2026-10-23/signature-consumer-complete.tgz`, SHA-256
-`870f63fc777ee341502af2c0aafdd074b88f37a04323a94f3568e7e05b9b4755`.
-Actual Mac archive, README and MCP checks:
-`experiments/2026-10-23/signature-mac-smoke.tgz`, SHA-256
+`870f63fc777ee341502af2c0aafdd074b88f37a04323a94f3568e7e05b9b4755`,
+and `signature-mac-smoke.tgz`, SHA-256
 `f06e5604e7ff3d05077075a43e647da43286a67415bbac8e9f55cb562a99bf0a`.
-These checks qualify the binaries above, not a later rebuilt consumer.
+They do not qualify the selected archives above.
 
 ## Previous unaccepted candidate
 

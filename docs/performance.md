@@ -5,24 +5,27 @@ verified targets and exact solver answers. Edits still pay Rust compilation
 and the Verus frontend for changed targets. Undoing an edit can restore an
 original complete proof when retaining that target was worth its cost.
 
-The corrected 0.1.0 candidate completes its three-round matrices and realistic
-edit loops on native Linux and Apple-silicon Mac hosts. All functional
-comparisons pass, but the release is not accepted: cold and unchanged costs
-remain open. Exact source and artifact identities, all samples and remaining
-gates are in the [release matrix](validation/release-matrix.md).
+The private 0.1.0-rc.6 candidate completes its functional checks on native
+Linux and Apple-silicon Mac hosts, using installed archives and realistic edits.
+Exact source and artifact identities, all samples and
+remaining gates are in the [release matrix](validation/release-matrix.md).
 
 | Complete mutation loop | Linux speedup | Mac speedup |
 |---|---:|---:|
-| HumanEval | 2.62× | 2.84× |
-| IronKV | 1.47× | 1.41× |
-| Vest | 1.13× | 1.38× |
-| CapybaraKV | 1.93× | 2.28× |
+| HumanEval | 2.66× | 2.85× |
+| IronKV | 1.46× | 1.41× |
+| Vest | 1.11× | 1.40× |
+| CapybaraKV | 1.94× | 2.32× |
 
-First use on a matching small project is 32.42 → 12.99 s on Linux and
-16.41 → 10.15 s on Mac. Mac cold Anvil is still slower (99.91 → 103.79 s),
-as is Vest (36.77 → 37.64 s). Unchanged Anvil adds 1.72 s on Linux and
-2.10 s on Mac; tiny-edit overhead is also visible. Full-loop wins do not
-hide individual slower edits; the complete reports retain them.
+First use on a matching small project is 31.21 → 12.77 s on Linux. Linux
+Anvil cold medians are 178.89 → 178.19 s with overlapping ranges; body and
+spec edits improve from 155.29 → 85.94 s and 151.40 → 35.85 s. An unchanged
+Anvil call starts zero verifiers but still costs 1.91 s versus stock 0.32 s.
+Mac first use improves 16.36 → 10.07 s. Its cold Anvil median remains slower
+(99.66 → 102.52 s), as does Vest (38.21 → 38.94 s, overlapping ranges).
+Unchanged Anvil costs 1.82 s versus stock 0.28 s. Tiny edits add about 0.35 s
+on Linux and 0.68 s on Mac. Full-loop wins do not hide individual slower
+edits; the reports retain them. Performance acceptance remains open.
 
 ## What to expect
 
@@ -54,8 +57,10 @@ edit sequence. It includes failed proofs and ordinary and forced returns to
 the original. A single scripted edit cannot establish an edit-loop claim.
 
 Corpus projects use the release's pinned vstd versions; the matrix lists the
-changes from each project's own pins. Vest's pinned original already reports
-verification errors with stock, which Sail must preserve through the sequence.
+changes from each project's own pins. Vest's default-limit corpus case still
+reports the known resource-limit failure with both verifiers. Passing-workload
+benchmarks use resource limit 100 on both arms. Mutation sequences include
+failing proofs and require Sail to preserve their stock outcomes.
 Successful shipped-proof reuse and instant undo have a separate public Vest
 control in the [profile qualification](validation/rlimit-subsumption.md).
 
@@ -214,8 +219,9 @@ Verismo's additional Rust target changes its sysroot identity; the script
 removes that target afterward if it installed it. Each cold sample records
 whether the shipped proof was served or why it missed.
 
-Every sample is kept. Comparisons require matching exit codes and functional
-verification results and diagnostics; incomplete comparisons fail. The report
+Every sample is kept. Passing-workload rows require successful verification on
+both arms, with matching functional results and diagnostics; matching failed
+proofs cannot qualify them. Incomplete comparisons fail. The report
 separately marks every slower median for review, with its range and absolute
 delta. A successful report does not itself grant release acceptance.
 

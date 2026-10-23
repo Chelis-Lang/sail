@@ -5,10 +5,12 @@ release work; linked validation pages preserve the scope of each result.
 
 ## Functional release qualification
 
-The corrected 7d9d5410 runtime passes all four full mutation cohorts on both
-platforms: 651 matching comparisons each. The preceding Mac HumanEval proof
-regression (#337) is fixed by #338; its original failure and reproduction
-remain in the [runtime record](validation/spec-signature-runtime.md).
+The selected rc.6 consumer passes all four complete mutation cohorts on each
+platform: 651 matching comparisons each, no false verified results, differences,
+instability or infrastructure errors. All ordinary and forced reverts get the
+original's own answers. The previous Mac HumanEval regression (#337) remains
+fixed by runtime #338. The [release record](validation/release-candidate.md)
+binds these results to the frozen binaries; later main changes are separate.
 
 ## Release performance
 
@@ -22,15 +24,17 @@ remain in the [runtime record](validation/spec-signature-runtime.md).
 - **Anvil cold and unchanged setup costs remain open** (#314). Exact-scope
   reuse removes repeat verification without promoting partial reports to
   whole-target proofs. The complete corrected matrix measures unchanged
-  calls at 2.04 s versus stock 0.33 s on Linux, and 2.39 s versus 0.28 s on
-  Mac. Mac cold is 103.79 s versus 99.91 s. See
+  calls at 1.91 s versus stock 0.32 s on Linux. Its cold medians are
+  178.19 s versus 178.89 s with overlapping ranges. Mac cold is 102.52 s
+  versus 99.66 s; its unchanged call is 1.82 s versus 0.28 s. See
   [unchanged partial verification](validation/exact-scope-reuse.md).
-- **The release performance decision remains open** (#232, #278). Mac Vest
-  cold adds 0.87 s; tiny edits and other unchanged calls retain visible
-  overhead. CapybaraKV cold now matches stock on Mac. Both complete matrices
-  and all four realistic edit loops per platform are available in
-  [performance](performance.md); known losses are not accepted by documenting
-  them.
+- **The release performance decision remains open** (#232, #278). Tiny edits
+  and unchanged calls retain visible overhead; Mac Vest cold adds 0.74 s
+  with overlapping sample ranges. All 31 selected comparisons are valid on
+  each platform, including the corrected successful Vest subsets. Original
+  default-limit failures remain invalid and preserved; conformance retains
+  that regression. [Performance](performance.md) states the current numbers.
+  Recording a loss does not accept it.
 
 - **IronKV's larger edit losses are removed by the tighter retention budget**
   (#330; candidate qualification in progress). All 153 comparisons match and
