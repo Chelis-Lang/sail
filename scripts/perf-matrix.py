@@ -60,8 +60,9 @@ checks, not functions: a function with a separate loop query counts twice),
 after checking them against the report's per-function verdicts. When Cargo answers a stock
 rerun without running Verus, Sail may match that no-op or the copy's
 previous verifying stock output. A comparison is valid only when each round
-has exactly one sample per arm, both exited as stock did and both passed
-identity checks. Speed is reported separately under the owner's relative bar;
+has exactly one sample per arm, both succeeded and both passed identity
+checks. Matching failed verifications retain their identity and exit codes,
+but cannot qualify these passing-workload performance rows. Speed is reported separately under the owner's relative bar;
 every slower median requires review, including tiny overheads.
 
 Portable to Linux and macOS: Python 3 standard library, git and the tools
@@ -432,9 +433,13 @@ class Runner:
                             "SAIL_PERF_MACHINE": os.environ.get("SAIL_PERF_MACHINE", ""),
                             "SAIL_PERF_VSTD": self.vstd,
                             "SAIL_PERF_STOCK_HOME": str(self.stock.parent),
-                            # No Verus flags after `--`: cargo-verus forwards
-                            # them to vstd too, which a user's run does not do.
+                            # Omit timing-only Verus flags; cargo-verus forwards
+                            # them to vstd. Keep required proof limits below.
                             "SAIL_PERF_VERUS_TIMES": "0"})
+        if project == "vest":
+            # Its default rlimit reproduces VI-0032 in the conformance corpus.
+            # Benchmark the supported passing workflow, on both arms.
+            env["SAIL_PERF_VERUS_ARGS"] = "--rlimit 100"
         if self.vstd_lock:
             env["SAIL_PERF_VSTD_LOCK"] = str(self.vstd_lock)
         log = self.out / f"r{rnd}" / f"perf-real-{project}.log"
@@ -611,6 +616,7 @@ def cmd_run(args):
                   runtime_manifest_sha256=file_sha256(runtime_manifest(r.install, r.extra)),
                   corpus_sha256=file_sha256(ROOT / "corpus/corpus.toml"),
                   vstd_lock_sha256=file_sha256(r.vstd_lock),
+                  extra_verus_args_by_project=({"vest": ["--rlimit", "100"]} if "vest" in projects else {}),
                   required_mutations=(["human-eval", "ironkv", "vest", "capybarakv"] if not args.project
                                       else [p for p in projects if p in ("ironkv", "vest", "capybarakv")]),
                   vstd=args.vstd, vstd_lock=str(r.vstd_lock) if r.vstd_lock else None,
@@ -699,7 +705,7 @@ def rows_of(samples, rounds, expected=()):
     rows = []
     for (project, scenario), arms in sorted(groups.items(), key=lambda kv: (order.get(kv[0][0], 99), sc(*kv[0]))):
         stock, sail = arms.get("stock", []), arms.get("sail", [])
-        failures = [s for s in stock + sail if not s.get("ok")]
+        failures = [s for s in stock + sail if not s.get("ok") or s["exit"] != 0]
         expected = list(range(1, rounds + 1))
         complete = all(sorted(s["round"] for s in arm) == expected for arm in (stock, sail))
         row = dict(project=project, scenario=scenario, n=(len(stock), len(sail)),

@@ -1,10 +1,16 @@
 # Combined release matrix
 
-**Current status:** the corrected fork-7d9d5410 candidate completes all 31
-rows on both native platforms: 27 scripted rows and four complete three-round
-mutation cohorts from each platform's exact installed consumer. All functional
-comparisons pass. Mac cold and unchanged overhead keep performance acceptance
-open; no release acceptance is claimed.
+**Current status:** the combined consumer is being qualified. Passing-workload
+matrix rows now require successful verification on both arms, in addition to
+strict identity checks. The current Linux run exposed a configuration defect:
+Vest was invoked at its default limit and both arms exited 101. Those rows do
+not qualify passing-workload performance. Vest is being repeated at resource
+limit 100; the Mac matrix will use that same passing configuration.
+
+The tables below describe the earlier baseline and its original matching-exit
+comparison rule. They are not acceptance of the current combined consumer.
+The realistic mutation suite already uses Vest's passing resource limit and
+remains separate from the scripted rows. Final performance acceptance is open.
 
 | Platform | Corrected staged CLI SHA-256 |
 |---|---|
@@ -186,3 +192,8 @@ clean README new/verify/reuse walkthrough and real Claude Code MCP listing.
 Raw control, scripts, outputs and host log:
 `experiments/2026-10-22/mac-proof-coexistence.tgz`, SHA-256
 `a4726b493060707597e8402776cf2c0e9782c957159b94995f9344b9bb9930a9`.
+
+- `cda42861`, 2026-10-23, Linux scripted Vest attempt: invalid as a passing
+  workload; both arms failed at the default limit (VI-0032). The corrected
+  invocation uses `--rlimit 100` equally on both arms; matching failed samples
+  remain recorded and now fail the performance-validity check.

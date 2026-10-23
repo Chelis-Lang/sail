@@ -224,11 +224,14 @@ class Report(unittest.TestCase):
             self.assertEqual(row["valid"], phase == "unchanged")
         self.assertEqual(pm.PERF_REAL_PHASE["unchanged"], "unchanged")
 
-    def test_matching_failures_keep_their_observed_exit_codes(self):
+    def test_matching_failures_keep_identity_but_cannot_qualify_passing_rows(self):
         samples = [sample(r, arm, "cold", wall, self.V, code=101, project="vest")
                    for r in (1, 2, 3) for arm, wall in (("stock", 30.0), ("sail", 25.0))]
         row = pm.rows_of(samples, 3)[0]
-        self.assertTrue(row["valid"])
+        self.assertFalse(row["valid"])
+        self.assertFalse(row["pass"])
+        self.assertEqual(len(row["failures"]), 6)
+        self.assertTrue(all(s["identity"] == "same" for s in samples))
         self.assertEqual(row["exit_codes"], {"stock": ["101"], "sail": ["101"]})
 
     def test_pairs_and_judges_rows(self):
