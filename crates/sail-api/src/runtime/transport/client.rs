@@ -105,6 +105,16 @@ impl Client {
             ));
         }
         let capabilities = self.capabilities()?;
+        if matches!(request.input, Input::Temporal { .. })
+            && !capabilities
+                .temporal
+                .as_ref()
+                .is_some_and(|c| c.implemented)
+        {
+            return Err(unavailable(
+                "running service has no native temporal endpoint",
+            ));
+        }
         let mut random = [0_u8; 16];
         std::fs::File::open("/dev/urandom")?.read_exact(&mut random)?;
         let id = random.iter().fold(String::new(), |mut id, byte| {
@@ -120,14 +130,14 @@ impl Client {
             },
             MAX_REQUEST_BYTES,
         )?;
-        let Input::Smt { queries } = &request.input;
-        let wait = queries
-            .iter()
-            .try_fold(10_000_u64, |sum, query| {
+        let wait = match &request.input {
+            Input::Smt { queries } => queries.iter().try_fold(10_000_u64, |sum, query| {
                 sum.checked_add(query.limits.wall_time_ms)
-            })
-            .filter(|millis| *millis <= 20_000_000)
-            .ok_or_else(|| io::Error::other("SAIL6201: request execution deadline is excessive"))?;
+            }),
+            Input::Temporal { job } => job.wall_time_ms.checked_add(10_000),
+        }
+        .filter(|millis| *millis <= 20_000_000)
+        .ok_or_else(|| io::Error::other("SAIL6201: request execution deadline is excessive"))?;
         let response = std::thread::scope(|scope| {
             let (transmit, receive) = mpsc::channel();
             let read_stream = &stream;
@@ -186,8 +196,13 @@ pub(super) fn validate_payload(
     capabilities: &Capabilities,
 ) -> io::Result<()> {
     use crate::runtime::{Answer, Outcome, Output};
-    let Input::Smt { queries } = &request.input;
-    let Output::Smt { results } = &response.output;
+    let (queries, results) = match (&request.input, &response.output) {
+        (Input::Temporal { job }, Output::Temporal { result }) => {
+            return validate_temporal(job, result, capabilities);
+        }
+        (Input::Smt { queries }, Output::Smt { results }) => (queries, results),
+        _ => return Err(unavailable("runtime response family differs")),
+    };
     if results.len() != queries.len() {
         return Err(unavailable("runtime query result count changed"));
     }
@@ -257,6 +272,51 @@ pub(super) fn validate_payload(
                 "failed runtime execution carries successful check evidence",
             ));
         }
+    }
+    Ok(())
+}
+
+fn validate_temporal(
+    job: &crate::temporal::Job,
+    result: &crate::temporal::Result,
+    capabilities: &Capabilities,
+) -> io::Result<()> {
+    use crate::runtime::Outcome;
+    let capability = capabilities
+        .temporal
+        .as_ref()
+        .ok_or_else(|| unavailable("temporal capability missing"))?;
+    if result.obligation_id != job.obligation_id
+        || result.requirement_ids != job.requirement_ids
+        || result.request_sha256
+            != crate::temporal::request_sha256(&job.request).map_err(unavailable)?
+        || result.backend_revision != capability.backend_revision
+        || result.wall_time_ms != job.wall_time_ms
+        || result.cache_hit
+    {
+        return Err(unavailable(
+            "temporal result attribution, content or limits differ",
+        ));
+    }
+    if result.outcome == Outcome::Completed {
+        let response = result
+            .response
+            .as_ref()
+            .ok_or_else(|| unavailable("completed temporal execution lacks native evidence"))?;
+        if !capability.installed
+            || result.worker_sha256.is_none()
+            || result.worker_sha256 != capability.worker_sha256
+            || result.error.is_some()
+        {
+            return Err(unavailable(
+                "temporal result lacks negotiated worker identity",
+            ));
+        }
+        crate::temporal::validate_response(&job.request, response).map_err(unavailable)?;
+    } else if result.response.is_some() || result.error.is_none() {
+        return Err(unavailable(
+            "failed temporal execution supplied logical evidence",
+        ));
     }
     Ok(())
 }

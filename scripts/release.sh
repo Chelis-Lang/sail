@@ -65,7 +65,7 @@ self_check() {
   echo "$status"
 }
 
-# stage OUT ENGINE_BUILD: bin/{sail,sail-z3} and engine/<variant>/ holding
+# stage OUT ENGINE_BUILD: bin/{sail,sail-z3,sail-runtime-worker} and engine/<variant>/ holding
 # exactly the runtime files the manifest binds (sail-build.json and
 # verus/source/target-verus/release/*). The variant name is the build's own
 # (resolved) directory name, which sail requires to match its host and pins.
@@ -84,12 +84,13 @@ stage() {
     || die "THIRD-PARTY-NOTICES is stale: regenerate it with scripts/third-party-notices.py"
   rm -rf "$notices"
   cp LICENSE THIRD-PARTY-NOTICES "$out/"
-  cp target/release/sail target/release/sail-z3 "$out/bin/"
+  cp target/release/sail target/release/sail-z3 target/release/sail-runtime-worker "$out/bin/"
   chmod 755 "$out/bin/sail" "$out/bin/sail-z3"
   # Drop the release profile's line tables from the shipped binaries (symbols
   # stay, so backtraces still name functions). Only Sail's own binaries: the
   # engine runtime files are bound to their manifest digests.
-  strip -S "$out/bin/sail" "$out/bin/sail-z3"
+  strip -S "$out/bin/sail" "$out/bin/sail-z3" "$out/bin/sail-runtime-worker"
+  "$release_python" -B scripts/stage-temporal-worker.py "$out/bin/sail-runtime-worker" "$out/bin"
   build="$(cd "$build" && pwd -P)"
   variant="$(basename "$build")"
   mkdir -p "$out/engine/$variant/$runtime"
@@ -180,7 +181,7 @@ release() {
   package dist/stage/linux "sail-$version-x86_64-unknown-linux-gnu"
 
   # macOS: build and stage here.
-  cargo build --release --locked -p sail-cli -p sail-shim
+  cargo build --release --locked -p sail-cli -p sail-shim -p sail-runtime-worker
   # The pinned, qualified runtime (engine/verus/artifact-macos.json) from the
   # fork's public release; install checks its digest and every file.
   local build
@@ -194,7 +195,7 @@ release() {
     --title "Sail $version" \
     --notes "Draft release built by scripts/release.sh from $commit.
 
-Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/sail-z3, a source/native-byte-bound vstd proof bundle and Sail's Verus (built from Sail's Verus fork; also the repair engine) under engine/. Users need only a Rust toolchain besides. See docs/releasing.md." \
+Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/sail-z3, the native temporal worker and its installation manifest, a source/native-byte-bound vstd proof bundle and Sail's Verus (built from Sail's Verus fork; also the repair engine) under engine/. Users need only a Rust toolchain besides. See docs/releasing.md." \
     dist/*.tar.gz dist/*.tar.gz.sha256
   gh release view "v$version" --repo "$repo" --json url,isDraft,assets \
     --jq '"\(.url) draft=\(.isDraft)", (.assets[] | "  \(.name) \(.size)")'

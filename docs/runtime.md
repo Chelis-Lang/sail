@@ -115,6 +115,40 @@ Exit 0 means every transcript completed with decided answers; either `sat` or
 invalid input or setup failure. Ctrl-C cancels active work and reaps its solver
 processes. Capabilities are descriptive and exit 0 even if a backend is missing.
 
-This slice implements Z3 only. D.I.V.E. jobs, neutral-contract verification and
-requirement assurance are separate integration slices. None is implied by raw
-SMT completion. See [ADR 0068](decisions/0068-runtime-daemon.md).
+The SMT family implements Z3 only. Native temporal execution is described
+below. Neutral-contract verification and requirement assurance remain separate
+integration slices. None is implied by raw SMT completion. See [ADR 0068](decisions/0068-runtime-daemon.md).
+
+## Native temporal jobs
+
+The same runtime endpoint accepts `input: {kind: "temporal", job: ...}`.
+`sail-api::temporal::Job` contains caller `obligation_id`, sorted unique
+`requirement_ids`, an immutable native `request` and positive `wall_time_ms`
+(up to five minutes). The native request supplies the closed source map,
+root/configuration and check, finite simulation or trace validation operation.
+See [native temporal jobs](temporal-jobs.md) for the admitted semantic scope.
+
+`capabilities.temporal` reports implementation and authenticated worker
+installation separately. Older services omit this field; temporal clients
+must restart or upgrade instead of falling back. Existing SMT requests and
+version-one wire fields retain their meanings.
+
+The result preserves caller identity, exact request identity, D.I.V.E. source
+revision, worker digest and deadline. Execution failure has no native response.
+A completed execution includes the original typed native response, reports,
+traces and validation evidence. Native stopped/unsupported/error outcomes are
+explicit. Neither finite simulation nor trace validity is an exhaustive proof.
+This slice does not cache temporal evidence or establish assurance tiers.
+
+Internal source installations build `sail-cli` and `sail-runtime-worker`, then
+stage the worker beside the Sail binary:
+
+```sh
+cargo build --locked -p sail-cli -p sail-runtime-worker
+python3 scripts/stage-temporal-worker.py target/debug/sail-runtime-worker target/debug
+```
+
+The manifest records the exact linked source revision, payload protocol,
+platform and worker digest. Release staging uses the same helper after
+stripping final bytes and binds both files in its release inventory. No PATH
+search, caller-selected executable, Java or TLC process participates.

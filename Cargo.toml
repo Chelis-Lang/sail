@@ -18,11 +18,14 @@ syn = { version = "=2.0.119", features = ["full", "fold", "visit", "extra-traits
 sail-contracts-ir = { path = "crates/sail-contracts-ir" }
 sail-contracts-macros = { path = "crates/sail-contracts-macros" }
 sail-contracts = { path = "crates/sail-contracts" }
+dive-api = { git = "https://github.com/Chelis-Lang/dive", rev = "1025cd6a0510183bc16abc1e6e3eea4f9305c5a9" }
+dive-ir = { git = "https://github.com/Chelis-Lang/dive", rev = "1025cd6a0510183bc16abc1e6e3eea4f9305c5a9" }
+sail-dive = { path = "crates/sail-dive" }
 # Safe bounded Unix RPC connection setup, including listener backlog pressure.
 socket2 = "=0.6.5"
 inotify = { version = "=0.11.5", default-features = false }
 # Safe kernel mount-event and bounded optional Unix socket readiness polling.
-rustix = { version = "=1.1.5", default-features = false, features = ["std", "event", "fs"] }
+rustix = { version = "=1.1.5", default-features = false, features = ["std", "event", "fs", "process"] }
 sail-smtlib = { path = "crates/sail-smtlib" }
 sail-session = { path = "crates/sail-session" }
 sail-key = { path = "crates/sail-key" }

@@ -19,6 +19,11 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     ("sail-contracts-ir", &[]),
     ("sail-contracts-macros", &["sail-contracts-ir"]),
     ("sail-contracts", &["sail-contracts-macros"]),
+    ("sail-dive", &["sail-api"]),
+    (
+        "sail-runtime-worker",
+        &["sail-dive", "sail-api", "sail-daemon", "sail-runtime"],
+    ),
     ("sail-smtlib", &[]),
     ("sail-session", &["sail-smtlib"]),
     ("sail-key", &["sail-smtlib", "sail-session"]),
@@ -32,7 +37,13 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     ("sail-api", &["sail-key", "sail-ledger"]),
     (
         "sail-runtime",
-        &["sail-api", "sail-cache", "sail-key", "sail-smtlib"],
+        &[
+            "sail-api",
+            "sail-cache",
+            "sail-key",
+            "sail-smtlib",
+            "sail-dive",
+        ],
     ),
     (
         "sail-shim",

@@ -71,11 +71,12 @@ Use [the template](0000-template.md) for a new decision.
 - [0064: Accept verification-progress note ordering (accepted)](0064-verification-progress-note-order.md)
 - [0065: One verification runtime for Oyster](0065-oyster-runtime.md)
 - [0066: Shared neutral contract syntax and checked runtime (runtime implemented; backend qualification separate)](0066-neutral-contract-runtime.md)
-- [0069: Exact-scope report reuse](0069-exact-scope-report-reuse.md)
+- [0067: Isolated native D.I.V.E. runtime worker (proposed)](0067-dive-runtime-worker.md)
 - [0068: Shared runtime transport and agent tools](0068-runtime-daemon.md)
-
-- [0070: Owned neutral source verification jobs (accepted)](0070-neutral-contract-jobs.md)
+- [0069: Exact-scope report reuse](0069-exact-scope-report-reuse.md)
+- [0070: Owned neutral source verification jobs](0070-neutral-contract-jobs.md)
+- [0071: Native temporal jobs through the shared runtime](0071-shared-temporal-runtime.md)
+- [0072: Derive requirement assurance from authenticated neutral evidence](0072-requirement-assurance.md)
+- [0073: Preserve compound-field definedness and qualify retained lowering](0073-compound-field-definedness.md)
 
 - [0074: Keep bounded neutral-source mutation evidence separate from proof](0074-bounded-neutral-mutation.md)
-- [0073: Preserve compound-field definedness and qualify retained lowering](0073-compound-field-definedness.md)
-- [0072: Derive requirement assurance from authenticated neutral evidence](0072-requirement-assurance.md)

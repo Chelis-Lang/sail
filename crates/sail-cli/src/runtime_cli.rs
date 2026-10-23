@@ -71,6 +71,10 @@ pub(crate) fn configuration(cache: PathBuf) -> Result<Config, String> {
     let build = sail_verus::engine::resolve_build(&root, &pins);
     let z3 = sail_verus::source_build::checkout_dir(&build).join("source/target-verus/release/z3");
     Ok(Config {
+        temporal_worker: sail_runtime::temporal::Worker::discover(
+            &std::env::current_exe().map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?,
         z3: Some(z3),
         cache_directory: Some(cache),
         workers: 2,
@@ -97,14 +101,28 @@ pub(crate) fn start_service(
 }
 
 fn result(out: &mut dyn Write, response: &sail_api::runtime::Response) -> Result<u8, String> {
-    let Output::Smt { results } = &response.output;
-    let complete = results.iter().all(|result| {
-        result.outcome == Outcome::Completed
-            && result
-                .checks
-                .iter()
-                .all(|check| check.answer != Answer::Unknown)
-    });
+    let complete = match &response.output {
+        Output::Temporal { result } => {
+            result.outcome == Outcome::Completed
+                && result.response.as_ref().is_some_and(|response| {
+                    matches!(
+                        response.outcome,
+                        sail_api::temporal::Outcome::Holds
+                            | sail_api::temporal::Outcome::Refuted
+                            | sail_api::temporal::Outcome::Sampled
+                            | sail_api::temporal::Outcome::Valid
+                            | sail_api::temporal::Outcome::Invalid
+                    )
+                })
+        }
+        Output::Smt { results } => results.iter().all(|result| {
+            result.outcome == Outcome::Completed
+                && result
+                    .checks
+                    .iter()
+                    .all(|check| check.answer != Answer::Unknown)
+        }),
+    };
     write_json(out, response)?;
     Ok(u8::from(!complete))
 }
@@ -174,7 +192,7 @@ fn decode_request(input: impl Read) -> Result<Request, String> {
     if bytes.len() as u64 > MAX_DOCUMENT_BYTES {
         return Err("error[SAIL6101]: runtime JSON exceeds 128 MiB".into());
     }
-    serde_json::from_slice(&bytes)
+    sail_api::temporal::decode(&bytes)
         .map_err(|e| format!("error[SAIL6101]: invalid runtime JSON: {e}"))
 }
 

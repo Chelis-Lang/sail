@@ -98,6 +98,37 @@ fn completed(client: &Client, id: &str) -> TestResult {
         std::thread::sleep(Duration::from_millis(200));
     }
 }
+fn validate_assurance(
+    client: &Client,
+    output: &Path,
+    label: &str,
+    document: &sail_api::jobs::ResultDocument,
+    digest: &str,
+    expected: ProofState,
+) -> TestResult {
+    let assurance = client.requirement_assurance(&document.job.id)?;
+    if assurance != sail_api::assurance::from_contract_result(document)?
+        || assurance.currentness != sail_api::project::Currentness::Unknown
+        || assurance.requirements.is_empty()
+        || assurance.requirements.iter().any(|requirement| {
+            requirement.evidence.iter().any(|row| {
+                row.source_sha256 != digest
+                    || row.outcome != expected
+                    || row.tier
+                        != (expected == ProofState::Proved)
+                            .then_some(sail_api::assurance::EvidenceTier::SmtVerified)
+                    || row.mutation != sail_api::assurance::MutationStatus::NotEstablished
+            })
+        })
+    {
+        return Err("assurance changed proof, snapshot scope or missing mutation evidence".into());
+    }
+    std::fs::write(
+        output.join(format!("{label}.assurance.json")),
+        serde_json::to_vec_pretty(&assurance)?,
+    )?;
+    Ok(())
+}
 fn one(
     client: &Client,
     output: &Path,
@@ -154,6 +185,7 @@ fn one(
         return Err("owned snapshot has no qualified backend evidence".into());
     }
     validate_compound_failure(label, &backend)?;
+    validate_assurance(client, output, label, &document, &digest, expected)?;
     std::fs::write(
         output.join(format!("{label}.result.json")),
         serde_json::to_vec_pretty(&document)?,
@@ -368,12 +400,27 @@ fn main() -> TestResult {
     let jobs = [positive, negative, unsafe_field, guarded_field];
     drop(service);
     let (service, client) = start(&sail, &output)?;
-    for id in &jobs {
+    for (label, id) in [
+        "positive",
+        "body-edit",
+        "compound-field",
+        "compound-field-guarded",
+    ]
+    .into_iter()
+    .zip(&jobs)
+    {
         let Response::Result(result) = client.call(&Request::Result { id: id.clone() })? else {
             return Err("restart result".into());
         };
         if result.contracts.is_none() || result.job.currentness != Currentness::Unknown {
             return Err("restart changed neutral evidence".into());
+        }
+        let assurance = client.requirement_assurance(id)?;
+        let saved: sail_api::assurance::View = serde_json::from_slice(&std::fs::read(
+            output.join(format!("{label}.assurance.json")),
+        )?)?;
+        if assurance != saved {
+            return Err("restart changed requirement assurance".into());
         }
     }
     drop(service);

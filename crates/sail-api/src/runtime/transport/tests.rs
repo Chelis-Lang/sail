@@ -74,6 +74,7 @@ fn completed_payload_is_bound_to_content_limits_identity_and_original_metadata()
         platform: "test-platform".into(),
     };
     let capabilities = Capabilities {
+        temporal: None,
         version: VERSION,
         backends: vec![BackendCapability {
             backend: "z3".into(),
@@ -161,5 +162,39 @@ fn completed_payload_is_bound_to_content_limits_identity_and_original_metadata()
     let mut changed = result;
     changed.checks.clear();
     assert!(validate(changed).is_err());
+    Ok(())
+}
+
+#[test]
+fn capability_extension_keeps_old_smt_clients_and_old_services_compatible() -> io::Result<()> {
+    use crate::runtime::Capabilities;
+    use serde::{Deserialize, Serialize};
+    #[derive(Deserialize, Serialize)]
+    struct OldCapabilities {
+        version: u32,
+        backends: Vec<crate::runtime::BackendCapability>,
+        incremental_transcripts: bool,
+        batches: bool,
+        max_queries: usize,
+    }
+    let old = serde_json::json!({"version":1,"backends":[],"incremental_transcripts":true,"batches":true,"max_queries":64});
+    let mut new: Capabilities = serde_json::from_value(old.clone())?;
+    assert!(new.temporal.is_none());
+    new.temporal = Some(crate::temporal::Capability {
+        implemented: true,
+        installed: false,
+        backend_revision: crate::temporal::DIVE_REVISION.into(),
+        worker_sha256: None,
+        error: None,
+    });
+    let legacy: OldCapabilities = serde_json::from_value(serde_json::to_value(new)?)?;
+    assert_eq!(serde_json::to_value(legacy)?, old);
+    // Duplicate source or ITF keys must fail before canonical maps can hide them.
+    assert!(
+        crate::temporal::decode::<serde_json::Value>(
+            br#"{"model":{"files":{"M.tla":"a","M.tla":"b"}}}"#
+        )
+        .is_err()
+    );
     Ok(())
 }

@@ -33,6 +33,11 @@ pub struct Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Input {
+    /// One attributed native temporal job.
+    Temporal {
+        /// Immutable payload and bounded deadline.
+        job: Box<crate::temporal::Job>,
+    },
     /// Independent complete SMT transcripts, in caller order.
     Smt {
         /// Bounded independent queries.
@@ -95,6 +100,11 @@ pub struct Response {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Output {
+    /// One native temporal execution, including original evidence.
+    Temporal {
+        /// Exact caller attribution and separate execution/native outcomes.
+        result: Box<crate::temporal::Result>,
+    },
     /// Query results in original caller order.
     Smt {
         /// One result for every admitted query.
@@ -213,6 +223,9 @@ pub struct QueryResult {
 /// Versioned runtime capabilities; readiness is not a theorem verdict.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Capabilities {
+    /// Native temporal readiness; absent on older SMT-only services.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temporal: Option<crate::temporal::Capability>,
     /// Equals [`VERSION`].
     pub version: u32,
     /// Backends implemented by this build.

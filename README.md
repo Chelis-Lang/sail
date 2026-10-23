@@ -31,6 +31,11 @@ through Sail's private service and retain its actual contract proof evidence.
 [Bounded source mutation](docs/neutral-mutation.md) retains separate actual
 verifier rejection, survival and inconclusive evidence under unchanged contracts.
 
+Rust callers can also run [isolated native temporal jobs](docs/temporal-jobs.md):
+model checking, finite simulation and independent trace validation through a
+pinned D.I.V.E. library. This developer API is separate from Verus commands
+and is not yet part of the release archive or daemon interface.
+
 ## Install
 
 Sail is a prebuilt archive per platform on

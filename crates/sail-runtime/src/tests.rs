@@ -155,14 +155,20 @@ fn unavailable_backend_and_cancelled_work_are_not_solver_answers() -> TestResult
             &request(vec![query("(check-sat)")]),
             &Cancellation::default(),
         )?
-        .output;
+        .output
+    else {
+        return Err("expected SMT family".into());
+    };
     assert_eq!(results[0].outcome, Outcome::Unavailable);
     assert_eq!(results[0].checks, []);
     let token = Cancellation::default();
     token.cancel();
     let Output::Smt { results } = runtime
         .execute(&request(vec![query("(check-sat)")]), &token)?
-        .output;
+        .output
+    else {
+        return Err("expected SMT family".into());
+    };
     assert_eq!(results[0].outcome, Outcome::Cancelled);
     assert!(results[0].solver.is_none());
     Ok(())
@@ -239,7 +245,10 @@ fn changed_executable_never_becomes_ready() -> TestResult {
             &request(vec![query("(check-sat)")]),
             &Cancellation::default(),
         )?
-        .output;
+        .output
+    else {
+        return Err("expected SMT family".into());
+    };
     assert_eq!(results[0].outcome, Outcome::Unavailable);
     assert_eq!(results[0].checks, []);
     Ok(())
@@ -311,7 +320,10 @@ fn actual_pinned_solver_matches_direct_on_models_cores_enums_and_incremental_che
         .collect::<Result<Vec<_>, _>>()?;
     let Output::Smt { results } = runtime
         .execute(&request(queries), &Cancellation::default())?
-        .output;
+        .output
+    else {
+        return Err("expected SMT family".into());
+    };
     for (result, expected) in results.iter().zip(expected) {
         assert_eq!(result.outcome, Outcome::Completed, "{result:?}");
         assert_eq!(result.stdout, expected);
@@ -343,7 +355,10 @@ fn actual_cache_binds_exact_content_limits_and_identity_and_survives_corruption(
     let execute = |query| -> Result<_, Box<dyn std::error::Error>> {
         let Output::Smt { results } = runtime
             .execute(&request(vec![query]), &Cancellation::default())?
-            .output;
+            .output
+        else {
+            return Err("expected SMT family".into());
+        };
         results
             .into_iter()
             .next()
@@ -389,7 +404,10 @@ fn actual_unknown_is_explicit_and_never_cached() -> TestResult {
     for _ in 0..2 {
         let Output::Smt { results } = runtime
             .execute(&request(vec![item.clone()]), &Cancellation::default())?
-            .output;
+            .output
+        else {
+            return Err("expected SMT family".into());
+        };
         assert_eq!(results[0].outcome, Outcome::Completed, "{:?}", results[0]);
         assert_eq!(results[0].checks[0].answer, Answer::Unknown);
         assert!(!results[0].cache_hit);
