@@ -1,6 +1,7 @@
 //! The `STATS` operation reports the daemon's counters (ADR 0012).
 #![cfg(unix)]
 
+use std::os::unix::fs::PermissionsExt as _;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -32,6 +33,14 @@ fn stats_count_hellos_gets_hits_and_puts() {
     assert_eq!(c.stats().ok(), Some(StatsSnapshot::default()));
     // A solver that cannot be identified is still a HELLO.
     assert!(c.hello("/nonexistent/z3").is_err());
+    assert!(c.get(&[7u8; 32]).is_err());
+    let Ok(mut c) = Client::connect(&socket) else {
+        unreachable!("cannot reconnect")
+    };
+    let solver = dir.join("solver");
+    assert!(std::fs::write(&solver, b"#!/bin/sh\necho 'Z3 version 4.16.0'\n").is_ok());
+    assert!(std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o700)).is_ok());
+    assert!(c.hello(&solver.to_string_lossy()).is_ok());
     let key = [7u8; 32];
     assert!(matches!(c.get(&key), Ok(None)));
     let meta = PutMeta {
@@ -42,13 +51,16 @@ fn stats_count_hellos_gets_hits_and_puts() {
     assert!(c.put(&key, meta, b"unsat\n".to_vec()).is_ok());
     assert_eq!(c.get(&key).ok().flatten().as_deref(), Some(&b"unsat\n"[..]));
     let expected = StatsSnapshot {
-        hellos: 1,
+        hellos: 2,
         gets: 2,
         hits: 1,
         puts: 1,
         // The reply was still held in memory after the PUT (ADR 0015).
         memory_hits: 1,
         dropped_puts: 0,
+        // The admitted miss now has a solver identity; the unconfigured
+        // shared tier is considered and skipped once.
+        shared_skipped: 1,
         ..StatsSnapshot::default()
     };
     assert_eq!(c.stats().ok(), Some(expected));

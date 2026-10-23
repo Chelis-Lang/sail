@@ -414,7 +414,7 @@ fn sessions_without_a_solver_identity_never_consult_the_shared_tier() {
         Ok(c) => c,
         Err(e) => unreachable!("{e}"),
     };
-    assert_eq!(get(&mut c, &k), None);
+    assert!(c.get(&k.0).is_err());
     assert_eq!(rig.stats().shared_lookups, 0);
 }
 
