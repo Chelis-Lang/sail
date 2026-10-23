@@ -5,16 +5,10 @@ release work; linked validation pages preserve the scope of each result.
 
 ## Functional release qualification
 
-- **Complete Mac mutation qualification after the proof regression**
-  ([#337](https://github.com/Chelis-Lang/sail/issues/337)). The preceding
-  f8589ed4 candidate rejects `exists_even_index` where stock verifies it,
-  in all three full HumanEval rounds. Corrected runtime 7d9d5410 and its
-  installed consumer now pass the full three-round HumanEval cohort (165 Same)
-  and IronKV cohort (153 Same). Vest and CapybaraKV are running before
-  release acceptance. The
-  [reproduction](../corpus/repros/verus-spec-formal-context/README.md) and
-  [runtime record](validation/spec-signature-runtime.md) preserve the cause,
-  original failure and current scope. No functional comparison is relaxed.
+The corrected 7d9d5410 runtime passes all four full mutation cohorts on both
+platforms: 651 matching comparisons each. The preceding Mac HumanEval proof
+regression (#337) is fixed by #338; its original failure and reproduction
+remain in the [runtime record](validation/spec-signature-runtime.md).
 
 ## Release performance
 
@@ -25,17 +19,18 @@ release work; linked validation pages preserve the scope of each result.
   [reproduction](../corpus/repros/z3-resource-count-variation/README.md) and
   [qualification](validation/rlimit-subsumption.md).
 
-- **Anvil unchanged partial verification still has setup overhead** (#314).
-  Exact-scope report reuse has removed repeat verification on Linux. The Mac
-  first-recheck correction is being qualified: a native control falls from
-  about 35 s to 2.4 s with zero verifier invocations. Stock's no-op is about
-  0.3 s. Partial reports remain incomplete and cannot authorize whole-target
-  proof reuse. See [unchanged partial verification](validation/exact-scope-reuse.md).
-- **The combined release still needs its final performance decision** (#232,
-  #278). The complete Linux baseline has faster cold medians on all five real
-  projects. Mac cold CapybaraKV, Vest and Anvil showed losses; fixes and repeated
-  measurements are in progress. Small edits and unchanged runs retain visible
-  overhead. See [performance](performance.md).
+- **Anvil cold and unchanged setup costs remain open** (#314). Exact-scope
+  reuse removes repeat verification without promoting partial reports to
+  whole-target proofs. The complete corrected matrix measures unchanged
+  calls at 2.04 s versus stock 0.33 s on Linux, and 2.39 s versus 0.28 s on
+  Mac. Mac cold is 103.79 s versus 99.91 s. See
+  [unchanged partial verification](validation/exact-scope-reuse.md).
+- **The release performance decision remains open** (#232, #278). Mac Vest
+  cold adds 0.87 s; tiny edits and other unchanged calls retain visible
+  overhead. CapybaraKV cold now matches stock on Mac. Both complete matrices
+  and all four realistic edit loops per platform are available in
+  [performance](performance.md); known losses are not accepted by documenting
+  them.
 
 - **IronKV's larger edit losses are removed by the tighter retention budget**
   (#330; candidate qualification in progress). All 153 comparisons match and

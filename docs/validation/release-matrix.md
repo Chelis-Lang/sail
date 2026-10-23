@@ -1,22 +1,50 @@
 # Combined release matrix
 
-**Current status:** the corrected fork-7d9d5410 candidate is undergoing full
-native Linux and Mac release measurements. Each platform requires its own
-27 scripted rows and four complete three-round mutation cohorts from the
-same installed consumer. The release performance decision remains open.
+**Current status:** the corrected fork-7d9d5410 candidate completes all 31
+rows on both native platforms: 27 scripted rows and four complete three-round
+mutation cohorts from each platform's exact installed consumer. All functional
+comparisons pass. Mac cold and unchanged overhead keep performance acceptance
+open; no release acceptance is claimed.
 
 | Platform | Corrected staged CLI SHA-256 |
 |---|---|
 | Native Linux x86-64, EC2 c7i.8xlarge, Ubuntu 24.04 | `160ea5037436e7ef57c8fb2e8d3db50c07b41d27cc53cda61cb0ec946b2fb42b` |
 | Native macOS 27.0 arm64, EC2 mac-m4.metal | `cf55a904f130baff1dc876636d7d8ec38e532041519ac678265a6fc06b13f5fc` |
 
-Both stages include freshly recorded exact vstd proofs and signed replies for
-the rebuilt runtime. The installed Mac candidate passes all 165 comparisons in the complete
-three-round HumanEval cohort, including `human-eval-constant-004`. Mac and
-Linux IronKV pass all 153 comparisons each. Remaining cohorts are running. Public successful Vest edit/undo
-controls pass on both platforms, including restoration of the original proof
-with zero verifier invocations. Their elapsed times are diagnostic controls,
-not release performance measurements. See [runtime qualification](spec-signature-runtime.md).
+Both stages contain freshly recorded exact vstd proofs and signed replies.
+Each platform's complete HumanEval (165), IronKV (153), Vest (165) and
+CapybaraKV (168) cohorts total **651 matching comparisons**, with zero false
+verified, different, unstable or infrastructure results. One daemon serves
+each complete sequence; ordinary and forced returns receive the original's
+own answers. Vest includes the existing accepted VI-0003 status exception.
+
+| Full mutation-loop speedup | Linux | Mac |
+|---|---:|---:|
+| HumanEval, 52 edits | 2.62× | 2.84× |
+| IronKV, 48 edits | 1.47× | 1.41× |
+| Vest, 52 edits | 1.13× | 1.38× |
+| CapybaraKV, 53 edits | 1.93× | 2.28× |
+
+Mac cold Anvil is 103.79 s versus stock 99.91 s; Vest is 37.64 s versus
+36.77 s. Anvil unchanged is 2.39 s versus 0.28 s. Linux cold Anvil medians
+are 183.92 s versus 181.34 s with overlapping sample ranges; its unchanged
+call is 2.04 s versus 0.33 s. Tiny edits and other unchanged calls also retain
+visible overhead. These losses are open, not accepted allowances.
+
+Complete reports in the existing S3 evidence bucket:
+`experiments/2026-10-23/signature-linux-complete-matrix.md` and
+`experiments/2026-10-23/signature-mac-complete-matrix.md`. Raw matrix/cohort
+reports, headers, samples and logs are in the same prefix, named
+`signature-linux-matrix.tgz`, `signature-linux-{human-eval,ironkv,vest,capybarakv}.tgz`,
+`signature-mac-primary.tgz` (matrix, HumanEval and IronKV) and
+`signature-mac-secondary.tgz` (Vest and CapybaraKV). They preserve every
+sample, setup adjustment, expected failure and individual slower mutation.
+
+Successful public Vest edit/undo controls on both manifests restore the
+original complete proof with zero verifier invocations. The failing Vest
+corpus pin remains a failing project with both stock and Sail. See
+[runtime qualification](spec-signature-runtime.md) and
+[performance](../performance.md) for scope and remaining costs.
 
 ## Previous unaccepted fork-f8589ed4 measurements
 
@@ -47,7 +75,7 @@ one. Stock verifies the mutant; Sail rejects its postcondition in all three
 rounds. A fresh single-mutant sequence also reproduces it. Bare-fork controls reproduce it without Sail or its cache. The
 [spec-formal context record](../verus-issues/VI-0034-spec-formal-solver-context.md)
 identifies the input-context sensitivity and the bounded Mac compiler correction;
-full qualification remains pending. The failed cohort, catalogue and exact output
+that defect is fixed by #338; the failed cohort, catalogue and exact output
 are preserved in `experiments/2026-10-23/mac-human-constant004-failure.tgz`,
 SHA-256 `369de45697d6255cf9d12e30326aec32477fa1771a4ed8820bfe7fd81431c1f7`.
 The comparison remains strict and the mutant remains in the catalogue.

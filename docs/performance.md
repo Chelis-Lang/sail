@@ -5,10 +5,24 @@ verified targets and exact solver answers. Edits still pay Rust compilation
 and the Verus frontend for changed targets. Undoing an edit can restore an
 original complete proof when retaining that target was worth its cost.
 
-The combined 0.1.0 candidate is being measured on native Linux and Apple-silicon
-Mac hosts. The release is not accepted until its full matrix and realistic
-edit loops have been reviewed. Current source, artifact identities, results
-and remaining gates are in the [release matrix](validation/release-matrix.md).
+The corrected 0.1.0 candidate completes its three-round matrices and realistic
+edit loops on native Linux and Apple-silicon Mac hosts. All functional
+comparisons pass, but the release is not accepted: cold and unchanged costs
+remain open. Exact source and artifact identities, all samples and remaining
+gates are in the [release matrix](validation/release-matrix.md).
+
+| Complete mutation loop | Linux speedup | Mac speedup |
+|---|---:|---:|
+| HumanEval | 2.62× | 2.84× |
+| IronKV | 1.47× | 1.41× |
+| Vest | 1.13× | 1.38× |
+| CapybaraKV | 1.93× | 2.28× |
+
+First use on a matching small project is 32.42 → 12.99 s on Linux and
+16.41 → 10.15 s on Mac. Mac cold Anvil is still slower (99.91 → 103.79 s),
+as is Vest (36.77 → 37.64 s). Unchanged Anvil adds 1.72 s on Linux and
+2.10 s on Mac; tiny-edit overhead is also visible. Full-loop wins do not
+hide individual slower edits; the complete reports retain them.
 
 ## What to expect
 
