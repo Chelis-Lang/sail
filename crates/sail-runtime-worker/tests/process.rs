@@ -289,7 +289,9 @@ fn malformed_trailing_stderr_and_oversize_worker_output_never_become_verdicts() 
 #[test]
 fn exited_leader_with_inherited_pipes_still_times_out_and_kills_owned_group() {
     let started = std::time::Instant::now();
-    let result = control("SAIL_CONTROL_PIPES", Duration::from_millis(150));
+    // The wall budget also covers hashing the debug worker before it starts.
+    // Leave room for that admission so this control reaches inherited pipes.
+    let result = control("SAIL_CONTROL_PIPES", Duration::from_secs(2));
     assert!(
         matches!(
             result,
@@ -299,7 +301,7 @@ fn exited_leader_with_inherited_pipes_still_times_out_and_kills_owned_group() {
         ),
         "{result:?}"
     );
-    assert!(started.elapsed() < Duration::from_secs(2));
+    assert!(started.elapsed() < Duration::from_secs(5));
 }
 
 #[test]

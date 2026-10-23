@@ -110,24 +110,36 @@ fn check_tools(value: &Value) -> Result<(), String> {
     if *value != sail_mcp::tools::definitions() {
         return Err("tools/list differs from this build's tool definitions".to_owned());
     }
-    let schema = |index: usize| &tools[index]["inputSchema"];
+    let schema = |name: &str| {
+        tools
+            .iter()
+            .find(|tool| tool["name"] == name)
+            .map(|tool| &tool["inputSchema"])
+            .ok_or_else(|| format!("missing tool {name}"))
+    };
     let required = [
+        ("requirement_assurance", json!(["job_id"])),
         (
-            9,
+            "explain_failure",
             json!(["job_id", "package_id", "target", "kind", "function"]),
         ),
-        (11, json!(["job_id", "name"])),
-        (14, json!(["package", "kind", "function", "engine"])),
+        ("save_baseline", json!(["job_id", "name"])),
+        (
+            "start_repair_validation",
+            json!(["package", "kind", "function", "engine"]),
+        ),
     ];
-    for (index, fields) in required {
-        if schema(index)["required"] != fields {
-            return Err(format!("{} must require {fields}", TOOL_NAMES[index]));
+    for (name, fields) in required {
+        if schema(name)?["required"] != fields {
+            return Err(format!("{name} must require {fields}"));
         }
     }
-    if schema(8)["properties"]["after"]["minimum"] != json!(0) {
+    if schema("verification_events")?["properties"]["after"]["minimum"] != json!(0) {
         return Err("verification_events cursors must be non-negative".to_owned());
     }
-    if schema(4)["properties"]["engine"]["enum"] != json!(["stock", "interactive"]) {
+    if schema("start_verification")?["properties"]["engine"]["enum"]
+        != json!(["stock", "interactive"])
+    {
         return Err(
             "start_verification must declare stock and explicit interactive engine modes"
                 .to_owned(),

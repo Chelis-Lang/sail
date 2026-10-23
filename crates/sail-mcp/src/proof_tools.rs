@@ -334,7 +334,7 @@ mod tests {
         );
         let document = serde_json::to_value(sail_api::jobs::Response::Assurance(Box::new(
             sail_api::assurance::View {
-                version: 1,
+                version: sail_api::assurance::VERSION,
                 job_id: "job-123".into(),
                 currentness: sail_api::project::Currentness::Unknown,
                 requirements: Vec::new(),
