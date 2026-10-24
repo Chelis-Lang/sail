@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -22,11 +23,11 @@ class VerificationEvidence(unittest.TestCase):
 
     def setUp(self):
         self.pins = {"verus": {"commit": "stock-commit", "release": "stock-release"}}
-        self.entry = {"source": "proofs/acceptance/model.rs", "verified": 2, "functions": ["model::first", "model::second"]}
+        self.entry = {"source": "proofs/acceptance/model.rs", "verified": 2, "functions": ["check_model::first", "check_model::second"]}
         self.document = {
             "verus": {"commit": "stock-commit", "version": "stock-release"},
             "verification-results": {"success": True, "verified": 2, "errors": 0, "encountered-error": False, "encountered-vir-error": False, "is-verifying-entire-crate": True},
-            "func-details": {"model::first": {}, "model::second": {}, "vstd::trusted": {}},
+            "func-details": {"check_model::first": {}, "check_model::second": {}, "vstd::trusted": {}},
         }
 
     def checked(self, document=None, code=0, broken=False):
@@ -52,7 +53,7 @@ class VerificationEvidence(unittest.TestCase):
         with self.assertRaises(CHECKER.Refusal):
             self.checked(candidate)
         candidate = copy.deepcopy(self.document)
-        del candidate["func-details"]["model::second"]
+        del candidate["func-details"]["check_model::second"]
         with self.assertRaises(CHECKER.Refusal):
             self.checked(candidate)
 
@@ -68,6 +69,11 @@ class VerificationEvidence(unittest.TestCase):
         for value in ['{"verification-results": {}, "verification-results": {}}', '{', json.dumps(self.document) + json.dumps(self.document)]:
             with self.subTest(value=value), self.assertRaises(CHECKER.Refusal):
                 CHECKER.checked_document(value, 0, self.entry, self.pins, broken=False)
+
+    def test_resource_failure_cannot_pass_a_negative_control(self):
+        self.assertTrue(CHECKER.resource_failure("error: Resource limit (rlimit) exceeded; consider rerunning with --profile"))
+        self.assertTrue(CHECKER.resource_failure("solver timed out"))
+        self.assertFalse(CHECKER.resource_failure("error: assertion failed"))
 
     def test_signal_omitted_functions_and_bad_negative_counters_refused(self):
         candidate = copy.deepcopy(self.document)
@@ -88,16 +94,35 @@ class VerificationEvidence(unittest.TestCase):
 class SourceInventory(unittest.TestCase):
     """Deleting an expected component or adding hidden proof sources fails."""
 
+    def test_composition_uses_only_the_complete_captured_closure(self):
+        paths = CHECKER.dependency_paths("composition")
+        snapshots = {path: ("captured_" + Path(path).stem).encode() for path in paths}
+        entry = {"id": "composition", "source": "proofs/acceptance/composition.rs", "dependencies": paths}
+        name, driver, files = CHECKER.captured_driver(entry, snapshots, b"mutated_composition")
+        self.assertEqual(name, "check_composition.rs")
+        self.assertEqual(set(files), {Path(path).name for path in paths})
+        self.assertEqual(files["composition.rs"], b"mutated_composition")
+        self.assertEqual(files["context.rs"], snapshots[CHECKER.SUPPORT])
+        self.assertIn(b'#[path="query_association.rs"] pub mod query_association;', driver)
+        with self.assertRaises(CHECKER.Refusal):
+            CHECKER.captured_driver({**entry, "dependencies": paths[:-1]}, snapshots, b"candidate")
+        with self.assertRaises(CHECKER.Refusal):
+            CHECKER.captured_driver(entry, snapshots, b'include!("/untracked.rs");')
+        changed = {**snapshots, CHECKER.SUPPORT: b'#[path="/untracked.rs"] mod hidden;'}
+        with self.assertRaises(CHECKER.Refusal):
+            CHECKER.captured_driver(entry, changed, b"candidate")
+
     def test_missing_extra_duplicate_and_ambiguous_roots(self):
         with tempfile.TemporaryDirectory() as scratch:
             root = Path(scratch)
             directory = root / "proofs/acceptance"
             directory.mkdir(parents=True)
-            manifest = {"schema": "sail-acceptance-proofs-v1", "components": []}
+            manifest = {"schema": "sail-acceptance-proofs-v2", "support_sources": [CHECKER.SUPPORT], "components": []}
+            (root / CHECKER.SUPPORT).write_text("shared_context")
             for name in sorted(CHECKER.COMPONENTS):
-                source = directory / (name + ".rs")
+                source = directory / (CHECKER.COMPONENTS[name] + ".rs")
                 source.write_text("required_check")
-                manifest["components"].append({"id": name, "source": str(source.relative_to(root)), "verified": 1, "functions": ["lemma"], "negative_controls": [{"name": "remove-check", "before": "required_check", "after": "false"}]})
+                manifest["components"].append({"id": name, "source": str(source.relative_to(root)), "dependencies": CHECKER.dependency_paths(name), "verified": 1, "functions": ["lemma"], "negative_controls": [{"name": "remove-check", "before": "required_check", "after": "false"}]})
             CHECKER.inventory(root, manifest)
             for changed in [manifest["components"][:-1], [manifest["components"][0]] * 3]:
                 with self.assertRaises(CHECKER.Refusal):
@@ -107,7 +132,7 @@ class SourceInventory(unittest.TestCase):
             with self.assertRaises(CHECKER.Refusal):
                 CHECKER.inventory(root, manifest)
             extra.unlink()
-            for dependency in ['#[path="/tmp/untracked.rs"] mod helper;', 'include!("/tmp/untracked.rs");', 'use std::include_str as hidden;', 'macro_rules! hidden { () => {} }']:
+            for dependency in ['#[path="/tmp/untracked.rs"] mod helper;', 'include!("/tmp/untracked.rs");', 'use std::include_str as hidden;', 'macro_rules! hidden { () => {} }', 'env!("HOME")', 'option_env!("USER")', 'use std::env as hidden;']:
                 source.write_text("required_check\n" + dependency)
                 with self.subTest(dependency=dependency), self.assertRaises(CHECKER.Refusal):
                     CHECKER.inventory(root, manifest)
@@ -119,6 +144,22 @@ class SourceInventory(unittest.TestCase):
             mutation["components"][0]["negative_controls"][0]["after"] = 'include!("/tmp/hidden.rs");'
             with self.assertRaises(CHECKER.Refusal):
                 CHECKER.inventory(root, mutation)
+
+
+class CanonicalGitObjects(unittest.TestCase):
+    def test_replace_refs_cannot_change_the_bytes_of_a_selected_commit(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            commits = []
+            for content in ("original", "replacement"):
+                (root / "proof.rs").write_text(content)
+                subprocess.run(["git", "-C", str(root), "add", "proof.rs"], check=True)
+                subprocess.run(["git", "-C", str(root), "-c", "user.name=Proof Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", content], check=True)
+                commits.append(CHECKER.git(root, "rev-parse", "HEAD"))
+            subprocess.run(["git", "-C", str(root), "replace", commits[0], commits[1]], check=True)
+            self.assertEqual(subprocess.check_output(["git", "-C", str(root), "show", commits[0] + ":proof.rs"]), b"replacement")
+            self.assertEqual(CHECKER.git_bytes(root, "show", commits[0] + ":proof.rs"), b"original")
 
 
 class RuntimeIdentity(unittest.TestCase):

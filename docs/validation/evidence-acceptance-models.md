@@ -1,10 +1,36 @@
 # Evidence-acceptance model qualification
 
-Status: initial standalone models pass direct stock-Verus checking on macOS
-and native Linux. The production acceptance core, concrete adapter refinement
-and composed service theorem remain unproved. This record qualifies the
-[initial checker and models](../design/acceptance-proof-checker.md), not default
-runtime behavior or release performance.
+Status: expanded component and composed model proofs are frozen for final
+native qualification. The production acceptance core, concrete adapters and
+service-wide theorem remain unproved. This record owns the actual scope of
+[checking](../design/acceptance-proof-checker.md).
+
+## Expanded model candidate
+
+The captured-source manifest contains four roots and one shared context.
+The individual drivers verify 59 query, 64 input and 62 authority checks; the
+combined driver verifies 196 checks across all sources. Counts overlap because
+the combined driver rechecks the actual components. All four positive
+compatibility runs use pinned stock Verus, full-crate scope, explicit pinned
+Z3 and `--no-cheating`, with zero errors.
+
+The selected 24 guard mutations cover pairing/suppression, noisy publication,
+corrupt/unrecorded recovery, source alias/scope bounds, capture epochs/domain,
+solver projection/read freshness, whole/confirmed/complete coverage, stale or
+misattributed records, omitted started child streams, and composed admission,
+mode and fresh-projection guards. Complete selected-case runs and native
+workspace/CI-duration qualification remain pending at this checkpoint.
+
+Exploration index: 2026-10-24, query solver-binding guard-removal experiments
+were rejected after resource-limit diagnostics; neither experiment is in the
+qualified mutation inventory. Ordinary development witness failures were
+corrected without relaxing the normal solver resource limit. They do not
+qualify any proof or production guarantee.
+
+## Initial model checkpoint
+
+The initial models passed on both platforms before the lifecycle expansion.
+The following source and hashes preserve that narrower scope.
 
 ## Source, runtime and scope
 

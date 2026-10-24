@@ -5,9 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
-- Add standalone acceptance proof models and a direct stock-Verus checker
-  with complete-scope and deliberately broken controls. Production acceptance
-  remains independently implemented; its refinement is not established.
+- Add linked acceptance lifecycle models and a conditional composed proof,
+  checked directly by stock Verus with complete captured dependencies and
+  guard-removal controls. CI completion requires the model-proof job.
+  Production acceptance remains independently implemented and unrefined.
 
 - Keep unchanged CLI proofs reusable when private dependency credentials change.
   Source and build-script declarations that read those variables still

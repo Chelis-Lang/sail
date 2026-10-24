@@ -36,7 +36,8 @@ def main() -> None:
         sys.exit(f"archive SHA-256 {got}, expected {asset['sha256']}")
     with zipfile.ZipFile(archive) as z:
         z.extractall(dest)
-    archive.unlink()
+    # Direct stock proof checks revalidate this exact archive and all extracted
+    # members. Retain it in the CI image as independent runtime provenance.
     install = dest / asset["dir"]
     for f in install.iterdir():
         if f.is_file():

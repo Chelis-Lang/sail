@@ -1,4 +1,4 @@
-# 0076: Standalone acceptance models checked by stock Verus
+# 0076: Captured acceptance models checked by stock Verus
 
 - **Status:** proposed
 - **Date:** 2026-10-24
@@ -12,16 +12,19 @@ small honest boundary and an independent checker before runtime extraction.
 
 ## Decision
 
-Keep the initial three standalone Verus roots under `proofs/acceptance/`,
+Keep four model roots and their shared exact context under `proofs/acceptance/`,
 outside Cargo's production dependency graph. Use the existing upstream stock
 pin in `corpus/toolchain.toml`, directly with its pinned Z3 and `--no-cheating`.
-Bind the full root/function inventory, positive proof counts, deliberately
+Generate fixed drivers only from captured Git dependency closures. Bind the
+full root/function inventory, positive proof counts, deliberately
 broken controls, selected Git blobs and validated runtime to every check.
 
 Check full crates; do not expose flags that narrow scope or skip verification.
 Conservatively exclude external source-loading constructs until their complete
 closure is captured. The Python checker's failure tests join the ordinary
-workspace gate; actual proof invocations remain local-only for this slice.
+workspace gate. Direct stock proofs run as a separate fast CI job whose success
+is required by CI completion, after native duration qualification. The CI image
+retains the validated stock archive for offline runtime provenance checking.
 
 ## Consequences
 

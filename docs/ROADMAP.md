@@ -17,7 +17,7 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 
 | Gate | Current state | Remaining work |
 |---|---|---|
-| Query association, input identity, scope and result authority models | Initial standalone models and direct stock-Verus checker implemented; qualification is recorded in the [model guide](design/acceptance-proof-checker.md) | Production source sharing, observation adapters, cache origins and composed theorem |
+| Query association, input identity, scope and result authority models | Expanded lifecycle models, composed admission and captured-source direct stock checking implemented; qualification is recorded in the [model guide](design/acceptance-proof-checker.md) | Production source sharing, observation adapters, cache origins and composed theorem |
 | Production acceptance core | Design specified; no production path uses the proved models | Complete stages C–F of the [design](design/evidence-acceptance-core.md) and existing conformance/cost gates |
 
 ## Goal

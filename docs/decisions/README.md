@@ -82,4 +82,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0074: Keep bounded neutral-source mutation evidence separate from proof](0074-bounded-neutral-mutation.md)
 - [0075: Preserve floating-point identity in retained JSON evidence](0075-retained-json-roundtrip.md)
 
-- [0076: Standalone acceptance models checked by stock Verus (proposed)](0076-stock-acceptance-models.md)
+- [0076: Captured acceptance models checked by stock Verus (proposed)](0076-stock-acceptance-models.md)
