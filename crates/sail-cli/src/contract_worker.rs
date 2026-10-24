@@ -44,9 +44,14 @@ fn execute(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<
     let pins = sail_verus::toolchain::Pins::embedded().map_err(|e| e.to_string())?;
     config.cargo_toolchain = sail_verus::managed::CargoToolchain::Pinned(pins.verus.rust_toolchain);
     config.force = true;
-    let run =
-        sail_verus::contracts::verify(&submission.source, &submission.crate_name, &config, err)
-            .map_err(|e| e.to_string())?;
+    let run = sail_verus::contracts::verify_profile(
+        &submission.source,
+        &submission.crate_name,
+        submission.profile,
+        &config,
+        err,
+    )
+    .map_err(|e| e.to_string())?;
     let code = u8::try_from(run.backend.exit_code.unwrap_or(2)).unwrap_or(2);
     let result = WorkerResult {
         version: VERSION,

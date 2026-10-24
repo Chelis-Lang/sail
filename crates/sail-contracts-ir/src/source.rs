@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use quote::ToTokens;
 use syn::{Expr, Item, ItemFn, Stmt, visit::Visit};
 
-use crate::{AttributeKind, ContractFunction, parse_function, unsupported};
+use crate::{AttributeKind, ContractFunction, parse_function_with_profile, unsupported};
 
 /// One contract-bearing function in its original lexical namespace.
 #[derive(Clone, Debug)]
@@ -21,6 +21,10 @@ pub struct SourceFunction {
 pub struct SourceModel {
     /// Original complete file, retained for explicit backend admission.
     pub file: syn::File,
+    /// Explicitly selected source admission profile.
+    pub profile: u32,
+    /// Nongeneric source enums, keyed by qualified nominal identity.
+    pub enums: BTreeMap<String, syn::ItemEnum>,
     /// Contract-bearing functions in original lexical order.
     pub functions: Vec<SourceFunction>,
     /// Original struct definitions by qualified source identity.
@@ -34,6 +38,19 @@ pub struct SourceModel {
 /// Rejects invalid contracts, duplicate predicate IDs, unresolved predicate calls
 /// and calls whose predicate implements another requirement.
 pub fn parse_source(text: &str) -> syn::Result<SourceModel> {
+    parse_source_with_profile(text, 1)
+}
+
+/// Parse a complete source file under explicitly selected profile one or two.
+/// # Errors
+/// Rejects unknown profiles and invalid contracts or predicate resolution.
+pub fn parse_source_with_profile(text: &str, profile: u32) -> syn::Result<SourceModel> {
+    if !matches!(profile, 1 | 2) {
+        return Err(unsupported(
+            proc_macro2::TokenStream::new(),
+            "unsupported source profile",
+        ));
+    }
     if text.len() > 1024 * 1024 {
         return Err(syn::Error::new(
             proc_macro2::Span::call_site(),
@@ -43,7 +60,15 @@ pub fn parse_source(text: &str) -> syn::Result<SourceModel> {
     let file = syn::parse_file(text)?;
     let mut functions = Vec::new();
     let mut structs = BTreeMap::new();
-    collect(&file.items, &[], &mut functions, &mut structs)?;
+    let mut enums = BTreeMap::new();
+    collect(
+        &file.items,
+        &[],
+        &mut functions,
+        &mut structs,
+        &mut enums,
+        profile,
+    )?;
     let mut predicates = BTreeMap::new();
     let mut identities = BTreeSet::new();
     for value in &functions {
@@ -79,7 +104,7 @@ pub fn parse_source(text: &str) -> syn::Result<SourceModel> {
                     "contract call does not resolve to a validated requirement predicate",
                 )
             })?;
-            if predicate.requirement != value.function.requirement {
+            if !value.function.requirements.contains(&predicate.requirement) {
                 return Err(unsupported(
                     path,
                     "predicate requirement differs from the function's satisfies identity",
@@ -89,6 +114,8 @@ pub fn parse_source(text: &str) -> syn::Result<SourceModel> {
     }
     Ok(SourceModel {
         file,
+        profile,
+        enums,
         functions,
         structs,
     })
@@ -131,19 +158,27 @@ fn collect(
     module: &[String],
     functions: &mut Vec<SourceFunction>,
     structs: &mut BTreeMap<String, syn::ItemStruct>,
+    enums: &mut BTreeMap<String, syn::ItemEnum>,
+    profile: u32,
 ) -> syn::Result<()> {
     for item in items {
         match item {
             Item::Fn(value) if annotated(&value.attrs) => functions.push(SourceFunction {
                 module: module.to_vec(),
                 owner: None,
-                function: parse_function(value.clone(), None)?,
+                function: parse_function_with_profile(value.clone(), None, profile)?,
             }),
             Item::Mod(value) => {
                 if let Some((_, items)) = &value.content {
                     let mut nested = module.to_vec();
                     nested.push(value.ident.to_string());
-                    collect(items, &nested, functions, structs)?;
+                    collect(items, &nested, functions, structs, enums, profile)?;
+                }
+            }
+            Item::Enum(value) if profile == 2 => {
+                let key = qualified(module, &value.ident.to_string());
+                if enums.insert(key, value.clone()).is_some() {
+                    return Err(unsupported(value, "duplicate nominal enum"));
                 }
             }
             Item::Struct(value) => {
@@ -177,8 +212,11 @@ fn collect(
                     if let syn::ImplItem::Fn(function) = item
                         && annotated(&function.attrs)
                     {
-                        let function =
-                            parse_function(syn::parse2(function.to_token_stream())?, None)?;
+                        let function = parse_function_with_profile(
+                            syn::parse2(function.to_token_stream())?,
+                            None,
+                            profile,
+                        )?;
                         functions.push(SourceFunction {
                             module: module.to_vec(),
                             owner: Some(owner.path.clone()),
@@ -258,7 +296,10 @@ impl<'ast> Visit<'ast> for Body {
             self.error.get_or_insert_with(|| unsupported(value, "unsupported neutral executable body; calls, effects, loops and macros are not admitted"));
         }
         if let Expr::Unary(value) = value
-            && !matches!(value.op, syn::UnOp::Not(_) | syn::UnOp::Neg(_))
+            && !matches!(
+                value.op,
+                syn::UnOp::Not(_) | syn::UnOp::Neg(_) | syn::UnOp::Deref(_)
+            )
         {
             self.error.get_or_insert_with(|| {
                 unsupported(

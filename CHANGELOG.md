@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add explicitly negotiated neutral source profile two for admitted unit enums,
+  flat records, shared references, mutable scalar references, and several
+  requirement identities sharing a conjunctive guarantee. Legacy profile-one
+  source and retained evidence keep their original interpretation and bytes.
+  Runtime postconditions borrow actual results without requiring Copy.
+
+
 - Keep unchanged CLI proofs reusable when private dependency credentials change.
   Source and build-script declarations that read those variables still
   invalidate their receipts when the values change.
