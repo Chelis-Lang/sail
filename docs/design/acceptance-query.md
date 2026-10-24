@@ -72,8 +72,10 @@ This model does not silently change production's backend or cache policy.
 
 The component uses `ModelContext`, `Mode` and `SolverId` from the captured
 [shared context](../../proofs/acceptance/context.rs). A current session retains
-the exact request, scope, runtime, mode and effective input map throughout
-execution. An origin may come from different caller inputs when its complete
+the exact request, scope, runtime, solver, mode and effective input map throughout
+execution. Session/live-run validity requires the observed solver to equal
+`ModelContext.solver`; mismatched run starts cannot publish. An origin may
+come from different caller inputs when its complete
 SMT query binding is identical; requiring the old caller input map to equal
 the current map would incorrectly forbid legitimate solver-query reuse.
 

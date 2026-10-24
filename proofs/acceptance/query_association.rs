@@ -242,7 +242,7 @@ pub open spec fn run_init(context: ModelContext, solver: Solver) -> LiveRun {
 }
 
 pub open spec fn run_wf(run: LiveRun) -> bool {
-    pairer_wf(run.pairer) && buffer_wf(run.output)
+    run.solver == run.context.solver && pairer_wf(run.pairer) && buffer_wf(run.output)
     && run.pairer.replies == run.output.complete
     && forall|i: int| 0 <= i < run.pairer.commands.len() ==>
         run.pairer.commands[i].solver == run.solver
@@ -288,6 +288,7 @@ pub open spec fn run_step(run: LiveRun, action: RunAction) -> LiveRun {
 }
 
 pub proof fn run_initially_valid(context: ModelContext, solver: Solver)
+    requires solver == context.solver,
     ensures run_wf(run_init(context, solver)),
 {
     pairer_initially_valid();
@@ -347,6 +348,7 @@ pub open spec fn run_replay(context: ModelContext, solver: Solver, actions: Seq<
 }
 
 pub proof fn replayed_run_is_valid(context: ModelContext, solver: Solver, actions: Seq<RunAction>)
+    requires solver == context.solver,
     ensures run_wf(run_replay(context, solver, actions)),
         run_replay(context, solver, actions).context == context,
         run_replay(context, solver, actions).solver == solver,
@@ -385,6 +387,7 @@ pub open spec fn origin_run(origin: Origin) -> LiveRun {
 #[verifier::opaque]
 pub open spec fn origin_valid(origin: Origin) -> bool {
     context_wf(origin.context)
+    && origin.solver == origin.context.solver
     && run_complete(origin_run(origin))
     && origin.index < origin_run(origin).pairer.entries.len()
 }
@@ -518,8 +521,9 @@ pub open spec fn can_recover(store: Store, index: nat) -> bool {
 
 pub open spec fn store_step(store: Store, action: StoreAction) -> Store {
     match action {
-        StoreAction::StartRun(context, solver) => Store {
-            runs: store.runs.push(ObservedRun { context, solver, actions: Seq::empty() }), ..store },
+        StoreAction::StartRun(context, solver) => if solver == context.solver {
+            Store { runs: store.runs.push(ObservedRun { context, solver, actions: Seq::empty() }), ..store }
+        } else { store },
         StoreAction::ObserveRun(index, event) => if index < store.runs.len() {
             let run = store.runs[index as int];
             Store { runs: store.runs.update(index as int, ObservedRun { actions: run.actions.push(event), ..run }), ..store }
@@ -581,7 +585,7 @@ pub proof fn every_store_transition_preserves(store: Store, action: StoreAction)
     ensures store_wf(store_step(store, action)),
 {
     match action {
-        StoreAction::StartRun(context, solver) => {
+        StoreAction::StartRun(context, solver) => if solver == context.solver {
             let next = store_step(store, action);
             assert forall|i: int| 0 <= i < next.recorded.len() implies
                 origin_valid(next.recorded[i]) && origin_observed(next, next.recorded[i]) by {
@@ -749,7 +753,7 @@ pub open spec fn session_reply_has_origin(s: Session, index: int) -> bool {
 }
 
 pub open spec fn session_wf(s: Session) -> bool {
-    context_wf(s.context)
+    context_wf(s.context) && s.solver == s.context.solver
     && s.cache == store_replay(s.initial_disk, s.cache_history).available
     && s.origin_ledger == store_replay(s.initial_disk, s.cache_history).recorded
     && (forall|i: int| 0 <= i < s.cache.len() ==> claim_valid(s.cache[i]) && s.origin_ledger.contains(s.cache[i].origin))
@@ -792,7 +796,7 @@ pub open spec fn session_init(context: ModelContext, solver: Solver,
 
 pub proof fn session_initially_valid(context: ModelContext, solver: Solver,
     initial_disk: Seq<DiskFrame>, cache_history: Seq<StoreAction>)
-    requires context_wf(context),
+    requires context_wf(context), solver == context.solver,
     ensures session_wf(session_init(context, solver, initial_disk, cache_history)),
 {
     replayed_store_has_only_valid_origins(initial_disk, cache_history);
@@ -1004,6 +1008,7 @@ pub proof fn every_transition_preserves(s: Session, action: Action)
 pub open spec fn execution(states: Seq<Session>, actions: Seq<Action>) -> bool {
     states.len() == actions.len() + 1
     && context_wf(states[0].context)
+    && states[0].solver == states[0].context.solver
     && states[0] == session_init(states[0].context, states[0].solver, states[0].initial_disk, states[0].cache_history)
     && forall|i: int| 0 <= i < actions.len() ==> states[i + 1] == step(states[i], actions[i])
 }
@@ -1143,6 +1148,7 @@ pub open spec fn observing_history(context: ModelContext, solver: Solver, events
 }
 
 pub proof fn observing_history_captures_exact_run(context: ModelContext, solver: Solver, events: Seq<RunAction>)
+    requires solver == context.solver,
     ensures
         store_replay(Seq::empty(), observing_history(context, solver, events)).runs.len() == 1,
         store_replay(Seq::empty(), observing_history(context, solver, events)).runs[0].context == context,
@@ -1172,7 +1178,7 @@ pub open spec fn example_solver() -> Solver {
 pub open spec fn example_context(request: u8, source: u8) -> ModelContext {
     ModelContext {
         request: seq![request], scope: ScopeKey { whole: true, selection: Seq::empty() },
-        runtime: seq![7u8], mode: Mode::Default,
+        runtime: seq![7u8], solver: example_solver(), mode: Mode::Default,
         inputs: Map::empty().insert(InputKey { role: 1, lexical: seq![1u8] },
             ReadOutcome::Present { resolved: seq![2u8], bytes: seq![source] }),
     }
@@ -1369,7 +1375,7 @@ pub open spec fn session_states(context: ModelContext, solver: Solver, disk: Seq
 
 pub proof fn constructed_session_history_is_execution(context: ModelContext, solver: Solver,
     disk: Seq<DiskFrame>, cache_history: Seq<StoreAction>, actions: Seq<Action>)
-    requires context_wf(context),
+    requires context_wf(context), solver == context.solver,
     ensures
         execution(session_states(context, solver, disk, cache_history, actions), actions),
         session_states(context, solver, disk, cache_history, actions).len() == actions.len() + 1,
