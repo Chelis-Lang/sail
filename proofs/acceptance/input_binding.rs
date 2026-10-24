@@ -658,13 +658,19 @@ pub proof fn input_evidence_facts(evidence: &InputEvidence, world: InputWorld)
 /// the same scope, or claiming whole scope, may not drop any required inputs.
 pub open spec fn context_projection(full: ModelContext, projected: ModelContext) -> bool {
     full.request == projected.request && full.runtime == projected.runtime
-        && full.mode == projected.mode && scope_wf(projected.scope)
+        && full.mode == projected.mode && full.solver == projected.solver
+        && scope_wf(projected.scope)
         && projected.inputs.dom().subset_of(full.inputs.dom())
         && (forall|key: InputKey| projected.inputs.dom().contains(key)
             ==> projected.inputs[key] == full.inputs[key])
         && (projected.scope == full.scope ==> projected.inputs == full.inputs)
         && (projected.scope.whole ==> full.scope.whole && projected.inputs == full.inputs)
 }
+
+pub proof fn solver_change_cannot_project(full: ModelContext, projected: ModelContext)
+    requires full.solver != projected.solver,
+    ensures !context_projection(full, projected),
+{}
 
 pub closed spec fn projectable(
     capture: RawCapture, world: InputWorld, projected: ModelContext,
@@ -819,7 +825,8 @@ proof fn read_required_prefix(world: InputWorld, required: Seq<InputKey>, count:
         capture.begin_point == world.point,
         !capture.invalidated, capture.reads.len() == count,
         forall|j: int| #![trigger capture.reads[j]] 0 <= j < count
-            ==> capture.reads[j].key == required[j] && readable(capture.reads[j].outcome),
+            ==> capture.reads[j].key == required[j] && readable(capture.reads[j].outcome)
+                && capture.reads[j].point == world.point,
     decreases count,
 {
     if count == 0 {
@@ -840,7 +847,8 @@ proof fn read_required_prefix(world: InputWorld, required: Seq<InputKey>, count:
         observation_preserves(previous, world, key);
         let next = observe_input(previous, world, key);
         assert forall|j: int| #![trigger next.reads[j]] 0 <= j < count
-            implies next.reads[j].key == required[j] && readable(next.reads[j].outcome) by {
+            implies next.reads[j].key == required[j] && readable(next.reads[j].outcome)
+                && next.reads[j].point == world.point by {
             if j < i { assert(next.reads[j] == previous.reads[j]); }
             else { assert(j == i); }
         }
@@ -856,6 +864,9 @@ pub proof fn complete_raw_capture(world: InputWorld, required: Seq<InputKey>) ->
         capture_context(capture) == world.context,
         capture_requirements(capture) == required,
         capture_begin_point(capture) == world.point,
+        forall|i: int| #![trigger capture_observations(capture)[i]]
+            0 <= i < capture_observations(capture).len()
+                ==> capture_observations(capture)[i].point == world.point,
 {
     let capture = read_required_prefix(world, required, required.len());
     assert(can_seal(capture, world));
@@ -868,10 +879,22 @@ pub proof fn capture_unchanged(world: InputWorld, required: Seq<InputKey>) -> (e
         forall|i: int| 0 <= i < required.len() ==> required[i].role <= ROLE_RUNTIME,
     ensures evidence.valid_at(world), evidence.view() == world.context,
         evidence.point() == world.point,
+        forall|i: int| #![trigger evidence.observations()[i]]
+            0 <= i < evidence.observations().len()
+                ==> evidence.observations()[i].point == world.point,
+        forall|cutoff: nat| cutoff < world.point ==> #[trigger] evidence.observed_after(cutoff),
 {
     let capture = complete_raw_capture(world, required);
     let result = seal_capture(capture, world);
-    result.unwrap()
+    let evidence = result.unwrap();
+    assert forall|cutoff: nat| cutoff < world.point
+        implies #[trigger] evidence.observed_after(cutoff) by {
+        assert forall|i: int| #![trigger evidence.reads[i]] 0 <= i < evidence.reads.len()
+            implies evidence.reads[i].point > cutoff by {
+            assert(evidence.reads[i] == capture.reads[i]);
+        }
+    }
+    evidence
 }
 
 /// Authentication exclusions affect implicit context selection only. Explicit
@@ -995,6 +1018,7 @@ pub open spec fn example_requirements() -> Seq<InputKey> {
 pub open spec fn example_input_context() -> ModelContext {
     ModelContext { request: seq![10u8], runtime: seq![11u8],
         scope: ScopeKey { whole: true, selection: Seq::empty() }, mode: Mode::Default,
+        solver: SolverId { name: seq![12u8], version: seq![13u8], binary: seq![14u8], platform: seq![15u8] },
         inputs: Map::empty()
             .insert(example_key(ROLE_SOURCE), ReadOutcome::Present { resolved: seq![20u8], bytes: seq![21u8] })
             .insert(example_key(ROLE_ANCESTOR), ReadOutcome::Present { resolved: seq![22u8], bytes: Seq::empty() })
@@ -1127,6 +1151,14 @@ pub proof fn projection_coverage_and_duplicate_control()
     assert(!context_projection(world.context, false_whole));
     let missing_whole = project_capture(raw, world, false_whole, required, selected);
     assert(missing_whole.is_none());
+    let changed_solver = ModelContext {
+        solver: SolverId { binary: seq![99u8], ..world.context.solver }, ..world.context };
+    assert(world.context.solver.binary[0] != changed_solver.solver.binary[0]);
+    assert(world.context.solver != changed_solver.solver);
+    solver_change_cannot_project(world.context, changed_solver);
+    let wrong_runtime = project_capture(raw, world, changed_solver, example_requirements(),
+        seq![0int, 1int, 2int, 3int, 4int, 5int]);
+    assert(wrong_runtime.is_none());
 }
 
 pub fn credential_selection_control() {

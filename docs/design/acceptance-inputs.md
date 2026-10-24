@@ -4,7 +4,7 @@ The [input component](../../proofs/acceptance/input_binding.rs) verifies an
 inductive observation/reuse transaction model and executable exact-byte
 comparators for the [acceptance core](evidence-acceptance-core.md). Its shared
 [context](../../proofs/acceptance/context.rs) contains the actual modeled input
-map, exact request, selection, runtime and mode. Production filesystem,
+map, exact request, selection, runtime, explicit solver identity and mode. Production filesystem,
 compiler-closure and caller refinements remain open; these models do not change
 Sail's runtime reuse policy.
 
@@ -48,7 +48,7 @@ event remains a separate obligation.
 `seal_capture` requires that established invariant and checks all of:
 
 - The transaction is not invalidated, the original epoch still matches, and
-  the exact request, scope, runtime, mode and input map remain the captured ones.
+  the exact request, scope, runtime, solver, mode and input map remain the captured ones.
 - The required domain is nonempty, has no duplicate keys and equals the entire
   explicit requested input-map domain.
 - There is exactly one matching ordered read witness for every required key;
@@ -71,7 +71,7 @@ and rejection of the same reads followed by an input mutation.
 
 ## Projection, retained reads and exact reversion
 
-A projected context must preserve request, runtime and mode and be an exact
+A projected context must preserve request, runtime, solver and mode and be an exact
 restriction of the current input map. The declared required keys must cover
 that projected map exactly, without duplicates. Existing read positions must
 be unique and match each requested key. A projection with the same scope, or
@@ -90,7 +90,10 @@ future point. `refresh_retained` requires a newly completed transaction begun
 strictly after the retained evidence's point, checks the exact old context
 against the newly observed context and returns newly sealed evidence at the
 read point. Its postcondition also proves that every returned read witness is
-later than the old evidence. Merely moving the old raw capture to a later
+later than the old evidence. `capture_unchanged` additionally proves that all
+its read witnesses occur at the supplied world point and are after every
+strictly earlier cutoff; composition can consume that guarantee without
+opening the private token. Merely moving the old raw capture to a later
 point does not pass this factory.
 
 Mutation followed by exact restoration advances the modeled epoch twice.
@@ -151,7 +154,8 @@ not model a hash as injective.
 
 Closed controls check nonempty successful captures with all six roles,
 read-time reuse, rejection of old restamped reads, mutation/ABA/exact revert,
-partial reads, unreadable outcomes, valid partial projection, duplicate or
+partial reads, unreadable outcomes, valid partial projection, changed-solver
+projection refusal, duplicate or
 incomplete projection, false whole-scope claims and credential selection.
 
 Deliberately broken source controls cover the actual obligations:
@@ -162,6 +166,8 @@ Deliberately broken source controls cover the actual obligations:
 | Omit selected-position bounds | Selected indexing is no longer justified for every request |
 | Omit the original epoch in sealing | Old or ABA observations could claim new-point evidence |
 | Omit equality of required and context-map domains | Observing a plausible subset could claim complete input evidence |
+| Omit solver equality during projection | A different selected solver could inherit a projection without the required context-change boundary |
+| Omit the later transaction boundary for retained reads | Old read witnesses could satisfy a required fresh-read projection |
 
 The checker mutates temporary captured copies using unique manifest needles,
 retains the same verification scope and requires actual verification errors.
