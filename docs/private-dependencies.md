@@ -36,6 +36,11 @@ container gates forward an already configured environment credential into the
 running container only. The CI image continues to contain public pinned
 runtime assets and no private source credential.
 
+Changing this credential or the helper's readiness flag does not invalidate
+an otherwise unchanged CLI proof. Downloaded source bytes remain checked.
+Explicit source and build-script reads of those environment variables remain
+receipt inputs; see [freshness](freshness.md#which-environment-variables-are-proof-inputs).
+
 With no configured credential, source fetch reports failure. A missing private
 dependency never becomes an unavailable backend that the build silently skips.
 Compiled worker identity and the exact D.I.V.E. revision are checked again at
