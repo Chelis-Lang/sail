@@ -150,6 +150,16 @@ pub mod __private {
             pub fn $name<T: Scalar + $bound>(left: T, right: T) -> bool { left $operator right }
         };
     }
+    /// Borrowed equality; complete source admission restricts nominal dispatch to admitted unit enums.
+    #[must_use]
+    pub fn eq_ref<T: PartialEq>(left: &T, right: &T) -> bool {
+        left == right
+    }
+    /// Borrowed inequality; complete source admission restricts nominal dispatch to admitted unit enums.
+    #[must_use]
+    pub fn ne_ref<T: PartialEq>(left: &T, right: &T) -> bool {
+        left != right
+    }
     comparison!(eq, PartialEq, ==, "Pure scalar equality.");
     comparison!(ne, PartialEq, !=, "Pure scalar inequality.");
     comparison!(lt, PartialOrd, <, "Pure scalar less-than comparison.");

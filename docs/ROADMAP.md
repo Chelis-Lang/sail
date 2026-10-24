@@ -289,7 +289,7 @@ The M11 reliability items in #168 are closed.
 |---|---|---|
 | Raw SMT shared runtime | Implemented; original consumer slice delivered | Continued consumer qualification at its selected immutable SDK |
 | Native D.I.V.E. worker and shared temporal route | Linux installed-service and cumulative Linux/Mac host gates passed | Protected CI and exact-pin consumer delivery |
-| Neutral source jobs | Admitted source subset and original proof retention qualified | Broader Rust and contract admission |
+| Neutral source jobs | Original subset qualified; explicit flat profile two implemented and locally checked | [Native profile-two source and consumer acceptance](validation/neutral-source-profile-two.md) |
 | Requirement assurance | Source-bound original proof and requirement views implemented | Consumer-owned independent links and complete current evidence |
 | Bounded neutral-source mutation | Lifecycle and conservative retention qualified | Positive native kills remain unestablished; strong mutants return Unknown |
 

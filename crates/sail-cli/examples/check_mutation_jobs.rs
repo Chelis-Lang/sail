@@ -64,6 +64,7 @@ fn start(sail: &Path, output: &Path) -> TestResult<(Service, Client)> {
 }
 fn baseline(client: &Client, source: &str) -> TestResult<String> {
     let job = client.submit_contracts(Submission {
+        profile: 1,
         source: source.into(),
         source_sha256: mutation::digest(source.as_bytes()),
         crate_name: "neutral".into(),

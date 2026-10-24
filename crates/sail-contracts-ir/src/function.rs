@@ -77,6 +77,8 @@ pub struct ContractFunction {
     pub item: ItemFn,
     /// Explicit owner identity, never a generated source position.
     pub requirement: RequirementId,
+    /// Sorted explicit identities sharing the complete conjunctive guarantee.
+    pub requirements: Vec<RequirementId>,
     /// Whether this defines the pure requirement predicate.
     pub predicate: bool,
     /// Preconditions, in original evaluation order.
@@ -89,15 +91,30 @@ pub struct ContractFunction {
 /// # Errors
 /// Rejects unsupported signatures, bodies, attributes and specification expressions.
 pub fn parse_function(
-    mut item: ItemFn,
+    item: ItemFn,
     outer: Option<(AttributeKind, TokenStream)>,
 ) -> syn::Result<ContractFunction> {
-    validate_signature(&item)?;
+    parse_function_with_profile(item, outer, 1)
+}
+
+/// Parse explicitly selected neutral source profile one or two.
+/// # Errors
+/// Rejects unknown profiles and syntax outside the selected profile.
+pub fn parse_function_with_profile(
+    mut item: ItemFn,
+    outer: Option<(AttributeKind, TokenStream)>,
+    profile: u32,
+) -> syn::Result<ContractFunction> {
+    if !matches!(profile, 1 | 2) {
+        return Err(unsupported(&item.sig, "unsupported source profile"));
+    }
+    validate_signature(&item, profile)?;
     let attributes = attributes(&mut item, outer)?;
     let bindings = bindings(&item)?;
     let mut requires = Vec::new();
     let mut ensures = None;
     let mut identity = None;
+    let mut identities = BTreeSet::new();
     let mut predicate = false;
     for (kind, tokens) in attributes {
         match kind {
@@ -120,14 +137,20 @@ pub fn parse_function(
                 ensures = Some(parse_guarantee(tokens, &bindings)?);
             }
             AttributeKind::Requirement | AttributeKind::Satisfies => {
-                if identity.is_some() {
+                if identity.is_some()
+                    && (profile == 1 || predicate || kind == AttributeKind::Requirement)
+                {
                     return Err(unsupported(
                         &item.sig,
                         "exactly one requirement identity is supported",
                     ));
                 }
                 let text = syn::parse2::<syn::LitStr>(tokens)?;
-                identity = Some(RequirementId::parse(&text.value())?);
+                let id = RequirementId::parse(&text.value())?;
+                if !identities.insert(id.clone()) {
+                    return Err(unsupported(&item.sig, "duplicate requirement identity"));
+                }
+                identity.get_or_insert(id);
                 predicate = kind == AttributeKind::Requirement;
             }
         }
@@ -166,9 +189,13 @@ pub fn parse_function(
         }
         super::source::validate_body(&item)?;
     }
+    if profile == 1 {
+        validate_legacy(&item, &requires, ensures.as_ref())?;
+    }
     Ok(ContractFunction {
         item,
         requirement,
+        requirements: identities.into_iter().collect(),
         predicate,
         requires,
         ensures,
@@ -179,7 +206,7 @@ fn returns_bool(output: &ReturnType) -> bool {
     matches!(output, ReturnType::Type(_, value) if matches!(value.as_ref(), Type::Path(p) if p.path.is_ident("bool")))
 }
 
-fn validate_signature(item: &ItemFn) -> syn::Result<()> {
+fn validate_signature(item: &ItemFn, profile: u32) -> syn::Result<()> {
     let signature = &item.sig;
     if signature.asyncness.is_some()
         || signature.unsafety.is_some()
@@ -196,13 +223,28 @@ fn validate_signature(item: &ItemFn) -> syn::Result<()> {
     }
     for argument in &signature.inputs {
         if let FnArg::Typed(value) = argument {
-            validate_type(&value.ty)?;
+            validate_profile_type(&value.ty, profile)?;
         }
     }
     if let ReturnType::Type(_, value) = &signature.output {
-        validate_type(value)?;
+        validate_profile_type(value, profile)?;
     }
     Ok(())
+}
+
+fn validate_profile_type(value: &Type, profile: u32) -> syn::Result<()> {
+    if profile == 2
+        && let Type::Reference(reference) = value
+    {
+        if reference.lifetime.is_some() {
+            return Err(unsupported(
+                value,
+                "explicit reference lifetimes are unsupported",
+            ));
+        }
+        return validate_type(&reference.elem);
+    }
+    validate_type(value)
 }
 
 pub(crate) fn validate_type(value: &Type) -> syn::Result<()> {
@@ -354,4 +396,53 @@ fn attributes(
     }
     item.attrs = retained;
     Ok(attributes)
+}
+
+struct LegacyExpressions {
+    error: Option<syn::Error>,
+    specification: bool,
+}
+impl<'ast> Visit<'ast> for LegacyExpressions {
+    fn visit_expr(&mut self, value: &'ast Expr) {
+        if matches!(value, Expr::Unary(unary) if matches!(unary.op,syn::UnOp::Deref(_))) {
+            self.error.get_or_insert_with(|| {
+                unsupported(value, "dereferencing requires source profile two")
+            });
+        }
+        if self.specification && matches!(value, Expr::Path(path) if path.path.segments.len() > 1) {
+            self.error.get_or_insert_with(|| {
+                unsupported(
+                    value,
+                    "nominal variant expressions require source profile two",
+                )
+            });
+        }
+        syn::visit::visit_expr(self, value);
+    }
+    fn visit_expr_call(&mut self, value: &'ast syn::ExprCall) {
+        // Qualified predicate callees were already supported by profile one.
+        for argument in &value.args {
+            self.visit_expr(argument);
+        }
+    }
+}
+
+fn validate_legacy(
+    item: &ItemFn,
+    requires: &[Expr],
+    ensures: Option<&ExprClosure>,
+) -> syn::Result<()> {
+    let mut legacy = LegacyExpressions {
+        error: None,
+        specification: true,
+    };
+    for expression in requires {
+        legacy.visit_expr(expression);
+    }
+    if let Some(guarantee) = ensures {
+        legacy.visit_expr(&guarantee.body);
+    }
+    legacy.specification = false;
+    legacy.visit_block(&item.block);
+    legacy.error.map_or(Ok(()), Err)
 }

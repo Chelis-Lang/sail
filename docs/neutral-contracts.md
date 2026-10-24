@@ -110,3 +110,20 @@ and the separate acceptance required for actual Verus lowering.
 The [runtime qualification record](validation/neutral-contract-runtime.md)
 records native gates and their exact evidence hashes. Runtime checks remain
 distinct from proof establishment.
+
+## Select flat Rust profile two
+
+For the bounded order-service forms, set `sail_api::contracts::Submission.profile`
+to `2`. The Rust client negotiates explicit profile support before sending the
+source. Legacy submissions select profile one. The shared syntax reader offers
+`parse_source_with_profile(source, 2)` and retains nominal enum metadata.
+
+Profile two supports unit enums, flat records without adding Copy or Clone,
+shared input references and mutable scalar input references. Several distinct
+`satisfies` attributes can share a single conjunctive guarantee. Assurance keeps
+one row per requirement identity; requirement entailment remains independent.
+The [lowering specification](spec/neutral-verus-lowering.md) and
+[decision](decisions/0076-neutral-source-profile-two.md) define the exact subset.
+Runtime checks evaluate the actual borrowed result and original state. They do
+not establish source proof, conclusive mutant rejection or whole-application
+correctness. Backend UNKNOWN remains explicit.

@@ -43,10 +43,17 @@ fn validate(expression: &Expr, context: &ExpressionContext, depth: usize) -> syn
         {
             Ok(())
         }
+        Expr::Path(value)
+            if value.qself.is_none()
+                && value.path.segments.len() >= 2
+                && value.path.segments.iter().all(|s| s.arguments.is_empty()) =>
+        {
+            Ok(())
+        }
         Expr::Field(value) => recurse(&value.base),
         Expr::Paren(value) => recurse(&value.expr),
         Expr::Group(value) => recurse(&value.expr),
-        Expr::Unary(value) if matches!(value.op, UnOp::Not(_) | UnOp::Neg(_)) => {
+        Expr::Unary(value) if matches!(value.op, UnOp::Not(_) | UnOp::Neg(_) | UnOp::Deref(_)) => {
             recurse(&value.expr)
         }
         Expr::Binary(value)

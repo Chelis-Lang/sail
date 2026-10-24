@@ -3,7 +3,7 @@
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use sail_contracts_ir::{AttributeKind, ContractFunction, parse_function};
+use sail_contracts_ir::{AttributeKind, ContractFunction, parse_function_with_profile};
 use syn::{Expr, ext::IdentExt, fold::Fold};
 
 /// Check a precondition at entry, including release builds.
@@ -32,7 +32,7 @@ pub fn satisfies(arguments: TokenStream, input: TokenStream) -> TokenStream {
 
 fn expand(kind: AttributeKind, arguments: TokenStream, input: TokenStream) -> TokenStream {
     let result = syn::parse::<syn::ItemFn>(input)
-        .and_then(|item| parse_function(item, Some((kind, arguments.into()))))
+        .and_then(|item| parse_function_with_profile(item, Some((kind, arguments.into())), 2))
         .and_then(runtime);
     result.unwrap_or_else(syn::Error::into_compile_error).into()
 }
@@ -63,6 +63,7 @@ fn runtime(function: ContractFunction) -> syn::Result<proc_macro2::TokenStream> 
         entry.sig.ident = format_ident!("__sail_pure_{}", item.sig.ident.unraw());
         return Ok(quote! { #item #[doc(hidden)] #entry });
     }
+    item.attrs.push(syn::parse_quote!(#[allow(unused_parens, reason = "Contract expression grouping is preserved in generated checks.")]));
     let id = function.requirement.as_str();
     let mut preconditions = Vec::new();
     for expression in function.requires {
@@ -83,8 +84,18 @@ fn runtime(function: ContractFunction) -> syn::Result<proc_macro2::TokenStream> 
             attrs: Vec::new(),
             pat: Box::new(binding.clone()),
             colon_token: syn::token::Colon::default(),
-            ty: Box::new(output),
+            ty: Box::new(syn::parse_quote!(&#output)),
         });
+    }
+    if let Some(syn::Pat::Type(binding)) = guarantee.inputs.first()
+        && let syn::Pat::Ident(name) = binding.pat.as_ref()
+    {
+        let binding = &name.ident;
+        let body = BorrowedResult {
+            name: binding.clone(),
+        }
+        .fold_expr(*guarantee.body);
+        *guarantee.body = syn::parse_quote!({ let _ = #binding; #body });
     }
     let captures = checked.captures.iter().map(|(name, expression)| {
         quote! {
@@ -100,10 +111,22 @@ fn runtime(function: ContractFunction) -> syn::Result<proc_macro2::TokenStream> 
         #(#preconditions)*
         #(#captures)*
         let #result = (|| #body)();
-        ::sail_contracts::__private::check((#guarantee)(::sail_contracts::__private::copy_result(&#result)), #id, "postcondition");
+        ::sail_contracts::__private::check((#guarantee)(&#result), #id, "postcondition");
         #result
     }})?);
     Ok(quote! { #item })
+}
+
+struct BorrowedResult {
+    name: syn::Ident,
+}
+impl Fold for BorrowedResult {
+    fn fold_expr(&mut self, expression: Expr) -> Expr {
+        if matches!(&expression, Expr::Path(path) if path.path.is_ident(&self.name)) {
+            return syn::parse_quote!((*#expression));
+        }
+        syn::fold::fold_expr(self, expression)
+    }
 }
 
 #[derive(Default)]
@@ -128,6 +151,7 @@ impl Fold for Checked {
         }
         let expression = syn::fold::fold_expr(self, expression);
         match expression {
+            Expr::Paren(value) if matches!(value.expr.as_ref(), Expr::Paren(_)) => *value.expr,
             Expr::Binary(value) => {
                 let operation = match value.op {
                     syn::BinOp::Add(_) => "add",
@@ -143,10 +167,15 @@ impl Fold for Checked {
                     syn::BinOp::Ge(_) => "ge",
                     _ => return Expr::Binary(value),
                 };
-                let name = format_ident!("{operation}");
                 let left = value.left;
                 let right = value.right;
-                syn::parse_quote!(::sail_contracts::__private::#name(#left, #right))
+                if matches!(value.op, syn::BinOp::Eq(_) | syn::BinOp::Ne(_)) {
+                    let name = format_ident!("{operation}_ref");
+                    syn::parse_quote!(::sail_contracts::__private::#name(&(#left), &(#right)))
+                } else {
+                    let name = format_ident!("{operation}");
+                    syn::parse_quote!(::sail_contracts::__private::#name(#left, #right))
+                }
             }
             Expr::Unary(value) if matches!(value.op, syn::UnOp::Neg(_)) => {
                 if matches!(value.expr.as_ref(), Expr::Lit(literal) if matches!(literal.lit, syn::Lit::Int(_)))

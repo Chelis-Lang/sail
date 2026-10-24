@@ -174,3 +174,16 @@ success does not establish actual backend compatibility.
 
 The [native qualification record](../validation/neutral-verus-lowering.md)
 retains actual fork/stock results and failed setup/lowering attempts.
+
+## Explicit profile two
+
+`lower_profile(source, crate_name, 2)` and `verify_profile` select the bounded
+flat Rust extension in [ADR 0076](../decisions/0076-neutral-source-profile-two.md).
+The original `lower` and `verify` entry points continue to select profile one.
+Profile two emits lowering version three with contract version two and admits
+unit enums, flat non-Copy records, shared references, mutable scalar references,
+and several explicit requirement identities sharing one conjunctive guarantee.
+Each identity has its own manifest binding; backend evidence still names the
+actual function. A failed conjunction is not an individual requirement refutation.
+Nominal enum constants resolve against the admitted source type and variant;
+unsupported derives and trait implementations are refused before execution.

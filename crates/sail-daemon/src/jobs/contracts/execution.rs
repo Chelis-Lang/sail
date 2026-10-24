@@ -97,7 +97,12 @@ pub(in crate::jobs) fn execute(
         )));
     }
     let result = decode(&bytes, &input)?;
-    if result.contracts.manifest.version != sail_verus::contracts::LOWERING_VERSION {
+    let expected_lowering = if input.profile == 2 {
+        3
+    } else {
+        sail_verus::contracts::LOWERING_VERSION
+    };
+    if result.contracts.manifest.version != expected_lowering {
         return Err(error(
             "new neutral jobs require corrected lowering version two",
         ));

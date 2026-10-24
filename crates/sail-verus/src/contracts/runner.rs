@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use super::{LoweredSource, digest, lower, unsupported};
+use super::{LoweredSource, digest, lower_profile, unsupported};
 use crate::{Error, Result};
 
 /// Actual managed backend evidence for an exact original neutral source snapshot.
@@ -31,17 +31,30 @@ pub struct ContractRun {
 /// # Errors
 /// `SAIL3140` for unsupported source or request controls; `SAIL3141` for shadow
 /// drift; existing managed/runtime codes for unavailable execution or backend faults.
-#[allow(
-    clippy::too_many_lines,
-    reason = "Keep source, translation trust and actual managed execution in one locked boundary."
-)]
 pub fn verify(
     original: &str,
     crate_name: &str,
     config: &crate::managed::Config,
     err: &mut dyn Write,
 ) -> Result<ContractRun> {
-    let lowering = lower(original, crate_name)?;
+    verify_profile(original, crate_name, 1, config, err)
+}
+
+/// Verify one source snapshot under an explicitly selected neutral source profile.
+/// # Errors
+/// Reports source admission, runtime, translation-trust and backend failures.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep source, translation trust and actual managed execution in one locked boundary."
+)]
+pub fn verify_profile(
+    original: &str,
+    crate_name: &str,
+    profile: u32,
+    config: &crate::managed::Config,
+    err: &mut dyn Write,
+) -> Result<ContractRun> {
+    let lowering = lower_profile(original, crate_name, profile)?;
     if !config.args.is_empty() {
         return Err(unsupported(
             "neutral contract verification currently requires whole-target default backend controls",

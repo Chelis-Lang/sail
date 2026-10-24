@@ -21,7 +21,19 @@ use crate::Result;
 /// # Errors
 /// `SAIL3140` for unsupported, unresolved, effectful or ill-typed source.
 pub fn lower(source: &str, crate_name: &str) -> Result<LoweredSource> {
-    lower_version(source, crate_name, LOWERING_VERSION)
+    lower_profile(source, crate_name, 1)
+}
+
+/// Lower an explicitly selected source profile without executing verification.
+/// # Errors
+/// Rejects unsupported profiles, source or type admission.
+pub fn lower_profile(source: &str, crate_name: &str, profile: u32) -> Result<LoweredSource> {
+    let version = match profile {
+        1 => LOWERING_VERSION,
+        2 => 3,
+        _ => return Err(unsupported("unsupported source profile")),
+    };
+    lower_version(source, crate_name, version)
 }
 
 /// Recheck retained source-to-shadow identity using corrected expression semantics.
@@ -32,7 +44,7 @@ pub fn lower(source: &str, crate_name: &str) -> Result<LoweredSource> {
 /// # Errors
 /// `SAIL3140` for unsupported versions, source or any manifest mismatch.
 pub fn validate_manifest(source: &str, manifest: &LoweringManifest) -> Result<()> {
-    if !matches!(manifest.version, 1 | LOWERING_VERSION) {
+    if !matches!(manifest.version, 1 | LOWERING_VERSION | 3) {
         return Err(unsupported("unsupported retained neutral lowering version"));
     }
     let expected = lower_version(source, &manifest.crate_name, manifest.version)?;
@@ -55,7 +67,8 @@ fn lower_version(source: &str, crate_name: &str, version: u32) -> Result<Lowered
     {
         return Err(unsupported("invalid compiler crate name"));
     }
-    let admitted = admit(source)?;
+    let profile = if version == 3 { 2 } else { 1 };
+    let admitted = admit(source, profile)?;
     let mut bindings = Vec::new();
     let items = module(
         &admitted,
@@ -70,10 +83,12 @@ fn lower_version(source: &str, crate_name: &str, version: u32) -> Result<Lowered
     if source_code.len() > 16 * 1024 * 1024 {
         return Err(unsupported("neutral shadow expansion exceeds 16 MiB"));
     }
-    bindings.sort_by(|left, right| left.function.cmp(&right.function));
+    bindings.sort_by(|left, right| {
+        (&left.function, &left.requirement_id).cmp(&(&right.function, &right.requirement_id))
+    });
     let manifest = LoweringManifest {
         version,
-        contract_version: sail_contracts_ir::VERSION,
+        contract_version: profile,
         crate_name: crate_name.to_owned(),
         original_sha256: digest(source.as_bytes()),
         lowered_sha256: digest(source_code.as_bytes()),
@@ -101,6 +116,7 @@ fn module(
                 output.push(function_source(admitted, value, crate_name, bindings)?);
             }
             syn::Item::Struct(value) => output.push(quote!(#value)),
+            syn::Item::Enum(value) => output.push(quote!(#value)),
             syn::Item::Use(_) => {}
             syn::Item::Mod(value) => {
                 let (_, items) = value
@@ -214,7 +230,7 @@ fn function_source(
     let mut assertions = Vec::new();
     for capture in captures.expressions {
         let value = environment.translate(&capture, None, Phase::Current)?;
-        if !value.ty.scalar() {
+        if !matches!(value.ty, Type::Bool | Type::Integer { .. }) {
             return Err(unsupported("old snapshot is not scalar"));
         }
         let defined = value.defined;
@@ -240,12 +256,16 @@ fn function_source(
             ensures (#defined) && (#guarantee_value),
         { #(#assertions)* #(#body_statements)* }
     };
-    bindings.push(binding(
-        source,
-        owner.as_deref(),
-        crate_name,
-        &guarantee.to_token_stream(),
-    ));
+    for requirement in &source.function.requirements {
+        let mut mapped = binding(
+            source,
+            owner.as_deref(),
+            crate_name,
+            &guarantee.to_token_stream(),
+        );
+        requirement.as_str().clone_into(&mut mapped.requirement_id);
+        bindings.push(mapped);
+    }
     Ok(lowered)
 }
 

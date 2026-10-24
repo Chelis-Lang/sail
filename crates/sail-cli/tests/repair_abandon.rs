@@ -54,6 +54,7 @@ fn fake_service(
             Request::List { .. } => Response::List(vec![]),
             Request::Capabilities => Response::Capabilities {
                 neutral_contracts_version: None,
+                neutral_contract_profiles: vec![1, 2],
                 assurance_version: None,
                 mutation_version: None,
                 proof_version: 1,
