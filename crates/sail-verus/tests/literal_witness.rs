@@ -315,3 +315,106 @@ fn zero_input_witness_and_shadowed_result_are_handled_explicitly() -> TestResult
     assert!(shadowed.is_err());
     Ok(())
 }
+
+#[test]
+fn sat_and_unsat_observations_require_the_exact_check_command_index() -> TestResult {
+    use sail_api::{
+        literal_witness::{Observation, observe},
+        runtime::Answer,
+    };
+    for (source, answer, expected, stdout) in [
+        (
+            BOOL,
+            Answer::Sat,
+            Observation::SatisfiableContractQuery,
+            b"sat\n".as_slice(),
+        ),
+        (
+            "#[sail_contracts::satisfies(\"TRUE\")] #[sail_contracts::ensures(|ret| true)] fn candidate(value:bool)->bool {value}",
+            Answer::Unsat,
+            Observation::NoWitness,
+            b"unsat\n".as_slice(),
+        ),
+    ] {
+        let plan = prepare(&input(source), 8)?;
+        let prepared = &plan.prepared[0];
+        let mut result = injected_model(&plan, 0, "((x0 true) (true true))")?;
+        result.obligation_id = prepared.query.obligation_id.clone();
+        result.script_sha256 = prepared.query_sha256.clone();
+        let commands = sail_smtlib::sexpr::parse_all(prepared.query.script.as_bytes())?;
+        result.checks[0].command_index = commands.len() - 1;
+        result.checks[0].answer = answer;
+        result.checks[0].products.clear();
+        result.stdout = stdout.into();
+        assert_eq!(observe(prepared, &result), expected);
+        for wrong_index in [0, commands.len(), usize::MAX] {
+            let mut malformed = result.clone();
+            malformed.checks[0].command_index = wrong_index;
+            assert_eq!(observe(prepared, &malformed), Observation::Inconclusive);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn scalar_model_integer_terms_require_structural_smt_numerals_and_unary_minus() -> TestResult {
+    let plan = prepare(
+        &input(
+            "#[sail_contracts::satisfies(\"SIGNED\")] #[sail_contracts::ensures(|ret| ret == x)] fn candidate(x:i8)->i8 {x}",
+        ),
+        8,
+    )?;
+    for malformed in [
+        "(-3)",
+        "(-0003)",
+        "-3",
+        "(-)",
+        "(- 3 4)",
+        "(- (- 3))",
+        "(+ 3)",
+        "3.0",
+        "0003",
+        "(- 0003)",
+        "#x03",
+        "(- |3|)",
+        "(|-| 3)",
+        "\"3\"",
+    ] {
+        let response = injected_model(&plan, 0, &format!("((x0 {malformed}) (true true))"))?;
+        assert!(
+            sail_verus::contracts::literal_witness::validate(
+                &plan,
+                &plan.prepared[0].candidate.id,
+                &response
+            )
+            .is_err(),
+            "malformed term accepted: {malformed}"
+        );
+    }
+    for valid in ["(- 3)", "(-\n3)", "(- ; separator\n3)", "3"] {
+        let response = injected_model(&plan, 0, &format!("((x0 {valid}) (true true))"))?;
+        assert!(
+            sail_verus::contracts::literal_witness::validate(
+                &plan,
+                &plan.prepared[0].candidate.id,
+                &response
+            )
+            .is_ok(),
+            "valid term rejected: {valid}"
+        );
+    }
+    let response = injected_model(&plan, 1, "((x0 (- 0)) (true true))")?;
+    let validated = sail_verus::contracts::literal_witness::validate(
+        &plan,
+        &plan.prepared[1].candidate.id,
+        &response,
+    )?;
+    assert_eq!(
+        validated.values,
+        [(
+            "x".into(),
+            sail_api::output::ItfValue::BigInt { bigint: "0".into() }
+        )]
+    );
+    Ok(())
+}

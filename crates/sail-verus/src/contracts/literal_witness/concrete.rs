@@ -121,7 +121,7 @@ pub fn validate(plan: &Plan, candidate_id: &str, result: &QueryResult) -> crate:
                 "literal witness scalar exceeds fixed-width bounds",
             ));
         }
-        let scalar = ItfValue::render(if *ty == Type::Bool { "Bool" } else { "Int" }, text);
+        let scalar = decode_scalar(ty, &pair[1], raw)?;
         let value = match &scalar {
             ItfValue::Bool(v) if *ty == Type::Bool => Value::Bool(*v),
             ItfValue::BigInt { bigint } if matches!(ty, Type::Integer { .. }) => {
@@ -207,6 +207,72 @@ pub fn validate(plan: &Plan, candidate_id: &str, result: &QueryResult) -> crate:
         model_result: result.clone(),
         values: recorded,
     })
+}
+
+fn decode_scalar(
+    ty: &Type,
+    expression: &sail_smtlib::sexpr::SExpr,
+    bytes: &[u8],
+) -> crate::Result<ItfValue> {
+    use sail_smtlib::{lex::TokenKind, sexpr::SExprKind};
+    if *ty == Type::Bool {
+        if matches!(&expression.kind, SExprKind::Atom(TokenKind::Symbol)) {
+            return match expression.text(bytes) {
+                b"true" => Ok(ItfValue::Bool(true)),
+                b"false" => Ok(ItfValue::Bool(false)),
+                _ => Err(unsupported("literal witness Boolean term is malformed")),
+            };
+        }
+        return Err(unsupported("literal witness Boolean term is not an atom"));
+    }
+    if !matches!(ty, Type::Integer { .. }) {
+        return Err(unsupported("literal witness scalar type is unsupported"));
+    }
+    if let Some(parts) = expression.as_list() {
+        let [operator, magnitude] = parts else {
+            return Err(unsupported(
+                "literal witness negative integer term has invalid arity",
+            ));
+        };
+        if !matches!(&operator.kind, SExprKind::Atom(TokenKind::Symbol))
+            || operator.text(bytes) != b"-"
+        {
+            return Err(unsupported(
+                "literal witness integer term is not unary minus",
+            ));
+        }
+        let magnitude = numeral(magnitude, bytes)?;
+        return Ok(ItfValue::BigInt {
+            bigint: if magnitude == "0" {
+                "0".into()
+            } else {
+                format!("-{magnitude}")
+            },
+        });
+    }
+    Ok(ItfValue::BigInt {
+        bigint: numeral(expression, bytes)?.into(),
+    })
+}
+
+fn numeral<'a>(expression: &sail_smtlib::sexpr::SExpr, bytes: &'a [u8]) -> crate::Result<&'a str> {
+    use sail_smtlib::{lex::TokenKind, sexpr::SExprKind};
+    if !matches!(&expression.kind, SExprKind::Atom(TokenKind::Numeral)) {
+        return Err(unsupported(
+            "literal witness integer magnitude is not an SMT numeral",
+        ));
+    }
+    let text = std::str::from_utf8(expression.text(bytes))
+        .map_err(|error| unsupported(error.to_string()))?;
+    if text.is_empty()
+        || !text.bytes().all(|byte| byte.is_ascii_digit())
+        || (text.len() > 1 && text.starts_with('0'))
+    {
+        return Err(unsupported(
+            "literal witness integer magnitude is not a canonical SMT numeral",
+        ));
+    }
+    Ok(text)
 }
 
 fn require(condition: bool, message: &str) -> crate::Result<()> {

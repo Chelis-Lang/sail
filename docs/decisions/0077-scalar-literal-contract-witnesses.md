@@ -43,8 +43,18 @@ expressions; it does not interpret the emitted SMT expression.
 
 Use the already locked `num-bigint` release directly in `sail-verus` for exact
 signed and unsigned 128-bit intermediates. Host-width arithmetic would create
-false refusals or overflow while validating source-definedness. No internal
-crate dependency edge or default verifier algorithm changes.
+false refusals or overflow while validating source-definedness. Add the direct
+`sail-api` to `sail-smtlib` pure-parser dependency so first-pass observations can
+bind their check index to the sole final exact `check-sat` command. Reusing the
+bounded shared parser avoids a second command counter or unverified metadata.
+Update the layering table accordingly. The API gains no solver, runtime or
+Verus dependency, and no default verifier algorithm changes.
+
+Decode concrete scalar response terms structurally: a Boolean atom, a canonical
+nonnegative SMT numeral, or a two-element list whose operator is `-` and whose
+operand is a canonical numeral. A token such as `-3` inside `(-3)` is not unary
+minus applied to a numeral. Keep the general output presentation decoder
+unchanged; witness evidence has this stricter admission boundary.
 
 The source owner exposes preparation and concrete validation through the
 existing local job RPC. Consumers retain original plans, requests, responses

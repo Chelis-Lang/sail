@@ -193,6 +193,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL3142` | Neutral source submission, capability, retained source, worker evidence or baseline integrity is invalid or unsupported | Read the source/digest/typed evidence diagnostic; use the negotiated source-only request. Never accept missing or altered proof metadata |
 | `SAIL3143` | A neutral worker exceeded its fixed deadline or exact output bounds, failed its streams or was cancelled | Read the retained diagnostics; the complete process group was stopped and no partial output establishes proof |
 | `SAIL3144` | Bounded mutation campaign admission, identity, export bound or retained evidence validation failed | Read the campaign diagnostic; retain complete original evidence. A refused view establishes no mutation assurance |
+| `SAIL3145` | Separate scalar literal-contract witness preparation, query attribution, original source links or concrete model validation is invalid or unsupported | Retain the complete original plan and runtime response; use the source-owner validator. Missing or malformed evidence establishes no contract counterexample, native mutation kill or proof tier |
 
 ## Portfolio and solver libraries
 

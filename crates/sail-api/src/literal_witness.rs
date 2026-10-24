@@ -154,10 +154,10 @@ pub fn observe(prepared: &Prepared, result: &crate::runtime::QueryResult) -> Obs
         || result.checks.len() != 1
         || result.stdout.len() > result.limits.output_bytes
         || result.stderr.len() > result.limits.output_bytes
-        || result
-            .checks
-            .first()
-            .is_some_and(|check| !check.products.is_empty())
+        || result.checks.first().is_some_and(|check| {
+            !check.products.is_empty()
+                || Some(check.command_index) != check_command_index(&prepared.query.script)
+        })
     {
         return Observation::Inconclusive;
     }
@@ -166,6 +166,29 @@ pub fn observe(prepared: &Prepared, result: &crate::runtime::QueryResult) -> Obs
         (Answer::Unsat, b"unsat") => Observation::NoWitness,
         _ => Observation::Inconclusive,
     }
+}
+
+fn check_command_index(script: &str) -> Option<usize> {
+    use sail_smtlib::{command, sexpr};
+    let bytes = script.as_bytes();
+    let commands = sexpr::parse_all(bytes).ok()?;
+    let (last, prefix) = commands.split_last()?;
+    let [name] = last.as_list()? else {
+        return None;
+    };
+    if name.text(bytes) != b"check-sat" {
+        return None;
+    }
+    for previous in prefix {
+        if command::classify(previous.text(bytes))
+            .ok()?
+            .kind
+            .is_check()
+        {
+            return None;
+        }
+    }
+    Some(prefix.len())
 }
 
 /// Derive the exact second transcript requesting concrete scalar assignments.

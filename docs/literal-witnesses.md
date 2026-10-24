@@ -14,12 +14,15 @@ running `sail serve` instance.
 let plan = jobs.literal_witnesses(&source_submission, 8)?;
 plan.validate()?;
 // Keep plan.unsupported and plan.omitted visible in the consumer report.
-let response = runtime.execute(&sail_api::runtime::Request {
-    version: sail_api::runtime::VERSION,
-    input: sail_api::runtime::Input::Smt {
-        queries: plan.prepared.iter().map(|p| p.query.clone()).collect(),
-    },
-})?;
+for batch in plan.prepared.chunks(2) {
+    let response = runtime.execute(&sail_api::runtime::Request {
+        version: sail_api::runtime::VERSION,
+        input: sail_api::runtime::Input::Smt {
+            queries: batch.iter().map(|p| p.query.clone()).collect(),
+        },
+    })?;
+    // Match and retain every result before processing the next bounded batch.
+}
 ```
 
 Match each complete runtime result to its exact `Prepared` entry and call
@@ -27,6 +30,9 @@ Match each complete runtime result to its exact `Prepared` entry and call
 for the separate contract-violation query. `NoWitness` records UNSAT for that
 query. `Inconclusive` includes UNKNOWN, unavailable execution, partial output
 and mismatched attribution. None is a source proof or native mutation kill.
+The default per-query limits reserve retained output for every query. Submit at
+most two default-limit queries per runtime batch to stay within the aggregate
+128-MiB bound; the source inventory's larger budget does not raise that bound.
 
 For a SAT entry, call `sail_api::literal_witness::model_query(&prepared)` and
 execute that query through the same runtime. Submit its complete returned

@@ -52,6 +52,34 @@ result test expected a returned unsupported entry, while existing source
 admission correctly rejected the entire invalid source; the test was corrected.
 Intermediate lint failures were corrected before the passing local checks.
 
+Candidate `76aa6e19` subsequently failed independent review: the first-pass
+observer did not bind `Check.command_index`, and the scalar model decoder
+accepted malformed integer terms `(-3)` and `(-0003)` through the general
+presentation decoder. These were response-integrity defects; the retained
+experiment did not establish a false semantic contract violation. The corrected
+candidate binds the sole final exact check command through the shared SMT
+parser and uses a local structural scalar decoder. SAT and UNSAT attribution
+tampering, malformed integer terms, valid unary minus and signed extrema now
+have explicit regression coverage. The general presentation decoder is unchanged.
+
+The native full gate on `76aa6e19` also failed: 1,061 tests passed and the error
+registry test failed because `SAIL3145` was used without registration. This is a
+completed gate failure, not an interrupted run. Original gate log SHA-256:
+`d99b0d842cb8f33086655912191d7b8a5fdd168841526e17098355198478c7a9`.
+The corrected candidate registers the code; renewed independent review and
+the complete native qualification remain required.
+
+The corrected local source passes its focused witness tests, preparation RPC
+test, exact error-registry test, layering check and all-target clippy for the
+touched packages. Its refreshed actual installed-runtime matrix again retains
+sixteen SAT responses with independently evaluated assignments and eight UNSAT
+controls. Corrected raw artifact index SHA-256:
+`937d4e410e4989b6f9550987be4086df836757d6a38b5dcdc21f2e52d951060d`.
+The original candidate, rejected review, failed native gate and earlier raw
+evidence remain distinct and retained. The corrected local harness initially
+used an unmatched error-registry test filter; a separately retained exact test
+execution passes that existing registry test.
+
 This gate establishes concrete violations of the exact unchanged scalar
 contract for admitted literal bodies. Requirement IDs are attribution, not
 independent semantic requirement rejection. Native Verus UNKNOWN remains
