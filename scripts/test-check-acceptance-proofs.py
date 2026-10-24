@@ -114,6 +114,11 @@ class SourceInventory(unittest.TestCase):
             source.write_text("required_check required_check")
             with self.assertRaises(CHECKER.Refusal):
                 CHECKER.inventory(root, manifest)
+            source.write_text("required_check")
+            mutation = copy.deepcopy(manifest)
+            mutation["components"][0]["negative_controls"][0]["after"] = 'include!("/tmp/hidden.rs");'
+            with self.assertRaises(CHECKER.Refusal):
+                CHECKER.inventory(root, mutation)
 
 
 class RuntimeIdentity(unittest.TestCase):

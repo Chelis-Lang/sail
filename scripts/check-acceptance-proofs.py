@@ -48,6 +48,12 @@ def digest(path: Path) -> str:
         return hashlib.file_digest(source, "sha256").hexdigest()
 
 
+def standalone(text: str) -> None:
+    # Conservative refusal applies to original and generated proof candidates,
+    # including tokens in comments/strings; this does not pretend to parse Rust.
+    require(not re.search(r"\b(?:mod|include|include_str|include_bytes|extern|macro_rules)\b", text), "proof source is outside the standalone subset")
+
+
 def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes] | None = None) -> list[dict]:
     require(manifest.get("schema") == "sail-acceptance-proofs-v1", "unknown proof manifest")
     entries = manifest.get("components", [])
@@ -67,13 +73,11 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes] | None = N
         require(len(entry["functions"]) == len(set(entry["functions"])), "duplicate function")
         require(bool(entry["negative_controls"]), "missing anti-vacuity controls")
         text = (root / source).read_text() if snapshots is None else snapshots[str(source)].decode()
-        # The first slice accepts standalone roots only. Reject these tokens
-        # conservatively, even in comments/strings, rather than pretend a
-        # regular expression parses Rust or resolves arbitrary source closure.
-        require(not re.search(r"\b(?:mod|include|include_str|include_bytes|extern|macro_rules)\b", text), "proof source is outside the standalone subset")
+        standalone(text)
         for control in entry["negative_controls"]:
             require(control["before"] != control["after"] and bool(control["before"]), "empty mutation")
             require(text.count(control["before"]) == 1, "ambiguous mutation")
+            standalone(text.replace(control["before"], control["after"]))
     return entries
 
 

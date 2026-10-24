@@ -75,6 +75,9 @@ input, identity or verification failure and rerun the entire checker.
 
 ## Evidence and limits
 
+The [qualification record](../validation/evidence-acceptance-models.md) binds
+the initial native Linux and macOS runs and their actual scope.
+
 The runner writes a concise `report.md`, machine-readable raw receipt and
 stdout/stderr for every invocation outside the repository. The receipt binds
 the commit, source bytes, expected inventory, runtime files, toolchain and
