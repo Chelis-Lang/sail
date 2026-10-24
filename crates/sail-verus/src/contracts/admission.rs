@@ -81,7 +81,7 @@ pub(super) fn admit(text: &str, profile: u32) -> Result<Admitted> {
                 "old and __sail_ names are reserved by neutral lowering",
             ));
         }
-        let (_, inputs, _) = signature(value, &structs)?;
+        let (_, inputs, _) = signature(value, &structs, profile)?;
         let mut body = BodyAdmission { error: None };
         body.visit_block(&value.function.item.block);
         if let Some(error) = body.error {
@@ -134,6 +134,7 @@ pub(super) type Signature = (Option<String>, Vec<(String, Type)>, Type);
 pub(super) fn signature(
     value: &SourceFunction,
     structs: &BTreeMap<String, Struct>,
+    profile: u32,
 ) -> Result<Signature> {
     let owner = value
         .owner
@@ -172,10 +173,13 @@ pub(super) fn signature(
                         "mutable by-value inputs need explicit prestate lowering and are unsupported",
                     ));
                 }
-                inputs.push((
-                    pattern.ident.to_string(),
-                    resolve_type(&input.ty, value, owner.as_deref(), structs)?,
-                ));
+                let ty = resolve_type(&input.ty, value, owner.as_deref(), structs)?;
+                if profile == 2 && matches!(ty, Type::Named(_) | Type::Enum(_)) {
+                    return Err(unsupported(
+                        "profile two nominal inputs require shared references; owning non-Copy inputs need separate postcondition ownership analysis",
+                    ));
+                }
+                inputs.push((pattern.ident.to_string(), ty));
             }
         }
     }

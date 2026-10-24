@@ -187,3 +187,12 @@ Each identity has its own manifest binding; backend evidence still names the
 actual function. A failed conjunction is not an individual requirement refutation.
 Nominal enum constants resolve against the admitted source type and variant;
 unsupported derives and trait implementations are refused before execution.
+
+The generated enum declaration carries Verus's Structural derive only after
+admitting exact compiler-derived PartialEq/Eq on its unit variants. This links
+executable equality to the same variant identity used in specifications. The
+original source, its derives, executable bodies and guarantees stay unchanged.
+Profile two requires nominal inputs through shared references; it rejects owning
+nominal inputs and specification conditional/block results of nominal types.
+Those forms require separate runtime ownership handling. Direct flat fields,
+Boolean/integer conditionals and owned return values remain admitted.

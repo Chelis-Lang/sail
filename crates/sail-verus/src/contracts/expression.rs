@@ -17,6 +17,7 @@ pub(super) enum Phase {
 }
 
 pub(super) struct Environment<'a> {
+    pub(super) profile: u32,
     pub(super) module: &'a [String],
     pub(super) values: BTreeMap<String, Type>,
     pub(super) structs: &'a BTreeMap<String, Struct>,
@@ -112,7 +113,9 @@ impl Environment<'_> {
                 let [syn::Stmt::Expr(expression, None)] = value.block.stmts.as_slice() else {
                     return Err(unsupported("unsupported specification block"));
                 };
-                self.translate(expression, hint, phase)
+                let value = self.translate(expression, hint, phase)?;
+                self.admit_nominal_value(&value.ty)?;
+                Ok(value)
             }
             syn::Expr::Binary(value) => self.binary(value, hint, phase),
             syn::Expr::Unary(value) => self.unary(value, hint, phase),
@@ -410,6 +413,15 @@ impl Environment<'_> {
         })
     }
 
+    fn admit_nominal_value(&self, ty: &Type) -> Result<()> {
+        if self.profile == 2 && matches!(ty, Type::Named(_) | Type::Enum(_)) {
+            return Err(unsupported(
+                "profile two conditional and block expressions cannot move a non-Copy nominal value; use direct flat fields or scalar expressions",
+            ));
+        }
+        Ok(())
+    }
+
     fn conditional(
         &self,
         source: &syn::ExprIf,
@@ -428,6 +440,7 @@ impl Environment<'_> {
             .as_ref()
             .ok_or_else(|| unsupported("missing specification else branch"))?;
         let ty = self.operand_type(then, otherwise, hint)?;
+        self.admit_nominal_value(&ty)?;
         let then = self.translate(then, Some(&ty), phase)?;
         let otherwise = self.translate(otherwise, Some(&ty), phase)?;
         if then.ty != otherwise.ty {
