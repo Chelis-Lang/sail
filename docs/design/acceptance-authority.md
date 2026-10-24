@@ -10,7 +10,8 @@ or CLI/MCP integration. The [acceptance design](evidence-acceptance-core.md) and
 
 Requests, started invocations and observed verifier documents carry the shared
 `ModelContext`. It contains the original request bytes, structured whole/partial
-scope, runtime identity, verification mode and the actual modeled input map.
+scope, runtime identity, explicit solver identity, verification mode and the
+actual modeled input map.
 Input keys include role and lexical path. Present values include resolved path
 and bytes; absence and unreadable observations are distinct. There is no opaque
 input digest whose equality is assumed to establish equal effective inputs.
@@ -32,9 +33,10 @@ are built by the following guarded model transitions:
 | Transition | Required observations and checks |
 |---|---|
 | `start` | A well-formed exact invocation context and scope; direct or engine origin. A fallback cannot enter through this constructor. |
+| `stream_started` / `stream_closed` | A child start creates an independent mandatory ledger slot for the declared context solver; a matching well-formed transcript closes that slot exactly once. Documents cannot create or replace slots. |
 | `observe` | Append a verifier document to the actual started run's observation history. The document remains a candidate, not proof authority. |
 | `interrupt` / `malformed` | Permanently prevent that stream from completing; later observations cannot restore Running. |
-| `complete` | Running stream, normal zero process exit, ordered completion point, at least one verifier document, matching run ID/target/scope/context for every document, checked successful records and well-formed recorded solver sessions. |
+| `complete` | Running stream, normal zero process exit, ordered completion point, at least one verifier document, matching run ID/target/scope/context for every document, checked successful records, every started child closed, and exact equality between the independent child ledger and the complete document inventory. |
 | `finish_project` | Normal successful project termination and a completion set whose contexts, observation points and origins match the selected direct/engine/fallback path. |
 | `validate_scoped` | Exact acceptance context, a fresh acceptance point, complete one-to-one requested target coverage and exact requested scope. |
 | `validate_current_complete` | All scoped checks plus whole-target scope. |
@@ -67,14 +69,28 @@ started invocation, a nonempty document collection, explicit successful verifier
 termination and normal process completion. No inference from an empty query or
 function collection creates an invocation-completeness fact.
 
-Every document also carries its observed solver-session inventory. Completion
-checks its shape, and `observed_transcripts` derives the completion's inventory
-by concatenating **all** document inventories in order. Callers cannot replace
-it with a separate completion-success flag or supply a different final inventory.
-The shared composition matches every recorded transcript against the query-origin
-component. The compiler/side-channel adapter must still establish that these
-observations include every actual session; this model does not obtain capture
-completeness merely by calling a sequence an inventory.
+The modeled invocation independently tracks child solver starts and closes.
+`stream_started` creates a private mandatory slot before the document inventory
+exists; `stream_closed` supplies that slot's final transcript. A slot cannot
+close twice or use a solver other than the explicitly declared
+`ModelContext.solver`. A started but still open child blocks completion.
+
+Documents separately carry their observed session inventories.
+`observed_transcripts` concatenates **all** document inventories in order, and
+completion requires this sequence to equal the ordered started/closed-child
+ledger exactly. Omitting a stream from both a document and the caller's query
+list cannot remove its already recorded start slot. A closed-but-omitted stream
+therefore blocks completion even when the supplied document/query inventories
+are both empty. Legitimate invocations that actually start no modeled solver
+children can retain an empty inventory.
+
+The completion exposes both inventories and proves their equality. The shared
+composition matches every such recorded transcript against query-origin evidence
+and requires its solver to equal the context's explicit solver identity. The
+actual compiler/side-channel adapter must still refine real child creation,
+complete stream capture and closure into these model events. An OS child that
+was never reported to the model remains an external refinement gap; neither a
+document inventory nor a ledger name proves real-world capture completeness.
 
 ## Engine failure, retained jobs and repair
 
@@ -110,16 +126,17 @@ that ordinary verification succeeds while repair acceptance remains refused.
 `example_candidate` constructs concrete target and confirmed-function records
 and then obtains evidence through the checked lifecycle. It accepts a shared
 context and complete observed transcript sequence for the composed positive
-witness. The composed witness must include real nonempty input/query evidence;
+witness, explicitly emitting a child-start and child-close event for each
+transcript before completing the run. The composed witness must include real nonempty input/query evidence;
 legitimate no-SMT invocations may still have an empty session inventory.
 
-Six deliberate guard removals must fail ordinary full-crate proof checking:
+Seven deliberate guard removals must fail ordinary full-crate proof checking:
 whole/partial promotion, missing function confirmation, missing requested-target
 coverage, completing an invocation without documents,
-accepting a stale context and accepting a document from another context. They
-retain the original claims rather than weakening the safety theorem.
+accepting a stale context, accepting a document from another context, and
+ignoring the independent child-stream ledger. They retain the original claims rather than weakening the safety theorem.
 
-The local shared-driver run reports `verified: 55`, `errors: 0`, normal exit
+The local shared-driver run reports `verified: 62`, `errors: 0`, normal exit
 zero and entire-crate verification. That count includes the shared context's
 two checked lemmas. The pin remains upstream stock Verus
 `0.2026.10.18.7d82994`, commit
