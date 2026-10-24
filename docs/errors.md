@@ -229,6 +229,12 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL7109` | Repair gate: median speed-up below the target | A failing result; record it |
 | `SAIL7110` | Repair gate: invalid M6 baseline sample | Read the baseline's stderr |
 
+## Contributor proof checking
+
+| Code | Meaning | What to do |
+|---|---|---|
+| `SAIL9002` | Direct stock-Verus acceptance-model check refused an identity, inventory, scope, evidence or mutation-control check | Read the failed control, use the exact committed proof inventory and validated stock archive/runtime, and rerun the complete checker. A refusal never establishes a proof. |
+
 ## Native benchmark host helper
 
 | Code | Meaning | What to do |

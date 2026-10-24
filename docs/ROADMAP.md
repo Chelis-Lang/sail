@@ -13,6 +13,13 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 | Source-semantic requirement entailment and full requirement tiers | Producer source-bound proof views implemented; independent links belong to Oyster | [Service boundary](spec/neutral-contract-jobs.md) |
 | Bounded neutral-source body mutation | Lifecycle qualified; native strong mutants remain Unknown and positive kills unestablished | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
 
+## Evidence-acceptance proofs
+
+| Gate | Current state | Remaining work |
+|---|---|---|
+| Query association, input identity, scope and result authority models | Initial standalone models and direct stock-Verus checker implemented; qualification is recorded in the [model guide](design/acceptance-proof-checker.md) | Production source sharing, observation adapters, cache origins and composed theorem |
+| Production acceptance core | Design specified; no production path uses the proved models | Complete stages C–F of the [design](design/evidence-acceptance-core.md) and existing conformance/cost gates |
+
 ## Goal
 
 The first public release must be clearly faster than plain `cargo verus

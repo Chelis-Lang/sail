@@ -59,6 +59,9 @@ projects, unchanged deadlines, source-byte checks and performance gates.
 defines a conditional safety theorem for query association, input identity,
 requested scope and result authority. It is a design proposal, not an
 implemented formal guarantee.
+[Direct stock-Verus checking](design/acceptance-proof-checker.md) documents the
+initial standalone models, complete proof inventory and deliberately broken
+controls. Production refinement remains open.
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs

@@ -1,0 +1,174 @@
+{
+  "schema": "sail-acceptance-proofs-v1",
+  "components": [
+    {
+      "id": "query-association",
+      "source": "proofs/acceptance/query_association.rs",
+      "verified": 24,
+      "functions": [
+        "query_association::Action::arrow_0",
+        "query_association::Action::arrow_Cache_0",
+        "query_association::Action::arrow_Command_0",
+        "query_association::Action::arrow_Fallback_0",
+        "query_association::Action::arrow_Input_0",
+        "query_association::Action::arrow_Reply_0",
+        "query_association::Mode::arrow_0",
+        "query_association::Mode::arrow_OptIn_0",
+        "query_association::all_finite_executions_preserve",
+        "query_association::begin_fallback",
+        "query_association::binding_wf",
+        "query_association::buffer_init",
+        "query_association::buffer_wf",
+        "query_association::cache_serve_preserves_association",
+        "query_association::can_pair",
+        "query_association::can_serve",
+        "query_association::command_arrival_preserves",
+        "query_association::command_observation_preserves",
+        "query_association::completed_reply_preserves_all_bytes",
+        "query_association::empty_buffer_is_valid",
+        "query_association::enqueue_command",
+        "query_association::enqueue_reply",
+        "query_association::every_delivered_reply_binds_its_requested_prefix",
+        "query_association::every_transition_preserves",
+        "query_association::example_solver",
+        "query_association::executed_reply_has_exact_binding",
+        "query_association::execution",
+        "query_association::fallback_replays_exact_prefix",
+        "query_association::finish_reply",
+        "query_association::flatten",
+        "query_association::flatten_after_push",
+        "query_association::fragments_preserve_exact_input",
+        "query_association::input_fragment",
+        "query_association::late_cache_reply_cannot_be_served",
+        "query_association::live_reply",
+        "query_association::observe_command",
+        "query_association::pair_one",
+        "query_association::pairer_init",
+        "query_association::pairer_initially_valid",
+        "query_association::pairer_wf",
+        "query_association::pairing_preserves_order",
+        "query_association::positive_cache_then_fallback",
+        "query_association::positive_pairer_arrival_and_publication",
+        "query_association::publication_has_ordered_origin",
+        "query_association::published",
+        "query_association::receive_fragment",
+        "query_association::replay_suppresses_exactly_served_replies",
+        "query_association::reply_arrival_preserves",
+        "query_association::response_fragment_preserves_bytes",
+        "query_association::serve_cached",
+        "query_association::session_init",
+        "query_association::session_initially_valid",
+        "query_association::session_wf",
+        "query_association::step",
+        "query_association::stop_is_permanent",
+        "query_association::stop_pairer"
+      ],
+      "negative_controls": [
+        {
+          "name": "wrong-command-pair",
+          "before": "binding: s.commands[s.paired as int],",
+          "after": "binding: s.commands[0],"
+        },
+        {
+          "name": "wrong-suppression-boundary",
+          "before": "delivered: if s.seen < s.skip {",
+          "after": "delivered: if s.seen <= s.skip {"
+        }
+      ]
+    },
+    {
+      "id": "input-binding",
+      "source": "proofs/acceptance/input_binding.rs",
+      "verified": 22,
+      "functions": [
+        "input_binding::aba_invalidates_original_guard",
+        "input_binding::atom_view",
+        "input_binding::binding_reflexive",
+        "input_binding::binding_transitive",
+        "input_binding::changed_fact_rejected",
+        "input_binding::complete_match_projects",
+        "input_binding::counter_covers_changes",
+        "input_binding::exact_revert_requires_fresh_guard",
+        "input_binding::example_atom",
+        "input_binding::guarded_observation_unchanged",
+        "input_binding::main",
+        "input_binding::matches_atom",
+        "input_binding::matches_binding",
+        "input_binding::matches_scope",
+        "input_binding::observation_does_not_promise_future",
+        "input_binding::observed_at",
+        "input_binding::positive_controls",
+        "input_binding::restamping_old_bytes_is_not_refresh",
+        "input_binding::retarget_in_scope_rejected",
+        "input_binding::retarget_rejected",
+        "input_binding::reuse_matches_observation_point",
+        "input_binding::same_at",
+        "input_binding::same_binding",
+        "input_binding::same_bytes",
+        "input_binding::same_scope"
+      ],
+      "negative_controls": [
+        {
+          "name": "omit-alias-destination",
+          "before": "&& same_bytes(&left.resolved, &right.resolved)",
+          "after": "&& true"
+        },
+        {
+          "name": "omit-scope-bounds",
+          "before": "if i >= left.len() || i >= right.len() {",
+          "after": "if false {"
+        }
+      ]
+    },
+    {
+      "id": "authority",
+      "source": "proofs/acceptance/authority.rs",
+      "verified": 28,
+      "functions": [
+        "authority::ValidatedResult::valid",
+        "authority::ValidatedResult::whole",
+        "authority::bytes_equal",
+        "authority::covered_at",
+        "authority::covers",
+        "authority::distinct_reports",
+        "authority::distinct_requests",
+        "authority::example",
+        "authority::example_bytes",
+        "authority::example_scope",
+        "authority::example_target",
+        "authority::good_function",
+        "authority::good_report",
+        "authority::historical_control",
+        "authority::inconsistent_summary_control",
+        "authority::injective_coverage",
+        "authority::missing_target_control",
+        "authority::partial_scope_control",
+        "authority::positive_control",
+        "authority::report_valid",
+        "authority::reports_distinct",
+        "authority::requests_distinct",
+        "authority::safe_scoped",
+        "authority::same_scope",
+        "authority::same_target",
+        "authority::scope_equal",
+        "authority::target_covered",
+        "authority::target_equal",
+        "authority::unconfirmed_control",
+        "authority::validate_current_complete",
+        "authority::validate_scoped"
+      ],
+      "negative_controls": [
+        {
+          "name": "admit-partial-as-whole",
+          "before": "if !r.scope.whole { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "admit-unconfirmed-function",
+          "before": "if !f.verified || !f.confirmed || !f.evidence_tier_present { return false; }",
+          "after": "if !f.verified || !f.evidence_tier_present { return false; }"
+        }
+      ]
+    }
+  ]
+}

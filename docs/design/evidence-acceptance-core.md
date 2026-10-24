@@ -1,7 +1,7 @@
 # Proposed verified evidence-acceptance core
 
-**Status: design proposal; no acceptance core or machine-checked theorem is
-implemented or qualified by this document.** Tracked in
+**Status: design with initial standalone proof models; the production core
+and composed safety theorem are not implemented or qualified.** Tracked in
 [#346](https://github.com/Chelis-Lang/sail/issues/346).
 
 This proposal targets silent false acceptance in Sail's existing Verus path.
@@ -304,8 +304,11 @@ environment interfaces.
 
 Stages C and D may expose a smaller useful proved boundary before E and F.
 That boundary must be named accurately: a verified predicate conditional on
-input evidence is not an end-to-end verified service. No stage currently has
-machine-checked evidence under this proposal.
+input evidence is not an end-to-end verified service. Initial standalone
+[component models and checking](acceptance-proof-checker.md) provide
+machine-checked model evidence. Stage C still needs production source sharing
+or refinement; stages D–F still need actual cache origins, observation
+adapters and composition. Those stages are not complete.
 
 Fast proof checks should enter CI only after their measured duration fits the
 repository's fast-tier budget. Longer model exploration and whole-corpus
@@ -320,7 +323,7 @@ actual source/runtime/environment and scope, with failed attempts visible and
 raw data outside the repository. Do not label a model-check pass as an
 implementation proof or a proof build as integrated acceptance.
 
-## Decisions needed before implementation
+## Remaining decisions before production integration
 
 - Approve the first theorem and observation-point semantics, including how
   current documented filesystem exclusions enter the assumptions.
@@ -332,8 +335,8 @@ implementation proof or a proof build as integrated acceptance.
   the assumption-review process after a compatibility spike.
 - Define the scope and measured cost budget for each integration stage.
 
-The owner has requested this design document and the defect PRs. That does not
-select a new runtime architecture or claim that the proposed theorem holds.
+The initial component models do not select a new runtime architecture or
+establish the proposed composed theorem.
 
 ## Primary references
 

@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add standalone acceptance proof models and a direct stock-Verus checker
+  with complete-scope and deliberately broken controls. Production acceptance
+  remains independently implemented; its refinement is not established.
+
 - Keep unchanged CLI proofs reusable when private dependency credentials change.
   Source and build-script declarations that read those variables still
   invalidate their receipts when the values change.
