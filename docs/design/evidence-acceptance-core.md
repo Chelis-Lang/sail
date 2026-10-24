@@ -150,7 +150,8 @@ The intended logical interfaces are:
 | `CompletedEvidence` | Successful complete work for a particular binding and scope | Verifier-output validation and scope accounting |
 | `ValidatedResult` | Consistent verdicts, establishment, scope and currentness | The acceptance core; not arbitrary deserialization |
 
-These are proposed concepts, not implemented Rust types. Constructors must
+These are proposed production interfaces, not implemented production Rust
+authority types. Constructors must
 prevent arbitrary callers or deserializers from minting established evidence.
 Wire/storage structs remain candidates until validated. A provenance string,
 checksum, signature, process exit code or `complete: true` field cannot alone

@@ -230,8 +230,14 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> 
                 path.write_bytes(driver_bytes)
                 command = [str(install / "verus"), str(path), "--no-cheating", "--output-json", "--num-threads", "1"]
                 start = time.monotonic()
-                completed = subprocess.run(command, env=env, cwd=scratch, text=True, capture_output=True, timeout=timeout)
                 label = entry["id"] + "-" + str(index)
+                try:
+                    completed = subprocess.run(command, env=env, cwd=scratch, text=True, capture_output=True, timeout=timeout)
+                except subprocess.TimeoutExpired as error:
+                    for suffix, captured in (("stdout", error.stdout), ("stderr", error.stderr)):
+                        content = captured.decode(errors="replace") if isinstance(captured, bytes) else captured or ""
+                        (out / (label + "." + suffix)).write_text(content)
+                    raise Refusal("proof timeout in " + entry["id"] + "/" + name) from error
                 (out / (label + ".stdout")).write_text(completed.stdout)
                 (out / (label + ".stderr")).write_text(completed.stderr)
                 require(not resource_failure(completed.stdout + completed.stderr), "proof resource limit reached")

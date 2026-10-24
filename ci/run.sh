@@ -145,6 +145,8 @@ start_daemon() {
 
 case "$step" in
   proofs)
+    rm -rf target/acceptance-proofs
+    mkdir -p target/acceptance-proofs
     sail_proof_tmp="$(mktemp -d)"
     # Git trust is restricted to this already executing checkout. No private
     # dependency authentication or injected Git helper is needed for blob reads.
@@ -157,8 +159,6 @@ case "$step" in
     else
       sail_proof_status=$?
     fi
-    rm -rf target/acceptance-proofs
-    mkdir -p target/acceptance-proofs
     if [ -d "$sail_proof_tmp/checked" ]; then
       cp -R "$sail_proof_tmp/checked/." target/acceptance-proofs/
     fi

@@ -1,25 +1,58 @@
 # Evidence-acceptance model qualification
 
-Status: expanded component and composed model proofs are frozen for final
-native qualification. The production acceptance core, concrete adapters and
+Status: expanded component and composed model proofs pass direct stock
+checking on macOS arm64 and native Linux x86-64. The production acceptance core, concrete adapters and
 service-wide theorem remain unproved. This record owns the actual scope of
 [checking](../design/acceptance-proof-checker.md).
 
-## Expanded model candidate
+## Expanded model qualification
 
 The captured-source manifest contains four roots and one shared context.
 The individual drivers verify 59 query, 64 input and 62 authority checks; the
 combined driver verifies 196 checks across all sources. Counts overlap because
 the combined driver rechecks the actual components. All four positive
-compatibility runs use pinned stock Verus, full-crate scope, explicit pinned
+runs use pinned stock Verus, full-crate scope, explicit pinned
 Z3 and `--no-cheating`, with zero errors.
 
 The selected 24 guard mutations cover pairing/suppression, noisy publication,
 corrupt/unrecorded recovery, source alias/scope bounds, capture epochs/domain,
 solver projection/read freshness, whole/confirmed/complete coverage, stale or
 misattributed records, omitted started child streams, and composed admission,
-mode and fresh-projection guards. Complete selected-case runs and native
-workspace/CI-duration qualification remain pending at this checkpoint.
+mode and fresh-projection guards. All 28 selected cases pass at frozen source
+`7d1c5c9456a96a180b3f691bfc449d4e6b7cc7e8`: four positive roots with zero errors,
+and 24 controls with ordinary verification failures, complete inventories and
+normal termination. Resource exhaustion and timeouts never qualify controls.
+
+| Platform | Environment | Cases | Checker wall time | Result |
+|---|---|---:|---:|---|
+| macOS arm64 | Native host, pinned stock archive/runtime | 28 | 131.21 s | Pass |
+| Linux x86-64 | EC2 `c7i.4xlarge`, `us-east-1`, cached core CI image | 28 | 277.65 s | Pass |
+
+The Linux `ci/local.sh proofs` wrapper takes 278.10 s, including launch and
+artifact handling. The slowest verifier case takes 25.10 s. This
+qualifies native packaging and the selected inventory within the fast job's
+10-minute limit; hosted runner qualification is a separate PR check. The
+checker uses the unchanged 120-second per-case timeout and normal solver
+resource limit, with no narrowing flags.
+
+Raw receipt SHA-256 values, outside the repository:
+
+- macOS: `faf5c00f1ce735b7bd279a357ff73190a2ee013d6885f836a7e04a2bf70fda1e`.
+- Linux: `3cdd0b2f2f365215396b99f352296aa55f3ca160ad0ac06345fa6e5643a988db`.
+
+Both receipts contain the same eight source/manifest/checker/pin digests, all
+actual driver/dependency/candidate hashes, full result documents and validated
+platform runtime identities. The expanded checker has 12 passing failure tests.
+The production runtime, corpus, comparator and compiler/solver inputs are
+unchanged; these proofs claim no new corpus conformance or performance gain.
+
+Frozen acceptance attempts:
+
+| Date | Source | Gate | Result |
+|---|---|---|---|
+| 2026-10-24 | `4588f22f` | macOS complete selected-case checker | Refused pair-shift mutation because the lifecycle witness hit the normal solver resource limit; no pass claimed |
+| 2026-10-24 | `4588f22f` | Native Linux complete selected-case checker | Refused pair-shift mutation after the 120-second per-case timeout; no pass claimed |
+| 2026-10-24 | `7d1c5c94` | macOS host gate with owner configuration | Two tests refused the global `kache` compiler-wrapper setting; rerun uses an isolated Cargo configuration without altering that setting |
 
 Exploration index: 2026-10-24, query solver-binding guard-removal experiments
 were rejected after resource-limit diagnostics; neither experiment is in the
@@ -87,10 +120,11 @@ argument/loader settings; fixture tests alone do not qualify a real proof run.
   receipt, repair, retained-job and CLI/MCP projections still need refinement.
 - Runtime/checker/toolchain immutability is a trust assumption; pre/post hashes
   cannot establish atomic launch binding against transient replacement.
-- Actual proof invocations are local-only in this slice. Hosted proof CI and
-  its duration/packaging qualification remain open. The ordinary workspace
-  gate includes the Python failure tests.
+- At the initial `8b0ae885` checkpoint, actual proof invocations were local-only.
+  The expanded implementation adds the direct proof CI job; its qualification
+  is recorded above. The ordinary workspace gate includes the failure tests.
 
-No complete gate attempt for these frozen models failed or was interrupted.
+No complete gate attempt at the initial `8b0ae885` checkpoint failed or was
+interrupted. The expanded-model failed attempts are indexed above.
 Intentional mutation failures are successful negative controls, not successful
 verification of the mutated models.

@@ -79,7 +79,7 @@ an old success report. Native duration qualification belongs in the record.
 
 The runner writes `report.md`, a raw receipt and per-case stdout/stderr outside
 the checkout; the CI wrapper copies these into its artifact directory after
-checking. Receipts bind source, driver, dependency, runtime and toolchain hashes
+checking. Receipts bind source, driver, dependency, runtime hashes, Rust compiler identity
 and actual invocations. Raw receipts are evidence, not independent certificates
 of Python checker correctness.
 
