@@ -22,8 +22,9 @@ optimized, and must never make a run genuinely slower, cold runs included
 (owner direction 2026-10-20, superseding the fixed 5% line of
 [question 32](open-questions.md)). Verdicts, diagnostics and exit codes stay
 identical to stock. Sail's Verus fork is an accepted way to get speed (ADR
-0039, ADR 0043). The release is a CLI with Linux and macOS binaries. M10
-(multi-backend verification runtime, Oyster) is outside this release.
+0039, ADR 0043). The product is a CLI with Linux and macOS binaries. Oyster
+integration proceeds on main alongside the performance work; final release
+composition remains the owner's decision.
 
 Milestones: the GitHub milestone **0.1.0** holds the release blockers. M11
 is *Verus core and performance*, with its ordered backlog
@@ -45,11 +46,14 @@ Current numbers and limits are in [performance](performance.md).
 
 Nothing is published and repository visibility is unchanged. Nothing goes to
 crates.io until the owner's rollout; the release is open source under the
-MIT License with macOS and Linux binaries on GitHub releases. The last draft
-candidate, rc.5, was not accepted (#184, #187, #189); the next is rc.6.
+MIT License with macOS and Linux binaries on GitHub releases. The earlier
+private rc.6 remains a historical measurement baseline. Current development
+follows main, including Oyster integration, rather than a separate release
+track. A new candidate or publication waits for owner direction.
 
-**Scope** (owner, 2026-10-19), frozen on `release/0.1.0` from `fc29023a`:
-Later Oyster integration on main is outside these rc.6 artifacts.
+**Verus product baseline** (owner, 2026-10-19): the earlier rc.6 artifacts
+on `release/0.1.0` exclude the newer Oyster work. This does not freeze the
+scope of a future release.
 
 - Verified vstd shipped in release archives as a compiler-boundary proof
   bundle, served only after exact admission (#249,
