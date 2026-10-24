@@ -57,6 +57,13 @@ binds the latest cumulative source and preserves the same positive-kill limit.
 
 ## Corrected defects and historical measurements
 
+- **Explicit older Cargo no longer repeatedly rebuilds unchanged script projects.**
+  Anvil with its selected Cargo 1.98.0 uses ordinary Cargo freshness and reports
+  Unknown with no proof reuse. Three native unchanged-call pairs fall from
+  60.97 s to 0.89 s. This fixes a separate unsupported-protocol path; it does
+  not remove the pinned-toolchain setup costs above. See the
+  [qualification](validation/unsupported-cargo-fallback.md).
+
 - **CapybaraKV's repeated vstd rebuild is fixed** (#321, #292). The native
   three-round full mutation run now has 168 matching comparisons, no false
   verified result and about 1.9× faster edit loops. This supersedes the older

@@ -16,6 +16,10 @@ semantic versioning once the API is published.
   source and retained evidence keep their original interpretation and bytes.
   Runtime postconditions borrow actual results without requiring Copy.
 
+- Honor an explicitly selected older Cargo by verifying build-script projects
+  with ordinary Cargo freshness when its input protocol cannot support proof
+  receipts. Explain how to enable receipt reuse with the pinned toolchain;
+  JSON results stay Unknown and explicitly report no proof reuse.
 
 - Keep unchanged CLI proofs reusable when private dependency credentials change.
   Source and build-script declarations that read those variables still
