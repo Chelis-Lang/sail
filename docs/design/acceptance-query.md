@@ -156,7 +156,14 @@ record does not replace the full repository gate or integrated acceptance.
 There are no assumed lemmas, `assume`, `admit`, `external_body` or unchecked
 external specifications in this component. Opaque specification definitions
 are proved through their explicit definitions and helper lemmas; opacity
-controls solver expansion and does not introduce an axiom.
+controls solver expansion and does not introduce an axiom. Origin extraction, live-run/store replay
+and observation-history construction expose their checked facts through local
+lemmas; the lifecycle witness does not repeatedly unfold the full solver and
+pairer history. Pairing checks the appended entry directly before proving its
+quantified invariant. These proof hints preserve the same statements, complete
+verification scope and ordinary solver limits. The nonempty live-run witness
+constructs each observed event with checked after-push facts instead of
+unfolding the complete replay history at once.
 
 The model-level local-origin invariant is closed under its transitions. The
 following physical interfaces remain obligations, not established guarantees:
