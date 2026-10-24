@@ -94,6 +94,22 @@ managed output order and script facts, and managed verification by default
 
 ## Performance program
 
+### Current improvement sprint
+
+Work follows current main, including the neutral service integration. There
+is no new release branch or predetermined next release artifact.
+
+| Scope | Current state | Completion gate |
+|---|---|---|
+| Installation and adoption | Guided, checksum-checked archive installer merged (#357); actual Linux and Mac install/first-proof/unchanged controls pass | [Installation](validation/install.md) |
+| Avoidable allocation | Streaming attribution hashes halve peak memory in a bounded 256 MiB hash diagnostic; final reduced patch in qualification | [Memory scope and limits](validation/transcript-memory.md) |
+| Cold and unchanged overhead | Open; initial source-observation cuts did not move Anvil latency and are excluded | Measured improvement on native Linux and Mac without weaker input checks |
+| Real-project frontend floor | Current-runtime Vest, IronKV and Anvil profiles in progress | Select a contained change from measured wall-time cost; persistent reuse remains unqualified under ADR 0052 |
+| Combined product validation | Required after selecting effective changes | Corrected matrices and realistic mutation suite; functional parity and no real slowdown |
+
+The historical rc.6 results above remain a baseline. They do not qualify
+later main changes or settle the remaining performance gates.
+
 Ordered by release-goal blocking first (no scenario slower than stock),
 then value × tractability. Track 1 is the release blocker; track 2 is the
 largest edit-loop prize and the only one that moves all five projects.

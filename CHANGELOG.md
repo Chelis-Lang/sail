@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Hash attribution transcripts without allocating a second complete copy of
+  the solver input. Proof keys still bind the exact same bytes.
+
 - Add an explicit-version or local-archive installer with checksum and runtime
   validation, custom install prefixes and opt-in pinned Rust setup. Existing
   installations, shell profiles and the default Rust toolchain are preserved.

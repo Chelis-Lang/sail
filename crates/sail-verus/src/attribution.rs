@@ -122,6 +122,18 @@ impl Transcript {
         }
         out
     }
+
+    /// Hash the exact pipe stream without allocating a second full copy of
+    /// the queries. Real-project attribution logs can hold hundreds of MiB.
+    fn input_sha256(&self) -> String {
+        let mut hasher = Sha256::new();
+        for batch in &self.batches {
+            hasher.update(&batch.query);
+            hasher.update(b"\n");
+            hasher.update(DONE_ECHO);
+        }
+        hex(&hasher.finalize())
+    }
 }
 
 /// One `check-sat` in a transcript.
@@ -441,7 +453,7 @@ impl LogFile {
             air,
             spinoff_reason,
             ops: ops(&transcript),
-            input_sha256: hex(&Sha256::digest(transcript.pipe_input())),
+            input_sha256: transcript.input_sha256(),
             solver_version: solver_version(&transcript),
         }
     }
@@ -1057,12 +1069,14 @@ unsat
             "(set-option :rlimit 30000000)\n(declare-const a Int)\n(get-info :all-statistics)\n\n(echo \"<<DONE>>\")\n(push)\n"
         ));
         assert_eq!(input.matches("<<DONE>>").count(), 10);
+        assert_eq!(t.input_sha256(), hex(&Sha256::digest(input.as_bytes())));
         assert_eq!(solver_version(&t).as_deref(), Some("4.16.0"));
         // A truncated transcript keeps its complete batches.
         let cut = TRANSCRIPT.get(..TRANSCRIPT.len() - 20).unwrap_or_default();
         let t = Transcript::parse(cut.as_bytes());
         assert_eq!(t.batches.len(), 10);
         assert_eq!(t.batches.last().and_then(|b| b.response.as_ref()), None);
+        assert_eq!(t.input_sha256(), hex(&Sha256::digest(t.pipe_input())));
     }
 
     #[test]
