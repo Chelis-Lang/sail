@@ -2,7 +2,7 @@
 //! Real process observation and production presentation refinement remain external.
 #![forbid(unsafe_code)]
 use vstd::prelude::*;
-use crate::context::{ModelContext, ScopeKey, Mode, InputKey, ReadOutcome, context_wf, SolverTranscript, transcript_wf};
+use crate::context::{ModelContext, ScopeKey, Mode, InputKey, ReadOutcome, context_wf, SolverId, SolverTranscript, transcript_wf};
 
 verus! {
 
@@ -126,7 +126,8 @@ pub open spec fn document_matches(inv: &Invocation, doc: &VerifierDocument) -> b
 }
 
 pub open spec fn document_streams_valid(doc: &VerifierDocument) -> bool {
-    forall|i: int| 0 <= i < doc.transcripts@.len() ==> transcript_wf(doc.transcripts@[i])
+    forall|i: int| 0 <= i < doc.transcripts@.len() ==>
+        transcript_wf(doc.transcripts@[i]) && doc.transcripts@[i].solver == doc.context@.solver
 }
 
 /// Derive the inventory from every observed document, preserving all sessions.
@@ -135,6 +136,15 @@ pub open spec fn observed_transcripts(documents: Seq<VerifierDocument>) -> Seq<S
 {
     if documents.len() == 0 { Seq::empty() }
     else { observed_transcripts(documents.drop_last()) + documents.last().transcripts@ }
+}
+
+proof fn single_document_inventory(document: VerifierDocument)
+    ensures observed_transcripts(seq![document]) == document.transcripts@,
+{
+    reveal_with_fuel(observed_transcripts, 2);
+    assert(seq![document].drop_last() =~= Seq::<VerifierDocument>::empty());
+    assert(seq![document].last() == document);
+    assert(Seq::<SolverTranscript>::empty() + document.transcripts@ =~= document.transcripts@);
 }
 
 pub proof fn observed_transcripts_are_well_formed(documents: Seq<VerifierDocument>)
@@ -159,12 +169,38 @@ pub proof fn observed_transcripts_are_well_formed(documents: Seq<VerifierDocumen
 #[derive(Structural, PartialEq, Eq, Copy, Clone)]
 pub enum StreamState { Running, Interrupted, Malformed }
 
+/// Independent verifier-child lifecycle slot; documents cannot create or replace it.
+pub struct ChildStream {
+    solver: SolverId,
+    closed: Option<SolverTranscript>,
+}
+
+impl ChildStream {
+    pub closed spec fn solver(&self) -> SolverId { self.solver }
+    pub closed spec fn closed(&self) -> Option<SolverTranscript> { self.closed }
+}
+
+pub open spec fn child_stream_valid(stream: &ChildStream, solver: SolverId) -> bool {
+    stream.solver() == solver && (stream.closed().is_some() ==>
+        transcript_wf(stream.closed().unwrap()) && stream.closed().unwrap().solver == solver)
+}
+
+/// Ordered final inventory derives from started slots, never from verifier documents.
+pub open spec fn child_stream_inventory(streams: Seq<ChildStream>) -> Seq<SolverTranscript> {
+    Seq::new(streams.len(), |i: int| streams[i].closed().unwrap())
+}
+
+pub open spec fn every_child_closed(streams: Seq<ChildStream>) -> bool {
+    forall|i: int| 0 <= i < streams.len() ==> streams[i].closed().is_some()
+}
+
 /// Private lifecycle state can be obtained only by modeled start/observation transitions.
 pub struct RunningInvocation {
     invocation: Invocation,
     documents: Seq<VerifierDocument>,
     stream: StreamState,
     fallback_from: Option<EngineFailure>,
+    children: Seq<ChildStream>,
 }
 
 /// A failed engine execution, not a caller-supplied fallback flag.
@@ -178,6 +214,7 @@ impl RunningInvocation {
     pub closed spec fn invocation(&self) -> Invocation { self.invocation }
     pub closed spec fn documents(&self) -> Seq<VerifierDocument> { self.documents }
     pub closed spec fn stream(&self) -> StreamState { self.stream }
+    pub closed spec fn children(&self) -> Seq<ChildStream> { self.children }
 }
 impl EngineFailure {
     pub closed spec fn invocation(&self) -> Invocation { self.invocation }
@@ -205,6 +242,8 @@ pub closed spec fn origin_valid(run: &RunningInvocation) -> bool {
 
 pub closed spec fn running_wf(run: &RunningInvocation) -> bool {
     invocation_wf(&run.invocation) && origin_valid(run)
+        && forall|i: int| 0 <= i < run.children.len() ==>
+            child_stream_valid(&run.children[i], run.invocation.context@.solver)
 }
 
 pub proof fn start(invocation: Invocation) -> (run: Option<RunningInvocation>)
@@ -213,13 +252,14 @@ pub proof fn start(invocation: Invocation) -> (run: Option<RunningInvocation>)
         run.is_some() ==> running_wf(&run.unwrap()),
         run.is_some() ==> run.unwrap().invocation() == invocation,
         run.is_some() ==> run.unwrap().documents().len() == 0,
+        run.is_some() ==> run.unwrap().children().len() == 0,
         run.is_some() ==> run.unwrap().stream() == StreamState::Running,
 {
     if !invocation_wf(&invocation) || matches!(invocation.origin, Origin::Fallback(_)) {
         None
     } else {
         Some(RunningInvocation { invocation, documents: Seq::empty(),
-            stream: StreamState::Running, fallback_from: None })
+            stream: StreamState::Running, fallback_from: None, children: Seq::empty() })
     }
 }
 
@@ -227,6 +267,7 @@ pub proof fn observe(run: RunningInvocation, document: VerifierDocument) -> (out
     requires running_wf(&run),
     ensures running_wf(&out), out.invocation() == run.invocation(),
         out.documents() == run.documents().push(document), out.stream() == run.stream(),
+        out.children() == run.children(),
 {
     RunningInvocation { documents: run.documents.push(document), ..run }
 }
@@ -235,6 +276,7 @@ pub proof fn interrupt(run: RunningInvocation) -> (out: RunningInvocation)
     requires running_wf(&run),
     ensures running_wf(&out), out.invocation() == run.invocation(),
         out.documents() == run.documents(), out.stream() == StreamState::Interrupted,
+        out.children() == run.children(),
 {
     RunningInvocation { stream: StreamState::Interrupted, ..run }
 }
@@ -243,8 +285,53 @@ pub proof fn malformed(run: RunningInvocation) -> (out: RunningInvocation)
     requires running_wf(&run),
     ensures running_wf(&out), out.invocation() == run.invocation(),
         out.documents() == run.documents(), out.stream() == StreamState::Malformed,
+        out.children() == run.children(),
 {
     RunningInvocation { stream: StreamState::Malformed, ..run }
+}
+
+/// A child process start records an independent mandatory slot before any document exists.
+pub proof fn stream_started(run: RunningInvocation, solver: SolverId) -> (out: Option<RunningInvocation>)
+    requires running_wf(&run),
+    ensures out.is_some() == (run.stream() == StreamState::Running
+        && solver == run.invocation().context@.solver),
+        out.is_some() ==> running_wf(&out.unwrap()),
+        out.is_some() ==> out.unwrap().invocation() == run.invocation(),
+        out.is_some() ==> out.unwrap().documents() == run.documents(),
+        out.is_some() ==> out.unwrap().stream() == run.stream(),
+        out.is_some() ==> out.unwrap().children().len() == run.children().len() + 1,
+        out.is_some() ==> out.unwrap().children().drop_last() == run.children(),
+        out.is_some() ==> out.unwrap().children().last().solver() == solver,
+        out.is_some() ==> out.unwrap().children().last().closed().is_none(),
+{
+    if run.stream == StreamState::Running && solver == run.invocation.context@.solver {
+        Some(RunningInvocation { children: run.children.push(ChildStream { solver, closed: None }), ..run })
+    } else { None }
+}
+
+/// Only the originally declared solver can close its started slot; it closes once.
+pub proof fn stream_closed(run: RunningInvocation, index: int, transcript: SolverTranscript)
+    -> (out: Option<RunningInvocation>)
+    requires running_wf(&run),
+    ensures out.is_some() == (run.stream() == StreamState::Running
+        && 0 <= index < run.children().len() && run.children()[index].closed().is_none()
+        && transcript_wf(transcript) && transcript.solver == run.children()[index].solver()),
+        out.is_some() ==> running_wf(&out.unwrap()),
+        out.is_some() ==> out.unwrap().invocation() == run.invocation(),
+        out.is_some() ==> out.unwrap().documents() == run.documents(),
+        out.is_some() ==> out.unwrap().stream() == run.stream(),
+        out.is_some() ==> out.unwrap().children().len() == run.children().len(),
+        out.is_some() ==> out.unwrap().children()[index].closed() == Some(transcript),
+        out.is_some() ==> forall|i: int| 0 <= i < run.children().len() && i != index ==>
+            out.unwrap().children()[i] == run.children()[i],
+{
+    if run.stream == StreamState::Running && 0 <= index < run.children.len()
+        && run.children[index].closed.is_none() && transcript_wf(transcript)
+        && transcript.solver == run.children[index].solver {
+        let children = run.children.update(index,
+            ChildStream { solver: run.children[index].solver, closed: Some(transcript) });
+        Some(RunningInvocation { children, ..run })
+    } else { None }
 }
 
 pub proof fn engine_failed(run: RunningInvocation, end: ProcessEnd, point: u64)
@@ -268,6 +355,7 @@ pub proof fn start_fallback(failed: EngineFailure, invocation: Invocation)
     ensures out.is_some() ==> running_wf(&out.unwrap()),
         out.is_some() ==> out.unwrap().invocation() == invocation,
         out.is_some() ==> out.unwrap().documents().len() == 0,
+        out.is_some() ==> out.unwrap().children().len() == 0,
         out.is_some() ==> out.unwrap().stream() == StreamState::Running,
         out.is_some() == (invocation_wf(&invocation) && invocation.scope.whole
             && invocation.origin == Origin::Fallback(failed.invocation().run_id)
@@ -283,7 +371,7 @@ pub proof fn start_fallback(failed: EngineFailure, invocation: Invocation)
         && invocation.context@.request == failed.invocation.context@.request
         && invocation.context@.mode == failed.invocation.context@.mode {
         Some(RunningInvocation { invocation, documents: Seq::empty(),
-            stream: StreamState::Running, fallback_from: Some(failed) })
+            stream: StreamState::Running, fallback_from: Some(failed), children: Seq::empty() })
     } else { None }
 }
 
@@ -291,6 +379,8 @@ pub closed spec fn can_complete(run: &RunningInvocation, end: ProcessEnd, point:
     running_wf(run) && run.stream == StreamState::Running
         && end == ProcessEnd::Exit(0) && point >= run.invocation.started_at
         && run.documents.len() > 0
+        && every_child_closed(run.children)
+        && observed_transcripts(run.documents) == child_stream_inventory(run.children)
         && forall|i: int| #![auto] 0 <= i < run.documents.len() ==>
             document_matches(&run.invocation, &run.documents[i]) && document_good(&run.documents[i])
                 && document_streams_valid(&run.documents[i])
@@ -310,6 +400,7 @@ impl CompletedInvocation {
     pub closed spec fn invocation(&self) -> Invocation { self.run.invocation }
     pub closed spec fn documents(&self) -> Seq<VerifierDocument> { self.run.documents }
     pub closed spec fn transcripts(&self) -> Seq<SolverTranscript> { observed_transcripts(self.run.documents) }
+    pub closed spec fn children(&self) -> Seq<ChildStream> { self.run.children }
 }
 
 pub proof fn complete(run: RunningInvocation, end: ProcessEnd, point: u64)
@@ -570,8 +661,13 @@ pub proof fn completion_has_validated_records(completed: &CompletedInvocation)
                 && document_good(&completed.documents()[i])
                 && document_streams_valid(&completed.documents()[i]),
         completed.transcripts() == observed_transcripts(completed.documents()),
+        every_child_closed(completed.children()),
+        completed.transcripts() == child_stream_inventory(completed.children()),
+        forall|i: int| 0 <= i < completed.children().len() ==>
+            child_stream_valid(&completed.children()[i], completed.context().solver),
         forall|i: int| 0 <= i < completed.transcripts().len()
-            ==> transcript_wf(completed.transcripts()[i]),
+            ==> transcript_wf(completed.transcripts()[i])
+                && completed.transcripts()[i].solver == completed.context().solver,
         match completed.invocation().origin {
             Origin::Fallback(id) => completed.invocation().run_id > id
                 && completed.invocation().scope.whole,
@@ -579,6 +675,13 @@ pub proof fn completion_has_validated_records(completed: &CompletedInvocation)
         },
 {
     observed_transcripts_are_well_formed(completed.documents());
+    assert forall|i: int| 0 <= i < completed.transcripts().len()
+        implies transcript_wf(#[trigger] completed.transcripts()[i])
+            && completed.transcripts()[i].solver == completed.context().solver by {
+        assert(completed.children()[i].closed().is_some());
+        assert(child_stream_valid(&completed.children()[i], completed.context().solver));
+        assert(completed.transcripts()[i] == completed.children()[i].closed().unwrap());
+    }
 }
 
 /// Every published authority preserves the exact input/runtime/request context.
@@ -602,6 +705,7 @@ pub open spec fn example_context(whole: bool) -> ModelContext {
         request: seq![7u8], scope: ScopeKey { whole,
             selection: if whole { Seq::empty() } else { seq![9u8] } },
         runtime: seq![8u8], mode: Mode::Default,
+        solver: SolverId { name: seq![1u8], version: seq![2u8], binary: seq![3u8], platform: seq![4u8] },
         inputs: Map::empty().insert(InputKey { role: 1, lexical: seq![4u8] },
             ReadOutcome::Present { resolved: seq![5u8], bytes: seq![6u8] }),
     }
@@ -685,6 +789,50 @@ fn example_document(whole: bool, id: u64, has_function: bool,
     out
 }
 
+/// Fixture support explicitly emits each child-start and child-close event.
+/// The lifecycle itself never manufactures this ledger from a completed document.
+proof fn record_child_lifecycles(run: RunningInvocation, transcripts: Seq<SolverTranscript>)
+    -> (out: RunningInvocation)
+    requires running_wf(&run), run.stream() == StreamState::Running,
+        run.children().len() == 0,
+        forall|i: int| 0 <= i < transcripts.len() ==>
+            transcript_wf(transcripts[i]) && transcripts[i].solver == run.invocation().context@.solver,
+    ensures running_wf(&out), out.invocation() == run.invocation(),
+        out.documents() == run.documents(), out.stream() == StreamState::Running,
+        out.children().len() == transcripts.len(),
+        every_child_closed(out.children()), child_stream_inventory(out.children()) == transcripts,
+    decreases transcripts.len(),
+{
+    if transcripts.len() == 0 {
+        assert(child_stream_inventory(run.children()) =~= transcripts);
+        run
+    } else {
+        let current = record_child_lifecycles(run, transcripts.drop_last());
+        let before = current.children();
+        let i = transcripts.len() - 1;
+        let started_option = stream_started(current, transcripts[i].solver);
+        assert(started_option.is_some()); let started = started_option.unwrap();
+        assert(started.children()[i].closed().is_none());
+        assert(started.children()[i].solver() == transcripts[i].solver);
+        let closed_option = stream_closed(started, i, transcripts[i]);
+        assert(closed_option.is_some()); let closed = closed_option.unwrap();
+        assert forall|k: int| 0 <= k < closed.children().len()
+            implies closed.children()[k].closed().is_some() by {
+            if k < i { assert(closed.children()[k] == before[k]); }
+            else { assert(k == i); }
+        }
+        assert forall|k: int| 0 <= k < child_stream_inventory(closed.children()).len()
+            implies #[trigger] child_stream_inventory(closed.children())[k] == transcripts[k] by {
+            if k < i {
+                assert(closed.children()[k] == before[k]);
+                assert(child_stream_inventory(before)[k] == transcripts.drop_last()[k]);
+            } else { assert(k == i); }
+        }
+        assert(child_stream_inventory(closed.children()) =~= transcripts);
+        closed
+    }
+}
+
 /// Positive fixture genuinely starts, observes and completes the modeled process.
 proof fn single_completion(invocation: Invocation, document: VerifierDocument, point: u64)
     -> (out: CompletedInvocation)
@@ -697,7 +845,12 @@ proof fn single_completion(invocation: Invocation, document: VerifierDocument, p
 {
     let started = start(invocation);
     assert(started.is_some());
-    let observed = observe(started.unwrap(), document);
+    assert(started.unwrap().documents() =~= Seq::<VerifierDocument>::empty());
+    let with_children = record_child_lifecycles(started.unwrap(), document.transcripts@);
+    let observed = observe(with_children, document);
+    assert(observed.documents() == seq![document]);
+    single_document_inventory(document);
+    assert(observed_transcripts(observed.documents()) == document.transcripts@);
     assert(can_complete(&observed, ProcessEnd::Exit(0), point));
     let completed = complete(observed, ProcessEnd::Exit(0), point);
     assert(completed.is_some());
@@ -765,7 +918,8 @@ pub fn positive_zero_function_lifecycle_control() {
 pub fn example_candidate(Ghost(context): Ghost<ModelContext>,
     Ghost(transcripts): Ghost<Seq<SolverTranscript>>) -> (pair: (Request, Ghost<Candidate>))
     requires context_wf(context), context.scope.whole, context.scope.selection.len() == 0,
-        forall|i: int| 0 <= i < transcripts.len() ==> transcript_wf(transcripts[i]),
+        forall|i: int| 0 <= i < transcripts.len() ==>
+            transcript_wf(transcripts[i]) && transcripts[i].solver == context.solver,
     ensures pair.0.context@ == context, pair.0.scope.whole, pair.0.targets.len() == 1,
         safe_scoped(&pair.0, &pair.1@, context, 0),
         pair.1@.invocations().len() == 1,
@@ -1006,7 +1160,12 @@ pub fn independent_fallback_control() {
         assert(contaminated.documents()[0].run_id == 1);
         assert(contaminated.invocation().run_id == 3);
         let leaked = complete(contaminated, ProcessEnd::Exit(0), 4); assert(leaked.is_none());
+        assert(fallback.documents() =~= Seq::<VerifierDocument>::empty());
         let fresh = observe(fallback, full_document);
+        single_document_inventory(full_document);
+        assert(fresh.documents() == seq![full_document]);
+        assert(child_stream_inventory(fresh.children()) =~= Seq::<SolverTranscript>::empty());
+        assert(observed_transcripts(fresh.documents()) =~= Seq::<SolverTranscript>::empty());
         let completed_option = complete(fresh, ProcessEnd::Exit(0), 4);
         assert(completed_option.is_some()); let completed = completed_option.unwrap();
         let candidate_option = finish_project(example_context(true), seq![completed],
@@ -1042,6 +1201,59 @@ pub fn missing_tier_and_inconsistent_summary_controls() {
         Establishment::Confirmed, VerifierEnd::Finished(0));
     inconsistent.claimed_summary.verified = 0;
     let bad = validate_document(&inconsistent); assert(!bad);
+}
+
+/// A started child remains mandatory even when both supplied document/query
+/// inventories omit it; an open child and a closed-but-omitted child both refuse.
+pub fn child_stream_omission_and_open_controls() {
+    let invocation = example_invocation(true, 1, Origin::Direct);
+    let document = example_document(true, 1, true, Verdict::Verified,
+        Establishment::Confirmed, VerifierEnd::Finished(0));
+    proof {
+        let initial_option = start(invocation); assert(initial_option.is_some());
+        let initial = initial_option.unwrap();
+        assert(initial.documents() =~= Seq::<VerifierDocument>::empty());
+        let started_option = stream_started(initial, example_context(true).solver);
+        assert(started_option.is_some()); let started = started_option.unwrap();
+        let observed = observe(started, document);
+        assert(observed.children().len() == 1);
+        assert(observed.children()[0].closed().is_none());
+        assert(!every_child_closed(observed.children()));
+        let open = complete(observed, ProcessEnd::Exit(0), 2); assert(open.is_none());
+        let transcript = SolverTranscript { solver: example_context(true).solver,
+            raw: seq![42u8], endpoints: seq![1nat], replies: seq![seq![17u8]] };
+        let closed_option = stream_closed(observed, 0, transcript);
+        assert(closed_option.is_some()); let closed = closed_option.unwrap();
+        assert(closed.documents().len() == 1);
+        single_document_inventory(document);
+        assert(observed_transcripts(closed.documents()).len() == 0);
+        assert(child_stream_inventory(closed.children()).len() == 1);
+        let omitted = complete(closed, ProcessEnd::Exit(0), 2); assert(omitted.is_none());
+        let wrong_solver = SolverId { binary: seq![99u8], ..example_context(true).solver };
+        assert(wrong_solver.binary[0] != example_context(true).solver.binary[0]);
+        let wrong = stream_started(initial, wrong_solver); assert(wrong.is_none());
+        let wrong_close = stream_closed(observed, 0,
+            SolverTranscript { solver: wrong_solver, ..transcript });
+        assert(wrong_close.is_none());
+    }
+}
+
+/// The independent ledger cannot be replaced by the document inventory.
+pub proof fn completed_inventory_matches_started_children(completed: &CompletedInvocation)
+    requires completed.valid(),
+    ensures every_child_closed(completed.children()),
+        completed.transcripts() == child_stream_inventory(completed.children()),
+        forall|i: int| 0 <= i < completed.children().len() ==>
+            completed.children()[i].solver() == completed.context().solver
+                && completed.children()[i].closed().is_some(),
+{}
+
+/// Even a document that claims a plausible final inventory cannot close a live child.
+pub proof fn open_child_cannot_complete(run: &RunningInvocation, index: int, end: ProcessEnd, point: u64)
+    requires 0 <= index < run.children().len(), run.children()[index].closed().is_none(),
+    ensures !can_complete(run, end, point),
+{
+    assert(!every_child_closed(run.children()));
 }
 
 } // verus!
