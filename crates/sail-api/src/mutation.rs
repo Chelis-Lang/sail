@@ -220,6 +220,9 @@ pub fn classify(
     if baseline.version != crate::contracts::VERSION
         || mutant.version != crate::contracts::VERSION
         || baseline.contracts.proof.state != ProofState::Proved
+        || baseline.contracts.manifest.contract_version
+            != mutant.contracts.manifest.contract_version
+        || mutant.contracts.manifest.contract_version != candidate.source.profile
         || mutant.contracts.manifest.original_sha256 != candidate.source.source_sha256
         || contract_keys(baseline) != contract_keys(mutant)
         || baseline.contracts.translation_trust.source_policy_sha256
@@ -405,6 +408,7 @@ pub fn decode_original(
         || result.backend.no_reuse.is_some()
         || result.version != crate::contracts::VERSION
         || result.contracts.version != crate::contracts::VERSION
+        || result.contracts.manifest.contract_version != evidence.source.profile
         || result.contracts.manifest.original_sha256 != evidence.source.source_sha256
         || result.contracts.manifest.crate_name != evidence.source.crate_name
         || result.contracts.proof

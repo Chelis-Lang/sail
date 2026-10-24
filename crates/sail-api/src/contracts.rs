@@ -16,6 +16,9 @@ pub const MAX_STDERR_BYTES: usize = 8 * 1024 * 1024;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Submission {
+    /// Explicit neutral source profile; omitted legacy submissions select profile one.
+    #[serde(default = "legacy_profile", skip_serializing_if = "is_legacy_profile")]
+    pub profile: u32,
     /// Exact UTF-8 original source snapshot.
     pub source: String,
     /// Required SHA-256 of the exact source bytes.
@@ -23,13 +26,25 @@ pub struct Submission {
     /// Rust compiler crate identity, not a filesystem path.
     pub crate_name: String,
 }
+const fn legacy_profile() -> u32 {
+    1
+}
+#[allow(
+    clippy::trivially_copy_pass_by_ref,
+    reason = "Serde skip_serializing_if callbacks borrow the field."
+)]
+fn is_legacy_profile(profile: &u32) -> bool {
+    *profile == 1
+}
+
 impl Submission {
     /// Validate bounded source, exact content identity and a conservative crate name.
     /// # Errors
     /// Returns a source admission diagnostic without starting any process.
     pub fn validate(&self) -> Result<(), String> {
         let expected = sail_key::QueryKey(sail_key::sha256(self.source.as_bytes())).to_string();
-        if self.source.is_empty()
+        if !matches!(self.profile, 1 | 2)
+            || self.source.is_empty()
             || self.source.len() > MAX_SOURCE_BYTES
             || self.source_sha256 != expected
             || self.crate_name.is_empty()

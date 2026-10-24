@@ -44,6 +44,7 @@ fn candidate(result: &WorkerResult) -> Candidate {
         body_start: 0,
         body_end: 0,
         source: sail_api::contracts::Submission {
+            profile: 1,
             source: "recorded source identity only; execution not claimed".into(),
             source_sha256: result.contracts.manifest.original_sha256.clone(),
             crate_name: "neutral".into(),
@@ -95,6 +96,7 @@ fn recorded_receipt() -> TestResult<(mutation::View, WorkerResult)> {
     let original = include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.rs");
     let baseline = recorded(true)?;
     let source = sail_api::contracts::Submission {
+        profile: 1,
         source: original.into(),
         source_sha256: mutation::digest(original.as_bytes()),
         crate_name: "neutral".into(),
@@ -108,6 +110,7 @@ fn recorded_receipt() -> TestResult<(mutation::View, WorkerResult)> {
     candidate.body_start = start;
     candidate.body_end = end;
     candidate.source = sail_api::contracts::Submission {
+        profile: 1,
         source_sha256: mutation::digest(changed.as_bytes()),
         source: changed,
         crate_name: "neutral".into(),

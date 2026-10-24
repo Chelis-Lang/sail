@@ -81,3 +81,5 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0074: Keep bounded neutral-source mutation evidence separate from proof](0074-bounded-neutral-mutation.md)
 - [0075: Preserve floating-point identity in retained JSON evidence](0075-retained-json-roundtrip.md)
+
+- [0076: Explicit flat Rust source profile two](0076-neutral-source-profile-two.md)

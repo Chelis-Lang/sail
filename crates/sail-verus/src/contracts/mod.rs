@@ -14,8 +14,8 @@ mod types;
 
 use serde::{Deserialize, Serialize};
 
-pub use lower::{lower, validate_manifest};
-pub use runner::{ContractRun, verify};
+pub use lower::{lower, lower_profile, validate_manifest};
+pub use runner::{ContractRun, verify, verify_profile};
 pub use sail_api::contracts::{
     CheckCounts, ContractBinding, ContractProof, LoweringManifest, ProofState, SourceRange,
     TranslationTrust,

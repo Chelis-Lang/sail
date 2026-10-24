@@ -256,6 +256,9 @@ pub enum Response {
         /// Neutral source submission version; absent on older services.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         neutral_contracts_version: Option<u32>,
+        /// Explicit supported source profiles; older endpoints advertise none.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        neutral_contract_profiles: Vec<u32>,
         /// Requirement assurance view version; absent on older services.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         assurance_version: Option<u32>,
@@ -592,15 +595,17 @@ impl Client {
     /// Refuses older services, invalid source or transport failures without fallback.
     pub fn submit_contracts(&self, submission: crate::contracts::Submission) -> io::Result<Status> {
         submission.validate().map_err(io::Error::other)?;
-        if !matches!(
-            self.call(&Request::Capabilities)?,
+        let supported = match self.call(&Request::Capabilities)? {
             Response::Capabilities {
                 neutral_contracts_version: Some(crate::contracts::VERSION),
+                neutral_contract_profiles,
                 ..
-            }
-        ) {
+            } => submission.profile == 1 || neutral_contract_profiles.contains(&submission.profile),
+            _ => false,
+        };
+        if !supported {
             return Err(io::Error::other(
-                "SAIL3142: endpoint does not support neutral contract jobs",
+                "SAIL3142: endpoint does not support the selected neutral source profile",
             ));
         }
         match self.call(&Request::SubmitContracts(submission))? {

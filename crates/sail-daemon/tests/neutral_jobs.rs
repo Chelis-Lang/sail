@@ -48,6 +48,7 @@ impl Fixture {
         let source =
             include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.rs").to_owned();
         let input = Submission {
+            profile: 1,
             source_sha256: sail_key::QueryKey(sail_key::sha256(source.as_bytes())).to_string(),
             source,
             crate_name: "neutral".into(),
@@ -307,6 +308,7 @@ fn retain_version_one(fixture: &Fixture, source: &str, manifest: &str) -> TestRe
     assert_eq!(finished(&client, &job.id)?.state, Lifecycle::Completed);
     server.shutdown();
     let input = Submission {
+        profile: 1,
         source: source.into(),
         source_sha256: sail_key::QueryKey(sail_key::sha256(source.as_bytes())).to_string(),
         crate_name: "neutral".into(),

@@ -17,7 +17,7 @@ mod runtime_guarded_compound {
     include!("fixtures/neutral-contracts/compound_field_guarded.rs");
 }
 
-const NATIVE_CASES: [(&str, &str, bool); 8] = [
+const NATIVE_CASES: [(&str, &str, bool); 10] = [
     ("add-one", ADD_ONE, true),
     ("short-circuit", SHORT_CIRCUIT, true),
     ("signed-min", SIGNED, true),
@@ -26,6 +26,16 @@ const NATIVE_CASES: [(&str, &str, bool); 8] = [
     ("old-overflow", OLD, false),
     ("compound-field-overflow", COMPOUND, false),
     ("compound-field-guarded", GUARDED_COMPOUND, true),
+    (
+        "order-profile-two",
+        include_str!("fixtures/neutral-contracts/order_service_profile2.rs"),
+        true,
+    ),
+    (
+        "consumer-order-profile-two",
+        include_str!("fixtures/neutral-contracts/order_service_profile2_consumer.rs"),
+        true,
+    ),
 ];
 
 mod runtime_add_one {
@@ -310,7 +320,11 @@ fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
     let stock = sail_verus::toolchain::Installed::locate_release(pins)?;
     let root = oracle_directory()?;
     for (label, source, expected) in NATIVE_CASES {
-        let lowered = lower(source, "neutral")?;
+        let lowered = sail_verus::contracts::lower_profile(
+            source,
+            "neutral",
+            if label.ends_with("profile-two") { 2 } else { 1 },
+        )?;
         let path = root.join(format!("{label}.rs"));
         std::fs::write(&path, &lowered.source)?;
         std::fs::write(

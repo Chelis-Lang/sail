@@ -288,6 +288,7 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
             proof_version: sail_api::proof::VERSION,
             repair: true,
             neutral_contracts_version: Some(sail_api::contracts::VERSION),
+            neutral_contract_profiles: vec![1, 2],
             assurance_version: Some(sail_api::assurance::VERSION),
             mutation_version: Some(sail_api::mutation::VERSION),
         }),
