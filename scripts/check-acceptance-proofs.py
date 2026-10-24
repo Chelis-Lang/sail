@@ -22,7 +22,13 @@ import tomllib
 import zipfile
 
 
-COMPONENTS = {"query-association", "input-binding", "authority"}
+COMPONENTS = {
+    "query-association": "query_association",
+    "input-binding": "input_binding",
+    "authority": "authority",
+    "composition": "composition",
+}
+SUPPORT = "proofs/acceptance/context.rs"
 MANIFEST = Path("proofs/acceptance/manifest.json")
 
 
@@ -51,21 +57,45 @@ def digest(path: Path) -> str:
 def standalone(text: str) -> None:
     # Conservative refusal applies to original and generated proof candidates,
     # including tokens in comments/strings; this does not pretend to parse Rust.
-    require(not re.search(r"\b(?:mod|include|include_str|include_bytes|extern|macro_rules)\b", text), "proof source is outside the standalone subset")
+    require(not re.search(r"\b(?:mod|include|include_str|include_bytes|extern|macro_rules|env|option_env)\b", text), "proof source is outside the standalone subset")
+
+
+def dependency_paths(component: str) -> list[str]:
+    roots = list(COMPONENTS.values()) if component == "composition" else [COMPONENTS[component]]
+    return [SUPPORT, *["proofs/acceptance/" + stem + ".rs" for stem in roots]]
+
+
+def captured_driver(entry: dict, snapshots: dict[str, bytes], candidate: bytes) -> tuple[str, bytes, dict[str, bytes]]:
+    """Generate only fixed imports of the exact captured dependency bytes."""
+    require(entry["dependencies"] == dependency_paths(entry["id"]), "proof dependency closure changed")
+    files = {Path(path).name: candidate if path == entry["source"] else snapshots[path] for path in entry["dependencies"]}
+    for content in files.values():
+        standalone(content.decode())
+    driver = "check_" + COMPONENTS[entry["id"]] + ".rs"
+    declarations = ['#![forbid(unsafe_code)]']
+    declarations += ['#[path="' + name + '"] pub mod ' + Path(name).stem + ';' for name in files]
+    declarations.append("fn main() {}")
+    return driver, ("\n".join(declarations) + "\n").encode(), files
 
 
 def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes] | None = None) -> list[dict]:
-    require(manifest.get("schema") == "sail-acceptance-proofs-v1", "unknown proof manifest")
+    require(manifest.get("schema") == "sail-acceptance-proofs-v2", "unknown proof manifest")
     entries = manifest.get("components", [])
     require(len(entries) == len(COMPONENTS), "proof component omitted or duplicated")
-    require({entry["id"] for entry in entries} == COMPONENTS, "wrong proof components")
+    require({entry["id"] for entry in entries} == set(COMPONENTS), "wrong proof components")
+    require(manifest.get("support_sources") == [SUPPORT], "shared proof source omitted or changed")
     sources = [Path(entry["source"]) for entry in entries]
     require(len(set(sources)) == len(sources), "duplicate proof root")
     actual = {path.relative_to(root) for path in (root / "proofs/acceptance").rglob("*.rs")}
-    require(set(sources) == actual, "missing or unlisted proof source")
+    require(set(sources) | {Path(SUPPORT)} == actual, "missing or unlisted proof source")
+    support = root / SUPPORT
+    require(not support.is_symlink() and support.resolve().is_relative_to(root.resolve()), "shared proof path escapes root")
+    standalone(support.read_text() if snapshots is None else snapshots[SUPPORT].decode())
     for entry, source in zip(entries, sources, strict=True):
         require(not source.is_absolute() and ".." not in source.parts, "invalid proof path")
         require(source.parts[:2] == ("proofs", "acceptance"), "proof outside inventory")
+        require(str(source) == "proofs/acceptance/" + COMPONENTS[entry["id"]] + ".rs", "wrong component source")
+        require(entry.get("dependencies") == dependency_paths(entry["id"]), "proof dependency omitted or changed")
         require(not (root / source).is_symlink(), "symlink proof root")
         require((root / source).resolve().is_relative_to(root.resolve()), "proof path escapes root")
         require(type(entry["verified"]) is int and entry["verified"] > 0, "empty proof count")
@@ -113,6 +143,14 @@ def proof_environment(install: Path, toolchain: str) -> dict[str, str]:
     return result
 
 
+def resource_failure(output: str) -> bool:
+    text = output.lower()
+    return any(marker in text for marker in (
+        "resource limit exceeded", "resource limit (rlimit) exceeded",
+        "timed out", "rlimit exceeded", "reached its resource limit",
+    ))
+
+
 def checked_document(output: str, code: int, entry: dict, pins: dict, *, broken: bool) -> dict:
     try:
         document = json.loads(output, object_pairs_hook=unique_object)
@@ -126,7 +164,7 @@ def checked_document(output: str, code: int, entry: dict, pins: dict, *, broken:
     require(results.get("encountered-vir-error") is False, "invalid proof program")
     for counter in ("verified", "errors"):
         require(type(results.get(counter)) is int and results[counter] >= 0, "invalid verifier counter")
-    stem = Path(entry["source"]).stem + "::"
+    stem = "check_" + Path(entry["source"]).stem + "::"
     functions = {name for name in document.get("func-details", {}) if name.startswith(stem)}
     require(functions == set(entry["functions"]), "proof function inventory changed")
     if broken:
@@ -140,18 +178,28 @@ def checked_document(output: str, code: int, entry: dict, pins: dict, *, broken:
     return document
 
 
+def git_bytes(root: Path, *arguments: str) -> bytes:
+    retained = {"HOME", "PATH", "USER", "SYSTEMROOT", "TMPDIR", "LANG", "LC_ALL"}
+    environment = {key: value for key, value in os.environ.items() if key in retained}
+    environment.update(GIT_NO_REPLACE_OBJECTS="1", GIT_CONFIG_NOSYSTEM="1",
+        GIT_CONFIG_GLOBAL=os.devnull, GIT_OPTIONAL_LOCKS="0")
+    return subprocess.check_output(["git", "--no-replace-objects", "-c", "safe.directory=" + str(root),
+        "-c", "core.fsmonitor=false", "-C", str(root), *arguments], env=environment)
+
+
 def git(root: Path, *arguments: str) -> str:
-    return subprocess.check_output(["git", "-C", str(root), *arguments], text=True).strip()
+    return git_bytes(root, *arguments).decode().strip()
 
 
 def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> None:
+    started = time.monotonic()
     require(not out.resolve().is_relative_to(root.resolve()), "put raw proof output outside the checkout")
     commit = git(root, "rev-parse", "HEAD")
     proof_paths = git(root, "ls-tree", "-r", "--name-only", commit, "--", "proofs/acceptance").splitlines()
     inputs = ["corpus/toolchain.toml", str(MANIFEST), "scripts/check-acceptance-proofs.py", *[source for source in proof_paths if source.endswith(".rs")]]
     # Parse and compile the actual committed bytes, rather than hashing a path
     # and later reopening it for compilation. Pre/post checks alone miss ABA.
-    snapshots = {source: subprocess.check_output(["git", "-C", str(root), "show", commit + ":" + source]) for source in inputs}
+    snapshots = {source: git_bytes(root, "show", commit + ":" + source) for source in inputs}
     pins = tomllib.loads(snapshots["corpus/toolchain.toml"].decode())
     machine = (platform.system(), platform.machine())
     hosts = {("Darwin", "arm64"): "aarch64-apple-darwin", ("Linux", "x86_64"): "x86_64-unknown-linux-gnu"}
@@ -175,25 +223,27 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> 
         cases = [("positive", source, False)] + [(control["name"], source.replace(control["before"].encode(), control["after"].encode()), True) for control in entry["negative_controls"]]
         for index, (name, candidate, broken) in enumerate(cases):
             with tempfile.TemporaryDirectory(prefix="sail-stock-proof-") as scratch:
-                path = Path(scratch) / Path(entry["source"]).name
-                path.write_bytes(candidate)
+                driver_name, driver_bytes, files = captured_driver(entry, snapshots, candidate)
+                for filename, content in files.items():
+                    (Path(scratch) / filename).write_bytes(content)
+                path = Path(scratch) / driver_name
+                path.write_bytes(driver_bytes)
                 command = [str(install / "verus"), str(path), "--no-cheating", "--output-json", "--num-threads", "1"]
                 start = time.monotonic()
                 completed = subprocess.run(command, env=env, cwd=scratch, text=True, capture_output=True, timeout=timeout)
                 label = entry["id"] + "-" + str(index)
                 (out / (label + ".stdout")).write_text(completed.stdout)
                 (out / (label + ".stderr")).write_text(completed.stderr)
-                combined = (completed.stdout + completed.stderr).lower()
-                require(not any(marker in combined for marker in ("resource limit exceeded", "timed out", "rlimit exceeded", "reached its resource limit")), "proof resource limit reached")
+                require(not resource_failure(completed.stdout + completed.stderr), "proof resource limit reached")
                 document = checked_document(completed.stdout, completed.returncode, entry, pins, broken=broken)
-                rows.append({"component": entry["id"], "control": name, "negative": broken, "candidate_sha256": hashlib.sha256(candidate).hexdigest(), "seconds": time.monotonic() - start, "exit": completed.returncode, "verification": document["verification-results"], "command": command})
+                rows.append({"component": entry["id"], "control": name, "negative": broken, "candidate_sha256": hashlib.sha256(candidate).hexdigest(), "driver_sha256": hashlib.sha256(driver_bytes).hexdigest(), "dependency_sha256": {filename: hashlib.sha256(content).hexdigest() for filename, content in files.items()}, "seconds": time.monotonic() - start, "exit": completed.returncode, "verification": document["verification-results"], "command": command})
                 print(entry["id"] + ": " + name + " passed", flush=True)
     require(git(root, "rev-parse", "HEAD") == commit, "checked commit changed")
     require(all(digest(root / source) == value for source, value in hashes.items()), "proof source changed during checking")
     require(validated_runtime(archive, install, asset) == runtime, "runtime changed during checking")
-    report = {"commit": commit, "source_sha256": hashes, "stock_archive_sha256": asset["sha256"], "runtime_sha256": runtime, "rustc": rustc, "cases": rows, "scope": "standalone acceptance models; production refinement remains unproved"}
+    report = {"commit": commit, "source_sha256": hashes, "stock_archive_sha256": asset["sha256"], "runtime_sha256": runtime, "rustc": rustc, "cases": rows, "total_seconds": time.monotonic() - started, "scope": "conditional composed acceptance model; production refinement remains unproved"}
     (out / "report.json").write_text(json.dumps(report, indent=2) + "\n")
-    (out / "report.md").write_text("# Acceptance model proof check\n\nCommit `" + commit + "`. Direct pinned stock Verus; full crate; `--no-cheating`; explicit pinned Z3.\n\nAll " + str(len(rows)) + " positive and mutation checks passed. These standalone model proofs do not establish production refinement or the composed service theorem.\n")
+    (out / "report.md").write_text("# Acceptance model proof check\n\nCommit `" + commit + "`. Direct pinned stock Verus; full crate; `--no-cheating`; explicit pinned Z3.\n\nAll " + str(len(rows)) + " positive and mutation checks passed. The conditional composed model theorem does not establish production refinement or the service-wide theorem.\n")
 
 
 def main() -> int:

@@ -178,6 +178,7 @@ Run the same steps locally in the same image with `ci/local.sh`:
 ```sh
 ci/local.sh gate                  # fmt, clippy, tests, doctests, rustdoc, layering, deny, benchmarks page
 ci/local.sh solver                # every test that needs the pinned Z3 (incl. fault injection)
+ci/local.sh proofs                # direct stock-Verus model proofs and all broken controls
 ci/local.sh e2e [PHASE]           # `sail verify` vs `cargo verus verify`: identical output (all phases + extra)
 ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
 ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
@@ -202,7 +203,7 @@ release-style checks belong in the local tiers below, never in CI.
 **Required on every PR** (branch protection): `No AI authorship markers`,
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
-gate, including image creation, to have succeeded. Branches must be current
+gate, including image creation and direct acceptance-model proofs, to have succeeded. Branches must be current
 with `main` before merging. The `End to end` check aggregates ten parallel
 phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and

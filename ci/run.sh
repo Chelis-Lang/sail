@@ -5,6 +5,8 @@
 #
 #   gate                 fmt, clippy, tests, doctests, rustdoc, layering,
 #                        cargo-deny, docs/benchmarks.md freshness
+#   proofs               direct pinned stock-Verus model proofs and all
+#                        deliberate guard-removal controls; no Sail driver
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
 #   boundary-witness admission|shapes
@@ -142,6 +144,27 @@ start_daemon() {
 }
 
 case "$step" in
+  proofs)
+    sail_proof_tmp="$(mktemp -d)"
+    # Git trust is restricted to this already executing checkout. No private
+    # dependency authentication or injected Git helper is needed for blob reads.
+    if env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0="$PWD" \
+      python3 scripts/check-acceptance-proofs.py \
+        --stock-archive /opt/verus/verus.zip \
+        --stock-dir /opt/verus/verus-x86-linux \
+        --out "$sail_proof_tmp/checked"; then
+      sail_proof_status=0
+    else
+      sail_proof_status=$?
+    fi
+    rm -rf target/acceptance-proofs
+    mkdir -p target/acceptance-proofs
+    if [ -d "$sail_proof_tmp/checked" ]; then
+      cp -R "$sail_proof_tmp/checked/." target/acceptance-proofs/
+    fi
+    rm -rf "$sail_proof_tmp"
+    exit "$sail_proof_status"
+    ;;
   gate)
     bash ci/test-completion.sh
     bash scripts/test-ai-markers.sh

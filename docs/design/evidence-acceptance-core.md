@@ -1,7 +1,7 @@
 # Proposed verified evidence-acceptance core
 
-**Status: design with initial standalone proof models; the production core
-and composed safety theorem are not implemented or qualified.** Tracked in
+**Status: design with checked component and composed models; the production acceptance core
+and service-wide safety theorem are not implemented or qualified.** Tracked in
 [#346](https://github.com/Chelis-Lang/sail/issues/346).
 
 This proposal targets silent false acceptance in Sail's existing Verus path.
@@ -304,9 +304,8 @@ environment interfaces.
 
 Stages C and D may expose a smaller useful proved boundary before E and F.
 That boundary must be named accurately: a verified predicate conditional on
-input evidence is not an end-to-end verified service. Initial standalone
-[component models and checking](acceptance-proof-checker.md) provide
-machine-checked model evidence. Stage C still needs production source sharing
+input evidence is not an end-to-end verified service. [Component and composed models](acceptance-proof-checker.md) provide
+machine-checked model evidence, including explicit origin/observation lifecycles. Stage C still needs production source sharing
 or refinement; stages D–F still need actual cache origins, observation
 adapters and composition. Those stages are not complete.
 

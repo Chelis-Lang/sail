@@ -1,31 +1,29 @@
 # Direct stock-Verus acceptance model checks
 
-The initial acceptance components are standalone proof models. Their source
-does not replace Sail's runtime predicates or establish the composed service
-theorem. The [design](evidence-acceptance-core.md) defines the remaining
-source-sharing, adapter, cache-origin and observation-refinement obligations.
+Four proof components share exact input, scope, mode, runtime and solver context.
+They prove a conditional model theorem; production source sharing and adapters
+remain unproved. The [design](evidence-acceptance-core.md) defines those remaining
+refinement obligations, and the [qualification record](../validation/evidence-acceptance-models.md)
+records the actual source and platform results.
 
-| Component | Source | Proved boundary | Production refinement |
-|---|---|---|---|
-| [Query association](acceptance-query.md) | `proofs/acceptance/query_association.rs` | Inductive raw-prefix binding, ordered pairing, fallback and replay suppression | Parser, shim, writer, persistence and recovery remain unproved |
-| [Input binding](acceptance-inputs.md) | `proofs/acceptance/input_binding.rs` | Exact-byte comparison, scoped projection and guarded observation point | Compiler-input closure and Linux/macOS observation adapters remain unproved |
-| [Scope and result authority](acceptance-authority.md) | `proofs/acceptance/authority.rs` | Executable unique target coverage and validated scoped/whole acceptance | Production report, receipt, repair, job and presentation adapters remain unproved |
+| Component | Source | Checked model boundary |
+|---|---|---|
+| [Query association](acceptance-query.md) | `proofs/acceptance/query_association.rs` | Ordered exact-prefix association, trusted observation ledger, publication, crash/recovery and suppression |
+| [Input binding](acceptance-inputs.md) | `proofs/acceptance/input_binding.rs` | Complete capture, read/change/projection/seal transitions, original guards and fresh retained-read evidence |
+| [Result authority](acceptance-authority.md) | `proofs/acceptance/authority.rs` | Invocation lifecycle, independent child-stream ledger, checked records, exact coverage, fallback and repair |
+| [Composition](acceptance-composition.md) | `proofs/acceptance/composition.rs` | Shared actual facts, complete trace inventories and fresh current presentation |
 
-These models cover arbitrary finite traces or vector lengths within their
-stated relations. They are not finite corpus checks. Their assumptions still
-include stock Verus/vstd, Z3, Rust/build semantics and the interfaces described
-in each component guide. Cache initial-state validity, admitted writer truth,
-complete effective-input observation and the trusted verifier's completion
-remain explicit boundaries; this work does not independently check SMT
-certificates or establish those interfaces by naming them.
+`proofs/acceptance/context.rs` defines the shared exact map and selected solver
+identity. A digest or opaque input ID does not replace that map. The query
+component permits cross-caller cache reuse only for identical solver/mode/SMT
+bindings. The composed relation admits default mode; opt-in modes need their
+own acceptance relation.
 
-## Run the complete checker
+## Run the checker
 
-Use Python 3.11 or newer and the upstream release in `corpus/toolchain.toml`.
-The selected stock pin is a compatibility baseline for these models, not a
-change to Sail's runtime or Verus fork. Install its minimal Rust toolchain and
-retain the original archive whose digest the manifest pins. The checker needs
-both the archive and extracted runtime; an executable path alone is inadequate.
+Use Python 3.11 or newer and the upstream stock release pinned by
+`corpus/toolchain.toml`. Keep the validated original archive and its extracted
+runtime, including the compatible Rust toolchain and explicit pinned Z3:
 
 ```sh
 python3 scripts/check-acceptance-proofs.py \
@@ -34,66 +32,61 @@ python3 scripts/check-acceptance-proofs.py \
   --out "$SAIL_PROOF_OUTPUT"
 ```
 
-`SAIL_PROOF_OUTPUT` names a new directory outside the checkout. Commit the
-proof inputs before running: the checker reads the selected commit's Git
-blobs, hashes those exact bytes and compiles copies of those bytes. Current
-working files must agree with that commit. It also binds the proof manifest,
-checker and toolchain pin, and records a digest for every mutated candidate.
-An edit-and-revert between path observations cannot change the compiled proof
-while retaining the recorded source digest.
+The output must name a new directory outside the checkout. Commit the inputs
+first. The checker reads canonical Git blobs with replace refs and inherited
+Git redirection/configuration disabled, then hashes and compiles those captured
+bytes. It verifies exact equality with the working files before checking and
+checks for later changes. Transient path edits cannot substitute different
+compiled bytes for the recorded source. Each candidate and generated driver
+receives its own digest.
 
-The checker validates the archive digest and every runtime file against that
-archive, including the launcher, verifier, vstd and explicit pinned Z3. It
-checks the Rust compiler commit and sanitizes inherited Sail, solver, injected
-compiler arguments, wrappers and loader settings. It directly invokes stock
-Verus with `--no-cheating --output-json --num-threads 1`. No Sail binary, fork,
-managed receipt or cache establishes the proof.
+Manifest schema `sail-acceptance-proofs-v2` requires all four component IDs,
+all five source files and each fixed dependency closure. The checker generates
+only the approved relative module declarations and writes every dependency
+from its captured Git blob into a private temporary directory. Individual roots
+include the shared context; the composition includes every actual component.
+It cannot silently substitute copies or omit a dependency.
 
-The inventory requires all three component IDs and all `.rs` roots under
-`proofs/acceptance/`. Every positive result must terminate successfully, report
-the pinned stock commit, whole-crate scope, exact verified count, zero errors
-and the complete expected function inventory. Timeouts and incomplete or
-duplicate-member JSON fail the check. No focus, skip, no-verify or extra
-verification-argument option is accepted by the runner.
+Source and mutations conservatively reject `mod`, `include`, `include_str`,
+`include_bytes`, `extern`, `macro_rules`, `env` and `option_env` tokens, even in
+comments/strings. Controlled module declarations exist only in the generated
+driver. Arbitrary imports or compile-time environment-dependent source need a
+reviewed closure mechanism before support.
 
-The initial source subset is deliberately standalone. It conservatively rejects
-the tokens `mod`, `include`, `include_str`, `include_bytes`, `extern` and
-`macro_rules`, even inside comments or strings. This excludes untracked helper
-files and macro-based source loading; arbitrary Rust source closure is not
-claimed to be captured by a filename inventory. Supporting those constructs
-requires a reviewed closure-capture mechanism first.
+Archive and all extracted runtime files are checked, including the launcher,
+verifier, vstd and Z3. Rust compiler identity is checked. Inherited Sail, solver,
+compiler-argument, wrapper and loader injection settings are cleared. Stock is
+invoked directly with `--no-cheating --output-json --num-threads 1`; Sail, its
+fork, managed receipts and caches do not establish these proofs.
 
-Every component has two deliberate mutations of real model checks. A negative
-control must terminate with ordinary verification failure, preserve the full
-function inventory and account for all expected obligations. A crash, signal,
-syntax/VIR error or unexpectedly successful proof does not pass a control.
-Checker tests also exercise omitted components, altered verifier/solver bytes,
-inconsistent evidence and injected environment settings.
+Every positive result requires normal exit zero, the exact stock pin,
+whole-crate verification, expected integer counts, zero errors and the complete
+function inventory. Every deliberate guard-removal control requires normal
+exit one, ordinary verification errors, unchanged complete inventory and full
+obligation accounting. Signals, malformed/duplicate JSON, syntax/VIR errors,
+resource exhaustion and proof timeouts fail the gate. Omitted components or
+selected/focused verification cannot pass.
 
-`error[SAIL9002]` is a refusal, never proof evidence. Correct the identified
-input, identity or verification failure and rerun the entire checker.
+## CI and evidence
 
-## Evidence and limits
+`ci/local.sh proofs` runs the same direct checks in the core CI image. The image
+retains the pinned archive so the proof step needs no network or private source
+credential. The separate **Acceptance model proofs** job is a prerequisite of
+required **CI completion**: skipped, cancelled, failed or missing proof results
+cannot pass the aggregate. The workspace gate also runs checker failure tests.
+Failed-run artifacts replace previous task-owned outputs rather than retaining
+an old success report. Native duration qualification belongs in the record.
 
-The [qualification record](../validation/evidence-acceptance-models.md) binds
-the initial native Linux and macOS runs and their actual scope.
+The runner writes `report.md`, a raw receipt and per-case stdout/stderr outside
+the checkout; the CI wrapper copies these into its artifact directory after
+checking. Receipts bind source, driver, dependency, runtime and toolchain hashes
+and actual invocations. Raw receipts are evidence, not independent certificates
+of Python checker correctness.
 
-The runner writes a concise `report.md`, machine-readable raw receipt and
-stdout/stderr for every invocation outside the repository. The receipt binds
-the commit, source bytes, expected inventory, runtime files, toolchain and
-actual invocations. An owning qualification record must distinguish macOS and
-native Linux results, failed attempts and measured scope.
-
-Runtime files and the executing checker/toolchain must remain immutable during
-checking. Pre/post hashing detects many changes but cannot prove atomic launch
-identity against an actor replacing an executable and restoring it between
-observations. Trusted OS, launch interfaces and toolchain behavior remain
-assumptions. The Python checker is reviewed and tested ordinary code, not a
-formally verified checker of its own implementation.
-
-The workspace gate runs the checker failure tests. Actual stock proof runs are
-local-only in this initial slice; there is no hosted proof-check job yet.
-Their measured native duration and runtime packaging must be reviewed before
-adding a fast-tier proof job. Existing Cargo/solver/E2E/conformance gates still
-govern production changes, and runtime integration requires its own conformance
-and native cost qualification. No product performance improvement is claimed.
+The checker, toolchain, runtime and OS must remain trustworthy and immutable
+during checking. Pre/post hashes do not prove atomic launch identity against
+transient executable replacement. The Python checker remains reviewed/tested
+ordinary code. Production parser/writer/recovery, actual compiler-input closure,
+filesystem/process observations and CLI/JSON/MCP adapters still need refinement.
+No service-wide correctness or product performance result follows from these
+model proofs alone.

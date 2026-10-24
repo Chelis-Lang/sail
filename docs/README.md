@@ -60,7 +60,7 @@ defines a conditional safety theorem for query association, input identity,
 requested scope and result authority. It is a design proposal, not an
 implemented formal guarantee.
 [Direct stock-Verus checking](design/acceptance-proof-checker.md) documents the
-initial standalone models, complete proof inventory and deliberately broken
+component lifecycles, composed admission, complete proof inventory and deliberately broken
 controls. Production refinement remains open.
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
