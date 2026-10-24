@@ -32,8 +32,8 @@ No runtime behavior, solver choice, crate dependency or production authority
 changes. The models and their explicit assumptions can be reviewed and checked
 independently of Sail. Runtime source-sharing or refinement, cache-origin and
 filesystem/process observations remain necessary before claiming a production
-acceptance proof. CI proof integration follows native duration and packaging
-qualification; this decision does not claim that integration exists.
+acceptance proof. The separate CI proof job is implemented; its native duration, packaging and
+hosted qualification are recorded separately from production acceptance.
 
 The [checker guide](../design/acceptance-proof-checker.md) owns commands and
 limits. The [design](../design/evidence-acceptance-core.md) owns the composed
