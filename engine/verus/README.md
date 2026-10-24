@@ -69,6 +69,10 @@ reinstated (`bc9cda09`, pinned from `73dea021`) after stock was shown to
 print it ([VI-0007](../../docs/verus-issues/VI-0007-nondeterministic-error-order.md)).
 Run the repair benchmark on a candidate before pinning it.
 
+The erasure shadow-check membership index removes repeated linear work without
+changing traversal or SMT bytes. Its [qualification](../../docs/validation/shadow-index.md)
+covers native measurements and both runtime consumers.
+
 `cargo xtask build-verus-engine` fetches exactly the pinned commit (the
 fork is public, so no credentials are needed), checks that its upstream base
 equals `corpus/toolchain.toml`'s commit, writes the committed

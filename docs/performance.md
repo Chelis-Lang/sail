@@ -5,27 +5,42 @@ verified targets and exact solver answers. Edits still pay Rust compilation
 and the Verus frontend for changed targets. Undoing an edit can restore an
 original complete proof when retaining that target was worth its cost.
 
-The private 0.1.0-rc.6 candidate completes its functional checks on native
-Linux and Apple-silicon Mac hosts, using installed archives and realistic edits.
-Exact source and artifact identities, all samples and
-remaining gates are in the [release matrix](validation/release-matrix.md).
+Current main includes guided installation, streaming transcript hashing,
+credential-context fixes and the indexed erasure runtime. The compiler change
+reduces cached Anvil compiler time by 10.6% on Linux and 13.4% on Mac.
+Explicit older-Cargo script projects also preserve Cargo freshness: three
+native Anvil pairs reduce unchanged calls from 60.97 to 0.89 s, without
+proof reuse ([qualification](validation/unsupported-cargo-fallback.md)).
+
+The installed measurements below use frozen Sail `e51e4660` plus runtime
+`36d65c3f` and its qualified retained-proof manifests. Later main changes have
+separate cumulative checks; these numbers do not claim a later main binary
+was timed. Both platforms complete 31 valid comparisons and all four
+three-round mutation cohorts, with 651 matching comparisons each. See the
+[qualification and raw records](validation/shadow-index.md).
 
 | Complete mutation loop | Linux speedup | Mac speedup |
 |---|---:|---:|
-| HumanEval | 2.66× | 2.85× |
-| IronKV | 1.46× | 1.41× |
+| HumanEval | 2.71× | 2.87× |
+| IronKV | 1.47× | 1.42× |
 | Vest | 1.11× | 1.40× |
-| CapybaraKV | 1.94× | 2.32× |
+| CapybaraKV | 2.04× | 2.37× |
 
-First use on a matching small project is 31.21 → 12.77 s on Linux. Linux
-Anvil cold medians are 178.89 → 178.19 s with overlapping ranges; body and
-spec edits improve from 155.29 → 85.94 s and 151.40 → 35.85 s. An unchanged
-Anvil call starts zero verifiers but still costs 1.91 s versus stock 0.32 s.
-Mac first use improves 16.36 → 10.07 s. Its cold Anvil median remains slower
-(99.66 → 102.52 s), as does Vest (38.21 → 38.94 s, overlapping ranges).
-Unchanged Anvil costs 1.82 s versus stock 0.28 s. Tiny edits add about 0.35 s
-on Linux and 0.68 s on Mac. Full-loop wins do not hide individual slower
-edits; the reports retain them. Performance acceptance remains open.
+Small-project first use improves 33.17 → 13.21 s on Linux and
+16.85 → 10.08 s on Mac. Linux Anvil cold improves 186.13 → 172.99 s;
+body and specification edits improve 153.62 → 85.89 s and
+153.06 → 33.28 s. Mac Anvil body and specification edits improve
+79.43 → 41.11 s and 79.47 → 14.35 s.
+
+Unchanged Anvil invokes zero verifiers but still costs 1.95 s versus stock
+0.33 s on Linux and 1.83 s versus 0.28 s on Mac. Tiny edits add about
+0.36 s on Linux and 0.67 s on Mac. Mac Anvil cold adds 0.86 s on a roughly
+100-second run; Vest adds 0.06 s. Individual slower mutation edits remain
+visible. Ten Linux rows and twelve Mac rows require performance review;
+functional qualification does not grant a performance waiver.
+
+The [historical private rc.6 matrix](validation/release-matrix.md) describes
+its own frozen artifacts. No new Sail release is created by these changes.
 
 ## What to expect
 
