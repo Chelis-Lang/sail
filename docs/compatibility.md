@@ -56,6 +56,19 @@ runs of 320 direct inputs; one existing NLA resource-count variation leaves
 the strict output check at 319/320. Performance acceptance remains open; see
 the [runtime record](validation/spec-signature-runtime.md).
 
+## Explicit Cargo selection
+
+Sail respects `RUSTUP_TOOLCHAIN`, project toolchain files and an explicitly
+selected Cargo. Build-script receipt tracking is qualified with the primary
+pin's Cargo 1.99.1. When the selected Cargo has a different source commit,
+projects whose selected dependency closure contains build scripts use plain
+Cargo freshness with Sail's solver cache. They establish no proof receipts;
+JSON reports Unknown and explains `no_reuse`. Selecting
+`RUSTUP_TOOLCHAIN=1.99.1 sail verify` enables the qualified protocol with
+rustup; unset `CARGO` if it explicitly names a different Cargo binary. Missing
+or malformed protocol observations still fail closed rather than identifying
+a different Cargo version.
+
 ## Plain Verus under the secondary release (fast tier)
 
 The fast tier's in-tree sources (vstd, examples) are those of the **primary**
