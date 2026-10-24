@@ -119,7 +119,9 @@ source. Legacy submissions select profile one. The shared syntax reader offers
 `parse_source_with_profile(source, 2)` and retains nominal enum metadata.
 
 Profile two supports unit enums, flat records without adding Copy or Clone,
-shared input references and mutable scalar input references. Several distinct
+shared nominal input references and mutable scalar input references. Owning
+nominal inputs and conditional/block specification results of nominal types are
+unsupported. Direct flat-field checks remain supported. Several distinct
 `satisfies` attributes can share a single conjunctive guarantee. Assurance keeps
 one row per requirement identity; requirement entailment remains independent.
 The [lowering specification](spec/neutral-verus-lowering.md) and

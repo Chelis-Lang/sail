@@ -17,7 +17,7 @@ mod runtime_guarded_compound {
     include!("fixtures/neutral-contracts/compound_field_guarded.rs");
 }
 
-const NATIVE_CASES: [(&str, &str, bool); 9] = [
+const NATIVE_CASES: [(&str, &str, bool); 10] = [
     ("add-one", ADD_ONE, true),
     ("short-circuit", SHORT_CIRCUIT, true),
     ("signed-min", SIGNED, true),
@@ -29,6 +29,11 @@ const NATIVE_CASES: [(&str, &str, bool); 9] = [
     (
         "order-profile-two",
         include_str!("fixtures/neutral-contracts/order_service_profile2.rs"),
+        true,
+    ),
+    (
+        "consumer-order-profile-two",
+        include_str!("fixtures/neutral-contracts/order_service_profile2_consumer.rs"),
         true,
     ),
 ];
@@ -318,7 +323,7 @@ fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
         let lowered = sail_verus::contracts::lower_profile(
             source,
             "neutral",
-            if label == "order-profile-two" { 2 } else { 1 },
+            if label.ends_with("profile-two") { 2 } else { 1 },
         )?;
         let path = root.join(format!("{label}.rs"));
         std::fs::write(&path, &lowered.source)?;

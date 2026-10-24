@@ -25,6 +25,7 @@ fn profile_two_retains_nominal_types_and_conjunctive_requirement_rows() -> TestR
         (3, 2)
     );
     assert_eq!(result.manifest.bindings.len(), 3);
+    assert!(result.source.contains("Structural"));
     let rows = result
         .manifest
         .bindings
@@ -49,6 +50,7 @@ fn profile_two_refuses_payloads_discriminants_traits_derived_copy_and_unknown_no
             "derive(Debug,Clone,Copy)] pub struct Order",
         ),
         SOURCE.replace("State::Pending", "State::Unresolved"),
+        SOURCE.replace("Debug,PartialEq,Eq", "Debug,PartialEq,Eq,Structural"),
         SOURCE.replace("&mut u32", "&mut Order"),
         SOURCE.replace("&mut u32", "&mut State"),
         SOURCE.replace(
@@ -114,4 +116,41 @@ fn actual_order_fixture_compiles_without_copy_and_retains_six_real_bindings() ->
     }
     validate_manifest(original, &lowered.manifest)?;
     Ok(())
+}
+
+#[test]
+fn noncopy_conditional_or_block_nominal_results_are_refused_before_source_proof() {
+    let original = r#"
+        #[derive(Debug,PartialEq,Eq)] pub enum State { A, B }
+        #[derive(Debug)] pub struct Record { pub number:u8, pub state:State }
+        #[sail_contracts::satisfies("B")]
+        #[sail_contracts::satisfies("A")]
+        #[sail_contracts::ensures(|r| (if *number == 0 { r } else { r }).number == *number && r.state == State::A)]
+        pub fn identity(number:&u8)->Record { Record { number:*number, state:State::A } }
+    "#;
+    assert!(lower_profile(original, "review", 2).is_err());
+    let block = original.replace(
+        "(if *number == 0 { r } else { r }).number",
+        "({ r }).number",
+    );
+    assert!(lower_profile(&block, "review", 2).is_err());
+    let enumeration = original.replace(
+        "(if *number == 0 { r } else { r }).number == *number && r.state == State::A",
+        "(if *number == 0 { r.state } else { r.state }) == State::A",
+    );
+    assert!(lower_profile(&enumeration, "review", 2).is_err());
+    let direct = original.replace("(if *number == 0 { r } else { r }).number", "r.number");
+    assert!(lower_profile(&direct, "review", 2).is_ok());
+}
+
+#[test]
+fn consuming_noncopy_inputs_cannot_prove_a_runtime_postcondition_read_after_move() {
+    let enumeration = r#"#[derive(Debug,PartialEq,Eq)] pub enum State { A, B }
+        #[sail_contracts::satisfies("E")] #[sail_contracts::ensures(|ret| ret == state)]
+        pub fn echo(state:State)->State { state }"#;
+    assert!(lower_profile(enumeration, "review", 2).is_err());
+    let record = r#"#[derive(Debug)] pub struct Record {pub number:u8}
+        #[sail_contracts::satisfies("R")] #[sail_contracts::ensures(|ret| ret.number == input.number)]
+        pub fn echo(input:Record)->Record { input }"#;
+    assert!(lower_profile(record, "review", 2).is_err());
 }
