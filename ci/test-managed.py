@@ -1079,6 +1079,35 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 source.unlink(missing_ok=True)
                 source.write_text(original_source)
             print("managed acceptance: source alias retarget rejects the invalid proof and withdraws retained job Current; unchanged and exact-revert controls passed")
+            original_source = source.read_text()
+            authentication = ("SAIL_DEPENDENCY_READ_TOKEN", "SAIL_PRIVATE_GIT_READY")
+            original_authentication = {name: env.get(name) for name in authentication}
+            try:
+                env.update(SAIL_DEPENDENCY_READ_TOKEN="fixture-alpha", SAIL_PRIVATE_GIT_READY="0")
+                first_run, first_auth, _ = managed()
+                assert first_run.returncode == 0, diagnostic(first_auth)
+                env.update(SAIL_DEPENDENCY_READ_TOKEN="fixture-beta", SAIL_PRIVATE_GIT_READY="1")
+                warm_run, warm_auth, warm_target = managed()
+                assert warm_run.returncode == 0 and warm_target["reused"], diagnostic(warm_auth)
+                assert warm_auth["context_sha256"] == first_auth["context_sha256"], diagnostic(warm_auth)
+                assert warm_auth["execution"]["verifier_invocations"] == 0, diagnostic(warm_auth)
+                # A project that really reads the credential name must still
+                # compile and verify again after that declared value changes.
+                source.write_text(original_source + '\npub const AUTH_MARK: Option<&str> = option_env!("SAIL_DEPENDENCY_READ_TOKEN");\n')
+                declared_run, declared, _ = managed()
+                assert declared_run.returncode == 0, diagnostic(declared)
+                env["SAIL_DEPENDENCY_READ_TOKEN"] = "fixture-gamma"
+                changed_run, changed_auth, changed_target = managed()
+                assert changed_run.returncode == 0 and not changed_target["reused"], diagnostic(changed_auth)
+                assert changed_auth["execution"]["verifier_invocations"] > 0, diagnostic(changed_auth)
+            finally:
+                source.write_text(original_source)
+                for name, value in original_authentication.items():
+                    if value is None:
+                        env.pop(name, None)
+                    else:
+                        env[name] = value
+            print("managed acceptance: authentication-only changes reuse proofs; explicit credential environment reads force verification")
             print("managed acceptance: failing first runs keep vstd, cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs and prune passed")
         if part in ("all", "scripts"):
             print("managed acceptance: build-script reuse passed")
