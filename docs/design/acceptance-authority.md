@@ -1,137 +1,152 @@
-# Scope and result-authority proof model
+# Invocation, coverage and result authority model
 
-Status: an initial pure executable model with stock-Verus proofs. It does not
-replace production acceptance, prove its adapters, or complete stage C of the
-[evidence-acceptance design](evidence-acceptance-core.md). The initial scope is
-Sail's existing Verus path. Neutral contracts and temporal backends are outside
-this model.
+Status: checked model code for the existing Verus path. This component models
+invocation lifecycle and evidence construction, not the production compiler
+adapter. It does not complete production source sharing, observation refinement
+or CLI/MCP integration. The [acceptance design](evidence-acceptance-core.md) and
+[shared proof checker](acceptance-proof-checker.md) describe the owning scope.
 
-## Checked boundary
+## Exact evidence context
 
-`proofs/acceptance/authority.rs` separates untrusted `Candidate` data from a
-`ValidatedResult`. The validated type has private fields and no deserialization
-or public constructor. Its factory retains immutable borrows of the request
-and candidate, so a caller cannot mutate the checked model snapshot while
-holding the result.
+Requests, started invocations and observed verifier documents carry the shared
+`ModelContext`. It contains the original request bytes, structured whole/partial
+scope, runtime identity, verification mode and the actual modeled input map.
+Input keys include role and lexical path. Present values include resolved path
+and bytes; absence and unreadable observations are distinct. There is no opaque
+input digest whose equality is assumed to establish equal effective inputs.
 
-The executable `validate_scoped` function returns authority exactly when:
+Target identities separately preserve package, exact Cargo name, target kind,
+source and invocation bytes. `foo-bar` and `foo_bar` cannot collapse through
+crate-name normalization. Every requested target must have its own matching
+completion; missing failed siblings remain missing even when they emitted no
+Cargo artifact. Duplicate requested targets and ambiguous duplicate observed
+targets are rejected. `injective_coverage` proves that a single completion
+cannot cover distinct requested targets.
 
-- The project is Current, terminates normally with exit zero, and has no
-  project, selection or engine fault.
-- The request contains at least one target and has a consistent whole/partial
-  selection. Whole scope has an empty selection encoding; partial scope has
-  its exact nonempty ordered selection encoding.
-- Requested targets and observed reports each have unique exact target
-  identities. Identity compares package, exact Cargo name, kind, source and
-  invocation bytes separately. No name normalization or hash equality enters
-  this relation.
-- Every requested target has a report for its exact identity and scope. Missing
-  targets, failed requested siblings and ambiguous duplicate observations
-  cannot satisfy this check.
-- Each covering report is complete, terminates successfully, has no errors,
-  contains verifier documents, explicitly records successful verification and
-  zero verifier errors, has no VIR error or engine fallback, and has no report
-  invariant violations.
-- Every reported function is verified, confirmed and has an evidence tier.
-  Function and verified summary counts both equal the function collection's
-  length, and failed/unknown/provisional counts are zero.
+## Lifecycle and construction authority
 
-`validate_current_complete` additionally requires whole scope. A successful
-partial result can obtain scoped authority, but cannot obtain current complete
-whole-target authority. The `injective_coverage` theorem establishes that one
-observed report cannot cover two distinct requested targets. The proof covers
-arbitrary vector lengths, not a bounded list of example targets.
+There is no caller-provided `complete`, `success`, `current` or
+`invariant_valid` Boolean that grants authority. Private evidence structures
+are built by the following guarded model transitions:
 
-These are checks over the model's observations. A caller supplying plausible
-but false verifier flags is not ruled out by this component alone. In
-particular, `complete` must ultimately be justified by trusted verification of
-the required invocation; checking all supplied function records cannot prove
-that the compiler supplied the complete obligation inventory.
+| Transition | Required observations and checks |
+|---|---|
+| `start` | A well-formed exact invocation context and scope; direct or engine origin. A fallback cannot enter through this constructor. |
+| `observe` | Append a verifier document to the actual started run's observation history. The document remains a candidate, not proof authority. |
+| `interrupt` / `malformed` | Permanently prevent that stream from completing; later observations cannot restore Running. |
+| `complete` | Running stream, normal zero process exit, ordered completion point, at least one verifier document, matching run ID/target/scope/context for every document, checked successful records and well-formed recorded solver sessions. |
+| `finish_project` | Normal successful project termination and a completion set whose contexts, observation points and origins match the selected direct/engine/fallback path. |
+| `validate_scoped` | Exact acceptance context, a fresh acceptance point, complete one-to-one requested target coverage and exact requested scope. |
+| `validate_current_complete` | All scoped checks plus whole-target scope. |
 
-## Positive and deliberately broken controls
+`CompletedInvocation` retains its actual validated model run and terminal
+observation. It exposes read-only spec projections for its context, completion
+point, invocation, documents and derived solver transcript inventory.
+`ValidatedResult` immutably borrows the request and sealed project candidate and
+records the context and observation point at which acceptance occurred. Neither
+type has a public constructor or deserialization path.
 
-The model constructs a concrete successful nonempty request, report and function
-without assuming that a satisfying execution exists. `positive_control`
-obtains whole-target authority. Other checked controls establish that exact
-partial scope remains partial, missing target evidence and Historical status
-are rejected, and unconfirmed functions or inconsistent summaries are rejected.
-Legitimate complete invocations with no verification functions are permitted
-when their verifier evidence is otherwise successful; the positive control
-uses a nonempty function collection to avoid an empty-collection witness.
+The context contains mathematical maps. Context-sensitive admission is therefore
+a guarded proof/model transition; executable Rust is not claimed to inspect a
+ghost map. Concrete byte, target, scope and document validators remain executable
+and proved. Production integration must implement and refine these guards.
 
-Two negative controls change executable validation while retaining its contract:
+## Records and summaries
 
-| Control | Deliberate defect | Required result |
+A verifier document contains observed function records with qualified names,
+verdicts, establishment states and explicit evidence tiers, a claimed summary, and a terminal verifier
+event. The concrete `validate_document` checks that the terminal event records
+zero errors and every function is verified, confirmed and has its required evidence tier. It derives successful
+function/verified counts from the actual record collection and requires exact
+agreement with the summary; failed, unknown and provisional counts must be zero.
+Malformed/VIR output, missing terminal success, inconsistent counts and
+unconfirmed records cannot authorize completion.
+
+A complete zero-function invocation is permitted: it still needs a matching
+started invocation, a nonempty document collection, explicit successful verifier
+termination and normal process completion. No inference from an empty query or
+function collection creates an invocation-completeness fact.
+
+Every document also carries its observed solver-session inventory. Completion
+checks its shape, and `observed_transcripts` derives the completion's inventory
+by concatenating **all** document inventories in order. Callers cannot replace
+it with a separate completion-success flag or supply a different final inventory.
+The shared composition matches every recorded transcript against the query-origin
+component. The compiler/side-channel adapter must still establish that these
+observations include every actual session; this model does not obtain capture
+completeness merely by calling a sequence an inventory.
+
+## Engine failure, retained jobs and repair
+
+`engine_failed` creates a private failure token from an actual started engine
+run and observed nonzero/interrupted/malformed termination. `start_fallback`
+requires that token, a fresh run ID and start point, matching request/mode and a
+whole-target invocation. It starts with an empty observation history. Old engine
+or partial-phase documents cannot match the fallback's run/context/scope header.
+The project fallback path accepts only completions of fresh fallback invocations;
+it cannot mix in old engine completions.
+
+A fresh independent full fallback can establish ordinary current complete
+verification. Repair acceptance preserves the production contract's stricter
+rule: an engine fallback does not accept the repair. The repair predicate uses
+the same validated result token, requires whole-target evidence, and finds the
+selected named function in a requested target's completed records. Preliminary
+partial evidence cannot promote itself to whole-target authority.
+
+`project_job` refreshes retained evidence through the same current complete
+factory at a new context and observation point. Changed inputs make a retained
+success noncurrent. Exact restoration can establish Current again after a new
+matching observation; no old Current label is trusted as evidence about today.
+
+## Checked controls
+
+The model checks coherent nonempty and zero-function successful lifecycles,
+exact partial versus whole scope, missing siblings, duplicate observations,
+interrupted/malformed streams, failed/unknown/provisional/unconfirmed functions,
+context-mismatched output, retained-job input change and exact revert, and fresh
+full fallback after a failed partial engine attempt. The fallback control checks
+that ordinary verification succeeds while repair acceptance remains refused.
+
+`example_candidate` constructs concrete target and confirmed-function records
+and then obtains evidence through the checked lifecycle. It accepts a shared
+context and complete observed transcript sequence for the composed positive
+witness. The composed witness must include real nonempty input/query evidence;
+legitimate no-SMT invocations may still have an empty session inventory.
+
+Six deliberate guard removals must fail ordinary full-crate proof checking:
+whole/partial promotion, missing function confirmation, missing requested-target
+coverage, completing an invocation without documents,
+accepting a stale context and accepting a document from another context. They
+retain the original claims rather than weakening the safety theorem.
+
+The local shared-driver run reports `verified: 55`, `errors: 0`, normal exit
+zero and entire-crate verification. That count includes the shared context's
+two checked lemmas. The pin remains upstream stock Verus
+`0.2026.10.18.7d82994`, commit
+`7d829946231d6413a398f6e4160cdfe951261dad`, Rust `1.99.1`, pinned Z3 `4.16.0`.
+Use the owning checker to capture the shared source graph, validate runtime
+identity and run the complete driver with `--no-cheating`; this source imports
+the shared context and is no longer a standalone one-file proof root. Native
+workspace gates and the composed proof run have their own owning qualification.
+
+## Refinement and remaining trust boundaries
+
+| Model boundary | Production source | Remaining obligation |
 |---|---|---|
-| Whole-scope guard | Replace `if !r.scope.whole { return None; }` with `if false { return None; }` | Full-crate proof fails |
-| Confirmation guard | Remove `!f.confirmed` from the function rejection condition | Full-crate proof fails |
+| Exact target and invocation | Managed `TargetIdentity`, `cargo_target`, requested coverage and failed compiler calls | Relate actual Cargo metadata and compiler invocation to the model's complete target inventory and exact fields. |
+| Verifier lifecycle | Driver subprocess output, structured verifier documents and normal termination | Attribute observations to the actual pinned process, preserve every document, validate real framing/error/termination behavior, and connect trusted Verus invocation completion to the exact requested work. |
+| Record checks | `Report::invariant_violations`, `Summary::of`, receipt `complete` | Refine full production establishment, evidence tiers, obligation ownership/uniqueness, provenance and schema checks to these checked records; this model does not silently assume that all those checks have been proved. |
+| Solver inventory | Shim/side-channel capture and query association | Establish complete actual session capture and connect the observed streams to the query component's admitted origins. |
+| Input observation | Managed read checks, currentness and durable refresh | Refine actual compiler-input closure, filesystem/process observations and accepted observation points on Linux/macOS. |
+| Repair/job/presentation | `repair::accepted`, batch selection, retained result frames, CLI/JSON/MCP | Connect actual selection errors, engine origin and every exposed success surface to the shared authority relation. No production surface is routed through this model yet. |
 
-The negative controls must fail with ordinary verification errors, not syntax,
-typing, VIR or runtime-launch errors. No inconsistent axiom, `assume`, admitted
-lemma or external-body annotation is used to produce these failures.
+The trusted verifier's translation and mathematical soundness remain outside
+this proof, as in the design. The external observation adapter must faithfully
+identify the executed runtime and process, complete compiler-input/session
+closure, structured records and termination. Model constructors do not prove
+those I/O facts. Rust/Verus/vstd, Z3, build/deployment and the documented
+observation-interface assumptions remain trusted.
 
-## Direct proof invocation and evidence
-
-The stock runtime is the upstream release pinned by `corpus/toolchain.toml`:
-Verus `0.2026.10.18.7d82994`, commit
-`7d829946231d6413a398f6e4160cdfe951261dad`, Rust `1.99.1` and pinned Z3 `4.16.0`.
-After independently validating the runtime/archive and Z3 hashes, the complete
-module is checked directly:
-
-```sh
-RUSTUP_TOOLCHAIN=1.99.1 VERUS_Z3_PATH="$SAIL_STOCK_RUNTIME/z3" \
-  "$SAIL_STOCK_RUNTIME/verus" proofs/acceptance/authority.rs \
-  --no-cheating --output-json
-```
-
-Inherited Sail, verifier injection, Rust flags and compiler-wrapper settings
-must be cleared before invocation. This command uses neither Sail nor the
-fork to establish its proof. The owning checker is responsible for validating
-the runtime and binding proof source, expected complete scope and invocation;
-setting a path alone does not validate an executable.
-
-The macOS arm64 compatibility run reports `verified: 28`, `errors: 0`,
-normal exit zero and `is-verifying-entire-crate: true`. Both deliberately
-broken controls fail with ordinary verification errors. This is implementation
-verification of the model's executable predicates, not Linux qualification,
-production integration or a proof of the running service. Workspace/native
-publication gates remain separate requirements.
-
-## Production refinement still required
-
-| Model boundary | Current production source | Remaining obligation |
-|---|---|---|
-| Exact target identity | `crates/sail-verus/src/managed/receipts.rs`: `TargetIdentity`, `cargo_target`; managed runner target aggregation | Prove the request inventory and actual compiler invocation map to the same package, exact Cargo name, kind, source and invocation bytes without ambiguity. A normalized crate name is insufficient. |
-| Exact scope and completeness | Receipt `Invocation::successful_for`, `Receipt::valid_scoped_in`; managed runner requested coverage | Relate the model's exact selection encoding and whole/partial flag to actual ordered arguments, failed invocations without artifacts, and trusted verifier completion of the exact requested invocation. |
-| Function/report checks | `crates/sail-api/src/output.rs`: `Report::invariant_violations`, `Summary::of`; receipt `complete` | Prove flattening across all verifier documents, summary derivation, establishment/tier/provenance relations, obligation ownership and uniqueness. The model's invariant-violation count must come from those real checks. |
-| Repair authority | `crates/sail-api/src/repair.rs`: `accepted`, `BatchResult::accepted_with` | Relate production Current, successful project/target exits, selected-target flags, full-phase evidence and engine-fault/fallback checks to this predicate. |
-| Currentness and retained jobs | Managed read checks and durable API/job result refresh | Establish the Current observation point from the input-binding component and ensure retained serialization and read-time projections preserve authority. |
-| Human/JSON/MCP presentation | CLI, structured project results, repair documents and MCP/job surfaces | Prove every current complete success consumes this authority or an equivalent proved predicate. No presentation path is integrated by this model. |
-
-The current production functions remain independently implemented ordinary Rust;
-this initial module is not their shared source. Production integration needs a
-reviewed source-sharing or refinement mechanism and the existing conformance
-and native cost gates. The model deliberately records the gap rather than
-claiming that a proof of copied predicates verifies their callers.
-
-## Assumption inventory
-
-- Rust/Verus/vstd semantics, the directly invoked pinned stock verifier, Z3 and
-  the build toolchain remain trusted.
-- Request identities and ordered selection encodings are supplied by an
-  unverified adapter. The model compares exact bytes and makes no digest
-  injectivity or canonical-encoding assumption; a production encoding needs
-  its own injectivity and complete-input argument.
-- Verifier completion, errors, function establishment, invariant violations
-  and engine origin are model observations. Their authenticity and faithful
-  projection from actual process output are not established here.
-- Current is a supplied observation, not an assertion that a writable workspace
-  remains immutable forever. The input-observation/refinement component must
-  justify its acceptance-point semantics and documented filesystem limits.
-- Query/reply truth and cache origins are separate obligations. This module
-  neither checks SMT certificates nor proves arbitrary cached success flags.
-
-No runtime default, crate dependency edge, backend selection or production
-acceptance behavior changes with this component. Documentation impact is this
-component guide; corpus/compiler/solver inputs are unchanged, and no performance
-claim is made.
+There is no new crate edge, backend selection or production default. Corpus,
+compiler and solver input bytes are unchanged; no conformance or performance
+improvement is claimed by these model checks.
