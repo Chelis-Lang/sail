@@ -14,6 +14,12 @@ obligation contains an unknown answer with reason
 retained for the unknown check. A model after unknown is not evidence of SAT.
 This record makes no claim about why the pinned solver could not decide it.
 
+The opt-in [scalar literal witness family](../../../docs/literal-witnesses.md)
+uses a separately attributed quantifier-free query and independent scalar
+evaluation. It does not change this original Verus query or classify its UNKNOWN
+as a SAT rejection. Predicate-based originals such as this helper fixture remain
+outside the initial witness translation's admitted slice.
+
 The exact requested-target report is retained in
 `crates/sail-verus/tests/fixtures/neutral-contracts/body-edit-requested-target.json`.
 Its full original run and diagnostic hashes are in the

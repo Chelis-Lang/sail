@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add opt-in scalar literal-contract queries and independently evaluated concrete
+  assignments through the existing source-owner and pinned SMT runtime APIs.
+  Unsupported scope stays explicit; native mutation UNKNOWN and proof tiers
+  retain their existing meanings.
+
 - Add explicitly negotiated neutral source profile two for admitted unit enums,
   flat records, shared references, mutable scalar references, and several
   requirement identities sharing a conjunctive guarantee. Legacy profile-one

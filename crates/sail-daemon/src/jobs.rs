@@ -295,6 +295,19 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
         Request::SubmitMutation(submission) => {
             mutation::submit(state, &submission).map(|view| Response::Mutation(Box::new(view)))
         }
+        Request::PrepareLiteralWitness {
+            source,
+            max_mutants,
+        } => sail_verus::contracts::literal_witness::prepare(&source, max_mutants)
+            .map(|plan| Response::LiteralWitness(Box::new(plan)))
+            .map_err(io::Error::other),
+        Request::ValidateLiteralWitness {
+            plan,
+            candidate_id,
+            result,
+        } => sail_verus::contracts::literal_witness::validate(&plan, &candidate_id, &result)
+            .map(|value| Response::LiteralWitnessValidated(Box::new(value)))
+            .map_err(io::Error::other),
         Request::Mutation { id } => {
             mutation::read(state, &id).map(|view| Response::Mutation(Box::new(view)))
         }

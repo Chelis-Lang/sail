@@ -83,3 +83,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0075: Preserve floating-point identity in retained JSON evidence](0075-retained-json-roundtrip.md)
 
 - [0076: Explicit flat Rust source profile two](0076-neutral-source-profile-two.md)
+- [0077: Separate scalar literal-contract counterexamples from Verus mutation verdicts](0077-scalar-literal-contract-witnesses.md)
