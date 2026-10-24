@@ -46,66 +46,29 @@ machine that has never verified it, even a one-function project first
 compiles its macro dependencies and verifies vstd, which takes tens of
 seconds.
 
-### Later new projects start from the dependency store
+### New projects and shipped vstd
 
-The first managed run on a machine stores the verified vstd it built, with
-its compiled dependencies, its receipt and the verifier's output, in
-`<cache>/dependency-store/`
-([ADR 0045](decisions/0045-dependency-store.md)). The first managed run of
-any later project, worktree or sandbox that resolves vstd identically copies
-it into its new Cargo target and verifies only its own crates. Identically
-means the same vstd version and features, the same versions of vstd's own
-dependencies (as `Cargo.lock` resolves them), the same `[profile]` settings,
-toolchain, Sail and Verus, Cargo configuration, relevant environment and
-`sail verify` arguments, apart from which packages and targets they select
-(`-p`, `--workspace`, `--exclude`, `--lib`, `--bin`, `--bins`): `sail verify
--p a` in a workspace starts from the vstd a single-package project stored.
-On a native Linux host
-(`c7i.4xlarge`, the method under [performance](performance.md#running-comparisons)):
+Release archives include preverified vstd for the supported dependency and
+compiler setup. A matching fresh project or worktree can use that proof;
+otherwise it compiles and verifies normally. Signed solver replies in the
+archive can still answer exact matching queries on a proof-bundle miss.
+`note[SAIL3138]` explains a miss and any available alignment commands; Sail
+does not change the project's dependencies for you. See
+[installation](install.md) and [performance](performance.md).
 
-| First managed run of | Before | With the store | Plain `cargo verus verify` |
-|---|---:|---:|---:|
-| a new one-function project (CLI) | 27.5 s | 1.3 s | 29.5 s |
-| a new one-function project (MCP `verify`) | 27.7 s | 1.5 s | 29.5 s |
-| a new vest worktree (`-p vest_lib`) | 52.3 s | 25.7 s | 66.1 s |
+The old `dependency-store/v1` that copied ordinary Cargo build outputs between
+projects is disabled (ADR 0053). Its earlier measurements do not describe the
+current product. Other compiled dependencies are built separately in each
+project/worktree's managed target. Existing projects reuse their own complete
+receipts, or reports for the exact requested partial scope, after validating
+inputs and artifacts. Distinct selectors never promote a partial proof to a
+whole-target proof.
 
-Medians of three rounds; the first managed run on the machine is unchanged
-(demo 28.2 s, vest 67.9 s) and stores vstd. See the
-[dependency store record](validation/dependency-store.md), which also checks
-seeded runs against plain stock Verus byte for byte.
-
-The copy is only a starting point. Cargo's own fingerprints decide whether
-the copied units are fresh, exactly as in a target directory plain
-`cargo verus` had built itself, and vstd is reported reused only when the
-stored receipt matches the bytes Cargo found fresh. The run that copied it
-marks vstd's target with `dependency_store` and the note `SAIL3130`, and names
-the run that verified it as `establishing_run`; vstd's report is that run's
-report. A different resolution, a path dependency on vstd, an edited registry
-source or a dynamic-loader variable (`LD_*`, `DYLD_*`) in the environment
-verify vstd as before, silently; a damaged entry does too, with
-`warning[SAIL3131]`. A run killed while copying leaves no target behind.
-vstd is stored only if its verification printed no diagnostics, since a
-seeded run prints none; Verus's `has been running for N seconds` timing
-notes, which a one-thread verifier prints for slow queries, do not count.
-The store keeps the four most recently used entries, about 120 MB each
-([disk use](workspace-hygiene.md#dependency-store)). A context changes when the arguments, the engine
-selection, the relevant environment, the Cargo configuration or the installed
-toolchain (Verus, Cargo, rustc, Z3, Sail, the sysroot libraries) changes;
-installed files are identified by device, inode, size and modification time,
-so reinstalling or rebuilding any of them makes the next run fresh.
-
-A run in a workspace member's directory without `-p` verifies what Cargo
-builds from there by default, the member alone, and reuses its receipts like
-the same run from the workspace root with `-p`. Their arguments differ, so
-they are separate contexts and each pays its own first run.
-
-Contexts that differ only in the repair function selected share one Cargo
-target ([ADR 0036](decisions/0036-managed-compiler-artifact-families.md)), so
-a new repair function does not verify vstd again. Cargo reporting a target as
-`fresh` is never enough on its own: a selected target is skipped only on an
-intact receipt for the exact context and inputs. A dependency may also be
-skipped on an intact receipt from another context of the same target that
-covers its current bytes and inputs; the result names that receipt's run.
+Contexts bind Cargo arguments, configuration, relevant environment and tool
+identities. Contexts selecting different packages or targets may share a Cargo
+artifact family while retaining independent proof authority. Repair functions
+likewise share their compiler family. Cargo reporting a target as `fresh` is
+not proof: an intact, matching verification receipt is still required.
 
 A run that ends in ordinary proof errors keeps vstd and the other compiled
 dependencies, as plain `cargo verus verify` does, so the passing run after a

@@ -38,6 +38,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL4212` | Worker identity, lifecycle or protocol failure | Use the pinned worker and inspect the reported failure |
 | `SAIL4213` | Private dependency command or Git configuration is invalid | Use the documented ephemeral credential wrapper |
 | `SAIL4214` | Duplicate JSON object member | Submit a unique field at every object depth |
+| `SAIL4215` | Archive installation or prerequisite check failed | Check the selected platform/version, adjacent checksum, rustup and private download access; existing installations are preserved |
 
 ## Command line (`sail`)
 

@@ -1,8 +1,13 @@
 # Releasing Sail
 
-The 0.1.0-rc.6 artifacts are frozen on `release/0.1.0`, starting at
+Development and performance work follow current main, including the Oyster
+integration. Release composition remains the owner's decision. Do not create
+a release branch, tag or draft merely because a sprint validation completes.
+
+The earlier private 0.1.0-rc.6 artifacts were frozen on `release/0.1.0`, starting at
 `fc29023a`. Their Rust/Cargo/runtime inputs equal the qualified `cda42861`
-consumer. Later Oyster integration on main is outside this candidate.
+consumer. Later Oyster integration on main is outside those historical artifacts;
+they are a baseline, not the selected scope of a future release.
 Both frozen archives pass first-use proof reuse, an edit, actual repair and
 real Claude Code MCP checks. All mutation comparisons pass; remaining cold
 and unchanged costs keep performance acceptance open. The
