@@ -1,132 +1,177 @@
-# Query association proof component
+# Query association and local origin model
 
-**Status: independently checked specification model; no production acceptance
-path uses this model.** This is the first query-association component of the
-[evidence-acceptance design](evidence-acceptance-core.md), tracked by
-[#346](https://github.com/Chelis-Lang/sail/issues/346). It changes no runtime
-behavior, crate dependencies, solver inputs or corpus entries.
+**Status: checked model of local origin construction, publication, recovery
+and session delivery. Production parser, I/O and persistence refinement remain
+unproved.** This component of the
+[evidence-acceptance design](evidence-acceptance-core.md) is tracked by
+[#346](https://github.com/Chelis-Lang/sail/issues/346). It changes no runtime,
+crate dependency, solver input or corpus source.
 
-## Checked statement
+## The proved boundary
 
-[`proofs/acceptance/query_association.rs`](../../proofs/acceptance/query_association.rs)
-proves `executed_reply_has_exact_binding` by induction over an arbitrary finite
-sequence of modeled session actions. Each delivered reply's binding equals
-the requested command's binding at that position: solver identity, mode, all
-raw input bytes through the command endpoint, and that endpoint. The proof
-assumes neither the final invariant nor mathematical truth of an SMT answer.
+[`query_association.rs`](../../proofs/acceptance/query_association.rs) no longer
+starts a session with an arbitrary sequence of supposedly admitted replies.
+The session's cache and origin ledger are computed by replaying local-store
+actions from an empty authority state. The initial disk image is arbitrary
+untrusted data. A recovered record must be connected to a prior publication
+from an observed trusted live run; a self-consistent history embedded in the
+record is insufficient.
 
-Supporting proofs establish these properties:
+The principal statement, `executed_reply_has_admitted_origin`, follows from
+induction over every finite session action history. Each reused reply has
+an origin admitted by the derived store, and its bytes and binding equal
+that origin's entry. Admission means all of the following:
 
-- Input fragments preserve the exact bytes and extend a live solver's input
-  with those bytes. Fallback starts with the full raw prefix, including bytes
-  already received beyond the latest parsed command.
-- Independent command/reply arrivals cannot shift pairing. A pair consumes
-  the same position on both sides; an absent side consumes nothing. Response
-  buffering preserves every received byte across supplied framing boundaries,
-  including whitespace.
-- Publication retains the ordered command/reply association. A non-clean,
-  stopped, incompletely paired or unequal-length session publishes no entry.
-- Cache serving requires an admitted entry with the complete binding of the
-  next request. A same-shaped reply for another binding cannot satisfy this.
-- Fallback suppresses exactly the replies already served from cache, then
-  forwards later complete responses once. There is no return to cache-serving
-  mode. Late replies from a failed connection cannot be served from cache.
+- The origin belongs to the publication ledger built by the store actions.
+- Its run identity, context, solver and event history match a prefix of the
+  corresponding observed live-run history. Untrusted disk replacement cannot
+  edit this ledger or manufacture a modeled solver observation.
+- The selected entry comes from the ordered command/reply pairing of that
+  run. The run closes input, stdout and stderr, terminates successfully,
+  remains quiet, consumes the complete output and pairs every command/reply.
+- The origin entry equals the stored/recovered payload exactly.
 
-`positive_pairer_arrival_and_publication` exercises reply-before-expect
-arrival and clean/unclean publication. `positive_cache_then_fallback`
-establishes a cached first response, exact two-byte replay, suppression of
-that first replayed response, delivery of the second response, and rejection
-of later cache events. These witnesses exercise acceptance branches instead
-of satisfying the theorem only through empty or failed executions.
+`executed_reply_has_exact_binding` separately proves that every delivered
+entry matches its requested position, solver, mode, complete raw input prefix
+and command endpoint. Combining these results excludes serving one query's
+admitted answer for another query. Mathematical soundness of the solver
+remains trusted; the model does not infer it from response shape or hashes.
 
-The model is unbounded in action count and byte-sequence lengths. It is an
-inductive specification proof, not bounded enumeration or an executable shim
-replacement. It does not prove termination, stock diagnostic parity,
-resource-limit policy, performance or solver soundness.
+Fresh replies are tied to the current solver's ordered `live_observed`
+stream. Cached replies require the stronger completed clean-run origin.
+Forwarding a fresh response does not itself establish successful verification;
+the verifier/report acceptance component must establish completion and success.
 
-## Concrete refinement still required
+## Construction and lifecycle
 
-The code inspection starts at main source `1b8bfd31` and includes the streamed
-transcript-digest change from #358. The production boundaries below are actual
-code, while their correspondence to this model remains to be proved.
-
-| Model element | Production boundary | Remaining obligation |
+| Boundary | Modeled construction or transition | Preserved fact |
 |---|---|---|
-| `Binding` | `sail-key::PrefixHasher::{new,update,key}` | Solver/mode domain separation, framing, every raw byte and endpoint agree with the exact-byte model. Digest equality needs the declared cryptographic assumption; no hash-injectivity axiom appears here. |
-| `input_fragment`, `observe_command` | `cached::run`, `observe`, `CommandSplitter`, `Session::expects_output` | Actual output-producing commands appear once, in order, at their real endpoints. Unsupported protocol changes leave cache serving/recording safely. |
-| `ReplyBuffer` | `cached::output_side`, `ResponseSplitter` | Supplied boundaries are whole actual responses, preserve whitespace and correctly handle a final incomplete reply. Byte accounting does not prove delimiter recognition. |
-| `Pairer` | `cached::Pairer::{reply,expect,drain,finish}` | Both queues represent the ordered process stream. Held checks, effort/statistics annotations, errors and `Expect::Stop` preserve the key/reply pair. |
-| `published` | `spawn_storer`, stderr monitoring and process termination | `clean` follows actual normal completion, complete output, successful forwarding and the existing quiet-session policy. |
-| Cache/fallback transitions | `cached::run`, `start_solver`, `output_side`, client error handling | Launch and writes preserve identity and bytes. Suppression offsets, threading, channel failure, partial writes and integer bounds refine modeled counters. Failed clients are never reused. |
-| Admitted cache | Daemon protocol, local persistence, bundled/shared admission | Every initial/recovered entry has an ordered trusted origin for its complete binding. Connect pairing/publication to all store writers and readers. |
+| Trusted run | `StartRun`, then `ObserveRun` events | Solver identity, shared execution context, raw input/output fragments, command endpoints, framing, pairing and termination are captured in one append-only history. |
+| Publication | `Publish(run_index, reply_index)` | Only a complete clean recorded run can mint an origin ledger entry, available claim and pending local write. It accepts indices into observed history, not a caller-supplied origin. |
+| Pending memory | Available claims while writes are queued | Every claim already has a completed origin; durability is not needed for mathematical answer provenance. |
+| Write | Start temporary file, finish payload, then commit final name | A temporary or partial file is not a recovered entry. Commit validates payload/origin correspondence. |
+| Crash | Drop available, pending and temporary state | Previously committed records and ghost prior-publication history remain; pending writes cannot become durable through a crash. |
+| Recovery | Validate a committed complete record, exact payload and prior ledger membership | Corrupt, partial, temporary or unpublished records cannot mint serveable evidence. |
+| Session reuse | Match a derived claim's complete SMT binding | Every reused reply retains its admitted origin through serving and fallback; an entry for another solver, mode or raw prefix cannot serve this request. |
+| External imports | Shared and bundled import actions are refused | Neither a signature nor an arbitrary external provenance field enters this first local-origin theorem. |
 
-The session model takes an **admitted** store as input; initialization does
-not validate arbitrary disk entries. The pairing model proves an ordered
-origin for entries from its queues. These models do not yet prove persistent
-publication, recovery or store admission. Thus the checked statement does not
-establish truth of an arbitrary cache entry with a plausible reply shape.
+The preserved ledger is **ghost history of earlier trusted publications**, not
+an implemented disk certificate format. It spans process generations in the
+model so recovery can be related to the writes that preceded a crash. A
+legitimate preexisting local cache needs that prior protected-writer history
+in the refinement; the model never presumes an arbitrary startup cache true.
+Without an origin in that history, even a structurally valid record with an
+internally consistent purported run is refused.
 
-## Assumptions and trust inventory
+Shared and bundled origins are explicitly excluded from this model. Production
+Sail supports them, so a whole-service theorem must either include a reviewed
+writer/refinement contract for those paths or restrict its admitted origins.
+This model does not silently change production's backend or cache policy.
 
-This proof root contains no `assume`, `admit`, `external_body`, assumed lemmas
-or unchecked external specifications. Stock Verus, ordinary vstd trusted
-definitions, pinned Z3 and the verifier's Rust toolchain remain trusted.
+## Exact current context and transcript composition
 
-Before this component supports a production acceptance theorem, its interfaces
-must establish or explicitly retain all of the following conditions:
+The component uses `ModelContext`, `Mode` and `SolverId` from the captured
+[shared context](../../proofs/acceptance/context.rs). A current session retains
+the exact request, scope, runtime, mode and effective input map throughout
+execution. An origin may come from different caller inputs when its complete
+SMT query binding is identical; requiring the old caller input map to equal
+the current map would incorrectly forbid legitimate solver-query reuse.
 
-1. Solver identity/mode describe the actual launched process and immutable
-   runtime. A path/hash observation followed by launching a changed executable
-   is not covered by a datatype.
-2. Command classification and response framing preserve actual stream order
-   and completeness. Same-looking replies provide no independent association
-   evidence; queue position supplies the association.
-3. Actual process/output observations justify `clean`; an unsupported boolean
-   or successful parse is insufficient.
-4. The local store starts valid or is validated into the admitted-store
-   relation. Every writer/recovery path preserves it. Shared and bundled
-   writers need an explicit trusted-writer contract or independent
-   certificates; signatures and checksums do not prove SMT answers.
-5. Concrete counters, queues and I/O failures implement the transitions.
-   Unsupported observations cannot mint successful evidence. Abstract proofs
-   do not verify their parser or I/O adapters merely by referring to them.
+`session_transcript` projects the solver identity, complete raw input,
+ordered command endpoints and delivered reply bytes into `SolverTranscript`.
+`executed_transcript_projects_observations` proves that projection from a
+checked execution. `session_complete` means the delivered and requested
+command counts agree. It is **not** a process-success or verified-result
+predicate. Composition must match the transcript inventory of every completed
+verifier invocation to complete query executions with the same current
+context; an unrelated or empty session cannot substitute for observed work.
 
-These conditions are outstanding interfaces, not axioms inserted into the
-proof to make it pass. Integration must discharge or name them in the
-composed theorem's inventory.
+The specification proves arbitrary finite histories, not a bounded
+enumeration. Reply/input fragmentation, ordered pairing, exact replay,
+suppression of already served responses and permanent departure from cache
+serving remain covered. Unsupported or inapplicable actions cannot mint
+additional evidence.
 
-## Direct check and controls
+## Positive and broken controls
 
-The direct check uses upstream stock Verus `0.2026.10.18.7d82994`, revision
-`7d829946231d6413a398f6e4160cdfe951261dad`, Rust `1.99.1`, and pinned Z3
-`4.16.0` from `corpus/toolchain.toml`. The macOS arm64 archive and bundled
-Z3 hashes were validated against that manifest. Proof source SHA-256:
-`0d2525d0137e70d80435bfdaeb0234550c84e93f3a1ff9d7022b53fe51fc07ec`.
+The nonempty witnesses exercise actual modeled admission paths:
 
-After clearing inherited Sail/Verus settings, injected Rust flags and compiler
-wrappers, invoke the extracted validated upstream runtime directly:
+- A readable nonempty input map produces an observed one-query run, clean
+  publication, pending write, complete atomic commit, crash and successful
+  recovery from the committed record.
+- An unpublished startup record with a self-consistent clean-run payload is
+  refused because it has no prior publication in the ledger.
+- Partial records and changed reply payloads are refused after disk
+  replacement; a crash before rename leaves nothing recoverable.
+- A run that emits stderr cannot publish, even if it otherwise completes.
+- A two-query session reuses one recovered answer, falls back with exact
+  input, suppresses precisely its replayed first answer and delivers a fresh
+  second answer. Its current effective input map differs from the origin's.
+
+Negative controls alter real guards or transitions in temporary captured
+copies and rerun the complete proof scope:
+
+| Control | Unique source needle | Replacement | Required failure |
+|---|---|---|---|
+| Shift reply pairing | `binding: s.commands[s.paired as int],` | `binding: s.commands[0],` | Ordered pairing proof fails. |
+| Suppress an extra reply | `delivered: if s.seen < s.skip {` | `delivered: if s.seen <= s.skip {` | Exact suppression proof fails. |
+| Publish noisy runs | `&& run.quiet` | `&& true` | Completed-origin/noisy-run obligations fail. |
+| Admit a changed payload | `&& frame.payload == frame.claim.entry` | `&& true` | Store preservation/corrupt recovery obligations fail. |
+| Recover an unrecorded origin | `&& store.recorded.contains(store.durable[index as int].claim.origin)` | `&& true` | Origin-ledger preservation/unpublished-record obligations fail. |
+
+A timeout or resource-limit failure does not qualify as a successful negative
+control. Omitted modules, changed runtimes and narrowed scope have separate
+checker refusal controls. No inconsistent assumptions are inserted.
+
+## Direct checking
+
+The component imports the shared context, so it must be checked with its
+captured dependency closure rather than passed alone as a Rust crate root.
+The coordinated runner snapshots those exact sources, generates a fixed
+module driver, invokes stock Verus directly and checks the complete function
+inventory. No Sail executable, fork, shim, daemon or managed receipt
+participates in proof checking.
 
 ```sh
-RUSTUP_TOOLCHAIN=1.99.1 VERUS_Z3_PATH="$stock_runtime/z3" \
-  "$stock_runtime/verus" proofs/acceptance/query_association.rs \
-  --no-cheating --output-json
+python3.12 scripts/check-acceptance-proofs.py \
+  --stock-archive "$stock_archive" --stock-dir "$stock_runtime" \
+  --out "$external_output"
 ```
 
-This invokes neither Sail nor its fork, shim, daemon or managed receipts.
-Local result: normal exit 0, `success: true`, `verified: 24`, `errors: 0`,
-`is-verifying-entire-crate: true`. The coordinated runner and complete proof
-inventory remain a separate integration deliverable. Native Linux checking
-and the repository gate remain required before publishing a component PR;
-this local model check does not replace them.
+The upstream pin remains Verus `0.2026.10.18.7d82994`, revision
+`7d829946231d6413a398f6e4160cdfe951261dad`, Rust `1.99.1` and pinned Z3
+`4.16.0`. The runner validates archive/runtime identities, clears inherited
+injected settings, sets the explicit Z3 path, and requires
+`--no-cheating --output-json` with whole-crate scope. The local query/shared
+context driver passes 59 obligations, zero errors and normal termination;
+all named witnesses remain in scope. The owning
+[validation record](../validation/evidence-acceptance-models.md) binds the
+combined source, runtime, environment and native qualification. This component
+record does not replace the full repository gate or integrated acceptance.
 
-Negative controls replace unique text in a temporary copy and run the same
-complete invocation:
+## Remaining production refinement and trust
 
-| Control | Exact needle | Replacement | Required failure |
-|---|---|---|---|
-| Pair a later reply with the first command | `binding: s.commands[s.paired as int],` | `binding: s.commands[0],` | `pairing_preserves_order` fails. |
-| Suppress one reply beyond those served | `delivered: if s.seen < s.skip {` | `delivered: if s.seen <= s.skip {` | `replay_suppresses_exactly_served_replies` fails. |
+There are no assumed lemmas, `assume`, `admit`, `external_body` or unchecked
+external specifications in this component. Opaque specification definitions
+are proved through their explicit definitions and helper lemmas; opacity
+controls solver expansion and does not introduce an axiom.
 
-Both return nonzero with failed obligations. They alter actual transitions
-and add no contradictory assumptions. The coordinated runner must separately
-reject omitted modules, replaced runtimes and narrowed verification scope.
+The model-level local-origin invariant is closed under its transitions. The
+following physical interfaces remain obligations, not established guarantees:
+
+| Current code | Refinement still required |
+|---|---|
+| `sail-key::PrefixHasher` | Every actual solver-input byte, endpoint, solver and mode enters the key. Logical byte equality must be related to concrete digests under an explicit cryptographic assumption, not hash injectivity. |
+| Shim splitters, `observe`, session classification | Actual output-producing commands and whole response frames appear exactly once in order. Byte accounting does not prove SMT-LIB parsing. |
+| `cached::Pairer`, held checks and effort metadata | Asynchronous channels, suppression offsets, errors and statistics annotation preserve the modeled pairing and raw reply bytes. |
+| Process launch, stdout/stderr monitor, `spawn_storer` | Modeled trusted observations belong to the identified immutable process; normal exit and all stream closures precede publication. |
+| Daemon `HELLO`/`PUT`, write-behind and memory stamps | Every admitted local writer refines the observed-run publication path. A handshake alone does not prove its arbitrary `PUT` truthful. |
+| `DiskCache::put_scoped/get_stamped` | Protected prior publication, unique temporary files, atomic rename, integrity checks, concrete stamps and crash behavior refine the ghost history and exact-payload checks. The implementation does not store or verify this model's ghost histories. |
+| Shared/bundled admission | Excluded here; needs a reviewed writer-origin contract or independent certificate checking before inclusion. |
+
+The inspected production base is `6ddf8f7b`, including the streamed transcript
+digest implementation from #358. Stock Verus/vstd, pinned solver soundness,
+compiler/runtime identity and the operating-system/process interfaces remain
+trusted where stated. No claim of verified production I/O, default diagnostic
+parity, termination, performance or an end-to-end verified Sail follows from
+this model alone.
