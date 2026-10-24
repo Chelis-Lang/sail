@@ -14,6 +14,16 @@ same jobs through MCP) carries a Currentness label:
 - **Unknown**: Sail could not establish either, for example because a file
   could not be read or the run itself could not watch its inputs. Re-run.
 
+If you explicitly select a Cargo version outside Sail's qualified build-script
+input protocol, Sail verifies projects with build scripts using ordinary Cargo
+freshness and its solver cache. It records no proof receipts and reports
+Unknown with a `no_reuse` reason. Unchanged passing builds can then remain
+Cargo no-ops instead of repeatedly rebuilding to establish receipts that this
+Cargo cannot support. Select the pinned toolchain to enable proof reuse:
+`RUSTUP_TOOLCHAIN=1.99.1 sail verify`. If `CARGO` names a different Cargo
+binary explicitly, unset it or point it at the pinned Cargo too. Sail does not
+change your toolchain selection or treat an unsupported protocol as proof authority.
+
 These labels describe your inputs, not the solver's verdict. A Current result
 can contain a failed proof. Only a Current, successful result can be reused as a
 proof receipt or accept a repair. CLI and MCP clients receive the same label.
