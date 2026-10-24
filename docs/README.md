@@ -55,6 +55,10 @@ covers the broader edit loops and soundness checks.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
+[The proposed evidence-acceptance core](design/evidence-acceptance-core.md)
+defines a conditional safety theorem for query association, input identity,
+requested scope and result authority. It is a design proposal, not an
+implemented formal guarantee.
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs
