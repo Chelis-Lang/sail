@@ -306,6 +306,66 @@ failed = [f["function"] for c in target["report"]["crates"] for f in c["function
 assert any(name.endswith("bad") for name in failed), failed
 PY
 echo "e2e: a --tests job verified as plain cargo verus verify, without proof reuse"
+# An explicitly selected Cargo whose build-script protocol is unqualified
+# keeps ordinary Cargo freshness. Only its reported source commit changes;
+# compilation and all arguments still reach the real pinned Cargo.
+unsupported_cargo_case() {
+  local sail_output_real_cargo
+  sail_output_real_cargo="$(command -v cargo)"
+  mkdir "$work/unsupported-cargo"
+  printf '%s\n' "$sail_output_real_cargo" > "$work/unsupported-cargo/real-cargo"
+  cat > "$work/unsupported-cargo/cargo" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+real="$(cat "$(dirname "$0")/real-cargo")"
+if [ "$#" = 2 ] && [ "$1" = --version ] && [ "$2" = --verbose ]; then
+  "$real" "$@" | sed 's/^commit-hash: .*/commit-hash: 0000000000000000000000000000000000000000/'
+else
+  exec "$real" "$@"
+fi
+SH
+  chmod +x "$work/unsupported-cargo/cargo"
+  export CARGO="$work/unsupported-cargo/cargo"
+  cat > build.rs <<'RS'
+fn main() {
+    println!("cargo:rerun-if-env-changed=CARGO_CFG_TARGET_OS");
+    assert!(!std::env::var("CARGO_CFG_TARGET_OS").unwrap().is_empty());
+}
+RS
+  plain_run unsupported-fail-plain stock_cargo verus verify
+  sail_run unsupported-fail-sail "$sail" verify
+  unbound_compare unsupported-fail
+  [ "$(cat "$work/unsupported-fail-sail.rc")" = 101 ]
+  grep -q 'Cargo .* cannot track' "$work/unsupported-fail-sail.err"
+  cp src/lib.rs "$work/unsupported-failing.rs"
+  edit_in_place 's/ensures r > x,/ensures r >= x,/' src/lib.rs
+  plain_run unsupported-pass-plain stock_cargo verus verify
+  sail_run unsupported-pass-sail "$sail" verify
+  unbound_compare unsupported-pass
+  [ "$(cat "$work/unsupported-pass-sail.rc")" = 0 ]
+  CARGO_TARGET_DIR="$work/target-plain" quiet_run unsupported-noop-plain stock_cargo verus verify
+  CARGO_TARGET_DIR="$work/target-sail" quiet_run unsupported-noop-sail "$sail" verify
+  unbound_compare unsupported-noop
+  if grep -qE '^ *(Compiling|Checking) ' "$work/unsupported-noop-sail.err"; then
+    echo 'e2e: unsupported Cargo rebuilt an unchanged passing project' >&2
+    exit 1
+  fi
+  CARGO_TARGET_DIR="$work/target-sail" "$sail" verify --output json > "$work/unsupported-json.out" 2> "$work/unsupported-json.err"
+  python3 - "$work/unsupported-json.out" <<'PY'
+import json,sys
+result=json.load(open(sys.argv[1]))
+assert result['currentness']=='unknown' and result['exit_code']==0, result
+assert result['no_reuse']['code']=='SAIL3112', result['no_reuse']
+assert result['no_reuse']['verified_as']=='plain-cargo-verus',result['no_reuse']
+assert 'cannot track' in result['no_reuse']['reason'], result['no_reuse']
+assert all(not t['reused'] and not t['complete'] for t in result['targets']),result['targets']
+PY
+  cp "$work/unsupported-failing.rs" src/lib.rs
+  rm build.rs
+  echo 'e2e: unsupported Cargo preserves failing and passing output, unchanged Cargo no-ops, and explicit no-reuse JSON'
+}
+( RUSTUP_TOOLCHAIN="$sail_stock_toolchain" unsupported_cargo_case )
+
 # An explicit target directory: each side its own, already built by the
 # cases above (a fresh one would add two cold builds to this job).
 run target-dir-plain stock_cargo verus verify --target-dir "$work/target-plain"
