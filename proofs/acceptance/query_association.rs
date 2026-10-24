@@ -171,6 +171,10 @@ pub proof fn pairing_preserves_order(s: Pairer)
     ensures pairer_wf(pair_one(s)),
 {
     let next = pair_one(s);
+    assert(next.commands == s.commands && next.replies == s.replies);
+    assert(next.entries.len() == s.entries.len() + 1);
+    assert(next.entries[s.paired as int].binding == s.commands[s.paired as int]);
+    assert(next.entries[s.paired as int].reply == s.replies[s.paired as int]);
     assert forall|i: int| 0 <= i < next.entries.len()
         implies next.entries[i].binding == next.commands[i]
             && next.entries[i].reply == next.replies[i] by {
@@ -340,6 +344,7 @@ pub proof fn every_run_transition_preserves(run: LiveRun, action: RunAction)
     }
 }
 
+#[verifier::opaque]
 pub open spec fn run_replay(context: ModelContext, solver: Solver, actions: Seq<RunAction>) -> LiveRun
     decreases actions.len(),
 {
@@ -354,6 +359,7 @@ pub proof fn replayed_run_is_valid(context: ModelContext, solver: Solver, action
         run_replay(context, solver, actions).solver == solver,
     decreases actions.len(),
 {
+    reveal(run_replay);
     if actions.len() == 0 { run_initially_valid(context, solver); }
     else {
         replayed_run_is_valid(context, solver, actions.drop_last());
@@ -392,6 +398,7 @@ pub open spec fn origin_valid(origin: Origin) -> bool {
     && origin.index < origin_run(origin).pairer.entries.len()
 }
 
+#[verifier::opaque]
 pub open spec fn origin_entry(origin: Origin) -> Entry
     recommends origin_valid(origin),
 {
@@ -414,6 +421,7 @@ pub proof fn origin_has_complete_trusted_run(origin: Origin)
         flatten(origin_run(origin).output.complete) == origin_run(origin).output.received,
 {
     reveal(origin_valid);
+    reveal(origin_entry);
     replayed_run_is_valid(origin.context, origin.solver, origin.actions);
     let run = origin_run(origin);
     assert(run.output.received.take(run.output.received.len() as int) =~= run.output.received);
@@ -654,6 +662,7 @@ pub proof fn every_store_transition_preserves(store: Store, action: StoreAction)
     }
 }
 
+#[verifier::opaque]
 pub open spec fn store_replay(disk: Seq<DiskFrame>, actions: Seq<StoreAction>) -> Store
     decreases actions.len(),
 {
@@ -665,6 +674,7 @@ pub proof fn replayed_store_has_only_valid_origins(disk: Seq<DiskFrame>, actions
     ensures store_wf(store_replay(disk, actions)),
     decreases actions.len(),
 {
+    reveal(store_replay);
     if actions.len() == 0 { empty_or_untrusted_initial_disk_is_safe(disk); }
     else {
         replayed_store_has_only_valid_origins(disk, actions.drop_last());
@@ -1131,15 +1141,19 @@ pub proof fn executed_transcript_projects_observations(
 pub proof fn store_replay_after_push(disk: Seq<DiskFrame>, actions: Seq<StoreAction>, action: StoreAction)
     ensures store_replay(disk, actions.push(action)) == store_step(store_replay(disk, actions), action),
 {
+    reveal(store_replay);
     assert(actions.push(action).drop_last() =~= actions);
 }
 
 pub proof fn run_replay_after_push(context: ModelContext, solver: Solver, actions: Seq<RunAction>, action: RunAction)
     ensures run_replay(context, solver, actions.push(action)) == run_step(run_replay(context, solver, actions), action),
+        run_replay(context, solver, Seq::empty()) == run_init(context, solver),
 {
+    reveal(run_replay);
     assert(actions.push(action).drop_last() =~= actions);
 }
 
+#[verifier::opaque]
 pub open spec fn observing_history(context: ModelContext, solver: Solver, events: Seq<RunAction>) -> Seq<StoreAction>
     decreases events.len(),
 {
@@ -1161,6 +1175,7 @@ pub proof fn observing_history_captures_exact_run(context: ModelContext, solver:
         store_replay(Seq::empty(), observing_history(context, solver, events)).durable.len() == 0,
     decreases events.len(),
 {
+    reveal(observing_history);
     if events.len() == 0 {
         reveal_with_fuel(store_replay, 2);
     } else {
@@ -1211,11 +1226,48 @@ pub proof fn positive_origin_is_complete_and_nonempty()
             solver: example_solver(), mode: Mode::Default, prefix: seq![1u8], endpoint: 1 }),
         origin_entry(example_origin()).reply == seq![11u8],
 {
+    let context = example_context(1, 31);
+    let solver = example_solver();
     example_context_is_readable(1, 31);
+    let expected = Binding { solver, mode: Mode::Default, prefix: seq![1u8], endpoint: 1 };
+    let start = Seq::<RunAction>::empty();
+    let a = start.push(RunAction::Input(seq![1u8]));
+    run_replay_after_push(context, solver, start, RunAction::Input(seq![1u8]));
+    assert(run_replay(context, solver, start) == run_init(context, solver));
+    assert(run_replay(context, solver, a).raw == seq![1u8]);
+    let b = a.push(RunAction::Command(1));
+    run_replay_after_push(context, solver, a, RunAction::Command(1));
+    assert(run_replay(context, solver, b).pairer.commands.len() == 1);
+    assert(run_replay(context, solver, b).pairer.commands[0].prefix =~= seq![1u8]);
+    assert(run_replay(context, solver, b).pairer.commands[0] == expected);
+    let c = b.push(RunAction::Output(seq![11u8]));
+    run_replay_after_push(context, solver, b, RunAction::Output(seq![11u8]));
+    assert(run_replay(context, solver, c).output.received == seq![11u8]);
+    let d = c.push(RunAction::Frame(1));
+    run_replay_after_push(context, solver, c, RunAction::Frame(1));
+    assert(run_replay(context, solver, d).pairer.replies.len() == 1);
+    assert(run_replay(context, solver, d).pairer.replies[0] =~= seq![11u8]);
+    assert(can_pair(run_replay(context, solver, d).pairer));
+    let e = d.push(RunAction::Pair);
+    run_replay_after_push(context, solver, d, RunAction::Pair);
+    assert(run_replay(context, solver, e).pairer.entries.len() == 1);
+    assert(run_replay(context, solver, e).pairer.entries[0] == (Entry { binding: expected, reply: seq![11u8] }));
+    let f = e.push(RunAction::CloseInput);
+    run_replay_after_push(context, solver, e, RunAction::CloseInput);
+    let g = f.push(RunAction::CloseOutput);
+    run_replay_after_push(context, solver, f, RunAction::CloseOutput);
+    let h = g.push(RunAction::CloseStderr);
+    run_replay_after_push(context, solver, g, RunAction::CloseStderr);
+    let i = h.push(RunAction::Exit(true));
+    run_replay_after_push(context, solver, h, RunAction::Exit(true));
+    assert(i =~= example_run_events());
+    let run = run_replay(context, solver, i);
+    assert(run.input_closed && run.stdout_closed && run.stderr_closed && run.exited && run.exit_ok && run.quiet);
+    assert(run.pairer.entries.len() == 1);
+    assert(run_complete(run));
     reveal(origin_valid);
-    reveal_with_fuel(run_replay, 10);
-    assert(origin_run(example_origin()).pairer.entries.len() == 1);
-    assert(origin_run(example_origin()).pairer.entries[0].binding.prefix =~= seq![1u8]);
+    reveal(origin_entry);
+
 }
 
 #[verifier::opaque]
