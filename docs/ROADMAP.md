@@ -102,9 +102,10 @@ is no new release branch or predetermined next release artifact.
 | Scope | Current state | Completion gate |
 |---|---|---|
 | Installation and adoption | Guided, checksum-checked archive installer merged (#357); actual Linux and Mac install/first-proof/unchanged controls pass | [Installation](validation/install.md) |
-| Avoidable allocation | Streaming attribution hashes halve peak memory in a bounded 256 MiB hash diagnostic; final reduced patch in qualification | [Memory scope and limits](validation/transcript-memory.md) |
+| Avoidable allocation | Streaming attribution hashes merged (#358); bounded hash diagnostic halves peak memory and native gates pass | [Memory scope and limits](validation/transcript-memory.md) |
 | Cold and unchanged overhead | Open; initial source-observation cuts did not move Anvil latency and are excluded | Measured improvement on native Linux and Mac without weaker input checks |
-| Real-project frontend floor | Current-runtime Vest, IronKV and Anvil profiles in progress | Select a contained change from measured wall-time cost; persistent reuse remains unqualified under ADR 0052 |
+| Real-project frontend floor | Current-runtime cache-arm comment edits: Vest 20.98 s, IronKV 4.46 s, Anvil 34.39 s; [diagnostic scope](reports/2026-10-16-warm-frontend.md#current-runtime-diagnostic-2026-10-24) | Select a contained change from measured wall-time cost; persistent reuse remains unqualified under ADR 0052 |
+| Avoidable invalidation | Authentication plumbing excluded from CLI contexts; actual unchanged and declared-read controls pass, first-use bundle hits preserved | [Qualification](validation/credential-context.md): full native gates, fast/standard conformance and Mac controls pass |
 | Combined product validation | Required after selecting effective changes | Corrected matrices and realistic mutation suite; functional parity and no real slowdown |
 
 The historical rc.6 results above remain a baseline. They do not qualify
@@ -119,26 +120,26 @@ New performance issues are filed under M11 and ordered in #168.
 
 ### 1. Cold runs and pre-caching (release blocker)
 
-Where cold time goes: a fresh small project compiles its proc-macro and
-build-script crates (proc-macro2, quote, verus_syn, Verus macro crates),
-then verifies vstd (2,061 checks, 366 solver sessions), then the user crate.
-Cold was 0.97–1.01× on the 2026-10-15 corpus (removed pass-through mode)
-and is 0.86–0.88× on the latest measured managed builds; the regression is
-unattributed (lever 1.1). On Vest, overhead fixes (1.1, 1.3, 1.4, EXEC skip)
-can reach parity at best; only vstd coverage for Vest's pin (1.8–1.9; 1.7 covers only the runtime's own vstd)
-turns cold into a win, because Vest pins vstd 2026-09-06 and misses the
-shipped bundle.
+The frozen consumer's [matrix](validation/release-matrix.md) remains the
+complete baseline: Linux cold is at parity or faster; Mac Anvil and Vest
+remain open. Main's bounded three-round small/Anvil runs likewise retain
+unchanged-call overhead. The rejected source-observation trials did not
+close it. Shipped proof coverage, native compilation and Cargo planning are
+separate costs; a faster solver cache does not remove the frontend.
+
+The inventory below distinguishes delivered work from remaining experiments.
+Older prizes retain their cited source and are not current acceptance.
 
 | # | Lever | Prize | Status | Next experiment (cost) | Fork | Issue |
 |---|---|---|---|---|---|---|
 | 1.1 | Cold-gap attribution, re-baseline and owner | Required for the goal: about 12 s on Vest cold, 4 s on small | Attributed on the 7d82994 runtime; after the #232 fixes, small project +22.5% → +8.2%, public-profile Vest +12.6% → +4.8% (three rounds, [record](validation/cold-first-run.md)) | Owner decision on native-admission waits taken: pipelined admission accepted and selected (ADR 0061); 1.6 (daemon overlap) remains | No | #232 |
-| 1.2 | Shipped verified vstd + pinned Cargo 1.98.1 | Fresh project 31.78 → 14.23 s vs stock (2.23×; pre-join candidate screen) | Merged (#249, ADR 0058) | 0.1.0 gate table | No | #161 |
-| 1.2b | Pinned toolchain and rust-src fetched at install, in parallel with the archive download | How the 1.2 pin arrives; unmeasured share of 14.23 s | Proposed | rust-src split is part of 1.5's profile; then fetch during install (days) | No | #233 |
+| 1.2 | Shipped verified vstd + pinned Cargo 1.99.1 | Fresh project 31.78 → 14.23 s vs stock (2.23×; pre-join candidate screen) | Merged (#249, ADR 0058) | 0.1.0 gate table | No | #161 |
+| 1.2b | Guided archive and pinned toolchain installation | Actual Linux and Mac install/first-proof/unchanged controls pass | Merged (#357); explicit `--install-toolchain` installs the actual bundled pin and rust-src | Download overlap remains unmeasured; [installation](validation/install.md) | No | #233 |
 | 1.3 | Read the solver binary once per run (or a content-addressed private copy) | 2–3.3 s per fresh project, 0.5–0.9 s per Vest edit | Proposed; #219 recovered 1–3% | Per-run identity reuse (1–2 days); a private copy needs an ADR on same-path replacement | No | #156 |
 | 1.4 | Take instant-revert retention off the cold path | Was +2.65 s on macOS Vest cold (`006ee5d0`, +6.6% vs stock) | Done: closure-scoped source check (#289) and pipelined native admission (ADR 0061). Vest cold: Linux 69.91 s vs stock 71.45 s, macOS +4.3%; returned A about 1.1 s ([record](validation/cold-first-run.md#pipelined-native-admission-adr-0061)). Skipping retention on a first run is not viable (#285) | None | Yes on Vest | #163, #278 |
 | 1.5 | Profile the 9.3–14.2 s residual first use | Unmeasured, likely 0–3 s; fixed waits alone could be up to about 4 s per first run; decides 1.10 | Proposed | Control: stock `cargo build --timings` of only the macro closure (never timed). Then per-phase timestamps: native compile, rust-src setup, admission hashing (662 policy files, 128 source maps), fixed 2 s waits (0.5 day). Candidate cuts: per-machine content-memoized policy-archive attestation, readiness signals in place of the fixed arrival and graph-capture waits, parallel hashing (1–3 days) | No | #234 |
 | 1.6 | Overlap daemon start and solver-identity hashing with Cargo's native compile | Unmeasured; pure cold cut, needs no think time | Proposed | `SAIL_JOB_EVENTS` timeline of a fresh project to show the serial section, then overlap (1–2 days) | No | #235 |
-| 1.7 | Ship vstd SMT replies as signed entries in the release archive ([ADR 0062](decisions/0062-shipped-vstd-solver-replies.md), accepted) for the pinned vstd | Measured: component miss 31.76 → 29.93 s against stock's 29.82 s (+6.5% → +0.4%); lock-file and loader-variable misses 7–10% faster than stock; bundle hit unchanged; 20,197 of 20,197 vstd lookups hit ([record](validation/vstd-miss-replies.md#shipped-replies-implementation)) | Built (PR #287); Linux measured, macOS unmeasured | Measure on the macOS release stage | No | #236 |
+| 1.7 | Ship vstd SMT replies as signed entries in the release archive ([ADR 0062](decisions/0062-shipped-vstd-solver-replies.md), accepted) for the pinned vstd | Measured: component miss 31.76 → 29.93 s against stock's 29.82 s (+6.5% → +0.4%); lock-file and loader-variable misses 7–10% faster than stock; bundle hit unchanged; 20,197 of 20,197 vstd lookups hit ([record](validation/vstd-miss-replies.md#shipped-replies-implementation)) | Merged (#287); Linux miss performance measured, macOS miss performance unmeasured | Measure on the macOS release stage | No | #236 |
 | 1.8 | Compiler-boundary local reuse as the default fallback | 39.84 → 9.34 s per new demo project (Sail vs Sail); worktree and Vest unmeasured, and Vest's vstd pin likely misses | Built behind a research flag; #222 fix built, qualification pending | Land the #222 fix; Vest hit/miss from 1.1; then qualify as default | No | #161, #222 |
 | 1.9 | More vstd versions (Vest pins 2026-09-06) | About 26 s per Vest-class worktree; corpus gain about 0 today | Proposed | Can start from 1.1's Vest hit/miss: fill-once local store keyed by `Cargo.lock` checksum (about 1 week), then published bundles (about 1 week) | No | #237 |
 | 1.10 | Release-built macro crates as pinned tools | Plausibly 1.5–3 s fresh project (estimate) for projects matching the runtime's pinned vstd and macros; v1's 1.28 s is the upper bound. At opt-level 3 also 0.6–2 s per warm edit (one sample) | Proposed; blocked on an owner parity decision under ADR 0053 (#187: a broken user `cc` would no longer break Sail) | After 1.5: re-run the opt-level 3 macro A/B with ≥3 cold and ≥6 warm samples per arm on Vest and IronKV (0.5 day); then serve exact-match macro units from the archive, bound by digest (4–6 days). On Mac, requires qualifying the VI-0026 stable `@rpath` install-name fix (branch `perf/vstd-macos-repro`) | Yes | #239 |
@@ -146,7 +147,7 @@ shipped bundle.
 | 1.12 | Background prebuild at `sail new` or first sight (the ordinary managed Cargo build, run early) | Hides up to the residual first use with think time; 0 without | Proposed; independent of 1.8 | Time `sail new` → first verify with a realistic agent think-time trace (days). Background pre-verification on a miss waits for 1.8 to be default-safe | No | #241 |
 | 1.13 | User CI cache recipe | Unmeasured; plausibly the all-hits floor on unchanged code (charter success criterion) | Proposed | One measured GitHub Actions example persisting the Sail cache or reading a team store (days) | No | #242 |
 | 1.14 | Bulk prefetch from the team store | Unmeasured | Proposed | Only after 1.11 shows remote latency matters | No | #243 |
-| 1.15 | Refuse the shipped proof on its sysroot shape before hashing; read the runtime once per run | Measured: toolchain-component miss 36.68 → 35.64 s (+3.8% → +0.8% vs stock), hit −0.29 s, lock miss −0.36 s; `sail new` on that toolchain 1.12 → 0.08 s ([record](validation/shipped-miss-hashing.md)) | Built (this change). The drivers' per-compile launcher/compiler rehash (about 0.7 GB per miss) stays: ADR 0050 rules out timestamp evidence | Owner decision only if the driver rehash should change | No | #286 |
+| 1.15 | Refuse the shipped proof on its sysroot shape before hashing; read the runtime once per run | Measured: toolchain-component miss 36.68 → 35.64 s (+3.8% → +0.8% vs stock), hit −0.29 s, lock miss −0.36 s; `sail new` on that toolchain 1.12 → 0.08 s ([record](validation/shipped-miss-hashing.md)) | Merged (#290). The drivers' per-compile launcher/compiler rehash (about 0.7 GB per miss) stays: ADR 0050 rules out timestamp evidence | Preserve the driver byte checks; optimize other measured costs | No | #286 |
 
 Also a cold contributor: EXEC-pass skip (track 2 step 2) saves about 3 s on
 Vest cold as well as every edit, about a quarter of the Vest cold gap.
@@ -157,16 +158,18 @@ one sample; resampled inside 1.10).
 
 ### 2. Frontend floor (#162)
 
-The all-hits floor (IronKV 5.6 s to Anvil 38.2 s) caps every edit-loop
-lever and is the only lever that moves all five corpus projects. Status:
-the per-bucket memo key is blocked; the cheap steps are untried
+Current-runtime cache-arm comment edits take 20.98 s on Vest, 4.46 s on
+IronKV and 34.39 s on Anvil. IronKV still starts one solver; the other two
+start none. These diagnostic floors are distinct from unchanged Cargo calls
+and complete mutation loops. Persistent frontend reuse remains unqualified;
+the read-only pruning experiment did not establish a useful overall gain
 ([warm-frontend report](reports/2026-10-16-warm-frontend.md),
 [validation](validation/warm-frontend.md)).
 
 | Step | Prize | Status | Next experiment (cost) | Fork | Issue |
 |---|---|---|---|---|---|
-| 1. Re-profile frontend stages at 31 and 8 threads | Decides step 3 | Proposed | Fork timers branch `m11-8/frontend-timers` (1 day plus one native-host day) | Yes | #162 |
-| 2. Batch A/B of cheap cuts: EXEC-pass skip or metadata-only (3.04 s of a Vest cycle; also a cold cut), the unmeasured pruning branches `perf/prune-raw-lookups`, `research/prune-shared-indexes` and `perf/prune-traversal-memo`, and small lowering (SCC/AIR/autospec) branches | Estimated 10–20% off the floor | Proposed | One batched screen (2–3 days) | Yes | #162 |
+| 1. Profile frontend stages and thread sensitivity | Decides step 3 | Current-runtime three-project default-thread profile complete; thread sweep unrun | Bound the next candidate by measured phase wall time, then run a controlled thread sweep | Yes | #162 |
+| 2. Batch A/B of cheap cuts: EXEC-pass skip or metadata-only (3.04 s of a Vest cycle; also a cold cut), the unmeasured pruning branches `perf/prune-raw-lookups`, `research/prune-shared-indexes` and `perf/prune-traversal-memo`, and small lowering (SCC/AIR/autospec) branches | Historical estimate; no qualified current gain | Read-only pruning inconclusive; other cuts unqualified | One bounded A/B under the current runtime, preserving native compilation and diagnostics | Yes | #162 |
 | 3. Position-independent VIR key and per-bucket memo ([ADR 0052](decisions/0052-warm-frontend-reuse.md), proposed) | Estimated 25–45% off the floor; Vest all-hits 1.6× → about 2.1–2.4× | Blocked: raw key matches 0/200 Vest buckets on any edit (span offsets, unstable `external_fns` order) | Commit only if step 1 shows lowering ≥25% of the floor (3–5 weeks) | Yes | #162 |
 | Cargo bypass when only target sources change | ≤1.72 s (7.1%) of a Vest cycle, upper bound (rescue stage profile¹) | Untried; constrained by ADR 0041 | After step 1 | No | #245 |
 

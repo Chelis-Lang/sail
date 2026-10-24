@@ -20,6 +20,11 @@ use std::path::{Path, PathBuf};
 
 /// Sail variables that only observe or schedule a run; they never reach a proof.
 const OBSERVATION_ONLY: &[&str] = &[
+    // Private dependency authentication selects fetched bytes, not compiler
+    // semantics. Those bytes remain source inputs; explicit env! or script
+    // reads of either name remain declared receipt inputs below.
+    "SAIL_DEPENDENCY_READ_TOKEN",
+    "SAIL_PRIVATE_GIT_READY",
     "SAIL_PROOF_EVENTS",
     "SAIL_ENGINE_EVENTS",
     "SAIL_ENGINE_FOCUS_REPORT",
@@ -227,6 +232,8 @@ mod tests {
             "SAIL_JOB_EVENTS",
             "SAIL_MANAGED_FORCE",
             "SAIL_MANAGED_PROXY",
+            "SAIL_DEPENDENCY_READ_TOKEN",
+            "SAIL_PRIVATE_GIT_READY",
         ] {
             assert!(!input_environment_key(OsStr::new(key)), "{key}");
         }
@@ -276,6 +283,27 @@ mod tests {
         let mut changed = recorded;
         changed.insert("SAIL_TEST_SURELY_UNSET_L16".into(), Some(b"1".to_vec()));
         assert!(!unchanged(&changed));
+    }
+
+    #[test]
+    fn authentication_plumbing_still_binds_explicit_declared_reads() {
+        let names = declarations(
+            "# env-dep:SAIL_DEPENDENCY_READ_TOKEN\n# env-dep:SAIL_PRIVATE_GIT_READY\n",
+            true,
+        );
+        assert_eq!(names.len(), 2);
+        for name in names {
+            assert!(!input_environment_key(OsStr::new(&name)));
+            let mut recorded = values(&BTreeSet::from([name.clone()]));
+            assert!(unchanged(&recorded));
+            let mut different = recorded
+                .get(&name)
+                .and_then(Clone::clone)
+                .unwrap_or_default();
+            different.push(b'x');
+            recorded.insert(name, Some(different));
+            assert!(!unchanged(&recorded));
+        }
     }
 
     #[test]

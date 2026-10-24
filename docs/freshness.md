@@ -201,6 +201,14 @@ Cargo's own. Two parts of the environment bind a result:
   `rerun-if-env-changed`. Each receipt records their values, and it is reused
   only while every one is unchanged.
 
+Private dependency authentication (`SAIL_DEPENDENCY_READ_TOKEN` and
+`SAIL_PRIVATE_GIT_READY`) does not select a different compiler proof context.
+Changing those values alone leaves an unchanged CLI proof reusable. Fetched
+dependency contents remain bound by the ordinary source checks. If a source
+file or build script explicitly declares a read of either variable, its
+receipt still requires that value to match. This exemption does not change
+which environment a background job requests.
+
 For build-script declarations, Sail binds `CARGO_FEATURE_*` and `CARGO_CFG_*`
 to Cargo's generated values, not the parent process values. A private Cargo
 unit graph supplies exact unit features. Native compiler cfg queries supply

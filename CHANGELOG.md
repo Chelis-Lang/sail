@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep unchanged CLI proofs reusable when private dependency credentials change.
+  Source and build-script declarations that read those variables still
+  invalidate their receipts when the values change.
+
 - Hash attribution transcripts without allocating a second complete copy of
   the solver input. Proof keys still bind the exact same bytes.
 

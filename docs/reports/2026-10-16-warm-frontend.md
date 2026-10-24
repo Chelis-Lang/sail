@@ -1,5 +1,40 @@
 # Warm frontend: profiles, traversal experiment and input diagnosis (#162)
 
+## Current-runtime diagnostic, 2026-10-24
+
+The shipped fork `7d9d5410` on upstream `7d82994`, Rust 1.99.1 and pinned Z3
+was profiled on an isolated native EC2 c7i.8xlarge in us-east-1. The pinned
+Vest, IronKV and Anvil projects used registry vstd at the shipped version.
+Vest retained different equivalent, indexmap and unicode-ident versions from
+the shipped lock; this is not a shipped-proof-hit experiment. `scripts/perf-real.sh` ran one round of `fork-plain` and
+`fork-shim`, with `--time-expanded`, one requested comment edit and the final
+comment-only control. Vest used `--rlimit 100`; Anvil focused
+`vdeployment_controller`. All 18 samples exited successfully.
+
+Seconds, medians of the two comment-only samples:
+
+| Project | Direct fork | Fork with solver cache | Rust | VIR | Verify-crate |
+|---|---:|---:|---:|---:|---:|
+| Vest | 37.36 | 20.98 | 6.54 | 5.57 | 5.53 |
+| IronKV | 9.04 | 4.46 | 1.49 | 1.21 | 0.80 |
+| Anvil | 151.38 | 34.39 | 9.83 | 14.53 | 3.82 |
+
+Stage columns describe the cache arm and do not partition command wall time.
+Vest and Anvil recorded zero solver starts and all daemon gets hitting on
+both comment edits. IronKV recorded one solver start and 141 puts despite
+all daemon gets hitting; its samples do not establish a complete all-hit
+floor. These are frontend diagnostics, not managed-CLI timings, mutation-loop
+acceptance or qualification of a new runtime. No frontend reuse is selected.
+
+Raw stage logs and summaries:
+`s3://example-evidence-bucket/experiments/2026-10-24/sail-sprint-sprint-frontend.tgz`,
+sha256 `2a6ee0fcffc9ab979bb72574ce024cd1b0388353d3c7a4c99ae9c1af90fec975`.
+The initial launch refused an incorrect stock-install root before verification;
+the corrected run above completed. The older experiments below retain their
+original scope and limits.
+
+## Earlier profile and experiments
+
 The remaining floor is real. A comment-only edit still takes 25.33 s on
 Vest, 24.03 s on Verismo and 4.79 s on IronKV through managed Sail. The
 first implementation candidate removes unused AST reconstruction during
