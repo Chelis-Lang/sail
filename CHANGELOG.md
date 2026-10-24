@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add an explicit-version or local-archive installer with checksum and runtime
+  validation, custom install prefixes and opt-in pinned Rust setup. Existing
+  installations, shell profiles and the default Rust toolchain are preserved.
+- Keep ephemeral private-dependency authentication available when checking
+  third-party notices during archive staging.
+
 - Preserve floating-point values when decoding retained JSON evidence in both
   producers and API consumers. Mutation receipt hashes no longer depend on a
   consumer independently enabling `serde_json/float_roundtrip`. Inconsistent

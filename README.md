@@ -38,6 +38,21 @@ and is not yet part of the release archive or daemon interface.
 
 ## Install
 
+For a guided install with Python 3.9 or newer, use
+[`scripts/install.py`](scripts/install.py). Select a version explicitly:
+
+```sh
+python3 scripts/install.py --version 0.1.0 --install-toolchain
+```
+
+It checks the archive, validates the bundled runtime, and installs the pinned
+Rust toolchain with `rust-src` using an existing rustup. It prints the `PATH`
+line to add, leaving your shell files and default Rust toolchain alone. Private
+downloads use authenticated GitHub CLI. Local archives and custom installation
+directories are covered in the [installation guide](docs/install.md).
+Until publication, select an available private draft version or local archive;
+the example version is not a published download.
+
 Sail is a prebuilt archive per platform on
 [GitHub releases](https://github.com/Chelis-Lang/sail/releases). It holds
 `sail`, the solver shim `sail-z3` and Sail's Verus (with the pinned Z3 and

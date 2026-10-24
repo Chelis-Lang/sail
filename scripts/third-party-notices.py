@@ -188,7 +188,11 @@ def main():
     args = parser.parse_args()
     work = args.work.absolute()
     work.mkdir(parents=True)
-    env = {k: v for k, v in os.environ.items() if not k.startswith(('CARGO_TARGET', 'SAIL_'))}
+    # Cargo still needs the ephemeral credential helper's read-only token for
+    # the workspace's pinned private dependency. Other Sail execution selectors
+    # must not affect notice generation. The token is never written to notices.
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith(('CARGO_TARGET', 'SAIL_')) or k == 'SAIL_DEPENDENCY_READ_TOKEN'}
     # Run every `cargo metadata` with Sail's own toolchain. In the fork's
     # checkout, its rust-toolchain.toml would otherwise make rustup install
     # rustc-dev, llvm-tools and rustfmt into the verifier toolchain, and
