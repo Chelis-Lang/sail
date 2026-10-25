@@ -13,7 +13,7 @@ evidence and state transitions.
 ## Decision
 
 Place pure executable validation in a dependency-free `sail-acceptance` leaf.
-Allow direct edges from `sail-api`, `sail-verus`, `sail-shim` and `sail-cache`.
+Allow direct edges from `sail-api`, `sail-verus`, `sail-shim`, `sail-cache` and `sail-daemon`.
 The leaf cannot reach the verifier, cache, daemon or solver processes. Existing
 shim isolation and solver/verifier independence remain enforced by layering.
 
@@ -41,7 +41,7 @@ need their own writer contract before entering an origin theorem.
 
 ## Consequences
 
-The new leaf and four edges are the dependency-graph change. The leaf remains
+The new leaf and five edges are the dependency-graph change. The leaf remains
 small and has no third-party dependencies. The Rust compiler and the small
 syntax envelopes remain build dependencies; source capture and declaration
 stenciling remain reviewed, tested proof-runner logic.
