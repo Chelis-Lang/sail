@@ -1543,6 +1543,7 @@ dependencies = [
  "rustix",
  "sail-key",
  "sail-ledger",
+ "sail-smtlib",
  "serde",
  "serde_json",
  "socket2",
@@ -1769,6 +1770,7 @@ name = "sail-verus"
 version = "0.1.0"
 dependencies = [
  "inotify",
+ "num-bigint 0.4.8",
  "proc-macro2",
  "quote",
  "rustix",

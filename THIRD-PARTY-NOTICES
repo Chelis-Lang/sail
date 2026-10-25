@@ -629,6 +629,8 @@ Crates compiled into bin/sail and bin/sail-z3
   LICENSE-CC0 [text 178]
 * notify-types 2.1.0: MIT OR Apache-2.0 (https://github.com/notify-rs/notify.git)
   LICENSE-APACHE [text 179], LICENSE-MIT [text 180]
+* num-bigint 0.4.8: MIT OR Apache-2.0 (https://github.com/rust-num/num-bigint)
+  LICENSE-APACHE [text 8], LICENSE-MIT [text 20]
 * num-bigint 0.5.1: MIT OR Apache-2.0 (https://github.com/rust-num/num-bigint)
   LICENSE-APACHE [text 8], LICENSE-MIT [text 20]
 * num-integer 0.1.47: MIT OR Apache-2.0 (https://github.com/rust-num/num-integer)

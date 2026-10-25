@@ -34,7 +34,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
         "sail-portfolio",
         &["sail-smtlib", "sail-session", "sail-solver", "sail-ledger"],
     ),
-    ("sail-api", &["sail-key", "sail-ledger"]),
+    ("sail-api", &["sail-key", "sail-ledger", "sail-smtlib"]),
     (
         "sail-runtime",
         &[

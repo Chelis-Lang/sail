@@ -1,5 +1,10 @@
 # Run bounded neutral-source mutation campaigns
 
+The separate [scalar literal-contract witness family](literal-witnesses.md)
+can search for and independently evaluate concrete counterexamples in its
+admitted scalar slice. Its results never change the campaign classifications
+defined here, including native UNKNOWN remaining Inconclusive.
+
 Use the Rust job client to request a campaign over a completed neutral source
 job with a complete original proof and actual solver identity:
 

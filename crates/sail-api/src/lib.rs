@@ -20,6 +20,7 @@ pub const VERSION: &str = match option_env!("SAIL_VERSION") {
 pub mod assurance;
 pub mod evidence;
 pub mod jobs;
+pub mod literal_witness;
 pub mod mutation;
 pub mod output;
 pub mod policy;
