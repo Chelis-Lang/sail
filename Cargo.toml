@@ -15,6 +15,7 @@ license = "MIT"
 proc-macro2 = { version = "=1.0.107", features = ["span-locations"] }
 quote = "=1.0.47"
 syn = { version = "=2.0.119", features = ["full", "fold", "visit", "extra-traits"] }
+num-bigint = "=0.4.8"
 sail-contracts-ir = { path = "crates/sail-contracts-ir" }
 sail-contracts-macros = { path = "crates/sail-contracts-macros" }
 sail-contracts = { path = "crates/sail-contracts" }

@@ -12,6 +12,7 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 | Negotiated source-only job route and immutable baselines | Cumulative source qualified on native Linux and macOS | [Combined qualification](validation/integration-production.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
 | Source-semantic requirement entailment and full requirement tiers | Producer source-bound proof views implemented; independent links belong to Oyster | [Service boundary](spec/neutral-contract-jobs.md) |
 | Bounded neutral-source body mutation | Lifecycle qualified; native strong mutants remain Unknown and positive kills unestablished | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
+| Separate scalar literal-contract witnesses | Native Linux gates and installed source-owner witness acceptance pass; protected delivery remains separate | [Qualification](validation/scalar-literal-witnesses.md), [ADR 0077](decisions/0077-scalar-literal-contract-witnesses.md) |
 
 ## Goal
 

@@ -6,6 +6,7 @@
 mod admission;
 mod evidence;
 mod expression;
+pub mod literal_witness;
 mod lower;
 pub mod mutation;
 mod runner;

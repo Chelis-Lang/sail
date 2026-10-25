@@ -11,6 +11,7 @@ repository.workspace = true
 [dependencies]
 sail-contracts-ir.workspace = true
 syn.workspace = true
+num-bigint.workspace = true
 quote.workspace = true
 proc-macro2.workspace = true
 sail-api.workspace = true

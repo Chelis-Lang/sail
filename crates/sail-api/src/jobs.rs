@@ -144,6 +144,22 @@ pub enum Request {
     Capabilities,
     /// Start a bounded owned mutation campaign over an authenticated source job.
     SubmitMutation(crate::mutation::Submission),
+    /// Prepare separate exact scalar literal-contract witness queries; starts no verifier.
+    PrepareLiteralWitness {
+        /// Complete original source with its exact content identity.
+        source: crate::contracts::Submission,
+        /// Maximum selected literal candidates, between one and eight.
+        max_mutants: usize,
+    },
+    /// Rebuild an original-source witness plan and validate one concrete model.
+    ValidateLiteralWitness {
+        /// Full exact original source-bound plan.
+        plan: Box<crate::literal_witness::Plan>,
+        /// Exact deterministic original candidate identity.
+        candidate_id: String,
+        /// Complete original SAT model response from the pinned runtime.
+        result: Box<crate::runtime::QueryResult>,
+    },
     /// Reauthenticate and read a retained mutation campaign.
     Mutation {
         /// Exact retained campaign identity.
@@ -272,6 +288,10 @@ pub enum Response {
     },
     /// Authenticated bounded mutation evidence, independent of proof tiers.
     Mutation(Box<crate::mutation::View>),
+    /// Deterministic source-admitted witness queries, separate from native mutation.
+    LiteralWitness(Box<crate::literal_witness::Plan>),
+    /// Concrete original-source counterexample; never a native Verus kill.
+    LiteralWitnessValidated(Box<crate::literal_witness::Validated>),
     /// Ordered, resumable proof observations.
     ProofEvents(crate::proof::Page),
     /// Exact establishing evidence for a failure or proof.
@@ -497,6 +517,63 @@ pub struct Client {
 }
 #[cfg(unix)]
 impl Client {
+    /// Independently evaluate a complete scalar model through the source owner.
+    /// # Errors
+    /// Refuses older services, changed plans, models and invalid counterexamples.
+    pub fn validate_literal_witness(
+        &self,
+        plan: crate::literal_witness::Plan,
+        candidate_id: String,
+        result: &crate::runtime::QueryResult,
+    ) -> io::Result<crate::literal_witness::Validated> {
+        let prepared = plan
+            .prepared
+            .iter()
+            .find(|p| p.candidate.id == candidate_id)
+            .cloned()
+            .ok_or_else(|| io::Error::other("SAIL3145: missing literal witness candidate"))?;
+        match self.call(&Request::ValidateLiteralWitness {
+            plan: Box::new(plan),
+            candidate_id,
+            result: Box::new(result.clone()),
+        })? {
+            Response::LiteralWitnessValidated(value)
+                if value.prepared == prepared && value.model_result == *result =>
+            {
+                Ok(*value)
+            }
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other(
+                "SAIL3145: incompatible concrete witness response",
+            )),
+        }
+    }
+    /// Prepare separate source-admitted scalar literal witness queries.
+    /// This starts no verification or mutation campaign and has no local fallback.
+    /// # Errors
+    /// Refuses unavailable or older services, changed input and invalid query links.
+    pub fn literal_witnesses(
+        &self,
+        source: &crate::contracts::Submission,
+        max_mutants: usize,
+    ) -> io::Result<crate::literal_witness::Plan> {
+        source.validate().map_err(io::Error::other)?;
+        match self.call(&Request::PrepareLiteralWitness {
+            source: source.clone(),
+            max_mutants,
+        })? {
+            Response::LiteralWitness(plan)
+                if plan.baseline == *source && plan.max_mutants == max_mutants =>
+            {
+                plan.validate().map_err(io::Error::other)?;
+                Ok(*plan)
+            }
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other(
+                "SAIL3145: incompatible literal witness response",
+            )),
+        }
+    }
     /// Submit a bounded owned mutation campaign through the existing job service.
     /// # Errors
     /// Refuses incompatible services, invalid baselines or invalid budgets.
