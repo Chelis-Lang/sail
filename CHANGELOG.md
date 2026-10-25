@@ -8,7 +8,13 @@ semantic versioning once the API is published.
 - Add linked acceptance lifecycle models and a conditional composed proof,
   checked directly by stock Verus with complete captured dependencies and
   guard-removal controls. CI completion requires the model-proof job.
-  Production acceptance remains independently implemented and unrefined.
+  Selected production acceptance paths now share checked executable source and
+  concrete refinement proofs; native integration qualification remains pending.
+- Refuse compile-only verification runs as proof authority, including effective
+  per-package options and older retained completeness records. Preserve Current
+  input observations separately from proof success.
+- Preserve actual input descriptors through parallel read admission, and block
+  solver-reply publication after incomplete input delivery or metadata loss.
 
 - Add opt-in scalar literal-contract queries and independently evaluated concrete
   assignments through the existing source-owner and pinned SMT runtime APIs.

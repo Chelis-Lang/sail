@@ -1,0 +1,1459 @@
+{
+  "schema": "sail-production-refinements-v1",
+  "components": [
+    {
+      "id": "query",
+      "source": "proofs/refinement/query.rs",
+      "dependencies": [
+        "crates/sail-acceptance/src/syntax.rs",
+        "proofs/acceptance/context.rs",
+        "proofs/acceptance/query_association.rs",
+        "crates/sail-acceptance/src/inputs.rs",
+        "crates/sail-acceptance/src/query.rs",
+        "proofs/refinement/query.rs"
+      ],
+      "verified": 134,
+      "functions": [
+        "check_query::context::Mode::arrow_0",
+        "check_query::context::Mode::arrow_OptIn_0",
+        "check_query::context::ReadOutcome::arrow_Present_bytes",
+        "check_query::context::ReadOutcome::arrow_Present_resolved",
+        "check_query::context::ReadOutcome::arrow_bytes",
+        "check_query::context::ReadOutcome::arrow_resolved",
+        "check_query::context::context_wf",
+        "check_query::context::exact_context_equality",
+        "check_query::context::readable",
+        "check_query::context::same_execution",
+        "check_query::context::scope_wf",
+        "check_query::context::transcript_wf",
+        "check_query::context::unreadable_cannot_be_current",
+        "check_query::inputs::InputValue::arrow_0",
+        "check_query::inputs::InputValue::arrow_Present_0",
+        "check_query::inputs::OriginalCapture::before_view",
+        "check_query::inputs::OriginalCapture::begin",
+        "check_query::inputs::OriginalCapture::finish",
+        "check_query::inputs::OriginalGuard::duplicate",
+        "check_query::inputs::OriginalGuard::project",
+        "check_query::inputs::OriginalGuard::retained",
+        "check_query::inputs::OriginalGuard::revision_view",
+        "check_query::inputs::OriginalGuard::stamp_view",
+        "check_query::inputs::Readback::changed",
+        "check_query::inputs::Readback::changed_view",
+        "check_query::inputs::Readback::equal_view",
+        "check_query::inputs::Readback::expected",
+        "check_query::inputs::Readback::expected_order",
+        "check_query::inputs::Readback::expected_order_view",
+        "check_query::inputs::Readback::expected_view",
+        "check_query::inputs::Readback::is_equal",
+        "check_query::inputs::Readback::matching_inputs",
+        "check_query::inputs::Readback::observed",
+        "check_query::inputs::Readback::observed_order",
+        "check_query::inputs::Readback::observed_order_view",
+        "check_query::inputs::Readback::observed_view",
+        "check_query::inputs::Readback::unknown",
+        "check_query::inputs::Readback::unknown_view",
+        "check_query::inputs::byte_eq",
+        "check_query::inputs::byte_lt",
+        "check_query::inputs::compare_readback",
+        "check_query::inputs::complete_present_inventory",
+        "check_query::inputs::contains_fact",
+        "check_query::inputs::contains_present",
+        "check_query::inputs::copy_bytes",
+        "check_query::inputs::covered_selection",
+        "check_query::inputs::facts_match",
+        "check_query::inputs::input_key_eq",
+        "check_query::inputs::input_key_lt",
+        "check_query::inputs::input_order",
+        "check_query::inputs::key_less",
+        "check_query::inputs::key_less_differs",
+        "check_query::inputs::key_less_transitive",
+        "check_query::inputs::lex_at",
+        "check_query::inputs::lex_less",
+        "check_query::inputs::lex_less_transitive",
+        "check_query::inputs::optional_stamp_equal",
+        "check_query::inputs::ordered_facts",
+        "check_query::inputs::ordered_keys_unique",
+        "check_query::inputs::ordered_pair_less",
+        "check_query::inputs::permutation",
+        "check_query::inputs::permutation_at",
+        "check_query::inputs::reads_complete",
+        "check_query::inputs::same_inventory",
+        "check_query::inputs::same_key",
+        "check_query::inputs::same_value",
+        "check_query::inputs::selection_covered",
+        "check_query::inputs::unique_input_keys",
+        "check_query::inputs::valid_permutation",
+        "check_query::inputs::value_difference",
+        "check_query::inputs::value_present",
+        "check_query::inputs::value_readable",
+        "check_query::query::BoundPair::expectation",
+        "check_query::query::BoundPair::expected",
+        "check_query::query::BoundPair::into_parts",
+        "check_query::query::BoundPair::reply",
+        "check_query::query::BoundPair::response",
+        "check_query::query::CorrelatedQueue::empty",
+        "check_query::query::CorrelatedQueue::expect",
+        "check_query::query::CorrelatedQueue::expectations",
+        "check_query::query::CorrelatedQueue::halted",
+        "check_query::query::CorrelatedQueue::is_empty",
+        "check_query::query::CorrelatedQueue::is_stopped",
+        "check_query::query::CorrelatedQueue::reply",
+        "check_query::query::CorrelatedQueue::responses",
+        "check_query::query::CorrelatedQueue::stop",
+        "check_query::query::CorrelatedQueue::take_pair",
+        "check_query::query::Fifo::contents",
+        "check_query::query::Fifo::empty",
+        "check_query::query::Fifo::is_empty",
+        "check_query::query::Fifo::pop",
+        "check_query::query::Fifo::push",
+        "check_query::query::PublicationBatch::contents",
+        "check_query::query::PublicationBatch::cost",
+        "check_query::query::PublicationBatch::empty",
+        "check_query::query::PublicationBatch::entries_count",
+        "check_query::query::PublicationBatch::push",
+        "check_query::query::PublicationBatch::release",
+        "check_query::query::PublicationGate::allows",
+        "check_query::query::PublicationGate::complete",
+        "check_query::query::RecoveryRecord::digest",
+        "check_query::query::RecoveryRecord::key",
+        "check_query::query::RecoveryRecord::metadata",
+        "check_query::query::RecoveryRecord::new",
+        "check_query::query::RecoveryRecord::payload",
+        "check_query::query::RecoveryRecord::recover",
+        "check_query::query::RecoveryRecord::version",
+        "check_query::query::ReplayCursor::advance",
+        "check_query::query::ReplayCursor::forwarding",
+        "check_query::query::ReplayCursor::left",
+        "check_query::query::ReplayCursor::new",
+        "check_query::query_association::Action::arrow_0",
+        "check_query::query_association::Action::arrow_Cache_0",
+        "check_query::query_association::Action::arrow_Command_0",
+        "check_query::query_association::Action::arrow_Fallback_0",
+        "check_query::query_association::Action::arrow_Input_0",
+        "check_query::query_association::Action::arrow_Reply_0",
+        "check_query::query_association::RunAction::arrow_0",
+        "check_query::query_association::RunAction::arrow_Command_0",
+        "check_query::query_association::RunAction::arrow_Exit_0",
+        "check_query::query_association::RunAction::arrow_Frame_0",
+        "check_query::query_association::RunAction::arrow_Input_0",
+        "check_query::query_association::RunAction::arrow_Output_0",
+        "check_query::query_association::StoreAction::arrow_0",
+        "check_query::query_association::StoreAction::arrow_1",
+        "check_query::query_association::StoreAction::arrow_ImportBundled_0",
+        "check_query::query_association::StoreAction::arrow_ImportShared_0",
+        "check_query::query_association::StoreAction::arrow_ObserveRun_0",
+        "check_query::query_association::StoreAction::arrow_ObserveRun_1",
+        "check_query::query_association::StoreAction::arrow_Publish_0",
+        "check_query::query_association::StoreAction::arrow_Publish_1",
+        "check_query::query_association::StoreAction::arrow_Recover_0",
+        "check_query::query_association::StoreAction::arrow_ReplaceDisk_0",
+        "check_query::query_association::StoreAction::arrow_ReplaceDisk_1",
+        "check_query::query_association::StoreAction::arrow_ReplaceTemporary_0",
+        "check_query::query_association::StoreAction::arrow_ReplaceTemporary_1",
+        "check_query::query_association::StoreAction::arrow_StartRun_0",
+        "check_query::query_association::StoreAction::arrow_StartRun_1",
+        "check_query::query_association::all_finite_executions_preserve",
+        "check_query::query_association::begin_fallback",
+        "check_query::query_association::binding_wf",
+        "check_query::query_association::buffer_init",
+        "check_query::query_association::buffer_wf",
+        "check_query::query_association::cache_serve_preserves_association",
+        "check_query::query_association::cached_reply_has_origin",
+        "check_query::query_association::can_pair",
+        "check_query::query_association::can_recover",
+        "check_query::query_association::can_serve",
+        "check_query::query_association::claim_from_origin",
+        "check_query::query_association::claim_valid",
+        "check_query::query_association::command_arrival_preserves",
+        "check_query::query_association::command_observation_preserves",
+        "check_query::query_association::completed_reply_preserves_all_bytes",
+        "check_query::query_association::constructed_session_history_is_execution",
+        "check_query::query_association::crash_cannot_publish_pending_or_temporary",
+        "check_query::query_association::empty_buffer_is_valid",
+        "check_query::query_association::empty_or_untrusted_initial_disk_is_safe",
+        "check_query::query_association::enqueue_command",
+        "check_query::query_association::enqueue_reply",
+        "check_query::query_association::entry_has_admitted_origin",
+        "check_query::query_association::every_delivered_reply_binds_its_requested_prefix",
+        "check_query::query_association::every_reused_reply_has_clean_origin",
+        "check_query::query_association::every_run_transition_preserves",
+        "check_query::query_association::every_store_transition_preserves",
+        "check_query::query_association::every_transition_preserves",
+        "check_query::query_association::example_context",
+        "check_query::query_association::example_context_is_readable",
+        "check_query::query_association::example_origin",
+        "check_query::query_association::example_recovery_history",
+        "check_query::query_association::example_run_events",
+        "check_query::query_association::example_session_actions",
+        "check_query::query_association::example_session_states",
+        "check_query::query_association::example_solver",
+        "check_query::query_association::executed_reply_has_admitted_origin",
+        "check_query::query_association::executed_reply_has_exact_binding",
+        "check_query::query_association::executed_transcript_projects_observations",
+        "check_query::query_association::execution",
+        "check_query::query_association::fallback_replays_exact_prefix",
+        "check_query::query_association::finish_reply",
+        "check_query::query_association::flatten",
+        "check_query::query_association::flatten_after_push",
+        "check_query::query_association::fragments_preserve_exact_input",
+        "check_query::query_association::frame_valid",
+        "check_query::query_association::input_fragment",
+        "check_query::query_association::late_cache_reply_cannot_be_served",
+        "check_query::query_association::ledger_member_has_observed_origin",
+        "check_query::query_association::live_reply",
+        "check_query::query_association::noised_run_replay_is_never_clean",
+        "check_query::query_association::observe_command",
+        "check_query::query_association::observing_history",
+        "check_query::query_association::observing_history_captures_exact_run",
+        "check_query::query_association::origin_entry",
+        "check_query::query_association::origin_has_complete_trusted_run",
+        "check_query::query_association::origin_observed",
+        "check_query::query_association::origin_run",
+        "check_query::query_association::origin_valid",
+        "check_query::query_association::pair_one",
+        "check_query::query_association::pairer_init",
+        "check_query::query_association::pairer_initially_valid",
+        "check_query::query_association::pairer_wf",
+        "check_query::query_association::pairing_preserves_order",
+        "check_query::query_association::positive_cache_then_live_has_actual_origins",
+        "check_query::query_association::positive_crash_before_rename_loses_only_unpublished_write",
+        "check_query::query_association::positive_noisy_live_run_cannot_publish",
+        "check_query::query_association::positive_origin_is_complete_and_nonempty",
+        "check_query::query_association::positive_partial_or_corrupt_recovery_is_refused",
+        "check_query::query_association::positive_published_write_crash_recovery",
+        "check_query::query_association::positive_unpublished_boot_record_is_refused",
+        "check_query::query_association::publication_has_ordered_origin",
+        "check_query::query_association::publication_origin",
+        "check_query::query_association::published",
+        "check_query::query_association::receive_fragment",
+        "check_query::query_association::recovered_claim",
+        "check_query::query_association::rejected_recovery_cannot_add_evidence",
+        "check_query::query_association::replay_suppresses_exactly_served_replies",
+        "check_query::query_association::replayed_run_is_valid",
+        "check_query::query_association::replayed_store_has_only_valid_origins",
+        "check_query::query_association::reply_arrival_preserves",
+        "check_query::query_association::response_fragment_preserves_bytes",
+        "check_query::query_association::run_complete",
+        "check_query::query_association::run_init",
+        "check_query::query_association::run_initially_valid",
+        "check_query::query_association::run_noise_never_becomes_quiet",
+        "check_query::query_association::run_replay",
+        "check_query::query_association::run_replay_after_push",
+        "check_query::query_association::run_step",
+        "check_query::query_association::run_wf",
+        "check_query::query_association::sequence_push_retains",
+        "check_query::query_association::serve_cached",
+        "check_query::query_association::session_complete",
+        "check_query::query_association::session_init",
+        "check_query::query_association::session_initially_valid",
+        "check_query::query_association::session_reply_has_origin",
+        "check_query::query_association::session_states",
+        "check_query::query_association::session_transcript",
+        "check_query::query_association::session_wf",
+        "check_query::query_association::shared_and_bundled_origins_are_excluded",
+        "check_query::query_association::singleton_bytes_are_distinct",
+        "check_query::query_association::step",
+        "check_query::query_association::stop_is_permanent",
+        "check_query::query_association::stop_pairer",
+        "check_query::query_association::store_init",
+        "check_query::query_association::store_origin_admitted",
+        "check_query::query_association::store_replay",
+        "check_query::query_association::store_replay_after_push",
+        "check_query::query_association::store_step",
+        "check_query::query_association::store_wf",
+        "check_query::query_association::stored_reply_has_admitted_origin",
+        "check_query::refinement::distinct_pairs_survive_asynchronous_arrival",
+        "check_query::refinement::expectation_arrival_refines",
+        "check_query::refinement::held_release_permutation_is_nonempty",
+        "check_query::refinement::initial_queue_refines",
+        "check_query::refinement::noisy_batch_is_refused",
+        "check_query::refinement::pairing_refines",
+        "check_query::refinement::permutation_publication_refines",
+        "check_query::refinement::publication_refines",
+        "check_query::refinement::queue_refines",
+        "check_query::refinement::recovery_preserves_bytes_and_refuses_corruption",
+        "check_query::refinement::replay_frame_refines",
+        "check_query::refinement::replay_initially_refines",
+        "check_query::refinement::replay_refines",
+        "check_query::refinement::reply_arrival_refines",
+        "check_query::refinement::stopping_refines"
+      ],
+      "negative_controls": [
+        {
+          "name": "fifo_wrong_stack",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "let item = self.back.pop();",
+          "after": "let item = self.front.pop();"
+        },
+        {
+          "name": "partial_pair_consumes_head",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if self.stopped || self.expects.is_empty() || self.replies.is_empty() {",
+          "after": "if self.stopped || self.expects.is_empty() {"
+        },
+        {
+          "name": "replay_off_by_one",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if self.remaining == 0 {\n                    true",
+          "after": "if self.remaining <= 1 {\n                    true"
+        },
+        {
+          "name": "noisy_publication",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "ensures (result == self.complete())\n            {\n                self.input_closed && self.pairing_active && self.queues_empty\n                    && self.normal_exit && self.quiet && self.forwarding_ok\n            }",
+          "after": "ensures (result == self.complete())\n            {\n                self.input_closed && self.pairing_active && self.queues_empty\n                    && self.normal_exit && self.forwarding_ok\n            }"
+        },
+        {
+          "name": "corrupt_recovery",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if recorded_digest != computed_digest {",
+          "after": "if false {"
+        },
+        {
+          "name": "ungated_batch_release",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if allowed { Some(self.entries) } else { None }",
+          "after": "if true { Some(self.entries) } else { None }"
+        },
+        {
+          "name": "incomplete_permutation",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "if inverse[f] != i || forward[r] != i {",
+          "after": "if false {"
+        }
+      ]
+    },
+    {
+      "id": "inputs",
+      "source": "proofs/refinement/inputs.rs",
+      "dependencies": [
+        "crates/sail-acceptance/src/syntax.rs",
+        "proofs/acceptance/context.rs",
+        "crates/sail-acceptance/src/inputs.rs",
+        "proofs/refinement/inputs.rs"
+      ],
+      "verified": 54,
+      "functions": [
+        "check_inputs::context::Mode::arrow_0",
+        "check_inputs::context::Mode::arrow_OptIn_0",
+        "check_inputs::context::ReadOutcome::arrow_Present_bytes",
+        "check_inputs::context::ReadOutcome::arrow_Present_resolved",
+        "check_inputs::context::ReadOutcome::arrow_bytes",
+        "check_inputs::context::ReadOutcome::arrow_resolved",
+        "check_inputs::context::context_wf",
+        "check_inputs::context::exact_context_equality",
+        "check_inputs::context::readable",
+        "check_inputs::context::same_execution",
+        "check_inputs::context::scope_wf",
+        "check_inputs::context::transcript_wf",
+        "check_inputs::context::unreadable_cannot_be_current",
+        "check_inputs::inputs::InputValue::arrow_0",
+        "check_inputs::inputs::InputValue::arrow_Present_0",
+        "check_inputs::inputs::OriginalCapture::before_view",
+        "check_inputs::inputs::OriginalCapture::begin",
+        "check_inputs::inputs::OriginalCapture::finish",
+        "check_inputs::inputs::OriginalGuard::duplicate",
+        "check_inputs::inputs::OriginalGuard::project",
+        "check_inputs::inputs::OriginalGuard::retained",
+        "check_inputs::inputs::OriginalGuard::revision_view",
+        "check_inputs::inputs::OriginalGuard::stamp_view",
+        "check_inputs::inputs::Readback::changed",
+        "check_inputs::inputs::Readback::changed_view",
+        "check_inputs::inputs::Readback::equal_view",
+        "check_inputs::inputs::Readback::expected",
+        "check_inputs::inputs::Readback::expected_order",
+        "check_inputs::inputs::Readback::expected_order_view",
+        "check_inputs::inputs::Readback::expected_view",
+        "check_inputs::inputs::Readback::is_equal",
+        "check_inputs::inputs::Readback::matching_inputs",
+        "check_inputs::inputs::Readback::observed",
+        "check_inputs::inputs::Readback::observed_order",
+        "check_inputs::inputs::Readback::observed_order_view",
+        "check_inputs::inputs::Readback::observed_view",
+        "check_inputs::inputs::Readback::unknown",
+        "check_inputs::inputs::Readback::unknown_view",
+        "check_inputs::inputs::byte_eq",
+        "check_inputs::inputs::byte_lt",
+        "check_inputs::inputs::compare_readback",
+        "check_inputs::inputs::complete_present_inventory",
+        "check_inputs::inputs::contains_fact",
+        "check_inputs::inputs::contains_present",
+        "check_inputs::inputs::copy_bytes",
+        "check_inputs::inputs::covered_selection",
+        "check_inputs::inputs::facts_match",
+        "check_inputs::inputs::input_key_eq",
+        "check_inputs::inputs::input_key_lt",
+        "check_inputs::inputs::input_order",
+        "check_inputs::inputs::key_less",
+        "check_inputs::inputs::key_less_differs",
+        "check_inputs::inputs::key_less_transitive",
+        "check_inputs::inputs::lex_at",
+        "check_inputs::inputs::lex_less",
+        "check_inputs::inputs::lex_less_transitive",
+        "check_inputs::inputs::optional_stamp_equal",
+        "check_inputs::inputs::ordered_facts",
+        "check_inputs::inputs::ordered_keys_unique",
+        "check_inputs::inputs::ordered_pair_less",
+        "check_inputs::inputs::permutation",
+        "check_inputs::inputs::permutation_at",
+        "check_inputs::inputs::reads_complete",
+        "check_inputs::inputs::same_inventory",
+        "check_inputs::inputs::same_key",
+        "check_inputs::inputs::same_value",
+        "check_inputs::inputs::selection_covered",
+        "check_inputs::inputs::unique_input_keys",
+        "check_inputs::inputs::valid_permutation",
+        "check_inputs::inputs::value_difference",
+        "check_inputs::inputs::value_present",
+        "check_inputs::inputs::value_readable",
+        "check_inputs::refinement::checked_capture_refines_model",
+        "check_inputs::refinement::checked_projection_refines_model",
+        "check_inputs::refinement::checked_readback_refines_model",
+        "check_inputs::refinement::completed_reads_refine_coverage",
+        "check_inputs::refinement::exact_row_outcome",
+        "check_inputs::refinement::fresh_stamp_does_not_rebind",
+        "check_inputs::refinement::input_key",
+        "check_inputs::refinement::input_map",
+        "check_inputs::refinement::input_outcome",
+        "check_inputs::refinement::key_position",
+        "check_inputs::refinement::map_domain",
+        "check_inputs::refinement::map_value_at",
+        "check_inputs::refinement::matching_contexts_preserve_execution",
+        "check_inputs::refinement::matching_inventory_refines_map",
+        "check_inputs::refinement::matching_key_refines_value",
+        "check_inputs::refinement::nonempty_readback_and_partial_controls",
+        "check_inputs::refinement::original_stamp_aba_and_exact_revert_controls",
+        "check_inputs::refinement::selected_inventory_refines_submap",
+        "check_inputs::refinement::unique_key_position"
+      ],
+      "negative_controls": [
+        {
+          "name": "input-ignore-present-value",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "(!byte_eq(left, right)) as u8",
+          "after": "0"
+        },
+        {
+          "name": "input-ignore-current-stamp",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "&& byte_eq(now, &self.stamp)",
+          "after": "&& true"
+        },
+        {
+          "name": "input-ignore-required-read-presence",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "|| !matches!(actual.value, InputValue::Present(_))",
+          "after": "|| false"
+        },
+        {
+          "name": "input-ignore-inverse-permutation",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "if inverse[f] != i || forward[r] != i",
+          "after": "if false"
+        }
+      ]
+    },
+    {
+      "id": "authority",
+      "source": "proofs/refinement/authority.rs",
+      "dependencies": [
+        "crates/sail-acceptance/src/syntax.rs",
+        "proofs/acceptance/context.rs",
+        "proofs/acceptance/authority.rs",
+        "crates/sail-acceptance/src/inputs.rs",
+        "crates/sail-acceptance/src/authority.rs",
+        "proofs/refinement/authority.rs",
+        "crates/sail-api/src/acceptance.rs",
+        "crates/sail-api/src/acceptance_sort.rs",
+        "crates/sail-api/src/output.rs",
+        "crates/sail-api/src/project.rs"
+      ],
+      "verified": 163,
+      "functions": [
+        "check_authority::acceptance::CompleteReport::policy",
+        "check_authority::acceptance::CompleteReport::report",
+        "check_authority::acceptance::CompleteSelection::project",
+        "check_authority::acceptance::all_owned_ids",
+        "check_authority::acceptance::append_obligations",
+        "check_authority::acceptance::authority_policy",
+        "check_authority::acceptance::authority_report",
+        "check_authority::acceptance::collect_report_ids",
+        "check_authority::acceptance::complete_report_ordered",
+        "check_authority::acceptance::complete_selection_ordered",
+        "check_authority::acceptance::complete_target_ordered",
+        "check_authority::acceptance::complete_whole_report_ordered",
+        "check_authority::acceptance::completed_crate",
+        "check_authority::acceptance::completed_report_records",
+        "check_authority::acceptance::confirmed",
+        "check_authority::acceptance::confirmed_counts",
+        "check_authority::acceptance::confirmed_function",
+        "check_authority::acceptance::crate_completed",
+        "check_authority::acceptance::distinct_ids",
+        "check_authority::acceptance::exact_requested_coverage",
+        "check_authority::acceptance::focused_argument",
+        "check_authority::acceptance::focused_command",
+        "check_authority::acceptance::function_count",
+        "check_authority::acceptance::function_ids",
+        "check_authority::acceptance::obligation_ids",
+        "check_authority::acceptance::options_disable_verification",
+        "check_authority::acceptance::owned_function_ids",
+        "check_authority::acceptance::partial_command",
+        "check_authority::acceptance::provenance_valid",
+        "check_authority::acceptance::report_authority_valid",
+        "check_authority::acceptance::report_ids",
+        "check_authority::acceptance::request_covered",
+        "check_authority::acceptance::requested_coverage",
+        "check_authority::acceptance::requested_target",
+        "check_authority::acceptance::same_target",
+        "check_authority::acceptance::same_target_identity",
+        "check_authority::acceptance::selection_authority_valid",
+        "check_authority::acceptance::selection_project",
+        "check_authority::acceptance::small_positive_report",
+        "check_authority::acceptance::string_bytes",
+        "check_authority::acceptance::successful_records",
+        "check_authority::acceptance::successful_report",
+        "check_authority::acceptance::supplied_selection_authorized",
+        "check_authority::acceptance::target_covered",
+        "check_authority::acceptance::target_match",
+        "check_authority::acceptance::target_matches",
+        "check_authority::acceptance::unique_observed",
+        "check_authority::acceptance::unique_requested",
+        "check_authority::acceptance::unstable_count",
+        "check_authority::acceptance::unstable_functions",
+        "check_authority::acceptance::verification_disabled",
+        "check_authority::acceptance::verification_enabled_command",
+        "check_authority::acceptance::verification_enabled_options",
+        "check_authority::authority::CompletionPolicy::clone",
+        "check_authority::authority::argument_flag",
+        "check_authority::authority::copy_bytes",
+        "check_authority::authority::distinct_id_values",
+        "check_authority::authority::flag_matches",
+        "check_authority::authority::owned_id",
+        "check_authority::authority::owned_obligation",
+        "check_authority::authority::strict_order_differs",
+        "check_authority::authority::unique_obligations",
+        "check_authority::authority_model::Candidate::context",
+        "check_authority::authority_model::Candidate::invocations",
+        "check_authority::authority_model::Candidate::path",
+        "check_authority::authority_model::Candidate::point",
+        "check_authority::authority_model::Candidate::valid",
+        "check_authority::authority_model::ChildStream::closed",
+        "check_authority::authority_model::ChildStream::solver",
+        "check_authority::authority_model::CompletedInvocation::children",
+        "check_authority::authority_model::CompletedInvocation::context",
+        "check_authority::authority_model::CompletedInvocation::documents",
+        "check_authority::authority_model::CompletedInvocation::invocation",
+        "check_authority::authority_model::CompletedInvocation::point",
+        "check_authority::authority_model::CompletedInvocation::transcripts",
+        "check_authority::authority_model::CompletedInvocation::valid",
+        "check_authority::authority_model::EngineFailure::invocation",
+        "check_authority::authority_model::EngineFailure::point",
+        "check_authority::authority_model::Establishment::clone",
+        "check_authority::authority_model::EvidenceTier::arrow_0",
+        "check_authority::authority_model::EvidenceTier::arrow_ObservedStrength_0",
+        "check_authority::authority_model::ExecutionPath::arrow_0",
+        "check_authority::authority_model::ExecutionPath::arrow_IndependentFallback_0",
+        "check_authority::authority_model::ExecutionPath::clone",
+        "check_authority::authority_model::Origin::arrow_0",
+        "check_authority::authority_model::Origin::arrow_Fallback_0",
+        "check_authority::authority_model::Origin::clone",
+        "check_authority::authority_model::ProcessEnd::arrow_0",
+        "check_authority::authority_model::ProcessEnd::arrow_Exit_0",
+        "check_authority::authority_model::ProcessEnd::clone",
+        "check_authority::authority_model::RunningInvocation::children",
+        "check_authority::authority_model::RunningInvocation::documents",
+        "check_authority::authority_model::RunningInvocation::invocation",
+        "check_authority::authority_model::RunningInvocation::stream",
+        "check_authority::authority_model::StreamState::clone",
+        "check_authority::authority_model::ValidatedResult::candidate_context",
+        "check_authority::authority_model::ValidatedResult::context",
+        "check_authority::authority_model::ValidatedResult::invocations",
+        "check_authority::authority_model::ValidatedResult::path",
+        "check_authority::authority_model::ValidatedResult::point",
+        "check_authority::authority_model::ValidatedResult::request_context",
+        "check_authority::authority_model::ValidatedResult::requested_targets",
+        "check_authority::authority_model::ValidatedResult::scope",
+        "check_authority::authority_model::ValidatedResult::valid",
+        "check_authority::authority_model::ValidatedResult::whole",
+        "check_authority::authority_model::Verdict::clone",
+        "check_authority::authority_model::VerificationSetting::clone",
+        "check_authority::authority_model::VerifierEnd::arrow_0",
+        "check_authority::authority_model::VerifierEnd::arrow_Finished_0",
+        "check_authority::authority_model::VerifierEnd::clone",
+        "check_authority::authority_model::acceptance_has_current_origin",
+        "check_authority::authority_model::bytes_equal",
+        "check_authority::authority_model::can_complete",
+        "check_authority::authority_model::child_stream_inventory",
+        "check_authority::authority_model::child_stream_omission_and_open_controls",
+        "check_authority::authority_model::child_stream_valid",
+        "check_authority::authority_model::compile_only_zero_function_completion_refused",
+        "check_authority::authority_model::complete",
+        "check_authority::authority_model::completed_inventory_matches_started_children",
+        "check_authority::authority_model::completion_has_validated_records",
+        "check_authority::authority_model::concrete_failed_unknown_provisional_controls",
+        "check_authority::authority_model::context_mismatch_refused",
+        "check_authority::authority_model::covered_at",
+        "check_authority::authority_model::covers",
+        "check_authority::authority_model::derived_success_summary",
+        "check_authority::authority_model::distinct_reports",
+        "check_authority::authority_model::distinct_requests",
+        "check_authority::authority_model::document_good",
+        "check_authority::authority_model::document_matches",
+        "check_authority::authority_model::document_streams_valid",
+        "check_authority::authority_model::engine_failed",
+        "check_authority::authority_model::every_child_closed",
+        "check_authority::authority_model::example_bytes",
+        "check_authority::authority_model::example_candidate",
+        "check_authority::authority_model::example_context",
+        "check_authority::authority_model::example_document",
+        "check_authority::authority_model::example_invocation",
+        "check_authority::authority_model::example_request",
+        "check_authority::authority_model::example_scope",
+        "check_authority::authority_model::example_target",
+        "check_authority::authority_model::failed_unknown_provisional_refused",
+        "check_authority::authority_model::failure_valid",
+        "check_authority::authority_model::finish_project",
+        "check_authority::authority_model::good_function",
+        "check_authority::authority_model::incomplete_or_stopped_refused",
+        "check_authority::authority_model::independent_fallback_control",
+        "check_authority::authority_model::injective_coverage",
+        "check_authority::authority_model::interrupt",
+        "check_authority::authority_model::interrupted_and_context_mismatch_controls",
+        "check_authority::authority_model::invocation_wf",
+        "check_authority::authority_model::malformed",
+        "check_authority::authority_model::malformed_or_error_document_refused",
+        "check_authority::authority_model::missing_sibling_and_ambiguous_reports_controls",
+        "check_authority::authority_model::missing_tier_and_inconsistent_summary_controls",
+        "check_authority::authority_model::observe",
+        "check_authority::authority_model::observed_transcripts",
+        "check_authority::authority_model::observed_transcripts_are_well_formed",
+        "check_authority::authority_model::open_child_cannot_complete",
+        "check_authority::authority_model::origin_valid",
+        "check_authority::authority_model::partial_scope_never_whole_control",
+        "check_authority::authority_model::path_matches",
+        "check_authority::authority_model::positive_nonempty_lifecycle_control",
+        "check_authority::authority_model::positive_zero_function_lifecycle_control",
+        "check_authority::authority_model::project_job",
+        "check_authority::authority_model::project_records_valid",
+        "check_authority::authority_model::record_child_lifecycles",
+        "check_authority::authority_model::reject_document",
+        "check_authority::authority_model::repair_accepted",
+        "check_authority::authority_model::repair_selectable",
+        "check_authority::authority_model::retained_job_stale_and_revert_controls",
+        "check_authority::authority_model::running_wf",
+        "check_authority::authority_model::safe_scoped",
+        "check_authority::authority_model::same_scope",
+        "check_authority::authority_model::same_target",
+        "check_authority::authority_model::sample_target",
+        "check_authority::authority_model::scope_equal",
+        "check_authority::authority_model::scope_matches",
+        "check_authority::authority_model::single_completion",
+        "check_authority::authority_model::single_document_inventory",
+        "check_authority::authority_model::stale_context_refused",
+        "check_authority::authority_model::start",
+        "check_authority::authority_model::start_fallback",
+        "check_authority::authority_model::stream_closed",
+        "check_authority::authority_model::stream_started",
+        "check_authority::authority_model::target_equal",
+        "check_authority::authority_model::validate_current_complete",
+        "check_authority::authority_model::validate_document",
+        "check_authority::authority_model::validate_scoped",
+        "check_authority::context::Mode::arrow_0",
+        "check_authority::context::Mode::arrow_OptIn_0",
+        "check_authority::context::ReadOutcome::arrow_Present_bytes",
+        "check_authority::context::ReadOutcome::arrow_Present_resolved",
+        "check_authority::context::ReadOutcome::arrow_bytes",
+        "check_authority::context::ReadOutcome::arrow_resolved",
+        "check_authority::context::context_wf",
+        "check_authority::context::exact_context_equality",
+        "check_authority::context::readable",
+        "check_authority::context::same_execution",
+        "check_authority::context::scope_wf",
+        "check_authority::context::transcript_wf",
+        "check_authority::context::unreadable_cannot_be_current",
+        "check_authority::inputs::InputValue::arrow_0",
+        "check_authority::inputs::InputValue::arrow_Present_0",
+        "check_authority::inputs::OriginalCapture::before_view",
+        "check_authority::inputs::OriginalCapture::begin",
+        "check_authority::inputs::OriginalCapture::finish",
+        "check_authority::inputs::OriginalGuard::duplicate",
+        "check_authority::inputs::OriginalGuard::project",
+        "check_authority::inputs::OriginalGuard::retained",
+        "check_authority::inputs::OriginalGuard::revision_view",
+        "check_authority::inputs::OriginalGuard::stamp_view",
+        "check_authority::inputs::Readback::changed",
+        "check_authority::inputs::Readback::changed_view",
+        "check_authority::inputs::Readback::equal_view",
+        "check_authority::inputs::Readback::expected",
+        "check_authority::inputs::Readback::expected_order",
+        "check_authority::inputs::Readback::expected_order_view",
+        "check_authority::inputs::Readback::expected_view",
+        "check_authority::inputs::Readback::is_equal",
+        "check_authority::inputs::Readback::matching_inputs",
+        "check_authority::inputs::Readback::observed",
+        "check_authority::inputs::Readback::observed_order",
+        "check_authority::inputs::Readback::observed_order_view",
+        "check_authority::inputs::Readback::observed_view",
+        "check_authority::inputs::Readback::unknown",
+        "check_authority::inputs::Readback::unknown_view",
+        "check_authority::inputs::byte_eq",
+        "check_authority::inputs::byte_lt",
+        "check_authority::inputs::compare_readback",
+        "check_authority::inputs::complete_present_inventory",
+        "check_authority::inputs::contains_fact",
+        "check_authority::inputs::contains_present",
+        "check_authority::inputs::copy_bytes",
+        "check_authority::inputs::covered_selection",
+        "check_authority::inputs::facts_match",
+        "check_authority::inputs::input_key_eq",
+        "check_authority::inputs::input_key_lt",
+        "check_authority::inputs::input_order",
+        "check_authority::inputs::key_less",
+        "check_authority::inputs::key_less_differs",
+        "check_authority::inputs::key_less_transitive",
+        "check_authority::inputs::lex_at",
+        "check_authority::inputs::lex_less",
+        "check_authority::inputs::lex_less_transitive",
+        "check_authority::inputs::optional_stamp_equal",
+        "check_authority::inputs::ordered_facts",
+        "check_authority::inputs::ordered_keys_unique",
+        "check_authority::inputs::ordered_pair_less",
+        "check_authority::inputs::permutation",
+        "check_authority::inputs::permutation_at",
+        "check_authority::inputs::reads_complete",
+        "check_authority::inputs::same_inventory",
+        "check_authority::inputs::same_key",
+        "check_authority::inputs::same_value",
+        "check_authority::inputs::selection_covered",
+        "check_authority::inputs::unique_input_keys",
+        "check_authority::inputs::valid_permutation",
+        "check_authority::inputs::value_difference",
+        "check_authority::inputs::value_present",
+        "check_authority::inputs::value_readable",
+        "check_authority::output::SCHEMA_VERSION",
+        "check_authority::project::SCHEMA_VERSION",
+        "check_authority::refinement::checked_factory_refines_function",
+        "check_authority::refinement::compile_only_report_refused",
+        "check_authority::refinement::focused_report_refused",
+        "check_authority::refinement::function_refines",
+        "check_authority::refinement::interrupted_report_refused",
+        "check_authority::refinement::model_establishment",
+        "check_authority::refinement::model_tier",
+        "check_authority::refinement::model_verdict",
+        "check_authority::refinement::positive_nonempty_factory",
+        "check_authority::refinement::positive_zero_function_factory",
+        "check_authority::refinement::project_function"
+      ],
+      "negative_controls": [
+        {
+          "name": "verification-enabled",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if !verification_enabled_command(&report.command) { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "effective-verification-enabled",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if exact_bytes(bytes, b\"--no-verify\") { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "whole-terminal-summary",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "complete_report_ordered(report, CompletionPolicy::Whole, forward, inverse)",
+          "after": "complete_report_ordered(report, CompletionPolicy::Receipt, forward, inverse)"
+        },
+        {
+          "name": "confirmed-function",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "&& matches!(f.establishment, EstablishmentName::Confirmed)",
+          "after": "&& true"
+        },
+        {
+          "name": "whole-command",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if focused_command(&report.command) { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "requested-coverage",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if unique_observed(&expected[i], targets).is_none() { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "summary-count",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "&& report.summary.verified == functions",
+          "after": "&& true"
+        },
+        {
+          "name": "normal-exit",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "|| report.exit_code != Some(0)",
+          "after": "|| false"
+        },
+        {
+          "name": "fresh-selection",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "!matches!(project.currentness, Currentness::Current) ||",
+          "after": "false ||"
+        },
+        {
+          "name": "obligation-uniqueness",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if !unique_obligations(&ids, forward, inverse) { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "provenance-counts",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "&& provenance\n",
+          "after": "&& true\n"
+        }
+      ]
+    }
+  ],
+  "api_declarations": {
+    "output": {
+      "source_sha256": "9c1bb2987fedd63c24c2ce5e242b632d1660c54df14345deba1987bd2009570c",
+      "bindings": [
+        [
+          "use",
+          "serde",
+          ":",
+          ":",
+          "{",
+          "Deserialize",
+          ",",
+          "Serialize",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "sail_ledger",
+          ":",
+          ":",
+          "{",
+          "CheckRecord",
+          ",",
+          "Establishment",
+          ",",
+          "FunctionRecord",
+          ",",
+          "ObligationRecord",
+          ",",
+          "Outcome",
+          ",",
+          "Source",
+          ",",
+          "SourceSummary",
+          ",",
+          "Verdict",
+          ",",
+          "}",
+          ";"
+        ]
+      ],
+      "declarations": [
+        {
+          "name": "Report",
+          "kind": "struct",
+          "fields": {
+            "portfolio": [
+              "Option",
+              "<",
+              "PortfolioReport",
+              ">"
+            ],
+            "schema_version": [
+              "u32"
+            ],
+            "sail_version": [
+              "String"
+            ],
+            "mode": [
+              "String"
+            ],
+            "command": [
+              "Vec",
+              "<",
+              "String",
+              ">"
+            ],
+            "exit_code": [
+              "Option",
+              "<",
+              "i32",
+              ">"
+            ],
+            "solver": [
+              "Option",
+              "<",
+              "SolverInfo",
+              ">"
+            ],
+            "cache": [
+              "CacheInfo"
+            ],
+            "attribution": [
+              "AttributionInfo"
+            ],
+            "crates": [
+              "Vec",
+              "<",
+              "CrateReport",
+              ">"
+            ],
+            "diagnostics": [
+              "Vec",
+              "<",
+              "Diagnostic",
+              ">"
+            ],
+            "summary": [
+              "Summary"
+            ],
+            "error": [
+              "Option",
+              "<",
+              "ErrorInfo",
+              ">"
+            ],
+            "engine": [
+              "Option",
+              "<",
+              "EngineProvenance",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "274c87123649c24e6af237e7270d2e13e85cbeee27e28ecc33fd7d4097895731"
+        },
+        {
+          "name": "CrateReport",
+          "kind": "struct",
+          "fields": {
+            "name": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "verus": [
+              "VerusResults"
+            ],
+            "functions": [
+              "Vec",
+              "<",
+              "FunctionReport",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "a090381cc67ad8f1424dc3672dc0e30c5e47e3348f7b4175f441ee480e0e3941"
+        },
+        {
+          "name": "VerusResults",
+          "kind": "struct",
+          "fields": {
+            "verified": [
+              "Option",
+              "<",
+              "u64",
+              ">"
+            ],
+            "errors": [
+              "Option",
+              "<",
+              "u64",
+              ">"
+            ],
+            "success": [
+              "Option",
+              "<",
+              "bool",
+              ">"
+            ],
+            "encountered_vir_error": [
+              "Option",
+              "<",
+              "bool",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "64fed5486b1a5f1973e40556312608889ed8aa87592dee436c9e64a8acf0effa"
+        },
+        {
+          "name": "FunctionReport",
+          "kind": "struct",
+          "fields": {
+            "function": [
+              "String"
+            ],
+            "module": [
+              "String"
+            ],
+            "fn_mode": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "verdict": [
+              "VerdictName"
+            ],
+            "establishment": [
+              "EstablishmentName"
+            ],
+            "evidence_tier": [
+              "Option",
+              "<",
+              "EvidenceTierName",
+              ">"
+            ],
+            "unstable": [
+              "bool"
+            ],
+            "verus_success": [
+              "Option",
+              "<",
+              "bool",
+              ">"
+            ],
+            "provenance": [
+              "ProvenanceReport"
+            ],
+            "timing": [
+              "Timing"
+            ],
+            "fragility": [
+              "Option",
+              "<",
+              "Fragility",
+              ">"
+            ],
+            "obligations": [
+              "Option",
+              "<",
+              "Vec",
+              "<",
+              "ObligationReport",
+              ">",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "c48b3972d71130993cbadcc59c693e82e2f4c8f11e14677a3f5ef49648bd1230"
+        },
+        {
+          "name": "ProvenanceReport",
+          "kind": "struct",
+          "fields": {
+            "configuration": [
+              "Option",
+              "<",
+              "SolverConfiguration",
+              ">"
+            ],
+            "mode": [
+              "String"
+            ],
+            "source": [
+              "SourceSummaryName"
+            ],
+            "checks_solved": [
+              "u64"
+            ],
+            "checks_served": [
+              "u64"
+            ],
+            "checks_unrecorded": [
+              "u64"
+            ],
+            "engine": [
+              "Option",
+              "<",
+              "EngineProvenance",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "4b7a3aa7c31d2539ad8f92115824747508f49276aa5ff1b3ec56f69c36571cd3"
+        },
+        {
+          "name": "ObligationReport",
+          "kind": "struct",
+          "fields": {
+            "id": [
+              "String"
+            ],
+            "kind": [
+              "String"
+            ],
+            "ordinal": [
+              "u32"
+            ],
+            "spinoff": [
+              "Option",
+              "<",
+              "SpinoffInfo",
+              ">"
+            ],
+            "advisory": [
+              "bool"
+            ],
+            "span": [
+              "Option",
+              "<",
+              "SourceSpan",
+              ">"
+            ],
+            "outcome": [
+              "OutcomeName"
+            ],
+            "unstable": [
+              "bool"
+            ],
+            "checks": [
+              "Vec",
+              "<",
+              "CheckReport",
+              ">"
+            ],
+            "counterexample": [
+              "Option",
+              "<",
+              "Counterexample",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "6de8f217c1fdc43507e6f0e5850533219174ed4d1bfa44804da07cda21d49f04"
+        },
+        {
+          "name": "Summary",
+          "kind": "struct",
+          "fields": {
+            "functions": [
+              "u64"
+            ],
+            "verified": [
+              "u64"
+            ],
+            "failed": [
+              "u64"
+            ],
+            "unknown": [
+              "u64"
+            ],
+            "provisional": [
+              "u64"
+            ],
+            "unstable": [
+              "u64"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "e6a4c7e93a6780e600a0d94b3c5d7df66aa83d70939ec2ca81fdb78a9cdc70d4"
+        },
+        {
+          "name": "EngineProvenance",
+          "kind": "struct",
+          "fields": {
+            "name": [
+              "String"
+            ],
+            "manifest_sha256": [
+              "String"
+            ],
+            "established_by": [
+              "EngineEstablishment"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "fe88b7cc5636448f0556d1b22fa86966c19048077e978f14f96a25d594c9611f"
+        },
+        {
+          "name": "ErrorInfo",
+          "kind": "struct",
+          "fields": {
+            "code": [
+              "String"
+            ],
+            "message": [
+              "String"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "f0c3396fb704904e9306bcf72c45ea5dbc2ed934f0fb422fb4c529500ae22b90"
+        },
+        {
+          "name": "VerdictName",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Verified",
+            "Failed",
+            "Unknown",
+            "Provisional"
+          ],
+          "declaration_sha256": "3c80af678e3e8cd763cf360c2f7954fa1f9b8e7bc9a2278d596506d0b5e0dee4"
+        },
+        {
+          "name": "EstablishmentName",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Provisional",
+            "Confirmed"
+          ],
+          "declaration_sha256": "0988144392070a187a9c164c617e9c7cface10f32fc1b6dc5b8368c822f320de"
+        },
+        {
+          "name": "EvidenceTierName",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Sampled",
+            "Bounded",
+            "SmtVerified",
+            "CertificateChecked",
+            "KernelChecked"
+          ],
+          "declaration_sha256": "b96cf77d9949d5c4ad831ecc18b42a7122efba3cc1af7c9a67d4a1d504821286"
+        },
+        {
+          "name": "SourceSummaryName",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Fresh",
+            "Cache",
+            "Mixed",
+            "Unrecorded"
+          ],
+          "declaration_sha256": "24bd9045a247d46b7c8fa44d410439856b18df80420e4514368bd52306bb38b1"
+        },
+        {
+          "name": "EngineEstablishment",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Engine",
+            "StockFallback"
+          ],
+          "declaration_sha256": "8f7a48582f09c79a8e88e673e2d71964ca08446d4c657faca61a562ca8825f74"
+        }
+      ],
+      "schema_constant": [
+        "pub",
+        "const",
+        "SCHEMA_VERSION",
+        ":",
+        "u32",
+        "=",
+        "2",
+        ";"
+      ],
+      "retained_fields": {
+        "Report": "schema_version command exit_code error summary crates engine",
+        "CrateReport": "verus functions",
+        "VerusResults": "errors success encountered_vir_error",
+        "FunctionReport": "function verdict establishment evidence_tier unstable provenance obligations",
+        "ProvenanceReport": "source checks_solved checks_served checks_unrecorded",
+        "ObligationReport": "id",
+        "Summary": "functions verified failed unknown provisional unstable",
+        "EngineProvenance": "established_by",
+        "ErrorInfo": ""
+      }
+    },
+    "project": {
+      "source_sha256": "f712d4f50ef210a3747e769d451a570186045194ba4555c935e8a61912b9fa88",
+      "bindings": [
+        [
+          "use",
+          "serde",
+          ":",
+          ":",
+          "{",
+          "Deserialize",
+          ",",
+          "Serialize",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "crate",
+          ":",
+          ":",
+          "output",
+          ":",
+          ":",
+          "Report",
+          ";"
+        ]
+      ],
+      "declarations": [
+        {
+          "name": "TargetResult",
+          "kind": "struct",
+          "fields": {
+            "package_id": [
+              "String"
+            ],
+            "target": [
+              "String"
+            ],
+            "kind": [
+              "Vec",
+              "<",
+              "String",
+              ">"
+            ],
+            "establishing_run": [
+              "String"
+            ],
+            "reused": [
+              "bool"
+            ],
+            "scope_reuse": [
+              "Option",
+              "<",
+              "Vec",
+              "<",
+              "String",
+              ">",
+              ">"
+            ],
+            "requested": [
+              "bool"
+            ],
+            "complete": [
+              "bool"
+            ],
+            "report": [
+              "Report"
+            ],
+            "dependency_store": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "dependency_build": [
+              "Option",
+              "<",
+              "DependencyBuildOrigin",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "89a1df2189952733c0026697f3b73e946244e1904c635e8001974e565aabe7fe"
+        },
+        {
+          "name": "ProjectResult",
+          "kind": "struct",
+          "fields": {
+            "kind": [
+              "String"
+            ],
+            "schema_version": [
+              "u32"
+            ],
+            "run_id": [
+              "String"
+            ],
+            "workspace": [
+              "String"
+            ],
+            "context_sha256": [
+              "String"
+            ],
+            "input_revision": [
+              "String"
+            ],
+            "currentness": [
+              "Currentness"
+            ],
+            "exit_code": [
+              "Option",
+              "<",
+              "i32",
+              ">"
+            ],
+            "targets": [
+              "Vec",
+              "<",
+              "TargetResult",
+              ">"
+            ],
+            "execution": [
+              "Execution"
+            ],
+            "notes": [
+              "Vec",
+              "<",
+              "String",
+              ">"
+            ],
+            "error": [
+              "Option",
+              "<",
+              "crate",
+              ":",
+              ":",
+              "output",
+              ":",
+              ":",
+              "ErrorInfo",
+              ">"
+            ],
+            "engine": [
+              "Option",
+              "<",
+              "EngineIdentity",
+              ">"
+            ],
+            "no_reuse": [
+              "Option",
+              "<",
+              "NoReuse",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "d19c3d9706d165c64318d8732d6a00ae34f60d14ddd681b3ee567991ceaab7e8"
+        },
+        {
+          "name": "Currentness",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Current",
+            "Historical",
+            "Unknown"
+          ],
+          "declaration_sha256": "ad039b21a4c41449bc9c2e656c974edce1d37acf3853a15a70c0957222339bc8"
+        }
+      ],
+      "schema_constant": [
+        "pub",
+        "const",
+        "SCHEMA_VERSION",
+        ":",
+        "u32",
+        "=",
+        "2",
+        ";"
+      ],
+      "retained_fields": {
+        "TargetResult": "package_id target kind requested complete scope_reuse report",
+        "ProjectResult": "currentness exit_code error targets"
+      }
+    }
+  }
+}

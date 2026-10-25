@@ -1,7 +1,9 @@
 # Proposed verified evidence-acceptance core
 
-**Status: design with checked component and composed models; the production acceptance core
-and service-wide safety theorem are not implemented or qualified.** Tracked in
+**Status: checked component and composed models; selected production operations
+now use source-shared concrete refinements. Final integration qualification and
+the service-wide safety theorem remain open.**
+See the [production refinement guide](acceptance-production-refinements.md). Tracked in
 [#346](https://github.com/Chelis-Lang/sail/issues/346).
 
 This proposal targets silent false acceptance in Sail's existing Verus path.
@@ -134,10 +136,10 @@ wrong `unsat` independently detectable and does not complete either strategy.
 
 ## Proposed implementation boundary
 
-The core is an acceptance authority over typed evidence, not a replacement
-for Cargo, Verus, the daemon or the filesystem. Its initial shape should use
-existing dependency directions. A separate crate is an option requiring an
-ADR, not a decision made here.
+The core is an acceptance authority over typed evidence. The production
+candidate places pure shared logic in a dependency-free leaf and typed report
+factories in the API crate. [ADR 0079](../decisions/0079-source-shared-acceptance-refinements.md)
+records the proposed graph; native integration and cost gates remain open.
 
 The intended logical interfaces are:
 
@@ -150,8 +152,8 @@ The intended logical interfaces are:
 | `CompletedEvidence` | Successful complete work for a particular binding and scope | Verifier-output validation and scope accounting |
 | `ValidatedResult` | Consistent verdicts, establishment, scope and currentness | The acceptance core; not arbitrary deserialization |
 
-These are proposed production interfaces, not implemented production Rust
-authority types. Constructors must
+These conceptual interfaces cover a broader boundary than the implemented
+source-shared authority tokens. Constructors must
 prevent arbitrary callers or deserializers from minting established evidence.
 Wire/storage structs remain candidates until validated. A provenance string,
 checksum, signature, process exit code or `complete: true` field cannot alone
@@ -306,9 +308,10 @@ environment interfaces.
 Stages C and D may expose a smaller useful proved boundary before E and F.
 That boundary must be named accurately: a verified predicate conditional on
 input evidence is not an end-to-end verified service. [Component and composed models](acceptance-proof-checker.md) provide
-machine-checked model evidence, including explicit origin/observation lifecycles. Stage C still needs production source sharing
-or refinement; stages D–F still need actual cache origins, observation
-adapters and composition. Those stages are not complete.
+machine-checked model evidence, including explicit origin/observation lifecycles. Stage C now has source-shared executable operations and typed factories with
+concrete refinements. Its final integration gates remain open; stages D–F
+still need complete cache origins, observation adapters and composition.
+Those stages are not complete.
 
 Fast proof checks should enter CI only after their measured duration fits the
 repository's fast-tier budget. Longer model exploration and whole-corpus
@@ -329,10 +332,10 @@ implementation proof or a proof build as integrated acceptance.
   current documented filesystem exclusions enter the assumptions.
 - Select the verified-origin or independently checked cache strategy, and
   state which shared/bundled writers the first theorem includes.
-- Choose implementation placement and proof-source sharing. Any new crate
-  edges require an ADR and layering updates; no such edges are chosen here.
-- Select stock-Verus and any model/proof tooling pins, proof invocation and
-  the assumption-review process after a compatibility spike.
+- Review the source-sharing candidate and ADR 0079; complete its layering,
+  conformance and added-cost qualification before selection.
+- Qualify final changed source with the compatible pinned stock checker on
+  both native platforms and review its explicit trust dependencies.
 - Define the scope and measured cost budget for each integration stage.
 
 The initial component models do not select a new runtime architecture or

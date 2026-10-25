@@ -7,6 +7,7 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   proofs               direct pinned stock-Verus model proofs and all
 #                        deliberate guard-removal controls; no Sail driver
+#   refinements          source-shared production bodies and refinement controls
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
 #   boundary-witness admission|shapes
@@ -68,7 +69,7 @@
 #                        warm). ARGS go to `sail-conformance
 #                        rust-verify-test` (for example --filter modes::)
 #
-# CI runs gate, solver, e2e and `conformance fast pr`. Every other tier
+# CI runs gate, proofs, refinements, solver, e2e and `conformance fast pr`. Every other tier
 # and every benchmark is local-only: run them with ci/local.sh
 # (`host` runs directly: ci/run.sh host).
 set -euo pipefail
@@ -144,14 +145,20 @@ start_daemon() {
 }
 
 case "$step" in
-  proofs)
-    rm -rf target/acceptance-proofs
-    mkdir -p target/acceptance-proofs
+  proofs|refinements)
+    sail_proof_script=scripts/check-acceptance-proofs.py
+    sail_proof_artifact=acceptance-proofs
+    if [ "$step" = refinements ]; then
+      sail_proof_script=scripts/check-acceptance-refinements.py
+      sail_proof_artifact=acceptance-refinements
+    fi
+    rm -rf "target/$sail_proof_artifact"
+    mkdir -p "target/$sail_proof_artifact"
     sail_proof_tmp="$(mktemp -d)"
     # Git trust is restricted to this already executing checkout. No private
     # dependency authentication or injected Git helper is needed for blob reads.
     if env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0="$PWD" \
-      python3 scripts/check-acceptance-proofs.py \
+      python3 "$sail_proof_script" \
         --stock-archive /opt/verus/verus.zip \
         --stock-dir /opt/verus/verus-x86-linux \
         --out "$sail_proof_tmp/checked"; then
@@ -160,7 +167,7 @@ case "$step" in
       sail_proof_status=$?
     fi
     if [ -d "$sail_proof_tmp/checked" ]; then
-      cp -R "$sail_proof_tmp/checked/." target/acceptance-proofs/
+      cp -R "$sail_proof_tmp/checked/." "target/$sail_proof_artifact/"
     fi
     rm -rf "$sail_proof_tmp"
     exit "$sail_proof_status"
@@ -176,6 +183,7 @@ case "$step" in
     python3 scripts/test-perf-matrix.py
     python3 scripts/test-private-dependencies.py
     python3 scripts/test-check-acceptance-proofs.py
+    python3 scripts/test-check-acceptance-refinements.py
     python3 scripts/test-install.py
     python3 scripts/test-stage-temporal-worker.py
     python3 scripts/test-bench-cargo-compare.py
