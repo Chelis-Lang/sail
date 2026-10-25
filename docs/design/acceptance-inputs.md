@@ -4,9 +4,117 @@ The [input component](../../proofs/acceptance/input_binding.rs) verifies an
 inductive observation/reuse transaction model and executable exact-byte
 comparators for the [acceptance core](evidence-acceptance-core.md). Its shared
 [context](../../proofs/acceptance/context.rs) contains the actual modeled input
-map, exact request, selection, runtime, explicit solver identity and mode. Production filesystem,
-compiler-closure and caller refinements remain open; these models do not change
-Sail's runtime reuse policy.
+map, exact request, selection, runtime, explicit solver identity and mode.
+The [executable input core](../../crates/sail-acceptance/src/inputs.rs) now
+runs in managed capture, projection, mutation-guard checks and retained-read
+checks. Its [refinement adapter](../../proofs/refinement/inputs.rs) relates the
+same checked executable bodies to the model's exact input-map representation.
+Physical observation, compiler-closure discovery and the remaining native
+caller/context mapping still have the boundaries listed below.
+
+## Source-shared production refinement
+
+The dependency-free `sail-acceptance` leaf compiles the same Rust function
+bodies for Cargo and direct stock Verus. The syntax macros erase contracts and
+proof statements for Cargo and expose them to Verus; they do not replace the
+executable comparisons, branches, loops or guard transitions. No adapter is
+allowed to pass an `unchanged` Boolean in place of actual observations.
+
+`InputFact` contains the namespace, exact encoded lexical name and a typed
+`InputValue`: present identity bytes, observed absence or an unreadable outcome.
+Native content rows use namespace zero and content-digest bytes; lexical alias
+and linked-ancestor rows use namespace one and resolved path bytes. Paths and
+alias destinations are compared exactly. Inventory sorting here orders metadata
+keys for a checked join; it does not normalize solver query bytes.
+
+The native sorter supplies forward and inverse index vectors. `permutation`
+checks both directions, every bound and the complete length in linear time.
+`input_order` additionally checks strict adjacent key order, with a proof that
+all raw keys are unique. A missing, repeated or out-of-range position cannot
+hide behind a plausible selected count. `byte_eq` and `byte_lt` prove exact
+sequence equality and lexicographic order without digest axioms.
+
+| Production call | Source-shared executable obligation | Model refinement |
+|---|---|---|
+| `fold_contents` in `managed/input.rs` | `reads_complete` checks the independent required-name ledger against every successful read outcome; missing, failed, extra and duplicate outcomes cannot establish capture completion | Every declared required key has a present readable observation in `input_map` |
+| `bindings_current` in `managed/input.rs` | `compare_readback` checks actual canonicalization outcomes against all original aliases and linked ancestors | Exact lexical key and resolved destination identity |
+| `stamped_snapshot` in `managed/input.rs` | `OriginalCapture::begin` precedes content reads; `finish` accepts only present, equal before/after stamp bytes and binds the produced revision | A sealed guard retains the original stamp and revision bytes |
+| `unchanged_since` in `managed/input.rs` | `OriginalGuard::retained` checks the bound revision and both supplied/current stamp bytes against its privately held original stamp | A fresh supplied stamp cannot relabel older guarded bytes |
+| `project_guard` in `managed/input.rs` | `selection_covered` checks every selected key/value against the original exact source inventory; `OriginalGuard::project` preserves the old stamp and binds the projected revision | The selected map is an exact submap of the source map |
+| `check` in `managed/read_check.rs` | `compare_readback` receives separately built expected and actual observed ledgers, checks their full unique domains and every readable value | Accepted equality implies equality of complete interpreted maps and readable outcomes |
+
+Capture no longer folds `files.zip(reads)` without accounting for unmatched
+positions. Each required file gets an explicit outcome; a missing result is
+unreadable, and extra results prevent completion. The original digest encoding
+for complete successful reads is preserved. Projection retains the original
+observation's entire path namespace through an immutable shared native path
+set. It does not attach a stamp sampled after projection to old content bytes.
+A later guard check still checks that original namespace, including paths that
+were needed by the full observation but do not appear in the selected revision.
+
+`Readback` has private fields and no deserializer. Its constructor proves both
+that accepted equality matches the exact checked sorted rows and that every raw
+row appears on the other side with the same key and readable value. The proof
+adapter constructs `input_map` from the entire actual row sequence, derives key
+uniqueness from the checked order, and proves exact map equality. It does not
+assume that a caller-selected domain was complete. The context theorem retains
+the actual request, scope, runtime, mode and solver fields while replacing only
+the modeled input map; it does not manufacture those fields from an opaque ID.
+
+Read-time absence uses a successful not-found primitive result. A file-open,
+content-read or canonicalization failure remains `Unreadable`. A directory
+appearing at a formerly absent configuration path is a change. The existing
+reporting precedence is preserved: a concrete difference gives a changed
+revision even if another observation is unavailable; unavailability without a
+known difference gives Unknown. Currentness remains independent of successful
+verification, so a fresh failed verification can remain Current.
+
+The source-shared refinement has nonempty accepting controls with source,
+alias and absent-configuration facts; reordering, incomplete permutation,
+unreadable, stale-restamp, ABA and fresh-capture-after-exact-revert controls.
+Negative mutations remove actual value comparison, current-stamp validation,
+read-presence validation and permutation inverse checks. Each must fail a
+required executable contract or refinement theorem under the same complete
+stock verification scope. Native tests separately exercise missing/extra read
+outcomes, duplicate retained records, real unreadable paths, ancestor retargets,
+restored timestamps and supplying a fresh stamp for an older snapshot.
+
+### Primitive and provider boundaries
+
+The completed map theorems concern the identity bytes actually supplied by the
+native adapter. They do not prove any of the following by renaming an external
+premise as an inventory-completeness or currentness predicate:
+
+- **Content digest equality:** native file rows contain SHA-256 identities,
+  rather than full file bytes. Relating an equal pair of those identities to
+  physical byte equality needs collision exclusion for the actual compared
+  content pair, plus correct hashing/read completion. The proof assumes no
+  globally injective digest function. Aggregate revision hashes and mutation
+  stamp hashes have their own encoding/collision obligations.
+- **Observation primitives and ordering:** the native adapter must return the
+  outcome of the named open/read, canonicalization and metadata operations,
+  preserving exact encoded paths and distinguishing not-found from failure.
+  `stamped_snapshot`'s actual before/read/after ordering is visible in the
+  production code; the proof of a byte-equal guard alone does not establish
+  that the OS prevents concurrent changes or that every relevant mutation
+  changes a metadata stamp. The model's monotone epoch is not a hash value.
+- **Discovery and selection:** the compiler/Cargo/build-script providers still
+  must enumerate actual consumed files, generated inputs, configuration,
+  absence and aliases with correct package attribution. Checked projection
+  proves every proposed selected row is an original row; it does not prove
+  that the provider requested every input of the selected compilation.
+- **Read-point atomicity and authority:** parallel reads happen over an
+  interval. The native observation protocol must justify a consistent result
+  at the API observation point and bind that observation to the executed
+  request/runtime/solver. This component proves no claim of linearizable OS
+  observation or launch integrity. Fresh retained reads compare actual bytes
+  again; their physical observation completeness remains an adapter boundary.
+
+These distinctions preserve the exclusions in [freshness](../freshness.md)
+and the [trust contract](../trust.md). In particular, the identity-level
+simulation does not discharge Linux/macOS filesystem correctness or the whole
+compiler-input closure. The lifecycle model below states the stronger logical
+transaction contract that those providers must implement.
 
 ## Transaction lifecycle
 
@@ -174,9 +282,9 @@ retains the same verification scope and requires actual verification errors.
 Parse errors, dropped proof functions and resource-limit failures do not count
 as successful negative controls.
 
-## Concrete refinement still required
+## Remaining concrete refinement
 
-The completed model obligations above are separate from these open interfaces:
+The completed lifecycle and source-shared identity obligations above leave these native/provider interfaces open:
 
 | Production boundary | Remaining relation |
 |---|---|
@@ -208,6 +316,8 @@ In particular, these interfaces are not discharged by:
   qualification.
 
 The model proves complete observation of its explicit requested map and safe
-reuse within its transition system. It does not prove that Sail's real
-compiler/filesystem observations produce that map or that every production
-Current response follows this authority path.
+reuse within its transition system. The executable refinement proves the
+actual input core preserves exact declared identity and guard bytes. It does
+not prove that every real compiler/filesystem observation produces that map
+or that every production Current response follows the complete modeled
+authority transaction.

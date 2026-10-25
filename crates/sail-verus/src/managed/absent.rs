@@ -193,6 +193,7 @@ mod tests {
                 observation_paths: std::collections::BTreeSet::new(),
                 digests: std::collections::BTreeMap::new(),
                 bindings: std::collections::BTreeMap::new(),
+                capture: None,
             },
         )
     }
