@@ -1,11 +1,12 @@
 # Query association and local origin model
 
-**Status: checked model of local origin construction, publication, recovery
-and session delivery. Production parser, I/O and persistence refinement remain
-unproved.** This component of the
+**Status: checked local-origin model plus source-shared production queue,
+replay, publication and disk-envelope operations. The bounded simulations do
+not establish a whole-service origin or I/O theorem.** This component of the
 [evidence-acceptance design](evidence-acceptance-core.md) is tracked by
-[#346](https://github.com/Chelis-Lang/sail/issues/346). It changes no runtime,
-crate dependency, solver input or corpus source.
+[#346](https://github.com/Chelis-Lang/sail/issues/346). The source-sharing
+boundary and dependency edges are recorded in [ADR 0079](../decisions/0079-source-shared-acceptance-refinements.md).
+Solver input and corpus sources are unchanged.
 
 ## The proved boundary
 
@@ -41,6 +42,69 @@ Fresh replies are tied to the current solver's ordered `live_observed`
 stream. Cached replies require the stronger completed clean-run origin.
 Forwarding a fresh response does not itself establish successful verification;
 the verifier/report acceptance component must establish completion and success.
+
+## Production source sharing and bounded simulation
+
+[`sail-acceptance::query`](../../crates/sail-acceptance/src/query.rs) contains
+ordinary executable Rust compiled into Sail. Its source envelopes erase only
+specifications, loop invariants and proof statements for Cargo. Stock Verus
+checks the same executable signatures, control flow and function bodies,
+using the captured [syntax definitions](../../crates/sail-acceptance/src/syntax.rs).
+It does not trust an external specification of an independently implemented
+queue.
+
+The production adapters now use these operations:
+
+| Production path | Checked executable operation | Established boundary |
+|---|---|---|
+| Shim `cached::Pairer` | `CorrelatedQueue<Expect, Vec<u8>>` owns both queues; `take_pair` returns a private `BoundPair` | Both oldest actual payloads are removed together; a missing side or permanent stop changes neither queue. Every unmatched suffix is preserved exactly. |
+| Shim replay output | `ReplayCursor::advance` | Exactly the already-served prefix is suppressed. The countdown cannot overflow while forwarding an arbitrarily long fresh suffix. |
+| Shim `spawn_storer` | `PublicationBatch<Entry>` | Checked byte accounting bounds the actual pending payloads; release returns exactly their original values in order, or no values. |
+| Shim publication adapter | `PublicationGate::allows` | Every supplied closure observation is required. The adapter requires input completion, active pairing, empty queues, successful exit, quiet stderr EOF and successful forwarding before opening the storer's atomic gate. |
+| Daemon write-behind | `Fifo<Job>` | The actual immutable key/value/metadata job leaves in insertion order. Mutex behavior, memory insertion and persistence are outside this FIFO proof. |
+| `parse_entry` disk admission | `RecoveryRecord<Meta>::recover` | The original metadata and exact reply bytes survive only if decoded version, requested key and computed payload digest all match. Errors preserve the existing version/key/hash priority. |
+
+The two-stack FIFO is proved directly over its complete ordered payload
+sequence. Its stack reversal has a checked loop invariant and decreasing
+measure. The generic correlator holds the production expectation itself,
+including its key and command metadata, rather than a separately supplied
+index or success tag. Each shim response entry retains the returned private
+`BoundPair` through held-check effort annotation and publication buffering;
+only the wire conversion consumes it into its original parts. A silence
+certificate is a separate entry variant and is not presented as a solver
+response pair. Because this ownership retains exact command text until batch
+release, the storer charges that text alongside reply and command-name bytes
+to its existing 64 MiB pending-byte limit. An oversized batch is discarded
+without changing forwarded output.
+
+[`proofs/refinement/query.rs`](../../proofs/refinement/query.rs) calls these
+actual executable operations and proves simulation into the existing model.
+`queue_refines` relates every outstanding production expectation/reply to the
+model's exact unpaired suffix. Arrival, paired removal and permanent stopping
+preserve that relation. `replay_frame_refines` relates the production countdown
+to the model's `seen`/`skip` suppression condition. `publication_refines` proves
+that a complete gate releases only the model's ordered entries, without
+changing the actual buffered payloads. The simulation is generic over maps
+from owned expectation/reply values to model bindings/bytes; establishing
+those maps for the shim's parsers, hasher and process observations remains a
+separate adapter obligation.
+
+Publication now refuses an otherwise successful, quiet producer session if
+its input is incomplete, correlation stopped or expectations/replies remain
+unmatched. This narrows cache writes; it preserves forwarded bytes, exit status
+and diagnostics. Supported complete sessions continue to populate and reuse
+the default cache. A real producer-fault regression runs a solver wrapper that
+exits successfully after its first response: direct and cached output match,
+and neither repeated cached run publishes the earlier response. This is a
+bounded publication regression, not a demonstrated false proof.
+
+Disk integrity is deliberately a smaller theorem than solver provenance.
+`RecoveryRecord` does not turn the header's `provenance` string into an origin.
+JSON extraction and digest computation must pass the actual decoded fields and
+hash of the actual owned reply. The production disk format does not persist
+this model's prior-publication ledger. Therefore the `Store::Recover`
+clean-origin premise still needs protected prior writer history; this source
+linkage does not prove arbitrary preexisting, shared or bundled entries true.
 
 ## Construction and lifecycle
 
@@ -121,6 +185,25 @@ copies and rerun the complete proof scope:
 | Admit a changed payload | `&& frame.payload == frame.claim.entry` | `&& true` | Store preservation/corrupt recovery obligations fail. |
 | Recover an unrecorded origin | `&& store.recorded.contains(store.durable[index as int].claim.origin)` | `&& true` | Origin-ledger preservation/unpublished-record obligations fail. |
 
+The source-shared closure additionally checks a nonempty executable witness
+with two distinct expectations and replies arriving asynchronously, a noisy
+nonempty batch refusal, and exact-payload recovery plus corrupt-digest refusal.
+Six controls mutate actual production executable statements, while leaving
+their contracts, simulations and every existing model proof in scope:
+
+| Executable mutation | Required ordinary verification failure |
+|---|---|
+| Reverse the FIFO by popping its front stack instead of its back stack | FIFO ordering/termination obligation fails. |
+| Pop a pair without first checking the reply queue | A missing side consumes an expectation; unchanged-suffix obligation fails. |
+| Treat one remaining replay response as already fresh | Exact served-prefix suppression obligation fails. |
+| Remove quiet diagnostics from the publication conjunction | Publication completeness obligation fails. |
+| Skip the recovery payload-digest check | Integrity admission obligation fails. |
+| Release a batch regardless of its gate | Rejected batches can escape; exact release condition fails. |
+
+Each source mutation fails with 93 verified obligations and one ordinary
+verification error against the 94-obligation positive closure. These are
+checked statement changes, not injected `assert(false)` controls.
+
 A timeout or resource-limit failure does not qualify as a successful negative
 control. Omitted modules, changed runtimes and narrowed scope have separate
 checker refusal controls. No inconsistent assumptions are inserted.
@@ -139,6 +222,27 @@ python3.12 scripts/check-acceptance-proofs.py \
   --stock-archive "$stock_archive" --stock-dir "$stock_runtime" \
   --out "$external_output"
 ```
+
+For source-sharing checks, the captured driver additionally loads
+`crates/sail-acceptance/src/syntax.rs`, the exact production `query.rs` as
+`query_core`, and `proofs/refinement/query.rs`, alongside the existing
+`context` and `query_association` modules. It selects the stock macro branches
+with `--cfg sail_verus`; Cargo selects the erasure branches in the same
+captured syntax file. A direct invocation is:
+
+```sh
+RUSTUP_TOOLCHAIN=1.99.1 VERUS_Z3_PATH="$stock_runtime/z3" \
+  "$stock_runtime/verus" "$captured_driver" \
+  --cfg sail_verus --no-cheating --output-json --num-threads 1
+```
+
+The source-sharing closure passes 94 obligations: 59 existing model/context,
+24 executable operations and 11 simulation/witness obligations. Focused Rust
+clippy checks cover acceptance, shim, cache and daemon; their 158 nonignored
+Rust tests pass. The seven real
+pinned-Z3 `cached_session` tests pass, including the unmatched clean-exit
+regression and supported warm-cache reuse. These local component checks do
+not replace native Linux gates or whole-corpus conformance.
 
 The upstream pin remains Verus `0.2026.10.18.7d82994`, revision
 `7d829946231d6413a398f6e4160cdfe951261dad`, Rust `1.99.1` and pinned Z3
@@ -172,14 +276,18 @@ following physical interfaces remain obligations, not established guarantees:
 |---|---|
 | `sail-key::PrefixHasher` | Every actual solver-input byte, endpoint, solver and mode enters the key. Logical byte equality must be related to concrete digests under an explicit cryptographic assumption, not hash injectivity. |
 | Shim splitters, `observe`, session classification | Actual output-producing commands and whole response frames appear exactly once in order. Byte accounting does not prove SMT-LIB parsing. |
-| `cached::Pairer`, held checks and effort metadata | Asynchronous channels, suppression offsets, errors and statistics annotation preserve the modeled pairing and raw reply bytes. |
-| Process launch, stdout/stderr monitor, `spawn_storer` | Modeled trusted observations belong to the identified immutable process; normal exit and all stream closures precede publication. |
-| Daemon `HELLO`/`PUT`, write-behind and memory stamps | Every admitted local writer refines the observed-run publication path. A handshake alone does not prove its arbitrary `PUT` truthful. |
-| `DiskCache::put_scoped/get_stamped` | Protected prior publication, unique temporary files, atomic rename, integrity checks, concrete stamps and crash behavior refine the ghost history and exact-payload checks. The implementation does not store or verify this model's ghost histories. |
+| Shim adapters around the checked correlator/replay core | Channels, exact frame offsets, expectation construction, held-check release and effort annotation preserve the proved payload interpretation. The owned queue removal and countdown bodies themselves are now checked. |
+| Process launch, stdout/stderr monitor, publication adapters | Supplied closure observations belong to the identified immutable process. The source-shared gate requires all supplied observations and the batch preserves its actual owned values; OS observations and atomic flag/channel handoff remain unproved. |
+| Daemon `HELLO`/`PUT`, write-behind and memory stamps | Every admitted local writer refines the observed-run publication path. A handshake alone does not prove its arbitrary `PUT` truthful. Actual write jobs use the checked FIFO, but locking, insertion/settlement and I/O correspondence remain obligations. |
+| `DiskCache::put_scoped/get_stamped` | Protected prior publication, unique temporary files, atomic rename, digest computation, concrete stamps and crash behavior refine the ghost history. The actual decoded-envelope admission body now checks version/key/digest and preserves the exact payload. The implementation does not store or verify this model's ghost histories. |
 | Shared/bundled admission | Excluded here; needs a reviewed writer-origin contract or independent certificate checking before inclusion. |
 
-The inspected production base is `6ddf8f7b`, including the streamed transcript
-digest implementation from #358. Stock Verus/vstd, pinned solver soundness,
+The source-shared changes start from production base `53d30e87`, which
+includes main `237c7d8d`. The executable core and bounded simulations pass 94
+whole-crate obligations with zero errors through the direct stock driver
+(including 59 existing query/context obligations); the existing model scope
+and controls remain intact. Full native qualification and integrated checker
+evidence belong to the owning validation record. Stock Verus/vstd, pinned solver soundness,
 compiler/runtime identity and the operating-system/process interfaces remain
 trusted where stated. No claim of verified production I/O, default diagnostic
 parity, termination, performance or an end-to-end verified Sail follows from
