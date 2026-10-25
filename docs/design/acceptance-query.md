@@ -82,21 +82,39 @@ actual executable operations and proves simulation into the existing model.
 `queue_refines` relates every outstanding production expectation/reply to the
 model's exact unpaired suffix. Arrival, paired removal and permanent stopping
 preserve that relation. `replay_frame_refines` relates the production countdown
-to the model's `seen`/`skip` suppression condition. `publication_refines` proves
-that a complete gate releases only the model's ordered entries, without
-changing the actual buffered payloads. The simulation is generic over maps
+to the model's `seen`/`skip` suppression condition. `publication_refines`
+retains the stricter ordered-batch relation.
+`permutation_publication_refines` additionally checks a complete forward/inverse
+bijection and proves that every released immutable pair equals its mapped
+canonical command/reply and that every canonical entry appears. The native
+held-check path can release keys `[1,3,2,4]`; a nonempty executable witness with
+four distinct pairs checks exactly that order. Silence cannot enter this
+pair-origin theorem because its batch element type is `BoundPair`, not the
+adapter's mixed response/silence `Entry` enum. Relating the actual held-check
+transitions and pair-only projection of that mixed batch to the checked index
+map remains an explicit adapter obligation; ordered batch equality is not
+presumed for native held-check release. The simulation is generic over maps
 from owned expectation/reply values to model bindings/bytes; establishing
 those maps for the shim's parsers, hasher and process observations remains a
 separate adapter obligation.
 
 Publication now refuses an otherwise successful, quiet producer session if
 its input is incomplete, correlation stopped or expectations/replies remain
-unmatched. This narrows cache writes; it preserves forwarded bytes, exit status
-and diagnostics. Supported complete sessions continue to populate and reuse
+unmatched. It also latches every solver-stdin write/flush failure and carries
+the final parser/input-read completion result into publication. Finishing the
+input thread alone is not evidence that all input was delivered. Incomplete
+or failed delivery queues a permanent stop instead of a silence certificate.
+These conditions narrow cache writes while preserving forwarded bytes, exit
+status and diagnostics. Supported complete sessions continue to populate and reuse
 the default cache. A real producer-fault regression runs a solver wrapper that
 exits successfully after its first response: direct and cached output match,
 and neither repeated cached run publishes the earlier response. This is a
-bounded publication regression, not a demonstrated false proof.
+bounded publication regression, not a demonstrated false proof. A second
+real-path fixture closes solver stdin after the first complete command or
+returns successfully on a trailing partial command. Both preserve direct
+output/status and leave the daemon's PUT count at zero. Removing the sticky
+write-failure latch or the parser-completion latch causes the fixture to
+observe two PUTs (response and silence), so it exercises each actual defect.
 
 Disk integrity is deliberately a smaller theorem than solver provenance.
 `RecoveryRecord` does not turn the header's `provenance` string into an origin.
@@ -188,7 +206,7 @@ copies and rerun the complete proof scope:
 The source-shared closure additionally checks a nonempty executable witness
 with two distinct expectations and replies arriving asynchronously, a noisy
 nonempty batch refusal, and exact-payload recovery plus corrupt-digest refusal.
-Six controls mutate actual production executable statements, while leaving
+Seven controls mutate actual production executable statements, while leaving
 their contracts, simulations and every existing model proof in scope:
 
 | Executable mutation | Required ordinary verification failure |
@@ -199,9 +217,10 @@ their contracts, simulations and every existing model proof in scope:
 | Remove quiet diagnostics from the publication conjunction | Publication completeness obligation fails. |
 | Skip the recovery payload-digest check | Integrity admission obligation fails. |
 | Release a batch regardless of its gate | Rejected batches can escape; exact release condition fails. |
+| Skip the permutation inverse check | A non-bijection can omit canonical entries; the checked certificate contract fails. |
 
-Each source mutation fails with 93 verified obligations and one ordinary
-verification error against the 94-obligation positive closure. These are
+Each source mutation fails with 134 verified obligations and one ordinary
+verification error under the same 135-obligation positive scope. These are
 checked statement changes, not injected `assert(false)` controls.
 
 A timeout or resource-limit failure does not qualify as a successful negative
@@ -225,8 +244,8 @@ python3.12 scripts/check-acceptance-proofs.py \
 
 For source-sharing checks, the captured driver additionally loads
 `crates/sail-acceptance/src/syntax.rs`, the exact production `query.rs` as
-`query_core`, and `proofs/refinement/query.rs`, alongside the existing
-`context` and `query_association` modules. It selects the stock macro branches
+`query_core`, the source-shared `inputs.rs` as `inputs_core`, and
+`proofs/refinement/query.rs`, alongside the existing `context` and `query_association` modules. It selects the stock macro branches
 with `--cfg sail_verus`; Cargo selects the erasure branches in the same
 captured syntax file. A direct invocation is:
 
@@ -236,12 +255,11 @@ RUSTUP_TOOLCHAIN=1.99.1 VERUS_Z3_PATH="$stock_runtime/z3" \
   --cfg sail_verus --no-cheating --output-json --num-threads 1
 ```
 
-The source-sharing closure passes 94 obligations: 59 existing model/context,
-24 executable operations and 11 simulation/witness obligations. Focused Rust
-clippy checks cover acceptance, shim, cache and daemon; their 158 nonignored
-Rust tests pass. The seven real
-pinned-Z3 `cached_session` tests pass, including the unmatched clean-exit
-regression and supported warm-cache reuse. These local component checks do
+The source-sharing closure passes 135 obligations: 59 existing model/context,
+25 query executable operations, 38 reused input-core obligations and 13 query
+simulation/witness obligations. Focused Rust clippy checks cover acceptance, shim, cache and daemon; their 158 nonignored
+Rust tests pass. The eight real pinned-Z3 `cached_session` tests pass, including the unmatched clean-exit
+regressions and supported warm-cache reuse. These local component checks do
 not replace native Linux gates or whole-corpus conformance.
 
 The upstream pin remains Verus `0.2026.10.18.7d82994`, revision
@@ -276,14 +294,14 @@ following physical interfaces remain obligations, not established guarantees:
 |---|---|
 | `sail-key::PrefixHasher` | Every actual solver-input byte, endpoint, solver and mode enters the key. Logical byte equality must be related to concrete digests under an explicit cryptographic assumption, not hash injectivity. |
 | Shim splitters, `observe`, session classification | Actual output-producing commands and whole response frames appear exactly once in order. Byte accounting does not prove SMT-LIB parsing. |
-| Shim adapters around the checked correlator/replay core | Channels, exact frame offsets, expectation construction, held-check release and effort annotation preserve the proved payload interpretation. The owned queue removal and countdown bodies themselves are now checked. |
+| Shim adapters around the checked correlator/replay core | Channels, exact frame offsets, expectation construction, held-check release, the complete pair-only permutation/projection and effort annotation preserve the proved payload interpretation. The owned queue removal and countdown bodies themselves are now checked. |
 | Process launch, stdout/stderr monitor, publication adapters | Supplied closure observations belong to the identified immutable process. The source-shared gate requires all supplied observations and the batch preserves its actual owned values; OS observations and atomic flag/channel handoff remain unproved. |
 | Daemon `HELLO`/`PUT`, write-behind and memory stamps | Every admitted local writer refines the observed-run publication path. A handshake alone does not prove its arbitrary `PUT` truthful. Actual write jobs use the checked FIFO, but locking, insertion/settlement and I/O correspondence remain obligations. |
 | `DiskCache::put_scoped/get_stamped` | Protected prior publication, unique temporary files, atomic rename, digest computation, concrete stamps and crash behavior refine the ghost history. The actual decoded-envelope admission body now checks version/key/digest and preserves the exact payload. The implementation does not store or verify this model's ghost histories. |
 | Shared/bundled admission | Excluded here; needs a reviewed writer-origin contract or independent certificate checking before inclusion. |
 
 The source-shared changes start from production base `53d30e87`, which
-includes main `237c7d8d`. The executable core and bounded simulations pass 94
+includes main `237c7d8d`. The executable core and bounded simulations pass 135
 whole-crate obligations with zero errors through the direct stock driver
 (including 59 existing query/context obligations); the existing model scope
 and controls remain intact. Full native qualification and integrated checker
