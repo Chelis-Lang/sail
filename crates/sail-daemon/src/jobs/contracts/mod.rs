@@ -135,6 +135,7 @@ fn decode(bytes: &[u8], input: &Submission) -> io::Result<WorkerResult> {
         .map_err(error)?;
     if result.version != VERSION
         || result.contracts.version != VERSION
+        || result.contracts.manifest.contract_version != input.profile
         || result.contracts.manifest.original_sha256 != input.source_sha256
         || result.contracts.manifest.crate_name != input.crate_name
         || result.backend.kind != "sail-project-result"

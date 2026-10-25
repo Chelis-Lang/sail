@@ -5,6 +5,7 @@ use sail_verus::contracts::mutation::plan;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 fn input(source: &str) -> Submission {
     Submission {
+        profile: 1,
         source: source.into(),
         source_sha256: digest(source.as_bytes()),
         crate_name: "neutral".into(),

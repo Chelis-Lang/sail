@@ -16,6 +16,7 @@ use std::process::{Command, ExitCode, Stdio};
 
 pub(crate) const REQUEST: &str = "SAIL_MANAGED_BUILD_ENVIRONMENT";
 const VERSION: u64 = 1;
+const CARGO_COMMIT: &str = "commit-hash: 5f94df4789f005f9a352888e8355ffc645b7ed0e";
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -157,7 +158,7 @@ pub(super) fn load(directory: &Path, metadata: &Value) -> Option<Value> {
     let version = std::fs::read_to_string(directory.join("cargo-version.txt")).ok()?;
     version
         .lines()
-        .any(|line| line == "commit-hash: 5f94df4789f005f9a352888e8355ffc645b7ed0e")
+        .any(|line| line == CARGO_COMMIT)
         .then_some(())?;
     let graph: Value =
         serde_json::from_slice(&std::fs::read(directory.join("graph.json")).ok()?).ok()?;
@@ -172,6 +173,26 @@ pub(super) fn load(directory: &Path, metadata: &Value) -> Option<Value> {
         }
     }
     derive(&graph, metadata, &observations)
+}
+
+/// A reported Cargo version outside the qualified script-input protocol.
+/// Missing or malformed observations do not identify an unsupported Cargo.
+pub(super) fn unsupported_cargo(directory: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(directory.join("cargo-version.txt")).ok()?;
+    if text.lines().any(|line| line == CARGO_COMMIT) {
+        return None;
+    }
+    let commit = text
+        .lines()
+        .find_map(|line| line.strip_prefix("commit-hash: "))?;
+    (commit.len() == 40 && commit.bytes().all(|byte| byte.is_ascii_hexdigit())).then_some(())?;
+    let version = text
+        .lines()
+        .next()?
+        .strip_prefix("cargo ")?
+        .split_whitespace()
+        .next()?;
+    Some(version.to_owned())
 }
 
 fn derive(graph: &Value, metadata: &Value, observations: &[Observation]) -> Option<Value> {
@@ -884,17 +905,34 @@ mod tests {
         let version = fixture.root.join("cargo-version.txt");
         std::fs::write(
             &version,
-            "commit-hash: 0000000000000000000000000000000000000000\n",
+            "cargo 1.98.0 (unknown)\ncommit-hash: 0000000000000000000000000000000000000000\n",
         )?;
         assert!(load(&fixture.root, &metadata()).is_none());
+        assert_eq!(unsupported_cargo(&fixture.root).as_deref(), Some("1.98.0"));
         std::fs::write(
             &version,
             "commit-hash: 5f94df4789f005f9a352888e8355ffc645b7ed0e\n",
         )?;
         let authority = load(&fixture.root, &metadata()).ok_or("known Cargo source refused")?;
+        assert!(unsupported_cargo(&fixture.root).is_none());
         let current = json!({"sail_build_environment":authority});
         assert_eq!(get(&current, "CARGO_CFG_UNIX"), Some(Some(String::new())));
         assert_eq!(get(&current, "CARGO_FEATURE_ABSENT"), Some(None));
+        Ok(())
+    }
+
+    #[test]
+    fn missing_or_malformed_cargo_observation_does_not_identify_an_old_toolchain() -> TestResult {
+        let fixture = CargoFixture::new()?;
+        assert!(unsupported_cargo(&fixture.root).is_none());
+        for text in [
+            "cargo 1.98.0\n",
+            "cargo 1.98.0\ncommit-hash: unknown\n",
+            "commit-hash: 0000000000000000000000000000000000000000\n",
+        ] {
+            std::fs::write(fixture.root.join("cargo-version.txt"), text)?;
+            assert!(unsupported_cargo(&fixture.root).is_none());
+        }
         Ok(())
     }
 }

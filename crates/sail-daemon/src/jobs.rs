@@ -288,12 +288,26 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
             proof_version: sail_api::proof::VERSION,
             repair: true,
             neutral_contracts_version: Some(sail_api::contracts::VERSION),
+            neutral_contract_profiles: vec![1, 2],
             assurance_version: Some(sail_api::assurance::VERSION),
             mutation_version: Some(sail_api::mutation::VERSION),
         }),
         Request::SubmitMutation(submission) => {
             mutation::submit(state, &submission).map(|view| Response::Mutation(Box::new(view)))
         }
+        Request::PrepareLiteralWitness {
+            source,
+            max_mutants,
+        } => sail_verus::contracts::literal_witness::prepare(&source, max_mutants)
+            .map(|plan| Response::LiteralWitness(Box::new(plan)))
+            .map_err(io::Error::other),
+        Request::ValidateLiteralWitness {
+            plan,
+            candidate_id,
+            result,
+        } => sail_verus::contracts::literal_witness::validate(&plan, &candidate_id, &result)
+            .map(|value| Response::LiteralWitnessValidated(Box::new(value)))
+            .map_err(io::Error::other),
         Request::Mutation { id } => {
             mutation::read(state, &id).map(|view| Response::Mutation(Box::new(view)))
         }

@@ -1,15 +1,15 @@
 {
   "schema_version": 2,
-  "variant": "7d829946231d6413a398f6e4160cdfe951261dad-2aa4e9a52bc8d8fb",
+  "variant": "7d829946231d6413a398f6e4160cdfe951261dad-84445afc625905b9",
   "commit": "7d829946231d6413a398f6e4160cdfe951261dad",
   "rust_toolchain": "1.99.1",
   "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
-  "fork_commit": "7d9d5410159a7baa2c74868ce1f591678788eb23",
+  "fork_commit": "36d65c3f3161de34efa0150231a47c1777369a5a",
   "source_lock_sha256": "04efc53f189f719c2ecd206ce8e15fe7d3c02643efc3f5a7835864c0dc594ee6",
   "verus_features": [],
-  "manifest_sha256": "35fdb4942460887104955f409a7dd1745207de2abb829d89061b0ab93ce0b2dc",
-  "archive_sha256": "0e7d1130e304debd292170e8312015d8e5faf1a611071f478138145f6aa5f682",
+  "manifest_sha256": "3b385a69339733ca0afc519a5179a985ed35575ea631c5c77f25764dafb0ec8a",
+  "archive_sha256": "6527fa91a387122ee0451f4b0cd9249b4a01a3bad482bad282164e743b083f17",
   "repo": "Chelis-Lang/verus",
-  "release_tag": "engine-runtime-7d9d5410-linux",
+  "release_tag": "engine-runtime-36d65c3f-linux",
   "asset": "engine-runtime.tar.gz"
 }

@@ -19,8 +19,8 @@ pub fn plan(input: &sail_api::contracts::Submission, budget: usize) -> crate::Re
             "mutation budget must be between one and eight",
         ));
     }
-    let baseline = super::lower(&input.source, &input.crate_name)?;
-    let admitted = super::admission::admit(&input.source)?;
+    let baseline = super::lower_profile(&input.source, &input.crate_name, input.profile)?;
+    let admitted = super::admission::admit(&input.source, input.profile)?;
     let mut functions = admitted
         .model
         .functions
@@ -45,7 +45,7 @@ pub fn plan(input: &sail_api::contracts::Submission, budget: usize) -> crate::Re
             .find(|b| b.source.line == source_start.line && b.source.column == source_start.column)
             .ok_or_else(|| super::unsupported("mutation target has no exact guarantee binding"))?;
         let identity = binding.function.clone();
-        let literals = if function.owner.is_none() {
+        let literals = if function.owner.is_none() && function.function.requirements.len() == 1 {
             match &function.function.item.sig.output {
                 syn::ReturnType::Type(_, ty) => match ty.as_ref() {
                     syn::Type::Path(path)
@@ -67,7 +67,7 @@ pub fn plan(input: &sail_api::contracts::Submission, budget: usize) -> crate::Re
         };
         if literals.is_empty() {
             result.unsupported.push(format!(
-                "{identity}: policy supports only free scalar-return functions"
+                "{identity}: policy supports only single-requirement free scalar-return functions"
             ));
             continue;
         }
@@ -91,11 +91,13 @@ pub fn plan(input: &sail_api::contracts::Submission, budget: usize) -> crate::Re
             }
             source.replace_range(begin..end, &replacement);
             let candidate = sail_api::contracts::Submission {
+                profile: input.profile,
                 source_sha256: digest(source.as_bytes()),
                 source,
                 crate_name: input.crate_name.clone(),
             };
-            let lowered = super::lower(&candidate.source, &candidate.crate_name)?;
+            let lowered =
+                super::lower_profile(&candidate.source, &candidate.crate_name, candidate.profile)?;
             let identity_fields = |manifest: &sail_api::contracts::LoweringManifest| {
                 manifest
                     .bindings

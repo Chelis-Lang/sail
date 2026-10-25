@@ -140,6 +140,7 @@ fn one(
     std::fs::write(&path, source)?;
     let digest = sha(source.as_bytes());
     let job = client.submit_contracts(Submission {
+        profile: 1,
         source: source.into(),
         source_sha256: digest.clone(),
         crate_name: "neutral".into(),

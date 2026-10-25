@@ -20,10 +20,10 @@ pub(super) struct Predicate {
     pub(super) inputs: Vec<Type>,
 }
 
-pub(super) fn admit(text: &str) -> Result<Admitted> {
-    let model = sail_contracts_ir::parse_source(text).map_err(syntax)?;
-    passive(&model.file.attrs)?;
-    items(&model.file.items)?;
+pub(super) fn admit(text: &str, profile: u32) -> Result<Admitted> {
+    let model = sail_contracts_ir::parse_source_with_profile(text, profile).map_err(syntax)?;
+    file_passive(&model.file.attrs, profile)?;
+    items(&model.file.items, profile)?;
     let mut structs = model
         .structs
         .keys()
@@ -32,12 +32,14 @@ pub(super) fn admit(text: &str) -> Result<Admitted> {
                 name.clone(),
                 Struct {
                     fields: BTreeMap::new(),
+                    variants: None,
                 },
             )
         })
         .collect::<BTreeMap<_, _>>();
+    admit_enums(&model, &mut structs)?;
     for (name, value) in &model.structs {
-        scalar_struct(value)?;
+        scalar_struct(value, profile)?;
         let module = name.split("::").map(str::to_owned).collect::<Vec<_>>();
         let module = &module[..module.len().saturating_sub(1)];
         let mut fields = BTreeMap::new();
@@ -54,7 +56,13 @@ pub(super) fn admit(text: &str) -> Result<Admitted> {
                 .ok_or_else(|| unsupported("tuple structs are unsupported"))?;
             fields.insert(name.to_string(), ty);
         }
-        structs.insert(name.clone(), Struct { fields });
+        structs.insert(
+            name.clone(),
+            Struct {
+                fields,
+                variants: None,
+            },
+        );
     }
     let mut predicates = BTreeMap::new();
     for value in &model.functions {
@@ -73,14 +81,18 @@ pub(super) fn admit(text: &str) -> Result<Admitted> {
                 "old and __sail_ names are reserved by neutral lowering",
             ));
         }
-        let (_, inputs, _) = signature(value, &structs)?;
+        let (_, inputs, _) = signature(value, &structs, profile)?;
         let mut body = BodyAdmission { error: None };
         body.visit_block(&value.function.item.block);
         if let Some(error) = body.error {
             return Err(error);
         }
         if value.function.predicate {
-            if value.owner.is_some() || inputs.iter().any(|(_, ty)| !ty.scalar()) {
+            if value.owner.is_some()
+                || inputs
+                    .iter()
+                    .any(|(_, ty)| !matches!(ty, Type::Bool | Type::Integer { .. }))
+            {
                 return Err(unsupported(
                     "requirement predicates must be free functions with scalar inputs",
                 ));
@@ -122,6 +134,7 @@ pub(super) type Signature = (Option<String>, Vec<(String, Type)>, Type);
 pub(super) fn signature(
     value: &SourceFunction,
     structs: &BTreeMap<String, Struct>,
+    profile: u32,
 ) -> Result<Signature> {
     let owner = value
         .owner
@@ -160,10 +173,13 @@ pub(super) fn signature(
                         "mutable by-value inputs need explicit prestate lowering and are unsupported",
                     ));
                 }
-                inputs.push((
-                    pattern.ident.to_string(),
-                    resolve_type(&input.ty, value, owner.as_deref(), structs)?,
-                ));
+                let ty = resolve_type(&input.ty, value, owner.as_deref(), structs)?;
+                if profile == 2 && matches!(ty, Type::Named(_) | Type::Enum(_)) {
+                    return Err(unsupported(
+                        "profile two nominal inputs require shared references; owning non-Copy inputs need separate postcondition ownership analysis",
+                    ));
+                }
+                inputs.push((pattern.ident.to_string(), ty));
             }
         }
     }
@@ -171,6 +187,9 @@ pub(super) fn signature(
         syn::ReturnType::Default => Type::Unit,
         syn::ReturnType::Type(_, output) => resolve_type(output, value, owner.as_deref(), structs)?,
     };
+    if matches!(output, Type::Reference(..)) {
+        return Err(unsupported("neutral results must be owned values"));
+    }
     Ok((owner, inputs, output))
 }
 
@@ -189,7 +208,7 @@ fn resolve_type(
     Type::parse(ty, &value.module, structs)
 }
 
-fn scalar_struct(value: &syn::ItemStruct) -> Result<()> {
+fn scalar_struct(value: &syn::ItemStruct, profile: u32) -> Result<()> {
     if [
         "bool", "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128", "Int",
     ]
@@ -222,13 +241,75 @@ fn scalar_struct(value: &syn::ItemStruct) -> Result<()> {
             passive(std::slice::from_ref(attribute))?;
         }
     }
-    if derives != BTreeSet::from(["Clone".to_owned(), "Copy".to_owned()]) {
+    if (profile == 1 && derives != BTreeSet::from(["Clone".to_owned(), "Copy".to_owned()]))
+        || (profile == 2 && derives != BTreeSet::from(["Debug".to_owned()]))
+    {
         return Err(unsupported(
             "scalar structs must derive exactly Clone and Copy; arbitrary trait implementations are unsupported",
         ));
     }
     for field in &value.fields {
         passive(&field.attrs)?;
+    }
+    Ok(())
+}
+
+fn file_passive(attributes: &[syn::Attribute], profile: u32) -> Result<()> {
+    for attribute in attributes {
+        if profile == 2
+            && attribute.path().is_ident("forbid")
+            && attribute
+                .parse_args::<syn::Ident>()
+                .is_ok_and(|v| v == "unsafe_code")
+        {
+            continue;
+        }
+        passive(std::slice::from_ref(attribute))?;
+    }
+    Ok(())
+}
+
+fn unit_enum(value: &syn::ItemEnum) -> Result<()> {
+    if [
+        "bool", "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128", "Int",
+    ]
+    .contains(&value.ident.unraw().to_string().as_str())
+    {
+        return Err(unsupported("enum names cannot shadow scalar types"));
+    }
+    if !value.generics.params.is_empty()
+        || value.generics.where_clause.is_some()
+        || value.variants.is_empty()
+    {
+        return Err(unsupported(
+            "only nongeneric nonempty unit enums are supported",
+        ));
+    }
+    let mut derives = BTreeSet::new();
+    for attribute in &value.attrs {
+        if attribute.path().is_ident("derive") {
+            let paths = attribute
+                .parse_args_with(
+                    syn::punctuated::Punctuated::<syn::Path, syn::Token![,]>::parse_terminated,
+                )
+                .map_err(syntax)?;
+            derives.extend(paths.iter().map(|p| p.to_token_stream().to_string()));
+        } else {
+            passive(std::slice::from_ref(attribute))?;
+        }
+    }
+    if derives != BTreeSet::from(["Debug".into(), "PartialEq".into(), "Eq".into()]) {
+        return Err(unsupported(
+            "profile two unit enums require exactly Debug, PartialEq and Eq derives",
+        ));
+    }
+    for variant in &value.variants {
+        passive(&variant.attrs)?;
+        if !matches!(variant.fields, syn::Fields::Unit) || variant.discriminant.is_some() {
+            return Err(unsupported(
+                "enum payloads and explicit discriminants are unsupported",
+            ));
+        }
     }
     Ok(())
 }
@@ -269,11 +350,12 @@ fn annotated(attributes: &[syn::Attribute]) -> bool {
         .any(|a| sail_contracts_ir::AttributeKind::from_attribute(a).is_some())
 }
 
-fn items(values: &[syn::Item]) -> Result<()> {
+fn items(values: &[syn::Item], profile: u32) -> Result<()> {
     for value in values {
         match value {
             syn::Item::Fn(function) if annotated(&function.attrs) => {}
             syn::Item::Struct(_) => {}
+            syn::Item::Enum(_) if profile == 2 => {}
             syn::Item::Use(import) if import.leading_colon.is_none() => imports(&import.tree)?,
             syn::Item::Mod(module) => {
                 passive(&module.attrs)?;
@@ -282,7 +364,7 @@ fn items(values: &[syn::Item]) -> Result<()> {
                         "out-of-line modules require a source closure and are unsupported in the single-file slice",
                     ));
                 };
-                items(nested)?;
+                items(nested, profile)?;
             }
             syn::Item::Impl(implementation) => {
                 if implementation.trait_.is_some()
@@ -354,4 +436,21 @@ impl<'ast> Visit<'ast> for BodyAdmission {
         }
         syn::visit::visit_lit(self, value);
     }
+}
+
+fn admit_enums(model: &SourceModel, structs: &mut BTreeMap<String, Struct>) -> Result<()> {
+    for (name, value) in &model.enums {
+        unit_enum(value)?;
+        if structs.contains_key(name) {
+            return Err(unsupported("duplicate nominal type"));
+        }
+        structs.insert(
+            name.clone(),
+            Struct {
+                fields: BTreeMap::new(),
+                variants: Some(value.variants.iter().map(|v| v.ident.to_string()).collect()),
+            },
+        );
+    }
+    Ok(())
 }

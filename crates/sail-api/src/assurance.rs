@@ -163,8 +163,10 @@ pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
         || document.job.error.is_some()
         || document.repair.is_some()
         || contracts.version != crate::contracts::VERSION
-        || !matches!(manifest.version, 1 | 2)
-        || manifest.contract_version != 1
+        || !matches!(
+            (manifest.version, manifest.contract_version),
+            (1 | 2, 1) | (3, 2)
+        )
         || manifest.bindings.is_empty()
         || document.job.input_revision.as_deref() != Some(manifest.original_sha256.as_str())
         || !valid_digest(&manifest.original_sha256)

@@ -30,6 +30,9 @@ values. These runtime checks are separate from SMT verification.
 through Sail's private service and retain its actual contract proof evidence.
 [Bounded source mutation](docs/neutral-mutation.md) retains separate actual
 verifier rejection, survival and inconclusive evidence under unchanged contracts.
+[Scalar literal witnesses](docs/literal-witnesses.md) use separately attributed
+SMT queries and independent concrete evaluation to find admitted scalar contract
+violations while preserving the native verifier's original outcomes.
 
 Rust callers can also run [isolated native temporal jobs](docs/temporal-jobs.md):
 model checking, finite simulation and independent trace validation through a

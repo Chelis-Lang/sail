@@ -7,6 +7,37 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn scalar_witness_preparation_uses_source_owner_without_starting_jobs() -> TestResult {
+    let fixture = Fixture::new()?;
+    let mut server = fixture.server()?;
+    let source = "#[sail_contracts::satisfies(\"FLAG\")] #[sail_contracts::ensures(|ret| ret == value)] fn candidate(value:bool)->bool {value}";
+    let input = Submission {
+        profile: 1,
+        source: source.into(),
+        source_sha256: sail_api::mutation::digest(source.as_bytes()),
+        crate_name: "neutral".into(),
+    };
+    let client = fixture.client();
+    let plan = client.literal_witnesses(&input, 8)?;
+    assert_eq!(
+        plan,
+        sail_verus::contracts::literal_witness::prepare(&input, 8)?
+    );
+    plan.validate()?;
+    assert_eq!(plan.prepared.len(), 2);
+    let Response::List(jobs) = client.call(&Request::List { project_dir: None })? else {
+        return Err("job list response".into());
+    };
+    assert!(jobs.is_empty());
+    assert!(client.literal_witnesses(&input, 0).is_err());
+    let mut changed = input;
+    changed.source.push(' ');
+    assert!(client.literal_witnesses(&changed, 8).is_err());
+    server.shutdown();
+    Ok(())
+}
 struct Fixture {
     root: PathBuf,
     worker: PathBuf,
@@ -48,6 +79,7 @@ impl Fixture {
         let source =
             include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.rs").to_owned();
         let input = Submission {
+            profile: 1,
             source_sha256: sail_key::QueryKey(sail_key::sha256(source.as_bytes())).to_string(),
             source,
             crate_name: "neutral".into(),
@@ -307,6 +339,7 @@ fn retain_version_one(fixture: &Fixture, source: &str, manifest: &str) -> TestRe
     assert_eq!(finished(&client, &job.id)?.state, Lifecycle::Completed);
     server.shutdown();
     let input = Submission {
+        profile: 1,
         source: source.into(),
         source_sha256: sail_key::QueryKey(sail_key::sha256(source.as_bytes())).to_string(),
         crate_name: "neutral".into(),

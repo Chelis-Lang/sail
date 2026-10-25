@@ -9,7 +9,10 @@ neutral source family. `Capabilities.neutral_contracts_version` advertises
 version 1. A client requires that exact capability before submitting; an older
 endpoint is an explicit unsupported service, with no ordinary-Verus fallback.
 
-`SubmitContracts` carries exactly `source`, `source_sha256` and `crate_name`.
+`SubmitContracts` carries `source`, `source_sha256`, `crate_name` and an optional
+`profile`. Omission selects profile one and retains its exact serialized shape.
+Profile two requires `Capabilities.neutral_contract_profiles` to contain `2`;
+older services cannot silently accept it. Unknown profiles are refused.
 The source is exact UTF-8, at most 64 KiB. The required lowercase SHA-256 must
 match those bytes. Unknown request fields are rejected. No project directory,
 shadow, executable, arguments, environment, dependency selection or verifier
@@ -38,9 +41,11 @@ backend. The original project result remains the existing result payload;
 for ordinary jobs. It contains the manifest, conservative proof and translation
 trust, not a fabricated per-requirement verdict.
 
-Every newly executed job requires lowering semantics version two; protocol
-version one and neutral syntax version one remain unchanged. A worker cannot
-supply even an unaffected historical lowering for a new job.
+New profile-one jobs require lowering semantics version two. Profile-two jobs
+require lowering version three and contract version two. Source-job protocol
+version one remains unchanged. Reads bind the manifest profile to the exact
+original selected submission. A worker cannot supply a historical lowering for
+a new job.
 
 Successful processing with a backend result is `Completed`, including a failing
 body whose contract is `NotProved`. Unsupported source, missing tools, setup,

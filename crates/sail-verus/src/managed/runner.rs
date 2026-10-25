@@ -943,6 +943,49 @@ fn build_environment(
     Some((environment, plan))
 }
 
+fn selected_scripts(data: &Value, expected: &BTreeSet<(String, String, String)>) -> bool {
+    let closure = selected_closure(data, expected);
+    data["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|package| {
+            closure
+                .as_ref()
+                .is_none_or(|ids| package["id"].as_str().is_none_or(|id| ids.contains(id)))
+                && package["targets"].as_array().is_some_and(|targets| {
+                    targets.iter().any(|target| {
+                        target["kind"]
+                            .as_array()
+                            .is_some_and(|kinds| kinds.iter().any(|kind| kind == "custom-build"))
+                    })
+                })
+        })
+}
+
+#[cfg(test)]
+mod cargo_protocol_tests {
+    use super::*;
+
+    #[test]
+    fn only_scripts_in_the_selected_dependency_closure_require_cargo_tracking() {
+        let mut data = serde_json::json!({
+            "packages":[
+                {"id":"root","targets":[{"kind":["lib"]}]},
+                {"id":"script","targets":[{"kind":["custom-build"]}]}
+            ],
+            "resolve":{"nodes":[
+                {"id":"root","dependencies":[]},
+                {"id":"script","dependencies":[]}
+            ]}
+        });
+        let expected = BTreeSet::from([("root".to_owned(), "root".to_owned(), "lib".to_owned())]);
+        assert!(!selected_scripts(&data, &expected));
+        data["resolve"]["nodes"][0]["dependencies"] = serde_json::json!(["script"]);
+        assert!(selected_scripts(&data, &expected));
+    }
+}
+
 fn invoke(
     config: &Config,
     paths: &Paths,
@@ -2710,6 +2753,20 @@ pub(crate) fn run_engine_held(
             )
         });
     let (environment, unit_plan) = unit_environment.unwrap_or((Value::Null, None));
+    if paths.reuse
+        && selected_scripts(&data, &expected)
+        && let Some(version) =
+            super::build_environment::unsupported_cargo(&paths.run.join("build-environment"))
+    {
+        let toolchain = crate::toolchain::Pins::embedded()?.verus.rust_toolchain;
+        return Err(Error::new(
+            "SAIL3139",
+            format!(
+                "Cargo {version} cannot track this project's build-script inputs for proof reuse; \
+                 select Rust {toolchain}, for example `RUSTUP_TOOLCHAIN={toolchain} sail verify`, to enable reuse"
+            ),
+        ));
+    }
     if paths.reuse {
         data["sail_build_environment"] = environment;
     }

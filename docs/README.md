@@ -11,6 +11,7 @@ experimental features and validation limits are identified explicitly.
 | Install an explicit version or local archive and check prerequisites | [Installation](install.md) |
 | Submit neutral Rust source to Sail-owned verification jobs | [Neutral source jobs](neutral-contract-jobs.md), [service specification](spec/neutral-contract-jobs.md) |
 | Run and retain bounded neutral body-mutation campaigns | [Neutral mutation](neutral-mutation.md), [qualification limits](validation/neutral-mutation.md) |
+| Find independently evaluated scalar literal-contract counterexamples | [Scalar witnesses](literal-witnesses.md), [qualification](validation/scalar-literal-witnesses.md), [decision](decisions/0077-scalar-literal-contract-witnesses.md) |
 | Inspect requirement IDs, proof tiers and qualifiers from retained neutral jobs | [Requirement assurance](requirement-assurance.md) |
 | Check scalar contracts on ordinary Rust functions with explicit requirement IDs | [Neutral contracts](neutral-contracts.md), [source specification](spec/neutral-contracts.md) |
 | Verify, reuse complete reports, watch edits, inspect and cancel jobs | [Workspace verification](workspace-verification.md) |
@@ -52,6 +53,8 @@ The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [combined release matrix](validation/release-matrix.md) states current
 Linux/Mac measurements and remaining gates; [mutation qualification](validation/mutation-suite.md)
 covers the broader edit loops and soundness checks.
+The [erasure index record](validation/shadow-index.md) tracks the current
+runtime improvement and its installed consumer checks.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
@@ -184,3 +187,5 @@ preserved earlier failures.
 [Unscheduled-script validation](validation/unscheduled-script-cleaning.md) records
 the qualified #174/#215 implementation, its nine-sample targeted gain, complete
 native/Mac gates, unchanged Vest costs and preserved historical failures.
+
+[Neutral source profile two qualification](validation/neutral-source-profile-two.md) records explicit flat Rust admission, retained legacy identities and the bounded UNKNOWN diagnostic.
