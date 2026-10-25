@@ -16,6 +16,7 @@
 
 /// `(crate, internal crates it may depend on directly)`.
 pub const ALLOWED: &[(&str, &[&str])] = &[
+    ("sail-acceptance", &[]),
     ("sail-contracts-ir", &[]),
     ("sail-contracts-macros", &["sail-contracts-ir"]),
     ("sail-contracts", &["sail-contracts-macros"]),
@@ -27,14 +28,17 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     ("sail-smtlib", &[]),
     ("sail-session", &["sail-smtlib"]),
     ("sail-key", &["sail-smtlib", "sail-session"]),
-    ("sail-cache", &["sail-key"]),
+    ("sail-cache", &["sail-key", "sail-acceptance"]),
     ("sail-solver", &["sail-smtlib", "sail-session"]),
     ("sail-ledger", &["sail-key"]),
     (
         "sail-portfolio",
         &["sail-smtlib", "sail-session", "sail-solver", "sail-ledger"],
     ),
-    ("sail-api", &["sail-key", "sail-ledger", "sail-smtlib"]),
+    (
+        "sail-api",
+        &["sail-key", "sail-ledger", "sail-smtlib", "sail-acceptance"],
+    ),
     (
         "sail-runtime",
         &[
@@ -47,7 +51,13 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     ),
     (
         "sail-shim",
-        &["sail-smtlib", "sail-session", "sail-key", "sail-api"],
+        &[
+            "sail-smtlib",
+            "sail-session",
+            "sail-key",
+            "sail-api",
+            "sail-acceptance",
+        ],
     ),
     (
         "sail-verus",
@@ -57,6 +67,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
             "sail-ledger",
             "sail-api",
             "sail-contracts-ir",
+            "sail-acceptance",
         ],
     ),
     (

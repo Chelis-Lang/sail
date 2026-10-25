@@ -1537,10 +1537,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
+name = "sail-acceptance"
+version = "0.1.0"
+
+[[package]]
 name = "sail-api"
 version = "0.1.0"
 dependencies = [
  "rustix",
+ "sail-acceptance",
  "sail-key",
  "sail-ledger",
  "sail-smtlib",
@@ -1571,6 +1576,7 @@ name = "sail-cache"
 version = "0.1.0"
 dependencies = [
  "ed25519-dalek",
+ "sail-acceptance",
  "sail-key",
  "serde",
  "serde_json",
@@ -1740,6 +1746,7 @@ name = "sail-shim"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "sail-acceptance",
  "sail-api",
  "sail-cache",
  "sail-daemon",
@@ -1774,6 +1781,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustix",
+ "sail-acceptance",
  "sail-api",
  "sail-contracts",
  "sail-contracts-ir",
