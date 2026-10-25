@@ -80,6 +80,7 @@ pub fn checked_factory_refines_function(report: &Report, policy: CompletionPolic
         out.is_some() ==> function_refines(
             &report.crates@[crate_index as int].functions@[function_index as int], &out.unwrap()),
         out.is_some() ==> successful_report(report, policy),
+        out.is_some() ==> !acceptance::verification_disabled(report.command@),
 {
     let authority = acceptance::complete_report_ordered(report, policy, forward, inverse);
     if authority.is_none() { return None; }
@@ -129,6 +130,15 @@ pub fn interrupted_report_refused(report: &Report, forward: &[usize], inverse: &
     ensures refused,
 {
     acceptance::complete_report_ordered(report, CompletionPolicy::Receipt, forward, inverse).is_none()
+}
+
+/// Compile-only success is refused for every proof-authority policy.
+pub fn compile_only_report_refused(report: &Report, policy: CompletionPolicy,
+    forward: &[usize], inverse: &[usize]) -> (refused: bool)
+    requires acceptance::verification_disabled(report.command@),
+    ensures refused,
+{
+    acceptance::complete_report_ordered(report, policy, forward, inverse).is_none()
 }
 
 }

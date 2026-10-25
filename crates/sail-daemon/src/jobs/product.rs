@@ -9,6 +9,15 @@ use sail_api::proof::{Cursor, Observation, Target};
 
 use super::{State, get, store};
 
+/// Private on-disk provenance; the public baseline contract remains unchanged.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct StoredBaseline<T> {
+    #[serde(flatten)]
+    baseline: T,
+    #[serde(default)]
+    proof_authority_revision: u32,
+}
+
 fn completed(state: &State, id: &str) -> io::Result<ProjectResult> {
     let job = get(state, id)?;
     if job.contracts.is_some() {
@@ -119,7 +128,11 @@ pub(super) fn save_baseline(state: &State, id: &str, name: &str) -> io::Result<B
         .mode(0o600)
         .open(&temporary)?;
     let result = (|| {
-        file.write_all(&serde_json::to_vec(&baseline).map_err(io::Error::other)?)?;
+        let stored = StoredBaseline {
+            baseline: &baseline,
+            proof_authority_revision: store::PROOF_AUTHORITY_REVISION,
+        };
+        file.write_all(&serde_json::to_vec(&stored).map_err(io::Error::other)?)?;
         file.sync_all()?;
         // Atomic create without overwriting an existing immutable named baseline.
         std::fs::hard_link(&temporary, &target)
@@ -171,8 +184,9 @@ pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
             "SAIL0814: baseline exceeds RPC limit; retained file remains available",
         ));
     }
-    let baseline: Baseline = serde_json::from_slice(&bytes)
+    let stored: StoredBaseline<Baseline> = serde_json::from_slice(&bytes)
         .map_err(|error| io::Error::other(format!("SAIL0905: invalid baseline: {error}")))?;
+    let mut baseline = stored.baseline;
     if baseline.version != VERSION
         || baseline.name != name
         || baseline.job_id.is_empty()
@@ -204,6 +218,8 @@ pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
             .exists()
     {
         super::contracts::validate_baseline(state, &baseline, &bytes)?;
+    } else {
+        store::withhold_legacy_authority(&mut baseline.result, stored.proof_authority_revision);
     }
     Ok(baseline)
 }

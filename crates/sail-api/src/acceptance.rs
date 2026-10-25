@@ -101,6 +101,17 @@ sail_spec! {
             && string_bytes(&args[i]) == b"--"@ && focused_argument(string_bytes(&args[j]))
     }
 
+    pub open spec fn verification_disabled(args: Seq<String>) -> bool {
+        exists |i: int, j: int| 0 <= i < j < args.len()
+            && string_bytes(&args[i]) == b"--"@
+            && string_bytes(&args[j]) == b"--no-verify"@
+    }
+
+    pub open spec fn options_disable_verification(args: Seq<String>) -> bool {
+        exists |i: int| 0 <= i < args.len() && string_bytes(&args[i]) == b"--no-verify"@
+            && forall |j: int| 0 <= j < i ==> string_bytes(&args[j]) != b"--"@
+    }
+
     pub open spec fn target_match(e: &RequestedTarget, t: &TargetResult) -> bool {
         e.package@ == string_bytes(&t.package_id) && e.name@ == string_bytes(&t.target)
             && exists |i: int| 0 <= i < t.kind@.len() && e.kind@ == string_bytes(&t.kind@[i])
@@ -234,6 +245,7 @@ sail_spec! {
 
     pub open spec fn successful_records(r: &Report, policy: CompletionPolicy) -> bool {
         r.schema_version == crate::output::SCHEMA_VERSION && r.exit_code == Some(0i32) && r.error.is_none()
+            && !verification_disabled(r.command@)
             && r.crates@.len() > 0
             && (forall |i: int| 0 <= i < r.crates@.len() ==> crate_completed(&r.crates@[i], policy))
             && (forall |i: int, j: int| 0 <= i < r.crates@.len() && 0 <= j < r.crates@[i].functions@.len()
@@ -264,6 +276,69 @@ sail_spec! {
 
     pub closed spec fn report_authority_valid(a: &CompleteReport) -> bool {
         successful_report(a.report, a.policy)
+    }
+}
+
+sail_verified! {
+    /// Refuses compile-only options in a Cargo command's forwarded Verus arguments.
+    /// A successful zero-function document alone does not establish verification.
+    pub fn verification_enabled_command(args: &[String]) -> (out: bool)
+        requires(true)
+        ensures(out == !verification_disabled(args@))
+    {
+        let mut separator = false;
+        let mut i = 0usize;
+        sail_while! { (i < args.len())
+            invariant(i <= args.len(), !verification_disabled(args@.take(i as int)),
+                separator == (exists |j: int| 0 <= j < i && string_bytes(&args@[j]) == b"--"@))
+            decreases(args.len() - i)
+            {
+                let bytes = args[i].as_str().as_bytes();
+                if separator && exact_bytes(bytes, b"--no-verify") { return false; }
+                if exact_bytes(bytes, b"--") { separator = true; }
+                i += 1;
+            }
+        }
+        sail_proof! { assert(args@.take(i as int) =~= args@); }
+        true
+    }
+}
+
+sail_verified! {
+    /// Checks decoded effective Verus options before their Rust-argument separator.
+    pub fn verification_enabled_options(args: &[String]) -> (out: bool)
+        requires(true)
+        ensures(out == !options_disable_verification(args@))
+    {
+        let mut i = 0usize;
+        sail_while! { (i < args.len())
+            invariant(i <= args.len(),
+                forall |j: int| 0 <= j < i ==> string_bytes(&args@[j]) != b"--"@
+                    && string_bytes(&args@[j]) != b"--no-verify"@)
+            decreases(args.len() - i)
+            {
+                let bytes = args[i].as_str().as_bytes();
+                if exact_bytes(bytes, b"--") {
+                    sail_proof! {
+                        assert(string_bytes(&args@[i as int]) == b"--"@);
+                        reveal(options_disable_verification);
+                        if options_disable_verification(args@) {
+                            let k = choose |k: int| 0 <= k < args@.len()
+                                && string_bytes(&args@[k]) == b"--no-verify"@
+                                && forall |j: int| 0 <= j < k ==> string_bytes(&args@[j]) != b"--"@;
+                            if k < i { assert(string_bytes(&args@[k]) != b"--no-verify"@); }
+                            else if k > i { assert(string_bytes(&args@[i as int]) != b"--"@); }
+                            else { assert(string_bytes(&args@[k]).len() == 2); }
+                        }
+                        assert(!options_disable_verification(args@));
+                    }
+                    return true;
+                }
+                if exact_bytes(bytes, b"--no-verify") { return false; }
+                i += 1;
+            }
+        }
+        true
     }
 }
 
@@ -615,6 +690,7 @@ sail_verified! {
             (successful_records(report, policy) && report.crates@.len() == 1
                 && report.crates@[0].functions@.len() <= 1) ==> out)
     {
+        if !verification_enabled_command(&report.command) { return false; }
         if report.schema_version != crate::output::SCHEMA_VERSION || report.exit_code != Some(0) || report.error.is_some()
             || report.crates.is_empty() { return false; }
         let engine_allowed = match (policy, &report.engine) {

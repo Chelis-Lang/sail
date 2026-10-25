@@ -19,7 +19,7 @@ serde and presentation-only declarations while retaining every authority-read
 field, enum variant and the actual schema constant. This restricted declaration
 mechanism is part of the proof tool's trusted source-selection boundary.
 
-Factories check normal zero exit, no setup error, nonempty crate inventory,
+Factories check verification-enabled forwarded arguments, normal zero exit, no setup error, nonempty crate inventory,
 explicit zero verifier errors, no VIR error, every function's confirmed verified
 verdict and evidence tier, provenance/count consistency, every summary counter,
 obligation ownership and global ID uniqueness. Count accumulation checks overflow.
@@ -41,6 +41,22 @@ sorter can cause refusal but cannot hide, duplicate or replace an obligation.
 Sorting is O(n log n); checked certificate traversal is O(n) plus ID bytes.
 Target matching retains the existing O(requested × observed) approach with
 uniqueness checked in both directions.
+
+The pinned verifier explicitly allows `--no-verify` to return success, zero
+verified/error counts and an empty function inventory. Every report-authority
+policy rejects that compile-only mode. The actual per-package decoder controls
+its report marker in both directions; missing or invalid decoding records an
+error and withholds proof authority. Other implicit logging arguments are not
+inserted into the reported command. Legitimate enabled zero-function runs still
+pass. See [VI-0035](../verus-issues/VI-0035-no-verify-success.md).
+
+Receipt format five invalidates earlier receipts. Retained jobs and ordinary
+baseline files privately record a producer-admissibility revision; missing older
+markers default to unrecorded, and their target-completion flags are withheld.
+This preserves input currentness, reports and historical verdicts. Cached frames
+bind the revision, and copying old evidence into a fresh baseline preserves its
+withheld flags. The marker is neither authentication nor sufficient proof
+authority; the actual report still passes all checked predicates.
 
 | Production consumer | Checked authority |
 |---|---|
@@ -80,9 +96,10 @@ wrong/duplicate IDs, arbitrary bad sorting certificates, partial commands and
 stale/duplicate selected targets. Exact `foo-bar`/`foo_bar` and failed-sibling
 controls exercise independent requested coverage.
 
-Nine actual guard removals must fail ordinary full-crate stock verification:
+Actual guard removals must fail ordinary full-crate stock verification:
 confirmation, whole scope and terminal summary, requested coverage, summary count, normal exit,
-Current selected evidence, ID uniqueness and provenance counts. Safety claims
+Current selected evidence, ID uniqueness, provenance counts and verification-enabled
+configuration (both forwarded and decoded options). Safety claims
 remain unchanged. The owning validation record and source manifest carry final
 counts and platform qualification. Local proofs do not substitute for native
 gates or corpus conformance.
@@ -113,11 +130,11 @@ are built by the following guarded model transitions:
 
 | Transition | Required observations and checks |
 |---|---|
-| `start` | A well-formed exact invocation context and scope; direct or engine origin. A fallback cannot enter through this constructor. |
+| `start` | A well-formed exact invocation context and scope; direct or engine origin. The invocation separately records Enabled or CompileOnly verification configuration. A fallback cannot enter through this constructor. |
 | `stream_started` / `stream_closed` | A child start creates an independent mandatory ledger slot for the declared context solver; a matching well-formed transcript closes that slot exactly once. Documents cannot create or replace slots. |
 | `observe` | Append a verifier document to the actual started run's observation history. The document remains a candidate, not proof authority. |
 | `interrupt` / `malformed` | Permanently prevent that stream from completing; later observations cannot restore Running. |
-| `complete` | Running stream, normal zero process exit, ordered completion point, at least one verifier document, matching run ID/target/scope/context for every document, checked successful records, every started child closed, and exact equality between the independent child ledger and the complete document inventory. |
+| `complete` | Running stream, Enabled verification configuration, normal zero process exit, ordered completion point, at least one verifier document, matching run ID/target/scope/context for every document, checked successful records, every started child closed, and exact equality between the independent child ledger and the complete document inventory. |
 | `finish_project` | Normal successful project termination and a completion set whose contexts, observation points and origins match the selected direct/engine/fallback path. |
 | `validate_scoped` | Exact acceptance context, a fresh acceptance point, complete one-to-one requested target coverage and exact requested scope. |
 | `validate_current_complete` | All scoped checks plus whole-target scope. |
@@ -145,7 +162,8 @@ agreement with the summary; failed, unknown and provisional counts must be zero.
 Malformed/VIR output, missing terminal success, inconsistent counts and
 unconfirmed records cannot authorize completion.
 
-A complete zero-function invocation is permitted: it still needs a matching
+A complete zero-function invocation is permitted only with Enabled configuration:
+a compile-only zero-function success cannot complete. It still needs a matching
 started invocation, a nonempty document collection, explicit successful verifier
 termination and normal process completion. No inference from an empty query or
 function collection creates an invocation-completeness fact.
@@ -211,15 +229,16 @@ witness, explicitly emitting a child-start and child-close event for each
 transcript before completing the run. The composed witness must include real nonempty input/query evidence;
 legitimate no-SMT invocations may still have an empty session inventory.
 
-Seven deliberate guard removals must fail ordinary full-crate proof checking:
+Eight deliberate guard removals must fail ordinary full-crate proof checking:
 whole/partial promotion, missing function confirmation, missing requested-target
 coverage, completing an invocation without documents,
 accepting a stale context, accepting a document from another context, and
-ignoring the independent child-stream ledger. They retain the original claims rather than weakening the safety theorem.
+ignoring the independent child-stream ledger, and treating compile-only success
+as verification. They retain the original claims rather than weakening the safety theorem.
 
-The local shared-driver run reports `verified: 62`, `errors: 0`, normal exit
-zero and entire-crate verification. That count includes the shared context's
-two checked lemmas. The pin remains upstream stock Verus
+The owning captured manifest records the full current driver count, including
+the shared context's two checked lemmas and verification-setting controls.
+Checking requires normal exit zero and entire-crate verification. The pin remains upstream stock Verus
 `0.2026.10.18.7d82994`, commit
 `7d829946231d6413a398f6e4160cdfe951261dad`, Rust `1.99.1`, pinned Z3 `4.16.0`.
 Use the owning checker to capture the shared source graph, validate runtime

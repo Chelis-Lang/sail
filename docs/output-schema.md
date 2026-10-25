@@ -77,7 +77,7 @@ omitted when no portfolio was requested.
 | `schema_version` | `2` | This schema. |
 | `sail_version` | string | The `sail` that wrote it, exactly as `sail --version` prints it (a release build includes its suffix, for example `0.1.0-rc.5`). |
 | `mode` | string | `default`, or explicitly selected `accept-first-proof` (charter rule 8). |
-| `command` | string[] | The arguments passed to `cargo verus verify`, without sail's own flags. |
+| `command` | string[] | Cargo/Verus arguments without sail's own flags, adjusted to this target's effective focused and compile-only settings. |
 | `exit_code` | int \| null | `cargo verus verify`'s exit code. |
 | `solver` | object \| null | `name` (`z3`), `version` (as Z3 reported it), `path`, `sha256` of the binary. |
 | `cache.daemon` | bool | Whether solver sessions could be served from the cache daemon. |
@@ -87,6 +87,12 @@ omitted when no portfolio was requested.
 | `summary` | object | Counts over all functions: `functions`, `verified`, `failed`, `unknown`, `provisional`, `unstable`. |
 | `error` | object \| null | `code` and `message` when sail could not run Verus at all. |
 | `engine` | object (optional) | Only for an explicitly selected source engine (ADR 0027); see [Engine provenance](#engine-provenance). Omitted for stock verification. |
+
+Cargo can forward different Verus options to a requested target and its
+dependencies. A report retains the original Cargo selection and other options,
+while focused selectors and `--no-verify` describe the effective package scope.
+Implicit logging flags are not added to this field. Compile-only success cannot
+establish proof authority; input `currentness` remains a separate observation.
 
 A crate has a `name` (from its functions' paths), `verus` (Verus's own
 `verified`, `errors`, `success` and `encountered_vir_error`), and `functions`,

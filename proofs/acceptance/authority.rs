@@ -79,6 +79,9 @@ pub enum ProcessEnd { Exit(i32), Interrupted, Malformed }
 #[derive(Structural, PartialEq, Eq, Copy, Clone)]
 pub enum Origin { Direct, Engine, Fallback(u64) }
 
+#[derive(Structural, PartialEq, Eq, Copy, Clone)]
+pub enum VerificationSetting { Enabled, CompileOnly }
+
 /// Metadata captured when this particular modeled verifier process starts.
 pub struct Invocation {
     pub target: TargetId,
@@ -87,6 +90,8 @@ pub struct Invocation {
     pub run_id: u64,
     pub started_at: u64,
     pub origin: Origin,
+    /// Declared verifier invocation mode, independent of process success.
+    pub verification: VerificationSetting,
 }
 
 pub open spec fn invocation_wf(inv: &Invocation) -> bool {
@@ -381,6 +386,7 @@ pub proof fn start_fallback(failed: EngineFailure, invocation: Invocation)
 
 pub closed spec fn can_complete(run: &RunningInvocation, end: ProcessEnd, point: u64) -> bool {
     running_wf(run) && run.stream == StreamState::Running
+        && run.invocation.verification == VerificationSetting::Enabled
         && end == ProcessEnd::Exit(0) && point >= run.invocation.started_at
         && run.documents.len() > 0
         && every_child_closed(run.children)
@@ -753,10 +759,11 @@ fn example_request(whole: bool) -> (out: Request)
 fn example_invocation(whole: bool, id: u64, origin: Origin) -> (out: Invocation)
     ensures invocation_wf(&out), out.context@ == example_context(whole),
         out.run_id == id, out.started_at == id, out.origin == origin,
+        out.verification == VerificationSetting::Enabled,
         sample_target(&out.target, 2), scope_matches(&out.scope, example_context(whole)),
 {
     Invocation { target: example_target(2), scope: example_scope(whole),
-        context: Ghost(example_context(whole)), run_id: id, started_at: id, origin }
+        context: Ghost(example_context(whole)), run_id: id, started_at: id, origin, verification: VerificationSetting::Enabled }
 }
 
 fn example_document(whole: bool, id: u64, has_function: bool,
@@ -841,6 +848,7 @@ proof fn record_child_lifecycles(run: RunningInvocation, transcripts: Seq<Solver
 proof fn single_completion(invocation: Invocation, document: VerifierDocument, point: u64)
     -> (out: CompletedInvocation)
     requires invocation_wf(&invocation), !matches!(invocation.origin, Origin::Fallback(_)),
+        invocation.verification == VerificationSetting::Enabled,
         document_matches(&invocation, &document), document_good(&document), document_streams_valid(&document),
         point >= invocation.started_at,
     ensures out.valid(), out.invocation() == invocation, out.context() == invocation.context@,
@@ -935,7 +943,7 @@ pub fn example_candidate(Ghost(context): Ghost<ModelContext>,
     let mut targets = Vec::new(); targets.push(example_target(2));
     let request = Request { targets, scope: example_scope(true), context: Ghost(context) };
     let invocation = Invocation { target: example_target(2), scope: example_scope(true),
-        context: Ghost(context), run_id: 1, started_at: 0, origin: Origin::Direct };
+        context: Ghost(context), run_id: 1, started_at: 0, origin: Origin::Direct, verification: VerificationSetting::Enabled };
     let mut functions = Vec::new();
     functions.push(Function { name: example_bytes(12), verdict: Verdict::Verified,
         establishment: Establishment::Confirmed, evidence_tier: Some(EvidenceTier::Fresh) });
@@ -1259,5 +1267,25 @@ pub proof fn open_child_cannot_complete(run: &RunningInvocation, index: int, end
 {
     assert(!every_child_closed(run.children()));
 }
+
+/// Compile-only terminal success has no proof authority, even with zero functions.
+pub fn compile_only_zero_function_completion_refused()
+{
+    let invocation = example_invocation(true, 1, Origin::Direct);
+    let compile_only = Invocation { verification: VerificationSetting::CompileOnly, ..invocation };
+    let document = example_document(true, 1, false, Verdict::Verified,
+        Establishment::Confirmed, VerifierEnd::Finished(0));
+    let ghost checked = {
+        let started = start(compile_only);
+        assert(started.is_some());
+        let observed = observe(started.unwrap(), document);
+        assert(observed.documents().len() == 1);
+        assert(document_good(&observed.documents()[0]));
+        assert(observed.documents()[0].functions.len() == 0);
+        let completion = complete(observed, ProcessEnd::Exit(0), 2);
+        assert(completion.is_none());
+    };
+}
+
 
 } // verus!
