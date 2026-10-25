@@ -2122,7 +2122,7 @@ fn target_revisions(
     {
         let projected = crate::parallel::in_order(ids, |id| {
             target_revision_with(data, id, |selected, extras| {
-                super::input::snapshot_metadata_projected(selected, extras, source.snapshot)
+                super::input::snapshot_revision_projected(selected, extras, source.snapshot)
             })
         });
         if projected.iter().all(|revision| !revision.is_empty())
@@ -2136,14 +2136,15 @@ fn target_revisions(
 
 fn target_revision(data: &Value, package_id: &str) -> String {
     target_revision_with(data, package_id, |selected, extras| {
-        Some(snapshot_metadata(selected, extras))
+        let snapshot = snapshot_metadata(selected, extras);
+        Some((snapshot.revision, snapshot.complete))
     })
 }
 
 fn target_revision_with(
     data: &Value,
     package_id: &str,
-    snapshot: impl FnOnce(&Value, &[PathBuf]) -> Option<super::input::InputSnapshot>,
+    snapshot: impl FnOnce(&Value, &[PathBuf]) -> Option<(String, bool)>,
 ) -> String {
     let closure = dependency_closure(data, [package_id]);
     // Only the fields the snapshot reads: copying the whole metadata (several
@@ -2211,18 +2212,18 @@ fn target_revision_with(
                 Value::String(workspace.to_string_lossy().into_owned());
         }
     }
-    let Some(snapshot) = snapshot(&package_data, &extras) else {
+    let Some((revision, complete)) = snapshot(&package_data, &extras) else {
         return String::new();
     };
-    if !snapshot.complete {
+    if !complete {
         return String::new();
     }
     match foreign {
         Some(binding) => digest(
-            &serde_json::to_vec(&("sail-foreign-target-v1", &snapshot.revision, &binding))
+            &serde_json::to_vec(&("sail-foreign-target-v1", &revision, &binding))
                 .unwrap_or_default(),
         ),
-        None => snapshot.revision,
+        None => revision,
     }
 }
 

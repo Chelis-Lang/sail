@@ -117,8 +117,8 @@ field, separately from ordinary report reuse.
 
 ## Raw records
 
-Objects below are in
-`s3://chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-24/`.
+Objects below are in the private evidence bucket under
+`experiments/2026-10-24/`.
 
 | Record | SHA-256 |
 |---|---|

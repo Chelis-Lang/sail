@@ -1,5 +1,23 @@
 # Archive installer
 
+## Current-main private preview
+
+Both actual checksummed previews use the ordered-projection candidate based on
+main `3b0bac19` (crate tree `a8140a02446d41d39d93ec96dccb07a9d99b3baf`)
+and runtime `36d65c3f`. The installer creates a fresh prefix, then both native
+hosts pass bundled-runtime selection, shipped first-use vstd proof, unchanged
+zero-verifier reuse, passing/failing edits and return to passing source. The
+real MCP client connects and lists 18 tools on both platforms. The Mac source
+SDK is moved aside during the walkthrough. Rust 1.99.1 and rust-src are already
+installed; these checks do not repeat the earlier toolchain-download controls.
+
+The two archives remain private staging objects, with no Sail release, tag or
+draft created. Their hashes and logs are in the
+[combined qualification](ordered-input-projection.md). Performance acceptance
+remains separate.
+
+## Earlier installer qualification
+
 The installer is qualified for actual Linux x86-64 and Apple-silicon Mac
 archives, with the pinned Verus runtime `7d9d5410` and Rust `1.99.1`.
 The Linux archive uses main's `9f819166` Rust inputs; the Mac archive also
