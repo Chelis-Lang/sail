@@ -121,6 +121,13 @@ output/status and leave the daemon's PUT count at zero. Removing the sticky
 write-failure latch or the parser-completion latch causes the fixture to
 observe two PUTs (response and silence), so it exercises each actual defect.
 
+The stderr monitor closes its actual socket reader immediately on forwarding
+or read failure and on observed EOF. It does not retain a failed reader until
+solver shutdown: that ownership can leave a producer waiting on its stderr
+write while the shim waits for stdout EOF. This is shutdown availability
+hardening; neither the sampled hang nor its fix demonstrates a false proof.
+The existing closed-stderr regression retains its five-second deadline.
+
 Disk integrity is deliberately a smaller theorem than solver provenance.
 `RecoveryRecord` does not turn the header's `provenance` string into an origin.
 JSON extraction and digest computation must pass the actual decoded fields and
