@@ -4,11 +4,9 @@ use super::diagnostics::{Diagnostics, Phase};
 use super::environment::input_environment_key;
 use super::files::{digest, event, file_digest, json};
 use super::input::{SNAPSHOT_FIELDS, managed_metadata as metadata, snapshot_metadata};
+use super::receipts::{Invocation, PhaseDigests, RECEIPT_VERSION, Receipt, Runtime, read};
 #[cfg(test)]
-use super::receipts::artifact_hashes;
-use super::receipts::{
-    Invocation, PhaseDigests, RECEIPT_VERSION, Receipt, Runtime, complete, read,
-};
+use super::receipts::{artifact_hashes, complete};
 use crate::{Error, Result};
 use sail_api::project::{
     Currentness, Execution, NoReuse, ProjectResult, SCHEMA_VERSION, TargetResult, VerifiedAs,
@@ -1286,16 +1284,7 @@ fn cargo_message(line: &[u8]) -> bool {
 }
 
 pub(crate) fn focused(args: &[String]) -> bool {
-    args.iter().skip_while(|a| a.as_str() != "--").any(|s| {
-        [
-            "--verify-module",
-            "--verify-only-module",
-            "--verify-function",
-            "--verify-root",
-        ]
-        .iter()
-        .any(|flag| s == flag || s.starts_with(&format!("{flag}=")))
-    })
+    sail_api::acceptance::focused_command(args)
 }
 
 fn invocations(paths: &Paths) -> Vec<Invocation> {
@@ -1880,7 +1869,9 @@ fn target_records_in(
                 reused: call.retained_from.is_some(),
                 scope_reuse: None,
                 requested,
-                complete: partial_args.is_none() && call.success && complete(&call.report),
+                complete: partial_args.is_none()
+                    && call.success
+                    && sail_api::acceptance::complete_whole_report(&call.report).is_some(),
                 report: call.report.clone(),
             });
         } else if let Some((receipt, store_key)) = {
@@ -1982,7 +1973,9 @@ fn target_records_in(
                 reused: partial_args.is_none(),
                 scope_reuse: partial_args.map(<[String]>::to_vec),
                 requested,
-                complete: partial_args.is_none(),
+                complete: partial_args.is_none()
+                    && sail_api::acceptance::complete_whole_report(&receipt.invocation.report)
+                        .is_some(),
                 report: receipt.invocation.report,
             });
         } else if !scoped_run || requested {
@@ -2023,7 +2016,9 @@ fn target_records_in(
                 target: name.to_owned(),
                 kind,
                 requested,
-                complete: partial_args.is_none() && call.success && complete(&call.report),
+                complete: partial_args.is_none()
+                    && call.success
+                    && sail_api::acceptance::complete_whole_report(&call.report).is_some(),
                 report: call.report,
             });
         }
@@ -3349,11 +3344,15 @@ pub(crate) fn run_engine_held(
     if paths.reuse
         && !shown
         && exit == Some(0)
-        && expected.iter().any(|(id, name, kind)| {
-            !targets
+        && !sail_api::acceptance::requested_coverage(
+            &expected
                 .iter()
-                .any(|t| &t.package_id == id && &t.target == name && t.kind.contains(kind))
-        })
+                .map(|(package, name, kind)| {
+                    sail_api::acceptance::requested_target(package, name, kind)
+                })
+                .collect::<Vec<_>>(),
+            &targets,
+        )
     {
         return Err(Error::new(
             "SAIL3107",

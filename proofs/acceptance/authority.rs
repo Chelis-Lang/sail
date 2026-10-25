@@ -48,7 +48,11 @@ pub enum Verdict { Verified, Failed, Unknown, Provisional }
 pub enum Establishment { Confirmed, Provisional, Unresolved }
 
 /// Settled function evidence retains its explicit source tier.
-pub enum EvidenceTier { Fresh, LocalCache, SharedCache, Bundled, Engine }
+pub enum EvidenceTier {
+    Fresh, LocalCache, SharedCache, Bundled, Engine,
+    /// Actual schema evidence strength, distinct from the older origin labels.
+    ObservedStrength(u8),
+}
 
 pub struct Function {
     pub name: Vec<u8>,

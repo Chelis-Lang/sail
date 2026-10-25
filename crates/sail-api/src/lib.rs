@@ -16,6 +16,9 @@ pub const VERSION: &str = match option_env!("SAIL_VERSION") {
     _ => env!("CARGO_PKG_VERSION"),
 };
 
+/// Checked positive Verus report and requested-scope authority.
+pub mod acceptance;
+mod acceptance_sort;
 /// Requirement-aware evidence views with explicit scope, strength and establishment.
 pub mod assurance;
 pub mod evidence;

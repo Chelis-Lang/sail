@@ -425,7 +425,7 @@ fn agent_view(project: &ProjectResult, job: &Value, reuse: &[String]) -> Value {
             "kind": target.kind,
             "reused": target.reused,
             "establishing_run": target.establishing_run,
-            "complete": target.complete,
+            "complete": sail_api::acceptance::complete_target(target).is_some(),
             "attribution": target.report.attribution.status,
             "counts": target_counts.json(),
             "verus_totals": {"verified": tv, "errors": te},
