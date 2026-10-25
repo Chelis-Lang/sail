@@ -1,8 +1,9 @@
 # Evidence-acceptance model qualification
 
 Status: expanded component and composed model proofs pass direct stock
-checking on macOS arm64 and native Linux x86-64. The production acceptance core, concrete adapters and
-service-wide theorem remain unproved. This record owns the actual scope of
+checking on macOS arm64 and native Linux x86-64 at the frozen commits below.
+Changed models and [production refinements](acceptance-production-refinements.md)
+have separate qualification; the service-wide theorem remains unproved. This record owns the actual scope of
 [checking](../design/acceptance-proof-checker.md).
 
 ## Expanded model qualification
@@ -116,8 +117,9 @@ argument/loader settings; fixture tests alone do not qualify a real proof run.
   refinement and an admitted initial-store/writer contract.
 - Input equality does not prove complete compiler-input observation or the
   Linux/macOS filesystem/process adapters. Digests are not assumed injective.
-- Scope/result predicates are not shared production source. Actual report,
-  receipt, repair, retained-job and CLI/MCP projections still need refinement.
+- This historical model checkpoint does not qualify the later source-shared
+  production predicates or native report/receipt/job/MCP callers. Their owning
+  record identifies implemented slices and remaining refinement.
 - Runtime/checker/toolchain immutability is a trust assumption; pre/post hashes
   cannot establish atomic launch binding against transient replacement.
 - At the initial `8b0ae885` checkpoint, actual proof invocations were local-only.

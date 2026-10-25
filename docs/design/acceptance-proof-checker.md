@@ -1,8 +1,9 @@
 # Direct stock-Verus acceptance model checks
 
 Four proof components share exact input, scope, mode, runtime and solver context.
-They prove a conditional model theorem; production source sharing and adapters
-remain unproved. The [design](evidence-acceptance-core.md) defines those remaining
+They prove a conditional model theorem. Selected production operations now
+share checked source through [concrete refinements](acceptance-production-refinements.md);
+complete native observation and service composition remain unproved. The [design](evidence-acceptance-core.md) defines those remaining
 refinement obligations, and the [qualification record](../validation/evidence-acceptance-models.md)
 records the actual source and platform results.
 
@@ -86,7 +87,7 @@ of Python checker correctness.
 The checker, toolchain, runtime and OS must remain trustworthy and immutable
 during checking. Pre/post hashes do not prove atomic launch identity against
 transient executable replacement. The Python checker remains reviewed/tested
-ordinary code. Production parser/writer/recovery, actual compiler-input closure,
+ordinary code. Complete production parser/writer/recovery, actual compiler-input closure,
 filesystem/process observations and CLI/JSON/MCP adapters still need refinement.
 No service-wide correctness or product performance result follows from these
 model proofs alone.

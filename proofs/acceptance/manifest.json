@@ -394,9 +394,15 @@
           "name": "started-child-omitted",
           "before": "&& observed_transcripts(run.documents) == child_stream_inventory(run.children)",
           "after": "&& true"
+        },
+        {
+          "name": "verification-enabled",
+          "source": "proofs/acceptance/authority.rs",
+          "before": "&& run.invocation.verification == VerificationSetting::Enabled",
+          "after": "&& true"
         }
       ],
-      "verified": 62,
+      "verified": 64,
       "functions": [
         "check_authority::authority::Candidate::context",
         "check_authority::authority::Candidate::invocations",
@@ -415,6 +421,8 @@
         "check_authority::authority::EngineFailure::invocation",
         "check_authority::authority::EngineFailure::point",
         "check_authority::authority::Establishment::clone",
+        "check_authority::authority::EvidenceTier::arrow_0",
+        "check_authority::authority::EvidenceTier::arrow_ObservedStrength_0",
         "check_authority::authority::ExecutionPath::arrow_0",
         "check_authority::authority::ExecutionPath::arrow_IndependentFallback_0",
         "check_authority::authority::ExecutionPath::clone",
@@ -440,6 +448,7 @@
         "check_authority::authority::ValidatedResult::valid",
         "check_authority::authority::ValidatedResult::whole",
         "check_authority::authority::Verdict::clone",
+        "check_authority::authority::VerificationSetting::clone",
         "check_authority::authority::VerifierEnd::arrow_0",
         "check_authority::authority::VerifierEnd::arrow_Finished_0",
         "check_authority::authority::VerifierEnd::clone",
@@ -449,6 +458,7 @@
         "check_authority::authority::child_stream_inventory",
         "check_authority::authority::child_stream_omission_and_open_controls",
         "check_authority::authority::child_stream_valid",
+        "check_authority::authority::compile_only_zero_function_completion_refused",
         "check_authority::authority::complete",
         "check_authority::authority::completed_inventory_matches_started_children",
         "check_authority::authority::completion_has_validated_records",
@@ -577,7 +587,7 @@
           "after": "if false { return None; }"
         }
       ],
-      "verified": 196,
+      "verified": 198,
       "functions": [
         "check_composition::authority::Candidate::context",
         "check_composition::authority::Candidate::invocations",
@@ -596,6 +606,8 @@
         "check_composition::authority::EngineFailure::invocation",
         "check_composition::authority::EngineFailure::point",
         "check_composition::authority::Establishment::clone",
+        "check_composition::authority::EvidenceTier::arrow_0",
+        "check_composition::authority::EvidenceTier::arrow_ObservedStrength_0",
         "check_composition::authority::ExecutionPath::arrow_0",
         "check_composition::authority::ExecutionPath::arrow_IndependentFallback_0",
         "check_composition::authority::ExecutionPath::clone",
@@ -621,6 +633,7 @@
         "check_composition::authority::ValidatedResult::valid",
         "check_composition::authority::ValidatedResult::whole",
         "check_composition::authority::Verdict::clone",
+        "check_composition::authority::VerificationSetting::clone",
         "check_composition::authority::VerifierEnd::arrow_0",
         "check_composition::authority::VerifierEnd::arrow_Finished_0",
         "check_composition::authority::VerifierEnd::clone",
@@ -630,6 +643,7 @@
         "check_composition::authority::child_stream_inventory",
         "check_composition::authority::child_stream_omission_and_open_controls",
         "check_composition::authority::child_stream_valid",
+        "check_composition::authority::compile_only_zero_function_completion_refused",
         "check_composition::authority::complete",
         "check_composition::authority::completed_inventory_matches_started_children",
         "check_composition::authority::completion_has_validated_records",
