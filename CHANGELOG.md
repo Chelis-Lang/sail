@@ -20,6 +20,9 @@ semantic versioning once the API is published.
   with ordinary Cargo freshness when its input protocol cannot support proof
   receipts. Explain how to enable receipt reuse with the pinned toolchain;
   JSON results stay Unknown and explicitly report no proof reuse.
+- Reduce repeated Verus erasure work in large proof modules. Native cached
+  Anvil compiler runs take about 10–13% less wall time with identical solver
+  input bytes. Both platform runtimes are rebuilt for the same fork commit.
 
 - Keep unchanged CLI proofs reusable when private dependency credentials change.
   Source and build-script declarations that read those variables still
