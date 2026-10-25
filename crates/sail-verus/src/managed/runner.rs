@@ -1639,9 +1639,8 @@ fn dirty_receipt_packages(
     let current = target_revisions(data, &ids, observation);
     receipts
         .into_iter()
-        .zip(current)
-        .filter(|(r, current)| r.input_revision != *current)
-        .map(|(r, _)| r.package_id.clone())
+        .filter(|r| current.get(&r.package_id) != Some(&r.input_revision))
+        .map(|r| r.package_id.clone())
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
@@ -1777,7 +1776,6 @@ fn target_records_in(
         );
         current.join().ok()
     })
-    .map(|current| ids.into_iter().zip(current).collect())
     .unwrap_or_default();
     for artifact in artifacts {
         let Some(package) = verified(&artifact) else {
@@ -2107,26 +2105,58 @@ fn target_revisions(
     data: &Value,
     ids: &[String],
     observation: Option<RevisionObservation<'_>>,
-) -> Vec<String> {
-    if ids.is_empty() {
-        return Vec::new();
+) -> HashMap<String, String> {
+    let requested: Vec<_> = ids
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    if requested.is_empty() {
+        return HashMap::new();
     }
     if let Some(source) = observation
         && source.snapshot.complete
         && source.stamp.is_some()
     {
-        let projected = crate::parallel::in_order(ids, |id| {
-            target_revision_with(data, id, |selected, extras| {
-                super::input::snapshot_metadata_projected(selected, extras, source.snapshot)
-            })
+        let projected = crate::parallel::in_order(&requested, |&id| {
+            (
+                id,
+                target_revision_with(data, id, |selected, extras| {
+                    super::input::snapshot_metadata_projected(selected, extras, source.snapshot)
+                }),
+            )
         });
-        if projected.iter().all(|revision| !revision.is_empty())
+        if let Some(projected) = target_revision_readback(&requested, projected)
             && super::input::unchanged_since(source.snapshot, source.stamp)
         {
             return projected;
         }
     }
-    crate::parallel::in_order(ids, |id| target_revision(data, id))
+    let fresh = crate::parallel::in_order(&requested, |&id| (id, target_revision(data, id)));
+    target_revision_readback(&requested, fresh).unwrap_or_default()
+}
+
+fn target_revision_readback(
+    ids: &[&str],
+    reads: Vec<(&str, String)>,
+) -> Option<HashMap<String, String>> {
+    let expected: Vec<_> = ids.iter().map(|id| (id.as_bytes(), &[][..])).collect();
+    let returned: Vec<_> = reads
+        .iter()
+        .map(|(id, _)| (id.as_bytes(), &[][..]))
+        .collect();
+    if !crate::parallel::exact_descriptors(&expected, &returned)
+        || reads.iter().any(|(_, revision)| revision.is_empty())
+    {
+        return None;
+    }
+    Some(
+        reads
+            .into_iter()
+            .map(|(id, revision)| (id.to_owned(), revision))
+            .collect(),
+    )
 }
 
 fn target_revision(data: &Value, package_id: &str) -> String {
@@ -3731,17 +3761,17 @@ fn completed_receipts(
         })
         .collect::<Result<_>>()?;
     let ids: Vec<String> = pending.iter().map(|(_, r)| r.package_id.clone()).collect();
+    let revisions = target_revisions(data, &ids, observation);
     pending
         .into_iter()
-        .zip(target_revisions(data, &ids, observation))
-        .map(|((path, mut receipt), revision)| {
-            if revision.is_empty() {
-                return Err(Error::new(
-                    "SAIL3107",
-                    "completed target input revision is unavailable",
-                ));
-            }
-            receipt.input_revision = revision;
+        .map(|(path, mut receipt)| {
+            let revision = revisions
+                .get(&receipt.package_id)
+                .filter(|revision| !revision.is_empty())
+                .ok_or_else(|| {
+                    Error::new("SAIL3107", "completed target input revision is unavailable")
+                })?;
+            receipt.input_revision.clone_from(revision);
             Ok((path, receipt.seal()))
         })
         .collect()
@@ -5800,6 +5830,61 @@ mod tests {
     }
 
     #[test]
+    fn tagged_target_revisions_use_identity_and_refuse_incomplete_batches() -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-tagged-revisions-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        for (name, bytes) in [("a", "first"), ("b", "second")] {
+            let directory = root.join(name);
+            std::fs::create_dir_all(&directory)?;
+            std::fs::write(directory.join("Cargo.toml"), bytes)?;
+            std::fs::write(directory.join("lib.rs"), bytes)?;
+        }
+        let data = serde_json::json!({"workspace_root":root, "packages":[
+            {"id":"a","manifest_path":root.join("a/Cargo.toml")},
+            {"id":"b","manifest_path":root.join("b/Cargo.toml")}],
+            "resolve":{"nodes":[{"id":"a","dependencies":[]},{"id":"b","dependencies":[]}]}});
+        let ids = ["a", "b"];
+        let read = || crate::parallel::in_order(&ids, |&id| (id, target_revision(&data, id)));
+        let original = target_revision_readback(&ids, read())
+            .ok_or_else(|| std::io::Error::other("no target revisions"))?;
+        assert_ne!(original.get("a"), original.get("b"));
+        let mut reversed = read();
+        reversed.reverse();
+        assert_eq!(
+            target_revision_readback(&ids, reversed),
+            Some(original.clone())
+        );
+        assert_eq!(
+            target_revisions(&data, &["b".into(), "a".into(), "a".into()], None),
+            original
+        );
+        let mut missing = read();
+        missing.pop();
+        assert!(target_revision_readback(&ids, missing).is_none());
+        let duplicate = vec![
+            ("a", target_revision(&data, "a")),
+            ("a", target_revision(&data, "a")),
+        ];
+        assert!(target_revision_readback(&ids, duplicate).is_none());
+        let mut extra = read();
+        extra.push(("foreign", "revision".into()));
+        assert!(target_revision_readback(&ids, extra).is_none());
+        let mut unavailable = read();
+        unavailable[0].1.clear();
+        assert!(target_revision_readback(&ids, unavailable).is_none());
+        std::fs::write(root.join("a/lib.rs"), "changed")?;
+        let mut changed = read();
+        changed.reverse();
+        let changed = target_revision_readback(&ids, changed)
+            .ok_or_else(|| std::io::Error::other("no changed revisions"))?;
+        assert_ne!(changed.get("a"), original.get("a"));
+        assert_eq!(changed.get("b"), original.get("b"));
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
     fn discovered_workspace_sources_do_not_dirty_dependency_receipts() {
         let root =
             std::env::temp_dir().join(format!("sail-receipt-source-scope-{}", std::process::id()));
@@ -5882,10 +5967,10 @@ mod tests {
         });
         let ids = vec!["vstd".to_owned(), "app".to_owned()];
         assert!(super::super::input::snapshot_metadata_projected(&data, &[], &observed).is_some());
-        assert_eq!(
-            target_revisions(&data, &ids, observation),
-            [dependency_before.clone(), app_before.clone()]
-        );
+        let revisions = target_revisions(&data, &ids, observation);
+        assert_eq!(revisions.len(), 2);
+        assert_eq!(revisions.get("vstd"), Some(&dependency_before));
+        assert_eq!(revisions.get("app"), Some(&app_before));
         assert!(std::fs::write(&app_source, "fail").is_ok());
         assert_eq!(
             target_revisions(&data, &ids, observation),

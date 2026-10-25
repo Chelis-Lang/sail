@@ -1209,14 +1209,56 @@ fn driver_dependencies() -> Result<std::collections::BTreeMap<PathBuf, String>> 
             }
         }
     }
-    // Complete reads of every dependency overlap; the first failure in
-    // argument order is still the reported error.
-    let digests = crate::parallel::in_order(&present, |path| file_digest(path));
-    let mut files = std::collections::BTreeMap::new();
-    for (path, digest) in present.into_iter().zip(digests) {
-        files.insert(path, digest?);
+    dependency_hashes(&present)
+}
+
+fn dependency_hashes(present: &[PathBuf]) -> Result<std::collections::BTreeMap<PathBuf, String>> {
+    // A repeated exact extern path denotes the same key; coalesce its request
+    // before reading while preserving the first argument's error priority.
+    let mut names = std::collections::BTreeSet::new();
+    let paths: Vec<_> = present
+        .iter()
+        .map(PathBuf::as_path)
+        .filter(|path| names.insert(path.as_os_str().as_encoded_bytes()))
+        .collect();
+    let reads = crate::parallel::in_order(&paths, |&path| (path, file_digest(path)));
+    dependency_hashes_readback(&paths, reads)
+}
+
+fn dependency_hashes_readback(
+    paths: &[&Path],
+    reads: Vec<(&Path, Result<String>)>,
+) -> Result<std::collections::BTreeMap<PathBuf, String>> {
+    let expected: Vec<_> = paths
+        .iter()
+        .map(|path| (path.as_os_str().as_encoded_bytes(), &[][..]))
+        .collect();
+    let returned: Vec<_> = reads
+        .iter()
+        .map(|(path, _)| (path.as_os_str().as_encoded_bytes(), &[][..]))
+        .collect();
+    let incomplete = || {
+        Error::new(
+            "SAIL3101",
+            "dependency read outcomes do not cover the requested inventory",
+        )
+    };
+    if !crate::parallel::exact_descriptors(&expected, &returned) {
+        return Err(incomplete());
     }
-    Ok(files)
+    let mut by_name: std::collections::BTreeMap<_, _> = reads
+        .into_iter()
+        .map(|(path, hash)| (path.as_os_str().as_encoded_bytes(), hash))
+        .collect();
+    paths
+        .iter()
+        .map(|path| {
+            let hash = by_name
+                .remove(path.as_os_str().as_encoded_bytes())
+                .ok_or_else(incomplete)??;
+            Ok((path.to_path_buf(), hash))
+        })
+        .collect()
 }
 
 /// Where the full phase's Verus logs are.
@@ -1467,6 +1509,43 @@ mod tests {
                 "SAIL3135"
             );
         }
+        Ok(())
+    }
+
+    #[test]
+    fn tagged_dependency_reads_cannot_cancel_physical_swaps()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-tagged-dependencies-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let a = root.join("a.vir");
+        let b = root.join("b.vir");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        let paths = [a.as_path(), b.as_path()];
+        let read = || crate::parallel::in_order(&paths, |&path| (path, file_digest(path)));
+        let expected = dependency_hashes(&[a.clone(), b.clone(), a.clone()])?;
+        assert_eq!(expected.len(), 2);
+        let mut reversed = read();
+        reversed.reverse();
+        assert_eq!(dependency_hashes_readback(&paths, reversed)?, expected);
+        let mut missing = read();
+        missing.pop();
+        assert!(dependency_hashes_readback(&paths, missing).is_err());
+        let duplicate = vec![
+            (a.as_path(), file_digest(&a)),
+            (a.as_path(), file_digest(&a)),
+        ];
+        assert!(dependency_hashes_readback(&paths, duplicate).is_err());
+        let mut extra = read();
+        extra.push((root.as_path(), Ok("foreign".into())));
+        assert!(dependency_hashes_readback(&paths, extra).is_err());
+        std::fs::write(&a, "second")?;
+        std::fs::write(&b, "first")?;
+        let mut swapped = read();
+        swapped.reverse();
+        assert_ne!(dependency_hashes_readback(&paths, swapped)?, expected);
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 

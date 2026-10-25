@@ -68,15 +68,7 @@ impl SnapshotGuard {
 /// Native ordering proposals confer no authority: the source-shared core checks
 /// the complete forward/inverse permutation and every adjacent key.
 pub(super) fn proposed_order(facts: &[InputFact<'_>]) -> (Vec<usize>, Vec<usize>) {
-    let mut order: Vec<_> = (0..facts.len()).collect();
-    order.sort_unstable_by(|&a, &b| {
-        (facts[a].namespace, facts[a].name).cmp(&(facts[b].namespace, facts[b].name))
-    });
-    let mut inverse = vec![0; facts.len()];
-    for (rank, &position) in order.iter().enumerate() {
-        inverse[position] = rank;
-    }
-    (order, inverse)
+    crate::parallel::proposed_fact_order(facts)
 }
 
 fn snapshot_facts<'a>(
