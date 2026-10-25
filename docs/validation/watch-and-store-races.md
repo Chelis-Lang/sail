@@ -1,5 +1,42 @@
 # Watch startup and publication staging
 
+## Current startup correction (2026-10-25)
+
+The candidate based on `237c7d8d` corrects notification-batch classification.
+Ancestor subscriptions can report unrelated sibling removals and renames.
+Previously these disabled startup replay suppression for the whole batch,
+including delayed Cargo.lock creation events, even when every tracked byte
+and the complete filesystem epoch were unchanged. Only a relevant input
+removal or rename now disables suppression. Actual input changes, including
+edit-and-restore, keep their existing invalidation checks.
+
+The deterministic regression fails on the baseline and passes after the fix,
+covering unrelated and relevant removals and renames. Clippy and the complete
+Mac host gate pass 1,056 tests. Twenty repetitions of both existing watch
+integration tests pass while unrelated temporary files are continuously
+created and removed. These checks preserve startup-count, cancellation and
+restart assertions. Native Linux c7i.4xlarge in us-east-1 passes the workspace
+gate (1,067 tests), solver (42), full E2E including local extra checks, and
+all four PR conformance arms (33 Same each, 311 functions).
+
+A tracing run on the baseline reproduced the extra restart. The same run
+also missed a separate proof-workflow mock-worker deadline; cause unknown.
+The subsequent complete fixed Mac gate passes without changing timeouts.
+The older missing-file RPC symptom in #306 was not reproduced and remains
+separate; this fix does not establish its cause.
+
+Mac logs and the red/green regression witness are retained in the evidence
+bucket as `experiments/2026-10-25/sail-watch-next-mac.tgz`, SHA-256
+`b8df3c6031cb8482c024853de41e9e867b0ab8dd36dd7f14dd4e6537f612d0bf`.
+
+Linux gate logs and conformance reports are retained as
+`experiments/2026-10-25/sail-watch-next-linux.tgz`, SHA-256
+`cc3feddc4dd8bfcf85532be0f66e0b85d0194d5f5075d1cc0404dc97ff3633ef`.
+The code patch SHA-256 is
+`3f7d7d0f56e472474366d61f1929f0a4be22eac18f8587fb56d656155d415b91`.
+
+## Earlier qualification
+
 **Status:** the final composed Mac gate passes 905 tests (37 skipped,
 Clippy clean), including the directory-symlink regression. Native Linux
 workspace gate, solver, full e2e plus extra and PR conformance pass on the

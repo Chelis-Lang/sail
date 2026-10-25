@@ -328,8 +328,10 @@ Watch follows the workspace, local path dependencies and configuration inputs.
 It debounces edits for 300 ms, cancels superseded work and submits the latest
 revision. Native events are preferred. If event observation becomes unavailable,
 it announces a five-second content-scan fallback using remembered input roots;
-unchanged inputs do not trigger another verification. A settled native watcher
-does not poll completed jobs or rehash the verifier runtime.
+unchanged inputs do not trigger another verification. Unrelated sibling removals
+or renames delivered by ancestor subscriptions do not restart verification or
+disable that startup check. A settled native watcher does not poll completed
+jobs or rehash the verifier runtime.
 Its JSON-lines stream carries job lifecycle and target completion/reuse events.
 It verifies the requested Cargo scope; it does not guess semantic function
 independence. A completed run without proof reuse

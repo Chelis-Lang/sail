@@ -25,11 +25,14 @@ comparisons. The [current qualification](validation/shadow-index.md) names
 the frozen binaries and later main integration; the
 [private rc.6 record](validation/release-candidate.md) remains historical.
 
-An initial Mac host run after integrating scalar-witness main observed an
-extra restart in the fake-Cargo unbound watch fixture (#306). The unchanged
-isolated test and complete 1,055-test retry pass. Cause remains unknown;
-this observation does not establish a compiler or verdict regression. The
-failed run stays indexed in the current qualification.
+The extra Mac watch startup restart is corrected: unrelated sibling removals
+or renames could disable suppression of delayed startup notifications despite
+unchanged input bytes and filesystem identity. The fix passes the full 1,056-test
+Mac host gate and twenty repetitions of both startup and edit/cancel integration
+tests with unrelated filesystem activity. The historical missing-file RPC error
+in #306 remains unreproduced with operation-specific diagnostics; its cause is
+not established by this notification defect. See the
+[watch qualification](validation/watch-and-store-races.md).
 
 ## Neutral source mutation
 
