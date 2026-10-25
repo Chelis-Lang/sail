@@ -1,7 +1,7 @@
 # Production acceptance refinements
 
-Status: source sharing, concrete refinement proofs and production callers are
-implemented as an integration candidate. Native Linux, hosted checks,
+Status: source sharing, concrete refinement proofs and production callers pass
+native macOS checks as an integration candidate. Native Linux, hosted checks,
 conformance and added-cost qualification remain pending. The owning
 [validation record](../validation/acceptance-production-refinements.md) separates
 checked source from accepted integration.
