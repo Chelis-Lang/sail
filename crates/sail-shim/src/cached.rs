@@ -344,6 +344,14 @@ struct InputStatus {
     valid: AtomicBool,
 }
 
+impl InputStatus {
+    fn send_expectation(&self, expects: &Sender<Expect>, expectation: Expect) {
+        if expects.send(expectation).is_err() {
+            self.valid.store(false, Ordering::SeqCst);
+        }
+    }
+}
+
 struct Solving {
     stdin: Option<ChildStdin>,
     expects: Sender<Expect>,
@@ -568,12 +576,12 @@ fn start_solver(
         return None;
     };
     let (tx, rx) = std::sync::mpsc::channel();
-    // Queued before the solver sees any input, so it precedes its reply.
-    let _ = tx.send(first);
     let input = Arc::new(InputStatus {
         done: AtomicBool::new(false),
         valid: AtomicBool::new(true),
     });
+    // Queued before the solver sees any input, so it precedes its reply.
+    input.send_expectation(&tx, first);
     let observed_input = Arc::clone(&input);
     // If the thread cannot start, the solver is dropped with it; it exits
     // when `stdin` is dropped below.
@@ -602,6 +610,10 @@ fn start_solver(
 }
 
 impl Solving {
+    fn expect(&self, expectation: Expect) {
+        self.input.send_expectation(&self.expects, expectation);
+    }
+
     fn write(&mut self, bytes: &[u8]) {
         if let Some(stdin) = &mut self.stdin
             && stdin.write_all(bytes).and_then(|()| stdin.flush()).is_err()
@@ -615,13 +627,14 @@ impl Solving {
         if !complete {
             self.input.valid.store(false, Ordering::SeqCst);
         }
-        self.input.done.store(true, Ordering::SeqCst);
         let final_expectation = if self.input.valid.load(Ordering::SeqCst) {
             Expect::Terminal(terminal)
         } else {
             Expect::Stop
         };
-        let _ = self.expects.send(final_expectation);
+        self.expect(final_expectation);
+        // All metadata sends, including their failure latch, precede done.
+        self.input.done.store(true, Ordering::SeqCst);
         drop(self.stdin.take());
         drop(self.expects);
         ExitCode::from(self.output.join().unwrap_or(1))
@@ -745,7 +758,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 if let Some(s) = &solving
                     && expects != Output::None
                 {
-                    let _ = s.expects.send(expect);
+                    s.expect(expect);
                 }
                 if let Some(s) = &mut solving
                     && !fresh_solver
@@ -764,7 +777,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
             if let Some(s) = &solving {
                 if expects != Output::None {
-                    let _ = s.expects.send(expect);
+                    s.expect(expect);
                 }
                 continue;
             }
@@ -944,6 +957,23 @@ mod tests {
 
     fn stored_entries(entries: Vec<super::Entry>) -> Vec<StoredEntry> {
         entries.into_iter().map(stored_entry).collect()
+    }
+
+    #[test]
+    fn lost_expectation_metadata_permanently_blocks_publication() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let status = super::InputStatus {
+            done: AtomicBool::new(false),
+            valid: AtomicBool::new(true),
+        };
+        let (sender, receiver) = std::sync::mpsc::channel();
+        drop(receiver);
+        status.send_expectation(&sender, Expect::Stop);
+        assert!(!status.valid.load(Ordering::SeqCst));
+        assert!(!status.done.load(Ordering::SeqCst));
+        status.send_expectation(&sender, Expect::Terminal(key(1)));
+        assert!(!status.valid.load(Ordering::SeqCst));
+        assert!(!status.done.load(Ordering::SeqCst));
     }
 
     fn key(i: u8) -> QueryKey {

@@ -104,6 +104,11 @@ unmatched. It also latches every solver-stdin write/flush failure and carries
 the final parser/input-read completion result into publication. Finishing the
 input thread alone is not evidence that all input was delivered. Incomplete
 or failed delivery queues a permanent stop instead of a silence certificate.
+Every expectation-channel send checks its result and permanently poisons the
+same validity latch on failure. The terminal send completes before the input
+side announces `done`, so lost metadata cannot race an otherwise open gate.
+A closed-receiver regression exercises that real channel error and checks that
+neither another failed send nor terminal metadata restores validity.
 These conditions narrow cache writes while preserving forwarded bytes, exit
 status and diagnostics. Supported complete sessions continue to populate and reuse
 the default cache. A real producer-fault regression runs a solver wrapper that
@@ -257,7 +262,7 @@ RUSTUP_TOOLCHAIN=1.99.1 VERUS_Z3_PATH="$stock_runtime/z3" \
 
 The source-sharing closure passes 135 obligations: 59 existing model/context,
 25 query executable operations, 38 reused input-core obligations and 13 query
-simulation/witness obligations. Focused Rust clippy checks cover acceptance, shim, cache and daemon; their 158 nonignored
+simulation/witness obligations. Focused Rust clippy checks cover acceptance, shim, cache and daemon; their 159 nonignored
 Rust tests pass. The eight real pinned-Z3 `cached_session` tests pass, including the unmatched clean-exit
 regressions and supported warm-cache reuse. These local component checks do
 not replace native Linux gates or whole-corpus conformance.
