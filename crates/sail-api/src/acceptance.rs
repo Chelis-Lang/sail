@@ -13,7 +13,7 @@ use sail_acceptance::authority::{
     CompletionPolicy, RequestedTarget, argument_flag, copy_bytes, exact_bytes, owned_obligation,
     unique_obligations,
 };
-use sail_acceptance::{sail_code, sail_proof, sail_spec, sail_verified, sail_while};
+use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verified, sail_while};
 
 /// Builds untrusted order candidates and invokes the checked authority factory.
 pub use crate::acceptance_sort::{
@@ -54,19 +54,34 @@ sail_code! {
     }
 
     impl CompleteSelection<'_> {
-        /// Exact immutable project whose selected reports were checked.
-        #[must_use]
-        pub fn project(&self) -> &ProjectResult { self.project }
+        sail_method! {
+            /// Exact immutable project whose selected reports were checked.
+            #[must_use]
+            pub fn project(&self) -> (out: &ProjectResult)
+                requires(true)
+                ensures(out == selection_project(self))
+            { self.project }
+        }
     }
 
     impl CompleteReport<'_> {
-        /// The immutable actual report whose fields were checked.
-        #[must_use]
-        pub fn report(&self) -> &Report { self.report }
+        sail_method! {
+            /// The immutable actual report whose fields were checked.
+            #[must_use]
+            pub fn report(&self) -> (out: &Report)
+                requires(true)
+                ensures(out == authority_report(self))
+            { self.report }
+        }
 
-        /// The receipt or repair contract that was checked.
-        #[must_use]
-        pub fn policy(&self) -> CompletionPolicy { self.policy }
+        sail_method! {
+            /// The receipt or repair contract that was checked.
+            #[must_use]
+            pub fn policy(&self) -> (out: CompletionPolicy)
+                requires(true)
+                ensures(out == authority_policy(self))
+            { self.policy }
+        }
     }
 }
 
