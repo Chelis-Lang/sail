@@ -2,7 +2,7 @@
 //!
 //! These predicates never infer a complete request from its selected-result
 //! flags. The caller with the independently resolved request must additionally
-//! establish [`requested_coverage`]. Currentness remains an input property:
+//! establish [`requested_coverage`](crate::acceptance::requested_coverage). Currentness remains an input property:
 //! a fresh failed verification can be Current without authorizing a repair.
 #![allow(
     clippy::redundant_as_str,
