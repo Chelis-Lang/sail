@@ -1649,6 +1649,7 @@ dependencies = [
  "rcgen",
  "reqwest",
  "rustls",
+ "sail-acceptance",
  "sail-api",
  "sail-cache",
  "sail-key",
