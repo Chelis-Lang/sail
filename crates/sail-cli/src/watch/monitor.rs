@@ -103,14 +103,18 @@ impl Monitoring {
             match event {
                 Ok(_) if self.fallback => {}
                 Ok(event) if !event.need_rescan() => {
-                    replayable &= !matches!(
+                    let removal_or_rename = matches!(
                         event.kind,
                         notify::EventKind::Remove(_)
                             | notify::EventKind::Modify(notify::event::ModifyKind::Name(_))
                     );
                     let (sender, receiver) = channel();
                     let _ = sender.send(Ok(event));
-                    edited |= super::changed(&receiver, roots, &self.excluded);
+                    let relevant = super::changed(&receiver, roots, &self.excluded);
+                    // Ancestor subscriptions also deliver sibling events. Only
+                    // an input removal/rename can disable startup suppression.
+                    replayable &= !relevant || !removal_or_rename;
+                    edited |= relevant;
                 }
                 _ => self.degrade(err),
             }
@@ -320,6 +324,48 @@ mod tests {
         let initial = capture(std::slice::from_ref(&root), &[])?.1;
         std::fs::create_dir(root.join("new-input"))?;
         assert_ne!(capture(std::slice::from_ref(&root), &[])?.1, initial);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unrelated_removals_do_not_turn_startup_replays_into_edits()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use notify::EventKind;
+        use notify::event::{CreateKind, ModifyKind, RemoveKind, RenameMode};
+        let root =
+            std::env::temp_dir().join(format!("sail-watch-unrelated-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let source = root.join("lib.rs");
+        std::fs::write(&source, "pub fn a() {}")?;
+        let roots = vec![root.clone()];
+        for kind in [
+            EventKind::Remove(RemoveKind::File),
+            EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+        ] {
+            let (sender, changes) = channel();
+            let mut monitoring = Monitoring {
+                native: None,
+                changes,
+                fallback: false,
+                scanned: Instant::now(),
+                baseline: None,
+                startup_epoch: None,
+                excluded: vec![],
+            };
+            monitoring.subscribe(&roots, &[], &mut BTreeMap::new(), &mut Vec::new());
+            sender.send(Ok(
+                Event::new(kind).add_path(root.with_file_name("unrelated-output"))
+            ))?;
+            sender.send(Ok(
+                Event::new(EventKind::Create(CreateKind::File)).add_path(source.clone())
+            ))?;
+            assert!(!monitoring.changed(&roots, &mut Vec::new()));
+            // Even unchanged bytes cannot suppress removal/rename of an input.
+            sender.send(Ok(Event::new(kind).add_path(source.clone())))?;
+            assert!(monitoring.changed(&roots, &mut Vec::new()));
+        }
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
