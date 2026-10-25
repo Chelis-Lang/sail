@@ -1,8 +1,9 @@
 # Production acceptance refinements
 
 Status: source sharing, concrete refinement proofs and production callers pass
-native macOS checks as an integration candidate. Native Linux, hosted checks,
-conformance and added-cost qualification remain pending. The owning
+native macOS and Linux checks. Full native pre-push correctness gates pass;
+hosted checks, full fast/standard conformance and added-cost qualification
+remain pending for the integration candidate. The owning
 [validation record](../validation/acceptance-production-refinements.md) separates
 checked source from accepted integration.
 
@@ -65,6 +66,16 @@ new envelope marker alone cannot establish that an old report was verified.
 CLI job labels and MCP proof headlines consume checked target authority and
 distinguish current, historical and unknown input observations.
 
+The original lifecycle model omitted whether verification was enabled.
+Comparing its completion event with the actual driver exposed that missing
+premise; the direct stock reproduction established that the verifier emits that metadata.
+The model now records `VerificationSetting`, and the checked production
+predicate requires verification to be enabled. Removing that guard makes the
+selected proof controls fail. The reproduction establishes the real behavior;
+the amended proof checks the acceptance rule over its stated inputs. Native
+option decoding and the complete service correspondence retain their explicit
+refinement boundaries.
+
 ## Independent checking
 
 Commit the source first, then run Python 3.11 or newer:
@@ -78,8 +89,9 @@ python3 scripts/check-acceptance-refinements.py \
 
 The output is a new directory outside the checkout. `ci/local.sh refinements`
 uses the same runner in the core CI image. The proposed separate
-**Acceptance production refinements** job feeds **CI completion**; native
-duration qualification is required before selecting it.
+**Acceptance production refinements** job feeds **CI completion**. Its
+native wrapper takes 197 seconds on the qualified Linux host; hosted checks
+remain separate.
 
 The runner captures canonical Git blobs with inherited Git redirection and
 replace refs disabled. Fixed drivers compile captured source, never reopened

@@ -18,8 +18,8 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 
 | Gate | Current state | Remaining work |
 |---|---|---|
-| Query association, input identity, scope and result authority models | Expanded lifecycle models, composed admission and captured-source direct stock checking implemented; qualification is recorded in the [model guide](design/acceptance-proof-checker.md) | Changed-model native Linux and hosted qualification; observation adapters, parser/cache-origin refinement and service-wide theorem |
-| Production acceptance core | Source-shared production operations and concrete refinements qualified on macOS; native integration candidate | Native Linux, hosted, conformance and cost gates; remaining stages C–F in the [refinement guide](design/acceptance-production-refinements.md) |
+| Query association, input identity, scope and result authority models | Expanded lifecycle models, composed admission and captured-source direct stock checking implemented; qualification is recorded in the [model guide](design/acceptance-proof-checker.md) | Changed-model hosted qualification; observation adapters, parser/cache-origin refinement and service-wide theorem |
+| Production acceptance core | Source-shared operations and concrete refinements qualified on macOS/Linux; native pre-push gates pass | Hosted checks, full fast/standard conformance and cost gates; remaining stages C–F in the [refinement guide](design/acceptance-production-refinements.md) |
 
 ## Goal
 
