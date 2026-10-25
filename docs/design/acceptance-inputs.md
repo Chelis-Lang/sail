@@ -52,6 +52,11 @@ set. It does not attach a stamp sampled after projection to old content bytes.
 A later guard check still checks that original namespace, including paths that
 were needed by the full observation but do not appear in the selected revision.
 
+The core guard has no ordinary `Clone` implementation. Its checked `duplicate`
+factory proves preservation of the original stamp and bound revision. Native
+snapshot cloning calls that factory and shares the original path set; every
+privileged core constructor remains inside an explicit verified envelope.
+
 `Readback` has private fields and no deserializer. Its constructor proves both
 that accepted equality matches the exact checked sorted rows and that every raw
 row appears on the other side with the same key and readable value. The proof

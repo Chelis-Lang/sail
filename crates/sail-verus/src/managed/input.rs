@@ -34,10 +34,19 @@ pub struct InputSnapshot {
     pub(super) capture: Option<SnapshotGuard>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(super) struct SnapshotGuard {
     guard: OriginalGuard,
     paths: Arc<BTreeSet<PathBuf>>,
+}
+
+impl Clone for SnapshotGuard {
+    fn clone(&self) -> Self {
+        Self {
+            guard: self.guard.duplicate(),
+            paths: Arc::clone(&self.paths),
+        }
+    }
 }
 
 impl SnapshotGuard {
