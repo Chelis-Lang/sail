@@ -207,6 +207,61 @@ class SourceCaptureTests(unittest.TestCase):
             with self.assertRaisesRegex(CHECKER.Refusal, "symlink"):
                 CHECKER.working_source_matches(root, snapshots)
 
+    def test_complete_runner_rejects_build_script_created_during_stock_calls(self):
+        # This is an orchestration failure control, not simulated proof evidence.
+        # Keep real capture/layout/driver/result validation; replace only Git and
+        # external runtime I/O, then add a Cargo auto-discovered file mid-run.
+        import json
+        import tomllib
+        all_paths = CHECKER.COMMON.git(ROOT, "ls-tree", "-r", "--name-only", "HEAD").splitlines()
+        fixed = {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "corpus/toolchain.toml",
+            "xtask/src/layering.rs", "scripts/check-acceptance-proofs.py",
+            "scripts/check-acceptance-refinements.py", "scripts/acceptance-source.py"}
+        paths = [path for path in all_paths if path in fixed
+            or path.startswith("crates/") and ("/src/" in path and path.endswith(".rs") or path.endswith("/Cargo.toml"))
+            or path.startswith("proofs/") and path.endswith((".rs", ".json"))]
+        snapshots = {path: (ROOT / path).read_bytes() for path in paths}
+        manifest = json.loads(snapshots[CHECKER.MANIFEST])
+        entries = {entry["id"]: entry for entry in manifest["components"]}
+        pins = tomllib.loads(snapshots["corpus/toolchain.toml"].decode())
+        with tempfile.TemporaryDirectory(prefix="sail-final-assembly-") as temporary:
+            base = Path(temporary)
+            root = base / "checkout"
+            for path, content in snapshots.items():
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(content)
+            calls = {component: 0 for component in entries}
+            def git(_root, *arguments):
+                if arguments[0] == "rev-parse": return "f" * 40
+                if arguments[0] == "ls-tree": return "\n".join(paths)
+                if arguments[0] == "status": return ""
+                self.fail("unexpected Git boundary")
+            def stock(command, **_kwargs):
+                component = Path(command[1]).stem.removeprefix("check_")
+                entry = entries[component]
+                broken = calls[component] > 0
+                calls[component] += 1
+                (root / "crates/sail-acceptance/build.rs").write_text("fn main() {}")
+                document = {"verus": {"commit": pins["verus"]["commit"], "version": pins["verus"]["release"]},
+                    "func-details": {name: {} for name in entry["functions"]},
+                    "verification-results": {"is-verifying-entire-crate": True,
+                        "encountered-vir-error": False, "success": not broken,
+                        "encountered-error": broken, "errors": int(broken),
+                        "verified": entry["verified"] - int(broken)}}
+                return subprocess.CompletedProcess(command, int(broken), json.dumps(document), "")
+            with mock.patch.object(CHECKER.COMMON, "git", side_effect=git), \
+                    mock.patch.object(CHECKER, "captured_tree", return_value=snapshots), \
+                    mock.patch.object(CHECKER.COMMON, "validated_runtime", return_value={}), \
+                    mock.patch.object(CHECKER.COMMON, "proof_environment", return_value={}), \
+                    mock.patch.object(CHECKER.subprocess, "check_output", return_value="commit-hash: " + pins["verus"]["rust_commit"]), \
+                    mock.patch.object(CHECKER.subprocess, "run", side_effect=stock), \
+                    mock.patch("builtins.print"):
+                with self.assertRaisesRegex(CHECKER.Refusal, "build script"):
+                    CHECKER.check(root, base / "archive", base / "runtime", base / "evidence", 120)
+            self.assertEqual(sum(calls.values()), sum(1 + len(e["negative_controls"]) for e in entries.values()))
+            self.assertFalse((base / "evidence/report.json").exists())
+
     def test_selected_guard_control_cannot_be_omitted(self):
         import json
         manifest = json.loads((ROOT / CHECKER.MANIFEST).read_text())

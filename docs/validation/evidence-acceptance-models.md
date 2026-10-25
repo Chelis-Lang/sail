@@ -3,7 +3,8 @@
 Status: expanded component and composed model proofs pass direct stock
 checking on macOS arm64 and native Linux x86-64 at the frozen commits below.
 Changed models and [production refinements](acceptance-production-refinements.md)
-have separate qualification; the service-wide theorem remains unproved. This record owns the actual scope of
+have separate [current macOS qualification](acceptance-production-refinements.md);
+the changed-source Linux gate and service-wide theorem remain open. This record owns the actual scope of
 [checking](../design/acceptance-proof-checker.md).
 
 ## Expanded model qualification
