@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Avoid an extra `sail watch` startup verification when unrelated file removals
+  or renames arrive alongside delayed input-creation notifications. Actual input
+  edits, removals and renames still cancel and restart the active verification.
+
 - Add opt-in scalar literal-contract queries and independently evaluated concrete
   assignments through the existing source-owner and pinned SMT runtime APIs.
   Unsupported scope stays explicit; native mutation UNKNOWN and proof tiers
