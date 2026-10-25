@@ -84,6 +84,47 @@ stock verification scope. Native tests separately exercise missing/extra read
 outcomes, duplicate retained records, real unreadable paths, ancestor retargets,
 restored timestamps and supplying a fresh stamp for an older snapshot.
 
+### Tagged native read results
+
+Native content, alias, metadata-stamp, retained-read and receipt-artifact workers
+return their actual input path with the raw outcome in one owned result.
+Borrowed path descriptors avoid cloning paths or rereading files. The observed
+ledger is built from these returned keys; the expected ledger is built
+independently from requested paths. No caller reconstructs a result's identity
+by zipping the expected path list with an untagged result list.
+
+The generic executor can reorder or omit whole results without silently
+assigning one path's outcome to another. Complete capture, retained-read,
+metadata-stamp and artifact checks validate the full independent key domains;
+dropped, extra and duplicate keys cannot establish completeness. Content and
+stamp folds then look up each outcome by its exact returned name while retaining
+the original sorted path/revision byte encoding. Core key/value validation and
+safe Rust ownership provide this structural defense; this is not a machine
+proof of `parallel::in_order`, standard-library I/O or path encoding.
+
+`FileDigests` prefetch keeps the canonical and lexical descriptor with each
+hash. It checks successful returned descriptors against the requested set;
+missing or failed prefetches stay uncached for the existing later read.
+`PhaseDigests` validates the full ledger of returned outcome records before
+memoizing their own keys, retaining errors as errors. Its descriptor-presence
+markers certify that an outcome record exists, not that the underlying file
+was read successfully. Actual receipt matching still checks each raw result
+and exact digest. Normal successful and failed-read retry behavior performs
+the same physical reads as before this tagging change.
+
+Native controls reverse real read-result vectors and check unchanged output,
+then swap physical file contents or alias destinations and reverse results
+again. These changes cannot cancel through positional relabeling. Additional
+controls cover missing, extra, duplicate and descriptor-mismatched outcomes,
+including metadata absence and phase-local artifact memoization.
+
+Other native positional mappings remain outside this component: runtime
+artifact hashing in `source_build.rs`, dependency hashing in `adapter.rs`,
+absent-root detection, dependency-snapshot body capture, shipped sysroot
+hashing and the runner's target-revision vector. Those paths still need their
+own tagged-result/domain refinement; this change does not claim that all
+production providers have been closed.
+
 ### Primitive and provider boundaries
 
 The completed map theorems concern the identity bytes actually supplied by the

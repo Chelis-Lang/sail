@@ -1,7 +1,8 @@
 //! Persisted driver observations and successful proof receipts.
 
-use super::files::{digest, digest_all, file_digest, json};
+use super::files::{digest, digest_all_tagged, file_digest, json, read_outcome_keys_match};
 use crate::{Error, Result};
+use sail_acceptance::inputs::{InputFact, InputValue, compare_readback};
 use sail_api::output::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -307,14 +308,7 @@ pub(crate) fn complete(report: &Report) -> bool {
 
 #[cfg(test)]
 pub(super) fn artifact_hashes(paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, String>> {
-    // Complete reads of every artifact overlap; the first failure in path order
-    // is still the reported error.
-    let files: Vec<&Path> = paths.iter().map(PathBuf::as_path).collect();
-    paths
-        .iter()
-        .zip(digest_all(&files))
-        .map(|(p, digest)| Ok((p.clone(), digest?)))
-        .collect()
+    PhaseDigests::default().hashes(paths)
 }
 
 /// Complete content digests read at most once per path within one phase:
@@ -339,10 +333,18 @@ impl PhaseDigests {
             pending.dedup();
             pending
         };
-        let digests = digest_all(&pending);
-        self.0
-            .borrow_mut()
-            .extend(pending.into_iter().map(Path::to_path_buf).zip(digests));
+        self.retain_reads(&pending, digest_all_tagged(&pending));
+    }
+
+    fn retain_reads(&self, pending: &[&Path], digests: Vec<(&Path, Result<String>)>) {
+        if !read_outcome_keys_match(pending, &digests) {
+            return;
+        }
+        self.0.borrow_mut().extend(
+            digests
+                .into_iter()
+                .map(|(path, digest)| (path.to_owned(), digest)),
+        );
     }
 
     /// Every listed file has exactly the recorded digest.
@@ -371,10 +373,45 @@ impl PhaseDigests {
 /// Every listed file still has exactly the recorded digest; reads overlap.
 pub(super) fn digests_match(expected: &BTreeMap<PathBuf, String>) -> bool {
     let files: Vec<&Path> = expected.keys().map(PathBuf::as_path).collect();
-    expected
-        .values()
-        .zip(digest_all(&files))
-        .all(|(hash, digest)| digest.as_ref() == Ok(hash))
+    digests_match_readback(expected, &digest_all_tagged(&files))
+}
+
+fn digests_match_readback(
+    expected: &BTreeMap<PathBuf, String>,
+    reads: &[(&Path, Result<String>)],
+) -> bool {
+    if expected.is_empty() && reads.is_empty() {
+        return true;
+    }
+    let required: Vec<_> = expected
+        .iter()
+        .map(|(path, hash)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(hash.as_bytes()),
+        })
+        .collect();
+    let observed: Vec<_> = reads
+        .iter()
+        .map(|(path, digest)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: digest.as_ref().map_or(InputValue::Unreadable, |hash| {
+                InputValue::Present(hash.as_bytes())
+            }),
+        })
+        .collect();
+    let (before_order, before_inverse) = super::input::proposed_order(&required);
+    let (after_order, after_inverse) = super::input::proposed_order(&observed);
+    compare_readback(
+        &required,
+        &observed,
+        &before_order,
+        &before_inverse,
+        &after_order,
+        &after_inverse,
+    )
+    .is_equal()
 }
 
 pub(crate) fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
@@ -385,6 +422,56 @@ pub(crate) fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
 mod tests {
     use super::*;
     use sail_api::output::CrateReport;
+    #[test]
+    fn artifact_read_results_keep_actual_keys_when_reordered()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-tagged-artifacts-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let a = root.join("a.vir");
+        let b = root.join("b.vir");
+        let extra = root.join("extra.vir");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        std::fs::write(&extra, "extra")?;
+        let paths = [a.as_path(), b.as_path()];
+        let expected =
+            BTreeMap::from([(a.clone(), file_digest(&a)?), (b.clone(), file_digest(&b)?)]);
+        let mut reads = digest_all_tagged(&paths);
+        reads.reverse();
+        assert!(digests_match_readback(&expected, &reads));
+        let phase = PhaseDigests::default();
+        phase.retain_reads(&paths, reads);
+        assert!(phase.matches(&expected));
+        for invalid in [
+            vec![(a.as_path(), file_digest(&a))],
+            vec![
+                (a.as_path(), file_digest(&a)),
+                (a.as_path(), file_digest(&a)),
+            ],
+            vec![
+                (a.as_path(), file_digest(&a)),
+                (b.as_path(), file_digest(&b)),
+                (extra.as_path(), file_digest(&extra)),
+            ],
+        ] {
+            assert!(!digests_match_readback(&expected, &invalid));
+            let phase = PhaseDigests::default();
+            phase.retain_reads(&paths, invalid);
+            assert!(phase.0.borrow().is_empty());
+        }
+        std::fs::write(&a, "second")?;
+        std::fs::write(&b, "first")?;
+        let mut swapped = digest_all_tagged(&paths);
+        swapped.reverse();
+        assert!(!digests_match_readback(&expected, &swapped));
+        let phase = PhaseDigests::default();
+        phase.retain_reads(&paths, swapped);
+        assert!(!phase.matches(&expected));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     fn fixture(path: &Path, committed: PathBuf) -> Receipt {
         assert!(std::fs::write(path, "artifact").is_ok());
         let mut report = crate::report::setup_failure(&[], "SAIL3100", "fixture");

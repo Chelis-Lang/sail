@@ -154,64 +154,24 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
     if record.version != 2 || record.files.is_empty() {
         return Err(missing());
     }
-    let reads = crate::parallel::in_order(&record.files, |(path, expected)| {
-        observe(path, expected.is_none())
-    });
-    let aliases: Vec<_> = record.bindings.iter().collect();
-    let alias_reads =
-        crate::parallel::in_order(&aliases, |(alias, _)| match alias.canonicalize() {
+    let files: Vec<_> = record
+        .files
+        .iter()
+        .map(|(path, expected)| (path.as_path(), expected.is_none()))
+        .collect();
+    let reads =
+        crate::parallel::in_order(&files, |&(path, absent)| (0, path, observe(path, absent)));
+    let aliases: Vec<_> = record.bindings.keys().map(PathBuf::as_path).collect();
+    let alias_reads = crate::parallel::in_order(&aliases, |&alias| {
+        let value = match alias.canonicalize() {
             Ok(actual) => Observation::Present(actual.as_os_str().as_encoded_bytes().to_vec()),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Observation::Absent,
             Err(_) => Observation::Unreadable,
-        });
-    let expected: Vec<_> = record
-        .files
-        .iter()
-        .map(|(path, hash)| InputFact {
-            namespace: 0,
-            name: path.as_os_str().as_encoded_bytes(),
-            value: hash.as_ref().map_or(InputValue::Absent, |hash| {
-                InputValue::Present(hash.as_bytes())
-            }),
-        })
-        .chain(aliases.iter().map(|(alias, target)| InputFact {
-            namespace: 1,
-            name: alias.as_os_str().as_encoded_bytes(),
-            value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
-        }))
-        .collect();
-    let observed: Vec<_> = record
-        .files
-        .iter()
-        .zip(&reads)
-        .map(|((path, _), value)| InputFact {
-            namespace: 0,
-            name: path.as_os_str().as_encoded_bytes(),
-            value: value.value(),
-        })
-        .chain(
-            aliases
-                .iter()
-                .zip(&alias_reads)
-                .map(|((alias, _), value)| InputFact {
-                    namespace: 1,
-                    name: alias.as_os_str().as_encoded_bytes(),
-                    value: value.value(),
-                }),
-        )
-        .collect();
-    let (before_order, before_inverse) = proposed_order(&expected);
-    let (after_order, after_inverse) = proposed_order(&observed);
-    let comparison = compare_readback(
-        &expected,
-        &observed,
-        &before_order,
-        &before_inverse,
-        &after_order,
-        &after_inverse,
-    );
-    let changed = comparison.changed();
-    let unreadable = comparison.unknown();
+        };
+        (1, alias, value)
+    });
+    let observed: Vec<_> = reads.into_iter().chain(alias_reads).collect();
+    let (changed, unreadable) = compare_observed(&record, &observed);
     Ok(InputSnapshot {
         workspace: workspace.to_owned(),
         revision: if changed {
@@ -227,6 +187,44 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
         bindings: BTreeMap::new(),
         capture: None,
     })
+}
+
+fn compare_observed(record: &Record, reads: &[(u8, &Path, Observation)]) -> (bool, bool) {
+    let expected: Vec<_> = record
+        .files
+        .iter()
+        .map(|(path, hash)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: hash.as_ref().map_or(InputValue::Absent, |hash| {
+                InputValue::Present(hash.as_bytes())
+            }),
+        })
+        .chain(record.bindings.iter().map(|(alias, target)| InputFact {
+            namespace: 1,
+            name: alias.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
+        }))
+        .collect();
+    let observed: Vec<_> = reads
+        .iter()
+        .map(|(namespace, path, value)| InputFact {
+            namespace: *namespace,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: value.value(),
+        })
+        .collect();
+    let (before_order, before_inverse) = proposed_order(&expected);
+    let (after_order, after_inverse) = proposed_order(&observed);
+    let comparison = compare_readback(
+        &expected,
+        &observed,
+        &before_order,
+        &before_inverse,
+        &after_order,
+        &after_inverse,
+    );
+    (comparison.changed(), comparison.unknown())
 }
 
 #[cfg(test)]
@@ -265,6 +263,55 @@ mod tests {
             ],
             BTreeMap::new(),
         )?;
+        Ok(())
+    }
+
+    #[test]
+    fn raw_readback_results_cannot_swap_file_identity() -> TestResult {
+        let root = fixture("tagged-readback")?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        let missing = root.join("config.toml");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        let record = Record {
+            version: 2,
+            revision: "rev".into(),
+            files: vec![
+                (a.clone(), Some(super::super::files::file_digest(&a)?)),
+                (b.clone(), Some(super::super::files::file_digest(&b)?)),
+                (missing.clone(), None),
+            ],
+            bindings: BTreeMap::new(),
+        };
+        let paths = [
+            (a.as_path(), false),
+            (b.as_path(), false),
+            (missing.as_path(), true),
+        ];
+        let read = || {
+            crate::parallel::in_order(&paths, |&(path, absent)| (0, path, observe(path, absent)))
+        };
+        let mut unchanged = read();
+        unchanged.reverse();
+        assert_eq!(compare_observed(&record, &unchanged), (false, false));
+        unchanged.pop();
+        assert_ne!(compare_observed(&record, &unchanged), (false, false));
+        let mut extra = read();
+        extra.push((0, root.as_path(), Observation::Absent));
+        assert_ne!(compare_observed(&record, &extra), (false, false));
+        let duplicate = vec![
+            (0, a.as_path(), observe(&a, false)),
+            (0, a.as_path(), observe(&a, false)),
+            (0, missing.as_path(), Observation::Absent),
+        ];
+        assert_eq!(compare_observed(&record, &duplicate), (false, true));
+        std::fs::write(&a, "second")?;
+        std::fs::write(&b, "first")?;
+        let mut swapped = read();
+        swapped.reverse();
+        assert_eq!(compare_observed(&record, &swapped), (true, false));
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 
