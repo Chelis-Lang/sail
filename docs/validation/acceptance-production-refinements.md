@@ -1,14 +1,15 @@
 # Production acceptance refinement qualification
 
 Status: selected production bodies and model refinements pass direct stock
-checking on native macOS arm64. The integration remains a candidate: native
-Linux, conformance, hosted checks and added-cost qualification are pending.
+checking on native macOS arm64 and Linux x86-64. Native pre-push correctness
+gates pass. Hosted checks, full fast/standard conformance and added-cost
+qualification remain pending; the integration remains a candidate.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
 ## Checked source and runtime
 
-The frozen checkpoint is `20073229c44ba062fb8ff3f7fc35103fb21f1a86`.
+The frozen checkpoint is `3b1cb3623ef17a2c4a99bc8bd3e12e88f1ef63fb`.
 Subsequent evidence/test changes preserve its executable, model, manifest and
 runner bytes. The independent receipt binds every captured production Rust
 source and manifest, distinguishing checked bodies, declaration projections,
@@ -21,31 +22,47 @@ captures canonical Git blobs and invokes stock directly with
 `--no-cheating --output-json --num-threads 1`. Sail, its fork and its caches
 do not establish these proofs.
 
-| Gate | Native macOS result | Remaining |
+| Gate | Current evidence | Remaining |
 |---|---|---|
-| Captured production-source refinements | All 25 cases pass: three positive roots, 22 ordinary failing mutations; positive counts query 134, inputs 54, authority 163, zero errors | Native Linux and hosted duration/packaging |
-| Changed component/composed models | All 29 cases pass: four positive roots, 25 ordinary failing mutations; counts 59, 64, 64, 198 | Changed-source native Linux and hosted checks |
-| Host workspace | `ci/run.sh host`: strict clippy and 1,086/1,086 tests pass; 46 skipped | Native Linux full gate |
-| Real cached-session solver tests | All eight pass with the pinned Z3 and unchanged deadlines | Full native solver suite and conformance |
-| Checker and integration controls | 20 production-runner and 12 model-runner tests pass; links, formatting, completion guard and layering pass | Hosted combined gate |
-| Conformance | No candidate whole-corpus result claimed | Full e2e, fast/PR and fast/standard conformance |
-| Added-cost and CI duration | No clean cost measurement claimed | Native measurements before selection |
-| Publication | AWS access restored; local branch, not pushed | Required native gates, then exact-head hosted checks |
+| Captured production-source refinements | All 25 cases pass on both platforms: three positive roots, 22 ordinary failing mutations; counts query 134, inputs 54, authority 163, zero errors | Hosted checks |
+| Changed component/composed models | All 29 cases pass on both platforms: four positive roots, 25 ordinary failing mutations; counts 59, 64, 64, 198 | Hosted checks |
+| Workspace | macOS host: strict clippy and 1,087/1,087 tests. Native Linux full image gate: 1,098/1,098 tests, clippy, doctests, strict rustdoc, dependency policy, layering and generated benchmark page | Hosted combined gate |
+| Pinned solver | Native Linux: all 44 tests pass, including faults and cached sessions; macOS focused cached-session tests pass at the earlier unchanged-query checkpoint | Hosted solver suite |
+| Checker controls | 20 production-runner and 12 model-runner tests pass; documentation links, formatting and completion guard pass | Hosted checks |
+| End to end | Native full run passes all phase entrypoints plus local extra cases, including 73 managed observations, real MCP client listing and repair | Hosted ten-phase aggregate |
+| PR conformance | Pass-through, cache-fill, cache-warm and engine each match 33/33 units and compare 311 functions; zero unstable/different/infra errors and zero skipped projects; five units with resource-count drift | Full fast/standard before merge; deep before release |
+| Added cost | No product performance gain or added-cost result claimed | Native measurements before selection |
+| Publication | Required native pre-push gates pass; draft PR #362 owns the combined work | Exact-head hosted checks; owner review |
 
-Counts overlap across roots. The direct checker wall times were 123.34 s for
-production refinements and 153.04 s for models; both ran alongside the host
-gate. These are execution receipts, not isolated performance or CI-duration
-qualification. Host validation uses an isolated Cargo home with the existing
-registry cache, avoiding the owner's global compiler-wrapper configuration.
+Linux runs on a dedicated EC2 `c7i.4xlarge` in `us-east-1`. The final full
+workspace wrapper takes 108 s; model proofs 254 s, production refinements
+197 s, solver 21 s, full local e2e 873 s and PR conformance 107 s. Proof steps
+run sequentially with a cached core image and fit the fast-tier job budget on
+this host; hosted-runner qualification remains separate. Full local e2e
+combines every phase and extra cases; individual CI phases remain separate.
+
+macOS direct checkers take 110.08 s for refinements and 145.48 s for models.
+The host gate uses an isolated Cargo home with the existing registry cache.
+Counts overlap across proof roots. These execution timings do not measure
+Sail's product performance or the cost of the additional acceptance logic.
+The 46 ordinary-test skips and 1,100 solver-step skips retain the existing
+partition; two compiler-boundary witnesses require their separate frozen inputs.
 
 Raw artifacts remain outside the repository. SHA-256:
 
 | Artifact | Digest |
 |---|---|
-| Production refinement receipt | `503141e0ec5fde1b861492b34f689e181c31f26e7d4e278edc936a4e29e8e39e` |
-| Changed-model receipt | `4c25588daca56e8781c320eb261a9cb2d45bd2590d4177f107b11ced1e000714` |
-| Host-gate log | `f7a546ded477901ea272ca138542a550b934195d6af130fa2e9271b7d488be2a` |
-| Eight cached-session tests | `20d681c2ebf26eb6e309778f23de992e438890c667a26eaa29bf4e02df27f78f` |
+| macOS production refinement receipt | `0424771e79f2a4839198014034267182c49696486f364c7cf7b3cb9930223d9f` |
+| macOS changed-model receipt | `64c543fe0cba032ac546b5c9edffc46210ac6e50814799896b1bcfd991731bb1` |
+| Native Linux production refinement receipt | `2f6d90d3a7604765196b0fa3d7709ea8809550e20c3b484e7b70df98864d6ce9` |
+| Native Linux changed-model receipt | `22971f3de43d093d7c6d0dcc76e6d3ed7f2cbe6c49bbb22c3c8cb937c0ee7efe` |
+| macOS host log | `35c048c4db31d3221a65eac272266ff5b11cf5c168520f26b02ba044bcd99dfe` |
+| Native Linux workspace log | `2d0ffbd5119c6206c4589b71efee63beb2ef35d911eb3672863248898a296bd6` |
+| Native Linux solver log | `4e3cc6849c7b0d2d371c41c052a4c827744d71fce874cb33b208e23e361ab20c` |
+| Native full e2e log | `45722e10fdbf62637d4a2f7cbf2b6feb410dc2e43ccdc938ade5f96977d53ffc` |
+| Native PR conformance log | `4b8eb2143bd96700331c0a3b6357f86fab057a00bc3d4ac3012295489094c0a7` |
+| Four raw conformance reports | `70c9ac8be3eb4a635a764bcce64626803e3ca09a9ff670f7a4934ca3e74cba67` |
+
 
 ## Failed and interrupted attempts
 

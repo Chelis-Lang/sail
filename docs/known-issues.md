@@ -9,8 +9,8 @@ Compile-only Verus output can resemble a successful zero-function proof
 ([#367](https://github.com/Chelis-Lang/sail/issues/367),
 [reproduction](verus-issues/VI-0035-no-verify-success.md)). The production
 refinement candidate checks effective package options and withholds older
-retained completeness, while preserving input Current observations. Final
-native/conformance qualification remains pending in the
+retained completeness, while preserving input Current observations. Native pre-push checks pass; hosted, full fast/standard conformance and cost
+qualification remain pending in the
 [owning record](validation/acceptance-production-refinements.md).
 The broader service-wide acceptance theorem remains open
 ([#368](https://github.com/Chelis-Lang/sail/issues/368)).

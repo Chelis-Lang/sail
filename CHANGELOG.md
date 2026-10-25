@@ -9,7 +9,8 @@ semantic versioning once the API is published.
   checked directly by stock Verus with complete captured dependencies and
   guard-removal controls. CI completion requires the model-proof job.
   Selected production acceptance paths now share checked executable source and
-  concrete refinement proofs; native integration qualification remains pending.
+  concrete refinement proofs; full service composition remains an explicit
+  proof obligation.
 - Refuse compile-only verification runs as proof authority, including effective
   per-package options and older retained completeness records. Preserve Current
   input observations separately from proof success. CLI and MCP proof labels
