@@ -121,11 +121,59 @@ pub fn artifact_hashes(build: &Path) -> Result<BTreeMap<PathBuf, String>> {
     // Read every runtime file in full, several at once; the first failure in
     // inventory order is reported, as when reading them one by one.
     let files = artifact_files(build)?;
-    let hashes = crate::parallel::in_order(&files, |(path, _)| hash_file(path));
-    files
+    let descriptors: Vec<_> = files
+        .iter()
+        .map(|(path, relative)| (path.as_path(), relative.as_path()))
+        .collect();
+    let reads = crate::parallel::in_order(&descriptors, |&(path, relative)| {
+        (path, relative, hash_file(path))
+    });
+    artifact_hashes_readback(&files, reads)
+}
+
+fn artifact_hashes_readback(
+    files: &[(PathBuf, PathBuf)],
+    reads: Vec<(&Path, &Path, Result<String>)>,
+) -> Result<BTreeMap<PathBuf, String>> {
+    let expected: Vec<_> = files
+        .iter()
+        .map(|(path, relative)| {
+            (
+                relative.as_os_str().as_encoded_bytes(),
+                path.as_os_str().as_encoded_bytes(),
+            )
+        })
+        .collect();
+    let returned: Vec<_> = reads
+        .iter()
+        .map(|(path, relative, _)| {
+            (
+                relative.as_os_str().as_encoded_bytes(),
+                path.as_os_str().as_encoded_bytes(),
+            )
+        })
+        .collect();
+    let incomplete = || {
+        Error::new(
+            "SAIL3040",
+            "runtime read outcomes do not cover the requested inventory",
+        )
+    };
+    if !crate::parallel::exact_descriptors(&expected, &returned) {
+        return Err(incomplete());
+    }
+    let mut by_name: BTreeMap<_, _> = reads
         .into_iter()
-        .zip(hashes)
-        .map(|((_, relative), hash)| Ok((relative, hash?)))
+        .map(|(_, relative, hash)| (relative, hash))
+        .collect();
+    files
+        .iter()
+        .map(|(_, relative)| {
+            let hash = by_name
+                .remove(relative.as_path())
+                .ok_or_else(incomplete)??;
+            Ok((relative.clone(), hash))
+        })
         .collect()
 }
 
@@ -309,6 +357,71 @@ impl Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tagged_runtime_reads_preserve_portable_names_and_error_order()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-tagged-runtime-{}", std::process::id()));
+        let runtime = checkout_dir(&root).join("source/target-verus/release");
+        std::fs::create_dir_all(&runtime)?;
+        std::fs::write(runtime.join("verus"), "first")?;
+        std::fs::write(runtime.join("vstd.vir"), "second")?;
+        let files = artifact_files(&root)?;
+        let descriptors: Vec<_> = files
+            .iter()
+            .map(|(path, relative)| (path.as_path(), relative.as_path()))
+            .collect();
+        let read = || {
+            crate::parallel::in_order(&descriptors, |&(path, relative)| {
+                (path, relative, hash_file(path))
+            })
+        };
+        let expected = artifact_hashes(&root)?;
+        let mut reversed = read();
+        reversed.reverse();
+        assert_eq!(artifact_hashes_readback(&files, reversed)?, expected);
+        let mut missing = read();
+        missing.pop();
+        assert!(artifact_hashes_readback(&files, missing).is_err());
+        let mut duplicate = read();
+        duplicate[1] = duplicate[0].clone();
+        assert!(artifact_hashes_readback(&files, duplicate).is_err());
+        let outside = root.join("foreign");
+        let mut extra = read();
+        extra.push((
+            outside.as_path(),
+            Path::new("foreign"),
+            Ok("foreign".into()),
+        ));
+        assert!(artifact_hashes_readback(&files, extra).is_err());
+        let errors = vec![
+            (
+                descriptors[1].0,
+                descriptors[1].1,
+                Err(Error::new("SAIL3040", "second error")),
+            ),
+            (
+                descriptors[0].0,
+                descriptors[0].1,
+                Err(Error::new("SAIL3040", "first error")),
+            ),
+        ];
+        assert_eq!(
+            artifact_hashes_readback(&files, errors)
+                .err()
+                .map(|error| error.message),
+            Some("first error".into())
+        );
+        let first = std::fs::read(&files[0].0)?;
+        let second = std::fs::read(&files[1].0)?;
+        std::fs::write(&files[0].0, second)?;
+        std::fs::write(&files[1].0, first)?;
+        let mut swapped = read();
+        swapped.reverse();
+        assert_ne!(artifact_hashes_readback(&files, swapped)?, expected);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     /// One run reads its runtime once; another run, or another build, reads
     /// the bytes as they are then (#286).

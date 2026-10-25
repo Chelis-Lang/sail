@@ -118,12 +118,36 @@ again. These changes cannot cancel through positional relabeling. Additional
 controls cover missing, extra, duplicate and descriptor-mismatched outcomes,
 including metadata absence and phase-local artifact memoization.
 
-Other native positional mappings remain outside this component: runtime
-artifact hashing in `source_build.rs`, dependency hashing in `adapter.rs`,
-absent-root detection, dependency-snapshot body capture, shipped sysroot
-hashing and the runner's target-revision vector. Those paths still need their
-own tagged-result/domain refinement; this change does not claim that all
-production providers have been closed.
+The remaining six positional readers also use tagged result ledgers:
+
+| Native reader | Independent descriptor and failure behavior |
+|---|---|
+| `source_build::artifact_hashes` | Each result owns the portable runtime name, actual file path and digest/error. Both names must match the complete requested inventory; keyed folding preserves the original first-error priority. |
+| `adapter::driver_dependencies` | Exact extern paths travel with digest/error. Repeated identical path requests are coalesced before reads; keyed folding preserves the first requested path's error priority and existing successful map bytes. |
+| `managed/absent.rs` | Existence results retain their original paths. Missing, extra or duplicate results leave the native observer unready; they cannot become a complete empty watch set. The existing `Path::exists` primitive behavior remains a platform boundary. |
+| `managed/dependency_snapshot.rs` | Each content/size result retains its original artifact path. Complete domain validation precedes keyed folding and the original per-file/total byte limits. |
+| `managed/shipped.rs` | Each result owns the portable sysroot name, actual file path, complete digest and size. Both names bind; the original sorted portable map encoding is preserved. |
+| `managed/runner.rs` | Target revisions retain their exact package identities. A complete keyed map replaces positional vectors at every receipt caller; unavailable identities mark receipts dirty or prevent completed-receipt publication. |
+
+The shared native `parallel::exact_descriptors` adapter checks these actual
+identity/binding rows through the executable core. These rows describe native
+record identity, not successful physical I/O. The actual raw outcome still
+controls success, error or refusal. Repeated exact package identities across
+receipts are captured once and looked up for each receipt; duplicate returned
+outcomes remain invalid. Literal request coalescing changes neither solver
+query bytes nor successful revision/portable-map encodings and adds no physical
+reads. Invalid projected revision batches are recomputed from fresh tagged
+reads; invalid fresh batches remain unavailable.
+
+The controls reverse real runtime, dependency, sysroot, artifact-body, absence
+and target-revision results, reject incomplete/duplicate/foreign descriptors,
+and check changed physical inputs cannot cancel against reversed worker
+completion order. Dependency-body limits and runtime first-error priority have
+separate checks. Linux watcher readiness still needs native Linux validation;
+the descriptor-mapping control also runs on macOS without claiming Linux OS
+behavior. Other native predicate-only aggregation and provider construction
+remain separate refinement obligations; this does not claim every production
+provider or the generic executor itself has been proved.
 
 ### Primitive and provider boundaries
 
