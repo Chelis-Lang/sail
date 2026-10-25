@@ -277,7 +277,9 @@ fn jobs_verify_unbound_setups_as_plain_cargo_verus() {
             .unwrap_or_else(|error| unreachable!("{error}"));
         let text = String::from_utf8_lossy(&human.stdout);
         assert!(
-            text.contains("no proof reuse (SAIL3112)") && text.contains("verified now"),
+            text.contains("no proof reuse (SAIL3112)")
+                && text.contains("observed result (no whole-target proof authority)")
+                && !text.contains("verified now"),
             "{text}"
         );
         if setup == SETUPS[0] {

@@ -191,6 +191,14 @@ its own context. Incomplete input observation never claims that historical
 proof evidence establishes a current workspace. Exit code and proof outcome
 remain distinct from whether a job's execution finished.
 
+Job text and MCP summaries call a target verified only when its whole-target
+report passes the proof-authority checks and its inputs are Current. Historical
+and Unknown proofs are labelled as recorded evidence for their establishing
+revision. Compile-only runs (`--no-verify`) and incomplete or legacy results
+without whole-target authority remain observations, even when their exit code
+is zero or their inputs are Current. A genuine verification run with no
+functions can still establish a whole-target proof.
+
 When Sail cannot confirm that a result's inputs are unchanged, the result is
 Unknown and carries the note `SAIL3114: inputs could not be confirmed
 unchanged; re-run for a current result` ([freshness](freshness.md)).
