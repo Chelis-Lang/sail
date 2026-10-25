@@ -30,7 +30,7 @@ do not establish these proofs.
 | Checker and integration controls | 20 production-runner and 12 model-runner tests pass; links, formatting, completion guard and layering pass | Hosted combined gate |
 | Conformance | No candidate whole-corpus result claimed | Full e2e, fast/PR and fast/standard conformance |
 | Added-cost and CI duration | No clean cost measurement claimed | Native measurements before selection |
-| Publication | Local branch; not pushed | AWS SSO refresh, required native gates, then exact-head hosted checks |
+| Publication | AWS access restored; local branch, not pushed | Required native gates, then exact-head hosted checks |
 
 Counts overlap across roots. The direct checker wall times were 123.34 s for
 production refinements and 153.04 s for models; both ran alongside the host
@@ -55,6 +55,7 @@ Raw artifacts remain outside the repository. SHA-256:
 | 2026-10-25 | Integration development source | Stock-driver compatibility | Unsupported proof-envelope/type and inventory mismatches refused; corrected without scope, resource or timeout relaxation; not qualification |
 | 2026-10-25 | Checker development source | Independent assembly/erasure review | Cargo path redirection and a pointer-equality/proof-import shadow mutant exposed missing source-correspondence checks; fixed with reviewed assembly/import inventories and refusal controls. Late build-script injection now refuses after the proof loop |
 | 2026-10-25 | `8ba92b01` input-reader source | Broad libtest diagnostics | Global Cargo wrapper caused one configuration refusal; direct-binary run had two failures of unknown cause. A Cargo-runner serial control with isolated Cargo home passes 437/437, two solver cases ignored; final nextest gate above passes independently |
+| 2026-10-25 | `9f8085a0` | Native Linux full workspace gate | 1,098 Rust tests pass; rustdoc refuses an unqualified macro-generated API link. Fixed with an explicit public item path; no check weakened |
 | 2026-10-25 | Integration candidate | Native Linux preparation | AWS SSO expired before host launch; no native gate or measurement claimed |
 
 The query failed/passed runs, stack/FD captures and separate primitive probes
@@ -85,3 +86,6 @@ parser framing, full compiler-input closure, physical observations, truthful
 cache origins, retained-request correspondence or complete service composition.
 Those remain explicit obligations in
 [#368](https://github.com/Chelis-Lang/sail/issues/368).
+
+The failed `9f8085a0` native gate log SHA-256 is
+`5defc8d305c11ba90fe804be95fe3b87a11b05720fc1cc1019b3ca28762bbb0e`.
