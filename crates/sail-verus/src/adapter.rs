@@ -1006,6 +1006,34 @@ fn receipt_success(report: &sail_api::output::Report, report_args: &[String]) ->
     crate::managed::receipt_complete(report) && !crate::managed::focused(report_args) && !fallback
 }
 
+/// The command describes this package's effective proof mode. Cargo can send
+/// different options to dependencies than to the explicitly selected target.
+/// Missing/invalid decoding cannot establish that verification was enabled.
+fn report_verification_arguments(
+    report_args: &[String],
+    effective: Option<&[String]>,
+) -> Option<Vec<String>> {
+    let effective = effective?;
+    let enabled = sail_api::acceptance::verification_enabled_options(effective);
+    let mut forwarded = false;
+    let mut arguments = Vec::with_capacity(report_args.len());
+    for argument in report_args {
+        if argument == "--" {
+            forwarded = true;
+        }
+        if !(enabled && forwarded && argument == "--no-verify") {
+            arguments.push(argument.clone());
+        }
+    }
+    if !enabled && sail_api::acceptance::verification_enabled_command(&arguments) {
+        if !forwarded {
+            arguments.push("--".into());
+        }
+        arguments.push("--no-verify".into());
+    }
+    Some(arguments)
+}
+
 fn finish(
     runtime: &Runtime,
     identity: TargetIdentity,
@@ -1062,6 +1090,11 @@ fn finish(
                 .unwrap_or(report_args.len()),
         );
     }
+    let effective = effective_verus_arguments();
+    let observed_arguments = report_verification_arguments(&report_args, effective.as_deref());
+    if let Some(arguments) = &observed_arguments {
+        report_args.clone_from(arguments);
+    }
     let mut report = crate::report::build(&crate::report::Inputs {
         args: &report_args,
         exit_code: exit,
@@ -1071,6 +1104,12 @@ fn finish(
         attribution: &attr,
         diagnostics: &crate::diagnostics::parse(&rendered_diagnostics(stderr)),
     });
+    if observed_arguments.is_none() {
+        report.error = Some(sail_api::output::ErrorInfo {
+            code: "SAIL3111".into(),
+            message: "effective Cargo verification arguments are unavailable or invalid; proof authority withheld".into(),
+        });
+    }
     if let Some(engine) = engine {
         mark_engine(&mut report, engine);
     }
@@ -1499,6 +1538,100 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn report_proof_mode_binds_effective_package_arguments_without_implicit_flag_drift() {
+        let ordinary = vec![
+            "-p".into(),
+            "demo".into(),
+            "--".into(),
+            "--rlimit=30".into(),
+        ];
+        let logged = vec![
+            "--rlimit=30".into(),
+            "--output-json".into(),
+            "--time".into(),
+        ];
+        assert_eq!(
+            report_verification_arguments(&ordinary, Some(&logged)),
+            Some(ordinary.clone())
+        );
+        assert_eq!(report_verification_arguments(&ordinary, None), None);
+
+        let disabled = vec!["--rlimit=30".into(), "--no-verify".into()];
+        let Some(recorded) = report_verification_arguments(&ordinary, Some(&disabled)) else {
+            unreachable!("decoded options are present");
+        };
+        assert_eq!(
+            recorded,
+            vec!["-p", "demo", "--", "--rlimit=30", "--no-verify"]
+        );
+        assert!(!sail_api::acceptance::verification_enabled_command(
+            &recorded
+        ));
+        // A selected package's compile-only flag did not reach this dependency.
+        assert_eq!(
+            report_verification_arguments(&recorded, Some(&logged)),
+            Some(ordinary)
+        );
+        let after_rust_separator = vec!["--".into(), "--no-verify".into()];
+        assert_eq!(
+            report_verification_arguments(&recorded, Some(&after_rust_separator)),
+            Some(vec![
+                "-p".into(),
+                "demo".into(),
+                "--".into(),
+                "--rlimit=30".into()
+            ])
+        );
+    }
+
+    #[test]
+    fn compile_only_success_json_cannot_publish_any_proof_authority() {
+        // Exact terminal fields reproduced with the pinned stock verifier in
+        // corpus/repros/verus-no-verify-success (VI-0035). These describe a
+        // successful compile-only invocation of a proof containing assert(false).
+        let document = serde_json::json!({
+            "func-details": {},
+            "verification-results": {
+                "encountered-error": false,
+                "encountered-vir-error": false,
+                "success": true,
+                "verified": 0,
+                "errors": 0,
+                "is-verifying-entire-crate": true
+            }
+        });
+        let attribution = crate::attribution::attribute(
+            &[document],
+            None,
+            &crate::attribution::Provenance::NoCache,
+            None,
+        );
+        let command = vec!["--".into(), "--no-verify".into()];
+        let report = crate::report::build(&crate::report::Inputs {
+            args: &command,
+            exit_code: Some(0),
+            solver_path: None,
+            solver_sha256: None,
+            daemon: false,
+            attribution: &attribution,
+            diagnostics: &[],
+        });
+        assert_eq!(report.exit_code, Some(0));
+        assert_eq!(report.crates.len(), 1);
+        assert_eq!(report.crates[0].verus.success, Some(true));
+        assert_eq!(report.crates[0].verus.errors, Some(0));
+        assert_eq!(report.summary.functions, 0);
+        for policy in [
+            sail_acceptance::authority::CompletionPolicy::Receipt,
+            sail_acceptance::authority::CompletionPolicy::Whole,
+            sail_acceptance::authority::CompletionPolicy::Repair,
+        ] {
+            assert!(sail_api::acceptance::complete_report(&report, policy).is_none());
+        }
+        assert!(!receipt_success(&report, &command));
+    }
 
     #[test]
     fn attribution_logs_are_requested_only_with_a_log_directory() {

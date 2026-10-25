@@ -3,7 +3,8 @@
 use sail_acceptance::authority::CompletionPolicy;
 use sail_api::acceptance::{
     complete_report, complete_report_ordered, complete_target, complete_whole_report,
-    focused_command, requested_coverage, requested_target,
+    focused_command, requested_coverage, requested_target, verification_enabled_command,
+    verification_enabled_options,
 };
 use sail_api::output::{
     ErrorInfo, EstablishmentName, Report, SourceSummaryName, Summary, VerdictName,
@@ -84,6 +85,40 @@ fn actual_success_and_solver_free_crates_mint_authority() -> TestResult {
     assert!(complete_report(&zero, CompletionPolicy::Receipt).is_some());
     assert!(complete_whole_report(&zero).is_none());
     assert!(complete_report(&zero, CompletionPolicy::Repair).is_none());
+    Ok(())
+}
+
+#[test]
+fn compile_only_success_is_distinct_from_legitimate_zero_function_verification() -> TestResult {
+    let mut report = passing_report()?;
+    for krate in &mut report.crates {
+        krate.functions.clear();
+        krate.verus.verified = Some(0);
+    }
+    report.summary = Summary::of(&report.crates);
+    assert!(complete_whole_report(&report).is_some());
+    report.command = vec!["--".into(), "--no-verify".into()];
+    assert!(!verification_enabled_command(&report.command));
+    for policy in [
+        CompletionPolicy::Receipt,
+        CompletionPolicy::Whole,
+        CompletionPolicy::Repair,
+    ] {
+        assert!(complete_report(&report, policy).is_none());
+    }
+    let full = project(vec![target("app", report)]);
+    assert_eq!(full.currentness, Currentness::Current);
+    assert!(!sail_api::repair::accepted(&full));
+    assert!(verification_enabled_command(&["--no-verify".into()]));
+    assert!(verification_enabled_command(&[
+        "--".into(),
+        "--no-verify=false".into()
+    ]));
+    assert!(!verification_enabled_options(&["--no-verify".into()]));
+    assert!(verification_enabled_options(&[
+        "--".into(),
+        "--no-verify".into()
+    ]));
     Ok(())
 }
 
