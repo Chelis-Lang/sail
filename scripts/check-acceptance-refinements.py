@@ -290,6 +290,23 @@ def captured_tree(root: Path, commit: str, paths: list[str]) -> dict[str, bytes]
     return result
 
 
+def working_source_matches(root: Path, snapshots: dict[str, bytes]) -> None:
+    """Recheck both content and auto-discovery before and after verification."""
+    require(not any((root / "crates" / name / "build.rs").exists()
+        for name in ("sail-acceptance", "sail-api")), "unreviewed protected build script")
+    expected = {path for path in snapshots if path.startswith("crates/")
+        and ("/src/" in path and path.endswith(".rs") or path.endswith("/Cargo.toml"))}
+    actual = {str(path.relative_to(root)) for crate in (root / "crates").iterdir() if crate.is_dir()
+        for path in list((crate / "src").rglob("*.rs")) + list(crate.glob("Cargo.toml"))}
+    require(actual == expected, "working source discovery changed")
+    for path, content in snapshots.items():
+        relative = Path(path)
+        require(not any((root / parent).is_symlink() for parent in [relative, *relative.parents]),
+            "symlink in captured source path")
+        require((root / path).is_file() and (root / path).read_bytes() == content,
+            "working source differs from Git capture")
+
+
 def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> None:
     """Qualify every selected actual-body proof and executable guard mutation."""
     started = time.monotonic()
@@ -304,12 +321,9 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> 
             "scripts/acceptance-source.py"})]
     require(MANIFEST in paths, "refinement manifest is not committed")
     snapshots = captured_tree(root, commit, paths)
-    require(not any((root / "crates" / name / "build.rs").exists()
-        for name in ("sail-acceptance", "sail-api")), "unreviewed protected build script")
+    working_source_matches(root, snapshots)
     validate_assembly(snapshots)
     require(not COMMON.git(root, "status", "--porcelain=v1", "--", *paths), "refinement source is uncommitted")
-    require(all((root / path).is_file() and not (root / path).is_symlink()
-        and (root / path).read_bytes() == data for path, data in snapshots.items()), "working source differs from Git capture")
     manifest = json.loads(snapshots[MANIFEST], object_pairs_hook=COMMON.unique_object)
     entries = inventory(root, manifest, snapshots)
     pins = tomllib.loads(snapshots["corpus/toolchain.toml"].decode())
@@ -355,8 +369,8 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> 
                 "verification": document["verification-results"], "command": command})
             print(entry["id"] + ": " + name + " passed", flush=True)
     require(COMMON.git(root, "rev-parse", "HEAD") == commit, "checked commit changed")
-    require(all(COMMON.digest(root / path) == hashlib.sha256(content).hexdigest()
-        for path, content in snapshots.items()), "bound production source changed during checking")
+    working_source_matches(root, snapshots)
+    inventory(root, manifest, snapshots)
     require(COMMON.validated_runtime(archive, install, asset) == runtime, "stock runtime changed")
     report = {"commit": commit, "source_sha256": {path: hashlib.sha256(value).hexdigest()
         for path, value in snapshots.items()}, "stock_archive_sha256": asset["sha256"],

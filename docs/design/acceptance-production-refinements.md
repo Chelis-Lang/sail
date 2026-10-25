@@ -62,6 +62,8 @@ verification remains admissible. Current input identity is a separate fact:
 compile-only or failed observations may be Current without being verified.
 Retained records from an earlier producer require conservative admission; a
 new envelope marker alone cannot establish that an old report was verified.
+CLI job labels and MCP proof headlines consume checked target authority and
+distinguish current, historical and unknown input observations.
 
 ## Independent checking
 
@@ -83,7 +85,8 @@ The runner captures canonical Git blobs with inherited Git redirection and
 replace refs disabled. Fixed drivers compile captured source, never reopened
 working paths. It validates the pinned stock archive, every extracted runtime
 file, Rust identity, module/dependency bindings, complete function inventories
-and exact result counts. Stock runs directly with pinned Z3, sanitized settings,
+and exact result counts. Source discovery, file kinds and auto-build-script
+absence are checked again after verification. Stock runs directly with pinned Z3, sanitized settings,
 `--no-cheating --output-json --num-threads 1`. Sail, its fork and its caches do
 not certify these proofs.
 

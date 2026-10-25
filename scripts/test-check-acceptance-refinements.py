@@ -181,6 +181,32 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(CHECKER.Refusal, "import bindings changed"):
             CHECKER.compiled_subset(path, mutation)
 
+    def test_working_assembly_detects_new_build_source_and_symlink_paths(self):
+        with tempfile.TemporaryDirectory(prefix="sail-source-layout-") as temporary:
+            root = Path(temporary)
+            path = "crates/sail-api/src/lib.rs"
+            source = root / path
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"original")
+            snapshots = {path: b"original"}
+            CHECKER.working_source_matches(root, snapshots)
+            build = root / "crates/sail-api/build.rs"
+            build.write_text("fn main() {}")
+            with self.assertRaisesRegex(CHECKER.Refusal, "build script"):
+                CHECKER.working_source_matches(root, snapshots)
+            build.unlink()
+            extra = source.parent / "extra.rs"
+            extra.write_bytes(b"extra")
+            with self.assertRaisesRegex(CHECKER.Refusal, "discovery changed"):
+                CHECKER.working_source_matches(root, snapshots)
+            extra.unlink()
+            outside = root / "outside"
+            outside.write_bytes(b"original")
+            source.unlink()
+            source.symlink_to(outside)
+            with self.assertRaisesRegex(CHECKER.Refusal, "symlink"):
+                CHECKER.working_source_matches(root, snapshots)
+
     def test_selected_guard_control_cannot_be_omitted(self):
         import json
         manifest = json.loads((ROOT / CHECKER.MANIFEST).read_text())

@@ -12,7 +12,8 @@ semantic versioning once the API is published.
   concrete refinement proofs; native integration qualification remains pending.
 - Refuse compile-only verification runs as proof authority, including effective
   per-package options and older retained completeness records. Preserve Current
-  input observations separately from proof success.
+  input observations separately from proof success. CLI and MCP proof labels
+  require checked authority and qualify historical or unknown inputs.
 - Preserve actual input descriptors through parallel read admission, and block
   solver-reply publication after incomplete input delivery or metadata loss.
 
