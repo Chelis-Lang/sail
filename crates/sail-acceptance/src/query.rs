@@ -375,6 +375,14 @@ sail_code! {
         }
 
         sail_method! {
+            /// Number of exact buffered payloads, for a complete ordering certificate.
+            pub fn entries_count(&self) -> (count: usize)
+                requires (true)
+                ensures (count == self.contents().len())
+            { self.entries.len() }
+        }
+
+        sail_method! {
             /// Appends a payload only when its entire byte cost fits the bound.
             /// Overflow and oversized payloads leave the batch unchanged.
             pub fn push(&mut self, entry: T, cost: usize, limit: usize) -> (result: bool)

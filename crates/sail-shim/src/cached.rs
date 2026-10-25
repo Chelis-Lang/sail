@@ -337,11 +337,18 @@ impl Pairer {
     }
 }
 
+struct InputStatus {
+    /// All producer expectations have been queued and the input side has finished.
+    done: AtomicBool,
+    /// Permanently false after any failed input delivery or completion observation.
+    valid: AtomicBool,
+}
+
 struct Solving {
     stdin: Option<ChildStdin>,
     expects: Sender<Expect>,
-    /// Set once the input side has seen the end of its input.
-    input_done: Arc<AtomicBool>,
+    /// Input completion and permanently latched delivery/completion failures.
+    input: Arc<InputStatus>,
     /// The output side; it owns the solver and returns its exit status.
     output: JoinHandle<u8>,
 }
@@ -415,7 +422,7 @@ fn output_side(
     skip: u64,
     expects: &Receiver<Expect>,
     client: Option<Client>,
-    input_done: &AtomicBool,
+    input: &InputStatus,
     stderr: Option<&crate::cached_stderr::Monitor>,
 ) -> u8 {
     let mut all = Vec::new(); // every output byte so far
@@ -501,7 +508,7 @@ fn output_side(
     {
         pairer.reply(all.get(s..).unwrap_or_default().to_vec());
     }
-    let input_done = input_done.load(Ordering::SeqCst);
+    let input_done = input.done.load(Ordering::SeqCst);
     // Once the input has ended, every expectation is queued or about to be.
     // Before that, more may never come, so take only what is there.
     queue_stores(&mut pairer, expects, &store_tx, input_done);
@@ -513,7 +520,7 @@ fn output_side(
         code = 1;
     }
     let gate = PublicationGate {
-        input_closed: input_done,
+        input_closed: input_done && input.valid.load(Ordering::SeqCst),
         pairing_active: !pairer.pending.is_stopped(),
         queues_empty: pairer.pending.is_empty(),
         normal_exit: code == 0,
@@ -563,18 +570,31 @@ fn start_solver(
     let (tx, rx) = std::sync::mpsc::channel();
     // Queued before the solver sees any input, so it precedes its reply.
     let _ = tx.send(first);
-    let input_done = Arc::new(AtomicBool::new(false));
-    let done = Arc::clone(&input_done);
+    let input = Arc::new(InputStatus {
+        done: AtomicBool::new(false),
+        valid: AtomicBool::new(true),
+    });
+    let observed_input = Arc::clone(&input);
     // If the thread cannot start, the solver is dropped with it; it exits
     // when `stdin` is dropped below.
     let output = std::thread::Builder::new()
         .name("sail-z3-cached-out".to_owned())
-        .spawn(move || output_side(stdout, child, skip, &rx, client, &done, stderr.as_ref()))
+        .spawn(move || {
+            output_side(
+                stdout,
+                child,
+                skip,
+                &rx,
+                client,
+                &observed_input,
+                stderr.as_ref(),
+            )
+        })
         .ok()?;
     let mut s = Solving {
         stdin: Some(stdin),
         expects: tx,
-        input_done,
+        input,
         output,
     };
     s.write(raw);
@@ -586,13 +606,22 @@ impl Solving {
         if let Some(stdin) = &mut self.stdin
             && stdin.write_all(bytes).and_then(|()| stdin.flush()).is_err()
         {
+            self.input.valid.store(false, Ordering::SeqCst);
             self.stdin = None;
         }
     }
 
-    fn finish(mut self, terminal: QueryKey) -> ExitCode {
-        self.input_done.store(true, Ordering::SeqCst);
-        let _ = self.expects.send(Expect::Terminal(terminal));
+    fn finish(mut self, terminal: QueryKey, complete: bool) -> ExitCode {
+        if !complete {
+            self.input.valid.store(false, Ordering::SeqCst);
+        }
+        self.input.done.store(true, Ordering::SeqCst);
+        let final_expectation = if self.input.valid.load(Ordering::SeqCst) {
+            Expect::Terminal(terminal)
+        } else {
+            Expect::Stop
+        };
+        let _ = self.expects.send(final_expectation);
         drop(self.stdin.take());
         drop(self.expects);
         ExitCode::from(self.output.join().unwrap_or(1))
@@ -690,6 +719,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     let mut solving: Option<Solving> = None;
     let mut client = Some(client);
     let mut stdin = std::io::stdin().lock();
+    let mut input_read_ok = true;
     let mut buf = vec![0u8; 64 * 1024];
 
     loop {
@@ -697,7 +727,10 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             Ok(0) => break,
             Ok(n) => n,
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
-            Err(_) => break,
+            Err(_) => {
+                input_read_ok = false;
+                break;
+            }
         };
         let chunk = buf.get(..n).unwrap_or_default().to_vec();
         raw.extend_from_slice(&chunk);
@@ -778,7 +811,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         args,
         (&raw, served),
         &mut prefix,
-        splitter.finish().is_none(),
+        input_read_ok && splitter.finish().is_none(),
     )
 }
 
@@ -835,7 +868,7 @@ fn finish_input(
                 .is_some_and(|r| r == b"sail-session-silent/v1\n")
         });
     match solving {
-        Some(s) => (Some(s.finish(end.terminal)), true),
+        Some(s) => (Some(s.finish(end.terminal, end.complete)), true),
         None if !certified => (
             start_solver(
                 solver,
@@ -845,7 +878,7 @@ fn finish_input(
                 Expect::Stop,
                 client.take(),
             )
-            .map(|s| s.finish(end.terminal)),
+            .map(|s| s.finish(end.terminal, end.complete)),
             true,
         ),
         None => (Some(ExitCode::SUCCESS), false),
