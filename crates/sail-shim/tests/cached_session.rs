@@ -369,6 +369,56 @@ sys.exit(p.returncode)
 
 #[test]
 #[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn unmatched_clean_exit_preserves_output_and_publishes_nothing() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let dir = scratch();
+    let real = serde_json::to_string(&z3()).unwrap_or_default();
+    // A faulty solver producer exits successfully after only its first reply.
+    // Its version/probe invocations remain the real pinned solver's responses.
+    let script = format!(
+        r"#!/usr/bin/env python3
+import subprocess, sys
+real = {real}
+if '-smt2' not in sys.argv:
+    sys.exit(subprocess.run([real] + sys.argv[1:]).returncode)
+p = subprocess.run([real] + sys.argv[1:], input=sys.stdin.buffer.read(), capture_output=True)
+sys.stdout.buffer.write(p.stdout.splitlines(keepends=True)[0])
+sys.stdout.buffer.flush()
+",
+    );
+    let solver = dir.join("z3");
+    assert!(std::fs::write(&solver, script).is_ok());
+    assert!(std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o755)).is_ok());
+    let (socket, cache) = (dir.join("d.sock"), dir.join("cache"));
+    let (sock, root) = (socket.clone(), cache.clone());
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &root, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let input = b"(get-info :version)\n(echo \"unanswered\")\n(exit)\n";
+    let direct = input_run(&solver, None, input);
+    assert!(direct.status.success());
+    assert_ne!(direct.stdout, [] as [u8; 0]);
+    for _ in 0..2 {
+        let actual = input_run(&solver, Some(&socket), input);
+        assert_eq!(actual.status.code(), direct.status.code());
+        assert_eq!(actual.stdout, direct.stdout);
+        assert_eq!(actual.stderr, direct.stderr);
+    }
+    assert!(
+        sail_cache::DiskCache::new(&cache).list().is_empty(),
+        "an unmatched session must not publish its earlier paired reply"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
 fn new_no_output_suffix_cannot_hide_diagnostics_after_cache_hits() {
     let dir = scratch();
     let solver = logging_solver(&dir, &z3());

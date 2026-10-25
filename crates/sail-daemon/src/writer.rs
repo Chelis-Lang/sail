@@ -8,10 +8,11 @@
 //! that finds it full waits briefly, then is dropped, which only costs a
 //! future miss.
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
+use sail_acceptance::query::Fifo;
 use sail_cache::memory::{MemoryTier, SLOT_OVERHEAD, Value};
 use sail_cache::{DiskCache, PutOutcome};
 use sail_key::QueryKey;
@@ -46,14 +47,24 @@ pub(crate) enum Submitted {
     Dropped,
 }
 
-#[derive(Default)]
 struct Queue {
-    jobs: VecDeque<Job>,
+    jobs: Fifo<Job>,
     /// Keys queued or being written.
     keys: HashSet<[u8; 32]>,
     /// Bytes queued or being written.
     bytes: u64,
     closed: bool,
+}
+
+impl Default for Queue {
+    fn default() -> Self {
+        Self {
+            jobs: Fifo::empty(),
+            keys: HashSet::new(),
+            bytes: 0,
+            closed: false,
+        }
+    }
 }
 
 /// The write-behind queue.
@@ -122,7 +133,7 @@ impl Writer {
         memory.insert_pending(&job.key, Arc::clone(&job.value));
         q.keys.insert(job.key.0);
         q.bytes += cost;
-        q.jobs.push_back(job);
+        q.jobs.push(job);
         self.work.notify_one();
         Submitted::Queued
     }
@@ -145,7 +156,7 @@ impl Writer {
             let job = {
                 let Some(mut q) = self.lock() else { return };
                 loop {
-                    if let Some(job) = q.jobs.pop_front() {
+                    if let Some(job) = q.jobs.pop() {
                         break job;
                     }
                     if q.closed {
