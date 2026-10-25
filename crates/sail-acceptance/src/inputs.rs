@@ -641,12 +641,6 @@ impl OriginalGuard {
     }
 }
 
-sail_code! {
-    impl Clone for OriginalGuard {
-        fn clone(&self) -> Self { self.duplicate() }
-    }
-}
-
 sail_spec! {
     /// Every requested selected fact is an exact readable fact of the source.
     pub open spec fn covered_selection(source: Seq<InputFact>, selected: Seq<InputFact>) -> bool {
