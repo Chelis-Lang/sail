@@ -17,6 +17,7 @@ pub(super) enum Phase {
 }
 
 pub(super) struct Environment<'a> {
+    pub(super) profile: u32,
     pub(super) module: &'a [String],
     pub(super) values: BTreeMap<String, Type>,
     pub(super) structs: &'a BTreeMap<String, Struct>,
@@ -46,10 +47,11 @@ impl Environment<'_> {
                     .get(&name)
                     .cloned()
                     .ok_or_else(|| unsupported("unresolved specification binding"))?;
-                let source = if name == "self" && self.mutable_receiver {
+                let mutable_reference = matches!(ty, Type::Reference(_, true));
+                let source = if (name == "self" && self.mutable_receiver) || mutable_reference {
                     match phase {
-                        Phase::Old => quote!(old(self)),
-                        Phase::Post => quote!(final(self)),
+                        Phase::Old => quote!(old(#value)),
+                        Phase::Post => quote!(final(#value)),
                         Phase::Current => quote!(#value),
                     }
                 } else {
@@ -59,7 +61,11 @@ impl Environment<'_> {
             }
             syn::Expr::Field(value) => {
                 let base = self.translate(&value.base, None, phase)?;
-                let Type::Named(name) = &base.ty else {
+                let field_type = match &base.ty {
+                    Type::Reference(inner, _) => inner.as_ref(),
+                    ty => ty,
+                };
+                let Type::Named(name) = field_type else {
                     return Err(unsupported(
                         "field access requires an admitted scalar struct; autoderef is forbidden",
                     ));
@@ -80,13 +86,36 @@ impl Environment<'_> {
                 projected.defined = base.defined;
                 Ok(projected)
             }
+            syn::Expr::Path(value) if value.qself.is_none() && value.path.segments.len() >= 2 => {
+                let mut parts = value.path.clone();
+                let variant = parts
+                    .segments
+                    .pop()
+                    .ok_or_else(|| unsupported("empty enum path"))?
+                    .into_value()
+                    .ident
+                    .to_string();
+                parts.segments.pop_punct();
+                let name = qualify(self.module, &parts)?;
+                if !self
+                    .structs
+                    .get(&name)
+                    .and_then(|r| r.variants.as_ref())
+                    .is_some_and(|vs| vs.contains(&variant))
+                {
+                    return Err(unsupported("unresolved nominal enum variant"));
+                }
+                Ok(value_of(Type::Enum(name), quote!(#value)))
+            }
             syn::Expr::Paren(value) => self.translate(&value.expr, hint, phase),
             syn::Expr::Group(value) => self.translate(&value.expr, hint, phase),
             syn::Expr::Block(value) => {
                 let [syn::Stmt::Expr(expression, None)] = value.block.stmts.as_slice() else {
                     return Err(unsupported("unsupported specification block"));
                 };
-                self.translate(expression, hint, phase)
+                let value = self.translate(expression, hint, phase)?;
+                self.admit_nominal_value(&value.ty)?;
+                Ok(value)
             }
             syn::Expr::Binary(value) => self.binary(value, hint, phase),
             syn::Expr::Unary(value) => self.unary(value, hint, phase),
@@ -120,6 +149,27 @@ impl Environment<'_> {
                 lit: syn::Lit::Int(value),
                 ..
             }) if value.suffix().is_empty() => Ok(None),
+            syn::Expr::Path(value) if value.qself.is_none() && value.path.segments.len() >= 2 => {
+                let mut parts = value.path.clone();
+                let variant = parts
+                    .segments
+                    .pop()
+                    .ok_or_else(|| unsupported("empty enum path"))?
+                    .into_value()
+                    .ident
+                    .to_string();
+                parts.segments.pop_punct();
+                let name = qualify(self.module, &parts)?;
+                if !self
+                    .structs
+                    .get(&name)
+                    .and_then(|r| r.variants.as_ref())
+                    .is_some_and(|vs| vs.contains(&variant))
+                {
+                    return Err(unsupported("unresolved nominal enum variant"));
+                }
+                Ok(Some(Type::Enum(name)))
+            }
             syn::Expr::Paren(value) => self.infer(&value.expr),
             syn::Expr::Group(value) => self.infer(&value.expr),
             syn::Expr::Unary(value) if matches!(value.op, syn::UnOp::Neg(_)) => {
@@ -137,6 +187,9 @@ impl Environment<'_> {
                     inner => self.infer(inner),
                 }
             }
+            syn::Expr::Unary(value) if matches!(value.op, syn::UnOp::Deref(_)) => self
+                .translate(expression, None, Phase::Current)
+                .map(|v| Some(v.ty)),
             syn::Expr::Unary(value) => self.infer(&value.expr),
             syn::Expr::Binary(value) if numeric(&value.op) => {
                 Ok(self.infer(&value.left)?.or(self.infer(&value.right)?))
@@ -185,6 +238,13 @@ impl Environment<'_> {
         if left.ty != ty || right.ty != ty || !ty.scalar() {
             return Err(unsupported(
                 "specification operand types differ or are non-scalar",
+            ));
+        }
+        if matches!(ty, Type::Enum(_))
+            && !matches!(source.op, syn::BinOp::Eq(_) | syn::BinOp::Ne(_))
+        {
+            return Err(unsupported(
+                "unit enum contracts admit equality and inequality only",
             ));
         }
         let l = left.expression;
@@ -264,6 +324,16 @@ impl Environment<'_> {
         let expression = value.expression;
         let defined = value.defined;
         match &source.op {
+            syn::UnOp::Deref(_) => {
+                let Type::Reference(inner, _) = value.ty else {
+                    return Err(unsupported(
+                        "dereference requires an admitted reference parameter",
+                    ));
+                };
+                let mut result = value_of(*inner, quote!(*(#expression)));
+                result.defined = defined;
+                Ok(result)
+            }
             syn::UnOp::Not(_) if value.ty == Type::Bool => Ok(Value {
                 ty: Type::Bool,
                 expression: quote!(!(#expression)),
@@ -294,7 +364,7 @@ impl Environment<'_> {
                 .first()
                 .ok_or_else(|| unsupported("old has no entry expression"))?;
             let value = self.translate(argument, None, Phase::Old)?;
-            if !value.ty.scalar() {
+            if !matches!(value.ty, Type::Bool | Type::Integer { .. }) {
                 return Err(unsupported(
                     "old captures require scalar values, not receiver aliases or structs",
                 ));
@@ -343,6 +413,15 @@ impl Environment<'_> {
         })
     }
 
+    fn admit_nominal_value(&self, ty: &Type) -> Result<()> {
+        if self.profile == 2 && matches!(ty, Type::Named(_) | Type::Enum(_)) {
+            return Err(unsupported(
+                "profile two conditional and block expressions cannot move a non-Copy nominal value; use direct flat fields or scalar expressions",
+            ));
+        }
+        Ok(())
+    }
+
     fn conditional(
         &self,
         source: &syn::ExprIf,
@@ -361,6 +440,7 @@ impl Environment<'_> {
             .as_ref()
             .ok_or_else(|| unsupported("missing specification else branch"))?;
         let ty = self.operand_type(then, otherwise, hint)?;
+        self.admit_nominal_value(&ty)?;
         let then = self.translate(then, Some(&ty), phase)?;
         let otherwise = self.translate(otherwise, Some(&ty), phase)?;
         if then.ty != otherwise.ty {

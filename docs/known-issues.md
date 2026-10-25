@@ -5,12 +5,19 @@ release work; linked validation pages preserve the scope of each result.
 
 ## Functional release qualification
 
-The selected rc.6 consumer passes all four complete mutation cohorts on each
-platform: 651 matching comparisons each, no false verified results, differences,
-instability or infrastructure errors. All ordinary and forced reverts get the
-original's own answers. The previous Mac HumanEval regression (#337) remains
-fixed by runtime #338. The [release record](validation/release-candidate.md)
-binds these results to the frozen binaries; later main changes are separate.
+Runtime `36d65c3f` passes all four complete installed mutation cohorts on
+each platform: 651 matching comparisons each, no false verified results,
+differences, instability or infrastructure errors. All ordinary and forced
+reverts get the original's own answers. Both matrices have 31 valid
+comparisons. The [current qualification](validation/shadow-index.md) names
+the frozen binaries and later main integration; the
+[private rc.6 record](validation/release-candidate.md) remains historical.
+
+An initial Mac host run after integrating scalar-witness main observed an
+extra restart in the fake-Cargo unbound watch fixture (#306). The unchanged
+isolated test and complete 1,055-test retry pass. Cause remains unknown;
+this observation does not establish a compiler or verdict regression. The
+failed run stays indexed in the current qualification.
 
 ## Neutral source mutation
 
@@ -32,30 +39,37 @@ binds the latest cumulative source and preserves the same positive-kill limit.
   [reproduction](../corpus/repros/z3-resource-count-variation/README.md) and
   [qualification](validation/rlimit-subsumption.md).
 
-- **Anvil cold and unchanged setup costs remain open** (#314). Exact-scope
-  reuse removes repeat verification without promoting partial reports to
-  whole-target proofs. The complete corrected matrix measures unchanged
-  calls at 1.91 s versus stock 0.32 s on Linux. Its cold medians are
-  178.19 s versus 178.89 s with overlapping ranges. Mac cold is 102.52 s
-  versus 99.66 s; its unchanged call is 1.82 s versus 0.28 s. See
-  [unchanged partial verification](validation/exact-scope-reuse.md).
+- **Unchanged Anvil setup cost remains open** (#314). Exact-scope reuse
+  starts zero verifiers without promoting partial reports to whole-target
+  proofs. The current installed matrix measures 1.95 s versus stock 0.33 s
+  on Linux and 1.83 s versus 0.28 s on Mac. Linux cold improves
+  186.13 → 172.99 s; Mac cold remains 99.88 → 100.73 s. See the
+  [runtime qualification](validation/shadow-index.md) and
+  [exact-scope behavior](validation/exact-scope-reuse.md).
 - **The release performance decision remains open** (#232, #278). Tiny edits
-  and unchanged calls retain visible overhead; Mac Vest cold adds 0.74 s
-  with overlapping sample ranges. All 31 selected comparisons are valid on
-  each platform, including the corrected successful Vest subsets. Original
-  default-limit failures remain invalid and preserved; conformance retains
-  that regression. [Performance](performance.md) states the current numbers.
-  Recording a loss does not accept it.
+  and unchanged calls retain overhead. Mac Vest cold adds 0.06 s; Mac Anvil
+  cold adds 0.86 s on about 100 s. All 31 comparisons are valid on each
+  platform, with ten Linux and twelve Mac rows requiring review. Passing
+  Vest rows use limit 100 on both arms; the corpus still retains the known
+  default-limit failure. [Performance](performance.md) states the current
+  numbers. Recording a loss does not accept it.
 
 - **IronKV's larger edit losses are removed by the tighter retention budget**
-  (#330; candidate qualification in progress). All 153 comparisons match and
-  its complete loop is 1.48× faster, versus 1.31× before. Two medians still
-  add 0.03–0.10 s on roughly 9–10 s runs. Cheap-target undo uses ordinary
-  solver caching (4.7 s), while the successful public Vest control retains
-  instant undo (1.98 s). The earlier 1.43× result accidentally disabled
-  fresh-target retention and cannot qualify the corrected product.
+  (#330). All 153 current comparisons match on each platform; complete loops
+  are 1.47× faster on Linux and 1.42× on Mac. Three individual Linux medians
+  still add 0.02–0.22 s on roughly 8–9 s edits; one Mac median adds 0.22 s
+  on a 4.14 s edit. Cheap-target undo uses ordinary solver caching, while
+  the successful public Vest control retains instant undo. The earlier
+  retention-disabled measurement does not qualify this product.
 
 ## Corrected defects and historical measurements
+
+- **Explicit older Cargo no longer repeatedly rebuilds unchanged script projects.**
+  Anvil with its selected Cargo 1.98.0 uses ordinary Cargo freshness and reports
+  Unknown with no proof reuse. Three native unchanged-call pairs fall from
+  60.97 s to 0.89 s. This fixes a separate unsupported-protocol path; it does
+  not remove the pinned-toolchain setup costs above. See the
+  [qualification](validation/unsupported-cargo-fallback.md).
 
 - **CapybaraKV's repeated vstd rebuild is fixed** (#321, #292). The native
   three-round full mutation run now has 168 matching comparisons, no false

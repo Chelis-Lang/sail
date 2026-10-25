@@ -80,3 +80,27 @@ fn source_admission_rechecks_bodies_instead_of_generated_names() {
     "#;
     assert!(parse_source(source).is_err());
 }
+
+#[test]
+fn explicit_profile_preserves_legacy_reference_and_nominal_rejections() -> TestResult {
+    let source = r#"#[derive(Debug,PartialEq,Eq)] enum State { Pending, Done }
+    #[satisfies("R2")] #[satisfies("R1")] #[ensures(|ret| ret == (*state == State::Pending))]
+    fn active(state: &State)->bool { *state == State::Pending }"#;
+    assert!(parse_source(source).is_err());
+    let selected = sail_contracts_ir::parse_source_with_profile(source, 2)?;
+    assert_eq!(selected.profile, 2);
+    assert_eq!(selected.enums.len(), 1);
+    assert_eq!(
+        selected.functions[0]
+            .function
+            .requirements
+            .iter()
+            .map(sail_contracts_ir::RequirementId::as_str)
+            .collect::<Vec<_>>(),
+        vec!["R1", "R2"]
+    );
+    let legacy_nominal = r#"#[satisfies("R")] #[ensures(|ret| ret == State::Pending)] fn f()->State {State::Pending}"#;
+    assert!(parse_source(legacy_nominal).is_err());
+    assert!(sail_contracts_ir::parse_source_with_profile(source, 0).is_err());
+    Ok(())
+}

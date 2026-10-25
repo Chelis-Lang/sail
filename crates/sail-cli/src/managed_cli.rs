@@ -245,14 +245,16 @@ pub(crate) fn verify(
         // Cargo-Verus's output, and in a job's worker (jobs, `watch`, MCP)
         // as a project result marked `no_reuse` (#165). The opt-in engine
         // still reports it.
-        Err(error) if error.code == "SAIL3112" && !interactive => crate::verify::unbound(
-            &config.args,
-            options.json,
-            worker && options.json,
-            &error.message,
-            out,
-            err,
-        ),
+        Err(error) if matches!(error.code, "SAIL3112" | "SAIL3139") && !interactive => {
+            crate::verify::unbound(
+                &config.args,
+                options.json,
+                options.json && (worker || error.code == "SAIL3139"),
+                &error.message,
+                out,
+                err,
+            )
+        }
         Err(error) => failure(&error.to_string(), out, err, options.json),
     }
 }

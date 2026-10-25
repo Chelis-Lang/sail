@@ -12,6 +12,7 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 | Negotiated source-only job route and immutable baselines | Cumulative source qualified on native Linux and macOS | [Combined qualification](validation/integration-production.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
 | Source-semantic requirement entailment and full requirement tiers | Producer source-bound proof views implemented; independent links belong to Oyster | [Service boundary](spec/neutral-contract-jobs.md) |
 | Bounded neutral-source body mutation | Lifecycle qualified; native strong mutants remain Unknown and positive kills unestablished | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
+| Separate scalar literal-contract witnesses | Native Linux gates and installed source-owner witness acceptance pass; protected delivery remains separate | [Qualification](validation/scalar-literal-witnesses.md), [ADR 0077](decisions/0077-scalar-literal-contract-witnesses.md) |
 
 ## Evidence-acceptance proofs
 
@@ -41,13 +42,14 @@ verification runtime (#146).
 
 ### Current standing against stock Verus
 
-Both exact installed consumers complete all 31 matrix rows and all four
-three-round mutation cohorts: 651 matching comparisons per platform, zero
-false verified or functional differences. Complete edit-loop speedups are
-1.13–2.62× on Linux and 1.38–2.84× on Mac. Runtime 7d9d5410 fixes the Mac
-HumanEval proof regression found by that suite (#338). Mac cold Anvil and
-Vest, plus unchanged/tiny-edit overhead, keep release acceptance open.
-Current numbers and limits are in [performance](performance.md).
+The current runtime `36d65c3f` completes both installed 31-row matrices
+and four three-round mutation cohorts per platform: 651 matching comparisons
+each, no false verified or functional differences. Full edit loops improve
+1.11–2.71× on Linux and 1.40–2.87× on Mac. Native Anvil compiler pairs
+show the erasure index's 10.6% Linux / 13.4% Mac reduction. Unchanged and
+tiny-edit overhead remains, and Mac cold Anvil adds 0.86 s on about 100 s.
+[Performance](performance.md) identifies the exact frozen installs;
+[qualification](validation/shadow-index.md) covers later main integration.
 
 ## 0.1.0
 
@@ -73,6 +75,9 @@ scope of a future release.
 - Managed builds use the engine's pinned Cargo
   ([ADR 0058](decisions/0058-managed-builds-use-the-pinned-cargo.md)).
 - Instant revert on Linux and macOS (#224, #269).
+
+The following table qualifies the historical private rc.6 archives. The
+current-main improvement gates are tracked in the sprint below.
 
 | Gate | Status | Next |
 |---|---|---|
@@ -110,10 +115,10 @@ is no new release branch or predetermined next release artifact.
 |---|---|---|
 | Installation and adoption | Guided, checksum-checked archive installer merged (#357); actual Linux and Mac install/first-proof/unchanged controls pass | [Installation](validation/install.md) |
 | Avoidable allocation | Streaming attribution hashes merged (#358); bounded hash diagnostic halves peak memory and native gates pass | [Memory scope and limits](validation/transcript-memory.md) |
-| Cold and unchanged overhead | Open; initial source-observation cuts did not move Anvil latency and are excluded | Measured improvement on native Linux and Mac without weaker input checks |
-| Real-project frontend floor | Current-runtime cache-arm comment edits: Vest 20.98 s, IronKV 4.46 s, Anvil 34.39 s; [diagnostic scope](reports/2026-10-16-warm-frontend.md#current-runtime-diagnostic-2026-10-24) | Select a contained change from measured wall-time cost; persistent reuse remains unqualified under ADR 0052 |
+| Cold and unchanged overhead | Explicit older-Cargo freshness fixed (#364): Anvil 60.973 to 0.895 s, with no proof reuse. Qualified-Cargo unchanged costs remain open; ineffective source-observation trials are excluded | [Cargo qualification](validation/unsupported-cargo-fallback.md); further cuts need native gains without weaker input checks |
+| Real-project frontend floor | [Fork PR #11](https://github.com/Chelis-Lang/verus/pull/11) merged: index erasure shadow checks. Six final Linux Anvil pairs improve 10.6%; five-project Mac controls pass. Both installed matrices and all eight mutation cohorts pass functional qualification; runtime 36d65c3f is selected | [Qualification](validation/shadow-index.md); persistent reuse remains unqualified under ADR 0052 |
 | Avoidable invalidation | Authentication plumbing excluded from CLI contexts; actual unchanged and declared-read controls pass, first-use bundle hits preserved | [Qualification](validation/credential-context.md): full native gates, fast/standard conformance and Mac controls pass |
-| Combined product validation | Required after selecting effective changes | Corrected matrices and realistic mutation suite; functional parity and no real slowdown |
+| Combined product validation | Both installed matrices have 31 valid comparisons; 651 matching mutation/control comparisons per platform. Current-main native workspace 1,066, solver 42, full E2E+extra and PR conformance pass; Mac host 1,055 passes | [Qualification](validation/shadow-index.md); performance acceptance remains open for slower rows |
 
 The historical rc.6 results above remain a baseline. They do not qualify
 later main changes or settle the remaining performance gates.
@@ -296,9 +301,9 @@ The M11 reliability items in #168 are closed.
 |---|---|---|
 | Raw SMT shared runtime | Implemented; original consumer slice delivered | Continued consumer qualification at its selected immutable SDK |
 | Native D.I.V.E. worker and shared temporal route | Linux installed-service and cumulative Linux/Mac host gates passed | Protected CI and exact-pin consumer delivery |
-| Neutral source jobs | Admitted source subset and original proof retention qualified | Broader Rust and contract admission |
+| Neutral source jobs | Explicit flat profile two passed native gates, fork/stock order proofs and installed consumer acceptance | [Exact-head protected delivery and immutable consumer selection](validation/neutral-source-profile-two.md); broader source profiles remain separate |
 | Requirement assurance | Source-bound original proof and requirement views implemented | Consumer-owned independent links and complete current evidence |
-| Bounded neutral-source mutation | Lifecycle and conservative retention qualified | Positive native kills remain unestablished; strong mutants return Unknown |
+| Bounded neutral-source mutation | Actual installed campaigns retain conservative original outcomes | Literal-policy UNKNOWN remains Inconclusive; native kills unestablished and nominal/multiple-ID scope unsupported |
 
 The [combined integration qualification](validation/integration-production.md)
 identifies exact cumulative source, actual platform scope, independent review,

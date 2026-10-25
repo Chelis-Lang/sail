@@ -10,6 +10,25 @@ semantic versioning once the API is published.
   guard-removal controls. CI completion requires the model-proof job.
   Production acceptance remains independently implemented and unrefined.
 
+- Add opt-in scalar literal-contract queries and independently evaluated concrete
+  assignments through the existing source-owner and pinned SMT runtime APIs.
+  Unsupported scope stays explicit; native mutation UNKNOWN and proof tiers
+  retain their existing meanings.
+
+- Add explicitly negotiated neutral source profile two for admitted unit enums,
+  flat records, shared references, mutable scalar references, and several
+  requirement identities sharing a conjunctive guarantee. Legacy profile-one
+  source and retained evidence keep their original interpretation and bytes.
+  Runtime postconditions borrow actual results without requiring Copy.
+
+- Honor an explicitly selected older Cargo by verifying build-script projects
+  with ordinary Cargo freshness when its input protocol cannot support proof
+  receipts. Explain how to enable receipt reuse with the pinned toolchain;
+  JSON results stay Unknown and explicitly report no proof reuse.
+- Reduce repeated Verus erasure work in large proof modules. Native cached
+  Anvil compiler runs take about 10–13% less wall time with identical solver
+  input bytes. Both platform runtimes are rebuilt for the same fork commit.
+
 - Keep unchanged CLI proofs reusable when private dependency credentials change.
   Source and build-script declarations that read those variables still
   invalidate their receipts when the values change.

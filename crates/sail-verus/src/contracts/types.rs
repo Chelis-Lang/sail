@@ -11,6 +11,8 @@ pub(super) enum Type {
     Bool,
     Integer { signed: bool, bits: u32 },
     Named(String),
+    Enum(String),
+    Reference(Box<Self>, bool),
     Unit,
 }
 
@@ -22,6 +24,24 @@ impl Type {
     ) -> Result<Self> {
         if matches!(value, syn::Type::Tuple(tuple) if tuple.elems.is_empty()) {
             return Ok(Self::Unit);
+        }
+        if let syn::Type::Reference(reference) = value {
+            if reference.lifetime.is_some() {
+                return Err(unsupported("explicit reference lifetimes are unsupported"));
+            }
+            let inner = Self::parse(&reference.elem, module, structs)?;
+            if matches!(inner, Self::Reference(..) | Self::Unit)
+                || (reference.mutability.is_some()
+                    && !matches!(inner, Self::Bool | Self::Integer { .. }))
+            {
+                return Err(unsupported(
+                    "only shared flat values or mutable scalar references are supported",
+                ));
+            }
+            return Ok(Self::Reference(
+                Box::new(inner),
+                reference.mutability.is_some(),
+            ));
         }
         let syn::Type::Path(path) = value else {
             return Err(unsupported(
@@ -49,8 +69,12 @@ impl Type {
             }
         }
         let name = qualify(module, &path.path)?;
-        if structs.contains_key(&name) {
-            return Ok(Self::Named(name));
+        if let Some(record) = structs.get(&name) {
+            return Ok(if record.variants.is_some() {
+                Self::Enum(name)
+            } else {
+                Self::Named(name)
+            });
         }
         Err(unsupported(format!(
             "unresolved or unsupported contract type {text}; Int execution, pointer-sized types and user-defined dereferencing are unsupported"
@@ -78,7 +102,7 @@ impl Type {
     }
 
     pub(super) fn scalar(&self) -> bool {
-        matches!(self, Self::Bool | Self::Integer { .. })
+        matches!(self, Self::Bool | Self::Integer { .. } | Self::Enum(_))
     }
 
     pub(super) fn rust(&self) -> Result<TokenStream> {
@@ -91,7 +115,15 @@ impl Type {
                         .map_err(super::syntax)?;
                 Ok(quote!(#name))
             }
-            Self::Named(name) => {
+            Self::Reference(inner, mutable) => {
+                let inner = inner.rust()?;
+                Ok(if *mutable {
+                    quote!(&mut #inner)
+                } else {
+                    quote!(&#inner)
+                })
+            }
+            Self::Named(name) | Self::Enum(name) => {
                 let path: syn::Path =
                     syn::parse_str(&format!("crate::{name}")).map_err(super::syntax)?;
                 Ok(quote!(#path))
@@ -103,6 +135,7 @@ impl Type {
 #[derive(Clone, Debug)]
 pub(super) struct Struct {
     pub(super) fields: BTreeMap<String, Type>,
+    pub(super) variants: Option<Vec<String>>,
 }
 
 pub(super) fn qualify(module: &[String], path: &syn::Path) -> Result<String> {
