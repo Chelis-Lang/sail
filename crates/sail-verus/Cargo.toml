@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+sail-acceptance.workspace = true
 sail-contracts-ir.workspace = true
 syn.workspace = true
 num-bigint.workspace = true
