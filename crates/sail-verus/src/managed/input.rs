@@ -1,6 +1,6 @@
 //! Cargo metadata and declared input revision tracking.
 
-use super::files::digest_all;
+use super::files::{digest_all_tagged, read_outcome_keys_match};
 use crate::{Error, Result};
 use sail_acceptance::inputs::{
     InputFact, InputValue, OriginalCapture, OriginalGuard, compare_readback, reads_complete,
@@ -99,12 +99,19 @@ fn snapshot_facts<'a>(
 }
 
 fn bindings_current(bindings: &BTreeMap<PathBuf, PathBuf>) -> bool {
-    if bindings.is_empty() {
+    let aliases: Vec<_> = bindings.keys().map(PathBuf::as_path).collect();
+    let reads = crate::parallel::in_order(&aliases, |&alias| (alias, alias.canonicalize()));
+    bindings_readback(bindings, &reads)
+}
+
+fn bindings_readback(
+    bindings: &BTreeMap<PathBuf, PathBuf>,
+    reads: &[(&Path, std::io::Result<PathBuf>)],
+) -> bool {
+    if bindings.is_empty() && reads.is_empty() {
         return true;
     }
-    let aliases: Vec<_> = bindings.iter().collect();
-    let reads = crate::parallel::in_order(&aliases, |(alias, _)| alias.canonicalize());
-    let expected: Vec<_> = aliases
+    let expected: Vec<_> = bindings
         .iter()
         .map(|(alias, target)| InputFact {
             namespace: 1,
@@ -112,10 +119,9 @@ fn bindings_current(bindings: &BTreeMap<PathBuf, PathBuf>) -> bool {
             value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
         })
         .collect();
-    let observed: Vec<_> = aliases
+    let observed: Vec<_> = reads
         .iter()
-        .zip(&reads)
-        .map(|((alias, _), read)| InputFact {
+        .map(|(alias, read)| InputFact {
             namespace: 1,
             name: alias.as_os_str().as_encoded_bytes(),
             value: match read {
@@ -890,11 +896,14 @@ fn projected_snapshot(
         &files,
         &bindings,
         files.iter().map(|path| {
-            observed
-                .digests
-                .get(path)
-                .cloned()
-                .ok_or_else(|| Error::new("SAIL3101", "missing observed input"))
+            (
+                path.as_path(),
+                observed
+                    .digests
+                    .get(path)
+                    .cloned()
+                    .ok_or_else(|| Error::new("SAIL3101", "missing observed input")),
+            )
         }),
     );
     let capture = project_guard(observed, &revision, &digests, &bindings)?;
@@ -1058,29 +1067,17 @@ fn contents_revision(
     bindings: &BTreeMap<PathBuf, PathBuf>,
 ) -> (String, bool, BTreeMap<PathBuf, String>) {
     let paths: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
-    fold_contents(files, bindings, digest_all(&paths))
+    fold_contents(files, bindings, digest_all_tagged(&paths))
 }
 
-fn fold_contents(
+fn fold_contents<'a>(
     files: &BTreeSet<PathBuf>,
     bindings: &BTreeMap<PathBuf, PathBuf>,
-    reads: impl IntoIterator<Item = Result<String>>,
+    reads: impl IntoIterator<Item = (&'a Path, Result<String>)>,
 ) -> (String, bool, BTreeMap<PathBuf, String>) {
-    let mut reads = reads.into_iter();
-    let mut recorded = Vec::with_capacity(files.len());
-    let mut hasher = Sha256::new();
-    for path in files {
-        let bytes = path.as_os_str().as_encoded_bytes();
-        hasher.update((bytes.len() as u64).to_le_bytes());
-        hasher.update(bytes);
-        let hash = reads.next().and_then(std::result::Result::ok);
-        if let Some(hash) = &hash {
-            hasher.update(hash.as_bytes());
-        } else {
-            hasher.update(b"unreadable");
-        }
-        recorded.push((path, hash));
-    }
+    // A parallel result owns the path actually read alongside its outcome.
+    // Validate all returned keys before reducing them to a keyed lookup.
+    let reads: Vec<_> = reads.into_iter().collect();
     let required: Vec<_> = files
         .iter()
         .map(|path| InputFact {
@@ -1089,12 +1086,12 @@ fn fold_contents(
             value: InputValue::Present(&[]),
         })
         .collect();
-    let observed: Vec<_> = recorded
+    let observed: Vec<_> = reads
         .iter()
-        .map(|(path, hash)| InputFact {
+        .map(|(path, read)| InputFact {
             namespace: 0,
             name: path.as_os_str().as_encoded_bytes(),
-            value: hash.as_ref().map_or(InputValue::Unreadable, |hash| {
+            value: read.as_ref().map_or(InputValue::Unreadable, |hash| {
                 InputValue::Present(hash.as_bytes())
             }),
         })
@@ -1108,17 +1105,32 @@ fn fold_contents(
         &required_inverse,
         &observed_order,
         &observed_inverse,
-    ) && reads.next().is_none();
+    );
+    let by_name: BTreeMap<_, _> = reads
+        .iter()
+        .filter_map(|(path, read)| {
+            read.as_ref()
+                .ok()
+                .map(|hash| (path.as_os_str().as_encoded_bytes(), hash))
+        })
+        .collect();
+    let mut recorded = BTreeMap::new();
+    let mut hasher = Sha256::new();
+    // Logical revisions retain the original Path set order regardless of the
+    // worker completion order; no expected label is attached to a raw result.
+    for path in files {
+        let bytes = path.as_os_str().as_encoded_bytes();
+        hasher.update((bytes.len() as u64).to_le_bytes());
+        hasher.update(bytes);
+        if let Some(hash) = by_name.get(bytes) {
+            hasher.update(hash.as_bytes());
+            recorded.insert(path.clone(), (*hash).clone());
+        } else {
+            hasher.update(b"unreadable");
+        }
+    }
     bind_paths(&mut hasher, bindings);
-    // Every declared file has an outcome; only successful reads enter digests.
-    (
-        format!("{:x}", hasher.finalize()),
-        complete,
-        recorded
-            .into_iter()
-            .filter_map(|(path, hash)| hash.map(|hash| (path.clone(), hash)))
-            .collect(),
-    )
+    (format!("{:x}", hasher.finalize()), complete, recorded)
 }
 
 pub(super) fn bind_paths(hasher: &mut Sha256, bindings: &BTreeMap<PathBuf, PathBuf>) {
@@ -1162,15 +1174,31 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
 // folds their results in the original sorted order, exactly as one by one.
 #[cfg(unix)]
 fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
+    let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
+    let stats = crate::parallel::in_order(&names, |&path| (path, std::fs::symlink_metadata(path)));
+    stamp_readback(paths, &stats)
+}
+
+#[cfg(unix)]
+fn stamp_readback(
+    paths: &BTreeSet<PathBuf>,
+    stats: &[(&Path, std::io::Result<std::fs::Metadata>)],
+) -> Option<String> {
     use std::os::unix::fs::MetadataExt as _;
+    let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
+    if !read_outcome_keys_match(&names, stats) {
+        return None;
+    }
+    let by_name: BTreeMap<_, _> = stats
+        .iter()
+        .map(|(path, metadata)| (path.as_os_str().as_encoded_bytes(), metadata))
+        .collect();
     let mut stamp = Sha256::new();
-    let paths: Vec<&PathBuf> = paths.iter().collect();
-    let stats = crate::parallel::in_order(&paths, |path| std::fs::symlink_metadata(path));
-    for (path, metadata) in paths.into_iter().zip(stats) {
+    for path in paths {
         let name = path.as_os_str().as_encoded_bytes();
         stamp.update((name.len() as u64).to_le_bytes());
         stamp.update(name);
-        let metadata = match metadata {
+        let metadata = match by_name.get(name)? {
             Ok(metadata) => metadata,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 stamp.update(b"missing");
@@ -1669,27 +1697,142 @@ mod tests {
 
     #[test]
     fn content_capture_refuses_missing_extra_and_failed_read_outcomes() {
-        let files = BTreeSet::from([PathBuf::from("a.rs"), PathBuf::from("b.rs")]);
+        let a = Path::new("a.rs");
+        let b = Path::new("b.rs");
+        let c = Path::new("c.rs");
+        let files = BTreeSet::from([a.to_owned(), b.to_owned()]);
         let bindings = BTreeMap::new();
-        let (_, complete, digests) =
-            fold_contents(&files, &bindings, vec![Ok("one".into()), Ok("two".into())]);
+        let (revision, complete, digests) = fold_contents(
+            &files,
+            &bindings,
+            [(a, Ok("one".into())), (b, Ok("two".into()))],
+        );
         assert!(complete);
         assert_eq!(digests.len(), 2);
-        let (_, complete, digests) = fold_contents(&files, &bindings, vec![Ok("one".into())]);
-        assert!(!complete);
-        assert!(!digests.contains_key(Path::new("b.rs")));
-        let (_, complete, _) = fold_contents(
+        let reordered = fold_contents(
             &files,
             &bindings,
-            vec![Ok("one".into()), Ok("two".into()), Ok("unaccounted".into())],
+            [(b, Ok("two".into())), (a, Ok("one".into()))],
         );
-        assert!(!complete);
-        let (_, complete, _) = fold_contents(
-            &files,
-            &bindings,
-            vec![Ok("one".into()), Err(Error::new("SAIL3101", "read failed"))],
-        );
-        assert!(!complete);
+        assert_eq!(reordered, (revision, true, digests));
+        for reads in [
+            vec![(a, Ok("one".into()))],
+            vec![
+                (a, Ok("one".into())),
+                (b, Ok("two".into())),
+                (c, Ok("extra".into())),
+            ],
+            vec![(a, Ok("one".into())), (a, Ok("two".into()))],
+            vec![
+                (a, Ok("one".into())),
+                (b, Err(Error::new("SAIL3101", "read failed"))),
+            ],
+        ] {
+            assert!(!fold_contents(&files, &bindings, reads).1);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn metadata_stamps_validate_returned_paths_before_folding() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-tagged-stats-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        let absent = root.join("absent.toml");
+        let extra = root.join("extra.rs");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        let files = BTreeSet::from([a.clone(), b.clone(), absent.clone()]);
+        let paths = [a.as_path(), b.as_path(), absent.as_path()];
+        let read =
+            || crate::parallel::in_order(&paths, |&path| (path, std::fs::symlink_metadata(path)));
+        let before = stamp_readback(&files, &read());
+        assert!(before.is_some());
+        let mut reordered = read();
+        reordered.reverse();
+        assert_eq!(stamp_readback(&files, &reordered), before);
+        reordered.pop();
+        assert!(stamp_readback(&files, &reordered).is_none());
+        let mut unexpected = read();
+        unexpected.push((extra.as_path(), std::fs::symlink_metadata(&extra)));
+        assert!(stamp_readback(&files, &unexpected).is_none());
+        let duplicate = [
+            (a.as_path(), std::fs::symlink_metadata(&a)),
+            (a.as_path(), std::fs::symlink_metadata(&a)),
+            (absent.as_path(), std::fs::symlink_metadata(&absent)),
+        ];
+        assert!(stamp_readback(&files, &duplicate).is_none());
+        std::fs::write(&a, "changed contents")?;
+        let mut changed = read();
+        changed.reverse();
+        assert_ne!(stamp_readback(&files, &changed), before);
+        std::fs::remove_dir_all(root)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn raw_alias_reads_cannot_cancel_a_retarget_with_reordering() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-tagged-aliases-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let a = root.join("a");
+        let b = root.join("b");
+        let first = root.join("first.rs");
+        let second = root.join("second.rs");
+        std::fs::write(&first, "first")?;
+        std::fs::write(&second, "second")?;
+        std::os::unix::fs::symlink(&first, &a)?;
+        std::os::unix::fs::symlink(&second, &b)?;
+        let expected = BTreeMap::from([(a.clone(), first.clone()), (b.clone(), second.clone())]);
+        let names = [a.as_path(), b.as_path()];
+        let read = || crate::parallel::in_order(&names, |&name| (name, name.canonicalize()));
+        let mut reads = read();
+        reads.reverse();
+        assert!(bindings_readback(&expected, &reads));
+        reads.pop();
+        assert!(!bindings_readback(&expected, &reads));
+        let duplicate = [
+            (a.as_path(), a.canonicalize()),
+            (a.as_path(), a.canonicalize()),
+        ];
+        assert!(!bindings_readback(&expected, &duplicate));
+        std::fs::remove_file(&a)?;
+        std::fs::remove_file(&b)?;
+        std::os::unix::fs::symlink(&second, &a)?;
+        std::os::unix::fs::symlink(&first, &b)?;
+        let mut retargeted = read();
+        retargeted.reverse();
+        assert!(!bindings_readback(&expected, &retargeted));
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
+    fn raw_content_reads_keep_their_own_paths_under_permutation() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-tagged-inputs-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        let files = BTreeSet::from([a.clone(), b.clone()]);
+        let paths = [a.as_path(), b.as_path()];
+        let before = fold_contents(&files, &BTreeMap::new(), digest_all_tagged(&paths));
+        assert!(before.1);
+        let mut reads = digest_all_tagged(&paths);
+        reads.reverse();
+        assert_eq!(fold_contents(&files, &BTreeMap::new(), reads), before);
+        // Swapping both physical contents and result order used to cancel if
+        // expected paths were reattached to untagged results by position.
+        std::fs::write(&a, "second")?;
+        std::fs::write(&b, "first")?;
+        let mut changed = digest_all_tagged(&paths);
+        changed.reverse();
+        let after = fold_contents(&files, &BTreeMap::new(), changed);
+        assert!(after.1);
+        assert_ne!(after.0, before.0);
+        assert_ne!(after.2, before.2);
+        std::fs::remove_dir_all(root)
     }
 
     #[test]
