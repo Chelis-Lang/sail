@@ -2,7 +2,7 @@
 
 use super::files::{digest, digest_all, file_digest, json};
 use crate::{Error, Result};
-use sail_api::output::{Report, VerdictName};
+use sail_api::output::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -298,18 +298,11 @@ pub(crate) fn retire(runtime: &Runtime, identity: &TargetIdentity) -> Result<()>
 }
 
 pub(crate) fn complete(report: &Report) -> bool {
-    report.exit_code == Some(0)
-        && report.error.is_none()
-        && report.invariant_violations().is_empty()
-        && !report.crates.is_empty()
-        && report.crates.iter().all(|c| {
-            c.verus.errors == Some(0)
-                && c.verus.success != Some(false)
-                && c.verus.encountered_vir_error != Some(true)
-                && c.functions
-                    .iter()
-                    .all(|f| f.verdict == VerdictName::Verified)
-        })
+    sail_api::acceptance::complete_report(
+        report,
+        sail_acceptance::authority::CompletionPolicy::Receipt,
+    )
+    .is_some()
 }
 
 #[cfg(test)]

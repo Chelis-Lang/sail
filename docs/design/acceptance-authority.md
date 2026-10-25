@@ -1,10 +1,91 @@
-# Invocation, coverage and result authority model
+# Invocation, coverage and result authority
 
-Status: checked model code for the existing Verus path. This component models
-invocation lifecycle and evidence construction, not the production compiler
-adapter. It does not complete production source sharing, observation refinement
-or CLI/MCP integration. The [acceptance design](evidence-acceptance-core.md) and
-[shared proof checker](acceptance-proof-checker.md) describe the owning scope.
+Status: checked lifecycle model plus source-shared executable validation of
+actual Verus report and selected-target records. Production paths below use the
+checked validators. Complete compiler, solver-stream and filesystem observation
+refinement remains separate; a report field does not prove the physical
+observation occurred. The [acceptance design](evidence-acceptance-core.md) and
+[proof checker](acceptance-proof-checker.md) describe the owning scope.
+
+## Production report and scope validation
+
+`crates/sail-api/src/acceptance.rs` checks actual public `Report`, `CrateReport`,
+`FunctionReport`, `TargetResult` and `ProjectResult` fields. Cargo and stock
+Verus compile the same executable bodies through the syntax envelopes in
+`sail-acceptance`. No copied Boolean `report_valid` projection or external
+specification assumes that a report is correct. The checker captures original
+type declarations and their complete field inventory, then mechanically removes
+serde and presentation-only declarations while retaining every authority-read
+field, enum variant and the actual schema constant. This restricted declaration
+mechanism is part of the proof tool's trusted source-selection boundary.
+
+Factories check normal zero exit, no setup error, nonempty crate inventory,
+explicit zero verifier errors, no VIR error, every function's confirmed verified
+verdict and evidence tier, provenance/count consistency, every summary counter,
+obligation ownership and global ID uniqueness. Count accumulation checks overflow.
+A successful crate with zero functions remains legitimate; an empty crate
+inventory does not establish completion.
+
+Policies remain distinct: exact partial receipts may lack whole-crate `success`;
+whole-target authority requires explicit `success: true`, and repair additionally
+rejects engine fallback provenance. Whole-target factories inspect actual
+forwarded scope arguments after `--`. A stored completion flag cannot overrule
+an explicit partial command or partial-scope reuse.
+
+Private `CompleteReport` and `CompleteSelection` tokens immutably borrow the
+checked actual records. Only checked factories construct them. The sibling
+`acceptance_sort.rs` proposes indices and cannot access their private fields.
+The factory independently derives every actual obligation ID, checks the complete
+forward/inverse index permutation and validates strict byte order. A broken
+sorter can cause refusal but cannot hide, duplicate or replace an obligation.
+Sorting is O(n log n); checked certificate traversal is O(n) plus ID bytes.
+Target matching retains the existing O(requested × observed) approach with
+uniqueness checked in both directions.
+
+| Production consumer | Checked authority |
+|---|---|
+| Managed receipt `complete` | Actual successful exact-scope report |
+| Managed fresh/reused target completion | Whole-report factory plus invocation and scope guards |
+| Successful managed requested coverage | Independent Cargo package/name/kind selection matched one-to-one to observations |
+| `repair::accepted` and retained-job repair envelopes | Same selected-project factory after existing refresh and batch-error checks |
+| Evidence inventory and MCP compact completion | Actual whole-target report revalidated rather than completion flag alone |
+
+Schema two retains its layout. A stored `ProjectResult` has selected-result
+flags, not the independent original expected-target inventory. Its repair
+factory therefore proves authority for supplied selected targets. The live
+runner checks independent request coverage while it still owns the resolved
+expected set. Persistently carrying that independently bound scope through
+every stored success surface requires a separate sealed-storage or schema
+refinement. Selected flags alone do not prove original request completeness.
+
+Similarly, refusing Historical/Unknown inspects the actual `Currentness` enum;
+the input component and production adapters must justify Current with fresh
+observations. A failed run can be Current without positive proof authority.
+
+## Constructive record refinement and controls
+
+`proofs/refinement/authority.rs` executes a fieldwise mapping from actual function
+records into the lifecycle model. It preserves exact UTF-8 names, all verdicts,
+establishment and every optional evidence strength. `ObservedStrength(0..4)`
+records the actual schema tier; it does not invent Fresh/cache/engine origin
+from a strength label. The actual checked factory establishes the premises
+for every mapped function's `good_function` predicate. This is record refinement,
+not physical verifier-lifecycle or solver-stream-capture refinement.
+
+Positive proofs establish acceptance of coherent nonempty and zero-function
+inventories with no SMT obligations. Cargo tests use real public types and the
+checked-in attribution fixture to exercise malformed summaries, interrupted
+exit, provisional establishment, absent tiers, provenance inconsistency,
+wrong/duplicate IDs, arbitrary bad sorting certificates, partial commands and
+stale/duplicate selected targets. Exact `foo-bar`/`foo_bar` and failed-sibling
+controls exercise independent requested coverage.
+
+Nine actual guard removals must fail ordinary full-crate stock verification:
+confirmation, whole scope and terminal summary, requested coverage, summary count, normal exit,
+Current selected evidence, ID uniqueness and provenance counts. Safety claims
+remain unchanged. The owning validation record and source manifest carry final
+counts and platform qualification. Local proofs do not substitute for native
+gates or corpus conformance.
 
 ## Exact evidence context
 
@@ -152,10 +233,10 @@ workspace gates and the composed proof run have their own owning qualification.
 |---|---|---|
 | Exact target and invocation | Managed `TargetIdentity`, `cargo_target`, requested coverage and failed compiler calls | Relate actual Cargo metadata and compiler invocation to the model's complete target inventory and exact fields. |
 | Verifier lifecycle | Driver subprocess output, structured verifier documents and normal termination | Attribute observations to the actual pinned process, preserve every document, validate real framing/error/termination behavior, and connect trusted Verus invocation completion to the exact requested work. |
-| Record checks | `Report::invariant_violations`, `Summary::of`, receipt `complete` | Refine full production establishment, evidence tiers, obligation ownership/uniqueness, provenance and schema checks to these checked records; this model does not silently assume that all those checks have been proved. |
+| Record checks | Actual typed acceptance factories and receipt `complete` | Source-shared checks and constructive function refinement are implemented; attribute records and terminal fields to the actual trusted verifier execution. Diagnostic formatting remains outside positive authority. |
 | Solver inventory | Shim/side-channel capture and query association | Establish complete actual session capture and connect the observed streams to the query component's admitted origins. |
 | Input observation | Managed read checks, currentness and durable refresh | Refine actual compiler-input closure, filesystem/process observations and accepted observation points on Linux/macOS. |
-| Repair/job/presentation | `repair::accepted`, batch selection, retained result frames, CLI/JSON/MCP | Connect actual selection errors, engine origin and every exposed success surface to the shared authority relation. No production surface is routed through this model yet. |
+| Repair/job/presentation | `repair::accepted`, batch selection, retained result frames, CLI/JSON/MCP | Actual report/selected-target consumers use checked factories. Preserve independently bound request and fresh input authority across every retained surface, and justify actual batch selection/process origin. |
 
 The trusted verifier's translation and mathematical soundness remain outside
 this proof, as in the design. The external observation adapter must faithfully
@@ -164,6 +245,7 @@ closure, structured records and termination. Model constructors do not prove
 those I/O facts. Rust/Verus/vstd, Z3, build/deployment and the documented
 observation-interface assumptions remain trusted.
 
-There is no new crate edge, backend selection or production default. Corpus,
-compiler and solver input bytes are unchanged; no conformance or performance
-improvement is claimed by these model checks.
+The shared leaf and permitted crate edges are recorded in ADR 0079. Backend and
+solver/compiler inputs are unchanged. No conformance or performance improvement
+is claimed; the native cost of producing and checking index candidates remains
+to be measured.

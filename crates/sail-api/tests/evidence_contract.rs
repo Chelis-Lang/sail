@@ -1,6 +1,8 @@
 //! Comparisons preserve exact scope, removal limits and ambiguous identities.
 use sail_api::evidence::Change;
-use sail_api::output::{EstablishmentName, OutcomeName, Report, VerdictName};
+use sail_api::output::{
+    EstablishmentName, EvidenceTierName, OutcomeName, Report, Summary, VerdictName,
+};
 use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
 
 fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
@@ -50,7 +52,9 @@ fn success(mut project: ProjectResult) -> ProjectResult {
     for f in report.crates.iter_mut().flat_map(|c| &mut c.functions) {
         f.establishment = EstablishmentName::Confirmed;
         f.verdict = VerdictName::Verified;
+        f.evidence_tier = Some(EvidenceTierName::SmtVerified);
     }
+    report.summary = Summary::of(&report.crates);
     project
 }
 
@@ -133,6 +137,7 @@ fn exact_target_obligation_comparisons_preserve_scope_and_removal_limits()
             .any(|diff| diff.id == id && diff.change == Change::Regressed)
     );
     after.targets[0].report.crates[0].functions.remove(0);
+    after.targets[0].report.summary = Summary::of(&after.targets[0].report.crates);
     after.targets[0].report.crates[0].verus.success = None;
     assert_eq!(
         sail_api::evidence::compare(&before, &after).differences[0].change,
