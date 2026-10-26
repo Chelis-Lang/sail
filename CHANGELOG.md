@@ -34,6 +34,10 @@ semantic versioning once the API is published.
 - Use stock-Verus-checked operations for retained request enforcement and
   freshness projection, preserving diagnostics and refusing promotion of
   Historical or Unknown evidence to Current.
+- Require cache publication to match the parser session's terminal key against
+  an independent hash of the actual solver pipe's successful full writes.
+  Preserve original forwarding and refuse publication after any partial write.
+
 - Preserve fresh verifier output and status when optional process journals fail;
   withhold whole and partial proof reuse and retained completeness instead.
 - Bind retained job completeness and repair acceptance to independently captured

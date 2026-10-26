@@ -242,6 +242,7 @@ impl CommandFrame<'_, '_> {
 /// One cache session's jointly owned exact raw transcript and incremental v2 key.
 /// Unlike a detached hasher, this API cannot consume another transcript's feed tokens.
 pub struct SessionPrefix {
+    seed: Prefix<Sha256Host>,
     session: QueryState<Sha256Host>,
 }
 
@@ -249,8 +250,19 @@ impl SessionPrefix {
     /// Starts exact framing for the actual solver identity and mode.
     #[must_use]
     pub fn new(solver: &SolverIdentity, mode: &Mode) -> Self {
-        Self {
-            session: prefix_factory::new_query_prefix(Sha256Host(Sha256::new()), solver, mode),
+        let (session, seed) =
+            prefix_factory::new_session_seed(Sha256Host(Sha256::new()), solver, mode);
+        Self { seed, session }
+    }
+    /// Transfers a fresh actual solver input pipe into an independent delivery
+    /// checker seeded with this session's exact solver and mode header.
+    #[must_use]
+    pub fn delivery<Pipe: sail_acceptance::query_delivery::InputPipe>(
+        &self,
+        pipe: Pipe,
+    ) -> InputDelivery<Pipe> {
+        InputDelivery {
+            delivery: sail_acceptance::query_delivery::Delivery::new(pipe, self.seed.duplicate()),
         }
     }
     /// Appends exactly the bytes received by this session.
@@ -317,4 +329,30 @@ impl SessionPrefix {
 #[must_use]
 pub fn sha256(bytes: &[u8]) -> [u8; 32] {
     Sha256::digest(bytes).into()
+}
+
+/// Independent full-write accounting for one actual solver input pipe.
+/// Its closure check binds delivered bytes to the parser session terminal key.
+pub struct InputDelivery<Pipe> {
+    delivery: sail_acceptance::query_delivery::Delivery<Pipe, Sha256Host>,
+}
+impl<Pipe: sail_acceptance::query_delivery::InputPipe> InputDelivery<Pipe> {
+    /// Calls the owned pipe's full write and flush before acknowledging bytes.
+    pub fn write(&mut self, bytes: &[u8]) -> bool {
+        self.delivery.write(bytes)
+    }
+    /// Whether a delivery failure has permanently withheld eligibility.
+    #[must_use]
+    pub fn active(&self) -> bool {
+        self.delivery.active()
+    }
+    /// Checks acknowledged input against this session's parser terminal key.
+    #[must_use]
+    pub fn matches(&self, expected: QueryKey, complete: bool) -> bool {
+        self.delivery.matches(expected.0, complete)
+    }
+    /// Closes the exact owned input pipe.
+    pub fn close(&mut self) {
+        self.delivery.close();
+    }
 }

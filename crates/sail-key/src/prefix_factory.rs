@@ -37,3 +37,26 @@ sail_verified! {
         QueryPrefix::new(new_prefix(host,solver,mode))
     }
 }
+
+sail_verified! {
+    /// Jointly constructs the parser owner and independent delivery seed from
+    /// one actual typed solver/mode header, before receiving any input.
+    pub(crate) fn new_session_seed<Host>(host: Host, solver: &SolverIdentity, mode: &Mode) -> (out: (QueryPrefix<Host>, Prefix<Host>))
+        where (Host: HashHost)
+        requires (host.bytes().len() == 0)
+        ensures (out.0.coherent(), out.0.active(), out.0.view().len() == 0, out.0.fed() == 0,
+            out.1.length() == 0, out.1.exact(),
+            out.0.material() == out.1.material(),
+            out.1.material() == sail_acceptance::key_prefix::header(
+                vstd::utf8::encode_utf8(solver.name@),vstd::utf8::encode_utf8(solver.version@),
+                solver.binary_sha256@,vstd::utf8::encode_utf8(solver.platform@),
+                match mode { Mode::Default => None, Mode::OptIn(name) => Some(vstd::utf8::encode_utf8(name@)) }),
+            out.0.matches((vstd::utf8::encode_utf8(solver.name@),vstd::utf8::encode_utf8(solver.version@),
+                solver.binary_sha256@,vstd::utf8::encode_utf8(solver.platform@),
+                match mode { Mode::Default => None, Mode::OptIn(name) => Some(vstd::utf8::encode_utf8(name@)) })))
+    {
+        let seed = new_prefix(host.duplicate(),solver,mode);
+        let session = new_query_prefix(host,solver,mode);
+        (session,seed)
+    }
+}

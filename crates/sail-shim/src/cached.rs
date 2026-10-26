@@ -23,7 +23,7 @@ use sail_acceptance::query::{
 };
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
-use sail_key::{Mode, QueryKey, SessionPrefix, SolverIdentity};
+use sail_key::{InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
 use sail_session::Session;
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
@@ -366,8 +366,24 @@ impl InputStatus {
     }
 }
 
-struct Solving {
+/// The actual input descriptor taken from the same owned solver child.
+struct SolverPipe {
     stdin: Option<ChildStdin>,
+}
+
+impl sail_acceptance::query_delivery::InputPipe for SolverPipe {
+    fn write(&mut self, bytes: &[u8]) -> bool {
+        self.stdin
+            .as_mut()
+            .is_some_and(|stdin| stdin.write_all(bytes).and_then(|()| stdin.flush()).is_ok())
+    }
+    fn close(&mut self) {
+        drop(self.stdin.take());
+    }
+}
+
+struct Solving {
+    stdin: InputDelivery<SolverPipe>,
     expects: Sender<Expect>,
     /// Input completion and permanently latched delivery/completion failures.
     input: Arc<InputStatus>,
@@ -640,7 +656,7 @@ fn output_side(
 fn start_solver(
     solver: &Path,
     args: &[std::ffi::OsString],
-    raw: &[u8],
+    prefix: &SessionPrefix,
     served: Vec<ServedReply>,
     first: Expect,
     client: Option<Client>,
@@ -687,12 +703,12 @@ fn start_solver(
         })
         .ok()?;
     let mut s = Solving {
-        stdin: Some(stdin),
+        stdin: prefix.delivery(SolverPipe { stdin: Some(stdin) }),
         expects: tx,
         input,
         output,
     };
-    s.write(raw);
+    s.write(prefix.bytes());
     Some(s)
 }
 
@@ -702,16 +718,16 @@ impl Solving {
     }
 
     fn write(&mut self, bytes: &[u8]) {
-        if let Some(stdin) = &mut self.stdin
-            && stdin.write_all(bytes).and_then(|()| stdin.flush()).is_err()
-        {
+        if !self.stdin.write(bytes) {
+            self.stdin.close();
             self.input.valid.store(false, Ordering::SeqCst);
-            self.stdin = None;
         }
     }
 
     fn finish(mut self, terminal: QueryKey, complete: bool) -> ExitCode {
-        if !complete {
+        // The independent successful-write prefix must match the parser
+        // owner's terminal key before publication is eligible.
+        if !self.stdin.matches(terminal, complete) {
             self.input.valid.store(false, Ordering::SeqCst);
         }
         let final_expectation = if self.input.valid.load(Ordering::SeqCst) {
@@ -722,7 +738,7 @@ impl Solving {
         self.expect(final_expectation);
         // All metadata sends, including their failure latch, precede done.
         self.input.done.store(true, Ordering::SeqCst);
-        drop(self.stdin.take());
+        self.stdin.close();
         drop(self.expects);
         ExitCode::from(self.output.join().unwrap_or(1))
     }
@@ -1029,8 +1045,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
             // Miss: start the solver with the whole input so far.
             let replies = served.take();
-            let Some(s) =
-                start_solver(solver, args, prefix.bytes(), replies, expect, client.take())
+            let Some(s) = start_solver(solver, args, &prefix, replies, expect, client.take())
             else {
                 return Some(ExitCode::from(1));
             };
@@ -1082,7 +1097,7 @@ fn overflow(
             s.expect(Expect::Stop);
             s
         }
-        None => match start_solver(solver, args, raw.bytes(), served, Expect::Stop, None) {
+        None => match start_solver(solver, args, &raw, served, Expect::Stop, None) {
             Some(s) => s,
             None => return ExitCode::from(1),
         },
@@ -1097,7 +1112,7 @@ fn overflow(
             Err(_) => break,
         };
         s.write(buf.get(..n).unwrap_or_default());
-        if s.stdin.is_none() {
+        if !s.stdin.active() {
             break;
         }
     }
@@ -1126,7 +1141,7 @@ fn finish_run(
         prefix.refuse();
     }
     let mut end = SessionEnd {
-        raw: prefix.bytes(),
+        prefix,
         served,
         terminal: prefix.silence_key(),
         complete: complete && prefix.valid(),
@@ -1137,7 +1152,7 @@ fn finish_run(
 }
 
 struct SessionEnd<'a> {
-    raw: &'a [u8],
+    prefix: &'a SessionPrefix,
     served: Served,
     terminal: QueryKey,
     complete: bool,
@@ -1164,7 +1179,7 @@ fn finish_input(
             start_solver(
                 solver,
                 args,
-                end.raw,
+                end.prefix,
                 end.served.take(),
                 Expect::Stop,
                 client.take(),
