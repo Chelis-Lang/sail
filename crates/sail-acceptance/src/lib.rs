@@ -24,3 +24,5 @@ pub mod query_output;
 pub mod query_policy;
 /// Joint ownership of exact raw input and its incremental key material.
 pub mod query_prefix;
+/// Typed local publication over owned delivered input and complete stdout.
+pub mod query_publication;

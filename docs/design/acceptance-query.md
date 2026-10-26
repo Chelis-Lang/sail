@@ -254,6 +254,45 @@ This model does not silently change production's backend or cache policy.
 
 ## Exact current context and transcript composition
 
+### Typed local publication observation (source candidate)
+
+`query_publication::observe_publication` consumes the actual private
+`query_delivery::Delivered` token, the actual private
+`query_output::CompleteOutput` owner and the existing supplied
+`PublicationGate`. Missing input/output tokens or any failed closure conjunct
+refuse the operation. Its private-field `PublicationObservation` retains those
+exact owners and gate; it has no unchecked or deserializing constructor.
+`release_observed` consumes that observation and returns the original
+`PublicationBatch` entries in their original order, or no entries when the
+typed observation is missing. A caller-supplied release Boolean is not this
+new transition's interface.
+
+This is a supplied-observation/data-preservation slice of #372. It does not
+assert that each generic batch entry belongs to these streams, that the
+streams came from one actual trusted process, or that its gate describes that
+process truthfully. The closure gate still records the actual native adapter's
+wait, stderr, pairing, forwarding and input-completion observations; it is not
+a new trusted-host success predicate. The complete-output invariant is supplied
+by its original private EOF/coverage constructor, and frozen input still comes
+from its original full-write controller. Their constructors and checks remain
+part of the source inventory and required controls.
+
+The constructive source witness uses nonempty supplied typed input/output and
+a nonempty original payload batch. Missing delivery, missing complete stdout,
+missing joint observation and any incomplete gate have explicit refusal
+controls. These additions are unrun and unqualified. They do not refine
+`StoreAction::Publish` into a full truthful-origin transition or supply its
+prior-publication ledger membership.
+
+The remaining exact joins are entry/frame/command-key association, actual
+child/image/pipe and diagnostic/wait attribution, protected protocol writers,
+memory insertion/settlement and physical persistence/recovery. Startup disk
+data still lacks the modeled ghost prior-publication history; a self-consistent
+header/hash/provenance string cannot establish it. Shared and bundled writers
+retain separate open contracts. The [source trace on #372](https://github.com/Chelis-Lang/sail/issues/372#issuecomment-6426627954)
+records these actual paths without claiming a false-proof reproduction or
+changing production's admitted cache policy.
+
 The component uses `ModelContext`, `Mode` and `SolverId` from the captured
 [shared context](../../proofs/acceptance/context.rs). A current session retains
 the exact request, scope, runtime, solver, mode and effective input map throughout
