@@ -7,7 +7,10 @@
 //! - each receipt binds the current value of every variable that any unit of
 //!   the run declares: rustc's `# env-dep:` dep-info lines (`env!`,
 //!   `option_env!`, tracked reads, and the Verus driver's own declarations)
-//!   and build scripts' `rerun-if-env-changed` ([`declared`]).
+//!   and build scripts' `rerun-if-env-changed` ([`declared`]). Reads in ghost
+//!   code alone, which Verus's erased compilation leaves out of the dep-info,
+//!   are appended to it by the managed driver
+//!   ([`super::ghost_environment`]).
 //!
 //! `PATH` and `HOME` are not bound as raw values: the context binds the
 //! resolved tools and homes they select. Undeclared reads by build scripts and

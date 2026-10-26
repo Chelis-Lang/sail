@@ -491,6 +491,8 @@ pub(super) fn publish_graph(root: &Path, graph: Snapshot, args: &[OsString]) -> 
 /// A checked older proof; compiler invocations remain zero for this restore.
 pub(crate) struct Restored {
     pub(crate) establishing_run: String,
+    /// The establishing run's observed compiler environment (#386).
+    pub(crate) compiler_environment: Option<super::super::ghost_environment::Environment>,
     pub(crate) stdout: Vec<u8>,
     pub(crate) stderr: Vec<u8>,
 }
@@ -542,6 +544,7 @@ impl Attempt {
             }
             restored.map(|restored| Restored {
                 establishing_run: restored.receipt.invocation.establishing_run().to_owned(),
+                compiler_environment: restored.receipt.invocation.compiler_environment.clone(),
                 stdout: restored.stdout,
                 stderr: restored.stderr,
             })
@@ -573,6 +576,13 @@ impl Attempt {
     )]
     pub(crate) fn compiler_options(&self) -> &'static [&'static str] {
         compiler::Observation::OPTIONS
+    }
+
+    /// Both phases' tracked environment of the compiler child (#386).
+    pub(crate) fn compiler_environment(
+        &self,
+    ) -> Option<super::super::ghost_environment::Environment> {
+        self.observation.environment()
     }
 
     pub(crate) fn started(&mut self, pid: u32) {

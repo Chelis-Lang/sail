@@ -1063,6 +1063,7 @@ mod tests {
             input_revision: "A".into(),
             invocation: super::super::super::receipts::Invocation {
                 dependency_build: None,
+                compiler_environment: Some(std::collections::BTreeMap::new()),
                 retained_from: None,
                 identity,
                 run_id: "establishing-A".into(),

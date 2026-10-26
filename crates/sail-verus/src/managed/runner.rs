@@ -1951,11 +1951,24 @@ fn target_records_in(
                     .filter(|p| p.is_file()),
             );
             let hashes = digests.hashes(&artifact_paths)?;
+            // A verified target whose compiler environment was not observed
+            // may have read a ghost-only variable that no dep-info declares
+            // (#386); it publishes no receipt.
             let reusable = paths.reuse
                 && call.successful_for(partial_args)
+                && call.environment_observed()
                 && !input_revision.is_empty()
                 && declared.is_some();
             if let Some(declared) = declared.as_ref().filter(|_| reusable) {
+                let mut declared = declared.clone();
+                for name in call.compiler_environment_names() {
+                    if !declared.contains_key(name) {
+                        declared.insert(
+                            name.clone(),
+                            std::env::var_os(name).map(std::ffi::OsString::into_encoded_bytes),
+                        );
+                    }
+                }
                 json(
                     &paths
                         .run
@@ -1973,7 +1986,7 @@ fn target_records_in(
                         input_revision: input_revision.clone(),
                         invocation: call.clone(),
                         artifact_hashes: hashes,
-                        declared_environment: declared.clone(),
+                        declared_environment: declared,
                     }
                     .seal(),
                 )?;
@@ -2076,6 +2089,7 @@ fn target_records_in(
                                 == observed
                             && digests.matches(&r.artifact_hashes)
                             && digests.matches(&r.invocation.dependencies)
+                            && r.invocation.environment_observed()
                             && super::environment::unchanged(&r.declared_environment))
                         .then(|| (r.clone(), seed.placed.then(|| seed.key.clone())))
                     })
@@ -4646,6 +4660,7 @@ mod tests {
                 success: true,
                 dependencies: BTreeMap::new(),
                 dependency_build: None,
+                compiler_environment: Some(std::collections::BTreeMap::new()),
             },
             artifact_hashes: artifact_hashes(&[artifact.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),
@@ -5996,6 +6011,7 @@ mod tests {
                 success: true,
                 dependencies: BTreeMap::new(),
                 dependency_build: None,
+                compiler_environment: Some(std::collections::BTreeMap::new()),
             },
             artifact_hashes: BTreeMap::new(),
             committed: run.join("committed.json"),

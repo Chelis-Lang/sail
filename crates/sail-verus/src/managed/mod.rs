@@ -11,6 +11,7 @@ mod diagnostics;
 mod environment;
 mod files;
 mod freshness;
+pub(crate) mod ghost_environment;
 mod input;
 mod native_include_hints;
 pub mod noop;
