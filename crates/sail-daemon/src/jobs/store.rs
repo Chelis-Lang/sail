@@ -395,16 +395,12 @@ fn project_with_request(
 pub(super) fn retained_request(job: &Stored) -> Option<&sail_api::project::ResolvedRequest> {
     let request = job.projection.as_ref()?.request.as_ref()?;
     let invocation = job.submission.project_dir.canonicalize().ok()?;
-    if sail_api::acceptance::bind_retained_submission(
+    sail_api::acceptance::bind_retained_submission(
         &job.submission.args,
         &job.submission.mode,
         request,
         invocation.to_str(),
-    )
-    .is_none()
-    {
-        return None;
-    }
+    )?;
     Some(request)
 }
 
