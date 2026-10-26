@@ -41,6 +41,7 @@ impl Collision {
         std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))?;
         let output = Command::new("cargo")
             .args(["check", "--bins", "--message-format=json"])
+            .env("CARGO_TARGET_DIR", &paths.target)
             .env("RUSTC_WRAPPER", &wrapper)
             .env("SAIL_TEST_BIN_IDENTITIES", &root)
             .current_dir(&root)

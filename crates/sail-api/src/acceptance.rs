@@ -10,19 +10,21 @@
 )]
 
 use sail_acceptance::authority::{
-    CompletionPolicy, RequestedTarget, argument_flag, copy_bytes, exact_bytes, owned_obligation,
-    unique_obligations,
+    CompletionPolicy, ObservedAttempt, RequestedTarget, argument_flag, copy_bytes, exact_bytes,
+    observed_payload_matches, owned_obligation, unique_obligations,
 };
 use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verified, sail_while};
 
 /// Builds untrusted order candidates and invokes the checked authority factory.
 pub use crate::acceptance_sort::{
-    complete_report, complete_request, complete_selection, complete_target, complete_whole_report,
+    complete_report, complete_request, complete_selection, complete_submitted_request,
+    complete_target, complete_whole_report, withhold_unbound_request_authority,
 };
 
+use crate::jobs::Mode;
 use crate::output::{
-    CrateReport, EngineEstablishment, EstablishmentName, FunctionReport, Report, SourceSummaryName,
-    VerdictName,
+    CrateReport, EngineEstablishment, ErrorInfo, EstablishmentName, FunctionReport, Report,
+    SourceSummaryName, VerdictName,
 };
 use crate::project::{Currentness, EngineIdentity, ProjectResult, ResolvedRequest, TargetResult};
 
@@ -57,6 +59,105 @@ sail_code! {
     pub struct CompleteRequest<'a> {
         request: &'a ResolvedRequest,
         project: &'a ProjectResult,
+    }
+
+    /// Pre-execution request correspondence, not a completed invocation origin.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum SubmissionKind {
+        /// The original stock mode matches a captured stock backend selection.
+        Stock,
+        /// The interactive mode matches a captured interactive backend selection.
+        Interactive,
+        /// The exact original repair target/function selection was captured.
+        Repair,
+        /// An opt-in submission has a stock request; failure history is separate.
+        StockForOptIn,
+    }
+
+    /// Exact original submission arguments and mode bound to captured request data.
+    pub struct SubmissionBinding<'a> {
+        arguments: &'a [String],
+        mode: &'a Mode,
+        request: &'a ResolvedRequest,
+        kind: SubmissionKind,
+    }
+
+    /// Whole-request authority retaining the independent original submission borrow.
+    pub struct SubmittedAuthority<'a> {
+        arguments: &'a [String],
+        mode: &'a Mode,
+        request: &'a ResolvedRequest,
+        project: &'a ProjectResult,
+        kind: SubmissionKind,
+    }
+
+    impl SubmissionBinding<'_> {
+        sail_method! {
+            /// Exact original submitted arguments checked by the binding factory.
+            #[must_use]
+            pub fn arguments(&self) -> (out: &[String])
+                requires(true) ensures(out == bound_arguments(self))
+            { self.arguments }
+        }
+        sail_method! {
+            /// Exact original selected mode checked by the binding factory.
+            #[must_use]
+            pub fn mode(&self) -> (out: &Mode)
+                requires(true) ensures(out == bound_mode(self))
+            { self.mode }
+        }
+        sail_method! {
+            /// Exact captured request matched to the original submission.
+            #[must_use]
+            pub fn request(&self) -> (out: &ResolvedRequest)
+                requires(true) ensures(out == bound_request(self))
+            { self.request }
+        }
+        sail_method! {
+            /// Derived request class; never a completion, origin or failure fact.
+            #[must_use]
+            pub fn kind(&self) -> (out: SubmissionKind)
+                requires(true) ensures(out == bound_kind(self))
+            { self.kind }
+        }
+    }
+
+    impl SubmittedAuthority<'_> {
+        sail_method! {
+            /// Actual original submitted arguments, without interpreting a result header.
+            #[must_use]
+            pub fn arguments(&self) -> (out: &[String])
+                requires(true) ensures(out == submitted_arguments(self))
+            { self.arguments }
+        }
+        sail_method! {
+            /// Actual original selected mode.
+            #[must_use]
+            pub fn mode(&self) -> (out: &Mode)
+                requires(true) ensures(out == submitted_mode(self))
+            { self.mode }
+        }
+        sail_method! {
+            /// Actual captured request whose scope and options were checked.
+            #[must_use]
+            pub fn request(&self) -> (out: &ResolvedRequest)
+                requires(true) ensures(out == submitted_request(self))
+            { self.request }
+        }
+        sail_method! {
+            /// Actual checked project, immutably bound to the original submission.
+            #[must_use]
+            pub fn project(&self) -> (out: &ProjectResult)
+                requires(true) ensures(out == submitted_project(self))
+            { self.project }
+        }
+        sail_method! {
+            /// Derived request class, preserving the original mode distinction.
+            #[must_use]
+            pub fn kind(&self) -> (out: SubmissionKind)
+                requires(true) ensures(out == submitted_kind(self))
+            { self.kind }
+        }
     }
 
     impl CompleteRequest<'_> {
@@ -110,12 +211,122 @@ sail_code! {
     }
 }
 
+sail_verified! {
+    /// Classifies a retained result from its original state and actual readback.
+    /// A matching revision cannot upgrade Historical or Unknown establishment.
+    pub fn retained_currentness(original: &Currentness, expected: &str,
+        observed: Option<&str>, complete: bool) -> (out: crate::jobs::Currentness)
+        requires(true)
+        ensures((out is Current) == (*original is Current && complete
+                && observed.is_some() && observed.unwrap().spec_bytes() == expected.spec_bytes()),
+            *original is Historical ==> out is Historical,
+            observed.is_some() && observed.unwrap().spec_bytes() != expected.spec_bytes()
+                ==> out is Historical,
+            out is Current ==> *original is Current)
+    {
+        if let Some(revision) = observed {
+            if !exact_bytes(revision.as_bytes(), expected.as_bytes()) {
+                return crate::jobs::Currentness::Historical;
+            }
+            if complete && matches!(original, Currentness::Current) {
+                return crate::jobs::Currentness::Current;
+            }
+        }
+        if matches!(original, Currentness::Historical) {
+            crate::jobs::Currentness::Historical
+        } else {
+            crate::jobs::Currentness::Unknown
+        }
+    }
+}
+
+sail_verified! {
+    /// Applies one selected freshness view without modifying proof evidence.
+    /// Returns whether a formerly Current result needs the lost-readback note.
+    pub fn apply_retained_currentness(project: &mut ProjectResult,
+        view: &crate::jobs::Currentness) -> (lost: bool)
+        requires(true)
+        ensures(final(project).targets == old(project).targets,
+            final(project).kind == old(project).kind,
+            final(project).schema_version == old(project).schema_version,
+            final(project).run_id == old(project).run_id,
+            final(project).workspace == old(project).workspace,
+            final(project).context_sha256 == old(project).context_sha256,
+            final(project).input_revision == old(project).input_revision,
+            final(project).exit_code == old(project).exit_code,
+            final(project).error == old(project).error,
+            final(project).engine == old(project).engine,
+            (final(project).currentness is Current) == (*view is Current),
+            (final(project).currentness is Historical) == (*view is Historical),
+            (final(project).currentness is Unknown) == (*view is Unknown),
+            lost == (old(project).currentness is Current && *view is Unknown))
+    {
+        let originally_current = matches!(project.currentness, Currentness::Current);
+        project.currentness = match view {
+            crate::jobs::Currentness::Current => Currentness::Current,
+            crate::jobs::Currentness::Historical => Currentness::Historical,
+            crate::jobs::Currentness::Unknown => Currentness::Unknown,
+        };
+        originally_current && matches!(view, crate::jobs::Currentness::Unknown)
+    }
+}
+
 sail_spec! {
     broadcast use {vstd::seq_lib::group_seq_properties, vstd::seq::Seq::lemma_push_map_commute};
     pub open spec fn string_bytes(s: &String) -> Seq<u8> { vstd::utf8::encode_utf8(s@) }
 
     pub closed spec fn request_authority_request<'a>(a: &CompleteRequest<'a>) -> &'a ResolvedRequest { a.request }
     pub closed spec fn request_authority_project<'a>(a: &CompleteRequest<'a>) -> &'a ProjectResult { a.project }
+
+    pub closed spec fn bound_request<'a>(a: &SubmissionBinding<'a>) -> &'a ResolvedRequest { a.request }
+    pub closed spec fn bound_arguments<'a>(a: &SubmissionBinding<'a>) -> &'a [String] { a.arguments }
+    pub closed spec fn bound_mode<'a>(a: &SubmissionBinding<'a>) -> &'a Mode { a.mode }
+    pub closed spec fn bound_kind(a: &SubmissionBinding) -> SubmissionKind { a.kind }
+    pub closed spec fn submitted_arguments<'a>(a: &SubmittedAuthority<'a>) -> &'a [String] { a.arguments }
+    pub closed spec fn submitted_mode<'a>(a: &SubmittedAuthority<'a>) -> &'a Mode { a.mode }
+    pub closed spec fn submitted_request<'a>(a: &SubmittedAuthority<'a>) -> &'a ResolvedRequest { a.request }
+    pub closed spec fn submitted_project<'a>(a: &SubmittedAuthority<'a>) -> &'a ProjectResult { a.project }
+    pub closed spec fn submitted_kind(a: &SubmittedAuthority) -> SubmissionKind { a.kind }
+
+    pub open spec fn repair_selection_matches(r: &ResolvedRequest, package: Seq<u8>,
+        target: &Option<String>, kind: Seq<u8>, function: Seq<u8>) -> bool {
+        r.function.is_some() && string_bytes(&r.function.unwrap()) == function
+            && string_bytes(&r.repair_package) == package && string_bytes(&r.repair_kind) == kind
+            && match (&r.repair_target, target) {
+                (None, None) => true,
+                (Some(a), Some(b)) => string_bytes(a) == string_bytes(b),
+                _ => false,
+            }
+    }
+
+    pub open spec fn mode_correspondence(mode: &Mode, r: &ResolvedRequest, kind: SubmissionKind) -> bool {
+        match mode {
+            Mode::Stock => r.engine.is_none() && r.function.is_none() && kind is Stock,
+            Mode::Interactive => r.function.is_none() && if r.engine.is_some() {
+                interactive_engine(&r.engine) && kind is Interactive
+            } else { kind is StockForOptIn },
+            Mode::Repair(selection) => if repair_selection_matches(r, string_bytes(&selection.package), &selection.target, string_bytes(&selection.kind), string_bytes(&selection.function)) {
+                interactive_engine(&r.engine) && kind is Repair
+            } else { r.engine.is_none() && r.function.is_none() && kind is StockForOptIn },
+        }
+    }
+
+    pub open spec fn interactive_engine(engine: &Option<EngineIdentity>) -> bool {
+        match engine {
+            Some(e) => string_bytes(&e.name) == b"interactive"@ && string_bytes(&e.manifest_sha256).len() > 0,
+            None => false,
+        }
+    }
+
+    pub open spec fn submission_correspondence(arguments: Seq<String>, mode: &Mode,
+        r: &ResolvedRequest, kind: SubmissionKind) -> bool {
+        r.args@.map_values(|s: String| string_bytes(&s)) == normalized_arguments(arguments, arguments.len())
+            && mode_correspondence(mode, r, kind)
+    }
+
+    pub closed spec fn binding_valid(b: &SubmissionBinding) -> bool {
+        submission_correspondence(b.arguments@, b.mode, b.request, b.kind)
+    }
 
     pub open spec fn engine_identity_matches(a: &Option<EngineIdentity>, b: &Option<EngineIdentity>) -> bool {
         match (a, b) {
@@ -519,7 +730,8 @@ sail_verified! {
     pub fn submitted_arguments_match(submitted: &[String], actual: &[String]) -> (out: bool)
         requires(true)
         ensures(out ==> actual@.map_values(|s: String| string_bytes(&s))
-            == normalized_arguments(submitted@, submitted@.len()))
+            == normalized_arguments(submitted@, submitted@.len()),
+            submitted@.len() == 0 && actual@.len() == 0 ==> out)
     {
         let mut i = 0usize;
         let mut j = 0usize;
@@ -550,15 +762,8 @@ sail_verified! {
     pub fn repair_request_matches(request: &ResolvedRequest, package: &str,
         target: &Option<String>, kind: &str, function: &str) -> (out: bool)
         requires(true)
-        ensures(out == (request.function.is_some()
-            && string_bytes(&request.function.unwrap()) == vstd::utf8::encode_utf8(function@)
-            && string_bytes(&request.repair_package) == vstd::utf8::encode_utf8(package@)
-            && string_bytes(&request.repair_kind) == vstd::utf8::encode_utf8(kind@)
-            && match (&request.repair_target, target) {
-                (None, None) => true,
-                (Some(a), Some(b)) => string_bytes(a) == string_bytes(b),
-                _ => false,
-            }))
+        ensures(out == repair_selection_matches(request, vstd::utf8::encode_utf8(package@),
+            target, vstd::utf8::encode_utf8(kind@), vstd::utf8::encode_utf8(function@)))
     {
         let same_function = match &request.function {
             Some(actual) => exact_bytes(actual.as_str().as_bytes(), function.as_bytes()),
@@ -589,6 +794,93 @@ sail_verified! {
             || !exact_bytes(request.input_revision.as_str().as_bytes(), project.input_revision.as_str().as_bytes())
             || !same_engine(&request.engine, &project.engine) { return false; }
         true
+    }
+}
+
+sail_verified! {
+    /// Checks the explicitly named interactive backend identity in actual fields.
+    pub fn interactive_engine_matches(engine: &Option<EngineIdentity>) -> (out: bool)
+        requires(true) ensures(out == interactive_engine(engine))
+    {
+        match engine {
+            Some(e) => exact_bytes(e.name.as_str().as_bytes(), b"interactive") && !e.manifest_sha256.is_empty(),
+            None => false,
+        }
+    }
+}
+
+sail_verified! {
+    /// Derives request correspondence from actual original-mode and request records.
+    pub fn classify_submission_mode(mode: &Mode, request: &ResolvedRequest) -> (out: Option<SubmissionKind>)
+        requires(true)
+        ensures(out.is_some() ==> mode_correspondence(mode, request, out.unwrap()),
+            mode is Stock && request.engine.is_none() && request.function.is_none() ==> out.is_some())
+    {
+        let kind = match mode {
+            Mode::Stock => {
+                if request.engine.is_some() || request.function.is_some() { return None; }
+                SubmissionKind::Stock
+            }
+            Mode::Interactive => {
+                if request.function.is_some() { return None; }
+                if request.engine.is_some() {
+                    if !interactive_engine_matches(&request.engine) { return None; }
+                    SubmissionKind::Interactive
+                } else { SubmissionKind::StockForOptIn }
+            }
+            Mode::Repair(selection) => {
+                if repair_request_matches(request, &selection.package, &selection.target, &selection.kind, &selection.function) {
+                    if !interactive_engine_matches(&request.engine) { return None; }
+                    SubmissionKind::Repair
+                } else if request.engine.is_none() && request.function.is_none() {
+                    SubmissionKind::StockForOptIn
+                } else { return None; }
+            }
+        };
+        Some(kind)
+    }
+}
+
+sail_verified! {
+    /// Binds independent original arguments and mode to the actual captured request.
+    #[allow(clippy::question_mark, reason = "Keep explicit refusal branches in the source shared with stock Verus.")]
+    pub fn bind_submission<'a>(arguments: &'a [String], mode: &'a Mode,
+        request: &'a ResolvedRequest) -> (out: Option<SubmissionBinding<'a>>)
+        requires(true)
+        ensures(out.is_some() ==> binding_valid(&out.unwrap()),
+            out.is_some() ==> bound_arguments(&out.unwrap()) == arguments,
+            out.is_some() ==> bound_mode(&out.unwrap()) == mode,
+            out.is_some() ==> bound_request(&out.unwrap()) == request,
+            arguments@.len() == 0 && request.args@.len() == 0 && mode is Stock
+                && request.engine.is_none() && request.function.is_none() ==> out.is_some())
+    {
+        if !submitted_arguments_match(arguments, &request.args) { return None; }
+        let Some(kind) = classify_submission_mode(mode, request) else { return None; };
+        Some(SubmissionBinding { arguments, mode, request, kind })
+    }
+}
+
+sail_verified! {
+    /// Establishes whole authority for the actual independent original submission.
+    #[allow(clippy::question_mark, reason = "Keep explicit refusal branches in the source shared with stock Verus.")]
+    pub fn complete_submitted_request_ordered<'a>(arguments: &'a [String], mode: &'a Mode,
+        request: &'a ResolvedRequest, project: &'a ProjectResult, orders: &[ReportOrder])
+        -> (out: Option<SubmittedAuthority<'a>>)
+        requires(true)
+        ensures(out.is_some() ==> request_authorized(request, project),
+            out.is_some() ==> submission_correspondence(arguments@, mode, request, submitted_kind(&out.unwrap())),
+            out.is_some() ==> submitted_arguments(&out.unwrap()) == arguments,
+            out.is_some() ==> submitted_mode(&out.unwrap()) == mode,
+            out.is_some() ==> submitted_request(&out.unwrap()) == request,
+            out.is_some() ==> submitted_project(&out.unwrap()) == project,
+            arguments@.len() == 0 && request.args@.len() == 0 && mode is Stock
+                && request.engine.is_none() && request.function.is_none()
+                && small_positive_request(request, project) && orders@.len() == 1
+                && orders@[0].forward@.len() == 0 && orders@[0].inverse@.len() == 0 ==> out.is_some())
+    {
+        let Some(binding) = bind_submission(arguments, mode, request) else { return None; };
+        if complete_request_ordered(request, project, orders).is_none() { return None; }
+        Some(SubmittedAuthority { arguments, mode, request, project, kind: binding.kind })
     }
 }
 
@@ -1178,6 +1470,19 @@ sail_verified! {
                     assert(c.functions@.take(j as int) =~= c.functions@);
                     assert(report.crates@.take(i as int + 1).drop_last() == report.crates@.take(i as int));
                     assert(report.crates@.take(i as int + 1).last() == report.crates@[i as int]);
+                    assert forall |a: int, b: int| 0 <= a < i + 1
+                        && 0 <= b < report.crates@.take(i as int + 1)[a].functions@.len()
+                        implies #[trigger] owned_function_ids(&report.crates@.take(i as int + 1)[a].functions@[b]) by {
+                        if a < i {
+                            assert(report.crates@.take(i as int)[a] == report.crates@[a]);
+                            assert(all_owned_ids(report.crates@.take(i as int)));
+                            assert(owned_function_ids(&report.crates@.take(i as int)[a].functions@[b]));
+                        } else {
+                            assert(a == i && c == &report.crates@[a]);
+                            assert(b < c.functions@.len() && j == c.functions@.len());
+                            assert(owned_function_ids(&c.functions@[b]));
+                        }
+                    }
                     reveal(report_ids);
                 }
                 i += 1;
@@ -1199,5 +1504,282 @@ sail_verified! {
                 CompletionPolicy::Receipt => c.verus.success != Some(false),
                 CompletionPolicy::Whole | CompletionPolicy::Repair => c.verus.success == Some(true),
             }
+    }
+}
+
+sail_verified! {
+    /// Binds live report input to sealed process observations, preserving fresh
+    /// output while recording missing history as retained-authority refusal.
+    pub fn require_process_observation(report: &mut Report, observed: Option<&ObservedAttempt>,
+        stdout: &[u8], stderr: &[u8], exit: Option<i32>, unavailable: ErrorInfo) -> (out: bool)
+        requires(observed.is_some() ==> sail_acceptance::authority::observation_complete(
+            &sail_acceptance::authority::observed_running(observed.unwrap())))
+        ensures(out == (observed.is_some()
+            && sail_acceptance::authority::running_stdout(&sail_acceptance::authority::observed_running(observed.unwrap())).unwrap()@ == stdout@
+            && sail_acceptance::authority::running_stderr(&sail_acceptance::authority::observed_running(observed.unwrap())).unwrap()@ == stderr@
+            && sail_acceptance::authority::running_exit(&sail_acceptance::authority::observed_running(observed.unwrap())).unwrap() == exit),
+            final(report).error.is_some() == (old(report).error.is_some() || !out),
+            old(report).error.is_some() ==> final(report).error == old(report).error,
+            final(report).command == old(report).command, final(report).schema_version == old(report).schema_version,
+            final(report).exit_code == old(report).exit_code, final(report).summary == old(report).summary,
+            final(report).crates == old(report).crates, final(report).engine == old(report).engine)
+    {
+        let matched = match observed {
+            Some(observed) => observed_payload_matches(observed, stdout, stderr, exit),
+            None => false,
+        };
+        if !matched && report.error.is_none() { report.error = Some(unavailable); }
+        matched
+    }
+}
+
+sail_spec! {
+    pub open spec fn driver_delimiter(raw: Seq<u8>, at: int) -> bool {
+        0 <= at && at + b"__VERUS_DRIVER_ARGS_SEP__"@.len() <= raw.len()
+            && raw.subrange(at, at + b"__VERUS_DRIVER_ARGS_SEP__"@.len() as int) == b"__VERUS_DRIVER_ARGS_SEP__"@
+    }
+
+    pub open spec fn first_driver_delimiter(raw: Seq<u8>, start: int, at: int) -> bool {
+        start <= at && driver_delimiter(raw, at)
+            && forall |i: int| start <= i < at ==> !driver_delimiter(raw, i)
+    }
+
+    pub open spec fn driver_token_span(raw: Seq<u8>, token: &String, delimiter: int, end: int) -> bool {
+        let start = delimiter + b"__VERUS_DRIVER_ARGS_SEP__"@.len();
+        driver_delimiter(raw, delimiter) && start <= end <= raw.len()
+            && string_bytes(token) == raw.subrange(start, end)
+            && forall |i: int| start <= i < end ==> !driver_delimiter(raw, i)
+    }
+
+    pub open spec fn driver_token_bounds(raw: Seq<u8>, tokens: Seq<String>, count: int, end: int, bounds: Seq<int>) -> bool {
+        0 <= count <= tokens.len() && bounds.len() == count + 1
+            && first_driver_delimiter(raw, 0, bounds[0]) && bounds.last() == end
+            && forall |i: int| 0 <= i < count ==> driver_token_span(raw, &tokens[i], bounds[i], bounds[i + 1])
+    }
+
+    pub open spec fn driver_token_prefix(raw: Seq<u8>, tokens: Seq<String>, count: int, end: int) -> bool {
+        exists |bounds: Seq<int>| driver_token_bounds(raw, tokens, count, end, bounds)
+    }
+
+    /// Exact non-overlapping delimiter semantics of the pinned driver's split/skip.
+    pub open spec fn packed_driver_tokens(raw: Seq<u8>, tokens: Seq<String>) -> bool {
+        if tokens.len() == 0 {
+            forall |i: int| 0 <= i <= raw.len() ==> !driver_delimiter(raw, i)
+        } else {
+            driver_token_prefix(raw, tokens, tokens.len() as int, raw.len() as int)
+        }
+    }
+
+    pub open spec fn driver_source_tokens(source: &Option<String>, tokens: Seq<String>) -> bool {
+        match source { None => tokens.len() == 0, Some(value) => packed_driver_tokens(string_bytes(value), tokens) }
+    }
+
+    pub open spec fn driver_option_sources(common: &Option<String>, package: &Option<String>,
+        arguments: Seq<String>, boundary: int) -> bool {
+        0 <= boundary <= arguments.len() && driver_source_tokens(common, arguments.take(boundary))
+            && driver_source_tokens(package, arguments.skip(boundary))
+    }
+}
+
+sail_verified! {
+    /// Recognizes the exact packed-driver separator at a bounded byte offset.
+    pub fn driver_delimiter_at(raw: &[u8], at: usize) -> (out: bool)
+        requires(true)
+        ensures(out == driver_delimiter(raw@, at as int))
+    {
+        let delimiter: &[u8] = b"__VERUS_DRIVER_ARGS_SEP__";
+        if at > raw.len() || raw.len() - at < delimiter.len() { return false; }
+        exact_bytes(&raw[at..at + delimiter.len()], delimiter)
+    }
+}
+
+sail_verified! {
+    /// Finds the first separator, proving that no effective token was skipped.
+    pub fn next_driver_delimiter(raw: &[u8], start: usize) -> (out: Option<usize>)
+        requires(start <= raw@.len())
+        ensures(out.is_some() ==> first_driver_delimiter(raw@, start as int, out.unwrap() as int),
+            out.is_none() ==> forall |i: int| start <= i <= raw@.len() ==> !driver_delimiter(raw@, i))
+    {
+        let mut at = start;
+        sail_while! { (at < raw.len())
+            invariant(start <= at <= raw.len(),
+                forall |i: int| start <= i < at ==> !driver_delimiter(raw@, i))
+            decreases(raw.len() - at)
+            {
+                if driver_delimiter_at(raw, at) { return Some(at); }
+                at += 1;
+            }
+        }
+        None
+    }
+}
+
+sail_verified! {
+    /// Validates decoded driver-token candidates against the exact original value.
+    /// The ignored leading prefix, empty tokens and trailing token are preserved.
+    pub fn packed_driver_arguments_match(value: &str, tokens: &[String]) -> (out: bool)
+        requires(true)
+        ensures(out ==> packed_driver_tokens(vstd::utf8::encode_utf8(value@), tokens@),
+            vstd::utf8::encode_utf8(value@).len() < b"__VERUS_DRIVER_ARGS_SEP__"@.len()
+                && tokens@.len() == 0 ==> out,
+            vstd::utf8::encode_utf8(value@) == b"__VERUS_DRIVER_ARGS_SEP__"@
+                && tokens@.len() == 1 && string_bytes(&tokens@[0]).len() == 0 ==> out)
+    {
+        let raw = value.as_bytes();
+        let raw_length = raw.len();
+        let delimiter: &[u8] = b"__VERUS_DRIVER_ARGS_SEP__";
+        let Some(first) = next_driver_delimiter(raw, 0) else {
+            sail_proof! { if raw@ == delimiter@ { assert(driver_delimiter(raw@, 0)); } }
+            return tokens.is_empty();
+        };
+        let mut at = first;
+        let mut index = 0usize;
+        sail_proof! { assert(driver_token_prefix(raw@, tokens@, 0, first as int)) by {
+            let bounds = seq![first as int];
+            assert(bounds.len() == 1 && bounds.last() == first);
+            assert(driver_token_bounds(raw@, tokens@, 0, first as int, bounds));
+        } }
+        sail_while! { (index < tokens.len())
+            invariant(index <= tokens.len(), driver_delimiter(raw@, at as int),
+                raw@ == vstd::utf8::encode_utf8(value@), delimiter@ == b"__VERUS_DRIVER_ARGS_SEP__"@, delimiter.len() == 25,
+                raw@.len() == raw_length,
+                driver_token_prefix(raw@, tokens@, index as int, at as int),
+                raw@ == delimiter@ && tokens@.len() == 1 && string_bytes(&tokens@[0]).len() == 0 ==> index == 0)
+            decreases(tokens.len() - index)
+            {
+                sail_proof! { assert(at as int + delimiter@.len() <= raw@.len()); }
+                let start = at + delimiter.len();
+                let next = next_driver_delimiter(raw, start);
+                let end = match next { Some(found) => found, None => raw_length };
+                sail_proof! {
+                    if raw@ == delimiter@ && tokens@.len() == 1 && string_bytes(&tokens@[0]).len() == 0 {
+                        assert(at == 0 && start == raw@.len() && end == raw@.len());
+                        assert(raw@.subrange(start as int, end as int) =~= Seq::<u8>::empty());
+                        assert(string_bytes(&tokens@[index as int]) =~= Seq::<u8>::empty());
+                    }
+                }
+                if !exact_bytes(tokens[index].as_str().as_bytes(), &raw[start..end]) { return false; }
+                sail_proof! {
+                    let before = choose |bounds: Seq<int>| driver_token_bounds(raw@, tokens@, index as int, at as int, bounds);
+                    let bounds = before.push(end as int);
+                    assert forall |i: int| 0 <= i < index + 1
+                        implies driver_token_span(raw@, &tokens@[i], bounds[i], bounds[i + 1]) by {
+                        if i == index { assert(driver_token_span(raw@, &tokens@[i], bounds[i], bounds[i + 1])); }
+                    }
+                    assert(driver_token_bounds(raw@, tokens@, index as int + 1, end as int, bounds));
+                    assert(driver_token_prefix(raw@, tokens@, index as int + 1, end as int));
+                }
+                index += 1;
+                match next {
+                    None => {
+                        if index != tokens.len() { return false; }
+                        return true;
+                    }
+                    Some(found) => { at = found; }
+                }
+            }
+        }
+        false
+    }
+}
+
+sail_verified! {
+    /// Validates all effective tokens in common-then-current-package order.
+    /// The proposed split index is untrusted, including when a source is absent.
+    pub fn effective_driver_arguments_match(common: &Option<String>, package: &Option<String>,
+        boundary: usize, arguments: &[String]) -> (out: bool)
+        requires(true)
+        ensures(out ==> driver_option_sources(common, package, arguments@, boundary as int),
+            common.is_none() && package.is_none() && boundary == 0 && arguments@.len() == 0 ==> out)
+    {
+        if boundary > arguments.len() { return false; }
+        let first = &arguments[..boundary];
+        let second = &arguments[boundary..];
+        match common {
+            None => { if !first.is_empty() { return false; } }
+            Some(value) => { if !packed_driver_arguments_match(value.as_str(), first) { return false; } }
+        }
+        match package {
+            None => { if !second.is_empty() { return false; } }
+            Some(value) => { if !packed_driver_arguments_match(value.as_str(), second) { return false; } }
+        }
+        true
+    }
+}
+
+sail_spec! {
+    /// Exact retained target data, allowing only loss of its completion label.
+    pub open spec fn same_target_except_completion(a: &TargetResult, b: &TargetResult) -> bool {
+        a.package_id == b.package_id && a.target == b.target && a.kind == b.kind
+            && a.establishing_run == b.establishing_run && a.reused == b.reused
+            && a.requested == b.requested && a.scope_reuse == b.scope_reuse && a.report == b.report
+    }
+
+    /// All captured project data except freshness and completion labels stays fixed.
+    pub open spec fn same_project_except_freshness_and_completion(a: &ProjectResult, b: &ProjectResult) -> bool {
+        a.kind == b.kind && a.schema_version == b.schema_version && a.run_id == b.run_id
+            && a.workspace == b.workspace && a.context_sha256 == b.context_sha256
+            && a.input_revision == b.input_revision
+            && a.exit_code == b.exit_code && a.error == b.error && a.engine == b.engine
+            && a.targets@.len() == b.targets@.len()
+            && forall |i: int| 0 <= i < a.targets@.len() ==>
+                same_target_except_completion(&a.targets@[i], &b.targets@[i])
+    }
+
+    /// Request refusal additionally preserves the original freshness observation.
+    pub open spec fn same_project_except_completion(a: &ProjectResult, b: &ProjectResult) -> bool {
+        same_project_except_freshness_and_completion(a, b) && a.currentness == b.currentness
+    }
+}
+
+sail_verified! {
+    /// Rechecks original request authority before retained completion can be shown.
+    /// Refusal clears labels while preserving the recorded reports and currentness.
+    pub fn withhold_unbound_request_authority_ordered(project: &mut ProjectResult,
+        request: Option<&ResolvedRequest>, orders: &[ReportOrder]) -> (corresponding: bool)
+        requires(true)
+        ensures(same_project_except_completion(old(project), final(project)),
+            forall |i: int| 0 <= i < final(project).targets@.len() ==>
+                final(project).targets@[i].complete ==> old(project).targets@[i].complete,
+            final(project).currentness is Current && final(project).exit_code == Some(0i32)
+                && (exists |i: int| 0 <= i < final(project).targets@.len()
+                    && final(project).targets@[i].complete) ==>
+                request.is_some() && request_authorized(request.unwrap(), final(project)),
+            request.is_none() ==> !corresponding,
+            request.is_some() && small_positive_request(request.unwrap(), old(project))
+                && orders@.len() == 1 && orders@[0].forward@.len() == 0
+                && orders@[0].inverse@.len() == 0 ==>
+                corresponding && *final(project) == *old(project))
+    {
+        let corresponding = match request {
+            Some(request) => request_corresponds(request, project),
+            None => false,
+        };
+        let admitted = match request {
+            Some(request) => corresponding
+                && verification_enabled_command(&request.args)
+                && !focused_command(&request.args)
+                && (!matches!(project.currentness, Currentness::Current)
+                    || project.exit_code != Some(0)
+                    || complete_request_ordered(request, project, orders).is_some()),
+            None => false,
+        };
+        if admitted {
+            return corresponding;
+        }
+        let mut i = 0usize;
+        sail_while! { (i < project.targets.len())
+            invariant(i <= project.targets.len(),
+                same_project_except_completion(old(project), project),
+                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete,
+                forall |j: int| i <= j < project.targets@.len() ==>
+                    project.targets@[j].complete == old(project).targets@[j].complete)
+            decreases(project.targets.len() - i)
+            {
+                project.targets[i].complete = false;
+                i += 1;
+            }
+        }
+        corresponding
     }
 }

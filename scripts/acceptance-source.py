@@ -233,9 +233,23 @@ def binding_environment(source: str, module: str) -> list[list[str]]:
             end = closing(stream, i + 1)
             kind = stream[i + 2].value
             if kind == "cfg":
-                require([t.value for t in stream[i + 2:end]] == ["cfg", "(", "test", ")"]
-                    and [t.value for t in stream[end + 1:end + 3]] == ["mod", "tests"],
+                condition = [t.value for t in stream[i + 2:end]]
+                after = end + 1
+                while after < len(stream) and stream[after].value == "#":
+                    after = checked_attribute(stream, after, {"derive", "serde", "doc"}) + 1
+                following = [t.value for t in stream[after:after + 3]]
+                native_socket = (module == "jobs"
+                    and condition in (["cfg", "(", "unix", ")"], ["cfg", "(", "not", "(", "unix", ")", ")"])
+                    and (following[:2] == ["fn", "short_socket"]
+                        or condition == ["cfg", "(", "unix", ")"]
+                            and (following == ["pub", "struct", "Client"] or following[:2] == ["impl", "Client"])))
+                require(condition == ["cfg", "(", "test", ")"]
+                    and [t.value for t in stream[end + 1:end + 3]] == ["mod", "tests"] or native_socket,
                     "conditional API declaration binding")
+            elif kind == "must_use":
+                require(module in {"jobs", "repair"} and [t.value for t in stream[i + 2:end]] == ["must_use"]
+                    and [t.value for t in stream[end + 1:end + 3]] == ["pub", "fn"],
+                    "unreviewed API function attribute")
             else:
                 checked_attribute(stream, i, {"derive", "serde", "doc"})
         require(value not in ("type", "extern"), "API type alias/extern binding is outside capture subset")
@@ -257,21 +271,34 @@ def binding_environment(source: str, module: str) -> list[list[str]]:
             # The existing JSON_SCHEMA constant loads a schema string. An item
             # macro could instead introduce a hidden alias for a captured type.
             prefix = [t.value for t in stream[item_begin:i]]
-            require(prefix == ["pub", "const", "JSON_SCHEMA", ":", "&", "str", "="]
-                and value == "include_str", "API item macro outside capture subset")
+            schema = prefix == ["pub", "const", "JSON_SCHEMA", ":", "&", "str", "="] and value == "include_str"
+            socket_bound = (module == "jobs" and value == "cfg"
+                and prefix == ["pub", "const", "MAX_SOCKET_PATH", ":", "usize", "=", "if"]
+                and [t.value for t in stream[i + 2:closing(stream, i + 2) + 1]]
+                    == ["(", "target_os", "=", '"linux"', ")"])
+            require(schema or socket_bound, "API item macro outside capture subset")
         if value == ";" or value == "}":
             item_begin = i + 1
     expected = ["use serde::{Deserialize, Serialize};"]
     if module == "output":
         expected += ["use sail_ledger::{CheckRecord, Establishment, FunctionRecord, ObligationRecord, Outcome, Source, SourceSummary, Verdict,};"]
-    else:
+    elif module == "project":
         expected += ["use crate::output::Report;"]
+    elif module == "repair":
+        expected += ["use crate::project::ProjectResult;"]
+    elif module == "jobs":
+        expected = ["use std::collections::BTreeMap;", "use std::fmt::Write as _;",
+            "use std::io::{self, Read, Write};", "use std::path::{Path, PathBuf};",
+            "use serde::{Deserialize, Serialize};", "use serde_json::Value;"]
+    else:
+        raise SourceRefusal("unreviewed API declaration module")
     expected_tokens = [[token.value for token in tokens(text)] for text in expected]
     require(imports == expected_tokens, "API declaration binding environment changed")
     return imports
 
 
-def record(source: str, name: str, kind: str) -> dict:
+def record(source: str, name: str, kind: str,
+        tuple_variants: dict[str, list[str]] | None = None) -> dict:
     """Capture every field/variant of one exact public declaration."""
     stream = tokens(source)
     levels = top_level(stream)
@@ -302,9 +329,14 @@ def record(source: str, name: str, kind: str) -> dict:
     body = stream[at + 1:end]
     fields: dict[str, list[str]] = {}
     variants: list[str] = []
+    tuples: dict[str, list[str]] = {}
     at = 0
     while at < len(body):
         if body[at].value == "#":
+            if (kind == "enum" and name == "Mode" and tuple_variants is not None
+                    and [t.value for t in body[at:at + 5]] == ["#", "[", "default", "]", "Stock"]):
+                at += 4
+                continue
             at = checked_attribute(body, at, {"serde", "doc"}) + 1
             continue
         if kind == "enum":
@@ -314,6 +346,14 @@ def record(source: str, name: str, kind: str) -> dict:
             require(variant not in variants, "duplicate enum variant")
             variants.append(variant)
             at += 1
+            if at < len(body) and body[at].value == "(":
+                require(tuple_variants is not None and variant in tuple_variants,
+                    "non-unit enum unsupported: " + name)
+                end_tuple = closing(body, at)
+                actual = [t.value for t in body[at + 1:end_tuple]]
+                require(actual == tuple_variants[variant], "enum payload representation changed: " + name)
+                tuples[variant] = actual
+                at = end_tuple + 1
             require(at == len(body) or body[at].value == ",", "non-unit enum unsupported: " + name)
             at += 1
             continue
@@ -346,29 +386,35 @@ def record(source: str, name: str, kind: str) -> dict:
         fields[field] = values
         at += 1
     block = source[stream[begin].begin:stream[end].end].encode()
-    return {"name": name, "kind": kind, "fields": fields, "variants": variants,
+    result = {"name": name, "kind": kind, "fields": fields, "variants": variants,
         "declaration_sha256": hashlib.sha256(block).hexdigest()}
+    if tuple_variants is not None:
+        require(tuples == tuple_variants, "missing reviewed enum payload: " + name)
+        result["tuple_fields"] = tuples
+    return result
 
 
 OUTPUT_FIELDS = {
-    "Report": "schema_version command exit_code error summary crates engine",
+    "Report": "schema_version mode command exit_code error summary crates engine solver",
     "CrateReport": "verus functions",
     "VerusResults": "errors success encountered_vir_error",
     "FunctionReport": "function verdict establishment evidence_tier unstable provenance obligations",
-    "ProvenanceReport": "source checks_solved checks_served checks_unrecorded",
+    "ProvenanceReport": "mode source checks_solved checks_served checks_unrecorded engine",
     "ObligationReport": "id",
     "Summary": "functions verified failed unknown provisional unstable",
-    "EngineProvenance": "established_by",
+    "EngineProvenance": "name manifest_sha256 established_by",
+    "SolverInfo": "name version path sha256",
     "ErrorInfo": "",
 }
 PROJECT_FIELDS = {
-    "TargetResult": "package_id target kind requested complete scope_reuse report",
+    "TargetResult": "package_id target kind establishing_run reused requested complete scope_reuse report",
     "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
     "RequestTarget": "package_id target kind",
     "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
     "EngineIdentity": "name manifest_sha256",
 }
 OUTPUT_ENUMS = ("VerdictName", "EstablishmentName", "EvidenceTierName", "SourceSummaryName", "EngineEstablishment")
+API_MODULES = ("output", "project", "jobs", "repair")
 
 
 def candidate_forwarders(source: str) -> None:
@@ -380,6 +426,15 @@ def candidate_forwarders(source: str) -> None:
     is reviewed runner logic, not a claim that std sorting is formally proved.
     """
     expected = {
+        "withhold_unbound_request_authority": """let orders: Vec<_> = if request.is_some()
+            && matches!(project.currentness, crate::project::Currentness::Current)
+            && project.exit_code == Some(0) {
+                project.targets.iter().map(|target| candidate_order(&target.report)).collect()
+            } else { Vec::new() };
+            withhold_unbound_request_authority_ordered(project, request, &orders)""",
+        "complete_submitted_request": """let orders: Vec<_> = project.targets.iter()
+            .map(|target| candidate_order(&target.report)).collect();
+            complete_submitted_request_ordered(arguments, mode, request, project, &orders)""",
         "complete_request": """let orders: Vec<_> = project.targets.iter()
             .map(|target| candidate_order(&target.report)).collect();
             complete_request_ordered(request, project, &orders)""",
@@ -395,6 +450,8 @@ def candidate_forwarders(source: str) -> None:
             }).collect(); complete_selection_ordered(project, &orders)""",
     }
     signatures = {
+        "withhold_unbound_request_authority": "fn withhold_unbound_request_authority(project: &mut ProjectResult, request: Option<&ResolvedRequest>,) -> bool",
+        "complete_submitted_request": "fn complete_submitted_request<'a>(arguments: &'a [String], mode: &'a Mode, request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<SubmittedAuthority<'a>>",
         "complete_request": "fn complete_request<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<CompleteRequest<'a>>",
         "complete_report": "fn complete_report(report: &Report, policy: CompletionPolicy) -> Option<CompleteReport<'_>>",
         "complete_whole_report": "fn complete_whole_report(report: &Report) -> Option<CompleteReport<'_>>",
@@ -404,7 +461,8 @@ def candidate_forwarders(source: str) -> None:
     }
     imports = [
         "use sail_acceptance::authority::CompletionPolicy;",
-        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_target_ordered, complete_whole_report_ordered,};",
+        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, SubmittedAuthority, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered, withhold_unbound_request_authority_ordered,};",
+        "use crate::jobs::Mode;",
         "use crate::output::Report;", "use crate::project::{ProjectResult, ResolvedRequest, TargetResult};",
     ]
     stream = tokens(source)
@@ -438,7 +496,7 @@ def candidate_forwarders(source: str) -> None:
             actual = [token.value for token in stream[begin + 1:end]]
             wanted = [token.value for token in tokens(expected[name])]
             require(actual == wanted, "untrusted authority forwarding changed: " + name)
-    require(len(found) == 6 and set(found) == {*expected, "candidate_order"},
+    require(len(found) == 8 and set(found) == {*expected, "candidate_order"},
         "authority candidate adapter function inventory changed")
     require(actual_imports == [[t.value for t in tokens(text)] for text in imports],
         "candidate forwarding binding environment changed")
@@ -456,18 +514,23 @@ def api_stencils(snapshots: dict[str, bytes], expected: dict | None = None) -> t
     for module, selected, enums in (
         ("output", OUTPUT_FIELDS, OUTPUT_ENUMS),
         ("project", PROJECT_FIELDS, ("Currentness",)),
+        ("jobs", {}, ("Mode", "Currentness")),
+        ("repair", {"Selection": "package target kind function"}, ()),
     ):
         source = snapshots["crates/sail-api/src/" + module + ".rs"].decode()
         bindings = binding_environment(source, module)
         declarations = [record(source, name, "struct") for name in selected]
-        declarations += [record(source, name, "enum") for name in enums]
+        declarations += [record(source, name, "enum",
+            {"Repair": [t.value for t in tokens("crate::repair::Selection")]}
+                if module == "jobs" and name == "Mode" else None) for name in enums]
         stream = tokens(source)
         levels = top_level(stream)
+        constant_name = "SCHEMA_VERSION" if module in {"output", "project"} else "VERSION"
         constants = [i for i in range(len(stream) - 7)
-            if levels[i] and [t.value for t in stream[i:i + 3]] == ["pub", "const", "SCHEMA_VERSION"]]
+            if levels[i] and [t.value for t in stream[i:i + 3]] == ["pub", "const", constant_name]]
         require(len(constants) == 1, "missing or ambiguous schema version")
         constant = [t.value for t in stream[constants[0]:constants[0] + 8]]
-        require(constant[:6] == ["pub", "const", "SCHEMA_VERSION", ":", "u32", "="]
+        require(constant[:6] == ["pub", "const", constant_name, ":", "u32", "="]
             and constant[7] == ";" and constant[6].isdigit(), "unsupported schema version")
         inventory[module] = {"source_sha256": hashlib.sha256(source.encode()).hexdigest(), "bindings": bindings,
             "declarations": declarations, "schema_constant": constant,
@@ -480,7 +543,10 @@ def api_stencils(snapshots: dict[str, bytes], expected: dict | None = None) -> t
             name = declaration["name"]
             lines.append("pub " + declaration["kind"] + " " + name + " {")
             if declaration["kind"] == "enum":
-                lines += [variant + "," for variant in declaration["variants"]]
+                for variant in declaration["variants"]:
+                    payload = declaration.get("tuple_fields", {}).get(variant)
+                    lines.append(variant + ("(" + " ".join(payload).replace(": :", "::") + ")"
+                        if payload is not None else "") + ",")
             else:
                 names = set(selected[name].split())
                 require(names <= declaration["fields"].keys(), "required field missing: " + name)

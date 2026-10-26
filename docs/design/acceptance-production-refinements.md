@@ -8,8 +8,9 @@ recorded separately. The owning
 [validation record](../validation/acceptance-production-refinements.md) separates
 checked source from accepted integration.
 
-Checkpoint `fe8be9ee` owns those completed gates. Integration with main's
-revision-only input projection is awaiting fresh native and hosted checks.
+The combined revision-only input projection passes fresh native gates, both
+direct-stock proof suites and full fast/standard conformance. The final
+documentation head must pass all hosted checks before merge.
 
 The [acceptance design](evidence-acceptance-core.md) targets four independent
 risks: wrong query/reply association, stale input reuse, incomplete requested
@@ -100,7 +101,9 @@ python3 scripts/check-acceptance-refinements.py \
 
 The output is a new directory outside the checkout. `ci/local.sh refinements`
 uses the same runner in the core CI image. The separate
-**Acceptance production refinements** job feeds **CI completion**. Its
+**Acceptance production refinements** aggregate feeds **CI completion**.
+Its query, inputs and authority jobs each check a complete root and all of
+its controls; every job must succeed. Its
 native wrapper takes 197 seconds on the qualified Linux host; the hosted
 production-refinement and model-proof jobs also pass.
 
@@ -146,3 +149,14 @@ Stage C has actual source-shared logic and callers; D and E have selected
 concrete operations and hardened adapters. Their remaining obligations cannot
 be replaced with an assumed successful-result Boolean. Shared/bundled writers,
 cryptography and trusted Verus translation retain their named trust boundaries.
+
+## Low-level host interfaces
+
+The syntax envelopes support contract-only host trait methods and identical
+ordinary `where` bounds in both profiles. Proof-only trait spec methods erase
+for Cargo; native executable method signatures and generic function bodies
+remain the same. A concrete implementation must satisfy those contracts or be
+bound to a reviewed low-level OS/library primitive with its explicit assumption
+inventory. An arbitrary native trait implementation supplies no physical-input,
+solver-origin or completed-service authority. The interfaces let checked
+controllers own read/launch loops instead of proving only supplied event lists.

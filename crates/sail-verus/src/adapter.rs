@@ -11,6 +11,8 @@ use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
+#[path = "adapter_attempts.rs"]
+pub(crate) mod attempts;
 #[path = "adapter_metadata_stdout.rs"]
 mod metadata_stdout;
 
@@ -230,13 +232,37 @@ fn cargo_messages(
         },
     )
     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    #[cfg(unix)]
+    let markers = std::env::var_os(crate::managed::visible_output::ENV).map_or(Ok(None), |path| {
+        crate::managed::visible_output::MarkerObserver::open(Path::new(&path)).map(Some)
+    });
+    #[cfg(unix)]
+    let mut observed = markers.as_ref().ok().map(|_| Vec::new());
+    #[cfg(not(unix))]
     let mut observed = Some(Vec::new());
     if let Some(stdout) = child.stdout.take() {
-        for line in std::io::BufReader::new(stdout).split(b'\n') {
-            let line = line.map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-            capture_cargo_line(&mut observed, &line, 64 * 1024 * 1024);
+        let mut stdout = std::io::BufReader::new(stdout);
+        loop {
+            let mut frame = Vec::new();
+            if stdout
+                .read_until(b'\n', &mut frame)
+                .map_err(|e| Error::new("SAIL3111", e.to_string()))?
+                == 0
+            {
+                break;
+            }
+            let line = frame.strip_suffix(b"\n").unwrap_or(&frame);
+            #[cfg(unix)]
+            capture_cargo_observation(
+                &mut observed,
+                &frame,
+                64 * 1024 * 1024,
+                markers.as_ref().ok().and_then(Option::as_ref),
+            );
+            #[cfg(not(unix))]
+            capture_cargo_line(&mut observed, line, 64 * 1024 * 1024);
             forwarded
-                .write_all(&line)
+                .write_all(line)
                 .and_then(|()| forwarded.write_all(b"\n"))
                 .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         }
@@ -277,6 +303,40 @@ fn capture_cargo_line(observed: &mut Option<Vec<u8>>, line: &[u8], limit: usize)
             *observed = None;
         }
     }
+}
+
+/// Strip only a validated current output-control marker from the accounting
+/// copy, before forwarding can acknowledge and retire its peer socket.
+#[cfg(unix)]
+fn capture_cargo_observation(
+    observed: &mut Option<Vec<u8>>,
+    frame: &[u8],
+    limit: usize,
+    markers: Option<&crate::managed::visible_output::MarkerObserver>,
+) {
+    if observed.is_none() {
+        return;
+    }
+    if let Some(markers) = markers {
+        match markers.decode(frame) {
+            Ok(Some(bytes)) => {
+                if !bytes.is_empty() {
+                    capture_cargo_line(
+                        observed,
+                        bytes.strip_suffix(b"\n").unwrap_or(&bytes),
+                        limit,
+                    );
+                }
+                return;
+            }
+            Err(_) => {
+                *observed = None;
+                return;
+            }
+            Ok(None) => {}
+        }
+    }
+    capture_cargo_line(observed, frame.strip_suffix(b"\n").unwrap_or(frame), limit);
 }
 
 /// Parse complete JSON documents so genuine multiline Verus output is not
@@ -383,21 +443,40 @@ fn cargo_driver_options_with(
 ) -> Result<DriverOptions> {
     let mut arguments = Vec::new();
     let mut environment = std::collections::BTreeMap::new();
-    for key in [
-        " __VERUS_DRIVER_ARGS__".to_owned(),
-        format!(" __VERUS_DRIVER_ARGS_FOR_{id}"),
-    ] {
-        if let Some(value) = lookup(&key)? {
+    let common_key = " __VERUS_DRIVER_ARGS__".to_owned();
+    let package_key = format!(" __VERUS_DRIVER_ARGS_FOR_{id}");
+    let common = lookup(&common_key)?;
+    let package = lookup(&package_key)?;
+    let mut common_count = 0;
+    for (index, (key, source)) in [(common_key, &common), (package_key, &package)]
+        .into_iter()
+        .enumerate()
+    {
+        if let Some(value) = source {
             // Match the pinned rust_verify decoder exactly: only delimited
             // tokens after the leading separator are effective driver options.
-            arguments.extend(
-                value
-                    .split("__VERUS_DRIVER_ARGS_SEP__")
-                    .skip(1)
-                    .map(str::to_owned),
-            );
-            environment.insert(key, value);
+            let decoded: Vec<String> = value
+                .split("__VERUS_DRIVER_ARGS_SEP__")
+                .skip(1)
+                .map(str::to_owned)
+                .collect();
+            arguments.extend(decoded);
+            environment.insert(key, value.clone());
         }
+        if index == 0 {
+            common_count = arguments.len();
+        }
+    }
+    if !sail_api::acceptance::effective_driver_arguments_match(
+        &common,
+        &package,
+        common_count,
+        &arguments,
+    ) {
+        return Err(Error::new(
+            "SAIL3123",
+            "effective Cargo driver arguments do not match the original packed values",
+        ));
     }
     let effective: Vec<_> = arguments
         .iter()
@@ -734,6 +813,7 @@ fn driver() -> Result<ExitCode> {
             },
             None,
             Some(&replay.origin),
+            CompletionOrigin::Bundled,
         )?;
         if let Some(proof) = &replay.retained {
             let _ = crate::managed::retained::publish_shipped(&runtime, proof);
@@ -775,6 +855,7 @@ fn driver() -> Result<ExitCode> {
             },
             None,
             None,
+            CompletionOrigin::Retained,
         )?;
         let path = runtime.invocations.join(format!("{}.json", identity.key()));
         let mut invocation: Invocation = serde_json::from_slice(
@@ -843,10 +924,15 @@ fn driver() -> Result<ExitCode> {
         .engine
         .as_ref()
         .map(|_| crate::engine_events::Relay::start(source_events.clone(), &runtime, &identity));
+    let unit = identity.compiler_unit();
+    let attempt_directory = dir.join("attempts");
+    let mut attempts = attempts::Journal::new(runtime.run_id.as_bytes(), &unit, &attempt_directory);
+    let reserved = attempts.reserve(&cmd);
     let compile_started = std::time::Instant::now();
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let observing = attempts.started(reserved, &child);
     if let Some(call) = &mut call {
         call.compiler_started(child.id());
     }
@@ -888,6 +974,8 @@ fn driver() -> Result<ExitCode> {
                 .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             }
         }
+    } else {
+        attempts.refuse("missing compiler stderr pipe");
     }
     let exit = output
         .child
@@ -898,23 +986,27 @@ fn driver() -> Result<ExitCode> {
         call.compiler_finished();
     }
     let stdout = output.stdout()?;
+    let captured = attempts.capture(
+        observing,
+        std::process::Output {
+            stdout,
+            stderr,
+            status: exit,
+        },
+    );
     if let Some(relay) = relay {
         relay.finish();
     }
     let mut established = None;
-    let (stdout, stderr, exit) = if let Some(engine) = &runtime.engine {
+    let captured = if let Some(engine) = &runtime.engine {
         let mut stock = Command::new(&engine.stock_wrapper);
         stock
             .args(&launcher_args)
             .env_remove(crate::managed::visible_output::ENV)
             .envs(&launcher_environment)
             .args(observation_args(flags, logs.as_deref()));
-        let captured = std::process::Output {
-            stdout,
-            stderr,
-            status: exit,
-        };
-        let (output, trusted) = engine_output(&dir, stock, captured, &invocation_log)?;
+        let (output, trusted) =
+            engine_output(&dir, stock, captured, &invocation_log, &mut attempts)?;
         if trusted {
             save_focus(&runtime, &identity, &dir)?;
         }
@@ -923,14 +1015,17 @@ fn driver() -> Result<ExitCode> {
         } else {
             sail_api::output::EngineEstablishment::StockFallback
         }));
-        (output.stdout, output.stderr, output.status)
+        output
     } else {
-        (stdout, stderr, exit)
+        captured
     };
+    let exit = captured.status();
+    let stdout = captured.stdout();
+    let stderr = captured.stderr();
     if runtime.engine.is_some() {
         crate::managed::visible_output::emit(
             crate::managed::visible_output::Stream::Stderr,
-            &stderr,
+            stderr,
         )
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
@@ -941,12 +1036,13 @@ fn driver() -> Result<ExitCode> {
         identity,
         &dir,
         &Captured {
-            stdout: &stdout,
-            stderr: &stderr,
+            stdout,
+            stderr,
             exit: exit.code(),
         },
         established.as_ref(),
         None,
+        CompletionOrigin::Live(captured.observation(), captured.unavailable_reason()),
     )?;
     // A successful process alone is insufficient: partial/no-verify output
     // must never become a reusable proof. Reuse only the complete successful
@@ -959,12 +1055,12 @@ fn driver() -> Result<ExitCode> {
                 invocation.success && crate::managed::receipt_complete(&invocation.report)
             });
         if completed {
-            call.record(&stdout, &stderr, exit.code());
+            call.record(stdout, stderr, exit.code());
         }
     }
     if let Some(attempt) = &retained {
         let finishing = std::time::Instant::now();
-        let _ = attempt.finish(exit.success());
+        let _ = attempt.finish(exit.success() && captured.observation().is_some());
         retention = retention.map(|before| before + finishing.elapsed());
     }
     if exit.success() && runtime.engine.is_none() {
@@ -976,7 +1072,7 @@ fn driver() -> Result<ExitCode> {
             retention,
         );
     }
-    let shown = crate::verus_stdout::rebuild(&stdout, flags);
+    let shown = crate::verus_stdout::rebuild(stdout, flags);
     // The dependency store must replay exactly what this target displayed,
     // including effective per-package output flags, when it seeds a new target.
     std::fs::write(dir.join("verus.shown-stdout"), &shown)
@@ -1020,23 +1116,24 @@ pub const NOT_REQUESTED: &str = "obligation detail not recorded: the run that es
 /// without the independent complete full document and normal process exit.
 /// A target that needs a Verus feature the engine lacks also restarts with
 /// stock, and its sidecar records the feature.
-pub(crate) fn engine_output(
+pub(crate) fn engine_output<'a>(
     dir: &Path,
     mut stock: Command,
-    captured: std::process::Output,
+    captured: attempts::CapturedChild<'a>,
     invocation_log: &InvocationLog<'_>,
-) -> Result<(std::process::Output, bool)> {
+    attempts: &mut attempts::Journal<'a>,
+) -> Result<(attempts::CapturedChild<'a>, bool)> {
     // A target that needs a Verus feature the engine lacks gets the same
     // stock fallback as an engine fault (SAIL3124): the engine's rejection is
     // not an answer from the configured Verus.
     let available = crate::engine::runtime_cargo_features();
-    let missing = crate::engine::required_feature(&captured.stderr, &available)
-        .or_else(|| crate::engine::required_feature(&captured.stdout, &available));
+    let missing = crate::engine::required_feature(captured.stderr(), &available)
+        .or_else(|| crate::engine::required_feature(captured.stdout(), &available));
     if missing.is_none()
         && crate::engine_events::completed(
             &dir.join("engine.events.jsonl"),
-            &captured.stdout,
-            captured.status.code(),
+            captured.stdout(),
+            captured.status().code(),
         )
     {
         return Ok((captured, true));
@@ -1045,8 +1142,8 @@ pub(crate) fn engine_output(
         std::fs::write(dir.join(crate::engine::MISSING_FEATURE), feature)
             .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
-    std::fs::write(dir.join("engine.failed.stdout"), &captured.stdout)
-        .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &captured.stderr))
+    std::fs::write(dir.join("engine.failed.stdout"), captured.stdout())
+        .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), captured.stderr()))
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     let _ = std::fs::remove_file(dir.join("focus.source.json"));
     for directory in [dir.join("logs"), dir.join("provenance")] {
@@ -1066,23 +1163,36 @@ pub(crate) fn engine_output(
     ] {
         stock.env_remove(key);
     }
-    let mut child = stock
+    stock
         .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    let reserved = attempts.reserve(&stock);
+    let mut child = stock
         .spawn()
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+    let observing = attempts.started(reserved, &child);
     invocation_log.record(&mut child)?;
     let output = child
         .wait_with_output()
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
-    Ok((output, false))
+    Ok((attempts.capture(observing, output), false))
 }
 
 struct Captured<'a> {
     stdout: &'a [u8],
     stderr: &'a [u8],
     exit: Option<i32>,
+}
+
+#[derive(Clone, Copy)]
+enum CompletionOrigin<'a, 'b> {
+    Live(
+        Option<&'a sail_acceptance::authority::ObservedAttempt<'b>>,
+        Option<&'a str>,
+    ),
+    Bundled,
+    Retained,
 }
 
 /// Records engine provenance on a report and each of its functions.
@@ -1145,6 +1255,7 @@ fn finish(
     captured: &Captured<'_>,
     engine: Option<&sail_api::output::EngineProvenance>,
     dependency_build: Option<&sail_api::project::DependencyBuildOrigin>,
+    origin: CompletionOrigin<'_, '_>,
 ) -> Result<()> {
     let Captured {
         stdout,
@@ -1217,7 +1328,8 @@ fn finish(
     if let Some(engine) = engine {
         mark_engine(&mut report, engine);
     }
-    let success = receipt_success(&report, &report_args);
+    let origin_available = bind_process_observation(&mut report, captured, origin);
+    let success = origin_available && receipt_success(&report, &report_args);
     // The complete read of Verus below (about 26 MB) overlaps the reads of
     // the dependencies; both happen after verification, as before.
     let (dependencies, verifier_readable) = std::thread::scope(|scope| {
@@ -1251,6 +1363,29 @@ fn finish(
         ));
     }
     Ok(())
+}
+
+fn bind_process_observation(
+    report: &mut sail_api::output::Report,
+    captured: &Captured<'_>,
+    origin: CompletionOrigin<'_, '_>,
+) -> bool {
+    match origin {
+        CompletionOrigin::Live(observed, reason) => sail_api::acceptance::require_process_observation(
+            report,
+            observed,
+            captured.stdout,
+            captured.stderr,
+            captured.exit,
+            sail_api::output::ErrorInfo {
+                code: "SAIL3111".into(),
+                message: reason.map_or_else(
+                    || "compiler process observation unavailable; retained proof authority withheld".into(),
+                    |reason| format!("compiler process observation unavailable; retained proof authority withheld: {reason}")),
+            },
+        ),
+        CompletionOrigin::Bundled | CompletionOrigin::Retained => true,
+    }
 }
 
 fn rendered_diagnostics(stderr: &[u8]) -> String {
@@ -1494,6 +1629,119 @@ fn target_identity(
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    struct MarkerWriter(std::sync::mpsc::Sender<Vec<u8>>);
+    #[cfg(unix)]
+    impl std::io::Write for MarkerWriter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0
+                .send(bytes.to_vec())
+                .map_err(|_| std::io::Error::other("marker observation closed"))?;
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[cfg(unix)]
+    fn marker_accounting(
+        raw: &[u8],
+        markers: &crate::managed::visible_output::MarkerObserver,
+    ) -> Option<Vec<u8>> {
+        let mut observed = Some(Vec::new());
+        for frame in raw.split_inclusive(|byte| *byte == b'\n') {
+            super::capture_cargo_observation(&mut observed, frame, 64 * 1024 * 1024, Some(markers));
+        }
+        observed
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cargo_accounting_uses_exact_live_markers_without_acknowledging()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use crate::managed::visible_output::{MarkerObserver, Receiver, send_test};
+        let receiver = Receiver::bind()?;
+        let endpoint = receiver.path().to_owned();
+        let markers = MarkerObserver::open(&endpoint)?;
+        let raw = b"{\"reason\":\"build-script-executed\",\"package_id\":\"demo\"}\n";
+        let (tx, rx) = std::sync::mpsc::channel();
+        let sender_path = endpoint.clone();
+        let sender =
+            std::thread::spawn(move || send_test(&sender_path, raw, &mut MarkerWriter(tx)));
+        let payload = rx.recv_timeout(std::time::Duration::from_secs(5))?;
+        let marker = rx.recv_timeout(std::time::Duration::from_secs(5))?;
+        assert_eq!(payload, raw);
+        let wire = [payload.as_slice(), marker.as_slice()].concat();
+        let counted = marker_accounting(&wire, &markers).ok_or("valid accounting refused")?;
+        assert_eq!(counted, raw);
+        assert_eq!(
+            super::cargo_artifacts(&counted, &mut Vec::new(), 1, 2)?,
+            Some(1)
+        );
+        assert!(
+            !sender.is_finished(),
+            "accounting must not acknowledge the sender"
+        );
+
+        // Preserve a valid Cargo JSON record preceding a marker in the same frame.
+        let embedded = [
+            raw.strip_suffix(b"\n").ok_or("payload newline")?,
+            marker.as_slice(),
+        ]
+        .concat();
+        assert_eq!(marker_accounting(&embedded, &markers), Some(raw.to_vec()));
+        // Every original non-marker byte is retained, including malformed JSON.
+        let malformed_prefix = [b"{broken".as_slice(), marker.as_slice()].concat();
+        let kept = marker_accounting(&malformed_prefix, &markers).ok_or("marker framing")?;
+        assert_eq!(kept, b"{broken\n");
+        assert_eq!(super::cargo_artifacts(&kept, &mut Vec::new(), 1, 2)?, None);
+
+        let mut foreign = marker.clone();
+        let capability_start = b"[[sail-stdout:".len();
+        foreign[capability_start] = if foreign[capability_start] == b'0' {
+            b'1'
+        } else {
+            b'0'
+        };
+        let unrecognized = marker_accounting(&foreign, &markers).ok_or("foreign text retained")?;
+        assert_eq!(unrecognized, foreign);
+        assert_eq!(
+            super::cargo_artifacts(&unrecognized, &mut Vec::new(), 1, 2)?,
+            None
+        );
+        let capability = std::fs::read_to_string(
+            endpoint
+                .parent()
+                .ok_or("endpoint parent")?
+                .join("capability"),
+        )?;
+        for malformed in [
+            format!("[[sail-stdout:{capability}:0-0]]\n").into_bytes(),
+            format!("[[sail-stdout:{capability}:bad-name]]\n").into_bytes(),
+            marker.strip_suffix(b"\n").ok_or("marker newline")?.to_vec(),
+            [
+                marker.strip_suffix(b"\n").ok_or("marker newline")?,
+                b"junk\n",
+            ]
+            .concat(),
+        ] {
+            assert!(marker_accounting(&malformed, &markers).is_none());
+        }
+        receiver
+            .decode(&marker)?
+            .completion
+            .ok_or("completion missing")?
+            .acknowledge()?;
+        sender.join().map_err(|_| "sender thread")??;
+        assert!(
+            markers.decode(&marker).is_err(),
+            "retired peers are never recognized later"
+        );
+        receiver.finish()?;
+        Ok(())
+    }
+
     #[cfg(unix)]
     #[test]
     fn cargo_provider_records_actual_child_and_nonzero_normal_exit()
@@ -1975,15 +2223,17 @@ mod tests {
     }
 
     #[cfg(unix)]
-    fn capture_engine(
+    fn capture_engine<'a>(
         log: &InvocationLog<'_>,
+        attempts: &mut attempts::Journal<'a>,
         document: &[u8],
         exit: &str,
-    ) -> std::result::Result<std::process::Output, Box<dyn std::error::Error>> {
+    ) -> std::result::Result<attempts::CapturedChild<'a>, Box<dyn std::error::Error>> {
         std::fs::create_dir_all(log.directory)?;
         let input = log.directory.join("engine.output");
         std::fs::write(&input, document)?;
-        let mut child = Command::new("/bin/sh")
+        let mut command = Command::new("/bin/sh");
+        command
             .args([
                 "-c",
                 "cat \"$1\"; printf 'original engine diagnostic\\n' >&2; exit \"$2\"",
@@ -1992,10 +2242,56 @@ mod tests {
             .arg(input)
             .arg(exit)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+        let reserved = attempts.reserve(&command);
+        let mut child = command.spawn()?;
+        let observing = attempts.started(reserved, &child);
         log.record(&mut child)?;
-        Ok(child.wait_with_output()?)
+        let output = child.wait_with_output()?;
+        Ok(attempts.capture(observing, output))
+    }
+
+    #[cfg(unix)]
+    fn test_attempt_unit() -> sail_acceptance::authority::CompilerUnit {
+        sail_acceptance::authority::CompilerUnit {
+            manifest: b"fixture/Cargo.toml".to_vec(),
+            name: b"demo".to_vec(),
+            crate_type: b"lib".to_vec(),
+            cargo_name: None,
+        }
+    }
+
+    #[cfg(unix)]
+    fn assert_attempt_journal(
+        directory: &Path,
+        document: &[u8],
+        fallback_document: &[u8],
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let original: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(directory.join("0.observed"))?)?;
+        let fallback: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(directory.join("1.observed"))?)?;
+        assert_eq!(original["slot"], 0);
+        assert_eq!(fallback["slot"], 1);
+        assert_eq!(original["run"], serde_json::json!(b"run".as_slice()));
+        assert_eq!(original["stdout_sha256"], crate::managed::digest(document));
+        assert_eq!(
+            fallback["stdout_sha256"],
+            crate::managed::digest(fallback_document)
+        );
+        let command: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(directory.join("1.reserved"))?)?;
+        assert_eq!(
+            command["command"]["program"],
+            serde_json::json!(b"/bin/sh".as_slice())
+        );
+        assert!(
+            command["command"]["arguments"]
+                .as_array()
+                .ok_or("arguments")?
+                .contains(&serde_json::json!(b"literal;$(untouched)".as_slice()))
+        );
+        Ok(())
     }
 
     #[cfg(unix)]
@@ -2035,7 +2331,16 @@ mod tests {
                 run_id: "run",
                 target: "demo",
             };
-            let captured = capture_engine(&log, document, if index == 3 { "101" } else { "1" })?;
+            let unit = test_attempt_unit();
+            let attempt_directory = dir.join("attempts");
+            let mut attempts =
+                attempts::Journal::new(log.run_id.as_bytes(), &unit, &attempt_directory);
+            let captured = capture_engine(
+                &log,
+                &mut attempts,
+                document,
+                if index == 3 { "101" } else { "1" },
+            )?;
             let stock_document = if index >= 4 {
                 document
             } else {
@@ -2049,7 +2354,8 @@ mod tests {
                 "reply=$1; shift; printf '%s\\0' \"$@\" > stock.argv; printf '%s' \"${SAIL_ENGINE-unset}\" > stock.engine; cat \"$reply\"; printf 'original engine diagnostic\\n' >&2; exit 1",
                 "stock",
             ]).arg(reply).args(["crate path.rs", "--", "literal;$(untouched)"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            let (output, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
+            let output = output.into_output();
             assert!(!trusted);
             assert_eq!(output.stdout, stock_document);
             assert_eq!(output.stderr, b"original engine diagnostic\n");
@@ -2078,6 +2384,7 @@ mod tests {
                     .count(),
                 2
             );
+            assert_attempt_journal(&attempt_directory, document, stock_document)?;
         }
         std::fs::remove_dir_all(root)?;
         Ok(())
@@ -2096,25 +2403,29 @@ mod tests {
             run_id: "run",
             target: "demo",
         };
+        let unit = test_attempt_unit();
+        let attempt_directory = dir.join("attempts");
+        let mut attempts = attempts::Journal::new(log.run_id.as_bytes(), &unit, &attempt_directory);
         let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
         // Control: a completed engine run is trusted as is.
         std::fs::write(
             dir.join("engine.events.jsonl"),
             include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
         )?;
-        let captured = capture_engine(&log, success, "0")?;
+        let captured = capture_engine(&log, &mut attempts, success, "0")?;
         let mut stock = Command::new("/bin/sh");
         stock.args(["-c", "exit 2"]);
-        let (_, trusted) = engine_output(&dir, stock, captured, &log)?;
+        let (_, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
         assert!(trusted);
         // An injected engine crash (exit 101, no seal) falls back to stock.
         std::fs::remove_file(dir.join("engine.events.jsonl"))?;
-        let captured = capture_engine(&log, success, "101")?;
+        let captured = capture_engine(&log, &mut attempts, success, "101")?;
         let reply = dir.join("stock.output");
         std::fs::write(&reply, success)?;
         let mut stock = Command::new("/bin/sh");
         stock.args(["-c", "cat \"$1\"", "stock"]).arg(&reply);
-        let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+        let (output, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
+        let output = output.into_output();
         assert!(!trusted);
         assert_eq!(output.stdout, success);
         assert!(dir.join("engine.failed.stdout").is_file());
@@ -2207,6 +2518,9 @@ mod tests {
             run_id: "run",
             target: "demo",
         };
+        let unit = test_attempt_unit();
+        let attempt_directory = dir.join("attempts");
+        let mut attempts = attempts::Journal::new(log.run_id.as_bytes(), &unit, &attempt_directory);
         let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
         for (index, (document, code)) in [
             (proof.as_slice(), "1"),
@@ -2226,12 +2540,13 @@ mod tests {
                         .as_slice()
                 },
             )?;
-            let captured = capture_engine(&log, document, code)?;
+            let captured = capture_engine(&log, &mut attempts, document, code)?;
             let mut stock = Command::new("/bin/sh");
             stock
                 .current_dir(&dir)
                 .args(["-c", "touch stock.started; exit 2"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            let (output, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
+            let output = output.into_output();
             assert!(trusted);
             assert_eq!(output.stdout, document);
             assert_eq!(output.stderr, b"original engine diagnostic\n");

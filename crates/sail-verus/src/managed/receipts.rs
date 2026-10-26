@@ -45,6 +45,19 @@ pub(crate) struct TargetIdentity {
 }
 
 impl TargetIdentity {
+    /// Raw launcher fields, without treating Rust name normalization as Cargo identity.
+    pub(crate) fn compiler_unit(&self) -> sail_acceptance::authority::CompilerUnit {
+        sail_acceptance::authority::CompilerUnit {
+            manifest: self.manifest.as_os_str().as_encoded_bytes().to_vec(),
+            name: self.name.as_bytes().to_vec(),
+            crate_type: self.crate_type.as_bytes().to_vec(),
+            cargo_name: self
+                .cargo_name
+                .as_ref()
+                .map(|name| name.as_bytes().to_vec()),
+        }
+    }
+
     pub(crate) fn key(&self) -> String {
         digest(&serde_json::to_vec(self).unwrap_or_default())
     }
@@ -62,16 +75,22 @@ impl TargetIdentity {
         if package["manifest_path"].as_str().map(Path::new) != Some(self.manifest.as_path()) {
             return None;
         }
+        let unit = self.compiler_unit();
         let mut matches = package["targets"].as_array()?.iter().filter(|target| {
-            target["name"].as_str().is_some_and(|name| {
-                name.replace('-', "_") == self.name
-                    && self.cargo_name.as_deref().is_none_or(|exact| exact == name)
-            }) && target["kind"].as_array().is_some_and(|kinds| {
-                kinds.iter().any(|kind| {
-                    kind.as_str() == Some(self.crate_type.as_str())
-                        || (kind == "lib" && self.crate_type == "rlib")
-                })
-            })
+            let Some(name) = target["name"].as_str() else {
+                return false;
+            };
+            let Some(kinds) = target["kind"].as_array() else {
+                return false;
+            };
+            let Some(kinds): Option<Vec<Vec<u8>>> = kinds
+                .iter()
+                .map(|kind| kind.as_str().map(|kind| kind.as_bytes().to_vec()))
+                .collect()
+            else {
+                return false;
+            };
+            sail_acceptance::authority::compiler_unit_matches_target(&unit, name.as_bytes(), &kinds)
         });
         let target = matches.next()?;
         matches.next().is_none().then_some(target)
@@ -97,7 +116,7 @@ impl Invocation {
     /// Whole proofs retain their success authority. A partial report has a
     /// separate authority: exact recorded arguments, successful verifier output
     /// and no source-engine fallback. It never turns `success` into true.
-    pub(super) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
+    pub(crate) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
         match partial_args {
             None => self.success && complete(&self.report),
             Some(args) => {
@@ -424,6 +443,31 @@ pub(crate) fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
 mod tests {
     use super::*;
     use sail_api::output::CrateReport;
+
+    #[test]
+    fn malformed_cargo_kind_fields_are_not_silently_projected_away() {
+        let unit = TargetIdentity {
+            manifest: "Cargo.toml".into(),
+            name: "demo_name".into(),
+            crate_type: "rlib".into(),
+            rustc_args_sha256: "arguments".into(),
+            cargo_name: None,
+        };
+        let mut package = serde_json::json!({"manifest_path":"Cargo.toml",
+            "targets":[{"name":"demo-name","kind":["lib"]}]});
+        assert!(unit.cargo_target(&package).is_some());
+        for kinds in [
+            serde_json::json!(["lib", null]),
+            serde_json::json!(["lib", {}]),
+            serde_json::json!("lib"),
+        ] {
+            package["targets"][0]["kind"] = kinds;
+            assert!(unit.cargo_target(&package).is_none());
+        }
+        package["targets"][0]["kind"] = serde_json::json!(["bin"]);
+        assert!(unit.cargo_target(&package).is_none());
+    }
+
     #[test]
     fn artifact_read_results_keep_actual_keys_when_reordered()
     -> std::result::Result<(), Box<dyn std::error::Error>> {

@@ -34,7 +34,7 @@ class SourceCaptureTests(unittest.TestCase):
     def snapshots(self) -> dict[str, bytes]:
         return {"crates/sail-api/src/" + name + ".rs":
             (ROOT / "crates/sail-api/src" / (name + ".rs")).read_bytes()
-            for name in ("output", "project")}
+            for name in SOURCE.API_MODULES}
 
     def test_real_stencil_preserves_actual_authority_fields(self):
         files, inventory = SOURCE.api_stencils(self.snapshots())
@@ -47,6 +47,47 @@ class SourceCaptureTests(unittest.TestCase):
         self.assertIn(b"pub args: Vec < String >,", files["project.rs"])
         self.assertIn(b"pub targets: Vec < RequestTarget >,", files["project.rs"])
         self.assertIn(b"pub engine: Option < EngineIdentity >,", files["project.rs"])
+        self.assertIn(b"Repair(crate :: repair :: Selection),", files["jobs.rs"])
+        self.assertIn(b"pub function: String,", files["repair.rs"])
+        self.assertIn(b"pub solver: Option < SolverInfo >,", files["output.rs"])
+        self.assertIn(b"pub mode: String,", files["output.rs"])
+        self.assertIn(b"pub sha256: Option < String >,", files["output.rs"])
+        self.assertIn(b"pub establishing_run: String,", files["project.rs"])
+        self.assertIn(b"pub reused: bool,", files["project.rs"])
+
+
+    def test_submission_payload_and_selection_representation_cannot_change(self):
+        snapshots = self.snapshots()
+        _, expected = SOURCE.api_stencils(snapshots)
+        for path, before, after in (
+            ("jobs", b"Repair(crate::repair::Selection)", b"Repair(String)"),
+            ("jobs", b"Repair(crate::repair::Selection)", b"Repair(crate::repair::Selection, bool)"),
+            ("jobs", b"Repair(crate::repair::Selection)", b"Repair"),
+            ("repair", b"pub function: String,", b"pub function: Option<String>,"),
+            ("repair", b"pub target: Option<String>,", b"pub target: String,"),
+        ):
+            candidate = dict(snapshots)
+            key = "crates/sail-api/src/" + path + ".rs"
+            self.assertIn(before, candidate[key])
+            candidate[key] = candidate[key].replace(before, after, 1)
+            with self.subTest(path=path, after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.api_stencils(candidate, expected)
+        for before, after in (
+            (b"pub enum Mode {", b"#[cfg(unix)] pub enum Mode {"),
+            (b"pub enum Mode {", b"#[cfg(not(sail_verus))] pub enum Mode {"),
+            (b"use serde_json::Value;", b"use serde_json::Value; use crate::repair::Selection as String;"),
+            (b'cfg!(target_os = "linux")', b'cfg!(feature = "proof_override")'),
+        ):
+            candidate = dict(snapshots)
+            key = "crates/sail-api/src/jobs.rs"
+            self.assertIn(before, candidate[key])
+            candidate[key] = candidate[key].replace(before, after, 1)
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.api_stencils(candidate, expected)
+        for source in ("pub enum Mode { Repair(String) }",
+                "pub enum Mode { Repair { selection: String } }"):
+            with self.subTest(source=source), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.record(source, "Mode", "enum")
 
     def test_request_identity_fields_cannot_disappear_from_stencil(self):
         snapshots = self.snapshots()
@@ -62,6 +103,34 @@ class SourceCaptureTests(unittest.TestCase):
             candidate[path] = candidate[path].replace(before, after, 1)
             with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
                 SOURCE.api_stencils(candidate, expected)
+
+    def test_job_currentness_variants_require_representation_review(self):
+        snapshots = self.snapshots()
+        _, expected = SOURCE.api_stencils(snapshots)
+        path = "crates/sail-api/src/jobs.rs"
+        before = b"pub enum Currentness {"
+        self.assertIn(before, snapshots[path])
+        snapshots[path] = snapshots[path].replace(before, before + b" PotentiallyCurrent,", 1)
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.api_stencils(snapshots, expected)
+
+    def test_mutable_retained_forwarder_cannot_skip_or_substitute_request_check(self):
+        path = ROOT / "crates/sail-api/src/acceptance_sort.rs"
+        original = path.read_text()
+        SOURCE.candidate_forwarders(original)
+        before = "withhold_unbound_request_authority_ordered(project, request, &orders)"
+        self.assertEqual(original.count(before), 1)
+        for after in ("true", "withhold_unbound_request_authority_ordered(project, None, &orders)"):
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.candidate_forwarders(original.replace(before, after, 1))
+
+    def test_reviewed_native_retained_bridge_cannot_skip_the_shared_guard(self):
+        original = (ROOT / CHECKER.RETAINED_BRIDGE).read_bytes()
+        CHECKER.compiled_subset(CHECKER.RETAINED_BRIDGE, original)
+        before = b"sail_api::acceptance::withhold_unbound_request_authority(project, request)"
+        self.assertEqual(original.count(before), 1)
+        with self.assertRaises(CHECKER.Refusal):
+            CHECKER.compiled_subset(CHECKER.RETAINED_BRIDGE, original.replace(before, b"true", 1))
 
     def test_nested_or_literal_declaration_cannot_replace_top_level_type(self):
         for source in (
@@ -123,7 +192,10 @@ class SourceCaptureTests(unittest.TestCase):
     def test_syntax_runtime_branch_cannot_differ_from_reviewed_erasure(self):
         original = (ROOT / CHECKER.SYNTAX).read_bytes()
         CHECKER.compiled_subset(CHECKER.SYNTAX, original)
-        changed = original.replace(b"-> $return_type $body", b"-> $return_type { true }")
+        changed = original.replace(
+            b"-> $return_type $(where $($bounds)*)? $body",
+            b"-> $return_type $(where $($bounds)*)? { true }",
+        )
         self.assertNotEqual(changed, original)
         with self.assertRaises(CHECKER.Refusal):
             CHECKER.compiled_subset(CHECKER.SYNTAX, changed)
@@ -131,6 +203,7 @@ class SourceCaptureTests(unittest.TestCase):
     def test_cargo_paths_and_private_token_fields_cannot_change_without_review(self):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
+            "crates/sail-acceptance/src/authority.rs",
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
         paths += ["crates/" + name + "/Cargo.toml" for name in
             ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
@@ -149,6 +222,16 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/query.rs", b"bytes: &'a [u8],", b"pub bytes: &'a [u8],"),
             ("crates/sail-acceptance/src/query.rs", b"pub struct RawTranscript", b"#[derive(Default)] pub struct RawTranscript"),
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct ProviderSeal", b"#[derive(Default)] pub struct ProviderSeal"),
+            ("crates/sail-acceptance/src/inputs.rs", b"pub struct OpenedRead", b"#[derive(Default)] pub struct OpenedRead"),
+            ("crates/sail-acceptance/src/inputs.rs", b"pub struct ReadChunk", b"#[derive(Deserialize)] pub struct ReadChunk"),
+            ("crates/sail-acceptance/src/inputs.rs", b"pub struct ReadSeal", b"#[derive(Default)] pub struct ReadSeal"),
+            ("crates/sail-api/src/acceptance.rs", b"pub struct SubmissionBinding", b"#[derive(Deserialize)] pub struct SubmissionBinding"),
+            ("crates/sail-api/src/acceptance.rs", b"pub struct SubmittedAuthority", b"#[derive(Default)] pub struct SubmittedAuthority"),
+            ("crates/sail-acceptance/src/authority.rs", b"pub struct AttemptLedger", b"#[derive(Default)] pub struct AttemptLedger"),
+            ("crates/sail-acceptance/src/authority.rs", b"pub struct ReservedAttempt", b"#[derive(Deserialize)] pub struct ReservedAttempt"),
+            ("crates/sail-acceptance/src/authority.rs", b"pub struct RunningAttempt", b"#[derive(Default)] pub struct RunningAttempt"),
+            ("crates/sail-acceptance/src/authority.rs", b"pub struct ObservedAttempt", b"#[derive(Deserialize)] pub struct ObservedAttempt"),
+
         ):
             candidate = dict(snapshots)
             self.assertIn(before, candidate[path])
@@ -287,6 +370,27 @@ class SourceCaptureTests(unittest.TestCase):
                     CHECKER.check(root, base / "archive", base / "runtime", base / "evidence", 120)
             self.assertEqual(sum(calls.values()), sum(1 + len(e["negative_controls"]) for e in entries.values()))
             self.assertFalse((base / "evidence/report.json").exists())
+
+    def test_component_partition_preserves_all_controls_and_requires_full_inventory(self):
+        import json
+        entries = json.loads((ROOT / CHECKER.MANIFEST).read_text())["components"]
+        self.assertEqual(CHECKER.selected_entries(entries, None), entries)
+        combined = []
+        for component in CHECKER.COMPONENTS:
+            selected = CHECKER.selected_entries(entries, component)
+            self.assertEqual(selected, [entry for entry in entries if entry["id"] == component])
+            combined.extend((entry["id"], name) for entry in selected
+                for name in ["positive", *[c["name"] for c in entry["negative_controls"]]])
+        expected = [(entry["id"], name) for entry in entries
+            for name in ["positive", *[c["name"] for c in entry["negative_controls"]]]]
+        self.assertCountEqual(combined, expected)
+        self.assertEqual(len(combined), len(set(combined)))
+        for bad in (entries[:-1], [entries[0], entries[0], entries[2]]):
+            with self.assertRaisesRegex(CHECKER.Refusal, "omitted or duplicated"):
+                CHECKER.selected_entries(bad, "query")
+        for unknown in ("", "all", "query,inputs", "positive"):
+            with self.assertRaisesRegex(CHECKER.Refusal, "unknown refinement"):
+                CHECKER.selected_entries(entries, unknown)
 
     def test_selected_guard_control_cannot_be_omitted(self):
         import json

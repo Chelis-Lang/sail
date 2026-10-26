@@ -236,6 +236,18 @@ pub closed spec fn failure_valid(f: &EngineFailure) -> bool {
         && f.end != ProcessEnd::Exit(0)
 }
 
+/// Restarting a whole target may widen a failed partial selection, while every
+/// non-selection request/input/runtime fact and the exact target remain fixed.
+pub open spec fn fallback_subject_matches(failed: &Invocation, fresh: &Invocation) -> bool {
+    same_target(&failed.target, &fresh.target)
+        && failed.context@.request == fresh.context@.request
+        && failed.context@.runtime == fresh.context@.runtime
+        && failed.context@.solver == fresh.context@.solver
+        && failed.context@.inputs == fresh.context@.inputs
+        && failed.context@.mode == fresh.context@.mode
+        && failed.verification == fresh.verification
+}
+
 pub closed spec fn origin_valid(run: &RunningInvocation) -> bool {
     match run.invocation.origin {
         Origin::Direct => run.fallback_from.is_none(),
@@ -244,8 +256,8 @@ pub closed spec fn origin_valid(run: &RunningInvocation) -> bool {
             && failure_valid(&run.fallback_from.unwrap())
             && run.fallback_from.unwrap().invocation.run_id == id
             && run.invocation.run_id > id && run.invocation.scope.whole
-            && run.invocation.context@.request == run.fallback_from.unwrap().invocation.context@.request
-            && run.invocation.context@.mode == run.fallback_from.unwrap().invocation.context@.mode,
+            && run.invocation.started_at >= run.fallback_from.unwrap().failed_at
+            && fallback_subject_matches(&run.fallback_from.unwrap().invocation, &run.invocation),
     }
 }
 
@@ -370,15 +382,13 @@ pub proof fn start_fallback(failed: EngineFailure, invocation: Invocation)
             && invocation.origin == Origin::Fallback(failed.invocation().run_id)
             && invocation.run_id > failed.invocation().run_id
             && invocation.started_at >= failed.point()
-            && invocation.context@.request == failed.invocation().context@.request
-            && invocation.context@.mode == failed.invocation().context@.mode),
+            && fallback_subject_matches(&failed.invocation(), &invocation)),
 {
     if invocation_wf(&invocation) && invocation.scope.whole
         && invocation.origin == Origin::Fallback(failed.invocation.run_id)
         && invocation.run_id > failed.invocation.run_id
         && invocation.started_at >= failed.failed_at
-        && invocation.context@.request == failed.invocation.context@.request
-        && invocation.context@.mode == failed.invocation.context@.mode {
+        && fallback_subject_matches(&failed.invocation, &invocation) {
         Some(RunningInvocation { invocation, documents: Seq::empty(),
             stream: StreamState::Running, fallback_from: Some(failed), children: Seq::empty() })
     } else { None }
@@ -411,6 +421,7 @@ impl CompletedInvocation {
     pub closed spec fn documents(&self) -> Seq<VerifierDocument> { self.run.documents }
     pub closed spec fn transcripts(&self) -> Seq<SolverTranscript> { observed_transcripts(self.run.documents) }
     pub closed spec fn children(&self) -> Seq<ChildStream> { self.run.children }
+    pub closed spec fn predecessor(&self) -> Option<EngineFailure> { self.run.fallback_from }
 }
 
 pub proof fn complete(run: RunningInvocation, end: ProcessEnd, point: u64)
@@ -429,7 +440,11 @@ pub proof fn complete(run: RunningInvocation, end: ProcessEnd, point: u64)
 }
 
 #[derive(Structural, PartialEq, Eq, Copy, Clone)]
-pub enum ExecutionPath { Direct, Engine, IndependentFallback(u64) }
+pub enum ExecutionPath {
+    Direct, Engine, IndependentFallback(u64),
+    /// Origin belongs to each sealed invocation, rather than one project flag.
+    PerTarget,
+}
 
 /// Sealed project candidate; fields are derived from completed run evidence.
 pub struct Candidate {
@@ -445,6 +460,7 @@ pub open spec fn path_matches(path: ExecutionPath, report: &CompletedInvocation)
         ExecutionPath::Direct => report.invocation().origin == Origin::Direct,
         ExecutionPath::Engine => report.invocation().origin == Origin::Engine,
         ExecutionPath::IndependentFallback(id) => report.invocation().origin == Origin::Fallback(id),
+        ExecutionPath::PerTarget => report.valid(),
     }
 }
 
@@ -481,6 +497,37 @@ pub proof fn finish_project(context: ModelContext, reports: Seq<CompletedInvocat
         Some(Candidate { context, reports, end, path, observed_at: point })
     } else { None }
 }
+
+/// This constructor carries each completed invocation's actual modeled origin.
+/// It cannot turn an engine candidate or an unsuccessful attempt into a report.
+pub proof fn finish_project_per_target(context: ModelContext, reports: Seq<CompletedInvocation>,
+    end: ProcessEnd, point: u64) -> (out: Option<Candidate>)
+    ensures out.is_some() == (end == ProcessEnd::Exit(0)
+        && project_records_valid(context, reports, ExecutionPath::PerTarget, point)),
+        out.is_some() ==> out.unwrap().valid(),
+        out.is_some() ==> out.unwrap().context() == context,
+        out.is_some() ==> out.unwrap().point() == point,
+        out.is_some() ==> out.unwrap().invocations() == reports,
+        out.is_some() ==> out.unwrap().path() == ExecutionPath::PerTarget,
+{
+    finish_project(context, reports, ExecutionPath::PerTarget, end, point)
+}
+
+/// Every fallback record preserves the failed target/context and starts later.
+/// The predecessor is the private failed lifecycle token, never a supplied label.
+pub proof fn completed_origin_is_justified(report: &CompletedInvocation)
+    requires report.valid(),
+    ensures match report.invocation().origin {
+        Origin::Direct | Origin::Engine => report.predecessor().is_none(),
+        Origin::Fallback(id) => report.predecessor().is_some()
+            && failure_valid(&report.predecessor().unwrap())
+            && report.predecessor().unwrap().invocation().run_id == id
+            && report.invocation().run_id > id
+            && report.invocation().started_at >= report.predecessor().unwrap().point()
+            && fallback_subject_matches(&report.predecessor().unwrap().invocation(), &report.invocation())
+            && report.invocation().scope.whole,
+    },
+{}
 
 pub open spec fn distinct_requests(r: &Request) -> bool {
     forall|i: int, j: int| 0 <= i < j < r.targets.len()
@@ -580,14 +627,26 @@ pub closed spec fn repair_selectable(result: &ValidatedResult, target_index: int
             && result.invocations()[j].documents()[d].functions[k].name@ == name
 }
 
+/// A mixed project must not hide a selected target's independent fallback.
+pub closed spec fn repair_target_origin_allowed(result: &ValidatedResult, target_index: int) -> bool {
+    0 <= target_index < result.requested_targets().len()
+        && forall|i: int| 0 <= i < result.invocations().len()
+            && same_target(&result.requested_targets()[target_index], &result.invocations()[i].invocation().target)
+            ==> match result.invocations()[i].invocation().origin {
+                Origin::Fallback(_) => false, _ => true,
+            }
+}
+
 /// Repair and ordinary result authority consume the same checked completion token.
 pub proof fn repair_accepted(result: &ValidatedResult, target_index: int, name: Seq<u8>) -> (accepted: bool)
     requires result.valid(),
     ensures accepted == (result.whole() && repair_selectable(result, target_index, name)
-        && !matches!(result.path(), ExecutionPath::IndependentFallback(_))),
+        && !matches!(result.path(), ExecutionPath::IndependentFallback(_))
+        && repair_target_origin_allowed(result, target_index)),
 {
     result.whole() && repair_selectable(result, target_index, name)
         && !matches!(result.path(), ExecutionPath::IndependentFallback(_))
+        && repair_target_origin_allowed(result, target_index)
 }
 
 /// A report cannot cover two distinct requested targets.
@@ -898,6 +957,7 @@ pub fn positive_nonempty_lifecycle_control() {
         assert(result.invocations()[0].documents() == seq![document]);
         assert(result.invocations()[0].documents()[0].functions[0].name@ == seq![12u8]);
         assert(repair_selectable(&result, 0, seq![12u8]));
+        assert(repair_target_origin_allowed(&result, 0));
         let repair = repair_accepted(&accepted.unwrap(), 0, seq![12u8]);
         assert(repair);
     }
@@ -1149,6 +1209,119 @@ pub fn partial_scope_never_whole_control() {
         let complete = validate_current_complete(&request, &candidate, example_context(false), 4);
         assert(complete.is_none());
     }
+}
+
+/// One project can contain independently completed direct, engine and fallback
+/// targets without discarding their individual origins or accepting failed work.
+pub fn positive_mixed_target_origins_control() {
+    let mut request = example_request(true);
+    request.targets.push(example_target(3));
+    request.targets.push(example_target(4));
+    let direct = example_invocation(true, 1, Origin::Direct);
+    let direct_document = example_document(true, 1, true, Verdict::Verified,
+        Establishment::Confirmed, VerifierEnd::Finished(0));
+    let mut engine = example_invocation(true, 2, Origin::Engine);
+    engine.target = example_target(3);
+    let mut engine_document = example_document(true, 2, true, Verdict::Verified,
+        Establishment::Confirmed, VerifierEnd::Finished(0));
+    engine_document.target = example_target(3);
+    let mut failed = example_invocation(false, 3, Origin::Engine);
+    failed.target = example_target(4);
+    let mut fallback = example_invocation(true, 5, Origin::Fallback(3));
+    fallback.target = example_target(4);
+    let mut fallback_document = example_document(true, 5, true, Verdict::Verified,
+        Establishment::Confirmed, VerifierEnd::Finished(0));
+    fallback_document.target = example_target(4);
+    proof {
+        let direct_done = single_completion(direct, direct_document, 2);
+        let engine_done = single_completion(engine, engine_document, 3);
+        let failed_start = start(failed);
+        assert(failed_start.is_some());
+        let failed_end = engine_failed(failed_start.unwrap(), ProcessEnd::Interrupted, 4);
+        assert(failed_end.is_some());
+        let swapped_target = Invocation { target: direct.target, ..fallback };
+        assert(failed_end.unwrap().invocation().target.cargo_name@[0] == 4u8);
+        assert(swapped_target.target.cargo_name@[0] == 2u8);
+        assert(!same_target(&failed_end.unwrap().invocation().target, &swapped_target.target));
+        assert(!fallback_subject_matches(&failed_end.unwrap().invocation(), &swapped_target));
+        let wrong_target = start_fallback(failed_end.unwrap(), swapped_target);
+        assert(wrong_target.is_none());
+        let changed_context = ModelContext { runtime: seq![99u8], ..example_context(true) };
+        let swapped_runtime = Invocation { context: Ghost(changed_context), ..fallback };
+        assert(failed_end.unwrap().invocation().context@.runtime[0] == 8u8);
+        assert(swapped_runtime.context@.runtime[0] == 99u8);
+        assert(failed_end.unwrap().invocation().context@.runtime != swapped_runtime.context@.runtime);
+        assert(!fallback_subject_matches(&failed_end.unwrap().invocation(), &swapped_runtime));
+        let wrong_runtime = start_fallback(failed_end.unwrap(), swapped_runtime);
+        assert(wrong_runtime.is_none());
+        let fallback_start = start_fallback(failed_end.unwrap(), fallback);
+        assert(fallback_start.is_some());
+        let fallback_observed = observe(fallback_start.unwrap(), fallback_document);
+        assert(fallback_observed.documents() == seq![fallback_document]);
+        single_document_inventory(fallback_document);
+        assert(child_stream_inventory(fallback_observed.children()) =~= Seq::<SolverTranscript>::empty());
+        assert(observed_transcripts(fallback_observed.documents()) =~= Seq::<SolverTranscript>::empty());
+        let fallback_end = complete(fallback_observed, ProcessEnd::Exit(0), 6);
+        assert(fallback_end.is_some());
+        let fallback_done = fallback_end.unwrap();
+        completed_origin_is_justified(&fallback_done);
+        assert(fallback_done.predecessor().unwrap().invocation().run_id == 3);
+        let reports = seq![direct_done, engine_done, fallback_done];
+        let finished = finish_project_per_target(example_context(true), reports, ProcessEnd::Exit(0), 7);
+        assert(finished.is_some());
+        let candidate = finished.unwrap();
+        assert(candidate.invocations() == reports);
+        assert forall|i: int| 0 <= i < request.targets.len()
+            implies covered_at(&request, &candidate, i) by {
+            assert(same_target(&request.targets[i], &candidate.invocations()[i].invocation().target));
+            assert(same_scope(&request.scope, &candidate.invocations()[i].invocation().scope));
+        }
+        assert forall|i: int| 0 <= i < request.targets.len()
+            implies request.targets[i].cargo_name@[0] as int == i + 2 by {
+            if i == 0 {} else if i == 1 {} else { assert(i == 2); }
+        }
+        assert forall|i: int, j: int| 0 <= i < j < request.targets.len()
+            implies !same_target(&request.targets[i], &request.targets[j]) by {
+            assert(request.targets[i].cargo_name@[0] != request.targets[j].cargo_name@[0]);
+        }
+        assert(distinct_requests(&request));
+        assert forall|i: int, j: int| 0 <= i < j < candidate.invocations().len()
+            implies !same_target(&candidate.invocations()[i].invocation().target,
+                &candidate.invocations()[j].invocation().target) by {
+            assert(same_target(&request.targets[i], &candidate.invocations()[i].invocation().target));
+            assert(same_target(&request.targets[j], &candidate.invocations()[j].invocation().target));
+            assert(!same_target(&request.targets[i], &request.targets[j]));
+        }
+        assert(distinct_reports(&candidate));
+        let accepted = validate_current_complete(&request, &candidate, example_context(true), 8);
+        assert(accepted.is_some());
+        let result = accepted.unwrap();
+        acceptance_has_current_origin(&result);
+        assert(repair_selectable(&result, 2, seq![12u8]));
+        assert(!repair_target_origin_allowed(&result, 2));
+        let rejected_repair = repair_accepted(&result, 2, seq![12u8]);
+        assert(!rejected_repair);
+        // A fresh mixed result cannot use the failed engine's partial record in
+        // place of the independently completed whole fallback target.
+        let omitted = finish_project_per_target(example_context(true), seq![direct_done, engine_done],
+            ProcessEnd::Exit(0), 7);
+        assert(omitted.is_some());
+        let missing = omitted.unwrap();
+        assert forall|i: int| 0 <= i < missing.invocations().len() implies
+            !same_target(&request.targets[2], &missing.invocations()[i].invocation().target) by {}
+        assert(!covered_at(&request, &missing, 2));
+        let refused = validate_current_complete(&request, &missing, example_context(true), 8);
+        assert(refused.is_none());
+    }
+}
+
+/// The failed engine cannot be borrowed to justify another target or execution
+/// context, even when both candidates have individually well-formed metadata.
+pub proof fn fallback_subject_swap_refused(failed: EngineFailure, fresh: Invocation)
+    requires failure_valid(&failed), !fallback_subject_matches(&failed.invocation(), &fresh),
+{
+    let started = start_fallback(failed, fresh);
+    assert(started.is_none());
 }
 
 /// A failed partial engine run cannot leak its output into the fresh full fallback.

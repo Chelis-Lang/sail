@@ -26,16 +26,22 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = "proofs/refinement/manifest.json"
 SYNTAX = "crates/sail-acceptance/src/syntax.rs"
+RETAINED_BRIDGE = "crates/sail-daemon/src/jobs/store.rs"
+# The native classify/apply_currentness/withhold_unbound_authority bridges have
+# been reviewed to forward the actual project and readback to the shared code.
+# Their enclosing native binding environment is pinned in full; the module's
+# I/O, serialization, cache selection and other service operations are not proved.
+RETAINED_BRIDGE_SHA256 = "30d6ff97c475501a2587d6140eafdbbf23b6f51fa6152c991687559c18aca407"
 # This reviewed source uses the identical argument/type/body metavariables in
 # Cargo and stock profiles. Changes require an explicit runner review, beyond
 # merely updating a manifest. Runtime-only implementation drift must refuse.
-SYNTAX_SHA256 = "616d4c2c5377fe45e9f8c110d040cf608577fd021337fc35fbe746d25d506197"
+SYNTAX_SHA256 = 'b346fda2d5fc49adc2e20b98661f53423cfc5edc6a2c28b331a808b78864422a'
 LIB_SHA256 = "3e8ae88827486b5c993273f7c26bd2da86ec18ac61844d2dde81c7dd2f26fda9"
 API_LIB_SHA256 = "125f9959d72bf6bbff719526cdaad169301b9c1e156db5b46ea79b91d4c50491"
 # Binding inventories cover both ordinary and proof-only imports. In particular,
 # an erased import cannot shadow a Cargo glob with a different checked callee.
-IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '5c5a2b96be212957689d4d1c7ec265f51c1ef129c984e28e1c5a2375d9973b2e'}
-REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence']}
+IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '589a12d568f5c878749274c4a9f2be0780ec7c4769cebdecdd8519d52351d9f2'}
+REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply', 'frame-premature-root-close', 'frame-ignore-doubled-quote', 'frame-ignore-input-comment', 'head-ignore-framing', 'response-ignore-line-terminator', 'response-ignore-list-framing'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence', 'input-opened-object-binding', 'input-read-final-handle', 'input-read-final-path', 'input-read-chunk-bytes', 'input-read-eof-required', 'input-read-cache-object', 'input-read-requested-binding', 'input-environment-byte-name', 'input-environment-escaped-name'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence', 'submission-arguments', 'submission-mode', 'submission-whole-authority', 'submission-positive', 'driver-token-bytes', 'driver-token-coverage', 'driver-sources-order', 'process-wait-required', 'process-distinct-slot', 'process-duplicate-stream', 'process-stderr-binding', 'process-recovery-bytes', 'process-payload-binding', 'process-refusal-recorded', 'retained-original-current', 'retained-complete-readback', 'retained-exact-revision', 'retained-view-currentness', 'retained-request-admission', 'retained-clear-refused-labels', 'retained-preserve-positive']}
 COMPONENTS = {
     "query": {"models": ["context", "query_association"], "core": ["inputs", "query"]},
     "inputs": {"models": ["context"], "core": ["inputs"]},
@@ -91,8 +97,9 @@ def validate_assembly(snapshots: dict[str, bytes]) -> None:
         require(manifest["dependencies"]["sail-acceptance"] == {"workspace": True}, "runtime dependency redirected")
     protected = {
         "crates/sail-acceptance/src/query.rs": ("Fifo", "BoundPair", "CorrelatedQueue", "ReplayCursor", "PublicationBatch", "RecoveryRecord", "RawTranscript", "PrefixFeed"),
-        "crates/sail-acceptance/src/inputs.rs": ("OriginalCapture", "OriginalGuard", "Readback", "ProviderSeal"),
-        "crates/sail-api/src/acceptance.rs": ("CompleteReport", "CompleteSelection", "CompleteRequest"),
+        "crates/sail-acceptance/src/inputs.rs": ("OriginalCapture", "OriginalGuard", "Readback", "ProviderSeal", "OpenedRead", "ReadChunk", "ReadSeal"),
+        "crates/sail-acceptance/src/authority.rs": ("AttemptLedger", "ReservedAttempt", "RunningAttempt", "ObservedAttempt"),
+        "crates/sail-api/src/acceptance.rs": ("CompleteReport", "CompleteSelection", "CompleteRequest", "SubmissionBinding", "SubmittedAuthority"),
     }
     for path, names in protected.items():
         stream = SOURCE.tokens(snapshots[path].decode())
@@ -137,8 +144,14 @@ def dependency_paths(component: str) -> list[str]:
     result.append("proofs/refinement/" + component + ".rs")
     if component == "authority":
         result += ["crates/sail-api/src/acceptance.rs", "crates/sail-api/src/acceptance_sort.rs",
-            "crates/sail-api/src/output.rs", "crates/sail-api/src/project.rs"]
+            *["crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES],
+            RETAINED_BRIDGE]
     return result
+
+
+def declaration_source(path: str) -> bool:
+    """Only the inventoried declarations of these actual API modules compile."""
+    return path in {"crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES}
 
 
 def compiled_subset(path: str, content: bytes) -> None:
@@ -146,6 +159,10 @@ def compiled_subset(path: str, content: bytes) -> None:
     if path == SYNTAX:
         require(hashlib.sha256(content).hexdigest() == SYNTAX_SHA256,
             "syntax erasure implementation changed; explicit runner review required")
+        return
+    if path == RETAINED_BRIDGE:
+        require(hashlib.sha256(content).hexdigest() == RETAINED_BRIDGE_SHA256,
+            "native retained bridge changed; explicit implementation/binding review required")
         return
     if path.startswith("proofs/acceptance/"):
         COMMON.standalone(content.decode())
@@ -206,7 +223,7 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[d
         require([control["name"] for control in entry.get("negative_controls", [])]
             == REQUIRED_CONTROLS[component], "selected mutation inventory omitted, duplicated or reordered")
         for path in entry["dependencies"]:
-            if component == "authority" and path.endswith(("/output.rs", "/project.rs")):
+            if component == "authority" and declaration_source(path):
                 continue  # Only the mechanically selected declarations compile.
             compiled_subset(path, snapshots[path])
         for control in entry["negative_controls"]:
@@ -251,12 +268,13 @@ def captured_driver(entry: dict, snapshots: dict[str, bytes], control: dict | No
         files.update(stencils)
         files["api_acceptance.rs"] = sources["crates/sail-api/src/acceptance.rs"]
         files["acceptance_sort.rs"] = sources["crates/sail-api/src/acceptance_sort.rs"]
-        declarations += ["pub mod output;", "pub mod project;",
+        declarations += ["pub mod " + name + ";" for name in SOURCE.API_MODULES]
+        declarations += [
             '#[path="api_acceptance.rs"] pub mod acceptance;', "mod acceptance_sort;"]
     files["refinement.rs"] = sources[entry["source"]]
     declarations += ['#[path="refinement.rs"] pub mod refinement;', "fn main() {}"]
     for path, data in sources.items():
-        if not (component == "authority" and path.endswith(("/output.rs", "/project.rs"))):
+        if not (component == "authority" and declaration_source(path)):
             compiled_subset(path, data)
     return "check_" + component + ".rs", ("\n".join(declarations) + "\n").encode(), files
 
@@ -307,7 +325,17 @@ def working_source_matches(root: Path, snapshots: dict[str, bytes]) -> None:
             "working source differs from Git capture")
 
 
-def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> None:
+def selected_entries(entries: list[dict], component: str | None) -> list[dict]:
+    """Select one complete root only after validating the full root inventory."""
+    require(len(entries) == len(COMPONENTS)
+        and {entry["id"] for entry in entries} == set(COMPONENTS),
+        "refinement root omitted or duplicated")
+    require(component is None or component in COMPONENTS, "unknown refinement component")
+    return entries if component is None else [entry for entry in entries if entry["id"] == component]
+
+
+def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
+        component: str | None = None) -> None:
     """Qualify every selected actual-body proof and executable guard mutation."""
     started = time.monotonic()
     require(not out.is_relative_to(root.resolve()), "put raw refinement evidence outside checkout")
@@ -325,7 +353,7 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> 
     validate_assembly(snapshots)
     require(not COMMON.git(root, "status", "--porcelain=v1", "--", *paths), "refinement source is uncommitted")
     manifest = json.loads(snapshots[MANIFEST], object_pairs_hook=COMMON.unique_object)
-    entries = inventory(root, manifest, snapshots)
+    entries = selected_entries(inventory(root, manifest, snapshots), component)
     pins = tomllib.loads(snapshots["corpus/toolchain.toml"].decode())
     hosts = {("Darwin", "arm64"): "aarch64-apple-darwin", ("Linux", "x86_64"): "x86_64-unknown-linux-gnu"}
     host = hosts.get((platform.system(), platform.machine()))
@@ -376,13 +404,17 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> 
         for path, value in snapshots.items()}, "stock_archive_sha256": asset["sha256"],
         "runtime_sha256": runtime, "rustc": rustc, "cases": results,
         "api_declarations": manifest["api_declarations"],
+        "validated_components": list(COMPONENTS),
+        "checked_components": [entry["id"] for entry in entries],
+        "complete_suite": component is None,
         "source_roles": {entry["id"]: {
             "checked_source": [path for path in entry["dependencies"] if path not in
-                {SYNTAX, "crates/sail-api/src/acceptance_sort.rs",
-                    "crates/sail-api/src/output.rs", "crates/sail-api/src/project.rs"}],
+                {SYNTAX, RETAINED_BRIDGE, "crates/sail-api/src/acceptance_sort.rs"} and not declaration_source(path)],
             "reviewed_syntax": [SYNTAX],
+            "reviewed_native_bridges": {path: ["classify", "apply_currentness", "withhold_unbound_authority"]
+                for path in entry["dependencies"] if path == RETAINED_BRIDGE},
             "declaration_projections": [path for path in entry["dependencies"]
-                if path.endswith(("/output.rs", "/project.rs"))],
+                if declaration_source(path)],
             "structurally_checked_forwarders": [path for path in entry["dependencies"]
                 if path.endswith("/acceptance_sort.rs")],
         } for entry in entries},
@@ -401,10 +433,12 @@ def main() -> int:
     parser.add_argument("--stock-dir", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument("--component", choices=tuple(COMPONENTS),
+        help="check one complete root and all its controls; default checks every root")
     args = parser.parse_args()
     try:
         require(args.timeout > 0, "timeout must be positive")
-        check(ROOT, args.stock_archive.resolve(), args.stock_dir.resolve(), args.out.resolve(), args.timeout)
+        check(ROOT, args.stock_archive.resolve(), args.stock_dir.resolve(), args.out.resolve(), args.timeout, args.component)
     except (Refusal, SOURCE.SourceRefusal, OSError, ValueError, KeyError, TypeError,
             subprocess.SubprocessError, zipfile.BadZipFile) as error:
         print("error[SAIL9002]: production refinement check refused: " + str(error), file=sys.stderr)

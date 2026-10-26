@@ -2,12 +2,175 @@
 //! The source-shared factory proves the concrete premises; no external report-valid
 //! specification supplies them. Process/input/session observation remains separate.
 use vstd::prelude::*;
+use vstd::string::StringSliceAdditionalSpecFns;
 use crate::authority_model as model;
 use crate::acceptance::{self, confirmed, successful_report, string_bytes};
 use crate::output::{EvidenceTierName, EstablishmentName, FunctionReport, Report, VerdictName};
 use crate::authority::CompletionPolicy;
 
 verus! {
+
+/// The actual retained guard and readback classifier compose without allowing
+/// a Current frame to upgrade a missing or mismatched original request.
+pub fn retained_current_frame_refines_request(project: &mut crate::project::ProjectResult,
+    request: Option<&crate::project::ResolvedRequest>, orders: &[acceptance::ReportOrder],
+    observed: Option<&str>, complete: bool) -> (view: crate::jobs::Currentness)
+    requires true,
+    ensures acceptance::same_project_except_freshness_and_completion(old(project), final(project)),
+        view is Current ==> old(project).currentness is Current,
+        view is Current && final(project).exit_code == Some(0i32)
+            && (exists |i: int| 0 <= i < final(project).targets@.len()
+                && final(project).targets@[i].complete) ==>
+            request.is_some() && acceptance::request_authorized(request.unwrap(), final(project)),
+        view is Current ==> final(project).currentness is Current,
+        view is Current ==> complete && observed.is_some()
+            && observed.unwrap().spec_bytes() == acceptance::string_bytes(&old(project).input_revision),
+{
+    let _corresponding = acceptance::withhold_unbound_request_authority_ordered(project, request, orders);
+    let view = acceptance::retained_currentness(&project.currentness, project.input_revision.as_str(), observed, complete);
+    let _lost_readback = acceptance::apply_retained_currentness(project, &view);
+    view
+}
+
+/// The actual low-level reducer preserves the observed exit without promoting
+/// it to verifier completion or inventing a document/process relation.
+pub fn project_observed_process_end(observed: &crate::authority::ObservedAttempt)
+    -> (out: model::ProcessEnd)
+    requires crate::authority::observation_complete(&crate::authority::observed_running(observed)),
+    ensures match crate::authority::running_exit(&crate::authority::observed_running(observed)).unwrap() {
+        Some(code) => out == model::ProcessEnd::Exit(code), None => out == model::ProcessEnd::Interrupted,
+    },
+{
+    match observed.exit() { Some(code) => model::ProcessEnd::Exit(code), None => model::ProcessEnd::Interrupted }
+}
+
+pub fn checked_process_observation<'a>(run: &'a [u8], unit: &'a crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32, stdout: Vec<u8>, stderr: Vec<u8>, exit: Option<i32>)
+    -> (out: crate::authority::ObservedAttempt<'a>)
+    requires pid != 0,
+    ensures crate::authority::observation_complete(&crate::authority::observed_running(&out)),
+        crate::authority::reserved_run(&crate::authority::running_reserved(&crate::authority::observed_running(&out))) == run,
+        crate::authority::reserved_unit(&crate::authority::running_reserved(&crate::authority::observed_running(&out))) == unit,
+        crate::authority::reserved_slot(&crate::authority::running_reserved(&crate::authority::observed_running(&out))) == 0,
+        crate::authority::reserved_descriptor(&crate::authority::running_reserved(&crate::authority::observed_running(&out))) == descriptor,
+        crate::authority::running_pid(&crate::authority::observed_running(&out)) == pid,
+        crate::authority::running_stdout(&crate::authority::observed_running(&out)) == Some(stdout),
+        crate::authority::running_stderr(&crate::authority::observed_running(&out)) == Some(stderr),
+        crate::authority::running_exit(&crate::authority::observed_running(&out)) == Some(exit),
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    let observed = running.unwrap().stdout_eof(stdout).stderr_eof(stderr).exited(exit).finish();
+    assert(observed.is_some()); observed.unwrap()
+}
+
+pub fn missing_process_wait_refused(run: &[u8], unit: &crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32) -> (refused: bool)
+    requires pid != 0,
+    ensures refused,
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    running.unwrap().stdout_eof(Vec::new()).stderr_eof(Vec::new()).finish().is_none()
+}
+
+pub fn recovering_finish_refuses_missing_events(run: &[u8], unit: &crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32) -> (refused: bool)
+    requires pid != 0,
+    ensures refused,
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    running.unwrap().exited(Some(0)).finish_or_output().is_err()
+}
+
+pub fn duplicate_process_stream_refused(run: &[u8], unit: &crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32) -> (refused: bool)
+    requires pid != 0,
+    ensures refused,
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    running.unwrap().stdout_eof(Vec::new()).stdout_eof(Vec::new())
+        .stderr_eof(Vec::new()).exited(Some(0)).finish().is_none()
+}
+
+pub fn ambiguous_observations_preserve_output(run: &[u8], unit: &crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32, stdout: Vec<u8>, extra: Vec<u8>, stderr: Vec<u8>)
+    -> (out: (Vec<u8>, Vec<u8>, Option<i32>))
+    requires pid != 0,
+    ensures out.0 == stdout, out.1 == stderr, out.2 == Some(0),
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    let out = running.unwrap().stdout_eof(stdout).stdout_eof(extra).stderr_eof(stderr)
+        .exited(Some(0)).finish_or_output();
+    assert(out.is_err()); match out { Err(bytes) => (bytes.stdout, bytes.stderr, bytes.exit), Ok(_) => (Vec::new(), Vec::new(), None) }
+}
+
+pub fn changed_process_payload_refused(observed: &crate::authority::ObservedAttempt,
+    stdout: &[u8], stderr: &[u8], exit: Option<i32>) -> (refused: bool)
+    requires crate::authority::observation_complete(&crate::authority::observed_running(observed)),
+        crate::authority::running_stdout(&crate::authority::observed_running(observed)).unwrap()@ != stdout@
+            || crate::authority::running_stderr(&crate::authority::observed_running(observed)).unwrap()@ != stderr@
+            || crate::authority::running_exit(&crate::authority::observed_running(observed)).unwrap() != exit,
+    ensures refused,
+{
+    !crate::authority::observed_payload_matches(observed, stdout, stderr, exit)
+}
+
+pub fn attempt_slots_are_independent_of_pid(run: &[u8], unit: &crate::authority::CompilerUnit,
+    first: crate::authority::ProcessDescriptor, second: crate::authority::ProcessDescriptor, pid: u32)
+    requires pid != 0,
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let a = ledger.reserve(first); assert(a.is_some());
+    let a = a.unwrap().started(pid); assert(a.is_some());
+    let a = a.unwrap().stdout_eof(Vec::new()).stderr_eof(Vec::new()).exited(Some(1)).finish();
+    assert(a.is_some());
+    let b = ledger.reserve(second); assert(b.is_some());
+    let b = b.unwrap().started(pid); assert(b.is_some());
+    let b = b.unwrap().stdout_eof(Vec::new()).stderr_eof(Vec::new()).exited(Some(0)).finish();
+    assert(b.is_some());
+    let a = a.unwrap(); let b = b.unwrap();
+    let apid = a.pid(); let bpid = b.pid();
+    let areserved = a.reserved(); let breserved = b.reserved();
+    let aslot = areserved.slot(); let bslot = breserved.slot();
+    let arun = areserved.run(); let brun = breserved.run();
+    let aunit = areserved.unit(); let bunit = breserved.unit();
+    let asuccess = a.normal_success(); let bsuccess = b.normal_success();
+    assert(apid == bpid);
+    assert(aslot == 0 && bslot == 1);
+    assert(arun == brun && aunit == bunit);
+    assert(!asuccess && bsuccess);
+}
+
+/// A decoded effective configuration refines the model setting only after all
+/// tokens have been checked against the independent raw common/package values.
+pub fn project_effective_verification(common: &Option<String>, package: &Option<String>,
+    boundary: usize, arguments: &[String]) -> (out: Option<model::VerificationSetting>)
+    ensures out.is_some() ==> acceptance::driver_option_sources(common, package, arguments@, boundary as int),
+        out.is_some() ==> ((out.unwrap() == model::VerificationSetting::Enabled)
+            == !acceptance::options_disable_verification(arguments@)),
+{
+    if !acceptance::effective_driver_arguments_match(common, package, boundary, arguments) { return None; }
+    Some(if acceptance::verification_enabled_options(arguments) {
+        model::VerificationSetting::Enabled
+    } else { model::VerificationSetting::CompileOnly })
+}
+
+pub fn packed_empty_token_positive(value: &str, tokens: &[String]) -> (accepted: bool)
+    requires vstd::utf8::encode_utf8(value@) == b"__VERUS_DRIVER_ARGS_SEP__"@,
+        tokens@.len() == 1, string_bytes(&tokens@[0]).len() == 0,
+    ensures accepted,
+{
+    acceptance::packed_driver_arguments_match(value, tokens)
+}
 
 pub open spec fn model_verdict(v: VerdictName) -> model::Verdict {
     match v {
@@ -35,6 +198,74 @@ pub fn checked_request_refines_function(request: &crate::project::ResolvedReques
     let actual = &project.targets[target_index].report.crates[crate_index].functions[function_index];
     assert(confirmed(actual));
     Some(project_function(actual))
+}
+
+/// Original-mode and argument correspondence remains attached to the actual
+/// request/project records when projecting a confirmed function into the model.
+pub fn checked_submitted_request_refines_function(arguments: &[String], mode: &crate::jobs::Mode,
+    request: &crate::project::ResolvedRequest, project: &crate::project::ProjectResult,
+    orders: &[acceptance::ReportOrder], target_index: usize, crate_index: usize, function_index: usize)
+    -> (out: Option<model::Function>)
+    requires target_index < project.targets@.len(), project.targets@[target_index as int].requested,
+        crate_index < project.targets@[target_index as int].report.crates@.len(),
+        function_index < project.targets@[target_index as int].report.crates@[crate_index as int].functions@.len(),
+    ensures out.is_some() ==> model::good_function(&out.unwrap()),
+        out.is_some() ==> acceptance::request_authorized(request, project),
+        out.is_some() ==> exists |origin: acceptance::SubmissionKind|
+            acceptance::submission_correspondence(arguments@, mode, request, origin),
+        out.is_some() ==> function_refines(
+            &project.targets@[target_index as int].report.crates@[crate_index as int].functions@[function_index as int], &out.unwrap()),
+{
+    let Some(authority) = acceptance::complete_submitted_request_ordered(arguments, mode, request, project, orders) else { return None; };
+    assert(acceptance::submission_correspondence(arguments@, mode, request, acceptance::submitted_kind(&authority)));
+    let actual = &project.targets[target_index].report.crates[crate_index].functions[function_index];
+    assert(confirmed(actual));
+    Some(project_function(actual))
+}
+
+pub fn changed_original_arguments_refused(arguments: &[String], mode: &crate::jobs::Mode,
+    request: &crate::project::ResolvedRequest, project: &crate::project::ProjectResult,
+    orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires request.args@.map_values(|s: String| string_bytes(&s)) != acceptance::normalized_arguments(arguments@, arguments@.len()),
+    ensures refused,
+{
+    acceptance::complete_submitted_request_ordered(arguments, mode, request, project, orders).is_none()
+}
+
+pub fn changed_original_mode_refused(arguments: &[String],
+    request: &crate::project::ResolvedRequest, project: &crate::project::ProjectResult,
+    orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires request.engine.is_some() || request.function.is_some(),
+    ensures refused,
+{
+    let mode = crate::jobs::Mode::Stock;
+    acceptance::complete_submitted_request_ordered(arguments, &mode, request, project, orders).is_none()
+}
+
+pub fn changed_repair_selection_refused(mode: &crate::jobs::Mode,
+    request: &crate::project::ResolvedRequest) -> (refused: bool)
+    requires request.function.is_some(), match mode {
+        crate::jobs::Mode::Repair(selection) => !acceptance::repair_selection_matches(request,
+            string_bytes(&selection.package), &selection.target, string_bytes(&selection.kind), string_bytes(&selection.function)),
+        _ => false,
+    },
+    ensures refused,
+{
+    acceptance::classify_submission_mode(mode, request).is_none()
+}
+
+pub fn positive_nonempty_submitted_factory(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult) -> (accepted: bool)
+    requires acceptance::small_positive_request(request, project), request.args@.len() == 0,
+        request.engine.is_none(), request.function.is_none(),
+        project.targets@[0].report.crates@[0].functions@.len() == 1,
+    ensures accepted,
+{
+    let arguments: Vec<String> = Vec::new();
+    let mode = crate::jobs::Mode::Stock;
+    let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
+    orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
+    acceptance::complete_submitted_request_ordered(&arguments, &mode, request, project, &orders).is_some()
 }
 
 pub fn swapped_request_refused(request: &crate::project::ResolvedRequest,

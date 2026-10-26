@@ -11,11 +11,30 @@ Compile-only Verus output can resemble a successful zero-function proof
 refinement candidate checks effective package options and withholds older
 retained completeness, while preserving input Current observations. Checkpoint
 `fe8be9ee` passes native/hosted gates and full fast/standard conformance; the
-owner accepts its bounded timing result. Integration with main's revision-only
-input projection requires fresh gates in the
+owner accepts its bounded timing result. The combined revision-only input
+projection passes fresh native gates and complete conformance in the
 [owning record](validation/acceptance-production-refinements.md).
 The broader service-wide acceptance theorem remains open
 ([#368](https://github.com/Chelis-Lang/sail/issues/368)).
+
+Two environment cases reproduce default-mode verdict disagreement in candidate
+`4f46f822`, using the same selected Verus fork and pinned Z3 for both sides.
+Internal `SAIL_MANAGED_RUNTIME` is visible to source macros, so Sail verifies a
+proof that plain Cargo-Verus rejects ([#385](https://github.com/Chelis-Lang/sail/issues/385)).
+Separately, changing an ordinary variable
+used only by a proof can leave a Current complete receipt reusable
+([#386](https://github.com/Chelis-Lang/sail/issues/386)); forced
+fresh Sail and plain Cargo-Verus reject that proof with the variable unset.
+The input/phase-observation and environment-restoration fixes remain open.
+The current main binary has not been qualified against these new fixtures;
+the existing mutation cohorts do not cover them. See the
+[boundary qualification](validation/acceptance-boundary-refinements.md).
+
+The unpublished boundary integration also fails native managed acceptance
+because repeated same-run compiler drivers collide on attempt slot zero
+([#384](https://github.com/Chelis-Lang/sail/issues/384)). The verified fresh
+output is preserved while completion is withheld; the required reuse/invocation
+gate remains failed until allocation is corrected.
 
 ## Functional release qualification
 

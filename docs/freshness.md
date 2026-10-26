@@ -31,6 +31,11 @@ proof receipt or accept a repair. CLI and MCP clients receive the same label.
 Any doubt makes a result Historical or Unknown, never Current. The cost of a
 wrong "not current" is one re-run; a wrong "Current" is never acceptable.
 
+A retained result must originally have been Current to remain Current after a
+readback. Matching inputs do not upgrade a Historical or Unknown run. Reading a
+result rechecks its original request before preserving whole-target completion;
+losing that authority preserves the recorded diagnostics and input label.
+
 ## Reading a result later
 
 When a run ends Current, Sail records the SHA-256 content digest of every file

@@ -269,14 +269,6 @@ uncovered rather than acquiring coverage from a later empty stream. Establishing
 a replacement complete source inventory after such a refusal remains a separate
 recovery policy; this slice does not invent one.
 
-The standalone [undeclared build-script input fixture](../../crates/sail-verus/tests/fixtures/undeclared-build-input/README.md)
-provides a concrete omitted physical input: a build script reads an external file
-without `rerun-if-changed`, then generates an included Rust constant. Ordinary
-Cargo keeps the old constant after the external file changes; a clean build or
-an explicit declaration observes the new value. Its native Sail reuse sequence
-is a qualification witness with separately recorded results, not an assumption
-that declarations describe all effective inputs.
-
 These are **declaration-provider** proofs. The following boundaries remain:
 
 - The native JSON/make parsers, package attribution, path encoding and conversion

@@ -264,11 +264,12 @@ fn captured_request(
         }
         if found.is_some()
             || capture.request.invocation != invocation
-            || !sail_api::acceptance::submitted_arguments_match(
+            || sail_api::acceptance::bind_submission(
                 &job.submission.args,
-                &capture.request.args,
+                &job.submission.mode,
+                &capture.request,
             )
-            || !store::request_matches_mode(&job.submission.mode, &capture.request)
+            .is_none()
             || !sail_api::acceptance::request_corresponds(&capture.request, project)
         {
             return None;

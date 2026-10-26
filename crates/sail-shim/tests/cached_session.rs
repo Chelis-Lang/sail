@@ -229,6 +229,16 @@ fn input_run_released(
     input: &[u8],
     release: Option<PathBuf>,
 ) -> std::process::Output {
+    input_run_recorded(solver, socket, input, release, None)
+}
+
+fn input_run_recorded(
+    solver: &Path,
+    socket: Option<&Path>,
+    input: &[u8],
+    release: Option<PathBuf>,
+    records: Option<&Path>,
+) -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail-z3"));
     cmd.args(["-smt2", "-in"])
         .env("SAIL_Z3_PATH", solver)
@@ -239,6 +249,9 @@ fn input_run_released(
         .stderr(Stdio::piped());
     if let Some(socket) = socket {
         cmd.env("SAIL_DAEMON_SOCKET", socket);
+    }
+    if let Some(records) = records {
+        cmd.env("SAIL_PROVENANCE_DIR", records);
     }
     let mut child = cmd.spawn().unwrap_or_else(|e| unreachable!("shim: {e}"));
     let mut stdin = child.stdin.take();
@@ -257,6 +270,122 @@ fn input_run_released(
         .unwrap_or_else(|e| unreachable!("output: {e}"));
     let _ = writer.join();
     output
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn late_cache_frame_refusal_replays_exactly_after_a_served_prefix() {
+    use std::sync::atomic::Ordering;
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let cache = dir.join("cache");
+    let socket = dir.join("fill.sock");
+    let (sock, root) = (socket.clone(), cache.clone());
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &root, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let input = b"(get-info :version)\n(get-info :name)\n(exit)\n";
+    assert!(input_run(&solver, Some(&socket), input).status.success());
+    let disk = sail_cache::DiskCache::new(cache.clone());
+    let mut changed = false;
+    for _ in 0..100 {
+        for entry in disk.list() {
+            let sail_cache::maint::FileKind::Entry(key) = entry.kind else {
+                continue;
+            };
+            let Some((mut metadata, reply)) = disk.get(&key) else {
+                continue;
+            };
+            if !reply.starts_with(b"(:name ") {
+                continue;
+            }
+            // A self-consistent envelope is still untrusted. Its two complete
+            // forms must not be served as one response or shift the next reply.
+            let coalesced = b"(:name \"Z3\")(:evil \"extra\")\n";
+            metadata.reply_sha256 = sail_key::QueryKey(sail_key::sha256(coalesced)).to_string();
+            let header = serde_json::to_vec(&metadata).unwrap_or_default();
+            let bytes = sail_acceptance::query::encode_record(header, coalesced)
+                .unwrap_or_else(|| unreachable!("single-line header"));
+            assert!(std::fs::write(entry.path, bytes).is_ok());
+            changed = true;
+            break;
+        }
+        if changed {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert!(changed, "fill must record the actual :name response");
+    // A fresh daemon reads the changed disk record instead of an old memory hit.
+    let socket = dir.join("read.sock");
+    let counters = Arc::new(sail_daemon::Stats::default());
+    let (sock, root, observations) = (socket.clone(), cache, Arc::clone(&counters));
+    std::thread::spawn(move || sail_daemon::serve(&sock, &root, observations));
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let direct = input_run(&solver, None, input);
+    let starts = session_starts(&dir);
+    let records = dir.join("provenance");
+    assert!(std::fs::create_dir_all(&records).is_ok());
+    let actual = input_run_recorded(&solver, Some(&socket), input, None, Some(&records));
+    assert_eq!(actual.status.code(), direct.status.code());
+    assert_eq!(actual.stdout, direct.stdout);
+    assert_eq!(actual.stderr, direct.stderr);
+    assert_eq!(session_starts(&dir), starts + 1);
+    let record = take_record(&records);
+    assert_eq!(
+        record["replies_served"], 1,
+        "first response must be served before refusal"
+    );
+    assert_eq!(record["solver_started"], true);
+    assert!(counters.hits.load(Ordering::Relaxed) >= 2);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn late_command_framing_refusal_preserves_output_after_a_cache_hit() {
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let socket = dir.join("d.sock");
+    let (sock, cache) = (socket.clone(), dir.join("cache"));
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &cache, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let quiet = b"(get-info :version)\n(exit)\n";
+    assert!(input_run(&solver, Some(&socket), quiet).status.success());
+    let records = dir.join("provenance");
+    assert!(std::fs::create_dir_all(&records).is_ok());
+    for input in [
+        b"(get-info :version)\n(|echo| \"quoted-head\")\n(exit)\n".as_slice(),
+        b"(get-info :version)\n(echo \"unfinished\n",
+    ] {
+        let direct = input_run(&solver, None, input);
+        let actual = input_run_recorded(&solver, Some(&socket), input, None, Some(&records));
+        assert_eq!(actual.status.code(), direct.status.code());
+        assert_eq!(actual.stdout, direct.stdout);
+        assert_eq!(actual.stderr, direct.stderr);
+        let record = take_record(&records);
+        assert_eq!(record["replies_served"], 1);
+        assert_eq!(record["solver_started"], true);
+    }
+    let _ = std::fs::remove_dir_all(dir);
 }
 
 #[test]

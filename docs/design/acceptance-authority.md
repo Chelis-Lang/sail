@@ -48,6 +48,16 @@ including user variables with the former transport names. A real-child
 environment probe checks absence and original-value cases against the same
 declared-read recorder used for proof inputs.
 
+Compiler-input accounting recognizes the existing stdout completion protocol
+before forwarding can acknowledge and retire its peer. It validates the
+current private endpoint capability, exact marker grammar and live peer with
+the same parser as the output receiver, then removes only that framing from
+its accounting copy. Original bytes and acknowledgment behavior remain with
+the original output path. Foreign, malformed or truncated markers cannot close
+an input provider, and non-marker bytes preceding a marker remain observable.
+Recognizing a completion marker establishes no metadata or verifier verdict.
+This native framing adapter remains outside the stock-checked acceptance core.
+
 Private job projections retain the independent request beside the stdout seal.
 Every result read validates that binding, and immutable frame keys include the
 original submission and request. Current successful projects additionally pass
@@ -276,11 +286,33 @@ document inventory nor a ledger name proves real-world capture completeness.
 
 `engine_failed` creates a private failure token from an actual started engine
 run and observed nonzero/interrupted/malformed termination. `start_fallback`
-requires that token, a fresh run ID and start point, matching request/mode and a
-whole-target invocation. It starts with an empty observation history. Old engine
+requires that token, a fresh run ID, a start point at or after the observed
+failure, the exact target, and matching request/runtime/solver/input/mode and
+verification settings. A whole-target restart may widen the failed partial
+selection; it cannot change the non-selection subject. It starts with an empty observation history. Old engine
 or partial-phase documents cannot match the fallback's run/context/scope header.
 The project fallback path accepts only completions of fresh fallback invocations;
 it cannot mix in old engine completions.
+
+`finish_project_per_target` uses the same `Candidate` and current complete
+acceptance factory for a project containing direct, engine and independent
+fallback targets. Each member is a private completed invocation with its own
+validated origin; `ExecutionPath::PerTarget` does not mint or replace that
+evidence. The existing global direct/engine/fallback paths retain their original
+origin restrictions. A three-target constructive control completes one target
+through each origin, preserves the failed predecessor of the fallback, and
+rejects an omitted sibling. The fallback constructor also refuses explicit
+wrong-target and changed-runtime candidates. A selected target that required
+independent fallback cannot become an accepted repair by hiding within this
+mixed project.
+
+This extends the conditional model composition, which already consumes the
+same `Candidate` and its complete invocation inventory. It does not establish
+the full native `ProjectResult`-to-`Candidate` relation. That relation still needs
+actual target/source/effective-invocation attribution and complete process and
+solver observations. Retained target transfer across different project requests
+also needs an independently established physical target input domain. A supplied
+declared-provider subset cannot mint that missing closure authority.
 
 A fresh independent full fallback can establish ordinary current complete
 verification. Repair acceptance preserves the production contract's stricter
@@ -328,6 +360,113 @@ the shared context and is no longer a standalone one-file proof root. Native
 workspace gates and the composed proof run have their own owning qualification.
 
 ## Refinement and remaining trust boundaries
+
+The production `SubmissionBinding` borrows the actual retained job arguments,
+`jobs::Mode` and pre-execution `ResolvedRequest`. Its checked constructor permits
+only the documented pre-separator incremental no-op in argument correspondence
+and checks the original repair package, target, kind and function. Named
+interactive requests require the explicit interactive engine identity.
+`SubmittedAuthority` combines that binding with the existing checked whole
+request factory without replacing either borrowed record. Job capture, retained
+request loading and retained repair acceptance use these source-shared checks.
+The constructive control accepts a coherent nonempty function report; argument,
+mode and repair-selection swaps are refused by the same checked constructors.
+
+`SubmissionKind::StockForOptIn` describes a stock request under an opt-in
+submission. It does not establish a failed engine attempt, a successful child
+process, or accepted repair evidence. Original submission-to-request
+correspondence and record validation do not yet establish the complete physical
+invocation history. Canonical metadata selection, effective per-package driver
+options, child identity, complete observations and retained-proof transfer must
+be connected separately to the lifecycle model. A matching context digest is
+still conditional on its documented input encoding and collision-resistance
+assumptions; it is not a proof that the complete compiler-input maps coincide.
+
+The effective Cargo driver decoder treats the raw common and exact current
+package values as independent inputs. Native splitting proposes tokens; the
+source-shared `effective_driver_arguments_match` checks their complete ordered
+correspondence before the adapter uses them. Its delimiter scan proves no
+separator was skipped, every token equals its original byte span, and the last
+span reaches the end. This preserves ignored leading text, empty and trailing
+tokens, and common-before-package ordering, including `--no-verify`. Missing
+sources contribute no tokens; encoding or lookup failures still refuse
+authority. This does not prove environment lookup, Cargo package-key derivation
+or the trusted pinned verifier's decoder implementation. Those native and
+runtime relations remain obligations of the actual launch adapter.
+
+Native target resolution now uses the checked `compiler_unit_matches_target`
+predicate for actual Cargo/Rust name and kind fields. It preserves the existing
+hyphen-to-underscore Rust crate-name relation and requires the exact Cargo
+binary name when the launcher provided it; normalized-name collisions remain
+distinct. The native resolver retains its manifest comparison and single-match
+check and refuses malformed kind arrays. The proof covers this shared name/kind
+predicate. Metadata decoding, manifest/source resolution, complete target
+inventory and the join to actual compiler arguments remain separate obligations.
+
+The live driver and its independent stock fallback now use the source-shared
+attempt reducer. It reserves a monotone slot before spawning, retains the raw
+managed-run and compiler-unit fields, and attaches the actual returned PID.
+Stdout EOF, stderr EOF and wait status are separate observations; missing or
+duplicate events cannot seal an `ObservedAttempt`. The seal preserves the exact
+buffers and status passed to the existing report code. Reused PIDs do not reuse
+slots. Per-target journals persist the pre-spawn command observations and
+terminal buffer hashes. Before request preparation, an exclusive `.allocated`
+marker leases the slot across separate driver invocations in the same managed
+run. A fresh local counter skips existing leases and legacy reservation/terminal
+records; it never deletes or overwrites them. Collision retries are bounded and
+exhaustion withholds observation evidence while preserving fresh execution.
+A private native owner prevents configuring another journal's allocation, even
+when run/unit/directory values match. Exclusive-create filesystem semantics and
+protection of the journal directory remain native adapter obligations. This
+corrects the same-run managed retry collision tracked in #384.
+Allocation and configuration are separate checked transitions: an
+`UnconfiguredAttempt` supplies its run/unit/slot for preparing observation paths,
+then `configure` seals the final program/argv/declared-directory/overrides before
+spawn. Ordinary `reserve` composes those transitions. Preparing a request never
+licenses changing an already sealed descriptor. This interface adds no observer
+flags to the selected runtime by itself.
+
+Journal failure is sticky unavailable evidence. It never suppresses the fresh
+spawn or discards the actual stdout, stderr or wait status. The native owner
+keeps an unsealed payload on reservation or terminal-write failure; the checked
+reducer also returns the original buffers when ambiguous events refuse its
+seal. Report input is checked against the same complete observed payload before
+live-origin admission. Without that observation, the retained report records
+`SAIL3111` as an infrastructure error while its original verifier diagnostics
+and per-function output remain intact. The structured error retains the journal
+failure cause and path when available. Whole and exact partial receipt reuse,
+retained target/selection/request authority and experimental content publishing
+refuse that history. Fresh input Currentness remains independent.
+
+This seal establishes complete process observations, not completed verification.
+Native command construction, OS handle/pipe/wait attribution, pinned image
+resolution, structured document parsing and engine-protocol interpretation
+still need their concrete joins. The command descriptor explicitly records
+declared argv/current-directory/environment overrides; it does not purport to
+capture every inherited environment fact or compiler read. The raw Rust unit
+record is distinct from resolved Cargo/source identity. Retained/bundled replay
+does not create a live process seal, and its transfer relation remains a separate
+obligation. No persisted journal or normal exit can independently authorize
+proof success. The extra journal I/O still needs native cost qualification.
+
+The daemon's retained-result path uses the source-shared
+`withhold_unbound_request_authority_ordered`, `retained_currentness` and
+`apply_retained_currentness` operations. The first rechecks the independently
+retained request before preserving completion labels; refusal preserves the
+reports and input-currentness observation. The classifier returns Current only
+for an originally Current result with a complete matching revision readback.
+The final operation changes the selected freshness view while preserving every
+target report. Its result tells the native caller when to append the existing
+lost-readback note. Historical and Unknown origins cannot become Current merely
+because a later digest matches. A coherent nonempty request retains completion.
+
+`retained_current_frame_refines_request` checks their composition: a selected
+Current view with retained completion has the original request authority and
+the matching complete readback. The candidate-order wrapper forwards the actual
+mutable project and request unchanged. The captured API includes both project
+and job Currentness enum definitions. Filesystem readback completeness, exact
+serialization/cache selection, original process origins and every CLI/MCP
+rendering remain independent service-refinement obligations.
 
 | Model boundary | Production source | Remaining obligation |
 |---|---|---|

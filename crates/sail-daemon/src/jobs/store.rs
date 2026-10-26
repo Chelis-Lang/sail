@@ -289,13 +289,7 @@ fn encode_result(document: ResultDocument) -> io::Result<Arc<Vec<u8>>> {
     Ok(Arc::new(bytes))
 }
 fn apply_currentness(project: &mut sail_api::project::ProjectResult, currentness: Currentness) {
-    let originally_current = project.currentness == sail_api::project::Currentness::Current;
-    project.currentness = match currentness {
-        Currentness::Current => sail_api::project::Currentness::Current,
-        Currentness::Historical => sail_api::project::Currentness::Historical,
-        Currentness::Unknown => sail_api::project::Currentness::Unknown,
-    };
-    if currentness == Currentness::Unknown && originally_current {
+    if sail_api::acceptance::apply_retained_currentness(project, &currentness) {
         project.notes.push(
             "SAIL3114: inputs could not be confirmed unchanged; re-run for a current result"
                 .to_owned(),
@@ -335,16 +329,13 @@ fn classify(
     revision: &str,
     snapshot: Option<sail_verus::managed::InputSnapshot>,
 ) -> Currentness {
-    match snapshot {
-        Some(snapshot) if snapshot.revision != revision => Currentness::Historical,
-        Some(snapshot)
-            if snapshot.complete && original == sail_api::project::Currentness::Current =>
-        {
-            Currentness::Current
-        }
-        _ if original == sail_api::project::Currentness::Historical => Currentness::Historical,
-        _ => Currentness::Unknown,
-    }
+    let observed = snapshot.map(|snapshot| (snapshot.revision, snapshot.complete));
+    sail_api::acceptance::retained_currentness(
+        &original,
+        revision,
+        observed.as_ref().map(|(revision, _)| revision.as_str()),
+        observed.as_ref().is_some_and(|(_, complete)| *complete),
+    )
 }
 fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::ProjectResult> {
     let bytes = project_bytes(state, job)?;
@@ -369,8 +360,8 @@ fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::Project
 /// reuse. A modified record must not reuse frames for another argument list.
 pub(super) fn retained_request(job: &Stored) -> Option<&sail_api::project::ResolvedRequest> {
     let request = job.projection.as_ref()?.request.as_ref()?;
-    if !sail_api::acceptance::submitted_arguments_match(&job.submission.args, &request.args)
-        || !request_matches_mode(&job.submission.mode, request)
+    if sail_api::acceptance::bind_submission(&job.submission.args, &job.submission.mode, request)
+        .is_none()
         || job.submission.project_dir.canonicalize().ok()?.to_str()? != request.invocation
     {
         return None;
@@ -378,21 +369,12 @@ pub(super) fn retained_request(job: &Stored) -> Option<&sail_api::project::Resol
     Some(request)
 }
 
+#[cfg(test)]
 pub(super) fn request_matches_mode(
     mode: &sail_api::jobs::Mode,
     request: &sail_api::project::ResolvedRequest,
 ) -> bool {
-    match mode {
-        sail_api::jobs::Mode::Stock => request.engine.is_none() && request.function.is_none(),
-        sail_api::jobs::Mode::Interactive => request.function.is_none(),
-        sail_api::jobs::Mode::Repair(selection) => {
-            sail_api::acceptance::repair_request_matches(request, &selection.package,
-                &selection.target, &selection.kind, &selection.function)
-                // Independent stock fallback remains full proof evidence;
-                // the actual batch's engine_fault separately forbids repair acceptance.
-                || (request.engine.is_none() && request.function.is_none())
-        }
-    }
+    sail_api::acceptance::classify_submission_mode(mode, request).is_some()
 }
 
 fn retained_repair_accepted(
@@ -410,8 +392,18 @@ fn retained_repair_accepted(
             &selection.target,
             &selection.kind,
             &selection.function,
-        ) && sail_api::acceptance::complete_request(request, project).is_some()
-            && sail_api::acceptance::requested_function_present(request, project)
+        ) && sail_api::acceptance::complete_submitted_request(
+            &job.submission.args,
+            &job.submission.mode,
+            request,
+            project,
+        )
+        .is_some_and(|authority| {
+            matches!(
+                authority.kind(),
+                sail_api::acceptance::SubmissionKind::Repair
+            )
+        }) && sail_api::acceptance::requested_function_present(request, project)
             && batch.accepted_with(project)
     })
 }
@@ -422,21 +414,7 @@ pub(super) fn withhold_unbound_authority(
     project: &mut sail_api::project::ProjectResult,
     request: Option<&sail_api::project::ResolvedRequest>,
 ) {
-    let corresponding =
-        request.is_some_and(|request| sail_api::acceptance::request_corresponds(request, project));
-    if request.is_some_and(|request| {
-        corresponding
-            && sail_api::acceptance::verification_enabled_command(&request.args)
-            && !sail_api::acceptance::focused_command(&request.args)
-            && (project.currentness != sail_api::project::Currentness::Current
-                || project.exit_code != Some(0)
-                || sail_api::acceptance::complete_request(request, project).is_some())
-    }) {
-        return;
-    }
-    for target in &mut project.targets {
-        target.complete = false;
-    }
+    let corresponding = sail_api::acceptance::withhold_unbound_request_authority(project, request);
     if corresponding {
         return;
     }

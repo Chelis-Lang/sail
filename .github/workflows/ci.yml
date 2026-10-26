@@ -77,7 +77,25 @@ jobs:
           retention-days: 7
 
   acceptance-refinements:
+    # Preserve the aggregate check; every fixed component must succeed.
     name: Acceptance production refinements
+    if: ${{ always() }}
+    needs: [refinement-query, refinement-inputs, refinement-authority]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require all production refinement roots and their controls
+        env:
+          QUERY: ${{ needs.refinement-query.result }}
+          INPUTS: ${{ needs.refinement-inputs.result }}
+          AUTHORITY: ${{ needs.refinement-authority.result }}
+        run: bash ci/check-refinements.sh "$QUERY" "$INPUTS" "$AUTHORITY"
+
+  refinement-query:
+    name: Acceptance production refinements (query)
     needs: [no-ai-authorship, image]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -93,11 +111,63 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: ci/run.sh refinements
+      - run: ci/run.sh refinements query
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ failure() }}
         with:
-          name: acceptance-production-refinement-failure
+          name: acceptance-production-refinement-query-failure
+          path: target/acceptance-refinements/
+          if-no-files-found: warn
+          retention-days: 7
+
+  refinement-inputs:
+    name: Acceptance production refinements (inputs)
+    needs: [no-ai-authorship, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: ci/run.sh refinements inputs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() }}
+        with:
+          name: acceptance-production-refinement-inputs-failure
+          path: target/acceptance-refinements/
+          if-no-files-found: warn
+          retention-days: 7
+
+  refinement-authority:
+    name: Acceptance production refinements (authority)
+    needs: [no-ai-authorship, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: ci/run.sh refinements authority
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() }}
+        with:
+          name: acceptance-production-refinement-authority-failure
           path: target/acceptance-refinements/
           if-no-files-found: warn
           retention-days: 7

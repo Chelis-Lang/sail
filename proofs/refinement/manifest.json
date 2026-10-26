@@ -12,7 +12,7 @@
         "crates/sail-acceptance/src/query.rs",
         "proofs/refinement/query.rs"
       ],
-      "verified": 172,
+      "verified": 216,
       "functions": [
         "check_query::context::Mode::arrow_0",
         "check_query::context::Mode::arrow_OptIn_0",
@@ -29,6 +29,16 @@
         "check_query::context::unreadable_cannot_be_current",
         "check_query::inputs::InputValue::arrow_0",
         "check_query::inputs::InputValue::arrow_Present_0",
+        "check_query::inputs::OpenedRead::begin",
+        "check_query::inputs::OpenedRead::chunk",
+        "check_query::inputs::OpenedRead::consumed_view",
+        "check_query::inputs::OpenedRead::ended_view",
+        "check_query::inputs::OpenedRead::eof",
+        "check_query::inputs::OpenedRead::fail",
+        "check_query::inputs::OpenedRead::failed_view",
+        "check_query::inputs::OpenedRead::finish",
+        "check_query::inputs::OpenedRead::original_view",
+        "check_query::inputs::OpenedRead::well_formed",
         "check_query::inputs::OriginalCapture::before_view",
         "check_query::inputs::OriginalCapture::begin",
         "check_query::inputs::OriginalCapture::finish",
@@ -43,6 +53,16 @@
         "check_query::inputs::ProviderSeal::frames_view",
         "check_query::inputs::ProviderSeal::producer",
         "check_query::inputs::ProviderSeal::producer_view",
+        "check_query::inputs::ReadChunk::bytes",
+        "check_query::inputs::ReadChunk::bytes_view",
+        "check_query::inputs::ReadChunk::owner",
+        "check_query::inputs::ReadChunk::owner_view",
+        "check_query::inputs::ReadSeal::bytes",
+        "check_query::inputs::ReadSeal::consumed_view",
+        "check_query::inputs::ReadSeal::matches",
+        "check_query::inputs::ReadSeal::matches_binding",
+        "check_query::inputs::ReadSeal::original_view",
+        "check_query::inputs::ReadSeal::owner",
         "check_query::inputs::Readback::changed",
         "check_query::inputs::Readback::changed_view",
         "check_query::inputs::Readback::equal_view",
@@ -71,6 +91,10 @@
         "check_query::inputs::contains_present",
         "check_query::inputs::copy_bytes",
         "check_query::inputs::covered_selection",
+        "check_query::inputs::encoded_environment_byte",
+        "check_query::inputs::encoded_environment_name",
+        "check_query::inputs::encoded_environment_prefix",
+        "check_query::inputs::environment_name_matches",
         "check_query::inputs::facts_match",
         "check_query::inputs::input_key_eq",
         "check_query::inputs::input_key_lt",
@@ -93,6 +117,7 @@
         "check_query::inputs::reads_complete",
         "check_query::inputs::same_inventory",
         "check_query::inputs::same_key",
+        "check_query::inputs::same_object_stamp",
         "check_query::inputs::same_value",
         "check_query::inputs::seal_compiler_provider",
         "check_query::inputs::seal_provider",
@@ -122,6 +147,7 @@
         "check_query::query::Fifo::is_empty",
         "check_query::query::Fifo::pop",
         "check_query::query::Fifo::push",
+        "check_query::query::FrameLex::clone",
         "check_query::query::PrefixFeed::bytes",
         "check_query::query::PrefixFeed::end",
         "check_query::query::PrefixFeed::from",
@@ -159,12 +185,33 @@
         "check_query::query::ReplayCursor::forwarding",
         "check_query::query::ReplayCursor::left",
         "check_query::query::ReplayCursor::new",
+        "check_query::query::command_head",
+        "check_query::query::complete_list",
+        "check_query::query::delimiter",
         "check_query::query::encode_record",
+        "check_query::query::frame_lex",
+        "check_query::query::frame_scan",
+        "check_query::query::frame_space",
+        "check_query::query::frame_step",
+        "check_query::query::framed_command",
+        "check_query::query::head_span",
         "check_query::query::header_line",
         "check_query::query::record_header",
+        "check_query::query::response_at_trim",
+        "check_query::query::response_frame",
+        "check_query::query::response_shape",
+        "check_query::query::response_span",
+        "check_query::query::response_trim",
+        "check_query::query::response_trim_unique",
+        "check_query::query::single_list",
         "check_query::query::split_record",
+        "check_query::query::stream_space",
+        "check_query::query::structural",
+        "check_query::query::symbol_first",
         "check_query::query::trivia",
         "check_query::query::trivia_after",
+        "check_query::query::trivia_join",
+        "check_query::query::word_delimiter",
         "check_query::query_association::Action::arrow_0",
         "check_query::query_association::Action::arrow_Cache_0",
         "check_query::query_association::Action::arrow_Command_0",
@@ -302,10 +349,16 @@
         "check_query::query_association::store_step",
         "check_query::query_association::store_wf",
         "check_query::query_association::stored_reply_has_admitted_origin",
+        "check_query::refinement::bar_frame_grammar",
+        "check_query::refinement::coalesced_and_partial_response_witness",
         "check_query::refinement::command_bytes_refine_binding",
+        "check_query::refinement::comment_frame_grammar",
+        "check_query::refinement::complete_forms_cannot_coalesce",
         "check_query::refinement::distinct_pairs_survive_asynchronous_arrival",
         "check_query::refinement::expectation_arrival_refines",
         "check_query::refinement::fragmented_prefixes_preserve_all_bytes",
+        "check_query::refinement::framed_fragment_binding_and_response_witness",
+        "check_query::refinement::framed_prefix_refines_binding",
         "check_query::refinement::held_release_permutation_is_nonempty",
         "check_query::refinement::initial_queue_refines",
         "check_query::refinement::malformed_prefix_candidates_are_permanently_refused",
@@ -314,6 +367,7 @@
         "check_query::refinement::permutation_publication_refines",
         "check_query::refinement::publication_refines",
         "check_query::refinement::queue_refines",
+        "check_query::refinement::quoted_frame_grammar",
         "check_query::refinement::record_bytes_roundtrip",
         "check_query::refinement::record_partition_unique",
         "check_query::refinement::record_payload_and_header_refusal_witness",
@@ -322,11 +376,14 @@
         "check_query::refinement::replay_initially_refines",
         "check_query::refinement::replay_refines",
         "check_query::refinement::reply_arrival_refines",
+        "check_query::refinement::scan_after_byte",
+        "check_query::refinement::scan_reset_join",
         "check_query::refinement::stopping_refines",
         "check_query::refinement::tail_bytes_complete_replay",
         "check_query::refinement::transcript_append_refines",
         "check_query::refinement::transcript_initially_refines",
-        "check_query::refinement::transcript_refines"
+        "check_query::refinement::transcript_refines",
+        "check_query::refinement::trivia_framing_state"
       ],
       "negative_controls": [
         {
@@ -406,6 +463,42 @@
           "source": "crates/sail-acceptance/src/query.rs",
           "before": "let parts = (&data[..i], &data[i + 1..]);",
           "after": "let parts = (&data[..i], &data[i..]);"
+        },
+        {
+          "name": "frame-premature-root-close",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if depth == 0 { return i == bytes.len(); }",
+          "after": "if depth == 0 { return true; }"
+        },
+        {
+          "name": "frame-ignore-doubled-quote",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if matches!(lex, FrameLex::Quote) && byte == b'\"' {",
+          "after": "if matches!(lex, FrameLex::Quote) && byte == 0u8 {"
+        },
+        {
+          "name": "frame-ignore-input-comment",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "            else if comments && byte == b';' { FrameLex::Comment }\n            else { FrameLex::Plain };",
+          "after": "            else if false { FrameLex::Comment }\n            else { FrameLex::Plain };"
+        },
+        {
+          "name": "head-ignore-framing",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if !complete_list(bytes, true) { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "response-ignore-line-terminator",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if !newline { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "response-ignore-list-framing",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "let accepted = complete_list(&bytes[start..end], false);",
+          "after": "let accepted = true;"
         }
       ]
     },
@@ -418,7 +511,7 @@
         "crates/sail-acceptance/src/inputs.rs",
         "proofs/refinement/inputs.rs"
       ],
-      "verified": 69,
+      "verified": 91,
       "functions": [
         "check_inputs::context::Mode::arrow_0",
         "check_inputs::context::Mode::arrow_OptIn_0",
@@ -435,6 +528,16 @@
         "check_inputs::context::unreadable_cannot_be_current",
         "check_inputs::inputs::InputValue::arrow_0",
         "check_inputs::inputs::InputValue::arrow_Present_0",
+        "check_inputs::inputs::OpenedRead::begin",
+        "check_inputs::inputs::OpenedRead::chunk",
+        "check_inputs::inputs::OpenedRead::consumed_view",
+        "check_inputs::inputs::OpenedRead::ended_view",
+        "check_inputs::inputs::OpenedRead::eof",
+        "check_inputs::inputs::OpenedRead::fail",
+        "check_inputs::inputs::OpenedRead::failed_view",
+        "check_inputs::inputs::OpenedRead::finish",
+        "check_inputs::inputs::OpenedRead::original_view",
+        "check_inputs::inputs::OpenedRead::well_formed",
         "check_inputs::inputs::OriginalCapture::before_view",
         "check_inputs::inputs::OriginalCapture::begin",
         "check_inputs::inputs::OriginalCapture::finish",
@@ -449,6 +552,16 @@
         "check_inputs::inputs::ProviderSeal::frames_view",
         "check_inputs::inputs::ProviderSeal::producer",
         "check_inputs::inputs::ProviderSeal::producer_view",
+        "check_inputs::inputs::ReadChunk::bytes",
+        "check_inputs::inputs::ReadChunk::bytes_view",
+        "check_inputs::inputs::ReadChunk::owner",
+        "check_inputs::inputs::ReadChunk::owner_view",
+        "check_inputs::inputs::ReadSeal::bytes",
+        "check_inputs::inputs::ReadSeal::consumed_view",
+        "check_inputs::inputs::ReadSeal::matches",
+        "check_inputs::inputs::ReadSeal::matches_binding",
+        "check_inputs::inputs::ReadSeal::original_view",
+        "check_inputs::inputs::ReadSeal::owner",
         "check_inputs::inputs::Readback::changed",
         "check_inputs::inputs::Readback::changed_view",
         "check_inputs::inputs::Readback::equal_view",
@@ -477,6 +590,10 @@
         "check_inputs::inputs::contains_present",
         "check_inputs::inputs::copy_bytes",
         "check_inputs::inputs::covered_selection",
+        "check_inputs::inputs::encoded_environment_byte",
+        "check_inputs::inputs::encoded_environment_name",
+        "check_inputs::inputs::encoded_environment_prefix",
+        "check_inputs::inputs::environment_name_matches",
         "check_inputs::inputs::facts_match",
         "check_inputs::inputs::input_key_eq",
         "check_inputs::inputs::input_key_lt",
@@ -499,6 +616,7 @@
         "check_inputs::inputs::reads_complete",
         "check_inputs::inputs::same_inventory",
         "check_inputs::inputs::same_key",
+        "check_inputs::inputs::same_object_stamp",
         "check_inputs::inputs::same_value",
         "check_inputs::inputs::seal_compiler_provider",
         "check_inputs::inputs::seal_provider",
@@ -510,6 +628,7 @@
         "check_inputs::inputs::value_readable",
         "check_inputs::refinement::checked_capture_refines_model",
         "check_inputs::refinement::checked_compiler_provider_view",
+        "check_inputs::refinement::checked_opened_read_trace",
         "check_inputs::refinement::checked_projection_refines_model",
         "check_inputs::refinement::checked_readback_refines_model",
         "check_inputs::refinement::compiler_provider_lifecycle_controls",
@@ -517,6 +636,7 @@
         "check_inputs::refinement::completed_reads_refine_coverage",
         "check_inputs::refinement::declared_artifact_frames",
         "check_inputs::refinement::declared_frame_domain",
+        "check_inputs::refinement::environment_name_nonempty_and_wrong_key_controls",
         "check_inputs::refinement::exact_row_outcome",
         "check_inputs::refinement::fresh_stamp_does_not_rebind",
         "check_inputs::refinement::input_key",
@@ -529,6 +649,9 @@
         "check_inputs::refinement::matching_inventory_refines_map",
         "check_inputs::refinement::matching_key_refines_value",
         "check_inputs::refinement::nonempty_readback_and_partial_controls",
+        "check_inputs::refinement::opened_prefix",
+        "check_inputs::refinement::opened_read_failure_and_original_stamp_controls",
+        "check_inputs::refinement::opened_read_nonempty_and_retarget_controls",
         "check_inputs::refinement::original_stamp_aba_and_exact_revert_controls",
         "check_inputs::refinement::provider_coverage_refines_exact_domain",
         "check_inputs::refinement::provider_map_domain",
@@ -584,6 +707,60 @@
           "source": "crates/sail-acceptance/src/inputs.rs",
           "before": "|| read.raw.is_none()",
           "after": "|| false"
+        },
+        {
+          "name": "input-opened-object-binding",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "original.kind != 1 || !same_object_stamp(&original, opened)",
+          "after": "original.kind != 1"
+        },
+        {
+          "name": "input-read-final-handle",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "|| !same_object_stamp(&self.original, handle_after)",
+          "after": "|| false"
+        },
+        {
+          "name": "input-read-final-path",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "|| !same_object_stamp(&self.original, path_after)",
+          "after": "|| false"
+        },
+        {
+          "name": "input-read-chunk-bytes",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "{ self.bytes }",
+          "after": "{ &[] }"
+        },
+        {
+          "name": "input-read-eof-required",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "self.failed || !self.ended || self.consumed != self.original.length",
+          "after": "self.failed || false || self.consumed != self.original.length"
+        },
+        {
+          "name": "input-read-cache-object",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "{ same_object_stamp(&self.original, observed) }",
+          "after": "{ true }"
+        },
+        {
+          "name": "input-read-requested-binding",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "{ self.matches(canonical) && self.matches(requested) }",
+          "after": "{ self.matches(canonical) }"
+        },
+        {
+          "name": "input-environment-byte-name",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "i == encoded.len() || encoded[i] != byte",
+          "after": "i == encoded.len()"
+        },
+        {
+          "name": "input-environment-escaped-name",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "if encoded[i + 1] != escaped { return false; }",
+          "after": "if false { return false; }"
         }
       ]
     },
@@ -600,23 +777,45 @@
         "crates/sail-api/src/acceptance.rs",
         "crates/sail-api/src/acceptance_sort.rs",
         "crates/sail-api/src/output.rs",
-        "crates/sail-api/src/project.rs"
+        "crates/sail-api/src/project.rs",
+        "crates/sail-api/src/jobs.rs",
+        "crates/sail-api/src/repair.rs",
+        "crates/sail-daemon/src/jobs/store.rs"
       ],
-      "verified": 199,
+      "verified": 278,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
         "check_authority::acceptance::CompleteRequest::project",
         "check_authority::acceptance::CompleteRequest::request",
         "check_authority::acceptance::CompleteSelection::project",
+        "check_authority::acceptance::SubmissionBinding::arguments",
+        "check_authority::acceptance::SubmissionBinding::kind",
+        "check_authority::acceptance::SubmissionBinding::mode",
+        "check_authority::acceptance::SubmissionBinding::request",
+        "check_authority::acceptance::SubmissionKind::clone",
+        "check_authority::acceptance::SubmittedAuthority::arguments",
+        "check_authority::acceptance::SubmittedAuthority::kind",
+        "check_authority::acceptance::SubmittedAuthority::mode",
+        "check_authority::acceptance::SubmittedAuthority::project",
+        "check_authority::acceptance::SubmittedAuthority::request",
         "check_authority::acceptance::all_owned_ids",
         "check_authority::acceptance::append_obligations",
+        "check_authority::acceptance::apply_retained_currentness",
         "check_authority::acceptance::authority_policy",
         "check_authority::acceptance::authority_report",
+        "check_authority::acceptance::bind_submission",
+        "check_authority::acceptance::binding_valid",
+        "check_authority::acceptance::bound_arguments",
+        "check_authority::acceptance::bound_kind",
+        "check_authority::acceptance::bound_mode",
+        "check_authority::acceptance::bound_request",
+        "check_authority::acceptance::classify_submission_mode",
         "check_authority::acceptance::collect_report_ids",
         "check_authority::acceptance::complete_report_ordered",
         "check_authority::acceptance::complete_request_ordered",
         "check_authority::acceptance::complete_selection_ordered",
+        "check_authority::acceptance::complete_submitted_request_ordered",
         "check_authority::acceptance::complete_target_ordered",
         "check_authority::acceptance::complete_whole_report_ordered",
         "check_authority::acceptance::completed_crate",
@@ -626,21 +825,37 @@
         "check_authority::acceptance::confirmed_function",
         "check_authority::acceptance::crate_completed",
         "check_authority::acceptance::distinct_ids",
+        "check_authority::acceptance::driver_delimiter",
+        "check_authority::acceptance::driver_delimiter_at",
+        "check_authority::acceptance::driver_option_sources",
+        "check_authority::acceptance::driver_source_tokens",
+        "check_authority::acceptance::driver_token_bounds",
+        "check_authority::acceptance::driver_token_prefix",
+        "check_authority::acceptance::driver_token_span",
+        "check_authority::acceptance::effective_driver_arguments_match",
         "check_authority::acceptance::engine_identity_matches",
         "check_authority::acceptance::exact_requested_coverage",
+        "check_authority::acceptance::first_driver_delimiter",
         "check_authority::acceptance::focused_argument",
         "check_authority::acceptance::focused_command",
         "check_authority::acceptance::function_count",
         "check_authority::acceptance::function_ids",
+        "check_authority::acceptance::interactive_engine",
+        "check_authority::acceptance::interactive_engine_matches",
+        "check_authority::acceptance::mode_correspondence",
+        "check_authority::acceptance::next_driver_delimiter",
         "check_authority::acceptance::normalized_arguments",
         "check_authority::acceptance::obligation_ids",
         "check_authority::acceptance::options_disable_verification",
         "check_authority::acceptance::owned_function_ids",
+        "check_authority::acceptance::packed_driver_arguments_match",
+        "check_authority::acceptance::packed_driver_tokens",
         "check_authority::acceptance::partial_command",
         "check_authority::acceptance::provenance_valid",
         "check_authority::acceptance::repair_function_at",
         "check_authority::acceptance::repair_function_present",
         "check_authority::acceptance::repair_request_matches",
+        "check_authority::acceptance::repair_selection_matches",
         "check_authority::acceptance::report_authority_valid",
         "check_authority::acceptance::report_ids",
         "check_authority::acceptance::request_authority_project",
@@ -653,10 +868,15 @@
         "check_authority::acceptance::requested_coverage",
         "check_authority::acceptance::requested_function_present",
         "check_authority::acceptance::requested_target",
+        "check_authority::acceptance::require_process_observation",
         "check_authority::acceptance::resolved_coverage",
         "check_authority::acceptance::resolved_expected",
+        "check_authority::acceptance::retained_currentness",
         "check_authority::acceptance::same_engine",
+        "check_authority::acceptance::same_project_except_completion",
+        "check_authority::acceptance::same_project_except_freshness_and_completion",
         "check_authority::acceptance::same_target",
+        "check_authority::acceptance::same_target_except_completion",
         "check_authority::acceptance::same_target_identity",
         "check_authority::acceptance::selection_authority_valid",
         "check_authority::acceptance::selection_project",
@@ -665,7 +885,13 @@
         "check_authority::acceptance::small_positive_request",
         "check_authority::acceptance::small_request_match",
         "check_authority::acceptance::string_bytes",
+        "check_authority::acceptance::submission_correspondence",
+        "check_authority::acceptance::submitted_arguments",
         "check_authority::acceptance::submitted_arguments_match",
+        "check_authority::acceptance::submitted_kind",
+        "check_authority::acceptance::submitted_mode",
+        "check_authority::acceptance::submitted_project",
+        "check_authority::acceptance::submitted_request",
         "check_authority::acceptance::successful_records",
         "check_authority::acceptance::successful_report",
         "check_authority::acceptance::supplied_selection_authorized",
@@ -679,13 +905,51 @@
         "check_authority::acceptance::verification_disabled",
         "check_authority::acceptance::verification_enabled_command",
         "check_authority::acceptance::verification_enabled_options",
+        "check_authority::acceptance::withhold_unbound_request_authority_ordered",
+        "check_authority::authority::AttemptLedger::new",
+        "check_authority::authority::AttemptLedger::reserve",
         "check_authority::authority::CompletionPolicy::clone",
+        "check_authority::authority::ObservedAttempt::exit",
+        "check_authority::authority::ObservedAttempt::into_output",
+        "check_authority::authority::ObservedAttempt::normal_success",
+        "check_authority::authority::ObservedAttempt::pid",
+        "check_authority::authority::ObservedAttempt::reserved",
+        "check_authority::authority::ObservedAttempt::stderr",
+        "check_authority::authority::ObservedAttempt::stdout",
+        "check_authority::authority::ReservedAttempt::descriptor",
+        "check_authority::authority::ReservedAttempt::run",
+        "check_authority::authority::ReservedAttempt::slot",
+        "check_authority::authority::ReservedAttempt::started",
+        "check_authority::authority::ReservedAttempt::unit",
+        "check_authority::authority::RunningAttempt::exited",
+        "check_authority::authority::RunningAttempt::finish",
+        "check_authority::authority::RunningAttempt::finish_or_output",
+        "check_authority::authority::RunningAttempt::stderr_eof",
+        "check_authority::authority::RunningAttempt::stdout_eof",
+        "check_authority::authority::WaitObservation::arrow_0",
+        "check_authority::authority::WaitObservation::arrow_Exited_0",
         "check_authority::authority::argument_flag",
         "check_authority::authority::copy_bytes",
         "check_authority::authority::distinct_id_values",
         "check_authority::authority::flag_matches",
+        "check_authority::authority::ledger_next",
+        "check_authority::authority::ledger_run",
+        "check_authority::authority::ledger_unit",
+        "check_authority::authority::observation_complete",
+        "check_authority::authority::observed_payload_matches",
+        "check_authority::authority::observed_running",
         "check_authority::authority::owned_id",
         "check_authority::authority::owned_obligation",
+        "check_authority::authority::reserved_descriptor",
+        "check_authority::authority::reserved_run",
+        "check_authority::authority::reserved_slot",
+        "check_authority::authority::reserved_unit",
+        "check_authority::authority::running_exit",
+        "check_authority::authority::running_invalid",
+        "check_authority::authority::running_pid",
+        "check_authority::authority::running_reserved",
+        "check_authority::authority::running_stderr",
+        "check_authority::authority::running_stdout",
         "check_authority::authority::strict_order_differs",
         "check_authority::authority::unique_obligations",
         "check_authority::authority_model::Candidate::context",
@@ -829,6 +1093,16 @@
         "check_authority::context::unreadable_cannot_be_current",
         "check_authority::inputs::InputValue::arrow_0",
         "check_authority::inputs::InputValue::arrow_Present_0",
+        "check_authority::inputs::OpenedRead::begin",
+        "check_authority::inputs::OpenedRead::chunk",
+        "check_authority::inputs::OpenedRead::consumed_view",
+        "check_authority::inputs::OpenedRead::ended_view",
+        "check_authority::inputs::OpenedRead::eof",
+        "check_authority::inputs::OpenedRead::fail",
+        "check_authority::inputs::OpenedRead::failed_view",
+        "check_authority::inputs::OpenedRead::finish",
+        "check_authority::inputs::OpenedRead::original_view",
+        "check_authority::inputs::OpenedRead::well_formed",
         "check_authority::inputs::OriginalCapture::before_view",
         "check_authority::inputs::OriginalCapture::begin",
         "check_authority::inputs::OriginalCapture::finish",
@@ -843,6 +1117,16 @@
         "check_authority::inputs::ProviderSeal::frames_view",
         "check_authority::inputs::ProviderSeal::producer",
         "check_authority::inputs::ProviderSeal::producer_view",
+        "check_authority::inputs::ReadChunk::bytes",
+        "check_authority::inputs::ReadChunk::bytes_view",
+        "check_authority::inputs::ReadChunk::owner",
+        "check_authority::inputs::ReadChunk::owner_view",
+        "check_authority::inputs::ReadSeal::bytes",
+        "check_authority::inputs::ReadSeal::consumed_view",
+        "check_authority::inputs::ReadSeal::matches",
+        "check_authority::inputs::ReadSeal::matches_binding",
+        "check_authority::inputs::ReadSeal::original_view",
+        "check_authority::inputs::ReadSeal::owner",
         "check_authority::inputs::Readback::changed",
         "check_authority::inputs::Readback::changed_view",
         "check_authority::inputs::Readback::equal_view",
@@ -871,6 +1155,10 @@
         "check_authority::inputs::contains_present",
         "check_authority::inputs::copy_bytes",
         "check_authority::inputs::covered_selection",
+        "check_authority::inputs::encoded_environment_byte",
+        "check_authority::inputs::encoded_environment_name",
+        "check_authority::inputs::encoded_environment_prefix",
+        "check_authority::inputs::environment_name_matches",
         "check_authority::inputs::facts_match",
         "check_authority::inputs::input_key_eq",
         "check_authority::inputs::input_key_lt",
@@ -893,6 +1181,7 @@
         "check_authority::inputs::reads_complete",
         "check_authority::inputs::same_inventory",
         "check_authority::inputs::same_key",
+        "check_authority::inputs::same_object_stamp",
         "check_authority::inputs::same_value",
         "check_authority::inputs::seal_compiler_provider",
         "check_authority::inputs::seal_provider",
@@ -902,29 +1191,49 @@
         "check_authority::inputs::value_difference",
         "check_authority::inputs::value_present",
         "check_authority::inputs::value_readable",
+        "check_authority::jobs::Mode::arrow_0",
+        "check_authority::jobs::Mode::arrow_Repair_0",
+        "check_authority::jobs::VERSION",
         "check_authority::output::SCHEMA_VERSION",
         "check_authority::project::SCHEMA_VERSION",
+        "check_authority::refinement::ambiguous_observations_preserve_output",
+        "check_authority::refinement::attempt_slots_are_independent_of_pid",
+        "check_authority::refinement::changed_original_arguments_refused",
+        "check_authority::refinement::changed_original_mode_refused",
+        "check_authority::refinement::changed_process_payload_refused",
+        "check_authority::refinement::changed_repair_selection_refused",
         "check_authority::refinement::checked_factory_refines_function",
+        "check_authority::refinement::checked_process_observation",
         "check_authority::refinement::checked_repair_presence_has_confirmed_evidence",
         "check_authority::refinement::checked_request_refines_function",
+        "check_authority::refinement::checked_submitted_request_refines_function",
         "check_authority::refinement::compile_only_original_request_refused",
         "check_authority::refinement::compile_only_report_refused",
+        "check_authority::refinement::duplicate_process_stream_refused",
         "check_authority::refinement::focused_report_refused",
         "check_authority::refinement::function_refines",
         "check_authority::refinement::interrupted_report_refused",
         "check_authority::refinement::matching_repair_selection_accepts",
+        "check_authority::refinement::missing_process_wait_refused",
         "check_authority::refinement::missing_repair_function_refused",
         "check_authority::refinement::missing_requested_scope_refused",
         "check_authority::refinement::model_establishment",
         "check_authority::refinement::model_tier",
         "check_authority::refinement::model_verdict",
+        "check_authority::refinement::packed_empty_token_positive",
         "check_authority::refinement::positive_nonempty_factory",
         "check_authority::refinement::positive_nonempty_request_factory",
+        "check_authority::refinement::positive_nonempty_submitted_factory",
         "check_authority::refinement::positive_zero_function_factory",
+        "check_authority::refinement::project_effective_verification",
         "check_authority::refinement::project_function",
+        "check_authority::refinement::project_observed_process_end",
+        "check_authority::refinement::recovering_finish_refuses_missing_events",
+        "check_authority::refinement::retained_current_frame_refines_request",
         "check_authority::refinement::stale_request_refused",
         "check_authority::refinement::swapped_repair_function_refused",
-        "check_authority::refinement::swapped_request_refused"
+        "check_authority::refinement::swapped_request_refused",
+        "check_authority::repair::VERSION"
       ],
       "negative_controls": [
         {
@@ -1034,13 +1343,139 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "if exact_bytes(name.as_str().as_bytes(), project.targets[t].report.crates[c].functions[f].function.as_str().as_bytes()) {",
           "after": "if true {"
+        },
+        {
+          "name": "submission-arguments",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if !submitted_arguments_match(arguments, &request.args) { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "submission-mode",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if request.engine.is_some() || request.function.is_some() { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "submission-whole-authority",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if complete_request_ordered(request, project, orders).is_none() { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "submission-positive",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "Some(SubmittedAuthority { arguments, mode, request, project, kind: binding.kind })",
+          "after": "None"
+        },
+        {
+          "name": "driver-token-bytes",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if !exact_bytes(tokens[index].as_str().as_bytes(), &raw[start..end]) { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "driver-token-coverage",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if index != tokens.len() { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "driver-sources-order",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "let second = &arguments[boundary..];",
+          "after": "let second = &arguments[..boundary];"
+        },
+        {
+          "name": "process-wait-required",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "|| matches!(self.exit, WaitObservation::Pending)",
+          "after": "|| false"
+        },
+        {
+          "name": "process-distinct-slot",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "self.next += 1;",
+          "after": "self.next += 0;"
+        },
+        {
+          "name": "process-duplicate-stream",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "if self.stdout.is_some() { self.invalid = true; }",
+          "after": "if self.stdout.is_some() { self.invalid = false; }"
+        },
+        {
+          "name": "process-stderr-binding",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "else { self.stderr = Some(bytes); }",
+          "after": "else { self.stdout = Some(bytes); }"
+        },
+        {
+          "name": "process-recovery-bytes",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "let stdout = match self.stdout { Some(bytes) => bytes, None => Vec::new() };",
+          "after": "let stdout = Vec::new();"
+        },
+        {
+          "name": "process-payload-binding",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "exact_bytes(observed.stdout(), stdout) && exact_bytes(observed.stderr(), stderr) && observed.exit() == exit",
+          "after": "true && exact_bytes(observed.stderr(), stderr) && observed.exit() == exit"
+        },
+        {
+          "name": "process-refusal-recorded",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if !matched && report.error.is_none() { report.error = Some(unavailable); }",
+          "after": "if false { report.error = Some(unavailable); }"
+        },
+        {
+          "name": "retained-original-current",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if complete && matches!(original, Currentness::Current) {",
+          "after": "if complete {"
+        },
+        {
+          "name": "retained-complete-readback",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if complete && matches!(original, Currentness::Current) {",
+          "after": "if matches!(original, Currentness::Current) {"
+        },
+        {
+          "name": "retained-exact-revision",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if !exact_bytes(revision.as_bytes(), expected.as_bytes()) {",
+          "after": "if false {"
+        },
+        {
+          "name": "retained-view-currentness",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "crate::jobs::Currentness::Unknown => Currentness::Unknown,",
+          "after": "crate::jobs::Currentness::Unknown => Currentness::Current,"
+        },
+        {
+          "name": "retained-request-admission",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "|| complete_request_ordered(request, project, orders).is_some()),",
+          "after": "|| true),"
+        },
+        {
+          "name": "retained-clear-refused-labels",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "project.targets[i].complete = false;",
+          "after": "project.targets[i].complete = true;"
+        },
+        {
+          "name": "retained-preserve-positive",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if admitted {\n            return corresponding;\n        }",
+          "after": "if false {\n            return corresponding;\n        }"
         }
       ]
     }
   ],
   "api_declarations": {
     "output": {
-      "source_sha256": "9c1bb2987fedd63c24c2ce5e242b632d1660c54df14345deba1987bd2009570c",
+      "source_sha256": "9f64e4becd83b88bc0ce27ed6c5e89dd9b5e9c790184c511e834f9ebb2746679",
       "bindings": [
         [
           "use",
@@ -1153,7 +1588,7 @@
             ]
           },
           "variants": [],
-          "declaration_sha256": "274c87123649c24e6af237e7270d2e13e85cbeee27e28ecc33fd7d4097895731"
+          "declaration_sha256": "441ee80f07cd1ef606b39641ba5ec8ef9be422c79a0670df0f54d6d97383c84a"
         },
         {
           "name": "CrateReport",
@@ -1401,6 +1836,35 @@
           "declaration_sha256": "fe88b7cc5636448f0556d1b22fa86966c19048077e978f14f96a25d594c9611f"
         },
         {
+          "name": "SolverInfo",
+          "kind": "struct",
+          "fields": {
+            "name": [
+              "String"
+            ],
+            "version": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "path": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "sha256": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "1cfc872db24657845fa2e0929c57cd7a74b514c7e6770c99881b61ce6d9b21de"
+        },
+        {
           "name": "ErrorInfo",
           "kind": "struct",
           "fields": {
@@ -1483,14 +1947,15 @@
         ";"
       ],
       "retained_fields": {
-        "Report": "schema_version command exit_code error summary crates engine",
+        "Report": "schema_version mode command exit_code error summary crates engine solver",
         "CrateReport": "verus functions",
         "VerusResults": "errors success encountered_vir_error",
         "FunctionReport": "function verdict establishment evidence_tier unstable provenance obligations",
-        "ProvenanceReport": "source checks_solved checks_served checks_unrecorded",
+        "ProvenanceReport": "mode source checks_solved checks_served checks_unrecorded engine",
         "ObligationReport": "id",
         "Summary": "functions verified failed unknown provisional unstable",
-        "EngineProvenance": "established_by",
+        "EngineProvenance": "name manifest_sha256 established_by",
+        "SolverInfo": "name version path sha256",
         "ErrorInfo": ""
       }
     },
@@ -1765,11 +2230,204 @@
         ";"
       ],
       "retained_fields": {
-        "TargetResult": "package_id target kind requested complete scope_reuse report",
+        "TargetResult": "package_id target kind establishing_run reused requested complete scope_reuse report",
         "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
         "RequestTarget": "package_id target kind",
         "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
         "EngineIdentity": "name manifest_sha256"
+      }
+    },
+    "jobs": {
+      "source_sha256": "1a98c11aad004d75eb7ba508f4035004de558875f253e33664f9fdac3fa894e2",
+      "bindings": [
+        [
+          "use",
+          "std",
+          ":",
+          ":",
+          "collections",
+          ":",
+          ":",
+          "BTreeMap",
+          ";"
+        ],
+        [
+          "use",
+          "std",
+          ":",
+          ":",
+          "fmt",
+          ":",
+          ":",
+          "Write",
+          "as",
+          "_",
+          ";"
+        ],
+        [
+          "use",
+          "std",
+          ":",
+          ":",
+          "io",
+          ":",
+          ":",
+          "{",
+          "self",
+          ",",
+          "Read",
+          ",",
+          "Write",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "std",
+          ":",
+          ":",
+          "path",
+          ":",
+          ":",
+          "{",
+          "Path",
+          ",",
+          "PathBuf",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "serde",
+          ":",
+          ":",
+          "{",
+          "Deserialize",
+          ",",
+          "Serialize",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "serde_json",
+          ":",
+          ":",
+          "Value",
+          ";"
+        ]
+      ],
+      "declarations": [
+        {
+          "name": "Mode",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Stock",
+            "Interactive",
+            "Repair"
+          ],
+          "declaration_sha256": "4739577645e3cef30f706f444bcba9f0b3906f4733b59c11182d39e27da84a08",
+          "tuple_fields": {
+            "Repair": [
+              "crate",
+              ":",
+              ":",
+              "repair",
+              ":",
+              ":",
+              "Selection"
+            ]
+          }
+        },
+        {
+          "name": "Currentness",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Current",
+            "Historical",
+            "Unknown"
+          ],
+          "declaration_sha256": "ebeb663c56b996553be5be25f0ea4b883fcf2b48b961ef86c1a6dd9f2092bd39"
+        }
+      ],
+      "schema_constant": [
+        "pub",
+        "const",
+        "VERSION",
+        ":",
+        "u32",
+        "=",
+        "1",
+        ";"
+      ],
+      "retained_fields": {}
+    },
+    "repair": {
+      "source_sha256": "b28457b8ca40218a80a1b1f8cc19df2148881343a1133d9c9d6811b337a9b6cd",
+      "bindings": [
+        [
+          "use",
+          "serde",
+          ":",
+          ":",
+          "{",
+          "Deserialize",
+          ",",
+          "Serialize",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "crate",
+          ":",
+          ":",
+          "project",
+          ":",
+          ":",
+          "ProjectResult",
+          ";"
+        ]
+      ],
+      "declarations": [
+        {
+          "name": "Selection",
+          "kind": "struct",
+          "fields": {
+            "package": [
+              "String"
+            ],
+            "target": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "kind": [
+              "String"
+            ],
+            "function": [
+              "String"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "3c429c0f880aa868a442bb1015b7a26a99e893d5778903bd748205f9386870b8"
+        }
+      ],
+      "schema_constant": [
+        "pub",
+        "const",
+        "VERSION",
+        ":",
+        "u32",
+        "=",
+        "1",
+        ";"
+      ],
+      "retained_fields": {
+        "Selection": "package target kind function"
       }
     }
   }
