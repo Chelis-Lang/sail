@@ -129,6 +129,35 @@ pub proof fn checked_decline_preserves_status_and_refusal(declined: &crate::auth
     project_engine_completion(declined.protocol(), declined.documents(), stdout)
 }
 
+/// Reusing a PID cannot merge two different exclusively allocated launch slots.
+/// These are supplied process observations, not a claim about an OS launch or
+/// a compiler's input domain; the executable factory copies their exact origin.
+pub fn owned_attempt_identity_keeps_reused_pid_slots_distinct(run: &[u8], unit: &crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32, exit: Option<i32>)
+    -> (out: (crate::authority::AttemptIdentity, crate::authority::AttemptIdentity))
+    requires pid != 0,
+    ensures out.0.run_view() == run@, out.1.run_view() == run@,
+        out.0.slot_view() == 0, out.1.slot_view() == 1,
+        out.0.pid_view() == pid, out.1.pid_view() == pid,
+        out.0.exit_view() == exit, out.1.exit_view() == exit,
+        crate::phase_inputs::same_unit(out.0.unit_view(), *unit),
+        crate::phase_inputs::same_unit(out.1.unit_view(), *unit),
+        crate::phase_inputs::same_descriptor(out.0.descriptor_view(), descriptor),
+        crate::phase_inputs::same_descriptor(out.1.descriptor_view(), descriptor),
+{
+    let second_descriptor = crate::phase_inputs::copy_descriptor(&descriptor);
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let first = ledger.reserve(descriptor); assert(first.is_some());
+    let second = ledger.reserve(second_descriptor); assert(second.is_some());
+    let first = first.unwrap().started(pid); assert(first.is_some());
+    let second = second.unwrap().started(pid); assert(second.is_some());
+    let first = first.unwrap().stdout_eof(Vec::new()).stderr_eof(Vec::new()).exited(exit).finish();
+    let second = second.unwrap().stdout_eof(Vec::new()).stderr_eof(Vec::new()).exited(exit).finish();
+    assert(first.is_some()); assert(second.is_some());
+    (crate::authority::AttemptIdentity::from_observed(&first.unwrap()),
+        crate::authority::AttemptIdentity::from_observed(&second.unwrap()))
+}
+
 /// The actual low-level reducer preserves the observed exit without promoting
 /// it to verifier completion or inventing a document/process relation.
 pub fn project_observed_process_end(observed: &crate::authority::ObservedAttempt)
