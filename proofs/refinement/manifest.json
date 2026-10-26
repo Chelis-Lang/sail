@@ -1143,9 +1143,11 @@
         "proofs/acceptance/context.rs",
         "crates/sail-acceptance/src/inputs.rs",
         "crates/sail-acceptance/src/authority.rs",
+        "crates/sail-acceptance/src/stream_capture.rs",
         "crates/sail-acceptance/src/phase_inputs.rs",
         "proofs/refinement/inputs.rs",
         "proofs/refinement/phase_inputs.rs",
+        "proofs/refinement/stream_capture.rs",
         "crates/sail-verus/src/adapter.rs",
         "crates/sail-verus/src/adapter_attempts.rs",
         "crates/sail-verus/src/engine.rs",
@@ -1163,7 +1165,8 @@
         "crates/sail-verus/src/managed/retained/native.rs",
         "crates/sail-verus/src/managed/retained/producers.rs",
         "crates/sail-daemon/src/jobs/product.rs",
-        "crates/sail-daemon/src/jobs/result_cache.rs"
+        "crates/sail-daemon/src/jobs/result_cache.rs",
+        "crates/sail-verus/src/managed/command_pipe.rs"
       ],
       "verified": 283,
       "functions": [
@@ -2207,6 +2210,126 @@
           "source": "crates/sail-acceptance/src/phase_inputs.rs",
           "before": "attempt.running.stdout_eof(completion.stdout).stderr_eof(completion.stderr).exited(exit).finish_or_output()",
           "after": "Err(UnsealedOutput { stdout: completion.stdout, stderr: completion.stderr, exit })"
+        },
+        {
+          "name": "pipe-read-original-owner",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "!identity.same_owner(&capture.owner, host.owner())",
+          "after": "false"
+        },
+        {
+          "name": "pipe-read-original-role",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "|| capture.kind != host.kind()",
+          "after": "|| false"
+        },
+        {
+          "name": "pipe-read-after-eof",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "if capture.eof || !identity.same_owner",
+          "after": "if false || !identity.same_owner"
+        },
+        {
+          "name": "pipe-read-zero-capacity-is-not-eof",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "if !buffer.is_empty() { capture.eof = true; }",
+          "after": "if true { capture.eof = true; }"
+        },
+        {
+          "name": "pipe-read-fatal-failure-sticky",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "if kind != 1 && kind != 2 { capture.failed = true; }",
+          "after": "if false { capture.failed = true; }"
+        },
+        {
+          "name": "pipe-read-retryable-error-constructive",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "if kind != 1 && kind != 2 { capture.failed = true; }",
+          "after": "if true { capture.failed = true; }"
+        },
+        {
+          "name": "pipe-read-exact-prefix",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "append_pipe_prefix(capture, &buffer[..count]);",
+          "after": "append_pipe_prefix(capture, &buffer[..0]);"
+        },
+        {
+          "name": "pipe-read-exact-prefix-values",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "{ capture.bytes.push(prefix[i]); i += 1; }",
+          "after": "{ capture.bytes.push(0); i += 1; }"
+        },
+        {
+          "name": "pipe-seal-requires-real-eof",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "if capture.eof && !capture.failed {",
+          "after": "if !capture.failed {"
+        },
+        {
+          "name": "pipe-seal-requires-no-failure",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "if capture.eof && !capture.failed {",
+          "after": "if capture.eof {"
+        },
+        {
+          "name": "pipe-token-original-owner",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "kind <= 1 && pipe.kind == kind && identity.same_owner(&pipe.owner, owner),",
+          "after": "kind <= 1 && pipe.kind == kind && true,"
+        },
+        {
+          "name": "pipe-token-original-role",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "kind <= 1 && pipe.kind == kind && identity.same_owner(&pipe.owner, owner),",
+          "after": "kind <= 1 && true && identity.same_owner(&pipe.owner, owner),"
+        },
+        {
+          "name": "pipe-token-unavailable-never-authority",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "PipeReadback::Observed(pipe) => kind <= 1 && pipe.kind == kind && identity.same_owner(&pipe.owner, owner),\n            PipeReadback::Unavailable(_) => false,",
+          "after": "PipeReadback::Observed(pipe) => kind <= 1 && pipe.kind == kind && identity.same_owner(&pipe.owner, owner),\n            PipeReadback::Unavailable(_) => true,"
+        },
+        {
+          "name": "pipe-capture-invalid-role",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "{ PipeCapture { owner, kind, bytes: Vec::new(), eof: false, failed: kind > 1 } }",
+          "after": "{ PipeCapture { owner, kind, bytes: Vec::new(), eof: false, failed: false } }"
+        },
+        {
+          "name": "pipe-completion-stdout-origin",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "Some(attempt) => pipe_readback_matches(identity, &completion.stdout, &attempt.owner, 0)",
+          "after": "Some(attempt) => true"
+        },
+        {
+          "name": "pipe-completion-stderr-origin",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "&& pipe_readback_matches(identity, &completion.stderr, &attempt.owner, 1),",
+          "after": "&& true,"
+        },
+        {
+          "name": "pipe-completion-refuses-missing-origin",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "if !streams_match { return Err(UnsealedOutput { stdout: raw.stdout, stderr: raw.stderr, exit }); }",
+          "after": "if false { return Err(UnsealedOutput { stdout: raw.stdout, stderr: raw.stderr, exit }); }"
+        },
+        {
+          "name": "pipe-completion-preserves-output-roles",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "stdout: completion.stdout.into_bytes(), stderr: completion.stderr.into_bytes(),",
+          "after": "stdout: completion.stderr.into_bytes(), stderr: completion.stdout.into_bytes(),"
+        },
+        {
+          "name": "pipe-seal-full-factory-always-refuses",
+          "source": "crates/sail-acceptance/src/stream_capture.rs",
+          "before": "if capture.eof && !capture.failed {",
+          "after": "if false {"
+        },
+        {
+          "name": "pipe-completion-full-factory-always-refuses",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "        complete_owned_compiler(identity, attempt, raw)\n",
+          "after": "        Err(UnsealedOutput { stdout: raw.stdout, stderr: raw.stderr, exit })\n"
         }
       ]
     },
@@ -2219,6 +2342,7 @@
         "proofs/acceptance/authority.rs",
         "crates/sail-acceptance/src/inputs.rs",
         "crates/sail-acceptance/src/authority.rs",
+        "crates/sail-acceptance/src/stream_capture.rs",
         "crates/sail-acceptance/src/phase_inputs.rs",
         "proofs/refinement/authority.rs",
         "crates/sail-verus/src/adapter.rs",
@@ -2239,6 +2363,7 @@
         "crates/sail-verus/src/managed/retained/producers.rs",
         "crates/sail-daemon/src/jobs/product.rs",
         "crates/sail-daemon/src/jobs/result_cache.rs",
+        "crates/sail-verus/src/managed/command_pipe.rs",
         "crates/sail-api/src/acceptance.rs",
         "crates/sail-api/src/acceptance_sort.rs",
         "crates/sail-api/src/output.rs",
