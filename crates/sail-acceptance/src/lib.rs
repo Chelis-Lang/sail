@@ -9,6 +9,8 @@
 mod syntax;
 
 pub mod authority;
+/// Exact cache record-write sequencing without an origin-authority assertion.
+pub mod cache_write;
 pub mod inputs;
 /// Exact incremental key framing through source-bound hash primitives.
 pub mod key_prefix;
