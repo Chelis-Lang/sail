@@ -12,7 +12,7 @@
         "crates/sail-acceptance/src/query.rs",
         "proofs/refinement/query.rs"
       ],
-      "verified": 172,
+      "verified": 200,
       "functions": [
         "check_query::context::Mode::arrow_0",
         "check_query::context::Mode::arrow_OptIn_0",
@@ -122,6 +122,7 @@
         "check_query::query::Fifo::is_empty",
         "check_query::query::Fifo::pop",
         "check_query::query::Fifo::push",
+        "check_query::query::FrameLex::clone",
         "check_query::query::PrefixFeed::bytes",
         "check_query::query::PrefixFeed::end",
         "check_query::query::PrefixFeed::from",
@@ -159,12 +160,33 @@
         "check_query::query::ReplayCursor::forwarding",
         "check_query::query::ReplayCursor::left",
         "check_query::query::ReplayCursor::new",
+        "check_query::query::command_head",
+        "check_query::query::complete_list",
+        "check_query::query::delimiter",
         "check_query::query::encode_record",
+        "check_query::query::frame_lex",
+        "check_query::query::frame_scan",
+        "check_query::query::frame_space",
+        "check_query::query::frame_step",
+        "check_query::query::framed_command",
+        "check_query::query::head_span",
         "check_query::query::header_line",
         "check_query::query::record_header",
+        "check_query::query::response_at_trim",
+        "check_query::query::response_frame",
+        "check_query::query::response_shape",
+        "check_query::query::response_span",
+        "check_query::query::response_trim",
+        "check_query::query::response_trim_unique",
+        "check_query::query::single_list",
         "check_query::query::split_record",
+        "check_query::query::stream_space",
+        "check_query::query::structural",
+        "check_query::query::symbol_first",
         "check_query::query::trivia",
         "check_query::query::trivia_after",
+        "check_query::query::trivia_join",
+        "check_query::query::word_delimiter",
         "check_query::query_association::Action::arrow_0",
         "check_query::query_association::Action::arrow_Cache_0",
         "check_query::query_association::Action::arrow_Command_0",
@@ -302,10 +324,16 @@
         "check_query::query_association::store_step",
         "check_query::query_association::store_wf",
         "check_query::query_association::stored_reply_has_admitted_origin",
+        "check_query::refinement::bar_frame_grammar",
+        "check_query::refinement::coalesced_and_partial_response_witness",
         "check_query::refinement::command_bytes_refine_binding",
+        "check_query::refinement::comment_frame_grammar",
+        "check_query::refinement::complete_forms_cannot_coalesce",
         "check_query::refinement::distinct_pairs_survive_asynchronous_arrival",
         "check_query::refinement::expectation_arrival_refines",
         "check_query::refinement::fragmented_prefixes_preserve_all_bytes",
+        "check_query::refinement::framed_fragment_binding_and_response_witness",
+        "check_query::refinement::framed_prefix_refines_binding",
         "check_query::refinement::held_release_permutation_is_nonempty",
         "check_query::refinement::initial_queue_refines",
         "check_query::refinement::malformed_prefix_candidates_are_permanently_refused",
@@ -314,6 +342,7 @@
         "check_query::refinement::permutation_publication_refines",
         "check_query::refinement::publication_refines",
         "check_query::refinement::queue_refines",
+        "check_query::refinement::quoted_frame_grammar",
         "check_query::refinement::record_bytes_roundtrip",
         "check_query::refinement::record_partition_unique",
         "check_query::refinement::record_payload_and_header_refusal_witness",
@@ -322,11 +351,14 @@
         "check_query::refinement::replay_initially_refines",
         "check_query::refinement::replay_refines",
         "check_query::refinement::reply_arrival_refines",
+        "check_query::refinement::scan_after_byte",
+        "check_query::refinement::scan_reset_join",
         "check_query::refinement::stopping_refines",
         "check_query::refinement::tail_bytes_complete_replay",
         "check_query::refinement::transcript_append_refines",
         "check_query::refinement::transcript_initially_refines",
-        "check_query::refinement::transcript_refines"
+        "check_query::refinement::transcript_refines",
+        "check_query::refinement::trivia_framing_state"
       ],
       "negative_controls": [
         {
@@ -406,6 +438,42 @@
           "source": "crates/sail-acceptance/src/query.rs",
           "before": "let parts = (&data[..i], &data[i + 1..]);",
           "after": "let parts = (&data[..i], &data[i..]);"
+        },
+        {
+          "name": "frame-premature-root-close",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if depth == 0 { return i == bytes.len(); }",
+          "after": "if depth == 0 { return true; }"
+        },
+        {
+          "name": "frame-ignore-doubled-quote",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if matches!(lex, FrameLex::Quote) && byte == b'\"' {",
+          "after": "if matches!(lex, FrameLex::Quote) && byte == 0u8 {"
+        },
+        {
+          "name": "frame-ignore-input-comment",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "            else if comments && byte == b';' { FrameLex::Comment }\n            else { FrameLex::Plain };",
+          "after": "            else if false { FrameLex::Comment }\n            else { FrameLex::Plain };"
+        },
+        {
+          "name": "head-ignore-framing",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if !complete_list(bytes, true) { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "response-ignore-line-terminator",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if !newline { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "response-ignore-list-framing",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "let accepted = complete_list(&bytes[start..end], false);",
+          "after": "let accepted = true;"
         }
       ]
     },
