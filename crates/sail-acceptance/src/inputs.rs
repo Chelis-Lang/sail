@@ -324,6 +324,18 @@ sail_verified! {
 }
 
 sail_verified! {
+    /// Compare one certified sorted position, checking its indexing proof here.
+    pub fn ordered_key_less(facts: &[InputFact<'_>], order: &[usize], _inverse: &[usize],
+        rank: usize, wanted: &InputFact<'_>) -> (less: bool)
+        requires (ordered_facts(facts@, order@, _inverse@), rank < facts.len())
+        ensures (less == key_less(facts[order[rank as int] as int], *wanted))
+    {
+        sail_proof! { assert(permutation_at(order@, _inverse@, facts.len() as nat, rank as int)); }
+        input_key_lt(&facts[order[rank]], wanted)
+    }
+}
+
+sail_verified! {
     /// Check all permutation positions and strict adjacent-key order.
     pub fn input_order(facts: &[InputFact<'_>], order: &[usize], inverse: &[usize]) -> (valid: bool)
         requires (true)
@@ -732,6 +744,29 @@ sail_spec! {
         selected.len() > 0 && forall|i: int| 0 <= i < selected.len()
             ==> contains_fact(source, #[trigger] selected[i])
     }
+
+    /// A sorted cursor that skipped only smaller keys cannot pass a member.
+    pub proof fn ordered_lookup_stops_at_member(source: Seq<InputFact>, order: Seq<usize>,
+        inverse: Seq<usize>, wanted: InputFact, cursor: int)
+        requires ordered_facts(source, order, inverse), 0 <= cursor <= source.len(),
+            contains_fact(source, wanted),
+            forall|k: int| 0 <= k < cursor ==> key_less(source[#[trigger] order[k] as int], wanted),
+            cursor < source.len() ==> !key_less(source[order[cursor] as int], wanted),
+        ensures cursor < source.len(), same_key(source[order[cursor] as int], wanted),
+            same_value(source[order[cursor] as int].value, wanted.value),
+    {
+        let position = choose|p: int| 0 <= p < source.len() && same_key(source[p], wanted)
+            && same_value(source[p].value, wanted.value);
+        assert(permutation_at(order, inverse, source.len(), position));
+        let rank = inverse[position] as int;
+        if rank < cursor {
+            assert(key_less(source[position], wanted));
+            key_less_differs(source[position], wanted);
+        } else if cursor < rank {
+            ordered_pair_less(source, order, inverse, cursor, rank);
+            assert(key_less(source[order[cursor] as int], wanted));
+        }
+    }
 }
 
 sail_verified! {
@@ -742,7 +777,9 @@ sail_verified! {
         source_order: &[usize], source_inverse: &[usize],
         selected_order: &[usize], selected_inverse: &[usize]) -> (covered: bool)
         requires (true)
-        ensures (covered ==> covered_selection(source@, selected@),
+        ensures (covered == (ordered_facts(source@, source_order@, source_inverse@)
+                && ordered_facts(selected@, selected_order@, selected_inverse@)
+                && covered_selection(source@, selected@)),
             covered ==> unique_input_keys(source@) && unique_input_keys(selected@))
     {
         if selected.is_empty() || !input_order(source, source_order, source_inverse)
@@ -754,19 +791,27 @@ sail_verified! {
                 ordered_facts(source@, source_order@, source_inverse@),
                 ordered_facts(selected@, selected_order@, selected_inverse@),
                 unique_input_keys(source@), unique_input_keys(selected@),
+                i < selected.len() ==> forall|k: int| 0 <= k < j ==>
+                    key_less(source[#[trigger] source_order[k] as int], selected[selected_order[i as int] as int]),
                 forall|k: int| 0 <= k < i ==> contains_fact(source@, #[trigger] selected[selected_order[k] as int]))
             decreases (selected.len() - i)
             {
                 sail_proof! { assert(permutation_at(selected_order@, selected_inverse@, selected.len() as nat, i as int)); }
                 let wanted = &selected[selected_order[i]];
-                sail_while! { (j < source.len())
+                sail_while! { (j < source.len() && ordered_key_less(source, source_order, source_inverse, j, wanted))
                     invariant (j <= source.len(), i < selected.len(),
-                        ordered_facts(source@, source_order@, source_inverse@))
+                        ordered_facts(source@, source_order@, source_inverse@),
+                        forall|k: int| 0 <= k < j ==> key_less(source[#[trigger] source_order[k] as int], *wanted))
                     decreases (source.len() - j)
                     {
                         sail_proof! { assert(permutation_at(source_order@, source_inverse@, source.len() as nat, j as int)); }
-                        if !input_key_lt(&source[source_order[j]], wanted) { break; }
                         j += 1;
+                    }
+                }
+                sail_proof! {
+                    if covered_selection(source@, selected@) {
+                        assert(contains_fact(source@, *wanted));
+                        ordered_lookup_stops_at_member(source@, source_order@, source_inverse@, *wanted, j as int);
                     }
                 }
                 if j >= source.len() { return false; }
@@ -776,6 +821,15 @@ sail_verified! {
                     return false;
                 }
                 sail_proof! { assert(contains_fact(source@, *wanted)); }
+                sail_proof! {
+                    if i + 1 < selected.len() {
+                        ordered_pair_less(selected@, selected_order@, selected_inverse@, i as int, i as int + 1);
+                        assert forall|k: int| 0 <= k < j implies
+                            key_less(source[#[trigger] source_order[k] as int], selected[selected_order[i as int + 1] as int]) by {
+                            key_less_transitive(source[source_order[k] as int], *wanted, selected[selected_order[i as int + 1] as int]);
+                        }
+                    }
+                }
                 i += 1;
             }
         }

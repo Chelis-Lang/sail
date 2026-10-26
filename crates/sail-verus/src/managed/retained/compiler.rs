@@ -6,38 +6,12 @@
 
 use super::super::dependency_snapshot::{Content, open};
 use super::super::files::digest;
-use serde::{Deserialize, Serialize};
+use super::phase_fields::{self, Document};
 use std::collections::BTreeMap;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
 
 const LIMIT: u64 = 8 * 1024 * 1024;
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct Source {
-    checksum: String,
-    size: u64,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct Phase {
-    sources: BTreeMap<String, Source>,
-    extra_tracked_files: Vec<String>,
-    tracked_environment: BTreeMap<String, Option<String>>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct Document {
-    kind: String,
-    schema: u32,
-    binding: String,
-    pid: u32,
-    complete: bool,
-    phases: BTreeMap<String, Phase>,
-}
 
 /// Only an admitted complete actual compiler observation can construct this.
 pub(super) struct Accepted {
@@ -169,7 +143,7 @@ impl Observation {
         {
             return None;
         }
-        let mut tracked = BTreeMap::new();
+        let tracked = phase_fields::environment(document)?;
         for phase in document.phases.values() {
             if phase.sources.is_empty() || phase.sources.len() > 16_384 {
                 return None;
@@ -192,11 +166,7 @@ impl Observation {
                 }
             }
             for (name, value) in &phase.tracked_environment {
-                if environment.get(name) != value.as_ref()
-                    || tracked
-                        .insert(name.clone(), value.clone())
-                        .is_some_and(|old| old != *value)
-                {
+                if environment.get(name) != value.as_ref() {
                     return None;
                 }
             }

@@ -12,6 +12,7 @@ mod driver;
 mod eligibility;
 mod namespace;
 mod native;
+pub(in crate::managed) mod phase_fields;
 mod producers;
 mod selection;
 pub(crate) use driver::Plan;
