@@ -6,7 +6,7 @@
 use crate::{Error, Result};
 use sail_acceptance::authority::{
     AttemptLedger, CompilerUnit, ObservedAttempt, ProcessDescriptor, ReservedAttempt,
-    RunningAttempt,
+    RunningAttempt, UnconfiguredAttempt,
 };
 use std::io::Write;
 use std::path::Path;
@@ -88,10 +88,32 @@ impl<'a> Journal<'a> {
 
     /// Reserve and persist the slot before the caller can spawn its child.
     pub(super) fn reserve(&mut self, command: &Command) -> Option<ReservedAttempt<'a>> {
+        let allocation = self.allocate()?;
+        self.configure(allocation, command)
+    }
+
+    /// Allocate request paths before sealing the final command arguments.
+    pub(crate) fn allocate(&mut self) -> Option<UnconfiguredAttempt<'a>> {
         if self.unavailable.is_some() {
             return None;
         }
-        match self.try_reserve(command) {
+        let allocation = self.ledger.allocate();
+        if allocation.is_none() {
+            self.refuse("compiler attempt counter exhausted");
+        }
+        allocation
+    }
+
+    /// Observe and persist the final command after request preparation.
+    pub(crate) fn configure(
+        &mut self,
+        allocation: UnconfiguredAttempt<'a>,
+        command: &Command,
+    ) -> Option<ReservedAttempt<'a>> {
+        if self.unavailable.is_some() {
+            return None;
+        }
+        match self.try_configure(allocation, command) {
             Ok(reserved) => Some(reserved),
             Err(failure) => {
                 self.unavailable = Some(failure.to_string());
@@ -113,7 +135,7 @@ impl<'a> Journal<'a> {
         running
     }
 
-    pub(super) fn refuse(&mut self, reason: &str) {
+    pub(crate) fn refuse(&mut self, reason: &str) {
         if self.unavailable.is_none() {
             self.unavailable = Some(reason.into());
         }
@@ -166,7 +188,11 @@ impl<'a> Journal<'a> {
         }
     }
 
-    fn try_reserve(&mut self, command: &Command) -> Result<ReservedAttempt<'a>> {
+    fn try_configure(
+        &self,
+        allocation: UnconfiguredAttempt<'a>,
+        command: &Command,
+    ) -> Result<ReservedAttempt<'a>> {
         let descriptor = ProcessDescriptor {
             program: command.get_program().as_encoded_bytes().to_vec(),
             arguments: command
@@ -186,10 +212,7 @@ impl<'a> Journal<'a> {
                 })
                 .collect(),
         };
-        let reserved = self
-            .ledger
-            .reserve(descriptor)
-            .ok_or_else(|| error("compiler attempt counter exhausted"))?;
+        let reserved = allocation.configure(descriptor);
         let descriptor = reserved.descriptor();
         let unit = reserved.unit();
         let bytes = serde_json::to_vec(&serde_json::json!({
@@ -254,6 +277,44 @@ mod tests {
     use std::process::Stdio;
 
     type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+    #[test]
+    fn allocation_precedes_paths_but_configuration_seals_actual_final_arguments() -> TestResult {
+        let root =
+            std::env::temp_dir().join(format!("sail-configured-attempt-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let unit = CompilerUnit {
+            manifest: b"fixture/Cargo.toml".to_vec(),
+            name: b"demo".to_vec(),
+            crate_type: b"lib".to_vec(),
+            cargo_name: None,
+        };
+        let mut journal = Journal::new(b"run", &unit, &root);
+        let allocation = journal.allocate().ok_or("allocation refused")?;
+        let request = root.join(format!("{}.request", allocation.slot()));
+        std::fs::write(&request, b"prepared request")?;
+        let mut command = Command::new("/bin/sh");
+        command
+            .args(["-c", "printf '%s' \"$1\"", "compiler"])
+            .arg(&request)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        let reserved = journal
+            .configure(allocation, &command)
+            .ok_or("configuration refused")?;
+        assert_eq!(
+            reserved.descriptor().arguments.last().map(Vec::as_slice),
+            Some(request.as_os_str().as_encoded_bytes())
+        );
+        let child = command.spawn()?;
+        let running = journal.started(Some(reserved), &child);
+        let captured = journal.capture(running, child.wait_with_output()?);
+        assert_eq!(captured.stdout(), request.as_os_str().as_encoded_bytes());
+        assert!(captured.status().success());
+        assert!(captured.observation().is_some());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn journal_failures_preserve_output_and_refuse_retained_authority() -> TestResult {
