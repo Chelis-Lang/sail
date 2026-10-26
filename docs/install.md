@@ -5,8 +5,9 @@ Actual archive checks and their limits are recorded in the
 
 Sail currently supports Linux x86-64 with glibc 2.39 or newer (Ubuntu 24.04,
 for example), and Apple-silicon macOS. It ships its own Verus and pinned Z3.
-Your existing Verus installation is left alone. The repository and release
-drafts remain private until the owner's rollout.
+Your existing Verus installation is left alone. Sail is distributed as
+prebuilt archives on [GitHub releases](https://github.com/Chelis-Lang/sail/releases)
+under the MIT licence.
 
 ## Guided installation
 
@@ -18,16 +19,20 @@ does not select a moving latest release:
 python3 scripts/install.py --version VERSION --install-toolchain
 ```
 
-Authenticated GitHub CLI supplies private release access. Without authenticated
-`gh`, the installer uses ordinary GitHub release downloads, which become usable
-when the owner publishes. It never stores credentials. A downloaded archive
-can instead be installed offline, with its adjacent `.sha256` file:
+With authenticated GitHub CLI (`gh`), the installer downloads through it;
+otherwise it uses ordinary GitHub release downloads. It never stores
+credentials. A downloaded archive can instead be installed offline, with its
+adjacent `.sha256` file:
 
 ```sh
 python3 scripts/install.py --archive ./sail-VERSION-aarch64-apple-darwin.tar.gz \
   --prefix ~/.local/opt
 ```
 
+When authenticated `gh` is available, the installer first verifies the
+archive's [build-provenance attestation](#verify-provenance) and refuses an
+archive that fails it. Without signed-in `gh`, it prints a note and continues with the
+checksum alone; `--require-attestation` makes the attestation mandatory.
 The installer verifies the checksum, checks the platform and archive layout,
 and validates the actual bundled runtime before making the installation
 available. It refuses an existing installation directory. An interrupted or
@@ -40,6 +45,24 @@ under the prefix; do not move just its executables.
 
 The [README](../README.md#install) also gives manual download and extraction
 commands requiring no Python.
+
+## Verify provenance
+
+The `.sha256` file comes from the same release as its archive, so it detects
+a damaged download but not a replaced one. Each release archive also carries
+a GitHub [artifact attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations)
+signed for `Chelis-Lang/sail`'s release workflow. To check a downloaded
+archive yourself, with GitHub CLI signed in:
+
+```sh
+gh attestation verify sail-VERSION-TARGET.tar.gz --repo Chelis-Lang/sail
+```
+
+It must report a verified attestation for the archive's SHA-256. Check the
+checksum as well (`shasum -a 256 -c sail-VERSION-TARGET.tar.gz.sha256`).
+The archives are built by the project's release script, not on GitHub's
+runners; the attestation binds each archive's digest to this repository, so a
+substituted asset fails it. See [releasing](releasing.md#attestations).
 
 ## First verification and existing projects
 

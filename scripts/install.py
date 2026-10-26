@@ -47,7 +47,7 @@ def download(version, name, directory):
             except urllib.error.HTTPError as error:
                 if error.code in (401, 403, 404):
                     raise ValueError("cannot download the selected version; check that it exists. "
-                                     "Private drafts require authenticated GitHub CLI (`gh auth login`), "
+                                     "Unpublished drafts require authenticated GitHub CLI (`gh auth login`), "
                                      "or use --archive with a downloaded archive and checksum") from error
                 raise
     return directory / name
@@ -64,6 +64,45 @@ def verify(archive):
             digest.update(block)
     if digest.hexdigest() != match[1].lower():
         raise ValueError("archive checksum does not match; nothing installed")
+
+
+def gh_attestation_available():
+    """Whether GitHub CLI can check attestations: installed, signed in, with the subcommand."""
+    gh = shutil.which("gh")
+    if not gh:
+        return None
+    for probe in (["auth", "status"], ["attestation", "verify", "--help"]):
+        if subprocess.run([gh] + probe, stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL).returncode != 0:
+            return None
+    return gh
+
+
+def attest(archive, required=False):
+    """Check the archive's build-provenance attestation from this repository.
+
+    The adjacent checksum comes from the same release as the archive, so it
+    detects corruption only. The attestation is signed for this repository's
+    release workflow, so a swapped asset fails it. Without usable GitHub CLI the
+    check is skipped with a note, unless it is required. When it runs, a
+    failure refuses installation."""
+    gh = gh_attestation_available()
+    if gh is None:
+        if required:
+            raise ValueError("--require-attestation needs GitHub CLI (`gh`) installed and signed in "
+                             "(`gh auth login`); nothing installed")
+        print("note: GitHub CLI (`gh`) is not installed or not signed in, so the archive's "
+              "build-provenance attestation was not checked; only its SHA-256 checksum, which "
+              "comes from the same release, is checked. See the install guide to verify "
+              "provenance, or pass --require-attestation.", file=sys.stderr)
+        return False
+    result = subprocess.run([gh, "attestation", "verify", str(archive), "--repo", REPOSITORY],
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if result.returncode != 0:
+        raise ValueError("archive attestation does not verify for " + REPOSITORY
+                         + "; nothing installed:\n" + result.stdout.strip())
+    print("Verified build-provenance attestation for " + archive.name + " from " + REPOSITORY)
+    return True
 
 
 def unpack(archive, destination, name):
@@ -141,6 +180,8 @@ def main():
     parser.add_argument("--prefix", type=Path, default=Path.home() / ".local" / "opt")
     parser.add_argument("--install-toolchain", action="store_true",
                         help="install the verifier's Rust pin and rust-src using existing rustup")
+    parser.add_argument("--require-attestation", action="store_true",
+                        help="refuse to install unless `gh attestation verify` passes")
     args = parser.parse_args()
     try:
         host_target = target()
@@ -151,6 +192,7 @@ def main():
         with tempfile.TemporaryDirectory(prefix="sail-download-") as temporary:
             archive = args.archive.expanduser().resolve() if args.archive else download(
                 args.version, "sail-" + args.version + "-" + host_target + ".tar.gz", Path(temporary))
+            attest(archive, args.require_attestation)
             installed = install(archive, args.prefix.expanduser().resolve(), host_target,
                                 args.install_toolchain)
         import shlex
