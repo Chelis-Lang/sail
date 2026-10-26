@@ -8,14 +8,37 @@ use sail_acceptance::authority::{
     AttemptLedger, CompilerUnit, ObservedAttempt, ProcessDescriptor, ReservedAttempt,
     RunningAttempt, UnconfiguredAttempt,
 };
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Output};
+use std::sync::Arc;
 
 pub(crate) struct Journal<'a> {
     directory: &'a Path,
     ledger: AttemptLedger<'a>,
     unavailable: Option<String>,
+    owner: Arc<()>,
+}
+
+/// Exclusive native namespace lease, allocated before request paths are prepared.
+/// The private owner prevents transferring a lease into a different journal.
+pub(crate) struct Allocation<'a> {
+    attempt: UnconfiguredAttempt<'a>,
+    owner: Arc<()>,
+    marker: File,
+}
+
+impl<'a> Allocation<'a> {
+    pub(crate) fn run(&self) -> &'a [u8] {
+        self.attempt.run()
+    }
+    pub(crate) fn unit(&self) -> &'a CompilerUnit {
+        self.attempt.unit()
+    }
+    pub(crate) fn slot(&self) -> usize {
+        self.attempt.slot()
+    }
 }
 
 enum Payload<'a> {
@@ -94,6 +117,7 @@ impl<'a> Journal<'a> {
             directory,
             ledger: AttemptLedger::new(run, unit),
             unavailable: None,
+            owner: Arc::new(()),
         }
     }
 
@@ -104,21 +128,101 @@ impl<'a> Journal<'a> {
     }
 
     /// Allocate request paths before sealing the final command arguments.
-    pub(crate) fn allocate(&mut self) -> Option<UnconfiguredAttempt<'a>> {
+    /// Exclusive markers coordinate separate driver invocations in the same run.
+    pub(crate) fn allocate(&mut self) -> Option<Allocation<'a>> {
         if self.unavailable.is_some() {
             return None;
         }
-        let allocation = self.ledger.allocate();
-        if allocation.is_none() {
-            self.refuse("compiler attempt counter exhausted");
+        match self.try_allocate() {
+            Ok(allocation) => Some(allocation),
+            Err(failure) => {
+                self.refuse(&failure.to_string());
+                None
+            }
         }
-        allocation
+    }
+
+    fn try_allocate(&mut self) -> Result<Allocation<'a>> {
+        // Observation is optional: an occupied or hostile directory must not make
+        // the fresh compiler wait without bound. Exhaustion withholds authority.
+        const MAX_COLLISIONS: usize = 1024;
+        std::fs::create_dir_all(self.directory).map_err(|failure| error(failure.to_string()))?;
+        for _ in 0..MAX_COLLISIONS {
+            let attempt = self
+                .ledger
+                .allocate()
+                .ok_or_else(|| error("compiler attempt counter exhausted"))?;
+            if self.legacy_slot_occupied(attempt.slot())? {
+                continue;
+            }
+            let path = self.directory.join(format!("{}.allocated", attempt.slot()));
+            let marker = match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+            {
+                Ok(marker) => marker,
+                Err(failure) if failure.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(failure) => {
+                    return Err(error(format!(
+                        "cannot allocate compiler attempt {}: {failure}",
+                        path.display()
+                    )));
+                }
+            };
+            let mut allocation = Allocation {
+                attempt,
+                owner: Arc::clone(&self.owner),
+                marker,
+            };
+            // Preserve pre-marker histories too; never reinterpret an old closed
+            // slot as a fresh launch. A concurrent legacy writer fails safe.
+            if self.legacy_slot_occupied(allocation.slot())? {
+                continue;
+            }
+            let unit = allocation.unit();
+            let bytes = serde_json::to_vec(&serde_json::json!({
+                "version": 1, "run": allocation.run(), "slot": allocation.slot(),
+                "unit": {"manifest":unit.manifest,"name":unit.name,
+                    "crate_type":unit.crate_type,"cargo_name":unit.cargo_name},
+            }))
+            .map_err(|failure| error(failure.to_string()))?;
+            allocation
+                .marker
+                .write_all(&bytes)
+                .and_then(|()| allocation.marker.sync_data())
+                .map_err(|failure| {
+                    error(format!(
+                        "cannot seal compiler allocation {}: {failure}",
+                        path.display()
+                    ))
+                })?;
+            return Ok(allocation);
+        }
+        Err(error("compiler attempt namespace collision limit reached"))
+    }
+
+    fn legacy_slot_occupied(&self, slot: usize) -> Result<bool> {
+        for suffix in ["reserved", "observed"] {
+            let path = self.directory.join(format!("{slot}.{suffix}"));
+            match std::fs::symlink_metadata(&path) {
+                Ok(_) => return Ok(true),
+                Err(failure) if failure.kind() == std::io::ErrorKind::NotFound => (),
+                Err(failure) => {
+                    return Err(error(format!(
+                        "cannot inspect compiler attempt {}: {failure}",
+                        path.display()
+                    )));
+                }
+            }
+        }
+        Ok(false)
     }
 
     /// Observe and persist the final command after request preparation.
     pub(crate) fn configure(
         &mut self,
-        allocation: UnconfiguredAttempt<'a>,
+        allocation: Allocation<'a>,
         command: &Command,
     ) -> Option<ReservedAttempt<'a>> {
         if self.unavailable.is_some() {
@@ -211,9 +315,12 @@ impl<'a> Journal<'a> {
 
     fn try_configure(
         &self,
-        allocation: UnconfiguredAttempt<'a>,
+        allocation: Allocation<'a>,
         command: &Command,
     ) -> Result<ReservedAttempt<'a>> {
+        if !Arc::ptr_eq(&allocation.owner, &self.owner) {
+            return Err(error("compiler allocation belongs to another journal"));
+        }
         let descriptor = ProcessDescriptor {
             program: command.get_program().as_encoded_bytes().to_vec(),
             arguments: command
@@ -233,7 +340,7 @@ impl<'a> Journal<'a> {
                 })
                 .collect(),
         };
-        let reserved = allocation.configure(descriptor);
+        let reserved = allocation.attempt.configure(descriptor);
         let descriptor = reserved.descriptor();
         let unit = reserved.unit();
         let bytes = serde_json::to_vec(&serde_json::json!({
@@ -343,6 +450,98 @@ mod tests {
         assert_eq!(captured.stdout(), request.as_os_str().as_encoded_bytes());
         assert!(captured.status().success());
         assert!(captured.observation().is_some());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn separate_journals_allocate_fresh_slots_and_preserve_prior_history() -> TestResult {
+        let root =
+            std::env::temp_dir().join(format!("sail-repeated-attempt-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        // Pre-marker versions may have either pre-spawn or terminal history.
+        std::fs::write(root.join("0.reserved"), b"original reservation")?;
+        std::fs::write(root.join("1.observed"), b"original terminal")?;
+        let unit = CompilerUnit {
+            manifest: b"Cargo.toml".to_vec(),
+            name: b"demo".to_vec(),
+            crate_type: b"lib".to_vec(),
+            cargo_name: None,
+        };
+        let mut old_history = Vec::new();
+        for expected in [2, 3] {
+            // A legitimate managed retry invokes another driver with a new local
+            // ledger, but the independent native namespace persists in this run.
+            let mut journal = Journal::new(b"same-run", &unit, &root);
+            let mut command = Command::new("/bin/sh");
+            command
+                .args([
+                    "-c",
+                    "printf 'same output'; printf 'same diagnostic' >&2; exit 7",
+                ])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+            let reserved = journal.reserve(&command).ok_or("reservation refused")?;
+            assert_eq!(reserved.slot(), expected);
+            let child = command.spawn()?;
+            let running = journal.started(Some(reserved), &child);
+            let captured = journal.capture(running, child.wait_with_output()?);
+            assert_eq!(captured.stdout(), b"same output");
+            assert_eq!(captured.stderr(), b"same diagnostic");
+            assert_eq!(captured.status().code(), Some(7));
+            assert_eq!(
+                captured
+                    .observation()
+                    .ok_or("observation refused")?
+                    .reserved()
+                    .slot(),
+                expected
+            );
+            if expected == 2 {
+                old_history = std::fs::read(root.join("2.observed"))?;
+            }
+        }
+        assert_eq!(
+            std::fs::read(root.join("0.reserved"))?,
+            b"original reservation"
+        );
+        assert_eq!(
+            std::fs::read(root.join("1.observed"))?,
+            b"original terminal"
+        );
+        assert_eq!(std::fs::read(root.join("2.observed"))?, old_history);
+        assert!(root.join("2.allocated").is_file());
+        assert!(root.join("3.allocated").is_file());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn allocation_from_another_journal_cannot_configure_a_child() -> TestResult {
+        let root =
+            std::env::temp_dir().join(format!("sail-cross-owner-attempt-{}", std::process::id()));
+        let unit = CompilerUnit {
+            manifest: b"Cargo.toml".to_vec(),
+            name: b"demo".to_vec(),
+            crate_type: b"lib".to_vec(),
+            cargo_name: None,
+        };
+        let mut first = Journal::new(b"same-run", &unit, &root);
+        let allocation = first.allocate().ok_or("allocation refused")?;
+        let mut second = Journal::new(b"same-run", &unit, &root);
+        let command = Command::new("/bin/sh");
+        assert!(second.configure(allocation, &command).is_none());
+        assert!(
+            second
+                .unavailable
+                .as_deref()
+                .is_some_and(|reason| reason.contains("another journal"))
+        );
+        assert!(!root.join("0.reserved").exists());
+        // Refusal leaves the exclusive marker occupied rather than recycling it.
+        let replacement = first.reserve(&command).ok_or("fresh slot refused")?;
+        assert_eq!(replacement.slot(), 1);
+        assert!(root.join("0.allocated").is_file());
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
