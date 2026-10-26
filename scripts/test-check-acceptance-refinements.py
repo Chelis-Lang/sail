@@ -34,7 +34,7 @@ class SourceCaptureTests(unittest.TestCase):
     def snapshots(self) -> dict[str, bytes]:
         return {"crates/sail-api/src/" + name + ".rs":
             (ROOT / "crates/sail-api/src" / (name + ".rs")).read_bytes()
-            for name in ("output", "project")}
+            for name in SOURCE.API_MODULES}
 
     def test_real_stencil_preserves_actual_authority_fields(self):
         files, inventory = SOURCE.api_stencils(self.snapshots())
@@ -47,6 +47,47 @@ class SourceCaptureTests(unittest.TestCase):
         self.assertIn(b"pub args: Vec < String >,", files["project.rs"])
         self.assertIn(b"pub targets: Vec < RequestTarget >,", files["project.rs"])
         self.assertIn(b"pub engine: Option < EngineIdentity >,", files["project.rs"])
+        self.assertIn(b"Repair(crate :: repair :: Selection),", files["jobs.rs"])
+        self.assertIn(b"pub function: String,", files["repair.rs"])
+        self.assertIn(b"pub solver: Option < SolverInfo >,", files["output.rs"])
+        self.assertIn(b"pub mode: String,", files["output.rs"])
+        self.assertIn(b"pub sha256: Option < String >,", files["output.rs"])
+        self.assertIn(b"pub establishing_run: String,", files["project.rs"])
+        self.assertIn(b"pub reused: bool,", files["project.rs"])
+
+
+    def test_submission_payload_and_selection_representation_cannot_change(self):
+        snapshots = self.snapshots()
+        _, expected = SOURCE.api_stencils(snapshots)
+        for path, before, after in (
+            ("jobs", b"Repair(crate::repair::Selection)", b"Repair(String)"),
+            ("jobs", b"Repair(crate::repair::Selection)", b"Repair(crate::repair::Selection, bool)"),
+            ("jobs", b"Repair(crate::repair::Selection)", b"Repair"),
+            ("repair", b"pub function: String,", b"pub function: Option<String>,"),
+            ("repair", b"pub target: Option<String>,", b"pub target: String,"),
+        ):
+            candidate = dict(snapshots)
+            key = "crates/sail-api/src/" + path + ".rs"
+            self.assertIn(before, candidate[key])
+            candidate[key] = candidate[key].replace(before, after, 1)
+            with self.subTest(path=path, after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.api_stencils(candidate, expected)
+        for before, after in (
+            (b"pub enum Mode {", b"#[cfg(unix)] pub enum Mode {"),
+            (b"pub enum Mode {", b"#[cfg(not(sail_verus))] pub enum Mode {"),
+            (b"use serde_json::Value;", b"use serde_json::Value; use crate::repair::Selection as String;"),
+            (b'cfg!(target_os = "linux")', b'cfg!(feature = "proof_override")'),
+        ):
+            candidate = dict(snapshots)
+            key = "crates/sail-api/src/jobs.rs"
+            self.assertIn(before, candidate[key])
+            candidate[key] = candidate[key].replace(before, after, 1)
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.api_stencils(candidate, expected)
+        for source in ("pub enum Mode { Repair(String) }",
+                "pub enum Mode { Repair { selection: String } }"):
+            with self.subTest(source=source), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.record(source, "Mode", "enum")
 
     def test_request_identity_fields_cannot_disappear_from_stencil(self):
         snapshots = self.snapshots()

@@ -137,8 +137,13 @@ def dependency_paths(component: str) -> list[str]:
     result.append("proofs/refinement/" + component + ".rs")
     if component == "authority":
         result += ["crates/sail-api/src/acceptance.rs", "crates/sail-api/src/acceptance_sort.rs",
-            "crates/sail-api/src/output.rs", "crates/sail-api/src/project.rs"]
+            *["crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES]]
     return result
+
+
+def declaration_source(path: str) -> bool:
+    """Only the inventoried declarations of these actual API modules compile."""
+    return path in {"crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES}
 
 
 def compiled_subset(path: str, content: bytes) -> None:
@@ -206,7 +211,7 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[d
         require([control["name"] for control in entry.get("negative_controls", [])]
             == REQUIRED_CONTROLS[component], "selected mutation inventory omitted, duplicated or reordered")
         for path in entry["dependencies"]:
-            if component == "authority" and path.endswith(("/output.rs", "/project.rs")):
+            if component == "authority" and declaration_source(path):
                 continue  # Only the mechanically selected declarations compile.
             compiled_subset(path, snapshots[path])
         for control in entry["negative_controls"]:
@@ -251,12 +256,13 @@ def captured_driver(entry: dict, snapshots: dict[str, bytes], control: dict | No
         files.update(stencils)
         files["api_acceptance.rs"] = sources["crates/sail-api/src/acceptance.rs"]
         files["acceptance_sort.rs"] = sources["crates/sail-api/src/acceptance_sort.rs"]
-        declarations += ["pub mod output;", "pub mod project;",
+        declarations += ["pub mod " + name + ";" for name in SOURCE.API_MODULES]
+        declarations += [
             '#[path="api_acceptance.rs"] pub mod acceptance;', "mod acceptance_sort;"]
     files["refinement.rs"] = sources[entry["source"]]
     declarations += ['#[path="refinement.rs"] pub mod refinement;', "fn main() {}"]
     for path, data in sources.items():
-        if not (component == "authority" and path.endswith(("/output.rs", "/project.rs"))):
+        if not (component == "authority" and declaration_source(path)):
             compiled_subset(path, data)
     return "check_" + component + ".rs", ("\n".join(declarations) + "\n").encode(), files
 
@@ -391,11 +397,10 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
         "complete_suite": component is None,
         "source_roles": {entry["id"]: {
             "checked_source": [path for path in entry["dependencies"] if path not in
-                {SYNTAX, "crates/sail-api/src/acceptance_sort.rs",
-                    "crates/sail-api/src/output.rs", "crates/sail-api/src/project.rs"}],
+                {SYNTAX, "crates/sail-api/src/acceptance_sort.rs"} and not declaration_source(path)],
             "reviewed_syntax": [SYNTAX],
             "declaration_projections": [path for path in entry["dependencies"]
-                if path.endswith(("/output.rs", "/project.rs"))],
+                if declaration_source(path)],
             "structurally_checked_forwarders": [path for path in entry["dependencies"]
                 if path.endswith("/acceptance_sort.rs")],
         } for entry in entries},
