@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve and freshly reobserve valid receipts' declared environment names when
+  successful compilation replaces broader failed-verification dep-info, keeping
+  strict refusal for incomplete scans and changed values.
+
 - Use stock-Verus-checked operations for retained request enforcement and
   freshness projection, preserving diagnostics and refusing promotion of
   Historical or Unknown evidence to Current.
