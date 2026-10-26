@@ -142,6 +142,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `66a4cb46` | Whole authority root development | VIR checking requires hide headers at the start of the function body, not inside a nested proof block. The correction moves the identical headers to the supported position; loop/liveness verification and workspace remain pending |
 | 2026-10-26 | `df79d529` | Native whole positive roots | Query/inputs pass again. Authority reports an incomplete constructive loop invariant in exact-partial request admission and the unchanged rlimit in its new whole replay witness. The correction retains conditional singleton/target facts and controls local unfolding; runtime guards, contracts, scope and resource limits stay unchanged |
 | 2026-10-26 | `11f3be8c` | Native whole positive roots | Query 353/0 and inputs 283/0 pass; authority VIR checking rejects an executable Vec-to-slice coercion inside the new constructive proof helper call. Moving the same slice borrow before the proof block preserves the witness/contract; final authority and workspace remain pending |
 | 2026-10-26 | `31ae9d88` | Native whole positive roots | Query VIR checking rejects a public open specification reading private publication fields; no whole positive root qualifies and later inputs/authority/workspace are unrun. The source correction keeps the predicate and private fields, using their existing closed selectors |
