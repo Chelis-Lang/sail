@@ -66,6 +66,11 @@ semantic versioning once the API is published.
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
+- Capture owned compiler stdout/stderr through private readers and actual EOF
+  tokens. Production completion checks original child ownership and stream role
+  before accepting those bytes; missing or refused observations retain fresh
+  output without completion authority. Native build, proof and conformance
+  qualification remain pending for this source candidate.
 - Remove per-token remaining-source copies from the acceptance source lexer.
   Exact token/refusal regression and native differential qualification are
   pending; no preflight or full-gate speedup has been measured for this candidate.

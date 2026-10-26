@@ -27,6 +27,9 @@ use crate::inputs::{
     contains_fact, covered_selection, key_less, key_less_transitive, ordered_facts,
     ordered_lookup_stops_at_member, ordered_pair_less, permutation_at, same_key, same_value,
 };
+use crate::stream_capture::{PipeReadback, pipe_readback_matches};
+#[cfg(sail_verus)]
+use crate::stream_capture::{pipe_bytes, pipe_matches};
 
 sail_code! {
     /// Raw rows with untrusted ordering proposals; no completeness is implied.
@@ -1369,5 +1372,79 @@ sail_verified! {
             return Err(UnsealedOutput { stdout: completion.stdout, stderr: completion.stderr, exit });
         }
         attempt.running.stdout_eof(completion.stdout).stderr_eof(completion.stderr).exited(exit).finish_or_output()
+    }
+}
+
+sail_code! {
+    /// Actual owned completion with privately sealed stdout/stderr EOF evidence.
+    /// This separate native boundary leaves raw modeled completion controls intact.
+    pub struct OwnedPipeCompletionFields<Owner> {
+        /// Original actual child ownership lease.
+        pub owner: Option<Owner>,
+        /// Original actual owned child PID.
+        pub pid: Option<u32>,
+        /// Original pre-spawn checked configuration.
+        pub configuration: Option<ConfiguredIntent>,
+        /// Missing wait and actual waited signal remain different observations.
+        #[expect(clippy::option_option, reason = "Actual wait presence is independent of whether termination was signaled.")]
+        pub wait: Option<Option<i32>>,
+        /// Private stdout EOF evidence or explicitly unavailable actual bytes.
+        pub stdout: PipeReadback<Owner>,
+        /// Private stderr EOF evidence, with its distinct original role.
+        pub stderr: PipeReadback<Owner>,
+    }
+}
+
+sail_spec! {
+    /// Typed actual-stream matching in addition to original child/wait/configuration.
+    pub open spec fn owned_pipe_completion_matches<Owner, Identity: OwnerIdentity<Owner>>(attempt: OwnedCompilerAttempt<Owner>, completion: OwnedPipeCompletionFields<Owner>) -> bool {
+        completion.owner.is_some() && completion.pid == Some(attempt.pid_view())
+            && completion.configuration.is_some() && completion.wait.is_some()
+            && Identity::identity(&attempt.owner_view()) == Identity::identity(&completion.owner.unwrap())
+            && same_descriptor(attempt.descriptor_view(), completion.configuration.unwrap().descriptor_view())
+            && attempt.inheritance_view() == completion.configuration.unwrap().inheritance_view()
+            && pipe_matches::<Owner, Identity>(completion.stdout, attempt.owner_view(), 0)
+            && pipe_matches::<Owner, Identity>(completion.stderr, attempt.owner_view(), 1)
+    }
+    /// Both accepted and refused completions preserve original actual pipe bytes.
+    pub open spec fn owned_pipe_completion_output<Owner>(result: Result<ObservedAttempt, UnsealedOutput>, completion: OwnedPipeCompletionFields<Owner>) -> bool {
+        match result {
+            Ok(observed) => running_stdout(&observed_running(&observed)).unwrap()@ == pipe_bytes(completion.stdout)
+                && running_stderr(&observed_running(&observed)).unwrap()@ == pipe_bytes(completion.stderr)
+                && running_exit(&observed_running(&observed)) == completion.wait,
+            Err(raw) => raw.stdout@ == pipe_bytes(completion.stdout) && raw.stderr@ == pipe_bytes(completion.stderr)
+                && raw.exit == match completion.wait { Some(exit) => exit, None => None },
+        }
+    }
+}
+
+sail_verified! {
+    /// Actual compiler completion consumes private EOF tokens with matching child/roles.
+    /// The raw reducer sees bytes only after this shared stream-origin gate.
+    ///
+    /// # Errors
+    /// Returns original bytes when either endpoint lacks genuine EOF evidence,
+    /// has a different lease/role, or fails original process/wait correspondence.
+    pub fn complete_owned_compiler_pipes<'a, Owner, Identity>(identity: &Identity, attempt: Option<OwnedCompilerAttempt<'a, Owner>>, completion: OwnedPipeCompletionFields<Owner>) -> (out: Result<ObservedAttempt<'a>, UnsealedOutput>)
+        where (Identity: OwnerIdentity<Owner>)
+        requires (attempt.is_some() ==> attempt.unwrap().ready())
+        ensures (out.is_ok() == (attempt.is_some() && owned_pipe_completion_matches::<Owner, Identity>(attempt.unwrap(), completion)),
+            owned_pipe_completion_output(out, completion),
+            out.is_ok() ==> observation_complete(&observed_running(&out.unwrap()))
+                && running_reserved(&observed_running(&out.unwrap())) == running_reserved(&attempt.unwrap().running_view())
+                && running_pid(&observed_running(&out.unwrap())) == attempt.unwrap().pid_view())
+    {
+        let streams_match = match &attempt {
+            Some(attempt) => pipe_readback_matches(identity, &completion.stdout, &attempt.owner, 0)
+                && pipe_readback_matches(identity, &completion.stderr, &attempt.owner, 1),
+            None => false,
+        };
+        let exit = match completion.wait { Some(exit) => exit, None => None };
+        let raw = OwnedCompletionFields {
+            owner: completion.owner, pid: completion.pid, configuration: completion.configuration, wait: completion.wait,
+            stdout: completion.stdout.into_bytes(), stderr: completion.stderr.into_bytes(),
+        };
+        if !streams_match { return Err(UnsealedOutput { stdout: raw.stdout, stderr: raw.stderr, exit }); }
+        complete_owned_compiler(identity, attempt, raw)
     }
 }
