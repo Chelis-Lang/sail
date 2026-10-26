@@ -15,6 +15,8 @@ pub mod key_prefix;
 /// One owned operational argument layer with exact ordinary-argv restoration.
 pub mod observation_arguments;
 pub mod query;
+/// Default response policy from exact accepted command head bytes.
+pub mod query_policy;
 /// Joint ownership of exact raw input and its incremental key material.
 pub mod query_prefix;
 

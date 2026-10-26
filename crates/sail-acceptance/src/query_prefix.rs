@@ -33,6 +33,15 @@ sail_code! {
             { self.head }
         }
         sail_method! {
+            /// Computes output metadata from this accepted command's own exact head.
+            pub fn policy(&self) -> (out: crate::query_policy::ResponsePolicy)
+                requires (true)
+                ensures ((out is One) == crate::query_policy::one_head(self.head_view()),
+                    (out is None) == (!crate::query_policy::one_head(self.head_view()) && crate::query_policy::silent_head(self.head_view())),
+                    (out is Unknown) == (!crate::query_policy::one_head(self.head_view()) && !crate::query_policy::silent_head(self.head_view())))
+            { crate::query_policy::response_policy(self.head) }
+        }
+        sail_method! {
             /// The exact raw endpoint whose state produced this key.
             pub fn end(&self) -> (out: usize)
                 requires (true) ensures (out == self.endpoint())

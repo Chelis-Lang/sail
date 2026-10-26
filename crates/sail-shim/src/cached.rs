@@ -741,8 +741,14 @@ fn observe(
         prefix.refuse();
         return (Output::Unknown, String::new(), Expect::Stop);
     }
-    let mut output = if item.kind == ItemKind::List {
-        session.expects_output(&item.bytes)
+    let policy = match frame.policy() {
+        sail_acceptance::query_policy::ResponsePolicy::None => Output::None,
+        sail_acceptance::query_policy::ResponsePolicy::One => Output::One,
+        sail_acceptance::query_policy::ResponsePolicy::Unknown => Output::Unknown,
+    };
+    let mut output = if item.kind == ItemKind::List && session.expects_output(&item.bytes) == policy
+    {
+        policy
     } else {
         Output::Unknown
     };
@@ -1100,6 +1106,44 @@ mod tests {
                 plain.update(input);
                 assert_eq!(prefix.silence_key(), plain.silence_key());
                 assert_eq!(prefix.bytes(), input);
+            }
+        }
+    }
+
+    #[test]
+    fn output_expectations_use_the_exact_checked_frame_head() {
+        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        for (command, expected) in [
+            (b"( ;head\r\ncheck-sat-using smt)".as_slice(), Output::One),
+            (
+                b"(assert (str.contains \"a;()\" \"a\"))".as_slice(),
+                Output::None,
+            ),
+            (b"(echo \"a;()\"\"b\")".as_slice(), Output::One),
+            (b"(get-info :name)".as_slice(), Output::One),
+            (b"(get-proof)".as_slice(), Output::One),
+            (b"(reset)".as_slice(), Output::None),
+            (b"(check-sat-usingbad)".as_slice(), Output::Unknown),
+            (b"(|check-sat|)".as_slice(), Output::Unknown),
+        ] {
+            let mut prefix = SessionPrefix::new(&identity(), &super::Mode::Default);
+            prefix.append(command);
+            let item = Item {
+                kind: ItemKind::List,
+                offset: 0,
+                bytes: command.to_vec(),
+            };
+            let (actual, _, metadata) = observe(&mut Session::new(), &item, &mut prefix);
+            assert_eq!(actual, expected);
+            assert_eq!(prefix.bytes(), command);
+            if expected == Output::One {
+                let Expect::Store { key, text, .. } = metadata else {
+                    unreachable!("one response needs an exact Store expectation");
+                };
+                assert_eq!(text, command);
+                assert_eq!(key, prefix.key());
+            } else {
+                assert!(matches!(metadata, Expect::Stop));
             }
         }
     }
