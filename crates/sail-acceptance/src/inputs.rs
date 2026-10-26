@@ -1991,3 +1991,15 @@ sail_verified! {
         result
     }
 }
+
+sail_trait! {
+    /// Only native ownership identity comparison, not a process success oracle.
+    /// Production uses a thin `Arc::ptr_eq` adapter, never a compiler-domain premise.
+    pub trait OwnerIdentity<Owner> {
+        spec { spec fn identity(owner: &Owner) -> int; }
+        /// Compare exactly these two opaque ownership leases.
+        fn same_owner(&self, original: &Owner, actual: &Owner) -> (same: bool)
+            requires (true)
+            ensures (same == (Self::identity(original) == Self::identity(actual)));
+    }
+}

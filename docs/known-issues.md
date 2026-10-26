@@ -3,6 +3,19 @@
 Open product defects and release limits. The [roadmap](ROADMAP.md) tracks
 release work; linked validation pages preserve the scope of each result.
 
+## Owned-compiler refinement qualification
+
+The local owned-compiler source slice remains unqualified. At frozen `714bf6e5`,
+stock Verus checks the whole input crate and reports 277 verified / 5 errors,
+with eight diagnostic locations in its constructive witnesses and missing
+start/completion guarantees. The source correction strengthens those guarantees,
+adds descriptor-correspondence proof steps and makes original witness bytes
+explicit; it does not weaken contracts or change production control flow.
+Whole-root and failure-control reruns remain pending. This is a validation gap,
+not a demonstrated production false-proof witness; see
+[#374](https://github.com/Chelis-Lang/sail/issues/374#issuecomment-6427046792)
+and the [owning record](validation/acceptance-boundary-refinements.md).
+
 ## Compiler-phase witness selected without its inputs
 
 [Sail #425](https://github.com/Chelis-Lang/sail/issues/425) records the native
@@ -11,8 +24,9 @@ witness lacks its required frozen build and external output directory. Workspace
 and both complete proof suites pass; the controller leaves e2e and conformance
 unrun. The candidate routes that witness through `ci/run.sh boundary-witness
 phases` with strict required inputs, separately from pinned-Z3 solver fixtures.
-Its assertions and missing-input failures remain unchanged. Final native
-qualification is pending; see the [owning record](validation/acceptance-boundary-refinements.md).
+Its assertions and missing-input failures remain unchanged. The frozen
+`73f928d1` native solver suite now passes all 53 tests; later integrated source
+still needs final qualification. See the [owning record](validation/acceptance-boundary-refinements.md).
 
 ## Managed metadata changes procedural macro arguments
 

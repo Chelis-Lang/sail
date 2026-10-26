@@ -946,8 +946,12 @@ Missing wait and an actual signaled exit remain distinct. A genuine failing
 exit is still a completed process observation; it cannot become a successful
 proof merely because this operation records it.
 
-The sole new generic primitive is `OwnerIdentity::same_owner`. Its contract is
-exact opaque identity equality; the production body is `Arc::ptr_eq` on the two
+The single shared ownership primitive is `inputs::OwnerIdentity::same_owner`,
+re-exported by `phase_inputs` for the existing native API. Its unchanged contract
+is shared with process-stream consumers without importing the compiler-phase
+module into query proof roots. No previously qualified function is removed by
+this relocation: the primitive is introduced by this still-unqualified slice.
+Its contract is exact opaque identity equality; the production body is `Arc::ptr_eq` on the two
 actual retained leases. It has no `all_inputs`, compiler-domain, successful-I/O,
 watcher, metadata-stability or verifier-success premise. The constructive
 `ScalarOwnerIdentity` fixture proves that primitive over actual `u64` values,

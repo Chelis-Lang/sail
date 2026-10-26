@@ -1278,7 +1278,7 @@ fn record_provenance(input: &[u8], served: u64, solver_started: bool) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Expect, Pairer};
+    use super::{Entry, Expect, Pairer};
     use proptest::prelude::*;
     use sail_key::QueryKey;
 

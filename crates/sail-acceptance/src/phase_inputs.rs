@@ -16,6 +16,8 @@ use crate::authority::{
     reserved_unit, running_exit, running_invalid, running_pid, running_reserved, running_stderr,
     running_stdout,
 };
+// Preserve the existing phase API while sharing one original ownership primitive.
+pub use crate::inputs::OwnerIdentity;
 use crate::inputs::{
     InputFact, byte_eq, copy_bytes, input_key_eq, input_order, ordered_key_less, selection_covered,
     value_difference,
@@ -117,6 +119,29 @@ sail_spec! {
         a.program@ == b.program@ && same_arguments(a.arguments@, b.arguments@)
             && same_optional(a.directory, b.directory) && same_overrides(a.overrides@, b.overrides@)
     }
+    /// Compose exact byte-field correspondence without treating copied Vec
+    /// allocation identities as argument or environment identity.
+    pub proof fn descriptor_correspondence_transitive(a: ProcessDescriptor, b: ProcessDescriptor, c: ProcessDescriptor)
+        requires same_descriptor(a, b), same_descriptor(b, c),
+        ensures same_descriptor(a, c),
+    {
+        assert(same_optional(a.directory, c.directory));
+        assert forall |i: int| 0 <= i < a.arguments@.len() implies
+            #[trigger] a.arguments@[i]@ == c.arguments@[i]@ by {
+            assert(a.arguments@[i]@ == b.arguments@[i]@);
+            assert(b.arguments@[i]@ == c.arguments@[i]@);
+        }
+        assert forall |i: int| 0 <= i < a.overrides@.len() implies
+            #[trigger] a.overrides@[i].0@ == c.overrides@[i].0@
+                && same_optional(a.overrides@[i].1, c.overrides@[i].1) by {
+            assert(a.overrides@[i].0@ == b.overrides@[i].0@);
+            assert(b.overrides@[i].0@ == c.overrides@[i].0@);
+            assert(same_optional(a.overrides@[i].1, b.overrides@[i].1));
+            assert(same_optional(b.overrides@[i].1, c.overrides@[i].1));
+            assert(same_optional(a.overrides@[i].1, c.overrides@[i].1));
+        }
+    }
+
 }
 
 impl PhaseRequest {
@@ -1118,18 +1143,6 @@ sail_code! {
     }
 }
 
-sail_trait! {
-    /// Only native ownership identity comparison, not a process success oracle.
-    /// Production uses a thin `Arc::ptr_eq` adapter, never a compiler-domain premise.
-    pub trait OwnerIdentity<Owner> {
-        spec { spec fn identity(owner: &Owner) -> int; }
-        /// Compare exactly these two opaque ownership leases.
-        fn same_owner(&self, original: &Owner, actual: &Owner) -> (same: bool)
-            requires (true)
-            ensures (same == (Self::identity(original) == Self::identity(actual)));
-    }
-}
-
 sail_spec! {
     /// One final raw override/removal has the exact typed environment row.
     pub open spec fn descriptor_environment_row(operation: (Vec<u8>, Option<Vec<u8>>), row: InputFact) -> bool {
@@ -1244,11 +1257,15 @@ sail_verified! {
             out.is_some() ==> out.unwrap().ready()
                 && running_reserved(&out.unwrap().running_view()) == reserved
                 && out.unwrap().owner_view() == fields.owner && out.unwrap().pid_view() == fields.pid
-                && out.unwrap().inheritance_view() == fields.configuration.unwrap().inheritance_view())
+                && out.unwrap().inheritance_view() == fields.configuration.unwrap().inheritance_view()
+                && same_descriptor(out.unwrap().descriptor_view(), fields.configuration.unwrap().descriptor_view()))
     {
         let configuration = match fields.configuration { Some(value) => value, None => return None };
         if !descriptors_equal(reserved.descriptor(), configuration.descriptor()) { return None; }
         let descriptor = copy_descriptor(reserved.descriptor());
+        sail_proof! {
+            descriptor_correspondence_transitive(descriptor, reserved_descriptor(&reserved), configuration.descriptor_view());
+        }
         let inheritance = match configuration.inheritance() {
             EnvironmentInheritance::Inherit => EnvironmentInheritance::Inherit,
             EnvironmentInheritance::Clear => EnvironmentInheritance::Clear,
@@ -1318,6 +1335,7 @@ sail_verified! {
         requires (attempt.is_some() ==> attempt.unwrap().ready())
         ensures (out.is_ok() == (attempt.is_some() && owned_completion_matches::<Owner, Identity>(attempt.unwrap(), completion)),
             owned_completion_output(out, completion),
+            out.is_ok() ==> observation_complete(&observed_running(&out.unwrap())),
             out.is_ok() ==> running_reserved(&observed_running(&out.unwrap())) == running_reserved(&attempt.unwrap().running_view())
                 && running_pid(&observed_running(&out.unwrap())) == attempt.unwrap().pid_view())
     {
