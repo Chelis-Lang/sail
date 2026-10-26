@@ -73,6 +73,8 @@ the remaining integration and service-wide proof obligations.
 [Acceptance boundary refinements](design/acceptance-boundary-refinements.md)
 tracks the follow-up work on raw transcripts, evidence providers, independently
 retained requests and concrete service composition.
+The [cache-origin admission choices](design/cache-origin-admission.md) map the
+remaining writer/recovery gap to owned execution or independent validation.
 The [acceptance proof WIP handoff](acceptance-proof-handoff.md) identifies the
 published work branches, existing evidence and unfinished integration work.
 The [compiler-input observation proposal](design/compiler-input-observation.md)
