@@ -57,6 +57,14 @@ verifier jobs remain stopped while the owner's machine is busy.
 
 ## Source and actual scope
 
+The `269317c4` stopped native gate is preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-combined-269317c4-native-gate.tgz`.
+SHA-256: `67d2bc502d1731ca3a721b05db125cdc499c8a85e72a5f4bd867626af2cb13a3`.
+Its workspace reaches native lint checks and stops after 188.99 s on four
+diagnostics; later gates are unrun. Corrections retain the journal API, move a
+test import, terminate a test assignment, and use the equivalent optional path
+binding operation in the unproved native caller. All source bindings are refreshed.
+
 The `3352f2fd` stopped native gate is preserved at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-combined-3352f2fd-native-gate.tgz`.
 SHA-256: `d1c573d8b6b5f3588959b3827d1b4f949b57f83e61d2368e932331df03043dd4`.
@@ -179,6 +187,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `269317c4` | Native full gate | API lints pass; workspace stops on native journal unused-self, optional path-binding syntax, test import ordering and one test semicolon. Later gates are unrun; corrected source requires rerun |
 | 2026-10-26 | `3352f2fd` | Native full gate | Workspace stops on five API style diagnostics: nested path-binding admission and explicit replay-refusal branches. Local documented allowances preserve the proved bodies; every later gate remains unrun |
 | 2026-10-26 | `00a501c7` | Native authority proof/workspace | Entire authority root passes 489/0, all 830 functions and final source/runtime checks. Workspace stops at source-shared style/lifetime lint diagnostics and an unfulfilled field lint expectation; local reasons/annotations retain the proved control flow. Full gate rerun pending |
 | 2026-10-26 | `73f928d1` | Native full gate | Workspace, 31 model cases, all 213 production cases and 53 solver tests pass. E2e stops at the original cold JSON replay trace assertion; PR conformance unrun. Restored cold trace and exact-partial source fixes require a new whole gate |

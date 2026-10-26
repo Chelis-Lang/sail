@@ -603,6 +603,7 @@ impl ConfigureCommand for std::process::Command {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sail_acceptance::phase_inputs::owned_identity_matches;
 
     #[cfg(unix)]
     #[test]
@@ -695,7 +696,6 @@ mod tests {
             directory: None,
             overrides: Vec::new(),
         };
-        use sail_acceptance::phase_inputs::owned_identity_matches;
         assert!(owned_identity_matches(
             &NativeOwnerIdentity,
             &original,

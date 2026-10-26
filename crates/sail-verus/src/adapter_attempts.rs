@@ -296,6 +296,10 @@ impl<'a> Journal<'a> {
         }
     }
 
+    #[allow(
+        clippy::unused_self,
+        reason = "Keep owned child start as a journal operation alongside its recorded completion."
+    )]
     pub(super) fn started_owned(
         &mut self,
         reserved: Option<ReservedAttempt<'a>>,
