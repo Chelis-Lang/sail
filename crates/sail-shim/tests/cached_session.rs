@@ -1015,3 +1015,48 @@ fn replayed_statistics_may_differ_in_resource_count() {
     assert_eq!(actual.stderr, direct.stderr);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn overflow_replay_after_served_replies_still_checks_them() {
+    // A session that outgrows SAIL_SHIM_BUFFER_BYTES after serving a reply
+    // starts the solver with the whole input; its suppressed replies are
+    // compared with the served ones as on any miss.
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let mut input = b"(get-info :version)\n".to_vec();
+    for i in 0..400 {
+        input.extend_from_slice(format!("(declare-const x{i} Int)\n").as_bytes());
+    }
+    let direct = input_run(&solver, None, &input);
+    assert!(direct.status.success());
+    let version = direct.stdout.clone();
+    assert!(version.starts_with(b"(:version "));
+    let wrong = b"(:version \"0.0.0\")\n";
+    let socket = filled_then_rewritten(&dir, &input, &[(&version, wrong)]);
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail-z3"));
+    cmd.args(["-smt2", "-in"])
+        .env("SAIL_Z3_PATH", &solver)
+        .env("SAIL_DAEMON_SOCKET", &socket)
+        .env("SAIL_SHIM_BUFFER_BYTES", "1024")
+        .env_remove("SAIL_TRACE_DIR")
+        .env_remove("SAIL_PROVENANCE_DIR")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn().unwrap_or_else(|e| unreachable!("shim: {e}"));
+    if let Some(mut stdin) = child.stdin.take() {
+        assert!(stdin.write_all(&input).is_ok());
+    }
+    let actual = child
+        .wait_with_output()
+        .unwrap_or_else(|e| unreachable!("output: {e}"));
+    assert_eq!(actual.status.code(), Some(1));
+    assert_eq!(actual.stdout, wrong);
+    assert!(
+        String::from_utf8_lossy(&actual.stderr).contains("error[SAIL2005]"),
+        "{}",
+        String::from_utf8_lossy(&actual.stderr)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
