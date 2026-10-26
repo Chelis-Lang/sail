@@ -356,16 +356,24 @@ with `scripts/reader-gate.sh`; see
 
 `sail watch` completes initial Cargo metadata discovery and subscriptions
 before starting its first debounce window. macOS can replay earlier creation
-notifications. During startup these are ignored only when a complete snapshot
-still matches the initial input bytes and file identities, including change
-times. Real edits still cancel verification, including edits whose bytes and
-modification time are restored. After the first actual input change, native
-notifications retain their unconditional cancellation behavior. Unreadable
-state remains conservative; proof admission checks do not use this filter.
+notifications, and under load it can deliver an edit's notifications late or
+more than once. Immediately before submitting each run, watch records a
+complete snapshot of the input bytes and file identities, including change
+times. A later notification batch cancels that run only when the inputs no
+longer match the snapshot, so a late or repeated notification for an edit the
+run already includes does not restart it. The initial snapshot plays the same
+role during startup. Real edits still cancel verification, including edits
+whose bytes and modification time are restored. A removal or rename of an
+input always cancels, because moving a directory away and back keeps every
+identity the snapshot records. Unreadable state remains conservative; proof
+admission checks do not use this filter.
 
 When native notification coverage is incomplete, watch uses only its documented
-content scans; delayed native events do not queue the same edit again. The
-startup snapshot includes empty input directories, while declared build-output
+content scans; delayed native events do not queue the same edit again. Scans
+compare against the last scan or run snapshot. When a completed run widens the
+watched inputs, watch first checks the previous inputs against that baseline,
+so an edit made before the next scan is never adopted as already verified. The
+snapshot includes empty input directories, while declared build-output
 subtrees remain excluded.
 
 ### Partial verification reports

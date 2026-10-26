@@ -1,5 +1,50 @@
 # Watch startup and publication staging
 
+## Late notifications and run snapshots (#403, 2026-10-26)
+
+**Defect.** After the first real edit, every relevant native notification
+cancelled the run in flight. FSEvents under load delivers an edit's
+notifications late and repeats cumulative flags. A notification for the
+`src/target/mod.rs` edit arriving after the 300 ms debounce had submitted
+the run that already included that edit cancelled it and queued a fourth
+run, which matches #403's 143 ms cancellation on live events. A second
+defect affected content-scan mode. Refreshing roots after a completed run
+recaptured the scan baseline, so an edit made before the next scan was
+adopted as already verified and never re-run.
+
+**Correction.** Just before each submission, watch records a snapshot of
+the input bytes and file identities, including change times. A notification
+batch restarts the run only if the inputs now differ from that snapshot.
+Removals and renames of inputs, unreadable state and non-Unix hosts still
+restart unconditionally. Root refreshes recapture only when coverage changes,
+and they first check the old coverage against the baseline. Writes to Cargo's
+output directory never restarted watch in any instrumented run, and they
+remain excluded.
+
+**Evidence** (Apple silicon, 8 cores, Darwin 25.5, base `b5420f24`):
+
+- The red/green witness: on the base, the delayed-duplicate and
+  refresh-swallow regressions fail. On the correction, they and new
+  deterministic tests for Cargo output writes and degradation to scans
+  mid-run pass. That makes 12 `watch` unit tests and 102 `sail-cli` tests.
+  Clippy reports no warnings.
+- The original integration test ran 330 times on the correction under load
+  (a `cargo build --workspace` loop, 2–4 concurrent instances, other
+  sessions' suites, load average 30–120), with 120 of those runs using
+  temporary event tracing. None failed the "Cargo output must not trigger a
+  watch loop" assertion. 41 failed with `timed out waiting for the restarted
+  run` before any restart. That is #416: tracing shows fseventsd delivering
+  no events for the edited input, with its drop notice up to 120 s late or
+  missing. The base shows the same stall: 1 of 30 in an interleaved A/B
+  round, with fixed at 30 of 30, and in earlier traced base runs.
+- #403's extra restart did not reproduce on the base in 150 runs (it was
+  about 1 in 100 at its report), so the stress runs show no regression rather
+  than a measured rate reduction. The deterministic tests are the evidence
+  for the defect.
+
+Logs, traces and scripts: `watch-403-mac.tgz`, SHA-256
+`40a9a48eefac5e24400181fd2c813fadbb3bdf6295f1c30814ddc8369c7c4f89`.
+
 ## Current startup correction (2026-10-25)
 
 The candidate based on `237c7d8d` corrects notification-batch classification.
