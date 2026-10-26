@@ -9,6 +9,24 @@ observation occurred. The [acceptance design](evidence-acceptance-core.md) and
 
 ## Production report and scope validation
 
+`ResolvedRequest` retains the independently resolved pre-execution target
+inventory, run identity, workspace, original options, engine identity, context
+digest and original input revision. The source-shared `complete_request_ordered`
+factory checks those against the actual project, requires exact one-to-one
+coverage, and checks every requested whole-target report before minting an
+immutable `CompleteRequest` borrow token. Compile-only and partial original
+requests, swapped identities, missing or ambiguous targets, and non-Current
+results cannot mint that token. Matching failed observations can still be
+Current; correspondence alone is not proof authority.
+
+The pure factory proves correspondence between its concrete record inputs.
+Its pre-execution producer, original-submission argument mapping, actual Cargo
+scope resolution, complete process observation and retained service adapters
+remain separate proof obligations. Digest equality retains collision-resistance
+assumptions and does not establish complete compiler-input equality. Native
+request capture and retained admission are a separate integration slice; the
+factory alone does not prove all CLI, JSON, MCP or repair callers.
+
 `crates/sail-api/src/acceptance.rs` checks actual public `Report`, `CrateReport`,
 `FunctionReport`, `TargetResult` and `ProjectResult` fields. Cargo and stock
 Verus compile the same executable bodies through the syntax envelopes in
