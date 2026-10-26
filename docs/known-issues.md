@@ -9,10 +9,6 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
 These break the correctness contract and stay listed until fixed and
 covered by conformance.
 
-- **A proof-only environment read can be reused stale**
-  ([#386](https://github.com/Chelis-Lang/sail/issues/386)). A proof that
-  depends on `option_env!("NAME")` keeps its Current receipt after `NAME` is
-  removed, although a fresh run fails. `SAIL_MANAGED_FORCE=1` verifies afresh.
 - **Sail's solver route and Verus-fork requests remain visible to compiled
   code** ([#435](https://github.com/Chelis-Lang/sail/issues/435)). The
   pinned fork and the `sail-z3` shim read these from the compiler's

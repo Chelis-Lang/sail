@@ -2094,6 +2094,17 @@ impl<'a> Call<'a> {
     }
 
     /// Request observations only for this actual admitted compiler invocation.
+    /// Whether this call requested the fork's compiler-input observation.
+    pub(crate) fn observes_compiler(&self) -> bool {
+        self.compiler_observation.is_some()
+    }
+
+    /// Both phases' tracked environment of the compiler child, read without
+    /// this call's source admission (#386).
+    pub(crate) fn compiler_environment(&self) -> Option<super::ghost_environment::Environment> {
+        self.compiler_observation.as_ref()?.environment()
+    }
+
     pub(crate) fn observe_compiler(&mut self, command: &mut std::process::Command) {
         self.compiler_observation = compiler::Observation::begin(self);
         if let Some(observation) = &self.compiler_observation {

@@ -95,6 +95,11 @@ impl Observation {
         self.directory.join("inputs.json")
     }
 
+    /// Both phases' tracked environment, read without source admission (#386).
+    pub(super) fn environment(&self) -> Option<super::super::ghost_environment::Environment> {
+        super::super::ghost_environment::read(&self.document(), &self.binding, self.pid?)
+    }
+
     /// SHA-256 is explicitly requested in both real compiler phases; a
     /// runtime that does not honor it cannot match the complete source basis.
     /// The driver passes it with its other Verus options, never on the
