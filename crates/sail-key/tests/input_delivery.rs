@@ -89,3 +89,21 @@ fn failed_partial_delivery_cannot_be_healed_by_later_success() {
     assert!(!delivered.active());
     assert!(!delivered.matches(parsed.silence_key(), true));
 }
+
+#[test]
+fn sealed_delivery_is_owned_once_and_cannot_be_modified_by_later_writes() {
+    let parsed = session(b"(check-sat)\n", &Mode::Default, &identity());
+    let mut delivery = parsed.delivery(Pipe::default());
+    assert!(delivery.write(b"(check-sat)\n"));
+    let token = delivery.seal(parsed.silence_key(), true);
+    assert!(token.is_some());
+    let Some(token) = token else {
+        return;
+    };
+    assert_eq!(token.key(), parsed.silence_key());
+    assert!(!delivery.active());
+    assert!(!delivery.write(b"later"));
+    assert!(delivery.seal(parsed.silence_key(), true).is_none());
+    assert_eq!(token.key(), parsed.silence_key());
+    delivery.close();
+}

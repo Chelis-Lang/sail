@@ -41,6 +41,13 @@ sail_code! {
         delivered: Prefix<Host>,
         healthy: bool,
         closed: bool,
+        sealed: bool,
+    }
+
+    /// One frozen complete-input delivery. Only the owned delivery controller
+    /// can construct it, and sealing prevents every later input write.
+    pub struct Delivered<Host> {
+        prefix: Prefix<Host>,
     }
 
     impl<Pipe: InputPipe, Host: HashHost> Delivery<Pipe, Host> {
@@ -52,6 +59,7 @@ sail_code! {
             pub closed spec fn healthy(&self) -> bool { self.healthy }
             pub closed spec fn closed(&self) -> bool { self.closed }
             pub closed spec fn success_hint(&self) -> Option<bool> { self.pipe.success_hint() }
+            pub closed spec fn sealed(&self) -> bool { self.sealed }
             pub closed spec fn coherent(&self) -> bool {
                 self.initial.length() == 0 && self.initial.exact()
                 && self.closed == self.pipe.closed()
@@ -66,12 +74,12 @@ sail_code! {
             pub fn new(pipe: Pipe, prefix: Prefix<Host>) -> (out: Self)
                 requires (!pipe.closed(), pipe.sent().len() == 0,
                     prefix.length() == 0, prefix.exact())
-                ensures (out.coherent(), out.healthy(), !out.closed(),
+                ensures (out.coherent(), out.healthy(), !out.closed(), !out.sealed(),
                     out.initial_material() == prefix.material(), out.material() == prefix.material(),
                     out.length() == 0, out.sent().len() == 0, out.success_hint() == pipe.success_hint())
             {
                 let initial = prefix.duplicate();
-                Self { pipe, initial, delivered: prefix, healthy: true, closed: false }
+                Self { pipe, initial, delivered: prefix, healthy: true, closed: false, sealed: false }
             }
         }
         sail_method! {
@@ -79,18 +87,18 @@ sail_code! {
             /// bytes to the independent delivered-prefix state.
             pub fn write(&mut self, bytes: &[u8]) -> (ok: bool)
                 requires (old(self).coherent(), bytes.len() <= u64::MAX)
-                ensures (final(self).coherent(), final(self).closed() == old(self).closed(),
+                ensures (final(self).coherent(), final(self).closed() == old(self).closed(), final(self).sealed() == old(self).sealed(),
                     final(self).initial_material() == old(self).initial_material(),
-                    ok ==> !old(self).closed()
+                    ok ==> !old(self).closed() && !old(self).sealed()
                         && final(self).material() == old(self).material() + bytes@,
-                    !old(self).closed() && old(self).success_hint().is_some() ==> ok == old(self).success_hint().unwrap(),
-                    !old(self).closed() ==> final(self).success_hint() == match old(self).success_hint() { None => None, Some(_) => Some(true) },
+                    !old(self).closed() && !old(self).sealed() && old(self).success_hint().is_some() ==> ok == old(self).success_hint().unwrap(),
+                    !old(self).closed() && !old(self).sealed() ==> final(self).success_hint() == match old(self).success_hint() { None => None, Some(_) => Some(true) },
                     ok && old(self).length() as int + bytes.len() <= u64::MAX ==> final(self).length() == old(self).length() + bytes.len(),
                     ok && old(self).healthy() && old(self).length() as int + bytes.len() <= u64::MAX ==> final(self).healthy(),
                     !ok ==> !final(self).healthy(),
                     !old(self).healthy() ==> !final(self).healthy())
             {
-                if self.closed { self.healthy = false; return false; }
+                if self.closed || self.sealed { self.healthy = false; return false; }
                 if !self.pipe.write(bytes) { self.healthy = false; return false; }
                 self.delivered.update(bytes);
                 if !self.delivered.is_exact() { self.healthy = false; }
@@ -108,21 +116,21 @@ sail_code! {
             /// Whether writes remain possible; failed writes permanently end
             /// this delivery's publication eligibility.
             pub fn active(&self) -> (active: bool)
-                requires (true) ensures (active == (self.healthy() && !self.closed()))
-            { self.healthy && !self.closed }
+                requires (true) ensures (active == (self.healthy() && !self.closed() && !self.sealed()))
+            { self.healthy && !self.closed && !self.sealed }
         }
         sail_method! {
             /// Compares the independently acknowledged full input with the
             /// parser session's complete-silence key before terminal delivery.
             pub fn matches(&self, expected: [u8; 32], complete: bool) -> (accepted: bool)
                 requires (self.coherent())
-                ensures (accepted == (complete && self.healthy() && !self.closed()
+                ensures (accepted == (complete && self.healthy() && !self.closed() && !self.sealed()
                         && Host::digest(crate::key_prefix::field(b"sail-key/session-silence/v1"@)
                             + crate::key_prefix::field(Host::digest(crate::key_prefix::end(self.material(),self.length()))@)) == expected),
                     accepted ==> self.material() == self.initial_material() + self.sent()
                         && self.length() == self.sent().len())
             {
-                if !complete || !self.healthy || self.closed { return false; }
+                if !complete || !self.healthy || self.closed || self.sealed { return false; }
                 let key = self.delivered.silence_key();
                 let accepted = crate::inputs::byte_eq(&key, &expected);
                 sail_proof! { if accepted { assert(key =~= expected); } }
@@ -130,11 +138,33 @@ sail_code! {
             }
         }
         sail_method! {
+            /// Freezes this delivery once and returns a private complete-input
+            /// token only after the full acknowledged prefix matched.
+            pub fn seal(&mut self, expected: [u8; 32], complete: bool) -> (out: Option<Delivered<Host>>)
+                requires (old(self).coherent())
+                ensures (final(self).coherent(), final(self).sealed(),
+                    final(self).closed() == old(self).closed(), final(self).healthy() == old(self).healthy(),
+                    final(self).material() == old(self).material(), final(self).sent() == old(self).sent(),
+                    final(self).initial_material() == old(self).initial_material(),
+                    final(self).length() == old(self).length(),
+                    out.is_some() == (complete && old(self).healthy() && !old(self).closed() && !old(self).sealed()
+                        && Host::digest(crate::key_prefix::field(b"sail-key/session-silence/v1"@)
+                            + crate::key_prefix::field(Host::digest(crate::key_prefix::end(old(self).material(),old(self).length()))@)) == expected),
+                    out.is_some() ==> out.unwrap().material() == old(self).initial_material() + old(self).sent()
+                        && out.unwrap().length() == old(self).sent().len() && out.unwrap().key_view() == expected)
+            {
+                let accepted = self.matches(expected,complete);
+                self.sealed = true;
+                if !accepted { return None; }
+                Some(Delivered { prefix: self.delivered.duplicate() })
+            }
+        }
+        sail_method! {
             /// Closes the same owned descriptor after terminal expectations and
             /// their completion signal have been delivered to the output side.
             pub fn close(&mut self) -> (out: ())
                 requires (old(self).coherent())
-                ensures (final(self).coherent(), final(self).closed(),
+                ensures (final(self).coherent(), final(self).closed(), final(self).sealed() == old(self).sealed(),
                     final(self).initial_material() == old(self).initial_material(),
                     final(self).material() == old(self).material(), final(self).sent() == old(self).sent(),
                     final(self).healthy() == old(self).healthy())
@@ -217,5 +247,48 @@ sail_verified! {
         let accepted = delivery.matches(terminal, true);
         delivery.close();
         !first && second && !accepted && !delivery.active()
+    }
+}
+
+sail_code! {
+    impl<Host: HashHost> Delivered<Host> {
+        sail_impl_spec! {
+            pub closed spec fn material(&self) -> Seq<u8> { self.prefix.material() }
+            pub closed spec fn length(&self) -> u64 { self.prefix.length() }
+            pub closed spec fn key_view(&self) -> [u8;32] {
+                Host::digest(crate::key_prefix::field(b"sail-key/session-silence/v1"@)
+                    + crate::key_prefix::field(Host::digest(crate::key_prefix::end(self.material(),self.length()))@))
+            }
+        }
+        sail_method! {
+            /// Borrows the original complete-input key without admitting any
+            /// output, process image, exit or cache-store origin.
+            pub fn key(&self) -> (out: [u8;32])
+                requires (true) ensures (out == self.key_view())
+            { self.prefix.silence_key() }
+        }
+    }
+}
+
+sail_verified! {
+    /// Nonempty frozen delivery remains bound to its original input even when
+    /// a later write and a duplicate seal are attempted.
+    pub fn sealed_delivery_control<Host>(host: Host) -> (passed: bool)
+        where (Host: HashHost)
+        requires (host.bytes().len() == 0)
+        ensures (passed)
+    {
+        let prefix = Prefix::new(host,b"z3",b"pinned",b"binary",b"platform",None);
+        let mut expected = prefix.duplicate(); expected.update(&[7u8]);
+        let key = expected.silence_key();
+        let mut delivery = Delivery::new(ScriptPipe { bytes: Vec::new(),closed:false,fail_next:false },prefix);
+        let wrote = delivery.write(&[7u8]);
+        let sealed = delivery.seal(key,true);
+        sail_proof! { assert(wrote); assert(sealed.is_some()); }
+        let Some(token) = sealed else { return false; };
+        let late = delivery.write(&[9u8]);
+        let duplicate = delivery.seal(key,true);
+        delivery.close();
+        wrote && !late && duplicate.is_none() && crate::inputs::byte_eq(&token.key(),&key)
     }
 }
