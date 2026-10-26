@@ -20,6 +20,7 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 |---|---|---|
 | Query association, input identity, scope and result authority models | Expanded lifecycle models, composed admission and captured-source direct stock checking pass native and hosted checks; scope is recorded in the [model guide](design/acceptance-proof-checker.md) | Observation adapters, parser/cache-origin refinement and service-wide theorem |
 | Production acceptance core | Checkpoint `fe8be9ee` passes native/hosted gates and full fast/standard conformance; bounded timing accepted by owner | Current-main revision-only projection integration needs fresh gates; remaining stages C–F in the [refinement guide](design/acceptance-production-refinements.md); broader release performance remains separate |
+| Acceptance boundary follow-up | Parser/origin, compiler/physical observation and request/result workstreams started; [obligation ledger](design/acceptance-boundary-refinements.md) names six deliverables | Implemented slices need direct-stock proofs, provider correspondence, independent review and native qualification; full service theorem remains open |
 
 ## Goal
 
