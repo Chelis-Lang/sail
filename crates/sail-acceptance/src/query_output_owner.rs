@@ -409,7 +409,7 @@ sail_verified! {
         let mut output=StreamOutput::new(output_owner);
         output.append(&response);
         sail_proof! {
-            reveal(Transcript::consumed); reveal(Transcript::complete);
+            crate::query_output::transcript_partition_facts(&output.output_view());
             assert(crate::query::response_trim(response@,0,5));
             assert(crate::query::response_span(response@,0,5));
             assert(crate::query::response_shape(response@));
@@ -417,7 +417,9 @@ sail_verified! {
         }
         let Some(frame)=output.frame(0,6) else {return false;};
         let Some(frame)=frame.into_owned(retained,&identity) else {return false;};
-        output.end(); let Some(output)=output.seal() else {return false;};
+        output.end();
+        sail_proof! {crate::query_output::transcript_partition_facts(&output.output_view());}
+        let Some(output)=output.seal() else {return false;};
         let gate=PublicationGate {input_closed:true,pairing_active:true,queues_empty:true,
             normal_exit:true,quiet:true,forwarding_ok:true};
         let Some(publication)=observe_owned_publication(Some(input),input_owner,Some(output),gate,identity) else {return false;};
@@ -472,8 +474,7 @@ sail_verified! {
         let mut output = StreamOutput::new(owner);
         output.append(&bytes);
         sail_proof! {
-            reveal(Transcript::consumed);
-            reveal(Transcript::complete);
+            crate::query_output::transcript_partition_facts(&output.output_view());
             assert(crate::query::response_trim(bytes@,0,5));
             assert(crate::query::response_span(bytes@,0,5));
             assert(crate::query::response_shape(bytes@));
@@ -482,6 +483,7 @@ sail_verified! {
         let Some(frame) = output.frame(0,6) else { return false; };
         let Some(owned) = frame.into_owned(retained,identity) else { return false; };
         output.end();
+        sail_proof! {crate::query_output::transcript_partition_facts(&output.output_view());}
         let Some(completed) = output.seal() else { return false; };
         completed.contains_frame(&owned,identity)
     }
