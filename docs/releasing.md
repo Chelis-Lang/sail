@@ -82,6 +82,25 @@ A checksum file has one line in `shasum -a 256` format, so
 `shasum -a 256 -c sail-VERSION-TARGET.tar.gz.sha256` (or `sha256sum -c`)
 checks the archive.
 
+### Attestations
+
+The checksum file comes from the same release as its archive, so it detects
+corruption but not a replaced asset. Each archive therefore also gets a GitHub
+build-provenance attestation, signed by the manual
+[`attest-release`](../.github/workflows/attest-release.yml) workflow. Given a
+release tag, the workflow downloads that release's archives, checks them
+against their `.sha256` files and attests each archive's SHA-256 for
+`Chelis-Lang/sail` with `actions/attest-build-provenance`. It builds,
+uploads and publishes nothing. The archives are still built locally, so the
+attestation binds each archive's digest to this repository's workflow run; it
+does not claim that GitHub built the archive. `scripts/install.py` and the
+[install guide](install.md#verify-provenance) verify it with
+`gh attestation verify ARCHIVE --repo Chelis-Lang/sail`.
+
+Attestations on a private repository need GitHub Enterprise Cloud, so the
+workflow first works once the repository is public; the first published
+release is the first end-to-end check.
+
 Each archive unpacks to one directory:
 
 ```
@@ -402,7 +421,9 @@ qualifying the macOS runtime against it).
    - packages each tree as `dist/sail-VERSION-TARGET.tar.gz` (entries owned by
      root) with its `.sha256` file, creates the **draft** release `vVERSION`
      targeting the commit, uploads the four assets and prints the release URL
-     and asset list.
+     and asset list;
+   - starts the [`attest-release`](#attestations) workflow for `vVERSION`
+     and prints the `gh attestation verify` command for each archive.
 
    Every archive carries the runtime; there is no engine-less archive, since
    Sail runs no other Verus.
@@ -419,7 +440,10 @@ qualifying the macOS runtime against it).
    runtime, `sail verify` to pass on a new project made as the README's First
    verification says, and one `sail repair-check` through the engine to be
    accepted, with no engine fault.
-5. The owner reviews the draft and decides when to publish.
+5. When the `attest-release` run succeeds, check each archive's attestation
+   (`gh attestation verify dist/sail-VERSION-TARGET.tar.gz --repo
+   Chelis-Lang/sail`). Publish only after both verify.
+6. The owner reviews the draft and decides when to publish.
 
 When the installed stages have already passed the native matrix, full mutation
 cohorts and walkthroughs, package those same bytes on an Apple-silicon Mac:
@@ -433,7 +457,9 @@ then writes the same four assets under `dist/`. It refuses existing output
 names. It does not rebuild, record new proofs, upload, create a tag or publish.
 Keep the stages' native `sail --version` results and CLI hashes with their
 qualification results; `VERSION` must match the version they report. Review
-and create the draft from these assets only after the release gates pass.
+and create the draft from these assets only after the release gates pass,
+then attest them with `gh workflow run attest-release.yml --repo
+Chelis-Lang/sail -f tag=vVERSION`.
 The one-command build-and-draft route above remains available for a new build;
 its output needs qualification before publication.
 

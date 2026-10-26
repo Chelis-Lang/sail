@@ -210,7 +210,7 @@ phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
   warm, `--output json`, one MCP `verify` call and the portfolio;
 - `output`: the edit loop (combined output, passing, unchanged, compile error,
-  partial verification);
+  partial verification) and a seeded-mutation smoke;
 - `flags`: the setups verified as plain Cargo-Verus verifies them;
 - `loader`: a loader variable (no proof reuse, one note);
 - `managed`: managed receipts, failing-first reuse, prune, durable jobs, MCP

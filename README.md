@@ -4,7 +4,7 @@ Sail (S.A.I.L., the Satisfiability Analysis & Inference Layer) makes
 [Verus](https://github.com/verus-lang/verus) verification loops faster for
 developers and coding agents. It ships a preverified vstd for matching new
 projects, caches solver answers across edits, and can restore a previous proof
-when you undo an edit. The private 0.1.0-rc.6 candidate passes functional checks on Linux and
+when you undo an edit. The 0.1.0-rc.6 candidate passes functional checks on Linux and
 macOS; measured speedups and remaining cold/unchanged costs are in
 [performance](docs/performance.md).
 
@@ -22,12 +22,12 @@ verification falls back to the pinned Z3 and stays correct.
 Sail supports Linux on x86-64 and macOS on Apple silicon. It works on Cargo
 projects (see [Limits](#limits)).
 
-For contracts on ordinary Rust functions, the private
+For contracts on ordinary Rust functions, the
 [`sail-contracts` library](docs/neutral-contracts.md) provides explicit
 requirement IDs and checked scalar preconditions, postconditions and old
 values. These runtime checks are separate from SMT verification.
 [Neutral source jobs](docs/neutral-contract-jobs.md) submit supported source
-through Sail's private service and retain its actual contract proof evidence.
+through Sail's local job service and retain its actual contract proof evidence.
 [Bounded source mutation](docs/neutral-mutation.md) retains separate actual
 verifier rejection, survival and inconclusive evidence under unchanged contracts.
 [Scalar literal witnesses](docs/literal-witnesses.md) use separately attributed
@@ -50,11 +50,12 @@ python3 scripts/install.py --version 0.1.0 --install-toolchain
 
 It checks the archive, validates the bundled runtime, and installs the pinned
 Rust toolchain with `rust-src` using an existing rustup. It prints the `PATH`
-line to add, leaving your shell files and default Rust toolchain alone. Private
-downloads use authenticated GitHub CLI. Local archives and custom installation
-directories are covered in the [installation guide](docs/install.md).
-Until publication, select an available private draft version or local archive;
-the example version is not a published download.
+line to add, leaving your shell files and default Rust toolchain alone. With
+GitHub CLI signed in, it also verifies the archive's build-provenance
+attestation (`--require-attestation` makes that mandatory). Local archives,
+custom installation directories and manual provenance checks are covered in
+the [installation guide](docs/install.md). The example version is a
+placeholder; select a version listed on the releases page.
 
 Sail is a prebuilt archive per platform on
 [GitHub releases](https://github.com/Chelis-Lang/sail/releases). It holds
@@ -95,8 +96,10 @@ export PATH="$HOME/.local/opt/sail-$VERSION-$TARGET/bin:$PATH"   # add to your s
 sail --version
 ```
 
-The check must print `OK`. Minimal Linux images have no `shasum` (it comes
-with perl); `sha256sum -c` with the same file is equivalent. Keep the unpacked directory as it is:
+The check must print `OK`. With GitHub CLI, also
+[verify the archive's provenance](docs/install.md#verify-provenance):
+`gh attestation verify "sail-$VERSION-$TARGET.tar.gz" --repo Chelis-Lang/sail`.
+Minimal Linux images have no `shasum` (it comes with perl); `sha256sum -c` with the same file is equivalent. Keep the unpacked directory as it is:
 `sail` finds `sail-z3` beside it in `bin/` and its Verus in `engine/`, so
 put that `bin/` on `PATH` rather than copying `sail` elsewhere. On macOS, an
 archive downloaded with a browser instead of `curl` is quarantined; clear
