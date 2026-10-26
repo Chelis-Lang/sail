@@ -97,7 +97,7 @@ sail_trait! {
             ensures (final(self).owner_view() == old(self).owner_view(),
                 final(self).kind_view() == old(self).kind_view(), final(buffer).len() == old(buffer).len(),
                 match out { Ok(count) => count <= final(buffer).len(), Err(_) => true },
-                match old(self).next_read(old(buffer).len()) {
+                match old(self).next_read(old(buffer).len() as nat) {
                     Some(expected) => primitive_read_matches(out, final(buffer)@, expected), None => true,
                 },
                 final(self).observations() == old(self).observations().push(match out {
@@ -226,7 +226,7 @@ sail_verified! {
                 Ok(count) => count == 0 && final(buffer).len() > 0, Err(_) => false }),
             old(capture).bytes_view().len() + old(buffer).len() <= usize::MAX
                 ==> !(out is Err && out->Err_0 is Capacity),
-            match old(host).next_read(old(buffer).len()) {
+            match old(host).next_read(old(buffer).len() as nat) {
                 Some(expected) => match out {
                     Ok(count) => primitive_read_matches(Ok(count), final(buffer)@, expected),
                     Err(PipeReadFailure::Read(error)) => primitive_read_matches(Err(error), final(buffer)@, expected),

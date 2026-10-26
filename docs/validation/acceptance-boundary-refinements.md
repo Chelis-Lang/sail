@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `0dbb7adc` | Native whole-positive discovery passes query 353/0 (637 function entries), then input compilation refuses two `usize` arguments to the pipe primitive's `nat` capacity specification | Authority and final source/runtime checks unrun; no input inventory frozen. Explicit specification-only casts preserve the exact one-read contracts and all existing controls; all three roots require a new frozen rerun |
 | `4bd22455` | All 31 model and 155 production cases pass coherently on macOS and native Linux; native workspace passes | Solver passes 53/54 and stops at the actual compiler-phase witness's missing frozen fixture (#425); later e2e/PR conformance unrun |
 | `73f928d1` | Native workspace (605.71 s), all 31 model and 213 production cases pass, complete_suite=true; all 53 solver tests pass (22.49 s gate duration) | Full e2e stops at the cold JSON replay trace assertion; PR conformance unrun. The newer source restores the missing cold-miss trace; later code does not inherit the passing earlier stages |
 | `3352f2fd` | Native combined gate stops during workspace lint checks (181.61 s) | Five source-shared API style diagnostics; models, refinements, solver, e2e and conformance are unrun. Documented local lint allowances preserve the proved path-binding/refusal branches; rerun required |
@@ -19,6 +20,11 @@ observation guarantee or service theorem is claimed. All six rows of the
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The initial owned-pipe discovery attempt at `a11802eb` was interrupted before
+producing a proof report: the SSH session ended and its user service manager
+shut down ten seconds later. The native pipe lane uses a system service for
+subsequent runs; the interrupted attempt supplies no qualification evidence.
 
 The newer local source composes exact-partial request transfer, live retained
 frame admission, paired baseline publication, native raw-path correspondence,
