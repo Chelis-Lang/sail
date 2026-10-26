@@ -2137,11 +2137,25 @@ fn target_revisions(
             return projected;
         }
     }
+    // Fresh reads are per target: an unavailable revision is missing for its
+    // own target only (that receipt is dirty), never for the whole batch.
     let fresh = crate::parallel::in_order(&requested, |&id| (id, target_revision(data, id)));
-    target_revision_readback(&requested, fresh).unwrap_or_default()
+    target_revision_entries(&requested, fresh).unwrap_or_default()
 }
 
+/// The complete batch, or `None` when any returned record is missing,
+/// foreign, duplicated or has no revision.
 fn target_revision_readback(
+    ids: &[&str],
+    reads: Vec<(&str, String)>,
+) -> Option<HashMap<String, String>> {
+    let available = reads.iter().all(|(_, revision)| !revision.is_empty());
+    target_revision_entries(ids, reads).filter(|_| available)
+}
+
+/// The available revisions of an exactly matching batch of returned records;
+/// a target whose revision is unavailable is absent from the map.
+fn target_revision_entries(
     ids: &[&str],
     reads: Vec<(&str, String)>,
 ) -> Option<HashMap<String, String>> {
@@ -2150,14 +2164,13 @@ fn target_revision_readback(
         .iter()
         .map(|(id, _)| (id.as_bytes(), &[][..]))
         .collect();
-    if !crate::parallel::exact_descriptors(&expected, &returned)
-        || reads.iter().any(|(_, revision)| revision.is_empty())
-    {
+    if !crate::parallel::exact_descriptors(&expected, &returned) {
         return None;
     }
     Some(
         reads
             .into_iter()
+            .filter(|(_, revision)| !revision.is_empty())
             .map(|(id, revision)| (id.to_owned(), revision))
             .collect(),
     )
@@ -5886,7 +5899,15 @@ mod tests {
         assert!(target_revision_readback(&ids, extra).is_none());
         let mut unavailable = read();
         unavailable[0].1.clear();
-        assert!(target_revision_readback(&ids, unavailable).is_none());
+        assert!(target_revision_readback(&ids, unavailable.clone()).is_none());
+        // Fresh reads keep every other target's revision.
+        let entries = target_revision_entries(&ids, unavailable)
+            .ok_or_else(|| std::io::Error::other("no partial revisions"))?;
+        assert_eq!(entries.get("a"), None);
+        assert_eq!(entries.get("b"), original.get("b"));
+        let mut foreign = read();
+        foreign.push(("foreign", String::new()));
+        assert!(target_revision_entries(&ids, foreign).is_none());
         std::fs::write(root.join("a/lib.rs"), "changed")?;
         let mut changed = read();
         changed.reverse();
