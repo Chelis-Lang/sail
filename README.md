@@ -293,6 +293,9 @@ See [workspace verification](docs/workspace-verification.md#evidence-from-comple
   several GB. `sail cache projects list` shows them, and `sail cache projects
   prune --missing|--older-than DAYS|--all` removes them (the next run is a
   cold run). See [disk use and cleanup](docs/workspace-hygiene.md).
+- In CI, persist `~/.cache/sail/results` between runs (and `target/` when
+  Sail notes `SAIL3112`): unchanged Anvil takes 64 s instead of 186 s on a
+  fresh runner. See [caching Sail in CI](docs/ci-cache.md).
 - If the cache daemon cannot start, `sail verify` verifies without the
   cache, with the same results. `--output json` notes why (`SAIL0003`), and
   `SAIL_EXPLAIN=1` prints it in human output.
