@@ -3144,16 +3144,19 @@ fn run_recorded(
             .collect(),
         // Retention is optional restoration work: a target whose compile is
         // cheap next to retention compiles normally instead (#156).
-        retained: if !forced
-            && !source_engine
-            && paths.reuse
-            && !receipt_covered
-            && super::retained::cost::pays(
-                &paths.receipts,
-                selected_targets(&data, &expected)
+        retained: if !forced && !source_engine && paths.reuse && !receipt_covered && {
+            let selected = selected_targets(&data, &expected);
+            let targets = || {
+                selected
                     .iter()
-                    .map(|(manifest, name)| (manifest.as_path(), name.as_str())),
-            ) {
+                    .map(|(manifest, name)| (manifest.as_path(), name.as_str()))
+            };
+            let pays = super::retained::cost::pays(&paths.receipts, targets());
+            if !pays {
+                retained_notes.extend(super::retained::cost_note(&paths.receipts, targets()));
+            }
+            pays
+        } {
             super::retained::Plan::prepare(
                 &data,
                 &paths.target,
@@ -3467,6 +3470,17 @@ fn run_recorded(
     let reused_targets =
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = retained_notes;
+    notes.extend(super::retained::evicted_notes(&paths.run.join("sidecars")));
+    // Why instant revert did not apply: on stderr only when explained, so
+    // default human and JSON stderr stay exactly stock's.
+    if crate::explain() {
+        let skipped = format!("{}: ", super::retained::SKIPPED);
+        for note in &notes {
+            if let Some(message) = note.strip_prefix(&skipped) {
+                let _ = writeln!(err, "note[{}]: {message}", super::retained::SKIPPED);
+            }
+        }
+    }
     // Only a release with a shipped vstd proof has a fast path to offer.
     if super::shipped::has_adjacent_bundle(&config.cargo_verus) {
         notes.extend(config.cargo_toolchain.note());
