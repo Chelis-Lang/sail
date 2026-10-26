@@ -55,7 +55,7 @@ KEY_RECORDING_IMPLS = frozenset({"de6e87c96d820b1610f24bc6b31aa3a64ba0e8d329446d
 # been reviewed to forward the actual project and readback to the shared code.
 # Their enclosing native binding environment is pinned in full; the module's
 # I/O, serialization, cache selection and other service operations are not proved.
-RETAINED_BRIDGE_SHA256 = 'd8645f52943fbf27b643e0fed073eaff11f4debaf8b478d829da2896ee42acd2'
+RETAINED_BRIDGE_SHA256 = 'f1214b5c3cada2004a55eb359e8ec62724a8fa5349ec50ca7d3b9e6ce09f38f5'
 # This reviewed source uses the identical argument/type/body metavariables in
 # Cargo and stock profiles. Changes require an explicit runner review, beyond
 # merely updating a manifest. Runtime-only implementation drift must refuse.
