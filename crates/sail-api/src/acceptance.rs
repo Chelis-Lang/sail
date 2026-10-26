@@ -17,8 +17,8 @@ use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verifi
 
 /// Builds untrusted order candidates and invokes the checked authority factory.
 pub use crate::acceptance_sort::{
-    bind_replayed_project, complete_report, complete_request, complete_selection,
-    complete_submitted_request, complete_target, complete_whole_report,
+    bind_replayed_project, complete_exact_scope_report, complete_report, complete_request,
+    complete_selection, complete_submitted_request, complete_target, complete_whole_report,
     withhold_unbound_request_authority,
 };
 
@@ -40,6 +40,26 @@ sail_code! {
     pub struct CompleteReport<'a> {
         report: &'a Report,
         policy: CompletionPolicy,
+    }
+
+    /// Successful evidence for one exact partial invocation. This token cannot
+    /// be used as whole-target or whole-request authority.
+    pub struct ExactScopeReport<'a> {
+        report: &'a Report,
+        arguments: &'a [String],
+    }
+
+    impl<'a> ExactScopeReport<'a> {
+        sail_method! {
+            /// Borrows the original report without changing its completion fields.
+            pub fn report(&self) -> (out: &'a Report)
+                requires(true) ensures(out == exact_scope_report(self)) { self.report }
+        }
+        sail_method! {
+            /// Returns the exact ordered invocation arguments checked by the factory.
+            pub fn arguments(&self) -> (out: &'a [String])
+                requires(true) ensures(out == exact_scope_arguments(self)) { self.arguments }
+        }
     }
 
     /// Untrusted candidate ordering for one report's actual obligations.
@@ -2053,5 +2073,77 @@ sail_verified! {
             assert(request_authorized(current, project));
         }
         true
+    }
+}
+
+sail_spec! {
+    pub closed spec fn exact_scope_report<'a>(scope: &ExactScopeReport<'a>) -> &'a Report { scope.report }
+    pub closed spec fn exact_scope_arguments<'a>(scope: &ExactScopeReport<'a>) -> &'a [String] { scope.arguments }
+
+    /// Exact recorded partial scope and successful receipt-policy evidence.
+    /// Neither an absent nor a true whole-crate summary widens this scope.
+    pub open spec fn exact_scope_evidence(report: &Report, arguments: Seq<String>) -> bool {
+        partial_command(arguments) && !verification_disabled(arguments)
+            && arguments.len() == report.command@.len()
+            && arguments.map_values(|s: String| string_bytes(&s))
+                == report.command@.map_values(|s: String| string_bytes(&s))
+            && partial_command(report.command@) && report.engine.is_none()
+            && successful_report(report, CompletionPolicy::Receipt)
+    }
+
+    pub open spec fn exact_scope_authority_valid(scope: &ExactScopeReport) -> bool {
+        exact_scope_evidence(exact_scope_report(scope), exact_scope_arguments(scope)@)
+    }
+
+    // An opaque exact definition keeps an always-refuse mutation's
+    // counterexample independent of nested report representation search.
+    #[verifier::opaque]
+    pub open spec fn small_exact_scope_candidate(report: &Report, arguments: Seq<String>,
+        forward: Seq<usize>, inverse: Seq<usize>) -> bool {
+        partial_command(arguments) && arguments.len() == report.command@.len()
+            && arguments.map_values(|s: String| string_bytes(&s))
+                == report.command@.map_values(|s: String| string_bytes(&s))
+            && report.engine.is_none() && small_positive_report(report, CompletionPolicy::Receipt)
+            && forward.len() == 0 && inverse.len() == 0
+    }
+
+    pub proof fn small_exact_scope_candidate_definition(report: &Report, arguments: Seq<String>,
+        forward: Seq<usize>, inverse: Seq<usize>)
+        ensures small_exact_scope_candidate(report, arguments, forward, inverse)
+            == (partial_command(arguments) && arguments.len() == report.command@.len()
+                && arguments.map_values(|s: String| string_bytes(&s))
+                    == report.command@.map_values(|s: String| string_bytes(&s))
+                && report.engine.is_none() && small_positive_report(report, CompletionPolicy::Receipt)
+                && forward.len() == 0 && inverse.len() == 0),
+    { reveal(small_exact_scope_candidate); }
+
+    /// A partial scope token never satisfies the whole-target scope guard.
+    pub proof fn exact_scope_cannot_authorize_whole(report: &Report, arguments: Seq<String>)
+        requires exact_scope_evidence(report, arguments),
+        ensures partial_command(report.command@),
+            !( !partial_command(report.command@) && successful_report(report, CompletionPolicy::Whole) ),
+    { }
+}
+
+sail_verified! {
+    /// Validates one exact partial invocation over the actual report records.
+    /// Original process/history admission and request-level scope coverage are
+    /// separate native obligations. No report or scope field is rewritten.
+    pub fn complete_exact_scope_report_ordered<'a>(report: &'a Report, arguments: &'a [String],
+        forward: &[usize], inverse: &[usize]) -> (out: Option<ExactScopeReport<'a>>)
+        requires(true)
+        ensures(out.is_some() ==> exact_scope_authority_valid(&out.unwrap()),
+            out.is_some() ==> exact_scope_evidence(report, arguments@),
+            out.is_some() ==> exact_scope_report(&out.unwrap()) == report,
+            out.is_some() ==> exact_scope_arguments(&out.unwrap()) == arguments,
+            small_exact_scope_candidate(report, arguments@, forward@, inverse@) ==> out.is_some())
+    {
+        sail_proof! { reveal(small_exact_scope_candidate); }
+        if !focused_command(arguments) || !same_replay_arguments(arguments, &report.command)
+            || report.engine.is_some() { return None; }
+        if complete_report_ordered(report, CompletionPolicy::Receipt, forward, inverse).is_none() {
+            return None;
+        }
+        Some(ExactScopeReport { report, arguments })
     }
 }

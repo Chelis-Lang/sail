@@ -153,7 +153,8 @@ impl Invocation {
                 super::runner::focused(args)
                     && self.report.command == args
                     && self.report.engine.is_none()
-                    && complete(&self.report)
+                    && sail_api::acceptance::complete_exact_scope_report(&self.report, args)
+                        .is_some()
             }
         }
     }
