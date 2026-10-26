@@ -150,8 +150,19 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         )
     });
     // Installed executables, engine files and sysroot libraries are identified
-    // by stat: any change to them changes the context, so the next run is fresh.
-    let installed = |path: &Path| super::files::stat_identity(path);
+    // by content (ADR 0082, 2026-10-26 amendment): identical bytes at the same
+    // path keep the context, so a reinstalled toolchain or a restored cache
+    // reuses its receipts, and any change to the bytes makes the next run
+    // fresh. Each file's digest is memoized by its complete stat stamp.
+    // `installed` lists the files in the original order; they are read
+    // concurrently below. Each is first stat'ed where it always was, so a
+    // missing file is still reported before a later probe's error.
+    let mut installed: Vec<PathBuf> = Vec::new();
+    let mut install = |path: &Path| -> Result<()> {
+        super::files::stat_identity(path)?;
+        installed.push(path.to_owned());
+        Ok(())
+    };
     for path in [
         &config.sail,
         &config.cargo_verus,
@@ -159,21 +170,21 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         &config.z3,
         &config.shim,
     ] {
-        identity.push((path.to_string_lossy().into_owned(), installed(path)?));
+        install(path)?;
     }
     if let Some(engine) = engine {
         for path in [&engine.manifest, &engine.stock_wrapper]
             .into_iter()
             .chain(engine.artifacts.iter())
         {
-            identity.push((path.to_string_lossy().into_owned(), installed(path)?));
+            install(path)?;
         }
     }
     let wrapper = wrapper?;
-    identity.push((wrapper.to_string_lossy().into_owned(), installed(&wrapper)?));
+    install(&wrapper)?;
     let mut environment = context_environment(config);
     let rustc = rustc?;
-    identity.push((rustc.to_string_lossy().into_owned(), installed(&rustc)?));
+    install(&rustc)?;
     let actual = cargo_probe
         .ok_or_else(|| Error::new("SAIL3104", "cannot identify Rust toolchain"))??
         .map_err(|e| Error::new("SAIL3104", format!("cannot identify Rust toolchain: {e}")))?;
@@ -184,18 +195,16 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         ));
     }
     let rustup = rustup?;
-    identity.push((rustup.to_string_lossy().into_owned(), installed(&rustup)?));
+    install(&rustup)?;
     let cargo_sysroot = PathBuf::from(String::from_utf8_lossy(&actual.stdout).trim());
     let verifier_sysroot = verifier_probe
         .ok_or_else(|| Error::new("SAIL3104", "cannot identify verifier toolchain"))???;
-    identity.push((
-        config
-            .cargo_verus
-            .with_file_name("rust_verify")
-            .to_string_lossy()
-            .into_owned(),
-        installed(&wrapper.with_file_name("rust_verify"))?,
-    ));
+    // Recorded under Cargo-Verus's directory, read beside the wrapper.
+    let rust_verify = (
+        config.cargo_verus.with_file_name("rust_verify"),
+        wrapper.with_file_name("rust_verify"),
+    );
+    super::files::stat_identity(&rust_verify.1)?;
     // With `rust-src`, rustc names standard library sources by the local copy,
     // and so do span strings in VIR compiled here (VI-0031). Prebuilt VIR is
     // renamed to match, so the copy's presence joins the proof context.
@@ -206,8 +215,23 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
             rust_src.as_os_str().as_encoded_bytes().to_vec(),
         );
     }
-    for path in sysroot_files(&BTreeSet::from([cargo_sysroot, verifier_sysroot]))? {
-        identity.push((path.to_string_lossy().into_owned(), installed(&path)?));
+    let sysroot = sysroot_files(&BTreeSet::from([cargo_sysroot, verifier_sysroot]))?;
+    let named: Vec<PathBuf> = installed
+        .iter()
+        .cloned()
+        .chain(std::iter::once(rust_verify.0))
+        .chain(sysroot.iter().cloned())
+        .collect();
+    let read: Vec<PathBuf> = installed
+        .into_iter()
+        .chain(std::iter::once(rust_verify.1))
+        .chain(sysroot)
+        .collect();
+    let tools = super::tool_digests::ToolDigests::open(&config.cache);
+    let digests = tools.identities(&read);
+    tools.save();
+    for (path, digest) in named.into_iter().zip(digests) {
+        identity.push((path.to_string_lossy().into_owned(), digest?));
     }
     // The exact Cargo configuration bytes join the context, not only its path.
     let invocation = std::path::absolute(&config.workspace)
@@ -2637,23 +2661,27 @@ pub fn refresh_context(
 }
 
 /// Whether every runtime file of `context` still has its recorded identity
-/// (stat for installed files, content for configuration), checked in parallel.
+/// (memoized content for installed files, content for configuration),
+/// checked in parallel.
 pub(super) fn runtime_current(cache: &Path, context: &str) -> bool {
     let state = cache.join("runtime-identities");
     let identity_sha = read::<String>(&state.join(format!("{context}.link")));
     let identities = identity_sha
         .as_ref()
         .and_then(|sha| read::<Vec<(String, String)>>(&state.join(format!("{sha}.json"))));
-    identities.as_ref().is_some_and(|rows| {
+    let tools = super::tool_digests::ToolDigests::open(cache);
+    let current = identities.as_ref().is_some_and(|rows| {
         identity_sha
             .as_ref()
             .is_some_and(|sha| *sha == digest(&serde_json::to_vec(rows).unwrap_or_default()))
             && crate::parallel::in_order(rows, |(path, expected)| {
-                super::files::identity_matches(Path::new(path), expected)
+                super::files::identity_matches(Path::new(path), expected, &tools)
             })
             .into_iter()
             .all(|matches| matches)
-    })
+    });
+    tools.save();
+    current
 }
 
 /// A snapshot's extra inputs in a run-independent order. Build-script records
@@ -5770,11 +5798,12 @@ mod tests {
     }
 
     #[test]
-    fn runtime_identity_compares_stats_of_installed_files_and_bytes_of_configuration()
+    fn runtime_identity_compares_bytes_of_installed_files_and_configuration()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-runtime-stat-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
         let installed = root.join("rustc");
         let configuration = root.join("config.toml");
         std::fs::write(&installed, b"binary")?;
@@ -5782,7 +5811,7 @@ mod tests {
         let identities = vec![
             (
                 installed.to_string_lossy().into_owned(),
-                super::super::files::stat_identity(&installed)?,
+                super::super::tool_digests::ToolDigests::open(&root).identity(&installed)?,
             ),
             (
                 configuration.to_string_lossy().into_owned(),
@@ -5795,7 +5824,13 @@ mod tests {
         json(&state.join(format!("{sha}.json")), &identities)?;
         json(&state.join("ctx.link"), &sha)?;
         assert!(runtime_current(&root, "ctx"));
-        // A rewrite that changes the size or modification time changes it.
+        // The same bytes reinstalled (a new inode and mtime) keep it, as on a
+        // new runner with a restored cache.
+        let staged = root.join("rustc.new");
+        std::fs::write(&staged, b"binary")?;
+        std::fs::rename(&staged, &installed)?;
+        assert!(runtime_current(&root, "ctx"));
+        // Changed bytes change it.
         std::fs::write(&installed, b"binary, rebuilt")?;
         assert!(!runtime_current(&root, "ctx"));
         json(

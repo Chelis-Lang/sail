@@ -288,13 +288,15 @@ bind source aliases and linked ancestors to their canonical destinations;
 the union of canonical file contents alone cannot identify which source a
 compiler path selects. A later read rehashes exactly the recorded files and
 rechecks those bindings: equal is Current, different is Historical, unreadable is
-Unknown. Toolchain and sysroot files are identified by device, inode, size and
-modification time; configuration is identified by content.
+Unknown. Toolchain and sysroot files are identified by content, read again
+only when their complete stat stamp (including change time) differs from the
+one recorded on this machine; configuration is identified by content.
 
 What this trusts and does not detect is listed in [freshness](freshness.md):
 an edit made and undone during a run through an already-dirty shared writable
 mapping, a bind mount added and removed during a run (root only), and an
-in-place toolchain rewrite that restores the modification time.
+in-place toolchain rewrite on a filesystem whose change time does not
+advance, or after the clock was set back.
 
 Encoded job-result frames are an allocation optimization, not freshness
 evidence. Every read verifies the retained stdout bytes against the result's

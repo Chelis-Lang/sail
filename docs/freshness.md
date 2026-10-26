@@ -93,8 +93,10 @@ A run is Current only when all of the following hold:
   input file and directory are unchanged across the run. The change time cannot
   be set by user programs, so an edit that was restored during the run, even
   with its modification time put back, is still caught;
-- every installed toolchain file still has the device, inode, size and
-  modification time it had when the run started;
+- every installed toolchain file still has the content (SHA-256) it had when
+  the run started. A file whose complete stat stamp, change time included,
+  equals the one recorded when it was last read on this machine is not read
+  again (ADR 0041, 2026-10-26 note);
 - every absent Cargo configuration file is still absent at the end. On Linux,
   none was created during the run either, even briefly: an inotify watch on
   those paths tells such a file apart from Cargo's own journal writes in its

@@ -27,6 +27,7 @@ mod runner;
 pub(crate) mod shipped;
 mod source_inputs;
 mod store;
+mod tool_digests;
 pub(crate) mod visible_output;
 
 pub use cargo_toolchain::CargoToolchain;

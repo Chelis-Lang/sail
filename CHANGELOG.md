@@ -15,6 +15,15 @@ semantic versioning once the API is published.
   `portfolio` and `measure_fragility` options and the integration tools
   (`requirement_assurance`, `runtime_capabilities`, `runtime_execute`) now
   start with "Experimental:".
+- Reuse a restored `~/.cache/sail/projects/` on a new machine or CI runner.
+  Installed tools (Sail, Cargo, Cargo-Verus, Verus, the solver, rustc, rustup
+  and sysroot libraries) are now identified in the proof context and compiler
+  family by their bytes rather than by device and inode, so identical tools
+  at the same paths reuse the restored managed targets and proof receipts
+  (#421). Each tool is read once per machine and then trusted while its
+  complete stat stamp is unchanged (ADR 0041 note). Existing receipts from
+  earlier Sail builds are not reused after this upgrade.
+
 - Stop `sail verify` rebuilding where `cargo verus verify` is a no-op. After a
   `src/bin` file was added and removed, every call rebuilt the build-script
   packages and re-verified vstd (about 26 s); it is a no-op again (#401). A new
