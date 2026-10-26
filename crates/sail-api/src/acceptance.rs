@@ -110,6 +110,32 @@ sail_code! {
         readback: &'a sail_acceptance::inputs::GuardedReadback<'b>,
     }
 
+    /// Checked correspondence with independently supplied native path bytes.
+    /// This is not filesystem, loaded-image or complete input-domain authority.
+    pub struct RequestPathBinding<'a> {
+        request: &'a ResolvedRequest,
+        invocation: &'a [u8],
+        workspace: &'a [u8],
+    }
+
+    impl<'a> RequestPathBinding<'a> {
+        sail_method! {
+            /// Borrows the exact request whose path fields were checked.
+            pub fn request(&self) -> (out: &'a ResolvedRequest)
+                requires(true) ensures(out == path_binding_request(self)) { self.request }
+        }
+        sail_method! {
+            /// Returns the original native invocation bytes, without reencoding.
+            pub fn invocation(&self) -> (out: &'a [u8])
+                requires(true) ensures(out == path_binding_invocation(self)) { self.invocation }
+        }
+        sail_method! {
+            /// Returns the original native workspace bytes, without reencoding.
+            pub fn workspace(&self) -> (out: &'a [u8])
+                requires(true) ensures(out == path_binding_workspace(self)) { self.workspace }
+        }
+    }
+
     impl<'a, 'b> ReplayReadback<'a, 'b> {
         sail_method! {
             /// Returns the exact current request bound by the checked factory.
@@ -2465,5 +2491,112 @@ sail_verified! {
         let Some(current) = current_invocation else { return None; };
         if !exact_bytes(current.as_bytes(), request.invocation.as_str().as_bytes()) { return None; }
         bind_submission(arguments, mode, request)
+    }
+}
+
+sail_spec! {
+    pub closed spec fn path_binding_request<'a>(binding: &RequestPathBinding<'a>) -> &'a ResolvedRequest { binding.request }
+    pub closed spec fn path_binding_invocation<'a>(binding: &RequestPathBinding<'a>) -> &'a [u8] { binding.invocation }
+    pub closed spec fn path_binding_workspace<'a>(binding: &RequestPathBinding<'a>) -> &'a [u8] { binding.workspace }
+
+    pub open spec fn request_paths_correspond(request: &ResolvedRequest, invocation: Seq<u8>, workspace: Seq<u8>) -> bool {
+        string_bytes(&request.invocation) == invocation && string_bytes(&request.workspace) == workspace
+    }
+
+    pub open spec fn request_path_binding_valid(binding: &RequestPathBinding) -> bool {
+        request_paths_correspond(path_binding_request(binding), path_binding_invocation(binding)@,
+            path_binding_workspace(binding)@)
+    }
+
+    /// Observed records and scope evidence remain intact except the positive
+    /// whole/partial labels which the path guard may withhold.
+    pub open spec fn same_project_except_path_authority(a: &ProjectResult, b: &ProjectResult) -> bool {
+        a.kind == b.kind && a.schema_version == b.schema_version && a.run_id == b.run_id
+            && a.workspace == b.workspace && a.context_sha256 == b.context_sha256
+            && a.input_revision == b.input_revision && a.currentness == b.currentness
+            && a.exit_code == b.exit_code && a.error == b.error && a.engine == b.engine
+            && a.targets@.len() == b.targets@.len()
+            && forall |i: int| 0 <= i < a.targets@.len() ==>
+                a.targets@[i].package_id == b.targets@[i].package_id
+                    && a.targets@[i].target == b.targets@[i].target && a.targets@[i].kind == b.targets@[i].kind
+                    && a.targets@[i].establishing_run == b.targets@[i].establishing_run
+                    && a.targets@[i].reused == b.targets@[i].reused && a.targets@[i].requested == b.targets@[i].requested
+                    && a.targets@[i].report == b.targets@[i].report
+                    && (b.targets@[i].complete ==> a.targets@[i].complete)
+                    && (b.targets@[i].scope_reuse.is_some() ==> b.targets@[i].scope_reuse == a.targets@[i].scope_reuse)
+    }
+}
+
+sail_verified! {
+    /// Binds request Strings to the original native bytes supplied separately
+    /// by the caller. A lossy encoder or different path spelling cannot pass.
+    pub fn bind_request_paths<'a>(request: &'a ResolvedRequest, invocation: &'a [u8], workspace: &'a [u8])
+        -> (out: Option<RequestPathBinding<'a>>)
+        requires(true)
+        ensures(out.is_some() == request_paths_correspond(request, invocation@, workspace@),
+            out.is_some() ==> request_path_binding_valid(&out.unwrap()),
+            out.is_some() ==> path_binding_request(&out.unwrap()) == request,
+            out.is_some() ==> path_binding_invocation(&out.unwrap()) == invocation,
+            out.is_some() ==> path_binding_workspace(&out.unwrap()) == workspace)
+    {
+        if !exact_bytes(invocation, request.invocation.as_str().as_bytes())
+            || !exact_bytes(workspace, request.workspace.as_str().as_bytes()) { return None; }
+        Some(RequestPathBinding { request, invocation, workspace })
+    }
+}
+
+sail_verified! {
+    /// Keeps authority only when the independently retained native path bytes
+    /// still match this request. Missing/mismatched bindings clear whole and
+    /// exact-partial labels, preserving reports, identities and input currentness.
+    pub fn withhold_unmatched_request_paths(project: &mut ProjectResult, request: &ResolvedRequest,
+        paths: Option<&RequestPathBinding>) -> (matched: bool)
+        requires(true)
+        ensures(same_project_except_path_authority(old(project), final(project)),
+            matched ==> paths.is_some() && request_paths_correspond(request,
+                path_binding_invocation(paths.unwrap())@, path_binding_workspace(paths.unwrap())@),
+            matched ==> *final(project) == *old(project),
+            !matched ==> forall |i: int| 0 <= i < final(project).targets@.len() ==>
+                !final(project).targets@[i].complete && final(project).targets@[i].scope_reuse.is_none(),
+            paths.is_some() && request_paths_correspond(request,
+                path_binding_invocation(paths.unwrap())@, path_binding_workspace(paths.unwrap())@) ==> matched)
+    {
+        if let Some(binding) = paths {
+            if bind_request_paths(request, binding.invocation(), binding.workspace()).is_some() { return true; }
+        }
+        let mut i = 0usize;
+        sail_while! { (i < project.targets.len())
+            invariant(i <= project.targets.len(), project.targets@.len() == old(project).targets@.len(),
+                same_project_except_path_authority(old(project), project),
+                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete && project.targets@[j].scope_reuse.is_none(),
+                forall |j: int| i <= j < project.targets@.len() ==>
+                    project.targets@[j].complete == old(project).targets@[j].complete
+                        && project.targets@[j].scope_reuse == old(project).targets@[j].scope_reuse)
+            decreases(project.targets.len() - i)
+            {
+                project.targets[i].complete = false;
+                project.targets[i].scope_reuse = None;
+                i += 1;
+            }
+        }
+        false
+    }
+}
+
+sail_spec! {
+    /// Exact requested coverage is nonvacuous: it contains a requested target.
+    pub proof fn resolved_coverage_has_requested_target(request: &ResolvedRequest, project: &ProjectResult)
+        requires resolved_coverage(request, project),
+        ensures exists |i: int| 0 <= i < project.targets@.len() && project.targets@[i].requested,
+    {
+        let expected = choose |expected: Seq<RequestedTarget>| resolved_expected(request, expected)
+            && exact_requested_coverage(expected, project.targets@);
+        reveal(exact_requested_coverage);
+        assert(expected.len() > 0);
+        assert(request_covered(&expected[0], project.targets@));
+        let i = choose |i: int| 0 <= i < project.targets@.len() && target_match(&expected[0], &project.targets@[i])
+            && project.targets@[i].requested
+            && forall |j: int| 0 <= j < project.targets@.len() && target_match(&expected[0], &project.targets@[j]) ==> j == i;
+        assert(project.targets@[i].requested);
     }
 }

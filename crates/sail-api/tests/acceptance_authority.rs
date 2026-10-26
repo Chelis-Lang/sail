@@ -751,3 +751,98 @@ fn replay_keeps_enabled_zero_function_proofs_and_refuses_compile_only() -> TestR
     assert_eq!(actual, before);
     Ok(())
 }
+
+#[test]
+fn request_paths_bind_exact_bytes_and_reject_lossy_replacement_aliases() -> TestResult {
+    use sail_api::acceptance::bind_request_paths;
+    for invocation_changed in [true, false] {
+        let mut request = original_request();
+        let invalid_native: &[u8] = b"/workspace/non-utf8-\xff";
+        let replacement = String::from_utf8_lossy(invalid_native).into_owned();
+        if invocation_changed {
+            request.invocation = replacement;
+        } else {
+            request.workspace = replacement;
+        }
+        let invocation = if invocation_changed {
+            invalid_native
+        } else {
+            request.invocation.as_bytes()
+        };
+        let workspace = if invocation_changed {
+            request.workspace.as_bytes()
+        } else {
+            invalid_native
+        };
+        assert!(bind_request_paths(&request, invocation, workspace).is_none());
+
+        // The real UTF-8 replacement-name path is a different native byte name.
+        // Matching it is legitimate; matching the invalid-byte alias is not.
+        let invocation = request.invocation.as_bytes();
+        let workspace = request.workspace.as_bytes();
+        let binding =
+            bind_request_paths(&request, invocation, workspace).ok_or("exact UTF-8 paths")?;
+        assert_eq!(binding.request(), &request);
+        assert_eq!(binding.invocation(), invocation);
+        assert_eq!(binding.workspace(), workspace);
+    }
+    Ok(())
+}
+
+#[test]
+fn missing_or_swapped_native_paths_withhold_whole_and_partial_labels() -> TestResult {
+    use sail_api::acceptance::{
+        bind_request_paths, complete_exact_partial_request, withhold_unmatched_request_paths,
+    };
+    for partial in [false, true] {
+        let mut request = original_request();
+        let mut report = passing_report()?;
+        if partial {
+            request.args = vec!["--".into(), "--verify-module".into(), "m".into()];
+            report.command.clone_from(&request.args);
+            for krate in &mut report.crates {
+                krate.verus.success = None;
+            }
+        }
+        let mut actual = project(vec![target("app", report)]);
+        if partial {
+            actual.targets[0].complete = false;
+            actual.targets[0].scope_reuse = Some(request.args.clone());
+            assert!(complete_exact_partial_request(&request, &actual).is_some());
+        } else {
+            assert!(complete_request(&request, &actual).is_some());
+        }
+        let before = actual.clone();
+        let binding =
+            bind_request_paths(&request, b"/workspace", b"/workspace").ok_or("original paths")?;
+        assert!(withhold_unmatched_request_paths(
+            &mut actual,
+            &request,
+            Some(&binding)
+        ));
+        assert_eq!(actual, before);
+
+        assert!(!withhold_unmatched_request_paths(
+            &mut actual,
+            &request,
+            None
+        ));
+        let mut expected = before.clone();
+        expected.targets[0].complete = false;
+        expected.targets[0].scope_reuse = None;
+        assert_eq!(actual, expected);
+        assert!(complete_request(&request, &actual).is_none());
+        assert!(complete_exact_partial_request(&request, &actual).is_none());
+
+        let mut swapped = request.clone();
+        swapped.invocation = "/different-invocation".into();
+        let mut actual = before;
+        assert!(!withhold_unmatched_request_paths(
+            &mut actual,
+            &swapped,
+            Some(&binding)
+        ));
+        assert_eq!(actual, expected);
+    }
+    Ok(())
+}

@@ -863,4 +863,68 @@ pub fn positive_retained_submission_invocation(request: &crate::project::Resolve
     acceptance::bind_retained_submission(&arguments, &mode, request, Some(current)).is_some()
 }
 
+/// Two separately supplied nonempty native byte paths reach the actual
+/// binding factory only when both exact request strings preserve their bytes.
+pub fn positive_nonempty_request_path_binding(request: &crate::project::ResolvedRequest,
+    invocation: &[u8], workspace: &[u8]) -> (accepted: bool)
+    requires invocation@.len() > 0, workspace@.len() > 0,
+        acceptance::request_paths_correspond(request, invocation@, workspace@),
+    ensures accepted,
+{
+    acceptance::bind_request_paths(request, invocation, workspace).is_some()
+}
+
+/// A lossy replacement, changed spelling or other byte mismatch cannot bind.
+pub fn mismatched_request_path_binding_refused(request: &crate::project::ResolvedRequest,
+    invocation: &[u8], workspace: &[u8]) -> (refused: bool)
+    requires !acceptance::request_paths_correspond(request, invocation@, workspace@),
+    ensures refused,
+{
+    acceptance::bind_request_paths(request, invocation, workspace).is_none()
+}
+
+/// A native pre-execution path mismatch withholds both whole and exact partial
+/// authority, preserving observed reports and input currentness. Neither
+/// complete-request factory can silently restore those missing labels.
+pub fn mismatched_paths_withhold_whole_and_partial(project: &mut crate::project::ProjectResult,
+    request: &crate::project::ResolvedRequest, orders: &[acceptance::ReportOrder],
+    paths: Option<&acceptance::RequestPathBinding>) -> (withheld: bool)
+    requires paths.is_none() || !acceptance::request_paths_correspond(request,
+        acceptance::path_binding_invocation(paths.unwrap())@, acceptance::path_binding_workspace(paths.unwrap())@),
+    ensures withheld, acceptance::same_project_except_path_authority(old(project), final(project)),
+        final(project).currentness == old(project).currentness,
+        forall |i: int| 0 <= i < final(project).targets@.len() ==>
+            !final(project).targets@[i].complete && final(project).targets@[i].scope_reuse.is_none(),
+{
+    let matched = acceptance::withhold_unmatched_request_paths(project, request, paths);
+    let whole = acceptance::complete_request_ordered(request, project, orders);
+    if whole.is_some() {
+        proof {
+            acceptance::resolved_coverage_has_requested_target(request, project);
+            let i = choose |i: int| 0 <= i < project.targets@.len() && project.targets@[i].requested;
+            assert(!project.targets@[i].complete);
+        }
+    }
+    let partial = acceptance::complete_exact_partial_request_ordered(request, project, orders);
+    if partial.is_some() {
+        proof {
+            acceptance::resolved_coverage_has_requested_target(request, project);
+            let i = choose |i: int| 0 <= i < project.targets@.len() && project.targets@[i].requested;
+            assert(project.targets@[i].scope_reuse.is_none());
+        }
+    }
+    !matched && whole.is_none() && partial.is_none()
+}
+
+/// A valid matching binding keeps the complete supplied project unchanged;
+/// the path guard is not an always-withhold implementation.
+pub fn matched_request_paths_preserve_observations(project: &mut crate::project::ProjectResult,
+    request: &crate::project::ResolvedRequest, paths: &acceptance::RequestPathBinding) -> (matched: bool)
+    requires acceptance::request_paths_correspond(request,
+        acceptance::path_binding_invocation(paths)@, acceptance::path_binding_workspace(paths)@),
+    ensures matched, *final(project) == *old(project),
+{
+    acceptance::withhold_unmatched_request_paths(project, request, Some(paths))
+}
+
 }
