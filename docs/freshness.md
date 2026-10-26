@@ -268,7 +268,7 @@ Cargo's own. Two parts of the environment bind a result:
   layout and locale (`NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `COLUMNS`,
   `LANG`, `LANGUAGE`, `LC_*`).
 - **What the project declares.** After each run Sail collects every variable
-  any unit declares: rustc's `# env-dep:` dep-info lines (`env!`,
+  the target's dependency closure declares: rustc's `# env-dep:` dep-info lines (`env!`,
   `option_env!`, and the Verus driver's own declarations) and build scripts'
   `rerun-if-env-changed`. Each receipt records their values, and it is reused
   only while every one is unchanged and the current declaration inventory
@@ -362,6 +362,21 @@ homes with the bytes of every Cargo configuration file. Every other variable,
 such as an agent's session id, `TERM` or `SSH_AUTH_SOCK`, is not a proof
 input, so the CLI, MCP and every agent session or terminal share one proof
 context for a project. Child processes still receive the whole environment.
+
+Receipt declaration scans retain the actual dep-info or build-script output
+file of each name. Cargo's artifact paths attribute those files to packages.
+Only a file with one known owning package outside the target's complete resolved
+dependency closure is excluded. Unknown or ambiguous ownership, or an incomplete
+metadata graph, keeps the conservative global name domain. A failed declaration
+scan withholds reuse; ownership information cannot repair it.
+
+Originally admitted names are retained only from the same package, Cargo target
+name and kind, with the original receipt's scope, version, bytes and values still
+valid. They are sampled again, including absence; old values are never copied
+into a fresh observation. This preserves verification-phase declarations lost
+from later dep-info without importing an unrelated target's names. A new relevant
+name or a changed/removed recorded value still refuses exact-map reuse. This
+accounts for declared inputs; it does not discover opaque compiler or macro I/O.
 
 **Limitation, shared with Cargo.** A build script or proc macro that reads a
 variable without declaring it, including a tool that a build script finds
