@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-bash ci/check-completion.sh success success success success success success success success
+bash ci/check-completion.sh success success success success success success success success success
 for result in failure cancelled skipped '' pending Success; do
-  for index in 0 1 2 3 4 5 6 7; do
-    results=(success success success success success success success success)
+  for index in 0 1 2 3 4 5 6 7 8; do
+    results=(success success success success success success success success success)
     results[$index]="$result"
     if bash ci/check-completion.sh "${results[@]}" 2>/dev/null; then
       echo "completion incorrectly accepted '$result' at $index" >&2
@@ -16,8 +16,8 @@ if bash ci/check-completion.sh success 2>/dev/null; then
   echo 'completion incorrectly accepted missing results' >&2
   exit 1
 fi
-if bash ci/check-completion.sh success success success success success success success 2>/dev/null; then
-  echo 'completion incorrectly accepted an omitted production-refinement result' >&2
+if bash ci/check-completion.sh success success success success success success success success 2>/dev/null; then
+  echo 'completion incorrectly accepted an omitted temporal-extension result' >&2
   exit 1
 fi
 

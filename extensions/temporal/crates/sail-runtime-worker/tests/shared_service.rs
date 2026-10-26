@@ -27,6 +27,7 @@ impl Service {
         std::fs::create_dir(&root)?;
         let worker = Path::new(env!("CARGO_BIN_EXE_sail-runtime-worker"));
         let config = sail_runtime::Config {
+            temporal_backend: Some(std::sync::Arc::new(sail_dive::backend::Dive)),
             temporal_worker: Some(sail_runtime::temporal::Worker {
                 executable: worker.into(),
                 sha256: temporal::sha256(&std::fs::read(worker)?),

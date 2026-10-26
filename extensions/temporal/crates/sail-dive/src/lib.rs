@@ -1,6 +1,7 @@
 //! Pinned native temporal jobs, exact trace transport and an isolated worker.
 #![forbid(unsafe_code)]
 
+pub mod backend;
 pub mod client;
 mod codec;
 mod input;

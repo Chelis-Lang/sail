@@ -129,7 +129,12 @@ root/configuration and check, finite simulation or trace validation operation.
 See [native temporal jobs](temporal-jobs.md) for the admitted semantic scope.
 
 `capabilities.temporal` reports implementation and authenticated worker
-installation separately. Older services omit this field; temporal clients
+installation separately. A `sail` built from the main workspace, including
+every public release archive, links no temporal backend: it reports
+`installed: false` with the `unavailable` reason "native temporal support is
+not included in this sail build", and temporal jobs return `Unavailable`
+([ADR 0083](decisions/0083-temporal-extension-workspace.md)). Older services
+omit this field; temporal clients
 must restart or upgrade instead of falling back. Existing SMT requests and
 version-one wire fields retain their meanings.
 
@@ -140,15 +145,18 @@ traces and validation evidence. Native stopped/unsupported/error outcomes are
 explicit. Neither finite simulation nor trace validity is an exhaustive proof.
 This slice does not cache temporal evidence or establish assurance tiers.
 
-Internal source installations build `sail-cli` and `sail-runtime-worker`, then
-stage the worker beside the Sail binary:
+Internal installations build the temporal-enabled `sail` and the worker from
+the [temporal extension workspace](private-dependencies.md), which needs read
+access to the private D.I.V.E. source, then stage the worker beside that
+`sail`:
 
 ```sh
-cargo build --locked -p sail-cli -p sail-runtime-worker
-python3 scripts/stage-temporal-worker.py target/debug/sail-runtime-worker target/debug
+cargo build --locked --manifest-path extensions/temporal/Cargo.toml --target-dir target/temporal
+python3 scripts/stage-temporal-worker.py target/temporal/debug/sail-runtime-worker target/temporal/debug
 ```
 
 The manifest records the exact linked source revision, payload protocol,
-platform and worker digest. Release staging uses the same helper after
-stripping final bytes and binds both files in its release inventory. No PATH
-search, caller-selected executable, Java or TLC process participates.
+platform and worker digest. Internal release staging
+(`SAIL_RELEASE_TEMPORAL=1`) uses the same helper after stripping final bytes
+and binds both files in its release inventory. No PATH search,
+caller-selected executable, Java or TLC process participates.

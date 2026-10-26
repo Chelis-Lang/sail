@@ -128,6 +128,9 @@ intermediates freely. Cleanup is routine and is not recorded in git.
 
 ```
 crates/sail-*        one crate per charter component (see docs/CHARTER.md)
+extensions/temporal/ separate Cargo workspace for the temporal-enabled `sail`
+                     and its worker, the only build of the private D.I.V.E.
+                     sources (ADR 0083, docs/private-dependencies.md)
 xtask/               cargo xtask: install-hooks, check-layering, protect-main,
                      fetch-verus, build-verus-source
 corpus/              pinned Verus/Z3 toolchain and corpus project pins
@@ -140,11 +143,14 @@ scripts/             small shell helpers used by hooks and CI
 ```
 
 **Layering.** `xtask/src/layering.rs` is the single table of permitted internal
-dependency edges, and `cargo xtask check-layering` enforces it in CI. Two
-structural rules are tested:
+dependency edges, and `cargo xtask check-layering` enforces it in CI for both
+the main workspace and the temporal extension. Three structural rules are
+tested:
 - `sail-shim` must not reach the daemon, cache, solver pool, portfolio or Verus
   crates, so its fallback path stays small;
-- the protocol, session, key and cache layers must not depend on `sail-verus`.
+- the protocol, session, key and cache layers must not depend on `sail-verus`;
+- no main-workspace crate may depend on an extension crate, so the main
+  workspace builds without the private D.I.V.E. sources.
 
 ## Rust conventions
 
@@ -182,6 +188,7 @@ ci/local.sh proofs                # direct stock-Verus model proofs and all brok
 ci/local.sh refinements           # actual production bodies and refinement controls
 ci/local.sh e2e [PHASE]           # `sail verify` vs `cargo verus verify`: identical output (all phases + extra)
 ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
+ci/local.sh extension             # temporal extension workspace: fmt, clippy, tests (needs D.I.V.E. access)
 ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
 
@@ -204,7 +211,11 @@ release-style checks belong in the local tiers below, never in CI.
 **Required on every PR** (branch protection): `No AI authorship markers`,
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
-gate, including image creation, direct acceptance-model proofs and production refinements, to have succeeded. Branches must be current
+gate, including image creation, direct acceptance-model proofs, production
+refinements and the `Temporal extension` job, to have succeeded. The
+extension job is the only one given the private-dependency token; where the
+token is unavailable (fork PRs) it skips its steps and succeeds, so a skipped
+extension is not a passing one. Branches must be current
 with `main` before merging. The `End to end` check aggregates eleven parallel
 phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
