@@ -6,12 +6,11 @@
 #[cfg(sail_verus)]
 use vstd::prelude::*;
 
-use crate::authority::{CompilerUnit, ObservedAttempt, UnconfiguredAttempt};
+use crate::authority::{CompilerUnit, ObservedAttempt, ProcessDescriptor, ReservedAttempt};
 #[cfg(sail_verus)]
 use crate::authority::{
-    observation_complete, observed_running, reserved_run, reserved_slot, reserved_unit,
-    running_exit, running_pid, running_reserved, unconfigured_run, unconfigured_slot,
-    unconfigured_unit,
+    observation_complete, observed_running, reserved_descriptor, reserved_run, reserved_slot,
+    reserved_unit, running_exit, running_pid, running_reserved,
 };
 use crate::inputs::{
     InputFact, byte_eq, copy_bytes, input_key_eq, input_order, ordered_key_less, selection_covered,
@@ -34,12 +33,13 @@ sail_code! {
         pub inverse: &'a [usize],
     }
 
-    /// Original request identity prepared before configuring or spawning a child.
+    /// Original final command identity sealed after configuration and before spawn.
     pub struct PhaseRequest {
         run: Vec<u8>,
         unit: CompilerUnit,
         slot: usize,
         binding: Vec<u8>,
+        descriptor: ProcessDescriptor,
     }
 
     /// One parsed declaration phase; the tag is 0 for verification, 1 for compilation.
@@ -56,7 +56,7 @@ sail_code! {
         pub kind: &'a [u8],
         /// Actual document schema.
         pub schema: u32,
-        /// Actual child PID carried by the producer.
+        /// Child PID reported by the producer; checked against the observed attempt.
         pub pid: u32,
         /// Original private request binding echoed by the producer.
         pub binding: &'a [u8],
@@ -66,7 +66,7 @@ sail_code! {
         pub phases: &'a [PhaseRecord<'a>],
     }
 
-    /// Same-attempt two-phase declaration accounting; never a `CompilerDomain`.
+    /// Request-matching two-phase declarations; never a `CompilerDomain` or authenticated file origin.
     pub struct PhaseInputs<'a, 'b> {
         request: PhaseRequest,
         observed: &'a ObservedAttempt<'b>,
@@ -93,9 +93,25 @@ sail_spec! {
     /// Every raw compiler-unit field participates in correspondence.
     pub open spec fn same_unit(a: CompilerUnit, b: CompilerUnit) -> bool {
         a.manifest@ == b.manifest@ && a.name@ == b.name@ && a.crate_type@ == b.crate_type@
-            && match (a.cargo_name, b.cargo_name) {
-                (Some(a), Some(b)) => a@ == b@, (None, None) => true, _ => false,
-            }
+            && same_optional(a.cargo_name, b.cargo_name)
+    }
+    /// Absence and empty values remain distinct for directories and overrides.
+    pub open spec fn same_optional(a: Option<Vec<u8>>, b: Option<Vec<u8>>) -> bool {
+        match (a, b) { (Some(a), Some(b)) => a@ == b@, (None, None) => true, _ => false }
+    }
+    /// Every ordered argument is preserved as actual bytes, not a digest.
+    pub open spec fn same_arguments(a: Seq<Vec<u8>>, b: Seq<Vec<u8>>) -> bool {
+        a.len() == b.len() && forall|i: int| 0 <= i < a.len() ==> #[trigger] a[i]@ == b[i]@
+    }
+    /// Every ordered environment operation keeps its exact name and value/removal.
+    pub open spec fn same_overrides(a: Seq<(Vec<u8>, Option<Vec<u8>>)>, b: Seq<(Vec<u8>, Option<Vec<u8>>)>) -> bool {
+        a.len() == b.len() && forall|i: int| 0 <= i < a.len() ==>
+            #[trigger] a[i].0@ == b[i].0@ && same_optional(a[i].1, b[i].1)
+    }
+    /// All fields of the final configured command participate in the request.
+    pub open spec fn same_descriptor(a: ProcessDescriptor, b: ProcessDescriptor) -> bool {
+        a.program@ == b.program@ && same_arguments(a.arguments@, b.arguments@)
+            && same_optional(a.directory, b.directory) && same_overrides(a.overrides@, b.overrides@)
     }
 }
 
@@ -109,29 +125,160 @@ impl PhaseRequest {
         pub closed spec fn slot_view(&self) -> usize { self.slot }
         /// Exact original private binding bytes.
         pub closed spec fn binding_view(&self) -> Seq<u8> { self.binding@ }
+        /// The complete final command captured before the child was spawned.
+        pub closed spec fn descriptor_view(&self) -> ProcessDescriptor { self.descriptor }
     }
     sail_method! {
-        /// Copy the request before the unconfigured attempt becomes a child.
-        pub fn for_attempt(attempt: &UnconfiguredAttempt<'_>, binding: &[u8]) -> (request: Self)
+        /// Seal the request after every command configuration and before spawn.
+        /// Consuming the reservation prevents a history borrow from attaching
+        /// a fresh original binding after completion.
+        ///
+        /// ```compile_fail,E0308
+        /// use sail_acceptance::{authority::ObservedAttempt, phase_inputs::PhaseRequest};
+        /// let _ = |history: &ObservedAttempt<'_>| {
+        ///     PhaseRequest::for_reserved(history.reserved(), b"new-binding")
+        /// };
+        /// ```
+        pub fn for_reserved<'a>(attempt: ReservedAttempt<'a>, binding: &[u8]) -> (out: (Self, ReservedAttempt<'a>))
             requires (true)
-            ensures (request.run_view() == unconfigured_run(attempt)@,
-                same_unit(request.unit_view(), *unconfigured_unit(attempt)),
-                request.slot_view() == unconfigured_slot(attempt), request.binding_view() == binding@)
+            ensures (out.1 == attempt, out.0.run_view() == reserved_run(&attempt)@,
+                same_unit(out.0.unit_view(), *reserved_unit(&attempt)),
+                out.0.slot_view() == reserved_slot(&attempt), out.0.binding_view() == binding@,
+                same_descriptor(out.0.descriptor_view(), reserved_descriptor(&attempt)))
         {
-            Self { run: copy_bytes(attempt.run()), unit: copy_compiler_unit(attempt.unit()), slot: attempt.slot(), binding: copy_bytes(binding) }
+            let request = Self { run: copy_bytes(attempt.run()), unit: copy_compiler_unit(attempt.unit()), slot: attempt.slot(), binding: copy_bytes(binding), descriptor: copy_descriptor(attempt.descriptor()) };
+            (request, attempt)
         }
     }
 }
 
 sail_verified! {
-    /// Copy every raw unit field while preserving absent versus empty names.
+    /// Copy an optional field without turning absence into an empty byte value.
     #[allow(clippy::manual_map, reason = "Explicit Option branches retain the copied-byte relation in both checked and native bodies.")]
+    pub fn copy_optional_bytes(value: &Option<Vec<u8>>) -> (copied: Option<Vec<u8>>)
+        requires (true) ensures (same_optional(copied, *value))
+    {
+        match value { Some(value) => Some(copy_bytes(value)), None => None }
+    }
+}
+
+sail_verified! {
+    /// Preserve exact optional bytes, including removal versus an empty value.
+    pub fn optional_bytes_equal(a: &Option<Vec<u8>>, b: &Option<Vec<u8>>) -> (equal: bool)
+        requires (true) ensures (equal == same_optional(*a, *b))
+    {
+        match (a, b) { (Some(a), Some(b)) => byte_eq(a, b), (None, None) => true, _ => false }
+    }
+}
+
+sail_verified! {
+    /// Copy every ordered argument without joining or hashing argument bytes.
+    pub fn copy_arguments(values: &[Vec<u8>]) -> (copied: Vec<Vec<u8>>)
+        requires (true) ensures (same_arguments(copied@, values@))
+    {
+        let mut copied: Vec<Vec<u8>> = Vec::new(); let mut i = 0;
+        sail_while! { (i < values.len())
+            invariant (i <= values.len(), copied.len() == i,
+                forall|k: int| 0 <= k < i ==> #[trigger] copied[k]@ == values[k]@)
+            decreases (values.len() - i)
+            { copied.push(copy_bytes(&values[i])); i += 1; }
+        }
+        copied
+    }
+}
+
+sail_verified! {
+    /// Compare every argument and its exact position.
+    pub fn arguments_equal(a: &[Vec<u8>], b: &[Vec<u8>]) -> (equal: bool)
+        requires (true) ensures (equal == same_arguments(a@, b@))
+    {
+        if a.len() != b.len() { return false; }
+        let mut i = 0;
+        sail_while! { (i < a.len())
+            invariant (i <= a.len(), a.len() == b.len(),
+                forall|k: int| 0 <= k < i ==> #[trigger] a[k]@ == b[k]@)
+            decreases (a.len() - i)
+            { if !byte_eq(&a[i], &b[i]) { return false; } i += 1; }
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Copy ordered environment operations with their original name/value pairs.
+    pub fn copy_overrides(values: &[(Vec<u8>, Option<Vec<u8>>)]) -> (copied: Vec<(Vec<u8>, Option<Vec<u8>>)>)
+        requires (true) ensures (same_overrides(copied@, values@))
+    {
+        let mut copied: Vec<(Vec<u8>, Option<Vec<u8>>)> = Vec::new(); let mut i = 0;
+        sail_while! { (i < values.len())
+            invariant (i <= values.len(), copied.len() == i,
+                forall|k: int| 0 <= k < i ==> #[trigger] copied[k].0@ == values[k].0@
+                    && same_optional(copied[k].1, values[k].1))
+            decreases (values.len() - i)
+            {
+                let name = copy_bytes(&values[i].0); let value = copy_optional_bytes(&values[i].1);
+                copied.push((name, value)); i += 1;
+            }
+        }
+        copied
+    }
+}
+
+sail_verified! {
+    /// Compare the complete ordered override/removal operation list.
+    pub fn overrides_equal(a: &[(Vec<u8>, Option<Vec<u8>>)], b: &[(Vec<u8>, Option<Vec<u8>>)]) -> (equal: bool)
+        requires (true) ensures (equal == same_overrides(a@, b@))
+    {
+        if a.len() != b.len() { return false; }
+        let mut i = 0;
+        sail_while! { (i < a.len())
+            invariant (i <= a.len(), a.len() == b.len(),
+                forall|k: int| 0 <= k < i ==> #[trigger] a[k].0@ == b[k].0@
+                    && same_optional(a[k].1, b[k].1))
+            decreases (a.len() - i)
+            {
+                if !byte_eq(&a[i].0, &b[i].0) || !optional_bytes_equal(&a[i].1, &b[i].1) { return false; }
+                sail_proof! {
+                    assert(a[i as int].0@ == b[i as int].0@);
+                    assert(same_optional(a[i as int].1, b[i as int].1));
+                    assert forall|k: int| 0 <= k < i + 1 implies
+                        #[trigger] a[k].0@ == b[k].0@ && same_optional(a[k].1, b[k].1) by {
+                        if k == i { assert(same_optional(a[k].1, b[k].1)); }
+                    }
+                }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Copy every final command field before its reservation is consumed by spawn.
+    pub fn copy_descriptor(value: &ProcessDescriptor) -> (copied: ProcessDescriptor)
+        requires (true) ensures (same_descriptor(copied, *value))
+    {
+        ProcessDescriptor { program: copy_bytes(&value.program), arguments: copy_arguments(&value.arguments),
+            directory: copy_optional_bytes(&value.directory), overrides: copy_overrides(&value.overrides) }
+    }
+}
+
+sail_verified! {
+    /// Compare literal final program, ordered argv, directory and environment operations.
+    pub fn descriptors_equal(a: &ProcessDescriptor, b: &ProcessDescriptor) -> (equal: bool)
+        requires (true) ensures (equal == same_descriptor(*a, *b))
+    {
+        byte_eq(&a.program, &b.program) && arguments_equal(&a.arguments, &b.arguments)
+            && optional_bytes_equal(&a.directory, &b.directory) && overrides_equal(&a.overrides, &b.overrides)
+    }
+}
+
+sail_verified! {
+    /// Copy every raw unit field while preserving absent versus empty names.
     pub fn copy_compiler_unit(unit: &CompilerUnit) -> (copied: CompilerUnit)
         requires (true) ensures (same_unit(copied, *unit))
     {
-        let cargo_name = match &unit.cargo_name {
-            Some(name) => Some(copy_bytes(name)), None => None,
-        };
+        let cargo_name = copy_optional_bytes(&unit.cargo_name);
         CompilerUnit { manifest: copy_bytes(&unit.manifest), name: copy_bytes(&unit.name),
             crate_type: copy_bytes(&unit.crate_type), cargo_name }
     }
@@ -155,11 +302,12 @@ sail_verified! {
         requires (true)
         ensures (matches == (request.run_view() == reserved_run(&running_reserved(&observed_running(observed)))@
             && same_unit(request.unit_view(), *reserved_unit(&running_reserved(&observed_running(observed))))
-            && request.slot_view() == reserved_slot(&running_reserved(&observed_running(observed)))))
+            && request.slot_view() == reserved_slot(&running_reserved(&observed_running(observed)))
+            && same_descriptor(request.descriptor_view(), reserved_descriptor(&running_reserved(&observed_running(observed))))))
     {
         let reserved = observed.reserved();
         byte_eq(&request.run, reserved.run()) && compiler_units_equal(&request.unit, reserved.unit())
-            && request.slot == reserved.slot()
+            && request.slot == reserved.slot() && descriptors_equal(&request.descriptor, reserved.descriptor())
     }
 }
 
@@ -276,6 +424,7 @@ sail_spec! {
         request.run_view() == reserved_run(&running_reserved(&observed_running(observed)))@
             && same_unit(request.unit_view(), *reserved_unit(&running_reserved(&observed_running(observed))))
             && request.slot_view() == reserved_slot(&running_reserved(&observed_running(observed)))
+            && same_descriptor(request.descriptor_view(), reserved_descriptor(&running_reserved(&observed_running(observed))))
     }
     /// Both known phases and the literal existing final-document fields.
     pub open spec fn matching_document(request: PhaseRequest, observed: &ObservedAttempt,
@@ -336,7 +485,7 @@ impl<'a, 'b> PhaseInputs<'a, 'b> {
 }
 
 sail_verified! {
-    /// Admit one exact same-child two-phase declaration union.
+    /// Check a request-matching two-phase declaration union and reported metadata.
     /// A normal nonzero exit may finish accounting; this never establishes a proof.
     pub fn seal_phase_inputs<'a, 'b>(request: PhaseRequest, observed: &'a ObservedAttempt<'b>,
         document: &'a PhaseDocument<'a>, joined: Inventory<'a>) -> (seal: Option<PhaseInputs<'a, 'b>>)
