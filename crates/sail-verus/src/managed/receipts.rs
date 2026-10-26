@@ -102,6 +102,9 @@ pub(crate) struct Invocation {
     /// Original proof run for the named same-workspace content experiment.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retained_from: Option<String>,
+    /// Exact immutable producer namespace. Legacy records cannot select a live attempt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected_attempt: Option<crate::adapter::attempts::SelectedAttempt>,
     pub identity: TargetIdentity,
     pub run_id: String,
     pub report: Report,
@@ -113,10 +116,34 @@ pub(crate) struct Invocation {
 }
 
 impl Invocation {
+    pub(crate) fn selected_directory(&self, run: &Path) -> Option<PathBuf> {
+        if self.dependency_build.is_some() {
+            return None;
+        }
+        let original = match &self.retained_from {
+            Some(original) => run.parent()?.join(original),
+            None => run.to_owned(),
+        };
+        self.selected_attempt
+            .as_ref()?
+            .directory(&original, &self.identity, self.report.exit_code)
+    }
+    pub(crate) fn producer_available(&self, run: &Path) -> bool {
+        match (&self.selected_attempt, &self.dependency_build) {
+            (Some(_), None) => self.selected_directory(run).is_some(),
+            (None, Some(_)) => self.retained_from.is_none(),
+            _ => false,
+        }
+    }
     /// Whole proofs retain their success authority. A partial report has a
     /// separate authority: exact recorded arguments, successful verifier output
     /// and no source-engine fallback. It never turns `success` into true.
     pub(crate) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
+        if self.selected_attempt.is_some() == self.dependency_build.is_some()
+            || self.dependency_build.is_some() && self.retained_from.is_some()
+        {
+            return false;
+        }
         match partial_args {
             None => self.success && complete(&self.report),
             Some(args) => {
@@ -147,6 +174,9 @@ pub(crate) struct Receipt {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub partial_args: Option<Vec<String>>,
     pub checksum: String,
+    /// Dependency-store archive key, assigned only by an admitted store transfer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub producer_archive: Option<String>,
     pub package_id: String,
     pub name: String,
     pub kind: Vec<String>,
@@ -163,16 +193,24 @@ pub(crate) struct Receipt {
     pub declared_environment: BTreeMap<String, Option<Vec<u8>>>,
 }
 
-/// Version 4 distinguishes exact-scope reports from whole-target proof receipts.
-// Earlier receipts could bind trimmed/escaped environment names or a partial
-// declaration scan. Preserve those reports, but never reuse their proof authority.
-pub(crate) const RECEIPT_VERSION: u32 = 6;
+/// Version seven binds the original selected process history and archive origin.
+// Older receipts may lack this producer binding or contain incomplete/mapped
+// environment declarations. Preserve their reports, but refuse proof reuse.
+pub(crate) const RECEIPT_VERSION: u32 = 7;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
         self.checksum = String::new();
         self.checksum = digest(&serde_json::to_vec(&self).unwrap_or_default());
         self
+    }
+    pub(super) fn producer_history_intact(&self) -> bool {
+        if let Some(key) = &self.producer_archive {
+            return super::store::retained_producer_intact(self, key);
+        }
+        self.committed
+            .parent()
+            .is_some_and(|run| self.invocation.producer_available(run))
     }
     pub(crate) fn valid(&self, context: &str) -> bool {
         self.valid_in(context, &PhaseDigests::default())
@@ -195,6 +233,7 @@ impl Receipt {
         self.partial_args.as_deref() == partial_args
             && partial_args.is_none_or(super::runner::focused)
             && self.version == RECEIPT_VERSION
+            && self.producer_history_intact()
             && super::environment::unchanged(&self.declared_environment)
             && read::<Commit>(&self.committed).is_some_and(|commit| {
                 commit.context == self.context
@@ -536,7 +575,7 @@ mod tests {
         Receipt {
             version: RECEIPT_VERSION,
             partial_args: None,
-            committed,
+            producer_archive: None,
             checksum: String::new(),
             package_id: "input".to_owned(),
             name: "input".to_owned(),
@@ -545,6 +584,20 @@ mod tests {
             input_revision: "inputs".to_owned(),
             invocation: Invocation {
                 retained_from: None,
+                selected_attempt: crate::adapter::attempts::fixture_history(
+                    committed.parent().unwrap_or(Path::new("")),
+                    "run",
+                    &TargetIdentity {
+                        manifest: "Cargo.toml".into(),
+                        name: "input".into(),
+                        crate_type: "lib".into(),
+                        rustc_args_sha256: "args".into(),
+                        cargo_name: None,
+                    },
+                    b"fixture",
+                    b"",
+                    0,
+                ),
                 identity: TargetIdentity {
                     manifest: PathBuf::from("Cargo.toml"),
                     name: "input".to_owned(),
@@ -560,6 +613,7 @@ mod tests {
             },
             artifact_hashes: artifact_hashes(&[path.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),
+            committed,
         }
         .seal()
     }
@@ -567,13 +621,15 @@ mod tests {
     #[test]
     fn partial_receipt_cannot_authorize_a_whole_or_different_scope()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let path = std::env::temp_dir().join(format!("sail-scope-receipt-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("sail-scope-receipt-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("run"))?;
+        let path = root.join("artifact");
         let args = vec![
             "--".to_owned(),
             "--verify-module".to_owned(),
             "selected".to_owned(),
         ];
-        let mut receipt = fixture(&path, path.with_extension("commit"));
+        let mut receipt = fixture(&path, root.join("run/committed.json"));
         receipt.partial_args = Some(args.clone());
         receipt.invocation.report.command.clone_from(&args);
         receipt.invocation.success = false;
@@ -603,13 +659,16 @@ mod tests {
         assert!(!check(Some(&args)));
         std::fs::remove_file(&path)?;
         std::fs::remove_file(&receipt.committed)?;
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 
     #[test]
     fn receipt_rejects_corruption_changed_artifact_and_wrong_context() {
-        let path = std::env::temp_dir().join(format!("sail-receipt-test-{}", std::process::id()));
-        let receipt = fixture(&path, path.with_extension("committed.json"));
+        let root = std::env::temp_dir().join(format!("sail-receipt-test-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(root.join("run")).is_ok());
+        let path = root.join("artifact");
+        let receipt = fixture(&path, root.join("run/committed.json"));
         assert!(!receipt.valid("ctx"));
         assert!(
             json(
@@ -655,6 +714,7 @@ mod tests {
         assert!(!receipt.valid("ctx"));
         assert!(std::fs::remove_file(&receipt.committed).is_ok());
         assert!(std::fs::remove_file(path).is_ok());
+        assert!(std::fs::remove_dir_all(root).is_ok());
     }
     #[test]
     fn interrupted_publisher_helper() {
