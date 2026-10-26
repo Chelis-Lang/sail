@@ -167,6 +167,98 @@ impl Closure {
         )
     }
 
+    /// Why `metadata`'s vstd dependency graph is not one of the qualified
+    /// automatic profiles, briefly, or `None` when its graph matches one.
+    /// Explanation only (the retention note); routing and admission above
+    /// decide, and this grants nothing.
+    pub(super) fn profile_mismatch(metadata: &Value) -> Option<String> {
+        let packages = metadata["packages"]
+            .as_array()?
+            .iter()
+            .map(|package| Some((package["id"].as_str()?, package)))
+            .collect::<Option<BTreeMap<_, _>>>()?;
+        let nodes = metadata["resolve"]["nodes"]
+            .as_array()?
+            .iter()
+            .map(|node| Some((node["id"].as_str()?, node)))
+            .collect::<Option<BTreeMap<_, _>>>()?;
+        let version = crate::toolchain::Pins::embedded().ok()?.verus.vstd?;
+        let Some(vstd) = packages
+            .values()
+            .find(|package| package["name"] == "vstd" && package["version"] == version.as_str())
+        else {
+            return Some(format!("vstd is not the pinned release {version}"));
+        };
+        if vstd["source"] != "registry+https://github.com/rust-lang/crates.io-index" {
+            return Some("vstd is not from crates.io".to_owned());
+        }
+        let features = |node: &Value| {
+            node["features"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|v| v.as_str().map(str::to_owned))
+                .collect::<BTreeSet<_>>()
+        };
+        let vstd_node = nodes.get(vstd["id"].as_str()?)?;
+        let Some(authority) = Authority::select(vstd, vstd_node) else {
+            let listed: Vec<_> = features(vstd_node).into_iter().collect();
+            return Some(format!(
+                "vstd's features ({}) are not a qualified profile",
+                listed.join(", ")
+            ));
+        };
+        let (other, hint) = match authority {
+            Authority::PublicRegistry => (
+                Authority::PublicRegistryVest,
+                "; it matches the profile with vstd's default features off",
+            ),
+            Authority::PublicRegistryVest => (
+                Authority::PublicRegistry,
+                "; it matches the profile with vstd's default features, so also enable them (remove `default-features = false` from the vstd dependency)",
+            ),
+            Authority::OfficialVest => return None,
+        };
+        let other = other.policy()?;
+        let policy = authority.policy()?;
+        let mut pending = vec![vstd["id"].as_str()?];
+        let mut seen = BTreeSet::new();
+        let mut found = BTreeSet::new();
+        while let Some(id) = pending.pop() {
+            if !seen.insert(id) {
+                continue;
+            }
+            let package = packages.get(id)?;
+            let (name, version) = (package["name"].as_str()?, package["version"].as_str()?);
+            let key = format!("{name}-{version}");
+            let Some(expected) = policy.packages.get(&key) else {
+                return Some(format!(
+                    "vstd's dependency {name} {version} is not in its qualified profile{}",
+                    if other.packages.contains_key(&key) {
+                        hint
+                    } else {
+                        ""
+                    }
+                ));
+            };
+            let node = nodes.get(id)?;
+            if features(node) != expected.features {
+                return Some(format!(
+                    "vstd's dependency {name} is built with other features than its qualified profile"
+                ));
+            }
+            let Some(next) = normal_dependencies(node) else {
+                return Some(format!(
+                    "vstd's dependency {name} has an unrecognized dependency kind"
+                ));
+            };
+            found.insert(key);
+            pending.extend(next);
+        }
+        (!found.iter().eq(policy.packages.keys()))
+            .then(|| "vstd's dependency closure differs from its qualified profile".to_owned())
+    }
+
     /// Initial scope is a verified workspace library with exactly the pinned
     /// vstd normal dependency, no custom build script or macro provider. Dev
     /// packages elsewhere in Cargo's metadata do not silently widen this set.
@@ -578,6 +670,94 @@ mod tests {
         data["packages"][0]["version"] = Value::from("0.0.0-2026-09-20-0500");
         assert!(!Closure::automatic_profile_candidate(&data));
         assert!(!Closure::automatic_profile_candidate(&Value::Null));
+    }
+
+    /// Metadata whose vstd closure is exactly `authority`'s policy, flat.
+    fn profile_metadata(authority: Authority) -> Option<Value> {
+        let policy = authority.policy()?;
+        let vstd = vstd_key()?;
+        let crates_io = "registry+https://github.com/rust-lang/crates.io-index";
+        let packages: Vec<Value> = policy
+            .packages
+            .iter()
+            .map(|(key, package)| {
+                serde_json::json!({"id": key, "name": package.name,
+                    "version": package.version, "source": crates_io})
+            })
+            .collect();
+        let nodes: Vec<Value> = policy
+            .packages
+            .iter()
+            .map(|(key, package)| {
+                let deps: Vec<Value> = if *key == vstd {
+                    policy
+                        .packages
+                        .keys()
+                        .filter(|other| **other != vstd)
+                        .map(|other| serde_json::json!({"pkg": other, "dep_kinds": [{"kind": null}]}))
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                serde_json::json!({"id": key, "features": package.features, "deps": deps})
+            })
+            .collect();
+        Some(serde_json::json!({"packages": packages, "resolve": {"nodes": nodes}}))
+    }
+
+    #[test]
+    fn profile_mismatch_names_the_difference_and_the_feature_step()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for authority in [Authority::PublicRegistry, Authority::PublicRegistryVest] {
+            let metadata = profile_metadata(authority).ok_or("metadata")?;
+            assert_eq!(Closure::profile_mismatch(&metadata), None);
+        }
+        // `cargo update` to the default-feature profile's versions while vstd's
+        // default features stay off (#237's commands without the feature edit).
+        let mut updated = profile_metadata(Authority::PublicRegistryVest).ok_or("metadata")?;
+        updated["packages"]
+            .as_array_mut()
+            .ok_or("packages")?
+            .iter_mut()
+            .find(|package| package["name"] == "equivalent")
+            .ok_or("equivalent")?["version"] = Value::from("1.0.3");
+        let reason = Closure::profile_mismatch(&updated).ok_or("no reason")?;
+        assert!(
+            reason.starts_with("vstd's dependency equivalent 1.0.3 is not in its qualified profile; it matches the profile with vstd's default features, so also enable them"),
+            "{reason}"
+        );
+        updated["packages"]
+            .as_array_mut()
+            .ok_or("packages")?
+            .iter_mut()
+            .find(|package| package["name"] == "equivalent")
+            .ok_or("equivalent")?["version"] = Value::from("9.9.9");
+        assert_eq!(
+            Closure::profile_mismatch(&updated).as_deref(),
+            Some("vstd's dependency equivalent 9.9.9 is not in its qualified profile")
+        );
+        let mut features = profile_metadata(Authority::PublicRegistry).ok_or("metadata")?;
+        let vstd = vstd_key().ok_or("vstd")?;
+        for node in features["resolve"]["nodes"].as_array_mut().ok_or("nodes")? {
+            if node["id"] == vstd.as_str() {
+                node["features"] = serde_json::json!(["alloc", "allow_panic"]);
+            }
+        }
+        assert_eq!(
+            Closure::profile_mismatch(&features).as_deref(),
+            Some("vstd's features (alloc, allow_panic) are not a qualified profile")
+        );
+        let mut path = profile_metadata(Authority::PublicRegistry).ok_or("metadata")?;
+        for package in path["packages"].as_array_mut().ok_or("packages")? {
+            if package["name"] == "vstd" {
+                package["source"] = Value::Null;
+            }
+        }
+        assert_eq!(
+            Closure::profile_mismatch(&path).as_deref(),
+            Some("vstd is not from crates.io")
+        );
+        Ok(())
     }
 
     #[test]

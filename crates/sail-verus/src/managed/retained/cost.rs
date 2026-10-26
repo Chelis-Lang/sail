@@ -82,6 +82,30 @@ pub(crate) fn pays<'a>(
     })
 }
 
+/// When [`pays`] is false: why, naming the first target and its recorded
+/// costs, for the retention note. `None` when it pays.
+pub(crate) fn skipped<'a>(
+    receipts: &Path,
+    targets: impl IntoIterator<Item = (&'a Path, &'a str)>,
+) -> Option<String> {
+    let mut reason = None;
+    for (manifest, name) in targets {
+        let cost = receipts::read::<Cost>(&path(receipts, manifest, name))
+            .filter(|cost| cost.version == VERSION)?;
+        if worth(cost) {
+            return None;
+        }
+        reason.get_or_insert_with(|| {
+            format!(
+                "{name} last compiled in {} ms, less than {RATIO} times its measured retention ({} ms), so retention would cost more than it saves",
+                cost.compile_ms,
+                cost.retention_ms.unwrap_or_default()
+            )
+        });
+    }
+    reason
+}
+
 fn worth(cost: Cost) -> bool {
     cost.retention_ms
         .is_none_or(|retention| u128::from(cost.compile_ms) >= RATIO * u128::from(retention))
@@ -122,6 +146,16 @@ mod tests {
         );
         // Names are compared as the compiler spells them.
         assert!(!pays(&receipts, [(manifest, "demo_lib")]));
+        assert_eq!(
+            skipped(&receipts, [(manifest, "demo_lib")]).as_deref(),
+            Some(
+                "demo_lib last compiled in 750 ms, less than 16 times its measured retention (1400 ms), so retention would cost more than it saves"
+            )
+        );
+        assert_eq!(
+            skipped(&receipts, [(manifest, "demo_lib"), (manifest, "other")]),
+            None
+        );
         // Another target, or another manifest, has its own record.
         assert!(pays(
             &receipts,
