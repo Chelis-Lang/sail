@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Build Sail without any private dependency. Native temporal jobs, which link
+  the private D.I.V.E. library, moved to a separate extension workspace
+  (`extensions/temporal`) that builds the temporal-enabled `sail` and
+  `sail-runtime-worker`. Release archives and builds of the main workspace no
+  longer contain the worker; their `sail runtime capabilities` reports
+  temporal jobs unavailable ("native temporal support is not included in this
+  sail build"). This replaces the `temporal` Cargo feature. See
+  docs/private-dependencies.md.
 - Replay an unchanged `sail verify` (ADR 0082). A call identical to an earlier
   one that ended Current without starting a verifier prints that call's
   output (only Cargo's `Finished` time is regenerated) without running Cargo,
@@ -30,11 +38,8 @@ semantic versioning once the API is published.
   receipt package in the run.
 - Overlap path resolution and link checks in managed input mutation stamps; an
   unchanged Anvil rerun spends about 38 ms (2.5%) less in setup.
-- Make native temporal jobs an optional `temporal` build feature (default on).
-  `cargo build -p sail-cli --no-default-features` builds a complete
-  `sail verify` that compiles no D.I.V.E. code. A malformed or unreadable
-  `sail-runtime-worker.json` now only makes temporal jobs unavailable instead
-  of preventing `sail serve` from starting.
+- A malformed or unreadable `sail-runtime-worker.json` now only makes
+  temporal jobs unavailable instead of preventing `sail serve` from starting.
 - Report a stored managed result as Unknown, not Current, in job status, MCP
   and repair acceptance once the Sail, Verus, Cargo or rustc installation it was
   recorded against has changed.

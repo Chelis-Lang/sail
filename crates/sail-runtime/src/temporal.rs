@@ -1,15 +1,53 @@
-//! Attributed native temporal execution through the existing isolated worker.
+//! Attributed native temporal execution through an isolated worker.
+//!
+//! This crate links no native temporal backend (ADR 0083). A `sail` built
+//! from the temporal extension workspace supplies one as a
+//! [`TemporalBackend`]; without it the capability reports unavailable and
+//! temporal jobs return `Unavailable`.
 use crate::{Cancellation, execution, invalid};
 use sail_api::{
     runtime::Outcome,
-    temporal::{Capability, DIVE_REVISION, Job, Result},
+    temporal::{Capability, DIVE_REVISION, Job, Request, Response, Result},
 };
 use serde::{Deserialize, Serialize};
 use std::{
     io::Read as _,
     path::{Path, PathBuf},
-    time::Instant,
+    sync::atomic::AtomicBool,
+    time::{Duration, Instant},
 };
+
+/// Process outcome of one dispatched native job, separate from every model verdict.
+#[derive(Debug)]
+pub enum Dispatch {
+    /// Complete evidence the backend validated against the exact request.
+    Completed(Box<Response>),
+    /// The backend killed and reaped the worker at its deadline.
+    TimedOut,
+    /// The backend killed and reaped the worker after explicit cancellation.
+    Cancelled,
+    /// Startup, protocol, validation or process failure, with no logical verdict.
+    Failed(String),
+}
+
+/// A native temporal backend linked into this `sail` build.
+///
+/// The runtime authenticates the installed worker and admits the job before
+/// calling [`TemporalBackend::run`]. The backend owns the worker process and
+/// must independently validate the worker's evidence against `request`
+/// before returning [`Dispatch::Completed`]; anything it cannot validate is
+/// [`Dispatch::Failed`], never a verdict.
+pub trait TemporalBackend: Send + Sync + std::fmt::Debug {
+    /// Run one admitted request in `worker`, killing and reaping it when
+    /// `deadline` elapses or `cancel` is set.
+    fn run(
+        &self,
+        worker: &Worker,
+        request: &Request,
+        deadline: Duration,
+        cancel: &AtomicBool,
+    ) -> Dispatch;
+}
 
 /// Trusted installation choice; callers cannot supply it in a wire request.
 #[derive(Clone, Debug)]
@@ -140,24 +178,22 @@ pub fn locate(sail: &Path) -> (Option<Worker>, Option<sail_api::runtime::Error>)
     }
 }
 
+/// Unavailable reason of a `sail` built without a temporal backend.
+pub const NOT_INCLUDED: &str = "native temporal support is not included in this sail build";
+
 pub(crate) fn capability(
+    backend: Option<&dyn TemporalBackend>,
     worker: Option<&Worker>,
     problem: Option<&sail_api::runtime::Error>,
 ) -> Capability {
-    let authenticated = if cfg!(feature = "temporal") {
-        match (worker, problem) {
-            (Some(worker), _) => worker.authenticate(),
-            (None, Some(problem)) => Err(problem.clone()),
-            (None, None) => Err(execution(
-                "unavailable",
-                "native temporal worker is not installed",
-            )),
-        }
-    } else {
-        Err(execution(
+    let authenticated = match (backend, worker, problem) {
+        (None, _, _) => Err(execution("unavailable", NOT_INCLUDED)),
+        (Some(_), Some(worker), _) => worker.authenticate(),
+        (Some(_), None, Some(problem)) => Err(problem.clone()),
+        (Some(_), None, None) => Err(execution(
             "unavailable",
-            "this sail build has no native temporal support (built without the `temporal` feature)",
-        ))
+            "native temporal worker is not installed",
+        )),
     };
     Capability {
         implemented: true,
@@ -173,6 +209,7 @@ pub(crate) fn capability(
 
 pub(crate) fn execute(
     job: &Job,
+    backend: Option<&dyn TemporalBackend>,
     worker: Option<&Worker>,
     problem: Option<&sail_api::runtime::Error>,
     cancellation: &Cancellation,
@@ -216,67 +253,45 @@ pub(crate) fn execute(
         error: None,
         cache_hit: false,
     };
-    let ready = capability(worker, problem);
+    let ready = capability(backend, worker, problem);
     if !ready.installed {
         result.error = ready.error;
         return Ok(result);
     }
-    let Some(worker) = worker else {
+    let (Some(backend), Some(worker)) = (backend, worker) else {
         return Err(execution(
             "infrastructure",
             "installed temporal worker missing configuration",
         ));
     };
     result.worker_sha256 = Some(worker.sha256.clone());
-    dispatch(job, worker, started, cancellation, &mut result);
-    Ok(result)
-}
-
-#[cfg(feature = "temporal")]
-fn dispatch(
-    job: &Job,
-    worker: &Worker,
-    started: Instant,
-    cancellation: &Cancellation,
-    result: &mut Result,
-) {
-    match sail_dive::client::run(
-        &worker.executable,
-        &worker.sha256,
+    match backend.run(
+        worker,
         &job.request,
-        std::time::Duration::from_millis(job.wall_time_ms).saturating_sub(started.elapsed()),
+        Duration::from_millis(job.wall_time_ms).saturating_sub(started.elapsed()),
         &cancellation.0,
     ) {
-        sail_dive::client::RunResult::Completed(response) => {
+        Dispatch::Completed(response) => {
             result.outcome = Outcome::Completed;
             result.response = Some(*response);
         }
-        sail_dive::client::RunResult::TimedOut { .. } => {
+        Dispatch::TimedOut => {
             result.outcome = Outcome::Timeout;
             result.error = Some(execution("timeout", "native temporal deadline expired"));
         }
-        sail_dive::client::RunResult::Cancelled { .. } => {
+        Dispatch::Cancelled => {
             result.outcome = Outcome::Cancelled;
             result.error = Some(execution(
                 "cancelled",
                 "native temporal execution cancelled",
             ));
         }
-        sail_dive::client::RunResult::Failed(message) => {
+        Dispatch::Failed(message) => {
             result.outcome = Outcome::Infrastructure;
             result.error = Some(execution("infrastructure", message));
         }
     }
-}
-
-/// Unreachable: `capability` never reports this build installed.
-#[cfg(not(feature = "temporal"))]
-fn dispatch(_: &Job, _: &Worker, _: Instant, _: &Cancellation, result: &mut Result) {
-    result.worker_sha256 = None;
-    result.error = Some(execution(
-        "unavailable",
-        "this sail build has no native temporal support",
-    ));
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -304,9 +319,101 @@ mod tests {
             })?,
         )?;
         let worker = Worker::discover(&path)?.ok_or("missing worker configuration")?;
-        assert!(!capability(Some(&worker), None).installed);
+        assert!(!capability(Some(&Stub), Some(&worker), None).installed);
         std::fs::write(&worker.executable, "changed")?;
-        assert!(!capability(Some(&worker), None).installed);
+        assert!(!capability(Some(&Stub), Some(&worker), None).installed);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    /// Replays a fixed process outcome chosen by the model's root module.
+    #[derive(Debug)]
+    struct Stub;
+    impl TemporalBackend for Stub {
+        fn run(&self, _: &Worker, request: &Request, _: Duration, _: &AtomicBool) -> Dispatch {
+            match request.model.root.as_str() {
+                "timeout.tla" => Dispatch::TimedOut,
+                "cancel.tla" => Dispatch::Cancelled,
+                other => Dispatch::Failed(format!("stub dispatched {other}")),
+            }
+        }
+    }
+
+    fn job(root: &str) -> Job {
+        Job {
+            obligation_id: "obligation".into(),
+            requirement_ids: vec!["REQ-1".into()],
+            request: Request {
+                version: sail_api::temporal::VERSION,
+                model: sail_api::temporal::Model {
+                    files: std::collections::BTreeMap::from([
+                        (root.into(), "---- MODULE M ----\n====\n".into()),
+                        ("M.cfg".into(), "INIT Init\n".into()),
+                    ]),
+                    root: root.into(),
+                    config: "M.cfg".into(),
+                },
+                operation: sail_api::temporal::Operation::Check {
+                    max_states: 1,
+                    max_depth: 1,
+                },
+            },
+            wall_time_ms: 1000,
+        }
+    }
+
+    #[test]
+    fn only_a_linked_backend_dispatches_and_its_process_outcomes_are_never_verdicts()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-worker-backend-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let executable = root.join("sail-runtime-worker");
+        std::fs::write(&executable, "worker bytes")?;
+        let worker = Worker {
+            sha256: crate::hash(b"worker bytes"),
+            executable,
+        };
+        let cancellation = Cancellation::default();
+        // No backend in this build: an authenticated worker is never run.
+        let missing = execute(&job("M.tla"), None, Some(&worker), None, &cancellation)?;
+        assert_eq!(missing.outcome, Outcome::Unavailable);
+        assert!(missing.worker_sha256.is_none());
+        let reason = missing.error.ok_or("no reason")?;
+        assert_eq!(
+            (reason.kind.as_str(), reason.message.as_str()),
+            ("unavailable", NOT_INCLUDED)
+        );
+        assert!(!capability(None, Some(&worker), None).installed);
+        // A linked backend runs only the authenticated worker.
+        assert!(capability(Some(&Stub), Some(&worker), None).installed);
+        for (root_module, outcome) in [
+            ("timeout.tla", Outcome::Timeout),
+            ("cancel.tla", Outcome::Cancelled),
+            ("M.tla", Outcome::Infrastructure),
+        ] {
+            let result = execute(
+                &job(root_module),
+                Some(&Stub),
+                Some(&worker),
+                None,
+                &cancellation,
+            )?;
+            assert_eq!(result.outcome, outcome);
+            assert!(result.response.is_none() && result.error.is_some());
+            assert_eq!(
+                result.worker_sha256.as_deref(),
+                Some(worker.sha256.as_str())
+            );
+        }
+        std::fs::write(&worker.executable, "changed")?;
+        let changed = execute(
+            &job("M.tla"),
+            Some(&Stub),
+            Some(&worker),
+            None,
+            &cancellation,
+        )?;
+        assert_eq!(changed.outcome, Outcome::Unavailable);
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
@@ -323,21 +430,25 @@ mod tests {
             std::fs::write(&manifest, broken)?;
             let (worker, problem) = locate(&path);
             assert!(worker.is_none());
-            let runtime = crate::Runtime::new(crate::Config {
-                temporal_worker: worker,
-                temporal_unavailable: problem,
-                ..crate::Config::default()
-            })?;
-            let temporal = runtime.capabilities().temporal.ok_or("no capability")?;
-            assert!(!temporal.installed);
-            let error = temporal.error.ok_or("no reason")?;
-            assert_eq!(error.kind, "unavailable");
-            let expected = if cfg!(feature = "temporal") {
-                "manifest"
-            } else {
-                "`temporal` feature"
-            };
-            assert!(error.message.contains(expected), "{}", error.message);
+            for (backend, expected) in [
+                (
+                    Some(std::sync::Arc::new(Stub) as std::sync::Arc<dyn TemporalBackend>),
+                    "manifest",
+                ),
+                (None, NOT_INCLUDED),
+            ] {
+                let runtime = crate::Runtime::new(crate::Config {
+                    temporal_backend: backend,
+                    temporal_worker: worker.clone(),
+                    temporal_unavailable: problem.clone(),
+                    ..crate::Config::default()
+                })?;
+                let temporal = runtime.capabilities().temporal.ok_or("no capability")?;
+                assert!(!temporal.installed);
+                let error = temporal.error.ok_or("no reason")?;
+                assert_eq!(error.kind, "unavailable");
+                assert!(error.message.contains(expected), "{}", error.message);
+            }
         }
         // A directory in place of the manifest cannot be read as a file.
         std::fs::remove_file(&manifest)?;

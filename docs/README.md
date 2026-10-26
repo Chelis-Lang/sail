@@ -38,8 +38,9 @@ phases and their local entry points. The [charter](CHARTER.md) and its correctio
 the correctness contract. [ADRs](decisions/README.md) explain implementation
 decisions; proposed candidates are distinguished from accepted decisions.
 
-[Private dependencies](private-dependencies.md) describes ephemeral read-only
-authentication for the pinned D.I.V.E. source dependency.
+[Private dependencies](private-dependencies.md) describes the temporal
+extension workspace, the only build that needs the private D.I.V.E. source,
+and its ephemeral read-only authentication.
 [Native worker validation](validation/dive-runtime-worker.md) records the
 focused checking, replay and process-isolation evidence and its limits.
 [Combined production integration](validation/integration-production.md) records the

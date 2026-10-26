@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 /// Directories whose sources may use error codes.
-const SOURCES: [&str; 5] = ["crates", "xtask", "ci", "scripts", "bench"];
+const SOURCES: [&str; 6] = ["crates", "extensions", "xtask", "ci", "scripts", "bench"];
 /// File extensions that hold code rather than recorded data.
 const EXTENSIONS: [&str; 3] = ["rs", "py", "sh"];
 

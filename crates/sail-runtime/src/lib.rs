@@ -25,6 +25,9 @@ use std::{
 /// Configuration of installed tools and bounded execution; performs no installation.
 #[derive(Clone, Debug)]
 pub struct Config {
+    /// Native temporal backend linked into this build; `None` (the default,
+    /// and every build of this workspace) reports temporal jobs unavailable.
+    pub temporal_backend: Option<Arc<dyn temporal::TemporalBackend>>,
     /// Trusted installed native temporal worker, absent when not installed.
     pub temporal_worker: Option<temporal::Worker>,
     /// Why no worker was configured, reported as the temporal unavailable reason.
@@ -40,6 +43,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            temporal_backend: None,
             temporal_worker: None,
             temporal_unavailable: None,
             z3: None,
@@ -231,6 +235,7 @@ impl Runtime {
         let identity = self.identity(&Cancellation::default());
         Capabilities {
             temporal: Some(temporal::capability(
+                self.config.temporal_backend.as_deref(),
                 self.config.temporal_worker.as_ref(),
                 self.config.temporal_unavailable.as_ref(),
             )),
@@ -268,6 +273,7 @@ impl Runtime {
                     output: Output::Temporal {
                         result: Box::new(temporal::execute(
                             job,
+                            self.config.temporal_backend.as_deref(),
                             self.config.temporal_worker.as_ref(),
                             self.config.temporal_unavailable.as_ref(),
                             cancellation,

@@ -301,7 +301,7 @@ The M11 reliability items in #168 are closed.
 | Slice | Status | Remaining gate |
 |---|---|---|
 | Raw SMT shared runtime | Implemented; original consumer slice delivered | Continued consumer qualification at its selected immutable SDK |
-| Native D.I.V.E. worker and shared temporal route | Linux installed-service and cumulative Linux/Mac host gates passed | Protected CI and exact-pin consumer delivery |
+| Native D.I.V.E. worker and shared temporal route | Linux installed-service and cumulative Linux/Mac host gates passed; built only by the temporal extension workspace, outside public archives (ADR 0083) | Protected CI and exact-pin consumer delivery |
 | Neutral source jobs | Explicit flat profile two passed native gates, fork/stock order proofs and installed consumer acceptance | [Exact-head protected delivery and immutable consumer selection](validation/neutral-source-profile-two.md); broader source profiles remain separate |
 | Requirement assurance | Source-bound original proof and requirement views implemented | Consumer-owned independent links and complete current evidence |
 | Bounded neutral-source mutation | Actual installed campaigns retain conservative original outcomes | Literal-policy UNKNOWN remains Inconclusive; native kills unestablished and nominal/multiple-ID scope unsupported |

@@ -8,8 +8,10 @@ command, TLC or Java. The payload is also available through the shared runtime e
 [shared execution](runtime.md#native-temporal-jobs). Ordinary Verus
 verification retains its existing behavior.
 
-Build the worker with `cargo build --locked -p sail-runtime-worker`.
-Source builds need read access to the private pinned dependency; see
+`sail-dive` and the worker live in the temporal extension workspace, not in
+Sail's main workspace or its public release archives. Build the worker with
+`cargo build --locked --manifest-path extensions/temporal/Cargo.toml -p sail-runtime-worker`;
+this needs read access to the private pinned dependency, see
 [private dependencies](private-dependencies.md). Callers select the worker
 using an expected SHA-256 from their trusted installation manifest. The parent
 reads and verifies the executable, then executes a private exact-byte copy.

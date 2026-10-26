@@ -34,10 +34,10 @@ verifier rejection, survival and inconclusive evidence under unchanged contracts
 SMT queries and independent concrete evaluation to find admitted scalar contract
 violations while preserving the native verifier's original outcomes.
 
-Rust callers can also run [isolated native temporal jobs](docs/temporal-jobs.md):
-model checking, finite simulation and independent trace validation through a
-pinned D.I.V.E. library. This developer API is separate from Verus commands
-and is not yet part of the release archive or daemon interface.
+Release archives and builds of this workspace do not include native temporal
+jobs; `sail runtime capabilities` reports them unavailable. They need the
+private D.I.V.E. library and are built only by a separate
+[extension workspace](docs/private-dependencies.md).
 
 ## Install
 

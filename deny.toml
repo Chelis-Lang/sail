@@ -44,5 +44,6 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 
-# Native temporal backend: private source pinned to a full immutable revision.
-allow-git = ["https://github.com/Chelis-Lang/dive"]
+# No git sources: the private D.I.V.E. source is resolved only by the temporal
+# extension workspace (extensions/temporal, ADR 0083).
+allow-git = []
