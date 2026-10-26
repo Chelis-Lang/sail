@@ -213,6 +213,23 @@ Cargo's own. Two parts of the environment bind a result:
   `option_env!`, and the Verus driver's own declarations) and build scripts'
   `rerun-if-env-changed`. Each receipt records their values, and it is reused
   only while every one is unchanged.
+- **What ghost code reads.** Verus compiles a verified crate twice, and the
+  erased compilation rewrites its dep-info without the verification phase's
+  reads, so a read in a `proof fn`, spec or assertion alone is not declared
+  ([VI-0036](verus-issues/VI-0036-ghost-env-reads-missing-from-dep-info.md),
+  #386). For every verified target Sail requests the fork's report of the
+  variables rustc tracked in both phases (`SAIL_COMPILER_INPUTS`, with
+  `-Zchecksum-hash-algorithm=sha256`, which the report needs). After a
+  successful verification it appends each missing read to the unit's dep-info
+  in rustc's own form, so Cargo recompiles when it changes, exactly as for an
+  exec read, and records the observed names in the invocation. Variables the
+  proof context already binds (the families above, including the driver's
+  forwarded arguments) are not appended. A receipt requires that observation:
+  a verified target whose report is missing, incomplete, unbound to its
+  compiler process, inconsistent between phases, or whose dep-info cannot be
+  located or rewritten publishes no receipt. Replays of Sail's shipped vstd
+  build keep their own recorded compiler environment
+  ([ADR 0048](decisions/0048-shipped-dependency-build.md)).
 
 Private dependency authentication (`SAIL_DEPENDENCY_READ_TOKEN` and
 `SAIL_PRIVATE_GIT_READY`) does not select a different compiler proof context.
@@ -346,7 +363,8 @@ the tools or Sail read are the same. Replay also needs the full stat stamp
 (device, inode, size, mode, mtime and ctime) of every input path and walked
 directory to match, along with the owned Cargo target's entries and every
 installed tool and sysroot file. The proof context's cache records must match
-by content, and the variables units declare must have the same values.
+by content, and the variables units declare (ghost-only reads included) must
+have the same values.
 Anything else takes the full path. Only Cargo's `Finished` time is
 regenerated.
 

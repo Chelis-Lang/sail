@@ -1108,6 +1108,57 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                     else:
                         env[name] = value
             print("managed acceptance: authentication-only changes reuse proofs; explicit credential environment reads force verification")
+            # An ordinary variable read only in ghost code (#386). Verus's erased
+            # compilation rewrites the dep-info without the verification
+            # phase's read; Sail must still bind it. Only the demo crate
+            # compiles; vstd stays reused, and the stock oracle's target is warm.
+            original_source = source.read_text()
+            ghost_flag = "SAIL_E2E_GHOST_PROOF_FLAG"
+            ghost_source = original_source + (
+                "\nverus! {\nproof fn ghost_flag_is_present() {\n"
+                f'    assert(match option_env!("{ghost_flag}") {{ Some(_) => true, None => false }});\n'
+                "}\n}\n")
+            original_ghost = env.get(ghost_flag)
+            oracle_source = (oracle_project / "src/lib.rs").read_text()
+            try:
+                source.write_text(ghost_source)
+                env[ghost_flag] = "7"
+                present_run, present, present_target = managed()
+                assert present_run.returncode == 0, diagnostic(present)
+                if present["currentness"] != "current":
+                    present_run, present, present_target = managed()
+                assert present["currentness"] == "current" and present_target["complete"], diagnostic(present)
+                warm_run, warm_ghost, warm_target = managed()
+                assert warm_run.returncode == 0 and warm_target["reused"], diagnostic(warm_ghost)
+                assert warm_ghost["execution"]["verifier_invocations"] == 0, diagnostic(warm_ghost)
+                del env[ghost_flag]
+                # Human output: Cargo itself must find the unit stale, as for
+                # an exec read; an up-to-date Finished would hide the failure.
+                human = bounded_verification([sail, "verify"], project, env, 240)
+                assert human.returncode != 0, human.stderr.decode()
+                assert b"assertion failed" in human.stderr, human.stderr.decode()
+                absent_run, absent, absent_target = managed()
+                assert absent_run.returncode != 0 and not absent_target["reused"], diagnostic(absent)
+                assert not absent_target["complete"], diagnostic(absent)
+                assert absent["execution"]["verifier_invocations"] > 0, diagnostic(absent)
+                assert absent["context_sha256"] == present["context_sha256"], diagnostic(absent)
+                (oracle_project / "src/lib.rs").write_text(ghost_source)
+                plain_ghost = bounded_verification(
+                    [cargo_verus, "verus", "verify", "--target-dir", str(root / "oracle-target")],
+                    oracle_project, {k: v for k, v in stock_env().items() if k != ghost_flag}, 240)
+                assert plain_ghost.returncode == absent_run.returncode, (plain_ghost.returncode, absent_run.returncode)
+                assert errors(absent_run) == errors(plain_ghost), (errors(absent_run), errors(plain_ghost))
+                env[ghost_flag] = "7"
+                revert_run, reverted, revert_target = managed()
+                assert revert_run.returncode == 0 and revert_target["complete"], diagnostic(reverted)
+            finally:
+                source.write_text(original_source)
+                (oracle_project / "src/lib.rs").write_text(oracle_source)
+                if original_ghost is None:
+                    env.pop(ghost_flag, None)
+                else:
+                    env[ghost_flag] = original_ghost
+            print("managed acceptance: a ghost-only environment read binds its proof; removing it fails like plain Cargo-Verus")
             print("managed acceptance: failing first runs keep vstd, cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs and prune passed")
         if part in ("all", "scripts"):
             print("managed acceptance: build-script reuse passed")

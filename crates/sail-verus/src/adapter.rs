@@ -683,6 +683,7 @@ fn driver() -> Result<ExitCode> {
             },
             None,
             Some(&replay.origin),
+            None,
         )?;
         if let Some(proof) = &replay.retained {
             let _ = crate::managed::retained::publish_shipped(&runtime, proof);
@@ -724,6 +725,9 @@ fn driver() -> Result<ExitCode> {
             },
             None,
             None,
+            // The establishing run's observation; the restore itself also
+            // requires every keyed caller variable unchanged.
+            restored.compiler_environment.clone(),
         )?;
         let path = runtime.invocations.join(format!("{}.json", identity.key()));
         let mut invocation: Invocation = serde_json::from_slice(
@@ -754,12 +758,34 @@ fn driver() -> Result<ExitCode> {
     } else {
         launcher_args.as_slice()
     };
+    // #386: the tracked environment of both compiler phases, ghost code
+    // included. The retention observer owns the one request endpoint when it
+    // is active, and so does the research observer once it has begun below;
+    // otherwise this target requests its own.
+    let mut ghost = if retained.is_none() {
+        crate::managed::ghost_environment::Observation::begin(
+            &dir,
+            &runtime.run_id,
+            &identity.key(),
+        )
+    } else {
+        None
+    };
     // Sail's own Verus options travel as Cargo-Verus's do, outside the
     // command line procedural macros can read (#393).
     let base = verus_channel::Channel::cargo_value(&launcher_environment)?;
     let mut options = observation_args(flags, logs.as_deref());
     if let Some(attempt) = &retained {
         options.extend(attempt.compiler_options().iter().map(OsString::from));
+    } else if ghost.is_some()
+        && !crate::managed::ghost_environment::checksum_requested(compiler_args)
+    {
+        // The report needs a source checksum (see the observer).
+        options.extend(
+            crate::managed::ghost_environment::OPTIONS
+                .iter()
+                .map(OsString::from),
+        );
     }
     let channel = verus_channel::Channel::new(base.clone(), &options)?;
     channel.publish();
@@ -781,6 +807,15 @@ fn driver() -> Result<ExitCode> {
     }
     if let Some(attempt) = &retained {
         attempt.configure(&mut cmd);
+    }
+    if call
+        .as_ref()
+        .is_some_and(crate::managed::shipped::Call::observes_compiler)
+    {
+        ghost = None;
+    }
+    if let Some(observation) = &ghost {
+        observation.configure(&mut cmd);
     }
     // Session records join cached answers to transcripts; without logs there
     // is nothing to join them to.
@@ -810,6 +845,9 @@ fn driver() -> Result<ExitCode> {
     }
     if let Some(attempt) = &mut retained {
         attempt.started(child.id());
+    }
+    if let Some(observation) = &mut ghost {
+        observation.started(child.id());
     }
     let invocation_log = InvocationLog {
         directory: &runtime.invocations,
@@ -863,6 +901,7 @@ fn driver() -> Result<ExitCode> {
     // The exact stock restart has only the observation options.
     let stock_channel =
         verus_channel::Channel::new(base, &observation_args(flags, logs.as_deref()))?;
+    let mut engine_restarted = false;
     let (stdout, stderr, exit) = if let Some(engine) = &runtime.engine {
         let mut stock = compiler_command(&engine.stock_wrapper);
         stock.args(&launcher_args).envs(&launcher_environment);
@@ -873,6 +912,8 @@ fn driver() -> Result<ExitCode> {
             status: exit,
         };
         let (output, trusted) = engine_output(&dir, stock, captured, &invocation_log)?;
+        // A stock restart's compiler read was not observed.
+        engine_restarted = !trusted;
         if trusted {
             save_focus(&runtime, &identity, &dir)?;
         }
@@ -896,6 +937,18 @@ fn driver() -> Result<ExitCode> {
     // Each restores only its own exact value, so at most one applies.
     channel.restore_dep_info(dep_info.as_deref());
     stock_channel.restore_dep_info(dep_info.as_deref());
+    let compiler_environment = (exit.success() && !engine_restarted)
+        .then(|| {
+            if let Some(observation) = &ghost {
+                observation.environment()
+            } else if let Some(attempt) = &retained {
+                attempt.compiler_environment()
+            } else {
+                call.as_ref()?.compiler_environment()
+            }
+        })
+        .flatten()
+        .and_then(|observed| declare_ghost_reads(&args, observed));
     let invocation_key = identity.key();
     let measured = (identity.manifest.clone(), identity.target_name().to_owned());
     let verifier_readable = finish(
@@ -909,6 +962,7 @@ fn driver() -> Result<ExitCode> {
         },
         established.as_ref(),
         None,
+        compiler_environment,
     )?;
     // A successful process alone is insufficient: partial/no-verify output
     // must never become a reusable proof. Reuse only the complete successful
@@ -948,6 +1002,20 @@ fn driver() -> Result<ExitCode> {
     crate::managed::visible_output::emit(crate::managed::visible_output::Stream::Stdout, &shown)
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     Ok(status(exit))
+}
+
+/// The environment rustc tracked in both phases of a successful verified
+/// compiler child, once its ghost-only reads are declared in the unit's
+/// dep-info ([`crate::managed::ghost_environment`]). `None` when they cannot
+/// be: the result then authorizes no reuse.
+fn declare_ghost_reads(
+    args: &[OsString],
+    observed: crate::managed::ghost_environment::Environment,
+) -> Option<crate::managed::ghost_environment::Environment> {
+    for path in crate::managed::ghost_environment::dep_info(args)? {
+        crate::managed::ghost_environment::merge(&path, &observed)?;
+    }
+    Some(observed)
 }
 
 /// The logging flags the managed driver adds to every verified target,
@@ -1110,6 +1178,7 @@ fn finish(
     captured: &Captured<'_>,
     engine: Option<&sail_api::output::EngineProvenance>,
     dependency_build: Option<&sail_api::project::DependencyBuildOrigin>,
+    compiler_environment: Option<crate::managed::ghost_environment::Environment>,
 ) -> Result<bool> {
     let Captured {
         stdout,
@@ -1200,6 +1269,7 @@ fn finish(
         success,
         dependencies,
         dependency_build: dependency_build.cloned(),
+        compiler_environment,
     };
     json(
         &runtime
@@ -1493,7 +1563,7 @@ mod tests {
             exit: Some(0),
         };
         // Before, this was an error after `success` had been recorded.
-        let readable = super::finish(&runtime, identity, &root, &captured, None, None)?;
+        let readable = super::finish(&runtime, identity, &root, &captured, None, None, None)?;
         assert!(!readable);
         let recorded: super::Invocation = serde_json::from_slice(&std::fs::read(
             root.join("invocations").join(format!("{key}.json")),

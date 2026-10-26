@@ -337,3 +337,17 @@ Cargo-Verus is a no-op. Verdicts were unaffected.
   exclusions (#399). The run itself still records no receipt.
 
 The e2e `noop` phase compares each case with plain Cargo-Verus.
+
+## Amendment (2026-10-26): ghost-only environment reads
+
+Receipts bound only the variables the final dep-info declares, and Verus's
+erased compilation rewrites that file without the verification phase's reads.
+A variable read only in ghost code therefore bound nothing, and a proof
+established with it set was reused as Current after it was removed (#386,
+[VI-0036](../verus-issues/VI-0036-ghost-env-reads-missing-from-dep-info.md)).
+Each verified target now requests the pinned fork's report of rustc's tracked
+environment in both phases, appends the missing reads to the unit's dep-info
+(variables the proof context binds excepted), and records them in its
+invocation. A receipt (version 6) requires that record; replays of the shipped
+vstd build keep their own recorded environment. See
+[freshness](../freshness.md#which-environment-variables-are-proof-inputs).

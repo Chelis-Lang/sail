@@ -292,6 +292,15 @@ Unknown. Toolchain and sysroot files are identified by content, read again
 only when their complete stat stamp (including change time) differs from the
 one recorded on this machine; configuration is identified by content.
 
+A proof receipt also binds the environment its compiler read. That includes
+variables read only in ghost code, which the erased compilation's dep-info
+omits: Sail takes them from the pinned fork's report of rustc's tracked
+environment in both compiler phases, and a verified target without a complete
+report bound to its own compiler process gets no receipt (#386). Sail trusts
+that report to list every `env!`, `option_env!` and tracked proc-macro read,
+as it trusts rustc's dep-info for exec code; undeclared reads by build scripts
+and proc macros stay invisible, as they are to Cargo.
+
 What this trusts and does not detect is listed in [freshness](freshness.md):
 an edit made and undone during a run through an already-dirty shared writable
 mapping, a bind mount added and removed during a run (root only), and an

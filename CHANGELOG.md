@@ -5,6 +5,19 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Stop reusing a proof after an environment variable read only in ghost code
+  changes. Verus's erased compilation leaves an `env!` or `option_env!` read
+  in a `proof fn`, spec or assertion out of the crate's dep-info, so Sail
+  bound nothing for it: a proof established with the variable set was reused
+  as Current after it was removed (#386, VI-0036). Sail now reads the fork's
+  report of the variables both compiler phases tracked, declares the
+  ghost-only ones in the unit's dep-info, so Cargo recompiles when they change
+  as it does for exec reads, and refuses a receipt without that report.
+  The report needs a source checksum, which Sail requests through the same
+  ` __VERUS_DRIVER_ARGS__` channel as its other Verus options, so the
+  compiler's command line stays plain Cargo-Verus's; verdicts and diagnostics
+  are unchanged. Existing receipts are not reused after this upgrade.
+
 - Fix two default-mode verdict differences: managed `sail verify` changed the
   program the compiler sees. Its private `SAIL_MANAGED_*` settings reached
   Cargo, build scripts and compilers, so `option_env!("SAIL_MANAGED_RUNTIME")`
