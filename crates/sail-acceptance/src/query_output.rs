@@ -15,12 +15,13 @@ sail_spec! {
 
 sail_verified! {
     /// A nonempty original response can pass the complete output lifecycle.
+    #[allow(clippy::byte_char_slices, reason = "Explicit array bytes give stock Verus a concrete nonempty response witness.")]
     pub fn nonempty_output_control() -> (accepted: bool)
         requires (true) ensures (accepted)
     {
-        let original = b"unsat\n";
+        let original = [b'u', b'n', b's', b'a', b't', b'\n'];
         let mut output = Transcript::new();
-        output.append(original);
+        output.append(&original);
         sail_proof! {
             assert(crate::query::response_trim(original@, 0, 5));
             assert(crate::query::response_span(original@, 0, 5));
