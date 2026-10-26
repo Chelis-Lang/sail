@@ -75,6 +75,25 @@ implement and qualify on Linux and macOS. UID equality or unqualified ancestry
 is weaker than the required join. The present code does not implement this
 protocol, and this document does not substitute a Boolean assertion for it.
 
+A Cargo-launched build script can exec the normal wrapper in place. Its immediate
+parent is then the actual Cargo process and its current image is the approved
+wrapper, although Cargo did not launch that compiler invocation. A parent/image
+conjunction therefore cannot supply original launch intent or arguments. The
+protocol needs an independently complete expected compiler invocation or an
+attributed spawn/exec history, and must reject this control. An extra descendant,
+a delayed connection after exit, an inherited connection and PID reuse require
+separate controls; a live credential sample cannot replace their history.
+
+The current dependency pin is Tokio 1.53.3. Its safe Unix peer-credential helper
+returns a PID on Linux and macOS, but the macOS implementation requests
+`LOCAL_PEEREPID` and asserts the successful reply length. Apple's published
+socket implementation distinguishes a delegated socket's effective PID from its
+last PID. Neither value certifies Cargo's launch intent. This is source review
+of a possible primitive, not qualification of a deployed kernel or approval of
+a new dependency edge. The native adapter must account for the dependency's
+assertion path, exact socket/process lifetime, fork/exec behavior and both
+platforms before this primitive can contribute to admission.
+
 ## Proposed execution sequence
 
 1. Sail retains the submitted request and resolves its independently checked
@@ -95,7 +114,9 @@ protocol, and this document does not substitute a Boolean assertion for it.
    It includes the validated solver/shim choice, namespace/mode, observation
    destinations and explicitly selected engine policy. The wrapper preserves
    the original compiler environment and the complete original OS argument
-   vector. Private compiler control cannot travel through extra argv tokens:
+   vector. This includes the currently injected output, timing, logging and record
+   options; moving only a new observation envelope is insufficient. Private
+   compiler control cannot travel through extra argv tokens:
    stripping a local parsed vector does not change `std::env::args_os` or
    kernel-visible command-line bytes observed by procedural macros.
 5. The wrapper starts or execs the actual verifier with its ordinary arguments
