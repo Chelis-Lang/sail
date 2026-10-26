@@ -1134,7 +1134,7 @@ sail_code! {
         /// Original pre-spawn checked construction, when available.
         pub configuration: Option<ConfiguredIntent>,
         /// Outer absence is no wait; inner absence is an actual signal.
-        #[expect(clippy::option_option, reason = "No wait and an observed signaled exit are different primitive outcomes.")]
+        #[allow(clippy::option_option, reason = "No wait and an observed signaled exit are different primitive outcomes.")]
         pub wait: Option<Option<i32>>,
         /// Original complete stdout buffer, preserved on refusal.
         pub stdout: Vec<u8>,
@@ -1226,6 +1226,10 @@ sail_verified! {
     }
 }
 
+#[allow(
+    clippy::elidable_lifetime_names,
+    reason = "The named lifetime appears in the stock-Verus specification erased from Cargo."
+)]
 impl<'a, Owner> OwnedCompilerAttempt<'a, Owner> {
     sail_impl_spec! {
         /// Original reserved descriptor and initially empty observed process state.
@@ -1250,6 +1254,7 @@ impl<'a, Owner> OwnedCompilerAttempt<'a, Owner> {
 
 sail_verified! {
     /// Bind an original reservation to owned spawn fields, never a supplied match flag.
+    #[allow(clippy::manual_let_else, clippy::question_mark, reason = "Preserve the explicit refusal branch checked verbatim by stock Verus.")]
     pub fn begin_owned_compiler<'a, Owner>(reserved: ReservedAttempt<'a>, fields: OwnedSpawnFields<'_, Owner>) -> (out: Option<OwnedCompilerAttempt<'a, Owner>>)
         requires (true)
         ensures (out.is_some() == (fields.pid != 0 && fields.configuration.is_some()
@@ -1330,6 +1335,7 @@ sail_verified! {
     /// # Errors
     /// Returns the original buffers and observed exit projection when original
     /// start, owner, PID, configuration, policy or wait correspondence is missing.
+    #[allow(clippy::manual_let_else, clippy::manual_unwrap_or_default, reason = "Preserve explicit wait projection and original-output refusal branches in the source checked by stock Verus.")]
     pub fn complete_owned_compiler<'a, Owner, Identity>(identity: &Identity, attempt: Option<OwnedCompilerAttempt<'a, Owner>>, completion: OwnedCompletionFields<Owner>) -> (out: Result<ObservedAttempt<'a>, UnsealedOutput>)
         where (Identity: OwnerIdentity<Owner>)
         requires (attempt.is_some() ==> attempt.unwrap().ready())

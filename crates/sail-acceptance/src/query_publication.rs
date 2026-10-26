@@ -47,8 +47,9 @@ sail_code! {
 
 sail_verified! {
     /// Requires both owned stream witnesses and every existing closure check.
-    /// CompleteOutput's private constructor supplies its exact EOF/coverage
+    /// `CompleteOutput`'s private constructor supplies its exact EOF/coverage
     /// invariant; native process identity is not assumed by this operation.
+    #[allow(clippy::question_mark, reason = "Keep both explicit typed-observation refusal branches in the source shared with stock Verus.")]
     pub fn observe_publication<Host>(input: Option<Delivered<Host>>,
         output: Option<CompleteOutput>, gate: PublicationGate)
         -> (out: Option<PublicationObservation<Host>>)

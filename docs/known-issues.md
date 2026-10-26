@@ -5,16 +5,16 @@ release work; linked validation pages preserve the scope of each result.
 
 ## Owned-compiler refinement qualification
 
-The local owned-compiler source slice remains unqualified. At frozen `714bf6e5`,
-stock Verus checks the whole input crate and reports 277 verified / 5 errors,
-with eight diagnostic locations in its constructive witnesses and missing
-start/completion guarantees. The source correction strengthens those guarantees,
-adds descriptor-correspondence proof steps and makes original witness bytes
-explicit; it does not weaken contracts or change production control flow.
-Whole-root and failure-control reruns remain pending. This is a validation gap,
-not a demonstrated production false-proof witness; see
-[#374](https://github.com/Chelis-Lang/sail/issues/374#issuecomment-6427046792)
-and the [owning record](validation/acceptance-boundary-refinements.md).
+The corrected whole input root passes 283/0, preserving all earlier functions;
+the whole authority root passes 489/0 with final source/runtime checks. The
+original `714bf6e5` constructive/contract failures and subsequent corrections
+remain in the [owning record](validation/acceptance-boundary-refinements.md).
+The newer source remains unqualified as a whole: all canonical failure controls,
+native I/O/owner refinements and integrated gates remain required. The
+`00a501c7` workspace gate stops at style/lifetime lint diagnostics; local
+annotations retain the proved bodies and need rerun. These validation gaps do
+not demonstrate a production false mathematical proof; see
+[#374](https://github.com/Chelis-Lang/sail/issues/374#issuecomment-6427046792).
 
 ## Compiler-phase witness selected without its inputs
 

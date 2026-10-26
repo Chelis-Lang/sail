@@ -221,7 +221,9 @@ def checked_item_envelopes(source: str, *, proof: bool = False,
             end = closing(stream, start)
             attribute = [t.value for t in stream[start + 1:end]]
             safe_lint = (len(attribute) == 11
-                and attribute[:9] == ["allow", "(", "clippy", ":", ":", "redundant_as_str", ",", "reason", "="]
+                and attribute[:5] == ["allow", "(", "clippy", ":", ":"]
+                and attribute[5] in {"redundant_as_str", "elidable_lifetime_names"}
+                and attribute[6:9] == [",", "reason", "="]
                 and attribute[9].startswith('"') and attribute[10] == ")")
             require(attribute == ["forbid", "(", "unsafe_code", ")"] or safe_lint,
                 "unexpected privileged item attribute")
