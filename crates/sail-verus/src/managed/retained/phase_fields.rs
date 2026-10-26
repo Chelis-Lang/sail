@@ -212,8 +212,8 @@ pub(in crate::managed) fn environment(
     })
 }
 
-/// Bound the exact parsed field union to the original request and actual child.
-/// This unselected capability supplies no proof-success or compiler-domain token.
+/// Check parsed declaration metadata against the original request and actual child.
+/// This unselected capability authenticates no file writer and supplies no proof-success or compiler-domain token.
 pub(in crate::managed) fn admit_observed(
     request: PhaseRequest,
     observed: &ObservedAttempt<'_>,
@@ -275,9 +275,6 @@ mod tests {
     ) -> Result<(Vec<PhaseRequest>, ObservedAttempt<'a>, Output), Failure> {
         command.stdout(Stdio::piped()).stderr(Stdio::piped());
         let allocation = ledger.allocate().ok_or("attempt exhausted")?;
-        let requests = (0..6)
-            .map(|_| PhaseRequest::for_attempt(&allocation, binding))
-            .collect();
         let descriptor = ProcessDescriptor {
             program: command.get_program().as_encoded_bytes().to_vec(),
             arguments: command
@@ -297,7 +294,13 @@ mod tests {
                 })
                 .collect(),
         };
-        let reserved = allocation.configure(descriptor);
+        let mut reserved = allocation.configure(descriptor);
+        let mut requests = Vec::new();
+        for _ in 0..6 {
+            let (request, again) = PhaseRequest::for_reserved(reserved, binding);
+            requests.push(request);
+            reserved = again;
+        }
         let child = command.spawn()?;
         let running = reserved.started(child.id()).ok_or("zero child PID")?;
         let output = child.wait_with_output()?;
@@ -375,21 +378,21 @@ mod tests {
             .ok_or("complete normal-failure accounting refused")?;
         assert_eq!(union.get("ORDINARY_PROOF_FLAG"), Some(&Some("7".into())));
         let later = ledger.allocate().ok_or("attempt exhausted")?;
-        let later_request = PhaseRequest::for_attempt(&later, b"binding");
+        let later = later.configure(sail_acceptance::phase_inputs::copy_descriptor(
+            observed.reserved().descriptor(),
+        ));
+        let (later_request, _later) = PhaseRequest::for_reserved(later, b"binding");
         assert!(
             admit_observed(later_request, &observed, &raw).is_none(),
             "a fresh slot cannot restamp an old child"
         );
         let mut other_run = AttemptLedger::new(b"other-run", &unit);
         let other = other_run.allocate().ok_or("attempt exhausted")?;
-        assert!(
-            admit_observed(
-                PhaseRequest::for_attempt(&other, b"binding"),
-                &observed,
-                &raw
-            )
-            .is_none()
-        );
+        let other = other.configure(sail_acceptance::phase_inputs::copy_descriptor(
+            observed.reserved().descriptor(),
+        ));
+        let (other_request, _other) = PhaseRequest::for_reserved(other, b"binding");
+        assert!(admit_observed(other_request, &observed, &raw).is_none());
         let changed = |change: fn(&mut serde_json::Value)| -> Result<Vec<u8>, Failure> {
             let mut value: serde_json::Value = serde_json::from_slice(&raw)?;
             change(&mut value);
@@ -412,6 +415,46 @@ mod tests {
             assert!(
                 admit_observed(requests.pop().ok_or("request missing")?, &observed, &raw).is_none()
             );
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn same_run_unit_slot_and_pid_do_not_replace_the_final_command() -> Result<(), Failure> {
+        let root = directory("descriptor")?;
+        let unit = CompilerUnit {
+            manifest: b"manifest".to_vec(),
+            name: b"unit".to_vec(),
+            crate_type: b"lib".to_vec(),
+            cargo_name: None,
+        };
+        let mut ledger = AttemptLedger::new(b"phase-run", &unit);
+        let path = root.join("inputs.json");
+        let mut command = Command::new("python3");
+        command.arg("-c").arg("import json,os,sys; d=json.loads(sys.argv[2]); d['pid']=os.getpid(); open(sys.argv[1],'w').write(json.dumps(d))")
+            .arg(&path).arg(serde_json::to_string(&document(0, "binding"))?);
+        let (_, observed, _) = observe(&mut ledger, &mut command, b"binding")?;
+        let raw = std::fs::read(path)?;
+        for field in 0..4 {
+            let mut descriptor =
+                sail_acceptance::phase_inputs::copy_descriptor(observed.reserved().descriptor());
+            match field {
+                0 => descriptor.program = b"other-program".to_vec(),
+                1 => descriptor.arguments.push(b"other-argument".to_vec()),
+                2 => descriptor.directory = Some(Vec::new()),
+                _ => descriptor
+                    .overrides
+                    .push((b"ORDINARY_PROOF_FLAG".to_vec(), None)),
+            }
+            // Another argument-key namespace can independently allocate slot0
+            // for the same raw compiler unit/run. Descriptor equality is required.
+            let mut other_namespace = AttemptLedger::new(b"phase-run", &unit);
+            let other = other_namespace
+                .reserve(descriptor)
+                .ok_or("attempt exhausted")?;
+            let (request, _other) = PhaseRequest::for_reserved(other, b"binding");
+            assert!(admit_observed(request, &observed, &raw).is_none());
         }
         std::fs::remove_dir_all(root)?;
         Ok(())

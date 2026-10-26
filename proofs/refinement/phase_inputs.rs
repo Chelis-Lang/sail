@@ -32,9 +32,9 @@ pub fn phase_union_preserves_ghost_environment_and_failure() {
     let allocated = ledger.allocate();
     assert(allocated.is_some());
     let allocated = match allocated { Some(a) => a, None => { assert(false); return; } };
-    let request = PhaseRequest::for_attempt(&allocated, &binding);
     let reserved = allocated.configure(ProcessDescriptor { program: vec![6u8], arguments: Vec::new(),
         directory: None, overrides: Vec::new() });
+    let (request, reserved) = PhaseRequest::for_reserved(reserved, &binding);
     let observed = complete_phase_attempt(reserved, 7, Some(1));
     let observed = match observed { Some(a) => a, None => { assert(false); return; } };
 
@@ -104,7 +104,8 @@ pub fn same_pid_different_attempts_do_not_rebind_phase_requests() {
     let mut ledger = AttemptLedger::new(&run, &unit);
     let first = ledger.allocate();
     let first = match first { Some(a) => a, None => { assert(false); return; } };
-    let request = PhaseRequest::for_attempt(&first, &binding);
+    let first = first.configure(ProcessDescriptor { program: vec![7u8], arguments: Vec::new(), directory: None, overrides: Vec::new() });
+    let (request, _first) = PhaseRequest::for_reserved(first, &binding);
     let second = ledger.allocate();
     let second = match second { Some(a) => a, None => { assert(false); return; } };
     let descriptor = ProcessDescriptor { program: vec![7u8], arguments: Vec::new(), directory: None, overrides: Vec::new() };
@@ -115,12 +116,49 @@ pub fn same_pid_different_attempts_do_not_rebind_phase_requests() {
     let mut other = AttemptLedger::new(&other_run, &unit);
     let other = other.allocate();
     let other = match other { Some(a) => a, None => { assert(false); return; } };
-    let other_request = PhaseRequest::for_attempt(&other, &binding);
+    let other = other.configure(copy_descriptor(observed.reserved().descriptor()));
+    let (other_request, _other) = PhaseRequest::for_reserved(other, &binding);
     let matches = request_matches(&other_request, &observed);
     assert(!matches);
 
     let different = CompilerUnit { manifest: vec![4u8], name: vec![5u8], crate_type: vec![6u8], cargo_name: Some(Vec::new()) };
     let equal = compiler_units_equal(&unit, &different);
+    assert(!equal);
+}
+
+/// Equal nominal run/unit/slot/PID does not identify different final commands.
+pub fn final_descriptor_prevents_cross_argument_namespace_replay() {
+    let run = vec![1u8]; let binding = vec![2u8];
+    let unit = CompilerUnit { manifest: vec![3u8], name: vec![4u8], crate_type: vec![5u8], cargo_name: None };
+    let mut first = AttemptLedger::new(&run, &unit);
+    let reserved = first.reserve(ProcessDescriptor { program: vec![6u8], arguments: vec![vec![7u8]],
+        directory: None, overrides: Vec::new() });
+    let reserved = match reserved { Some(a) => a, None => { assert(false); return; } };
+    let (request, reserved) = PhaseRequest::for_reserved(reserved, &binding);
+    proof { assert(request.descriptor_view().arguments[0]@ == seq![7u8]); }
+    let mut second = AttemptLedger::new(&run, &unit);
+    let reserved = second.reserve(ProcessDescriptor { program: vec![6u8], arguments: vec![vec![8u8]],
+        directory: None, overrides: Vec::new() });
+    let reserved = match reserved { Some(a) => a, None => { assert(false); return; } };
+    let observed = complete_phase_attempt(reserved, 9, Some(0));
+    let observed = match observed { Some(a) => a, None => { assert(false); return; } };
+    proof { assert(reserved_descriptor(&running_reserved(&observed_running(&observed))).arguments[0]@ == seq![8u8]); }
+    let matches = request_matches(&request, &observed);
+    assert(!matches);
+}
+
+/// Copies preserve argv boundaries, operation order, absence and empty values.
+pub fn descriptor_copy_and_nonempty_boundary_controls() {
+    let first = ProcessDescriptor { program: vec![1u8], arguments: vec![vec![2u8], vec![3u8, 4u8]],
+        directory: Some(Vec::new()), overrides: vec![(vec![5u8], None), (vec![6u8], Some(Vec::new()))] };
+    let copied = copy_descriptor(&first);
+    let equal = descriptors_equal(&first, &copied);
+    assert(equal);
+    let other = ProcessDescriptor { program: vec![1u8], arguments: vec![vec![2u8, 3u8], vec![4u8]],
+        directory: Some(Vec::new()), overrides: vec![(vec![5u8], None), (vec![6u8], Some(Vec::new()))] };
+    let equal = descriptors_equal(&first, &other);
+    assert(!equal);
+    let equal = optional_bytes_equal(&None, &Some(Vec::new()));
     assert(!equal);
 }
 
