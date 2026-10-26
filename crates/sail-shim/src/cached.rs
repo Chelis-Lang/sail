@@ -186,13 +186,6 @@ impl Entry {
         }
     }
 
-    fn effort_mut(&mut self) -> Option<&mut Effort> {
-        match self {
-            Self::Paired { effort, .. } => effort.as_mut(),
-            Self::Silence { .. } => None,
-        }
-    }
-
     fn wire_cost(&self) -> Option<usize> {
         match self {
             Self::Paired { pair, .. } => {
@@ -249,9 +242,19 @@ fn batch_observed(pending: &PublicationBatch<Entry>, publication: &SolverPublica
 /// A `check-sat` reply held back until its effort is known: the
 /// `:all-statistics` reply after it gives the `rlimit-count` delta, and a
 /// `reason-unknown` reply may come in between (ADR 0009).
-struct HeldCheck {
-    entry: Entry,
+struct HeldMetadata {
     before: Option<u64>,
+    effort: Effort,
+}
+
+type HeldPayload = BoundPair<Expect, SolverFrame>;
+type HeldCheck = sail_acceptance::query_holding::Holding<HeldPayload, HeldMetadata>;
+
+fn held_entry(pair: HeldPayload, metadata: Option<HeldMetadata>) -> Entry {
+    Entry::Paired {
+        pair,
+        effort: metadata.map(|metadata| metadata.effort),
+    }
 }
 
 /// The number after `:rlimit-count` in a statistics reply.
@@ -277,7 +280,7 @@ struct Pairer {
     pending: CorrelatedQueue<Expect, SolverFrame>,
     /// The latest `rlimit-count` seen in a statistics reply.
     last_count: Option<u64>,
-    held: Option<HeldCheck>,
+    held: HeldCheck,
 }
 
 impl Default for Pairer {
@@ -286,7 +289,7 @@ impl Default for Pairer {
             terminal: None,
             pending: CorrelatedQueue::empty(),
             last_count: None,
-            held: None,
+            held: HeldCheck::new(),
         }
     }
 }
@@ -336,8 +339,8 @@ impl Pairer {
 
     /// Releases a held check, with whatever effort is known.
     fn release(&mut self, out: &mut Vec<Entry>) {
-        if let Some(h) = self.held.take() {
-            out.push(h.entry);
+        if let Some((pair, metadata)) = self.held.take() {
+            out.push(held_entry(pair, metadata));
         }
     }
 
@@ -361,40 +364,47 @@ impl Pairer {
             let kind = classify(text).map(|c| c.kind).ok();
             match kind {
                 Some(k) if k.is_check() => {
-                    self.release(&mut out);
-                    self.held = Some(HeldCheck {
-                        entry: Entry::Paired {
-                            effort: Some(Effort {
-                                limit: *limit,
-                                used: None,
-                                reason: None,
-                            }),
-                            pair,
-                        },
+                    let metadata = HeldMetadata {
                         before: self.last_count,
-                    });
+                        effort: Effort {
+                            limit: *limit,
+                            used: None,
+                            reason: None,
+                        },
+                    };
+                    if let Some((previous, metadata)) = self.held.replace(pair, metadata) {
+                        out.push(held_entry(previous, metadata));
+                    }
                     continue;
                 }
                 Some(CommandKind::GetInfo {
                     keyword: b":reason-unknown",
                 }) => {
-                    if let Some(effort) = self.held.as_mut().and_then(|h| h.entry.effort_mut()) {
-                        effort.reason =
+                    if let Some(mut metadata) = self.held.take_metadata() {
+                        metadata.effort.reason =
                             Some(String::from_utf8_lossy(reply.trim_ascii()).into_owned());
+                        if !self.held.put_metadata(metadata) {
+                            self.pending.stop();
+                        }
                     }
                 }
                 Some(CommandKind::GetInfo {
                     keyword: b":all-statistics",
                 }) => {
                     let count = rlimit_count(reply);
-                    if let Some(h) = self.held.as_mut()
-                        && let (Some(before), Some(after)) = (h.before, count)
-                        && let Some(effort) = h.entry.effort_mut()
-                    {
-                        effort.used = Some(after.saturating_sub(before));
+                    if let Some(mut metadata) = self.held.take_metadata() {
+                        if let (Some(before), Some(after)) = (metadata.before, count) {
+                            metadata.effort.used = Some(after.saturating_sub(before));
+                        }
+                        if !self.held.put_metadata(metadata) {
+                            self.pending.stop();
+                        }
                     }
-                    self.release(&mut out);
                     self.last_count = count.or(self.last_count);
+                    for (pair, metadata) in self.held.release_before(pair) {
+                        out.push(held_entry(pair, metadata));
+                    }
+                    continue;
                 }
                 _ => {}
             }
@@ -1929,6 +1939,31 @@ mod tests {
         let rest = stored_entries(p.finish());
         assert_eq!(rest.len(), 1);
         assert_eq!(rest[0].effort.as_ref().and_then(|e| e.used), None);
+    }
+
+    #[test]
+    fn consecutive_checks_release_original_payloads_and_annotations() {
+        let mut pairer = Pairer::default();
+        pairer.expect(check(1, 10));
+        pairer.reply(b"unsat\n".to_vec());
+        pairer.expect(check(2, 20));
+        pairer.reply(b"sat\n".to_vec());
+        let displaced = stored_entries(pairer.drain());
+        assert_eq!(displaced.len(), 1);
+        assert_eq!(displaced[0].key, key(1));
+        assert_eq!(displaced[0].reply, b"unsat\n");
+        assert_eq!(
+            displaced[0].effort.as_ref().and_then(|effort| effort.limit),
+            Some(10)
+        );
+        let last = stored_entries(pairer.finish());
+        assert_eq!(last.len(), 1);
+        assert_eq!(last[0].key, key(2));
+        assert_eq!(last[0].reply, b"sat\n");
+        assert_eq!(
+            last[0].effort.as_ref().and_then(|effort| effort.limit),
+            Some(20)
+        );
     }
 
     #[test]
