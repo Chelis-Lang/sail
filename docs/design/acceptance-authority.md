@@ -479,6 +479,16 @@ failure cause and path when available. Whole and exact partial receipt reuse,
 retained target/selection/request authority and experimental content publishing
 refuse that history. Fresh input Currentness remains independent.
 
+`AttemptIdentity::from_observed` copies the complete observation's original
+raw run, every unit field, allocated slot, final command descriptor, actual PID
+and original status into an owned private record through checked deep-copy
+helpers. The source-shared factory preserves absence versus empty values and
+all argument/override ordering. It provides no constructor from archived bytes
+back to live observations, Currentness or proof authority. A constructive
+refinement control gives two observations the same PID and proves their distinct
+allocated slots and exact original metadata survive ownership transfer.
+Native serialization, image resolution and protected storage remain adapters.
+
 This seal establishes complete process observations, not completed verification.
 Native command construction, OS handle/pipe/wait attribution, pinned image
 resolution, structured document parsing and engine-protocol interpretation

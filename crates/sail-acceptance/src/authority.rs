@@ -954,3 +954,67 @@ sail_spec! {
             && d.reason() != EngineCompletion::Complete
     }
 }
+
+sail_code! {
+    /// Owned identity copied from one complete child observation. It preserves
+    /// history; it grants no new live, Current, input-domain or proof authority.
+    /// Persisted copies cannot be converted into a new `ObservedAttempt`.
+    #[derive(Debug)]
+    pub struct AttemptIdentity {
+        run: Vec<u8>, unit: CompilerUnit, slot: usize, descriptor: ProcessDescriptor,
+        pid: u32, exit: Option<i32>,
+    }
+
+    impl AttemptIdentity {
+        sail_impl_spec! {
+            pub closed spec fn run_view(&self) -> Seq<u8> { self.run@ }
+            pub closed spec fn unit_view(&self) -> CompilerUnit { self.unit }
+            pub closed spec fn slot_view(&self) -> usize { self.slot }
+            pub closed spec fn descriptor_view(&self) -> ProcessDescriptor { self.descriptor }
+            pub closed spec fn pid_view(&self) -> u32 { self.pid }
+            pub closed spec fn exit_view(&self) -> Option<i32> { self.exit }
+        }
+        sail_method! {
+            /// Copies the actual sealed child's immutable origin fields.
+            pub fn from_observed(observed: &ObservedAttempt<'_>) -> (out: Self)
+                requires(observation_complete(&observed_running(observed)))
+                ensures(out.run_view() == reserved_run(&running_reserved(&observed_running(observed)))@,
+                    super::phase_inputs::same_unit(out.unit_view(), *reserved_unit(&running_reserved(&observed_running(observed)))),
+                    out.slot_view() == reserved_slot(&running_reserved(&observed_running(observed))),
+                    super::phase_inputs::same_descriptor(out.descriptor_view(), reserved_descriptor(&running_reserved(&observed_running(observed)))),
+                    out.pid_view() == running_pid(&observed_running(observed)),
+                    out.exit_view() == running_exit(&observed_running(observed)).unwrap())
+            {
+                let reserved = observed.reserved();
+                Self { run: copy_bytes(reserved.run()),
+                    unit: super::phase_inputs::copy_compiler_unit(reserved.unit()), slot: reserved.slot(),
+                    descriptor: super::phase_inputs::copy_descriptor(reserved.descriptor()),
+                    pid: observed.pid(), exit: observed.exit() }
+            }
+        }
+        sail_method! {
+            /// Original enclosing run bytes, not a decoded label.
+            pub fn run(&self) -> (out: &[u8]) requires(true) ensures(out@ == self.run_view()) { &self.run }
+        }
+        sail_method! {
+            /// Every original raw compiler-unit field.
+            pub fn unit(&self) -> (out: &CompilerUnit) requires(true) ensures(*out == self.unit_view()) { &self.unit }
+        }
+        sail_method! {
+            /// Original exclusively allocated attempt slot.
+            pub fn slot(&self) -> (out: usize) requires(true) ensures(out == self.slot_view()) { self.slot }
+        }
+        sail_method! {
+            /// Every original final command field and ordered operation.
+            pub fn descriptor(&self) -> (out: &ProcessDescriptor) requires(true) ensures(*out == self.descriptor_view()) { &self.descriptor }
+        }
+        sail_method! {
+            /// Actual child identity recorded at its start.
+            pub fn pid(&self) -> (out: u32) requires(true) ensures(out == self.pid_view()) { self.pid }
+        }
+        sail_method! {
+            /// Actual normal status or signal observation, without normalization.
+            pub fn exit(&self) -> (out: Option<i32>) requires(true) ensures(out == self.exit_view()) { self.exit }
+        }
+    }
+}
