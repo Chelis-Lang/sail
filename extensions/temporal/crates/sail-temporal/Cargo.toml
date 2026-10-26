@@ -1,0 +1,22 @@
+[package]
+name = "sail-temporal"
+description = "The temporal-enabled sail: the sail command line with the native temporal backend linked"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "sail"
+path = "src/main.rs"
+
+[dependencies]
+sail-cli.workspace = true
+sail-dive.workspace = true
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

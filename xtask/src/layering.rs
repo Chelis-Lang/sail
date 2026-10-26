@@ -20,11 +20,6 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     ("sail-contracts-ir", &[]),
     ("sail-contracts-macros", &["sail-contracts-ir"]),
     ("sail-contracts", &["sail-contracts-macros"]),
-    ("sail-dive", &["sail-api"]),
-    (
-        "sail-runtime-worker",
-        &["sail-dive", "sail-api", "sail-daemon", "sail-runtime"],
-    ),
     ("sail-smtlib", &[]),
     ("sail-session", &["sail-smtlib"]),
     ("sail-key", &["sail-smtlib", "sail-session"]),
@@ -44,13 +39,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     ),
     (
         "sail-runtime",
-        &[
-            "sail-api",
-            "sail-cache",
-            "sail-key",
-            "sail-smtlib",
-            "sail-dive",
-        ],
+        &["sail-api", "sail-cache", "sail-key", "sail-smtlib"],
     ),
     (
         "sail-shim",
@@ -132,13 +121,43 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     ),
 ];
 
+/// The temporal extension workspace (`extensions/temporal`, ADR 0083).
+///
+/// Its crates may depend on each other and on main-workspace crates; no
+/// main-workspace crate may depend on them, which [`ALLOWED`] enforces by
+/// not naming them.
+pub const EXTENSION: &str = "extensions/temporal";
+
+/// `(extension crate, crates it may depend on directly)`.
+pub const EXTENSION_ALLOWED: &[(&str, &[&str])] = &[
+    ("sail-dive", &["sail-api", "sail-runtime"]),
+    ("sail-runtime-worker", &["sail-dive"]),
+    ("sail-temporal", &["sail-cli", "sail-dive"]),
+];
+
 #[cfg(test)]
 mod tests {
-    use super::ALLOWED;
+    use super::{ALLOWED, EXTENSION_ALLOWED};
     use std::collections::{BTreeMap, BTreeSet};
 
     fn graph() -> BTreeMap<&'static str, &'static [&'static str]> {
-        ALLOWED.iter().copied().collect()
+        ALLOWED.iter().chain(EXTENSION_ALLOWED).copied().collect()
+    }
+
+    #[test]
+    fn main_workspace_never_reaches_the_extension() {
+        let main: BTreeSet<&str> = ALLOWED.iter().map(|(name, _)| *name).collect();
+        for (name, deps) in ALLOWED {
+            for dep in *deps {
+                assert!(
+                    main.contains(dep),
+                    "{name} -> {dep} leaves the main workspace"
+                );
+            }
+        }
+        for (name, _) in EXTENSION_ALLOWED {
+            assert!(!main.contains(name), "{name} is listed in both workspaces");
+        }
     }
 
     /// Every crate reachable from `start`, excluding `start` itself.
@@ -157,7 +176,7 @@ mod tests {
     #[test]
     fn every_edge_targets_a_listed_crate() {
         let g = graph();
-        for (name, deps) in ALLOWED {
+        for (name, deps) in ALLOWED.iter().chain(EXTENSION_ALLOWED) {
             for dep in *deps {
                 assert!(
                     g.contains_key(dep),
@@ -169,7 +188,7 @@ mod tests {
 
     #[test]
     fn permitted_graph_is_acyclic() {
-        for (name, _) in ALLOWED {
+        for (name, _) in ALLOWED.iter().chain(EXTENSION_ALLOWED) {
             assert!(!reachable(name).contains(name), "{name} reaches itself");
         }
     }

@@ -12,12 +12,6 @@ repository.workspace = true
 name = "sail"
 path = "src/main.rs"
 
-[features]
-default = ["temporal"]
-# Native temporal jobs (D.I.V.E.). Without it `sail verify` is unchanged and
-# the temporal capability reports unavailable.
-temporal = ["sail-runtime/temporal", "sail-daemon/temporal"]
-
 [dependencies]
 notify.workspace = true
 ctrlc.workspace = true

@@ -31,7 +31,7 @@ jobs:
   completion:
     name: CI completion
     if: ${{ always() }}
-    needs: [no-ai-authorship, image, workspace-gate, solver-tests, end-to-end, conformance, acceptance-proofs, acceptance-refinements]
+    needs: [no-ai-authorship, image, workspace-gate, solver-tests, end-to-end, conformance, acceptance-proofs, acceptance-refinements, temporal-extension]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -48,7 +48,8 @@ jobs:
           CONFORMANCE: ${{ needs.conformance.result }}
           PROOFS: ${{ needs.acceptance-proofs.result }}
           REFINEMENTS: ${{ needs.acceptance-refinements.result }}
-        run: bash ci/check-completion.sh "$AUTHORSHIP" "$IMAGE" "$GATE" "$SOLVER" "$E2E" "$CONFORMANCE" "$PROOFS" "$REFINEMENTS"
+          EXTENSION: ${{ needs.temporal-extension.result }}
+        run: bash ci/check-completion.sh "$AUTHORSHIP" "$IMAGE" "$GATE" "$SOLVER" "$E2E" "$CONFORMANCE" "$PROOFS" "$REFINEMENTS" "$EXTENSION"
 
   acceptance-proofs:
     name: Acceptance model proofs
@@ -158,6 +159,41 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh gate
+
+  temporal-extension:
+    # The temporal extension workspace (extensions/temporal, ADR 0083), the
+    # only build that resolves the private D.I.V.E. sources and so the only
+    # job given the read token. Where the token is unavailable (fork pull
+    # requests) its steps are skipped and the job succeeds with a notice.
+    name: Temporal extension
+    needs: [no-ai-authorship, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      SAIL_EXTENSION_ENABLED: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN != '' }}
+    steps:
+      - name: Report a skipped extension build
+        if: ${{ env.SAIL_EXTENSION_ENABLED != 'true' }}
+        run: echo "::notice::No private-dependency token in this run; the temporal extension workspace was not built."
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ env.SAIL_EXTENSION_ENABLED == 'true' }}
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: ${{ env.SAIL_EXTENSION_ENABLED == 'true' }}
+        with:
+          workspaces: extensions/temporal -> ../../target/temporal
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: ci/run.sh extension
+        if: ${{ env.SAIL_EXTENSION_ENABLED == 'true' }}
         env:
           SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
 
@@ -187,8 +223,6 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh solver
-        env:
-          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
 
   end-to-end:
     # Preserve the required check name and reject failed, cancelled or skipped phases.
@@ -239,8 +273,6 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh e2e-build target/e2e-bin
-        env:
-          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-bin
@@ -656,7 +688,6 @@ jobs:
       - name: Run conformance
         env:
           SAIL_CONFORMANCE_OUT: ${{ runner.temp }}/conformance-out
-          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
         run: ci/run.sh conformance fast pr
       - name: Upload reports
         if: failure()

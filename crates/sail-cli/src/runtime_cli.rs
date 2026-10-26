@@ -8,8 +8,13 @@ use std::process::ExitCode;
 /// Bound the JSON envelope as well as the decoded script lengths.
 const MAX_DOCUMENT_BYTES: u64 = 128 * 1024 * 1024;
 
-pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
-    match command(args, out) {
+pub(crate) fn run(
+    args: &[String],
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+    extensions: &crate::Extensions,
+) -> ExitCode {
+    match command(args, out, extensions) {
         Ok(code) => ExitCode::from(code),
         Err(message) => {
             let _ = writeln!(err, "{message}");
@@ -18,7 +23,11 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
     }
 }
 
-fn command(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
+fn command(
+    args: &[String],
+    out: &mut dyn Write,
+    extensions: &crate::Extensions,
+) -> Result<u8, String> {
     let options = options(args)?;
     let request = options.file.as_deref().map(read_request).transpose()?;
     let cancellation = Cancellation::default();
@@ -52,7 +61,7 @@ fn command(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
             .map_err(|e| e.to_string())?
             .join("runtime"),
     );
-    let runtime = Runtime::new(configuration(cache)?).map_err(|e| e.to_string())?;
+    let runtime = Runtime::new(configuration(cache, extensions)?).map_err(|e| e.to_string())?;
     if options.action == "capabilities" {
         write_json(out, &runtime.capabilities())?;
         return Ok(0);
@@ -65,14 +74,19 @@ fn command(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
 
 /// Resolve only the existing bundle path; the executor authenticates solver bytes.
 /// No Verus process or whole-engine validation runs on daemon startup.
-pub(crate) fn configuration(cache: PathBuf) -> Result<Config, String> {
+pub(crate) fn configuration(
+    cache: PathBuf,
+    extensions: &crate::Extensions,
+) -> Result<Config, String> {
     let root = sail_verus::cache_dir().map_err(|e| e.to_string())?;
     let pins = sail_verus::toolchain::Pins::embedded().map_err(|e| e.to_string())?;
     let build = sail_verus::engine::resolve_build(&root, &pins);
     let z3 = sail_verus::source_build::checkout_dir(&build).join("source/target-verus/release/z3");
     // A missing, unreadable or malformed worker installation only makes
     // temporal jobs unavailable; it never stops the service or `sail verify`.
+    // Without a linked backend no worker installation is read (ADR 0083).
     let (temporal_worker, temporal_unavailable) = match std::env::current_exe() {
+        _ if extensions.temporal.is_none() => (None, None),
         Ok(sail) => sail_runtime::temporal::locate(&sail),
         Err(error) => (
             None,
@@ -84,6 +98,7 @@ pub(crate) fn configuration(cache: PathBuf) -> Result<Config, String> {
         ),
     };
     Ok(Config {
+        temporal_backend: extensions.temporal.clone(),
         temporal_worker,
         temporal_unavailable,
         z3: Some(z3),
@@ -97,8 +112,9 @@ pub(crate) fn start_service(
     cache_socket: &Path,
     cache: PathBuf,
     activity: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    extensions: &crate::Extensions,
 ) -> Result<sail_daemon::runtime::Handle, String> {
-    let runtime = configuration(cache)?;
+    let runtime = configuration(cache, extensions)?;
     sail_daemon::runtime::bind(
         &sail_api::runtime::transport::socket_path(cache_socket),
         &sail_daemon::runtime::Config {
