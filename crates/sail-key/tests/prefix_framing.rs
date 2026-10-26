@@ -52,6 +52,7 @@ fn native_shared_primitive_controls_execute() {
     assert!(sail_acceptance::key_prefix::owned_feed_control());
     assert!(sail_acceptance::key_prefix::joint_owner_control());
     assert!(sail_acceptance::query::commented_head_control());
+    assert!(sail_acceptance::query_policy::tactic_policy_control());
 }
 
 #[test]
@@ -85,6 +86,10 @@ fn joint_owner_retains_raw_bytes_and_command_keys_across_fragmentation() {
             assert_eq!(owner.bytes(), raw);
             let first = owner.command(leading.len(), assertion);
             assert!(first.is_some());
+            assert_eq!(
+                first.as_ref().map(sail_key::CommandFrame::policy),
+                Some(sail_acceptance::query_policy::ResponsePolicy::None)
+            );
             let mut reference = PrefixHasher::new(&solver, &mode);
             reference.update(&raw[..leading.len() + assertion.len()]);
             assert_eq!(
@@ -92,6 +97,10 @@ fn joint_owner_retains_raw_bytes_and_command_keys_across_fragmentation() {
                 Some(reference.key())
             );
             let second = owner.command(check_offset, check);
+            assert_eq!(
+                second.as_ref().map(sail_key::CommandFrame::policy),
+                Some(sail_acceptance::query_policy::ResponsePolicy::One)
+            );
             assert_eq!(
                 second.as_ref().map(sail_key::CommandFrame::head),
                 Some(check.as_slice().get(1..10).unwrap_or_default())

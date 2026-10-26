@@ -623,3 +623,39 @@ requires two correctly associated cached replies and zero new warm solver.
 Removing the production dispatch arm reproduces the missing warm replies.
 The fix is a native production correction; the complete command/response
 classification refinement remains open and is not established by this test.
+
+
+## Response expectations from the accepted raw head
+
+`FramedCommand::policy` now computes response metadata from the exact head
+borrowed by the same command observation that supplies its endpoint and key.
+The source-shared `query_policy` dispatch checks exact UTF-8 command words and
+the literal `get-` prefix; it never strips, normalizes or reconstructs the raw
+command. The actual shim uses that checked policy and requires agreement with
+its native session policy. A disagreement or unknown command takes the existing
+fallback; the print-success refusal remains in force. This avoids treating an
+independently supplied enum or response-count Boolean as authority for pairing.
+
+The checked rule describes successful commands with print-success disabled:
+checks, echo and get queries produce one response; the explicit supported
+mutation/option/declaration commands produce none. Failed or malformed commands
+can produce errors, so this rule does not itself establish a clean live run.
+Arity, types, complete solver protocol behavior and physical stream coverage
+retain their separate obligations. The native error/unmatched/publication guards
+are still required. The existing default cache gate accepts only the exact
+`-smt2 -in` solver arguments; other argument vectors stay pass-through.
+
+A concrete stock/native tactic-check witness proves the actual ASCII bytes
+belong to the one-response class. Native adapter tests cover completed comments,
+quoted string contents, doubled quotes, declarations, ordinary/tactic checks,
+get commands and quoted/unknown heads, and retain each exact expectation key.
+The full original query graph checks 280 obligations. Four ordinary controls
+change the tactic name, remove the get prefix, replace whole-word equality with
+prefix matching, and bind a frame's policy to different bytes. An initial
+get-prefix control reached a resource limit and was refused. The final checked
+word/prefix contracts isolate their exact UTF-8 definitions; all controls fail
+ordinary verification at unchanged whole-crate scope and resource settings.
+
+The added dispatch performs only bounded fixed-word comparisons and borrows
+existing bytes; it adds no query copy or normalization. Its native performance
+qualification remains part of the integration gate.
