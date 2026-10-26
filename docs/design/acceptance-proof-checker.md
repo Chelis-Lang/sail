@@ -84,6 +84,15 @@ checking. Receipts bind source, driver, dependency, runtime hashes, Rust compile
 and actual invocations. Raw receipts are evidence, not independent certificates
 of Python checker correctness.
 
+Production-refinement reports distinguish compiled body source from native
+source that is only bound by hash. `checked_source` excludes those native input
+adapters; `bound_native_input_source` names them explicitly. Declaration
+projections, structurally checked forwarders and abstract primitive contracts
+have separate roles, including `CompilerPipeReadHost` for owned pipe capture.
+Per-case `compiled_source_sha256` records the files actually passed to Verus.
+[#449](https://github.com/Chelis-Lang/sail/issues/449) corrects the earlier
+overbroad native-input role; it adds no native-code proof or whole-service credit.
+
 The checker, toolchain, runtime and OS must remain trustworthy and immutable
 during checking. Pre/post hashes do not prove atomic launch identity against
 transient executable replacement. The Python checker remains reviewed/tested

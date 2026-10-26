@@ -6,6 +6,13 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
 ## Owned-compiler refinement qualification
 
+The report classification fix in
+[#449](https://github.com/Chelis-Lang/sail/issues/449) keeps hash-bound native
+input adapters out of `checked_source` and discloses their separate unverified
+role and the pipe-read primitive. The targeted metadata regression passes;
+integrated native qualification remains pending. Earlier overbroad role labels
+do not qualify native bodies; use each case's actual compiled-file inventory.
+
 The corrected whole input root passes 283/0, preserving all earlier functions;
 the whole authority root passes 489/0 with final source/runtime checks. The
 original `714bf6e5` constructive/contract failures and subsequent corrections

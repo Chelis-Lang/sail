@@ -417,6 +417,35 @@ def working_source_matches(root: Path, snapshots: dict[str, bytes]) -> None:
             "working source differs from Git capture")
 
 
+def source_roles(entry: dict) -> dict:
+    """Keep compiled bodies, primitive contracts and bound native source distinct."""
+    return {
+        "checked_source": [path for path in entry["dependencies"] if path not in
+            {SYNTAX, RETAINED_BRIDGE, "crates/sail-api/src/acceptance_sort.rs",
+                *QUERY_NATIVE_BINDINGS, *INPUT_NATIVE_SHA256} and not declaration_source(path)],
+        "reviewed_syntax": [SYNTAX],
+        "abstract_primitive_contracts": {path: ["FileReadHost", "OwnerIdentity"]
+            if path.endswith("/inputs.rs") else ["PersistenceHost"] if path == WRITE_CORE
+            else ["InputPipe"] if path == DELIVERY_CORE
+            else ["CompilerPipeReadHost"] if path == PIPE_CORE else ["HashHost"]
+            for path in entry["dependencies"] if path in
+                {"crates/sail-acceptance/src/inputs.rs", KEY_CORE, WRITE_CORE, DELIVERY_CORE, PIPE_CORE}},
+        "reviewed_native_primitives": {path: ["Sha256Host", "PrefixHasher::new", "SessionPrefix",
+            "CommandFrame", "OwnedCommand", "InputDelivery", "DeliveredInput",
+            "ObservedPublication", "OwnedObservedPublication"]
+            for path in entry["dependencies"] if path == KEY_NATIVE},
+        "reviewed_query_io": {path: QUERY_NATIVE_BINDINGS[path]
+            for path in entry["dependencies"] if path in QUERY_NATIVE_BINDINGS},
+        "bound_native_input_source": [path for path in entry["dependencies"]
+            if path in INPUT_NATIVE_SHA256],
+        "reviewed_native_bridges": {path: ["classify", "apply_currentness", "withhold_unbound_authority"]
+            for path in entry["dependencies"] if path == RETAINED_BRIDGE},
+        "declaration_projections": [path for path in entry["dependencies"] if declaration_source(path)],
+        "structurally_checked_forwarders": [path for path in entry["dependencies"]
+            if path.endswith("/acceptance_sort.rs")],
+    }
+
+
 def selected_entries(entries: list[dict], component: str | None) -> list[dict]:
     """Select one complete root only after validating the full root inventory."""
     require(len(entries) == len(COMPONENTS)
@@ -529,25 +558,7 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
         "partition": None if partition is None else {"index": partition[0], "count": partition[1]},
         "complete_component_controls": partition is None,
         "complete_suite": component is None and partition is None,
-        "source_roles": {entry["id"]: {
-            "checked_source": [path for path in entry["dependencies"] if path not in
-                {SYNTAX, RETAINED_BRIDGE, "crates/sail-api/src/acceptance_sort.rs", *QUERY_NATIVE_BINDINGS} and not declaration_source(path)],
-            "reviewed_syntax": [SYNTAX],
-            "abstract_primitive_contracts": {path: ["FileReadHost", "OwnerIdentity"]
-                if path.endswith("/inputs.rs") else ["PersistenceHost"] if path == WRITE_CORE
-                else ["InputPipe"] if path == DELIVERY_CORE else ["HashHost"]
-                for path in entry["dependencies"] if path in {"crates/sail-acceptance/src/inputs.rs", KEY_CORE, WRITE_CORE, DELIVERY_CORE}},
-            "reviewed_native_primitives": {path: ["Sha256Host", "PrefixHasher::new", "SessionPrefix", "CommandFrame", "OwnedCommand", "InputDelivery", "DeliveredInput", "ObservedPublication", "OwnedObservedPublication"]
-                for path in entry["dependencies"] if path == KEY_NATIVE},
-            "reviewed_query_io": {path: QUERY_NATIVE_BINDINGS[path]
-                for path in entry["dependencies"] if path in QUERY_NATIVE_BINDINGS},
-            "reviewed_native_bridges": {path: ["classify", "apply_currentness", "withhold_unbound_authority"]
-                for path in entry["dependencies"] if path == RETAINED_BRIDGE},
-            "declaration_projections": [path for path in entry["dependencies"]
-                if declaration_source(path)],
-            "structurally_checked_forwarders": [path for path in entry["dependencies"]
-                if path.endswith("/acceptance_sort.rs")],
-        } for entry in entries},
+        "source_roles": {entry["id"]: source_roles(entry) for entry in entries},
         "bound_runtime_source_is_not_all_verified": True,
         "total_seconds": time.monotonic() - started,
         "scope": "checked executable bodies and component refinements; surrounding I/O, origin and service composition remain explicit obligations"}
