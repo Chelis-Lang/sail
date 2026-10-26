@@ -55,7 +55,8 @@ original/final device, inode, length, mode and modification/change timestamps
 with the requested pathname. The hasher receives the exact checked read chunks;
 incomplete EOF, an unreadable handle or a different final object supplies no
 digest. Phase-local digest reuse also checks the original read seal against the
-actual canonical cache-key object; a changed observation forces a fresh read.
+actual canonical cache-key object and the requested pathname; a changed
+observation forces a fresh read.
 A stable regular file retains the same digest as before. This is an
 opened-object check, not an atomic filesystem snapshot or executable-launch
 guarantee; retained-result reads keep their separate read-time checks below.
