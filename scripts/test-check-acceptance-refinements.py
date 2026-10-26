@@ -204,6 +204,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-acceptance/src/authority.rs",
+            CHECKER.KEY_CORE, CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
         paths += ["crates/" + name + "/Cargo.toml" for name in
             ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
@@ -234,6 +235,8 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct ReadSeal", b"#[derive(Default)] pub struct ReadSeal"),
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct GuardedReadback", b"#[derive(Default)] pub struct GuardedReadback"),
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct CompletedRead", b"#[derive(Default)] pub struct CompletedRead"),
+            (CHECKER.KEY_CORE, b"pub struct Prefix", b"#[derive(Default)] pub struct Prefix"),
+            ("crates/sail-key/Cargo.toml", b"[lints]", b'[lib]\npath="unreviewed.rs"\n\n[lints]'),
             ("crates/sail-api/src/acceptance.rs", b"pub struct SubmissionBinding", b"#[derive(Deserialize)] pub struct SubmissionBinding"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct SubmittedAuthority", b"#[derive(Default)] pub struct SubmittedAuthority"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct AttemptLedger", b"#[derive(Default)] pub struct AttemptLedger"),
@@ -268,6 +271,50 @@ class SourceCaptureTests(unittest.TestCase):
         ):
             with self.subTest(source=source), self.assertRaises(SOURCE.SourceRefusal):
                 SOURCE.checked_item_envelopes(source)
+
+    def test_key_projection_preserves_exact_native_fields_and_mode_payload(self):
+        original = (ROOT / CHECKER.KEY_NATIVE).read_bytes()
+        files = {CHECKER.KEY_NATIVE: original}
+        stencil, inventory = SOURCE.key_stencil(files)
+        self.assertIn(b"binary_sha256: [ u8 ; 32 ],", stencil)
+        self.assertIn(b"OptIn(String),", stencil)
+        for before, after in (
+            (b"pub platform: String,", b"pub platform: Option<String>,"),
+            (b"pub binary_sha256: [u8; 32],", b"pub binary_sha256: [u8; 16],"),
+            (b"OptIn(String)", b"OptIn"),
+            (b"OptIn(String)", b"OptIn(Vec<u8>)"),
+            (b"pub enum Mode {", b"pub enum Mode { Unrecorded,"),
+        ):
+            self.assertIn(before, original)
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.key_stencil({CHECKER.KEY_NATIVE: original.replace(before, after, 1)}, inventory)
+
+    def test_key_native_hash_and_recording_host_cannot_be_substituted(self):
+        native = (ROOT / CHECKER.KEY_NATIVE).read_bytes()
+        CHECKER.compiled_subset(CHECKER.KEY_NATIVE, native)
+        for before, after in (
+            (b"Self(self.0.clone())", b"Self(Sha256::new())"),
+            (b"Sha256Host(Sha256::new())", b"Sha256Host(Sha256::digest(b\"foreign\"))"),
+            (b"pub name: String,", b"pub name: Vec<u8>,"),
+        ):
+            self.assertIn(before, native)
+            with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(CHECKER.KEY_NATIVE, native.replace(before, after, 1))
+        core = (ROOT / CHECKER.KEY_CORE).read_bytes()
+        CHECKER.compiled_subset(CHECKER.KEY_CORE, core)
+        before = b"fn append(&mut self, bytes: &[u8]) { self.bytes.extend_from_slice(bytes); }"
+        self.assertEqual(core.count(before), 1)
+        changed = core.replace(before, b"fn append(&mut self, bytes: &[u8]) { self.bytes.clear(); }", 1)
+        with self.assertRaises((CHECKER.Refusal, SOURCE.SourceRefusal)):
+            CHECKER.compiled_subset(CHECKER.KEY_CORE, changed)
+        source = core.decode()
+        begin = source.index("    impl HashHost for RecordingHash {")
+        stream = SOURCE.tokens(source[begin:])
+        opening = next(i for i, token in enumerate(stream) if token.value == "{")
+        end = SOURCE.closing(stream, opening)
+        ordinary = source[begin:begin + stream[end].end]
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.checked_item_envelopes(ordinary, reviewed_trait_impls=CHECKER.KEY_RECORDING_IMPLS)
 
     def test_executable_cfg_loading_and_unchecked_spec_refuse(self):
         for source in (b"#[cfg(sail_verus)] fn valid() -> bool { true }",

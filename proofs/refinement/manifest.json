@@ -10,9 +10,12 @@
         "proofs/acceptance/query_association.rs",
         "crates/sail-acceptance/src/inputs.rs",
         "crates/sail-acceptance/src/query.rs",
-        "proofs/refinement/query.rs"
+        "crates/sail-acceptance/src/key_prefix.rs",
+        "proofs/refinement/query.rs",
+        "crates/sail-key/src/lib.rs",
+        "crates/sail-key/src/prefix_factory.rs"
       ],
-      "verified": 224,
+      "verified": 262,
       "functions": [
         "check_query::context::Mode::arrow_0",
         "check_query::context::Mode::arrow_OptIn_0",
@@ -172,6 +175,53 @@
         "check_query::inputs::value_difference",
         "check_query::inputs::value_present",
         "check_query::inputs::value_readable",
+        "check_query::key_prefix::HashHost::append",
+        "check_query::key_prefix::HashHost::bytes",
+        "check_query::key_prefix::HashHost::digest",
+        "check_query::key_prefix::HashHost::duplicate",
+        "check_query::key_prefix::HashHost::empty",
+        "check_query::key_prefix::HashHost::finish",
+        "check_query::key_prefix::Prefix::duplicate",
+        "check_query::key_prefix::Prefix::exact",
+        "check_query::key_prefix::Prefix::feed",
+        "check_query::key_prefix::Prefix::is_empty",
+        "check_query::key_prefix::Prefix::is_exact",
+        "check_query::key_prefix::Prefix::key",
+        "check_query::key_prefix::Prefix::len",
+        "check_query::key_prefix::Prefix::length",
+        "check_query::key_prefix::Prefix::material",
+        "check_query::key_prefix::Prefix::new",
+        "check_query::key_prefix::Prefix::silence_key",
+        "check_query::key_prefix::Prefix::update",
+        "check_query::key_prefix::RecordingHash::append",
+        "check_query::key_prefix::RecordingHash::bytes",
+        "check_query::key_prefix::RecordingHash::digest",
+        "check_query::key_prefix::RecordingHash::duplicate",
+        "check_query::key_prefix::RecordingHash::empty",
+        "check_query::key_prefix::RecordingHash::finish",
+        "check_query::key_prefix::append_field",
+        "check_query::key_prefix::encode_fields",
+        "check_query::key_prefix::encode_word",
+        "check_query::key_prefix::encoded_fields_injective",
+        "check_query::key_prefix::end",
+        "check_query::key_prefix::field",
+        "check_query::key_prefix::field_prefix_injective",
+        "check_query::key_prefix::fields_prefix_injective",
+        "check_query::key_prefix::header",
+        "check_query::key_prefix::header_fields",
+        "check_query::key_prefix::header_identity_injective",
+        "check_query::key_prefix::identity_fields",
+        "check_query::key_prefix::identity_fields_bounded",
+        "check_query::key_prefix::identity_fields_shape",
+        "check_query::key_prefix::identity_fields_tuple_injective",
+        "check_query::key_prefix::identity_prefix_injective",
+        "check_query::key_prefix::nonempty_framing_control",
+        "check_query::key_prefix::overflow_framing_control",
+        "check_query::key_prefix::owned_feed_control",
+        "check_query::key_prefix::query_material_injective",
+        "check_query::key_types::Mode::arrow_0",
+        "check_query::key_types::Mode::arrow_OptIn_0",
+        "check_query::prefix_factory::new_prefix",
         "check_query::query::BoundPair::expectation",
         "check_query::query::BoundPair::expected",
         "check_query::query::BoundPair::into_parts",
@@ -544,6 +594,72 @@
           "source": "crates/sail-acceptance/src/query.rs",
           "before": "let accepted = complete_list(&bytes[start..end], false);",
           "after": "let accepted = true;"
+        },
+        {
+          "name": "key-solver-platform",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "append_field(&mut host, platform);",
+          "after": "append_field(&mut host, b\"\");"
+        },
+        {
+          "name": "key-mode-domain",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "None => append_field(&mut host, b\"mode:default\"),",
+          "after": "None => append_field(&mut host, b\"mode:opt-in\"),"
+        },
+        {
+          "name": "key-raw-bytes",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "self.host.append(bytes);",
+          "after": "self.host.append(b\"\");"
+        },
+        {
+          "name": "key-end-domain",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "hash.append(b\"\\x00sail-key/prefix/v2/end\");",
+          "after": "hash.append(b\"\\x00sail-key/prefix/v2/changed\");"
+        },
+        {
+          "name": "key-counter-refusal",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "None => self.exact = false,",
+          "after": "None => self.exact = true,"
+        },
+        {
+          "name": "key-feed-order",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "self.length != start as u64",
+          "after": "false"
+        },
+        {
+          "name": "key-silence-domain",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "append_field(&mut hash, b\"sail-key/session-silence/v1\");",
+          "after": "append_field(&mut hash, b\"sail-key/prefix/v2\");"
+        },
+        {
+          "name": "key-state-copy",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "Self { host: self.host.duplicate(), length: self.length, exact: self.exact }",
+          "after": "Self { host: self.host.empty(), length: self.length, exact: self.exact }"
+        },
+        {
+          "name": "key-length-word",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "(word >> 8) as u8, (word >> 16) as u8",
+          "after": "(word >> 16) as u8, (word >> 16) as u8"
+        },
+        {
+          "name": "key-typed-platform",
+          "source": "crates/sail-key/src/prefix_factory.rs",
+          "before": "solver.platform.as_str().as_bytes()",
+          "after": "solver.version.as_str().as_bytes()"
+        },
+        {
+          "name": "key-typed-optin",
+          "source": "crates/sail-key/src/prefix_factory.rs",
+          "before": "Some(name.as_str().as_bytes())",
+          "after": "None"
         }
       ]
     },
@@ -2690,5 +2806,49 @@
         "Selection": "package target kind function"
       }
     }
+  },
+  "key_declarations": {
+    "source_sha256": "1ec119960263bec07e1cd6921064db6cfdee2c30a727f3a556c3b91f7e650dbd",
+    "declarations": [
+      {
+        "name": "SolverIdentity",
+        "kind": "struct",
+        "fields": {
+          "name": [
+            "String"
+          ],
+          "version": [
+            "String"
+          ],
+          "binary_sha256": [
+            "[",
+            "u8",
+            ";",
+            "32",
+            "]"
+          ],
+          "platform": [
+            "String"
+          ]
+        },
+        "variants": [],
+        "declaration_sha256": "b94e07805560ad1255bc60c4d806fb40f38b7f693f89d258bc095e747e70137b"
+      },
+      {
+        "name": "Mode",
+        "kind": "enum",
+        "fields": {},
+        "variants": [
+          "Default",
+          "OptIn"
+        ],
+        "declaration_sha256": "7437779fdedeade4720054670fe545261164c310c3ea1d309155e0385408baf6",
+        "tuple_fields": {
+          "OptIn": [
+            "String"
+          ]
+        }
+      }
+    ]
   }
 }

@@ -143,6 +143,17 @@ combined qualification remains pending.
 
 ## Limits retained after these slices
 
+The key-capture candidate at `01eec601` passes all three whole positive stock
+roots: query 262/0, inputs 113/0 and authority 299/0. Every earlier function
+remains inventoried; the query root adds 47 functions. The capture requires
+the actual solver/mode type declarations, typed key factory and native SHA
+adapter source, and checks the recording host implementation inside the Verus
+envelope. All 29 capture self-tests pass. All 103 production cases and 31
+model cases pass coherently on macOS at `53f7ef5f`; native integration and the
+host gate for that expanded checkpoint remain pending. SHA primitives, collision resistance
+and truthful solver origin retain their separate obligations. ADR 0082 owns
+the added dependency; ADR 0080 belongs to optional temporal packaging.
+
 The file-kernel/readback capture candidate at `3571ecaa` passes all three
 positive stock roots (224/0, 113/0, 299/0), preserving every prior function.
 Its 27 capture tests pass, including refusal of altered abstract host contracts,

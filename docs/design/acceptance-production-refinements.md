@@ -170,3 +170,20 @@ verification. Reports list this abstract primitive contract separately from
 checked bodies and reviewed native bridges. Accepting the declaration does not
 prove the private native implementation satisfies it or establish compiler
 input closure. Those production obligations remain explicit.
+
+The query driver also captures the production `key_prefix` controller and
+`sail-key::prefix_factory` body. Its declaration stencil retains every actual
+`SolverIdentity` field, the 32-byte binary identity and both `Mode` variants,
+including the opt-in string. The complete native key module pins the import,
+factory and private SHA adapter bindings; reports distinguish those reviewed
+primitives from the checked constructor and declaration projection. Key crate
+redirection and late build scripts refuse the gate.
+
+Only the exact reviewed `HashHost` contract and executable `RecordingHash`
+trait implementation are admitted. The latter must remain inside the
+stock-checked syntax envelope; placing identical ordinary methods outside it
+still refuses. Native SHA-256 is not replaced by that recording control, and
+neither the trait contract nor a digest provides solver origin. The syntax
+header preserves the literal `: Sized` bound in both profiles. Whole-root
+inventories and eleven additional ordinary guard controls must qualify these
+changes before production selection.

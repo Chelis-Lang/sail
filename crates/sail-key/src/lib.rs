@@ -22,8 +22,12 @@
 //! snapshot the session model could not follow exactly has no key.
 #![forbid(unsafe_code)]
 
+mod prefix_factory;
+
 use std::fmt;
 
+use sail_acceptance::key_prefix::{HashHost, Prefix};
+use sail_acceptance::query::PrefixFeed;
 use sail_session::Snapshot;
 use sha2::{Digest, Sha256};
 
@@ -115,15 +119,40 @@ pub fn query_key(snapshot: &Snapshot, solver: &SolverIdentity, mode: &Mode) -> O
 /// check, after feeding the check command's bytes, [`PrefixHasher::key`]
 /// gives the key. Nothing is normalized: whitespace and comments between
 /// commands count too.
-#[derive(Clone)]
 pub struct PrefixHasher {
-    hasher: Sha256,
-    bytes: u64,
+    prefix: Prefix<Sha256Host>,
+}
+
+// The source-bound hash primitive boundary: fresh, exact update, copied state,
+// and SHA-256 finalization. No result or cache provenance is inferred here.
+struct Sha256Host(Sha256);
+
+impl HashHost for Sha256Host {
+    fn append(&mut self, bytes: &[u8]) {
+        self.0.update(bytes);
+    }
+    fn duplicate(&self) -> Self {
+        Self(self.0.clone())
+    }
+    fn empty(&self) -> Self {
+        Self(Sha256::new())
+    }
+    fn finish(self) -> [u8; 32] {
+        self.0.finalize().into()
+    }
+}
+
+impl Clone for PrefixHasher {
+    fn clone(&self) -> Self {
+        Self {
+            prefix: self.prefix.duplicate(),
+        }
+    }
 }
 
 impl fmt::Debug for PrefixHasher {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PrefixHasher({} bytes)", self.bytes)
+        write!(f, "PrefixHasher({} bytes)", self.len())
     }
 }
 
@@ -131,61 +160,53 @@ impl PrefixHasher {
     /// A hasher for a new process of `solver` under `mode`.
     #[must_use]
     pub fn new(solver: &SolverIdentity, mode: &Mode) -> Self {
-        let mut hasher = Sha256::new();
-        field(&mut hasher, b"sail-key/prefix/v2");
-        match mode {
-            Mode::Default => field(&mut hasher, b"mode:default"),
-            Mode::OptIn(name) => {
-                field(&mut hasher, b"mode:opt-in");
-                field(&mut hasher, name.as_bytes());
-            }
+        Self {
+            prefix: prefix_factory::new_prefix(Sha256Host(Sha256::new()), solver, mode),
         }
-        field(&mut hasher, solver.name.as_bytes());
-        field(&mut hasher, solver.version.as_bytes());
-        field(&mut hasher, &solver.binary_sha256);
-        field(&mut hasher, solver.platform.as_bytes());
-        Self { hasher, bytes: 0 }
     }
 
-    /// Feeds the next bytes the process received.
+    /// Feeds the next bytes the process received without changing their order.
+    /// Counter overflow permanently removes exact-length authority.
     pub fn update(&mut self, bytes: &[u8]) {
-        self.hasher.update(bytes);
-        self.bytes += bytes.len() as u64;
+        self.prefix.update(bytes);
     }
 
-    /// Bytes fed so far.
+    /// Feeds a checked raw interval only at its exact next byte position.
+    /// Failure permanently removes exact-length authority without changing input forwarding.
+    pub fn feed(&mut self, feed: &PrefixFeed<'_>) -> bool {
+        self.prefix.feed(feed)
+    }
+
+    /// Bytes fed so far. Use [`Self::is_exact`] before relying on the counter.
     #[must_use]
     pub fn len(&self) -> u64 {
-        self.bytes
+        self.prefix.len()
     }
 
     /// Whether nothing has been fed yet.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.bytes == 0
+        self.len() == 0
     }
 
-    /// The key for a check whose command ends exactly at the bytes fed so
-    /// far. The total length is bound, so a prefix and its extension never
-    /// share a key.
+    /// Whether the cumulative length still represents every supplied byte.
+    #[must_use]
+    pub fn is_exact(&self) -> bool {
+        self.prefix.is_exact()
+    }
+
+    /// The unchanged v2 key, including the end marker and cumulative length.
+    /// Cache users must also require [`Self::is_exact`].
     #[must_use]
     pub fn key(&self) -> QueryKey {
-        let mut h = self.hasher.clone();
-        h.update(b"\x00sail-key/prefix/v2/end");
-        h.update(self.bytes.to_le_bytes());
-        QueryKey(h.finalize().into())
+        QueryKey(self.prefix.key())
     }
 
-    /// Key for evidence that the complete input ended cleanly without solver
-    /// diagnostics or unexpected replies. Feed every input byte, including
-    /// trailing whitespace, before calling. This domain cannot be used as a
-    /// normal command-reply key.
+    /// Key for complete clean session silence, distinct from normal reply keys.
+    /// Feed all trailing bytes first and require [`Self::is_exact`].
     #[must_use]
     pub fn silence_key(&self) -> QueryKey {
-        let mut h = Sha256::new();
-        field(&mut h, b"sail-key/session-silence/v1");
-        field(&mut h, &self.key().0);
-        QueryKey(h.finalize().into())
+        QueryKey(self.prefix.silence_key())
     }
 }
 

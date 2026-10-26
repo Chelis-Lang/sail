@@ -783,7 +783,7 @@ fn observe(
 ) -> (Output, String, Expect) {
     // The splitter proposes an interval. Exact bytes, monotonicity and complete
     // inter-item trivia are checked before the proposal can drive a cache key.
-    if usize::try_from(prefix.len()).ok() != Some(raw.fed()) {
+    if !prefix.is_exact() || usize::try_from(prefix.len()).ok() != Some(raw.fed()) {
         raw.refuse();
         return (Output::Unknown, String::new(), Expect::Stop);
     }
@@ -793,11 +793,11 @@ fn observe(
     };
     let (endpoint, name, head_matches) = match framed_command(raw, offset, &item.bytes) {
         Some((feed, head)) => {
-            prefix.update(feed.bytes());
+            let accepted = prefix.feed(&feed);
             (
                 feed.end(),
                 String::from_utf8_lossy(head).into_owned(),
-                classify(&item.bytes).is_ok_and(|command| command.name == head),
+                accepted && classify(&item.bytes).is_ok_and(|command| command.name == head),
             )
         }
         None => return (Output::Unknown, String::new(), Expect::Stop),
@@ -807,7 +807,7 @@ fn observe(
         return (Output::Unknown, String::new(), Expect::Stop);
     }
 
-    if usize::try_from(prefix.len()).ok() != Some(endpoint) {
+    if !prefix.is_exact() || usize::try_from(prefix.len()).ok() != Some(endpoint) {
         raw.refuse();
         return (Output::Unknown, String::new(), Expect::Stop);
     }
@@ -1147,14 +1147,15 @@ fn finish_run(
     prefix: &mut PrefixHasher,
     complete: bool,
 ) -> Option<ExitCode> {
-    if usize::try_from(prefix.len()).ok() != Some(raw.fed()) {
+    if !prefix.is_exact() || usize::try_from(prefix.len()).ok() != Some(raw.fed()) {
         raw.refuse();
     }
-    let endpoint = raw.tail().map(|feed| {
-        prefix.update(feed.bytes());
-        feed.end()
-    });
-    if endpoint.is_none_or(|end| usize::try_from(prefix.len()).ok() != Some(end)) {
+    let endpoint = raw
+        .tail()
+        .and_then(|feed| prefix.feed(&feed).then(|| feed.end()));
+    if !prefix.is_exact()
+        || endpoint.is_none_or(|end| usize::try_from(prefix.len()).ok() != Some(end))
+    {
         raw.refuse();
     }
     let mut end = SessionEnd {
