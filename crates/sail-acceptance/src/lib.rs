@@ -12,5 +12,7 @@ pub mod authority;
 pub mod inputs;
 pub mod query;
 
+/// Exact retained compiler attempt binding for solver-launch journals.
+pub mod solver_invocations;
 /// Exact solver-process observation lifecycle and complete journal admission.
 pub mod solver_observations;

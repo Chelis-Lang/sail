@@ -3,6 +3,8 @@
 //! A decoded journal grants no solver-origin authority. Admission additionally
 //! binds complete original bytes and a retained original process descriptor.
 //! The currently selected verifier runtime does not emit this candidate protocol.
+use sail_acceptance::authority::ObservedAttempt;
+use sail_acceptance::solver_invocations::{self as invocation, BoundLaunchJournal};
 use sail_acceptance::solver_observations::{self as core, LaunchSpec, WaitObservation};
 
 /// Owned original journal bytes and their untrusted decoded records.
@@ -26,6 +28,19 @@ impl Journal {
     #[must_use]
     pub fn raw(&self) -> &[u8] {
         &self.raw
+    }
+
+    /// Binds from the immutable independently retained actual compiler child.
+    ///
+    /// The expected request bytes, PID and wait status come from this original
+    /// observation; decoded data chooses none of them. Protected journal source,
+    /// actual wrapper/child lineage and selected runtime identity remain required.
+    #[must_use]
+    pub fn bind<'j, 'p, 'r>(
+        &'j self,
+        observed: &'p ObservedAttempt<'r>,
+    ) -> Option<BoundLaunchJournal<'j, 'p, 'r>> {
+        invocation::bind_launch_journal(observed, &self.raw, &self.events)
     }
 
     /// Checks complete lifecycle and byte binding against an independent process.
@@ -322,5 +337,86 @@ mod tests {
         let mut raw = core::encode_journal(&records);
         raw.push(0);
         assert!(Journal::decode(raw).is_none());
+    }
+
+    fn descriptor() -> sail_acceptance::authority::ProcessDescriptor {
+        sail_acceptance::authority::ProcessDescriptor {
+            program: b"/pinned/verus".to_vec(),
+            arguments: vec![
+                b"verify.rs".to_vec(),
+                b"--sail-observation-request".to_vec(),
+                b"/fresh/request".to_vec(),
+            ],
+            directory: None,
+            overrides: vec![(b"ENV".to_vec(), None)],
+        }
+    }
+
+    #[test]
+    fn binder_recomputes_request_from_original_attempt_not_decoded_identity() {
+        use sail_acceptance::authority::{AttemptLedger, CompilerUnit};
+        let unit = CompilerUnit {
+            manifest: b"Cargo.toml".to_vec(),
+            name: b"crate".to_vec(),
+            crate_type: b"lib".to_vec(),
+            cargo_name: None,
+        };
+        let mut ledger = AttemptLedger::new(b"run", &unit);
+        let reserved = ledger.reserve(descriptor()).unwrap();
+        let request = invocation::encode_reserved(&reserved);
+        let observed = reserved
+            .started(17)
+            .unwrap()
+            .stdout_eof(b"original stdout".to_vec())
+            .stderr_eof(Vec::new())
+            .exited(Some(0))
+            .finish()
+            .unwrap();
+        let mut records = events();
+        records[0] = core::JournalEvent::Begin {
+            request,
+            verifier_pid: 17,
+        };
+        let journal = Journal::decode(core::encode_journal(&records)).unwrap();
+        let bound = journal.bind(&observed).unwrap();
+        assert!(std::ptr::eq(bound.observed(), &raw const observed));
+        assert_eq!(bound.journal().stream_count(), 1);
+        // Same process-like description/PID cannot choose the earlier reserved slot.
+        let another = ledger
+            .reserve(descriptor())
+            .unwrap()
+            .started(17)
+            .unwrap()
+            .stdout_eof(Vec::new())
+            .stderr_eof(Vec::new())
+            .exited(Some(0))
+            .finish()
+            .unwrap();
+        assert!(journal.bind(&another).is_none());
+        // Independently alter each exact descriptor dimension at slot zero.
+        for change in 0..4 {
+            let mut fresh = AttemptLedger::new(b"run", &unit);
+            let mut command = descriptor();
+            match change {
+                0 => command.program = b"/other/verus".to_vec(),
+                1 => command.arguments.push(b"--no-verify".to_vec()),
+                2 => command.directory = Some(Vec::new()),
+                _ => command.overrides[0].1 = Some(Vec::new()),
+            }
+            let other = fresh
+                .reserve(command)
+                .unwrap()
+                .started(17)
+                .unwrap()
+                .stdout_eof(Vec::new())
+                .stderr_eof(Vec::new())
+                .exited(Some(0))
+                .finish()
+                .unwrap();
+            assert!(
+                journal.bind(&other).is_none(),
+                "descriptor mutation {change}"
+            );
+        }
     }
 }

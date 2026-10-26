@@ -483,6 +483,22 @@ their actual launch/terminal bridges. They cannot be treated as equal PIDs by
 convention. A missing whole process or terminal refuses evidence instead of
 becoming a zero-SMT success.
 
+The checked [`solver_invocations`](../../crates/sail-acceptance/src/solver_invocations.rs)
+bridge computes request bytes from the immutable original compiler reservation.
+Its encoding retains run/unit/slot, exact final executable and ordered arguments,
+optional working directory, and every ordered environment override/removal.
+`None` differs from a present empty byte string. `bind_launch_journal` takes the
+retained `ObservedAttempt` itself and derives the expected request, actual PID
+and normal/signaled wait observation internally. Neither the decoded journal nor
+a caller-selected expected PID chooses its association. The private bound token
+keeps that original observation and the exact admitted journal together.
+The native decoder's `bind` method uses this checked operation. Preparing request
+files and adding private operational flags before final command sealing remains
+the separate native boundary; flags must not accidentally be appended after an
+existing `--` and forwarded to rustc. Inherited environment/input completeness
+and full semantic `ModelContext` linkage remain their own obligations, distinct
+from this exact declared command-descriptor codec.
+
 The explicit remaining contracts are process/pipe/wait identity, exact file I/O,
 protected fresh journal ownership and runtime/build correspondence. A final
 flush error after all truthful terminal bytes reached the file can leave a valid
