@@ -37,8 +37,8 @@ Phase-local digest entries retain the hash and original `ReadSeal` together.
 Before admitting a parallel result under a proposed canonical key, and before
 returning a cached value, `ReadSeal::matches_binding` compares both the key's
 and the actual requested pathname's object observations with the original read.
-An alias retarget between canonical key discovery and opening cannot populate the old key with the newly opened
-object's digest. A changed cache-key observation discards the old entry and
+An alias retarget between canonical key discovery and opening cannot populate
+the old key with the newly opened object's digest. A changed cache-key observation discards the old entry and
 rereads instead of attaching a fresh stamp to old bytes. As with the other
 endpoint checks, inode reuse and repeated metadata remain OS observation limits;
 this is not a proof of global atomicity or a retained live-descriptor lease.
@@ -93,6 +93,38 @@ Only a complete reestablishment could replace old uncovered hints; interrupted
 or partial runs cannot promote them. The current package-only unit-plan check
 cannot establish this replacement. This recovery protocol is not implemented
 by the opened-read transaction and remains tracked with compiler closure.
+
+## Declared environment names and provider failures
+
+The executable `environment_name_matches` checks a proposed dep-info name
+against its exact rustc spelling. Its iff contract preserves ordinary name bytes
+including whitespace and checks the exact `\n`, `\r` and `\\` escape relation.
+`encoded_environment_prefix` proves the loop's prefix relation. The native
+parser's proposed decoded UTF-8 string cannot become a different sampled key:
+the shared checker must admit its byte mapping first. A nonempty stock witness
+accepts exact whitespace and newline names and refuses trimmed, escaped,
+empty and unrelated keys. A real rustc child emits these same dep-info cases;
+a separate Cargo fingerprint witness establishes trailing-only script-name
+whitespace handling. The Rust string/line framing and Cargo directive semantics
+remain named native provider boundaries, not a proved complete compiler parser.
+
+Declaration traversal distinguishes a successfully enumerated empty tree from
+missing directories, failed entries, unreadable/non-UTF-8 required files,
+nonregular required files and unsupported symlinks. Failure preserves the fresh
+verifier report but withholds new pending receipts and global Current. A retained
+receipt also needs the exact currently observed declared-name/value map. The
+build-script producer separately retains actual output-read failure rather than
+converting it into an empty successful contract. This closes concrete provider
+loss/name-association defects; it does not discover undeclared process I/O or
+prove that the enumerated target tree contains every actual compiler request.
+
+Receipt policy 6, read-time record policy 3 and proof-context policy 2 refuse
+legacy proof authority established with partial scans or incorrectly mapped
+names. Compiler-family artifact identity is unchanged; it cannot mint proof
+receipts by itself. Dependency-store admission checks the receipt version.
+Baselines retain Historical evidence. Shipped/native tracked-environment JSON
+records use exact original keys independently of this declaration parser and
+are not reclassified by an unrelated schema bump.
 
 ## Completed compiler-declaration providers
 
