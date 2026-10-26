@@ -88,4 +88,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0078: Captured acceptance models checked by stock Verus (accepted)](0078-stock-acceptance-models.md)
 - [0079: Source-shared executable acceptance refinements (accepted)](0079-source-shared-acceptance-refinements.md)
 
-- [0080: Check query-key framing in the acceptance leaf (proposed)](0080-checked-query-key-framing.md)
+- [0081: Check query-key framing in the acceptance leaf (proposed)](0081-checked-query-key-framing.md)
