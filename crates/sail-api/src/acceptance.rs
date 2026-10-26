@@ -2129,6 +2129,7 @@ sail_verified! {
     /// Validates one exact partial invocation over the actual report records.
     /// Original process/history admission and request-level scope coverage are
     /// separate native obligations. No report or scope field is rewritten.
+    #[allow(clippy::question_mark, reason = "The explicit admission branch is shared with stock Verus and its guard-removal control.")]
     pub fn complete_exact_scope_report_ordered<'a>(report: &'a Report, arguments: &'a [String],
         forward: &[usize], inverse: &[usize]) -> (out: Option<ExactScopeReport<'a>>)
         requires(true)
