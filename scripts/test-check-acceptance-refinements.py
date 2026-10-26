@@ -279,7 +279,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-acceptance/src/authority.rs",
-            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.PIPE_CORE,
+            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.PIPE_CORE,
             CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
             "crates/sail-acceptance/src/phase_inputs.rs",
@@ -309,6 +309,19 @@ class SourceCaptureTests(unittest.TestCase):
             (CHECKER.OUTPUT_CORE, b"pub struct Frame", b"#[derive(Deserialize)] pub struct Frame"),
             (CHECKER.OUTPUT_CORE, b"pub struct CompleteOutput", b"#[derive(Default)] pub struct CompleteOutput"),
             (CHECKER.PUBLICATION_CORE, b"pub struct PublicationObservation", b"#[derive(Default)] pub struct PublicationObservation"),
+            (CHECKER.OUTPUT_CORE, b"pub struct FramePayload", b"#[derive(Deserialize)] pub struct FramePayload"),
+            (CHECKER.OUTPUT_OWNER_CORE, b"pub struct StreamOutput", b"#[derive(Default)] pub struct StreamOutput"),
+            (CHECKER.OUTPUT_OWNER_CORE, b"pub struct StreamFrame", b"#[derive(Deserialize)] pub struct StreamFrame"),
+            (CHECKER.OUTPUT_OWNER_CORE, b"pub struct OwnedFrame", b"#[derive(Default)] pub struct OwnedFrame"),
+            (CHECKER.OUTPUT_OWNER_CORE, b"pub struct CompletedStream", b"#[derive(Deserialize)] pub struct CompletedStream"),
+            (CHECKER.OUTPUT_OWNER_CORE, b"pub struct OwnedPublication", b"#[derive(Default)] pub struct OwnedPublication"),
+            (CHECKER.HOLDING_CORE, b"pub struct Holding", b"#[derive(Default)] pub struct Holding"),
+            ("crates/sail-acceptance/src/query.rs", b"pub struct ReplayedPrefix", b"#[derive(Default)] pub struct ReplayedPrefix"),
+            ("crates/sail-acceptance/src/query_prefix.rs", b"pub struct FrozenCommand", b"#[derive(Deserialize)] pub struct FrozenCommand"),
+            ("crates/sail-acceptance/src/query_prefix.rs", b"command: Vec<u8>,", b"pub command: Vec<u8>,"),
+            (CHECKER.OUTPUT_OWNER_CORE, b"replayed: Option<ReplayedPrefix>,", b"pub replayed: Option<ReplayedPrefix>,"),
+            (CHECKER.KEY_NATIVE, b"pub struct OwnedCommand", b"#[derive(Default)] pub struct OwnedCommand"),
+            (CHECKER.KEY_NATIVE, b"owner: Arc<()>,", b"pub owner: Arc<()>,"),
             (CHECKER.PUBLICATION_CORE, b"input: Delivered<Host>,", b"pub input: Delivered<Host>,"),
             (CHECKER.PIPE_CORE, b"pub struct PipeCapture", b"#[derive(Default)] pub struct PipeCapture"),
             (CHECKER.PIPE_CORE, b"pub struct SealedPipe", b"#[derive(Deserialize)] pub struct SealedPipe"),
@@ -421,13 +434,13 @@ class SourceCaptureTests(unittest.TestCase):
     def test_owned_query_modules_keep_actual_imports_and_checked_constructors(self):
         for path in ("crates/sail-acceptance/src/query_prefix.rs",
                 "crates/sail-acceptance/src/query_policy.rs",
-                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.KEY_FACTORY):
+                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             CHECKER.compiled_subset(path, original)
             for addition in (b"\nuse hidden::*;", b"\n#[cfg(sail_verus)] use hidden::*;"):
                 with self.subTest(path=path, addition=addition), self.assertRaises(CHECKER.Refusal):
                     CHECKER.compiled_subset(path, original + addition)
-        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.KEY_FACTORY):
+        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
                 CHECKER.compiled_subset(path, original + b"\npub fn unchecked_factory() -> bool { true }")
@@ -444,6 +457,7 @@ class SourceCaptureTests(unittest.TestCase):
             self.assertEqual(original.count(before), 1)
             with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
                 CHECKER.compiled_subset(path, original.replace(before, after, 1))
+
         for path, before, after in (
             (CHECKER.WRITE_CORE, b"spec fn steps(&self) -> Seq<u8>;", b"spec fn steps(&self) -> bool;"),
             (CHECKER.DELIVERY_CORE, b"spec fn sent(&self) -> Seq<u8>;", b"spec fn sent(&self) -> bool;"),
@@ -455,6 +469,31 @@ class SourceCaptureTests(unittest.TestCase):
             self.assertEqual(original.count(before), 1)
             with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
                 CHECKER.compiled_subset(path, original.replace(before, after, 1))
+
+    def test_original_checkpoint_and_owned_publication_native_forwarders_remain_bound(self):
+        for path, before, after in (
+            (CHECKER.KEY_NATIVE, b"command: self.frame.freeze(),", b"command: hidden::checkpoint(),"),
+            (CHECKER.KEY_NATIVE, b"Arc::ptr_eq(&self.owner, &command.owner)", b"true"),
+            (CHECKER.KEY_NATIVE, b".validate_bindings(&checkpoints, &frames, &order, &inverse)", b".validate_bindings(&checkpoints, &frames, &inverse, &order)"),
+            ("crates/sail-shim/src/cached.rs", b"publication.validate_pairs(&pairs)", b"true"),
+            ("crates/sail-shim/src/cached.rs", b"let fresh = all.advance_replay();", b"let fresh = true;"),
+            ("crates/sail-shim/src/cached.rs", b"self.input.charge(bytes.len())", b"true"),
+        ):
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(path=path, before=before), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original.replace(before, after, 1))
+
+    def test_checkpoint_ghost_import_does_not_permit_alternate_bindings(self):
+        original = (ROOT / CHECKER.CHECKPOINT_CORE).read_bytes()
+        CHECKER.compiled_subset(CHECKER.CHECKPOINT_CORE, original)
+        before = b"#[cfg(sail_verus)]\nuse crate::key_prefix::end;"
+        self.assertEqual(original.count(before), 1)
+        for after in (b"#[cfg(sail_verus)]\nuse hidden::end;",
+                b"#[cfg(not(sail_verus))]\nuse crate::key_prefix::end;"):
+            with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(CHECKER.CHECKPOINT_CORE, original.replace(before, after, 1))
 
     def test_compiler_pipe_read_primitive_and_native_endpoint_remain_source_bound(self):
         for path, before, after in (
