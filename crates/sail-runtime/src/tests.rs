@@ -191,9 +191,12 @@ fn output_limits_and_deadlines_kill_and_join_actual_processes() -> TestResult {
         &directory,
         "while :; do printf 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'; done",
     )?;
+    // The output limit is under test here, so the wall-time bound must not
+    // race it: macOS assesses this freshly written script on its first exec,
+    // which under heavy parallel load has taken over ten seconds.
     let limits = Limits {
         output_bytes: 17,
-        wall_time_ms: 1000,
+        wall_time_ms: 120_000,
         ..Limits::default()
     };
     let captured = process::run(&executable, &[], b"", &limits, &Cancellation::default());
