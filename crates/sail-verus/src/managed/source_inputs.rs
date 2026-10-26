@@ -370,6 +370,18 @@ pub(super) fn fixture_journal(artifacts: &[Value]) -> std::io::Result<Vec<u8>> {
 }
 
 #[cfg(test)]
+pub(crate) fn fixture_provider_coverage(root: &Path, raw: &[u8]) -> crate::Result<bool> {
+    let artifacts = root.join("artifacts.jsonl");
+    std::fs::write(&artifacts, raw).map_err(|e| crate::Error::new("SAIL3115", e.to_string()))?;
+    update(
+        &root.join("sources.json"),
+        &artifacts,
+        &serde_json::json!({"workspace_root":root}),
+    )
+    .map(|(_, covered)| covered)
+}
+
+#[cfg(test)]
 pub(crate) fn fixture_complete(raw: &[u8]) -> bool {
     std::str::from_utf8(raw)
         .ok()
