@@ -1,5 +1,62 @@
 # Watch startup and publication staging
 
+## Late notifications, dropped notifications and the backstop (#403, #416, 2026-10-26)
+
+**Defect 1 (#403).** After the first real edit, every relevant native notification
+cancelled the run in flight. FSEvents under load delivers an edit's
+notifications late and repeats cumulative flags. A notification for the
+`src/target/mod.rs` edit arriving after the 300 ms debounce had submitted
+the run that already included that edit cancelled it and queued a fourth
+run, which matches #403's 143 ms cancellation on live events. A second
+defect affected content-scan mode. Refreshing roots after a completed run
+recaptured the scan baseline, so an edit made before the next scan was
+adopted as already verified and never re-run.
+
+**Correction.** Just before each submission, watch records a snapshot of
+the input bytes and file identities, including change times. A notification
+batch restarts the run only if the inputs now differ from that snapshot.
+Removals and renames of inputs, unreadable state and non-Unix hosts still
+restart unconditionally. Root refreshes recapture only when coverage changes,
+and they first check the old coverage against the baseline. Writes to Cargo's
+output directory never restarted watch in any instrumented run, and they
+remain excluded.
+
+**Defect 2 (#416).** Under load, fseventsd can stop delivering a watcher's
+events for an input while unrelated events still arrive, and send its "user
+dropped" notice minutes late or never. Event tracing showed the watch loop
+alive and the edit unseen for 120 s, on main and with the correction above.
+Watch reacted correctly only once the notice arrived.
+
+**Correction.** Every two seconds, in every mode, a backstop compares a
+metadata stamp of the inputs (path list, identity, size, and modification and
+change times; no file is read) with the last state seen. It rehashes and
+restarts only when the stamp changes. Native events, polls and scans share
+that last-seen state, so one edit is never reported twice. The stamp walks
+the inputs with one `lstat` per entry, and a test pins its coverage to the
+content capture's. On Vest's workspace (3,458 entries) one pass costs about
+19 ms of CPU, about 18 ms wall; this was measured at load average 60–110, so
+it is an upper bound. A full rehash costs about 120 ms and runs only on a
+stamp change.
+
+**Evidence** (Apple silicon, 8 cores, Darwin 25.5, base `b5420f24`):
+
+- On the base, the delayed-duplicate and refresh-swallow regressions fail.
+  With the corrections, they pass, along with deterministic tests for Cargo
+  output writes, degradation to scans mid-run, a silently dropped edit
+  notification caught by the backstop within one interval, and stamp
+  coverage. That is 14 watch unit tests and 104 `sail-cli` tests, and Clippy
+  reports no warnings.
+- Under load (a `cargo build --workspace` loop, 2–4 concurrent instances,
+  other sessions' suites, load average 30–120), the original integration test
+  never failed the "Cargo output must not trigger a watch loop" assertion.
+  Before the backstop, 41 of 330 runs stalled on dropped events (#416); the
+  base stalled under the same conditions. With the backstop, 80 of 80 runs
+  pass under the setup that previously stalled 24 of 120.
+- #403's extra restart did not reproduce on the base in 150 runs (it was
+  about 1 in 100 at its report). The deterministic tests are the evidence for
+  that defect.
+- Linux (inotify) uses the same code, and CI covers it.
+
 ## Current startup correction (2026-10-25)
 
 The candidate based on `237c7d8d` corrects notification-batch classification.

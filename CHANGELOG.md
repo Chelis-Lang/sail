@@ -50,6 +50,16 @@ semantic versioning once the API is published.
   apply and why: an unqualified dependency profile, a target too cheap to
   retain, or an evicted revision. `SAIL3138`'s alignment advice now says the
   vstd default-features step is needed too.
+- Stop `sail watch` cancelling a run for a notification that arrives late or
+  repeats an edit the run already includes: a notification now restarts only
+  when the inputs differ from the snapshot recorded as the run was submitted.
+  In content-scan mode, refreshing the watched inputs after a completed run no
+  longer adopts an edit the next scan had not yet reported.
+- Make `sail watch` see every input edit within about two seconds on macOS
+  and Linux, even when macOS drops the edit's notification. A metadata stamp
+  of the inputs is now compared every two seconds alongside native events,
+  and the inputs are rehashed only when a stamp changes (about 19 ms of CPU
+  per pass on Vest's 3,458 entries).
 - Sign a GitHub build-provenance attestation for each release archive, and have
   `scripts/install.py` verify it with `gh attestation verify` when GitHub CLI
   is signed in. A failed attestation refuses installation; without `gh` the
