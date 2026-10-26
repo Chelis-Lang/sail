@@ -50,6 +50,17 @@ component receipts, but no combined build, canonical matrix, native gate or
 cost qualification. The replay matrix interrupted for machine load remains
 interrupted, including its required whole-binder negative control.
 
+Canonical capture now includes the replay/readback, exact-partial report and
+owned-command environment operations, with private construction checks and
+exact forwarding-body inventories. All three source assemblies and all 210
+mutation anchors are textually checked; this is not verifier evidence. The
+matrix requires 213 cases, including the three whole positive roots. The older
+expected proof/function inventories must be refreshed from successful whole
+development runs before canonical qualification. No guard, earlier control,
+resource limit or verification scope is removed. The declaration-fact loop
+control now targets its complete original function because new environment
+loops share the former short anchor.
+
 ## Source and actual scope
 
 The frozen `4bd22455` native attempt, including source bundle, full workspace,

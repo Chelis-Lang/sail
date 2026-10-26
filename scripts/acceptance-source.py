@@ -500,6 +500,11 @@ def candidate_forwarders(source: str) -> None:
             complete_request_ordered(request, project, &orders)""",
         "complete_report": """let order = candidate_order(report);
             complete_report_ordered(report, policy, &order.forward, &order.inverse)""",
+        "complete_exact_scope_report": """let order = candidate_order(report);
+            complete_exact_scope_report_ordered(report, arguments, &order.forward, &order.inverse)""",
+        "bind_replayed_project": """let orders = project.targets.iter()
+            .map(|target| candidate_order(&target.report)).collect::<Vec<_>>();
+            bind_replayed_project_ordered(project, original, current, &orders, readback)""",
         "complete_whole_report": """let order = candidate_order(report);
             complete_whole_report_ordered(report, &order.forward, &order.inverse)""",
         "complete_target": """let order = candidate_order(&target.report);
@@ -514,6 +519,8 @@ def candidate_forwarders(source: str) -> None:
         "complete_submitted_request": "fn complete_submitted_request<'a>(arguments: &'a [String], mode: &'a Mode, request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<SubmittedAuthority<'a>>",
         "complete_request": "fn complete_request<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<CompleteRequest<'a>>",
         "complete_report": "fn complete_report(report: &Report, policy: CompletionPolicy) -> Option<CompleteReport<'_>>",
+        "complete_exact_scope_report": "fn complete_exact_scope_report<'a>(report: &'a Report, arguments: &'a [String],) -> Option<ExactScopeReport<'a>>",
+        "bind_replayed_project": "fn bind_replayed_project(project: &mut ProjectResult, original: &ResolvedRequest, current: &ResolvedRequest, readback: &sail_acceptance::inputs::GuardedReadback<'_>,) -> bool",
         "complete_whole_report": "fn complete_whole_report(report: &Report) -> Option<CompleteReport<'_>>",
         "complete_target": "fn complete_target(target: &TargetResult) -> Option<CompleteReport<'_>>",
         "complete_selection": "fn complete_selection(project: &ProjectResult) -> Option<CompleteSelection<'_>>",
@@ -521,7 +528,7 @@ def candidate_forwarders(source: str) -> None:
     }
     imports = [
         "use sail_acceptance::authority::CompletionPolicy;",
-        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, SubmittedAuthority, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered, withhold_unbound_request_authority_ordered,};",
+        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, ExactScopeReport, ReportOrder, SubmittedAuthority, bind_replayed_project_ordered, complete_exact_scope_report_ordered, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered, withhold_unbound_request_authority_ordered,};",
         "use crate::jobs::Mode;",
         "use crate::output::Report;", "use crate::project::{ProjectResult, ResolvedRequest, TargetResult};",
     ]
@@ -556,7 +563,7 @@ def candidate_forwarders(source: str) -> None:
             actual = [token.value for token in stream[begin + 1:end]]
             wanted = [token.value for token in tokens(expected[name])]
             require(actual == wanted, "untrusted authority forwarding changed: " + name)
-    require(len(found) == 8 and set(found) == {*expected, "candidate_order"},
+    require(len(found) == 10 and set(found) == {*expected, "candidate_order"},
         "authority candidate adapter function inventory changed")
     require(actual_imports == [[t.value for t in tokens(text)] for text in imports],
         "candidate forwarding binding environment changed")

@@ -132,6 +132,20 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaises(CHECKER.Refusal):
             CHECKER.compiled_subset(CHECKER.RETAINED_BRIDGE, original.replace(before, b"true", 1))
 
+    def test_replay_and_exact_scope_forwarders_keep_actual_arguments(self):
+        original = (ROOT / "crates/sail-api/src/acceptance_sort.rs").read_text()
+        SOURCE.candidate_forwarders(original)
+        for before, after in (
+            ("bind_replayed_project_ordered(project, original, current, &orders, readback)", "true"),
+            ("bind_replayed_project_ordered(project, original, current, &orders, readback)",
+                "bind_replayed_project_ordered(project, original, original, &orders, readback)"),
+            ("complete_exact_scope_report_ordered(report, arguments, &order.forward, &order.inverse)",
+                "complete_exact_scope_report_ordered(report, &report.command, &order.forward, &order.inverse)"),
+        ):
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.candidate_forwarders(original.replace(before, after, 1))
+
     def test_nested_or_literal_declaration_cannot_replace_top_level_type(self):
         for source in (
             'const TEXT: &str = "pub struct Report { pub field: bool }";',
@@ -228,6 +242,8 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/lib.rs", b"pub mod authority;", b'#[path="hidden.rs"] pub mod authority;'),
             ("crates/sail-api/src/acceptance.rs", b"report: &'a Report,", b"pub report: &'a Report,"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct CompleteReport", b"#[derive(Default)] pub struct CompleteReport"),
+            ("crates/sail-api/src/acceptance.rs", b"pub struct ExactScopeReport", b"#[derive(Default)] pub struct ExactScopeReport"),
+            ("crates/sail-api/src/acceptance.rs", b"pub struct ReplayReadback", b"#[derive(Deserialize)] pub struct ReplayReadback"),
             ("crates/sail-api/src/acceptance.rs", b"request: &'a ResolvedRequest,", b"pub request: &'a ResolvedRequest,"),
             ("crates/sail-acceptance/src/query.rs", b"bytes: Vec<u8>,", b"pub bytes: Vec<u8>,"),
             ("crates/sail-acceptance/src/query.rs", b"bytes: &'a [u8],", b"pub bytes: &'a [u8],"),
@@ -244,6 +260,8 @@ class SourceCaptureTests(unittest.TestCase):
             (CHECKER.DELIVERY_CORE, b"pub struct Delivered", b"#[derive(Deserialize)] pub struct Delivered"),
             ("crates/sail-acceptance/src/phase_inputs.rs", b"pub struct PhaseRequest", b"#[derive(Default)] pub struct PhaseRequest"),
             ("crates/sail-acceptance/src/phase_inputs.rs", b"pub struct PhaseInputs", b"#[derive(Deserialize)] pub struct PhaseInputs"),
+            ("crates/sail-acceptance/src/phase_inputs.rs", b"pub struct EnvironmentProjection", b"#[derive(Default)] pub struct EnvironmentProjection"),
+            ("crates/sail-acceptance/src/phase_inputs.rs", b"pub struct CommandEnvironment", b"#[derive(Deserialize)] pub struct CommandEnvironment"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct AttemptIdentity", b"#[derive(Default)] pub struct AttemptIdentity"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct DeclinedEngine", b"#[derive(Deserialize)] pub struct DeclinedEngine"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct MissingEngineFeature", b"#[derive(Default)] pub struct MissingEngineFeature"),
