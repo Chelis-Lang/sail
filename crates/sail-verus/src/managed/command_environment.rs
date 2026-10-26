@@ -5,6 +5,9 @@
 
 use super::environment::ParentEnvironment;
 use sail_acceptance::authority::ProcessDescriptor;
+use sail_acceptance::phase_inputs::{
+    ConfiguredIntent, OwnedCompletionFields, OwnedSpawnFields, OwnerIdentity,
+};
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
@@ -33,7 +36,7 @@ pub(crate) struct Command {
 pub(crate) struct Spawned {
     child: Child,
     environment: Option<EnvironmentObservation>,
-    descriptor: Option<ProcessDescriptor>,
+    configuration: Option<ConfiguredIntent>,
     waited: Option<ExitStatus>,
     owner: Arc<()>,
 }
@@ -45,9 +48,9 @@ pub(crate) struct Completed {
 }
 
 /// One checked builder, owned child and actual normal wait; not compiler-input authority.
-pub(crate) struct WaitedLaunch {
+struct WaitedLaunch {
     pid: u32,
-    descriptor: ProcessDescriptor,
+    configuration: ConfiguredIntent,
     owner: Arc<()>,
 }
 
@@ -56,16 +59,12 @@ pub(crate) struct LaunchLease {
     owner: Arc<()>,
 }
 
-impl WaitedLaunch {
-    pub(crate) fn matches(
-        &self,
-        lease: &LaunchLease,
-        pid: u32,
-        descriptor: &ProcessDescriptor,
-    ) -> bool {
-        Arc::ptr_eq(&self.owner, &lease.owner)
-            && self.pid == pid
-            && sail_acceptance::phase_inputs::descriptors_equal(&self.descriptor, descriptor)
+/// The sole ownership identity primitive used by the shared completion guard.
+pub(crate) struct NativeOwnerIdentity;
+
+impl OwnerIdentity<LaunchLease> for NativeOwnerIdentity {
+    fn same_owner(&self, original: &LaunchLease, actual: &LaunchLease) -> bool {
+        Arc::ptr_eq(&original.owner, &actual.owner)
     }
 }
 
@@ -92,12 +91,16 @@ impl Spawned {
     }
 
     pub(crate) fn construction_observed(&self) -> bool {
-        self.environment.is_some() && self.descriptor.is_some()
+        self.configuration.is_some()
     }
 
-    pub(crate) fn launch_lease(&self) -> LaunchLease {
-        LaunchLease {
-            owner: Arc::clone(&self.owner),
+    pub(crate) fn spawn_fields(&self) -> OwnedSpawnFields<'_, LaunchLease> {
+        OwnedSpawnFields {
+            owner: LaunchLease {
+                owner: Arc::clone(&self.owner),
+            },
+            pid: self.child.id(),
+            configuration: self.configuration.as_ref(),
         }
     }
     pub(crate) fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
@@ -123,13 +126,6 @@ impl Spawned {
         Ok(status)
     }
 
-    pub(crate) fn matches_descriptor(&self, descriptor: &ProcessDescriptor) -> bool {
-        self.environment.is_some()
-            && self.descriptor.as_ref().is_some_and(|actual| {
-                sail_acceptance::phase_inputs::descriptors_equal(actual, descriptor)
-            })
-    }
-
     /// The caller retains original pipe ownership; status comes only from this child.
     pub(crate) fn captured(
         &mut self,
@@ -139,9 +135,9 @@ impl Spawned {
         let status = self
             .waited
             .ok_or_else(|| std::io::Error::other("owned compiler has no normal wait"))?;
-        let launch = self.descriptor.take().map(|descriptor| WaitedLaunch {
+        let launch = self.configuration.take().map(|configuration| WaitedLaunch {
             pid: self.child.id(),
-            descriptor,
+            configuration,
             owner: Arc::clone(&self.owner),
         });
         Ok(Completed {
@@ -161,9 +157,9 @@ impl Spawned {
         Ok(Completed {
             output,
             environment: self.environment,
-            launch: self.descriptor.map(|descriptor| WaitedLaunch {
+            launch: self.configuration.map(|configuration| WaitedLaunch {
                 pid,
-                descriptor,
+                configuration,
                 owner: self.owner,
             }),
         })
@@ -184,9 +180,29 @@ impl Completed {
         Some(self.output)
     }
 
-    pub(crate) fn into_parts(self) -> (Output, Option<WaitedLaunch>) {
-        let launch = self.environment.and(self.launch);
-        (self.output, launch)
+    pub(crate) fn into_parts(self) -> (ExitStatus, OwnedCompletionFields<LaunchLease>) {
+        let (owner, pid, configuration) = match self.launch {
+            Some(launch) => (
+                Some(LaunchLease {
+                    owner: launch.owner,
+                }),
+                Some(launch.pid),
+                Some(launch.configuration),
+            ),
+            None => (None, None, None),
+        };
+        let status = self.output.status;
+        (
+            status,
+            OwnedCompletionFields {
+                owner,
+                pid,
+                configuration,
+                wait: Some(status.code()),
+                stdout: self.output.stdout,
+                stderr: self.output.stderr,
+            },
+        )
     }
 }
 
@@ -293,7 +309,7 @@ impl Command {
         clippy::too_many_lines,
         reason = "One borrowed original snapshot keeps independent builder records, actual readback and checked effective rows tied through the same capture."
     )]
-    fn observe_environment(&self) -> Option<EnvironmentObservation> {
+    fn observe_environment(&self) -> Option<(EnvironmentObservation, ConfiguredIntent)> {
         use sail_acceptance::inputs::{InputFact, InputValue};
         use sail_acceptance::phase_inputs::{
             EnvironmentInheritance, Inventory, seal_command_environment,
@@ -405,7 +421,10 @@ impl Command {
                 )
             })
             .collect();
-        Some(EnvironmentObservation {
+        let (recorded, actual) = self.raw_descriptors();
+        let configuration =
+            sail_acceptance::phase_inputs::seal_configured_intent(&recorded, &actual, &admitted)?;
+        let observation = EnvironmentObservation {
             parent_sha256: self.parent.fingerprint()?,
             operations_sha256: super::files::digest(
                 &serde_json::to_vec(&("sail-command-operations-v1", operations)).ok()?,
@@ -414,10 +433,11 @@ impl Command {
                 &serde_json::to_vec(&("sail-command-effective-v1", effective?)).ok()?,
             ),
             inherits,
-        })
+        };
+        Some((observation, configuration))
     }
 
-    fn checked_descriptor(&self) -> Option<ProcessDescriptor> {
+    fn raw_descriptors(&self) -> (ProcessDescriptor, ProcessDescriptor) {
         let recorded = ProcessDescriptor {
             program: self.program.as_encoded_bytes().to_vec(),
             arguments: self
@@ -464,17 +484,25 @@ impl Command {
                 })
                 .collect(),
         };
+        (recorded, actual)
+    }
+
+    #[cfg(test)]
+    fn checked_descriptor(&self) -> Option<ProcessDescriptor> {
+        let (recorded, actual) = self.raw_descriptors();
         sail_acceptance::phase_inputs::descriptors_equal(&recorded, &actual).then_some(recorded)
     }
 
     pub(crate) fn spawn(&mut self) -> std::io::Result<Spawned> {
-        let descriptor = self.checked_descriptor();
-        let environment = descriptor.as_ref().and_then(|_| self.observe_environment());
+        let (environment, configuration) = match self.observe_environment() {
+            Some((environment, configuration)) => (Some(environment), Some(configuration)),
+            None => (None, None),
+        };
         let child = self.inner.spawn()?;
         Ok(Spawned {
             child,
             environment,
-            descriptor,
+            configuration,
             waited: None,
             owner: Arc::new(()),
         })
@@ -486,8 +514,8 @@ impl Command {
 
     pub(crate) fn output(&mut self) -> std::io::Result<Completed> {
         let environment = self
-            .checked_descriptor()
-            .and_then(|_| self.observe_environment());
+            .observe_environment()
+            .map(|(environment, _configuration)| environment);
         let output = self.inner.output()?;
         Ok(Completed {
             output,
@@ -570,14 +598,34 @@ mod tests {
             directory: None,
             overrides: Vec::new(),
         };
-        let waited = WaitedLaunch {
-            pid: 7,
-            descriptor: sail_acceptance::phase_inputs::copy_descriptor(&descriptor),
-            owner,
-        };
-        assert!(waited.matches(&original, 7, &descriptor));
-        assert!(!waited.matches(&different, 7, &descriptor));
-        assert!(!waited.matches(&original, 9, &descriptor));
+        use sail_acceptance::phase_inputs::owned_identity_matches;
+        assert!(owned_identity_matches(
+            &NativeOwnerIdentity,
+            &original,
+            7,
+            &descriptor,
+            &original,
+            7,
+            &descriptor
+        ));
+        assert!(!owned_identity_matches(
+            &NativeOwnerIdentity,
+            &original,
+            7,
+            &descriptor,
+            &different,
+            7,
+            &descriptor
+        ));
+        assert!(!owned_identity_matches(
+            &NativeOwnerIdentity,
+            &original,
+            7,
+            &descriptor,
+            &original,
+            9,
+            &descriptor
+        ));
     }
 
     #[test]

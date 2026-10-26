@@ -881,9 +881,18 @@ only for tests; production configuration cannot obtain a mutable native command
 from the wrapper. The actual adapter Cargo-message subprocess remains a native
 command with its original cleanup owner; it is not mislabeled an owned compiler.
 
-`OwnedRunningAttempt` retains the original reserved descriptor, actual child
-PID and a private ownership lease after checking the spawned builder's exact
-descriptor. Completion requires the same lease, PID and descriptor. Lease
+`ConfiguredIntent` is now produced by a source-shared factory while the actual
+`CommandEnvironment` borrow is live. It checks original/native descriptor
+identity and exact correspondence between every raw descriptor override and
+the actual environment rows. It retains the final descriptor and explicit
+inheritance policy. Presence of a native Boolean cannot stand in for this
+configuration token.
+
+`OwnedRunningAttempt` now aliases the shared `OwnedCompilerAttempt`, whose
+factory retains the original reserved descriptor, actual child PID and private
+ownership lease after checking the spawned builder's configured intent.
+The shared completion operation requires the same lease, PID, descriptor and
+actual wait observation. Lease
 identity prevents a different child with a reused PID and identical arguments
 from matching. Private `Completed` values obtain their status from that owned
 child's actual wait, rather than a status supplied alongside output buffers.
@@ -908,13 +917,55 @@ use the owned builder with their original assertions. Compilation, lint, normal
 tests, canonical source capture/proof controls, complete native/macOS gates,
 conformance and native cost measurements remain pending.
 
-This is a native construction/wait guard using existing checked comparators,
-not a stock-Verus proof of the native adapter, pipe readers or OS. Parent
+The new shared contracts and controls have not run through stock Verus. They
+are proposed source refinements, not proved or accepted operations yet. This
+is also not a stock-Verus proof of the native adapter, pipe readers or OS. Parent
 inheritance timing, original-submission correspondence, archive schema,
 complete compiler inputs, opaque I/O, control-channel fidelity and actual
 executable-image/atomic observation identity remain separate obligations.
 No descriptor or ownership lease constructs `CompilerDomain` or Current proof
 authority by itself.
+
+### Shared owned-completion boundary
+
+The candidate adds these source-shared operations in `phase_inputs.rs`:
+
+| Operation | Concrete boundary |
+|---|---|
+| `descriptor_environment_matches` / `seal_configured_intent` | Bind every raw final override/removal to the exact typed rows admitted by the live environment factory, and retain original program/argv/cwd/policy |
+| `begin_owned_compiler` | Consume the independent reservation; require its exact descriptor, a configured intent and nonzero actual PID; retain the original native owner lease without stream/wait observations |
+| `owned_identity_matches` | Compare original/actual opaque ownership identity, PID and every descriptor field |
+| `complete_owned_compiler` | Require present configuration/owner/PID/wait, compare descriptor and explicit inheritance policy with the original owned start, and move actual stdout/stderr vectors through the existing attempt reducer; return unchanged vectors on refusal |
+
+`OwnedSpawnFields` and `OwnedCompletionFields` are explicitly raw candidate
+observations. Their public fields do not authenticate a real process. Production
+readouts come only from the private owned wrapper: the actual `Child::id`,
+retained configuration token, `Arc` ownership lease, original successful
+`wait`/`try_wait`/`wait_with_output` result, and the original output vectors.
+Missing wait and an actual signaled exit remain distinct. A genuine failing
+exit is still a completed process observation; it cannot become a successful
+proof merely because this operation records it.
+
+The sole new generic primitive is `OwnerIdentity::same_owner`. Its contract is
+exact opaque identity equality; the production body is `Arc::ptr_eq` on the two
+actual retained leases. It has no `all_inputs`, compiler-domain, successful-I/O,
+watcher, metadata-stability or verifier-success premise. The constructive
+`ScalarOwnerIdentity` fixture proves that primitive over actual `u64` values,
+then exercises nonempty buffers, normal success/failure, a signal, different or
+missing owner/PID/configuration, missing start/wait and wrong reserved command.
+It also refuses a different inheritance policy with otherwise identical rows.
+It supplies neither native authority nor an assumption that physical I/O always
+succeeds.
+
+The native journal delegates start/completion admission to those shared bodies.
+Its remaining native work converts the actual platform status without changing
+it, persists the original observed payloads and handles persistence refusal.
+Native `std` spawn/read/wait semantics, raw OS string projection and actual
+`Arc` identity remain the narrow source-bound primitives/adapters. The shared
+contracts are conditional on those actual observations, not a theorem that
+arbitrary supplied fields came from a compiler. Closed source/function/caller
+inventory and direct proof/failing-control/native gates remain required before
+selection; no such gate has run for this slice.
 
 ## Remaining concrete refinement
 

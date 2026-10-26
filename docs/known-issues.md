@@ -67,7 +67,11 @@ request/producer correspondence remains part of #375/#376.
 The owned inner-compiler command migration is a source-only candidate. It
 routes native, verifying and fallback launches through private construction,
 checks final raw argv/environment readback, and joins journal admission to the
-same child's ownership lease and actual wait. No build, test, proof, native gate
+same child's ownership lease and actual wait. Its next source-shared slice
+adds configured-intent, owned-start and completion factories, with raw-buffer
+preservation on refusal and only an ownership-equality primitive. These new
+contracts and constructive/refusal controls have not been checked by Verus.
+No build, test, proof, native gate
 or cost qualification has run on this candidate. Existing phase transport,
 opaque procedural-macro/build-script I/O and executable-image/atomicity limits
 remain open; see the [source scope](design/acceptance-inputs.md#owned-inner-compiler-candidate).
