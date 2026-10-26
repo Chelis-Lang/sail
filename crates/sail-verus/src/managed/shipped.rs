@@ -1533,11 +1533,16 @@ fn package_tree(root: &Path) -> Option<BTreeMap<String, String>> {
     bounded_source_tree(root, 64 * 1024 * 1024)
 }
 
+/// Every regular file under `root` by its relative name, with its complete
+/// SHA-256. The walk applies the same bounds as before (at most `byte_limit`
+/// bytes by size and 16,384 files; any other entry kind or error declines),
+/// then hashes the listed files on several workers: the pinned rust-src tree
+/// (about 3,700 files) is checked before and after every native unit.
 fn bounded_source_tree(root: &Path, byte_limit: u64) -> Option<BTreeMap<String, String>> {
     fn visit(
         root: &Path,
         directory: &Path,
-        files: &mut BTreeMap<String, String>,
+        files: &mut Vec<(String, PathBuf)>,
         bytes: &mut u64,
         byte_limit: u64,
     ) -> Option<()> {
@@ -1551,19 +1556,38 @@ fn bounded_source_tree(root: &Path, byte_limit: u64) -> Option<BTreeMap<String, 
                 if *bytes > byte_limit || files.len() >= 16_384 {
                     return None;
                 }
-                files.insert(
-                    entry.path().strip_prefix(root).ok()?.to_str()?.to_owned(),
-                    sha256_file(&entry.path())?.0,
-                );
+                let path = entry.path();
+                files.push((path.strip_prefix(root).ok()?.to_str()?.to_owned(), path));
             } else {
                 return None;
             }
         }
         Some(())
     }
-    let mut files = BTreeMap::new();
-    visit(root, root, &mut files, &mut 0, byte_limit)?;
-    Some(files)
+    let mut listed = Vec::new();
+    visit(root, root, &mut listed, &mut 0, byte_limit)?;
+    let descriptors: Vec<_> = listed
+        .iter()
+        .map(|(relative, path)| (relative.as_str(), path.as_path()))
+        .collect();
+    let reads = crate::parallel::in_order(&descriptors, |&(relative, path)| {
+        (relative, path, sha256_file(path))
+    });
+    let expected: Vec<_> = listed
+        .iter()
+        .map(|(relative, path)| (relative.as_bytes(), path.as_os_str().as_encoded_bytes()))
+        .collect();
+    let returned: Vec<_> = reads
+        .iter()
+        .map(|(relative, path, _)| (relative.as_bytes(), path.as_os_str().as_encoded_bytes()))
+        .collect();
+    if !crate::parallel::exact_descriptors(&expected, &returned) {
+        return None;
+    }
+    reads
+        .into_iter()
+        .map(|(relative, _, hash)| Some((relative.to_owned(), hash?.0)))
+        .collect()
 }
 
 /// The keyed arguments of an invocation (this machine's directories as
