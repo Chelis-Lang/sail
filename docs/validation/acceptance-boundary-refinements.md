@@ -1,6 +1,27 @@
 # Acceptance boundary refinement qualification
 
-Status: frozen `cc8c24a1` passes the complete canonical query component on
+Status: full service qualification remains open. The frozen native Linux
+`73f928d1` run passes the workspace gate (605.71 s), all 31 model cases,
+all 59 query cases and all 80 input cases. Its authority cases are running;
+solver, full e2e and PR conformance remain pending. These are gate durations,
+not performance measurements. Later source changes do not inherit this result.
+
+The newer local source integrates exact-partial request transfer, live retained
+frame admission, paired baseline publication, native raw-path correspondence,
+and owned compiler configuration/start/completion. Closed capture binds the
+native adapter sources explicitly without claiming their bodies are proved.
+Its proposed matrix retains every inherited control and adds the new controls:
+256 cases (three whole positive roots and 253 ordinary failing controls).
+Three whole source assemblies and every mutation anchor pass textual closure;
+this is not verification. Final function inventories/counters still belong to
+the earlier qualified positive roots and must be discovered from whole stock
+runs before the newer matrix can qualify. Four inherited short controls now
+anchor their unchanged original function envelopes because new functions share
+the former short needles; their original guard-removal changes and contracts
+remain intact. All new component controls, native integration, conformance and
+lexer differential/cost qualification remain pending.
+
+Earlier canonical query checkpoint `cc8c24a1` passes the complete canonical query component on
 macOS: the whole positive root (288 obligations, 503 function entries) and all
 39 ordinary failing controls. The source-bound report validates runtime,
 function inventory and post-run source state, and explicitly does not claim a
