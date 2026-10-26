@@ -456,6 +456,19 @@ class SourceCaptureTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
                 CHECKER.compiled_subset(path, original.replace(before, after, 1))
 
+    def test_compiler_pipe_read_primitive_and_native_endpoint_remain_source_bound(self):
+        for path, before, after in (
+            (CHECKER.PIPE_CORE, b"fn owner_view(&self) -> Owner;", b"fn owner_view(&self) -> bool;"),
+            (CHECKER.PIPE_CORE, b"Bytes(Seq<u8>), Eof, EmptyRead, Failure(Failure)",
+                b"Bytes(Seq<u8>), Eof, EmptyRead, Failure(bool)"),
+            ("crates/sail-verus/src/managed/command_pipe.rs", b"self.reader.read(buffer)", b"Ok(0)"),
+        ):
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(path=path), self.assertRaises((CHECKER.Refusal, SOURCE.SourceRefusal)):
+                CHECKER.compiled_subset(path, original.replace(before, after, 1))
+
     def test_executable_cfg_loading_and_unchecked_spec_refuse(self):
         for source in (b"#[cfg(sail_verus)] fn valid() -> bool { true }",
                 b'include!("hidden.rs");', b"assume(false);", b"assume_specification[foo]() ensures false;", b"#[verifier::external_body] fn f() {}"):
