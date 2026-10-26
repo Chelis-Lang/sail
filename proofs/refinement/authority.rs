@@ -53,6 +53,17 @@ pub fn missing_process_wait_refused(run: &[u8], unit: &crate::authority::Compile
     running.unwrap().stdout_eof(Vec::new()).stderr_eof(Vec::new()).finish().is_none()
 }
 
+pub fn recovering_finish_refuses_missing_events(run: &[u8], unit: &crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32) -> (refused: bool)
+    requires pid != 0,
+    ensures refused,
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    running.unwrap().exited(Some(0)).finish_or_output().is_err()
+}
+
 pub fn duplicate_process_stream_refused(run: &[u8], unit: &crate::authority::CompilerUnit,
     descriptor: crate::authority::ProcessDescriptor, pid: u32) -> (refused: bool)
     requires pid != 0,
@@ -63,6 +74,31 @@ pub fn duplicate_process_stream_refused(run: &[u8], unit: &crate::authority::Com
     let running = reserved.unwrap().started(pid); assert(running.is_some());
     running.unwrap().stdout_eof(Vec::new()).stdout_eof(Vec::new())
         .stderr_eof(Vec::new()).exited(Some(0)).finish().is_none()
+}
+
+pub fn ambiguous_observations_preserve_output(run: &[u8], unit: &crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32, stdout: Vec<u8>, extra: Vec<u8>, stderr: Vec<u8>)
+    -> (out: (Vec<u8>, Vec<u8>, Option<i32>))
+    requires pid != 0,
+    ensures out.0 == stdout, out.1 == stderr, out.2 == Some(0),
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    let out = running.unwrap().stdout_eof(stdout).stdout_eof(extra).stderr_eof(stderr)
+        .exited(Some(0)).finish_or_output();
+    assert(out.is_err()); match out { Err(bytes) => (bytes.stdout, bytes.stderr, bytes.exit), Ok(_) => (Vec::new(), Vec::new(), None) }
+}
+
+pub fn changed_process_payload_refused(observed: &crate::authority::ObservedAttempt,
+    stdout: &[u8], stderr: &[u8], exit: Option<i32>) -> (refused: bool)
+    requires crate::authority::observation_complete(&crate::authority::observed_running(observed)),
+        crate::authority::running_stdout(&crate::authority::observed_running(observed)).unwrap()@ != stdout@
+            || crate::authority::running_stderr(&crate::authority::observed_running(observed)).unwrap()@ != stderr@
+            || crate::authority::running_exit(&crate::authority::observed_running(observed)).unwrap() != exit,
+    ensures refused,
+{
+    !crate::authority::observed_payload_matches(observed, stdout, stderr, exit)
 }
 
 pub fn attempt_slots_are_independent_of_pid(run: &[u8], unit: &crate::authority::CompilerUnit,

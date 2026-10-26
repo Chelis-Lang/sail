@@ -97,7 +97,7 @@ impl Invocation {
     /// Whole proofs retain their success authority. A partial report has a
     /// separate authority: exact recorded arguments, successful verifier output
     /// and no source-engine fallback. It never turns `success` into true.
-    pub(super) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
+    pub(crate) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
         match partial_args {
             None => self.success && complete(&self.report),
             Some(args) => {

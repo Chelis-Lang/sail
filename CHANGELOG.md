@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve fresh verifier output and status when optional process journals fail;
+  withhold whole and partial proof reuse and retained completeness instead.
 - Bind retained job completeness and repair acceptance to independently captured
   original requests, including exact target scope and repair selection. Missing
   older request evidence withholds completeness while preserving input Current

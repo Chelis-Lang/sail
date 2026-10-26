@@ -381,6 +381,17 @@ buffers and status passed to the existing report code. Reused PIDs do not reuse
 slots. Per-target journals persist the pre-spawn command observations and
 terminal buffer hashes; `create_new` rejects overwriting an attempt slot.
 
+Journal failure is sticky unavailable evidence. It never suppresses the fresh
+spawn or discards the actual stdout, stderr or wait status. The native owner
+keeps an unsealed payload on reservation or terminal-write failure; the checked
+reducer also returns the original buffers when ambiguous events refuse its
+seal. Report input is checked against the same complete observed payload before
+live-origin admission. Without that observation, the retained report records
+`SAIL3111` as an infrastructure error while its original verifier diagnostics
+and per-function output remain intact. Whole and exact partial receipt reuse,
+retained target/selection/request authority and experimental content publishing
+refuse that history. Fresh input Currentness remains independent.
+
 This seal establishes complete process observations, not completed verification.
 Native command construction, OS handle/pipe/wait attribution, pinned image
 resolution, structured document parsing and engine-protocol interpretation

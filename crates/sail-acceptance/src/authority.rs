@@ -236,6 +236,17 @@ sail_code! {
         running: RunningAttempt<'a>,
     }
 
+    /// Raw output recovered when event ambiguity withholds its observation seal.
+    #[derive(Debug)]
+    pub struct UnsealedOutput {
+        /// Original stdout bytes.
+        pub stdout: Vec<u8>,
+        /// Original stderr bytes.
+        pub stderr: Vec<u8>,
+        /// Actual normal exit code, absent on a signal.
+        pub exit: Option<i32>,
+    }
+
     impl<'a> AttemptLedger<'a> {
         sail_method! {
             /// Creates an empty namespace for independently retained run/unit bytes.
@@ -313,6 +324,7 @@ sail_code! {
                 ensures(running_reserved(&out) == running_reserved(&self), running_pid(&out) == running_pid(&self),
                     running_stdout(&out).is_some(),
                     running_stdout(&self).is_none() ==> running_stdout(&out).unwrap() == bytes,
+                    running_stdout(&self).is_some() ==> running_stdout(&out) == running_stdout(&self),
                     running_invalid(&out) == (running_invalid(&self) || running_stdout(&self).is_some()),
                     running_stderr(&out) == running_stderr(&self), running_exit(&out) == running_exit(&self))
             {
@@ -329,6 +341,7 @@ sail_code! {
                 ensures(running_reserved(&out) == running_reserved(&self), running_pid(&out) == running_pid(&self),
                     running_stderr(&out).is_some(),
                     running_stderr(&self).is_none() ==> running_stderr(&out).unwrap() == bytes,
+                    running_stderr(&self).is_some() ==> running_stderr(&out) == running_stderr(&self),
                     running_invalid(&out) == (running_invalid(&self) || running_stderr(&self).is_some()),
                     running_stdout(&out) == running_stdout(&self), running_exit(&out) == running_exit(&self))
             {
@@ -345,6 +358,7 @@ sail_code! {
                 ensures(running_reserved(&out) == running_reserved(&self), running_pid(&out) == running_pid(&self),
                     running_exit(&out).is_some(),
                     running_exit(&self).is_none() ==> running_exit(&out).unwrap() == exit,
+                    running_exit(&self).is_some() ==> running_exit(&out) == running_exit(&self),
                     running_invalid(&out) == (running_invalid(&self) || running_exit(&self).is_some()),
                     running_stdout(&out) == running_stdout(&self), running_stderr(&out) == running_stderr(&self))
             {
@@ -364,6 +378,28 @@ sail_code! {
             {
                 if self.invalid || self.stdout.is_none() || self.stderr.is_none() || matches!(self.exit, WaitObservation::Pending) { return None; }
                 Some(ObservedAttempt { running: self })
+            }
+        }
+        sail_method! {
+            /// Preserves complete raw output when ambiguous events refuse admission.
+            ///
+            /// # Errors
+            /// Returns the original output when repeated events invalidated admission.
+            #[allow(clippy::manual_unwrap_or_default, reason = "Keep the explicit cases in the source checked by stock Verus.")]
+            pub fn finish_or_output(self) -> (out: Result<ObservedAttempt<'a>, UnsealedOutput>)
+                requires(true)
+                ensures(out.is_ok() == observation_complete(&self),
+                    out.is_ok() ==> observed_running(&out.unwrap()) == self,
+                    match out { Err(bytes) => (running_stdout(&self).is_some() ==> bytes.stdout == running_stdout(&self).unwrap())
+                        && (running_stderr(&self).is_some() ==> bytes.stderr == running_stderr(&self).unwrap())
+                        && (running_exit(&self).is_some() ==> bytes.exit == running_exit(&self).unwrap()), _ => true })
+            {
+                if matches!(self.exit, WaitObservation::Pending) || self.stdout.is_none() || self.stderr.is_none() || self.invalid {
+                    let stdout = match self.stdout { Some(bytes) => bytes, None => Vec::new() };
+                    let stderr = match self.stderr { Some(bytes) => bytes, None => Vec::new() };
+                    let exit = match self.exit { WaitObservation::Exited(code) => Some(code), _ => None };
+                    Err(UnsealedOutput { stdout, stderr, exit })
+                } else { Ok(ObservedAttempt { running: self }) }
             }
         }
     }
@@ -452,5 +488,17 @@ sail_spec! {
     pub closed spec fn observed_running<'a>(a: &ObservedAttempt<'a>) -> RunningAttempt<'a> { a.running }
     pub open spec fn observation_complete(a: &RunningAttempt) -> bool {
         !running_invalid(a) && running_stdout(a).is_some() && running_stderr(a).is_some() && running_exit(a).is_some()
+    }
+}
+
+sail_verified! {
+    /// Binds downstream report input to the same complete child observations.
+    pub fn observed_payload_matches(observed: &ObservedAttempt, stdout: &[u8], stderr: &[u8], exit: Option<i32>) -> (out: bool)
+        requires(observation_complete(&observed_running(observed)))
+        ensures(out == (running_stdout(&observed_running(observed)).unwrap()@ == stdout@
+            && running_stderr(&observed_running(observed)).unwrap()@ == stderr@
+            && running_exit(&observed_running(observed)).unwrap() == exit))
+    {
+        exact_bytes(observed.stdout(), stdout) && exact_bytes(observed.stderr(), stderr) && observed.exit() == exit
     }
 }

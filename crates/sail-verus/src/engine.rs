@@ -1418,8 +1418,14 @@ mod tests {
             &unit,
             &attempt_directory,
         );
-        let (output, trusted) =
-            crate::adapter::engine_output(&sidecar, stock, captured, &log, &mut attempts)?;
+        let (output, trusted) = crate::adapter::engine_output(
+            &sidecar,
+            stock,
+            crate::adapter::attempts::CapturedChild::unavailable(captured),
+            &log,
+            &mut attempts,
+        )?;
+        let output = output.into_output();
         assert!(!trusted);
         assert_eq!(output.status.code(), Some(0));
         assert_eq!(output.stdout, std::fs::read(sidecar.join("verus.stdout"))?);
@@ -1532,8 +1538,13 @@ mod tests {
             &unit,
             &attempt_directory,
         );
-        let (_, trusted) =
-            crate::adapter::engine_output(&sidecar, stock(), engine("")?, &log, &mut attempts)?;
+        let (_, trusted) = crate::adapter::engine_output(
+            &sidecar,
+            stock(),
+            crate::adapter::attempts::CapturedChild::unavailable(engine("")?),
+            &log,
+            &mut attempts,
+        )?;
         assert!(trusted);
         assert!(!sidecar.join(MISSING_FEATURE).exists());
         let diagnostic =
@@ -1541,10 +1552,11 @@ mod tests {
         let (output, trusted) = crate::adapter::engine_output(
             &sidecar,
             stock(),
-            engine(diagnostic)?,
+            crate::adapter::attempts::CapturedChild::unavailable(engine(diagnostic)?),
             &log,
             &mut attempts,
         )?;
+        let output = output.into_output();
         assert!(!trusted, "the engine's rejection is never the answer");
         assert_eq!(output.stdout, b"stock");
         assert_eq!(output.status.code(), Some(1));

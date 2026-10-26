@@ -53,7 +53,9 @@ pub struct Report {
     pub diagnostics: Vec<Diagnostic>,
     /// Counts over every function in every crate.
     pub summary: Summary,
-    /// Set when `sail verify` itself could not run Verus.
+    /// Infrastructure or observation failure: Verus could not run, or required
+    /// evidence for retained proof authority is unavailable. Actual process
+    /// status, per-function verdicts and verifier diagnostics remain separate.
     pub error: Option<ErrorInfo>,
     /// Source-engine provenance, present only for an explicitly selected
     /// engine (ADR 0027). Stock reports omit it.
