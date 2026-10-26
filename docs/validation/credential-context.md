@@ -32,11 +32,11 @@ standard arms pass: 159 Same and 13,166 functions each, followed by the
 bounded mutation controls. No functional differences or infrastructure errors
 occurred; the standard arms retain 17 resource-count-only drift cases each.
 
-Raw native Mac controls, factory and host logs:
-`s3://example-evidence-bucket/experiments/2026-10-24/credential-context-mac.tgz`,
+Raw native Mac controls, factory and host logs in the private evidence bucket:
+`experiments/2026-10-24/credential-context-mac.tgz`,
 sha256 `0812d0990e2438237e6be18994d87164a10094ba25e8c1c71c534eecd7f11ca7`.
-Linux gate and conformance logs:
-`s3://example-evidence-bucket/experiments/2026-10-24/credential-context-linux.tgz`,
+Linux gate and conformance logs in that bucket:
+`experiments/2026-10-24/credential-context-linux.tgz`,
 sha256 `913af2c04f1aba602ad79ef39f6e0359b7c82ad83918cbcc98c6d5d1b01770b4`.
 
 An initial Mac control assumed a library source path for a generated binary;

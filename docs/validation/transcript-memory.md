@@ -22,5 +22,5 @@ The selected change affects attribution for all corpus projects. Native Linux
 workspace gate, 42 solver tests (including the privileged fault controls),
 full E2E plus extra and PR conformance pass for the reduced patch. The macOS
 host gate passes all 1,033 nonignored tests. Raw allocation controls and gate
-logs: `s3://example-evidence-bucket/experiments/2026-10-24/sail-sprint-sprint-gates.tgz`,
+logs in the private evidence bucket: `experiments/2026-10-24/sail-sprint-sprint-gates.tgz`,
 sha256 `dc6116415ee79a5f7e59603c9a989ffaf8d304a97318a9d152e3fecfc59684f2`.

@@ -2,7 +2,7 @@
 
 ## Frozen implementation and scope
 
-The frozen implementation candidate is `1a7dfb88b7791bb2839701084a6b035014228fa4`, based on `e51e466007c492e86f168bc351bda352ab407870`. The native source bundle SHA-256 is `0572cd377c59fa536b327c364b1c15d4cb49f5a1e18c06d77fc72d0ef2c86023`. Native execution uses the clean detached source on Linux x86-64 EC2 `i-040cdf56e733dfc86` and core image `sha256:acbd792f3e0ff0befe6182ae32d1112a96abd6a53736f534a3c139fa8d11947e`. Native qualification and actual installed consumer acceptance are recorded below. Protected delivery and final immutable consumer selection remain separate.
+The frozen implementation candidate is `1a7dfb88b7791bb2839701084a6b035014228fa4`, based on `e51e466007c492e86f168bc351bda352ab407870`. The native source bundle SHA-256 is `0572cd377c59fa536b327c364b1c15d4cb49f5a1e18c06d77fc72d0ef2c86023`. Native execution uses the clean detached source on Linux x86-64 EC2 and core image `sha256:acbd792f3e0ff0befe6182ae32d1112a96abd6a53736f534a3c139fa8d11947e`. Native qualification and actual installed consumer acceptance are recorded below. Protected delivery and final immutable consumer selection remain separate.
 
 Explicit profile two admits genuine unit enums, flat named Boolean/integer/enum records, shared references, mutable primitive entry/poststate and multiple stable requirement identities sharing a conjunction guarantee. Profile one remains the default. Missing profile-two capability, unknown profiles and unsupported source fail before successful submission. A requirement label supplies no semantic link, and multiple labels do not increase the number of proved functions.
 
