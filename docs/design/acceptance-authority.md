@@ -40,10 +40,10 @@ intact. Refusal leaves the project unchanged. A constructive enabled
 zero-function case prevents an implementation that always refuses from satisfying
 the contract. Compile-only, focused and partial whole-proof transfers refuse.
 
-This checked transfer is an integration interface. Its native caller must
-independently resolve the current request and supply its actual scoped readback.
-The factory proves correspondence between those supplied records; attribution of
-the actual metadata resolver and observed input domain remains a native obligation.
+The native no-op entrypoint uses this checked transfer after the independently
+resolved preflight and scoped readback described below. The shared factory
+proves correspondence between those supplied records; attribution of the actual
+metadata resolver and observed input domain remains a native obligation.
 Its checked report projection preserves every captured proof field; native
 tests additionally compare the complete Rust project, including presentation
 fields outside that projection. Complete physical input discovery and a single
@@ -603,17 +603,42 @@ The main unchanged-call replay surface has a distinct
 [producer-history integration defect](https://github.com/Chelis-Lang/sail/issues/415):
 its cache scans omit original run directories. Matching cache records and a
 stored Current result therefore cannot replace original receipt admission.
-The candidate version-two replay record retains the exact whole/exact-partial
-receipts for every positive target. Publication and replay check target identity,
+The candidate version-three replay record retains the original independently
+resolved request and exact ordinary receipts for every positive whole target.
+Publication and replay check target identity,
 original establishing run, full report, exact scope, commit, artifact/dependency
 bytes and selected or archived producer history through the ordinary receipt
 reader. Missing, modified, omitted or mismatched origins take the ordinary path.
 An owned-child fixture verifies the intact replay, then removes its original
 run and observes refusal rather than a cached complete result. This is a native
 metadata/provenance control, not real-project proof or complete input closure.
-The independently resolved current request, guarded readback and complete
-service-transition correspondence for this surface remain open. A stored
-Current bit and a newly assigned run ID cannot supply them.
+
+Before deserializing a saved replay result, the production entrypoint resolves
+fresh Cargo metadata through the ordinary `expected_targets` resolver and
+recomputes the current runtime context. Ordinary execution and replay share
+the `request::Resolution` builder. Current metadata and runtime identity choose
+the workspace/family ownership locks and new run directory; the saved record's
+paths must match and cannot redirect that choice. A missing or failed resolver
+takes the ordinary path.
+
+The ordinary read-check implementation now passes its actual typed
+`GuardedReadback` to a callback while the underlying expected facts, fresh
+per-file observations and before/after guard remain alive. Replay constructs
+its separate current request there, before inspecting saved result fields.
+The checked transfer revalidates the original whole request, exact current
+request correspondence and guarded original revision before changing only the
+project view ID. It preserves original establishing IDs and report evidence;
+it creates no verifier attempt. Wall time remains presentation metadata.
+Failed and exact-partial unchanged-call replay currently takes the ordinary
+managed path, where existing exact-scope receipt reuse remains available.
+
+Native component fixtures use a separately declared one-library request and
+actual guarded reads of nonempty real file observations. They qualify the
+original-history/readback transfer, not the actual Cargo metadata preflight or
+a real trusted Verus execution. Complete input-domain discovery, global
+filesystem observation, metadata/process attribution, complete service
+composition and added native preflight cost remain open. A stored Current bit
+and a newly assigned run ID cannot supply those guarantees.
 
 The daemon's retained-result path uses the source-shared
 `withhold_unbound_request_authority_ordered`, `retained_currentness` and

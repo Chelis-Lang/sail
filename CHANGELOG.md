@@ -30,6 +30,11 @@ semantic versioning once the API is published.
   and selected or archived producer histories for every positive target.
   Missing, changed or mismatched history takes the ordinary verification path.
 
+- Bind unchanged-call whole-proof replay to independently resolved current
+  metadata, runtime identity and actual guarded input readback. Preserve the
+  original proof's establishing identities and reports. Failed and exact-partial
+  calls use the ordinary managed path while retaining its existing receipt reuse.
+
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.

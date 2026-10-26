@@ -9,8 +9,7 @@ use super::receipts::{Invocation, PhaseDigests, RECEIPT_VERSION, Receipt, Runtim
 use super::receipts::{artifact_hashes, complete};
 use crate::{Error, Result};
 use sail_api::project::{
-    Currentness, Execution, NoReuse, ProjectResult, RequestTarget, ResolvedRequest, SCHEMA_VERSION,
-    TargetResult, VerifiedAs,
+    Currentness, Execution, NoReuse, ProjectResult, SCHEMA_VERSION, TargetResult, VerifiedAs,
 };
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -432,6 +431,133 @@ struct Context {
     /// Every installed file the context identifies (executables, engine
     /// files, sysroot libraries, configuration files).
     identity_paths: Vec<PathBuf>,
+}
+
+/// Independently resolved unchanged-call setup. Saved no-op records never
+/// choose its workspace, proof context, family ownership or target inventory.
+pub(super) struct ReplayPreflight {
+    pub config: Config,
+    pub workspace: PathBuf,
+    pub context: PathBuf,
+    pub family: PathBuf,
+    pub workspace_lock: PathBuf,
+    hash: String,
+    run_id: String,
+    expected: BTreeSet<(String, String, String)>,
+}
+
+impl ReplayPreflight {
+    pub(super) fn with_current_request<T>(
+        &self,
+        consume: impl FnOnce(
+            &sail_api::project::ResolvedRequest,
+            &sail_acceptance::inputs::GuardedReadback<'_>,
+        ) -> T,
+    ) -> Result<Option<T>> {
+        super::read_check::with_guarded_readback(
+            &self.config.cache,
+            &self.workspace,
+            &self.hash,
+            |snapshot, readback| {
+                if !snapshot.complete {
+                    return None;
+                }
+                let current = super::request::Resolution {
+                    run_id: &self.run_id,
+                    invocation: &self.config.workspace,
+                    workspace: &self.workspace,
+                    context: &self.hash,
+                    revision: &snapshot.revision,
+                    args: &self.config.args,
+                    engine: None,
+                    targets: &self.expected,
+                }
+                .resolve();
+                Some(consume(&current, readback))
+            },
+        )
+    }
+}
+
+/// Actual metadata and runtime preflight, performed before opening a saved
+/// report. Any unavailable resolver takes the ordinary managed path.
+pub(super) fn replay_preflight(config: &Config) -> Result<ReplayPreflight> {
+    let config = resolved_config(config, None)?;
+    if super::configuration::check(&config.workspace, &config.args)?.is_some()
+        || std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some()
+    {
+        return Err(Error::new(
+            "SAIL3112",
+            "unchanged-call replay has unbound compiler configuration",
+        ));
+    }
+    let (data, identity) = std::thread::scope(|scope| {
+        let data = scope.spawn(|| {
+            metadata(
+                &config.workspace,
+                &config.args,
+                &config.cargo,
+                &config.cargo_toolchain,
+                &config.cache,
+            )
+        });
+        let identity = context(&config, None);
+        (
+            data.join()
+                .unwrap_or_else(|_| Err(Error::new("SAIL3103", "Cargo metadata reader failed"))),
+            identity,
+        )
+    });
+    let data = data?;
+    super::configuration::check_cache_inputs(&data, &config.cache)?;
+    let expected = expected_targets(&data, &config.args);
+    let workspace = data["workspace_root"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from)
+        .ok_or_else(|| Error::new("SAIL3103", "Cargo metadata has no workspace root"))?;
+    if expected.is_empty() {
+        return Err(Error::new(
+            "SAIL3112",
+            "no independently selected verification target",
+        ));
+    }
+    let identity = identity?;
+    let root = config
+        .cache
+        .join("projects")
+        .join(digest(workspace.as_os_str().as_encoded_bytes()));
+    Ok(ReplayPreflight {
+        config,
+        workspace,
+        context: root.join(&identity.hash),
+        family: root.join("compiler-artifacts").join(identity.compiler_hash),
+        workspace_lock: root.join(super::projects::WORKSPACE_LOCK),
+        hash: identity.hash,
+        run_id: fresh_run_id(),
+        expected,
+    })
+}
+
+fn resolved_config(config: &Config, engine: Option<&crate::engine::Request>) -> Result<Config> {
+    let mut owned = config.clone();
+    owned.workspace =
+        std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
+    owned.cache = owned.workspace.join(&owned.cache);
+    if let Some(engine) = engine {
+        owned.cargo_verus.clone_from(&engine.cargo_verus);
+    }
+    Ok(owned)
+}
+
+fn fresh_run_id() -> String {
+    format!(
+        "{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos())
+    )
 }
 
 fn context_hashes(
@@ -2723,13 +2849,7 @@ fn run_recorded(
     record: Option<(&str, &mut Option<super::noop::Pending>)>,
 ) -> Result<(ProjectResult, File)> {
     let research = super::research::selected()?;
-    let mut owned = config.clone();
-    owned.workspace =
-        std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
-    owned.cache = owned.workspace.join(&owned.cache);
-    if let Some(engine) = &engine {
-        owned.cargo_verus.clone_from(&engine.cargo_verus);
-    }
+    let owned = resolved_config(config, engine.as_ref())?;
     let config = &owned;
     // Cargo options that change what Cargo prints (its message format and
     // verbose command lines, which would show Sail's driver and flags) are
@@ -2856,13 +2976,7 @@ fn run_recorded(
         identity_paths,
     } = context_result?;
 
-    let run_id = format!(
-        "{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos())
-    );
+    let run_id = fresh_run_id();
     let inputs = diagnostics.phase(Phase::Inputs);
     let (mut paths, ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
     paths.reuse = loader.is_none();
@@ -3233,36 +3347,17 @@ fn run_recorded(
     drop(cleanup);
     // Capture the independently resolved original request before starting
     // Cargo. Never rebuild this scope or its input revision from result rows.
-    let original_request = ResolvedRequest {
-        run_id: run_id.clone(),
-        invocation: invocation.to_string_lossy().into_owned(),
-        workspace: before.workspace.to_string_lossy().into_owned(),
-        context_sha256: hash.clone(),
-        input_revision: before.revision.clone(),
-        args: config.args.clone(),
-        engine: engine.as_ref().map(crate::engine::Request::identity),
-        function: engine.as_ref().and_then(|engine| engine.function.clone()),
-        repair_package: engine
-            .as_ref()
-            .and_then(|e| e.selection.as_ref())
-            .map_or_else(String::new, |s| s.package.clone()),
-        repair_target: engine
-            .as_ref()
-            .and_then(|e| e.selection.as_ref())
-            .and_then(|s| s.target.clone()),
-        repair_kind: engine
-            .as_ref()
-            .and_then(|e| e.selection.as_ref())
-            .map_or_else(String::new, |s| s.kind.clone()),
-        targets: expected
-            .iter()
-            .map(|(package_id, target, kind)| RequestTarget {
-                package_id: package_id.clone(),
-                target: target.clone(),
-                kind: kind.clone(),
-            })
-            .collect(),
-    };
+    let original_request = super::request::Resolution {
+        run_id: &run_id,
+        invocation: &invocation,
+        workspace: &before.workspace,
+        context: &hash,
+        revision: &before.revision,
+        args: &config.args,
+        engine: engine.as_ref(),
+        targets: &expected,
+    }
+    .resolve();
     super::request::capture(&original_request, config.request_capture.as_ref())?;
     let source_engine = engine.is_some();
     // A header may only avoid optional restoration work. Unexpected Cargo
@@ -3901,6 +3996,7 @@ fn run_recorded(
                     .map(|(_, receipts)| receipts)
                     .collect(),
                 result: &result,
+                original_request: &original_request,
             })
         })
         .flatten()

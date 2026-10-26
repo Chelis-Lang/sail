@@ -16,7 +16,9 @@ use super::InputSnapshot;
 use super::files::{digest, json};
 use super::input::proposed_order;
 use crate::{Error, Result};
-use sail_acceptance::inputs::{InputFact, InputValue, OriginalCapture, guard_readback};
+use sail_acceptance::inputs::{
+    GuardedReadback, InputFact, InputValue, OriginalCapture, guard_readback,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read as _;
@@ -126,17 +128,39 @@ fn observe(path: &Path, expected_absent: bool) -> Observation {
 /// # Errors
 /// `SAIL3108` when the context has no readable record (no Current run yet).
 pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<InputSnapshot> {
-    check_with(cache, workspace, context, &observe)
+    with_guarded_readback(cache, workspace, context, |snapshot, _| snapshot)
+}
+
+/// Supplies the actual scoped readback while its original observed facts are
+/// alive. Callers cannot retain or recreate this token from a saved revision.
+pub(super) fn with_guarded_readback<T>(
+    cache: &Path,
+    workspace: &Path,
+    context: &str,
+    consume: impl FnOnce(InputSnapshot, &GuardedReadback<'_>) -> T,
+) -> Result<T> {
+    with_observer(cache, workspace, context, &observe, consume)
 }
 
 // This narrow seam permits a real writer to run between actual per-file reads.
 // The production instantiation always uses `observe` above.
+#[cfg(test)]
 fn check_with(
     cache: &Path,
     workspace: &Path,
     context: &str,
     observe: &(impl Fn(&Path, bool) -> Observation + Sync),
 ) -> Result<InputSnapshot> {
+    with_observer(cache, workspace, context, observe, |snapshot, _| snapshot)
+}
+
+fn with_observer<T>(
+    cache: &Path,
+    workspace: &Path,
+    context: &str,
+    observe: &(impl Fn(&Path, bool) -> Observation + Sync),
+    consume: impl FnOnce(InputSnapshot, &GuardedReadback<'_>) -> T,
+) -> Result<T> {
     let missing = || Error::new("SAIL3108", "no current input record for this context");
     if context.is_empty()
         || context.len() > 128
@@ -190,40 +214,46 @@ fn check_with(
     });
     let observed: Vec<_> = reads.into_iter().chain(alias_reads).collect();
     let after = super::input::readback_stamp(&guarded_paths);
-    let (changed, mut unreadable) = compare_observed(
+    Ok(with_comparison(
         &record,
         &observed,
         capture,
         after.as_deref().map(str::as_bytes),
-    );
-    if !changed && !unreadable && !super::runner::runtime_current(cache, context) {
-        // A changed toolchain is not an input change the record can name,
-        // but the stored result no longer describes this installation.
-        unreadable = true;
-    }
-    Ok(InputSnapshot {
-        workspace: workspace.to_owned(),
-        revision: if changed {
-            format!("changed-since-{}", record.revision)
-        } else {
-            record.revision
+        |comparison| {
+            let changed = comparison.changed();
+            let mut unreadable = comparison.unknown();
+            if !changed && !unreadable && !super::runner::runtime_current(cache, context) {
+                // A changed toolchain is not an input change the record can name,
+                // but the stored result no longer describes this installation.
+                unreadable = true;
+            }
+            let snapshot = InputSnapshot {
+                workspace: workspace.to_owned(),
+                revision: if changed {
+                    format!("changed-since-{}", record.revision)
+                } else {
+                    record.revision.clone()
+                },
+                roots: Vec::new(),
+                excluded: Vec::new(),
+                complete: changed || !unreadable,
+                observation_paths: BTreeSet::new(),
+                digests: BTreeMap::new(),
+                bindings: BTreeMap::new(),
+                capture: None,
+            };
+            consume(snapshot, comparison)
         },
-        roots: Vec::new(),
-        excluded: Vec::new(),
-        complete: changed || !unreadable,
-        observation_paths: BTreeSet::new(),
-        digests: BTreeMap::new(),
-        bindings: BTreeMap::new(),
-        capture: None,
-    })
+    ))
 }
 
-fn compare_observed(
+fn with_comparison<T>(
     record: &Record,
     reads: &[(u8, &Path, Observation)],
     capture: OriginalCapture,
     after: Option<&[u8]>,
-) -> (bool, bool) {
+    consume: impl FnOnce(&GuardedReadback<'_>) -> T,
+) -> T {
     let expected: Vec<_> = record
         .files
         .iter()
@@ -261,7 +291,7 @@ fn compare_observed(
         after,
         record.revision.as_bytes(),
     );
-    (comparison.changed(), comparison.unknown())
+    consume(&comparison)
 }
 
 #[cfg(test)]
@@ -269,11 +299,12 @@ mod tests {
     use super::*;
     // Descriptor-only controls exercise key association, not physical stamps.
     fn compare_descriptors(record: &Record, reads: &[(u8, &Path, Observation)]) -> (bool, bool) {
-        compare_observed(
+        with_comparison(
             record,
             reads,
             OriginalCapture::begin(Some(b"descriptor-control")),
             Some(b"descriptor-control"),
+            |comparison| (comparison.changed(), comparison.unknown()),
         )
     }
 

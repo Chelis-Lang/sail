@@ -40,8 +40,11 @@ impl Fixture {
         )?;
         std::fs::write(&source, "pub fn ordinary_fixture() {}\n")?;
         let cache = root.join("cache");
-        let context = cache.join("projects/workspace/context");
-        let family = cache.join("projects/workspace/compiler-artifacts/family");
+        let project_root = cache
+            .join("projects")
+            .join(files::digest(workspace.as_os_str().as_encoded_bytes()));
+        let context = project_root.join("context");
+        let family = project_root.join("compiler-artifacts/family");
         let producer = context.join("runs/original");
         for directory in [
             context.join("receipts"),
@@ -53,7 +56,8 @@ impl Fixture {
         }
         std::fs::write(family.join("contexts/context"), [])?;
         std::fs::write(family.join("ownership.lock"), [])?;
-        std::fs::write(cache.join("projects/workspace/workspace.lock"), [])?;
+        std::fs::write(project_root.join("workspace.lock"), [])?;
+        record_readback(&cache, &context, &manifest, &source)?;
         let artifact = family.join("target/libdemo.rmeta");
         std::fs::write(&artifact, b"owned fixture artifact")?;
         let receipt = original_receipt(&context, &producer, &artifact, &manifest)?;
@@ -117,6 +121,85 @@ impl Fixture {
             observed: vec![manifest, source, workspace.join("src")],
         })
     }
+
+    // The fixture's independently declared scope is deliberately a single
+    // ordinary library. It is not inferred from the saved project and does
+    // not qualify Cargo metadata or the complete compiler-input domain.
+    fn request(&self, run_id: &str) -> ResolvedRequest {
+        let targets = [("demo".into(), "demo".into(), "lib".into())]
+            .into_iter()
+            .collect();
+        super::super::request::Resolution {
+            run_id,
+            invocation: &self.config.workspace,
+            workspace: &self.config.workspace,
+            context: "context",
+            revision: "actual-file-revision",
+            args: &self.config.args,
+            engine: None,
+            targets: &targets,
+        }
+        .resolve()
+    }
+
+    fn replay(&self, key: &str) -> Option<Replay> {
+        let workspace_lock = self.context.parent()?.join("workspace.lock");
+        let location = ReplayLocation {
+            cache: &self.config.cache,
+            context: &self.context,
+            workspace_lock: &workspace_lock,
+            family: &self.family,
+        };
+        let _workspace = lock(location.workspace_lock, true)?;
+        let _family = lock(&self.family.join("ownership.lock"), false)?;
+        let current = self.request("independent-current-view");
+        super::super::read_check::with_guarded_readback(
+            &self.config.cache,
+            &self.config.workspace,
+            "context",
+            |snapshot, readback| {
+                if !snapshot.complete {
+                    return None;
+                }
+                replay_bound(
+                    &location,
+                    key,
+                    std::time::Instant::now(),
+                    &current,
+                    readback,
+                )
+            },
+        )
+        .ok()?
+    }
+}
+
+fn record_readback(
+    cache: &Path,
+    context: &Path,
+    manifest: &Path,
+    source: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    super::super::read_check::record(
+        context,
+        "actual-file-revision",
+        vec![
+            (manifest.to_owned(), Some(files::file_digest(manifest)?)),
+            (source.to_owned(), Some(files::file_digest(source)?)),
+        ],
+        BTreeMap::new(),
+    )?;
+    let rows = vec![(
+        "/bin/sh".to_owned(),
+        files::stat_identity(Path::new("/bin/sh"))?,
+    )];
+    let sha = files::digest(&serde_json::to_vec(&rows)?);
+    files::json(
+        &cache.join("runtime-identities").join(format!("{sha}.json")),
+        &rows,
+    )?;
+    files::json(&cache.join("runtime-identities/context.link"), &sha)?;
+    Ok(())
 }
 
 fn original_receipt(
@@ -207,14 +290,16 @@ fn prepare_record(fixture: &Fixture, key: &str) -> Result<(), Box<dyn std::error
     assert_eq!(observation.len(), fixture.observed.len());
     assert_eq!(observation.len(), 3);
     let identity = vec![PathBuf::from("/bin/sh")];
+    let original_request = fixture.request("warm-noop-record");
     let pending = prepare(Facts {
         key,
         cache: &fixture.config.cache,
         start: SystemTime::now(),
         workspace_lock: fixture
-            .config
-            .cache
-            .join("projects/workspace/workspace.lock"),
+            .context
+            .parent()
+            .ok_or("project root")?
+            .join("workspace.lock"),
         family: &fixture.family,
         context: &fixture.context,
         target: &fixture.family.join("target"),
@@ -222,6 +307,7 @@ fn prepare_record(fixture: &Fixture, key: &str) -> Result<(), Box<dyn std::error
         identity: &identity,
         siblings: Vec::new(),
         result: &fixture.project,
+        original_request: &original_request,
     })
     .ok_or("actual replay preparation")?;
     pending.commit(b"original stdout".to_vec(), Vec::new());
@@ -234,8 +320,7 @@ fn replay_refuses_a_receipt_whose_original_selected_history_is_unavailable()
     let fixture = Fixture::new("unavailable")?;
     let key = key(&fixture.config, false).ok_or("ordinary replay key")?;
     prepare_record(&fixture, &key)?;
-    let first =
-        replay(&fixture.config, &key, std::time::Instant::now()).ok_or("original intact replay")?;
+    let first = fixture.replay(&key).ok_or("original intact replay")?;
     assert!(first.result.targets[0].complete);
     assert!(fixture.receipt.valid("context"));
     std::fs::remove_dir_all(&fixture.producer)?;
@@ -244,7 +329,7 @@ fn replay_refuses_a_receipt_whose_original_selected_history_is_unavailable()
     // This is a proof-provenance admission control, not a mathematical proof
     // generated by /bin/sh or a complete compiler observation provider.
     assert!(
-        replay(&fixture.config, &key, std::time::Instant::now()).is_none(),
+        fixture.replay(&key).is_none(),
         "a cached Current result cannot replace missing original selected history"
     );
     Ok(())
@@ -277,15 +362,9 @@ fn replay_refuses_changed_history_or_mismatched_cached_producer_metadata()
             _ => record.version = VERSION - 1,
         }
         files::json(&path, &record)?;
-        assert!(
-            replay(&fixture.config, &key, std::time::Instant::now()).is_none(),
-            "{variant}"
-        );
+        assert!(fixture.replay(&key).is_none(), "{variant}");
         std::fs::write(&path, &original)?;
-        assert!(
-            replay(&fixture.config, &key, std::time::Instant::now()).is_some(),
-            "positive after {variant}"
-        );
+        assert!(fixture.replay(&key).is_some(), "positive after {variant}");
     }
     let selected = fixture
         .receipt
@@ -296,10 +375,9 @@ fn replay_refuses_changed_history_or_mismatched_cached_producer_metadata()
     let bytes = std::fs::read(&stdout)?;
     std::fs::write(&stdout, b"changed original output")?;
     assert!(!fixture.receipt.producer_history_intact());
-    assert!(replay(&fixture.config, &key, std::time::Instant::now()).is_none());
+    assert!(fixture.replay(&key).is_none());
     std::fs::write(stdout, bytes)?;
-    let restored =
-        replay(&fixture.config, &key, std::time::Instant::now()).ok_or("restored original")?;
+    let restored = fixture.replay(&key).ok_or("restored original")?;
     assert_eq!(restored.stdout, b"original stdout");
     assert_eq!(restored.result.targets, fixture.project.targets);
     assert_eq!(restored.result.targets[0].establishing_run, "original");
