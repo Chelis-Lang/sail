@@ -54,9 +54,11 @@ Canonical capture now includes the replay/readback, exact-partial report and
 owned-command environment operations, with private construction checks and
 exact forwarding-body inventories. All three source assemblies and all 210
 mutation anchors are textually checked; this is not verifier evidence. The
-matrix requires 213 cases, including the three whole positive roots. The older
-expected proof/function inventories must be refreshed from successful whole
-development runs before canonical qualification. No guard, earlier control,
+matrix requires 213 cases, including the three whole positive roots. Native
+`619d3c0f` whole development runs pass query 323/0 (585 functions), inputs 264/0
+(438) and authority 430/0 (736), retaining every prior function. The manifest
+records those discovered inventories; all ordinary controls remain pending.
+No guard, earlier control,
 resource limit or verification scope is removed. The declaration-fact loop
 control now targets its complete original function because new environment
 loops share the former short anchor.
@@ -69,6 +71,17 @@ model/refinement logs and failed solver receipt, is preserved at
 SHA-256: `06e24d907bdaabfe6cd4fb68727801ea2ab546802474c53fde252fc1d599f0db`.
 The uploaded archive was independently downloaded and hashed. This is a stopped
 gate receipt, not an e2e or conformance pass.
+
+The `619d3c0f` native development/source-capture and stopped workspace attempt
+is preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-next-619d3c0f-native-development.tgz`.
+SHA-256: `2ceaa3d24cf0e0e57485cc482ed5d2e02adaff514bcdd0cedbfc7d8d69ff2b77`.
+Independent GET/hash verification passes. The workspace gate stops at two broken
+links: the compiler observation proposal references corpus fixtures retained on
+the input branch but omitted from this integration. The correction imports
+those original fixtures unchanged. It does not rerun them or claim a Sail
+false-Current witness. Later workspace, solver, e2e and conformance checks remain
+pending for this checkpoint.
 
 | Slice | Source checkpoints | Established component boundary |
 |---|---|---|
@@ -115,6 +128,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `619d3c0f` | Native development and workspace | All three whole positive production roots pass with every prior function retained; 210 negative controls unrun. Workspace stops at two proposal links whose existing corpus fixtures were omitted from integration. The correction retains their original source and scope; full final qualification remains pending |
 | 2026-10-26 | `4bd22455` | Native combined correctness gate | Workspace, all 31 model cases and all 155 production cases pass. Solver passes 53/54; the actual compiler-phase witness is selected without its required frozen input fixture (#425). E2e and PR conformance are unrun. The correction retains strict witness failures and gives it an explicit local `boundary-witness phases` entrypoint; final rerun pending |
 | 2026-10-26 | Expanded query capture based on `82ec798e` | Whole canonical development probe | Original `header_fields` proof reaches the unchanged solver resource limit. Explicit mode case splitting proves the same contract: 288/0 and all 503 function entries, preserving all 462 earlier entries. Full committed mutation qualification remains pending |
 | 2026-10-26 | Legacy updater from `c6270f75` | Missing-journal witness | Returns covered=true for missing observation journal; fixed regression passes in provider slice. Accounting defect #377, no complete false-proof exploit established |
