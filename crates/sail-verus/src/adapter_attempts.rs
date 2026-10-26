@@ -27,6 +27,7 @@ enum Payload<'a> {
 pub(crate) struct CapturedChild<'a> {
     status: ExitStatus,
     payload: Payload<'a>,
+    unavailable_reason: Option<String>,
 }
 
 impl CapturedChild<'_> {
@@ -51,6 +52,9 @@ impl CapturedChild<'_> {
             Payload::Unavailable { .. } => None,
         }
     }
+    pub(crate) fn unavailable_reason(&self) -> Option<&str> {
+        self.unavailable_reason.as_deref()
+    }
     #[cfg(test)]
     pub(crate) fn into_output(self) -> Output {
         let (stdout, stderr) = match self.payload {
@@ -73,7 +77,14 @@ impl CapturedChild<'_> {
                 stdout: output.stdout,
                 stderr: output.stderr,
             },
+            unavailable_reason: None,
         }
+    }
+
+    fn unavailable_because(output: Output, reason: Option<&str>) -> Self {
+        let mut captured = Self::unavailable(output);
+        captured.unavailable_reason = reason.map(str::to_owned);
+        captured
     }
 }
 
@@ -149,10 +160,13 @@ impl<'a> Journal<'a> {
         output: Output,
     ) -> CapturedChild<'a> {
         if self.unavailable.is_some() {
-            return CapturedChild::unavailable(output);
+            return CapturedChild::unavailable_because(output, self.unavailable.as_deref());
         }
         let Some(running) = running else {
-            return CapturedChild::unavailable(output);
+            return CapturedChild::unavailable_because(
+                output,
+                Some("no started process observation"),
+            );
         };
         let status = output.status;
         let observed = running
@@ -165,25 +179,32 @@ impl<'a> Journal<'a> {
                 if let Err(failure) = self.persist_observed(&observed) {
                     self.unavailable = Some(failure.to_string());
                     let (stdout, stderr, _) = observed.into_output();
-                    CapturedChild::unavailable(Output {
-                        stdout,
-                        stderr,
-                        status,
-                    })
+                    CapturedChild::unavailable_because(
+                        Output {
+                            stdout,
+                            stderr,
+                            status,
+                        },
+                        self.unavailable.as_deref(),
+                    )
                 } else {
                     CapturedChild {
                         status,
                         payload: Payload::Observed(observed),
+                        unavailable_reason: None,
                     }
                 }
             }
             Err(output) => {
                 self.unavailable = Some("ambiguous compiler observations".into());
-                CapturedChild::unavailable(Output {
-                    stdout: output.stdout,
-                    stderr: output.stderr,
-                    status,
-                })
+                CapturedChild::unavailable_because(
+                    Output {
+                        stdout: output.stdout,
+                        stderr: output.stderr,
+                        status,
+                    },
+                    self.unavailable.as_deref(),
+                )
             }
         }
     }
@@ -230,9 +251,14 @@ impl<'a> Journal<'a> {
         std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(path)
+            .open(&path)
             .and_then(|mut file| file.write_all(&bytes).and_then(|()| file.sync_data()))
-            .map_err(|failure| error(format!("cannot reserve compiler attempt: {failure}")))?;
+            .map_err(|failure| {
+                error(format!(
+                    "cannot reserve compiler attempt {}: {failure}",
+                    path.display()
+                ))
+            })?;
         Ok(reserved)
     }
 
@@ -255,9 +281,14 @@ impl<'a> Journal<'a> {
         std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(path)
+            .open(&path)
             .and_then(|mut file| file.write_all(&bytes).and_then(|()| file.sync_data()))
-            .map_err(|failure| error(format!("cannot record compiler observation: {failure}")))
+            .map_err(|failure| {
+                error(format!(
+                    "cannot record compiler observation {}: {failure}",
+                    path.display()
+                ))
+            })
     }
 }
 
@@ -458,7 +489,7 @@ mod tests {
             },
             None,
             None,
-            CompletionOrigin::Live(captured.observation()),
+            CompletionOrigin::Live(captured.observation(), captured.unavailable_reason()),
         )?;
         let invocation: Invocation =
             serde_json::from_slice(&std::fs::read(invocations.join(format!("{key}.json")))?)?;
@@ -484,6 +515,18 @@ mod tests {
             assert_eq!(
                 invocation.report.error.as_ref().map(|e| e.code.as_str()),
                 Some("SAIL3111")
+            );
+            let reason = captured
+                .unavailable_reason()
+                .ok_or("lost journal failure reason")?;
+            assert!(
+                invocation
+                    .report
+                    .error
+                    .as_ref()
+                    .ok_or("missing refusal")?
+                    .message
+                    .contains(reason)
             );
         }
         check_projection(&runtime, invocation, available && !partial)?;

@@ -403,7 +403,8 @@ reducer also returns the original buffers when ambiguous events refuse its
 seal. Report input is checked against the same complete observed payload before
 live-origin admission. Without that observation, the retained report records
 `SAIL3111` as an infrastructure error while its original verifier diagnostics
-and per-function output remain intact. Whole and exact partial receipt reuse,
+and per-function output remain intact. The structured error retains the journal
+failure cause and path when available. Whole and exact partial receipt reuse,
 retained target/selection/request authority and experimental content publishing
 refuse that history. Fresh input Currentness remains independent.
 
