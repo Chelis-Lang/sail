@@ -100,10 +100,9 @@ python3 scripts/check-acceptance-refinements.py \
 ```
 
 The output is a new directory outside the checkout. `ci/local.sh refinements`
-uses the same runner in the core CI image. The separate
-**Acceptance production refinements** job feeds **CI completion**. Its
-native wrapper takes 197 seconds on the qualified Linux host; the hosted
-production-refinement and model-proof jobs also pass.
+uses the same runner in the core CI image. It is a local tier, not a CI job
+(AGENTS.md, Testing tiers); run it before merging changes to the refined
+production bodies. Its native wrapper takes 197 seconds on a Linux host.
 
 The runner captures canonical Git blobs with inherited Git redirection and
 replace refs disabled. Fixed drivers compile captured source, never reopened

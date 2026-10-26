@@ -1,13 +1,13 @@
 name: ci
 
 # Every push and PR to main or the release branch runs the six required checks.
-# CI completion also requires direct acceptance-model and production-refinement proofs. Jobs after the
-# authorship check run inside the CI image
+# Jobs after the authorship check run inside the CI image
 # (ci/Dockerfile, ADR 0013), through ci/run.sh, the same steps `ci/local.sh`
 # runs locally. CI serves rapid iteration: each job should finish in about
 # four minutes and must stay well under its 10-minute limit. Long, release
 # and acceptance-style runs (standard and deep conformance tiers, `release`,
-# benchmarks, the macOS `host` check) are local-only.
+# benchmarks, acceptance-model proofs, production refinements, the macOS
+# `host` check) are local-only.
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
   completion:
     name: CI completion
     if: ${{ always() }}
-    needs: [no-ai-authorship, image, workspace-gate, solver-tests, end-to-end, conformance, acceptance-proofs, acceptance-refinements]
+    needs: [no-ai-authorship, image, workspace-gate, solver-tests, end-to-end, conformance]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -46,61 +46,7 @@ jobs:
           SOLVER: ${{ needs.solver-tests.result }}
           E2E: ${{ needs.end-to-end.result }}
           CONFORMANCE: ${{ needs.conformance.result }}
-          PROOFS: ${{ needs.acceptance-proofs.result }}
-          REFINEMENTS: ${{ needs.acceptance-refinements.result }}
-        run: bash ci/check-completion.sh "$AUTHORSHIP" "$IMAGE" "$GATE" "$SOLVER" "$E2E" "$CONFORMANCE" "$PROOFS" "$REFINEMENTS"
-
-  acceptance-proofs:
-    name: Acceptance model proofs
-    needs: [no-ai-authorship, image]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      packages: read
-    container:
-      image: ${{ needs.image.outputs.image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - run: ci/run.sh proofs
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: ${{ failure() }}
-        with:
-          name: acceptance-model-proof-failure
-          path: target/acceptance-proofs/
-          if-no-files-found: warn
-          retention-days: 7
-
-  acceptance-refinements:
-    name: Acceptance production refinements
-    needs: [no-ai-authorship, image]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      packages: read
-    container:
-      image: ${{ needs.image.outputs.image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - run: ci/run.sh refinements
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: ${{ failure() }}
-        with:
-          name: acceptance-production-refinement-failure
-          path: target/acceptance-refinements/
-          if-no-files-found: warn
-          retention-days: 7
+        run: bash ci/check-completion.sh "$AUTHORSHIP" "$IMAGE" "$GATE" "$SOLVER" "$E2E" "$CONFORMANCE"
 
   no-ai-authorship:
     # Required check name; must match `cargo xtask protect-main`.
