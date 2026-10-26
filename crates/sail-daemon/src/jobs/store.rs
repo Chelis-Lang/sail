@@ -422,8 +422,10 @@ pub(super) fn withhold_unbound_authority(
     project: &mut sail_api::project::ProjectResult,
     request: Option<&sail_api::project::ResolvedRequest>,
 ) {
+    let corresponding =
+        request.is_some_and(|request| sail_api::acceptance::request_corresponds(request, project));
     if request.is_some_and(|request| {
-        sail_api::acceptance::request_corresponds(request, project)
+        corresponding
             && sail_api::acceptance::verification_enabled_command(&request.args)
             && !sail_api::acceptance::focused_command(&request.args)
             && (project.currentness != sail_api::project::Currentness::Current
@@ -434,6 +436,9 @@ pub(super) fn withhold_unbound_authority(
     }
     for target in &mut project.targets {
         target.complete = false;
+    }
+    if corresponding {
+        return;
     }
     if !project
         .notes
