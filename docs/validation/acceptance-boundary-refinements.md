@@ -68,6 +68,7 @@ with declared environment-read accounting.
 | 2026-10-26 | `7cbf806e` | macOS host and native Linux workspace | The source-checker self-test omits the newly protected authority module from its fixture snapshot; adding it and all four constructor-refusal mutations passes the focused test. Native workspace stops there, with later gates unrun. macOS strict clippy passes and host tests pass 1,122/1,124; both failures read the host's existing global rustc-wrapper configuration. Qualification reruns with a separate Cargo configuration directory while preserving the original cache and test assertions |
 | 2026-10-26 | `0b646c48` | Native Linux full end-to-end | Workspace, all 29 model cases, all 71 production cases and solver tests pass. Managed acceptance fails its original one-invocation/reuse assertion after an edit: the fresh target is verified but has SAIL3111 and no completion authority. Actual syscall tracing confirms a second driver in the same run/unit reuses slot 0 and receives EEXIST; the earlier reservation and observation remain present. No assertion or coverage check is relaxed; remaining e2e/PR conformance are unrun |
 | 2026-10-26 | `bcd21d9d` | Native Linux complete managed phase | Exclusive journal allocation restores complete evidence for both reported targets, with no report error. The original cold-edit assertion still fails: three verifier invocations, zero reused targets, expected one invocation. The 111.73-second run is a failed targeted regression check, not a full pre-push gate; the remaining cause is under investigation |
+| 2026-10-26 | `e2dcee0d` | macOS complete expanded input/kernel integration | Query and all 28 input cases, all 31 models, 27 source-capture tests and the full host gate pass. The authority root refuses its original request-coverage mutation because it hits the normal solver resource limit. The complete attempt fails; no resource, scope, inventory or guard check is relaxed. A proof-only opacity/reveal correction passes both whole-root development probes; final canonical qualification remains pending |
 
 Legacy updater-body SHA-256:
 `94d497cbcd16f4f6f0b94b6d4166d07f3d26abf54b9b05abc9c78eb433a65ef4`.
@@ -123,6 +124,18 @@ matrix still requires qualification at the final source. The private native
 file host, OS/SHA operations and compiler-domain closure retain their named
 proof obligations; accepting an abstract trait declaration discharges none
 of them.
+
+Native instrumented diagnosis at `bcd21d9d` establishes that the remaining
+managed reuse failure is declaration-domain shrinkage, not another allocation
+refusal. The fresh scan is complete and contains three names; the independently
+admissible retained receipt contains fourteen. Every other recorded matcher
+predicate passes. Names and Boolean facts are retained without environment
+values. The exact diagnostic patches and failed attempts are preserved at
+`example-evidence-bucket/experiments/2026-10-26/acceptance-declaration-diagnostics-bcd21d9d.tgz`,
+SHA-256 `8d3790c28804b0fdec945644cf37093d7c7ef4e6e28e6ddffd9e9b8617279219`.
+Earlier appended rows are not attributed to the final diagnostic. This is
+diagnosis, not a passing gate; [#390](https://github.com/Chelis-Lang/sail/issues/390)
+owns the correction.
 
 The model runner now requires every inventoried guard control by name and
 order. Its failure tests remove each required control in turn; all 12 tests

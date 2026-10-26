@@ -393,6 +393,7 @@ sail_spec! {
         requires es.len() == 1, ts.len() == 1, ts[0].requested, target_match(&es[0], &ts[0]),
         ensures exact_requested_coverage(es, ts),
     {
+        reveal(exact_requested_coverage);
         assert(request_covered(&es[0], ts)) by {
             assert(exists |i: int| 0 <= i < ts.len() && target_match(&es[0], &ts[i]) && ts[i].requested
                 && forall |j: int| 0 <= j < ts.len() && target_match(&es[0], &ts[j]) ==> j == i);
@@ -465,6 +466,7 @@ sail_spec! {
             && forall |j: int| 0 <= j < es.len() && target_match(&es[j], t) ==> j == i
     }
 
+    #[verifier::opaque]
     pub open spec fn exact_requested_coverage(es: Seq<RequestedTarget>, ts: Seq<TargetResult>) -> bool {
         es.len() > 0
             && (forall |i: int| 0 <= i < es.len() ==> request_covered(&es[i], ts))
@@ -917,8 +919,9 @@ sail_verified! {
         }
         if !requested_coverage(&expected, &project.targets) { return false; }
         sail_proof! {
-            assert(resolved_expected(request, expected@));
             assert(exact_requested_coverage(expected@, project.targets@));
+            reveal(exact_requested_coverage);
+            assert(resolved_expected(request, expected@));
             assert(resolved_coverage(request, project));
         }
         true
@@ -1196,6 +1199,7 @@ sail_verified! {
         requires(true)
         ensures(out == exact_requested_coverage(expected@, targets@))
     {
+        sail_proof! { reveal(exact_requested_coverage); }
         if expected.is_empty() { return false; }
         let mut i = 0usize;
         sail_while! { (i < expected.len())
@@ -1203,6 +1207,7 @@ sail_verified! {
                 forall |j: int| 0 <= j < i ==> request_covered(&expected@[j], targets@))
             decreases(expected.len() - i)
             {
+                sail_proof! { reveal(exact_requested_coverage); }
                 if unique_observed(&expected[i], targets).is_none() { return false; }
                 i += 1;
             }
@@ -1215,6 +1220,7 @@ sail_verified! {
                 forall |k: int| 0 <= k < expected@.len() ==> request_covered(&expected@[k], targets@))
             decreases(targets.len() - j)
             {
+                sail_proof! { reveal(exact_requested_coverage); }
                 if targets[j].requested && unique_requested(&targets[j], expected).is_none() { return false; }
                 j += 1;
             }

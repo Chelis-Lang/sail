@@ -33,8 +33,21 @@ the existing mutation cohorts do not cover them. See the
 The unpublished boundary integration also fails native managed acceptance
 because repeated same-run compiler drivers collide on attempt slot zero
 ([#384](https://github.com/Chelis-Lang/sail/issues/384)). The verified fresh
-output is preserved while completion is withheld; the required reuse/invocation
-gate remains failed until allocation is corrected.
+output is preserved while completion is withheld. The allocation correction
+restores complete evidence in the targeted native rerun, but the required
+reuse/invocation gate still fails: a complete fresh declaration scan shrinks
+the original retained environment domain and rejects the dependency receipt
+([#390](https://github.com/Chelis-Lang/sail/issues/390)). Its correction must
+preserve every validated original declaration and current-value check; the
+ghost-only missing-input defect remains separate.
+
+Sequential retained file reads can assemble an old revision that never existed
+as one state during the check
+([#387](https://github.com/Chelis-Lang/sail/issues/387)). The candidate adds
+domain-wide metadata guards and a checked readback factory. It still requires
+native integration qualification and retains the documented timestamp, ABA and
+physical observation limits; metadata equality does not prove an atomic
+filesystem snapshot.
 
 ## Functional release qualification
 
