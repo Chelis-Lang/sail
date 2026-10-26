@@ -43,6 +43,25 @@ class SourceCaptureTests(unittest.TestCase):
         self.assertIn("diagnostics", report["fields"])
         self.assertNotIn(b"pub diagnostics:", files["output.rs"])
         self.assertIn("source_sha256", inventory["output"])
+        self.assertIn(b"pub run_id: String,", files["project.rs"])
+        self.assertIn(b"pub args: Vec < String >,", files["project.rs"])
+        self.assertIn(b"pub targets: Vec < RequestTarget >,", files["project.rs"])
+        self.assertIn(b"pub engine: Option < EngineIdentity >,", files["project.rs"])
+
+    def test_request_identity_fields_cannot_disappear_from_stencil(self):
+        snapshots = self.snapshots()
+        _, expected = SOURCE.api_stencils(snapshots)
+        path = "crates/sail-api/src/project.rs"
+        for before, after in (
+            (b"pub run_id: String,", b"pub run_id: Option<String>,"),
+            (b"pub targets: Vec<RequestTarget>,", b"pub targets: Vec<TargetResult>,"),
+            (b"pub engine: Option<EngineIdentity>,", b"pub engine: Option<String>,"),
+        ):
+            candidate = dict(snapshots)
+            self.assertIn(before, candidate[path])
+            candidate[path] = candidate[path].replace(before, after, 1)
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.api_stencils(candidate, expected)
 
     def test_nested_or_literal_declaration_cannot_replace_top_level_type(self):
         for source in (
@@ -125,6 +144,7 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/lib.rs", b"pub mod authority;", b'#[path="hidden.rs"] pub mod authority;'),
             ("crates/sail-api/src/acceptance.rs", b"report: &'a Report,", b"pub report: &'a Report,"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct CompleteReport", b"#[derive(Default)] pub struct CompleteReport"),
+            ("crates/sail-api/src/acceptance.rs", b"request: &'a ResolvedRequest,", b"pub request: &'a ResolvedRequest,"),
         ):
             candidate = dict(snapshots)
             self.assertIn(before, candidate[path])
@@ -152,6 +172,8 @@ class SourceCaptureTests(unittest.TestCase):
         source = (ROOT / "crates/sail-api/src/acceptance_sort.rs").read_text()
         SOURCE.candidate_forwarders(source)
         for before, after in (
+            ("complete_request_ordered(request, project, &orders)", "complete_request_ordered(other_request(), project, &orders)"),
+            ("complete_request_ordered(request, project, &orders)", "complete_request_ordered(request, other_project(), &orders)"),
             ("complete_report_ordered(report, policy,", "complete_report_ordered(other_report(), policy,"),
             ("report: &Report, policy:", "report: &OtherReport, policy:"),
             ("use crate::output::Report;", "use hidden::Report;"),
