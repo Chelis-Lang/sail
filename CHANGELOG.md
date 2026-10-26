@@ -28,6 +28,12 @@ semantic versioning once the API is published.
 - Treat a missing, unreadable, malformed or unclosed artifact journal, or a
   lost source-input record after earlier runs, as incomplete compiler-input
   coverage (#377): that run verifies again and grants no current receipt.
+- Human `sail verify` stderr is now exactly plain `cargo verus verify`'s: the
+  `warning[SAIL0003]` (cache daemon unavailable), `note[SAIL3112]` (verified
+  without proof reuse) and `note[SAIL3138]` (shipped vstd proof unused) lines
+  are printed only with `SAIL_EXPLAIN=1`. `--output json` results carry them
+  in `notes` (now including `SAIL0003`); JSON runs, jobs, `watch` and MCP keep
+  them on stderr.
 
 - Add linked acceptance lifecycle models and a conditional composed proof,
   checked directly by stock Verus with complete captured dependencies and

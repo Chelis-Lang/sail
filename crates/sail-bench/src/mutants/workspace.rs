@@ -253,6 +253,8 @@ impl Workspace {
             .current_dir(&self.package)
             .env("SAIL_CACHE_DIR", cache)
             .env("SAIL_DAEMON_IDLE_TIMEOUT", "0")
+            // Keeps the bundle-miss notice, recorded by separate_sail_notes.
+            .env("SAIL_EXPLAIN", "1")
             .env("CARGO_TARGET_DIR", self.root.join("target-sail"))
             .envs(&self.env)
             .env("RUSTUP_TOOLCHAIN", toolchain);
