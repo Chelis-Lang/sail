@@ -33,7 +33,7 @@ check's existing note filtering. Start/finish timestamps and producer paths
 are observations; they do not reconstruct cross-stream write order or establish
 a unique command-to-run mapping.
 
-The collector retains at most 512 selected files, 8 MiB per file and 64 MiB
+The collector retains at most 1024 selected files, 8 MiB per file and 64 MiB
 in total, with a 60-second deadline. During the test, duplicate command
 snapshots have a separate shared 32 MiB ceiling and the same 8 MiB per-file ceiling.
 An incomplete command snapshot writes a bounded reason, relative source path,
