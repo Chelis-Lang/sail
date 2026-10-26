@@ -353,14 +353,6 @@ binds the latest cumulative source and preserves the same positive-kill limit.
   `sail-cli::watch` restart after its Cargo output write
   ([#403](https://github.com/Chelis-Lang/sail/issues/403)) is corrected; see
   the [watch qualification](validation/watch-and-store-races.md).
-- **Watch can miss an edit while macOS drops its events.** Under heavy load,
-  fseventsd can stop delivering a watcher's events for an input while unrelated
-  events still arrive, and send its "user dropped" notice minutes late or not
-  at all. Until that notice arrives, native-mode `sail watch` does not see the
-  edit; once it arrives, watch switches to content scans and picks up the
-  edit. The `sail-cli::watch` fixture then fails with `timed out waiting for
-  the restarted run`. This happens on main and with the #403 correction.
-  [#416](https://github.com/Chelis-Lang/sail/issues/416).
 - **Verifier wait under amd64 emulation.** Verification sometimes stalls under
   amd64 emulation, which is no longer used for performance or Linux
   validation (ADR 0038). [#68](https://github.com/Chelis-Lang/sail/issues/68),

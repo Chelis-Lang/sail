@@ -368,9 +368,22 @@ input always cancels, because moving a directory away and back keeps every
 identity the snapshot records. Unreadable state remains conservative; proof
 admission checks do not use this filter.
 
-When native notification coverage is incomplete, watch uses only its documented
-content scans; delayed native events do not queue the same edit again. Scans
-compare against the last scan or run snapshot. When a completed run widens the
+Native events are only the fast path. Under load, macOS can drop a watcher's
+events and send its drop notice late or not at all. So every two seconds, in
+every mode, watch compares a metadata stamp of its inputs (path list, file
+identity, size, and modification and change times; no file is read) with the
+last state it saw. Only when the stamp changes does it rehash the inputs and
+restart. On macOS and Linux an input edit therefore cancels the run in flight
+within about two seconds, plus one stamp pass, even if its notification never
+arrives. The same edit is never reported twice by a notification, the stamp
+check and a scan. On an Apple silicon Mac, one stamp pass over Vest's
+workspace (3,458 entries) costs about 19 ms of CPU, under 1% of one core at
+one pass every two seconds. A full rehash (about 120 ms) runs only when a
+stamp changes.
+
+When native notification coverage is incomplete, watch stops reading native
+events and adds content scans every five seconds; delayed native events do not
+queue the same edit again. Scans compare against the last state seen. When a completed run widens the
 watched inputs, watch first checks the previous inputs against that baseline,
 so an edit made before the next scan is never adopted as already verified. The
 snapshot includes empty input directories, while declared build-output

@@ -332,10 +332,13 @@ unchanged inputs do not trigger another verification. A notification restarts a
 run only if the inputs differ from the snapshot recorded when that run was
 submitted, so late or repeated notifications for an edit the run already
 includes do not cancel it. Unrelated sibling removals or renames delivered by
-ancestor subscriptions do not restart verification. Under heavy load macOS can
-drop a watcher's events and report the drop late; until it does, an edit can
-go unseen ([known issue](known-issues.md)). A settled native watcher does not poll completed
-jobs or rehash the verifier runtime.
+ancestor subscriptions do not restart verification. Native events are the fast
+path, not the guarantee: every two seconds watch also compares a metadata stamp
+of its inputs (no file contents are read) with the last state it saw. On macOS
+and Linux an input edit restarts verification within about two seconds even
+when its notification is dropped, as macOS can do under heavy load. See
+[freshness](freshness.md#watch-startup). A settled watcher does not poll
+completed jobs or rehash the verifier runtime.
 Its JSON-lines stream carries job lifecycle and target completion/reuse events.
 It verifies the requested Cargo scope; it does not guess semantic function
 independence. A completed run without proof reuse

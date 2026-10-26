@@ -1,8 +1,8 @@
 # Watch startup and publication staging
 
-## Late notifications and run snapshots (#403, 2026-10-26)
+## Late notifications, dropped notifications and the backstop (#403, #416, 2026-10-26)
 
-**Defect.** After the first real edit, every relevant native notification
+**Defect 1 (#403).** After the first real edit, every relevant native notification
 cancelled the run in flight. FSEvents under load delivers an edit's
 notifications late and repeats cumulative flags. A notification for the
 `src/target/mod.rs` edit arriving after the 300 ms debounce had submitted
@@ -21,29 +21,41 @@ and they first check the old coverage against the baseline. Writes to Cargo's
 output directory never restarted watch in any instrumented run, and they
 remain excluded.
 
+**Defect 2 (#416).** Under load, fseventsd can stop delivering a watcher's
+events for an input while unrelated events still arrive, and send its "user
+dropped" notice minutes late or never. Event tracing showed the watch loop
+alive and the edit unseen for 120 s, on main and with the correction above.
+Watch reacted correctly only once the notice arrived.
+
+**Correction.** Every two seconds, in every mode, a backstop compares a
+metadata stamp of the inputs (path list, identity, size, and modification and
+change times; no file is read) with the last state seen. It rehashes and
+restarts only when the stamp changes. Native events, polls and scans share
+that last-seen state, so one edit is never reported twice. The stamp walks
+the inputs with one `lstat` per entry, and a test pins its coverage to the
+content capture's. On Vest's workspace (3,458 entries) one pass costs about
+19 ms of CPU, about 18 ms wall; this was measured at load average 60–110, so
+it is an upper bound. A full rehash costs about 120 ms and runs only on a
+stamp change.
+
 **Evidence** (Apple silicon, 8 cores, Darwin 25.5, base `b5420f24`):
 
-- The red/green witness: on the base, the delayed-duplicate and
-  refresh-swallow regressions fail. On the correction, they and new
-  deterministic tests for Cargo output writes and degradation to scans
-  mid-run pass. That makes 12 `watch` unit tests and 102 `sail-cli` tests.
-  Clippy reports no warnings.
-- The original integration test ran 330 times on the correction under load
-  (a `cargo build --workspace` loop, 2–4 concurrent instances, other
-  sessions' suites, load average 30–120), with 120 of those runs using
-  temporary event tracing. None failed the "Cargo output must not trigger a
-  watch loop" assertion. 41 failed with `timed out waiting for the restarted
-  run` before any restart. That is #416: tracing shows fseventsd delivering
-  no events for the edited input, with its drop notice up to 120 s late or
-  missing. The base shows the same stall: 1 of 30 in an interleaved A/B
-  round, with fixed at 30 of 30, and in earlier traced base runs.
+- On the base, the delayed-duplicate and refresh-swallow regressions fail.
+  With the corrections, they pass, along with deterministic tests for Cargo
+  output writes, degradation to scans mid-run, a silently dropped edit
+  notification caught by the backstop within one interval, and stamp
+  coverage. That is 14 watch unit tests and 104 `sail-cli` tests, and Clippy
+  reports no warnings.
+- Under load (a `cargo build --workspace` loop, 2–4 concurrent instances,
+  other sessions' suites, load average 30–120), the original integration test
+  never failed the "Cargo output must not trigger a watch loop" assertion.
+  Before the backstop, 41 of 330 runs stalled on dropped events (#416); the
+  base stalled under the same conditions. With the backstop, 80 of 80 runs
+  pass under the setup that previously stalled 24 of 120.
 - #403's extra restart did not reproduce on the base in 150 runs (it was
-  about 1 in 100 at its report), so the stress runs show no regression rather
-  than a measured rate reduction. The deterministic tests are the evidence
-  for the defect.
-
-Logs, traces and scripts: `watch-403-mac.tgz`, SHA-256
-`40a9a48eefac5e24400181fd2c813fadbb3bdf6295f1c30814ddc8369c7c4f89`.
+  about 1 in 100 at its report). The deterministic tests are the evidence for
+  that defect.
+- Linux (inotify) uses the same code, and CI covers it.
 
 ## Current startup correction (2026-10-25)
 
