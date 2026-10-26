@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `86c1c5cf` | Native whole positive discovery passes all three roots: query 353/0 (637 function entries), inputs 308/0 (538), authority 498/0 (878); every previous function retained, final frozen source/runtime identity checked | Development discovery only; the complete 115 input controls and native workspace remain pending. No coherent complete matrix or service theorem claimed |
 | `0dbb7adc` | Native whole-positive discovery passes query 353/0 (637 function entries), then input compilation refuses two `usize` arguments to the pipe primitive's `nat` capacity specification | Authority and final source/runtime checks unrun; no input inventory frozen. Explicit specification-only casts preserve the exact one-read contracts and all existing controls; all three roots require a new frozen rerun |
 | `4bd22455` | All 31 model and 155 production cases pass coherently on macOS and native Linux; native workspace passes | Solver passes 53/54 and stops at the actual compiler-phase witness's missing frozen fixture (#425); later e2e/PR conformance unrun |
 | `73f928d1` | Native workspace (605.71 s), all 31 model and 213 production cases pass, complete_suite=true; all 53 solver tests pass (22.49 s gate duration) | Full e2e stops at the cold JSON replay trace assertion; PR conformance unrun. The newer source restores the missing cold-miss trace; later code does not inherit the passing earlier stages |
@@ -28,20 +29,22 @@ subsequent runs; the interrupted attempt supplies no qualification evidence.
 
 The newer local source composes exact-partial request transfer, live retained
 frame admission, paired baseline publication, native raw-path correspondence,
-owned compiler configuration/start/completion, exact solver stdout coverage and
+owned compiler configuration/start/completion, actual endpoint read-prefix/EOF
+tokens, exact solver stdout coverage and
 declared replay admission/presentation. Its declared replay token consumes the
 original whole/partial binders and current path/readback witnesses; it does not
 construct full physical-input or solver-origin authority. Closed capture binds
 native adapter sources explicitly without claiming those bodies are proved.
 
 The proposed complete matrix retains every inherited control and requires
-283 cases: three whole positive roots and 280 ordinary failing controls.
-Three whole source assemblies and every mutation anchor pass textual closure;
-this is not compilation or verification. The manifest records actual discovered inventories: query 353/637, inputs
-283/469 and authority 489/830 (verified/function entries). Query/input dependency
-bytes match their complete successful `11f3be8c` assemblies; authority qualifies
-its whole root at `00a501c7` with final source/runtime checks. This does not
-replace the required coherent canonical run or any ordinary failure control. Four inherited short mutation anchors
+303 cases: three whole positive roots and 300 ordinary failing controls.
+The manifest freezes the complete successful `86c1c5cf` discovery inventories:
+query 353/637, inputs 308/538 and authority 498/878 (verified/function entries).
+All earlier function entries and all existing controls are retained; input
+qualification includes 115 ordinary controls. The discovery report SHA-256 is
+`f2b810aa4402b54a960a7c6501f4715ac19e9721f48117fb87d43e002b768aa5`.
+This does not replace the required coherent canonical run or any ordinary
+failure control. Four inherited short mutation anchors
 now use their unchanged original function envelopes because new functions share
 the former short needles; guard changes and contracts remain intact. Both full
 whole/partial binder always-refuse controls remain required.
