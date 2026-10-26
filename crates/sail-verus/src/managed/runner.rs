@@ -451,6 +451,7 @@ impl ReplayPreflight {
         &self,
         consume: impl FnOnce(
             &sail_api::project::ResolvedRequest,
+            &sail_api::acceptance::RequestPathBinding<'_>,
             &sail_acceptance::inputs::GuardedReadback<'_>,
         ) -> T,
     ) -> Result<Option<T>> {
@@ -477,7 +478,7 @@ impl ReplayPreflight {
                 let Some(paths) = native_paths.bind(&current) else {
                     return None;
                 };
-                Some(consume(paths.request(), readback))
+                Some(consume(paths.request(), &paths, readback))
             },
         )
     }

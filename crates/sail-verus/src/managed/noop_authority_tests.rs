@@ -151,6 +151,13 @@ impl Fixture {
         let _workspace = lock(location.workspace_lock, true)?;
         let _family = lock(&self.family.join("ownership.lock"), false)?;
         let current = self.request("independent-current-view");
+        // The fixture supplies its actual native workspace bytes separately;
+        // it does not derive these observations from the saved result/record.
+        let paths = sail_api::acceptance::bind_request_paths(
+            &current,
+            self.config.workspace.as_os_str().as_encoded_bytes(),
+            self.config.workspace.as_os_str().as_encoded_bytes(),
+        )?;
         super::super::read_check::with_guarded_readback(
             &self.config.cache,
             &self.config.workspace,
@@ -164,6 +171,7 @@ impl Fixture {
                     key,
                     std::time::Instant::now(),
                     &current,
+                    &paths,
                     readback,
                 )
             },

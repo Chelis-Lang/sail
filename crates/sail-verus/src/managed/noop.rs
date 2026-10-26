@@ -535,8 +535,8 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     let _workspace = lock(location.workspace_lock, true)?;
     let _family = lock(&location.family.join("ownership.lock"), false)?;
     preflight
-        .with_current_request(|current, readback| {
-            replay_bound(&location, key, started, current, readback)
+        .with_current_request(|current, paths, readback| {
+            replay_bound(&location, key, started, current, paths, readback)
         })
         .ok()??
 }
@@ -553,6 +553,7 @@ fn replay_bound(
     key: &str,
     started: std::time::Instant,
     current: &ResolvedRequest,
+    paths: &sail_api::acceptance::RequestPathBinding<'_>,
     readback: &sail_acceptance::inputs::GuardedReadback<'_>,
 ) -> Option<Replay> {
     let Ok(bytes) = std::fs::read(record_path(location.cache, key)) else {
@@ -579,27 +580,20 @@ fn replay_bound(
         trace("miss: original proof producers unavailable or mismatched");
         return None;
     }
-    let mut result = record.result;
-    // Select from the independent current request, not a stored completion bit.
-    let transferred = if sail_api::acceptance::focused_command(&current.args) {
-        sail_api::acceptance::bind_replayed_exact_partial_project(
-            &mut result,
-            &record.original_request,
-            current,
-            readback,
-        )
-    } else {
-        sail_api::acceptance::bind_replayed_project(
-            &mut result,
-            &record.original_request,
-            current,
-            readback,
-        )
-    };
-    if !transferred {
+    // Consume the independently scoped current-path/readback witnesses through
+    // the shared conjunction after the unchanged ordinary origin/history gate.
+    // The admitted token is declared-domain evidence, not full service authority.
+    let Some(admitted) = sail_api::acceptance::admit_declared_replay(
+        record.result,
+        &record.original_request,
+        current,
+        Some(paths),
+        Some(readback),
+    ) else {
         trace("miss: independent request or guarded original revision differs");
         return None;
-    }
+    };
+    let mut result = sail_api::acceptance::present_declared_replay(admitted);
     result.execution.wall_ms = started.elapsed().as_secs_f64() * 1000.0;
     // Keep the project's last-use time, as a full run's result does.
     let directory = location.context.join("runs").join(&current.run_id);
