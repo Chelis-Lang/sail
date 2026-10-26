@@ -12,6 +12,7 @@ pub mod authority;
 pub mod inputs;
 /// Exact incremental key framing through source-bound hash primitives.
 pub mod key_prefix;
+pub mod phase_inputs;
 pub mod query;
 /// Default response policy from exact accepted command head bytes.
 pub mod query_policy;
