@@ -18,6 +18,8 @@ pub mod phase_inputs;
 pub mod query;
 /// Actual owned solver-input delivery and terminal key correspondence.
 pub mod query_delivery;
+/// Actual immutable held payloads and independently mutable effort metadata.
+pub mod query_holding;
 /// Exact stdout coverage and same-owner response intervals.
 pub mod query_output;
 /// Original opaque stream leases retained through frame copies and publication.

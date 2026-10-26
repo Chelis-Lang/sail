@@ -374,10 +374,45 @@ proofs/tests/mutations, native gates, default conformance and cost measurements
 are unrun/unqualified.
 
 This does not finish Entry-to-origin refinement. The original command/prefix/key
-checkpoint, complete accepted-command inventory and held-check release
-permutation still need their actual production joins. Neither frame membership
+checkpoint and complete accepted-command inventory still need their actual
+production joins. The held-operation bridge is described below. Neither frame membership
 nor the common lease provides the modeled prior-publication ledger, protected
 protocol writer, restart initialization or shared/bundled origin contract.
+
+### Actual deferred payload and annotation transitions (source candidate)
+
+`query_holding::Holding<Payload, Metadata>` replaces the real native held-check
+storage. Its private fields own the actual original `BoundPair<Expect,
+OwnedFrame>` separately from `HeldMetadata` (the original prior resource count
+and effort fields). It is not an additional history ledger beside a separate
+native held pair. `replace` returns the exact displaced original payload;
+`take` releases it once. `take_metadata` and `put_metadata` expose only the
+annotation, preserving the private payload. An orphan annotation cannot create
+a held value. Native reason/statistics parsing can therefore update effort
+without obtaining mutable access to its original key, command or frame owner.
+
+The actual statistics branch calls shared `release_before(current_pair)`.
+That checked operation emits the original held pair and its current annotation
+before the exact current statistics pair, then clears the held storage.
+Reason-unknown entries keep their existing immediate position. The existing
+`[1, 3, 2, 4]` publication-order assertion and all original effort/reason/end
+release/error assertions remain unchanged. New constructive source controls
+exercise actual correlated pairs, metadata detach/restore, replacement,
+one-time release and that precise permitted permutation.
+
+The native metadata update preserves the original `saturating_sub`, reason
+bytes/conversion, prior-count update and effort fields. An impossible failed
+metadata restoration stops recording; it does not change forwarding or process
+status. The old native `Entry::effort_mut` helper is replaced by the metadata-only
+interface; no existing checked queue, delivery, output, publication or model
+proof function is removed. The holding controller, native mapping and controls
+remain unrun/unqualified, with native gates/conformance/cost still required.
+
+The shared operations prove exact payload retention and the actual local
+release permutation. Complete native command-kind classification, the full
+accepted-command/frame inventory and its model transition trace remain separate
+joins. A correct holding operation cannot establish solver truth, reconstruct
+missing producer observations or authenticate a restart cache.
 
 The component uses `ModelContext`, `Mode` and `SolverId` from the captured
 [shared context](../../proofs/acceptance/context.rs). A current session retains
