@@ -255,7 +255,6 @@ dependency profiles, and lever 1.4 (its cold and cache cost, about 519 MB).
 | ADR 0048 status: research path → release default | Lead | 0.1.0 |
 | ADRs 0051, 0052 still proposed | Lead | Track 2 step 3, track 3 |
 | ADR 0046 managed by default: implemented, awaiting review | Lead | 0.1.0 |
-| M7 milestone acceptance | Lead review | History only |
 
 ## Measured and closed
 
@@ -288,7 +287,7 @@ cold runs" was never measured on real projects (lever 1.11).
 | M0–M4 foundation: workspace, survey, pass-through shim, corpus, conformance, baseline | Done 2026-10-08 | [bootstrap report](reports/2026-10-08-bootstrap.md) |
 | M5 initial product | Done 2026-10-09 | [report](reports/2026-10-09-initial-product.md) |
 | M6 live workspace verification, jobs/watch/MCP, HTTP team cache | Implemented and accepted locally | [report](reports/2026-10-10-live-workspace.md) |
-| M7 proof engine and repair workflow | Every gate has native evidence; speed accepted at 2.14× HumanEval, 1.82× Vest vs M6 (ADR 0038 amendment); milestone acceptance awaits lead review | [M7 validation](validation/m7.md) |
+| M7 proof engine and repair workflow | Every gate has native evidence; speed accepted at 2.14× HumanEval, 1.82× Vest vs M6 (ADR 0038 amendment); accepted by the lead 2026-10-26 | [M7 validation](validation/m7.md) |
 | Fork as default runtime (ADR 0043) | Selected | [record](validation/fork-default.md) |
 | M11 Verus core and performance | In progress; ordered backlog #168 | [milestone](https://github.com/Chelis-Lang/sail/issues/168), [managed cold start](managed-cold-start.md) |
 
