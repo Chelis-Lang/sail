@@ -72,9 +72,9 @@ selected/focused verification cannot pass.
 
 `ci/local.sh proofs` runs the same direct checks in the core CI image. The image
 retains the pinned archive so the proof step needs no network or private source
-credential. The separate **Acceptance model proofs** job is a prerequisite of
-required **CI completion**: skipped, cancelled, failed or missing proof results
-cannot pass the aggregate. The workspace gate also runs checker failure tests.
+credential. It is a local tier, not a CI job (AGENTS.md, Testing tiers); run it
+before merging changes to the proved models or the checker. The workspace gate
+runs the checker's failure tests in CI.
 Failed-run artifacts replace previous task-owned outputs rather than retaining
 an old success report. Native duration qualification belongs in the record.
 
