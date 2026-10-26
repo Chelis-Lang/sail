@@ -3,7 +3,7 @@
 //! The maps interpret owned Rust payloads as exact model bindings/bytes. The
 //! shim's parser, key derivation and process observations must establish that
 //! interpretation; this module does not replace those obligations with axioms.
-use crate::query_core::{BoundPair, CorrelatedQueue, PublicationBatch, PublicationGate, ReplayCursor};
+use crate::query_core::{BoundPair, CorrelatedQueue, PublicationBatch, PublicationGate, PrefixFeed, RawTranscript, ReplayCursor};
 use crate::query_association as model;
 use vstd::prelude::*;
 
@@ -397,6 +397,172 @@ pub fn held_release_permutation_is_nonempty() -> (published: Vec<BoundPair<u8, u
         Some(published) => published,
         None => Vec::new(),
     }
+}
+
+
+/// Exact received bytes and the already-fed contiguous prefix, never a digest.
+pub open spec fn transcript_refines(raw: &RawTranscript, received: Seq<u8>, fed: Seq<u8>) -> bool {
+    raw.view() == received && raw.fed_view() == fed.len()
+        && fed.len() <= received.len() && fed == received.take(fed.len() as int)
+}
+
+pub fn transcript_initially_refines() -> (raw: RawTranscript)
+    ensures transcript_refines(&raw, Seq::empty(), Seq::empty()), raw.active(),
+{
+    let raw = RawTranscript::empty();
+    proof { assert(raw.view().take(0) =~= Seq::<u8>::empty()); }
+    raw
+}
+
+/// Arbitrary input fragmentation extends only received bytes; it cannot drop,
+/// reorder or re-feed an already consumed prefix.
+pub fn transcript_append_refines(raw: &mut RawTranscript, bytes: &[u8],
+    Ghost(received): Ghost<Seq<u8>>, Ghost(fed): Ghost<Seq<u8>>)
+    requires transcript_refines(old(raw), received, fed),
+    ensures transcript_refines(final(raw), received + bytes@, fed),
+        final(raw).active() == old(raw).active(),
+{
+    raw.append(bytes);
+    proof { assert((received + bytes@).take(fed.len() as int) =~= received.take(fed.len() as int)); }
+}
+
+/// The returned model binding is constructed from the actual accepted bytes.
+/// Caller context metadata is retained exactly; matching it to the launched
+/// solver/header remains a separate process/encoder refinement obligation.
+pub fn command_bytes_refine_binding<'a>(raw: &'a mut RawTranscript,
+    offset: usize, command: &[u8], Ghost(received): Ghost<Seq<u8>>,
+    Ghost(fed): Ghost<Seq<u8>>, Ghost(context): Ghost<crate::context::ModelContext>)
+    -> (result: (Option<PrefixFeed<'a>>, Ghost<Option<model::Binding>>))
+    requires transcript_refines(old(raw), received, fed),
+    ensures result.0.is_some() == result.1@.is_some(),
+        result.0.is_some() == (old(raw).active() && command@.len() > 0
+            && old(raw).fed_view() <= offset
+            && offset as nat + command@.len() <= old(raw).view().len()
+            && old(raw).view().subrange(offset as int, offset as int + command@.len() as int) == command@
+            && crate::query_core::trivia_after(old(raw).view().subrange(old(raw).fed_view() as int, offset as int), false) == Some(false)),
+        result.0.is_some() ==> (
+            final(raw).active()
+            && model::binding_wf(result.1@.unwrap())
+            && result.1@.unwrap().solver == context.solver
+            && result.1@.unwrap().mode == context.mode
+            && result.1@.unwrap().endpoint == offset as nat + command@.len()
+            && result.1@.unwrap().prefix == received.take(result.1@.unwrap().endpoint as int)
+            && fed + result.0.unwrap().view() == result.1@.unwrap().prefix
+            && transcript_refines(final(raw), received, result.1@.unwrap().prefix)
+        ),
+        result.0.is_none() ==> (!final(raw).active()
+            && transcript_refines(final(raw), received, fed)),
+{
+    let feed = raw.command(offset, command);
+    let ghost binding = if feed.is_some() {
+        Some(model::Binding { solver: context.solver, mode: context.mode,
+            prefix: fed + feed.unwrap().view(), endpoint: feed.unwrap().to() })
+    } else { None };
+    proof {
+        if feed.is_some() {
+            let end = feed.unwrap().to();
+            assert(fed + feed.unwrap().view() =~= received.take(end as int));
+        }
+    }
+    (feed, Ghost(binding))
+}
+
+/// The final feed completes the exact same raw bytes used by solver replay.
+pub fn tail_bytes_complete_replay<'a>(raw: &'a mut RawTranscript,
+    Ghost(received): Ghost<Seq<u8>>, Ghost(fed): Ghost<Seq<u8>>)
+    -> (feed: Option<PrefixFeed<'a>>)
+    requires transcript_refines(old(raw), received, fed),
+    ensures feed.is_some() == (old(raw).active() && old(raw).fed_view() <= old(raw).view().len()),
+        feed.is_some() ==> fed + feed.unwrap().view() == received,
+        feed.is_some() ==> transcript_refines(final(raw), received, received),
+        feed.is_none() ==> !final(raw).active(),
+{
+    let feed = raw.tail();
+    proof {
+        if feed.is_some() {
+            assert(fed + feed.unwrap().view() =~= received);
+            assert(received.take(received.len() as int) =~= received);
+        }
+    }
+    feed
+}
+
+/// Nonempty comments, CR/LF, quoted parentheses and fragmented commands all
+/// reach the hash stream unchanged, in the exact order used for solver replay.
+pub fn fragmented_prefixes_preserve_all_bytes() -> (hashed: Vec<u8>)
+    ensures hashed@ == seq![b' ', b';', b'h', b'e', b'a', b'd', b'\r', b'\n', b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'a', b';', b'(', b')', b'"', b')', b'\t', b';', b'g', b'a', b'p', b'\n', b'(', b'c', b'h', b'e', b'c', b'k', b'-', b's', b'a', b't', b')', b'\n', b';', b't', b'a', b'i', b'l'],
+{
+    let mut raw = transcript_initially_refines();
+    let mut hashed = Vec::new();
+    let ghost context = model::example_context(1, 2);
+    let first = vec![b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'a', b';', b'(', b')', b'"', b')'];
+    let second = vec![b'(', b'c', b'h', b'e', b'c', b'k', b'-', b's', b'a', b't', b')'];
+    let chunk1 = vec![b' ', b';', b'h', b'e', b'a', b'd', b'\r'];
+    let chunk2 = vec![b'\n', b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'a', b';', b'(', b')', b'"', b')'];
+    let chunk3 = vec![b'\t', b';', b'g', b'a', b'p', b'\n', b'(', b'c', b'h', b'e', b'c', b'k', b'-'];
+    let chunk4 = vec![b's', b'a', b't', b')', b'\n', b';', b't', b'a', b'i', b'l'];
+    transcript_append_refines(&mut raw, &chunk1, Ghost(Seq::<u8>::empty()), Ghost(Seq::<u8>::empty()));
+    let ghost r1 = chunk1@;
+    transcript_append_refines(&mut raw, &chunk2, Ghost(r1), Ghost(Seq::<u8>::empty()));
+    let ghost r2 = r1 + chunk2@;
+    proof {
+        reveal_with_fuel(crate::query_core::trivia_after, 20);
+        assert(r2.subrange(8, 8 + first@.len() as int) =~= first@);
+    }
+    let (feed, Ghost(binding)) = command_bytes_refine_binding(&mut raw, 8, &first,
+        Ghost(r2), Ghost(Seq::<u8>::empty()), Ghost(context));
+    let feed = match feed { Some(feed) => feed, None => return Vec::new() };
+    hashed.extend_from_slice(feed.bytes());
+    let ghost fed1 = binding.unwrap().prefix;
+    proof { assert(fed1 =~= r2); assert(hashed@ == fed1); }
+    transcript_append_refines(&mut raw, &chunk3, Ghost(r2), Ghost(fed1));
+    let ghost r3 = r2 + chunk3@;
+    transcript_append_refines(&mut raw, &chunk4, Ghost(r3), Ghost(fed1));
+    let ghost r4 = r3 + chunk4@;
+    let offset = 8 + first.len() + 6;
+    proof {
+        reveal_with_fuel(crate::query_core::trivia_after, 20);
+        assert(r4.subrange(offset as int, offset as int + second@.len() as int) =~= second@);
+    }
+    let (feed, Ghost(binding)) = command_bytes_refine_binding(&mut raw, offset, &second,
+        Ghost(r4), Ghost(fed1), Ghost(context));
+    let feed = match feed { Some(feed) => feed, None => return Vec::new() };
+    hashed.extend_from_slice(feed.bytes());
+    let ghost fed2 = binding.unwrap().prefix;
+    proof { assert(hashed@ == fed2); }
+    let tail = tail_bytes_complete_replay(&mut raw, Ghost(r4), Ghost(fed2));
+    let tail = match tail { Some(tail) => tail, None => return Vec::new() };
+    hashed.extend_from_slice(tail.bytes());
+    proof { assert(hashed@ == r4); assert(r4 =~= seq![b' ', b';', b'h', b'e', b'a', b'd', b'\r', b'\n', b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'a', b';', b'(', b')', b'"', b')', b'\t', b';', b'g', b'a', b'p', b'\n', b'(', b'c', b'h', b'e', b'c', b'k', b'-', b's', b'a', b't', b')', b'\n', b';', b't', b'a', b'i', b'l']); }
+    hashed
+}
+
+/// A skipped nontrivia command, wrong item bytes or overlap cannot be relabeled
+/// as a clean prefix, and appending later input cannot restore validity.
+pub fn malformed_prefix_candidates_are_permanently_refused() {
+    let prefix = vec![b'(', b's', b'e', b't', b'-', b'o', b'p', b't', b'i', b'o', b'n', b' ', b':', b'p', b'r', b'i', b'n', b't', b'-', b's', b'u', b'c', b'c', b'e', b's', b's', b' ', b'f', b'a', b'l', b's', b'e', b')', b'\n'];
+    let command = vec![b'(', b'c', b'h', b'e', b'c', b'k', b'-', b's', b'a', b't', b')'];
+    let mut omitted = RawTranscript::empty();
+    omitted.append(&prefix);
+    omitted.append(&command);
+    let offset = prefix.len();
+    proof { reveal_with_fuel(crate::query_core::trivia_after, 2); }
+    let rejected = omitted.command(offset, &command);
+    proof { assert(rejected.is_none()); }
+    let newline = vec![b'\n'];
+    omitted.append(&newline);
+    let again = omitted.command(0, &prefix);
+    proof { assert(again.is_none()); assert(!omitted.active()); }
+    let mut changed = RawTranscript::empty();
+    changed.append(&command);
+    let wrong = vec![b'(', b'c', b'h', b'e', b'c', b'k', b'-', b'b', b'a', b'd', b')'];
+    let rejected = changed.command(0, &wrong);
+    proof { assert(rejected.is_none()); }
+    let mut overflow = RawTranscript::empty();
+    let byte = vec![b'x'];
+    overflow.append(&byte);
+    let rejected = overflow.command(usize::MAX, &byte);
+    proof { assert(rejected.is_none()); }
 }
 
 }

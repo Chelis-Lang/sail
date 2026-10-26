@@ -508,3 +508,254 @@ sail_code! {
         }
     }
 }
+
+sail_spec! {
+    /// Lexical state after a prefix containing only whitespace and line comments.
+    /// None means that a nontrivia byte was encountered outside a comment.
+    pub open spec fn trivia_after(bytes: Seq<u8>, comment: bool) -> Option<bool>
+        decreases bytes.len(),
+    {
+        if bytes.len() == 0 { Some(comment) }
+        else if comment {
+            trivia_after(bytes.drop_first(), bytes[0] != b'\n' && bytes[0] != b'\r')
+        } else if bytes[0] == b' ' || bytes[0] == b'\t' || bytes[0] == b'\n' || bytes[0] == b'\r' {
+            trivia_after(bytes.drop_first(), false)
+        } else if bytes[0] == b';' { trivia_after(bytes.drop_first(), true) }
+        else { None }
+    }
+}
+
+sail_verified! {
+    /// Checks actual inter-item bytes, including complete semicolon comments.
+    /// At EOF an unfinished line comment is permitted; a command cannot begin in one.
+    pub fn trivia(bytes: &[u8], allow_open_comment: bool) -> (accepted: bool)
+        requires (true)
+        ensures (accepted == (trivia_after(bytes@, false) == Some(false)
+            || allow_open_comment && trivia_after(bytes@, false) == Some(true)))
+    {
+        let mut i = 0;
+        let mut comment = false;
+        sail_proof! { assert(bytes@.subrange(0, bytes.len() as int) =~= bytes@); }
+        sail_while! { (i < bytes.len())
+            invariant (i <= bytes.len(),
+                trivia_after(bytes@, false) == trivia_after(bytes@.subrange(i as int, bytes.len() as int), comment))
+            decreases (bytes.len() - i)
+            {
+                sail_proof! {
+                    assert(bytes@.subrange(i as int, bytes.len() as int).drop_first()
+                        =~= bytes@.subrange(i as int + 1, bytes.len() as int));
+                    reveal_with_fuel(trivia_after, 1);
+                }
+                let byte = bytes[i];
+                if comment {
+                    comment = byte != b'\n' && byte != b'\r';
+                } else if byte == b';' {
+                    comment = true;
+                } else if byte != b' ' && byte != b'\t' && byte != b'\n' && byte != b'\r' {
+                    return false;
+                }
+                i += 1;
+            }
+        }
+        allow_open_comment || !comment
+    }
+}
+
+sail_code! {
+    /// Exact append-only solver input and the portion already fed to key derivation.
+    /// Parser output is a candidate interval, never authority over different bytes.
+    pub struct RawTranscript {
+        bytes: Vec<u8>,
+        fed: usize,
+        valid: bool,
+    }
+
+    /// Borrow of the actual next contiguous bytes supplied to prefix hashing.
+    pub struct PrefixFeed<'a> {
+        bytes: &'a [u8],
+        start: usize,
+        end: usize,
+    }
+}
+
+sail_code! {
+    impl<'a> PrefixFeed<'a> {
+        sail_impl_spec! {
+            /// Exact original raw bytes of this feed interval.
+            pub closed spec fn view(&self) -> Seq<u8> { self.bytes@ }
+            /// First raw-byte position in this feed.
+            pub closed spec fn from(&self) -> nat { self.start as nat }
+            /// Exclusive raw-byte endpoint of this feed.
+            pub closed spec fn to(&self) -> nat { self.end as nat }
+        }
+        sail_method! {
+            /// Borrows the unmodified feed bytes.
+            pub fn bytes(&self) -> (bytes: &'a [u8])
+                requires (true)
+                ensures (bytes@ == self.view())
+            { self.bytes }
+        }
+        sail_method! {
+            /// First raw-byte position in this feed.
+            pub fn start(&self) -> (start: usize)
+                requires (true)
+                ensures (start == self.from())
+            { self.start }
+        }
+        sail_method! {
+            /// Exclusive raw-byte endpoint in this feed.
+            pub fn end(&self) -> (end: usize)
+                requires (true)
+                ensures (end == self.to())
+            { self.end }
+        }
+    }
+}
+
+sail_code! {
+    impl RawTranscript {
+        sail_impl_spec! {
+            /// Complete received input bytes, including comments and separators.
+            pub closed spec fn view(&self) -> Seq<u8> { self.bytes@ }
+            /// Number of bytes already returned in contiguous prefix feeds.
+            pub closed spec fn fed_view(&self) -> nat { self.fed as nat }
+            /// Whether interval interpretation has never failed.
+            pub closed spec fn active(&self) -> bool { self.valid }
+        }
+        sail_method! {
+            /// Creates an empty valid transcript.
+            pub fn empty() -> (transcript: Self)
+                requires (true)
+                ensures (transcript.view() == Seq::<u8>::empty(), transcript.fed_view() == 0,
+                    transcript.active())
+            { Self { bytes: Vec::new(), fed: 0, valid: true } }
+        }
+        sail_method! {
+            /// Appends every received byte exactly once without moving the feed endpoint.
+            pub fn append(&mut self, bytes: &[u8]) -> (result: ())
+                requires (true)
+                ensures (final(self).view() == old(self).view() + bytes@,
+                    final(self).fed_view() == old(self).fed_view(),
+                    final(self).active() == old(self).active())
+            { self.bytes.extend_from_slice(bytes); }
+        }
+        sail_method! {
+            /// Borrows the complete original input for solver replay.
+            pub fn bytes(&self) -> (bytes: &[u8])
+                requires (true)
+                ensures (bytes@ == self.view())
+            { self.bytes.as_slice() }
+        }
+        sail_method! {
+            /// Number of raw bytes returned for prefix hashing.
+            pub fn fed(&self) -> (fed: usize)
+                requires (true)
+                ensures (fed == self.fed_view())
+            { self.fed }
+        }
+        sail_method! {
+            /// Whether every interpreted interval has passed its byte checks.
+            pub fn valid(&self) -> (valid: bool)
+                requires (true)
+                ensures (valid == self.active())
+            { self.valid }
+        }
+        sail_method! {
+            /// Permanently refuses further cache interpretation, preserving all raw bytes.
+            pub fn refuse(&mut self) -> (result: ())
+                requires (true)
+                ensures (!final(self).active(), final(self).view() == old(self).view(),
+                    final(self).fed_view() == old(self).fed_view())
+            { self.valid = false; }
+        }
+        sail_method! {
+            /// Whether the still-unfed suffix is only whitespace or line comments.
+            pub fn trailing_trivia(&self) -> (valid: bool)
+                requires (true)
+                ensures (valid == (self.fed_view() <= self.view().len()
+                    && (trivia_after(self.view().subrange(self.fed_view() as int, self.view().len() as int), false) == Some(false)
+                    || trivia_after(self.view().subrange(self.fed_view() as int, self.view().len() as int), false) == Some(true))))
+            {
+                if self.fed > self.bytes.len() { return false; }
+                trivia(&self.bytes[self.fed..], true)
+            }
+        }
+        sail_method! {
+            /// Validates one parser interval and returns every raw byte since the last feed.
+            /// A changed, overlapping, omitted or out-of-range item permanently refuses caching.
+            pub fn command<'a>(&'a mut self, offset: usize, command: &[u8]) -> (feed: Option<PrefixFeed<'a>>)
+                requires (true)
+                ensures (final(self).view() == old(self).view(),
+                    feed.is_some() == (old(self).active() && command@.len() > 0
+                        && old(self).fed_view() <= offset
+                        && offset as nat + command@.len() <= old(self).view().len()
+                        && old(self).view().subrange(offset as int, offset as int + command@.len() as int) == command@
+                        && trivia_after(old(self).view().subrange(old(self).fed_view() as int, offset as int), false) == Some(false)),
+                    feed.is_some() ==> (
+                        old(self).active() && final(self).active()
+                        && old(self).fed_view() <= offset
+                        && offset < final(self).fed_view() <= old(self).view().len()
+                        && final(self).fed_view() == offset as nat + command@.len()
+                        && old(self).view().subrange(offset as int, final(self).fed_view() as int) == command@
+                        && feed.unwrap().from() == old(self).fed_view()
+                        && feed.unwrap().to() == final(self).fed_view()
+                        && feed.unwrap().view() == old(self).view().subrange(
+                            old(self).fed_view() as int, final(self).fed_view() as int)
+                        && trivia_after(old(self).view().subrange(old(self).fed_view() as int, offset as int), false) == Some(false)
+                    ),
+                    feed.is_none() ==> (!final(self).active()
+                        && final(self).fed_view() == old(self).fed_view()))
+            {
+                if !self.valid || command.is_empty() || self.fed > offset {
+                    self.valid = false;
+                    return None;
+                }
+                let raw_length = self.bytes.len();
+                let Some(end) = offset.checked_add(command.len()) else {
+                    self.valid = false;
+                    return None;
+                };
+                if end > raw_length {
+                    self.valid = false;
+                    return None;
+                }
+                if !super::inputs::byte_eq(&self.bytes[offset..end], command)
+                    || !trivia(&self.bytes[self.fed..offset], false)
+                {
+                    self.valid = false;
+                    return None;
+                }
+                let start = self.fed;
+                self.fed = end;
+                Some(PrefixFeed { bytes: &self.bytes[start..end], start, end })
+            }
+        }
+        sail_method! {
+            /// Returns the entire remaining raw suffix without interpreting its syntax.
+            /// EOF/parser or explicit-exit completion is checked separately by the adapter.
+            pub fn tail<'a>(&'a mut self) -> (feed: Option<PrefixFeed<'a>>)
+                requires (true)
+                ensures (final(self).view() == old(self).view(),
+                    feed.is_some() == (old(self).active() && old(self).fed_view() <= old(self).view().len()),
+                    feed.is_some() ==> (old(self).active() && final(self).active()
+                        && old(self).fed_view() <= old(self).view().len()
+                        && final(self).fed_view() == old(self).view().len()
+                        && feed.unwrap().from() == old(self).fed_view()
+                        && feed.unwrap().to() == old(self).view().len()
+                        && feed.unwrap().view() == old(self).view().subrange(
+                            old(self).fed_view() as int, old(self).view().len() as int)),
+                    feed.is_none() ==> (!final(self).active()
+                        && final(self).fed_view() == old(self).fed_view()))
+            {
+                if !self.valid || self.fed > self.bytes.len() {
+                    self.valid = false;
+                    return None;
+                }
+                let start = self.fed;
+                let end = self.bytes.len();
+                self.fed = end;
+                Some(PrefixFeed { bytes: &self.bytes[start..end], start, end })
+            }
+        }
+    }
+}

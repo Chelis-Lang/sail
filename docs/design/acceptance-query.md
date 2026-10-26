@@ -1,7 +1,7 @@
 # Query association and local origin model
 
 **Status: checked local-origin model plus source-shared production queue,
-replay, publication and disk-envelope operations. The bounded simulations do
+replay, exact raw-prefix feeds, publication and disk-envelope operations. The bounded simulations do
 not establish a whole-service origin or I/O theorem.** This component of the
 [evidence-acceptance design](evidence-acceptance-core.md) is tracked by
 [#346](https://github.com/Chelis-Lang/sail/issues/346). The source-sharing
@@ -57,6 +57,7 @@ The production adapters now use these operations:
 
 | Production path | Checked executable operation | Established boundary |
 |---|---|---|
+| Shim input capture and `observe` | `RawTranscript` and borrowed `PrefixFeed` | The append body retains exact received bytes. A candidate must match its raw interval, follow the last endpoint, and leave only whitespace or terminated line comments in the gap. Each feed contains the entire contiguous raw prefix increment, including separators. |
 | Shim `cached::Pairer` | `CorrelatedQueue<Expect, Vec<u8>>` owns both queues; `take_pair` returns a private `BoundPair` | Both oldest actual payloads are removed together; a missing side or permanent stop changes neither queue. Every unmatched suffix is preserved exactly. |
 | Shim replay output | `ReplayCursor::advance` | Exactly the already-served prefix is suppressed. The countdown cannot overflow while forwarding an arbitrarily long fresh suffix. |
 | Shim `spawn_storer` | `PublicationBatch<Entry>` | Checked byte accounting bounds the actual pending payloads; release returns exactly their original values in order, or no values. |
@@ -98,6 +99,28 @@ from owned expectation/reply values to model bindings/bytes; establishing
 those maps for the shim's parsers, hasher and process observations remains a
 separate adapter obligation.
 
+`RawTranscript` also relates the actual received vector to each model binding.
+`transcript_append_refines` preserves the received/fed relation across arbitrary
+fragmentation. `command_bytes_refine_binding` constructs the model prefix from
+the actual borrowed feed, proves it equals the received bytes through the
+endpoint, and retains the supplied context's exact solver and mode.
+`tail_bytes_complete_replay` proves that concatenating all feeds and the final
+suffix gives the complete original input used by first-miss solver replay.
+No normalized or reserialized command enters this relation. The shim checks
+its hasher byte count against each checked endpoint; refusal disables cache
+interpretation and preserves the original bytes forwarded to the solver.
+
+This boundary checks proposed intervals; it does not recognize balanced
+SMT-LIB commands. An interval coalescing two commands can still have exact raw
+bytes. The splitter, command classification, response framing, concrete
+identity/mode encoding and process correspondence therefore remain separate
+obligations under [#371](https://github.com/Chelis-Lang/sail/issues/371).
+Trailing EOF input must be only whitespace or line comments, or caching is
+refused. A valid explicit exit retains its existing logical completion and
+exact ignored-suffix byte behavior. The tests compare actual prefix and silence
+keys against feeding the original unmodified input directly, for one-byte and
+larger chunking in default and opt-in modes.
+
 Publication now refuses an otherwise successful, quiet producer session if
 its input is incomplete, correlation stopped or expectations/replies remain
 unmatched. It also latches every solver-stdin write/flush failure and carries
@@ -132,7 +155,8 @@ Disk integrity is deliberately a smaller theorem than solver provenance.
 `RecoveryRecord` does not turn the header's `provenance` string into an origin.
 JSON extraction and digest computation must pass the actual decoded fields and
 hash of the actual owned reply. The production disk format does not persist
-this model's prior-publication ledger. Therefore the `Store::Recover`
+this model's prior-publication ledger. The residual protected-writer and
+persistence obligations are tracked by [#372](https://github.com/Chelis-Lang/sail/issues/372). Therefore the `Store::Recover`
 clean-origin premise still needs protected prior writer history; this source
 linkage does not prove arbitrary preexisting, shared or bundled entries true.
 
@@ -231,8 +255,12 @@ their contracts, simulations and every existing model proof in scope:
 | Release a batch regardless of its gate | Rejected batches can escape; exact release condition fails. |
 | Skip the permutation inverse check | A non-bijection can omit canonical entries; the checked certificate contract fails. |
 
-Each source mutation fails with 134 verified obligations and one ordinary
-verification error under the same 135-obligation positive scope. These are
+The raw-prefix extension adds three controls against the actual executable
+`RawTranscript::command` body: omit exact command-byte comparison, omit the
+inter-item trivia check, and start a feed at the proposed command offset
+instead of the previous endpoint. Their contracts, simulations and nonempty
+witnesses remain in scope; each fails with 154 verified obligations and one
+ordinary verification error under the same 155-obligation scope. These are
 checked statement changes, not injected `assert(false)` controls.
 
 A timeout or resource-limit failure does not qualify as a successful negative
@@ -267,9 +295,11 @@ RUSTUP_TOOLCHAIN=1.99.1 VERUS_Z3_PATH="$stock_runtime/z3" \
   --cfg sail_verus --no-cheating --output-json --num-threads 1
 ```
 
-The source-sharing closure passes 135 obligations: 59 existing model/context,
-25 query executable operations, 38 reused input-core obligations and 13 query
-simulation/witness obligations. Focused Rust clippy checks cover acceptance, shim, cache and daemon; their 159 nonignored
+The local source-sharing closure passes 155 obligations: 59 existing model/context,
+39 query executable operations, 38 reused input-core obligations and 19 query
+simulation/witness obligations. The new nonempty byte witness includes CR/LF,
+line comments, quoted parentheses and a command split across input chunks;
+refusal witnesses cover skipped nontrivia, changed bytes and offset overflow. Focused Rust clippy checks cover acceptance, shim, cache and daemon; their 159 nonignored
 Rust tests pass. The eight real pinned-Z3 `cached_session` tests pass, including the unmatched clean-exit
 regressions and supported warm-cache reuse. These local component checks do
 not replace native Linux gates or whole-corpus conformance.
@@ -305,7 +335,7 @@ following physical interfaces remain obligations, not established guarantees:
 | Current code | Refinement still required |
 |---|---|
 | `sail-key::PrefixHasher` | Every actual solver-input byte, endpoint, solver and mode enters the key. Logical byte equality must be related to concrete digests under an explicit cryptographic assumption, not hash injectivity. |
-| Shim splitters, `observe`, session classification | Actual output-producing commands and whole response frames appear exactly once in order. Byte accounting does not prove SMT-LIB parsing. |
+| Shim splitters, `observe`, session classification | Checked raw interval/gap/feed preservation does not establish delimiter recognition or command semantics. Actual output-producing commands and whole response frames appear exactly once in order. Byte accounting does not prove SMT-LIB parsing. |
 | Shim adapters around the checked correlator/replay core | Channels, exact frame offsets, expectation construction, held-check release, the complete pair-only permutation/projection and effort annotation preserve the proved payload interpretation. The owned queue removal and countdown bodies themselves are now checked. |
 | Process launch, stdout/stderr monitor, publication adapters | Supplied closure observations belong to the identified immutable process. The source-shared gate requires all supplied observations and the batch preserves its actual owned values; OS observations and atomic flag/channel handoff remain unproved. |
 | Daemon `HELLO`/`PUT`, write-behind and memory stamps | Every admitted local writer refines the observed-run publication path. A handshake alone does not prove its arbitrary `PUT` truthful. Actual write jobs use the checked FIFO, but locking, insertion/settlement and I/O correspondence remain obligations. |
@@ -313,7 +343,8 @@ following physical interfaces remain obligations, not established guarantees:
 | Shared/bundled admission | Excluded here; needs a reviewed writer-origin contract or independent certificate checking before inclusion. |
 
 The source-shared changes start from production base `53d30e87`, which
-includes main `237c7d8d`. The executable core and bounded simulations pass 135
+includes main `237c7d8d`; the raw-prefix extension starts from `c6270f75`.
+The executable core and bounded simulations pass 155
 whole-crate obligations with zero errors through the direct stock driver
 (including 59 existing query/context obligations); the existing model scope
 and controls remain intact. Full native qualification and integrated checker
