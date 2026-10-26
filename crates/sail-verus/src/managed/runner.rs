@@ -1707,7 +1707,9 @@ fn target_records_in(
     let siblings = sibling_receipts(paths, context);
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
-    let fresh_declared_names = super::environment::declared_names(&paths.target);
+    let fresh_declarations = super::environment::declaration_files(&paths.target);
+    let declaration_owners =
+        super::environment::declaration_owners(&paths.run.join("artifacts.jsonl"), data);
     let artifacts = artifacts(paths);
     let verified = |artifact: &Value| {
         let package = data["packages"]
@@ -1783,46 +1785,72 @@ fn target_records_in(
         current.join().ok()
     })
     .unwrap_or_default();
-    // Successful erasure can replace a failed verification's dep-info with a
-    // smaller declaration set. Retain names from independently admissible old
-    // proofs, then freshly sample the whole common domain before any result is
-    // published or compared. An incomplete fresh scan can never be repaired by
-    // an old receipt.
-    let declared = fresh_declared_names.map(|mut names| {
-        let scope = ReceiptDeclarationScope {
-            data,
-            expected,
-            revisions: &revisions,
-            partial_args,
-            digests: &digests,
-        };
-        for receipt in stored.values().flatten() {
-            preserve_receipt_declarations(&mut names, receipt, context, &scope, true);
-        }
-        for (sibling, directory) in &siblings {
-            for path in stored.keys() {
-                if let Some(name) = path.file_name()
-                    && let Some(receipt) = read::<Receipt>(&directory.join(name))
-                {
-                    preserve_receipt_declarations(&mut names, &receipt, sibling, &scope, false);
+    // Successful erasure can shrink dep-info. Preserve original names only
+    // within the SAME Cargo target, after independent receipt validation.
+    // Every current value is sampled afresh; a failed scan stays unavailable.
+    // Read sibling receipts once for this phase; target-specific filtering
+    // must not multiply disk reads by the number of observed targets.
+    let sibling_declarations: Vec<_> = siblings
+        .iter()
+        .flat_map(|(sibling, directory)| {
+            stored.keys().filter_map(move |path| {
+                let receipt = read::<Receipt>(&directory.join(path.file_name()?))?;
+                Some((sibling.as_str(), receipt))
+            })
+        })
+        .collect();
+    let declarations = fresh_declarations.map(|files| {
+        let mut declarations = BTreeMap::new();
+        for artifact in &artifacts {
+            if verified(artifact).is_none() {
+                continue;
+            }
+            let package_id = artifact["package_id"].as_str().unwrap_or_default();
+            let name = artifact["target"]["name"].as_str().unwrap_or_default();
+            let kind: Vec<String> = artifact["target"]["kind"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect();
+            let mut names = files.for_target(data, declaration_owners.as_ref(), package_id);
+            let scope = ReceiptDeclarationScope {
+                data,
+                expected,
+                revisions: &revisions,
+                partial_args,
+                digests: &digests,
+                package_id,
+                name,
+                kind: &kind,
+            };
+            for receipt in stored.values().flatten() {
+                preserve_receipt_declarations(&mut names, receipt, context, &scope, true);
+            }
+            for (sibling, receipt) in &sibling_declarations {
+                preserve_receipt_declarations(&mut names, receipt, sibling, &scope, false);
+            }
+            for seed in seeded {
+                let old_context = &seed.receipt.context;
+                if old_context == context {
+                    preserve_receipt_declarations(&mut names, &seed.receipt, context, &scope, true);
+                } else if siblings.iter().any(|(sibling, _)| sibling == old_context) {
+                    preserve_receipt_declarations(
+                        &mut names,
+                        &seed.receipt,
+                        old_context,
+                        &scope,
+                        false,
+                    );
                 }
             }
+            declarations.insert(
+                (package_id.to_owned(), name.to_owned(), kind),
+                super::environment::values(&names),
+            );
         }
-        for seed in seeded {
-            let old_context = &seed.receipt.context;
-            if old_context == context {
-                preserve_receipt_declarations(&mut names, &seed.receipt, context, &scope, true);
-            } else if siblings.iter().any(|(sibling, _)| sibling == old_context) {
-                preserve_receipt_declarations(
-                    &mut names,
-                    &seed.receipt,
-                    old_context,
-                    &scope,
-                    false,
-                );
-            }
-        }
-        super::environment::values(&names)
+        declarations
     });
     for artifact in artifacts {
         let Some(package) = verified(&artifact) else {
@@ -1837,6 +1865,12 @@ fn target_records_in(
             .map(str::to_owned)
             .collect();
         let package_id = artifact["package_id"].as_str().unwrap_or_default();
+        let declared = declarations
+            .as_ref()
+            .and_then(|declarations| {
+                declarations.get(&(package_id.to_owned(), name.to_owned(), kind.clone()))
+            })
+            .cloned();
         let requested = expected.iter().any(|(id, target, target_kind)| {
             id == package_id && target == name && kind.contains(target_kind)
         });
@@ -2085,7 +2119,7 @@ fn target_records_in(
             "multiple proof reports name one Cargo target",
         ));
     }
-    Ok((results, missing, declared.is_some()))
+    Ok((results, missing, declarations.is_some()))
 }
 
 /// Package ids reachable from `roots` through every resolved dependency kind.
@@ -2198,6 +2232,9 @@ struct ReceiptDeclarationScope<'a> {
     revisions: &'a HashMap<String, String>,
     partial_args: Option<&'a [String]>,
     digests: &'a PhaseDigests,
+    package_id: &'a str,
+    name: &'a str,
+    kind: &'a [String],
 }
 
 fn preserve_receipt_declarations(
@@ -2207,6 +2244,12 @@ fn preserve_receipt_declarations(
     scope: &ReceiptDeclarationScope<'_>,
     local: bool,
 ) {
+    if receipt.package_id != scope.package_id
+        || receipt.name != scope.name
+        || receipt.kind != scope.kind
+    {
+        return;
+    }
     let requested = scope.expected.iter().any(|(package, name, kind)| {
         package == &receipt.package_id && name == &receipt.name && receipt.kind.contains(kind)
     });
@@ -5688,6 +5731,9 @@ mod tests {
             revisions: &revisions,
             partial_args: None,
             digests: &digests,
+            package_id: "input",
+            name: "input",
+            kind: &["lib".into()],
         };
         for old_value in [None, Some(b"not-the-current-package".to_vec())] {
             let mut changed = original.clone();
@@ -5715,6 +5761,149 @@ mod tests {
         let (targets, missing) =
             target_records(&paths, &data, "selected", false, &expected, &[], None)?;
         assert!(targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Establishment, unrelated growth, erasure, same-target retention and failed-scan controls use one unchanged receipt."
+    )]
+    fn unrelated_script_declarations_do_not_expand_a_dependency_receipt()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-env-target-growth-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
+        std::fs::write(root.join("sibling.rs"), "fn main() {}")?;
+        let app = root.join("application");
+        std::fs::create_dir_all(&app)?;
+        std::fs::write(
+            app.join("Cargo.toml"),
+            "[package]\nname='application'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(app.join("build.rs"), "fn main() {}")?;
+        let data = serde_json::json!({"workspace_root":root,"sail_cache_directory":config.cache,
+            "workspace_members":["input","application"],
+            "resolve":{"nodes":[{"id":"input","dependencies":[]},{"id":"application","dependencies":["input"]}]},
+            "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
+                "source":null,"metadata":{"verus":{"verify":true}},"targets":[
+                    {"name":"input","kind":["lib"],"src_path":root.join("lib.rs")},
+                    {"name":"sibling","kind":["bin"],"src_path":root.join("sibling.rs")}]},
+                {"id":"application","name":"application","manifest_path":app.join("Cargo.toml"),
+                    "targets":[{"name":"build-script-build","kind":["custom-build"],"src_path":app.join("build.rs")}]}]});
+        let deps = paths.target.join("debug/deps");
+        let script = paths.target.join("debug/build/application-1");
+        std::fs::create_dir_all(&deps)?;
+        std::fs::create_dir_all(&script)?;
+        let artifact = deps.join("libinput-1.rlib");
+        std::fs::write(&artifact, "actual artifact")?;
+        let original_name = format!("SAIL_ENV_DOMAIN_ORIGINAL_{}", std::process::id());
+        let unrelated_name = format!("SAIL_ENV_DOMAIN_UNRELATED_{}", std::process::id());
+        let declaration = deps.join("input-1.d");
+        std::fs::write(&declaration, format!("# env-dep:{original_name}\n"))?;
+        std::fs::write(script.join("output"), "")?;
+        let record = |fresh| {
+            serde_json::json!({"reason":"compiler-artifact","package_id":"input","fresh":fresh,
+            "target":{"name":"input","kind":["lib"]},"filenames":[artifact]})
+        };
+        let write_artifacts = |fresh| -> std::io::Result<()> {
+            std::fs::write(
+                paths.run.join("artifacts.jsonl"),
+                super::super::source_inputs::fixture_journal(&[
+                    record(fresh),
+                    serde_json::json!({"reason":"build-script-executed","package_id":"application","out_dir":script.join("out")}),
+                ])?,
+            )
+        };
+        write_artifacts(false)?;
+        let invocation = paths.run.join("invocations/call.json");
+        json(
+            &invocation,
+            &compiler_receipt(&paths, &data, &artifact).invocation,
+        )?;
+        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let (fresh, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(missing.is_empty() && fresh[0].complete && !fresh[0].reused);
+        super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+        let path = receipt_path(&paths, "input", "input", &["lib".into()]);
+        let original: Receipt = read(&path).ok_or("original absent")?;
+        assert!(original.valid("selected"));
+        assert_eq!(
+            original
+                .declared_environment
+                .keys()
+                .cloned()
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([original_name.clone()])
+        );
+        std::fs::remove_file(invocation)?;
+        write_artifacts(true)?;
+        std::fs::write(
+            script.join("output"),
+            format!("cargo:rerun-if-env-changed={unrelated_name}\n"),
+        )?;
+        assert_eq!(
+            super::super::environment::declared_names(&paths.target),
+            Some(BTreeSet::from([
+                original_name.clone(),
+                unrelated_name.clone()
+            ]))
+        );
+        for _ in 0..2 {
+            let (reused, missing, covered) =
+                target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+            assert!(
+                covered
+                    && missing.is_empty()
+                    && reused.len() == 1
+                    && reused[0].reused
+                    && reused[0].complete
+            );
+            assert_eq!(reused[0].report, original.invocation.report);
+        }
+        // A complete later erasure cannot drop original names or import an
+        // unrelated target's independently valid original declaration domain.
+        std::fs::write(&declaration, "")?;
+        let (reused, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(missing.is_empty() && reused[0].reused);
+        let revisions = HashMap::from([("input".into(), target_revision(&data, "input"))]);
+        let digests = PhaseDigests::default();
+        let sibling_kind = vec!["bin".into()];
+        let scope = ReceiptDeclarationScope {
+            data: &data,
+            expected: &expected,
+            revisions: &revisions,
+            partial_args: None,
+            digests: &digests,
+            package_id: "input",
+            name: "sibling",
+            kind: &sibling_kind,
+        };
+        let mut names = BTreeSet::new();
+        preserve_receipt_declarations(&mut names, &original, "selected", &scope, true);
+        assert!(
+            names.is_empty(),
+            "a valid library receipt cannot supply another target's domain"
+        );
+        // A relevant new name still changes the exact domain and refuses reuse.
+        std::fs::write(&declaration, "# env-dep:SAIL_ENV_DOMAIN_NEW_RELEVANT\n")?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        std::fs::write(&declaration, [0xff])?;
+        let (targets, missing, covered) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(!covered && targets.is_empty() && missing == BTreeSet::from(["input".into()]));
         drop(ownership);
         std::fs::remove_dir_all(root)?;
         Ok(())

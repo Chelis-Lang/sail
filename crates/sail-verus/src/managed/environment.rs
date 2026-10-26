@@ -4,10 +4,11 @@
 //!
 //! - the proof context binds the variables the pinned tools are documented or
 //!   known to read ([`input_environment_key`]);
-//! - each receipt binds the current value of every variable that any unit of
-//!   the run declares: rustc's `# env-dep:` dep-info lines (`env!`,
-//!   `option_env!`, tracked reads, and the Verus driver's own declarations)
-//!   and build scripts' `rerun-if-env-changed` ([`declared`]).
+//! - each receipt binds declared variables of its target's resolved dependency
+//!   closure, retaining any unowned/ambiguous declaration conservatively. Inputs
+//!   come from rustc's `# env-dep:` lines and build scripts' `rerun-if-env-changed`
+//!   directives ([`declaration_files`]); originally admitted same-target names
+//!   remain freshly sampled when later compiler erasure drops them.
 //!
 //! `PATH` and `HOME` are not bound as raw values: the context binds the
 //! resolved tools and homes they select. Undeclared reads by build scripts and
@@ -126,8 +127,20 @@ const SKIPPED: &[&str] = &["incremental", ".fingerprint", "examples"];
 /// freshly reobserves names from independently valid original receipts. A missing,
 /// unreadable, malformed or untraversable observation is `None`, distinct from
 /// a successful empty scan. This enumerates declarations, not all compiler I/O.
+/// Complete successful declaration scan, retaining the actual file of each name.
+pub(super) struct DeclarationFiles(BTreeMap<PathBuf, BTreeSet<String>>);
+
+/// Untrusted ownership proposals from actual Cargo artifact path fields.
+/// Unknown, ambiguous or unreported files cannot be excluded from any target.
+pub(super) struct DeclarationOwners(BTreeMap<PathBuf, BTreeSet<String>>);
+
+#[cfg(test)]
 pub(super) fn declared_names(target: &Path) -> Option<BTreeSet<String>> {
-    let mut names = BTreeSet::new();
+    declaration_files(target).map(|files| files.all_names())
+}
+
+pub(super) fn declaration_files(target: &Path) -> Option<DeclarationFiles> {
+    let mut files = BTreeMap::new();
     let mut pending = vec![target.to_owned()];
     while let Some(directory) = pending.pop() {
         let entries = std::fs::read_dir(&directory).ok()?;
@@ -164,10 +177,128 @@ pub(super) fn declared_names(target: &Path) -> Option<BTreeSet<String>> {
                 return None;
             }
             let text = std::fs::read_to_string(&path).ok()?;
-            names.extend(declarations(&text, dep_info)?);
+            files.insert(path, declarations(&text, dep_info)?.into_iter().collect());
         }
     }
-    Some(names)
+    Some(DeclarationFiles(files))
+}
+
+impl DeclarationFiles {
+    fn all_names(&self) -> BTreeSet<String> {
+        self.0.values().flatten().cloned().collect()
+    }
+
+    /// Exclude only declarations with one known owner outside an exact target closure.
+    /// Failure to attribute or resolve a closure preserves the global domain.
+    pub(super) fn for_target(
+        &self,
+        data: &serde_json::Value,
+        owners: Option<&DeclarationOwners>,
+        package: &str,
+    ) -> BTreeSet<String> {
+        let Some((owners, closure)) = owners.zip(declaration_closure(data, package)) else {
+            return self.all_names();
+        };
+        self.0
+            .iter()
+            .filter(|(path, _)| {
+                !owners.0.get(*path).is_some_and(|packages| {
+                    packages.len() == 1 && packages.iter().all(|package| !closure.contains(package))
+                })
+            })
+            .flat_map(|(_, names)| names.iter().cloned())
+            .collect()
+    }
+}
+
+/// Exact metadata dependency graph, rather than a best-effort subset.
+fn declaration_closure(data: &serde_json::Value, root: &str) -> Option<BTreeSet<String>> {
+    let known = package_ids(data)?;
+    let mut graph = BTreeMap::new();
+    for node in data["resolve"]["nodes"].as_array()? {
+        let id = node["id"].as_str()?;
+        if !known.contains(id) || graph.contains_key(id) {
+            return None;
+        }
+        let dependencies: Option<Vec<_>> = node["dependencies"]
+            .as_array()?
+            .iter()
+            .map(serde_json::Value::as_str)
+            .collect();
+        let dependencies = dependencies?;
+        if dependencies
+            .iter()
+            .any(|dependency| !known.contains(*dependency))
+        {
+            return None;
+        }
+        graph.insert(id, dependencies);
+    }
+    let mut pending = vec![root];
+    let mut closure = BTreeSet::new();
+    while let Some(package) = pending.pop() {
+        if closure.insert(package.to_owned()) {
+            pending.extend(graph.get(package)?.iter().copied());
+        }
+    }
+    Some(closure)
+}
+
+fn package_ids(data: &serde_json::Value) -> Option<BTreeSet<&str>> {
+    let mut known = BTreeSet::new();
+    for package in data["packages"].as_array()? {
+        if !known.insert(package["id"].as_str()?) {
+            return None;
+        }
+    }
+    Some(known)
+}
+
+/// Read exact file-to-package proposals. A failed attribution never drops names.
+pub(super) fn declaration_owners(
+    artifacts: &Path,
+    data: &serde_json::Value,
+) -> Option<DeclarationOwners> {
+    let known = package_ids(data)?;
+    let records = super::source_inputs::provider_records(artifacts)?;
+    let mut owners: BTreeMap<PathBuf, BTreeSet<String>> = BTreeMap::new();
+    for record in records {
+        let package = record["package_id"].as_str()?;
+        if !known.contains(package) {
+            return None;
+        }
+        let paths = match record["reason"].as_str()? {
+            "compiler-artifact" => {
+                let mut paths = Vec::new();
+                for filename in record["filenames"].as_array()? {
+                    let path = Path::new(filename.as_str()?);
+                    let stem = path.file_stem()?.to_str()?;
+                    // Cargo library filenames carry lib; binary names retain it.
+                    let library = matches!(
+                        path.extension().and_then(OsStr::to_str),
+                        Some("rlib" | "rmeta" | "dylib" | "so" | "vir")
+                    );
+                    let stem = if library {
+                        stem.strip_prefix("lib").unwrap_or(stem)
+                    } else {
+                        stem
+                    };
+                    paths.push(path.with_file_name(stem).with_extension("d"));
+                }
+                paths
+            }
+            "build-script-executed" => vec![
+                Path::new(record["out_dir"].as_str()?)
+                    .parent()?
+                    .join("output"),
+            ],
+            _ => return None,
+        };
+        for path in paths {
+            owners.entry(path).or_default().insert(package.to_owned());
+        }
+    }
+    Some(DeclarationOwners(owners))
 }
 
 fn declarations(text: &str, dep_info: bool) -> Option<Vec<String>> {
@@ -284,6 +415,77 @@ mod tests {
         ] {
             assert!(!input_environment_key(OsStr::new(key)), "{key}");
         }
+    }
+
+    #[test]
+    fn declaration_ownership_filters_only_known_unrelated_files() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-env-owner-{}", std::process::id()));
+        let deps = root.join("debug/deps");
+        let script = root.join("debug/build/app-1");
+        std::fs::create_dir_all(&deps)?;
+        std::fs::create_dir_all(&script)?;
+        std::fs::write(deps.join("dep-1.d"), "# env-dep:DEP\n")?;
+        std::fs::write(deps.join("unknown.d"), "# env-dep:UNKNOWN\n")?;
+        std::fs::write(deps.join("ambiguous.d"), "# env-dep:AMBIGUOUS\n")?;
+        std::fs::write(
+            script.join("output"),
+            "cargo:rerun-if-env-changed=APP_ONLY\n",
+        )?;
+        let data = serde_json::json!({"packages":[{"id":"app"},{"id":"dep"}],
+            "resolve":{"nodes":[{"id":"app","dependencies":["dep"]},{"id":"dep","dependencies":[]}]}});
+        let records = [
+            serde_json::json!({"reason":"compiler-artifact","package_id":"dep","filenames":[deps.join("libdep-1.rmeta"),deps.join("libambiguous.rmeta")]}),
+            serde_json::json!({"reason":"compiler-artifact","package_id":"app","filenames":[deps.join("libambiguous.rlib")]}),
+            serde_json::json!({"reason":"build-script-executed","package_id":"app","out_dir":script.join("out")}),
+        ];
+        let artifacts = root.join("artifacts.jsonl");
+        let raw = super::super::source_inputs::fixture_journal(&records)?;
+        std::fs::write(&artifacts, &raw)?;
+        let owners = declaration_owners(&artifacts, &data);
+        let files =
+            declaration_files(&root).ok_or_else(|| std::io::Error::other("scan refused"))?;
+        let relevant = BTreeSet::from(["DEP".into(), "UNKNOWN".into(), "AMBIGUOUS".into()]);
+        assert_eq!(files.for_target(&data, owners.as_ref(), "dep"), relevant);
+        assert_eq!(
+            files.for_target(&data, owners.as_ref(), "app"),
+            files.all_names()
+        );
+        assert_eq!(files.for_target(&data, None, "dep"), files.all_names());
+        let mut incomplete = data.clone();
+        incomplete["resolve"]["nodes"][1]["dependencies"] = serde_json::json!(["missing"]);
+        assert_eq!(
+            files.for_target(&incomplete, owners.as_ref(), "dep"),
+            files.all_names()
+        );
+        // Outer framing without a typed terminal cannot establish ownership.
+        let mut incomplete_records: Vec<serde_json::Value> = std::str::from_utf8(&raw)
+            .map_err(std::io::Error::other)?
+            .lines()
+            .map(serde_json::from_str)
+            .collect::<Result<_, _>>()?;
+        incomplete_records
+            .retain(|record| record["reason"] != "sail-source-provider" || record["kind"] != 3);
+        let incomplete = incomplete_records
+            .iter()
+            .map(|record| record.to_string() + "\n")
+            .collect::<String>();
+        std::fs::write(&artifacts, incomplete)?;
+        assert!(declaration_owners(&artifacts, &data).is_none());
+        // Unknown or malformed ownership never authorizes dropping a name.
+        std::fs::write(
+            &artifacts,
+            [
+                raw.as_slice(),
+                b"{\"reason\":\"compiler-artifact\",\"package_id\":\"unknown\",\"filenames\":[]}\n",
+            ]
+            .concat(),
+        )?;
+        assert!(declaration_owners(&artifacts, &data).is_none());
+        // A failed actual scan cannot be replaced by an ownership proposal.
+        std::fs::write(deps.join("dep-1.d"), [0xff])?;
+        assert!(declaration_files(&root).is_none());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[test]
