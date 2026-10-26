@@ -502,3 +502,68 @@ sail_verified! {
         exact_bytes(observed.stdout(), stdout) && exact_bytes(observed.stderr(), stderr) && observed.exit() == exit
     }
 }
+
+sail_spec! {
+    pub open spec fn rust_crate_name(cargo: Seq<u8>, rust: Seq<u8>) -> bool {
+        cargo.len() == rust.len() && forall |i: int| 0 <= i < cargo.len() ==>
+            rust[i] == if cargo[i] == 45u8 { 95u8 } else { cargo[i] }
+    }
+
+    pub open spec fn compatible_target_kind(cargo: Seq<u8>, rust: Seq<u8>) -> bool {
+        cargo == rust || (cargo == b"lib"@ && rust == b"rlib"@)
+    }
+
+    /// Name/kind correspondence only; manifest, source and input closure are separate.
+    pub open spec fn compiler_target_name_kind(unit: &CompilerUnit, name: Seq<u8>, kinds: Seq<Vec<u8>>) -> bool {
+        rust_crate_name(name, unit.name@)
+            && (unit.cargo_name.is_some() ==> unit.cargo_name.unwrap()@ == name)
+            && exists |i: int| 0 <= i < kinds.len() && compatible_target_kind(kinds[i]@, unit.crate_type@)
+    }
+}
+
+sail_verified! {
+    /// Checks the existing Cargo hyphen-to-underscore Rust-name mapping bytewise.
+    pub fn cargo_crate_name_matches(cargo: &[u8], rust: &[u8]) -> (out: bool)
+        requires(true)
+        ensures(out == rust_crate_name(cargo@, rust@))
+    {
+        if cargo.len() != rust.len() { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < cargo.len())
+            invariant(i <= cargo.len(), cargo.len() == rust.len(),
+                forall |j: int| 0 <= j < i ==> rust@[j] == if cargo@[j] == 45u8 { 95u8 } else { cargo@[j] })
+            decreases(cargo.len() - i)
+            {
+                let expected = if cargo[i] == b'-' { b'_' } else { cargo[i] };
+                if rust[i] != expected { return false; }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Checks exact Cargo identity when supplied, including normalized-name collisions.
+    pub fn compiler_unit_matches_target(unit: &CompilerUnit, name: &[u8], kinds: &[Vec<u8>]) -> (out: bool)
+        requires(true)
+        ensures(out == compiler_target_name_kind(unit, name@, kinds@))
+    {
+        if !cargo_crate_name_matches(name, &unit.name) { return false; }
+        let exact_name = match &unit.cargo_name { Some(exact) => exact_bytes(exact, name), None => true };
+        if !exact_name { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < kinds.len())
+            invariant(i <= kinds.len(), rust_crate_name(name@, unit.name@),
+                unit.cargo_name.is_some() ==> unit.cargo_name.unwrap()@ == name@,
+                forall |j: int| 0 <= j < i ==> !compatible_target_kind(kinds@[j]@, unit.crate_type@))
+            decreases(kinds.len() - i)
+            {
+                if exact_bytes(&kinds[i], &unit.crate_type)
+                    || (exact_bytes(&kinds[i], b"lib") && exact_bytes(&unit.crate_type, b"rlib")) { return true; }
+                i += 1;
+            }
+        }
+        false
+    }
+}
