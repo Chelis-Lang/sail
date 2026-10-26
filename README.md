@@ -343,11 +343,11 @@ See [workspace verification](docs/workspace-verification.md#evidence-from-comple
   project-chosen toolchain, verifies vstd in that project (about 15 s more on
   Linux), with the same results.
 - **Open verdict differences.** In rare cases a proof that reads environment
-  variables (`option_env!`) or a procedural macro that reads its process
-  arguments can get a different verdict from plain Cargo-Verus
-  ([#385](https://github.com/Chelis-Lang/sail/issues/385),
-  [#386](https://github.com/Chelis-Lang/sail/issues/386),
-  [#393](https://github.com/Chelis-Lang/sail/issues/393)).
+  variables (`option_env!`) can keep a stale verdict
+  ([#386](https://github.com/Chelis-Lang/sail/issues/386)). Code that reads
+  Sail's solver-route variables (such as `SAIL_Z3_PATH`) by name sees them,
+  which plain Cargo-Verus does not
+  ([#435](https://github.com/Chelis-Lang/sail/issues/435)).
 - **Fragility, the portfolio, team caching and the integration APIs are
   experimental** (see [Experimental commands](#experimental-commands) and
   [Integration APIs](#integration-apis-experimental)).

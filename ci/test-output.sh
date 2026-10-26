@@ -345,6 +345,73 @@ CARGO_TARGET_DIR="$work/target-plain" stock_cargo clean -q -p demo
 smoke_original forced SAIL_MANAGED_FORCE=1
 echo "e2e: seeded mutants ($smoke_mutants), their reverts, unchanged and forced runs identical to cargo verus verify ($((SECONDS - smoke_start)) s)"
 
+# The program the compiler sees (#385, #393). A procedural macro and
+# `option_env!` read the compiler's arguments and environment; each proof
+# holds only if Sail adds something plain Cargo-Verus does not give it. Both
+# sides must reject all three, plain and with `--output json`.
+cp Cargo.toml "$work/Cargo.toml.keep"
+cp Cargo.lock "$work/Cargo.lock.keep"
+cp src/lib.rs "$work/lib.rs.keep"
+mkdir -p witness/src
+cat > witness/Cargo.toml <<'TOML'
+[package]
+name = "witness"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+TOML
+cat > witness/src/lib.rs <<'RS'
+use proc_macro::TokenStream;
+
+#[proc_macro]
+pub fn witnesses(_: TokenStream) -> TokenStream {
+    let argv = std::env::args().any(|a| {
+        matches!(a.as_str(), "--time" | "--output-json" | "--log" | "--log-dir")
+            || a.starts_with("-Zchecksum-hash-algorithm=")
+    });
+    let env = std::env::vars_os().any(|(k, _)| k.to_string_lossy().starts_with("SAIL_MANAGED_"));
+    format!(
+        "verus! {{ pub proof fn argv_witness() {{ assert({argv}); }} pub proof fn env_witness() {{ assert({env}); }} }}"
+    )
+    .parse()
+    .unwrap()
+}
+RS
+awk -v dep='witness = { path = "witness" }' '
+  { print } $0 == "[dependencies]" { print dep; added = 1 }
+  END { if (!added) { print "[dependencies]"; print dep } }' "$work/Cargo.toml.keep" > Cargo.toml
+grep -q '^witness = ' Cargo.toml
+cat > src/lib.rs <<'RS'
+use vstd::prelude::*;
+
+witness::witnesses!();
+
+verus! {
+
+proof fn injected_runtime_is_present() {
+    assert(match option_env!("SAIL_MANAGED_RUNTIME") {
+        Some(_) => true,
+        None => false,
+    });
+}
+
+} // verus!
+RS
+plain_run visible-plain stock_cargo verus verify
+sail_run visible-sail "$sail" verify
+same visible-plain visible-sail
+grep -q "verification results:: 0 verified, 3 errors" "$work/visible-plain.out"
+CARGO_TARGET_DIR="$work/target-plain" quiet_run visible-again stock_cargo verus verify
+CARGO_TARGET_DIR="$work/target-sail" quiet_run visible-json "$sail" verify --output json
+same visible-again visible-json "rc err"
+cp "$work/Cargo.toml.keep" Cargo.toml
+cp "$work/Cargo.lock.keep" Cargo.lock
+cp "$work/lib.rs.keep" src/lib.rs
+rm -r witness
+echo "e2e: the compiler's arguments and environment as plain cargo verus verify gives them (#385, #393)"
+
 fi
 
 if [ "$noop_part" = noop ]; then

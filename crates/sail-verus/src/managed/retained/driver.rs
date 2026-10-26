@@ -565,6 +565,16 @@ impl Attempt {
         self.observation.configure(command);
     }
 
+    /// The Verus options this observation needs, which the driver passes
+    /// with its own.
+    #[expect(
+        clippy::unused_self,
+        reason = "The options belong to this attempt's observation."
+    )]
+    pub(crate) fn compiler_options(&self) -> &'static [&'static str] {
+        compiler::Observation::OPTIONS
+    }
+
     pub(crate) fn started(&mut self, pid: u32) {
         self.observation.started(pid);
     }

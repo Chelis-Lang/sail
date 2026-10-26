@@ -97,9 +97,12 @@ impl Observation {
 
     /// SHA-256 is explicitly requested in both real compiler phases; a
     /// runtime that does not honor it cannot match the complete source basis.
+    /// The driver passes it with its other Verus options, never on the
+    /// compiler's command line (#393).
+    pub(super) const OPTIONS: &'static [&'static str] = &["-Zchecksum-hash-algorithm=sha256"];
+
     pub(super) fn configure(&self, command: &mut std::process::Command) {
         command
-            .arg("-Zchecksum-hash-algorithm=sha256")
             .env("SAIL_COMPILER_INPUTS", &self.directory)
             .env("SAIL_COMPILER_INPUTS_BINDING", &self.binding);
     }
@@ -141,7 +144,10 @@ impl Observation {
         if raw.len() as u64 > LIMIT {
             return None;
         }
-        let document: Document = serde_json::from_slice(&raw).ok()?;
+        let mut document: Document = serde_json::from_slice(&raw).ok()?;
+        for phase in document.phases.values_mut() {
+            crate::adapter::verus_channel::normalize(&mut phase.tracked_environment);
+        }
         self.admit(&document, working_directory, sources, copies, environment)
             .map(|tracked_environment| Accepted {
                 document_sha256: digest(&raw),

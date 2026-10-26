@@ -47,7 +47,7 @@ struct CfgObservation<'a> {
 
 /// Execute Cargo's native query before any compiler-cache observation.
 pub(crate) fn probe(wrapper: &Path, args: &[OsString]) -> Option<Result<ExitCode>> {
-    let directory = std::env::var_os(REQUEST)?;
+    let directory = super::transport::var(REQUEST)?;
     let arguments: Vec<Vec<u8>> = args
         .iter()
         .map(|arg| arg.as_encoded_bytes().to_vec())

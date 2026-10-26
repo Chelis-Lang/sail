@@ -9,20 +9,21 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
 These break the correctness contract and stay listed until fixed and
 covered by conformance.
 
-- **Sail's own environment reaches the verified compiler**
-  ([#385](https://github.com/Chelis-Lang/sail/issues/385)). Managed runs set
-  `SAIL_MANAGED_RUNTIME` for their driver, and the compiler inherits it. A
-  proof that tests it with `option_env!` verifies under Sail and fails under
-  plain Cargo-Verus.
 - **A proof-only environment read can be reused stale**
   ([#386](https://github.com/Chelis-Lang/sail/issues/386)). A proof that
   depends on `option_env!("NAME")` keeps its Current receipt after `NAME` is
   removed, although a fresh run fails. `SAIL_MANAGED_FORCE=1` verifies afresh.
-- **Sail's `--time` is visible to procedural macros**
-  ([#393](https://github.com/Chelis-Lang/sail/issues/393)). Managed runs add
-  `--time` to the compiler's arguments when the caller did not. A procedural
-  macro that reads `std::env::args` can expand differently and change the
-  verdict.
+- **Sail's solver route and Verus-fork requests remain visible to compiled
+  code** ([#435](https://github.com/Chelis-Lang/sail/issues/435)). The
+  pinned fork and the `sail-z3` shim read these from the compiler's
+  environment. Build scripts and compilers see `VERUS_Z3_PATH`,
+  `SAIL_Z3_PATH`, `SAIL_SOLVER_MODE` and `SAIL_DAEMON_SOCKET`, and
+  `RUSTC_WRAPPER` names Sail's driver alias. The verified compiler's
+  ` __VERUS_DRIVER_ARGS__` carries Sail's observation options. The fork's
+  shipped-build and compiler-input requests (`SAIL_RUSTC_DEV_SOURCE_BASE`,
+  `SAIL_VIR_SPAN_REMAP`, `SAIL_COMPILER_INPUTS*`) reach compilers while those
+  features are active. No ordinary project reads these names. A proof or
+  macro that does can still differ from plain Cargo-Verus.
 
 ## Input coverage and cache integrity
 

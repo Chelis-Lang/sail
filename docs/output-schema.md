@@ -47,7 +47,12 @@ byte-identical to `cargo verus verify`.
 
 ### What `--output json` adds to the Verus command
 
-sail appends these Verus arguments, after a `--`:
+sail adds these Verus options for each verified target. It passes them as
+Cargo-Verus passes the user's own options after `--`: in the Verus driver's
+` __VERUS_DRIVER_ARGS__` variable, ahead of the user's options, never on the
+compiler's command line. The command line a procedural macro can read is
+plain Cargo-Verus's (#393). The dep-info records the variable's value
+without Sail's options, so Cargo's freshness is unchanged.
 - `--output-json --time`, unless already present. Verus then prints its own
   per-function results (stdout, captured by sail). Plain `sail verify` adds
   them too, and prints Verus's own output rebuilt from them.
