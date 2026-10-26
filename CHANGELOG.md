@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Replay an unchanged `sail verify` (ADR 0082). A call identical to an earlier
+  one that ended Current without starting a verifier prints that call's
+  output (only Cargo's `Finished` time is regenerated) without running Cargo,
+  when the complete stat-stamp vector of its inputs, the owned Cargo target,
+  the installed tools, the cache records and declared variables still
+  matches. Unchanged Anvil and Vest calls take 26 ms, against 0.26 s and
+  0.20 s for `cargo verus verify`. `SAIL_MANAGED_NOOP=0` disables replay.
 - Sign a GitHub build-provenance attestation for each release archive, and have
   `scripts/install.py` verify it with `gh attestation verify` when GitHub CLI
   is signed in. A failed attestation refuses installation; without `gh` the

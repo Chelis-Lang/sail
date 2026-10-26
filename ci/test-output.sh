@@ -6,10 +6,12 @@
 # inside the CI image, with Sail's Verus selected (SAIL_VERUS_BUILD) and
 # stock `cargo verus` on PATH.
 #
-#   ci/test-output.sh SAIL loop|loader|flags|extra
+#   ci/test-output.sh SAIL loop|loader|flags|noop|extra
 #
 # `loop`: combined output, passing proofs, an unchanged re-run, a compile
-# error, partial verification and a seeded-mutation smoke. `loader`: a loader variable. `flags`: the
+# error, partial verification and a seeded-mutation smoke. `noop`:
+# unchanged-call replay (ADR 0082) and every change that must miss it.
+# `loader`: a loader variable. `flags`: the
 # setups verified without proof reuse. `extra`: `-- --output-json --time` and
 # a `-p`/`--features` workspace. Every cold build verifies vstd (one to two
 # minutes on a two-CPU CI runner), so CI runs `loop`, `loader` and `flags` as
@@ -17,7 +19,7 @@
 # local-only (`ci/local.sh e2e extra`).
 set -euo pipefail
 sail="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
-part="${2:?usage: ci/test-output.sh SAIL loop|loader|flags|extra}"
+part="${2:?usage: ci/test-output.sh SAIL loop|loader|flags|noop|extra}"
 sail_output_phase="$part"
 sail_output_checkout="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_output_checkout/target/e2e-output-evidence}"
@@ -162,8 +164,8 @@ warm_plain() { CARGO_TARGET_DIR="$work/target-plain" quiet_run "$@"; }
 warm_sail() { CARGO_TARGET_DIR="$work/target-sail" quiet_run "$@"; }
 # Warm-ups: each side builds and verifies vstd once, where the part needs it.
 # The loader part's Sail run builds its own context meanwhile (below).
-case "$part" in loop | loader | extra) warm_plain warmup-plain stock_cargo verus verify & ;; esac
-case "$part" in loop | extra) warm_sail warmup-sail "$sail" verify & ;; esac
+case "$part" in loop | loader | noop | extra) warm_plain warmup-plain stock_cargo verus verify & ;; esac
+case "$part" in loop | noop | extra) warm_sail warmup-sail "$sail" verify & ;; esac
 [ "$part" = loader ] || wait
 
 if [ "$part" = loop ]; then
@@ -335,6 +337,202 @@ CARGO_TARGET_DIR="$work/target-plain" stock_cargo clean -q -p demo
 smoke_original forced SAIL_MANAGED_FORCE=1
 echo "e2e: seeded mutants ($smoke_mutants), their reverts, unchanged and forced runs identical to cargo verus verify ($((SECONDS - smoke_start)) s)"
 
+fi
+
+if [ "$part" = noop ]; then
+# Unchanged-call replay (ADR 0082). The first unchanged call after a
+# verification takes the full path and records; an identical later call
+# replays it without Cargo. Every change below must miss, and every output
+# must still match plain Cargo-Verus. Each decision is logged to the trace,
+# which is constant for the whole part (it is part of the replay key).
+export SAIL_MANAGED_NOOP_TRACE="$work/noop.trace"
+: > "$SAIL_MANAGED_NOOP_TRACE"
+decision() { tail -n 1 "$SAIL_MANAGED_NOOP_TRACE"; }
+expect() { # label pattern
+  local seen
+  seen="$(grep -E '^(hit|miss: )' "$SAIL_MANAGED_NOOP_TRACE" | tail -n 1)"
+  if ! printf '%s\n' "$seen" | grep -qE "$2"; then
+    echo "e2e: $1: expected replay decision /$2/, got '$seen'" >&2
+    cat "$SAIL_MANAGED_NOOP_TRACE" >&2
+    exit 1
+  fi
+}
+recorded() { # label
+  if ! decision | grep -q '^recorded: '; then
+    echo "e2e: $1: the unchanged call was not recorded" >&2
+    cat "$SAIL_MANAGED_NOOP_TRACE" >&2
+    exit 1
+  fi
+}
+# Recorded stamps must be at least 2 s older than the recording run.
+settle() { sleep 3; }
+pair() { # label: plain then Sail, without touching the source
+  CARGO_TARGET_DIR="$work/target-plain" quiet_run "$1-plain" stock_cargo verus verify
+  CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-sail" "$sail" verify
+  same "$1-plain" "$1-sail"
+}
+# Sail alone, for a change whose full-path output differs from plain
+# Cargo-Verus for reasons unrelated to replay (#398).
+sail_only() { CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-sail" "$sail" verify; }
+# Record, then expect a replay that matches plain output.
+rerecord() { # label
+  settle
+  pair "$1-record"
+  recorded "$1-record"
+  pair "$1-replay"
+  expect "$1-replay" '^hit$'
+}
+edit_in_place 's/ensures r > x,/ensures r >= x,/' src/lib.rs
+# A declared variable and an input outside the package, known only from
+# dep-info, so each later case changes one of them.
+printf 'first\n' > "$work/outside.txt"
+cat >> src/lib.rs <<RS
+pub const PROBE: Option<&str> = option_env!("NOOP_PROBE_VALUE");
+pub const OUTSIDE: &str = include_str!("$work/outside.txt");
+pub mod m;
+RS
+# A module, for an exact partial scope.
+cat > src/m.rs <<'RS'
+use vstd::prelude::*;
+
+verus! {
+
+pub fn one() -> (r: u32)
+    ensures r == 1,
+{ 1 }
+
+} // verus!
+RS
+plain_run pass-plain stock_cargo verus verify
+sail_run pass-sail "$sail" verify
+same pass-plain pass-sail
+# The first call after a newly discovered input outside the package cleans
+# the build-script packages and rebuilds (#399, a full-path behaviour, not
+# replay's): let it happen before the compared calls.
+CARGO_TARGET_DIR="$work/target-sail" quiet_run discovered-sail "$sail" verify
+rerecord unchanged
+# The same call again replays again.
+pair unchanged-again
+expect unchanged-again '^hit$'
+
+# A content edit with its mtime restored still changes ctime.
+cp -p src/lib.rs "$work/lib.rs.orig"
+printf '// same size\n' >> src/lib.rs
+touch -r "$work/lib.rs.orig" src/lib.rs
+pair restored-mtime
+expect restored-mtime '^miss: changed: .*src/lib.rs$'
+rerecord after-restored-mtime
+# A touch alone.
+touch src/lib.rs
+pair touched
+expect touched '^miss: changed: .*src/lib.rs$'
+rerecord after-touch
+# A new and a removed source file, and a new binary target.
+printf '// unused\n' > src/unused.rs
+sail_only added-file
+expect added-file '^miss: changed: '
+rm src/unused.rs
+sail_only removed-file
+expect removed-file '^miss: '
+rerecord after-files
+# A declared variable.
+NOOP_PROBE_VALUE=set pair env-dep
+expect env-dep '^miss: '
+pair env-dep-unset
+rerecord after-env-dep
+# A dep-info-only input outside the package.
+printf 'second\n' > "$work/outside.txt"
+pair outside-input
+expect outside-input '^miss: changed: .*outside.txt$'
+rerecord after-outside-input
+# Cargo.lock.
+cp -p Cargo.lock "$work/Cargo.lock.orig"
+printf '\n' >> Cargo.lock
+pair lockfile
+expect lockfile '^miss: changed: .*Cargo.lock$'
+cp "$work/Cargo.lock.orig" Cargo.lock
+pair lockfile-restored
+expect lockfile-restored '^miss: '
+rerecord after-lockfile
+# Sail's own Cargo target loses the crate's fingerprints; plain Cargo-Verus's
+# target loses the same, so both rebuild the crate.
+find "$work/target-plain" "$SAIL_CACHE_DIR/projects" -type d -path '*/.fingerprint/demo-*' -prune -exec rm -rf {} +
+pair fingerprints
+expect fingerprints '^miss: '
+rerecord after-fingerprints
+
+# JSON output has its own record: its first call takes the full path.
+settle
+CARGO_TARGET_DIR="$work/target-sail" quiet_run json-record "$sail" verify --output json
+expect json-record '^miss: no record$'
+recorded json-record
+CARGO_TARGET_DIR="$work/target-sail" quiet_run json-replay "$sail" verify --output json
+expect json-replay '^hit$'
+python3 - "$work/json-record.out" "$work/json-replay.out" <<'PY'
+import json, sys
+recorded, replayed = (json.load(open(path)) for path in sys.argv[1:])
+assert replayed["currentness"] == "current" and replayed["exit_code"] == 0, replayed
+assert replayed["run_id"] != recorded["run_id"], "a replay has its own run"
+for doc in (recorded, replayed):
+    doc.pop("run_id")
+    doc["execution"].pop("wall_ms")
+assert recorded == replayed, (recorded, replayed)
+PY
+# An exact partial scope replays only itself and is never promoted: the
+# whole-target call after it has no record of its own and stays complete.
+rm -f "$SAIL_CACHE_DIR"/noop/*.json
+# A new scope builds its own target; its second call still rebuilds the
+# build-script packages (#399), so it records once its calls start no verifier.
+for attempt in 1 2 3 4; do
+  settle
+  CARGO_TARGET_DIR="$work/target-sail" quiet_run partial-record "$sail" verify --output json -- --verify-module m
+  expect partial-record '^miss: no record$'
+  if decision | grep -q '^recorded: '; then break; fi
+done
+recorded partial-record
+CARGO_TARGET_DIR="$work/target-sail" quiet_run partial-replay "$sail" verify --output json -- --verify-module m
+expect partial-replay '^hit$'
+CARGO_TARGET_DIR="$work/target-sail" quiet_run whole-after-partial "$sail" verify --output json
+expect whole-after-partial '^miss: no record$'
+python3 - "$work/partial-replay.out" "$work/whole-after-partial.out" <<'PY'
+import json, sys
+partial, whole = (json.load(open(path)) for path in sys.argv[1:])
+assert any("partial" in note for note in partial["notes"]), partial["notes"]
+[requested] = [t for t in partial["targets"] if t["requested"]]
+assert not requested["complete"] and requested.get("scope_reuse"), requested
+[requested] = [t for t in whole["targets"] if t["requested"]]
+assert requested["complete"] and not requested.get("scope_reuse"), requested
+PY
+# A failing project re-verifies on every unchanged call, as plain does.
+edit_in_place 's/ensures r >= x,/ensures r > x,/' src/lib.rs
+plain_run failing-plain stock_cargo verus verify
+sail_run failing-sail "$sail" verify
+same failing-plain failing-sail
+settle
+pair failing-unchanged
+pair failing-again
+if grep -q '^hit$' <(tail -n 4 "$SAIL_MANAGED_NOOP_TRACE"); then
+  echo "e2e: a failing project was replayed" >&2
+  exit 1
+fi
+# A new binary target, last: after it is removed, every full-path call
+# rebuilds the build-script packages (#401).
+edit_in_place 's/ensures r > x,/ensures r >= x,/' src/lib.rs
+settle
+sail_only bin-base
+settle
+sail_only bin-record
+recorded bin-record
+mkdir -p src/bin
+printf 'use vstd::prelude::*;\n\nverus! {\nfn main() {}\n} // verus!\n' > src/bin/probe.rs
+sail_only added-bin
+expect added-bin '^miss: changed: '
+grep -q 'demo v0.1.0' "$work/added-bin-sail.err"
+rm -r src/bin
+sail_only removed-bin
+expect removed-bin '^miss: '
+unset SAIL_MANAGED_NOOP_TRACE
+echo "e2e: unchanged calls replay plain output; edits, restored mtimes, touches, files, binaries, declared variables, dep-info inputs, the lockfile, fingerprints, JSON and partial scope each miss"
 fi
 
 if [ "$part" = flags ]; then

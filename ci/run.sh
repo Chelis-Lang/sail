@@ -244,12 +244,12 @@ case "$step" in
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|noop|extra' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra" >&2; exit 2 ;;
+      full|legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|noop|extra) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|noop|extra" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
     sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_checkout/target/e2e-output-evidence}"
@@ -396,6 +396,10 @@ RS
     if [ "$phase" = full ] || [ "$phase" = flags ]; then
       # The setups verified as plain Cargo-Verus verifies them.
       (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" flags)
+    fi
+    if [ "$phase" = full ] || [ "$phase" = noop ]; then
+      # Unchanged-call replay and every change that must miss it (ADR 0082).
+      (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" noop)
     fi
     if [ "$phase" = extra ] || { [ "$phase" = full ] && [ "${CI:-}" != true ]; }; then
       # `-- --output-json --time` and a workspace: four cold builds, so

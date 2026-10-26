@@ -205,7 +205,7 @@ release-style checks belong in the local tiers below, never in CI.
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
 gate, including image creation, direct acceptance-model proofs and production refinements, to have succeeded. Branches must be current
-with `main` before merging. The `End to end` check aggregates ten parallel
+with `main` before merging. The `End to end` check aggregates eleven parallel
 phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
   warm, `--output json`, one MCP `verify` call and the portfolio;
@@ -213,6 +213,8 @@ phases and succeeds only when all complete successfully:
   partial verification) and a seeded-mutation smoke;
 - `flags`: the setups verified as plain Cargo-Verus verifies them;
 - `loader`: a loader variable (no proof reuse, one note);
+- `noop`: unchanged-call replay (ADR 0082) against `cargo verus verify`, and
+  every change that must miss it;
 - `managed`: managed receipts, failing-first reuse, prune, durable jobs, MCP
   and Claude Code's tool listing;
 - `managed-copies`: two fresh member workspaces establish their own vstd and
