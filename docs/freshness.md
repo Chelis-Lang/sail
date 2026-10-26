@@ -246,7 +246,24 @@ Cargo's own. Two parts of the environment bind a result:
   any unit declares: rustc's `# env-dep:` dep-info lines (`env!`,
   `option_env!`, and the Verus driver's own declarations) and build scripts'
   `rerun-if-env-changed`. Each receipt records their values, and it is reused
-  only while every one is unchanged.
+  only while every one is unchanged and the current declaration inventory
+  contains exactly those same names and values.
+
+Dep-info names retain meaningful whitespace and decode rustc's escaped newline,
+carriage-return and backslash bytes before looking up a value. Build-script
+names follow Cargo's directive interpretation: trailing line whitespace is
+removed; leading name whitespace remains significant. For example, rustc's
+`# env-dep: FLAG =7` names ` FLAG `, while Cargo's
+`cargo:rerun-if-env-changed= FLAG ` names ` FLAG`.
+
+An unreadable directory entry, declaration file, malformed name or unsupported
+symlinked declaration path supplies no complete declaration scan. A successful
+empty scan remains distinct. Fresh verifier reports and diagnostics remain
+available, but incomplete scans record no reusable proof receipt and cannot
+establish Current input observations. Missing or unreadable build-script output
+also supplies no complete script contract. Legacy receipt/read-time records and
+proof contexts from the earlier declaration policy cannot authorize new Current
+proof evidence; historical reports remain readable.
 
 Private dependency authentication (`SAIL_DEPENDENCY_READ_TOKEN` and
 `SAIL_PRIVATE_GIT_READY`) does not select a different compiler proof context.

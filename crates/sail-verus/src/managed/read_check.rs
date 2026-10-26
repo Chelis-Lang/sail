@@ -50,7 +50,7 @@ pub(super) fn record(
     json(
         &context.join(FILE),
         &Record {
-            version: 2,
+            version: 3,
             revision: revision.to_owned(),
             files,
             bindings,
@@ -151,7 +151,7 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
         return Err(missing());
     }
     let record: Record = serde_json::from_slice(&bytes).map_err(|_| missing())?;
-    if record.version != 2 || record.files.is_empty() {
+    if record.version != 3 || record.files.is_empty() {
         return Err(missing());
     }
     let files: Vec<_> = record
@@ -275,7 +275,7 @@ mod tests {
         std::fs::write(&a, "first")?;
         std::fs::write(&b, "second")?;
         let record = Record {
-            version: 2,
+            version: 3,
             revision: "rev".into(),
             files: vec![
                 (a.clone(), Some(super::super::files::file_digest(&a)?)),
@@ -413,6 +413,11 @@ mod tests {
             .join("cache/projects")
             .join(digest(root.join("ws").as_os_str().as_encoded_bytes()))
             .join("ctx");
+        let mut legacy: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(context.join(FILE))?)?;
+        legacy["version"] = serde_json::json!(2);
+        std::fs::write(context.join(FILE), serde_json::to_vec(&legacy)?)?;
+        assert!(check(&root.join("cache"), &root.join("ws"), "ctx").is_err());
         std::fs::write(context.join(FILE), b"{\"version\":1")?;
         assert!(check(&root.join("cache"), &root.join("ws"), "ctx").is_err());
         std::fs::remove_dir_all(root)?;

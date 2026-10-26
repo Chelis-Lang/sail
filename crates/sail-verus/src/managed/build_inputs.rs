@@ -391,7 +391,9 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
             .parent()
             .unwrap_or(Path::new("."))
             .join("output");
-        let text = std::fs::read_to_string(&output).unwrap_or_default();
+        let text = std::fs::read_to_string(&output);
+        let output_observed = text.is_ok();
+        let text = text.unwrap_or_default();
         let mut record = BuildInput {
             package_id: package["id"].as_str().unwrap_or_default().to_owned(),
             package_name: package["name"].as_str().unwrap_or_default().to_owned(),
@@ -404,6 +406,8 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
             unit_out_dir: value["out_dir"].as_str().map(str::to_owned),
         };
         for line in text.lines() {
+            // Cargo interprets directives after removing trailing line whitespace.
+            let line = line.trim_end();
             let line = line
                 .strip_prefix("cargo::")
                 .or_else(|| line.strip_prefix("cargo:"))
@@ -427,7 +431,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
         }
         let (hash, complete) = current(&record, None, data);
         record.digest = hash;
-        record.covered = complete;
+        record.covered = output_observed && complete;
         // Cargo can emit separate host/target units for one package. Keep
         // every distinct output contract; the last unit cannot certify others.
         previous.retain(|r| {
@@ -778,6 +782,59 @@ mod tests {
         );
         assert_eq!(stale(&state, &data).0, vec!["pkg"]);
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn script_output_read_failure_does_not_establish_an_empty_contract()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-script-read-loss-{}", std::process::id()));
+        let package = root.join("package");
+        let unit = root.join("target/debug/build/unit");
+        std::fs::create_dir_all(&package)?;
+        std::fs::create_dir_all(unit.join("out"))?;
+        std::fs::write(
+            package.join("Cargo.toml"),
+            "[package]\nname='demo'\nversion='0.1.0'\n",
+        )?;
+        let data = serde_json::json!({"packages":[{"id":"demo","name":"demo", "manifest_path":package.join("Cargo.toml"),
+            "targets":[{"kind":["custom-build"]}]}]});
+        let artifacts = root.join("artifacts.jsonl");
+        json(
+            &artifacts,
+            &serde_json::json!({"reason":"build-script-executed", "package_id":"demo", "out_dir":unit.join("out")}),
+        )?;
+        let state = root.join("state.json");
+        let output = unit.join("output");
+        for bytes in [
+            None,
+            Some(b"cargo:rerun-if-env-changed=ACTUAL\n\xff".as_slice()),
+            Some(b"".as_slice()),
+            Some(b"cargo:rerun-if-env-changed= FLAG \n".as_slice()),
+        ] {
+            if let Some(bytes) = bytes {
+                std::fs::write(&output, bytes)?;
+            }
+            update(&state, &artifacts, &data)?;
+            let records: Vec<BuildInput> = read(&state).ok_or("missing script state")?;
+            assert_eq!(records.len(), 1);
+            assert_eq!(
+                records[0].covered,
+                bytes.is_some_and(|raw| std::str::from_utf8(raw).is_ok())
+            );
+            if bytes.is_some_and(|raw| raw.starts_with(b"cargo:rerun-if-env-changed= FLAG")) {
+                assert_eq!(
+                    records[0]
+                        .env
+                        .keys()
+                        .map(String::as_str)
+                        .collect::<Vec<_>>(),
+                    vec![" FLAG"]
+                );
+            }
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     /// Issue #177: after a profile change Sail cleans vstd, and Cargo reruns

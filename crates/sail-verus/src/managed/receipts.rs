@@ -145,7 +145,9 @@ pub(crate) struct Receipt {
 }
 
 /// Version 4 distinguishes exact-scope reports from whole-target proof receipts.
-pub(crate) const RECEIPT_VERSION: u32 = 5;
+// Earlier receipts could bind trimmed/escaped environment names or a partial
+// declaration scan. Preserve those reports, but never reuse their proof authority.
+pub(crate) const RECEIPT_VERSION: u32 = 6;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
