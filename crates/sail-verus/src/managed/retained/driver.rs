@@ -578,11 +578,9 @@ impl Attempt {
         compiler::Observation::OPTIONS
     }
 
-    /// Both phases' tracked environment of the compiler child (#386).
-    pub(crate) fn compiler_environment(
-        &self,
-    ) -> Option<super::super::ghost_environment::Environment> {
-        self.observation.environment()
+    /// Both phases' reads of the compiler child (#386, #439).
+    pub(crate) fn compiler_reads(&self) -> Option<super::super::ghost_environment::Observed> {
+        self.observation.observed()
     }
 
     pub(crate) fn started(&mut self, pid: u32) {
