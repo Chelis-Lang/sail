@@ -386,6 +386,29 @@ impl DeliveredInput {
         sail_acceptance::query_publication::observe_publication(Some(self.delivered), output, gate)
             .map(|observation| ObservedPublication { observation })
     }
+
+    /// Requires one retained input/output child lease before local publication.
+    /// Lease creation and actual endpoint attribution are native primitives.
+    #[must_use]
+    pub fn observe_owned_publication<Owner, Identity>(
+        self,
+        input_owner: Owner,
+        output: Option<sail_acceptance::query_output_owner::CompletedStream<Owner>>,
+        gate: sail_acceptance::query::PublicationGate,
+        identity: Identity,
+    ) -> Option<OwnedObservedPublication<Owner, Identity>>
+    where
+        Identity: sail_acceptance::inputs::OwnerIdentity<Owner>,
+    {
+        sail_acceptance::query_output_owner::observe_owned_publication(
+            Some(self.delivered),
+            input_owner,
+            output,
+            gate,
+            identity,
+        )
+        .map(|observation| OwnedObservedPublication { observation })
+    }
 }
 
 /// Owned joint input/output/closure observations for the local publication
@@ -403,5 +426,35 @@ impl ObservedPublication {
         pending: sail_acceptance::query::PublicationBatch<T>,
     ) -> Option<Vec<T>> {
         sail_acceptance::query_publication::release_observed(pending, Some(self.observation))
+    }
+}
+
+/// Joint publication retaining actual opaque input/output ownership leases.
+pub struct OwnedObservedPublication<Owner, Identity> {
+    observation: sail_acceptance::query_output_owner::OwnedPublication<Sha256Host, Owner, Identity>,
+}
+impl<Owner, Identity: sail_acceptance::inputs::OwnerIdentity<Owner>>
+    OwnedObservedPublication<Owner, Identity>
+{
+    /// Original complete-input key used only for the original silence entry.
+    #[must_use]
+    pub fn input_key(&self) -> QueryKey {
+        QueryKey(self.observation.input_key())
+    }
+    /// Checks original output owner as well as exact ordinal, range and bytes.
+    #[must_use]
+    pub fn contains_frame(
+        &self,
+        frame: &sail_acceptance::query_output_owner::OwnedFrame<Owner>,
+    ) -> bool {
+        self.observation.contains_frame(frame)
+    }
+    /// Releases the identical original payload batch through the checked path.
+    #[must_use]
+    pub fn release<T>(
+        self,
+        pending: sail_acceptance::query::PublicationBatch<T>,
+    ) -> Option<Vec<T>> {
+        self.observation.release(pending)
     }
 }
