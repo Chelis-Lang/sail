@@ -267,11 +267,14 @@ fn declared(text: &str) -> BTreeSet<&str> {
 }
 
 /// Whether the proof context already binds this variable, so its dep-info
-/// declaration is unnecessary. The driver's own declarations (forwarded
-/// arguments, `VERUS_Z3_PATH`) are among them; declaring the forwarded
-/// arguments would make every repair recompile (VI-0005).
+/// declaration is unnecessary. The driver's own declarations are among them:
+/// `VERUS_Z3_PATH` and the forwarded arguments, which Cargo-Verus spells with
+/// a leading space (` __VERUS_DRIVER_ARGS__`, ` __VERUS_DRIVER_ARGS_FOR_<id>`).
+/// Declaring the forwarded arguments would recompile a library whenever a new
+/// dependent changes them, and every repair (VI-0005).
 fn context_bound(name: &str) -> bool {
     super::environment::input_environment_key(OsStr::new(name))
+        || name.trim_start().starts_with("__VERUS_DRIVER_")
 }
 
 /// Append to the dep-info at `path` each observed declaration it lacks, in
@@ -489,6 +492,14 @@ mod tests {
             (
                 "__VERUS_DRIVER_ARGS_FOR_demo".to_owned(),
                 Some("--rlimit".to_owned()),
+            ),
+            (
+                " __VERUS_DRIVER_ARGS_FOR_demo-0.1.0-0123".to_owned(),
+                Some("import-dep-if-present=vstd".to_owned()),
+            ),
+            (
+                " __VERUS_DRIVER_ARGS__".to_owned(),
+                Some("compile".to_owned()),
             ),
         ]);
         merge(&path, &observed).ok_or("merge")?;
