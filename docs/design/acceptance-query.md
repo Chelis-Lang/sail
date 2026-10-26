@@ -717,3 +717,16 @@ the actual leading-trivia scan or truncating the returned head causes ordinary
 verification failures at unchanged scope and limits. These clauses specify the
 supported lexical grammar, not the complete SMT simple-symbol alphabet or the
 arity, types, semantic effects and response cardinality of every command.
+
+
+## Tactic-check response accounting correction
+
+The actual `CommandKind::output` dispatch now includes `CheckSatUsing` in the
+one-response class. [Sail #397](https://github.com/Chelis-Lang/sail/issues/397)
+retains the incorrect original rule, a focused failing-before/passing-after test,
+and the [pinned-solver reproduction](../../corpus/repros/sail-check-sat-using-cardinality/README.md).
+The actual shim cold/warm regression compares full stdout/stderr/status, then
+requires two correctly associated cached replies and zero new warm solver.
+Removing the production dispatch arm reproduces the missing warm replies.
+The fix is a native production correction; the complete command/response
+classification refinement remains open and is not established by this test.
