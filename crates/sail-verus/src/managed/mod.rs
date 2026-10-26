@@ -8,6 +8,7 @@ pub mod cargo_toolchain;
 mod configuration;
 mod dependency_snapshot;
 mod diagnostics;
+mod digest_memo;
 mod environment;
 mod files;
 mod freshness;

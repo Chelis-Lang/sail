@@ -20,6 +20,15 @@ pub(crate) fn file_digest(path: &Path) -> Result<String> {
     }
     let mut input = std::fs::File::open(path)
         .map_err(|e| Error::new("SAIL3101", format!("cannot read {}: {e}", path.display())))?;
+    let before = input
+        .metadata()
+        .ok()
+        .and_then(|m| super::digest_memo::Stamp::of(&m));
+    if let Some(stamp) = before
+        && let Some(sha) = super::digest_memo::lookup(path, stamp)
+    {
+        return Ok(sha);
+    }
     let mut hasher = Sha256::new();
     BUFFER.with_borrow_mut(|buf| -> Result<()> {
         loop {
@@ -32,7 +41,16 @@ pub(crate) fn file_digest(path: &Path) -> Result<String> {
             hasher.update(&buf[..n]);
         }
     })?;
-    Ok(format!("{:x}", hasher.finalize()))
+    let sha = format!("{:x}", hasher.finalize());
+    if let Some(before) = before
+        && let Some(after) = input
+            .metadata()
+            .ok()
+            .and_then(|m| super::digest_memo::Stamp::of(&m))
+    {
+        super::digest_memo::record(path, before, after, &sha);
+    }
+    Ok(sha)
 }
 
 /// Whether two files hold the same bytes, read completely from both. A

@@ -3597,6 +3597,7 @@ pub(crate) fn run_engine_held(
         },
     );
     drop(publication);
+    super::digest_memo::save();
     // Freeing the metadata and snapshots (tens of thousands of allocations on
     // vest, about 15 ms) does not hold up the caller; nothing reads them.
     let _ = std::thread::Builder::new().spawn(move || {
