@@ -139,7 +139,8 @@ answers byte-identical solver queries from signed replies shipped in the archive
 ([trust model](docs/trust.md#bundled-tier-the-releases-own-replies)). Keep that toolchain to the components above: `rustc-dev` or another
 component that adds compiler libraries changes files rustc loads, so the proof
 is not used. Whenever the preverified vstd does not apply to a new project,
-`sail verify` prints one `note[SAIL3138]` line saying why. See [release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use)
+a `SAIL3138` note says why: in `--output json` notes, and in human output
+with `SAIL_EXPLAIN=1`. See [release prerequisites](docs/releasing.md#proof-bundle-prerequisites-and-first-use)
 for how the shipped proof is recorded and checked.
 
 **From source (contributors).** With rustup, a C toolchain and `git`:
@@ -258,9 +259,12 @@ experimental. See [MCP setup and tools](docs/mcp.md).
   several GB. `sail cache projects list` shows them, and `sail cache projects
   prune --missing|--older-than DAYS|--all` removes them (the next run is a
   cold run). See [disk use and cleanup](docs/workspace-hygiene.md).
-- If the cache daemon cannot start, `sail verify` prints one
-  `warning[SAIL0003]` line and verifies without the cache, with the same
-  results.
+- If the cache daemon cannot start, `sail verify` verifies without the
+  cache, with the same results. `--output json` notes why (`SAIL0003`), and
+  `SAIL_EXPLAIN=1` prints it in human output.
+- Human `sail verify` output is exactly plain `cargo verus verify`'s; set
+  `SAIL_EXPLAIN=1` to also see Sail's notes (`SAIL0003`, `SAIL3112`,
+  `SAIL3138`).
 
 ## Limits
 
