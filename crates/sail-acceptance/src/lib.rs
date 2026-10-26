@@ -16,6 +16,8 @@ pub mod inputs;
 pub mod key_prefix;
 pub mod phase_inputs;
 pub mod query;
+/// Original checkpoints checked against one owned actual acknowledged input tape.
+pub mod query_checkpoints;
 /// Actual owned solver-input delivery and terminal key correspondence.
 pub mod query_delivery;
 /// Actual immutable held payloads and independently mutable effort metadata.

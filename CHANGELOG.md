@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add a source candidate for frozen original command checkpoints and bounded
+  acknowledged-input capture. Its checked validator compares every original
+  command span and prefix key against the actual writer's retained bytes in one
+  incremental pass. Native integration, proofs, conformance and cost remain
+  unqualified.
+
 - Retain the actual frozen input delivery and complete stdout observations
   through the local cache publication handoff, requiring their typed joint
   observation before releasing pending entries. This preserves existing

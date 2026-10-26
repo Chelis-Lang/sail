@@ -245,6 +245,21 @@ sail_code! {
                 ensures (out == self.publication_view().input_view().key_view()) { self.publication.input().key() }
         }
         sail_method! {
+            /// Original acknowledged complete-input length, without reconstructing
+            /// it from the stored terminal key or output fields.
+            pub fn input_length(&self) -> (out: u64) requires (true)
+                ensures (out == self.publication_view().input_view().length()) { self.publication.input().length_value() }
+        }
+        sail_method! {
+            /// Checks original keys against one actual acknowledged tape in a
+            /// complete certified visit order; this never reorders published data.
+            pub fn validate_checkpoints(&self, commands: &[&crate::query_prefix::FrozenCommand<Host>],
+                order: &[usize], inverse: &[usize]) -> (accepted: bool)
+                requires (self.publication_view().input_view().capture_consistent())
+                ensures (accepted == crate::query_checkpoints::checkpoints_match(&self.publication_view().input_view(),commands@,order@,inverse@))
+            { crate::query_checkpoints::validate_checkpoints(self.publication.input(),commands,order,inverse) }
+        }
+        sail_method! {
             /// Requires original stream ownership as well as exact frame values.
             pub fn contains_frame(&self, frame: &OwnedFrame<Owner>) -> (out: bool)
                 requires (self.complete())
