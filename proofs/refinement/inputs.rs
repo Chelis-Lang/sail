@@ -236,6 +236,7 @@ pub proof fn matching_contexts_preserve_execution(metadata: ModelContext,
 
 /// A concrete nonempty read with a source, a linked ancestor and absent config
 /// succeeds; the same actual core refuses incomplete and unreadable readbacks.
+#[verifier::spinoff_prover]
 pub fn nonempty_readback_and_partial_controls() {
     let name = vec![1u8];
     let alias = vec![2u8];
@@ -298,6 +299,167 @@ pub fn original_stamp_aba_and_exact_revert_controls() {
     let interrupted = OriginalCapture::begin(Some(&original));
     let interrupted = interrupted.finish(Some(&mutated), &revision);
     assert(interrupted.is_none());
+}
+
+
+/// The provider's declared dep-info-required artifact positions. This set is
+/// deliberately not the compiler's complete physical input domain.
+#[verifier::opaque]
+pub open spec fn declared_artifact_frames(events: Seq<ProviderEvent>) -> Set<usize> {
+    events.map(|i: int, event: ProviderEvent| i as usize).to_set().filter(|frame: usize| 2 <= frame < events.len() - 1 && events[frame as int].kind == 2)
+}
+
+/// Exact bytes from tagged actual dep-info outcomes, with no digest assumption.
+#[verifier::opaque]
+pub open spec fn provider_read_map(reads: Seq<ArtifactRead>) -> Map<usize, Seq<u8>> {
+    Map::new(reads.map(|j: int, read: ArtifactRead| read.frame).to_set(),
+        |frame: usize| {
+            let j = choose|j: int| 0 <= j < reads.len() && reads[j].frame == frame;
+            reads[j].raw.unwrap()@
+        })
+}
+
+pub proof fn declared_frame_domain(events: Seq<ProviderEvent>, frame: usize)
+    ensures declared_artifact_frames(events).contains(frame)
+        == (2 <= frame < events.len() - 1 && events[frame as int].kind == 2),
+{
+    reveal(declared_artifact_frames);
+    let positions = events.map(|i: int, event: ProviderEvent| i as usize);
+    if 2 <= frame < events.len() - 1 && events[frame as int].kind == 2 {
+        assert(positions[frame as int] == frame);
+        assert(positions.contains(frame));
+    }
+}
+
+pub proof fn provider_map_domain(reads: Seq<ArtifactRead>, frame: usize)
+    ensures provider_read_map(reads).dom().contains(frame)
+        == (exists|j: int| 0 <= j < reads.len() && reads[j].frame == frame),
+{
+    reveal(provider_read_map);
+    let positions = reads.map(|j: int, read: ArtifactRead| read.frame);
+    if provider_read_map(reads).dom().contains(frame) {
+        assert(positions.contains(frame));
+        let j = choose|j: int| 0 <= j < positions.len() && positions[j] == frame;
+        assert(reads[j].frame == frame);
+    } else if exists|j: int| 0 <= j < reads.len() && reads[j].frame == frame {
+        let j = choose|j: int| 0 <= j < reads.len() && reads[j].frame == frame;
+        assert(positions[j] == frame);
+        assert(positions.contains(frame));
+    }
+}
+
+/// Concrete coverage establishes both domain directions. No assumed inventory
+/// completeness bridges this declared provider domain to physical compiler IO.
+pub proof fn provider_coverage_refines_exact_domain(events: Seq<ProviderEvent>, reads: Seq<ArtifactRead>)
+    requires provider_trace(events), artifact_read_coverage(events, reads),
+    ensures provider_read_map(reads).dom() == declared_artifact_frames(events),
+        forall|j: int| 0 <= j < reads.len() ==> #[trigger] provider_read_map(reads)[reads[j].frame] == reads[j].raw.unwrap()@,
+{
+    assert forall|frame: usize| provider_read_map(reads).dom().contains(frame) implies declared_artifact_frames(events).contains(frame) by {
+        provider_map_domain(reads, frame);
+        declared_frame_domain(events, frame);
+        let j = choose|j: int| 0 <= j < reads.len() && reads[j].frame == frame;
+        assert(artifact_read_at(events, reads[j], reads[j].frame as int));
+    }
+    assert forall|frame: usize| declared_artifact_frames(events).contains(frame) implies provider_read_map(reads).dom().contains(frame) by {
+        provider_map_domain(reads, frame);
+        declared_frame_domain(events, frame);
+        let j = choose|j: int| 0 <= j < reads.len() && reads[j].frame == frame;
+        assert(artifact_read_at(events, reads[j], reads[j].frame as int));
+    }
+    assert(provider_read_map(reads).dom() =~= declared_artifact_frames(events));
+    assert forall|j: int| 0 <= j < reads.len() implies #[trigger] provider_read_map(reads)[reads[j].frame] == reads[j].raw.unwrap()@ by {
+        reveal(provider_read_map);
+        provider_map_domain(reads, reads[j].frame);
+        assert(artifact_read_at(events, reads[j], reads[j].frame as int));
+        let k = choose|k: int| 0 <= k < reads.len() && reads[k].frame == reads[j].frame && reads[k].raw.is_some();
+        if k < j { assert(reads[k].frame < reads[j].frame); }
+        if j < k { assert(reads[j].frame < reads[k].frame); }
+        assert(k == j);
+    }
+}
+
+/// The real source-shared constructor refines the explicit provider map.
+pub fn checked_compiler_provider_view(events: &[ProviderEvent], reads: &[ArtifactRead]) -> (seal: Option<ProviderSeal>)
+    ensures seal.is_some() ==> provider_read_map(reads@).dom() == declared_artifact_frames(events@),
+{
+    let seal = seal_compiler_provider(events, reads);
+    if seal.is_some() { proof { provider_coverage_refines_exact_domain(events@, reads@); } }
+    seal
+}
+
+/// The actual production seal connects a nonempty completed provider to exact
+/// keyed read coverage; a missing read cannot be repaired by a terminal stamp.
+pub fn compiler_provider_nonempty_and_missing_read_controls() {
+    let events = vec![
+        ProviderEvent { kind: 0, producer: 7, child: 0, frames: 0, exited: false },
+        ProviderEvent { kind: 1, producer: 7, child: 8, frames: 0, exited: false },
+        ProviderEvent { kind: 2, producer: 7, child: 8, frames: 0, exited: false },
+        ProviderEvent { kind: 3, producer: 7, child: 8, frames: 1, exited: true },
+    ];
+    let raw = vec![2u8];
+    let reads = vec![ArtifactRead { producer: 7, child: 8, frame: 2, raw: Some(&raw) }];
+    let sealed = seal_compiler_provider(&events, &reads);
+    proof { assert(artifact_read_at(events@, reads[0], 2)); }
+    assert(sealed.is_some());
+    proof {
+        provider_coverage_refines_exact_domain(events@, reads@);
+        declared_frame_domain(events@, 2);
+        assert(provider_read_map(reads@).dom().contains(2));
+        assert(provider_read_map(reads@)[2] == raw@);
+    }
+    let trace = seal_provider(&events);
+    assert(trace.is_some());
+    let seal = trace.unwrap();
+    let producer = seal.producer(); let child = seal.child(); let frames = seal.frames();
+    assert(producer == 7 && child == 8 && frames == 1);
+    let empty = vec![];
+    let absent = seal_compiler_provider(&events, &empty);
+    // Non-vacuous success and missing-read refusal also run as native tests;
+    // this proof establishes the general concrete-constructor implication.
+    if absent.is_some() {
+        assert(artifact_read_coverage(events@, empty@));
+        assert(exists|r: int| 0 <= r < empty.len() && empty[r].frame == 2);
+        assert(false);
+    }
+
+}
+
+/// A completed empty child is observable. No child, truncated execution,
+/// replayed start, wrong child or failed wait cannot mint a seal.
+pub fn compiler_provider_lifecycle_controls() {
+    let empty: Vec<ProviderEvent> = vec![];
+    let missing = seal_provider(&empty); assert(missing.is_none());
+    let intent = vec![ProviderEvent { kind: 0, producer: 7, child: 0, frames: 0, exited: false }];
+    let truncated = seal_provider(&intent); assert(truncated.is_none());
+    let completed = vec![
+        ProviderEvent { kind: 0, producer: 7, child: 0, frames: 0, exited: false },
+        ProviderEvent { kind: 1, producer: 7, child: 8, frames: 0, exited: false },
+        ProviderEvent { kind: 3, producer: 7, child: 8, frames: 0, exited: true },
+    ];
+    let sealed = seal_provider(&completed); assert(sealed.is_some());
+    let wrong = vec![
+        ProviderEvent { kind: 0, producer: 7, child: 0, frames: 0, exited: false },
+        ProviderEvent { kind: 1, producer: 7, child: 8, frames: 0, exited: false },
+        ProviderEvent { kind: 2, producer: 7, child: 9, frames: 0, exited: false },
+        ProviderEvent { kind: 3, producer: 7, child: 8, frames: 1, exited: true },
+    ];
+    proof { assert(!provider_frame(wrong@, 2)); }
+    let wrong = seal_provider(&wrong); assert(wrong.is_none());
+    let failed = vec![
+        ProviderEvent { kind: 0, producer: 7, child: 0, frames: 0, exited: false },
+        ProviderEvent { kind: 1, producer: 7, child: 8, frames: 0, exited: false },
+        ProviderEvent { kind: 3, producer: 7, child: 8, frames: 0, exited: false },
+    ];
+    let failed = seal_provider(&failed); assert(failed.is_none());
+    let replayed = vec![
+        ProviderEvent { kind: 0, producer: 7, child: 0, frames: 0, exited: false },
+        ProviderEvent { kind: 1, producer: 7, child: 8, frames: 0, exited: false },
+        ProviderEvent { kind: 1, producer: 7, child: 8, frames: 0, exited: false },
+        ProviderEvent { kind: 3, producer: 7, child: 8, frames: 1, exited: true },
+    ];
+    proof { assert(!provider_frame(replayed@, 2)); }
+    let replayed = seal_provider(&replayed); assert(replayed.is_none());
 }
 
 }

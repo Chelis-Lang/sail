@@ -5931,11 +5931,8 @@ mod tests {
         assert!(
             std::fs::write(
                 &artifact_path,
-                artifacts
-                    .iter()
-                    .map(Value::to_string)
-                    .collect::<Vec<_>>()
-                    .join("\n")
+                super::super::source_inputs::fixture_journal(&artifacts)
+                    .unwrap_or_else(|e| unreachable!("provider fixture: {e}"))
             )
             .is_ok()
         );

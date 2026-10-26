@@ -226,6 +226,9 @@ pub(super) fn unscheduled(
             continue;
         }
         let value = serde_json::from_str::<Value>(line).ok()?;
+        if super::source_inputs::provider_metadata(&value)? {
+            continue;
+        }
         reported.insert(value["package_id"].as_str()?.to_owned());
     }
     Some(
@@ -563,6 +566,17 @@ mod tests {
         let (clean, _, covered) = stale(&state, &data);
         assert_eq!(clean, vec!["serde"]);
         assert!(!covered);
+        // Exact private provider controls do not become units. Existing unit
+        // records still contribute their original package identities.
+        let original = std::fs::read_to_string(&artifacts)?;
+        let values: Vec<Value> = original
+            .lines()
+            .map(serde_json::from_str)
+            .collect::<std::result::Result<_, _>>()?;
+        std::fs::write(
+            &artifacts,
+            super::super::source_inputs::fixture_journal(&values)?,
+        )?;
         let skipped = unscheduled(&stdout, &artifacts, &data).ok_or("unscheduled refused")?;
         assert_eq!(skipped, BTreeSet::from(["serde".to_owned()]));
         let (clean, _, covered) = stale_after(&state, &data, &skipped);
@@ -598,6 +612,13 @@ mod tests {
         assert_eq!(unscheduled(&stdout, &artifacts, &data), None);
         std::fs::write(&artifacts, r#"{"reason":"compiler-artifact"}"#)?;
         assert_eq!(unscheduled(&stdout, &artifacts, &data), None);
+        for malformed in [
+            r#"{"unknown":"record"}"#,
+            r#"{"reason":"sail-source-provider","package_id":"a"}"#,
+        ] {
+            std::fs::write(&artifacts, malformed)?;
+            assert_eq!(unscheduled(&stdout, &artifacts, &data), None);
+        }
         std::fs::remove_file(&artifacts)?;
         assert_eq!(unscheduled(&stdout, &artifacts, &data), None);
         std::fs::remove_dir_all(root)?;

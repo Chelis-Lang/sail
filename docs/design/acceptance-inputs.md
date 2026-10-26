@@ -12,6 +12,89 @@ same checked executable bodies to the model's exact input-map representation.
 Physical observation, compiler-closure discovery and the remaining native
 caller/context mapping still have the boundaries listed below.
 
+## Completed compiler-declaration providers
+
+The default managed Cargo adapter records a private pre-spawn intent in the
+run's artifact journal, then the PID from the actual `Child`. Each retained
+`compiler-artifact` or `build-script-executed` message carries that same producer
+and child identity. The terminal record is written only after the stdout reader
+reaches EOF and `wait` returns a normal exit status. A normal nonzero Cargo exit
+can complete observation accounting; it establishes no successful proof. Spawn,
+read, forwarding, journal-write and wait errors leave an unsealed intent, and the
+owned child is killed and reaped on an early return.
+
+The source-shared `seal_provider` checks the concrete event sequence: one intent,
+one nonzero started child, only frames from that producer/child, and one terminal
+with the exact frame count. Zero frames is a valid completed empty observation;
+a missing journal is not. Interleaved and appended children retain separate
+intent inventories. An unfinished child cannot disappear merely because another
+child completed. Duplicate producer intents, malformed JSON, records outside an
+intent, unknown record kinds and unterminated final records refuse coverage.
+PID reuse inside the same run namespace also refuses coverage conservatively.
+The build-script scheduling and unit-plan consumers skip only schema-validated
+private control records. Their original unit package/scope checks remain in
+force; malformed controls and unknown records do not gain a metadata exemption.
+
+`seal_compiler_provider` additionally scans actual artifact-frame positions.
+Every ordinary compiler artifact requires exactly one tagged successful dep-info
+read. Build-script and custom-build frames are counted but do not require a
+source dep-info read. Each `ArtifactRead` carries its original producer, child,
+frame position and actual dep-info bytes. The native read returns these together;
+a sorter only proposes their order. The checked scan rejects missing, duplicate,
+foreign-child, extra and unreadable outcomes. It proves both directions of the
+exact read-domain relation, strict uniqueness and successful raw-byte presence.
+The refinement adapter constructs an exact `Map<usize, Seq<u8>>` from those
+returned outcomes and proves that its domain equals the observed required
+artifact positions. It does not substitute an independently supplied complete
+inventory for the actual frame positions.
+
+The inductive `artifact_prefix_step` theorem covers each concrete scan step;
+`artifact_next` proves that complete typed outcomes determine the next required
+read. The production constructor's acceptance predicate is proved in both
+directions, so the nonempty successful witness establishes an actual usable
+seal. Controls cover a missing read, wrong child, incomplete execution, failed
+wait and an observed empty child. Native controls also exercise reordered,
+duplicate and outside outcomes, multiple child intents, malformed/truncated
+journals and a real spawned child with a normal nonzero exit. The existing
+package-attribution fixture retains its original assertions under a synthetic
+completed-provider envelope.
+
+`managed/source_inputs.rs` preserves the old successful dependency parsing,
+lexical aliases, canonical destinations and output ordering. Empty or unusable
+dep-info rules withhold coverage. Previously uncovered source hints remain
+uncovered rather than acquiring coverage from a later empty stream. Establishing
+a replacement complete source inventory after such a refusal remains a separate
+recovery policy; this slice does not invent one.
+
+These are **declaration-provider** proofs. The following boundaries remain:
+
+- The native JSON/make parsers, package attribution, path encoding and conversion
+  from the retained raw messages to typed events are source-bound reviewed
+  adapters, not stock-Verus-proved parsers. The journal retains recognized Cargo
+  artifact/build-script messages; it is not a full raw stdout transcript.
+- The adapter's actual `spawn`/PID/stdout EOF/`wait` correspondence and protected
+  endpoint append/read semantics are exercised by real-child controls and
+  structurally owned Rust code. The Rust standard library and OS primitives are
+  not proved by this component. Removing an entire invocation before its
+  pre-spawn intent is recorded is outside this endpoint's observation domain.
+- A completed journal establishes accounting for observed declarations, not that
+  Cargo/rustc emitted every physical compiler input, environment observation,
+  generated file or dynamic-library access. Compiler dep-info completeness and
+  independently expected invocation coverage remain explicit provider contracts.
+- Reading a dep-info file after compilation does not prove an atomic relation
+  between a previous executable hash and the subsequently launched process, or
+  that the dependency file could not be replaced. Compiler-launch identity,
+  actual consumed source bytes and filesystem observation semantics remain open
+  refinement obligations. No digest injectivity or complete-filesystem axiom is
+  introduced.
+
+The [issue #377](https://github.com/Chelis-Lang/sail/issues/377) regression
+against the original updater body demonstrates that a missing
+artifact journal could set declaration coverage to true. This is an accounting
+defect witness, not an end-to-end false-proof demonstration. Final macOS/native
+Linux gates and the managed failing-first workflow qualify the integrated PR;
+focused controls alone do not establish those broader results.
+
 ## Source-shared production refinement
 
 The dependency-free `sail-acceptance` leaf compiles the same Rust function
@@ -346,6 +429,10 @@ Deliberately broken source controls cover the actual obligations:
 | Omit equality of required and context-map domains | Observing a plausible subset could claim complete input evidence |
 | Omit solver equality during projection | A different selected solver could inherit a projection without the required context-change boundary |
 | Omit the later transaction boundary for retained reads | Old read witnesses could satisfy a required fresh-read projection |
+| Omit an observed frame's child identity | A foreign child frame could satisfy provider completion |
+| Omit the final retained-frame count | A truncated or augmented provider trace could seal |
+| Omit the actual dep-info outcome's frame identity | A read from another artifact could satisfy a required position |
+| Omit successful raw-read presence | An unreadable artifact could enter the observed input map |
 
 The checker mutates temporary captured copies using unique manifest needles,
 retains the same verification scope and requires actual verification errors.
