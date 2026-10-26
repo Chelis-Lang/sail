@@ -218,8 +218,10 @@ Cargo's own. Two parts of the environment bind a result:
   reads, so a read in a `proof fn`, spec or assertion alone is not declared
   ([VI-0036](verus-issues/VI-0036-ghost-env-reads-missing-from-dep-info.md),
   #386). For every verified target Sail requests the fork's report of the
-  variables rustc tracked in both phases (`SAIL_COMPILER_INPUTS`, with
-  `-Zchecksum-hash-algorithm=sha256`, which the report needs). After a
+  variables rustc tracked in both phases (`SAIL_COMPILER_INPUTS`; the source
+  checksum the report needs, `-Zchecksum-hash-algorithm=sha256`, travels with
+  Sail's other Verus options in ` __VERUS_DRIVER_ARGS__`, not on the
+  compiler's command line). After a
   successful verification it appends each missing read to the unit's dep-info
   in rustc's own form, so Cargo recompiles when it changes, exactly as for an
   exec read, and records the observed names in the invocation. Variables the
