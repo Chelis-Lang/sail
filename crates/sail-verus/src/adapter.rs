@@ -8,7 +8,9 @@ use crate::managed::command_environment::{Command as CompilerCommand, Spawned};
 use crate::managed::{Invocation, Runtime, TargetIdentity, digest, event, file_digest, json};
 use crate::{Error, Result};
 use std::ffi::OsString;
-use std::io::{BufRead, Read, Write};
+#[cfg(test)]
+use std::io::Read;
+use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
@@ -87,9 +89,9 @@ impl InvocationLog<'_> {
 }
 
 /// Own the compiler and its pipe reader across every streamed-output failure.
-struct CompilerOutput<C: OutputChild = std::process::Child> {
+struct CompilerOutput<C: OutputChild = std::process::Child, Stream = Vec<u8>> {
     child: C,
-    stdout: Option<std::thread::JoinHandle<std::io::Result<Vec<u8>>>>,
+    stdout: Option<std::thread::JoinHandle<std::io::Result<Stream>>>,
 }
 
 trait OutputChild {
@@ -122,8 +124,8 @@ impl OutputChild for Spawned {
     }
 }
 
-impl<C: OutputChild> CompilerOutput<C> {
-    fn stdout(&mut self) -> Result<Vec<u8>> {
+impl<C: OutputChild, Stream> CompilerOutput<C, Stream> {
+    fn stdout(&mut self) -> Result<Stream> {
         self.stdout
             .take()
             .ok_or_else(|| Error::new("SAIL3111", "missing solver output pipe"))?
@@ -145,7 +147,7 @@ impl<C: OutputChild> CompilerOutput<C> {
     }
 }
 
-impl<C: OutputChild> Drop for CompilerOutput<C> {
+impl<C: OutputChild, Stream> Drop for CompilerOutput<C, Stream> {
     fn drop(&mut self) {
         self.stop();
     }
@@ -263,7 +265,7 @@ fn cargo_messages(
         },
     )
     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let mut owned = CompilerOutput {
+    let mut owned: CompilerOutput = CompilerOutput {
         child: cmd
             .spawn()
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?,
@@ -1018,15 +1020,11 @@ fn driver() -> Result<ExitCode> {
     event(
         &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.target_name()}),
     );
-    let stdout = child.take_stdout().map(|mut pipe| {
-        std::thread::spawn(move || {
-            let mut bytes = Vec::new();
-            pipe.read_to_end(&mut bytes).map(|_| bytes)
-        })
-    });
+    let stdout = child
+        .take_stdout()
+        .map(|pipe| std::thread::spawn(move || pipe.read_all()));
     let mut output = CompilerOutput { child, stdout };
-    let mut stderr = Vec::new();
-    if let Some(mut pipe) = output.child.take_stderr() {
+    let stderr = if let Some(mut pipe) = output.child.take_stderr() {
         let mut buf = vec![0; 65536];
         loop {
             let n = pipe
@@ -1035,7 +1033,6 @@ fn driver() -> Result<ExitCode> {
             if n == 0 {
                 break;
             }
-            stderr.extend_from_slice(&buf[..n]);
             if runtime.engine.is_none() {
                 crate::managed::visible_output::emit(
                     crate::managed::visible_output::Stream::Stderr,
@@ -1044,9 +1041,11 @@ fn driver() -> Result<ExitCode> {
                 .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             }
         }
+        Some(pipe.finish())
     } else {
         attempts.refuse("missing compiler stderr pipe");
-    }
+        None
+    };
     output
         .child
         .wait()
