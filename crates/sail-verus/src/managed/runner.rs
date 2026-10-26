@@ -433,10 +433,11 @@ fn context_hashes(
     identity: &[(String, String)],
     environment: &[(Vec<u8>, Vec<u8>)],
 ) -> Result<(String, String)> {
-    // Keep the existing proof-context encoding: focus selectors still bind
-    // reports, receipts, runtime validation and prepared invocation contexts.
+    // Policy 2 refuses legacy proof authority whose declaration scan or exact
+    // environment-name mapping was incomplete. Keep compiler-family artifacts
+    // separate: only genuine current proof evidence can publish new receipts.
     let hash = digest(
-        &serde_json::to_vec(&(1, args, engine, identity, environment))
+        &serde_json::to_vec(&(2, args, engine, identity, environment))
             .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     );
     let compiler_engine = engine.map(crate::engine::Request::artifact_identity);
@@ -1649,6 +1650,7 @@ fn dirty_receipt_packages(
         .collect()
 }
 
+#[cfg(test)]
 fn target_records(
     paths: &Paths,
     data: &Value,
@@ -1668,6 +1670,7 @@ fn target_records(
         partial_args,
         None,
     )
+    .map(|(results, missing, _)| (results, missing))
 }
 
 #[allow(
@@ -1684,7 +1687,7 @@ fn target_records_in(
     seeded: &[super::store::Seeded],
     partial_args: Option<&[String]>,
     observation: Option<RevisionObservation<'_>>,
-) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
+) -> Result<(Vec<TargetResult>, BTreeSet<String>, bool)> {
     let scoped_run = partial_args.is_some();
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
@@ -1704,7 +1707,8 @@ fn target_records_in(
     let siblings = sibling_receipts(paths, context);
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
-    let declared = super::environment::values(&super::environment::declared_names(&paths.target));
+    let declared = super::environment::declared_names(&paths.target)
+        .map(|names| super::environment::values(&names));
     let artifacts = artifacts(paths);
     let verified = |artifact: &Value| {
         let package = data["packages"]
@@ -1835,7 +1839,7 @@ fn target_records_in(
             let hashes = digests.hashes(&artifact_paths)?;
             let reusable =
                 paths.reuse && call.successful_for(partial_args) && !input_revision.is_empty();
-            if reusable {
+            if reusable && let Some(declared) = &declared {
                 json(
                     &paths
                         .run
@@ -1892,6 +1896,7 @@ fn target_records_in(
             );
             let matches = |r: &Receipt, context: &str| {
                 paths.reuse
+                    && declared.as_ref() == Some(&r.declared_environment)
                     && artifact["fresh"] == true
                     && !force
                     && !input_revision.is_empty()
@@ -1941,7 +1946,8 @@ fn target_records_in(
                     }
                     seeded.iter().find_map(|seed| {
                         let r = &seed.receipt;
-                        (artifact["fresh"] == true
+                        (declared.as_ref() == Some(&r.declared_environment)
+                            && artifact["fresh"] == true
                             && r.package_id == package_id
                             && r.invocation.identity.manifest
                                 == Path::new(package["manifest_path"].as_str().unwrap_or_default())
@@ -2037,7 +2043,7 @@ fn target_records_in(
             "multiple proof reports name one Cargo target",
         ));
     }
-    Ok((results, missing))
+    Ok((results, missing, declared.is_some()))
 }
 
 /// Package ids reachable from `roots` through every resolved dependency kind.
@@ -3301,7 +3307,7 @@ pub(crate) fn run_engine_held(
     });
     let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
     let mut overlapped = Some(after_thread.unwrap_or_else(|_| Err(reader_failed())));
-    let (mut targets, missing) = records?;
+    let (mut targets, missing, mut declarations_complete) = records?;
     if retry_possible && !missing.is_empty() {
         overlapped = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
@@ -3313,7 +3319,7 @@ pub(crate) fn run_engine_held(
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
         exit = invoke(config, &paths, &mut out, err, &[])?;
         outside_scope |= !units_in_scope(&paths);
-        let (retried, missing) = target_records(
+        let (retried, missing, retried_declarations) = target_records_in(
             &paths,
             &data,
             &hash,
@@ -3321,8 +3327,10 @@ pub(crate) fn run_engine_held(
             &expected,
             &seeded,
             focused(&config.args).then_some(config.args.as_slice()),
+            None,
         )?;
         targets = retried;
+        declarations_complete = retried_declarations;
         if !missing.is_empty() {
             return Err(Error::new(
                 "SAIL3107",
@@ -3380,6 +3388,7 @@ pub(crate) fn run_engine_held(
         || !after.complete
         || !after_coverage
         || !source_coverage
+        || !declarations_complete
         || !absent.complete
         || outside_scope
         || !scheduling_confirmed
@@ -3960,10 +3969,20 @@ mod tests {
             context_hashes(&args, request, &identity, &environment)
         };
         let (proof, compiler) = hashes(Some(&selected))?;
-        assert_eq!(
+        assert_ne!(
             proof,
             digest(&serde_json::to_vec(&(
                 1,
+                &args,
+                &selected,
+                &identity,
+                &environment
+            ))?)
+        );
+        assert_eq!(
+            proof,
+            digest(&serde_json::to_vec(&(
+                2,
                 &args,
                 &selected,
                 &identity,
@@ -5381,6 +5400,67 @@ mod tests {
     }
 
     #[test]
+    fn incomplete_environment_provider_preserves_fresh_reports_and_refuses_receipts()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-env-receipt-loss-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
+        let data = serde_json::json!({"workspace_root":root, "sail_cache_directory":config.cache,
+            "workspace_members":["input"], "resolve":{"nodes":[{"id":"input","dependencies":[]}]},
+            "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
+            "source":null,"metadata":{"verus":{"verify":true}},
+            "targets":[{"name":"input","kind":["lib"],"src_path":root.join("lib.rs")}]}]});
+        let deps = paths.target.join("debug/deps");
+        std::fs::create_dir_all(&deps)?;
+        let artifact = paths.target.join("input.rlib");
+        std::fs::write(&artifact, "actual artifact")?;
+        let artifact_record = |fresh| {
+            serde_json::json!({"reason":"compiler-artifact", "package_id":"input", "fresh":fresh,
+            "target":{"name":"input","kind":["lib"]}, "filenames":[artifact]})
+        };
+        json(&paths.run.join("artifacts.jsonl"), &artifact_record(false))?;
+        let receipt = compiler_receipt(&paths, &data, &artifact);
+        let call_path = paths.run.join("invocations/call.json");
+        json(&call_path, &receipt.invocation)?;
+        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let pending = paths.run.join("pending-receipts");
+        let declaration = deps.join("actual.d");
+        std::fs::write(&declaration, b"# env-dep:ACTUAL_FLAG=present\n\xff")?;
+        let (targets, missing, declared) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(!declared && missing.is_empty());
+        assert_eq!(targets.len(), 1);
+        assert!(targets[0].complete && !targets[0].reused);
+        assert_eq!(targets[0].report, receipt.invocation.report);
+        assert_eq!(std::fs::read_dir(&pending)?.count(), 0);
+        std::fs::remove_file(&declaration)?;
+        let (_, _, declared) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(declared);
+        assert_eq!(std::fs::read_dir(&pending)?.count(), 1);
+        super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+        std::fs::remove_file(&call_path)?;
+        json(&paths.run.join("artifacts.jsonl"), &artifact_record(true))?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(targets[0].reused && missing.is_empty());
+        std::fs::write(&declaration, "# env-dep:NEW_DECLARED_FLAG\n")?;
+        let (targets, missing, declared) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(declared && targets.is_empty());
+        assert_eq!(missing, BTreeSet::from(["input".into()]));
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn shipped_proof_origin_survives_receipt_and_store_reuse()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-shipped-origin-{}", std::process::id()));
@@ -6389,12 +6469,19 @@ mod tests {
                 .map(|p| p.with_file_name("verus"))
         );
         let mut hashes = super::super::files::FileDigests::default();
-        assert_eq!(hashes.hash(&alias), hashes.hash(&executable));
+        let initial = hashes.hash(&alias);
+        assert_eq!(initial, hashes.hash(&executable));
         assert!(std::fs::write(&executable, "changed").is_ok());
+        let current = hashes.hash(&alias);
         assert_ne!(
-            hashes.hash(&alias),
+            initial, current,
+            "a changed original seal forces a new read"
+        );
+        assert_eq!(current, Ok(super::super::files::digest(b"changed")));
+        assert_eq!(
+            current,
             super::super::files::FileDigests::default().hash(&alias),
-            "independent phases must re-read content"
+            "both phases must describe the changed content"
         );
         assert!(std::fs::remove_dir_all(root).is_ok());
     }

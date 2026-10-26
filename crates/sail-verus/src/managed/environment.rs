@@ -119,26 +119,24 @@ const SKIPPED: &[&str] = &["incremental", ".fingerprint", "examples"];
 
 /// The names declared by every unit in a Cargo target: `# env-dep:` lines of
 /// each `deps/*.d` file and `rerun-if-env-changed` lines of each build
-/// script's `build/*/output`. Units of earlier runs only add names.
-pub(super) fn declared_names(target: &Path) -> BTreeSet<String> {
+/// script's `build/*/output`. Units of earlier runs only add names. A missing,
+/// unreadable, malformed or untraversable observation is `None`, distinct from
+/// a successful empty scan. This enumerates declarations, not all compiler I/O.
+pub(super) fn declared_names(target: &Path) -> Option<BTreeSet<String>> {
     let mut names = BTreeSet::new();
     let mut pending = vec![target.to_owned()];
     while let Some(directory) = pending.pop() {
-        let Ok(entries) = std::fs::read_dir(&directory) else {
-            continue;
-        };
-        for entry in entries.flatten() {
+        let entries = std::fs::read_dir(&directory).ok()?;
+        for entry in entries {
+            let entry = entry.ok()?;
             let path = entry.path();
-            let Ok(kind) = entry.file_type() else {
-                continue;
-            };
-            let name = entry.file_name();
-            if kind.is_dir() {
-                if !SKIPPED.iter().any(|skipped| name == *skipped) {
-                    pending.push(path);
-                }
-                continue;
+            let kind = entry.file_type().ok()?;
+            // A link may hide a declaration-bearing directory or file. Without
+            // a cycle-safe owned traversal it supplies no complete scan.
+            if kind.is_symlink() {
+                return None;
             }
+            let name = entry.file_name();
             let parent = directory.file_name().unwrap_or_default();
             let dep_info = parent == "deps" && path.extension().is_some_and(|e| e == "d");
             let script = name == "output"
@@ -146,31 +144,71 @@ pub(super) fn declared_names(target: &Path) -> BTreeSet<String> {
                     .parent()
                     .and_then(Path::file_name)
                     .is_some_and(|grandparent| grandparent == "build");
-            if !(dep_info || script) || !kind.is_file() {
+            if kind.is_dir() {
+                if dep_info || script {
+                    return None;
+                }
+                if !SKIPPED.iter().any(|skipped| name == *skipped) {
+                    pending.push(path);
+                }
                 continue;
             }
-            let Ok(text) = std::fs::read_to_string(&path) else {
+            if !(dep_info || script) {
                 continue;
-            };
-            names.extend(declarations(&text, dep_info));
+            }
+            if !kind.is_file() {
+                return None;
+            }
+            let text = std::fs::read_to_string(&path).ok()?;
+            names.extend(declarations(&text, dep_info)?);
         }
     }
-    names
+    Some(names)
 }
 
-fn declarations(text: &str, dep_info: bool) -> Vec<String> {
-    text.lines()
-        .filter_map(|line| {
-            let rest = if dep_info {
-                line.strip_prefix("# env-dep:")?
-            } else {
-                line.strip_prefix("cargo:rerun-if-env-changed=")
-                    .or_else(|| line.strip_prefix("cargo::rerun-if-env-changed="))?
-            };
-            let name = rest.split_once('=').map_or(rest, |(name, _)| name).trim();
-            (!name.is_empty()).then(|| name.to_owned())
-        })
-        .collect()
+fn declarations(text: &str, dep_info: bool) -> Option<Vec<String>> {
+    let mut names = Vec::new();
+    for line in text.lines() {
+        if dep_info {
+            if let Some(rest) = line.strip_prefix("# env-dep:") {
+                let encoded = rest.split_once('=').map_or(rest, |(name, _)| name);
+                names.push(dep_info_name(encoded)?);
+            }
+        } else if let Some(name) = line
+            .strip_prefix("cargo:rerun-if-env-changed=")
+            .or_else(|| line.strip_prefix("cargo::rerun-if-env-changed="))
+        {
+            // Cargo removes trailing line whitespace before interpreting a
+            // directive; leading name whitespace remains significant.
+            let name = name.trim_end();
+            if name.is_empty() || name.contains(['=', '\0']) {
+                return None;
+            }
+            names.push(name.to_owned());
+        }
+    }
+    Some(names)
+}
+
+fn dep_info_name(encoded: &str) -> Option<String> {
+    let mut name = Vec::with_capacity(encoded.len());
+    let mut bytes = encoded.bytes();
+    while let Some(byte) = bytes.next() {
+        name.push(if byte == b'\\' {
+            match bytes.next()? {
+                b'n' => b'\n',
+                b'r' => b'\r',
+                b'\\' => b'\\',
+                _ => return None,
+            }
+        } else {
+            byte
+        });
+    }
+    // The native parser proposes a decoding; the exact shared byte checker
+    // certifies the mapping before a different environment key can be sampled.
+    sail_acceptance::inputs::environment_name_matches(encoded.as_bytes(), &name)
+        .then(|| String::from_utf8(name).ok())?
 }
 
 /// The current value, or absence, of each declared name.
@@ -196,6 +234,7 @@ pub(super) fn unchanged(recorded: &BTreeMap<String, Option<Vec<u8>>>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Write as _;
 
     #[test]
     fn proof_context_binds_tool_inputs_and_not_session_variables() {
@@ -259,7 +298,8 @@ mod tests {
         )?;
         std::fs::write(&ignored, "# env-dep:IGNORED\n")?;
         std::fs::write(deps.join("notes.txt"), "# env-dep:NOT_DEP_INFO\n")?;
-        let names = declared_names(&root);
+        let names =
+            declared_names(&root).ok_or_else(|| std::io::Error::other("incomplete scan"))?;
         std::fs::remove_dir_all(&root)?;
         assert_eq!(
             names.into_iter().collect::<Vec<_>>(),
@@ -271,6 +311,124 @@ mod tests {
                 "VERUS_Z3_PATH"
             ]
         );
+        Ok(())
+    }
+
+    #[test]
+    fn declaration_provider_errors_are_not_complete_empty_scans() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-env-errors-{}", std::process::id()));
+        assert!(declared_names(&root).is_none());
+        std::fs::create_dir_all(root.join("debug/deps"))?;
+        assert_eq!(declared_names(&root), Some(BTreeSet::new()));
+        let info = root.join("debug/deps/actual.d");
+        std::fs::write(&info, b"# env-dep:ACTUAL_FLAG=present\n\xff\n")?;
+        assert!(declared_names(&root).is_none());
+        std::fs::write(&info, "# env-dep:ACTUAL_FLAG=present\n")?;
+        assert_eq!(
+            declared_names(&root),
+            Some(BTreeSet::from(["ACTUAL_FLAG".into()]))
+        );
+        std::fs::write(&info, "# env-dep:BROKEN\\xNAME=value\n")?;
+        assert!(declared_names(&root).is_none());
+        std::fs::remove_file(&info)?;
+        std::fs::create_dir_all(root.join("debug/build/demo/output"))?;
+        assert!(
+            declared_names(&root).is_none(),
+            "a required file cannot be a directory"
+        );
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn declaration_provider_does_not_drop_symlinked_inputs() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-env-links-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("debug/deps"))?;
+        std::fs::write(root.join("external.d"), "# env-dep:ACTUAL_FLAG=present\n")?;
+        std::os::unix::fs::symlink(root.join("external.d"), root.join("debug/deps/actual.d"))?;
+        assert!(declared_names(&root).is_none());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn declaration_names_preserve_whitespace_and_decode_dep_info_escapes() {
+        assert_eq!(
+            declarations(
+                "# env-dep: FLAG =7\n# env-dep:LINE\\nBREAK=7\n# env-dep:BACK\\\\SLASH=7\n",
+                true
+            ),
+            Some(vec![
+                " FLAG ".into(),
+                "LINE\nBREAK".into(),
+                "BACK\\SLASH".into()
+            ])
+        );
+        assert_eq!(
+            declarations(
+                "cargo:rerun-if-env-changed= FLAG \ncargo::rerun-if-env-changed=\tTAB\t\n",
+                false
+            ),
+            Some(vec![" FLAG".into(), "\tTAB".into()])
+        );
+        for malformed in ["", "BAD\\xNAME", "DANGLING\\", "BAD\0NAME"] {
+            assert!(dep_info_name(malformed).is_none());
+        }
+    }
+
+    #[test]
+    fn actual_rustc_declarations_keep_exact_environment_names()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-env-rustc-{}", std::process::id()));
+        let deps = root.join("debug/deps");
+        std::fs::create_dir_all(&deps)?;
+        let source = root.join("names.rs");
+        let names = [
+            " FLAG ",
+            "LINE\nBREAK",
+            "CARRIAGE\rRETURN",
+            "BACK\\SLASH",
+            "TAB\tKEY",
+        ];
+        let mut program = String::new();
+        for (index, name) in names.iter().enumerate() {
+            writeln!(
+                program,
+                "pub const FLAG_{index}: &str = env!({});",
+                serde_json::to_string(name)?
+            )?;
+        }
+        std::fs::write(&source, program)?;
+        let mut command = std::process::Command::new("rustc");
+        command
+            .args([
+                "--edition",
+                "2024",
+                "--crate-name",
+                "env_names",
+                "--crate-type",
+                "lib",
+                "--emit",
+                "dep-info",
+            ])
+            .arg(&source)
+            .arg("-o")
+            .arg(deps.join("names.d"));
+        for name in names {
+            command.env(name, "7");
+        }
+        let output = command.output()?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            declared_names(&root),
+            Some(names.into_iter().map(str::to_owned).collect())
+        );
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 
@@ -291,8 +449,8 @@ mod tests {
             "# env-dep:SAIL_DEPENDENCY_READ_TOKEN\n# env-dep:SAIL_PRIVATE_GIT_READY\n",
             true,
         );
-        assert_eq!(names.len(), 2);
-        for name in names {
+        assert_eq!(names.as_ref().map(Vec::len), Some(2));
+        for name in names.into_iter().flatten() {
             assert!(!input_environment_key(OsStr::new(&name)));
             let mut recorded = values(&BTreeSet::from([name.clone()]));
             assert!(unchanged(&recorded));
@@ -311,11 +469,11 @@ mod tests {
         let name = "CARGO_TARGET_DIR".to_owned();
         assert_eq!(
             declarations("# env-dep:CARGO_TARGET_DIR=caller-target\n", true),
-            std::slice::from_ref(&name)
+            Some(vec![name.clone()])
         );
         assert_eq!(
             declarations("cargo:rerun-if-env-changed=CARGO_TARGET_DIR\n", false),
-            std::slice::from_ref(&name)
+            Some(vec![name.clone()])
         );
         let mut recorded = values(&BTreeSet::from([name.clone()]));
         assert!(unchanged(&recorded));

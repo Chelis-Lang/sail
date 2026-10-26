@@ -1287,3 +1287,122 @@ impl ReadSeal {
         { (self.original.device, self.original.object) }
     }
 }
+
+sail_spec! {
+    /// Rustc's dep-info spelling for one environment-name byte.
+    pub open spec fn encoded_environment_byte(byte: u8) -> Seq<u8> {
+        if byte == 10 { seq![92u8, 110u8] }
+        else if byte == 13 { seq![92u8, 114u8] }
+        else if byte == 92 { seq![92u8, 92u8] }
+        else { seq![byte] }
+    }
+
+    /// Dep-info escapes only carriage return, newline and backslash in names.
+    pub open spec fn encoded_environment_name(name: Seq<u8>) -> Seq<u8>
+        decreases name.len()
+    {
+        if name.len() == 0 { Seq::empty() }
+        else { encoded_environment_name(name.drop_last()) + encoded_environment_byte(name.last()) }
+    }
+
+    /// Every encoded prefix remains a prefix after encoding the remaining name.
+    pub proof fn encoded_environment_prefix(name: Seq<u8>, length: int)
+        requires 0 <= length <= name.len()
+        ensures encoded_environment_name(name.take(length)).len() <= encoded_environment_name(name).len(),
+            encoded_environment_name(name).take(encoded_environment_name(name.take(length)).len() as int)
+                == encoded_environment_name(name.take(length))
+        decreases name.len() - length
+    {
+        if length == name.len() {
+            assert(name.take(length) == name);
+        } else {
+            encoded_environment_prefix(name.drop_last(), length);
+            assert(name.take(length) == name.drop_last().take(length));
+        }
+    }
+}
+
+sail_verified! {
+    /// Check a decoder proposal against the exact emitted dep-info name bytes.
+    /// Whitespace is an ordinary name byte and is never trimmed.
+    pub fn environment_name_matches(encoded: &[u8], name: &[u8]) -> (matches: bool)
+        requires (true)
+        ensures (matches == (name.len() > 0
+            && (forall|j: int| 0 <= j < name.len() ==> name[j] != 0 && name[j] != 61)
+            && encoded@ == encoded_environment_name(name@)))
+    {
+        if name.is_empty() { return false; }
+        let mut i: usize = 0;
+        let mut j: usize = 0;
+        sail_while! { (j < name.len())
+            invariant (i <= encoded.len(), j <= name.len(),
+                encoded@.take(i as int) == encoded_environment_name(name@.take(j as int)),
+                forall|k: int| 0 <= k < j ==> name[k] != 0 && name[k] != 61)
+            decreases (name.len() - j)
+            {
+                sail_proof! {
+                    encoded_environment_prefix(name@, j as int + 1);
+                    assert(name@.take(j as int + 1).drop_last() == name@.take(j as int));
+                    if encoded@ == encoded_environment_name(name@) {
+                        assert(encoded@.take(encoded_environment_name(name@.take(j as int + 1)).len() as int)
+                            == encoded_environment_name(name@.take(j as int + 1)));
+                    }
+                }
+                let byte = name[j];
+                if byte == 0 || byte == 61 { return false; }
+                if byte == 10 || byte == 13 || byte == 92 {
+                    sail_proof! {
+                        assert(encoded_environment_name(name@.take(j as int)).len() == i);
+                        if encoded@ == encoded_environment_name(name@) {
+                            assert(encoded_environment_name(name@.take(j as int + 1))
+                                == encoded@.take(i as int) + encoded_environment_byte(byte));
+                            assert(i as int + 2 <= encoded.len());
+                            assert(encoded@.take(i as int + 2) == encoded@.take(i as int) + encoded_environment_byte(byte));
+                            assert(encoded@.take(i as int + 2)[i as int] == encoded[i as int]);
+                            assert(encoded[i as int] == 92);
+                        }
+                    }
+                    if encoded.len() - i < 2 || encoded[i] != 92 { return false; }
+                    let escaped = if byte == 10 { 110 } else if byte == 13 { 114 } else { 92 };
+                    sail_proof! {
+                        if encoded@ == encoded_environment_name(name@) {
+                            assert(encoded_environment_byte(byte) == seq![92u8, escaped]);
+                            assert(encoded@.take(i as int + 2) == encoded@.take(i as int) + seq![92u8, escaped]);
+                            assert(encoded@.take(i as int + 2)[i as int + 1] == encoded[i as int + 1]);
+                            assert(encoded[i as int + 1] == escaped);
+                        }
+                    }
+                    if encoded[i + 1] != escaped { return false; }
+                    sail_proof! {
+                        assert(name@.take(j as int + 1).drop_last() == name@.take(j as int));
+                        assert(encoded@.take(i as int + 2) == encoded@.take(i as int) + seq![92u8, escaped]);
+                    }
+                    i += 2;
+                } else {
+                    sail_proof! {
+                        assert(encoded_environment_name(name@.take(j as int)).len() == i);
+                        if encoded@ == encoded_environment_name(name@) {
+                            assert(encoded_environment_name(name@.take(j as int + 1)) == encoded@.take(i as int) + seq![byte]);
+                            assert(i < encoded.len());
+                            assert(encoded@.take(i as int + 1) == encoded@.take(i as int) + seq![byte]);
+                            assert(encoded@.take(i as int + 1)[i as int] == encoded[i as int]);
+                            assert(encoded[i as int] == byte);
+                        }
+                    }
+                    if i == encoded.len() || encoded[i] != byte { return false; }
+                    sail_proof! {
+                        assert(name@.take(j as int + 1).drop_last() == name@.take(j as int));
+                        assert(encoded@.take(i as int + 1) == encoded@.take(i as int) + seq![byte]);
+                    }
+                    i += 1;
+                }
+                j += 1;
+            }
+        }
+        sail_proof! {
+            assert(name@.take(j as int) == name@);
+            if i == encoded.len() { assert(encoded@.take(i as int) == encoded@); }
+        }
+        i == encoded.len()
+    }
+}

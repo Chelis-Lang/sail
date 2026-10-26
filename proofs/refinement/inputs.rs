@@ -579,4 +579,25 @@ pub fn opened_read_failure_and_original_stamp_controls() {
     let refused = read.finish(&stamp, &stamp); assert(refused.is_none());
 }
 
+/// Exact emitted names cannot be replaced by trimmed or escaped spellings.
+pub fn environment_name_nonempty_and_wrong_key_controls() {
+    reveal_with_fuel(encoded_environment_name, 8);
+    let spaced = vec![32u8, 65u8, 32u8];
+    let plain = vec![65u8];
+    let encoded = vec![65u8, 92u8, 110u8];
+    let decoded = vec![65u8, 10u8];
+    let wrong = vec![66u8];
+    let empty: Vec<u8> = Vec::new();
+    assert(spaced@ == seq![32u8, 65u8, 32u8]);
+    assert(decoded@ == seq![65u8, 10u8]);
+    assert(encoded_environment_name(seq![32u8, 65u8, 32u8]) == seq![32u8, 65u8, 32u8]) by (compute);
+    assert(encoded_environment_name(seq![65u8, 10u8]) == seq![65u8, 92u8, 110u8]) by (compute);
+    let spaces = environment_name_matches(&spaced, &spaced); assert(spaces);
+    let trimmed = environment_name_matches(&spaced, &plain); assert(!trimmed);
+    let newline = environment_name_matches(&encoded, &decoded); assert(newline);
+    let escaped = environment_name_matches(&encoded, &encoded); assert(!escaped);
+    let absent = environment_name_matches(&plain, &empty); assert(!absent);
+    let other = environment_name_matches(&plain, &wrong); assert(!other);
+}
+
 }

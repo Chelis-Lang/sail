@@ -228,6 +228,12 @@ fn sibling_dependency_receipt_needs_identical_fresh_bytes_and_never_covers_a_sel
             .filter(|path| path.is_file()),
     );
     receipt.artifact_hashes = artifact_hashes(&dependency_files)?;
+    // This is a synthetic storage receipt, not a verifier-success witness. It
+    // must still bind the actual declared inventory, like a production receipt.
+    receipt.declared_environment = super::super::environment::values(
+        &super::super::environment::declared_names(&first.target)
+            .ok_or("incomplete fixture declaration scan")?,
+    );
     let receipt = receipt.seal();
     let path = receipt_path(&first, &package_id, "input", &["lib".to_owned()]);
     json(
@@ -265,6 +271,33 @@ fn sibling_dependency_receipt_needs_identical_fresh_bytes_and_never_covers_a_sel
     assert_eq!(targets.len(), 1);
     assert!(targets[0].reused && !targets[0].requested);
     assert_eq!(targets[0].establishing_run, receipt.invocation.run_id);
+    assert!(!receipt.declared_environment.is_empty());
+    let publish = |record: &Receipt| -> IsolationResult {
+        json(
+            &first.run.join("pending-receipts").join(path.file_name().ok_or("receipt name absent")?),
+            record,
+        )?;
+        super::super::receipts::publish(&first.run, &first.receipts, "selected")?;
+        Ok(())
+    };
+    // A valid checksum/commit and unchanged values cannot replace the exact
+    // currently declared domain. Reject both missing names and a foreign name.
+    let foreign = super::super::environment::values(&BTreeSet::from([
+        "SAIL_TEST_NOT_DECLARED_BY_THIS_FIXTURE".to_owned(),
+    ]));
+    for declared in [BTreeMap::new(), foreign] {
+        let mut altered = receipt.clone();
+        altered.declared_environment = declared;
+        let altered = altered.seal();
+        publish(&altered)?;
+        assert!(altered.valid("selected"));
+        let (targets, missing) = records(&BTreeSet::new())?;
+        assert_eq!(targets, Vec::<TargetResult>::new());
+        assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
+    }
+    publish(&receipt)?;
+    let (targets, missing) = records(&BTreeSet::new())?;
+    assert!(missing.is_empty() && targets[0].reused);
     // A selected target needs a receipt of its own proof context.
     let selected = BTreeSet::from([(package_id.clone(), "input".to_owned(), "lib".to_owned())]);
     for force in [false, true] {
