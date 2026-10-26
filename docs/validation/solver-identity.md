@@ -1,5 +1,50 @@
 # Solver executable identity (#213)
 
+## Settled-stamp identity reuse (ADR 0082 amendment)
+
+**Built; native timing screen complete; PR review pending.** The daemon now
+reuses a solver's version and SHA-256 while the executable's complete stat
+stamp (device, inode, size, mode, mtime and ctime with nanoseconds) is
+unchanged. It records an identity only after a full fresh identification
+whose stamps before and after agree, whose ctime is at least 2 s older than
+that identification's start, and whose executable is not a `#!` script.
+Everything else identifies afresh as described below. Unit tests cover:
+an unchanged settled executable hits; an in-place rewrite with restored mtime
+and a same-size, same-mtime rename replacement both re-identify; a
+too-recent ctime, a script, a relative path and a change during
+identification are not recorded; and a hit skips the launch, while a rewrite
+of the same file falls back to a launch that refuses the handshake. The
+existing #213 real-client regressions in `crates/sail-daemon/tests/tiers.rs`
+are unchanged and pass.
+
+Native c7i.8xlarge in us-east-1, core CI image, 2026-10-26. Main `84502c0b`
+was compared with the candidate in six alternating pairs, each arm with its
+own warm cache and long-lived daemon:
+
+| Workload | Main median s (range) | Candidate median s (range) | Pairs faster | Sessions per run | Daemon CPU per run |
+|---|---:|---:|---:|---:|---:|
+| `sail new --lib` + first `sail verify` | 31.128 (31.035–31.366) | 30.455 (30.045–30.501) | 6 / 6, −0.59 to −1.07 s | 366 both | 3.54 → 0.82 s |
+| Vest `-p vest_lib` comment edit | 22.692 (22.305–22.958) | 22.551 (22.370–22.676) | 4 / 6, +0.21 to −0.40 s | 266 both | 3.40 → 1.04 s |
+
+Every sample exited 0 with identical verification summaries in both arms
+(fresh: 1 + 2,060 verified; Vest: 3,237 verified). The fresh-project
+saving is about 0.67 s (2.2%), consistent across all pairs. The Vest
+edit's wall ranges overlap, so no Vest wall gain is claimed. Its daemon CPU
+falls by about 70%, so with 32 cores the per-session identity was mostly
+off the critical path. Raw archive (results, per-sample logs, binary
+digests) SHA-256
+`c0c541ec222c74e7c51a4b6743cdc9922fb9b50d9ef4130046be2cb343b7c4e7`;
+`results.tsv` SHA-256
+`fad4743998b7b601e0604bcb1ea5d851a88912a95a49f01eabcad4e5b387c922`.
+This is a timing screen, not conformance. Full FAST/STANDARD conformance on
+this source has not been run.
+
+The managed runner still reads the solver once per run for its provenance
+digest, on a thread that overlaps target cleanup. The shim reads and hashes
+the solver only in trace mode.
+
+## Fresh identification
+
 **Native and macOS correctness checks complete; digest memo selected by PR #219.** The daemon computes solver identity for every
 HELLO instead of retaining it under `(path, length, mtime)`. Each handshake
 runs the version command and reads the complete executable bytes, reusing a
