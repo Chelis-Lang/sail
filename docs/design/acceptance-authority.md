@@ -28,6 +28,27 @@ native request-capture and retained-admission integrations below have their
 own adapter obligations; the factory alone does not prove all CLI, JSON, MCP
 or repair callers.
 
+`bind_replayed_project_ordered` checks a retained whole proof against a separate
+current request. It compares the exact original arguments, invocation directory,
+workspace, context, input revision, engine/repair selection and ordered target
+inventory, then validates the original request's complete reports. A private
+`ReplayReadback` can be sealed only from a real typed `GuardedReadback` whose
+observations and boundary guard are unchanged and whose bound revision equals
+the current request's revision. The transfer changes only the project view's
+run ID; original target establishment identities and report evidence remain
+intact. Refusal leaves the project unchanged. A constructive enabled
+zero-function case prevents an implementation that always refuses from satisfying
+the contract. Compile-only, focused and partial whole-proof transfers refuse.
+
+This checked transfer is an integration interface. Its native caller must
+independently resolve the current request and supply its actual scoped readback.
+The factory proves correspondence between those supplied records; attribution of
+the actual metadata resolver and observed input domain remains a native obligation.
+Its checked report projection preserves every captured proof field; native
+tests additionally compare the complete Rust project, including presentation
+fields outside that projection. Complete physical input discovery and a single
+global filesystem observation point remain separate obligations.
+
 The managed runner now constructs the immutable request from its independently
 resolved expected target set, original configuration, original stamped snapshot
 and selected engine before executing Cargo. A worker-only journal carries each
