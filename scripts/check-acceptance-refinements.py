@@ -34,8 +34,8 @@ LIB_SHA256 = "3e8ae88827486b5c993273f7c26bd2da86ec18ac61844d2dde81c7dd2f26fda9"
 API_LIB_SHA256 = "125f9959d72bf6bbff719526cdaad169301b9c1e156db5b46ea79b91d4c50491"
 # Binding inventories cover both ordinary and proof-only imports. In particular,
 # an erased import cannot shadow a Cargo glob with a different checked callee.
-IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': 'afa1214ec210fc66be045700eea9103fa502d5ea671036c954667bd98c75de2e'}
-REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts']}
+IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '5c5a2b96be212957689d4d1c7ec265f51c1ef129c984e28e1c5a2375d9973b2e'}
+REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current']}
 COMPONENTS = {
     "query": {"models": ["context", "query_association"], "core": ["inputs", "query"]},
     "inputs": {"models": ["context"], "core": ["inputs"]},
@@ -92,7 +92,7 @@ def validate_assembly(snapshots: dict[str, bytes]) -> None:
     protected = {
         "crates/sail-acceptance/src/query.rs": ("Fifo", "BoundPair", "CorrelatedQueue", "ReplayCursor", "PublicationBatch", "RecoveryRecord"),
         "crates/sail-acceptance/src/inputs.rs": ("OriginalCapture", "OriginalGuard", "Readback"),
-        "crates/sail-api/src/acceptance.rs": ("CompleteReport", "CompleteSelection"),
+        "crates/sail-api/src/acceptance.rs": ("CompleteReport", "CompleteSelection", "CompleteRequest"),
     }
     for path, names in protected.items():
         stream = SOURCE.tokens(snapshots[path].decode())

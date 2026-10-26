@@ -810,6 +810,30 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "&& provenance\n",
           "after": "&& true\n"
+        },
+        {
+          "name": "request-original-context",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "|| !exact_bytes(request.context_sha256.as_str().as_bytes(), project.context_sha256.as_str().as_bytes())",
+          "after": "|| false"
+        },
+        {
+          "name": "request-independent-coverage",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if !requested_coverage(&expected, &project.targets) { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "request-verification-enabled",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "|| !verification_enabled_command(&request.args)",
+          "after": "|| false"
+        },
+        {
+          "name": "request-current",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "|| !matches!(project.currentness, Currentness::Current)",
+          "after": "|| false"
         }
       ]
     }
@@ -1271,7 +1295,7 @@
       }
     },
     "project": {
-      "source_sha256": "f712d4f50ef210a3747e769d451a570186045194ba4555c935e8a61912b9fa88",
+      "source_sha256": "c9f7771dc0d0142cdd66424542ab662bf5767c3cbf5b5e883c530a4af90996e7",
       "bindings": [
         [
           "use",
@@ -1429,6 +1453,78 @@
           "declaration_sha256": "d19c3d9706d165c64318d8732d6a00ae34f60d14ddd681b3ee567991ceaab7e8"
         },
         {
+          "name": "RequestTarget",
+          "kind": "struct",
+          "fields": {
+            "package_id": [
+              "String"
+            ],
+            "target": [
+              "String"
+            ],
+            "kind": [
+              "String"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "4081f07622db86489ef2a396d8540d0e00f96209961dc3b41276b37133e92805"
+        },
+        {
+          "name": "ResolvedRequest",
+          "kind": "struct",
+          "fields": {
+            "run_id": [
+              "String"
+            ],
+            "invocation": [
+              "String"
+            ],
+            "workspace": [
+              "String"
+            ],
+            "context_sha256": [
+              "String"
+            ],
+            "input_revision": [
+              "String"
+            ],
+            "args": [
+              "Vec",
+              "<",
+              "String",
+              ">"
+            ],
+            "engine": [
+              "Option",
+              "<",
+              "EngineIdentity",
+              ">"
+            ],
+            "targets": [
+              "Vec",
+              "<",
+              "RequestTarget",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "1049ca4f4df23febd9629de87bc4f73c86cc1a3b5ceb4f7dabd091f25c52c68c"
+        },
+        {
+          "name": "EngineIdentity",
+          "kind": "struct",
+          "fields": {
+            "name": [
+              "String"
+            ],
+            "manifest_sha256": [
+              "String"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "4fef1313d15cd68c36ed4a30d68c5f7d236c751e94c26a7ee52d8617131a7646"
+        },
+        {
           "name": "Currentness",
           "kind": "enum",
           "fields": {},
@@ -1452,7 +1548,10 @@
       ],
       "retained_fields": {
         "TargetResult": "package_id target kind requested complete scope_reuse report",
-        "ProjectResult": "currentness exit_code error targets"
+        "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
+        "RequestTarget": "package_id target kind",
+        "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine targets",
+        "EngineIdentity": "name manifest_sha256"
       }
     }
   }
