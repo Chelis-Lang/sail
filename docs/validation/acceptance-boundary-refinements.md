@@ -114,6 +114,16 @@ SHA-256: `4d0e17baff34cc202ae081829e6784a09fe453dcb1ddd0b6622a9b238d1c39e5`.
 
 ## Limits retained after these slices
 
+The file-kernel/readback capture candidate at `3571ecaa` passes all three
+positive stock roots (224/0, 113/0, 299/0), preserving every prior function.
+Its 27 capture tests pass, including refusal of altered abstract host contracts,
+erased type shadowing and unverified read-token constructors. Ten new ordinary
+guard controls join the original controls. The complete 92-case production
+matrix still requires qualification at the final source. The private native
+file host, OS/SHA operations and compiler-domain closure retain their named
+proof obligations; accepting an abstract trait declaration discharges none
+of them.
+
 The model runner now requires every inventoried guard control by name and
 order. Its failure tests remove each required control in turn; all 12 tests
 pass. Production capture additionally protects the private unconfigured

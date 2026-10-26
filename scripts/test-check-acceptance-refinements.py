@@ -225,6 +225,8 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct OpenedRead", b"#[derive(Default)] pub struct OpenedRead"),
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct ReadChunk", b"#[derive(Deserialize)] pub struct ReadChunk"),
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct ReadSeal", b"#[derive(Default)] pub struct ReadSeal"),
+            ("crates/sail-acceptance/src/inputs.rs", b"pub struct GuardedReadback", b"#[derive(Default)] pub struct GuardedReadback"),
+            ("crates/sail-acceptance/src/inputs.rs", b"pub struct CompletedRead", b"#[derive(Default)] pub struct CompletedRead"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct SubmissionBinding", b"#[derive(Deserialize)] pub struct SubmissionBinding"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct SubmittedAuthority", b"#[derive(Default)] pub struct SubmittedAuthority"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct AttemptLedger", b"#[derive(Default)] pub struct AttemptLedger"),
@@ -239,6 +241,26 @@ class SourceCaptureTests(unittest.TestCase):
             candidate[path] = candidate[path].replace(before, after, 1)
             with self.subTest(path=path, after=after), self.assertRaises(CHECKER.Refusal):
                 CHECKER.validate_assembly(candidate)
+
+    def test_abstract_file_host_cannot_change_or_erase_native_bindings(self):
+        path = "crates/sail-acceptance/src/inputs.rs"
+        original = (ROOT / path).read_bytes()
+        CHECKER.compiled_subset(path, original)
+        for before, after in (
+            (b"pub struct ScriptedReadFile", b"pub struct ReadSeal"),
+            (b"pub enum FileObservation", b"pub enum InputValue"),
+            (b"count <= final(buffer).len()", b"true"),
+            (b"fn hash_finish(&mut self, hasher: Hasher)", b"fn hash_finish(&mut self, hasher: Digest)"),
+        ):
+            self.assertIn(before, original)
+            with self.subTest(after=after), self.assertRaises((CHECKER.Refusal, SOURCE.SourceRefusal)):
+                CHECKER.compiled_subset(path, original.replace(before, after, 1))
+        for source in (
+            "sail_spec! { pub struct ScriptedReadFile { value: bool } }",
+            "sail_trait! { pub trait FileReadHost { fn trusted() -> bool; } }",
+        ):
+            with self.subTest(source=source), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.checked_item_envelopes(source)
 
     def test_executable_cfg_loading_and_unchecked_spec_refuse(self):
         for source in (b"#[cfg(sail_verus)] fn valid() -> bool { true }",

@@ -138,7 +138,9 @@ def top_level(stream: list[Token]) -> list[bool]:
     return result
 
 
-def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
+def checked_item_envelopes(source: str, *, proof: bool = False,
+        reviewed_ghost_items: frozenset[str] = frozenset(),
+        reviewed_host_traits: frozenset[str] = frozenset()) -> None:
     """Privileged modules cannot hide ordinary unchecked Rust constructors.
 
     Stock Verus intentionally ignores ordinary Rust outside its envelopes.
@@ -150,6 +152,9 @@ def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
     levels = top_level(stream)
     items = {"sail_code", "sail_spec", "sail_impl_spec", "sail_verified", "sail_method"}
     functions = {"sail_spec", "sail_impl_spec", "sail_verified", "sail_method"}
+    if reviewed_host_traits:
+        items.add("sail_trait")
+        functions.add("sail_trait")
     if proof:
         items.add("verus")
         functions.add("verus")
@@ -158,10 +163,18 @@ def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
         if stream[i].value in functions and stream[i + 1].value == "!":
             end = closing(stream, i + 2)
             regions.append((i, end))
+            values = [token.value for token in stream[i + 3:end]]
+            identity = hashlib.sha256(repr(values).encode()).hexdigest()
+            if stream[i].value == "sail_trait":
+                require(identity in reviewed_host_traits,
+                    "unreviewed host trait contract or implementation")
+                continue
             if stream[i].value in {"sail_spec", "sail_impl_spec"}:
-                erased = [token.value for token in stream[i + 3:end]]
+                erased = values
                 if erased == [token.value for token in tokens("use vstd::prelude::*;")]:
                     continue
+                if identity in reviewed_ghost_items:
+                    continue  # Exact reviewed ghost types; no arbitrary shadowing.
                 require(not ({"type", "struct", "enum", "union", "trait", "impl", "const", "static"} & set(erased))
                     and all(value != "use" or position > 0 and erased[position - 1] == "broadcast"
                         for position, value in enumerate(erased)),
@@ -206,7 +219,9 @@ def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
             require(at < len(stream), "unterminated implementation")
             end = closing(stream, at)
             body = source[stream[at].end:stream[end].begin]
-            checked_item_envelopes(body, proof=proof)
+            checked_item_envelopes(body, proof=proof,
+                reviewed_ghost_items=reviewed_ghost_items,
+                reviewed_host_traits=reviewed_host_traits)
             at = end + 1
             continue
         at = begin

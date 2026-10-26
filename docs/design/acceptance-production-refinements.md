@@ -160,3 +160,13 @@ bound to a reviewed low-level OS/library primitive with its explicit assumption
 inventory. An arbitrary native trait implementation supplies no physical-input,
 solver-origin or completed-service authority. The interfaces let checked
 controllers own read/launch loops instead of proving only supplied event lists.
+
+The closed capture permits the exact reviewed `FileReadHost` declaration and
+the `ScriptedReadFile`/`FileObservation` ghost declarations by token identity.
+All other erased type bindings and host traits still refuse. Changing a host
+contract, renaming a ghost type to shadow an executable type, or adding an
+unchecked constructor for `CompletedRead` or `GuardedReadback` refuses before
+verification. Reports list this abstract primitive contract separately from
+checked bodies and reviewed native bridges. Accepting the declaration does not
+prove the private native implementation satisfies it or establish compiler
+input closure. Those production obligations remain explicit.
