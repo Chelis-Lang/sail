@@ -101,7 +101,9 @@ python3 scripts/check-acceptance-refinements.py \
 
 The output is a new directory outside the checkout. `ci/local.sh refinements`
 uses the same runner in the core CI image. The separate
-**Acceptance production refinements** job feeds **CI completion**. Its
+**Acceptance production refinements** aggregate feeds **CI completion**.
+Its query, inputs and authority jobs each check a complete root and all of
+its controls; every job must succeed. Its
 native wrapper takes 197 seconds on the qualified Linux host; the hosted
 production-refinement and model-proof jobs also pass.
 

@@ -42,3 +42,24 @@ for count in 0 1 8 9 11; do
     exit 1
   fi
 done
+
+# The proof aggregate must reject any unrun root, independently of completion.
+bash ci/check-refinements.sh success success success
+for result in failure cancelled skipped '' pending Success; do
+  for index in 0 1 2; do
+    roots=(success success success)
+    roots[$index]="$result"
+    if bash ci/check-refinements.sh "${roots[@]}" 2>/dev/null; then
+      echo "refinement aggregate incorrectly accepted '$result' at $index" >&2
+      exit 1
+    fi
+  done
+done
+for count in 0 1 2 4; do
+  roots=()
+  for ((index=0; index<count; index++)); do roots+=(success); done
+  if bash ci/check-refinements.sh ${roots[@]+"${roots[@]}"} 2>/dev/null; then
+    echo "refinement aggregate incorrectly accepted $count roots" >&2
+    exit 1
+  fi
+done

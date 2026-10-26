@@ -7,7 +7,8 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   proofs               direct pinned stock-Verus model proofs and all
 #                        deliberate guard-removal controls; no Sail driver
-#   refinements          source-shared production bodies and refinement controls
+#   refinements [query|inputs|authority]
+#                        source-shared bodies and all controls; default all roots
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
 #   boundary-witness admission|shapes
@@ -152,6 +153,17 @@ case "$step" in
       sail_proof_script=scripts/check-acceptance-refinements.py
       sail_proof_artifact=acceptance-refinements
     fi
+    sail_proof_options=()
+    if [ "$#" -gt 0 ]; then
+      if [ "$step" != refinements ] || [ "$#" -ne 1 ]; then
+        echo 'proofs accepts no selector; refinements accepts one complete component' >&2
+        exit 1
+      fi
+      case "$1" in
+        query|inputs|authority) sail_proof_options=(--component "$1");;
+        *) echo 'unknown refinement component' >&2; exit 1;;
+      esac
+    fi
     rm -rf "target/$sail_proof_artifact"
     mkdir -p "target/$sail_proof_artifact"
     sail_proof_tmp="$(mktemp -d)"
@@ -161,7 +173,7 @@ case "$step" in
       python3 "$sail_proof_script" \
         --stock-archive /opt/verus/verus.zip \
         --stock-dir /opt/verus/verus-x86-linux \
-        --out "$sail_proof_tmp/checked"; then
+        --out "$sail_proof_tmp/checked" ${sail_proof_options[@]+"${sail_proof_options[@]}"}; then
       sail_proof_status=0
     else
       sail_proof_status=$?

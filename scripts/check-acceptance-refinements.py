@@ -307,7 +307,17 @@ def working_source_matches(root: Path, snapshots: dict[str, bytes]) -> None:
             "working source differs from Git capture")
 
 
-def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> None:
+def selected_entries(entries: list[dict], component: str | None) -> list[dict]:
+    """Select one complete root only after validating the full root inventory."""
+    require(len(entries) == len(COMPONENTS)
+        and {entry["id"] for entry in entries} == set(COMPONENTS),
+        "refinement root omitted or duplicated")
+    require(component is None or component in COMPONENTS, "unknown refinement component")
+    return entries if component is None else [entry for entry in entries if entry["id"] == component]
+
+
+def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
+        component: str | None = None) -> None:
     """Qualify every selected actual-body proof and executable guard mutation."""
     started = time.monotonic()
     require(not out.is_relative_to(root.resolve()), "put raw refinement evidence outside checkout")
@@ -325,7 +335,7 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> 
     validate_assembly(snapshots)
     require(not COMMON.git(root, "status", "--porcelain=v1", "--", *paths), "refinement source is uncommitted")
     manifest = json.loads(snapshots[MANIFEST], object_pairs_hook=COMMON.unique_object)
-    entries = inventory(root, manifest, snapshots)
+    entries = selected_entries(inventory(root, manifest, snapshots), component)
     pins = tomllib.loads(snapshots["corpus/toolchain.toml"].decode())
     hosts = {("Darwin", "arm64"): "aarch64-apple-darwin", ("Linux", "x86_64"): "x86_64-unknown-linux-gnu"}
     host = hosts.get((platform.system(), platform.machine()))
@@ -376,6 +386,9 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int) -> 
         for path, value in snapshots.items()}, "stock_archive_sha256": asset["sha256"],
         "runtime_sha256": runtime, "rustc": rustc, "cases": results,
         "api_declarations": manifest["api_declarations"],
+        "validated_components": list(COMPONENTS),
+        "checked_components": [entry["id"] for entry in entries],
+        "complete_suite": component is None,
         "source_roles": {entry["id"]: {
             "checked_source": [path for path in entry["dependencies"] if path not in
                 {SYNTAX, "crates/sail-api/src/acceptance_sort.rs",
@@ -401,10 +414,12 @@ def main() -> int:
     parser.add_argument("--stock-dir", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument("--component", choices=tuple(COMPONENTS),
+        help="check one complete root and all its controls; default checks every root")
     args = parser.parse_args()
     try:
         require(args.timeout > 0, "timeout must be positive")
-        check(ROOT, args.stock_archive.resolve(), args.stock_dir.resolve(), args.out.resolve(), args.timeout)
+        check(ROOT, args.stock_archive.resolve(), args.stock_dir.resolve(), args.out.resolve(), args.timeout, args.component)
     except (Refusal, SOURCE.SourceRefusal, OSError, ValueError, KeyError, TypeError,
             subprocess.SubprocessError, zipfile.BadZipFile) as error:
         print("error[SAIL9002]: production refinement check refused: " + str(error), file=sys.stderr)
