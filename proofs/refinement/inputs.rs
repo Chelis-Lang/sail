@@ -531,6 +531,8 @@ pub fn opened_read_nonempty_and_retarget_controls() {
     assert(count == 3 && owner == (7u64, 8u64));
     let changed = ObjectStamp { device: 7, object: 9, length: 3, mode: 0o100644,
         modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let same_binding = sealed.matches_binding(&opened, &opened); assert(same_binding);
+    let changed_request = sealed.matches_binding(&opened, &changed); assert(!changed_request);
     let rebound = OpenedRead::begin(changed, &opened); assert(rebound.is_none());
 }
 

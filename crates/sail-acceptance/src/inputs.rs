@@ -1255,6 +1255,14 @@ impl ReadChunk<'_> {
 
 impl ReadSeal {
     sail_method! {
+        /// Both the proposed cache key and actual requested pathname must still
+        /// name the original observed object at their checked observation points.
+        pub fn matches_binding(&self, canonical: &ObjectStamp, requested: &ObjectStamp) -> (matches: bool)
+            requires (true)
+            ensures (matches == (*canonical == self.original_view() && *requested == self.original_view()))
+        { self.matches(canonical) && self.matches(requested) }
+    }
+    sail_method! {
         /// A cache key's actual object observation must match this original read.
         pub fn matches(&self, observed: &ObjectStamp) -> (matches: bool)
             requires (true) ensures (matches == (*observed == self.original_view()))

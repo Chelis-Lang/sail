@@ -35,9 +35,9 @@ original stamp, which the transaction never replaces.
 
 Phase-local digest entries retain the hash and original `ReadSeal` together.
 Before admitting a parallel result under a proposed canonical key, and before
-returning a cached value, `ReadSeal::matches` compares that key's actual current
-object attributes with the original read. An alias retarget between canonical
-key discovery and opening cannot populate the old key with the newly opened
+returning a cached value, `ReadSeal::matches_binding` compares both the key's
+and the actual requested pathname's object observations with the original read.
+An alias retarget between canonical key discovery and opening cannot populate the old key with the newly opened
 object's digest. A changed cache-key observation discards the old entry and
 rereads instead of attaching a fresh stamp to old bytes. As with the other
 endpoint checks, inode reuse and repeated metadata remain OS observation limits;
