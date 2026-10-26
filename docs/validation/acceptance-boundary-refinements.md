@@ -11,9 +11,9 @@ tracks the six remaining deliverables separately.
 
 | Slice | Source checkpoints | Established component boundary |
 |---|---|---|
-| Raw query bytes and local record framing | `c9067734`, `651ed92c` | Exact owned transcript intervals, gap validation, contiguous feeds/replay and header/newline/payload roundtrip; actual shim/cache callers use shared bodies |
-| Compiler declaration provider | `86567f43`, `387f7f2e` | Exact supplied producer lifecycle and required artifact-frame/read association; native producer/parser refuses missing or malformed JSON-looking observations and caps additional accounting at 64 MiB |
-| Original request authority | `ce6a996b`, `421a0a7b`, `f3354995` | Actual typed request/header/target/report relations and raw repair selection; private pre-execution capture retained through job/frame/baseline admission |
+| Raw query bytes and local record framing | `74f4a8c5`, `9e187938` | Exact owned transcript intervals, gap validation, contiguous feeds/replay and header/newline/payload roundtrip; actual shim/cache callers use shared bodies |
+| Compiler declaration provider | `dcc3be33`, `e3b37022`, proof-only `3d78be9e` | Exact supplied producer lifecycle and required artifact-frame/read association; native producer/parser refuses missing or malformed JSON-looking observations and caps additional accounting at 64 MiB |
+| Original request authority | `5bcfd678`, `1e6be959`, `d2740dfa` | Actual typed request/header/target/report relations and raw repair selection; private pre-execution capture retained through job/frame/baseline admission |
 
 Component stock probes use the pinned original Verus
 `0.2026.10.18.7d82994`, revision
@@ -42,8 +42,8 @@ with declared environment-read accounting.
 | Gate | Current evidence | Remaining |
 |---|---|---|
 | Initial documentation draft | Native Linux full workspace gate at `d4bb18a3`; 1,098 tests and all workspace checks pass. Implementation bytes equal parent `c6270f75`, whose pre-push proof, solver, full e2e and PR conformance gates pass | Does not qualify the later executable changes |
-| Combined production proofs | New fields, private-token boundaries and guard mutations are inventoried in the closed runner | Direct pinned-stock run on the integrated committed source, both platforms |
-| Combined workspace/solver/e2e | Component checks above | Native Linux full pre-push suite and macOS host gate; all managed failing-first cases retained |
+| Combined production proofs | Canonically captured positive roots pass at `3d78be9e`: query 172/0, inputs 69/0, authority 199/0; every prior function remains inventoried | Full original/new guard matrix on both platforms |
+| Combined workspace/solver/e2e | macOS host gate passes strict clippy and 1,107/1,107 tests; component checks above | Native Linux full pre-push suite; all managed failing-first cases retained |
 | Differential conformance | Corpus, comparator and deadlines unchanged | PR tier before publication; full fast and standard before merge |
 | Cost | Additional byte/header scans, request validation and provider accounting are implemented; no measured delta or gain claimed | Bounded native cost measurement before selection; retain every sample |
 | Hosted checks | Normal workflow selects main/release PR bases | Explicit hosted run for the stacked implementation, or retarget after #362 merges; final-head required checks before any merge |
@@ -56,6 +56,7 @@ with declared environment-read accounting.
 | 2026-10-26 | Provider candidate `86567f43` | Independent real-child probe | Malformed Cargo artifact stdout was forwarded but omitted from the journal, yielding a completed empty stream. Fixed in `387f7f2e`; independent exact-body retest passes |
 | 2026-10-26 | Request-capture prototype before `421a0a7b` | Environment correspondence review | Fresh transport variables could leak into compilation while excluded from context; replaced with consumed private arguments and typed configuration |
 | 2026-10-26 | Combined source before `e3b37022` | macOS workspace tests | 1,104/1,105 pass; stable error registry rejects unlisted SAIL3115. Registered in the integration; no test weakened |
+| 2026-10-26 | `2d3492d0` | Full captured query proof root | 171 verified/1 ordinary loop-invariant error in the strengthened input read ledger. Explicit prefix induction in `3d78be9e` makes all three full positive roots pass; runtime checks, contract, invariant and resource settings unchanged |
 
 Legacy updater-body SHA-256:
 `94d497cbcd16f4f6f0b94b6d4166d07f3d26abf54b9b05abc9c78eb433a65ef4`.
