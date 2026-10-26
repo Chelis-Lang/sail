@@ -18,6 +18,17 @@ observation options must preserve actual compiler argv/environment through a
 private channel. Parser-vector restoration and exact SMT cache keys do not fix
 changed compiler inputs. This blocks the complete acceptance refinement.
 
+## Tactic-check response accounting
+
+[Sail #397](https://github.com/Chelis-Lang/sail/issues/397) records an incorrect
+response cardinality: `check-sat-using` was recognized as a check but classified
+as producing no output. The directly tested pinned Z3 emits one response. The
+candidate dispatch fix and [minimal reproduction](../corpus/repros/sail-check-sat-using-cardinality/README.md)
+retain a native cold/warm test requiring the exact two responses, two warm cache
+hits and no warm solver. Removing the actual variant makes the warm test fail.
+This is a response-accounting defect, without a demonstrated false-proof exploit;
+it does not close complete stream classification or writer-origin obligations.
+
 ## Acceptance authority integration
 
 Compile-only Verus output can resemble a successful zero-function proof

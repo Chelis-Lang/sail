@@ -1189,3 +1189,40 @@ fn overflow_replay_after_served_replies_still_checks_them() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn tactic_check_responses_keep_their_own_keys_and_warm_reuse() {
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let socket = dir.join("d.sock");
+    let (sock, cache) = (socket.clone(), dir.join("cache"));
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &cache, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let input =
+        include_bytes!("../../../corpus/repros/sail-check-sat-using-cardinality/input.smt2");
+    let expected =
+        include_bytes!("../../../corpus/repros/sail-check-sat-using-cardinality/expected.stdout");
+    let direct = input_run(&solver, None, input);
+    assert!(direct.status.success());
+    assert_eq!(direct.stdout, expected);
+    let records = dir.join("provenance");
+    assert!(std::fs::create_dir_all(&records).is_ok());
+    for warm in [false, true] {
+        let actual = input_run_recorded(&solver, Some(&socket), input, None, Some(&records));
+        assert_eq!(actual.status.code(), direct.status.code());
+        assert_eq!(actual.stdout, direct.stdout);
+        assert_eq!(actual.stderr, direct.stderr);
+        let record = take_record(&records);
+        assert_eq!(record["replies_served"], if warm { 2 } else { 0 });
+        assert_eq!(record["solver_started"], !warm);
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
