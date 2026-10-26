@@ -11,15 +11,18 @@ frame admission, paired baseline publication, native raw-path correspondence,
 and owned compiler configuration/start/completion. Closed capture binds the
 native adapter sources explicitly without claiming their bodies are proved.
 Its proposed matrix retains every inherited control and adds the new controls:
-256 cases (three whole positive roots and 253 ordinary failing controls).
+272 cases (three whole positive roots and 269 ordinary failing controls).
 Three whole source assemblies and every mutation anchor pass textual closure;
-this is not verification. Final function inventories/counters still belong to
-the earlier qualified positive roots and must be discovered from whole stock
-runs before the newer matrix can qualify. Four inherited short controls now
+this is not verification. The query inventory uses the actual 343-obligation/621-function discovery
+from the identical whole query assembly at `b8775f8f`; that development run
+checks final source/runtime identity but does not qualify this later combined
+head. Input and authority counters still belong to earlier positive roots and
+must be discovered from whole stock runs before the newer matrix can qualify. Four inherited short controls now
 anchor their unchanged original function envelopes because new functions share
 the former short needles; their original guard-removal changes and contracts
 remain intact. All new component controls, native integration, conformance and
-lexer differential/cost qualification remain pending.
+lexer differential/cost qualification remain pending. The lexer allocation
+defect is tracked in [#432](https://github.com/Chelis-Lang/sail/issues/432).
 
 Earlier canonical query checkpoint `cc8c24a1` passes the complete canonical query component on
 macOS: the whole positive root (288 obligations, 503 function entries) and all
