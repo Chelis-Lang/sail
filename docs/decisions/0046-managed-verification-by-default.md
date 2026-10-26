@@ -351,3 +351,11 @@ environment in both phases, appends the missing reads to the unit's dep-info
 invocation. A receipt (version 6) requires that record; replays of the shipped
 vstd build keep their own recorded environment. See
 [freshness](../freshness.md#which-environment-variables-are-proof-inputs).
+
+The same holds for files (#439,
+[VI-0037](../verus-issues/VI-0037-ghost-file-reads-missing-from-dep-info.md)):
+a file only ghost code includes was not a declared input, so the per-target
+revision above did not count it. The verification phase's local source-map
+and tracked files from the same report are added to the unit's dep-info, with
+rustc's checksum of the bytes it read under checksum freshness. Receipt
+version 8 requires it.
