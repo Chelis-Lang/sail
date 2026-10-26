@@ -723,8 +723,15 @@ fn compiler_matches_in(vars: &BTreeMap<String, String>, plan: &Plan) -> bool {
     if vars.get("__VERUS_DRIVER_VIA_CARGO__").map(String::as_str) != Some("1") {
         return false;
     }
-    vars.get("SAIL_MANAGED_WRAPPER")
-        .is_some_and(|wrapper| launcher_matches(plan, Path::new(wrapper)))
+    // The wrapper is a private alias setting, never a compiler variable
+    // (#385); `vars` holds it only when a role runs without the file.
+    let wrapper = if super::super::transport::file_backed() {
+        super::super::transport::var("SAIL_MANAGED_WRAPPER")
+    } else {
+        vars.get("SAIL_MANAGED_WRAPPER")
+            .map(std::ffi::OsString::from)
+    };
+    wrapper.is_some_and(|wrapper| launcher_matches(plan, Path::new(&wrapper)))
 }
 
 pub(super) fn launcher_matches(plan: &Plan, wrapper: &Path) -> bool {

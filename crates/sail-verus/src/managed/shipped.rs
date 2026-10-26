@@ -1153,9 +1153,9 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
 
 /// The plan of the run this driver proxy belongs to.
 pub(crate) fn active() -> Option<Plan> {
-    let path = PathBuf::from(std::env::var_os(PLAN_ENV)?);
+    let path = PathBuf::from(super::transport::var(PLAN_ENV)?);
     let plan: Plan = serde_json::from_slice(&std::fs::read(&path).ok()?).ok()?;
-    let runtime_path = PathBuf::from(std::env::var_os("SAIL_MANAGED_RUNTIME")?);
+    let runtime_path = PathBuf::from(super::transport::var("SAIL_MANAGED_RUNTIME")?);
     let runtime: super::receipts::Runtime =
         serde_json::from_slice(&std::fs::read(runtime_path).ok()?).ok()?;
     active_for(&path, plan, &runtime, research_enabled())

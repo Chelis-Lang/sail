@@ -17,7 +17,9 @@ use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-const VERSION: u32 = 3;
+/// Version 4: archives before it were established while Sail's private
+/// settings and observation options reached the compiler (#385, #393).
+const VERSION: u32 = 4;
 const FILE_LIMIT: u64 = 256 * 1024 * 1024;
 const OUTPUT_LIMIT: u64 = 16 * 1024 * 1024;
 const ENTRY_LIMIT: u64 = 8 * 1024 * 1024;

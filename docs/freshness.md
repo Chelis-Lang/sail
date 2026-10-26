@@ -276,9 +276,19 @@ select `cargo-metadata/` under the Sail cache with a highest-priority
 `build.target-dir` override. Neither caller environment nor Cargo configuration
 can exclude source directories for these probes. Cargo metadata can otherwise create
 `.rustc_info.json` in a source directory named by that override. Compilation
-and cleanup keep the caller's environment value; an internal marker is removed
-before compilation so a build script's own nested Cargo commands retain their
-ordinary environment. Public fallback snapshots retain caller target selection.
+and cleanup keep the caller's environment value. The private metadata setting
+never enters the environment, so a build script's own nested Cargo commands
+retain their ordinary environment. Public fallback snapshots retain caller
+target selection.
+
+Sail's managed Cargo and Verus-driver aliases take their private settings
+(`SAIL_MANAGED_*`: the real Cargo, the runtime and artifact journal, the
+shipped plan, the output socket, the original driver) from a file beside them
+in the compiler family directory, not from the environment. Cargo, build
+scripts, procedural macros and compilers therefore see the caller's
+environment as under plain Cargo-Verus, including the caller's own `CARGO`
+and any `SAIL_MANAGED_*` the caller set (#385). The exceptions are listed in
+[known issues](known-issues.md).
 
 Before reading or seeding any proof receipt, managed verification checks that
 the physical Sail cache and every resolved package directory are disjoint.
