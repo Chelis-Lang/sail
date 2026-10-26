@@ -363,7 +363,10 @@ OUTPUT_FIELDS = {
 }
 PROJECT_FIELDS = {
     "TargetResult": "package_id target kind requested complete scope_reuse report",
-    "ProjectResult": "currentness exit_code error targets",
+    "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
+    "RequestTarget": "package_id target kind",
+    "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine targets",
+    "EngineIdentity": "name manifest_sha256",
 }
 OUTPUT_ENUMS = ("VerdictName", "EstablishmentName", "EvidenceTierName", "SourceSummaryName", "EngineEstablishment")
 
@@ -372,11 +375,14 @@ def candidate_forwarders(source: str) -> None:
     """Close the unverified sort boundary against report/target substitution.
 
     Correctness of the sort is unnecessary: the checked factories validate its
-    candidate output. These four thin forwarding bodies must nevertheless pass
+    candidate output. These thin forwarding bodies must nevertheless pass
     their actual borrowed report/target/project unchanged. The structural check
     is reviewed runner logic, not a claim that std sorting is formally proved.
     """
     expected = {
+        "complete_request": """let orders: Vec<_> = project.targets.iter()
+            .map(|target| candidate_order(&target.report)).collect();
+            complete_request_ordered(request, project, &orders)""",
         "complete_report": """let order = candidate_order(report);
             complete_report_ordered(report, policy, &order.forward, &order.inverse)""",
         "complete_whole_report": """let order = candidate_order(report);
@@ -389,6 +395,7 @@ def candidate_forwarders(source: str) -> None:
             }).collect(); complete_selection_ordered(project, &orders)""",
     }
     signatures = {
+        "complete_request": "fn complete_request<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<CompleteRequest<'a>>",
         "complete_report": "fn complete_report(report: &Report, policy: CompletionPolicy) -> Option<CompleteReport<'_>>",
         "complete_whole_report": "fn complete_whole_report(report: &Report) -> Option<CompleteReport<'_>>",
         "complete_target": "fn complete_target(target: &TargetResult) -> Option<CompleteReport<'_>>",
@@ -397,8 +404,8 @@ def candidate_forwarders(source: str) -> None:
     }
     imports = [
         "use sail_acceptance::authority::CompletionPolicy;",
-        "use crate::acceptance::{CompleteReport, CompleteSelection, ReportOrder, complete_report_ordered, complete_selection_ordered, complete_target_ordered, complete_whole_report_ordered,};",
-        "use crate::output::Report;", "use crate::project::{ProjectResult, TargetResult};",
+        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_target_ordered, complete_whole_report_ordered,};",
+        "use crate::output::Report;", "use crate::project::{ProjectResult, ResolvedRequest, TargetResult};",
     ]
     stream = tokens(source)
     levels = top_level(stream)
@@ -431,7 +438,7 @@ def candidate_forwarders(source: str) -> None:
             actual = [token.value for token in stream[begin + 1:end]]
             wanted = [token.value for token in tokens(expected[name])]
             require(actual == wanted, "untrusted authority forwarding changed: " + name)
-    require(len(found) == 5 and set(found) == {*expected, "candidate_order"},
+    require(len(found) == 6 and set(found) == {*expected, "candidate_order"},
         "authority candidate adapter function inventory changed")
     require(actual_imports == [[t.value for t in tokens(text)] for text in imports],
         "candidate forwarding binding environment changed")
