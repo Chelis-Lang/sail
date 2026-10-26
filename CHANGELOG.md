@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Promote proof repair, the evidence commands and MCP to the supported set.
+  `sail --help` now lists `repair-check`, `explain`, `baseline` and `compare`,
+  and their help no longer starts with an EXPERIMENTAL note. MCP's evidence,
+  event and repair tools (`explain_failure`, `compare_verification`,
+  `save_baseline`, `list_baselines`, `get_baseline`, `verification_events`,
+  `start_repair_validation`) are supported. Fragility, the portfolio and team
+  caching stay experimental; MCP descriptions of the `fragility` tool, the
+  `portfolio` and `measure_fragility` options and the integration tools
+  (`requirement_assurance`, `runtime_capabilities`, `runtime_execute`) now
+  start with "Experimental:".
 - Stop `sail verify` rebuilding where `cargo verus verify` is a no-op. After a
   `src/bin` file was added and removed, every call rebuilt the build-script
   packages and re-verified vstd (about 26 s); it is a no-op again (#401). A new
@@ -26,6 +36,15 @@ semantic versioning once the API is published.
   unchanged; the after-run `cargo metadata` is skipped while every path it
   reads keeps its stamp; and build-script input snapshots are read once per
   run while their paths are unchanged.
+- Reuse the solver's identity across handshakes (ADR 0082 amendment). The
+  daemon no longer launches `z3 --version` and reads the whole Z3 executable
+  for every Verus solver session while the executable's complete stat stamp
+  (device, inode, size, mode, mtime, ctime) is unchanged and its last change is
+  at least 2 s old. A replaced or rewritten solver, even with its mtime
+  restored, is identified afresh. A fresh project's first `sail verify` is
+  about 0.67 s faster (31.13 to 30.46 s, native Linux) and the daemon's CPU
+  per Vest edit falls from 3.4 to 1.0 s.
+
 - Replay an unchanged `sail verify` (ADR 0082). A call identical to an earlier
   one that ended Current without starting a verifier prints that call's
   output (only Cargo's `Finished` time is regenerated) without running Cargo,
@@ -41,6 +60,23 @@ semantic versioning once the API is published.
   apply and why: an unqualified dependency profile, a target too cheap to
   retain, or an evicted revision. `SAIL3138`'s alignment advice now says the
   vstd default-features step is needed too.
+- Stop `sail watch` cancelling a run for a notification that arrives late or
+  repeats an edit the run already includes: a notification now restarts only
+  when the inputs differ from the snapshot recorded as the run was submitted.
+  In content-scan mode, refreshing the watched inputs after a completed run no
+  longer adopts an edit the next scan had not yet reported.
+- Make `sail watch` see every input edit within about two seconds on macOS
+  and Linux, even when macOS drops the edit's notification. A metadata stamp
+  of the inputs is now compared every two seconds alongside native events,
+  and the inputs are rehashed only when a stamp changes (about 19 ms of CPU
+  per pass on Vest's 3,458 entries).
+- Cut about 2.5 s from a first run on a new project or a fresh clone (native
+  Linux: `sail new` plus the first `sail verify` 13.7 → 11.2 s, IronKV 22.4 →
+  19.9 s). Shipped-proof admission hashes the standard-library source tree on
+  several workers while its sysroot query runs, overlaps its remaining
+  complete reads, and `sail verify` notices a newly started daemon within
+  about a millisecond instead of 25 ms. Every check still reads the same
+  bytes; verdicts and output are unchanged.
 - Sign a GitHub build-provenance attestation for each release archive, and have
   `scripts/install.py` verify it with `gh attestation verify` when GitHub CLI
   is signed in. A failed attestation refuses installation; without `gh` the
