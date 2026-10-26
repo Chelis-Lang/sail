@@ -93,6 +93,23 @@ class SourceLexerTests(unittest.TestCase):
 class SourceCaptureTests(unittest.TestCase):
     """Mistaken source/representation selection cannot become proof evidence."""
 
+    def test_report_does_not_promote_bound_input_adapters_to_proved_bodies(self):
+        for component, definition in CHECKER.COMPONENTS.items():
+            entry = {"dependencies": CHECKER.dependency_paths(component)}
+            roles = CHECKER.source_roles(entry)
+            checked = set(roles["checked_source"])
+            bound = set(roles["bound_native_input_source"])
+            native = set(entry["dependencies"]) & set(CHECKER.INPUT_NATIVE_SHA256)
+            self.assertEqual(bound, native)
+            self.assertFalse(checked & native)
+            self.assertFalse(checked & set(CHECKER.QUERY_NATIVE_BINDINGS))
+            self.assertNotIn(CHECKER.KEY_NATIVE, checked)
+            self.assertTrue({"crates/sail-acceptance/src/" + stem + ".rs"
+                for stem in definition["core"]} <= checked)
+            if CHECKER.PIPE_CORE in entry["dependencies"]:
+                self.assertEqual(roles["abstract_primitive_contracts"][CHECKER.PIPE_CORE],
+                    ["CompilerPipeReadHost"])
+
     def snapshots(self) -> dict[str, bytes]:
         return {"crates/sail-api/src/" + name + ".rs":
             (ROOT / "crates/sail-api/src" / (name + ".rs")).read_bytes()
