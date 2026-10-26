@@ -8,6 +8,8 @@ semantic versioning once the API is published.
 - Keep fresh per-target input revisions independent: a target whose revision
   cannot be read again now marks only its own receipt changed, instead of every
   receipt package in the run.
+- Overlap path resolution and link checks in managed input mutation stamps; an
+  unchanged Anvil rerun spends about 38 ms (2.5%) less in setup.
 - Make native temporal jobs an optional `temporal` build feature (default on).
   `cargo build -p sail-cli --no-default-features` builds a complete
   `sail verify` that compiles no D.I.V.E. code. A malformed or unreadable
