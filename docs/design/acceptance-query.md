@@ -111,16 +111,52 @@ No normalized or reserialized command enters this relation. The shim checks
 its hasher byte count against each checked endpoint; refusal disables cache
 interpretation and preserves the original bytes forwarded to the solver.
 
-This boundary checks proposed intervals; it does not recognize balanced
-SMT-LIB commands. An interval coalescing two commands can still have exact raw
-bytes. The splitter, command classification, response framing, concrete
-identity/mode encoding and process correspondence therefore remain separate
-obligations under [#371](https://github.com/Chelis-Lang/sail/issues/371).
+Production command admission now additionally calls `framed_command`. Its
+`complete_list` body is proved equivalent to a byte grammar: the form begins
+with `(`, ends with `)`, every proper nonempty prefix has positive nesting,
+and the final state has zero nesting outside a literal or comment. Doubled
+quotes escape string quotes, bar-quoted symbols hide parentheses, and input
+semicolon comments end at CR or LF. The first root close must be the last byte;
+two complete forms cannot masquerade as one item. This is structural framing,
+not validation of SMT arity, types, the complete simple-symbol alphabet or
+solver meaning. Bare command-head tokens match the native lexer's lenient byte
+rules, including non-ASCII bytes.
+
+`command_head` extracts the first actual bare token only after that complete
+framing check. The shim compares this checked head to its native classifier's
+head before using the native command kind. Quoted heads, unmatched literals,
+coalesced candidates or an unsupported native classification permanently refuse
+cache interpretation and preserve the original replay input. `framed_prefix_refines_binding`
+connects the returned head and borrowed bytes to the exact model binding.
+`scan_reset_join` and `trivia_framing_state` establish the inductive full-prefix
+boundary: completed prior forms plus actual inter-item trivia leave zero nesting
+outside a literal/comment before the next framed command. This removes the
+assumption that proposed offsets alone identify a complete form.
+
+`response_frame` is likewise proved equivalent to its supported byte grammar.
+A reply is one balanced output list, or one non-list line terminated by LF,
+with only the four SMT whitespace bytes around it. Output has no semicolon
+comments. Trimming establishes validation bounds only; it never changes stored
+or forwarded bytes. `plausible` requires this checked shape both before serving
+a cache candidate and before recording a paired live reply. Two complete lists,
+a partial list, multiple non-list lines or an unterminated atom cannot pass as
+one response. Echo response meaning remains command-dependent and the existing
+exact echo-text check remains required.
+
+The native splitters still propose items. Their complete emission inventory,
+command-kind/output-count semantics, option extraction, replay-frame counting,
+concrete solver/mode encoding and process correspondence remain obligations
+under [#371](https://github.com/Chelis-Lang/sail/issues/371). In particular,
+these admission validators do not prove that every actual solver stream or
+command is observed. An independent launch inventory and a complete concrete
+stream history are required for that service-level refinement.
+
 Trailing EOF input must be only whitespace or line comments, or caching is
 refused. A valid explicit exit retains its existing logical completion and
-exact ignored-suffix byte behavior. The tests compare actual prefix and silence
-keys against feeding the original unmodified input directly, for one-byte and
-larger chunking in default and opt-in modes.
+exact ignored-suffix behavior. The tests compare actual prefix and silence keys
+against feeding the original unmodified input directly, and compare native
+splitter items with the checked grammar at every chunk width of quoted,
+commented and CR/LF examples.
 
 Publication now refuses an otherwise successful, quiet producer session if
 its input is incomplete, correlation stopped or expectations/replies remain
@@ -172,8 +208,10 @@ particular, a valid record containing `unsat` acquires no solver authority from
 this roundtrip. Shared and bundled codecs and their writer contracts remain
 outside this local framing theorem.
 
-The byte checks add linear comparison over proposed command bytes and linear
-scanning of inter-item trivia, without another raw transcript copy. The disk
+The byte checks add linear comparison over proposed command bytes, a constant-space
+linear structural scan of each candidate command/reply, and linear scanning of
+inter-item trivia, without another raw transcript copy. Head extraction scans
+only the initial trivia and first token after framing. The disk
 writer adds one linear scan of its serialized header; the decoder retains a
 linear first-newline search. These are correctness guards, with no measured
 performance claim. Native timing and whole-corpus qualification belong to the
@@ -290,9 +328,13 @@ instead of the previous endpoint. Their contracts, simulations and nonempty
 witnesses remain in scope. The disk-framing extension additionally checks
 removing the header-newline guard, changing the encoded separator to carriage
 return, and retaining the separator inside the decoded payload. Each of these
-six mutations fails with 162 verified obligations and one ordinary verification
-error under the same 163-obligation scope. These are
-checked statement changes, not injected `assert(false)` controls.
+six mutations remain in the complete source-sharing scope. The lexical
+extension adds six more actual-statement controls: accept an early root close,
+ignore a doubled quote, ignore an input comment, skip command framing, skip an
+atom's line terminator, or skip response-list framing. Each new control fails
+with 199 verified obligations and one ordinary verification error in the
+200-obligation closure. These are checked statement changes, not injected
+`assert(false)` controls.
 
 A timeout or resource-limit failure does not qualify as a successful negative
 control. Omitted modules, changed runtimes and narrowed scope have separate
@@ -326,13 +368,24 @@ RUSTUP_TOOLCHAIN=1.99.1 VERUS_Z3_PATH="$stock_runtime/z3" \
   --cfg sail_verus --no-cheating --output-json --num-threads 1
 ```
 
-The local source-sharing closure passes 163 obligations: 59 existing model/context,
-44 query executable obligations, 38 reused input-core obligations and 22 query
-simulation/witness obligations. The new nonempty byte witness includes CR/LF,
+The local source-sharing closure passes 200 obligations: 59 existing
+model/context, 62 query-core obligations, 47 reused input-core obligations and
+32 query simulation/witness obligations. The new nonempty byte witness includes CR/LF,
 line comments, quoted parentheses and a command split across input chunks;
-refusal witnesses cover skipped nontrivia, changed bytes and offset overflow. Focused Rust clippy checks cover acceptance, shim, cache and daemon; their 159 nonignored
-Rust tests pass. The eight real pinned-Z3 `cached_session` tests pass, including the unmatched clean-exit
-regressions and supported warm-cache reuse. These local component checks do
+refusal witnesses cover skipped nontrivia, changed bytes and offset overflow.
+Focused Rust clippy checks cover acceptance and shim; all thirteen shim unit
+tests pass. The randomized queue test retains its arrival/drain coverage and
+checks complete payload equality using structurally valid response fixtures. The ten real pinned-Z3 `cached_session` tests pass, including the unmatched
+clean-exit regressions, supported warm-cache reuse and two late-refusal paths.
+The first late-refusal test changes a second disk reply to two concatenated
+lists while preserving its envelope key and digest, then starts a fresh daemon.
+It proves the first reply was served from cache (`replies_served = 1`), the
+second caused live replay, and complete stdout, stderr and status equal the
+direct pinned solver. Removing only the actual response-framing guard makes
+this test fail with the extra list in stdout. The second compares quoted-head
+and unterminated-string input refusal after the same confirmed cache hit.
+These controls establish behavior at those concrete paths, not a false-proof
+exploit or a theorem of arbitrary process/transport failures. These local component checks do
 not replace native Linux gates or whole-corpus conformance.
 
 The upstream pin remains Verus `0.2026.10.18.7d82994`, revision
@@ -366,7 +419,7 @@ following physical interfaces remain obligations, not established guarantees:
 | Current code | Refinement still required |
 |---|---|
 | `sail-key::PrefixHasher` | Every actual solver-input byte, endpoint, solver and mode enters the key. Logical byte equality must be related to concrete digests under an explicit cryptographic assumption, not hash injectivity. |
-| Shim splitters, `observe`, session classification | Checked raw interval/gap/feed preservation does not establish delimiter recognition or command semantics. Actual output-producing commands and whole response frames appear exactly once in order. Byte accounting does not prove SMT-LIB parsing. |
+| Shim splitters, `observe`, session classification | Actual admission checks structural lexical framing, first-head bytes and raw interval/gap/feed preservation. Complete native emission inventory, command-kind/output-count semantics and option extraction remain open. Actual output-producing commands and whole response frames appear exactly once in order. Byte accounting does not prove SMT-LIB parsing. |
 | Shim adapters around the checked correlator/replay core | Channels, exact frame offsets, expectation construction, held-check release, the complete pair-only permutation/projection and effort annotation preserve the proved payload interpretation. The owned queue removal and countdown bodies themselves are now checked. |
 | Process launch, stdout/stderr monitor, publication adapters | Supplied closure observations belong to the identified immutable process. The source-shared gate requires all supplied observations and the batch preserves its actual owned values; OS observations and atomic flag/channel handoff remain unproved. |
 | Daemon `HELLO`/`PUT`, write-behind and memory stamps | Every admitted local writer refines the observed-run publication path. A handshake alone does not prove its arbitrary `PUT` truthful. Actual write jobs use the checked FIFO, but locking, insertion/settlement and I/O correspondence remain obligations. |
@@ -375,7 +428,7 @@ following physical interfaces remain obligations, not established guarantees:
 
 The source-shared changes start from production base `53d30e87`, which
 includes main `237c7d8d`; the raw-prefix extension starts from `c6270f75`.
-The executable core and bounded simulations pass 163
+The executable core and bounded simulations pass 200
 whole-crate obligations with zero errors through the direct stock driver
 (including 59 existing query/context obligations); the existing model scope
 and controls remain intact. Full native qualification and integrated checker

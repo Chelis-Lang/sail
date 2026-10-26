@@ -830,3 +830,399 @@ sail_verified! {
         None
     }
 }
+
+sail_code! {
+    /// Lexical contexts that hide structural parentheses in one solver form.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum FrameLex {
+        /// Parentheses delimit lists.
+        Plain,
+        /// Inside a double-quoted string.
+        String,
+        /// A quote may close the string or begin a doubled-quote escape.
+        Quote,
+        /// Inside a bar-quoted symbol.
+        Symbol,
+        /// Inside an input semicolon comment.
+        Comment,
+    }
+}
+
+sail_spec! {
+    /// Parentheses count only outside strings, quoted symbols and comments.
+    pub open spec fn structural(lex: FrameLex, byte: u8) -> bool {
+        lex is Plain || lex is Quote && byte != b'"'
+    }
+
+    /// Lexical grammar transition for an actual byte; no token normalization.
+    pub open spec fn frame_lex(lex: FrameLex, byte: u8, comments: bool) -> FrameLex {
+        if lex is String { if byte == b'"' { FrameLex::Quote } else { FrameLex::String } }
+        else if lex is Symbol { if byte == b'|' { FrameLex::Plain } else { FrameLex::Symbol } }
+        else if lex is Comment {
+            if byte == b'\n' || byte == b'\r' { FrameLex::Plain } else { FrameLex::Comment }
+        } else if lex is Quote && byte == b'"' { FrameLex::String }
+        else if byte == b'"' { FrameLex::String }
+        else if byte == b'|' { FrameLex::Symbol }
+        else if comments && byte == b';' { FrameLex::Comment }
+        else { FrameLex::Plain }
+    }
+
+    /// Mathematical nesting of every exact prefix under the lexical grammar.
+    /// Negative depths remain representable so malformed streams are not assumed away.
+    pub open spec fn frame_scan(bytes: Seq<u8>, comments: bool) -> (int, FrameLex)
+        decreases bytes.len(),
+    {
+        if bytes.len() == 0 { (0, FrameLex::Plain) }
+        else {
+            let previous = frame_scan(bytes.drop_last(), comments);
+            let byte = bytes.last();
+            (previous.0 + if structural(previous.1, byte) && byte == b'(' { 1int }
+                else if structural(previous.1, byte) && byte == b')' { -1int } else { 0int },
+                frame_lex(previous.1, byte, comments))
+        }
+    }
+
+    /// One complete list, with no proper prefix already closing its root.
+    pub open spec fn single_list(bytes: Seq<u8>, comments: bool) -> bool {
+        bytes.len() >= 2 && bytes[0] == b'(' && bytes.last() == b')'
+            && frame_scan(bytes, comments) == (0, FrameLex::Plain)
+            && forall|i: int| 1 <= i < bytes.len() ==> frame_scan(bytes.take(i), comments).0 > 0
+    }
+}
+
+sail_verified! {
+    /// Advances actual lexical state and nesting using the framing grammar.
+    pub fn frame_step(depth: usize, lex: FrameLex, byte: u8, comments: bool)
+        -> (next: (usize, FrameLex))
+        requires (0 < depth < usize::MAX)
+        ensures (next.0 as int == depth as int
+                + if structural(lex, byte) && byte == b'(' { 1int }
+                else if structural(lex, byte) && byte == b')' { -1int } else { 0int },
+            next.1 == frame_lex(lex, byte, comments),
+            next.0 == 0 ==> byte == b')' && next.1 is Plain)
+    {
+        if matches!(lex, FrameLex::String) {
+            return (depth, if byte == b'"' { FrameLex::Quote } else { FrameLex::String });
+        }
+        if matches!(lex, FrameLex::Symbol) {
+            return (depth, if byte == b'|' { FrameLex::Plain } else { FrameLex::Symbol });
+        }
+        if matches!(lex, FrameLex::Comment) {
+            return (depth, if byte == b'\n' || byte == b'\r' { FrameLex::Plain } else { FrameLex::Comment });
+        }
+        if matches!(lex, FrameLex::Quote) && byte == b'"' {
+            return (depth, FrameLex::String);
+        }
+        let next = if byte == b'(' { depth + 1 }
+            else if byte == b')' { depth - 1 } else { depth };
+        let lex = if byte == b'"' { FrameLex::String }
+            else if byte == b'|' { FrameLex::Symbol }
+            else if comments && byte == b';' { FrameLex::Comment }
+            else { FrameLex::Plain };
+        (next, lex)
+    }
+}
+
+sail_verified! {
+    /// Accepts exactly one complete parenthesized frame, without trusting offsets.
+    /// Strings use doubled quotes; symbols use bars; only input permits comments.
+    pub fn complete_list(bytes: &[u8], comments: bool) -> (accepted: bool)
+        requires (true)
+        ensures (accepted == single_list(bytes@, comments))
+    {
+        if bytes.len() < 2 || bytes[0] != b'(' { return false; }
+        let mut i = 1usize;
+        let mut depth = 1usize;
+        let mut lex = FrameLex::Plain;
+        sail_proof! {
+            assert(bytes@.take(1) =~= seq![b'(']);
+            reveal_with_fuel(frame_scan, 2);
+        }
+        sail_while! { (i < bytes.len())
+            invariant (1 <= i <= bytes.len(), 0 < depth <= i,
+                bytes.len() >= 2, bytes@[0] == b'(',
+                frame_scan(bytes@.take(i as int), comments) == (depth as int, lex),
+                forall|j: int| 1 <= j <= i ==> frame_scan(bytes@.take(j), comments).0 > 0)
+            decreases (bytes.len() - i)
+            {
+                let byte = bytes[i];
+                let next = frame_step(depth, lex, byte, comments);
+                sail_proof! {
+                    assert(bytes@.take(i as int + 1).drop_last() =~= bytes@.take(i as int));
+                    assert(bytes@.take(i as int + 1).last() == byte);
+                    reveal_with_fuel(frame_scan, 1);
+                }
+                i += 1;
+                depth = next.0;
+                lex = next.1;
+                if depth == 0 { return i == bytes.len(); }
+                sail_proof! {
+                    assert forall|j: int| 1 <= j <= i implies frame_scan(bytes@.take(j), comments).0 > 0 by {
+                        if j == i {} else { assert(j <= i - 1); }
+                    }
+                }
+            }
+        }
+        sail_proof! { assert(bytes@.take(bytes.len() as int) =~= bytes@); }
+        false
+    }
+}
+
+sail_spec! {
+    /// Whitespace and lexical punctuation ending a simple SMT symbol.
+    pub open spec fn word_delimiter(byte: u8) -> bool {
+        byte == b' ' || byte == b'\t' || byte == b'\r' || byte == b'\n'
+            || byte == b'(' || byte == b')' || byte == b'"' || byte == b'|' || byte == b';'
+    }
+    /// A native-compatible bare-head first byte, excluding numeral/keyword/bit prefixes.
+    pub open spec fn symbol_first(byte: u8) -> bool {
+        !word_delimiter(byte) && !(b'0' <= byte <= b'9') && byte != b'#' && byte != b':'
+    }
+    /// Exact first bare command-head token inside one framed list.
+    pub open spec fn head_span(bytes: Seq<u8>, start: int, end: int) -> bool {
+        single_list(bytes, true) && 1 <= start < end < bytes.len()
+            && trivia_after(bytes.subrange(1, start), false) == Some(false)
+            && symbol_first(bytes[start]) && word_delimiter(bytes[end])
+            && forall|i: int| start <= i < end ==> !word_delimiter(bytes[i])
+    }
+
+    /// Trivia composition follows the actual lexical comment state, including
+    /// a CR/LF boundary split across arbitrary received fragments.
+    pub proof fn trivia_join(left: Seq<u8>, right: Seq<u8>, comment: bool)
+        ensures trivia_after(left + right, comment) == match trivia_after(left, comment) {
+            Some(next) => trivia_after(right, next), None => None,
+        },
+        decreases left.len(),
+    {
+        if left.len() > 0 {
+            assert((left + right).drop_first() =~= left.drop_first() + right);
+            if comment {
+                trivia_join(left.drop_first(), right, left[0] != b'\n' && left[0] != b'\r');
+            } else if left[0] == b' ' || left[0] == b'\t' || left[0] == b'\n' || left[0] == b'\r' {
+                trivia_join(left.drop_first(), right, false);
+            } else if left[0] == b';' {
+                trivia_join(left.drop_first(), right, true);
+            }
+        } else { assert(left + right =~= right); }
+    }
+}
+
+sail_verified! {
+    /// Checks the same exact delimiter byte set used by the native SMT lexer.
+    pub fn delimiter(byte: u8) -> (is_delimiter: bool)
+        requires (true)
+        ensures (is_delimiter == word_delimiter(byte))
+    { matches!(byte, b' ' | b'\t' | b'\r' | b'\n' | b'(' | b')' | b'"' | b'|' | b';') }
+}
+
+sail_verified! {
+    /// Extracts the actual first bare-head name only after full framing.
+    /// This does not validate the command's arity, types or solver semantics.
+    pub fn command_head(bytes: &[u8]) -> (head: Option<&[u8]>)
+        requires (true)
+        ensures (head.is_some() ==> exists|start: int, end: int|
+            head_span(bytes@, start, end) && head.unwrap()@ == bytes@.subrange(start, end),
+            single_list(bytes@, true) && symbol_first(bytes@[1]) ==> head.is_some(),
+            single_list(bytes@, true) && !frame_space(bytes@[1]) && bytes@[1] != b';'
+                && !symbol_first(bytes@[1]) ==> head.is_none())
+    {
+        if !complete_list(bytes, true) { return None; }
+        let mut i = 1usize;
+        let mut comment = false;
+        sail_proof! { assert(bytes@.subrange(1, 1) =~= Seq::<u8>::empty()); }
+        sail_while! { (i < bytes.len() && (comment || bytes[i] == b';'
+                || bytes[i] == b' ' || bytes[i] == b'\t' || bytes[i] == b'\n' || bytes[i] == b'\r'))
+            invariant (1 <= i <= bytes.len(), single_list(bytes@, true),
+                trivia_after(bytes@.subrange(1, i as int), false) == Some(comment),
+                !frame_space(bytes@[1]) && bytes@[1] != b';' ==> i == 1 && !comment)
+            decreases (bytes.len() - i)
+            {
+                let byte = bytes[i];
+                sail_proof! {
+                    trivia_join(bytes@.subrange(1, i as int), seq![byte], false);
+                    reveal_with_fuel(trivia_after, 2);
+                    assert(bytes@.subrange(1, i as int + 1) =~= bytes@.subrange(1, i as int) + seq![byte]);
+                }
+                if comment { comment = byte != b'\n' && byte != b'\r'; }
+                else if byte == b';' { comment = true; }
+                i += 1;
+            }
+        }
+        if i == bytes.len() || delimiter(bytes[i]) || bytes[i] == b'#' || bytes[i] == b':'
+            || (b'0' <= bytes[i] && bytes[i] <= b'9') { return None; }
+        let start = i;
+        sail_while! { (i < bytes.len() && !delimiter(bytes[i]))
+            invariant (1 <= start <= i <= bytes.len(), start < bytes.len(),
+                single_list(bytes@, true), symbol_first(bytes@[start as int]),
+                trivia_after(bytes@.subrange(1, start as int), false) == Some(false),
+                forall|j: int| start <= j < i ==> !word_delimiter(bytes@[j]))
+            decreases (bytes.len() - i)
+            { i += 1; }
+        }
+        if i == bytes.len() { return None; }
+        let head = &bytes[start..i];
+        sail_proof! { assert(head_span(bytes@, start as int, i as int)); }
+        Some(head)
+    }
+}
+
+sail_spec! {
+    /// SMT stream whitespace, without changing or stripping the actual payload.
+    pub open spec fn frame_space(byte: u8) -> bool {
+        byte == b' ' || byte == b'\t' || byte == b'\r' || byte == b'\n'
+    }
+    /// One output frame: a complete list, or one non-list line, with surrounding whitespace.
+    pub open spec fn response_trim(bytes: Seq<u8>, start: int, end: int) -> bool {
+        0 <= start < end <= bytes.len()
+            && (forall|j: int| 0 <= j < start ==> frame_space(bytes[j]))
+            && (forall|j: int| end <= j < bytes.len() ==> frame_space(bytes[j]))
+            && !frame_space(bytes[start]) && !frame_space(bytes[end - 1])
+    }
+    /// One precise nonempty response range inside its raw transport whitespace.
+    pub open spec fn response_span(bytes: Seq<u8>, start: int, end: int) -> bool {
+        response_trim(bytes, start, end) && (if bytes[start] == b'(' { single_list(bytes.subrange(start, end), false) }
+                else { (forall|j: int| start <= j < end ==> bytes[j] != b'\n')
+                    && exists|j: int| end <= j < bytes.len() && bytes[j] == b'\n' })
+    }
+    /// One complete response according to the supported output framing grammar.
+    pub open spec fn response_shape(bytes: Seq<u8>) -> bool {
+        exists|start: int, end: int| response_span(bytes, start, end)
+    }
+    /// Byte-observable first/last non-whitespace bounds are unique.
+    pub proof fn response_trim_unique(bytes: Seq<u8>, start: int, end: int, a: int, b: int)
+        requires response_trim(bytes, start, end), response_trim(bytes, a, b),
+        ensures start == a, end == b,
+    {
+        if start < a { assert(frame_space(bytes[start])); }
+        if a < start { assert(frame_space(bytes[a])); }
+        if end < b { assert(frame_space(bytes[b - 1])); }
+        if b < end { assert(frame_space(bytes[end - 1])); }
+    }
+    /// Choosing a trim range cannot hide another supported response partition.
+    pub proof fn response_at_trim(bytes: Seq<u8>, start: int, end: int)
+        requires response_trim(bytes, start, end),
+        ensures response_shape(bytes) == response_span(bytes, start, end),
+    {
+        if response_shape(bytes) {
+            let (a, b) = choose|a: int, b: int| response_span(bytes, a, b);
+            response_trim_unique(bytes, start, end, a, b);
+        } else if response_span(bytes, start, end) { assert(response_shape(bytes)); }
+    }
+}
+
+sail_verified! {
+    /// Checks stream whitespace without interpreting locale or Unicode.
+    pub fn stream_space(byte: u8) -> (space: bool)
+        requires (true)
+        ensures (space == frame_space(byte))
+    { matches!(byte, b' ' | b'\t' | b'\r' | b'\n') }
+}
+
+sail_verified! {
+    /// Refuses coalesced, partial or empty reply payloads before cache admission.
+    /// Echo text remains command-dependent; this check grants no solver origin.
+    pub fn response_frame(bytes: &[u8]) -> (accepted: bool)
+        requires (true)
+        ensures (accepted == response_shape(bytes@))
+    {
+        let mut start = 0usize;
+        sail_while! { (start < bytes.len() && stream_space(bytes[start]))
+            invariant (start <= bytes.len(), forall|j: int| 0 <= j < start ==> frame_space(bytes@[j]))
+            decreases (bytes.len() - start)
+            { start += 1; }
+        }
+        if start == bytes.len() {
+            sail_proof! {
+                if response_shape(bytes@) {
+                    let (a, b) = choose|a: int, b: int| response_span(bytes@, a, b);
+                    assert(frame_space(bytes@[a]));
+                }
+            }
+            return false;
+        }
+        let mut end = bytes.len();
+        let mut newline = false;
+        sail_while! { (end > start && stream_space(bytes[end - 1]))
+            invariant (start <= end <= bytes.len(), start < bytes.len(), !frame_space(bytes@[start as int]),
+                forall|j: int| 0 <= j < start ==> frame_space(bytes@[j]),
+                forall|j: int| end <= j < bytes.len() ==> frame_space(bytes@[j]),
+                newline == (exists|j: int| end <= j < bytes.len() && bytes@[j] == b'\n'))
+            decreases (end - start)
+            {
+                if bytes[end - 1] == b'\n' { newline = true; }
+                end -= 1;
+            }
+        }
+        if end == start { return false; }
+        sail_proof! {
+            assert(response_trim(bytes@, start as int, end as int));
+            response_at_trim(bytes@, start as int, end as int);
+        }
+        if bytes[start] == b'(' {
+            let accepted = complete_list(&bytes[start..end], false);
+            sail_proof! {
+                if accepted {
+                    assert(response_span(bytes@, start as int, end as int));
+                    assert(response_shape(bytes@));
+                }
+            }
+            return accepted;
+        }
+        if !newline { return false; }
+        let mut i = start;
+        sail_while! { (i < end)
+            invariant (start <= i <= end <= bytes.len(), start < end, bytes@[start as int] != b'(',
+                response_shape(bytes@) == response_span(bytes@, start as int, end as int),
+                exists|j: int| end <= j < bytes.len() && bytes@[j] == b'\n',
+                !frame_space(bytes@[start as int]), !frame_space(bytes@[end as int - 1]),
+                forall|j: int| 0 <= j < start ==> frame_space(bytes@[j]),
+                forall|j: int| end <= j < bytes.len() ==> frame_space(bytes@[j]),
+                forall|j: int| start <= j < i ==> bytes@[j] != b'\n')
+            decreases (end - i)
+            {
+                if bytes[i] == b'\n' { return false; }
+                i += 1;
+            }
+        }
+        sail_proof! {
+            assert(response_span(bytes@, start as int, end as int));
+            assert(response_shape(bytes@));
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Checks command framing and exact first-head bytes before deriving its prefix binding.
+    /// Any refusal permanently disables cache interpretation while preserving raw input.
+    pub fn framed_command<'a>(raw: &'a mut RawTranscript, offset: usize, command: &'a [u8])
+        -> (accepted: Option<(PrefixFeed<'a>, &'a [u8])>)
+        requires (true)
+        ensures (final(raw).view() == old(raw).view(),
+            accepted.is_some() ==> (
+                final(raw).active() && old(raw).active() && single_list(command@, true)
+                && exists|start: int, end: int| head_span(command@, start, end)
+                    && accepted.unwrap().1@ == command@.subrange(start, end)),
+            accepted.is_some() ==> (
+                old(raw).fed_view() <= offset
+                && final(raw).fed_view() == offset as nat + command@.len()
+                && final(raw).fed_view() <= old(raw).view().len()
+                && old(raw).view().subrange(offset as int, final(raw).fed_view() as int) == command@
+                && accepted.unwrap().0.from() == old(raw).fed_view()
+                && accepted.unwrap().0.to() == final(raw).fed_view()
+                && accepted.unwrap().0.view() == old(raw).view().subrange(old(raw).fed_view() as int, final(raw).fed_view() as int)
+                && trivia_after(old(raw).view().subrange(old(raw).fed_view() as int, offset as int), false) == Some(false)),
+            accepted.is_none() ==> (!final(raw).active() && final(raw).fed_view() == old(raw).fed_view()),
+            old(raw).active() && single_list(command@, true) && symbol_first(command@[1])
+                && old(raw).fed_view() <= offset
+                && offset as nat + command@.len() <= old(raw).view().len()
+                && old(raw).view().subrange(offset as int, offset as int + command@.len() as int) == command@
+                && trivia_after(old(raw).view().subrange(old(raw).fed_view() as int, offset as int), false) == Some(false)
+                ==> accepted.is_some())
+    {
+        let head = command_head(command);
+        let Some(head) = head else { raw.refuse(); return None; };
+        let feed = raw.command(offset, command);
+        match feed { Some(feed) => Some((feed, head)), None => None }
+    }
+}

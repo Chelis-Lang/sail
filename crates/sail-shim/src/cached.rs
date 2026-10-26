@@ -20,6 +20,7 @@ use std::time::Duration;
 
 use sail_acceptance::query::{
     BoundPair, CorrelatedQueue, PublicationBatch, PublicationGate, RawTranscript, ReplayCursor,
+    framed_command, response_frame,
 };
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
@@ -73,6 +74,9 @@ fn write_out(bytes: &[u8]) -> bool {
 /// treated as a miss and the session falls back to the solver.
 fn plausible(command: &[u8], reply: &[u8]) -> bool {
     use sail_smtlib::command::CommandKind;
+    if !response_frame(reply) {
+        return false;
+    }
     let Ok(c) = classify(command) else {
         return false;
     };
@@ -688,13 +692,22 @@ fn observe(
         raw.refuse();
         return (Output::Unknown, String::new(), Expect::Stop);
     };
-    let endpoint = match raw.command(offset, &item.bytes) {
-        Some(feed) => {
+    let (endpoint, name, head_matches) = match framed_command(raw, offset, &item.bytes) {
+        Some((feed, head)) => {
             prefix.update(feed.bytes());
-            feed.end()
+            (
+                feed.end(),
+                String::from_utf8_lossy(head).into_owned(),
+                classify(&item.bytes).is_ok_and(|command| command.name == head),
+            )
         }
         None => return (Output::Unknown, String::new(), Expect::Stop),
     };
+    if !head_matches {
+        raw.refuse();
+        return (Output::Unknown, String::new(), Expect::Stop);
+    }
+
     if usize::try_from(prefix.len()).ok() != Some(endpoint) {
         raw.refuse();
         return (Output::Unknown, String::new(), Expect::Stop);
@@ -713,9 +726,6 @@ fn observe(
     {
         output = Output::Unknown;
     }
-    let name = classify(&item.bytes)
-        .map(|c| String::from_utf8_lossy(c.name).into_owned())
-        .unwrap_or_default();
     let limit = session
         .option(b":rlimit")
         .and_then(|v| std::str::from_utf8(v).ok())
@@ -1076,6 +1086,86 @@ mod tests {
     }
 
     #[test]
+    fn native_frames_match_checked_lexical_grammar_across_fragments() {
+        use sail_acceptance::query::{command_head, complete_list, response_frame};
+        let input = b";header )\r\n( ;head\n echo \"a;()\"\"x\") (assert |a)b|) (assert ;hidden )\n true)\n";
+        for width in 1..=input.len() {
+            let mut splitter = super::CommandSplitter::new();
+            let mut items = Vec::new();
+            for chunk in input.chunks(width) {
+                splitter.push(chunk, &mut items);
+            }
+            assert!(splitter.finish().is_none());
+            assert_eq!(items.len(), 3);
+            for item in items {
+                assert!(complete_list(&item.bytes, true));
+                let checked = command_head(&item.bytes);
+                let native = super::classify(&item.bytes)
+                    .ok()
+                    .map(|command| command.name);
+                assert_eq!(checked, native);
+            }
+        }
+        let output = b"unsat\r\n(:name \"a;()\"\"x\")\n(model (define-fun |a)b| () Int 1))\n";
+        for width in 1..=output.len() {
+            let mut splitter = super::ResponseSplitter::new();
+            let mut items = Vec::new();
+            for chunk in output.chunks(width) {
+                splitter.push(chunk, &mut items);
+            }
+            assert!(splitter.finish().is_none());
+            assert_eq!(items.len(), 3);
+            for (i, item) in items.iter().enumerate() {
+                let start = usize::try_from(item.offset).unwrap_or_default();
+                let end = items.get(i + 1).map_or(output.len(), |next| {
+                    usize::try_from(next.offset).unwrap_or_default()
+                });
+                assert!(response_frame(&output[start..end]));
+            }
+        }
+    }
+
+    #[test]
+    fn framing_refuses_quoted_heads_partial_forms_and_coalesced_replies() {
+        use super::{Item, ItemKind, Output, PrefixHasher, RawTranscript, Session, observe};
+        for bytes in [
+            b"(check-sat)(check-sat)".as_slice(),
+            b"(|check-sat|)",
+            b"(echo \"unfinished)",
+            b"(assert true ;comment EOF",
+        ] {
+            let mut raw = RawTranscript::empty();
+            raw.append(bytes);
+            let mut prefix = PrefixHasher::new(&identity(), &super::Mode::Default);
+            let item = Item {
+                kind: ItemKind::List,
+                offset: 0,
+                bytes: bytes.to_vec(),
+            };
+            let (output, name, expected) =
+                observe(&mut Session::new(), &item, &mut prefix, &mut raw);
+            assert_eq!(output, Output::Unknown);
+            assert_eq!(name, "");
+            assert!(matches!(expected, Expect::Stop));
+            assert!(!raw.valid());
+            assert_eq!(raw.bytes(), bytes);
+        }
+        assert!(!super::plausible(
+            b"(get-info :version)",
+            b"(:version \"x\")(:name \"coalesced\")\n"
+        ));
+        assert!(!super::plausible(
+            b"(get-info :version)",
+            b"(:version \"unfinished\""
+        ));
+        assert!(!super::plausible(b"(check-sat)", b"unsat"));
+        assert!(super::plausible(
+            b"(get-info :version)",
+            b"(:version \"4.16.0\")\n"
+        ));
+    }
+
+    #[test]
     fn lost_expectation_metadata_permanently_blocks_publication() {
         use std::sync::atomic::{AtomicBool, Ordering};
         let status = super::InputStatus {
@@ -1126,7 +1216,7 @@ mod tests {
             let mut stored = Vec::new();
             for (i, is_reply) in order.iter().enumerate() {
                 if *is_reply && usize::from(r) < n {
-                    p.reply(vec![b'm', r]);
+                    p.reply(format!("(m {r})\n").into_bytes());
                     r += 1;
                 } else if usize::from(e) < n {
                     p.expect(model(e));
@@ -1136,13 +1226,13 @@ mod tests {
                     stored.extend(p.drain());
                 }
             }
-            while usize::from(r) < n { p.reply(vec![b'm', r]); r += 1; }
+            while usize::from(r) < n { p.reply(format!("(m {r})\n").into_bytes()); r += 1; }
             while usize::from(e) < n { p.expect(model(e)); e += 1; }
             stored.extend(p.drain());
             prop_assert_eq!(stored.len(), n);
             for entry in stored {
                 let entry = stored_entry(entry);
-                prop_assert_eq!(entry.key.0[0], entry.reply[1]);
+                prop_assert_eq!(entry.reply, format!("(m {})\n", entry.key.0[0]).into_bytes());
             }
         }
     }
