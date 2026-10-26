@@ -174,6 +174,13 @@ framing decision is renumbered to 0084.
 
 ## Resume and acceptance
 
+The merged transport uses a dedicated remove-only configuration interface for
+the outer Cargo command and the owned compiler builder. The ordinary Cargo
+alias needs that operation in production; the broader mutable standard-command
+compiler interface remains test-only. Owned command mutation accounting and
+private child/pipe completion construction remain required. This source-only
+integration correction still needs native compilation and the full gates.
+
 Inspect the PR head, branch status and complete diffs before resuming. Integrate
 committed components without overwriting newer main safeguards. Capture every
 actual module/type/import/factory/function and preserve every earlier function
