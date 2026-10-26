@@ -1,0 +1,18 @@
+[package]
+name = "sail-undeclared-build-input"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[package.metadata.verus]
+verify = true
+
+[features]
+default = []
+verification = ["dep:vstd"]
+declared-input = []
+
+[dependencies]
+vstd = { version = "=0.0.0-2026-10-18-0147", optional = true }
+
+[workspace]
