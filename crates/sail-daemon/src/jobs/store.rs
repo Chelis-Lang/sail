@@ -171,7 +171,8 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
     let mut status = job.status.clone();
     let mut repair = None;
     let result = if status.state == Lifecycle::Completed {
-        let mut project = project(state, job)?;
+        let request = retained_request(job);
+        let mut project = project_with_request(state, job, request)?;
         let snapshot = refresh(state, job, &project);
         status.currentness = classify(project.currentness, &project.input_revision, snapshot);
         apply_currentness(&mut project, status.currentness);
@@ -179,7 +180,7 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
             // The full phase is sent once, as `result`.
             let mut envelope = repair_project(state, job)?;
             envelope.batch.full = None;
-            envelope.accepted = retained_repair_accepted(job, &envelope.batch, &project);
+            envelope.accepted = retained_repair_accepted(job, &envelope.batch, &project, request);
             repair = Some(Box::new(envelope));
         }
         Some(serde_json::to_value(project).map_err(io::Error::other)?)
@@ -208,7 +209,10 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         .projection
         .as_ref()
         .ok_or_else(|| io::Error::other("SAIL0816: missing result seal"))?;
-    let key = frame_key(job, projection)?;
+    // This live observation can change without changing the serialized job:
+    // canonical invocation resolution is part of retained_request admission.
+    let request = retained_request(job);
+    let key = frame_key(job, projection, request.is_some())?;
     let bytes = match project_bytes(state, job) {
         Ok(bytes) => bytes,
         Err(error) => {
@@ -233,7 +237,7 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         )
     };
     withhold_legacy_authority(&mut project, projection.proof_authority_revision);
-    withhold_unbound_authority(&mut project, retained_request(job));
+    withhold_unbound_authority(&mut project, request);
     let frame = |currentness| {
         let mut project = project.clone();
         let mut status = job.status.clone();
@@ -241,7 +245,7 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         apply_currentness(&mut project, currentness);
         let mut repair = repair.clone();
         if let Some(envelope) = &mut repair {
-            envelope.accepted = retained_repair_accepted(job, &envelope.batch, &project);
+            envelope.accepted = retained_repair_accepted(job, &envelope.batch, &project, request);
         }
         encode_result(ResultDocument {
             contracts: None,
@@ -262,9 +266,9 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
 }
 /// Identity of a completed job's immutable frame family. It binds exactly what
 /// the encoded frames are built from: the public status, the result mode and
-/// the sealed stdout digest. Unlike the whole stored record, it excludes the
-/// submission environment, which the frames never contain.
-fn frame_key(job: &Stored, projection: &Projection) -> io::Result<String> {
+/// sealed stdout digest, original submission and the current request-admission
+/// observation. The latter can change independently of every serialized field.
+fn frame_key(job: &Stored, projection: &Projection, request_admitted: bool) -> io::Result<String> {
     #[derive(Serialize)]
     struct Key<'a> {
         status: &'a Status,
@@ -273,6 +277,7 @@ fn frame_key(job: &Stored, projection: &Projection) -> io::Result<String> {
         proof_authority_revision: u32,
         request: &'a Option<sail_api::project::ResolvedRequest>,
         submission: &'a Submission,
+        request_admitted: bool,
     }
     serde_json::to_vec(&Key {
         status: &job.status,
@@ -281,6 +286,7 @@ fn frame_key(job: &Stored, projection: &Projection) -> io::Result<String> {
         proof_authority_revision: projection.proof_authority_revision,
         request: &projection.request,
         submission: &job.submission,
+        request_admitted,
     })
     .map(|bytes| stdout_digest(&bytes))
     .map_err(io::Error::other)
@@ -340,6 +346,13 @@ fn classify(
     )
 }
 fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::ProjectResult> {
+    project_with_request(state, job, retained_request(job))
+}
+fn project_with_request(
+    state: &State,
+    job: &Stored,
+    request: Option<&sail_api::project::ResolvedRequest>,
+) -> io::Result<sail_api::project::ProjectResult> {
     let bytes = project_bytes(state, job)?;
     let mut project = if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
         let mut envelope: sail_api::repair::ResultDocument =
@@ -354,7 +367,7 @@ fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::Project
             .as_ref()
             .map_or(0, |projection| projection.proof_authority_revision),
     );
-    withhold_unbound_authority(&mut project, retained_request(job));
+    withhold_unbound_authority(&mut project, request);
     Ok(project)
 }
 
@@ -362,9 +375,14 @@ fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::Project
 /// reuse. A modified record must not reuse frames for another argument list.
 pub(super) fn retained_request(job: &Stored) -> Option<&sail_api::project::ResolvedRequest> {
     let request = job.projection.as_ref()?.request.as_ref()?;
-    if sail_api::acceptance::bind_submission(&job.submission.args, &job.submission.mode, request)
-        .is_none()
-        || job.submission.project_dir.canonicalize().ok()?.to_str()? != request.invocation
+    let invocation = job.submission.project_dir.canonicalize().ok()?;
+    if sail_api::acceptance::bind_retained_submission(
+        &job.submission.args,
+        &job.submission.mode,
+        request,
+        invocation.to_str(),
+    )
+    .is_none()
     {
         return None;
     }
@@ -383,11 +401,12 @@ fn retained_repair_accepted(
     job: &Stored,
     batch: &sail_api::repair::BatchResult,
     project: &sail_api::project::ProjectResult,
+    request: Option<&sail_api::project::ResolvedRequest>,
 ) -> bool {
     let sail_api::jobs::Mode::Repair(selection) = &job.submission.mode else {
         return false;
     };
-    retained_request(job).is_some_and(|request| {
+    request.is_some_and(|request| {
         sail_api::acceptance::repair_request_matches(
             request,
             &selection.package,
@@ -794,6 +813,105 @@ mod legacy_authority_tests {
         Ok(())
     }
 
+    fn frame_document(
+        state: &State,
+        job: &Stored,
+    ) -> Result<ResultDocument, Box<dyn std::error::Error>> {
+        let frame = result_frame(state, job)?;
+        match sail_api::jobs::read_frame(&mut frame.as_slice())? {
+            sail_api::jobs::Response::Result(document) => Ok(document),
+            _ => Err("expected retained result frame".into()),
+        }
+    }
+
+    /// Native frame-selection regression only: the supplied report is a
+    /// declared metadata fixture, not a trusted verifier or complete readback.
+    #[test]
+    fn cached_frames_recheck_live_invocation_admission_in_both_directions()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-live-frame-request-{}", std::process::id()));
+        let invocation = root.join("invocation");
+        let displaced = root.join("displaced");
+        std::fs::create_dir_all(&invocation)?;
+        let server = super::super::bind(
+            &root.join("socket"),
+            &root.join("jobs"),
+            Path::new("/bin/true"),
+        )?;
+        let state = &server.state;
+        let original = zero_function_project()?;
+        let bytes = serde_json::to_vec(&original)?;
+        let request = original_request(&original, &invocation)?;
+        let projection = Projection::validated(&bytes, &original).with_request(Some(request));
+        let mut job = Stored::new(Submission {
+            mode: sail_api::jobs::Mode::Stock,
+            project_dir: invocation.clone(),
+            args: Vec::new(),
+            force: false,
+            environment: BTreeMap::new(),
+            input_revision: None,
+        });
+        job.status.state = Lifecycle::Completed;
+        job.projection = Some(projection.clone());
+        let directory = state.root.join(&job.status.id);
+        std::fs::create_dir_all(&directory)?;
+        std::fs::write(directory.join("stdout"), &bytes)?;
+        assert_ne!(
+            frame_key(&job, &projection, true)?,
+            frame_key(&job, &projection, false)?
+        );
+        assert!(retained_request(&job).is_some());
+        let before = frame_document(state, &job)?;
+        assert_eq!(
+            before.result.as_ref().ok_or("before project")?["targets"][0]["complete"],
+            true
+        );
+        assert_eq!(
+            serde_json::to_value(&before)?,
+            serde_json::to_value(result(state, &job)?)?
+        );
+
+        // The serialized job, captured request and original stdout stay fixed.
+        // Only the independent live canonical-invocation observation changes.
+        std::fs::rename(&invocation, &displaced)?;
+        assert!(retained_request(&job).is_none());
+        for _ in 0..2 {
+            let refused = frame_document(state, &job)?;
+            let fresh = result(state, &job)?;
+            assert_eq!(
+                serde_json::to_value(&refused)?,
+                serde_json::to_value(&fresh)?
+            );
+            let project = refused.result.ok_or("refused project")?;
+            assert_eq!(project["targets"][0]["complete"], false);
+            assert_eq!(
+                project["targets"][0]["report"],
+                serde_json::to_value(&original.targets[0].report)?
+            );
+            assert_eq!(
+                project["targets"][0]["establishing_run"],
+                original.targets[0].establishing_run
+            );
+        }
+
+        std::fs::rename(&displaced, &invocation)?;
+        assert!(retained_request(&job).is_some());
+        let restored = frame_document(state, &job)?;
+        assert_eq!(
+            serde_json::to_value(&restored)?,
+            serde_json::to_value(result(state, &job)?)?
+        );
+        assert_eq!(
+            restored.result.ok_or("restored project")?["targets"][0]["complete"],
+            true
+        );
+        assert_eq!(std::fs::read(directory.join("stdout"))?, bytes);
+        drop(server);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     fn zero_function_project()
     -> Result<sail_api::project::ProjectResult, Box<dyn std::error::Error>> {
         let mut report: sail_api::output::Report = serde_json::from_str(include_str!(
@@ -937,7 +1055,10 @@ mod legacy_authority_tests {
         std::fs::create_dir_all(&directory)?;
         std::fs::write(directory.join("stdout"), &bytes)?;
         remember_job(state, &job)?;
-        assert_ne!(frame_key(&job, &legacy)?, frame_key(&job, &fresh)?);
+        assert_ne!(
+            frame_key(&job, &legacy, true)?,
+            frame_key(&job, &fresh, true)?
+        );
         for _ in 0..2 {
             let frame = result_frame(state, &job)?;
             let response: sail_api::jobs::Response =

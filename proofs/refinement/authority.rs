@@ -830,4 +830,37 @@ pub fn exact_partial_transfer_refuses_bad_readback(project: &mut crate::project:
     !acceptance::bind_replayed_exact_partial_project_ordered(project, original, current, orders, readback)
 }
 
+/// A stored request cannot replace a missing live invocation observation.
+pub fn retained_submission_refuses_missing_invocation(arguments: &[String], mode: &crate::jobs::Mode,
+    request: &crate::project::ResolvedRequest) -> (refused: bool)
+    requires true,
+    ensures refused,
+{
+    acceptance::bind_retained_submission(arguments, mode, request, None).is_none()
+}
+
+/// Original submission correspondence remains insufficient after the current
+/// canonical invocation resolves to another directory.
+pub fn retained_submission_refuses_changed_invocation(arguments: &[String], mode: &crate::jobs::Mode,
+    request: &crate::project::ResolvedRequest, current: &str) -> (refused: bool)
+    requires current.spec_bytes() != string_bytes(&request.invocation),
+    ensures refused,
+{
+    acceptance::bind_retained_submission(arguments, mode, request, Some(current)).is_none()
+}
+
+/// A coherent live invocation and actual stock submission reach the binding;
+/// this operation establishes correspondence, not process or proof completion.
+pub fn positive_retained_submission_invocation(request: &crate::project::ResolvedRequest,
+    current: &str) -> (accepted: bool)
+    requires request.args@.len() == 0, request.engine.is_none(), request.function.is_none(),
+        current.spec_bytes().len() > 0,
+        current.spec_bytes() == string_bytes(&request.invocation),
+    ensures accepted,
+{
+    let arguments: Vec<String> = Vec::new();
+    let mode = crate::jobs::Mode::Stock;
+    acceptance::bind_retained_submission(&arguments, &mode, request, Some(current)).is_some()
+}
+
 }

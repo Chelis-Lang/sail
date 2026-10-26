@@ -2435,3 +2435,34 @@ sail_verified! {
         true
     }
 }
+
+sail_spec! {
+    /// Equality with an independently supplied current canonical invocation.
+    /// Actual filesystem resolution remains the native caller's obligation.
+    pub open spec fn retained_invocation_corresponds(current: Option<&str>, request: &ResolvedRequest) -> bool {
+        current.is_some() && current.unwrap().spec_bytes() == string_bytes(&request.invocation)
+    }
+}
+
+sail_verified! {
+    /// Checks the retained original submission against its captured request and
+    /// a separately observed current invocation identity. A stored request or
+    /// previously successful cache lookup cannot supply this observation.
+    #[allow(clippy::question_mark, reason = "Keep explicit checked refusal branches in the source shared with stock Verus.")]
+    pub fn bind_retained_submission<'a>(arguments: &'a [String], mode: &'a Mode,
+        request: &'a ResolvedRequest, current_invocation: Option<&str>) -> (out: Option<SubmissionBinding<'a>>)
+        requires(true)
+        ensures(out.is_some() ==> binding_valid(&out.unwrap()),
+            out.is_some() ==> bound_arguments(&out.unwrap()) == arguments,
+            out.is_some() ==> bound_mode(&out.unwrap()) == mode,
+            out.is_some() ==> bound_request(&out.unwrap()) == request,
+            out.is_some() ==> retained_invocation_corresponds(current_invocation, request),
+            arguments@.len() == 0 && request.args@.len() == 0 && mode is Stock
+                && request.engine.is_none() && request.function.is_none()
+                && retained_invocation_corresponds(current_invocation, request) ==> out.is_some())
+    {
+        let Some(current) = current_invocation else { return None; };
+        if !exact_bytes(current.as_bytes(), request.invocation.as_str().as_bytes()) { return None; }
+        bind_submission(arguments, mode, request)
+    }
+}

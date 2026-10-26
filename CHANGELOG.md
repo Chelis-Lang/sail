@@ -35,6 +35,10 @@ semantic versioning once the API is published.
   original proof's establishing identities and reports. Failed and exact-partial
   calls use the ordinary managed path while retaining its existing receipt reuse.
 
+- Recheck live original-request admission before serving retained job frames.
+  Missing or differently resolved invocation directories withhold completion
+  consistently in cached and freshly built results.
+
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
