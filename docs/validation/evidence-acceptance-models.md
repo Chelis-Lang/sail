@@ -7,6 +7,13 @@ have separate [current native qualification](acceptance-production-refinements.m
 hosted checks and the service-wide theorem remain open. This record owns the actual scope of
 [checking](../design/acceptance-proof-checker.md).
 
+The expanded integration at `42637e0d` passes all 31 model cases on macOS:
+four positive roots (59/0, 64/0, 68/0 and composed 202/0) and 27 ordinary
+failing guard controls. Every prior function and control remains inventoried;
+the checker additionally refuses omission of any required control. Native
+Linux checking of this expanded matrix remains pending. Its exact source and
+receipt are preserved in the [owning integration record](acceptance-boundary-refinements.md).
+
 ## Expanded model qualification
 
 The captured-source manifest contains four roots and one shared context.

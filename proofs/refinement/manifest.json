@@ -782,7 +782,7 @@
         "crates/sail-api/src/repair.rs",
         "crates/sail-daemon/src/jobs/store.rs"
       ],
-      "verified": 278,
+      "verified": 291,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
@@ -906,6 +906,7 @@
         "check_authority::acceptance::verification_enabled_command",
         "check_authority::acceptance::verification_enabled_options",
         "check_authority::acceptance::withhold_unbound_request_authority_ordered",
+        "check_authority::authority::AttemptLedger::allocate",
         "check_authority::authority::AttemptLedger::new",
         "check_authority::authority::AttemptLedger::reserve",
         "check_authority::authority::CompletionPolicy::clone",
@@ -926,9 +927,17 @@
         "check_authority::authority::RunningAttempt::finish_or_output",
         "check_authority::authority::RunningAttempt::stderr_eof",
         "check_authority::authority::RunningAttempt::stdout_eof",
+        "check_authority::authority::UnconfiguredAttempt::configure",
+        "check_authority::authority::UnconfiguredAttempt::run",
+        "check_authority::authority::UnconfiguredAttempt::slot",
+        "check_authority::authority::UnconfiguredAttempt::unit",
         "check_authority::authority::WaitObservation::arrow_0",
         "check_authority::authority::WaitObservation::arrow_Exited_0",
         "check_authority::authority::argument_flag",
+        "check_authority::authority::cargo_crate_name_matches",
+        "check_authority::authority::compatible_target_kind",
+        "check_authority::authority::compiler_target_name_kind",
+        "check_authority::authority::compiler_unit_matches_target",
         "check_authority::authority::copy_bytes",
         "check_authority::authority::distinct_id_values",
         "check_authority::authority::flag_matches",
@@ -950,7 +959,11 @@
         "check_authority::authority::running_reserved",
         "check_authority::authority::running_stderr",
         "check_authority::authority::running_stdout",
+        "check_authority::authority::rust_crate_name",
         "check_authority::authority::strict_order_differs",
+        "check_authority::authority::unconfigured_run",
+        "check_authority::authority::unconfigured_slot",
+        "check_authority::authority::unconfigured_unit",
         "check_authority::authority::unique_obligations",
         "check_authority::authority_model::Candidate::context",
         "check_authority::authority_model::Candidate::invocations",
@@ -964,6 +977,7 @@
         "check_authority::authority_model::CompletedInvocation::documents",
         "check_authority::authority_model::CompletedInvocation::invocation",
         "check_authority::authority_model::CompletedInvocation::point",
+        "check_authority::authority_model::CompletedInvocation::predecessor",
         "check_authority::authority_model::CompletedInvocation::transcripts",
         "check_authority::authority_model::CompletedInvocation::valid",
         "check_authority::authority_model::EngineFailure::invocation",
@@ -1009,6 +1023,7 @@
         "check_authority::authority_model::compile_only_zero_function_completion_refused",
         "check_authority::authority_model::complete",
         "check_authority::authority_model::completed_inventory_matches_started_children",
+        "check_authority::authority_model::completed_origin_is_justified",
         "check_authority::authority_model::completion_has_validated_records",
         "check_authority::authority_model::concrete_failed_unknown_provisional_controls",
         "check_authority::authority_model::context_mismatch_refused",
@@ -1032,7 +1047,10 @@
         "check_authority::authority_model::example_target",
         "check_authority::authority_model::failed_unknown_provisional_refused",
         "check_authority::authority_model::failure_valid",
+        "check_authority::authority_model::fallback_subject_matches",
+        "check_authority::authority_model::fallback_subject_swap_refused",
         "check_authority::authority_model::finish_project",
+        "check_authority::authority_model::finish_project_per_target",
         "check_authority::authority_model::good_function",
         "check_authority::authority_model::incomplete_or_stopped_refused",
         "check_authority::authority_model::independent_fallback_control",
@@ -1051,6 +1069,7 @@
         "check_authority::authority_model::origin_valid",
         "check_authority::authority_model::partial_scope_never_whole_control",
         "check_authority::authority_model::path_matches",
+        "check_authority::authority_model::positive_mixed_target_origins_control",
         "check_authority::authority_model::positive_nonempty_lifecycle_control",
         "check_authority::authority_model::positive_zero_function_lifecycle_control",
         "check_authority::authority_model::project_job",
@@ -1059,6 +1078,7 @@
         "check_authority::authority_model::reject_document",
         "check_authority::authority_model::repair_accepted",
         "check_authority::authority_model::repair_selectable",
+        "check_authority::authority_model::repair_target_origin_allowed",
         "check_authority::authority_model::retained_job_stale_and_revert_controls",
         "check_authority::authority_model::running_wf",
         "check_authority::authority_model::safe_scoped",
@@ -1469,6 +1489,30 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "if admitted {\n            return corresponding;\n        }",
           "after": "if false {\n            return corresponding;\n        }"
+        },
+        {
+          "name": "target-exact-cargo-name",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "if !exact_name { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "target-rust-name-normalization",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "let expected = if cargo[i] == b'-' { b'_' } else { cargo[i] };",
+          "after": "let expected = cargo[i];"
+        },
+        {
+          "name": "target-kind-binding",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "|| (exact_bytes(&kinds[i], b\"lib\") && exact_bytes(&unit.crate_type, b\"rlib\"))",
+          "after": "|| true"
+        },
+        {
+          "name": "process-configure-slot",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "ReservedAttempt { run: self.run, unit: self.unit, slot: self.slot, descriptor }",
+          "after": "ReservedAttempt { run: self.run, unit: self.unit, slot: 0, descriptor }"
         }
       ]
     }

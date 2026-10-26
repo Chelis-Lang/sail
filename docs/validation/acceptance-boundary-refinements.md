@@ -1,9 +1,13 @@
 # Acceptance boundary refinement qualification
 
-Status: captured-source stock checks pass all 71 cases on macOS and native
-Linux at `0b646c48`. Its native end-to-end gate fails on journal reservation
-reuse during a repeated same-run compiler invocation; publication remains pending. The next
-retained-transition candidate passes 78 cases and the macOS gate at `0c3dbc1d`. Draft
+Status: expanded captured-source stock checks pass all 82 production cases
+and 31 model cases on macOS at `42637e0d`, with the full host gate passing
+1,128/1,128 tests. Native Linux passes the earlier 71 production cases at
+`0b646c48`; its end-to-end gate fails on journal reservation
+reuse during a repeated same-run compiler invocation. The allocation correction
+at `bcd21d9d` restores complete target evidence, but the unchanged managed test
+still observes three verifier invocations instead of one; publication remains pending. The
+earlier retained-transition candidate passes 78 cases and the macOS gate at `0c3dbc1d`. Draft
 [PR #378](https://github.com/Chelis-Lang/sail/pull/378) targets main after #362 merged.
 No service-wide theorem, complete compiler closure or authenticated physical
 observation is claimed. The [obligation ledger](../design/acceptance-boundary-refinements.md)
@@ -63,6 +67,7 @@ with declared environment-read accounting.
 | 2026-10-26 | `48f0e1d2` | macOS combined host and source-checker self-tests | Strict clippy passes; host tests pass 1,120/1,122. Coalescing fixture still writes legacy version 2; target collision fixture builds outside the directory scanned by Sail. Corrected fixtures retain all assertions and add legacy-record refusal; all four focused cases pass. The source-checker mutation fixture also needs the actual optional-where syntax; its refusal assertion remains required |
 | 2026-10-26 | `7cbf806e` | macOS host and native Linux workspace | The source-checker self-test omits the newly protected authority module from its fixture snapshot; adding it and all four constructor-refusal mutations passes the focused test. Native workspace stops there, with later gates unrun. macOS strict clippy passes and host tests pass 1,122/1,124; both failures read the host's existing global rustc-wrapper configuration. Qualification reruns with a separate Cargo configuration directory while preserving the original cache and test assertions |
 | 2026-10-26 | `0b646c48` | Native Linux full end-to-end | Workspace, all 29 model cases, all 71 production cases and solver tests pass. Managed acceptance fails its original one-invocation/reuse assertion after an edit: the fresh target is verified but has SAIL3111 and no completion authority. Actual syscall tracing confirms a second driver in the same run/unit reuses slot 0 and receives EEXIST; the earlier reservation and observation remain present. No assertion or coverage check is relaxed; remaining e2e/PR conformance are unrun |
+| 2026-10-26 | `bcd21d9d` | Native Linux complete managed phase | Exclusive journal allocation restores complete evidence for both reported targets, with no report error. The original cold-edit assertion still fails: three verifier invocations, zero reused targets, expected one invocation. The 111.73-second run is a failed targeted regression check, not a full pre-push gate; the remaining cause is under investigation |
 
 Legacy updater-body SHA-256:
 `94d497cbcd16f4f6f0b94b6d4166d07f3d26abf54b9b05abc9c78eb433a65ef4`.
@@ -86,7 +91,39 @@ source bundle, Mac receipts and actual managed stdout/stderr/events at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-followup-0b646c48-native-failed.tgz`.
 SHA-256: `6a982da75ed339021493459bc49c5119978a82099c76e448367fb6dd66f90b07`.
 
+The exact repeated-slot syscall trace and failed `bcd21d9d` correction check
+are preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-journal-regression-bcd21d9d.tgz`.
+SHA-256: `2f1fc696c3726be9e0f7ebb04e8fb0ab281572d19fdc527d0a462530c37ca822`.
+
+The complete `42637e0d` macOS receipt and exact source bundle are preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-followup-42637e0d-mac.tgz`.
+SHA-256: `e6faab8ffd7f6d7c5ca7645037427040bdeac67e37feae0d01472fb7fecd7874`.
+All three production partitions bind identical captured source, stock archive,
+runtime and Rust identities. The 82 cases contain three positive roots and 79
+ordinary failing mutations; the 31 model cases contain four roots and 27
+ordinary failing mutations. Every prior function remains inventoried. The
+full macOS host gate, 26 production-capture tests and 12 model-checker tests
+pass. The source commit's later documentation amendment changes no checked
+body, assembly, manifest, runner or runtime. These results do not qualify the
+native service or complete the six design obligations.
+
+The environment and retained-readback defect probes are preserved privately at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-boundary-defect-probes.tgz`.
+SHA-256: `4d0e17baff34cc202ae081829e6784a09fe453dcb1ddd0b6622a9b238d1c39e5`.
+
 ## Limits retained after these slices
+
+The model runner now requires every inventoried guard control by name and
+order. Its failure tests remove each required control in turn; all 12 tests
+pass. Production capture additionally protects the private unconfigured
+attempt constructor and requires the exact Cargo-name, normalized Rust-name,
+target-kind and configured-slot controls. All 26 capture tests pass. Expanded
+positive roots pass direct whole-crate stock checking at `f52ae9b3`: query
+216/0, inputs 91/0 and authority 291/0; models 59/0, 64/0, 68/0 and composed
+202/0. Every prior function remains inventoried. The complete new mutation
+matrix qualifies at `42637e0d` as recorded above. The native service still
+requires fresh complete checking at the final source.
 
 SMT delimiter/classification and identity/hash encoding, complete actual
 compiler inputs, Cargo/dep-info semantics, physical reads and launches,
