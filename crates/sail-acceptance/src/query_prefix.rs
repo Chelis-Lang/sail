@@ -8,8 +8,20 @@ sail_code! {
     /// One immutable command observation from the actual owned raw/hash transition.
     pub struct FramedCommand<'a, 'b, Host> {
         head: &'a [u8],
+        command: &'a [u8],
+        offset: usize,
         endpoint: usize,
         prefix: &'b Prefix<Host>,
+    }
+    /// Immutable command/head bytes and constant-size native hash checkpoint
+    /// from the original actual command transition. No raw prefix is copied.
+    pub struct FrozenCommand<Host> {
+        head: Vec<u8>,
+        command: Vec<u8>,
+        offset: usize,
+        endpoint: usize,
+        prefix: Prefix<Host>,
+        key: [u8;32],
     }
     /// Joint ownership of the only raw transcript and the key state it drives.
     pub struct QueryPrefix<Host> {
@@ -22,9 +34,15 @@ sail_code! {
     impl<'a, Host: HashHost> FramedCommand<'a, '_, Host> {
         sail_impl_spec! {
             pub closed spec fn head_view(&self) -> Seq<u8> { self.head@ }
+            pub closed spec fn command_view(&self) -> Seq<u8> { self.command@ }
+            pub closed spec fn offset_view(&self) -> nat { self.offset as nat }
+            pub closed spec fn material_view(&self) -> Seq<u8> { self.prefix.material() }
             pub closed spec fn endpoint(&self) -> nat { self.endpoint as nat }
             pub closed spec fn key_view(&self) -> [u8; 32] { Host::digest(crate::key_prefix::end(self.prefix.material(),self.endpoint as u64)) }
-            pub closed spec fn coherent(&self) -> bool { self.prefix.length() == self.endpoint }
+            pub closed spec fn coherent(&self) -> bool { self.prefix.length() == self.endpoint
+                && self.offset as nat + self.command@.len() == self.endpoint
+                && exists|start:int,end:int| crate::query::head_span(self.command@,start,end)
+                    && self.head@ == self.command@.subrange(start,end) }
         }
         sail_method! {
             /// Borrows the exact accepted command head.
@@ -52,6 +70,69 @@ sail_code! {
             pub fn key(&self) -> (out: [u8; 32])
                 requires (self.coherent()) ensures (out == self.key_view())
             { self.prefix.key() }
+        }
+        sail_method! {
+            /// Freezes this exact original head/command/key association before
+            /// its borrowed prefix can advance to another command.
+            pub fn freeze(&self) -> (out: FrozenCommand<Host>)
+                requires (self.coherent())
+                ensures (out.coherent(), out.head_view() == self.head_view(), out.command_view() == self.command_view(),
+                    out.offset_view() == self.offset_view(), out.endpoint_view() == self.endpoint(),
+                    out.material_view() == self.material_view(), out.key_view() == self.key_view())
+            {
+                let mut head=Vec::new(); head.extend_from_slice(self.head);
+                let mut command=Vec::new(); command.extend_from_slice(self.command);
+                let prefix=self.prefix.duplicate(); let key=self.prefix.key();
+                FrozenCommand { head,command,offset:self.offset,endpoint:self.endpoint,prefix,key }
+            }
+        }
+    }
+    impl<Host: HashHost> FrozenCommand<Host> {
+        sail_impl_spec! {
+            pub closed spec fn head_view(&self) -> Seq<u8> { self.head@ }
+            pub closed spec fn command_view(&self) -> Seq<u8> { self.command@ }
+            pub closed spec fn offset_view(&self) -> nat { self.offset as nat }
+            pub closed spec fn endpoint_view(&self) -> nat { self.endpoint as nat }
+            pub closed spec fn material_view(&self) -> Seq<u8> { self.prefix.material() }
+            pub closed spec fn key_view(&self) -> [u8;32] { self.key }
+            pub closed spec fn coherent(&self) -> bool { self.prefix.length() == self.endpoint
+                && self.offset as nat + self.command@.len() == self.endpoint
+                && self.key == Host::digest(crate::key_prefix::end(self.prefix.material(),self.endpoint as u64))
+                && exists|start:int,end:int| crate::query::head_span(self.command@,start,end)
+                    && self.head@ == self.command@.subrange(start,end) }
+        }
+        sail_method! {
+            /// Original supported head bytes, unchanged by later input.
+            pub fn head(&self) -> (out: &[u8]) requires (true) ensures (out@ == self.head_view()) { &self.head }
+        }
+        sail_method! {
+            /// Original exact complete command bytes, without normalization.
+            pub fn command(&self) -> (out: &[u8]) requires (true) ensures (out@ == self.command_view()) { &self.command }
+        }
+        sail_method! {
+            /// Original endpoint of this command's hash state.
+            pub fn end(&self) -> (out: usize) requires (true) ensures (out == self.endpoint_view()) { self.endpoint }
+        }
+        sail_method! {
+            /// Original raw command start, preserved separately from its head.
+            pub fn start(&self) -> (out: usize) requires (true) ensures (out == self.offset_view()) { self.offset }
+        }
+        sail_method! {
+            /// Returns only the key sealed by the original borrowed transition.
+            pub fn key(&self) -> (out: [u8;32]) requires (true) ensures (out == self.key_view()) { self.key }
+        }
+        sail_method! {
+            /// Consumes the checkpoint only at unchanged wire metadata conversion.
+            pub fn into_parts(self) -> (out: ([u8;32],Vec<u8>,Vec<u8>))
+                requires (true)
+                ensures (out.0 == self.key_view(), out.1@ == self.head_view(), out.2@ == self.command_view())
+            { (self.key,self.head,self.command) }
+        }
+        sail_method! {
+            /// Borrows the retained exact native hash-state checkpoint.
+            pub fn prefix(&self) -> (out: &Prefix<Host>) requires (self.coherent())
+                ensures (out.material() == self.material_view(), out.length() == self.endpoint_view())
+            { &self.prefix }
         }
     }
     impl<Host: HashHost> QueryPrefix<Host> {
@@ -125,6 +206,8 @@ sail_code! {
                     forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
                         old(self).matches(binding) ==> final(self).matches(binding),
                     out.is_some() ==> out.unwrap().coherent() && final(self).active() && crate::query::single_list(command@, true)
+                        && out.unwrap().command_view() == command@ && out.unwrap().offset_view() == offset
+                        && out.unwrap().material_view() == final(self).material()
                         && out.unwrap().endpoint() == final(self).fed()
                         && final(self).fed() == offset as nat + command@.len()
                         && final(self).view().subrange(offset as int, final(self).fed() as int) == command@
@@ -165,7 +248,7 @@ sail_code! {
                                     + self.view().take(endpoint as int));
                             }
                         }
-                        Some(FramedCommand { head, endpoint, prefix: &self.prefix })
+                        Some(FramedCommand { head, command, offset, endpoint, prefix: &self.prefix })
                     }
                     None => None,
                 }

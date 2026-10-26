@@ -414,6 +414,64 @@ accepted-command/frame inventory and its model transition trace remain separate
 joins. A correct holding operation cannot establish solver truth, reconstruct
 missing producer observations or authenticate a restart cache.
 
+### Frozen original command and acknowledged-prefix validation (source candidate)
+
+`FramedCommand` now retains the actual original command slice and offset beside
+its head, endpoint and borrowed prefix. `freeze` copies those exact command/head
+bytes, original key and native hash checkpoint into private-field
+`FrozenCommand`. The production SHA state has constant size; this does not copy
+the full input prefix for every command. Later parser advancement cannot change
+that checkpoint. Its key uses the original unchanged solver/mode header, raw
+bytes and endpoint encoding. The shim's existing fixed `-smt2 -in` cache-eligibility
+gate remains in place; the snapshot does not widen that supported argument set.
+
+Native `OwnedCommand` also retains its parser-session Arc lease. The same
+private lineage flows through that parser's actual delivery/frozen input. It
+never enters a cache key, SMT byte stream or wire record. Same-session and
+endpoint checks are only preliminary admission: they cannot by themselves prove
+that arbitrary legacy `write`/`seal` calls delivered the original raw prefix.
+
+The actual shared `Delivery::write` therefore optionally retains its exact
+acknowledged bytes in one bounded tape, after the same real pipe write succeeds.
+Failed/partial writes clear that tape and retain the original failure latch.
+Capacity refusal clears recording while preserving original writes, flushes and
+closure; recording cannot resume midway through a session. The original seal
+transfers that owned tape and header-only seed unchanged into `Delivered` and
+proves their correspondence to the actual acknowledged stream. No raw-Vec or
+deserializing constructor can supply this evidence. Legacy hash-only APIs remain
+available but cannot satisfy the new actual-prefix validation.
+
+`query_checkpoints::validate_checkpoints` checks a complete forward/inverse
+permutation over the original candidate checkpoints. In certified endpoint
+order it checks nonoverlapping original command spans against the acknowledged
+bytes and advances one hash state through their actual full prefixes. Each
+original key must equal the digest computed from those actual bytes. It never
+infers byte equality from hash equality. Evidence visit order leaves SMT and
+publication order unchanged, including held-check release order. This is one
+linear input pass plus constant-size digest work per checkpoint, rather than a
+full-prefix replay/hash from the beginning for every entry.
+
+The native pending `Store` payload carries one real `OwnedCommand` with its
+limit, rather than independent mutable key/name/text copies. The existing
+symbolic Pairer tests retain their exact assertions through test-only metadata
+inside that same Store payload. They exercise the same pairing, holding,
+annotation and release transitions; symbolic metadata is always refused by live
+publication admission and cannot mint a private checkpoint. Separate positives
+use one actual parser/delivery session and SHA keys; equal-key checkpoints from
+another live parser session must refuse.
+
+Snapshot objects, command/head payloads, frame metadata, the one acknowledged
+tape and validation-index working storage are conservatively charged against
+the existing 64 MiB recording/publication bound. The bound is not raised.
+Exhaustion permanently withholds recording and can reduce reuse; original
+delivery/forwarding and independently selected fallback remain unchanged.
+Allocator bookkeeping is outside this existing logical payload budget.
+Capture/key controls, native tests, complete-source proofs, default conformance
+and the added validation/retention cost remain unrun/unqualified. Full fresh
+frame-inventory/replay association, actual parser emission/semantic coverage,
+physical I/O/image contracts, protected writers and restart still need their
+separate concrete joins; this is not full #371/#372 closure.
+
 The component uses `ModelContext`, `Mode` and `SolverId` from the captured
 [shared context](../../proofs/acceptance/context.rs). A current session retains
 the exact request, scope, runtime, solver, mode and effective input map throughout
