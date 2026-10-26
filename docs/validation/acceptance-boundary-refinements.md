@@ -142,6 +142,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `11f3be8c` | Native whole positive roots | Query 353/0 and inputs 283/0 pass; authority VIR checking rejects an executable Vec-to-slice coercion inside the new constructive proof helper call. Moving the same slice borrow before the proof block preserves the witness/contract; final authority and workspace remain pending |
 | 2026-10-26 | `31ae9d88` | Native whole positive roots | Query VIR checking rejects a public open specification reading private publication fields; no whole positive root qualifies and later inputs/authority/workspace are unrun. The source correction keeps the predicate and private fields, using their existing closed selectors |
 | 2026-10-26 | `714bf6e5` | Native lexer comparison and whole positive roots | Lexer equality passes all frozen source/mutation/unit cases. Query passes 343/0; inputs reports 277/5 with new owned-compiler witness/contract failures. Authority/workspace unrun; corrected contracts and explicit witnesses await whole-root rerun |
 | 2026-10-26 | `b60694e8` | Native owned-output whole positive root | 342 verified/1 failed function. Every explicit pre-state assertion passes; the nonempty frame-admission exit remains unproved. The next proof step makes the complete-buffer subrange equality explicit, with the same witness, guards, scope and limits |

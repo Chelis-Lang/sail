@@ -946,7 +946,8 @@ pub fn positive_nonempty_declared_whole_replay(project: crate::project::ProjectR
 {
     let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
     orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
-    proof { acceptance::replay_constructive_request_definition(original, &project, current, &orders, readback); }
+    let order_slice: &[acceptance::ReportOrder] = &orders;
+    proof { acceptance::replay_constructive_request_definition(original, &project, current, order_slice, readback); }
     let Some(paths) = acceptance::bind_request_paths(current, invocation, workspace) else { return None; };
     let Some(admitted) = acceptance::admit_declared_replay_ordered(project, original, current, &orders,
         Some(&paths), Some(readback)) else { return None; };
