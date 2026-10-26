@@ -2,12 +2,35 @@
 //! The source-shared factory proves the concrete premises; no external report-valid
 //! specification supplies them. Process/input/session observation remains separate.
 use vstd::prelude::*;
+use vstd::string::StringSliceAdditionalSpecFns;
 use crate::authority_model as model;
 use crate::acceptance::{self, confirmed, successful_report, string_bytes};
 use crate::output::{EvidenceTierName, EstablishmentName, FunctionReport, Report, VerdictName};
 use crate::authority::CompletionPolicy;
 
 verus! {
+
+/// The actual retained guard and readback classifier compose without allowing
+/// a Current frame to upgrade a missing or mismatched original request.
+pub fn retained_current_frame_refines_request(project: &mut crate::project::ProjectResult,
+    request: Option<&crate::project::ResolvedRequest>, orders: &[acceptance::ReportOrder],
+    observed: Option<&str>, complete: bool) -> (view: crate::jobs::Currentness)
+    requires true,
+    ensures acceptance::same_project_except_freshness_and_completion(old(project), final(project)),
+        view is Current ==> old(project).currentness is Current,
+        view is Current && final(project).exit_code == Some(0i32)
+            && (exists |i: int| 0 <= i < final(project).targets@.len()
+                && final(project).targets@[i].complete) ==>
+            request.is_some() && acceptance::request_authorized(request.unwrap(), final(project)),
+        view is Current ==> final(project).currentness is Current,
+        view is Current ==> complete && observed.is_some()
+            && observed.unwrap().spec_bytes() == acceptance::string_bytes(&old(project).input_revision),
+{
+    let _corresponding = acceptance::withhold_unbound_request_authority_ordered(project, request, orders);
+    let view = acceptance::retained_currentness(&project.currentness, project.input_revision.as_str(), observed, complete);
+    let _lost_readback = acceptance::apply_retained_currentness(project, &view);
+    view
+}
 
 /// The actual low-level reducer preserves the observed exit without promoting
 /// it to verifier completion or inventing a document/process relation.

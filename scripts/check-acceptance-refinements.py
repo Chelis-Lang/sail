@@ -26,6 +26,12 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = "proofs/refinement/manifest.json"
 SYNTAX = "crates/sail-acceptance/src/syntax.rs"
+RETAINED_BRIDGE = "crates/sail-daemon/src/jobs/store.rs"
+# The native classify/apply_currentness/withhold_unbound_authority bridges have
+# been reviewed to forward the actual project and readback to the shared code.
+# Their enclosing native binding environment is pinned in full; the module's
+# I/O, serialization, cache selection and other service operations are not proved.
+RETAINED_BRIDGE_SHA256 = "30d6ff97c475501a2587d6140eafdbbf23b6f51fa6152c991687559c18aca407"
 # This reviewed source uses the identical argument/type/body metavariables in
 # Cargo and stock profiles. Changes require an explicit runner review, beyond
 # merely updating a manifest. Runtime-only implementation drift must refuse.
@@ -34,8 +40,8 @@ LIB_SHA256 = "3e8ae88827486b5c993273f7c26bd2da86ec18ac61844d2dde81c7dd2f26fda9"
 API_LIB_SHA256 = "125f9959d72bf6bbff719526cdaad169301b9c1e156db5b46ea79b91d4c50491"
 # Binding inventories cover both ordinary and proof-only imports. In particular,
 # an erased import cannot shadow a Cargo glob with a different checked callee.
-IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': 'bcd749c589ed300c166908a98596c572e32a7489a78c43485a7dcc7a4d3e54f9'}
-REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply', 'frame-premature-root-close', 'frame-ignore-doubled-quote', 'frame-ignore-input-comment', 'head-ignore-framing', 'response-ignore-line-terminator', 'response-ignore-list-framing'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence', 'input-opened-object-binding', 'input-read-final-handle', 'input-read-final-path', 'input-read-chunk-bytes', 'input-read-eof-required', 'input-read-cache-object', 'input-read-requested-binding', 'input-environment-byte-name', 'input-environment-escaped-name'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence', 'submission-arguments', 'submission-mode', 'submission-whole-authority', 'submission-positive', 'driver-token-bytes', 'driver-token-coverage', 'driver-sources-order', 'process-wait-required', 'process-distinct-slot', 'process-duplicate-stream', 'process-stderr-binding', 'process-recovery-bytes', 'process-payload-binding', 'process-refusal-recorded']}
+IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '589a12d568f5c878749274c4a9f2be0780ec7c4769cebdecdd8519d52351d9f2'}
+REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply', 'frame-premature-root-close', 'frame-ignore-doubled-quote', 'frame-ignore-input-comment', 'head-ignore-framing', 'response-ignore-line-terminator', 'response-ignore-list-framing'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence', 'input-opened-object-binding', 'input-read-final-handle', 'input-read-final-path', 'input-read-chunk-bytes', 'input-read-eof-required', 'input-read-cache-object', 'input-read-requested-binding', 'input-environment-byte-name', 'input-environment-escaped-name'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence', 'submission-arguments', 'submission-mode', 'submission-whole-authority', 'submission-positive', 'driver-token-bytes', 'driver-token-coverage', 'driver-sources-order', 'process-wait-required', 'process-distinct-slot', 'process-duplicate-stream', 'process-stderr-binding', 'process-recovery-bytes', 'process-payload-binding', 'process-refusal-recorded', 'retained-original-current', 'retained-complete-readback', 'retained-exact-revision', 'retained-view-currentness', 'retained-request-admission', 'retained-clear-refused-labels', 'retained-preserve-positive']}
 COMPONENTS = {
     "query": {"models": ["context", "query_association"], "core": ["inputs", "query"]},
     "inputs": {"models": ["context"], "core": ["inputs"]},
@@ -138,7 +144,8 @@ def dependency_paths(component: str) -> list[str]:
     result.append("proofs/refinement/" + component + ".rs")
     if component == "authority":
         result += ["crates/sail-api/src/acceptance.rs", "crates/sail-api/src/acceptance_sort.rs",
-            *["crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES]]
+            *["crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES],
+            RETAINED_BRIDGE]
     return result
 
 
@@ -152,6 +159,10 @@ def compiled_subset(path: str, content: bytes) -> None:
     if path == SYNTAX:
         require(hashlib.sha256(content).hexdigest() == SYNTAX_SHA256,
             "syntax erasure implementation changed; explicit runner review required")
+        return
+    if path == RETAINED_BRIDGE:
+        require(hashlib.sha256(content).hexdigest() == RETAINED_BRIDGE_SHA256,
+            "native retained bridge changed; explicit implementation/binding review required")
         return
     if path.startswith("proofs/acceptance/"):
         COMMON.standalone(content.decode())
@@ -398,8 +409,10 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
         "complete_suite": component is None,
         "source_roles": {entry["id"]: {
             "checked_source": [path for path in entry["dependencies"] if path not in
-                {SYNTAX, "crates/sail-api/src/acceptance_sort.rs"} and not declaration_source(path)],
+                {SYNTAX, RETAINED_BRIDGE, "crates/sail-api/src/acceptance_sort.rs"} and not declaration_source(path)],
             "reviewed_syntax": [SYNTAX],
+            "reviewed_native_bridges": {path: ["classify", "apply_currentness", "withhold_unbound_authority"]
+                for path in entry["dependencies"] if path == RETAINED_BRIDGE},
             "declaration_projections": [path for path in entry["dependencies"]
                 if declaration_source(path)],
             "structurally_checked_forwarders": [path for path in entry["dependencies"]

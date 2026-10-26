@@ -427,6 +427,25 @@ does not create a live process seal, and its transfer relation remains a separat
 obligation. No persisted journal or normal exit can independently authorize
 proof success. The extra journal I/O still needs native cost qualification.
 
+The daemon's retained-result path uses the source-shared
+`withhold_unbound_request_authority_ordered`, `retained_currentness` and
+`apply_retained_currentness` operations. The first rechecks the independently
+retained request before preserving completion labels; refusal preserves the
+reports and input-currentness observation. The classifier returns Current only
+for an originally Current result with a complete matching revision readback.
+The final operation changes the selected freshness view while preserving every
+target report. Its result tells the native caller when to append the existing
+lost-readback note. Historical and Unknown origins cannot become Current merely
+because a later digest matches. A coherent nonempty request retains completion.
+
+`retained_current_frame_refines_request` checks their composition: a selected
+Current view with retained completion has the original request authority and
+the matching complete readback. The candidate-order wrapper forwards the actual
+mutable project and request unchanged. The captured API includes both project
+and job Currentness enum definitions. Filesystem readback completeness, exact
+serialization/cache selection, original process origins and every CLI/MCP
+rendering remain independent service-refinement obligations.
+
 | Model boundary | Production source | Remaining obligation |
 |---|---|---|
 | Exact target and invocation | Managed `TargetIdentity`, `cargo_target`, requested coverage and failed compiler calls | Relate actual Cargo metadata and compiler invocation to the model's complete target inventory and exact fields. |

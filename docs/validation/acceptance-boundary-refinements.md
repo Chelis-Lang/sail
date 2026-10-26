@@ -1,8 +1,9 @@
 # Acceptance boundary refinement qualification
 
-Status: the expanded captured-source stock matrix passes all 71 cases on
-macOS at `7cbf806e`. The corrected integration fixtures pass. The final
-combined macOS/Linux gates and publication of executable changes remain pending. Draft
+Status: captured-source stock checks pass all 71 cases on macOS and native
+Linux at `0b646c48`. Its native end-to-end gate fails on journal reservation
+reuse during a repeated same-run compiler invocation; publication remains pending. The next
+retained-transition candidate passes 78 cases and the macOS gate at `0c3dbc1d`. Draft
 [PR #378](https://github.com/Chelis-Lang/sail/pull/378) targets main after #362 merged.
 No service-wide theorem, complete compiler closure or authenticated physical
 observation is claimed. The [obligation ledger](../design/acceptance-boundary-refinements.md)
@@ -61,6 +62,7 @@ with declared environment-read accounting.
 | 2026-10-26 | `e7f13656` | Native Linux full end-to-end | Stops at neutral-contract proof/source identity assertion because authenticated output-completion markers poisoned input accounting. Fix `946c625e`, integrated as `1551dff2`, passes the unchanged actual pinned-fork witness on macOS and native Linux. Full draft integration remains pending. No assertion or coverage check weakened |
 | 2026-10-26 | `48f0e1d2` | macOS combined host and source-checker self-tests | Strict clippy passes; host tests pass 1,120/1,122. Coalescing fixture still writes legacy version 2; target collision fixture builds outside the directory scanned by Sail. Corrected fixtures retain all assertions and add legacy-record refusal; all four focused cases pass. The source-checker mutation fixture also needs the actual optional-where syntax; its refusal assertion remains required |
 | 2026-10-26 | `7cbf806e` | macOS host and native Linux workspace | The source-checker self-test omits the newly protected authority module from its fixture snapshot; adding it and all four constructor-refusal mutations passes the focused test. Native workspace stops there, with later gates unrun. macOS strict clippy passes and host tests pass 1,122/1,124; both failures read the host's existing global rustc-wrapper configuration. Qualification reruns with a separate Cargo configuration directory while preserving the original cache and test assertions |
+| 2026-10-26 | `0b646c48` | Native Linux full end-to-end | Workspace, all 29 model cases, all 71 production cases and solver tests pass. Managed acceptance fails its original one-invocation/reuse assertion after an edit: the fresh target is verified but has SAIL3111 and no completion authority. Actual syscall tracing confirms a second driver in the same run/unit reuses slot 0 and receives EEXIST; the earlier reservation and observation remain present. No assertion or coverage check is relaxed; remaining e2e/PR conformance are unrun |
 
 Legacy updater-body SHA-256:
 `94d497cbcd16f4f6f0b94b6d4166d07f3d26abf54b9b05abc9c78eb433a65ef4`.
@@ -78,6 +80,11 @@ pass or any subsequent source.
 The stopped `7cbf806e` native workspace attempt is preserved at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-followup-7cbf806e-native.tgz`.
 SHA-256: `c51ba5a60bb9c512074a42365f8705f065c590b258789d18d4f83ba3c7456825`.
+
+The stopped `0b646c48` full native attempt includes canonical proof receipts,
+source bundle, Mac receipts and actual managed stdout/stderr/events at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-followup-0b646c48-native-failed.tgz`.
+SHA-256: `6a982da75ed339021493459bc49c5119978a82099c76e448367fb6dd66f90b07`.
 
 ## Limits retained after these slices
 
@@ -134,3 +141,50 @@ obligations). Removing the actual closed-controller guard produces one ordinary
 verification failure. This is syntax/control-flow qualification, not a physical
 process or compiler-input provider proof. Full combined checking retains all
 original roots, functions and ordinary guard controls.
+
+## Retained-result transition candidate
+
+The actual daemon request-enforcement, currentness classification and
+freshness-application bridges now call shared API operations. The whole
+authority development root passes direct pinned stock Verus with 278 verified
+and zero errors at the original settings, retaining every prior function.
+The new composition checks original-request authority when a Current retained
+view preserves completion. A coherent nonempty request remains accepted;
+refusal preserves its reports, and freshness projection preserves all targets.
+
+The frozen implementation `0c3dbc1d` passes all 78 captured-source cases on
+macOS: query 216/0, inputs 91/0, authority 278/0 and all 75 ordinary failing
+guard controls, including the seven retained-transition mutations. Its full
+macOS host gate passes strict clippy and 1,124/1,124 tests. The focused
+API/daemon native tests also pass 202/202. Source-capture self-tests pass 26/26. The capture
+names the three native bridges and pins their enclosing source/binding
+environment separately from proved bodies. The native module's I/O, cache
+selection and serialization are not claimed verified. The later qualification
+edit changes only this record. Native Linux and combined integration gates
+remain pending for this candidate. Physical compiler-input closure,
+origin history and every service/presentation path remain separate obligations.
+
+## Environment counterexamples
+
+Candidate `4f46f822` reproduces two default-mode disagreements using the same
+qualified fork `36d65c3f` and pinned Z3 on both sides. In
+[#385](https://github.com/Chelis-Lang/sail/issues/385), a proof checking the
+presence of internal `SAIL_MANAGED_RUNTIME` fails under plain Cargo-Verus but
+passes under Sail with Current complete evidence and later reuse. In
+[#386](https://github.com/Chelis-Lang/sail/issues/386), a proof checking an
+ordinary variable establishes a Current complete receipt with that variable
+set. Unsetting it still reuses the receipt as Current complete; forced fresh
+Sail and plain Cargo-Verus reject it. Source/phase observation and original
+environment restoration remain open; neither a variable exclusion nor an
+environment digest establishes the missing semantic correspondence.
+
+The observed Sail binary SHA-256 is
+`3743b6a31aaf008db98a1095af04223379a032e8fca3b06b550d9cd5734dcb5e`.
+The private-environment source SHA-256 is
+`1c259c0cbd2784985522786fcc6e7de2dafa64d20619ae94739ddada6e525967`.
+Raw private/public probe JSON SHA-256 values are
+`f17e19670eeb3e6bea066f1ff388cb1ec490cbb2c47795a30310d482e1874342`
+and `824d01d2a8307efd39088f4f03e404e5f7b56859ae2a81e0ad5840efc66d6201`.
+These are actual execution counterexamples, separate from component proof
+passes. Main `920ce606` has the same injected-environment path by source
+inspection; its binary has not been qualified against these fixtures.

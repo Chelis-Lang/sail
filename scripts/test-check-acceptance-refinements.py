@@ -104,6 +104,34 @@ class SourceCaptureTests(unittest.TestCase):
             with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
                 SOURCE.api_stencils(candidate, expected)
 
+    def test_job_currentness_variants_require_representation_review(self):
+        snapshots = self.snapshots()
+        _, expected = SOURCE.api_stencils(snapshots)
+        path = "crates/sail-api/src/jobs.rs"
+        before = b"pub enum Currentness {"
+        self.assertIn(before, snapshots[path])
+        snapshots[path] = snapshots[path].replace(before, before + b" PotentiallyCurrent,", 1)
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.api_stencils(snapshots, expected)
+
+    def test_mutable_retained_forwarder_cannot_skip_or_substitute_request_check(self):
+        path = ROOT / "crates/sail-api/src/acceptance_sort.rs"
+        original = path.read_text()
+        SOURCE.candidate_forwarders(original)
+        before = "withhold_unbound_request_authority_ordered(project, request, &orders)"
+        self.assertEqual(original.count(before), 1)
+        for after in ("true", "withhold_unbound_request_authority_ordered(project, None, &orders)"):
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.candidate_forwarders(original.replace(before, after, 1))
+
+    def test_reviewed_native_retained_bridge_cannot_skip_the_shared_guard(self):
+        original = (ROOT / CHECKER.RETAINED_BRIDGE).read_bytes()
+        CHECKER.compiled_subset(CHECKER.RETAINED_BRIDGE, original)
+        before = b"sail_api::acceptance::withhold_unbound_request_authority(project, request)"
+        self.assertEqual(original.count(before), 1)
+        with self.assertRaises(CHECKER.Refusal):
+            CHECKER.compiled_subset(CHECKER.RETAINED_BRIDGE, original.replace(before, b"true", 1))
+
     def test_nested_or_literal_declaration_cannot_replace_top_level_type(self):
         for source in (
             'const TEXT: &str = "pub struct Report { pub field: bool }";',
