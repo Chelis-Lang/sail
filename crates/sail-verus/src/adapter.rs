@@ -2533,6 +2533,67 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn normal_zero_engine_refusal_retains_real_process_status_and_fresh_fallback()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-engine-decline-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let log = InvocationLog {
+            directory: &root.join("starts"),
+            run_id: "run",
+            target: "demo",
+        };
+        let unit = test_attempt_unit();
+        let directory = root.join("attempts");
+        let mut attempts = attempts::Journal::new(log.run_id.as_bytes(), &unit, &directory);
+        let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
+        let captured = capture_engine(&log, &mut attempts, success, "0")?;
+        let (protocol, documents) = crate::engine_events::completion_candidates(
+            &root.join("engine.events.jsonl"),
+            captured.stdout(),
+        );
+        let original = captured
+            .observation()
+            .ok_or("missing real process observation")?;
+        let declined = sail_acceptance::authority::decline_engine(original, &protocol, &documents)
+            .ok_or("normal zero with missing protocol was accepted")?;
+        assert_eq!(declined.observed_attempt().exit(), Some(0));
+        assert_eq!(declined.observed_attempt().reserved().slot(), 0);
+        assert!(matches!(
+            declined.completion_reason(),
+            sail_acceptance::authority::EngineCompletion::Terminal
+        ));
+        assert_eq!(declined.document_candidates().documents.len(), 1);
+        assert!(declined.protocol_candidate().is_none());
+        let reply = root.join("stock.output");
+        std::fs::write(&reply, success)?;
+        let mut stock = Command::new("/bin/sh");
+        stock
+            .args([
+                "-c",
+                "cat \"$1\"; printf 'fresh stock diagnostic' >&2",
+                "stock",
+            ])
+            .arg(&reply);
+        let (output, trusted) = engine_output(&root, stock, captured, &log, &mut attempts)?;
+        assert!(!trusted);
+        assert_eq!(output.status().code(), Some(0));
+        assert_eq!(output.stdout(), success);
+        assert_eq!(output.stderr(), b"fresh stock diagnostic");
+        assert_eq!(
+            output
+                .observation()
+                .ok_or("fallback observation missing")?
+                .reserved()
+                .slot(),
+            1
+        );
+        assert_eq!(std::fs::read(root.join("engine.failed.stdout"))?, success);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[test]
     fn stock_fallback_reports_engine_provenance_without_a_receipt() {
         let (documents, _) = crate::attribution::json_documents(include_bytes!(

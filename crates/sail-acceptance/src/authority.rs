@@ -620,3 +620,337 @@ sail_verified! {
         false
     }
 }
+
+sail_code! {
+    /// Structural kind of the actual parsed function-details field.
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum EngineFieldShape {
+        /// The parsed JSON field is an object.
+        Object,
+        /// Missing or another JSON type.
+        Other,
+    }
+
+    /// The optional JSON success field retains missing versus invalid types.
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum EngineSuccessField {
+        /// Field is absent from the object.
+        Missing,
+        /// Explicit Boolean field.
+        Boolean(bool),
+        /// Present field with another JSON type.
+        Other,
+    }
+
+    /// Untrusted decoded final event fields; none is completion authority.
+    #[derive(Debug)]
+    pub struct EngineTerminalFields {
+        /// Actual decoded event version.
+        pub version: u64,
+        /// Actual decoded event name bytes.
+        pub event: Vec<u8>,
+        /// Actual decoded phase bytes.
+        pub phase: Vec<u8>,
+        /// Actual optional normal-termination field.
+        pub normal: Option<bool>,
+        /// Actual optional success field.
+        pub success: Option<bool>,
+    }
+
+    /// Original event bytes and one decoded version per physical JSONL record.
+    #[derive(Debug)]
+    pub struct EngineProtocolCandidate {
+        /// Exact bounded bytes read from the engine side channel.
+        pub raw: Vec<u8>,
+        /// A malformed JSON record or wrong version type maps to None.
+        pub versions: Vec<Option<u64>>,
+        /// Original final record decoded with duplicate-field refusal.
+        pub terminal: Option<EngineTerminalFields>,
+    }
+
+    /// Actual selected JSON fields from one original verifier result document.
+    #[derive(Debug)]
+    pub struct EngineDocumentFields {
+        /// Kind of the original function-details value.
+        pub functions: EngineFieldShape,
+        /// Original non-normalized version text when it is a string.
+        pub version: Option<Vec<u8>>,
+        /// Original build profile text when it is a string.
+        pub profile: Option<Vec<u8>>,
+        /// Original toolchain text when it is a string.
+        pub toolchain: Option<Vec<u8>>,
+        /// Original commit text when it is a string.
+        pub commit: Option<Vec<u8>>,
+        /// Original platform OS text when it is a string.
+        pub os: Option<Vec<u8>>,
+        /// Original platform architecture text when it is a string.
+        pub arch: Option<Vec<u8>>,
+        /// Original encountered-error Boolean, preserving absence/type refusal.
+        pub error: Option<bool>,
+        /// Original encountered-VIR-error Boolean.
+        pub vir_error: Option<bool>,
+        /// Original success field, including missing versus wrong type.
+        pub success: EngineSuccessField,
+        /// Original nonnegative integral verified count, when correctly typed.
+        pub verified: Option<u64>,
+        /// Original nonnegative integral error count, when correctly typed.
+        pub errors: Option<u64>,
+        /// Original whole-invocation Boolean, when correctly typed.
+        pub whole: Option<bool>,
+    }
+
+    /// Parsed result candidates and untouched bytes outside their JSON frames.
+    #[derive(Debug)]
+    pub struct EngineDocumentCandidates {
+        /// Every parsed JSON document, in its original order.
+        pub documents: Vec<EngineDocumentFields>,
+        /// Exact original remainder from the result framing decoder.
+        pub remainder: Vec<u8>,
+    }
+
+    /// Completion or the concrete guard that refuses engine completion.
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum EngineCompletion {
+        /// Consistent normal terminal, process status and result document.
+        Complete,
+        /// Process status is outside the normal verifier result protocol.
+        ProcessStatus,
+        /// The observed result exceeds the existing resource bound.
+        ResultSize,
+        /// Side-channel bytes are absent, incomplete, malformed or unsealed.
+        Terminal,
+        /// Process status contradicts the original terminal success field.
+        ExitMismatch,
+        /// Original result document fields or framing refuse completion.
+        Document,
+    }
+}
+
+sail_spec! {
+    pub open spec fn engine_text_present(value: &Option<Vec<u8>>) -> bool {
+        value.is_some() && value.unwrap()@.len() > 0
+    }
+    pub open spec fn engine_ascii_space(byte: u8) -> bool {
+        byte == 9 || byte == 10 || byte == 12 || byte == 13 || byte == 32
+    }
+    pub open spec fn engine_terminal_fields_valid(t: &EngineTerminalFields) -> bool {
+        t.version == 1 && t.event@ == b"compiler-sealed"@ && t.phase@ == b"full"@
+    }
+    pub open spec fn engine_terminal_valid(p: &EngineProtocolCandidate) -> bool {
+        p.raw@.len() > 0 && p.raw@.len() <= 16_777_216 && p.raw@[p.raw@.len() - 1] == 10
+            && p.versions@.len() > 0
+            && (forall |i: int| 0 <= i < p.versions@.len() ==> p.versions@[i] == Some(1u64))
+            && p.terminal.is_some() && engine_terminal_fields_valid(&p.terminal.unwrap())
+    }
+    pub open spec fn engine_document_valid(d: &EngineDocumentFields, success: bool) -> bool {
+        matches!(d.functions, EngineFieldShape::Object)
+            && engine_text_present(&d.version) && engine_text_present(&d.profile)
+            && engine_text_present(&d.toolchain) && engine_text_present(&d.commit)
+            && engine_text_present(&d.os) && engine_text_present(&d.arch)
+            && d.error.is_some() && d.vir_error.is_some()
+            && (match d.success { EngineSuccessField::Boolean(value) => value == success,
+                EngineSuccessField::Missing => true, EngineSuccessField::Other => false })
+            && !(d.vir_error.unwrap() && success)
+            && (success ==> d.error == Some(false) && d.errors == Some(0u64))
+            && (d.vir_error.unwrap() || (d.verified.is_some() && d.errors.is_some() && d.whole.is_some()
+                && (d.whole != Some(true) || matches!(d.success, EngineSuccessField::Boolean(_)))))
+    }
+    pub open spec fn engine_document_stream_valid(d: &EngineDocumentCandidates, success: bool) -> bool {
+        d.documents@.len() == 1 && engine_document_valid(&d.documents@[0], success)
+            && forall |i: int| 0 <= i < d.remainder@.len() ==> engine_ascii_space(d.remainder@[i])
+    }
+    pub open spec fn engine_completion_valid(p: &Option<EngineProtocolCandidate>, d: &EngineDocumentCandidates,
+        stdout: Seq<u8>, exit: Option<i32>) -> bool {
+        (exit == Some(0i32) || exit == Some(1i32)) && stdout.len() <= 33_554_432
+            && p.is_some() && engine_terminal_valid(&p.unwrap())
+            && p.unwrap().terminal.unwrap().normal == Some(true)
+            && p.unwrap().terminal.unwrap().success.is_some()
+            && (exit == Some(0i32)) == p.unwrap().terminal.unwrap().success.unwrap()
+            && engine_document_stream_valid(d, p.unwrap().terminal.unwrap().success.unwrap())
+    }
+}
+
+sail_verified! {
+    /// Checks a decoded string field without filling absent or wrong-typed data.
+    pub fn engine_has_text(value: &Option<Vec<u8>>) -> (out: bool)
+        requires(true)
+        ensures(out == engine_text_present(value))
+    {
+        match value { Some(bytes) => !bytes.is_empty(), None => false }
+    }
+}
+
+sail_verified! {
+    /// Checks original terminal fields, without trusting an event label alone.
+    pub fn engine_terminal_complete(p: &EngineProtocolCandidate) -> (out: bool)
+        requires(true)
+        ensures(out == engine_terminal_valid(p))
+    {
+        if p.raw.is_empty() || p.raw.len() > 16_777_216 || p.raw[p.raw.len() - 1] != b'\n' || p.versions.is_empty() { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < p.versions.len())
+            invariant(i <= p.versions.len(),
+                forall |j: int| 0 <= j < i ==> p.versions@[j] == Some(1u64))
+            decreases(p.versions.len() - i)
+            {
+                if p.versions[i] != Some(1u64) { return false; }
+                i += 1;
+            }
+        }
+        match &p.terminal {
+            Some(t) => t.version == 1 && exact_bytes(&t.event, b"compiler-sealed") && exact_bytes(&t.phase, b"full"),
+            None => false,
+        }
+    }
+}
+
+sail_verified! {
+    /// Checks the actual header, scalar types and exit-correlated result fields.
+    pub fn engine_document_complete(d: &EngineDocumentFields, success: bool) -> (out: bool)
+        requires(true)
+        ensures(out == engine_document_valid(d, success))
+    {
+        if !matches!(d.functions, EngineFieldShape::Object) || !engine_has_text(&d.version)
+            || !engine_has_text(&d.profile) || !engine_has_text(&d.toolchain)
+            || !engine_has_text(&d.commit) || !engine_has_text(&d.os) || !engine_has_text(&d.arch) {
+            return false;
+        }
+        let Some(vir_error) = d.vir_error else { return false; };
+        if d.error.is_none() { return false; }
+        match d.success {
+            EngineSuccessField::Boolean(value) => { if value != success { return false; } },
+            EngineSuccessField::Other => return false,
+            EngineSuccessField::Missing => (),
+        }
+        if vir_error && success { return false; }
+        if success && (d.error != Some(false) || d.errors != Some(0u64)) { return false; }
+        vir_error || (d.verified.is_some() && d.errors.is_some() && d.whole.is_some()
+            && (d.whole != Some(true) || matches!(d.success, EngineSuccessField::Boolean(_))))
+    }
+}
+
+sail_verified! {
+    /// Classifies completion from original field candidates and observed status.
+    pub fn engine_completion(p: &Option<EngineProtocolCandidate>, d: &EngineDocumentCandidates,
+        stdout: &[u8], exit: Option<i32>) -> (out: EngineCompletion)
+        requires(true)
+        ensures((out == EngineCompletion::Complete) == engine_completion_valid(p, d, stdout@, exit))
+    {
+        if exit != Some(0i32) && exit != Some(1i32) { return EngineCompletion::ProcessStatus; }
+        if stdout.len() > 33_554_432 { return EngineCompletion::ResultSize; }
+        let Some(protocol) = p else { return EngineCompletion::Terminal; };
+        if !engine_terminal_complete(protocol) { return EngineCompletion::Terminal; }
+        let Some(terminal) = &protocol.terminal else { return EngineCompletion::Terminal; };
+        if terminal.normal != Some(true) { return EngineCompletion::Terminal; }
+        let Some(success) = terminal.success else { return EngineCompletion::Terminal; };
+        if (exit == Some(0i32)) != success { return EngineCompletion::ExitMismatch; }
+        if !engine_document_stream_complete(d, success) { return EngineCompletion::Document; }
+        EngineCompletion::Complete
+    }
+}
+
+sail_verified! {
+    /// Validates one complete original document and its exact framing remainder.
+    pub fn engine_document_stream_complete(d: &EngineDocumentCandidates, success: bool) -> (out: bool)
+        requires(true)
+        ensures(out == engine_document_stream_valid(d, success))
+    {
+        if d.documents.len() != 1 || !engine_document_complete(&d.documents[0], success) {
+            return false;
+        }
+        let mut i = 0usize;
+        sail_while! { (i < d.remainder.len())
+            invariant(i <= d.remainder.len(),
+                engine_document_valid(&d.documents@[0], success), d.documents@.len() == 1,
+                forall |j: int| 0 <= j < i ==> engine_ascii_space(d.remainder@[j]))
+            decreases(d.remainder.len() - i)
+            {
+                let byte = d.remainder[i];
+                if byte != b'\t' && byte != b'\n' && byte != 12 && byte != b'\r' && byte != b' ' {
+                    return false;
+                }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_code! {
+    /// A normally exited observed child whose typed engine-protocol candidates
+    /// refuse completion. Engine image/target and physical file attribution
+    /// remain separate native joins. This is not a process failure or a proof.
+    pub struct DeclinedEngine<'a, 'b> {
+        observed: &'a ObservedAttempt<'b>,
+        protocol: &'a Option<EngineProtocolCandidate>,
+        documents: &'a EngineDocumentCandidates,
+        reason: EngineCompletion,
+    }
+
+    impl<'a, 'b> DeclinedEngine<'a, 'b> {
+        sail_impl_spec! {
+            pub closed spec fn observed(&self) -> &'a ObservedAttempt<'b> { self.observed }
+            pub closed spec fn protocol(&self) -> &'a Option<EngineProtocolCandidate> { self.protocol }
+            pub closed spec fn documents(&self) -> &'a EngineDocumentCandidates { self.documents }
+            pub closed spec fn reason(&self) -> EngineCompletion { self.reason }
+            pub open spec fn valid(&self) -> bool { declined_origin_valid(self) }
+        }
+        sail_method! {
+            /// Returns the independently observed child, retaining its actual exit.
+            pub fn observed_attempt(&self) -> (out: &'a ObservedAttempt<'b>)
+                requires(true) ensures(out == self.observed())
+            { self.observed }
+        }
+        sail_method! {
+            /// Borrows the original side-channel candidate, including absence.
+            pub fn protocol_candidate(&self) -> (out: &'a Option<EngineProtocolCandidate>)
+                requires(true) ensures(out == self.protocol())
+            { self.protocol }
+        }
+        sail_method! {
+            /// Borrows every decoded original result candidate and remainder.
+            pub fn document_candidates(&self) -> (out: &'a EngineDocumentCandidates)
+                requires(true) ensures(out == self.documents())
+            { self.documents }
+        }
+        sail_method! {
+            /// Borrows the refusal reason derived from the actual typed candidates.
+            pub fn completion_reason(&self) -> (out: &EngineCompletion)
+                requires(true) ensures(*out == self.reason())
+            { &self.reason }
+        }
+    }
+}
+
+sail_verified! {
+    /// Seals actual normal exit-zero and engine-protocol refusal facts.
+    /// Missing process observations cannot call this path; the factory does not
+    /// establish the child's trusted image or the side-channel file's author.
+    pub fn decline_engine<'a, 'b>(observed: &'a ObservedAttempt<'b>,
+        protocol: &'a Option<EngineProtocolCandidate>, documents: &'a EngineDocumentCandidates)
+        -> (out: Option<DeclinedEngine<'a, 'b>>)
+        requires(observation_complete(&observed_running(observed)))
+        ensures(out.is_some() == (running_exit(&observed_running(observed)).unwrap() == Some(0i32)
+                && !engine_completion_valid(protocol, documents,
+                    running_stdout(&observed_running(observed)).unwrap()@, Some(0i32))),
+            out.is_some() ==> out.unwrap().valid(),
+            out.is_some() ==> out.unwrap().observed() == observed,
+            out.is_some() ==> out.unwrap().protocol() == protocol,
+            out.is_some() ==> out.unwrap().documents() == documents)
+    {
+        if observed.exit() != Some(0i32) { return None; }
+        let reason = engine_completion(protocol, documents, observed.stdout(), observed.exit());
+        if matches!(reason, EngineCompletion::Complete) { return None; }
+        Some(DeclinedEngine { observed, protocol, documents, reason })
+    }
+}
+
+sail_spec! {
+    pub open spec fn declined_origin_valid(d: &DeclinedEngine) -> bool {
+        observation_complete(&observed_running(d.observed()))
+            && running_exit(&observed_running(d.observed())).unwrap() == Some(0i32)
+            && !engine_completion_valid(d.protocol(), d.documents(),
+                running_stdout(&observed_running(d.observed())).unwrap()@, Some(0i32))
+            && d.reason() != EngineCompletion::Complete
+    }
+}

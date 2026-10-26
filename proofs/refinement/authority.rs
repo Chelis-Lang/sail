@@ -32,6 +32,103 @@ pub fn retained_current_frame_refines_request(project: &mut crate::project::Proj
     view
 }
 
+pub open spec fn project_engine_text(value: &Option<Vec<u8>>) -> Option<Seq<u8>> {
+    match value { Some(text) => Some(text@), None => None }
+}
+
+pub open spec fn project_engine_terminal(t: &crate::authority::EngineTerminalFields)
+    -> model::EngineTerminalObservation {
+    model::EngineTerminalObservation { version: t.version, event: t.event@, phase: t.phase@,
+        normal: t.normal, success: t.success }
+}
+
+pub open spec fn project_engine_protocol(p: &Option<crate::authority::EngineProtocolCandidate>)
+    -> Option<model::EngineProtocolObservation> {
+    match p {
+        Some(protocol) => Some(model::EngineProtocolObservation { raw: protocol.raw@,
+            versions: protocol.versions@, terminal: match &protocol.terminal {
+                Some(t) => Some(project_engine_terminal(t)), None => None,
+            } }),
+        None => None,
+    }
+}
+
+pub open spec fn project_engine_document(d: &crate::authority::EngineDocumentFields)
+    -> model::EngineDocumentObservation {
+    model::EngineDocumentObservation {
+        functions: match d.functions { crate::authority::EngineFieldShape::Object => model::EngineFieldShape::Object,
+            crate::authority::EngineFieldShape::Other => model::EngineFieldShape::Other },
+        version: project_engine_text(&d.version), profile: project_engine_text(&d.profile),
+        toolchain: project_engine_text(&d.toolchain), commit: project_engine_text(&d.commit),
+        os: project_engine_text(&d.os), arch: project_engine_text(&d.arch),
+        error: d.error, vir_error: d.vir_error,
+        success: match d.success {
+            crate::authority::EngineSuccessField::Missing => model::EngineSuccessField::Missing,
+            crate::authority::EngineSuccessField::Boolean(value) => model::EngineSuccessField::Boolean(value),
+            crate::authority::EngineSuccessField::Other => model::EngineSuccessField::Other,
+        },
+        verified: d.verified, errors: d.errors, whole: d.whole,
+    }
+}
+
+pub open spec fn project_engine_completion(p: &Option<crate::authority::EngineProtocolCandidate>,
+    d: &crate::authority::EngineDocumentCandidates, stdout: Seq<u8>) -> model::EngineCompletionObservation {
+    model::EngineCompletionObservation { protocol: project_engine_protocol(p), stdout,
+        documents: Seq::new(d.documents@.len(), |i: int| project_engine_document(&d.documents@[i])),
+        remainder: d.remainder@ }
+}
+
+pub proof fn engine_document_fields_refine(d: &crate::authority::EngineDocumentFields, success: bool)
+    ensures crate::authority::engine_document_valid(d, success)
+        == model::engine_document_complete(&project_engine_document(d), success),
+{
+    match d.success {
+        crate::authority::EngineSuccessField::Missing => (),
+        crate::authority::EngineSuccessField::Boolean(_) => (),
+        crate::authority::EngineSuccessField::Other => (),
+    }
+}
+
+/// A field-preserving projection, including every refusal-relevant type and
+/// value. The raw JSON decoder's attribution to these fields remains native.
+pub proof fn engine_completion_fields_refine(p: &Option<crate::authority::EngineProtocolCandidate>,
+    d: &crate::authority::EngineDocumentCandidates, stdout: Seq<u8>, exit: Option<i32>)
+    ensures crate::authority::engine_completion_valid(p, d, stdout, exit)
+        == model::engine_protocol_complete(&project_engine_completion(p, d, stdout),
+            match exit { Some(code) => model::ProcessEnd::Exit(code), None => model::ProcessEnd::Interrupted }),
+{
+    let projected = project_engine_completion(p, d, stdout);
+    if d.documents@.len() == 1 {
+        engine_document_fields_refine(&d.documents@[0], true);
+        engine_document_fields_refine(&d.documents@[0], false);
+        assert(projected.documents[0] == project_engine_document(&d.documents@[0]));
+    }
+    match p {
+        None => (),
+        Some(protocol) => {
+            match &protocol.terminal { None => (), Some(terminal) => {
+                assert(projected.protocol.unwrap().terminal.unwrap() == project_engine_terminal(terminal));
+            } }
+        }
+    }
+}
+
+/// The private concrete token preserves its actual normal exit zero and
+/// projects a genuine refusal. This does not invent a model invocation identity;
+/// attaching it to a target/run still needs the checked native event simulation.
+pub proof fn checked_decline_preserves_status_and_refusal(declined: &crate::authority::DeclinedEngine)
+    -> (out: model::EngineCompletionObservation)
+    requires declined.valid(),
+    ensures crate::authority::running_exit(&crate::authority::observed_running(declined.observed())).unwrap() == Some(0i32),
+        out == project_engine_completion(declined.protocol(), declined.documents(),
+            crate::authority::running_stdout(&crate::authority::observed_running(declined.observed())).unwrap()@),
+        !model::engine_protocol_complete(&out, model::ProcessEnd::Exit(0)),
+{
+    let stdout = crate::authority::running_stdout(&crate::authority::observed_running(declined.observed())).unwrap()@;
+    engine_completion_fields_refine(declined.protocol(), declined.documents(), stdout, Some(0i32));
+    project_engine_completion(declined.protocol(), declined.documents(), stdout)
+}
+
 /// The actual low-level reducer preserves the observed exit without promoting
 /// it to verifier completion or inventing a document/process relation.
 pub fn project_observed_process_end(observed: &crate::authority::ObservedAttempt)
