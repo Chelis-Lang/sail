@@ -39,6 +39,10 @@ semantic versioning once the API is published.
   Missing or differently resolved invocation directories withhold completion
   consistently in cached and freshly built results.
 
+- Preserve one original project/request observation through immutable baseline
+  publication, so invocation-directory changes cannot split saved and reloaded
+  completion labels. Baselines remain Historical evidence.
+
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.

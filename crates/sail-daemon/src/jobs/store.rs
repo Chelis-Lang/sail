@@ -165,13 +165,29 @@ pub(super) fn load(root: &Path) -> io::Result<BTreeMap<String, Stored>> {
     Ok(jobs)
 }
 pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> {
+    result_with_request(state, job).map(|(document, _)| document)
+}
+
+/// Retains the same independently admitted request observation used to build
+/// this result. Immutable baseline publication must not resolve it again.
+pub(super) fn result_with_request<'a>(
+    state: &State,
+    job: &'a Stored,
+) -> io::Result<(
+    ResultDocument,
+    Option<&'a sail_api::project::ResolvedRequest>,
+)> {
     if job.contracts.is_some() {
-        return super::contracts::result(state, job);
+        return super::contracts::result(state, job).map(|document| (document, None));
     }
     let mut status = job.status.clone();
     let mut repair = None;
+    let request = if status.state == Lifecycle::Completed {
+        retained_request(job)
+    } else {
+        None
+    };
     let result = if status.state == Lifecycle::Completed {
-        let request = retained_request(job);
         let mut project = project_with_request(state, job, request)?;
         let snapshot = refresh(state, job, &project);
         status.currentness = classify(project.currentness, &project.input_revision, snapshot);
@@ -187,12 +203,15 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
     } else {
         None
     };
-    Ok(ResultDocument {
-        contracts: None,
-        repair,
-        job: status,
-        result,
-    })
+    Ok((
+        ResultDocument {
+            contracts: None,
+            repair,
+            job: status,
+            result,
+        },
+        request,
+    ))
 }
 
 /// Immutable frames avoid rebuilding large function graphs. The persisted

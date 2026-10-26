@@ -305,7 +305,7 @@ the separate obligations in #375/#376.
 | Default MCP `verify` and `verification_result` | `job_tools::blocking`/`read_or_cli` obtains the same daemon result, validating response identity/version. `compact::agent_view` computes whole completeness from requested target factories and distinguishes Current from Historical/Unknown. | Summary, targets and full details shape the same underlying project. `summary::effective_verdict` prevents provisional promotion but only reads function fields; it is not request or process authority. MCP identity/transport, shaping and end-to-end preservation still need service refinement. |
 | `cached_result` and `counterexample` | Managed lookup prefers admitted job results. The separate legacy per-project store retains historical per-function records; its limited local source snapshot reports freshness Unknown or stale, never managed Current authority. | Recorded function verdicts remain historical evidence with their establishment/freshness context. The limited source snapshot cannot prove workspace/runtime currentness or replace the managed admission chain. |
 | Repair CLI/MCP | Public repair submits a job. `retained_repair_accepted` requires the independently captured repair request, exact original selection, complete submitted full request, requested named function presence and the batch's no-selection-error/no-engine-fault/full repair policy. CLI `product_cli::repair` displays that daemon decision; MCP proof tools use the same service. | The low-level `BatchResult::accepted_with`/`repair::accepted` checks report/selection records. Private worker output and direct library use still depend on the native selected-function gatherer and original Config-to-selection mapping; those helpers alone do not establish the full original request or service relation. |
-| Ordinary immutable baselines | `product::save_baseline` obtains `store::result`, preserves request evidence and producer revision, then explicitly changes the view to Historical. Load checks identity/version/Historical framing and withholds older/unbound authority. | A baseline is recorded evidence, never today's proof. Independent serialization, retained original producer attribution and baseline-to-submission correspondence remain native joins; typed report checks alone do not prove them. |
+| Ordinary immutable baselines | `product::save_baseline` obtains the paired project/request from `store::result_with_request` via `completed_with_request`, preserves that single native observation through `publish_baseline`, retains producer revision, and explicitly changes the view to Historical. Load checks identity/version/Historical framing and withholds older/unbound authority. | A baseline is recorded evidence, never today's proof. Independent serialization, retained original producer attribution and baseline-to-submission correspondence remain native joins; typed report checks alone do not prove them. |
 | Neutral contract results/baselines | Jobs with a contract submission branch into the contract handler rather than generic result frames. Its decode/admission binds original source/worker evidence; neutral baselines retain and recheck original source, stdout/stderr and seals separately. | This is a distinct source/contract evidence path. Its backend project/report fields cannot silently substitute for complete generic Verus request authority. Full composition with its own negotiated source contract remains separate. |
 
 The concrete frame bypass illustrates why source inventory matters. Previously,
@@ -321,13 +321,26 @@ compares warm/fresh responses while preserving original stdout/report/identity.
 It has not been run. No mathematical false-proof witness is claimed by this
 admission/presentation finding.
 
-Baseline creation has a distinct source interleaving tracked in
-[#429](https://github.com/Chelis-Lang/sail/issues/429): it obtains an admitted
-project, then separately resolves the request when persisting the private
-baseline. A changed invocation resolution can make the returned and immediately
-reloaded completion labels differ. This Historical metadata consistency case
-requires carrying the same admitted project/request observation through
-publication; it is not a demonstrated Current false proof.
+Baseline creation's distinct interleaving is tracked in
+[#429](https://github.com/Chelis-Lang/sail/issues/429). The source correction
+returns the admitted request alongside the exact result from
+`store::result_with_request`. `completed_with_request` captures both in one
+private, non-deserializable native `CompletedObservation`; `publish_baseline`
+consumes that observation without resolving the live invocation again. The
+original request metadata is copied, not reminted as a live process token.
+Immutable publication and the returned Historical view therefore use the same
+original record, reports and establishment identities. Refusal observed at
+retrieval cannot become completion merely because the directory later returns.
+
+The source regression retrieves that pair through the actual result path,
+moves the invocation directory at the publication boundary and compares the
+returned and immediately loaded baseline. It also covers refusal before a
+subsequent directory restoration. This regression has not been run. The native
+pairing and serializer/publication bodies remain unqualified adapters, not a
+stock-Verus service theorem or a demonstrated Current false-proof witness.
+Existing name checks, atomic immutable publication, producer revision,
+Historical framing, baseline pin/capacity policy and read-side admission remain
+in place.
 
 ## Exact evidence context
 
