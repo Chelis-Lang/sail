@@ -1,8 +1,8 @@
 # Proposed verified evidence-acceptance core
 
 **Status: checked component and composed models; selected production operations
-now use source-shared concrete refinements. Final integration qualification and
-the service-wide safety theorem remain open.**
+now use source-shared concrete refinements. Native and hosted integration gates
+pass; the service-wide safety theorem remains open.**
 See the [production refinement guide](acceptance-production-refinements.md). Tracked in
 [#346](https://github.com/Chelis-Lang/sail/issues/346).
 
@@ -139,7 +139,9 @@ wrong `unsat` independently detectable and does not complete either strategy.
 The core is an acceptance authority over typed evidence. The production
 candidate places pure shared logic in a dependency-free leaf and typed report
 factories in the API crate. [ADR 0079](../decisions/0079-source-shared-acceptance-refinements.md)
-records the proposed graph; native integration and cost gates remain open.
+records the accepted graph; native integration and the bounded cost result are
+recorded in the production qualification. Broader release performance remains
+separate.
 
 The intended logical interfaces are:
 

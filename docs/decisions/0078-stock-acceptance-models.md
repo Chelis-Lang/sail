@@ -1,6 +1,6 @@
 # 0078: Captured acceptance models checked by stock Verus
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-24
 
 ## Context
