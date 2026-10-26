@@ -162,4 +162,77 @@ pub fn descriptor_copy_and_nonempty_boundary_controls() {
     assert(!equal);
 }
 
+/// Both source fields, every tracked path and each exact environment field survive conversion.
+pub fn native_row_expansion_preserves_nonempty_raw_declarations() {
+    let sources = vec![SourceDeclaration { name: b" source\xff ", checksum: b"checksum\x00", size: 0x0807_0605_0403_0201u64 },
+        SourceDeclaration { name: b"other", checksum: b"second", size: u64::MAX }];
+    let paths: Vec<&[u8]> = vec![b" extra "];
+    let environment = vec![EnvironmentDeclaration { name: b" FLAG ", value: Some(b"\xff\x00") },
+        EnvironmentDeclaration { name: b"missing", value: None }, EnvironmentDeclaration { name: b"empty", value: Some(b"") }];
+    let expanded = expand_declarations(&sources, &paths, &environment);
+    assert(expanded.is_some());
+    let expanded = match expanded { Some(rows) => rows, None => { assert(false); return; } };
+    assert(expanded.len() == 8);
+    let facts = declaration_facts(&expanded);
+    assert(facts.len() == 8);
+    assert(checksum_row(expanded[0], sources[0]));
+    assert(declaration_fact(expanded[0], facts[0]));
+    assert(sources[0].name@ == b" source\xff "@);
+    assert(facts[0].namespace == 0 && facts[0].name@ == b" source\xff "@);
+    assert(match facts[0].value { InputValue::Present(bytes) => bytes@ == b"checksum\x00"@, _ => false });
+    assert(size_row(expanded[1], sources[0]));
+    assert(declaration_fact(expanded[1], facts[1]));
+    assert(encoded_size(0x0807_0605_0403_0201u64) == seq![1u8,2u8,3u8,4u8,5u8,6u8,7u8,8u8]) by(compute);
+    assert(match facts[1].value { InputValue::Present(bytes) => bytes@ == seq![1u8,2u8,3u8,4u8,5u8,6u8,7u8,8u8], _ => false });
+    assert(size_row(expanded[3], sources[1]));
+    assert(declaration_fact(expanded[3], facts[3]));
+    assert(encoded_size(0xffff_ffff_ffff_ffffu64) == seq![255u8,255u8,255u8,255u8,255u8,255u8,255u8,255u8]) by(compute);
+    assert(match facts[3].value { InputValue::Present(bytes) => bytes@ == seq![255u8,255u8,255u8,255u8,255u8,255u8,255u8,255u8], _ => false });
+    assert(facts[4].namespace == 2 && facts[4].name@ == b" extra "@);
+    assert(match facts[4].value { InputValue::Present(bytes) => bytes.len() == 0, _ => false });
+    assert(facts[5].namespace == 3 && facts[5].name@ == b" FLAG "@);
+    assert(match facts[5].value { InputValue::Present(bytes) => bytes@ == b"\xff\x00"@, _ => false });
+    assert(facts[6].value is Absent);
+    assert(match facts[7].value { InputValue::Present(bytes) => bytes.len() == 0, _ => false });
+}
+
+/// Complete emptiness remains distinct from a duplicate declaration list.
+pub fn empty_native_expansion_and_duplicate_path_controls() {
+    let empty = expand_declarations(&[], &[], &[]);
+    assert(empty.is_some());
+    let empty = match empty { Some(rows) => rows, None => { assert(false); return; } };
+    let facts = declaration_facts(&empty);
+    assert(facts.len() == 0);
+    let paths: Vec<&[u8]> = vec![b"same", b"same"];
+    let expanded = expand_declarations(&[], &paths, &[]);
+    assert(expanded.is_some());
+    let expanded = match expanded { Some(rows) => rows, None => { assert(false); return; } };
+    let facts = declaration_facts(&expanded);
+    assert(facts.len() == 2 && same_key(facts[0], facts[1]));
+    let order = vec![0usize,1usize];
+    let usable = input_order(&facts, &order, &order);
+    assert(!usable);
+}
+
+/// The exact eight-byte representation admits no truncation of a source length.
+pub proof fn source_size_encoding_is_lossless(a: u64, b: u64)
+    requires encoded_size(a) == encoded_size(b),
+    ensures a == b,
+{
+    assert((a & 255) as u8 == (b & 255) as u8);
+    assert(((a >> 8) & 255) as u8 == ((b >> 8) & 255) as u8);
+    assert(((a >> 16) & 255) as u8 == ((b >> 16) & 255) as u8);
+    assert(((a >> 24) & 255) as u8 == ((b >> 24) & 255) as u8);
+    assert(((a >> 32) & 255) as u8 == ((b >> 32) & 255) as u8);
+    assert(((a >> 40) & 255) as u8 == ((b >> 40) & 255) as u8);
+    assert(((a >> 48) & 255) as u8 == ((b >> 48) & 255) as u8);
+    assert(((a >> 56) & 255) as u8 == ((b >> 56) & 255) as u8);
+    assert(a == b) by(bit_vector)
+        requires (a & 255) as u8 == (b & 255) as u8,
+            ((a >> 8) & 255) as u8 == ((b >> 8) & 255) as u8, ((a >> 16) & 255) as u8 == ((b >> 16) & 255) as u8,
+            ((a >> 24) & 255) as u8 == ((b >> 24) & 255) as u8, ((a >> 32) & 255) as u8 == ((b >> 32) & 255) as u8,
+            ((a >> 40) & 255) as u8 == ((b >> 40) & 255) as u8, ((a >> 48) & 255) as u8 == ((b >> 48) & 255) as u8,
+            ((a >> 56) & 255) as u8 == ((b >> 56) & 255) as u8;
+}
+
 }
