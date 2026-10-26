@@ -11,6 +11,8 @@ use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
+#[path = "adapter_attempts.rs"]
+pub(crate) mod attempts;
 #[path = "adapter_metadata_stdout.rs"]
 mod metadata_stdout;
 
@@ -920,10 +922,30 @@ fn driver() -> Result<ExitCode> {
         .engine
         .as_ref()
         .map(|_| crate::engine_events::Relay::start(source_events.clone(), &runtime, &identity));
+    let unit = sail_acceptance::authority::CompilerUnit {
+        manifest: identity.manifest.as_os_str().as_encoded_bytes().to_vec(),
+        name: identity.name.as_bytes().to_vec(),
+        crate_type: identity.crate_type.as_bytes().to_vec(),
+        cargo_name: identity
+            .cargo_name
+            .as_ref()
+            .map(|name| name.as_bytes().to_vec()),
+    };
+    let attempt_directory = dir.join("attempts");
+    let mut attempts = attempts::Journal::new(runtime.run_id.as_bytes(), &unit, &attempt_directory);
+    let reserved = attempts.reserve(&cmd)?;
     let compile_started = std::time::Instant::now();
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let Some(observing) = reserved.started(child.id()) else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(Error::new(
+            "SAIL3111",
+            "compiler child has no process identity",
+        ));
+    };
     if let Some(call) = &mut call {
         call.compiler_started(child.id());
     }
@@ -965,16 +987,28 @@ fn driver() -> Result<ExitCode> {
                 .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             }
         }
+    } else {
+        return Err(Error::new("SAIL3111", "missing compiler stderr pipe"));
     }
+    let observing = observing.stderr_eof(stderr);
     let exit = output
         .child
         .wait()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let observing = observing.exited(exit.code());
     let compiled = compile_started.elapsed();
     if let Some(call) = &mut call {
         call.compiler_finished();
     }
     let stdout = output.stdout()?;
+    let observed = observing.stdout_eof(stdout).finish().ok_or_else(|| {
+        Error::new(
+            "SAIL3111",
+            "compiler observations are incomplete or ambiguous",
+        )
+    })?;
+    attempts.observed(&observed)?;
+    let (stdout, stderr, _) = observed.into_output();
     if let Some(relay) = relay {
         relay.finish();
     }
@@ -991,7 +1025,8 @@ fn driver() -> Result<ExitCode> {
             stderr,
             status: exit,
         };
-        let (output, trusted) = engine_output(&dir, stock, captured, &invocation_log)?;
+        let (output, trusted) =
+            engine_output(&dir, stock, captured, &invocation_log, &mut attempts)?;
         if trusted {
             save_focus(&runtime, &identity, &dir)?;
         }
@@ -1102,6 +1137,7 @@ pub(crate) fn engine_output(
     mut stock: Command,
     captured: std::process::Output,
     invocation_log: &InvocationLog<'_>,
+    attempts: &mut attempts::Journal<'_>,
 ) -> Result<(std::process::Output, bool)> {
     // A target that needs a Verus feature the engine lacks gets the same
     // stock fallback as an engine fault (SAIL3124): the engine's rejection is
@@ -1143,17 +1179,48 @@ pub(crate) fn engine_output(
     ] {
         stock.env_remove(key);
     }
-    let mut child = stock
+    stock
         .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    let reserved = attempts.reserve(&stock)?;
+    let mut child = stock
         .spawn()
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+    let Some(observing) = reserved.started(child.id()) else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(Error::new(
+            "SAIL3123",
+            "fallback child has no process identity",
+        ));
+    };
     invocation_log.record(&mut child)?;
     let output = child
         .wait_with_output()
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
-    Ok((output, false))
+    let status = output.status;
+    let observed = observing
+        .stdout_eof(output.stdout)
+        .stderr_eof(output.stderr)
+        .exited(status.code())
+        .finish()
+        .ok_or_else(|| {
+            Error::new(
+                "SAIL3123",
+                "fallback observations are incomplete or ambiguous",
+            )
+        })?;
+    attempts.observed(&observed)?;
+    let (stdout, stderr, _) = observed.into_output();
+    Ok((
+        std::process::Output {
+            stdout,
+            stderr,
+            status,
+        },
+        false,
+    ))
 }
 
 struct Captured<'a> {
@@ -2167,13 +2234,15 @@ mod tests {
     #[cfg(unix)]
     fn capture_engine(
         log: &InvocationLog<'_>,
+        attempts: &mut attempts::Journal<'_>,
         document: &[u8],
         exit: &str,
     ) -> std::result::Result<std::process::Output, Box<dyn std::error::Error>> {
         std::fs::create_dir_all(log.directory)?;
         let input = log.directory.join("engine.output");
         std::fs::write(&input, document)?;
-        let mut child = Command::new("/bin/sh")
+        let mut command = Command::new("/bin/sh");
+        command
             .args([
                 "-c",
                 "cat \"$1\"; printf 'original engine diagnostic\\n' >&2; exit \"$2\"",
@@ -2182,10 +2251,71 @@ mod tests {
             .arg(input)
             .arg(exit)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+        let reserved = attempts.reserve(&command)?;
+        let mut child = command.spawn()?;
+        let observing = reserved
+            .started(child.id())
+            .ok_or("missing child identity")?;
         log.record(&mut child)?;
-        Ok(child.wait_with_output()?)
+        let output = child.wait_with_output()?;
+        let status = output.status;
+        let observed = observing
+            .stdout_eof(output.stdout)
+            .stderr_eof(output.stderr)
+            .exited(status.code())
+            .finish()
+            .ok_or("incomplete engine observations")?;
+        attempts.observed(&observed)?;
+        let (stdout, stderr, _) = observed.into_output();
+        Ok(std::process::Output {
+            stdout,
+            stderr,
+            status,
+        })
+    }
+
+    #[cfg(unix)]
+    fn test_attempt_unit() -> sail_acceptance::authority::CompilerUnit {
+        sail_acceptance::authority::CompilerUnit {
+            manifest: b"fixture/Cargo.toml".to_vec(),
+            name: b"demo".to_vec(),
+            crate_type: b"lib".to_vec(),
+            cargo_name: None,
+        }
+    }
+
+    #[cfg(unix)]
+    fn assert_attempt_journal(
+        directory: &Path,
+        document: &[u8],
+        fallback_document: &[u8],
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let original: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(directory.join("0.observed"))?)?;
+        let fallback: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(directory.join("1.observed"))?)?;
+        assert_eq!(original["slot"], 0);
+        assert_eq!(fallback["slot"], 1);
+        assert_eq!(original["run"], serde_json::json!(b"run".as_slice()));
+        assert_eq!(original["stdout_sha256"], crate::managed::digest(document));
+        assert_eq!(
+            fallback["stdout_sha256"],
+            crate::managed::digest(fallback_document)
+        );
+        let command: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(directory.join("1.reserved"))?)?;
+        assert_eq!(
+            command["command"]["program"],
+            serde_json::json!(b"/bin/sh".as_slice())
+        );
+        assert!(
+            command["command"]["arguments"]
+                .as_array()
+                .ok_or("arguments")?
+                .contains(&serde_json::json!(b"literal;$(untouched)".as_slice()))
+        );
+        Ok(())
     }
 
     #[cfg(unix)]
@@ -2225,7 +2355,16 @@ mod tests {
                 run_id: "run",
                 target: "demo",
             };
-            let captured = capture_engine(&log, document, if index == 3 { "101" } else { "1" })?;
+            let unit = test_attempt_unit();
+            let attempt_directory = dir.join("attempts");
+            let mut attempts =
+                attempts::Journal::new(log.run_id.as_bytes(), &unit, &attempt_directory);
+            let captured = capture_engine(
+                &log,
+                &mut attempts,
+                document,
+                if index == 3 { "101" } else { "1" },
+            )?;
             let stock_document = if index >= 4 {
                 document
             } else {
@@ -2239,7 +2378,7 @@ mod tests {
                 "reply=$1; shift; printf '%s\\0' \"$@\" > stock.argv; printf '%s' \"${SAIL_ENGINE-unset}\" > stock.engine; cat \"$reply\"; printf 'original engine diagnostic\\n' >&2; exit 1",
                 "stock",
             ]).arg(reply).args(["crate path.rs", "--", "literal;$(untouched)"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            let (output, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
             assert!(!trusted);
             assert_eq!(output.stdout, stock_document);
             assert_eq!(output.stderr, b"original engine diagnostic\n");
@@ -2268,6 +2407,7 @@ mod tests {
                     .count(),
                 2
             );
+            assert_attempt_journal(&attempt_directory, document, stock_document)?;
         }
         std::fs::remove_dir_all(root)?;
         Ok(())
@@ -2286,25 +2426,28 @@ mod tests {
             run_id: "run",
             target: "demo",
         };
+        let unit = test_attempt_unit();
+        let attempt_directory = dir.join("attempts");
+        let mut attempts = attempts::Journal::new(log.run_id.as_bytes(), &unit, &attempt_directory);
         let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
         // Control: a completed engine run is trusted as is.
         std::fs::write(
             dir.join("engine.events.jsonl"),
             include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
         )?;
-        let captured = capture_engine(&log, success, "0")?;
+        let captured = capture_engine(&log, &mut attempts, success, "0")?;
         let mut stock = Command::new("/bin/sh");
         stock.args(["-c", "exit 2"]);
-        let (_, trusted) = engine_output(&dir, stock, captured, &log)?;
+        let (_, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
         assert!(trusted);
         // An injected engine crash (exit 101, no seal) falls back to stock.
         std::fs::remove_file(dir.join("engine.events.jsonl"))?;
-        let captured = capture_engine(&log, success, "101")?;
+        let captured = capture_engine(&log, &mut attempts, success, "101")?;
         let reply = dir.join("stock.output");
         std::fs::write(&reply, success)?;
         let mut stock = Command::new("/bin/sh");
         stock.args(["-c", "cat \"$1\"", "stock"]).arg(&reply);
-        let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+        let (output, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
         assert!(!trusted);
         assert_eq!(output.stdout, success);
         assert!(dir.join("engine.failed.stdout").is_file());
@@ -2397,6 +2540,9 @@ mod tests {
             run_id: "run",
             target: "demo",
         };
+        let unit = test_attempt_unit();
+        let attempt_directory = dir.join("attempts");
+        let mut attempts = attempts::Journal::new(log.run_id.as_bytes(), &unit, &attempt_directory);
         let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
         for (index, (document, code)) in [
             (proof.as_slice(), "1"),
@@ -2416,12 +2562,12 @@ mod tests {
                         .as_slice()
                 },
             )?;
-            let captured = capture_engine(&log, document, code)?;
+            let captured = capture_engine(&log, &mut attempts, document, code)?;
             let mut stock = Command::new("/bin/sh");
             stock
                 .current_dir(&dir)
                 .args(["-c", "touch stock.started; exit 2"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            let (output, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
             assert!(trusted);
             assert_eq!(output.stdout, document);
             assert_eq!(output.stderr, b"original engine diagnostic\n");

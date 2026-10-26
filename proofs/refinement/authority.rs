@@ -9,6 +9,88 @@ use crate::authority::CompletionPolicy;
 
 verus! {
 
+/// The actual low-level reducer preserves the observed exit without promoting
+/// it to verifier completion or inventing a document/process relation.
+pub fn project_observed_process_end(observed: &crate::authority::ObservedAttempt)
+    -> (out: model::ProcessEnd)
+    requires crate::authority::observation_complete(&crate::authority::observed_running(observed)),
+    ensures match crate::authority::running_exit(&crate::authority::observed_running(observed)).unwrap() {
+        Some(code) => out == model::ProcessEnd::Exit(code), None => out == model::ProcessEnd::Interrupted,
+    },
+{
+    match observed.exit() { Some(code) => model::ProcessEnd::Exit(code), None => model::ProcessEnd::Interrupted }
+}
+
+pub fn checked_process_observation<'a>(run: &'a [u8], unit: &'a crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32, stdout: Vec<u8>, stderr: Vec<u8>, exit: Option<i32>)
+    -> (out: crate::authority::ObservedAttempt<'a>)
+    requires pid != 0,
+    ensures crate::authority::observation_complete(&crate::authority::observed_running(&out)),
+        crate::authority::reserved_run(&crate::authority::running_reserved(&crate::authority::observed_running(&out))) == run,
+        crate::authority::reserved_unit(&crate::authority::running_reserved(&crate::authority::observed_running(&out))) == unit,
+        crate::authority::reserved_slot(&crate::authority::running_reserved(&crate::authority::observed_running(&out))) == 0,
+        crate::authority::reserved_descriptor(&crate::authority::running_reserved(&crate::authority::observed_running(&out))) == descriptor,
+        crate::authority::running_pid(&crate::authority::observed_running(&out)) == pid,
+        crate::authority::running_stdout(&crate::authority::observed_running(&out)) == Some(stdout),
+        crate::authority::running_stderr(&crate::authority::observed_running(&out)) == Some(stderr),
+        crate::authority::running_exit(&crate::authority::observed_running(&out)) == Some(exit),
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    let observed = running.unwrap().stdout_eof(stdout).stderr_eof(stderr).exited(exit).finish();
+    assert(observed.is_some()); observed.unwrap()
+}
+
+pub fn missing_process_wait_refused(run: &[u8], unit: &crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32) -> (refused: bool)
+    requires pid != 0,
+    ensures refused,
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    running.unwrap().stdout_eof(Vec::new()).stderr_eof(Vec::new()).finish().is_none()
+}
+
+pub fn duplicate_process_stream_refused(run: &[u8], unit: &crate::authority::CompilerUnit,
+    descriptor: crate::authority::ProcessDescriptor, pid: u32) -> (refused: bool)
+    requires pid != 0,
+    ensures refused,
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(descriptor); assert(reserved.is_some());
+    let running = reserved.unwrap().started(pid); assert(running.is_some());
+    running.unwrap().stdout_eof(Vec::new()).stdout_eof(Vec::new())
+        .stderr_eof(Vec::new()).exited(Some(0)).finish().is_none()
+}
+
+pub fn attempt_slots_are_independent_of_pid(run: &[u8], unit: &crate::authority::CompilerUnit,
+    first: crate::authority::ProcessDescriptor, second: crate::authority::ProcessDescriptor, pid: u32)
+    requires pid != 0,
+{
+    let mut ledger = crate::authority::AttemptLedger::new(run, unit);
+    let a = ledger.reserve(first); assert(a.is_some());
+    let a = a.unwrap().started(pid); assert(a.is_some());
+    let a = a.unwrap().stdout_eof(Vec::new()).stderr_eof(Vec::new()).exited(Some(1)).finish();
+    assert(a.is_some());
+    let b = ledger.reserve(second); assert(b.is_some());
+    let b = b.unwrap().started(pid); assert(b.is_some());
+    let b = b.unwrap().stdout_eof(Vec::new()).stderr_eof(Vec::new()).exited(Some(0)).finish();
+    assert(b.is_some());
+    let a = a.unwrap(); let b = b.unwrap();
+    let apid = a.pid(); let bpid = b.pid();
+    let areserved = a.reserved(); let breserved = b.reserved();
+    let aslot = areserved.slot(); let bslot = breserved.slot();
+    let arun = areserved.run(); let brun = breserved.run();
+    let aunit = areserved.unit(); let bunit = breserved.unit();
+    let asuccess = a.normal_success(); let bsuccess = b.normal_success();
+    assert(apid == bpid);
+    assert(aslot == 0 && bslot == 1);
+    assert(arun == brun && aunit == bunit);
+    assert(!asuccess && bsuccess);
+}
+
 /// A decoded effective configuration refines the model setting only after all
 /// tokens have been checked against the independent raw common/package values.
 pub fn project_effective_verification(common: &Option<String>, package: &Option<String>,
