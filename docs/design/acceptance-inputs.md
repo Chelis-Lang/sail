@@ -374,6 +374,18 @@ an unqualified qualification plan, not observed proof-reuse acceptance. The
 fixture specifies the opaque generator I/O boundary that declaration journals
 alone cannot close.
 
+The [procedural-macro escape fixture](../../corpus/repros/proc-macro-read-escape/README.md)
+reads a data file outside its workspace through ordinary `std::fs`. Its genuine
+macro expansion changes a proof's result while the current compiler's completed
+SourceMap/tracked-path records omit the file from both phases. The standalone
+runner preserves a plain Cargo stale-expansion control, then checks the exact
+pinned compiler and same macro library with data values 7 and 9. The independent
+`declared-input` control emits a stable `include_str!` dependency: ordinary Cargo then rebuilds after the
+edit, and the genuine verification-phase SourceMap records the exact external
+path and checksum. Erased compilation omits it. These are
+provider-completeness counterexamples; they do not establish an end-to-end Sail
+false proof or close the physical observation boundary.
+
 These are **declaration-provider** proofs. The following boundaries remain:
 
 - The native JSON/make parsers, package attribution, path encoding and conversion

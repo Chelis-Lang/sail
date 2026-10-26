@@ -1,0 +1,11 @@
+[package]
+name = "sail-read-escape"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+proc-macro = true
+
+[features]
+declared-input = []
