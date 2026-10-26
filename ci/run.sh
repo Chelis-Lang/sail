@@ -74,8 +74,8 @@
 #                        warm). ARGS go to `sail-conformance
 #                        rust-verify-test` (for example --filter modes::)
 #
-# CI runs gate, proofs, refinements, solver, e2e and `conformance fast pr`. Every other tier
-# (including `extension`)
+# CI runs gate, solver, e2e and `conformance fast pr`. Every other tier
+# (including `proofs`, `refinements` and `extension`)
 # and every benchmark is local-only: run them with ci/local.sh
 # (`host` runs directly: ci/run.sh host).
 set -euo pipefail
@@ -161,6 +161,7 @@ start_daemon() {
 
 case "$step" in
   proofs|refinements)
+    local_only "$step"
     sail_proof_script=scripts/check-acceptance-proofs.py
     sail_proof_artifact=acceptance-proofs
     if [ "$step" = refinements ]; then

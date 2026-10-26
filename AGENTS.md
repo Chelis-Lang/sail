@@ -184,8 +184,8 @@ Run the same steps locally in the same image with `ci/local.sh`:
 ```sh
 ci/local.sh gate                  # fmt, clippy, tests, doctests, rustdoc, layering, deny, benchmarks page
 ci/local.sh solver                # every test that needs the pinned Z3 (incl. fault injection)
-ci/local.sh proofs                # direct stock-Verus model proofs and all broken controls
-ci/local.sh refinements           # actual production bodies and refinement controls
+ci/local.sh proofs                # local-only: direct stock-Verus model proofs and all broken controls
+ci/local.sh refinements           # local-only: actual production bodies and refinement controls
 ci/local.sh e2e [PHASE]           # `sail verify` vs `cargo verus verify`: identical output (all phases + extra)
 ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
 ci/local.sh extension             # local-only: temporal extension workspace fmt, clippy, tests (needs D.I.V.E. access)
@@ -211,8 +211,7 @@ release-style checks belong in the local tiers below, never in CI.
 **Required on every PR** (branch protection): `No AI authorship markers`,
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
-gate, including image creation, direct acceptance-model proofs and production
-refinements, to have succeeded. No CI job receives the private-dependency
+gate, including image creation, to have succeeded. No CI job receives the private-dependency
 token. Branches must be current
 with `main` before merging. The `End to end` check aggregates ten parallel
 phases and succeeds only when all complete successfully:
@@ -256,6 +255,9 @@ so CI, `ci/local.sh` and native hosts build the image with no token or secret.
 tier, and every CI job must finish well inside 10 minutes. Anything longer
 is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
 - *Fast (CI, every PR):* the six required checks above.
+- *Acceptance proofs (local):* `ci/local.sh proofs` and `ci/local.sh
+  refinements`. Run them before merging changes to the proved models, the
+  production bodies they refine, or their checkers.
 - *Standard (local):* `ci/local.sh conformance fast`, then
   `ci/local.sh conformance standard` (includes anvil). Run it before merging
   changes to the shim, cache, daemon, keys or harness, and put the summary
