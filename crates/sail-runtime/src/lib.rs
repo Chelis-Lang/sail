@@ -27,6 +27,8 @@ use std::{
 pub struct Config {
     /// Trusted installed native temporal worker, absent when not installed.
     pub temporal_worker: Option<temporal::Worker>,
+    /// Why no worker was configured, reported as the temporal unavailable reason.
+    pub temporal_unavailable: Option<Error>,
     /// Existing bundled Z3 executable, independently verified against the embedded pin.
     pub z3: Option<PathBuf>,
     /// Optional disk cache root; existing Verus cache namespaces are untouched.
@@ -39,6 +41,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             temporal_worker: None,
+            temporal_unavailable: None,
             z3: None,
             cache_directory: None,
             workers: 2,
@@ -227,7 +230,10 @@ impl Runtime {
     pub fn capabilities(&self) -> Capabilities {
         let identity = self.identity(&Cancellation::default());
         Capabilities {
-            temporal: Some(temporal::capability(self.config.temporal_worker.as_ref())),
+            temporal: Some(temporal::capability(
+                self.config.temporal_worker.as_ref(),
+                self.config.temporal_unavailable.as_ref(),
+            )),
             version: VERSION,
             backends: vec![BackendCapability {
                 backend: "z3".into(),
@@ -263,6 +269,7 @@ impl Runtime {
                         result: Box::new(temporal::execute(
                             job,
                             self.config.temporal_worker.as_ref(),
+                            self.config.temporal_unavailable.as_ref(),
                             cancellation,
                         )?),
                     },
