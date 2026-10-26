@@ -620,6 +620,28 @@ mod tests {
     }
 
     #[test]
+    fn a_served_near_limit_proof_is_reported_unstable() {
+        // Charter rule 4 as amended (ADR 0009): a cached `unsat` that finished
+        // near its limit may be served, and is reported unstable. A served
+        // answer carries the effort its original solve recorded.
+        let served = |used| CheckRecord {
+            source: Some(Source::Cache),
+            ..check(Answer::Unsat, used, None)
+        };
+        let near = function(
+            Some(true),
+            Some(vec![obligation("c::f", "Function-Def", vec![served(501)])]),
+        );
+        assert_eq!(near.verdict(), Verdict::Verified);
+        assert!(near.unstable());
+        let far = function(
+            Some(true),
+            Some(vec![obligation("c::f", "Function-Def", vec![served(500)])]),
+        );
+        assert!(!far.unstable());
+    }
+
+    #[test]
     fn function_verdicts() {
         let proved = || obligation("f", "Function-Def", vec![check(Answer::Unsat, 1, None)]);
         let failed = || obligation("f", "Function-Def", vec![check(Answer::Sat, 1, None)]);

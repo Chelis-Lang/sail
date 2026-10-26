@@ -49,6 +49,10 @@ pub const ENV_TRACE_DIR: &str = "SAIL_TRACE_DIR";
 /// many replies the cache served (ADR 0014). Set by `sail verify --output
 /// json`.
 pub const ENV_PROVENANCE_DIR: &str = "SAIL_PROVENANCE_DIR";
+/// Environment variable overriding the bound, in bytes (default 256 MiB), on
+/// the input and output a cached session retains. A larger session stops
+/// using the cache and continues as pass-through.
+pub const ENV_BUFFER_BYTES: &str = "SAIL_SHIM_BUFFER_BYTES";
 
 /// Exit code when the shim cannot start the solver (stable, `SAIL2xxx`).
 const EXIT_SETUP: u8 = 125;

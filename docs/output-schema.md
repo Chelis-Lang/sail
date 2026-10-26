@@ -261,7 +261,9 @@ Each check records how its answer was established (charter rule 7):
 - `cache`: a cache hit, which is always a reply the pinned Z3 produced for
   the same key (ADR 0008);
 - `null`: no record. For example, the daemon could not be reached and the
-  shim fell back to pass-through.
+  shim fell back to pass-through, or a solver session grew past the shim's
+  retained-bytes bound (`SAIL_SHIM_BUFFER_BYTES`, default 256 MiB) and
+  continued as pass-through without the cache.
 
 A function's `provenance.source` summarises its checks:
 - `fresh`: all solved;
