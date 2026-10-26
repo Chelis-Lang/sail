@@ -401,6 +401,21 @@ binds the latest cumulative source and preserves the same positive-kill limit.
   sample remains in [VI-0021](verus-issues/VI-0021-proof-note-json-order.md);
   [qualification](validation/deep-tier.md#fork-source-suite-gate-124).
 
+## Full-path rebuilds unrelated to proof inputs
+
+These change output or cost relative to `cargo verus verify` on calls where
+plain Cargo-Verus is a no-op. Verdicts are unaffected:
+
+- An unreferenced new or removed file in a package makes the next call
+  re-verify the crate and print its results
+  ([#398](https://github.com/Chelis-Lang/sail/issues/398)).
+- The first call after a newly discovered input outside the package rebuilds
+  the build-script packages and re-verifies vstd once
+  ([#399](https://github.com/Chelis-Lang/sail/issues/399)).
+- After a `src/bin` target is added and removed, every call rebuilds them and
+  re-verifies vstd, about 26 s each on the demo project
+  ([#401](https://github.com/Chelis-Lang/sail/issues/401)).
+
 ## Product limitations
 
 - **Repair selector inventories have a bounded source scope.** Compiler-family

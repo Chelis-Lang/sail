@@ -89,3 +89,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0079: Source-shared executable acceptance refinements (accepted)](0079-source-shared-acceptance-refinements.md)
 - [0080: Optional native temporal runtime (accepted)](0080-optional-temporal-runtime.md)
 - [0081: The cache checks response framing with the SMT-LIB splitter (accepted)](0081-cache-response-framing.md)
+- [0082: Replay unchanged calls from a complete stat-stamp vector (accepted)](0082-unchanged-call-replay.md)

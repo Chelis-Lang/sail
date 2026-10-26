@@ -290,6 +290,27 @@ through `PATH` (`cc`, `cmake`, `pkg-config`), is invisible: Cargo does not
 rebuild for it, and Sail does not re-verify for it. Declare such reads with
 `cargo:rerun-if-env-changed` in the build script.
 
+## Unchanged-call replay
+
+A `sail verify` identical to an earlier call that ended Current without
+starting a verifier replays that call's output without running Cargo
+([ADR 0082](decisions/0082-unchanged-call-replay.md)). The call is identical
+when its arguments, output mode, terminals, selected tools and every variable
+the tools or Sail read are the same. Replay also needs the full stat stamp
+(device, inode, size, mode, mtime and ctime) of every input path and walked
+directory to match, along with the owned Cargo target's entries and every
+installed tool and sysroot file. The proof context's cache records must match
+by content, and the variables units declare must have the same values.
+Anything else takes the full path. Only Cargo's `Finished` time is
+regenerated.
+
+The first unchanged call after a verification takes the full path and
+records; a file changed less than 2 s before a run is not recorded, so the
+next call records it. A failing project re-verifies on every call, as plain
+Cargo-Verus does, and is never replayed. Job workers and `SAIL_MANAGED_FORCE`
+never replay; `SAIL_MANAGED_NOOP=0` disables replay, and
+`SAIL_MANAGED_NOOP_TRACE=FILE` logs each hit, miss reason and recording.
+
 ## Reader latency
 
 The M7 reader gate (four clients, 200 Status and Result reads, p95 below

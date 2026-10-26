@@ -1245,6 +1245,46 @@ pub(super) fn bind_paths(hasher: &mut Sha256, bindings: &BTreeMap<PathBuf, PathB
 // A run-local mutation stamp is separate from logical proof keys: reverting an
 // edit between completed runs may reuse a proof, reverting during a run may not.
 pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
+    stamp_paths(&mutation_paths(snapshot))
+}
+
+/// The complete stat-stamp vector behind `expected`, this snapshot's mutation
+/// stamp: every stamped path with its full stamp, or `None` when absent. It is
+/// returned only when the same `lstat` results fold to exactly `expected`, so
+/// the vector describes the state the run's own currentness check accepted.
+#[cfg(unix)]
+pub(super) fn mutation_vector(
+    snapshot: &InputSnapshot,
+    expected: &str,
+) -> Option<Vec<(PathBuf, Option<super::noop::Stamp>)>> {
+    let paths = mutation_paths(snapshot);
+    let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
+    let stats = crate::parallel::in_order(&names, |&path| (path, std::fs::symlink_metadata(path)));
+    if stamp_readback(&paths, &stats)? != expected {
+        return None;
+    }
+    stats
+        .into_iter()
+        .map(|(path, metadata)| match metadata {
+            Ok(metadata) => Some((path.to_owned(), Some(super::noop::Stamp::of(&metadata)))),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                Some((path.to_owned(), None))
+            }
+            Err(_) => None,
+        })
+        .collect()
+}
+
+#[cfg(not(unix))]
+pub(super) fn mutation_vector(
+    _snapshot: &InputSnapshot,
+    _expected: &str,
+) -> Option<Vec<(PathBuf, Option<super::noop::Stamp>)>> {
+    None
+}
+
+/// Every path a mutation stamp of `snapshot` covers.
+fn mutation_paths(snapshot: &InputSnapshot) -> BTreeSet<PathBuf> {
     let mut paths = snapshot.observation_paths.clone();
     // Compiler declarations may add an alternate spelling (src/../file) of a
     // file already observed. Stamp the resolved file once; actual aliases
@@ -1273,7 +1313,7 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
             .filter(|(_, link)| *link)
             .map(|(alias, _)| (*alias).to_owned()),
     );
-    stamp_paths(&paths)
+    paths
 }
 
 // The `lstat` calls overlap (about 13,000 paths per vest snapshot); the stamp
