@@ -2376,6 +2376,10 @@ sail_verified! {
         let mut i = 0usize;
         sail_while! { (i < project.targets.len())
             invariant(i <= project.targets.len(), orders.len() == project.targets.len(),
+                small_exact_partial_request(request, project, orders@) ==>
+                    project.targets@.len() == 1 && orders@.len() == 1
+                        && small_exact_partial_target(&project.targets@[0], request.args@,
+                            orders@[0].forward@, orders@[0].inverse@),
                 forall |j: int| 0 <= j < i && project.targets@[j].requested ==>
                     exact_partial_target(&project.targets@[j], request.args@))
             decreases(project.targets.len() - i)
@@ -2383,6 +2387,8 @@ sail_verified! {
                 sail_proof! {
                     if small_exact_partial_request(request, project, orders@) {
                         assert(i == 0);
+                        assert(small_exact_partial_target(&project.targets@[i as int], request.args@,
+                            orders@[i as int].forward@, orders@[i as int].inverse@));
                     }
                 }
                 if project.targets[i].requested && complete_exact_partial_target_ordered(&project.targets[i],
