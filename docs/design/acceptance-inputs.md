@@ -205,6 +205,71 @@ close either gap; their exact projects are in `corpus/repros/`.
 
 ## Completed compiler-declaration providers
 
+### Attributable verification and compilation fields
+
+The source-shared [phase component](../../crates/sail-acceptance/src/phase_inputs.rs)
+accounts for the existing fork's two actual declaration phases. Before a child
+exists, `PhaseRequest::for_attempt` copies the allocated run, every raw compiler
+unit field, slot and binding. Cargo-name absence and an empty Cargo name remain
+different. The seal consumes that immutable request and borrows the actual
+`ObservedAttempt`; it compares exact run/unit/slot, child PID and original binding.
+It requires one verification phase and one compilation phase, the existing
+final-document header and a normal observed exit. A normal nonzero exit can
+complete declaration accounting, without becoming a successful proof. The
+protocol has one final document; it invents no per-phase stdout EOF events.
+
+Both recorded phases contribute their exact fields. Typed source checksum and
+length declarations, extra tracked path requests, and environment name/value or
+absence are distinct keys. The joined inventory must cover every field in both
+phases and contain no other field. Conflicting values, duplicate identities,
+missing phases, foreign attempts and unreadable outcomes refuse admission.
+These field namespaces describe declarations, not input-world byte observations.
+Sorting only proposes complete forward/inverse indices. The checked subset
+comparison has an iff contract, and the sorted-cursor lemma proves that a valid
+member cannot be skipped. Both union passes use monotone cursors rather than
+repeated full scans.
+
+The existing unselected shipped/retained consumers share one strict document
+schema and invoke this checked field-union logic for their environment maps.
+Duplicate JSON phase, source and environment keys refuse instead of overwriting
+an earlier field. All original source, copy, package and runtime checks remain.
+The attributable native entry point additionally joins the final parsed document
+to its original request and actual child. Its normal-wrapper integration and
+control transport are not selected for default proof authority.
+
+The [#386](https://github.com/Chelis-Lang/sail/issues/386) native compiler witness
+uses the pinned fork's existing observation hook. Its verification phase records
+`ORDINARY_PROOF_FLAG=7`; erased compilation and the final dep-info omit that
+verification-only read. The checked two-phase union preserves it. The explicit
+local witness validates the installed fork before launching its owned child:
+
+```sh
+SAIL_ACTUAL_PHASE_BUILD="$SAIL_FORK_BUILD" \
+SAIL_ACTUAL_PHASE_OUT="$SAIL_PHASE_OUT" \
+cargo nextest run -p sail-verus --lib --locked --run-ignored only \
+  -E 'test(=managed::retained::phase_fields::tests::actual_compiler_phase_record_preserves_ghost_environment)'
+```
+
+The output directory must not exist; an external bounded runner owns the child
+group and retains source/runtime identities and raw output. This is a standalone
+actual-compiler witness, separate from default managed Cargo/Journal integration
+and the complete native acceptance gate. Real-child controls also exercise a
+normal nonzero producer, changed PID/binding, old-child/new-slot association,
+missing completion, malformed JSON and a missing phase.
+
+`PhaseInputs` proves exact accounting of the typed declarations under the
+source-bound producer/parser contract. It is not a `CompilerDomain`, fresh input
+world or proof-success token. Native serde decoding and field construction,
+compiler-hook fidelity, final protected-record origin, launch identity and the
+underlying OS remain explicit adapter boundaries. An additional tracked pathname
+declares a request, not consumed bytes. SourceMap exclusions and arbitrary
+proc-macro/build-script I/O remain outside complete observation. The current
+ambient hook environment is observable by user code; it must not be enabled as
+default transport before the environment contract and legacy-authority policy
+are repaired. This component alone does not close #385, #386, #373 or #374.
+
+### Cargo declaration journals
+
 The default managed Cargo adapter records a private pre-spawn intent in the
 run's artifact journal, then the PID from the actual `Child`. Each retained
 `compiler-artifact` or `build-script-executed` message carries that same producer
