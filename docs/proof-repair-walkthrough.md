@@ -1,11 +1,10 @@
 # Repair workflow walkthrough
 
-This walkthrough takes one library through the experimental repair workflow:
+This walkthrough takes one library through the repair workflow:
 install the engine, check a repair, follow its events, detect a regression the
-focused phase cannot see, and do the same through MCP. Proof repair is
-experimental, and ordinary verification (Sail's Verus without the focused
-phase) stays the default. Its qualification
-status (gates, measured runs, open items) is in
+focused phase cannot see, and do the same through MCP. Ordinary verification
+(Sail's Verus without the focused phase) stays the default for `sail verify`.
+The repair workflow's qualification status (gates, measured runs, open items) is in
 [M7 validation](validation/m7.md); limitations are in
 [known issues](known-issues.md).
 

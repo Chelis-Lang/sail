@@ -5,6 +5,20 @@
 stdout. It is built for agents that verify after every edit. The design
 decisions are in ADRs 0016 and 0024.
 
+## Supported and experimental tools
+
+Supported: `verify`, `counterexample`, `cached_result`, the job tools
+(`start_verification`, `verification_status`, `verification_result`,
+`cancel_verification`, `verification_events`), the evidence tools
+(`explain_failure`, `compare_verification`, `save_baseline`, `list_baselines`,
+`get_baseline`) and repair (`start_repair_validation`).
+
+Experimental, and may change in any release: the `fragility` tool, `verify`'s
+and `start_verification`'s `portfolio` and `measure_fragility` options, and
+the integration tools `requirement_assurance`, `runtime_capabilities` and
+`runtime_execute`. Their descriptions in `tools/list` start with
+"Experimental:", so an agent can tell them apart.
+
 ## Registering it
 
 The server is a stdio command: `sail mcp`, with no arguments. It needs what
@@ -56,7 +70,7 @@ inside the project can correctly invalidate the proof's input freshness.
 
 ## Raw SMT runtime
 
-`runtime_capabilities` accepts `{}` and reports actual backend installation
+These integration tools are experimental. `runtime_capabilities` accepts `{}` and reports actual backend installation
 readiness. `runtime_execute` accepts `{"request": ...}`, where the request is
 the versioned document in [Runtime](runtime.md). Both tools connect directly
 to the daemon's separate runtime endpoint and autostart `sail serve` when no
@@ -73,7 +87,8 @@ implementation correctness. See [ADR 0068](decisions/0068-runtime-daemon.md).
 
 ## Reading completed evidence
 
-`requirement_assurance` takes `{"job_id":"JOB"}` and reads the authenticated
+`requirement_assurance` (experimental integration tool) takes
+`{"job_id":"JOB"}` and reads the authenticated
 requirement groups from a completed neutral source job. It reports exact source
 relationships, conservative proof outcomes, original solver identities and
 explicit missing assurance. This read negotiates its own capability and fails
@@ -223,10 +238,10 @@ scope, target identity, original report provenance, and counterexample data.
 
 ## Evidence tools
 
-`explain_failure`, `compare_verification` and the baseline tools are
-**experimental**, like the `sail explain`, `sail compare` and `sail baseline`
-commands they run: they may change in any release. These tools read recorded evidence from the local job service through the same
-CLI commands described in
+`explain_failure`, `compare_verification` and the baseline tools run the
+`sail explain`, `sail compare` and `sail baseline` commands. They are
+read-only and conservative: they read recorded evidence from the local job
+service through the same CLI commands described in
 [workspace verification](workspace-verification.md#evidence-from-completed-jobs).
 They do not accept `project_dir`; they use the server's working directory and
 environment to find the service. No tool here verifies current inputs or
@@ -313,7 +328,7 @@ point; whole-project requests use `cargo verus verify`.
 | `package` | `-p <package>`. |
 | `module` | Verus `--verify-module <module>`: this module and its descendants (with `function`, `--verify-only-module` selects that function’s owning module), relative to the crate root (`arith`, `foo::bar`). |
 | `function` | Verus `--verify-function <function>`: a unique substring of the name, or a pattern with `*` at either end. It is looked up in `module`, or in the crate root (`--verify-root`) if no module is given. |
-| `portfolio` | Experimental. Optional `accept-first-proof`: sequential complete Verus attempts; every winning function comes from one complete run, with seed/configuration and attempt evidence. Never enabled by default. |
+| `portfolio` | Experimental, verdict-changing. Optional `accept-first-proof`: sequential complete Verus attempts; every winning function comes from one complete run, with seed/configuration and attempt evidence. Never enabled by default. |
 | `measure_fragility` | Experimental. Optional boolean: capture and replay solver sessions locally, attaching exact per-function scores; incomplete or ambiguous attribution stays null with a note. Cannot be combined with a portfolio. |
 | `cargo_args` | Further `cargo verus verify` arguments, before `--`. They may not contain `--` or `--output`. |
 | `verus_args` | Further Verus arguments, after `--`. |
@@ -679,5 +694,5 @@ On the completed `verification_result`, inspect
 Use the exact package/target/function identities in the report for explanations
 and comparisons. MCP events are paged reads; CLI `--follow` is not an MCP argument.
 
-Proof repair is experimental. Its validation status is in
+Proof repair's validation record is
 [M7 validation](validation/m7.md).
