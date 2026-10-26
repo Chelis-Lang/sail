@@ -1578,6 +1578,7 @@ dependencies = [
  "ed25519-dalek",
  "sail-acceptance",
  "sail-key",
+ "sail-smtlib",
  "serde",
  "serde_json",
 ]

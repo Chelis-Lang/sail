@@ -215,7 +215,13 @@ The client timeout is configurable with `SAIL_DAEMON_TIMEOUT_MS`.
 - A same-shape forgery in the *local* tier (an `unsat` stored under a key
   whose answer is `sat`). It passes every check. The local tier trusts its
   single writer, the daemon. The shared tier does not: there the same
-  forgery is refused for want of a valid signature (above).
+  forgery is refused for want of a valid signature (above). If a later miss
+  in the same session replays the input into the pinned solver, the replay
+  is compared with every reply already served, and a difference stops the
+  session with `SAIL2005` (`late_cache_frame_refusal_replays_exactly_after_a_served_prefix`
+  and `diverged_replay_after_served_replies_stops_with_an_error` in
+  `crates/sail-shim/tests/cached_session.rs`). An entry that is not exactly
+  one response frame is never served.
 - A forgery signed by a *trusted* key. It is served: a trusted signer is
   trusted completely (`docs/trust.md`).
 

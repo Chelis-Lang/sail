@@ -18,11 +18,24 @@ pub(super) struct Inputs {
     pub(super) by_package: Option<BTreeMap<String, Vec<PathBuf>>>,
 }
 
-pub(super) fn load(path: &Path) -> (Vec<PathBuf>, bool) {
+/// The recorded compiler-declared inputs and whether they are complete.
+///
+/// A missing record counts as complete only for a proof context's first
+/// observation (`observed_before` false): its run's own inputs are then
+/// recorded and compared after the run. Once a context has run, a missing,
+/// unreadable or malformed record is incomplete.
+pub(super) fn load(path: &Path, observed_before: bool) -> (Vec<PathBuf>, bool) {
     // Older observations do not attribute includes to their consuming package.
     // Establish the scoped declarations before authorizing new current receipts.
     read::<Inputs>(path).map_or_else(
-        || (Vec::new(), !path.exists()),
+        || {
+            let first = !observed_before
+                && matches!(
+                    std::fs::symlink_metadata(path),
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound
+                );
+            (Vec::new(), first)
+        },
         |v| {
             (
                 v.paths,
@@ -69,20 +82,48 @@ pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
     Some(paths)
 }
 
+/// The unit records of a complete artifact journal, without its section
+/// markers: every line parses, and every record lies in a section the
+/// producer opened and closed (see [`crate::adapter::JOURNAL_END`]). `None`
+/// for a missing, unreadable, malformed, truncated or unclosed journal.
+pub(super) fn completed_journal(artifacts: &Path) -> Option<Vec<Value>> {
+    use crate::adapter::{JOURNAL_BEGIN, JOURNAL_END};
+    let text = std::fs::read_to_string(artifacts).ok()?;
+    let mut open = false;
+    let mut sections = 0usize;
+    let mut records = Vec::new();
+    for line in text.lines().filter(|line| !line.trim().is_empty()) {
+        let record: Value = serde_json::from_str(line).ok()?;
+        match record["reason"].as_str() {
+            Some(JOURNAL_BEGIN) if !open => open = true,
+            Some(JOURNAL_END) if open => {
+                open = false;
+                sections += 1;
+            }
+            Some(JOURNAL_BEGIN | JOURNAL_END) => return None,
+            _ if open => records.push(record),
+            _ => return None,
+        }
+    }
+    (!open && sections > 0 && text.ends_with('\n')).then_some(records)
+}
+
 pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec<PathBuf>, bool)> {
     let workspace = Path::new(data["workspace_root"].as_str().unwrap_or_default());
-    let (previous, _) = load(path);
+    let (previous, _) = load(path, true);
     let mut paths: BTreeSet<PathBuf> = previous.into_iter().collect();
     let mut by_package: BTreeMap<String, BTreeSet<PathBuf>> = packages(path)
         .unwrap_or_default()
         .into_iter()
         .map(|(package, paths)| (package, paths.into_iter().collect()))
         .collect();
-    let mut covered = true;
-    for artifact in std::fs::read_to_string(artifacts)
-        .unwrap_or_default()
-        .lines()
-        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+    // Only a journal the producer closed after Cargo's output ended is
+    // evidence; a lost or partial one never reads as a completed empty build.
+    let journal = completed_journal(artifacts);
+    let mut covered = journal.is_some();
+    for artifact in journal
+        .iter()
+        .flatten()
         .filter(|v| v["reason"] == "compiler-artifact")
     {
         if artifact["target"]["kind"]
@@ -145,6 +186,17 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
     Ok((paths, covered))
 }
 
+/// A journal section as the producer writes it for `records`.
+#[cfg(test)]
+pub(super) fn closed_journal(records: &[Value]) -> String {
+    let marker = |reason: &str| serde_json::json!({ "reason": reason }).to_string() + "\n";
+    let mut text = marker(crate::adapter::JOURNAL_BEGIN);
+    for record in records {
+        text += &(record.to_string() + "\n");
+    }
+    text + &marker(crate::adapter::JOURNAL_END)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -174,7 +226,7 @@ mod tests {
         assert!(std::fs::write(target.join("demo-123.d"), "out.d: ../shared\\ file.rs\n").is_ok());
         let artifacts = root.join("artifacts.jsonl");
         let artifact = serde_json::json!({"reason":"compiler-artifact","package_id":"demo","target":{"kind":["lib"]},"filenames":[target.join("libdemo-123.rmeta")]});
-        assert!(std::fs::write(&artifacts, artifact.to_string()).is_ok());
+        assert!(std::fs::write(&artifacts, closed_journal(&[artifact])).is_ok());
         let state = root.join("sources.json");
         let mut data = serde_json::json!({"workspace_root":project,"packages":[{"manifest_path":project.join("Cargo.toml")}]});
         let baseline = super::super::input::snapshot_metadata(&data, &[]);
@@ -217,17 +269,70 @@ mod tests {
             std::process::id()
         ));
         assert!(std::fs::write(&path, r#"{"paths":[],"covered":true}"#).is_ok());
-        assert!(!load(&path).1);
+        assert!(!load(&path, true).1);
         assert!(packages(&path).is_none());
         assert!(std::fs::write(&path, r#"{"paths":[],"covered":true,"by_package":{}}"#).is_ok());
         assert!(
-            !load(&path).1,
+            !load(&path, true).1,
             "legacy scoped records omitted source aliases too"
         );
         assert!(packages(&path).is_none());
         assert!(std::fs::write(&path, "corrupt source observation").is_ok());
-        assert!(!load(&path).1);
-        assert!(std::fs::remove_file(path).is_ok());
+        assert!(!load(&path, true).1);
+        assert!(
+            !load(&path, false).1,
+            "a corrupt record is never a first observation"
+        );
+        assert!(std::fs::remove_file(&path).is_ok());
+        assert!(load(&path, false).1, "a context's first observation");
+        assert!(!load(&path, true).1, "a lost record after earlier runs");
+    }
+
+    #[test]
+    fn missing_malformed_or_truncated_journal_is_not_a_completed_empty_child() {
+        let root = std::env::temp_dir().join(format!("sail-source-journal-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let data = serde_json::json!({"workspace_root":root});
+        let artifacts = root.join("artifacts.jsonl");
+        let begin = serde_json::json!({"reason":crate::adapter::JOURNAL_BEGIN}).to_string() + "\n";
+        let unit = serde_json::json!({"reason":"compiler-artifact","package_id":"demo",
+            "target":{"kind":["lib"]},"filenames":[]})
+        .to_string()
+            + "\n";
+        let complete = closed_journal(&[]);
+        let incomplete: [Option<String>; 9] = [
+            None,
+            Some(String::new()),
+            Some("{not json\n".to_owned()),
+            Some(begin.clone()),
+            Some(begin.clone() + &unit),
+            Some(unit.clone()),
+            Some(complete.clone() + &begin),
+            Some(complete.clone() + &unit),
+            Some(complete.trim_end().to_owned() + "\n{\"reason\":\"compiler-art"),
+        ];
+        for (index, journal) in incomplete.iter().enumerate() {
+            let state = root.join(format!("sources-{index}.json"));
+            let _ = std::fs::remove_file(&artifacts);
+            if let Some(journal) = journal {
+                assert!(std::fs::write(&artifacts, journal).is_ok());
+            }
+            let (_, covered) =
+                update(&state, &artifacts, &data).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+            assert!(!covered, "journal {index} must not be complete coverage");
+            assert!(!load(&state, true).1, "record {index}");
+        }
+        // A completed empty child, and one closed section per Cargo build.
+        for journal in [complete.clone(), complete.clone() + &complete] {
+            assert!(std::fs::write(&artifacts, journal).is_ok());
+            let state = root.join("sources-complete.json");
+            let (paths, covered) =
+                update(&state, &artifacts, &data).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+            assert!(covered && paths.is_empty());
+            assert!(load(&state, true).1);
+        }
+        assert!(std::fs::remove_dir_all(root).is_ok());
     }
 
     #[cfg(unix)]
@@ -249,10 +354,9 @@ mod tests {
         let artifacts = root.join("artifacts.jsonl");
         std::fs::write(
             &artifacts,
-            serde_json::json!({"reason":"compiler-artifact",
+            closed_journal(&[serde_json::json!({"reason":"compiler-artifact",
             "package_id":"demo","target":{"kind":["lib"]},
-            "filenames":[target.join("libdemo.rmeta")]})
-            .to_string(),
+            "filenames":[target.join("libdemo.rmeta")]})]),
         )?;
         let state = root.join("sources.json");
         let data = serde_json::json!({"workspace_root":workspace});
@@ -263,7 +367,7 @@ mod tests {
             paths.into_iter().collect::<BTreeSet<_>>(),
             BTreeSet::from([alias, destination])
         );
-        assert!(load(&state).1);
+        assert!(load(&state, true).1);
         std::fs::remove_dir_all(root)
     }
 }
