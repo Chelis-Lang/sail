@@ -1576,7 +1576,7 @@ mod tests {
             &root.0,
             &names,
             &caller,
-            "test-current",
+            ("test-current", &root.0.join("test-current")),
             || true,
         )
         .map_err(|error| format!("rollback: {:?}", error.paths))?
@@ -1594,7 +1594,7 @@ mod tests {
                     &root.0,
                     &names,
                     &caller,
-                    "test-current",
+                    ("test-current", &root.0.join("test-current")),
                     || true
                 )
                 .is_ok_and(|value| value.is_none())

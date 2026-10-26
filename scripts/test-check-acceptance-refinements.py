@@ -206,6 +206,7 @@ class SourceCaptureTests(unittest.TestCase):
             "crates/sail-acceptance/src/authority.rs",
             CHECKER.KEY_CORE, CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
+            "crates/sail-acceptance/src/phase_inputs.rs",
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
         paths += ["crates/" + name + "/Cargo.toml" for name in
             ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
@@ -237,6 +238,10 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct GuardedReadback", b"#[derive(Default)] pub struct GuardedReadback"),
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct CompletedRead", b"#[derive(Default)] pub struct CompletedRead"),
             (CHECKER.KEY_CORE, b"pub struct Prefix", b"#[derive(Default)] pub struct Prefix"),
+            ("crates/sail-acceptance/src/phase_inputs.rs", b"pub struct PhaseRequest", b"#[derive(Default)] pub struct PhaseRequest"),
+            ("crates/sail-acceptance/src/phase_inputs.rs", b"pub struct PhaseInputs", b"#[derive(Deserialize)] pub struct PhaseInputs"),
+            ("crates/sail-acceptance/src/authority.rs", b"pub struct AttemptIdentity", b"#[derive(Default)] pub struct AttemptIdentity"),
+            ("crates/sail-acceptance/src/authority.rs", b"pub struct DeclinedEngine", b"#[derive(Deserialize)] pub struct DeclinedEngine"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"pub struct QueryPrefix", b"#[derive(Default)] pub struct QueryPrefix"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"pub struct FramedCommand", b"#[derive(Deserialize)] pub struct FramedCommand"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"raw: RawTranscript,", b"pub raw: RawTranscript,"),
@@ -323,7 +328,8 @@ class SourceCaptureTests(unittest.TestCase):
 
     def test_owned_query_modules_keep_actual_imports_and_checked_constructors(self):
         for path in ("crates/sail-acceptance/src/query_prefix.rs",
-                "crates/sail-acceptance/src/query_policy.rs", CHECKER.KEY_FACTORY):
+                "crates/sail-acceptance/src/query_policy.rs",
+                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             CHECKER.compiled_subset(path, original)
             for addition in (b"\nuse hidden::*;", b"\n#[cfg(sail_verus)] use hidden::*;"):

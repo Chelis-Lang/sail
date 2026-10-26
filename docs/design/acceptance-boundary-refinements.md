@@ -140,3 +140,19 @@ establishing run and fresh/reused distinction. Retaining these fields enables
 an executable origin/context correspondence check; the fields themselves do
 not authenticate a process, establish a complete child inventory or prove a
 truthful cache writer.
+
+## Captured attempt and phase representation
+
+The combined production drivers include all shared phase factories and owned
+attempt identity operations. Required private-field checks cover `PhaseRequest`,
+`PhaseInputs`, `AttemptIdentity` and `DeclinedEngine`; unchecked derives and
+unverified constructors remain refused. The daemon bridge is rebound to the
+reviewed revision-three producer policy used by retained jobs and baselines.
+Full source and function inventories still qualify each complete root.
+
+The engine model's added `RestartAfterDecline(u64)` variant gives Verus a second
+payload-bearing origin. Its generated generic `Origin::arrow_0` alias disappears;
+the original named `arrow_Fallback_0` and new `arrow_RestartAfterDecline_0`
+selectors remain captured. Every explicit original function and proof is
+retained. This representation update does not relax whole-crate checking,
+function inventory equality, failure controls or verifier resource settings.
