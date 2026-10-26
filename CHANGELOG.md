@@ -47,6 +47,9 @@ semantic versioning once the API is published.
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
+- Remove per-token remaining-source copies from the acceptance source lexer.
+  Exact token/refusal regression and native differential qualification are
+  pending; no preflight or full-gate speedup has been measured for this candidate.
 - Move owned compiler configuration, reservation and completion matching into
   source-shared factories. Refusals preserve the original output buffers and
   process status; the only new identity primitive is native ownership equality.

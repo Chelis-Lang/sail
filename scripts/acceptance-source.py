@@ -28,6 +28,13 @@ class Token(NamedTuple):
 DERIVES = {"Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord",
     "Default", "Hash", "Serialize", "Deserialize"}
 
+# These patterns have no anchors or lookbehind: matching at an absolute source
+# position preserves their former match-on-suffix behavior without tail copies.
+_RAW_STRING_PREFIX = re.compile(r'(?:br|cr|r)(#*)"')
+_CHAR_LITERAL = re.compile(r"'(?:\\.|[^'\\\n])'")
+_LIFETIME = re.compile(r"'[A-Za-z_][A-Za-z_0-9]*")
+_WORD = re.compile(r"[A-Za-z_][A-Za-z_0-9]*|[0-9][A-Za-z_0-9]*")
+
 
 def checked_attribute(stream: list[Token], start: int, allowed: set[str]) -> int:
     """Accept only reviewed attributes, with no custom derive expansion."""
@@ -79,10 +86,10 @@ def tokens(source: str) -> list[Token]:
                     at += 1
             continue
         start = at
-        raw = re.match(r'(?:br|cr|r)(#*)"', source[at:])
+        raw = _RAW_STRING_PREFIX.match(source, at)
         if raw:
             ending = '"' + raw[1]
-            at += raw.end()
+            at = raw.end()
             end = source.find(ending, at)
             require(end >= 0, "unterminated raw string")
             at = end + len(ending)
@@ -93,13 +100,13 @@ def tokens(source: str) -> list[Token]:
             require(at < len(source), "unterminated string")
             at += 1
         elif source[at] == "'":
-            char = re.match(r"'(?:\\.|[^'\\\n])'", source[at:])
-            lifetime = re.match(r"'[A-Za-z_][A-Za-z_0-9]*", source[at:])
+            char = _CHAR_LITERAL.match(source, at)
+            lifetime = _LIFETIME.match(source, at)
             require(char is not None or lifetime is not None, "unsupported character literal")
-            at += (char or lifetime).end()
+            at = (char or lifetime).end()
         else:
-            word = re.match(r"[A-Za-z_][A-Za-z_0-9]*|[0-9][A-Za-z_0-9]*", source[at:])
-            at += word.end() if word else 1
+            word = _WORD.match(source, at)
+            at = word.end() if word else at + 1
         result.append(Token(source[start:at], start, at))
     return result
 
