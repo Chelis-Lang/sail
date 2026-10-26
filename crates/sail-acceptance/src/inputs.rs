@@ -744,6 +744,20 @@ sail_spec! {
     }
 }
 
+sail_spec! {
+    /// Exact executable acceptance condition for keyed dep-info/read coverage.
+    pub open spec fn ordered_present_reads(required: Seq<InputFact>, observed: Seq<InputFact>,
+        required_order: Seq<usize>, required_inverse: Seq<usize>,
+        observed_order: Seq<usize>, observed_inverse: Seq<usize>) -> bool {
+        required.len() == observed.len()
+            && ordered_facts(required, required_order, required_inverse)
+            && ordered_facts(observed, observed_order, observed_inverse)
+            && forall|i: int| #![trigger required_order[i]] 0 <= i < required.len() ==>
+                same_key(required[required_order[i] as int], observed[observed_order[i] as int])
+                && value_present(observed[observed_order[i] as int].value)
+    }
+}
+
 sail_verified! {
     /// Certify every declared file was actually represented by a successful read.
     /// A missing, unreadable, absent or duplicate row cannot establish coverage.
@@ -751,7 +765,9 @@ sail_verified! {
         required_order: &[usize], required_inverse: &[usize],
         observed_order: &[usize], observed_inverse: &[usize]) -> (complete: bool)
         requires (true)
-        ensures (complete ==> complete_present_inventory(required@, observed@),
+        ensures (complete == ordered_present_reads(required@, observed@, required_order@, required_inverse@,
+                observed_order@, observed_inverse@),
+            complete ==> complete_present_inventory(required@, observed@),
             complete ==> unique_input_keys(required@) && unique_input_keys(observed@))
     {
         if required.len() != observed.len()
@@ -763,6 +779,9 @@ sail_verified! {
                 ordered_facts(required@, required_order@, required_inverse@),
                 ordered_facts(observed@, observed_order@, observed_inverse@),
                 unique_input_keys(required@), unique_input_keys(observed@),
+                forall|j: int| #![trigger required_order[j]] 0 <= j < i ==>
+                    same_key(required[required_order[j] as int], observed[observed_order[j] as int])
+                    && value_present(observed[observed_order[j] as int].value),
                 forall|j: int| 0 <= j < i ==> contains_present(observed@, #[trigger] required[required_order[j] as int]))
             decreases (required.len() - i)
             {
@@ -772,7 +791,13 @@ sail_verified! {
                 }
                 let wanted = &required[required_order[i]];
                 let actual = &observed[observed_order[i]];
-                if !input_key_eq(wanted, actual) || !matches!(actual.value, InputValue::Present(_)) { return false; }
+                if !input_key_eq(wanted, actual) || !matches!(actual.value, InputValue::Present(_)) {
+                    sail_proof! {
+                        assert(!same_key(required[required_order[i as int] as int], observed[observed_order[i as int] as int])
+                            || !value_present(observed[observed_order[i as int] as int].value));
+                    }
+                    return false;
+                }
                 sail_proof! { assert(contains_present(observed@, *wanted)); }
                 i += 1;
             }
@@ -785,5 +810,254 @@ sail_verified! {
             }
         }
         true
+    }
+}
+
+sail_code! {
+    /// One raw private-journal event. Parsing and physical delivery are adapters.
+    #[derive(Debug)]
+    pub struct ProviderEvent {
+        /// Zero: intent, one: actual start, two: artifact needing dep-info,
+        /// three: terminal, four: build-script or custom-build frame.
+        pub kind: u8,
+        /// The adapter process that declared the child before spawning it.
+        pub producer: u32,
+        /// Actual child PID; zero only in the pre-spawn intent.
+        pub child: u32,
+        /// Observed retained-frame count, meaningful in the terminal event.
+        pub frames: usize,
+        /// Actual normal-exit wait result, meaningful in the terminal event.
+        pub exited: bool,
+    }
+
+    /// Checked completion of one declared provider; never a compiler-closure claim.
+    #[derive(Debug)]
+    pub struct ProviderSeal {
+        producer: u32,
+        child: u32,
+        frames: usize,
+    }
+}
+
+sail_spec! {
+    /// Exact event order, provenance and terminal count for a completed provider.
+    pub open spec fn provider_trace(events: Seq<ProviderEvent>) -> bool {
+        events.len() >= 3
+            && events[0].kind == 0 && events[0].producer != 0 && events[0].child == 0
+            && events[1].kind == 1 && events[1].producer == events[0].producer && events[1].child != 0
+            && events.last().kind == 3 && events.last().exited
+            && events.last().producer == events[0].producer && events.last().child == events[1].child
+            && events.last().frames == events.len() - 3
+            && forall|i: int| 2 <= i < events.len() - 1 ==> #[trigger] provider_frame(events, i)
+    }
+
+    /// Every intervening frame belongs to the actual started child.
+    pub open spec fn provider_frame(events: Seq<ProviderEvent>, i: int) -> bool {
+        (events[i].kind == 2 || events[i].kind == 4) && events[i].producer == events[0].producer && events[i].child == events[1].child
+    }
+}
+
+sail_verified! {
+    /// Seal only a complete intent/start/frames/normal-exit trace.
+    pub fn seal_provider(events: &[ProviderEvent]) -> (seal: Option<ProviderSeal>)
+        requires (true)
+        ensures (seal.is_some() == provider_trace(events@),
+            seal.is_some() ==> seal.unwrap().producer_view() == events[0].producer
+                && seal.unwrap().child_view() == events[1].child
+                && seal.unwrap().frames_view() == events.len() - 3)
+    {
+        if events.len() < 3 { return None; }
+        let intent = &events[0];
+        let start = &events[1];
+        let end = &events[events.len() - 1];
+        if intent.kind != 0 || intent.producer == 0 || intent.child != 0
+            || start.kind != 1 || start.producer != intent.producer || start.child == 0
+            || end.kind != 3 || !end.exited || end.producer != intent.producer
+            || end.child != start.child || end.frames != events.len() - 3 { return None; }
+        let mut i = 2;
+        sail_while! { (i < events.len() - 1)
+            invariant (2 <= i <= events.len() - 1, events.len() >= 3,
+                intent.producer == events[0].producer, start.child == events[1].child,
+                forall|j: int| 2 <= j < i ==> #[trigger] provider_frame(events@, j))
+            decreases (events.len() - 1 - i)
+            {
+                let frame = &events[i];
+                if (frame.kind != 2 && frame.kind != 4) || frame.producer != intent.producer || frame.child != start.child {
+                    sail_proof! { assert(!provider_frame(events@, i as int)); }
+                    return None;
+                }
+                i += 1;
+            }
+        }
+        Some(ProviderSeal { producer: intent.producer, child: start.child, frames: end.frames })
+    }
+}
+
+impl ProviderSeal {
+    sail_method! {
+        /// Adapter process whose intent is sealed.
+        #[must_use]
+        pub fn producer(&self) -> (producer: u32)
+            requires (true) ensures (producer == self.producer_view())
+        { self.producer }
+    }
+    sail_method! {
+        /// Actual started child whose frames are sealed.
+        #[must_use]
+        pub fn child(&self) -> (child: u32)
+            requires (true) ensures (child == self.child_view())
+        { self.child }
+    }
+    sail_method! {
+        /// Number of retained frames represented by this seal.
+        #[must_use]
+        pub fn frames(&self) -> (frames: usize)
+            requires (true) ensures (frames == self.frames_view())
+        { self.frames }
+    }
+    sail_impl_spec! {
+        /// Producer whose pre-spawn intent is present in the checked trace.
+        pub closed spec fn producer_view(&self) -> u32 { self.producer }
+        /// Actual started child named by every checked frame and terminal.
+        pub closed spec fn child_view(&self) -> u32 { self.child }
+        /// Exact observed-frame count.
+        pub closed spec fn frames_view(&self) -> usize { self.frames }
+    }
+}
+
+sail_code! {
+    /// A dep-info read carrying its own actual artifact-frame identity.
+    #[derive(Debug)]
+    pub struct ArtifactRead<'a> {
+        /// Adapter that declared the child.
+        pub producer: u32,
+        /// Actual child responsible for the artifact.
+        pub child: u32,
+        /// Position of this artifact in that child's checked event trace.
+        pub frame: usize,
+        /// Actual dep-info bytes; absent for unreadable/unusable observations.
+        pub raw: Option<&'a [u8]>,
+    }
+}
+
+sail_spec! {
+    /// One successful typed read names this exact required artifact position.
+    pub open spec fn artifact_read_at(events: Seq<ProviderEvent>, read: ArtifactRead, frame: int) -> bool {
+        2 <= frame < events.len() - 1 && events[frame].kind == 2
+            && read.producer == events[0].producer && read.child == events[1].child
+            && read.frame == frame && read.raw.is_some()
+    }
+
+    /// The independent outcome ledger covers every required artifact once and
+    /// contains no results for other artifacts, children or exempt frames.
+    pub open spec fn artifact_read_coverage(events: Seq<ProviderEvent>, reads: Seq<ArtifactRead>) -> bool {
+        (forall|r: int| 0 <= r < reads.len() ==> #[trigger] artifact_read_at(events, reads[r], reads[r].frame as int))
+            && (forall|r: int, t: int| 0 <= r < t < reads.len() ==> #[trigger] reads[r].frame < #[trigger] reads[t].frame)
+            && (forall|frame: int| 2 <= frame < events.len() - 1 && events[frame].kind == 2 ==>
+                exists|r: int| 0 <= r < reads.len() && #[trigger] reads[r].frame == frame)
+    }
+}
+
+sail_spec! {
+    /// A concrete prefix consumed exactly its earlier artifact reads.
+    pub open spec fn artifact_prefix(events: Seq<ProviderEvent>, reads: Seq<ArtifactRead>, frame: int, r: int) -> bool {
+        2 <= frame <= events.len() - 1 && 0 <= r <= reads.len()
+            && (forall|j: int| 0 <= j < r ==> #[trigger] artifact_read_at(events, reads[j], reads[j].frame as int)
+                && reads[j].frame < frame)
+            && (forall|j: int, k: int| 0 <= j < k < r ==> #[trigger] reads[j].frame < #[trigger] reads[k].frame)
+            && (forall|f: int| 2 <= f < frame && events[f].kind == 2 ==>
+                exists|j: int| 0 <= j < r && #[trigger] reads[j].frame == f)
+    }
+
+    /// The actual scan adds exactly the current required frame, or no read for
+    /// an exempt frame. This lemma is a concrete inductive state transition.
+    pub proof fn artifact_prefix_step(events: Seq<ProviderEvent>, reads: Seq<ArtifactRead>, frame: int, before: int, after: int)
+        requires provider_trace(events), artifact_prefix(events, reads, frame, before), frame < events.len() - 1,
+            after == before + if events[frame].kind == 2 { 1int } else { 0int },
+            events[frame].kind == 2 ==> before < reads.len() && artifact_read_at(events, reads[before], frame),
+        ensures artifact_prefix(events, reads, frame + 1, after),
+    {
+        assert forall|j: int| 0 <= j < after implies
+            #[trigger] artifact_read_at(events, reads[j], reads[j].frame as int) && reads[j].frame < frame + 1 by {
+            if j == before { assert(artifact_read_at(events, reads[j], frame)); }
+            else { assert(artifact_read_at(events, reads[j], reads[j].frame as int)); }
+        }
+        assert forall|j: int, k: int| 0 <= j < k < after implies #[trigger] reads[j].frame < #[trigger] reads[k].frame by {
+            if k == before { assert(artifact_read_at(events, reads[j], reads[j].frame as int)); }
+            else { assert(reads[j].frame < reads[k].frame); }
+        }
+        assert forall|f: int| 2 <= f < frame + 1 && events[f].kind == 2 implies
+            exists|j: int| 0 <= j < after && #[trigger] reads[j].frame == f by {
+            if f == frame { assert(reads[before].frame == f); }
+            else {
+                let j = choose|j: int| 0 <= j < before && reads[j].frame == f;
+                assert(0 <= j < after);
+            }
+        }
+    }
+
+    /// Exact global coverage determines the next actual artifact outcome.
+    pub proof fn artifact_next(events: Seq<ProviderEvent>, reads: Seq<ArtifactRead>, frame: int, r: int)
+        requires provider_trace(events), artifact_read_coverage(events, reads), artifact_prefix(events, reads, frame, r),
+        ensures frame == events.len() - 1 ==> r == reads.len(),
+            frame < events.len() - 1 && events[frame].kind == 2 ==>
+                r < reads.len() && artifact_read_at(events, reads[r], frame),
+    {
+        if r < reads.len() {
+            assert(artifact_read_at(events, reads[r], reads[r].frame as int));
+            if reads[r].frame < frame {
+                let j = choose|j: int| 0 <= j < r && reads[j].frame == reads[r].frame;
+                assert(reads[j].frame < reads[r].frame);
+            }
+        }
+        if frame == events.len() - 1 {
+            if r < reads.len() { assert(reads[r].frame < frame); }
+        } else if events[frame].kind == 2 {
+            let k = choose|k: int| 0 <= k < reads.len() && reads[k].frame == frame;
+            if k < r { assert(artifact_read_at(events, reads[k], reads[k].frame as int)); assert(reads[k].frame < frame); }
+            if r < k { assert(reads[r].frame < reads[k].frame); }
+            assert(k == r);
+            assert(artifact_read_at(events, reads[r], frame));
+        }
+    }
+}
+
+sail_verified! {
+    /// Seal only a completed provider whose every actual required artifact has
+    /// exactly one matching successful dep-info outcome. Sorting is untrusted.
+    #[allow(clippy::question_mark, reason = "Explicit early returns preserve the identical executable proof branches.")]
+    pub fn seal_compiler_provider(events: &[ProviderEvent], reads: &[ArtifactRead<'_>]) -> (seal: Option<ProviderSeal>)
+        requires (true)
+        ensures (seal.is_some() == (provider_trace(events@) && artifact_read_coverage(events@, reads@)))
+    {
+        let seal = seal_provider(events);
+        if seal.is_none() { return None; }
+        let mut frame = 2usize;
+        let mut r = 0usize;
+        sail_while! { (frame < events.len() - 1)
+            invariant (provider_trace(events@), artifact_prefix(events@, reads@, frame as int, r as int))
+            decreases (events.len() - 1 - frame)
+            {
+                sail_proof! {
+                    if artifact_read_coverage(events@, reads@) { artifact_next(events@, reads@, frame as int, r as int); }
+                }
+                if events[frame].kind == 2 {
+                    if r >= reads.len() { return None; }
+                    let read = &reads[r];
+                    if read.producer != events[0].producer || read.child != events[1].child
+                        || read.frame != frame || read.raw.is_none() { return None; }
+                    sail_proof! { assert(artifact_read_at(events@, reads[r as int], frame as int)); }
+                    r += 1;
+                }
+                sail_proof! {
+                    let before = if events[frame as int].kind == 2 { r as int - 1 } else { r as int };
+                    artifact_prefix_step(events@, reads@, frame as int, before, r as int);
+                }
+                frame += 1;
+            }
+        }
+        sail_proof! { if artifact_read_coverage(events@, reads@) { artifact_next(events@, reads@, frame as int, r as int); } }
+        if r != reads.len() { return None; }
+        seal
     }
 }

@@ -186,9 +186,51 @@ fn cargo() -> Result<ExitCode> {
         .append(true)
         .open(path)
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let mut child = cmd
-        .spawn()
-        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    cargo_messages(&mut cmd, &mut records, &mut std::io::stdout())
+}
+
+/// Record the actual child lifecycle without changing forwarded Cargo bytes.
+fn cargo_messages(
+    cmd: &mut Command,
+    records: &mut impl Write,
+    forwarded: &mut impl Write,
+) -> Result<ExitCode> {
+    use crate::managed::source_inputs::{write_artifact, write_provider};
+    use sail_acceptance::inputs::ProviderEvent;
+    let producer = std::process::id();
+    // Declare the required child before spawn. Any subsequent early return
+    // leaves an unsealed intent, including spawn and pipe-read failures.
+    write_provider(
+        records,
+        &ProviderEvent {
+            kind: 0,
+            producer,
+            child: 0,
+            frames: 0,
+            exited: false,
+        },
+    )
+    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let mut owned = CompilerOutput {
+        child: cmd
+            .spawn()
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?,
+        stdout: None,
+    };
+    let child = &mut owned.child;
+    let pid = child.id();
+    write_provider(
+        records,
+        &ProviderEvent {
+            kind: 1,
+            producer,
+            child: pid,
+            frames: 0,
+            exited: false,
+        },
+    )
+    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let mut frames = 0usize;
     if let Some(stdout) = child.stdout.take() {
         for line in std::io::BufReader::new(stdout).split(b'\n') {
             let line = line.map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -198,21 +240,35 @@ fn cargo() -> Result<ExitCode> {
                     Some("compiler-artifact" | "build-script-executed")
                 )
             {
-                records
-                    .write_all(&line)
-                    .and_then(|()| records.write_all(b"\n"))
+                write_artifact(records, value, producer, pid)
                     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+                frames = frames
+                    .checked_add(1)
+                    .ok_or_else(|| Error::new("SAIL3111", "artifact count overflow"))?;
             }
-            std::io::stdout()
+            forwarded
                 .write_all(&line)
-                .and_then(|()| std::io::stdout().write_all(b"\n"))
+                .and_then(|()| forwarded.write_all(b"\n"))
                 .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         }
+    } else {
+        return Err(Error::new("SAIL3111", "missing Cargo output pipe"));
     }
-    child
+    let actual = child
         .wait()
-        .map(status)
-        .map_err(|e| Error::new("SAIL3111", e.to_string()))
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    write_provider(
+        records,
+        &ProviderEvent {
+            kind: 3,
+            producer,
+            child: pid,
+            frames,
+            exited: actual.code().is_some(),
+        },
+    )
+    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    Ok(status(actual))
 }
 
 fn argument(args: &[OsString], flag: &str) -> Option<String> {
@@ -1390,6 +1446,46 @@ fn target_identity(
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    #[test]
+    fn cargo_provider_records_actual_child_and_nonzero_normal_exit()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let raw = "{\"reason\":\"build-script-executed\",\"package_id\":\"demo\"}";
+        let mut command = std::process::Command::new("sh");
+        command
+            .args(["-c", "printf '%s\\n' \"$1\"; exit 1", "fixture", raw])
+            .stdout(std::process::Stdio::piped());
+        let mut journal = Vec::new();
+        let mut forwarded = Vec::new();
+        let status = super::cargo_messages(&mut command, &mut journal, &mut forwarded)?;
+        assert_eq!(status, std::process::ExitCode::from(1));
+        assert_eq!(forwarded, format!("{raw}\n").as_bytes());
+        assert!(crate::managed::source_inputs::fixture_complete(&journal));
+        let lines: Vec<serde_json::Value> = String::from_utf8(journal)?
+            .lines()
+            .map(serde_json::from_str)
+            .collect::<std::result::Result<_, _>>()?;
+        let actual = lines[1]["child"].as_u64().ok_or("actual child PID")?;
+        assert_ne!(actual, 0);
+        assert_eq!(lines[2]["sail_source_provider"]["child"], actual);
+        assert_eq!(lines[3]["child"], actual);
+        assert_eq!(lines[3]["frames"], 1);
+        assert_eq!(lines[3]["exited"], true);
+        Ok(())
+    }
+
+    #[test]
+    fn cargo_provider_spawn_failure_leaves_an_unsealed_intent() {
+        let mut command = std::process::Command::new("/sail-no-such-provider-executable");
+        command.stdout(std::process::Stdio::piped());
+        let mut journal = Vec::new();
+        let mut forwarded = Vec::new();
+        assert!(super::cargo_messages(&mut command, &mut journal, &mut forwarded).is_err());
+        assert_ne!(journal, [] as [u8; 0]);
+        assert!(!crate::managed::source_inputs::fixture_complete(&journal));
+        assert_eq!(forwarded, [] as [u8; 0]);
+    }
+
     #[test]
     fn failed_stream_cleanup_reaps_compiler_and_joins_stdout()
     -> std::result::Result<(), Box<dyn std::error::Error>> {

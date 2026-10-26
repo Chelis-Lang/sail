@@ -120,6 +120,9 @@ impl Plan {
                     continue;
                 }
                 let value: Value = serde_json::from_str(line).ok()?;
+                if super::source_inputs::provider_metadata(&value)? {
+                    continue;
+                }
                 self.packages
                     .contains(value["package_id"].as_str()?)
                     .then_some(())?;
@@ -216,6 +219,29 @@ mod tests {
         std::fs::write(&stdout, finished)?;
         std::fs::write(&artifacts, original)?;
         assert!(plan.confirms(&stdout, &artifacts));
+        let units: Vec<Value> = original
+            .lines()
+            .map(serde_json::from_str)
+            .collect::<std::result::Result<_, _>>()?;
+        std::fs::write(
+            &artifacts,
+            super::super::source_inputs::fixture_journal(&units)?,
+        )?;
+        assert!(plan.confirms(&stdout, &artifacts));
+        let outside = json!({"reason":"compiler-artifact","package_id":"windows"});
+        std::fs::write(
+            &artifacts,
+            super::super::source_inputs::fixture_journal(&[outside])?,
+        )?;
+        assert!(!plan.confirms(&stdout, &artifacts));
+        for malformed in [
+            r#"{"unknown":"record"}"#,
+            r#"{"reason":"sail-source-provider","package_id":"root"}"#,
+        ] {
+            std::fs::write(&artifacts, malformed)?;
+            assert!(!plan.confirms(&stdout, &artifacts));
+        }
+        std::fs::write(&artifacts, original)?;
         std::fs::write(
             &stdout,
             format!("{{\n  \"verification-results\": {{}}\n}}\n{finished}"),
