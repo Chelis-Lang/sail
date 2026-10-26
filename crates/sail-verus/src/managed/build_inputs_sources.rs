@@ -186,6 +186,7 @@ impl Inventory {
             paths: paths.into_iter().collect(),
             covered: true,
             by_package: Some(scoped),
+            by_target: None,
         })
     }
 }
@@ -218,6 +219,11 @@ pub(super) fn merge(local: &Path, mut incoming: Inputs) -> Option<Inputs> {
     }
     incoming.paths = paths.into_iter().collect();
     incoming.by_package = Some(scoped);
+    // Unit declarations are this context's own; an imported inventory has
+    // none and never replaces them.
+    if incoming.by_target.is_none() {
+        incoming.by_target = previous.by_target;
+    }
     encode(&incoming)?;
     Some(incoming)
 }
@@ -268,6 +274,7 @@ mod tests {
                     paths: paths.clone(),
                     covered: true,
                     by_package: Some(BTreeMap::from([("fixture".to_owned(), paths)])),
+                    by_target: None,
                 },
             )?;
             let record = BuildInput {

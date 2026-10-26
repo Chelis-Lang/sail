@@ -1681,13 +1681,30 @@ fn dirty_receipt_packages(
     data: &Value,
     observation: Option<RevisionObservation<'_>>,
 ) -> Vec<String> {
-    let receipts: Vec<&ReceiptRevision> = revisions.values().collect();
-    let ids: Vec<String> = receipts.iter().map(|r| r.package_id.clone()).collect();
+    // A receipt of a target the package no longer has (a removed `src/bin`
+    // file) describes nothing Cargo can build or reuse. Cleaning its package
+    // for it on every later run never settled (#401). A header without a
+    // readable target keeps the package revision, so it reads as changed.
+    let receipts: Vec<(&ReceiptRevision, String)> = revisions
+        .values()
+        .filter_map(|r| {
+            let Some((name, kinds)) = r
+                .name
+                .as_str()
+                .zip(serde_json::from_value::<Vec<String>>(r.kind.clone()).ok())
+            else {
+                return Some((r, r.package_id.clone()));
+            };
+            (!removed_target(data, &r.package_id, name, &kinds))
+                .then(|| (r, revision_key(&r.package_id, name, &kinds)))
+        })
+        .collect();
+    let ids: Vec<String> = receipts.iter().map(|(_, key)| key.clone()).collect();
     let current = target_revisions(data, &ids, observation);
     receipts
         .into_iter()
-        .filter(|r| current.get(&r.package_id) != Some(&r.input_revision))
-        .map(|r| r.package_id.clone())
+        .filter(|(r, key)| current.get(key) != Some(&r.input_revision))
+        .map(|(r, _)| r.package_id.clone())
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
@@ -1810,10 +1827,9 @@ fn target_records_in(
     let ids: Vec<String> = artifacts
         .iter()
         .filter(|artifact| verified(artifact).is_some())
-        .filter_map(|artifact| artifact["package_id"].as_str())
+        .map(artifact_revision_key)
         .collect::<BTreeSet<_>>()
         .into_iter()
-        .map(str::to_owned)
         .collect();
     let revisions: HashMap<String, String> = std::thread::scope(|scope| {
         let current = scope.spawn(|| target_revisions(data, &ids, observation));
@@ -1844,10 +1860,11 @@ fn target_records_in(
         });
         let partial_args = partial_args.filter(|_| requested);
         let force = force && requested;
+        let key = revision_key(package_id, name, &kind);
         let input_revision = revisions
-            .get(package_id)
+            .get(&key)
             .cloned()
-            .unwrap_or_else(|| target_revision(data, package_id));
+            .unwrap_or_else(|| target_revision(data, &key));
         let path = receipt_path(paths, package_id, name, &kind);
         let mut matching = calls.iter().enumerate().filter(|(index, _)| {
             let (bound_package, target) = bindings[*index];
@@ -2230,11 +2247,145 @@ fn target_revision(data: &Value, package_id: &str) -> String {
     })
 }
 
+/// The revision key of one Cargo target, as its proof receipt names it.
+fn revision_key(package_id: &str, name: &str, kinds: &[String]) -> String {
+    super::source_inputs::target_key(package_id, name, kinds)
+}
+
+fn artifact_revision_key(artifact: &Value) -> String {
+    let kinds: Vec<String> = artifact["target"]["kind"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(str::to_owned)
+        .collect();
+    revision_key(
+        artifact["package_id"].as_str().unwrap_or_default(),
+        artifact["target"]["name"].as_str().unwrap_or_default(),
+        &kinds,
+    )
+}
+
+/// Whether Cargo's metadata lists the package and its targets, none of which
+/// is exactly this one. Anything less certain is not a removal.
+fn removed_target(data: &Value, package_id: &str, name: &str, kinds: &[String]) -> bool {
+    let mut packages = data["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|package| package["id"] == package_id);
+    let (Some(package), None) = (packages.next(), packages.next()) else {
+        return false;
+    };
+    package["targets"].as_array().is_some_and(|targets| {
+        !targets.iter().any(|target| {
+            target["name"] == name
+                && serde_json::from_value::<Vec<String>>(target["kind"].clone())
+                    .is_ok_and(|actual| actual == kinds)
+        })
+    })
+}
+
+const LIBRARY_KINDS: [&str; 6] = ["lib", "rlib", "dylib", "cdylib", "staticlib", "proc-macro"];
+
+/// The narrowed file selection of one target's receipt revision (see
+/// `input::RevisionScope`), or `None` to count every file of every closure
+/// package. A closure package is scoped when it is a path package without a
+/// build script whose relevant units all have recorded declarations: for the
+/// target's own package, the target itself and, for a target that is not a
+/// library, the package's library units, which it links; for any other
+/// package, every recorded unit. The declarations kept are those units' and
+/// every other closure package's, so a file another package's unit reads
+/// inside a scoped directory still counts. Another target of the same
+/// package, such as a `src/bin` file, does not bind this target's receipt:
+/// Cargo builds and keeps each target fresh on its own (#401).
+fn revision_scope(
+    data: &Value,
+    closure: &BTreeSet<String>,
+    package_id: &str,
+    name: &str,
+    kinds: &[String],
+) -> Option<Value> {
+    let by_target = data["sail_source_inputs_by_target"].as_object()?;
+    let by_package = data["sail_source_inputs_by_package"].as_object()?;
+    let declared = |paths: &Value| -> Option<Vec<String>> {
+        paths
+            .as_array()?
+            .iter()
+            .map(|path| path.as_str().map(str::to_owned))
+            .collect()
+    };
+    let mut roots = Vec::new();
+    let mut scoped = Vec::new();
+    let mut keep = BTreeSet::new();
+    for package in data["packages"].as_array()? {
+        let Some(id) = package["id"].as_str().filter(|id| closure.contains(*id)) else {
+            continue;
+        };
+        let root = Path::new(package["manifest_path"].as_str()?).parent()?;
+        let root = root.canonicalize().unwrap_or_else(|_| root.to_owned());
+        roots.push(root.to_string_lossy().into_owned());
+        let targets = package["targets"].as_array()?;
+        let script = targets.iter().any(|target| {
+            target["kind"]
+                .as_array()
+                .is_some_and(|kinds| kinds.iter().any(|kind| kind == "custom-build"))
+        });
+        let units = if id == package_id {
+            let mut units = vec![by_target.get(&revision_key(id, name, kinds))];
+            if !kinds
+                .iter()
+                .any(|kind| LIBRARY_KINDS.contains(&kind.as_str()))
+            {
+                for target in targets {
+                    let target_kinds: Vec<String> =
+                        serde_json::from_value(target["kind"].clone()).ok()?;
+                    if target_kinds
+                        .iter()
+                        .any(|kind| LIBRARY_KINDS.contains(&kind.as_str()))
+                    {
+                        units.push(by_target.get(&revision_key(
+                            id,
+                            target["name"].as_str()?,
+                            &target_kinds,
+                        )));
+                    }
+                }
+            }
+            units
+        } else {
+            vec![by_package.get(id)]
+        };
+        let units: Option<Vec<Vec<String>>> = units
+            .into_iter()
+            .map(|unit| unit.and_then(declared))
+            .collect();
+        match units {
+            Some(units) if !script && package["source"].is_null() => {
+                scoped.push(root.to_string_lossy().into_owned());
+                keep.extend(units.into_iter().flatten());
+            }
+            // An unscoped package counts in full; its declarations may also
+            // lie inside another, scoped package's directory.
+            _ => keep.extend(by_package.get(id).and_then(declared).into_iter().flatten()),
+        }
+    }
+    (!scoped.is_empty()).then(|| serde_json::json!({"roots":roots, "scoped":scoped, "keep":keep}))
+}
+
+/// A revision `key` is either a target's [`revision_key`] or, for callers
+/// without one, a package id; the latter counts every closure file.
 fn target_revision_with(
     data: &Value,
-    package_id: &str,
+    key: &str,
     snapshot: impl FnOnce(&Value, &[PathBuf]) -> Option<(String, bool)>,
 ) -> String {
+    let (package_id, unit) = match serde_json::from_str::<(String, String, Vec<String>)>(key) {
+        Ok((package_id, name, kinds)) => (package_id, Some((name, kinds))),
+        Err(_) => (key.to_owned(), None),
+    };
+    let package_id = package_id.as_str();
     let closure = dependency_closure(data, [package_id]);
     // Only the fields the snapshot reads: copying the whole metadata (several
     // MB on vest) for each target cost more than the snapshot itself.
@@ -2273,6 +2424,12 @@ fn target_revision_with(
     // Cargo keeps it fresh (#177). The toolchain files and Cargo
     // configuration stay bound by their bytes.
     let foreign = super::store::foreign_closure_binding(data, &closure);
+    if foreign.is_none()
+        && let Some((name, kinds)) = &unit
+        && let Some(scope) = revision_scope(data, &closure, package_id, name, kinds)
+    {
+        package_data["sail_revision_scope"] = scope;
+    }
     let mut extras = Vec::new();
     if foreign.is_some() {
         let workspace = Path::new(data["workspace_root"].as_str().unwrap_or_default());
@@ -2949,6 +3106,8 @@ fn run_recorded(
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
     data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
+    data["sail_source_inputs_by_target"] =
+        serde_json::to_value(super::source_inputs::targets(&source_state)).unwrap_or_default();
     let (stale_scripts, mut extras, script_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
@@ -3320,6 +3479,8 @@ fn run_recorded(
         after_data["sail_source_inputs"] = sources;
         after_data["sail_source_inputs_by_package"] =
             serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
+        after_data["sail_source_inputs_by_target"] =
+            serde_json::to_value(super::source_inputs::targets(&source_state)).unwrap_or_default();
         super::files::json(&paths.input_state, &after_data)?;
         // Kept only if nothing it observed changed while Cargo read the
         // metadata (which may rewrite the lockfile).
@@ -3693,7 +3854,10 @@ fn run_recorded(
             }) else {
                 continue;
             };
-            let input_revision = target_revision(&after_data, &target.package_id);
+            let input_revision = target_revision(
+                &after_data,
+                &revision_key(&target.package_id, &target.target, &target.kind),
+            );
             let path = receipt_path(&paths, &target.package_id, &target.target, &target.kind);
             if input_revision.is_empty() {
                 continue;
@@ -3943,13 +4107,20 @@ fn completed_receipts(
             Ok((path, receipt))
         })
         .collect::<Result<_>>()?;
-    let ids: Vec<String> = pending.iter().map(|(_, r)| r.package_id.clone()).collect();
+    let ids: Vec<String> = pending
+        .iter()
+        .map(|(_, r)| revision_key(&r.package_id, &r.name, &r.kind))
+        .collect();
     let revisions = target_revisions(data, &ids, observation);
     pending
         .into_iter()
         .map(|(path, mut receipt)| {
             let revision = revisions
-                .get(&receipt.package_id)
+                .get(&revision_key(
+                    &receipt.package_id,
+                    &receipt.name,
+                    &receipt.kind,
+                ))
                 .filter(|revision| !revision.is_empty())
                 .ok_or_else(|| {
                     Error::new("SAIL3107", "completed target input revision is unavailable")
@@ -6072,6 +6243,130 @@ mod tests {
             .ok_or_else(|| std::io::Error::other("no changed revisions"))?;
         assert_ne!(changed.get("a"), original.get("a"));
         assert_eq!(changed.get("b"), original.get("b"));
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "One fixture walks every file class a target revision keeps or leaves out."
+    )]
+    fn target_revisions_count_only_files_that_can_change_the_target() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-target-scope-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("app/src/bin"))?;
+        std::fs::create_dir_all(root.join("target"))?;
+        let root = root.canonicalize()?;
+        let app = root.join("app");
+        let write = |path: &str, text: &str| std::fs::write(app.join(path), text);
+        write("Cargo.toml", "[package]\nname = 'app'\n")?;
+        write("src/lib.rs", "mod m;")?;
+        write("src/m.rs", "m")?;
+        write("src/bin/probe.rs", "fn main() {}")?;
+        let paths = |names: &[&str]| -> Value {
+            serde_json::json!(names.iter().map(|n| app.join(n)).collect::<Vec<_>>())
+        };
+        let lib = revision_key("app", "app", &["lib".to_owned()]);
+        let bin = revision_key("app", "probe", &["bin".to_owned()]);
+        let mut data = serde_json::json!({
+            "workspace_root":app, "target_directory":root.join("target"),
+            "packages":[{"id":"app","source":null,"manifest_path":app.join("Cargo.toml"),
+                "targets":[{"name":"app","kind":["lib"]},{"name":"probe","kind":["bin"]}]}],
+            "resolve":{"nodes":[{"id":"app","dependencies":[]}]},
+            "sail_source_inputs":paths(&["src/lib.rs","src/m.rs","src/bin/probe.rs"]),
+            "sail_source_inputs_by_package":
+                {"app":paths(&["src/lib.rs","src/m.rs","src/bin/probe.rs"])},
+            "sail_source_inputs_by_target":{
+                lib.clone():paths(&["src/lib.rs","src/m.rs"]),
+                bin.clone():paths(&["src/bin/probe.rs"])}
+        });
+        let lib_before = target_revision(&data, &lib);
+        let bin_before = target_revision(&data, &bin);
+        let package_before = target_revision(&data, "app");
+        assert!(!lib_before.is_empty() && !bin_before.is_empty());
+        // A file no unit declares changes neither target (#398); the whole
+        // package revision, which counts every file, does change.
+        write("src/unused.rs", "// unused")?;
+        write("notes.txt", "notes")?;
+        assert_eq!(target_revision(&data, &lib), lib_before);
+        assert_eq!(target_revision(&data, &bin), bin_before);
+        assert_ne!(target_revision(&data, "app"), package_before);
+        let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let observation = Some(RevisionObservation {
+            snapshot: &observed,
+            stamp: stamp.as_ref(),
+        });
+        let ids = vec![lib.clone(), bin.clone()];
+        let projected = target_revisions(&data, &ids, observation);
+        assert_eq!(projected, target_revisions(&data, &ids, None));
+        assert_eq!(projected.get(&lib), Some(&lib_before));
+        // Another target's source binds only that target and the targets
+        // that link it (#401); the library binds the binary.
+        write("src/bin/probe.rs", "fn main() { }")?;
+        assert_eq!(target_revision(&data, &lib), lib_before);
+        assert_ne!(target_revision(&data, &bin), bin_before);
+        write("src/m.rs", "m2")?;
+        assert_ne!(target_revision(&data, &lib), lib_before);
+        assert_ne!(target_revision(&data, &bin), bin_before);
+        write("src/m.rs", "m")?;
+        assert_eq!(target_revision(&data, &lib), lib_before);
+        // The other spelling of a declared module, the manifest and Cargo
+        // configuration inside the package still count.
+        for (created, path) in [
+            ("src/m/mod.rs", app.join("src/m")),
+            (".cargo/config.toml", app.join(".cargo")),
+        ] {
+            std::fs::create_dir_all(&path)?;
+            write(created, "x")?;
+            assert_ne!(target_revision(&data, &lib), lib_before, "{created}");
+            std::fs::remove_dir_all(&path)?;
+            assert_eq!(target_revision(&data, &lib), lib_before, "{created}");
+        }
+        write("Cargo.toml", "[package]\nname = 'app' \n")?;
+        assert_ne!(target_revision(&data, &lib), lib_before);
+        write("Cargo.toml", "[package]\nname = 'app'\n")?;
+        // Without a recorded declaration of the target, or for a package with
+        // a build script, every file counts, as for the package revision.
+        let mut unrecorded = data.clone();
+        unrecorded["sail_source_inputs_by_target"] = serde_json::json!({});
+        assert_eq!(
+            target_revision(&unrecorded, &lib),
+            target_revision(&unrecorded, "app")
+        );
+        let mut scripted = data.clone();
+        scripted["packages"][0]["targets"]
+            .as_array_mut()
+            .ok_or_else(|| std::io::Error::other("targets"))?
+            .push(serde_json::json!({"name":"build-script-build","kind":["custom-build"]}));
+        assert_eq!(
+            target_revision(&scripted, &lib),
+            target_revision(&scripted, "app")
+        );
+        // A receipt of a removed target never dirties its package; a stale
+        // receipt of a current target does.
+        let receipt = |name: &str, kind: &str, revision: &str| -> ReceiptRevision {
+            serde_json::from_value(serde_json::json!({"package_id":"app",
+                "input_revision":revision, "name":name, "kind":[kind]}))
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"))
+        };
+        let current = target_revision(&data, &lib);
+        let receipts = BTreeMap::from([
+            (root.join("lib.json"), receipt("app", "lib", &current)),
+            (root.join("bin.json"), receipt("probe", "bin", "stale")),
+        ]);
+        assert_eq!(dirty_receipt_packages(&receipts, &data, None), ["app"]);
+        // The inventory as the next run loads it, without the vanished file.
+        std::fs::remove_dir_all(app.join("src/bin"))?;
+        data["packages"][0]["targets"] = serde_json::json!([{"name":"app","kind":["lib"]}]);
+        data["sail_source_inputs"] = paths(&["src/lib.rs", "src/m.rs"]);
+        data["sail_source_inputs_by_package"] =
+            serde_json::json!({"app":paths(&["src/lib.rs","src/m.rs"])});
+        data["sail_source_inputs_by_target"][&bin] = serde_json::json!([]);
+        assert_eq!(target_revision(&data, &lib), current);
+        assert_eq!(
+            dirty_receipt_packages(&receipts, &data, None),
+            Vec::<String>::new()
+        );
         std::fs::remove_dir_all(root)
     }
 

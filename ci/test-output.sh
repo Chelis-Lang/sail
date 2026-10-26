@@ -371,9 +371,6 @@ pair() { # label: plain then Sail, without touching the source
   CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-sail" "$sail" verify
   same "$1-plain" "$1-sail"
 }
-# Sail alone, for a change whose full-path output differs from plain
-# Cargo-Verus for reasons unrelated to replay (#398).
-sail_only() { CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-sail" "$sail" verify; }
 # Record, then expect a replay that matches plain output.
 rerecord() { # label
   settle
@@ -406,10 +403,14 @@ RS
 plain_run pass-plain stock_cargo verus verify
 sail_run pass-sail "$sail" verify
 same pass-plain pass-sail
-# The first call after a newly discovered input outside the package cleans
-# the build-script packages and rebuilds (#399, a full-path behaviour, not
-# replay's): let it happen before the compared calls.
-CARGO_TARGET_DIR="$work/target-sail" quiet_run discovered-sail "$sail" verify
+# The first call after a newly discovered input outside the package is
+# Cargo's no-op on both sides; it no longer rebuilds the build-script
+# packages (#399).
+pair discovered
+if grep -qE '^ *(Compiling|Checking) ' "$work/discovered-sail.err"; then
+  echo "e2e: the call after a discovered input rebuilt" >&2
+  exit 1
+fi
 rerecord unchanged
 # The same call again replays again.
 pair unchanged-again
@@ -427,13 +428,20 @@ touch src/lib.rs
 pair touched
 expect touched '^miss: changed: .*src/lib.rs$'
 rerecord after-touch
-# A new and a removed source file, and a new binary target.
+# A new and a removed unreferenced source file: replay misses, and the full
+# path, like plain Cargo-Verus, verifies nothing (#398).
 printf '// unused\n' > src/unused.rs
-sail_only added-file
+pair added-file
 expect added-file '^miss: changed: '
 rm src/unused.rs
-sail_only removed-file
+pair removed-file
 expect removed-file '^miss: '
+for label in added-file removed-file; do
+  if grep -qE '^ *(Compiling|Checking) ' "$work/$label-sail.err"; then
+    echo "e2e: $label: an unreferenced file re-verified the crate" >&2
+    exit 1
+  fi
+done
 rerecord after-files
 # A declared variable.
 NOOP_PROBE_VALUE=set pair env-dep
@@ -481,9 +489,10 @@ PY
 # An exact partial scope replays only itself and is never promoted: the
 # whole-target call after it has no record of its own and stays complete.
 rm -f "$SAIL_CACHE_DIR"/noop/*.json
-# A new scope builds its own target; its second call still rebuilds the
-# build-script packages (#399), so it records once its calls start no verifier.
-for attempt in 1 2 3 4; do
+# A new scope builds its own target. Its first call discovers the input
+# outside the package, so it is Historical and records no receipt; the second
+# verifies the crate again to establish one; the third records.
+for attempt in 1 2 3; do
   settle
   CARGO_TARGET_DIR="$work/target-sail" quiet_run partial-record "$sail" verify --output json -- --verify-module m
   expect partial-record '^miss: no record$'
@@ -515,22 +524,31 @@ if grep -q '^hit$' <(tail -n 4 "$SAIL_MANAGED_NOOP_TRACE"); then
   echo "e2e: a failing project was replayed" >&2
   exit 1
 fi
-# A new binary target, last: after it is removed, every full-path call
-# rebuilds the build-script packages (#401).
+# A new binary target, then its removal. Each verifies only what plain
+# Cargo-Verus verifies: the binary, then nothing. Later unchanged calls are
+# Cargo's no-op again and replay (#401).
 edit_in_place 's/ensures r > x,/ensures r >= x,/' src/lib.rs
 settle
-sail_only bin-base
+pair bin-base
 settle
-sail_only bin-record
+pair bin-record
 recorded bin-record
 mkdir -p src/bin
 printf 'use vstd::prelude::*;\n\nverus! {\nfn main() {}\n} // verus!\n' > src/bin/probe.rs
-sail_only added-bin
+pair added-bin
 expect added-bin '^miss: changed: '
 grep -q 'demo v0.1.0' "$work/added-bin-sail.err"
 rm -r src/bin
-sail_only removed-bin
+pair removed-bin
 expect removed-bin '^miss: '
+pair after-removed-bin
+for label in removed-bin after-removed-bin; do
+  if grep -qE '^ *(Compiling|Checking) ' "$work/$label-sail.err"; then
+    echo "e2e: $label: Sail rebuilt after the binary was removed" >&2
+    exit 1
+  fi
+done
+rerecord after-bin
 unset SAIL_MANAGED_NOOP_TRACE
 echo "e2e: unchanged calls replay plain output; edits, restored mtimes, touches, files, binaries, declared variables, dep-info inputs, the lockfile, fingerprints, JSON and partial scope each miss"
 fi

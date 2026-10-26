@@ -675,7 +675,7 @@ fn stamped_snapshot(
             .filter(|p| !excluded_canonical.contains(p)),
     );
     let observation_paths = path_set(observation_paths);
-    let files = path_set(files);
+    let files = RevisionScope::retain(data, path_set(files));
     let stamp_before = stamp_paths(&observation_paths);
     let original = OriginalCapture::begin(stamp_before.as_deref().map(str::as_bytes));
     let (revision, readable, digests) = contents_revision(&files, &bindings.paths);
@@ -738,6 +738,87 @@ impl Projection {
                 ),
             }
         })
+    }
+}
+
+/// The files of one target's revision, when the caller narrows it
+/// (`sail_revision_scope`, which only proof receipt revisions set).
+///
+/// A file whose innermost resolved package directory is scoped counts only
+/// when it can affect what Cargo compiles or what the compiler reads: a file
+/// that a selected unit's dep-info declares (`keep`), Cargo's manifests,
+/// lockfile and toolchain files, anything beneath a `.cargo` directory, and
+/// the other spelling of a declared module file (`a/b.rs` and `a/b/mod.rs`,
+/// whose coexistence the compiler rejects). Any other file, such as one that
+/// no `mod` names, cannot change the target's compilation, and Cargo keeps
+/// the target fresh (#398). The runner scopes only path packages without a
+/// build script whose units' declarations are all recorded. Every other
+/// package directory, and every file outside package directories, counts in
+/// full. Snapshots without the key are unchanged.
+struct RevisionScope {
+    roots: Vec<PathBuf>,
+    scoped: HashSet<PathBuf>,
+    keep: HashSet<PathBuf>,
+}
+
+impl RevisionScope {
+    fn read(data: &Value) -> Option<Self> {
+        let scope = data.get("sail_revision_scope")?;
+        let paths = |key: &str| -> Vec<PathBuf> {
+            scope[key]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(PathBuf::from)
+                .collect()
+        };
+        let mut roots = paths("roots");
+        // Longest first: the first containing root is the innermost one.
+        roots.sort_by_key(|root| std::cmp::Reverse(root.components().count()));
+        Some(Self {
+            roots,
+            scoped: paths("scoped").into_iter().collect(),
+            keep: paths("keep").into_iter().collect(),
+        })
+    }
+
+    fn retain(data: &Value, files: BTreeSet<PathBuf>) -> BTreeSet<PathBuf> {
+        match Self::read(data) {
+            Some(scope) => files.into_iter().filter(|file| scope.keeps(file)).collect(),
+            None => files,
+        }
+    }
+
+    fn keeps(&self, file: &Path) -> bool {
+        let Some(root) = self.roots.iter().find(|root| file.starts_with(root)) else {
+            return true;
+        };
+        if !self.scoped.contains(root) || self.keep.contains(file) {
+            return true;
+        }
+        let name = file.file_name().and_then(|name| name.to_str());
+        let configuration = file.strip_prefix(root).is_ok_and(|inside| {
+            inside
+                .components()
+                .any(|component| component.as_os_str() == ".cargo")
+        });
+        if configuration
+            || matches!(
+                name,
+                Some("Cargo.toml" | "Cargo.lock" | "rust-toolchain" | "rust-toolchain.toml")
+            )
+        {
+            return true;
+        }
+        let alternate = if name == Some("mod.rs") {
+            file.parent().map(|module| module.with_extension("rs"))
+        } else if file.extension().is_some_and(|extension| extension == "rs") {
+            Some(file.with_extension("").join("mod.rs"))
+        } else {
+            None
+        };
+        alternate.is_some_and(|alternate| self.keep.contains(&alternate))
     }
 }
 
@@ -996,6 +1077,7 @@ fn projected_selection(
     }
     roots.sort();
     roots.dedup();
+    let files = RevisionScope::retain(data, files);
     Some(Projection {
         workspace,
         roots,
