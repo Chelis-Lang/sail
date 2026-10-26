@@ -454,6 +454,25 @@ mod request_capture_tests {
         assert_eq!(refused.currentness, Currentness::Current);
         assert_eq!(refused.targets[0].report, project.targets[0].report);
         assert!(!refused.targets[0].complete);
+        assert!(
+            refused
+                .notes
+                .iter()
+                .any(|note| note.starts_with("SAIL3115:"))
+        );
+        for flag in ["--no-verify", "--verify-function=input::Counter::get"] {
+            let mut partial_request = capture.request.clone();
+            partial_request.args = vec!["--".into(), flag.into()];
+            let mut observation = project.clone();
+            observation.targets[0].report.command = partial_request.args.clone();
+            let notes = observation.notes.clone();
+            store::withhold_unbound_authority(&mut observation, Some(&partial_request));
+            assert!(!observation.targets[0].complete);
+            assert_eq!(
+                observation.notes, notes,
+                "known partial/compile-only scope is not a request observation failure"
+            );
+        }
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

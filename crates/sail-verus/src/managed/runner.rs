@@ -3530,7 +3530,8 @@ pub(crate) fn run_engine_held(
             verified_as: VerifiedAs::Managed,
         }),
     };
-    if !sail_api::acceptance::request_corresponds(&original_request, &result)
+    let request_matches = sail_api::acceptance::request_corresponds(&original_request, &result);
+    if !request_matches
         || !sail_api::acceptance::verification_enabled_command(&original_request.args)
         || sail_api::acceptance::focused_command(&original_request.args)
         || (result.currentness == Currentness::Current
@@ -3540,7 +3541,9 @@ pub(crate) fn run_engine_held(
         for target in &mut result.targets {
             target.complete = false;
         }
-        result.notes.push("SAIL3115: retained original request does not match the observed target inventory; whole-request proof authority is withheld".to_owned());
+        if !request_matches {
+            result.notes.push("SAIL3115: retained original request does not match the observed target inventory; whole-request proof authority is withheld".to_owned());
+        }
     }
     let publication = diagnostics.phase(Phase::Publication);
     if result.currentness == Currentness::Current
