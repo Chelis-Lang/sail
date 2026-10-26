@@ -1,91 +1,48 @@
 # Acceptance boundary refinement qualification
 
-Status: full service qualification remains open. The frozen native Linux
-`73f928d1` run passes the workspace gate (605.71 s), all 31 model cases,
-all 59 query cases and all 80 input cases. Its authority cases are running;
-solver, full e2e and PR conformance remain pending. These are gate durations,
-not performance measurements. Later source changes do not inherit this result.
-
-The newer local source integrates exact-partial request transfer, live retained
-frame admission, paired baseline publication, native raw-path correspondence,
-and owned compiler configuration/start/completion. Closed capture binds the
-native adapter sources explicitly without claiming their bodies are proved.
-Its proposed matrix retains every inherited control and adds the new controls:
-272 cases (three whole positive roots and 269 ordinary failing controls).
-Three whole source assemblies and every mutation anchor pass textual closure;
-this is not verification. The query inventory uses the actual 343-obligation/621-function discovery
-from the identical whole query assembly at `b8775f8f`; that development run
-checks final source/runtime identity but does not qualify this later combined
-head. Input and authority counters still belong to earlier positive roots and
-must be discovered from whole stock runs before the newer matrix can qualify. Four inherited short controls now
-anchor their unchanged original function envelopes because new functions share
-the former short needles; their original guard-removal changes and contracts
-remain intact. All new component controls, native integration, conformance and
-lexer differential/cost qualification remain pending. The lexer allocation
-defect is tracked in [#432](https://github.com/Chelis-Lang/sail/issues/432).
-
-Earlier canonical query checkpoint `cc8c24a1` passes the complete canonical query component on
-macOS: the whole positive root (288 obligations, 503 function entries) and all
-39 ordinary failing controls. The source-bound report validates runtime,
-function inventory and post-run source state, and explicitly does not claim a
-complete suite. On native x86-64 Linux, the same checkpoint passes the full
-local e2e union, including extra, and PR conformance. The previous build-script
-reuse failure is corrected by target-attributed declaration inventories; the
-original assertions remain unchanged.
-
-The e2e and PR-conformance controller steps take 1,175.78 s and 122.67 s,
-respectively, including their image/build work. These are gate durations, not
-performance benchmarks. Earlier `a615dbba` passes all 92 production cases,
-31 model cases, the macOS host gate, native workspace and solver faults; that
-older full e2e failure remains indexed below.
-
-Later phase/history integration has passing whole positive-root development
-probes (query 294/0, inputs 221/0, authority 367/0), strict workspace clippy and
-29 focused source/phase/archive tests. Its complete committed proof/control
-matrix and native/conformance/cost gates remain pending. The added engine model
-replaces the generated ambiguous `Origin::arrow_0` selector with named variant
-selectors when introducing `RestartAfterDecline`; every explicit prior proof
-and function remains. The capture still requires exact full actual function
-inventories and obligation counts.
-
-[PR #378](https://github.com/Chelis-Lang/sail/pull/378) remains a draft, with
-published WIP head `4bd22455` under the owner's pre-push waiver. Later integration
-is local. No complete service theorem, compiler-input closure or physical
-observation guarantee is claimed; all six rows of the
+Status: full service qualification remains open. [PR #378](https://github.com/Chelis-Lang/sail/pull/378)
+is open and draft at published `4bd22455`; later integration is local under the
+owner's WIP publication waiver. No complete compiler-input closure, physical
+observation guarantee or service theorem is claimed. All six rows of the
 [obligation ledger](../design/acceptance-boundary-refinements.md) remain open.
 
-The published `4bd22455` checkpoint also passes all 31 canonical model cases
-and all 155 production cases coherently on macOS, including every required
-ordinary failing control and the final source/runtime checks. Its native Linux
-workspace, model and all 155 production refinement cases pass. The solver step
-runs 54 tests: 53 pass and the compiler-phase witness fails because its required
-`SAIL_ACTUAL_PHASE_BUILD` fixture is absent (#425). The controller stops; e2e and
-PR conformance are unrun at this checkpoint. The newer 322-obligation delivery/write query slice has
-only its development positive probe and focused native checks so far. Local
-heavy validation is deferred while the owner's machine is saturated; unfinished
-checks remain unfinished.
+| Frozen source | Actual result | Limits |
+|---|---|---|
+| `4bd22455` | All 31 model and 155 production cases pass coherently on macOS and native Linux; native workspace passes | Solver passes 53/54 and stops at the actual compiler-phase witness's missing frozen fixture (#425); later e2e/PR conformance unrun |
+| `73f928d1` | Native workspace (605.71 s), all 31 model cases, all 59 query cases and all 80 input cases pass | Authority controls are running; solver, full e2e and PR conformance pending. Later code does not inherit these results |
+| `b8775f8f` | Native whole positive roots: query 343/0 (621 function entries), inputs 264/0 (438), authority 430/0 (736); every prior function retained, final source/runtime identity checked. Workspace passes (475.68 s) | Development positive evidence only: 16 new stdout controls and its complete 229-case canonical matrix remain unqualified |
+| `cc8c24a1` | Complete macOS canonical query component: 288 obligations, 503 function entries and all 39 ordinary controls. Native full e2e union including extra and PR conformance pass | Earlier checkpoint, not qualification of later code; e2e/PR gate durations 1,175.78 s/122.67 s include image/build work |
 
-The later local integration also includes the component's owned Cargo command
-environment capture, original receipt-history replay checks, exact-current
-request API and native metadata/readback preflight. The original named reuse
-policy remains selected; the incompatible full-parent reuse-fingerprint
-experiment is excluded. These additions have source review and preserved
-component receipts, but no combined build, canonical matrix, native gate or
-cost qualification. The replay matrix interrupted for machine load remains
-interrupted, including its required whole-binder negative control.
+Gate durations are not performance measurements. The older `a615dbba`
+checkpoint's full 92-case production, 31-case model, macOS host, native workspace
+and solver results remain historical evidence; its e2e failure stays indexed.
 
-Canonical capture now includes the replay/readback, exact-partial report and
-owned-command environment operations, with private construction checks and
-exact forwarding-body inventories. All three source assemblies and all 210
-mutation anchors are textually checked; this is not verifier evidence. The
-matrix requires 213 cases, including the three whole positive roots. Native
-`619d3c0f` whole development runs pass query 323/0 (585 functions), inputs 264/0
-(438) and authority 430/0 (736), retaining every prior function. The manifest
-records those discovered inventories; all ordinary controls remain pending.
-No guard, earlier control,
-resource limit or verification scope is removed. The declaration-fact loop
-control now targets its complete original function because new environment
-loops share the former short anchor.
+The newer local source composes exact-partial request transfer, live retained
+frame admission, paired baseline publication, native raw-path correspondence,
+owned compiler configuration/start/completion, exact solver stdout coverage and
+declared replay admission/presentation. Its declared replay token consumes the
+original whole/partial binders and current path/readback witnesses; it does not
+construct full physical-input or solver-origin authority. Closed capture binds
+native adapter sources explicitly without claiming those bodies are proved.
+
+The proposed complete matrix retains every inherited control and requires
+279 cases: three whole positive roots and 276 ordinary failing controls.
+Three whole source assemblies and every mutation anchor pass textual closure;
+this is not compilation or verification. The query inventory uses the actual
+343-obligation/621-function discovery from byte-identical query dependencies at
+`b8775f8f`. Input and authority function/counter discovery must run at the newer
+combined source before it can qualify. Four inherited short mutation anchors
+now use their unchanged original function envelopes because new functions share
+the former short needles; guard changes and contracts remain intact. Both full
+whole/partial binder always-refuse controls remain required.
+
+Native `714bf6e5` lexer differential, expanded whole positive discovery and
+workspace qualification are running on their frozen source. That run excludes
+the later declared replay subcomposition. The [lexer allocation defect](https://github.com/Chelis-Lang/sail/issues/432)
+has a source candidate and exact frozen-blob comparison plan; no speedup is
+measured or selected. All newer canonical controls, native integration,
+conformance and added-cost qualification remain pending. Local builds and
+verifier jobs remain stopped while the owner's machine is busy.
 
 ## Source and actual scope
 
@@ -113,6 +70,20 @@ the input branch but omitted from this integration. The correction imports
 those original fixtures unchanged. It does not rerun them or claim a Sail
 false-Current witness. Later workspace, solver, e2e and conformance checks remain
 pending for this checkpoint.
+
+The `b8775f8f` whole-positive and successful workspace attempt is preserved at
+`example-evidence-bucket/experiments/2026-10-26/acceptance-output-b8775f8f-native-development.tgz`.
+SHA-256: `84d4d42efcc744b3dc0ec3b7a13af34d315f20149ca60a1bbe0527b747050411`.
+The 6,786,164-byte archive was independently downloaded and hashed. The explicit
+full-buffer/subrange equality closes its nonempty stdout witness without
+changing the production body, contract, whole-root scope or resource limits.
+This archive does not contain canonical mutation or full-service qualification.
+
+The stopped `5bc2235e` native gate is preserved at
+`example-evidence-bucket/experiments/2026-10-26/acceptance-next-5bc2235e-native-gate.tgz`.
+SHA-256: `05e394fd58aedd895ee54554640636ce2fb7258bf316d78ea3d35fe5b2ea6115`.
+Independent download/hash verification passes; the strict-clippy failure remains
+indexed below, with later stages unrun.
 
 | Slice | Source checkpoints | Established component boundary |
 |---|---|---|
