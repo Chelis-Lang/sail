@@ -372,6 +372,26 @@ authority. This does not prove environment lookup, Cargo package-key derivation
 or the trusted pinned verifier's decoder implementation. Those native and
 runtime relations remain obligations of the actual launch adapter.
 
+The live driver and its independent stock fallback now use the source-shared
+attempt reducer. It reserves a monotone slot before spawning, retains the raw
+managed-run and compiler-unit fields, and attaches the actual returned PID.
+Stdout EOF, stderr EOF and wait status are separate observations; missing or
+duplicate events cannot seal an `ObservedAttempt`. The seal preserves the exact
+buffers and status passed to the existing report code. Reused PIDs do not reuse
+slots. Per-target journals persist the pre-spawn command observations and
+terminal buffer hashes; `create_new` rejects overwriting an attempt slot.
+
+This seal establishes complete process observations, not completed verification.
+Native command construction, OS handle/pipe/wait attribution, pinned image
+resolution, structured document parsing and engine-protocol interpretation
+still need their concrete joins. The command descriptor explicitly records
+declared argv/current-directory/environment overrides; it does not purport to
+capture every inherited environment fact or compiler read. The raw Rust unit
+record is distinct from resolved Cargo/source identity. Retained/bundled replay
+does not create a live process seal, and its transfer relation remains a separate
+obligation. No persisted journal or normal exit can independently authorize
+proof success. The extra journal I/O still needs native cost qualification.
+
 | Model boundary | Production source | Remaining obligation |
 |---|---|---|
 | Exact target and invocation | Managed `TargetIdentity`, `cargo_target`, requested coverage and failed compiler calls | Relate actual Cargo metadata and compiler invocation to the model's complete target inventory and exact fields. |
