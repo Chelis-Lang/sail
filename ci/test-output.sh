@@ -6,7 +6,7 @@
 # inside the CI image, with Sail's Verus selected (SAIL_VERUS_BUILD) and
 # stock `cargo verus` on PATH.
 #
-#   ci/test-output.sh SAIL loop [noop]|loader|flags|extra
+#   ci/test-output.sh SAIL loop [noop]|loader|flags|extra|cargo-range
 #
 # `loop`: combined output, passing proofs, an unchanged re-run, a compile
 # error, partial verification and a seeded-mutation smoke; with `noop`
@@ -14,17 +14,20 @@
 # every change that must miss it, on the same warm targets. `loader`: a loader
 # variable. `flags`: the
 # setups verified without proof reuse. `extra`: `-- --output-json --time` and
-# a `-p`/`--features` workspace. Every cold build verifies vstd (one to two
+# a `-p`/`--features` workspace. `cargo-range` (local-only): projects whose
+# rust-toolchain.toml selects another qualified Cargo (ADR 0084), named by
+# SAIL_CARGO_RANGE_E2E, and an unqualified one (SAIL_CARGO_RANGE_E2E_UNQUALIFIED);
+# each must be installed. Every cold build verifies vstd (one to two
 # minutes on a two-CPU CI runner), so CI runs `loop`, `loader` and `flags` as
 # separate jobs with two each, run at once; `extra`, which needs six, is
 # local-only (`ci/local.sh e2e extra`).
 set -euo pipefail
 sail="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
-part="${2:?usage: ci/test-output.sh SAIL loop [noop]|loader|flags|extra}"
+part="${2:?usage: ci/test-output.sh SAIL loop [noop]|loader|flags|extra|cargo-range}"
 noop_part="${3:-}"
 case "$part:$noop_part:$#" in
-  loop::2 | loop:noop:3 | loader::2 | flags::2 | extra::2) ;;
-  *) echo 'usage: ci/test-output.sh SAIL loop [noop]|loader|flags|extra' >&2; exit 2 ;;
+  loop::2 | loop:noop:3 | loader::2 | flags::2 | extra::2 | cargo-range::2) ;;
+  *) echo 'usage: ci/test-output.sh SAIL loop [noop]|loader|flags|extra|cargo-range' >&2; exit 2 ;;
 esac
 sail_output_phase="$part"
 sail_output_checkout="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -747,6 +750,116 @@ same target-dir-plain target-dir-sail
 # Verus arguments, since `--no-verify` builds it successfully.
 unbound_case no-verify -- --no-verify
 echo "e2e: --no-verify, --config, --tests and --target-dir verified as plain cargo verus verify"
+fi
+
+if [ "$part" = cargo-range ]; then
+# Projects that pin their own Rust (ADR 0058 keeps the project's Cargo) with
+# a build script that declares Cargo-generated inputs. Each qualified Cargo
+# (ADR 0084) must match plain Cargo-Verus under the same toolchain file,
+# establish proof receipts, reuse them, and replay unchanged calls. A real
+# unqualified Cargo keeps the SAIL3139 fallback. Both sides select the
+# toolchain only through the project's rust-toolchain.toml.
+export SAIL_MANAGED_NOOP_TRACE="$work/noop.trace"
+: > "$SAIL_MANAGED_NOOP_TRACE"
+cp src/lib.rs "$work/range-failing.rs"
+cat > build.rs <<'RS'
+fn main() {
+    for key in ["CARGO_CFG_TARGET_OS", "CARGO_CFG_DEBUG_ASSERTIONS", "CARGO_FEATURE_STD",
+                "CARGO_PKG_VERSION", "CARGO_MANIFEST_DIR", "OUT_DIR"] {
+        println!("cargo::rerun-if-env-changed={key}");
+    }
+    println!("cargo::rerun-if-changed=build.rs");
+    assert!(!std::env::var("CARGO_CFG_TARGET_OS").unwrap().is_empty());
+}
+RS
+range_json() { # label, then checks on the requested target
+  CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1" "$sail" verify --output json
+  python3 - "$work/$1.out" "$2" "$1" <<'PY'
+import json, sys
+result, mode = json.load(open(sys.argv[1])), sys.argv[2]
+[target] = [t for t in result["targets"] if t["requested"]]
+summary = {k: result.get(k) for k in ("currentness", "exit_code", "no_reuse", "execution", "notes")}
+summary["label"] = sys.argv[3]
+if mode == "settle":
+    assert result["exit_code"] == 0, summary
+    sys.exit()
+if mode == "unqualified":
+    assert result["currentness"] == "unknown" and result["exit_code"] == 0, summary
+    assert result["no_reuse"]["code"] == "SAIL3112", summary
+    assert "cannot track" in result["no_reuse"]["reason"], summary
+    assert not target["reused"] and not target["complete"], target
+    sys.exit()
+assert result["currentness"] == "current" and result["exit_code"] == 0, summary
+assert result.get("no_reuse") is None, summary
+assert target["complete"], target
+if mode == "reused":
+    assert target["reused"] and result["execution"]["verifier_invocations"] == 0, summary
+PY
+}
+range_replay() { # label: record, then a replay that matches plain output
+  local attempt
+  for attempt in 1 2 3 4; do
+    sleep 3
+    CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-record" "$sail" verify
+    if tail -n 1 "$SAIL_MANAGED_NOOP_TRACE" | grep -q '^recorded: '; then break; fi
+  done
+  tail -n 1 "$SAIL_MANAGED_NOOP_TRACE" | grep -q '^recorded: ' || {
+    echo "e2e: $1: the unchanged call was never recorded" >&2; cat "$SAIL_MANAGED_NOOP_TRACE" >&2; exit 1; }
+  CARGO_TARGET_DIR="$work/target-plain" quiet_run "$1-plain" cargo verus verify
+  CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-sail" "$sail" verify
+  same "$1-plain" "$1-sail"
+  grep -E '^(hit|miss: )' "$SAIL_MANAGED_NOOP_TRACE" | tail -n 1 | grep -q '^hit$' || {
+    echo "e2e: $1: the unchanged call was not replayed" >&2; cat "$SAIL_MANAGED_NOOP_TRACE" >&2; exit 1; }
+}
+range_case() { # toolchain qualified|unqualified
+  local toolchain="$1" mode="$2" label="range-${1//./-}"
+  printf '[toolchain]\nchannel = "%s"\n' "$toolchain" > rust-toolchain.toml
+  if ! cargo --version | grep -q "^cargo $toolchain "; then
+    echo "e2e: rust-toolchain.toml did not select Cargo $toolchain: $(cargo --version)" >&2
+    exit 1
+  fi
+  cp "$work/range-failing.rs" src/lib.rs
+  # Another Cargo rebuilds everything; cold output order is never compared.
+  warm_plain "$label-warm-plain" cargo verus verify &
+  warm_sail "$label-warm-sail" "$sail" verify &
+  wait
+  plain_run "$label-fail-plain" cargo verus verify
+  sail_run "$label-fail-sail" "$sail" verify
+  same "$label-fail-plain" "$label-fail-sail"
+  [ "$(cat "$work/$label-fail-sail.rc")" = 101 ]
+  edit_in_place 's/ensures r > x,/ensures r >= x,/' src/lib.rs
+  plain_run "$label-pass-plain" cargo verus verify
+  sail_run "$label-pass-sail" "$sail" verify
+  same "$label-pass-plain" "$label-pass-sail"
+  [ "$(cat "$work/$label-pass-sail.rc")" = 0 ]
+  if [ "$mode" = unqualified ]; then
+    range_json "$label-json" unqualified
+    echo "e2e: unqualified Cargo $toolchain: plain output, SAIL3139 fallback without receipts"
+    return
+  fi
+  # A newly scripted package can take one more call to converge (#399).
+  range_json "$label-settle" settle
+  range_json "$label-established" current
+  # A receipt: unchanged, and after a touch Cargo rebuilds for, nothing is
+  # verified again. A crate with a build script is outside instant revert's
+  # profile with every Cargo (SAIL3146), so a reverted edit verifies again.
+  range_json "$label-unchanged" reused
+  touch src/lib.rs
+  range_json "$label-touched" reused
+  cp src/lib.rs "$work/range-passing.rs"
+  printf '// edit\n' >> src/lib.rs
+  range_json "$label-edited" current
+  cp "$work/range-passing.rs" src/lib.rs
+  range_json "$label-reverted" current
+  grep -q SAIL3146 "$work/$label-reverted.out"
+  range_replay "$label-replay"
+  echo "e2e: Cargo $toolchain: plain output, receipts, reuse after a touch, edits verified, unchanged replay"
+}
+for toolchain in ${SAIL_CARGO_RANGE_E2E:-1.97.1 1.98.0 1.99.1}; do range_case "$toolchain" qualified; done
+for toolchain in ${SAIL_CARGO_RANGE_E2E_UNQUALIFIED:-1.92.0}; do range_case "$toolchain" unqualified; done
+rm rust-toolchain.toml build.rs
+cp "$work/range-failing.rs" src/lib.rs
+unset SAIL_MANAGED_NOOP_TRACE
 fi
 
 if [ "$part" = loader ]; then

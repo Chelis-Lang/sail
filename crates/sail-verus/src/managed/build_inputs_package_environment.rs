@@ -28,6 +28,11 @@ pub(super) fn value(record: &BuildInput, data: &Value, key: &str) -> Option<Opti
     authority_value(record, data, key, std::env::var_os(key).is_some())
 }
 
+#[cfg(test)]
+pub(super) fn uninherited(record: &BuildInput, data: &Value, key: &str) -> Option<Option<String>> {
+    authority_value(record, data, key, false)
+}
+
 fn authority_value(
     record: &BuildInput,
     data: &Value,

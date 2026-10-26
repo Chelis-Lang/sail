@@ -104,8 +104,9 @@ Current numbers are in [performance](performance.md).
   as plain `cargo verus verify` does, with solver caching, but record and
   reuse no proof receipts
   ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)):
-  - a Cargo other than the pinned 1.99.1, for example from a project's
-    `rust-toolchain.toml`, `RUSTUP_TOOLCHAIN` or `CARGO` (`SAIL3139`);
+  - a Cargo outside the qualified 1.93.0 to 1.99.1, for example 1.92 or a
+    newer release from a project's `rust-toolchain.toml`, `RUSTUP_TOOLCHAIN`
+    or `CARGO` (`SAIL3139`, [ADR 0084](decisions/0084-qualified-cargo-range.md));
   - tests, benches and examples; `--target-dir`; Verus's `--log` options;
     `--no-verify`; Cargo `-v` and `--message-format`;
   - `--sysroot`, `RUSTC_WORKSPACE_WRAPPER`, Cargo `--config` and

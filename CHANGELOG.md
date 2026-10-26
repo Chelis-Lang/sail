@@ -11,6 +11,13 @@ semantic versioning once the API is published.
   1.6 s and Vest 0.6 s. Replay now binds that copy by its bytes, which must
   equal the compiled script's, and its directory by its exact entries.
   Existing replay records are not used after this upgrade.
+- Reuse proofs in projects that pin their own Rust. Build-script receipt
+  tracking now accepts Cargo 1.93.0 through 1.99.1 (ADR 0084), not only the
+  pinned 1.99.1, so a project whose `rust-toolchain.toml` selects, for
+  example, 1.98.0 (as Anvil's does) gets proof receipts and unchanged-call
+  replay instead of the `SAIL3139` fallback. Each release is qualified by a
+  source audit (`scripts/cargo-protocol-audit.py`) and a real-Cargo
+  self-test (`ci/run.sh cargo-range`). Any other Cargo still falls back.
 
 - Stop reusing a proof after a file read only in ghost code changes. An
   `include!`, `include_str!` or `include_bytes!` inside a `proof fn`, spec or

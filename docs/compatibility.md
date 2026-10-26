@@ -62,15 +62,37 @@ Current `36d65c3f` qualification is in the
 ## Explicit Cargo selection
 
 Sail respects `RUSTUP_TOOLCHAIN`, project toolchain files and an explicitly
-selected Cargo. Build-script receipt tracking is qualified with the primary
-pin's Cargo 1.99.1. When the selected Cargo has a different source commit,
-projects whose selected dependency closure contains build scripts use plain
-Cargo freshness with Sail's solver cache. They establish no proof receipts;
-JSON reports Unknown and explains `no_reuse`. Selecting
-`RUSTUP_TOOLCHAIN=1.99.1 sail verify` enables the qualified protocol with
-rustup; unset `CARGO` if it explicitly names a different Cargo binary. Missing
-or malformed protocol observations still fail closed rather than identifying
-a different Cargo version.
+selected Cargo (ADR 0058). Build-script receipt tracking is qualified for
+these Cargo releases ([ADR 0084](decisions/0084-qualified-cargo-range.md)):
+
+| Cargo | Source commit |
+|---|---|
+| 1.93.0, 1.93.1 | `083ac5135f96` |
+| 1.94.0 | `85eff7c80277` |
+| 1.94.1 | `29ea6fb6a5db` |
+| 1.95.0 | `f2d3ce0bd7f2` |
+| 1.96.0 | `30a34c6821b5` |
+| 1.96.1 | `356927216a2d` |
+| 1.97.0, 1.97.1 | `c980f4866141` |
+| 1.98.0, 1.98.1 | `797e8a9bca27` |
+| 1.99.0, 1.99.1 (the pin) | `5f94df4789f0` |
+
+A project whose `rust-toolchain.toml` selects one of them, as Anvil's selects
+1.98.0, gets proof receipts and unchanged-call replay, with output identical
+to `cargo verus verify` under the same file. Instant revert keeps its own
+narrower profile, which excludes crates with build scripts or dependencies
+other than vstd whatever the Cargo (`SAIL3146`). The shipped vstd proof still applies only with the pinned Cargo.
+
+When the selected Cargo has any other source commit (1.92 and earlier, a
+newer release not yet qualified, or a locally built Cargo), projects whose
+selected dependency closure contains build scripts use plain Cargo freshness
+with Sail's solver cache. They establish no proof receipts; JSON reports
+Unknown and explains `no_reuse` (`SAIL3139`). Select a qualified toolchain,
+for example `RUSTUP_TOOLCHAIN=1.99.1 sail verify`, to enable the protocol;
+unset `CARGO` if it explicitly names a different Cargo binary. Missing or
+malformed protocol observations still fail closed rather than identifying a
+different Cargo version. `ci/run.sh cargo-range` reruns the self-test and
+`scripts/cargo-protocol-audit.py` the audit when a new release is qualified.
 
 ## Plain Verus under the secondary release (fast tier)
 
