@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep fresh per-target input revisions independent: a target whose revision
+  cannot be read again now marks only its own receipt changed, instead of every
+  receipt package in the run.
 - Make native temporal jobs an optional `temporal` build feature (default on).
   `cargo build -p sail-cli --no-default-features` builds a complete
   `sail verify` that compiles no D.I.V.E. code. A malformed or unreadable
