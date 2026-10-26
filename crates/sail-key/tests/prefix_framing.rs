@@ -1,5 +1,5 @@
 //! Exact preexisting v2 byte-format controls independent of the checked encoder.
-use sail_key::{Mode, PrefixHasher, SolverIdentity};
+use sail_key::{Mode, PrefixHasher, SessionPrefix, SolverIdentity};
 
 #[test]
 fn original_v2_digest_and_silence_vectors_survive_all_fragment_boundaries() {
@@ -50,4 +50,70 @@ fn native_shared_primitive_controls_execute() {
     assert!(sail_acceptance::key_prefix::nonempty_framing_control());
     assert!(sail_acceptance::key_prefix::overflow_framing_control());
     assert!(sail_acceptance::key_prefix::owned_feed_control());
+    assert!(sail_acceptance::key_prefix::joint_owner_control());
+}
+
+#[test]
+fn joint_owner_retains_raw_bytes_and_command_keys_across_fragmentation() {
+    let solver = SolverIdentity {
+        name: "z3".into(),
+        version: "4.16.0".into(),
+        binary_sha256: [7; 32],
+        platform: "linux-x86_64".into(),
+    };
+    let leading = b"; original\r\n";
+    let assertion = b"(assert (str.contains \"a;()\" \"a\"))";
+    let check = b"(check-sat)";
+    let tail = b" ; unchanged tail\n";
+    let mut raw = Vec::new();
+    raw.extend_from_slice(leading);
+    raw.extend_from_slice(assertion);
+    raw.push(b'\n');
+    raw.extend_from_slice(check);
+    raw.extend_from_slice(tail);
+    let check_offset = leading.len() + assertion.len() + 1;
+    for mode in [
+        Mode::Default,
+        Mode::OptIn(String::new()),
+        Mode::OptIn("accept-first-proof".into()),
+    ] {
+        for split in 0..=raw.len() {
+            let mut owner = SessionPrefix::new(&solver, &mode);
+            owner.append(&raw[..split]);
+            owner.append(&raw[split..]);
+            assert_eq!(owner.bytes(), raw);
+            let first = owner.command(leading.len(), assertion);
+            assert!(first.is_some());
+            let mut reference = PrefixHasher::new(&solver, &mode);
+            reference.update(&raw[..leading.len() + assertion.len()]);
+            assert_eq!(
+                first.as_ref().map(sail_key::CommandFrame::key),
+                Some(reference.key())
+            );
+            let second = owner.command(check_offset, check);
+            assert_eq!(
+                second.as_ref().map(sail_key::CommandFrame::head),
+                Some(check.as_slice().get(1..10).unwrap_or_default())
+            );
+            reference.update(&raw[leading.len() + assertion.len()..check_offset + check.len()]);
+            assert_eq!(
+                second.as_ref().map(sail_key::CommandFrame::key),
+                Some(reference.key())
+            );
+            assert!(owner.trailing_trivia());
+            assert!(owner.hash_tail());
+            reference.update(tail);
+            assert_eq!(owner.key(), reference.key());
+            assert_eq!(owner.silence_key(), reference.silence_key());
+            assert_eq!(owner.bytes(), raw);
+            owner.refuse();
+            owner.append(b"\x00still replayed");
+            assert!(!owner.valid());
+            assert!(!owner.hash_tail());
+            assert_eq!(
+                owner.bytes().get(raw.len()..),
+                Some(b"\x00still replayed".as_slice())
+            );
+        }
+    }
 }

@@ -28,6 +28,7 @@ use std::fmt;
 
 use sail_acceptance::key_prefix::{HashHost, Prefix};
 use sail_acceptance::query::PrefixFeed;
+use sail_acceptance::query_prefix::{FramedCommand as CoreCommand, QueryPrefix as QueryState};
 use sail_session::Snapshot;
 use sha2::{Digest, Sha256};
 
@@ -207,6 +208,103 @@ impl PrefixHasher {
     #[must_use]
     pub fn silence_key(&self) -> QueryKey {
         QueryKey(self.prefix.silence_key())
+    }
+}
+
+/// Immutable borrow of one actual same-owner command transition.
+/// Its key is computed only when requested, without copying the hash for no-output commands.
+pub struct CommandFrame<'command, 'owner> {
+    frame: CoreCommand<'command, 'owner, Sha256Host>,
+}
+impl CommandFrame<'_, '_> {
+    /// The command's exact supported head bytes.
+    #[must_use]
+    pub fn head(&self) -> &[u8] {
+        self.frame.head()
+    }
+    /// The exact endpoint at this command transition.
+    #[must_use]
+    pub fn end(&self) -> usize {
+        self.frame.end()
+    }
+    /// Derives the unchanged v2 key while this transition's hash state is immutably borrowed.
+    #[must_use]
+    pub fn key(&self) -> QueryKey {
+        QueryKey(self.frame.key())
+    }
+}
+
+/// One cache session's jointly owned exact raw transcript and incremental v2 key.
+/// Unlike a detached hasher, this API cannot consume another transcript's feed tokens.
+pub struct SessionPrefix {
+    session: QueryState<Sha256Host>,
+}
+
+impl SessionPrefix {
+    /// Starts exact framing for the actual solver identity and mode.
+    #[must_use]
+    pub fn new(solver: &SolverIdentity, mode: &Mode) -> Self {
+        Self {
+            session: prefix_factory::new_query_prefix(Sha256Host(Sha256::new()), solver, mode),
+        }
+    }
+    /// Appends exactly the bytes received by this session.
+    pub fn append(&mut self, bytes: &[u8]) {
+        self.session.append(bytes);
+    }
+    /// Interprets only an exact command interval of this owner's bytes.
+    pub fn command<'a, 'b>(
+        &'b mut self,
+        offset: usize,
+        command: &'a [u8],
+    ) -> Option<CommandFrame<'a, 'b>> {
+        self.session
+            .command(offset, command)
+            .map(|frame| CommandFrame { frame })
+    }
+
+    /// Borrows all original bytes for pinned-solver replay.
+    #[must_use]
+    pub fn bytes(&self) -> &[u8] {
+        self.session.bytes()
+    }
+    /// Permanently refuses cache interpretation without changing the original bytes.
+    pub fn refuse(&mut self) {
+        self.session.refuse();
+    }
+    /// Whether interpretation remains valid under the checked same-owner invariant.
+    #[must_use]
+    pub fn valid(&self) -> bool {
+        self.session.valid()
+    }
+    /// Number of original bytes already included in this owner's hash.
+    #[must_use]
+    pub fn len(&self) -> u64 {
+        self.session.len()
+    }
+    /// Whether no input byte has entered this owner's hash.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.session.is_empty()
+    }
+    /// Whether the remaining original input is only whitespace/comments.
+    #[must_use]
+    pub fn trailing_trivia(&self) -> bool {
+        self.session.trailing_trivia()
+    }
+    /// Hashes the owned remainder; this does not claim EOF or a clean solver run.
+    pub fn hash_tail(&mut self) -> bool {
+        self.session.hash_tail()
+    }
+    /// The current same-owner normal-key candidate.
+    #[must_use]
+    pub fn key(&self) -> QueryKey {
+        QueryKey(self.session.key())
+    }
+    /// The current same-owner silence-key candidate; clean publication remains separate.
+    #[must_use]
+    pub fn silence_key(&self) -> QueryKey {
+        QueryKey(self.session.silence_key())
     }
 }
 

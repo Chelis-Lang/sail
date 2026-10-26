@@ -1195,8 +1195,8 @@ sail_verified! {
 sail_verified! {
     /// Checks command framing and exact first-head bytes before deriving its prefix binding.
     /// Any refusal permanently disables cache interpretation while preserving raw input.
-    pub fn framed_command<'a>(raw: &'a mut RawTranscript, offset: usize, command: &'a [u8])
-        -> (accepted: Option<(PrefixFeed<'a>, &'a [u8])>)
+    pub fn framed_command<'a, 'b>(raw: &'a mut RawTranscript, offset: usize, command: &'b [u8])
+        -> (accepted: Option<(PrefixFeed<'a>, &'b [u8])>)
         requires (true)
         ensures (final(raw).view() == old(raw).view(),
             accepted.is_some() ==> (

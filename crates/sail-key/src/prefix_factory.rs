@@ -1,6 +1,7 @@
 //! The actual typed solver/mode-to-key constructor, shared with stock verification.
 use crate::{Mode, SolverIdentity};
 use sail_acceptance::key_prefix::{HashHost, Prefix};
+use sail_acceptance::query_prefix::QueryPrefix;
 use sail_acceptance::sail_verified;
 #[cfg(sail_verus)]
 use vstd::prelude::*;
@@ -20,5 +21,19 @@ sail_verified! {
         let opt_in = match mode { Mode::Default => None, Mode::OptIn(name) => Some(name.as_str().as_bytes()) };
         Prefix::new(host, solver.name.as_str().as_bytes(), solver.version.as_str().as_bytes(),
             &solver.binary_sha256, solver.platform.as_str().as_bytes(), opt_in)
+    }
+}
+
+sail_verified! {
+    /// Initializes actual solver/mode framing and its one owned raw transcript together.
+    pub(crate) fn new_query_prefix<Host>(host: Host, solver: &SolverIdentity, mode: &Mode) -> (out: QueryPrefix<Host>)
+        where (Host: HashHost)
+        requires (host.bytes().len() == 0)
+        ensures (out.coherent(), out.active(), out.view().len() == 0, out.fed() == 0,
+            out.matches((vstd::utf8::encode_utf8(solver.name@),vstd::utf8::encode_utf8(solver.version@),
+                solver.binary_sha256@,vstd::utf8::encode_utf8(solver.platform@),
+                match mode { Mode::Default => None, Mode::OptIn(name) => Some(vstd::utf8::encode_utf8(name@)) })))
+    {
+        QueryPrefix::new(new_prefix(host,solver,mode))
     }
 }
