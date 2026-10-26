@@ -169,6 +169,9 @@ pub(super) fn declared_names(target: &Path) -> Option<BTreeSet<String>> {
 fn declarations(text: &str, dep_info: bool) -> Option<Vec<String>> {
     let mut names = Vec::new();
     for line in text.lines() {
+        // Cargo trims instruction-line framing, not the payload after '='.
+        // Rustc dep-info names instead retain every ordinary name byte.
+        let line = if dep_info { line } else { line.trim() };
         if dep_info {
             if let Some(rest) = line.strip_prefix("# env-dep:") {
                 let encoded = rest.split_once('=').map_or(rest, |(name, _)| name);
@@ -428,6 +431,75 @@ mod tests {
             declared_names(&root),
             Some(names.into_iter().map(str::to_owned).collect())
         );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn actual_cargo_instruction_names_match_its_own_fingerprints()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-env-cargo-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("src"))?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='env-instruction-probe'\nversion='0.1.0'\nedition='2024'\n[workspace]\n",
+        )?;
+        std::fs::write(root.join("src/lib.rs"), "pub const X: u8 = 1;\n")?;
+        std::fs::write(
+            root.join("build.rs"),
+            r#"fn main() {
+    println!("  cargo:rerun-if-env-changed=INDENTED");
+    println!("\tcargo::rerun-if-env-changed=TAB_PREFIX");
+    println!("cargo:rerun-if-env-changed= FLAG ");
+    println!("cargo:rerun-if-env-changed=NBSP\u{a0}");
+    println!("cargo:rerun-if-env-changed=EM\u{2003}");
+}"#,
+        )?;
+        let target = root.join("target");
+        let output =
+            std::process::Command::new(std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
+                .args(["check", "--offline", "--manifest-path"])
+                .arg(root.join("Cargo.toml"))
+                .arg("--target-dir")
+                .arg(&target)
+                .env("RUSTC_WRAPPER", "")
+                .env("RUSTC_WORKSPACE_WRAPPER", "")
+                .env("CARGO_ENCODED_RUSTFLAGS", "")
+                .output()?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let mut cargo_names = BTreeSet::new();
+        for directory in std::fs::read_dir(target.join("debug/.fingerprint"))? {
+            let fingerprint = directory?
+                .path()
+                .join("run-build-script-build-script-build.json");
+            if !fingerprint.is_file() {
+                continue;
+            }
+            let value: serde_json::Value = serde_json::from_slice(&std::fs::read(fingerprint)?)?;
+            for entry in value["local"]
+                .as_array()
+                .ok_or("missing Cargo fingerprint locals")?
+            {
+                if let Some(name) = entry
+                    .pointer("/RerunIfEnvChanged/var")
+                    .and_then(serde_json::Value::as_str)
+                {
+                    cargo_names.insert(name.to_owned());
+                }
+            }
+        }
+        assert_eq!(
+            cargo_names,
+            ["INDENTED", "TAB_PREFIX", " FLAG", "NBSP", "EM"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect()
+        );
+        assert_eq!(declared_names(&target), Some(cargo_names));
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

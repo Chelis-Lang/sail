@@ -115,7 +115,7 @@ fn output_matches(record: &BuildInput, target: &Path) -> bool {
     let mut paths = Vec::new();
     let mut keys = std::collections::BTreeSet::new();
     for line in text.lines() {
-        let line = line.trim_end();
+        let line = line.trim();
         let line = line
             .strip_prefix("cargo::")
             .or_else(|| line.strip_prefix("cargo:"))

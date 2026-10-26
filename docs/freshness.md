@@ -251,8 +251,9 @@ Cargo's own. Two parts of the environment bind a result:
 
 Dep-info names retain meaningful whitespace and decode rustc's escaped newline,
 carriage-return and backslash bytes before looking up a value. Build-script
-names follow Cargo's directive interpretation: trailing line whitespace is
-removed; leading name whitespace remains significant. For example, rustc's
+names follow Cargo's directive interpretation: surrounding instruction-line
+whitespace is removed before recognizing the prefix; leading whitespace inside
+the name payload remains significant. For example, rustc's
 `# env-dep: FLAG =7` names ` FLAG `, while Cargo's
 `cargo:rerun-if-env-changed= FLAG ` names ` FLAG`.
 
