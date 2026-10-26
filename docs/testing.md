@@ -13,6 +13,16 @@ The e2e shell scripts need no GNU tools on macOS: fixture edits use portable
 `ci/timeout.py` (the same options and exit statuses, checked against GNU by
 `ci/test-timeout.py`) where it is not.
 
+Fixture waits must tolerate slow process starts. macOS assesses a freshly
+written executable (a mock worker script, a copied binary) on its first exec,
+and during a parallel `cargo nextest run --workspace` on a loaded Mac that has
+taken over ten seconds, while a known executable or `sh SCRIPT` starts in
+milliseconds. A wait that only guards against a hang therefore uses a bound of
+minutes, and a bound that is itself under test must not include the start of a
+new executable. A test that needs another package's binary supplies a stand-in
+(Cargo builds `sail-bench`, for example, only when that package is selected)
+and leaves checks of the real binary to that package's tests.
+
 ## Release performance matrix
 
 `scripts/perf-matrix.py run` measures passing verification workflows. Both arms

@@ -341,6 +341,18 @@ binds the latest cumulative source and preserves the same positive-kill limit.
   lookup/coalescing fixtures have failed in many complete gates and passed in
   others. Cause unknown; the deadlines are unchanged.
   [Gate 3](validation/m7.md#gate-3-workspace-gate-solver-suite-and-native-ci), [#76](https://github.com/Chelis-Lang/sail/issues/76).
+- **Short fixture deadlines under heavy parallel load on macOS.** Exec of a
+  freshly written executable has taken up to 10.5 s during a
+  `cargo nextest run --workspace -j 32` on an 8-core Mac (a known executable:
+  under 0.12 s). Tests whose 1–10 s bounds include such a start fail there and
+  pass alone, among them the `sail-daemon` `neutral_jobs`, `proof_product`,
+  `job_coalescing`, `bundled`, `jobs` and `tiers` fixtures,
+  `sail-cli::daemon_ops`, `sail-cli::shared_ops`,
+  `sail-runtime-worker::process` and `sail-shim::faults` wait controls. The
+  rule for fixture waits is in [testing](testing.md). Separately, under that
+  load the `sail-cli::watch` fixture rarely sees one extra restart after its
+  Cargo output write (about 1 in 100 runs; cause unconfirmed,
+  [#403](https://github.com/Chelis-Lang/sail/issues/403)).
 - **Verifier wait under amd64 emulation.** Verification sometimes stalls under
   amd64 emulation, which is no longer used for performance or Linux
   validation (ADR 0038). [#68](https://github.com/Chelis-Lang/sail/issues/68),

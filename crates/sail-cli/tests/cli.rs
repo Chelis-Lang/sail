@@ -103,19 +103,81 @@ fn mcp_server_states_the_cli_version() {
     assert_eq!(format!("sail {served}\n"), version, "{text}");
 }
 
+/// A directory holding this build's `sail` under its own name, so `sail
+/// bench` resolves `sail-bench` beside it there. Cargo builds `sail-bench` only
+/// for a test run that selects that package, so the delegation tests supply
+/// their own; `sail-bench`'s own tests check its help. The binary is hard
+/// linked where possible: a fresh copy is a new executable, which macOS
+/// assesses on first exec.
+fn isolated_sail(name: &str) -> std::path::PathBuf {
+    let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("sail-cli-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(std::fs::create_dir_all(&dir).is_ok());
+    let sail = dir.join("sail");
+    let source = env!("CARGO_BIN_EXE_sail");
+    assert!(
+        std::fs::hard_link(source, &sail).is_ok() || std::fs::copy(source, &sail).is_ok(),
+        "cannot place sail in {}",
+        dir.display()
+    );
+    dir
+}
+
+/// `sail bench` runs the `sail-bench` beside it with the same arguments and
+/// stdio, and exits with its status.
+#[cfg(unix)]
 #[test]
 fn bench_delegates_to_the_benchmark_binary() {
-    let output = sail(&["bench", "--help"]);
+    use std::os::unix::fs::PermissionsExt as _;
+    let dir = isolated_sail("bench");
+    let bench = dir.join("sail-bench");
+    assert!(
+        std::fs::write(
+            &bench,
+            "#!/bin/sh\nprintf 'stand-in sail-bench:'\nprintf ' [%s]' \"$@\"\necho\necho 'to stderr' >&2\nexit 7\n",
+        )
+        .is_ok()
+    );
+    assert!(std::fs::set_permissions(&bench, std::fs::Permissions::from_mode(0o755)).is_ok());
+    let output = Command::new(dir.join("sail"))
+        .args(["bench", "history-replay", "--project", "a b"])
+        .output();
+    let _ = std::fs::remove_dir_all(&dir);
+    let Ok(output) = output else {
+        unreachable!("cannot run sail: {output:?}")
+    };
     assert_eq!(
         output.status.code(),
-        Some(0),
+        Some(7),
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let help = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "stand-in sail-bench: [history-replay] [--project] [a b]\n"
+    );
+    assert_eq!(String::from_utf8_lossy(&output.stderr), "to stderr\n");
+}
+
+/// Without `sail-bench` beside it, `sail bench` explains how to build it.
+#[test]
+fn bench_without_the_benchmark_binary_says_how_to_build_it() {
+    let dir = isolated_sail("nobench");
+    let output = Command::new(dir.join("sail"))
+        .args(["bench", "--help"])
+        .output();
+    let _ = std::fs::remove_dir_all(&dir);
+    let Ok(output) = output else {
+        unreachable!("cannot run sail: {output:?}")
+    };
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, b"");
+    let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        help.contains("history-replay") && help.contains("agent-loop"),
-        "{help}"
+        stderr.starts_with("error[SAIL0003]: cannot run sail-bench")
+            && stderr.contains("cargo build --release -p sail-bench"),
+        "{stderr}"
     );
 }
 
