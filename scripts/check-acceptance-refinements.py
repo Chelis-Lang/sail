@@ -41,7 +41,12 @@ API_LIB_SHA256 = "125f9959d72bf6bbff719526cdaad169301b9c1e156db5b46ea79b91d4c504
 # Binding inventories cover both ordinary and proof-only imports. In particular,
 # an erased import cannot shadow a Cargo glob with a different checked callee.
 IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '589a12d568f5c878749274c4a9f2be0780ec7c4769cebdecdd8519d52351d9f2'}
-REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply', 'frame-premature-root-close', 'frame-ignore-doubled-quote', 'frame-ignore-input-comment', 'head-ignore-framing', 'response-ignore-line-terminator', 'response-ignore-list-framing'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence', 'input-opened-object-binding', 'input-read-final-handle', 'input-read-final-path', 'input-read-chunk-bytes', 'input-read-eof-required', 'input-read-cache-object', 'input-read-requested-binding', 'input-environment-byte-name', 'input-environment-escaped-name'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence', 'submission-arguments', 'submission-mode', 'submission-whole-authority', 'submission-positive', 'driver-token-bytes', 'driver-token-coverage', 'driver-sources-order', 'process-wait-required', 'process-distinct-slot', 'process-duplicate-stream', 'process-stderr-binding', 'process-recovery-bytes', 'process-payload-binding', 'process-refusal-recorded', 'retained-original-current', 'retained-complete-readback', 'retained-exact-revision', 'retained-view-currentness', 'retained-request-admission', 'retained-clear-refused-labels', 'retained-preserve-positive', 'target-exact-cargo-name', 'target-rust-name-normalization', 'target-kind-binding', 'process-configure-slot']}
+# Exact reviewed ghost declarations and abstract primitive contracts. These
+# permit no arbitrary erased types or host implementations. The native host
+# implementation is a separate obligation, never discharged by a trait bound.
+INPUT_GHOST_ITEMS = frozenset({'34a7aa7c26994229805fe92e7e544f340920dbd3416ea1dcff4e4c8f7ea82697'})
+INPUT_HOST_TRAITS = frozenset({'d5f071d9dcd1b4ec056b39af49e32cad198b1ebe2a4f692ce837364c83ca0691'})
+REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply', 'frame-premature-root-close', 'frame-ignore-doubled-quote', 'frame-ignore-input-comment', 'head-ignore-framing', 'response-ignore-line-terminator', 'response-ignore-list-framing'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence', 'input-opened-object-binding', 'input-read-final-handle', 'input-read-final-path', 'input-read-chunk-bytes', 'input-read-eof-required', 'input-read-cache-object', 'input-read-requested-binding', 'input-environment-byte-name', 'input-environment-escaped-name', 'input-kernel-hash-bytes', 'input-kernel-final-handle-observation', 'input-kernel-final-path-observation', 'input-kernel-open-observation-order', 'input-kernel-buffer-required', 'input-kernel-read-failure', 'input-kernel-always-error', 'input-guarded-readback-change', 'input-guarded-readback-availability', 'input-guarded-readback-always-unknown'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence', 'submission-arguments', 'submission-mode', 'submission-whole-authority', 'submission-positive', 'driver-token-bytes', 'driver-token-coverage', 'driver-sources-order', 'process-wait-required', 'process-distinct-slot', 'process-duplicate-stream', 'process-stderr-binding', 'process-recovery-bytes', 'process-payload-binding', 'process-refusal-recorded', 'retained-original-current', 'retained-complete-readback', 'retained-exact-revision', 'retained-view-currentness', 'retained-request-admission', 'retained-clear-refused-labels', 'retained-preserve-positive', 'target-exact-cargo-name', 'target-rust-name-normalization', 'target-kind-binding', 'process-configure-slot']}
 COMPONENTS = {
     "query": {"models": ["context", "query_association"], "core": ["inputs", "query"]},
     "inputs": {"models": ["context"], "core": ["inputs"]},
@@ -97,7 +102,7 @@ def validate_assembly(snapshots: dict[str, bytes]) -> None:
         require(manifest["dependencies"]["sail-acceptance"] == {"workspace": True}, "runtime dependency redirected")
     protected = {
         "crates/sail-acceptance/src/query.rs": ("Fifo", "BoundPair", "CorrelatedQueue", "ReplayCursor", "PublicationBatch", "RecoveryRecord", "RawTranscript", "PrefixFeed"),
-        "crates/sail-acceptance/src/inputs.rs": ("OriginalCapture", "OriginalGuard", "Readback", "ProviderSeal", "OpenedRead", "ReadChunk", "ReadSeal"),
+        "crates/sail-acceptance/src/inputs.rs": ("OriginalCapture", "OriginalGuard", "Readback", "GuardedReadback", "ProviderSeal", "OpenedRead", "ReadChunk", "ReadSeal", "CompletedRead"),
         "crates/sail-acceptance/src/authority.rs": ("AttemptLedger", "UnconfiguredAttempt", "ReservedAttempt", "RunningAttempt", "ObservedAttempt"),
         "crates/sail-api/src/acceptance.rs": ("CompleteReport", "CompleteSelection", "CompleteRequest", "SubmissionBinding", "SubmittedAuthority"),
     }
@@ -197,7 +202,10 @@ def compiled_subset(path: str, content: bytes) -> None:
     if path.endswith("/acceptance_sort.rs"):
         SOURCE.candidate_forwarders(text)
     else:
-        SOURCE.checked_item_envelopes(text, proof=path.startswith("proofs/refinement/"))
+        inputs = path == "crates/sail-acceptance/src/inputs.rs"
+        SOURCE.checked_item_envelopes(text, proof=path.startswith("proofs/refinement/"),
+            reviewed_ghost_items=INPUT_GHOST_ITEMS if inputs else frozenset(),
+            reviewed_host_traits=INPUT_HOST_TRAITS if inputs else frozenset())
 
 
 def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[dict]:
@@ -411,6 +419,8 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
             "checked_source": [path for path in entry["dependencies"] if path not in
                 {SYNTAX, RETAINED_BRIDGE, "crates/sail-api/src/acceptance_sort.rs"} and not declaration_source(path)],
             "reviewed_syntax": [SYNTAX],
+            "abstract_primitive_contracts": {path: ["FileReadHost"]
+                for path in entry["dependencies"] if path == "crates/sail-acceptance/src/inputs.rs"},
             "reviewed_native_bridges": {path: ["classify", "apply_currentness", "withhold_unbound_authority"]
                 for path in entry["dependencies"] if path == RETAINED_BRIDGE},
             "declaration_projections": [path for path in entry["dependencies"]
