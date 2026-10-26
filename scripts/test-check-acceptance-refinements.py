@@ -228,6 +228,7 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-api/src/acceptance.rs", b"pub struct SubmissionBinding", b"#[derive(Deserialize)] pub struct SubmissionBinding"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct SubmittedAuthority", b"#[derive(Default)] pub struct SubmittedAuthority"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct AttemptLedger", b"#[derive(Default)] pub struct AttemptLedger"),
+            ("crates/sail-acceptance/src/authority.rs", b"pub struct UnconfiguredAttempt", b"#[derive(Deserialize)] pub struct UnconfiguredAttempt"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct ReservedAttempt", b"#[derive(Deserialize)] pub struct ReservedAttempt"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct RunningAttempt", b"#[derive(Default)] pub struct RunningAttempt"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct ObservedAttempt", b"#[derive(Deserialize)] pub struct ObservedAttempt"),
