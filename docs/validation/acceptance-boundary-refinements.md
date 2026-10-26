@@ -41,6 +41,15 @@ only its development positive probe and focused native checks so far. Local
 heavy validation is deferred while the owner's machine is saturated; unfinished
 checks remain unfinished.
 
+The later local integration also includes the component's owned Cargo command
+environment capture, original receipt-history replay checks, exact-current
+request API and native metadata/readback preflight. The original named reuse
+policy remains selected; the incompatible full-parent reuse-fingerprint
+experiment is excluded. These additions have source review and preserved
+component receipts, but no combined build, canonical matrix, native gate or
+cost qualification. The replay matrix interrupted for machine load remains
+interrupted, including its required whole-binder negative control.
+
 ## Source and actual scope
 
 The frozen `4bd22455` native attempt, including source bundle, full workspace,

@@ -732,3 +732,337 @@ sail_verified! {
         Some(rows)
     }
 }
+
+sail_spec! {
+    /// Key membership independent of a proposed replacement value.
+    pub open spec fn environment_has_key(rows: Seq<InputFact>, wanted: InputFact) -> bool {
+        exists|i: int| 0 <= i < rows.len() && same_key(#[trigger] rows[i], wanted)
+    }
+    /// Each result row comes from the final override, or an unoverridden parent row.
+    pub open spec fn effective_environment_row(parent: Seq<InputFact>, overrides: Seq<InputFact>, wanted: InputFact) -> bool {
+        contains_fact(overrides, wanted)
+            || !environment_has_key(overrides, wanted) && contains_fact(parent, wanted)
+    }
+}
+
+sail_verified! {
+    /// Find a literal environment key without hashing, trimming or value comparison.
+    pub fn environment_key_index(rows: &[InputFact<'_>], wanted: &InputFact<'_>) -> (out: Option<usize>)
+        requires (true)
+        ensures (out.is_some() == environment_has_key(rows@, *wanted),
+            out.is_some() ==> out.unwrap() < rows.len() && same_key(rows[out.unwrap() as int], *wanted))
+    {
+        let mut i = 0;
+        sail_while! { (i < rows.len())
+            invariant (i <= rows.len(), forall|j: int| 0 <= j < i ==> !same_key(#[trigger] rows[j], *wanted))
+            decreases (rows.len() - i)
+            {
+                if input_key_eq(&rows[i], wanted) {
+                    sail_proof! { assert(environment_has_key(rows@, *wanted)); }
+                    return Some(i);
+                }
+                i += 1;
+            }
+        }
+        None
+    }
+}
+
+sail_spec! {
+    /// Unique keys make a found key the only possible value origin in that inventory.
+    pub proof fn environment_unique_member(rows: Seq<InputFact>, wanted: InputFact, found: int)
+        requires crate::inputs::unique_input_keys(rows), 0 <= found < rows.len(), same_key(rows[found], wanted),
+        ensures contains_fact(rows, wanted) == same_value(rows[found].value, wanted.value),
+    {
+        if contains_fact(rows, wanted) {
+            let i = choose|i: int| 0 <= i < rows.len() && same_key(rows[i], wanted) && same_value(rows[i].value, wanted.value);
+            if i != found { assert(!same_key(rows[i], rows[found])); }
+        } else if same_value(rows[found].value, wanted.value) {
+            assert(contains_fact(rows, wanted));
+        }
+    }
+}
+
+sail_verified! {
+    /// The final Command override/removal wins even when an inherited value exists.
+    pub fn effective_environment_row_matches(parent: &[InputFact<'_>], overrides: &[InputFact<'_>], wanted: &InputFact<'_>) -> (valid: bool)
+        requires (crate::inputs::unique_input_keys(parent@), crate::inputs::unique_input_keys(overrides@))
+        ensures (valid == effective_environment_row(parent@, overrides@, *wanted))
+    {
+        if let Some(index) = environment_key_index(overrides, wanted) {
+            sail_proof! { environment_unique_member(overrides@, *wanted, index as int); }
+            value_difference(&overrides[index].value, &wanted.value) == 0
+        } else if let Some(index) = environment_key_index(parent, wanted) {
+            sail_proof! { environment_unique_member(parent@, *wanted, index as int); }
+            value_difference(&parent[index].value, &wanted.value) == 0
+        } else {
+            sail_proof! { assert(!contains_fact(parent@, *wanted)); }
+            false
+        }
+    }
+}
+
+sail_verified! {
+    /// Refuse extra keys, stale inherited values and replacements that ignore removal.
+    pub fn effective_environment_origins(parent: &Inventory<'_>, overrides: &Inventory<'_>, result: &Inventory<'_>) -> (valid: bool)
+        requires (true)
+        ensures (valid == (ordered(*parent) && ordered(*overrides) && ordered(*result)
+            && forall|i: int| 0 <= i < result.rows.len() ==> effective_environment_row(parent.rows@, overrides.rows@, #[trigger] result.rows[i])))
+    {
+        if !input_order(parent.rows, parent.order, parent.inverse)
+            || !input_order(overrides.rows, overrides.order, overrides.inverse)
+            || !input_order(result.rows, result.order, result.inverse) { return false; }
+        let mut i = 0;
+        sail_while! { (i < result.rows.len())
+            invariant (i <= result.rows.len(), ordered(*parent), ordered(*overrides), ordered(*result),
+                crate::inputs::unique_input_keys(parent.rows@), crate::inputs::unique_input_keys(overrides.rows@),
+                forall|j: int| 0 <= j < i ==> effective_environment_row(parent.rows@, overrides.rows@, #[trigger] result.rows[j]))
+            decreases (result.rows.len() - i)
+            {
+                if !effective_environment_row_matches(parent.rows, overrides.rows, &result.rows[i]) { return false; }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Every original parent key remains represented, including explicit removals.
+    pub fn environment_parent_keys_covered(parent: &Inventory<'_>, result: &Inventory<'_>) -> (valid: bool)
+        requires (true)
+        ensures (valid == (ordered(*parent) && ordered(*result)
+            && forall|i: int| 0 <= i < parent.rows.len() ==> environment_has_key(result.rows@, #[trigger] parent.rows[i])))
+    {
+        if !input_order(parent.rows, parent.order, parent.inverse)
+            || !input_order(result.rows, result.order, result.inverse) { return false; }
+        let mut i = 0;
+        sail_while! { (i < parent.rows.len())
+            invariant (i <= parent.rows.len(), ordered(*parent), ordered(*result),
+                forall|j: int| 0 <= j < i ==> environment_has_key(result.rows@, #[trigger] parent.rows[j]))
+            decreases (parent.rows.len() - i)
+            {
+                if environment_key_index(result.rows, &parent.rows[i]).is_none() { return false; }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_code! {
+    /// Explicit construction policy; never inferred from `Command::get_envs`.
+    pub enum EnvironmentInheritance {
+        /// The actual command constructor retains the caller's environment.
+        Inherit,
+        /// The actual command constructor clears inheritance before final overrides.
+        Clear,
+    }
+
+    /// Exact projection of supplied parent bytes and final override/removal rows.
+    /// This token does not authenticate a process or certify an OS iterator's completeness.
+    pub struct EnvironmentProjection<'a> {
+        inheritance: EnvironmentInheritance,
+        parent: Inventory<'a>,
+        overrides: Inventory<'a>,
+        result: Inventory<'a>,
+    }
+}
+
+sail_spec! {
+    /// Environment names retain arbitrary bytes except the OS's NUL and '=' separators.
+    pub open spec fn environment_name_valid(name: Seq<u8>) -> bool {
+        name.len() > 0 && forall|i: int| 0 <= i < name.len() ==> name[i] != 0 && name[i] != 61
+    }
+    /// One literal typed row; inherited values cannot represent removal.
+    pub open spec fn environment_kind(row: InputFact, parent: bool) -> bool {
+        row.namespace == 3 && environment_name_valid(row.name@)
+            && crate::inputs::value_readable(row.value) && (!parent || row.value is Present)
+    }
+    /// Parent observations are present values; final operations may explicitly remove a key.
+    pub open spec fn environment_kinds(rows: Seq<InputFact>, parent: bool) -> bool {
+        forall|i: int| 0 <= i < rows.len() ==> environment_kind(#[trigger] rows[i], parent)
+    }
+    /// Exact supplied-key union with final override priority and explicit removal.
+    pub open spec fn environment_projection(parent: Inventory, overrides: Inventory, result: Inventory) -> bool {
+        ordered(parent) && ordered(overrides) && ordered(result)
+            && environment_kinds(parent.rows@, true) && environment_kinds(overrides.rows@, false)
+            && environment_kinds(result.rows@, false)
+            && (forall|i: int| 0 <= i < parent.rows.len() ==> environment_has_key(result.rows@, #[trigger] parent.rows[i]))
+            && subset(result.rows@, overrides.rows@)
+            && (forall|i: int| 0 <= i < result.rows.len() ==> effective_environment_row(parent.rows@, overrides.rows@, #[trigger] result.rows[i]))
+    }
+}
+
+sail_verified! {
+    /// Validate raw names without Unicode conversion or exclusions by prefix.
+    pub fn environment_raw_name_valid(name: &[u8]) -> (valid: bool)
+        requires (true) ensures (valid == environment_name_valid(name@))
+    {
+        if name.is_empty() { return false; }
+        let mut i = 0;
+        sail_while! { (i < name.len())
+            invariant (i <= name.len(), name.len() > 0,
+                forall|j: int| 0 <= j < i ==> name[j] != 0 && name[j] != 61)
+            decreases (name.len() - i)
+            { if name[i] == 0 || name[i] == 61 { return false; } i += 1; }
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Refuse unreadable observations and distinguish an absent value from an empty one.
+    pub fn environment_rows_valid(rows: &[InputFact<'_>], parent: bool) -> (valid: bool)
+        requires (true) ensures (valid == environment_kinds(rows@, parent))
+    {
+        let mut i = 0;
+        sail_while! { (i < rows.len())
+            invariant (i <= rows.len(), forall|j: int| 0 <= j < i ==> environment_kind(#[trigger] rows[j], parent))
+            decreases (rows.len() - i)
+            {
+                let row = &rows[i];
+                if row.namespace != 3 || !environment_raw_name_valid(row.name) { return false; }
+                match &row.value {
+                    crate::inputs::InputValue::Unreadable => return false,
+                    crate::inputs::InputValue::Absent => if parent { return false; },
+                    crate::inputs::InputValue::Present(_) => (),
+                }
+                sail_proof! {
+                    assert(row.namespace == 3 && environment_name_valid(row.name@));
+                    assert(environment_kind(*row, parent));
+                    assert forall|j: int| 0 <= j < i + 1 implies environment_kind(#[trigger] rows[j], parent) by {
+                        if j < i { assert(environment_kind(rows[j], parent)); }
+                        else { assert(j == i); }
+                    }
+                }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+impl<'a> EnvironmentProjection<'a> {
+    sail_impl_spec! {
+        /// Exact original supplied parent rows, including all their raw values.
+        pub closed spec fn parent_view(&self) -> Inventory<'a> { self.parent }
+        /// Exact final configured environment operations.
+        pub closed spec fn overrides_view(&self) -> Inventory<'a> { self.overrides }
+        /// Accepted effective environment rows.
+        pub closed spec fn result_view(&self) -> Inventory<'a> { self.result }
+        /// Explicit construction policy retained through projection.
+        pub closed spec fn inheritance_view(&self) -> EnvironmentInheritance { self.inheritance }
+    }
+    sail_method! {
+        /// Original supplied parent bytes, preserved independently of projection policy.
+        pub fn parent(&self) -> (rows: &'a [InputFact<'a>])
+            requires (true) ensures (rows@ == self.parent_view().rows@)
+        { self.parent.rows }
+    }
+    sail_method! {
+        /// Literal final overrides, including explicit removal operations.
+        pub fn overrides(&self) -> (rows: &'a [InputFact<'a>])
+            requires (true) ensures (rows@ == self.overrides_view().rows@)
+        { self.overrides.rows }
+    }
+    sail_method! {
+        /// Actual construction policy supplied at this boundary.
+        pub fn inheritance(&self) -> (policy: &EnvironmentInheritance)
+            requires (true) ensures (*policy == self.inheritance_view())
+        { &self.inheritance }
+    }
+    sail_method! {
+        /// Accepted literal rows; removal remains an explicit `Absent` entry.
+        pub fn facts(&self) -> (rows: &'a [InputFact<'a>])
+            requires (true) ensures (rows@ == self.result_view().rows@)
+        { self.result.rows }
+    }
+    sail_method! {
+        /// Complete validated permutation for deterministic serialization.
+        pub fn order(&self) -> (order: &'a [usize])
+            requires (true) ensures (order@ == self.result_view().order@)
+        { self.result.order }
+    }
+}
+
+sail_verified! {
+    /// Check every parent key, operation and effective result before exposing projected bytes.
+    /// Inheritance policy comes from a separate actual command-construction boundary.
+    pub fn seal_environment_projection<'a>(inheritance: EnvironmentInheritance, parent: Inventory<'a>, overrides: Inventory<'a>, result: Inventory<'a>) -> (out: Option<EnvironmentProjection<'a>>)
+        requires (true)
+        ensures (out.is_some() ==> out.unwrap().parent_view() == parent
+            && out.unwrap().overrides_view() == overrides && out.unwrap().result_view() == result
+            && out.unwrap().inheritance_view() == inheritance,
+            out.is_some() == (ordered(parent) && environment_kinds(parent.rows@, true)
+                && match inheritance {
+                    EnvironmentInheritance::Inherit => environment_projection(parent, overrides, result),
+                    EnvironmentInheritance::Clear => environment_projection(Inventory { rows: &[], order: &[], inverse: &[] }, overrides, result),
+                }))
+    {
+        if !input_order(parent.rows, parent.order, parent.inverse) || !environment_rows_valid(parent.rows, true) { return None; }
+        let empty = Inventory { rows: &[], order: &[], inverse: &[] };
+        let selected = match &inheritance { EnvironmentInheritance::Inherit => &parent, EnvironmentInheritance::Clear => &empty };
+        if !environment_rows_valid(overrides.rows, false) || !environment_rows_valid(result.rows, false)
+            || !environment_parent_keys_covered(selected, &result)
+            || !inventory_covers(&result, &overrides)
+            || !effective_environment_origins(selected, &overrides, &result) { return None; }
+        Some(EnvironmentProjection { inheritance, parent, overrides, result })
+    }
+}
+
+sail_code! {
+    /// Actual final environment readback agrees with independently recorded builder operations.
+    /// OS/Command provenance remains the native construction boundary.
+    pub struct CommandEnvironment<'a> {
+        projection: EnvironmentProjection<'a>,
+        recorded: Inventory<'a>,
+    }
+}
+
+impl<'a> CommandEnvironment<'a> {
+    sail_impl_spec! {
+        /// Exact admitted effective projection.
+        pub closed spec fn projection_view(&self) -> EnvironmentProjection<'a> { self.projection }
+        /// Original wrapper-recorded operations, not reconstructed from readback.
+        pub closed spec fn recorded_view(&self) -> Inventory<'a> { self.recorded }
+    }
+    sail_method! {
+        /// Borrow the checked projection without reminting its construction policy.
+        pub fn projection(&self) -> (projection: &EnvironmentProjection<'a>)
+            requires (true) ensures (*projection == self.projection_view())
+        { &self.projection }
+    }
+    sail_method! {
+        /// Retain independent original builder data through readback admission.
+        pub fn recorded(&self) -> (rows: &'a [InputFact<'a>])
+            requires (true) ensures (rows@ == self.recorded_view().rows@)
+        { self.recorded.rows }
+    }
+}
+
+sail_verified! {
+    /// Seal actual `get_envs` readback only after exact bidirectional operation matching.
+    #[allow(clippy::manual_map, reason = "The explicit match preserves operation/readback binding through the same native and checked bodies.")]
+    pub fn seal_command_environment<'a>(inheritance: EnvironmentInheritance, parent: Inventory<'a>, recorded: Inventory<'a>, actual: Inventory<'a>, result: Inventory<'a>) -> (out: Option<CommandEnvironment<'a>>)
+        requires (true)
+        ensures (out.is_some() ==> out.unwrap().recorded_view() == recorded
+            && out.unwrap().projection_view().parent_view() == parent
+            && out.unwrap().projection_view().overrides_view() == actual
+            && out.unwrap().projection_view().result_view() == result
+            && out.unwrap().projection_view().inheritance_view() == inheritance,
+            out.is_some() == (ordered(recorded) && ordered(actual)
+                && subset(recorded.rows@, actual.rows@) && subset(actual.rows@, recorded.rows@)
+                && ordered(parent) && environment_kinds(parent.rows@, true)
+                && match inheritance {
+                    EnvironmentInheritance::Inherit => environment_projection(parent, actual, result),
+                    EnvironmentInheritance::Clear => environment_projection(Inventory { rows: &[], order: &[], inverse: &[] }, actual, result),
+                }))
+    {
+        if !inventory_covers(&recorded, &actual) || !inventory_covers(&actual, &recorded) { return None; }
+        match seal_environment_projection(inheritance, parent, actual, result) {
+            Some(projection) => Some(CommandEnvironment { projection, recorded }),
+            None => None,
+        }
+    }
+}

@@ -31,7 +31,9 @@ fn request_capture_transport_is_not_compiler_environment()
         path: root.join("private-journal"), worker_id: "private-worker-id".into(),
     });
     let (paths, ownership) = prepare(&config, &root, "context", "compiler", "run")?;
-    let output = invocation_command(&config, &paths, false)?.output()?;
+    let observed = invocation_command(&config, &paths, false)?.output()?;
+    assert!(observed.environment().is_some());
+    let output = observed.into_output();
     assert!(output.status.success());
     let text = String::from_utf8(output.stdout)?;
     let names = NAMES.into_iter().map(str::to_owned).collect();
