@@ -668,4 +668,61 @@ pub fn compile_only_report_refused(report: &Report, policy: CompletionPolicy,
     acceptance::complete_report_ordered(report, policy, forward, inverse).is_none()
 }
 
+/// A coherent successful partial report retains its exact recorded scope.
+/// The ordinary zero-obligation case must not become an always-refuse path.
+pub fn exact_partial_scope_factory(report: &Report, arguments: &[String]) -> (accepted: bool)
+    requires arguments@ == report.command@, acceptance::partial_command(arguments@),
+        report.engine.is_none(), acceptance::small_positive_report(report, CompletionPolicy::Receipt),
+    ensures accepted,
+{
+    let forward: Vec<usize> = Vec::new();
+    let inverse: Vec<usize> = Vec::new();
+    proof {
+        acceptance::small_exact_scope_candidate_definition(report, arguments@, forward@, inverse@);
+    }
+    acceptance::complete_exact_scope_report_ordered(report, arguments, &forward, &inverse).is_some()
+}
+
+/// A checked partial report cannot become whole authority, even when its
+/// underlying crate summary happens to carry an explicit success flag.
+pub fn exact_partial_scope_cannot_complete_whole(scope: &acceptance::ExactScopeReport,
+    forward: &[usize], inverse: &[usize]) -> (refused: bool)
+    requires acceptance::exact_scope_authority_valid(scope),
+    ensures refused,
+{
+    let report = scope.report();
+    let arguments = scope.arguments();
+    proof { acceptance::exact_scope_cannot_authorize_whole(report, arguments@); }
+    acceptance::complete_whole_report_ordered(report, forward, inverse).is_none()
+}
+
+/// Reordering, changing, adding or omitting any raw scope argument refuses.
+pub fn exact_partial_scope_refuses_changed_arguments(report: &Report, arguments: &[String],
+    forward: &[usize], inverse: &[usize]) -> (refused: bool)
+    requires arguments@.len() != report.command@.len()
+        || arguments@.map_values(|s: String| acceptance::string_bytes(&s))
+            != report.command@.map_values(|s: String| acceptance::string_bytes(&s)),
+    ensures refused,
+{
+    acceptance::complete_exact_scope_report_ordered(report, arguments, forward, inverse).is_none()
+}
+
+/// Existing partial receipts reject every engine report, including fallback.
+pub fn exact_partial_scope_refuses_engine(report: &Report, arguments: &[String],
+    forward: &[usize], inverse: &[usize]) -> (refused: bool)
+    requires report.engine.is_some(),
+    ensures refused,
+{
+    acceptance::complete_exact_scope_report_ordered(report, arguments, forward, inverse).is_none()
+}
+
+/// Compile-only success cannot become successful partial-scope evidence.
+pub fn exact_partial_scope_refuses_compile_only(report: &Report, arguments: &[String],
+    forward: &[usize], inverse: &[usize]) -> (refused: bool)
+    requires acceptance::verification_disabled(arguments@),
+    ensures refused,
+{
+    acceptance::complete_exact_scope_report_ordered(report, arguments, forward, inverse).is_none()
+}
+
 }

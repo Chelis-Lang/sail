@@ -144,6 +144,45 @@ rejects engine fallback provenance. Whole-target factories inspect actual
 forwarded scope arguments after `--`. A stored completion flag cannot overrule
 an explicit partial command or partial-scope reuse.
 
+### Exact partial reports
+
+The source candidate adds a separate private `ExactScopeReport` token. Its
+factory retains immutable borrows of the original report and ordered scope
+arguments. It requires an explicit partial selector after `--`, exact raw
+argument bytes matching the report command, verification-enabled arguments,
+no engine report and the existing successful receipt-policy report checks.
+An absent whole-crate success summary remains admissible under that receipt
+policy; a present success flag does not widen the partial selection. Nothing
+rewrites the report, selected scope or whole-target completion fields.
+
+The native partial branch of `Invocation::successful_for` uses this factory
+while retaining its original explicit selector, argument-equality and no-engine
+checks. The surrounding ordinary receipt reader still validates original
+selected history, commit, context, artifacts, dependency bytes and declared
+environment. Whole-receipt admission retains its existing success flag and
+receipt-policy report checks; whole-target authority additionally requires the
+strict whole-report factory.
+This connects exact partial report validation to a real consumer; it does not
+promote the report to `CompleteRequest` or `CompleteSelection`. The source
+refinement includes constructive receipt-scope admission, rejection of changed
+arguments, engine and compile-only cases, and the whole-report factory's refusal
+of an admitted partial report. This new slice is source-only and unqualified;
+no compilation, stock proof or mutation-matrix result is claimed for it.
+
+Re-enabling exact-partial unchanged-call replay still needs the separate
+request-level contract tracked under [public-path composition](https://github.com/Chelis-Lang/sail/issues/376).
+It must bind independently resolved original/current
+requests and guarded revisions, cover every requested target exactly once,
+match each retained target's exact partial arguments and original producer,
+and preserve reports, establishing IDs and scope metadata without granting
+whole-target completion. It must retain `complete == false`, avoid counting
+scope reuse as complete-target reuse, and preserve partial reporting through
+CLI, JSON and retained service views. The actual compiler/metadata-to-request
+and selector-to-verifier relations, complete input closure and physical
+observation remain independent joins. The report token alone does not prove
+that every requested target or function selection was executed. Partial no-op
+replay therefore continues to take the ordinary managed path.
+
 Private `CompleteReport` and `CompleteSelection` tokens immutably borrow the
 checked actual records. Only checked factories construct them. The sibling
 `acceptance_sort.rs` proposes indices and cannot access their private fields.
