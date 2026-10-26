@@ -288,6 +288,27 @@ class SourceCaptureTests(unittest.TestCase):
             self.assertEqual(sum(calls.values()), sum(1 + len(e["negative_controls"]) for e in entries.values()))
             self.assertFalse((base / "evidence/report.json").exists())
 
+    def test_component_partition_preserves_all_controls_and_requires_full_inventory(self):
+        import json
+        entries = json.loads((ROOT / CHECKER.MANIFEST).read_text())["components"]
+        self.assertEqual(CHECKER.selected_entries(entries, None), entries)
+        combined = []
+        for component in CHECKER.COMPONENTS:
+            selected = CHECKER.selected_entries(entries, component)
+            self.assertEqual(selected, [entry for entry in entries if entry["id"] == component])
+            combined.extend((entry["id"], name) for entry in selected
+                for name in ["positive", *[c["name"] for c in entry["negative_controls"]]])
+        expected = [(entry["id"], name) for entry in entries
+            for name in ["positive", *[c["name"] for c in entry["negative_controls"]]]]
+        self.assertCountEqual(combined, expected)
+        self.assertEqual(len(combined), len(set(combined)))
+        for bad in (entries[:-1], [entries[0], entries[0], entries[2]]):
+            with self.assertRaisesRegex(CHECKER.Refusal, "omitted or duplicated"):
+                CHECKER.selected_entries(bad, "query")
+        for unknown in ("", "all", "query,inputs", "positive"):
+            with self.assertRaisesRegex(CHECKER.Refusal, "unknown refinement"):
+                CHECKER.selected_entries(entries, unknown)
+
     def test_selected_guard_control_cannot_be_omitted(self):
         import json
         manifest = json.loads((ROOT / CHECKER.MANIFEST).read_text())

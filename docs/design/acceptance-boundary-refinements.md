@@ -107,3 +107,15 @@ deadlines and baselines remain unchanged.
 The follow-up remains a draft until its implemented slices have source-bound
 proof receipts, independent review and the required integration gates. Broader
 obligations remain open even when those slices pass.
+
+## Running the production proofs
+
+`ci/local.sh refinements` checks all three production roots and every required
+negative control through directly invoked pinned stock Verus. CI runs the same
+complete roots separately as `ci/run.sh refinements query`, `inputs` and
+`authority`. Each run validates the full committed source and root inventory
+before selecting its root; its report names exactly the checked components.
+The `Acceptance production refinements` aggregate requires successful execution
+of all three jobs. Missing, skipped, cancelled or failing jobs fail the aggregate
+and CI completion. Splitting jobs changes scheduling; it does not change the
+proof commands, per-case deadline, resource limits or mutation inventory.
