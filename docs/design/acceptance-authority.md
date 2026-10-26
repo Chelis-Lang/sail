@@ -286,11 +286,33 @@ document inventory nor a ledger name proves real-world capture completeness.
 
 `engine_failed` creates a private failure token from an actual started engine
 run and observed nonzero/interrupted/malformed termination. `start_fallback`
-requires that token, a fresh run ID and start point, matching request/mode and a
-whole-target invocation. It starts with an empty observation history. Old engine
+requires that token, a fresh run ID, a start point at or after the observed
+failure, the exact target, and matching request/runtime/solver/input/mode and
+verification settings. A whole-target restart may widen the failed partial
+selection; it cannot change the non-selection subject. It starts with an empty observation history. Old engine
 or partial-phase documents cannot match the fallback's run/context/scope header.
 The project fallback path accepts only completions of fresh fallback invocations;
 it cannot mix in old engine completions.
+
+`finish_project_per_target` uses the same `Candidate` and current complete
+acceptance factory for a project containing direct, engine and independent
+fallback targets. Each member is a private completed invocation with its own
+validated origin; `ExecutionPath::PerTarget` does not mint or replace that
+evidence. The existing global direct/engine/fallback paths retain their original
+origin restrictions. A three-target constructive control completes one target
+through each origin, preserves the failed predecessor of the fallback, and
+rejects an omitted sibling. The fallback constructor also refuses explicit
+wrong-target and changed-runtime candidates. A selected target that required
+independent fallback cannot become an accepted repair by hiding within this
+mixed project.
+
+This extends the conditional model composition, which already consumes the
+same `Candidate` and its complete invocation inventory. It does not establish
+the full native `ProjectResult`-to-`Candidate` relation. That relation still needs
+actual target/source/effective-invocation attribution and complete process and
+solver observations. Retained target transfer across different project requests
+also needs an independently established physical target input domain. A supplied
+declared-provider subset cannot mint that missing closure authority.
 
 A fresh independent full fallback can establish ordinary current complete
 verification. Repair acceptance preserves the production contract's stricter
