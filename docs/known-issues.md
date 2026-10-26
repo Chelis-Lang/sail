@@ -3,6 +3,21 @@
 Open product defects and release limits. The [roadmap](ROADMAP.md) tracks
 release work; linked validation pages preserve the scope of each result.
 
+## Managed metadata changes procedural macro arguments
+
+[Sail #393](https://github.com/Chelis-Lang/sail/issues/393) reproduces an actual
+managed-path proof verdict change on the selected fork. A user procedural macro
+sees the wrapper's physical `--time` argument and emits a different assertion:
+plain Cargo-Verus rejects the original request while Sail accepts it. Explicit
+user `--time` and unsupported-configuration fallback controls both reject.
+The [corpus reproduction](../corpus/repros/sail-managed-physical-time-argv/README.md)
+and [owning record](validation/managed-physical-argv.md) retain the exact tested
+binary/source/runtime scope. The tested binary is a committed proof-branch
+checkpoint; source continuity does not qualify a main binary. Existing and new
+observation options must preserve actual compiler argv/environment through a
+private channel. Parser-vector restoration and exact SMT cache keys do not fix
+changed compiler inputs. This blocks the complete acceptance refinement.
+
 ## Acceptance authority integration
 
 Compile-only Verus output can resemble a successful zero-function proof
