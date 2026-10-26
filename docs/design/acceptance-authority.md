@@ -488,3 +488,8 @@ The shared leaf and permitted crate edges are recorded in ADR 0079. Backend and
 solver/compiler inputs are unchanged. No conformance or performance improvement
 is claimed; the native cost of producing and checking index candidates remains
 to be measured.
+
+The separate [normal-wrapper control proposal](managed-wrapper-control-transport.md)
+describes an unselected environment-preserving transport and its required native
+authentication/process joins. It does not change the selected runtime or close
+the reproduced environment and verification-phase input gaps.
