@@ -31,14 +31,14 @@
 //! moves its ctime past the recorded one even on coarse clocks.
 
 use super::Config;
-use sail_api::project::ProjectResult;
+use sail_api::project::{ProjectResult, ResolvedRequest};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-// Version two retains the exact ordinary receipts and original producer bindings.
-const VERSION: u32 = 2;
+// Version three additionally retains the actual independently resolved request.
+const VERSION: u32 = 3;
 /// How much older than the run a recorded ctime must be.
 pub(super) const SETTLED: Duration = Duration::from_secs(2);
 /// Cache records up to this size are compared by content; larger files
@@ -108,6 +108,7 @@ struct Record {
     environment: BTreeMap<String, Option<Vec<u8>>>,
     /// Original whole/exact-partial receipts; every replay rechecks their producers.
     origins: Vec<super::receipts::Receipt>,
+    original_request: ResolvedRequest,
     result: ProjectResult,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
@@ -145,6 +146,9 @@ pub(super) struct Facts<'a> {
     /// dependency's reuse may consult.
     pub siblings: Vec<PathBuf>,
     pub result: &'a ProjectResult,
+    /// The ordinary runner's original pre-Cargo resolution, never rebuilt
+    /// from the stored result or its target rows.
+    pub original_request: &'a ResolvedRequest,
 }
 
 fn disabled() -> bool {
@@ -328,6 +332,9 @@ fn rustup_settings() -> Option<PathBuf> {
 /// Gather a record at the end of a run that ended Current without starting a
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
+    // Exact-partial replay needs its own transfer contract. It currently takes
+    // the ordinary path, retaining ordinary receipt reuse there.
+    sail_api::acceptance::complete_request(facts.original_request, facts.result)?;
     let origins = origins::capture(facts.context, facts.result)?;
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
@@ -386,6 +393,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             contents,
             environment,
             origins,
+            original_request: facts.original_request.clone(),
             result: facts.result.clone(),
             stdout: Vec::new(),
             stderr: Vec::new(),
@@ -505,7 +513,44 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     }
     let workspace = std::path::absolute(&config.workspace).ok()?;
     let cache = workspace.join(&config.cache);
-    let Ok(bytes) = std::fs::read(record_path(&cache, key)) else {
+    if !record_path(&cache, key).is_file() {
+        return None;
+    }
+    // Independently resolve scope and current runtime before deserializing any
+    // saved result. Unavailable metadata or readback falls through normally.
+    let preflight = super::runner::replay_preflight(config).ok()?;
+    let location = ReplayLocation {
+        cache: &preflight.config.cache,
+        context: &preflight.context,
+        workspace_lock: &preflight.workspace_lock,
+        family: &preflight.family,
+    };
+    // Match ordinary execution's workspace -> family lock order. The saved
+    // record is not allowed to choose either lock or the new run directory.
+    let _workspace = lock(location.workspace_lock, true)?;
+    let _family = lock(&location.family.join("ownership.lock"), false)?;
+    preflight
+        .with_current_request(|current, readback| {
+            replay_bound(&location, key, started, current, readback)
+        })
+        .ok()??
+}
+
+struct ReplayLocation<'a> {
+    cache: &'a Path,
+    context: &'a Path,
+    workspace_lock: &'a Path,
+    family: &'a Path,
+}
+
+fn replay_bound(
+    location: &ReplayLocation<'_>,
+    key: &str,
+    started: std::time::Instant,
+    current: &ResolvedRequest,
+    readback: &sail_acceptance::inputs::GuardedReadback<'_>,
+) -> Option<Replay> {
+    let Ok(bytes) = std::fs::read(record_path(location.cache, key)) else {
         trace("miss: no record");
         return None;
     };
@@ -514,11 +559,13 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
         trace("miss: record version");
         return None;
     }
-    // The same order as a full run: the shared workspace lock, then the
-    // exclusive family ownership, so no run or prune changes the state
-    // while it is compared.
-    let _workspace = lock(&record.locks.0, true)?;
-    let _family = lock(&record.locks.1, false)?;
+    if record.locks.0 != location.workspace_lock
+        || record.locks.1 != location.family.join("ownership.lock")
+        || record.runs != location.context.join("runs")
+    {
+        trace("miss: independently resolved proof location differs");
+        return None;
+    }
     if let Some(reason) = mismatch(&record) {
         trace(&format!("miss: {reason}"));
         return None;
@@ -527,18 +574,19 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
         trace("miss: original proof producers unavailable or mismatched");
         return None;
     }
-    let run_id = format!(
-        "{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos())
-    );
     let mut result = record.result;
-    result.run_id.clone_from(&run_id);
+    if !sail_api::acceptance::bind_replayed_project(
+        &mut result,
+        &record.original_request,
+        current,
+        readback,
+    ) {
+        trace("miss: independent request or guarded original revision differs");
+        return None;
+    }
     result.execution.wall_ms = started.elapsed().as_secs_f64() * 1000.0;
     // Keep the project's last-use time, as a full run's result does.
-    let directory = record.runs.join(&run_id);
+    let directory = location.context.join("runs").join(&current.run_id);
     if std::fs::create_dir_all(&directory).is_err()
         || super::files::json(&directory.join("result.json"), &result).is_err()
     {
