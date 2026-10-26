@@ -107,8 +107,11 @@ records the reviewed consumers and remaining service-composition boundaries.
 The same review identifies a separate baseline save/read mismatch: creation
 can reobserve the request after obtaining its admitted project and persist a
 different admission outcome ([#429](https://github.com/Chelis-Lang/sail/issues/429)).
-That source interleaving remains unqualified and requires carrying the same
-original project/request observation through immutable publication.
+The source correction carries the same original project/request observation
+from result retrieval into a private native
+observation and publishes it without another live resolution. Its admission-to-
+refusal and refusal-to-admission transition regression is unrun; existing
+immutable/Historical framing and read-side admission remain unchanged.
 
 Two environment cases reproduce default-mode verdict disagreement in candidate
 `4f46f822`, using the same selected Verus fork and pinned Z3 for both sides.
