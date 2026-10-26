@@ -1459,6 +1459,7 @@ mod tests {
             .ok_or("fixture selected reference refused")?;
         let invocation = crate::managed::Invocation {
             retained_from: None,
+            retained_history: None,
             selected_attempt: Some(selected_attempt),
             run_id: run_id.into(),
             identity,

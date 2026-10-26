@@ -495,6 +495,8 @@ pub(super) fn publish_graph(root: &Path, graph: Snapshot, args: &[OsString]) -> 
 /// A checked older proof; compiler invocations remain zero for this restore.
 pub(crate) struct Restored {
     pub(crate) establishing_run: String,
+    pub(crate) history: String,
+    pub(crate) report: sail_api::output::Report,
     pub(crate) selected_attempt: Option<crate::adapter::attempts::SelectedAttempt>,
     pub(crate) stdout: Vec<u8>,
     pub(crate) stderr: Vec<u8>,
@@ -529,13 +531,16 @@ impl Attempt {
             .iter()
             .filter_map(|path| path.file_name().map(std::ffi::OsStr::to_owned))
             .collect();
+        let Some(run_directory) = runtime.sidecars.parent() else {
+            return Ok(None);
+        };
         archive::restore(
             &self.plan.root,
             &self.basis,
             directory,
             &names,
             &self.plan.caller_environment,
-            &runtime.run_id,
+            (&runtime.run_id, run_directory),
             || self.unchanged(),
         )
         .map(|restored| {
@@ -548,6 +553,8 @@ impl Attempt {
             }
             restored.map(|restored| Restored {
                 establishing_run: restored.receipt.invocation.establishing_run().to_owned(),
+                history: restored.history,
+                report: restored.receipt.invocation.report.clone(),
                 selected_attempt: restored.receipt.invocation.selected_attempt.clone(),
                 stdout: restored.stdout,
                 stderr: restored.stderr,

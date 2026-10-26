@@ -385,9 +385,20 @@ Receipt version seven rejects older producer evidence. Its current-run admission
 requires the selected original namespace and reserved/terminal/raw file binding;
 missing, mismatched or ambiguous producer kinds cannot mint a live receipt.
 Qualified bundled compiler-boundary provenance remains a separate native import
-and creates no fictional live child. The same-workspace experimental restoration
-preserves the original selected reference and refuses unavailable original
-history before placing output; its physical target-domain transfer remains open.
+and creates no fictional live child. The same-workspace experimental arena
+uses entry version four and owns an independently copied original receipt,
+commit and complete selected-attempt subtree. The entry binds its exact raw
+stdout/stderr to the original selected producer. Restoration validates the full
+archive before placing outputs and adopts another independent copy into the
+current run's `retained-histories/<key>` namespace. The invocation retains its
+original run, slot, PID, descriptor, report and dependencies through a separate
+paired `retained_from`/`retained_history` reference; the archive validator never
+creates a live observation or writes into the original run's namespace.
+Removing the original run and evicting the arena do not erase an already
+adopted copy. Missing, extra or modified history, older entry versions, subset
+indexes, mismatched reports and stripped/conflicting references refuse reuse.
+Current receipts still require their own final commit and exact artifact reads.
+The physical target-domain and protected-storage transition proofs remain open.
 
 The disabled native-artifact store's version-two layout copies the complete
 original producer subtree, including raw streams, per-attempt records and owned
