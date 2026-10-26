@@ -156,6 +156,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `28b3e001` | Native owned-output whole positive root | 342 verified/1 failed function: the concrete trim/span assertions pass; the witness still cannot discharge the frame-admission exit. Explicit pre-state proof steps retain the same nonempty response, production guards, contracts and unchanged whole-root limits. Other gates remain unrun |
 | 2026-10-26 | `59ec4634` | Native owned-output whole positive root | 342 verified/1 failed function: the nonempty witness's concrete response trim/span assertions remain unproved. Source now spells the same six bytes as an explicit array; production guards, contracts, scope and limits remain unchanged. Final source/runtime checks and other gates were not reached |
 | 2026-10-26 | `5bc2235e` | Native full gate | Source-checker tests and link checks pass. Strict clippy rejects the new exact-scope factory's intentional explicit admission branch under `question_mark`; the documented local lint exception preserves the proved body and its guard control. Later tests, model/refinement suites, solver, e2e and conformance are unrun |
 | 2026-10-26 | `619d3c0f` | Native development and workspace | All three whole positive production roots pass with every prior function retained; 210 negative controls unrun. Workspace stops at two proposal links whose existing corpus fixtures were omitted from integration. The correction retains their original source and scope; full final qualification remains pending |
@@ -419,6 +420,11 @@ inventory and exact diagnostics are retained at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-output-59ec4634-native-development.tgz`.
 SHA-256: `a7df094e50c15f9af338cf79eede8e8cc13e95313d77b12f919a70baa15492a4`.
 The archive is independently downloaded and hashed; it is a failed proof receipt.
+
+The `28b3e001` continuation is retained at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-output-28b3e001-native-development.tgz`.
+SHA-256: `7597912e310c1c8f63584f9a356bbd57b8f60772f3365d9e3de37dd3c0ab8a36`.
+Independent GET/hash verification passes; it does not qualify the whole output root.
 
 ## Environment counterexamples
 

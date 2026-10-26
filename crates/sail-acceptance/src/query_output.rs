@@ -26,6 +26,11 @@ sail_verified! {
             assert(crate::query::response_trim(original@, 0, 5));
             assert(crate::query::response_span(original@, 0, 5));
             assert(crate::query::response_shape(original@));
+            assert(output.view() =~= original@);
+            assert(output.healthy() && !output.eof());
+            assert(output.endpoints().len() == 0 && output.consumed() == 0);
+            assert(output.view().len() == 6);
+            assert(crate::query::response_shape(output.view()));
         }
         if output.frame(0, 6).is_none() { return false; }
         output.end();
