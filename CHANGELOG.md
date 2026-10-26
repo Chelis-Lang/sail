@@ -38,6 +38,8 @@ semantic versioning once the API is published.
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
+- Derive Cargo configuration homes from the same supplied environment used to
+  validate runtime selectors, preserving exact path bytes and Cargo-home priority.
 - Record explicit environment inheritance and exact final overrides for owned
   managed Cargo and build-planning commands. Reconcile native readback before
   spawning; optional capture failures preserve fresh output while withholding
