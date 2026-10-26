@@ -13,6 +13,7 @@ mod files;
 mod freshness;
 mod input;
 mod native_include_hints;
+pub mod noop;
 pub mod projects;
 mod read_check;
 mod receipts;
@@ -33,7 +34,9 @@ pub(crate) use files::{digest, event, file_digest, json, stat_identity};
 pub use freshness::FreshnessIndex;
 pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
-pub use runner::{Config, refresh_context, refresh_result, run, run_showing_output};
+pub use runner::{
+    Config, refresh_context, refresh_result, run, run_for_replay, run_showing_output,
+};
 pub(crate) use runner::{run_engine, run_engine_held};
 pub use shipped::new_project_lockfile;
 

@@ -167,6 +167,75 @@ fn failure(
     ExitCode::from(2)
 }
 
+/// Copies everything written through it, for an unchanged-call record.
+struct Tee<'a> {
+    inner: &'a mut dyn std::io::Write,
+    copy: &'a mut Vec<u8>,
+}
+
+impl std::io::Write for Tee<'_> {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        let written = self.inner.write(bytes)?;
+        self.copy.extend_from_slice(&bytes[..written]);
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.inner.flush()
+    }
+}
+
+/// Managed verification of `config`, replaying an unchanged call whose
+/// complete recorded observation still holds instead of running Cargo, and
+/// recording a run that may be replayed (ADR 0082).
+fn managed(
+    config: &sail_verus::managed::Config,
+    json: bool,
+    started: std::time::Instant,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+) -> sail_verus::Result<ProjectResult> {
+    use sail_verus::managed::noop;
+    let Some(key) = noop::key(config, json) else {
+        return if json {
+            sail_verus::managed::run(config, err)
+        } else {
+            sail_verus::managed::run_showing_output(config, out, err)
+        };
+    };
+    if let Some(replay) = noop::replay(config, &key, started) {
+        if !json {
+            let _ = out.write_all(&replay.stdout).and_then(|()| out.flush());
+        }
+        let _ = err.write_all(&replay.stderr).and_then(|()| err.flush());
+        return Ok(replay.result);
+    }
+    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+    let mut tee_out = Tee {
+        inner: out,
+        copy: &mut stdout,
+    };
+    let mut tee_err = Tee {
+        inner: err,
+        copy: &mut stderr,
+    };
+    let shown: Option<&mut dyn std::io::Write> = if json { None } else { Some(&mut tee_out) };
+    match sail_verus::managed::run_for_replay(config, shown, &mut tee_err, &key) {
+        Ok((result, Some(pending))) => {
+            pending.commit(stdout, stderr);
+            Ok(result)
+        }
+        Ok((result, None)) => {
+            noop::forget(&config.cache, &key);
+            Ok(result)
+        }
+        Err(error) => {
+            noop::forget(&config.cache, &key);
+            Err(error)
+        }
+    }
+}
+
 /// Runs managed verification. Without `--output json`, stdout and stderr
 /// are what plain `cargo verus verify` prints, and the exit code is its exit
 /// code; with it, stdout is one `sail-project-result` document.
@@ -175,6 +244,7 @@ pub(crate) fn verify(
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
 ) -> ExitCode {
+    let started = std::time::Instant::now();
     let options = match options(args) {
         Ok(o) => o,
         Err((code, message)) => {
@@ -218,10 +288,8 @@ pub(crate) fn verify(
         sail_verus::engine::verify(&config, err)
     } else if interactive {
         sail_verus::engine::verify_showing_output(&config, out, err)
-    } else if options.json {
-        sail_verus::managed::run(&config, err)
     } else {
-        sail_verus::managed::run_showing_output(&config, out, err)
+        managed(&config, options.json, started, out, err)
     };
     match result {
         Ok(mut result) => {
