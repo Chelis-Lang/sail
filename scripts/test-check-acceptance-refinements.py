@@ -145,6 +145,10 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-api/src/acceptance.rs", b"report: &'a Report,", b"pub report: &'a Report,"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct CompleteReport", b"#[derive(Default)] pub struct CompleteReport"),
             ("crates/sail-api/src/acceptance.rs", b"request: &'a ResolvedRequest,", b"pub request: &'a ResolvedRequest,"),
+            ("crates/sail-acceptance/src/query.rs", b"bytes: Vec<u8>,", b"pub bytes: Vec<u8>,"),
+            ("crates/sail-acceptance/src/query.rs", b"bytes: &'a [u8],", b"pub bytes: &'a [u8],"),
+            ("crates/sail-acceptance/src/query.rs", b"pub struct RawTranscript", b"#[derive(Default)] pub struct RawTranscript"),
+            ("crates/sail-acceptance/src/inputs.rs", b"pub struct ProviderSeal", b"#[derive(Default)] pub struct ProviderSeal"),
         ):
             candidate = dict(snapshots)
             self.assertIn(before, candidate[path])
