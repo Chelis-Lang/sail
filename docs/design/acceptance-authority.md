@@ -389,6 +389,12 @@ duplicate events cannot seal an `ObservedAttempt`. The seal preserves the exact
 buffers and status passed to the existing report code. Reused PIDs do not reuse
 slots. Per-target journals persist the pre-spawn command observations and
 terminal buffer hashes; `create_new` rejects overwriting an attempt slot.
+Allocation and configuration are separate checked transitions: an
+`UnconfiguredAttempt` supplies its run/unit/slot for preparing observation paths,
+then `configure` seals the final program/argv/declared-directory/overrides before
+spawn. Ordinary `reserve` composes those transitions. Preparing a request never
+licenses changing an already sealed descriptor. This interface adds no observer
+flags to the selected runtime by itself.
 
 Journal failure is sticky unavailable evidence. It never suppresses the fresh
 spawn or discards the actual stdout, stderr or wait status. The native owner

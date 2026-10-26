@@ -211,6 +211,13 @@ sail_code! {
         next: usize,
     }
 
+    /// Pre-spawn slot whose request paths can be prepared before argv is sealed.
+    pub struct UnconfiguredAttempt<'a> {
+        run: &'a [u8],
+        unit: &'a CompilerUnit,
+        slot: usize,
+    }
+
     /// Allocated before spawn; constructing a `Child` cannot choose this slot.
     pub struct ReservedAttempt<'a> {
         run: &'a [u8],
@@ -256,7 +263,26 @@ sail_code! {
             { Self { run, unit, next: 0 } }
         }
         sail_method! {
-            /// Allocates a fresh slot before a spawn, refusing counter exhaustion.
+            /// Allocates a fresh slot before configuring a command.
+            pub fn allocate(&mut self) -> (out: Option<UnconfiguredAttempt<'a>>)
+                requires(true)
+                ensures(ledger_run(final(self)) == ledger_run(old(self)), ledger_unit(final(self)) == ledger_unit(old(self)),
+                    out.is_some() == (ledger_next(old(self)) < usize::MAX),
+                    out.is_some() ==> ledger_next(final(self)) == ledger_next(old(self)) + 1,
+                    out.is_none() ==> ledger_next(final(self)) == ledger_next(old(self)),
+                    out.is_some() ==> unconfigured_run(&out.unwrap()) == ledger_run(final(self)),
+                    out.is_some() ==> unconfigured_unit(&out.unwrap()) == ledger_unit(final(self)),
+                    out.is_some() ==> unconfigured_slot(&out.unwrap()) == ledger_next(old(self)))
+            {
+                if self.next == usize::MAX { return None; }
+                let slot = self.next;
+                self.next += 1;
+                Some(UnconfiguredAttempt { run: self.run, unit: self.unit, slot })
+            }
+        }
+        sail_method! {
+            /// Allocates and configures an ordinary command in one checked step.
+            #[allow(clippy::question_mark, reason = "Keep explicit refusal in the source checked by stock Verus.")]
             pub fn reserve(&mut self, descriptor: ProcessDescriptor) -> (out: Option<ReservedAttempt<'a>>)
                 requires(true)
                 ensures(ledger_run(final(self)) == ledger_run(old(self)), ledger_unit(final(self)) == ledger_unit(old(self)),
@@ -268,11 +294,35 @@ sail_code! {
                     out.is_some() ==> reserved_slot(&out.unwrap()) == ledger_next(old(self)),
                     out.is_some() ==> reserved_descriptor(&out.unwrap()) == descriptor)
             {
-                if self.next == usize::MAX { return None; }
-                let slot = self.next;
-                self.next += 1;
-                Some(ReservedAttempt { run: self.run, unit: self.unit, slot, descriptor })
+                let Some(allocation) = self.allocate() else { return None; };
+                Some(allocation.configure(descriptor))
             }
+        }
+    }
+
+    impl<'a> UnconfiguredAttempt<'a> {
+        sail_method! {
+            /// Returns the independently allocated run bytes before request preparation.
+            #[must_use]
+            pub fn run(&self) -> (out: &'a [u8]) requires(true) ensures(out == unconfigured_run(self)) { self.run }
+        }
+        sail_method! {
+            /// Returns the raw unit whose observation paths are being prepared.
+            #[must_use]
+            pub fn unit(&self) -> (out: &'a CompilerUnit) requires(true) ensures(out == unconfigured_unit(self)) { self.unit }
+        }
+        sail_method! {
+            /// Returns the slot without claiming that a command or child exists.
+            #[must_use]
+            pub fn slot(&self) -> (out: usize) requires(true) ensures(out == unconfigured_slot(self)) { self.slot }
+        }
+        sail_method! {
+            /// Seals the final command after operational request paths are added.
+            pub fn configure(self, descriptor: ProcessDescriptor) -> (out: ReservedAttempt<'a>)
+                requires(true)
+                ensures(reserved_run(&out) == unconfigured_run(&self), reserved_unit(&out) == unconfigured_unit(&self),
+                    reserved_slot(&out) == unconfigured_slot(&self), reserved_descriptor(&out) == descriptor)
+            { ReservedAttempt { run: self.run, unit: self.unit, slot: self.slot, descriptor } }
         }
     }
 
@@ -473,6 +523,9 @@ sail_spec! {
     pub closed spec fn ledger_run<'a>(a: &AttemptLedger<'a>) -> &'a [u8] { a.run }
     pub closed spec fn ledger_unit<'a>(a: &AttemptLedger<'a>) -> &'a CompilerUnit { a.unit }
     pub closed spec fn ledger_next(a: &AttemptLedger) -> usize { a.next }
+    pub closed spec fn unconfigured_run<'a>(a: &UnconfiguredAttempt<'a>) -> &'a [u8] { a.run }
+    pub closed spec fn unconfigured_unit<'a>(a: &UnconfiguredAttempt<'a>) -> &'a CompilerUnit { a.unit }
+    pub closed spec fn unconfigured_slot(a: &UnconfiguredAttempt) -> usize { a.slot }
     pub closed spec fn reserved_run<'a>(a: &ReservedAttempt<'a>) -> &'a [u8] { a.run }
     pub closed spec fn reserved_unit<'a>(a: &ReservedAttempt<'a>) -> &'a CompilerUnit { a.unit }
     pub closed spec fn reserved_slot(a: &ReservedAttempt) -> usize { a.slot }
