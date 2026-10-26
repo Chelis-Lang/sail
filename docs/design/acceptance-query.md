@@ -766,3 +766,87 @@ ordinary verification at unchanged whole-crate scope and resource settings.
 The added dispatch performs only bounded fixed-word comparisons and borrows
 existing bytes; it adds no query copy or normalization. Its native performance
 qualification remains part of the integration gate.
+
+
+## Actual record-write transaction
+
+The disk cache's actual `put_scoped` path now invokes the checked
+`cache_write::write_record` transaction through its private
+`persist::NativeWriteHost`. The same bodies perform exclusive temporary-file
+creation, metadata serialization, checked record encoding, full byte write,
+metadata observation on that handle, close, rename and owned-file cleanup.
+Successful call history contains those operations in that order, with the exact
+serialized header/newline/reply image. Failure returns the original first
+primitive error, without a completed-write receipt. Cleanup applies only after
+temporary creation succeeded.
+
+Exclusive creation is a concrete ownership correction: an existing regular
+file, directory or symlink makes the write refuse without modifying or deleting
+that name. Its create error now takes priority over later serialization/write
+operations. Previously `File::create` could truncate an existing target and the
+common failure cleanup attempted removal even when creation failed. An existing
+name now remains for its owner or ordinary stale-temp maintenance. The normal
+reply stream continues through the existing cache-write failure path.
+
+The native provider is the private `NativeWriteHost`, whose methods forward
+the actual filesystem/serde operations. These forwards remain reviewed primitive
+boundaries; stock checks the transaction body, not the OS or serde implementation.
+Canonical integration must bind the exact provider, trait, native call sites and
+metadata mapping. Generic host implementations and the scripted control provider
+are not physical I/O or solver-origin authority. The primitive ledger records exact
+calls, returned errors and written bytes. It does not promise that an observed
+file stamp uniquely identifies contents, that a later pathname still denotes
+the closed descriptor, or that a successful rename is durable. In particular,
+`rename_requests` associates a written image with the successful rename call;
+it is not an assertion about the destination's later contents. No fsync is added.
+
+The nonempty constructive control writes an exact record image. Further controls
+exercise all five primitive failure stages and newline-bearing metadata. Native
+tests retain existing and dangling symlinks, a preexisting regular file, rename
+failure cleanup, and exact serialized record/stamp behavior. Six ordinary stock
+controls omit the full write or rename, stamp before the write, clean an unowned
+name, replace the original error, or omit cleanup of an owned failed write. The
+whole original query root checks 295 obligations at unchanged scope and limits.
+
+`WriteCommit` is data, not a solved-origin capability. The next required link is
+the filesystem-wide protected object/name history across every local writer,
+GC, rename, interruption and recovery transition. Only that history, tied to
+complete actual solver-run publication and the original shared/bundle writer
+contracts, can establish that deserialized bytes have an admitted solved origin.
+Checksums, framing, stamps and a successful call sequence cannot establish it
+alone. Canonical native Linux, differential and added-cost qualification remain
+integration gates.
+
+
+## WIP handoff
+
+The current owner slice is committed for WIP publication, not accepted as the
+complete design proof. It contains joint raw/hash ownership, complete supported
+head extraction, exact head-derived response policy, the tactic-check accounting
+fix ([#397](https://github.com/Chelis-Lang/sail/issues/397)), and the actual
+record-write transaction with exclusive temporary-file creation.
+
+The owner compatibility graph checks 295 obligations and all six writer
+mutations fail ordinary verification. Focused native cache tests, executable
+write scripts and clippy pass. This is separate from the canonical integration
+capture, its newer obligations, native Linux, full host/solver/differential
+qualification and performance acceptance. The writer source/primitive inventory
+and added controls still need incorporation into the lead's canonical checker.
+The WIP push does not authorize merging or selecting a runtime.
+
+The next required origin interface is query-only: exact solver identity, mode,
+raw input and output, actual owned I/O and termination. It must not fill unknown
+compiler/request facts with an empty context. An owned child PID and status do
+not establish which pinned image executed; immutable-CAS/updater or actual image
+binding needs its own source-bound evidence. That solved-stream publication must
+then connect to every local writer and filesystem object/name transition,
+including GC, crashes and recovery, plus the original shared/bundle writer
+contracts. The complete verifier/request stream inventory remains a separate
+service-composition requirement.
+
+The owned-argv observer transport remains disproved and unselected. The normal
+wrapper registration/peer bridge is a proposal, with no activated protocol or
+new runtime pin. The managed compiler-visible argument defect
+([#393](https://github.com/Chelis-Lang/sail/issues/393)) remains open. None of the
+framing, write receipts, hashes or metadata can substitute for the remaining
+solved-origin witness.
