@@ -640,3 +640,21 @@ The native machine is a `c7i.4xlarge` in `us-east-1`; these are correctness
 qualification observations, not clean performance measurements. Raw logs remain
 outside the repository. The failed semantic gate remains decisive despite the
 successful build and ordinary regression run.
+
+
+## Existing managed argument transport defect
+
+[Sail #393](https://github.com/Chelis-Lang/sail/issues/393) also reproduces this
+boundary on the existing selected fork: the current native managed wrapper's
+physical `--time` argument changes an actual procedural macro's proof, and Sail
+returns success for an original request rejected by plain Cargo-Verus. The
+[corpus fixture](../../corpus/repros/sail-managed-physical-time-argv/README.md)
+and [source/runtime record](../validation/managed-physical-argv.md) distinguish
+the exact tested committed Sail checkpoint, same selected verifier/Z3, safe
+unsupported-configuration fallback and explicit original-time controls. This
+is not limited to the unselected observer envelope. Query framing and exact key
+material correctly describe the SMT they receive; they cannot establish the
+original program's verification when a preceding layer changes compiler inputs.
+The full proof must move existing output/timing/logging metadata into an
+input-preserving private channel too. This defect and the complete physical
+invocation/stream and writer refinements remain open.
