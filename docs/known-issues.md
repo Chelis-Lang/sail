@@ -73,15 +73,6 @@ Current numbers are in [performance](performance.md).
   apply (for example after a `touch`, a recent ctime or a different
   argument), unchanged Anvil takes about 1.7 s against stock's 0.3 s, with no
   verifier run.
-- **Unchanged-call replay never records on macOS**
-  ([#437](https://github.com/Chelis-Lang/sail/issues/437)). On macOS, Cargo
-  copies every build script's `build-script-build` again on every run, where
-  Linux keeps a hard link. That advances ctimes during the run, and the replay
-  ctime guard ([ADR 0082](decisions/0082-unchanged-call-replay.md)) refuses the
-  record. Unchanged calls therefore take the full path: on Vest they cost
-  0.56–0.77 s against 0.25 s with stock, and on Anvil 1.6–1.9 s against
-  0.23–0.28 s. Results are unaffected. See
-  [performance](performance.md#macos-on-current-main).
 - **Tiny edits cost more than stock**
   ([#156](https://github.com/Chelis-Lang/sail/issues/156)). Input checks,
   receipts and complete reports add a fraction of a second to small edits.
