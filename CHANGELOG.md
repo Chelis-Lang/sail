@@ -5,6 +5,18 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Report a stored managed result as Unknown, not Current, in job status, MCP
+  and repair acceptance once the Sail, Verus, Cargo or rustc installation it was
+  recorded against has changed.
+- Bound the input and output a cached solver session retains
+  (`SAIL_SHIM_BUFFER_BYTES`, default 256 MiB); a larger session continues as
+  exact pass-through without further cache lookups or recording. A cached reply
+  that cannot be written now exits non-zero, as forwarding does.
+- Keep Verus's own exit status when the Verus binary disappears during a target's
+  verification, recording the target as not reusable rather than failing the
+  build, and publish no receipt when a unit's dep-info or build-script output
+  cannot be read.
+
 - Add linked acceptance lifecycle models and a conditional composed proof,
   checked directly by stock Verus with complete captured dependencies and
   guard-removal controls. CI completion requires the model-proof job.

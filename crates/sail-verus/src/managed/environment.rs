@@ -120,18 +120,24 @@ const SKIPPED: &[&str] = &["incremental", ".fingerprint", "examples"];
 /// The names declared by every unit in a Cargo target: `# env-dep:` lines of
 /// each `deps/*.d` file and `rerun-if-env-changed` lines of each build
 /// script's `build/*/output`. Units of earlier runs only add names.
-pub(super) fn declared_names(target: &Path) -> BTreeSet<String> {
+///
+/// `None` when any directory, entry or declaring file that exists cannot be
+/// read: the declarations are then unknown, and nothing may be reused on
+/// them.
+pub(super) fn declared_names(target: &Path) -> Option<BTreeSet<String>> {
+    let gone = |error: &std::io::Error| error.kind() == std::io::ErrorKind::NotFound;
     let mut names = BTreeSet::new();
     let mut pending = vec![target.to_owned()];
     while let Some(directory) = pending.pop() {
-        let Ok(entries) = std::fs::read_dir(&directory) else {
-            continue;
+        let entries = match std::fs::read_dir(&directory) {
+            Ok(entries) => entries,
+            Err(error) if gone(&error) => continue,
+            Err(_) => return None,
         };
-        for entry in entries.flatten() {
+        for entry in entries {
+            let entry = entry.ok()?;
             let path = entry.path();
-            let Ok(kind) = entry.file_type() else {
-                continue;
-            };
+            let kind = entry.file_type().ok()?;
             let name = entry.file_name();
             if kind.is_dir() {
                 if !SKIPPED.iter().any(|skipped| name == *skipped) {
@@ -149,13 +155,15 @@ pub(super) fn declared_names(target: &Path) -> BTreeSet<String> {
             if !(dep_info || script) || !kind.is_file() {
                 continue;
             }
-            let Ok(text) = std::fs::read_to_string(&path) else {
-                continue;
+            let text = match std::fs::read_to_string(&path) {
+                Ok(text) => text,
+                Err(error) if gone(&error) => continue,
+                Err(_) => return None,
             };
             names.extend(declarations(&text, dep_info));
         }
     }
-    names
+    Some(names)
 }
 
 fn declarations(text: &str, dep_info: bool) -> Vec<String> {
@@ -260,9 +268,13 @@ mod tests {
         std::fs::write(&ignored, "# env-dep:IGNORED\n")?;
         std::fs::write(deps.join("notes.txt"), "# env-dep:NOT_DEP_INFO\n")?;
         let names = declared_names(&root);
+        // An unreadable dep-info file leaves the declarations unknown.
+        std::fs::write(deps.join("bad-0123.d"), [0xff, 0xfe])?;
+        let unreadable = declared_names(&root);
         std::fs::remove_dir_all(&root)?;
+        assert!(unreadable.is_none());
         assert_eq!(
-            names.into_iter().collect::<Vec<_>>(),
+            names.into_iter().flatten().collect::<Vec<_>>(),
             [
                 "AGENT_FLAG",
                 "CARGO_PKG_NAME",
