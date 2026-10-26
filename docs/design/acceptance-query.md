@@ -514,6 +514,16 @@ modes and every original Unicode argument sequence, with separate token, mode,
 marker and program-name guard controls. Full actual compiler/launcher CLI parity
 is a runtime qualification gate; shared-body fixtures are not that acceptance.
 
+The argv-envelope candidate does **not** establish physical compiler input
+equivalence. Procedural macros can observe the original OS argv through
+`std::env::args`, `args_os` or Linux `/proc/self/cmdline` after a local vector is
+restored. The [native macro fixture](../../crates/sail-verus/tests/fixtures/observer_argv/probe.rs)
+emits `assert(false)` without metadata and `assert(true)` when it sees the owned
+marker. Candidate qualification must compare the same frozen source under plain,
+unwrapped candidate and active-capture paths. This transport remains blocked
+until actual compiler-visible argv/environment equivalence is established; the
+parser roundtrip is not a substitute. The selected runtime is unchanged.
+
 The explicit remaining contracts are process/pipe/wait identity, exact file I/O,
 protected fresh journal ownership and runtime/build correspondence. A final
 flush error after all truthful terminal bytes reached the file can leave a valid
