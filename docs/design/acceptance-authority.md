@@ -326,6 +326,47 @@ factory at a new context and observation point. Changed inputs make a retained
 success noncurrent. Exact restoration can establish Current again after a new
 matching observation; no old Current label is trusted as evidence about today.
 
+### Normal engine exits that do not establish completion
+
+The shared executable engine classifier checks the decoded original terminal and
+result fields, including event versions and names, full phase, explicit normal
+termination, exit/success agreement, header presence, result scalar types and
+complete document framing. It distinguishes actual field absence from wrong
+JSON types; no `document_valid` or caller-supplied completion flag replaces those
+checks. `engine_events::completed` uses this same source body in production.
+The concrete-to-model projection preserves each original field and proves the
+completion predicates equivalent.
+
+`DeclinedEngine` is a separate private checked token for an actually observed
+normal exit zero whose protocol or document candidates refuse completion. Its
+status remains zero. The model observes those fields once, creates a distinct
+`EngineDecline`, and starts an independent `RestartAfterDecline` only with the
+same exact subject, a later start and fresh empty document/solver history.
+Ordinary `EngineFailure` retains its original nonzero/interrupted/malformed
+process guard. Both restart origins enter the same per-target candidate and
+coverage factory; every fallback in the requested repair scope is rejected.
+A repeated protocol observation cannot overwrite an earlier refusal.
+
+The native controlled witness runs a real child producing a nonempty complete
+Verus fixture at exit zero with a missing terminal, checks the private decline
+factory preserves that actual status/slot, and runs a distinct fresh stock
+fallback with exact stdout/stderr/status. The model witness additionally rejects
+old engine documents, refuses calling that zero exit a crash, and demonstrates
+whole-target acceptance followed by repair refusal. These are component controls,
+not a qualified real-project engine rollout.
+
+Raw JSON decoding and attribution to the original child still require native
+refinement. The projection does not invent a modeled invocation from an arbitrary
+supplied target/run label. A further captured witness shows why that matters:
+the qualified fork can complete successfully while every optional engine event
+append fails on a read-only preexisting file. The old valid terminal bytes remain
+unchanged, and structural completion validation accepts them alongside the new
+stdout. That is a stale-origin gap, not a demonstrated false mathematical proof.
+Private slot-scoped producer paths and an independently checked selected-attempt
+reference are required before this file can establish current-child origin.
+This association work remains pending; a familiar filename and a well-formed
+record do not discharge it.
+
 ## Checked controls
 
 The model checks coherent nonempty and zero-function successful lifecycles,
