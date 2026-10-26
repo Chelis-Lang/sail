@@ -273,7 +273,10 @@ sail_spec! {
         ensures header(name, version, binary, platform, mode) == encode_fields(identity_fields(name, version, binary, platform, mode))
     {
         reveal(header); reveal(identity_fields);
-        reveal_with_fuel(encode_fields, 8);
+        match mode {
+            None => { reveal_with_fuel(encode_fields, 7); }
+            Some(value) => { reveal_with_fuel(encode_fields, 8); }
+        }
     }
 
     pub proof fn header_identity_injective(a: (Seq<u8>, Seq<u8>, Seq<u8>, Seq<u8>, Option<Seq<u8>>),

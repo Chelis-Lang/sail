@@ -659,3 +659,28 @@ ordinary verification at unchanged whole-crate scope and resource settings.
 The added dispatch performs only bounded fixed-word comparisons and borrows
 existing bytes; it adds no query copy or normalization. Its native performance
 qualification remains part of the integration gate.
+
+## Captured same-owner query assembly
+
+The canonical query root includes the production `query_prefix` and
+`query_policy` modules and the actual `new_query_prefix` factory. A private
+`QueryPrefix` owns both the original transcript and its incremental key state;
+a `FramedCommand` borrows that owner's transition to expose its complete head,
+endpoint, response policy and key. The source capture binds the native
+`SessionPrefix`/`CommandFrame` forwarding implementations separately as reviewed
+code. It checks every source-shared factory and method, the real solver/mode
+declarations, exact imports and the complete function inventory.
+
+The whole positive root has 288 verified obligations and 503 function entries,
+preserving all 462 earlier entries. Its 39 required negative controls retain
+all 30 earlier controls and add complete-head, policy, owned append/endpoint and
+tail-hash failures. The four required CI partitions each repeat this whole
+positive root; only their complete union covers every negative control.
+A source-bound full query run is still required to qualify this assembly.
+These checks do not establish actual solver delivery, clean termination,
+truthful cache origin, physical persistence or the service-wide theorem.
+
+The first expanded canonical development probe hit the unchanged solver
+resource limit in `header_fields`. Splitting its existing proof by the actual
+mode case proves the identical contract within the existing budget. No
+runtime operation, verifier limit or proof obligation is removed.

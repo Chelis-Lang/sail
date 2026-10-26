@@ -60,6 +60,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | Expanded query capture based on `82ec798e` | Whole canonical development probe | Original `header_fields` proof reaches the unchanged solver resource limit. Explicit mode case splitting proves the same contract: 288/0 and all 503 function entries, preserving all 462 earlier entries. Full committed mutation qualification remains pending |
 | 2026-10-26 | Legacy updater from `c6270f75` | Missing-journal witness | Returns covered=true for missing observation journal; fixed regression passes in provider slice. Accounting defect #377, no complete false-proof exploit established |
 | 2026-10-26 | Provider candidate `86567f43` | Independent real-child probe | Malformed Cargo artifact stdout was forwarded but omitted from the journal, yielding a completed empty stream. Fixed in `387f7f2e`; independent exact-body retest passes |
 | 2026-10-26 | Request-capture prototype before `421a0a7b` | Environment correspondence review | Fresh transport variables could leak into compilation while excluded from context; replaced with consumed private arguments and typed configuration |

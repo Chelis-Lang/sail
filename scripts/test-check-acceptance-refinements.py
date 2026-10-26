@@ -205,6 +205,7 @@ class SourceCaptureTests(unittest.TestCase):
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-acceptance/src/authority.rs",
             CHECKER.KEY_CORE, CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
+            "crates/sail-acceptance/src/query_prefix.rs",
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
         paths += ["crates/" + name + "/Cargo.toml" for name in
             ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
@@ -236,6 +237,10 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct GuardedReadback", b"#[derive(Default)] pub struct GuardedReadback"),
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct CompletedRead", b"#[derive(Default)] pub struct CompletedRead"),
             (CHECKER.KEY_CORE, b"pub struct Prefix", b"#[derive(Default)] pub struct Prefix"),
+            ("crates/sail-acceptance/src/query_prefix.rs", b"pub struct QueryPrefix", b"#[derive(Default)] pub struct QueryPrefix"),
+            ("crates/sail-acceptance/src/query_prefix.rs", b"pub struct FramedCommand", b"#[derive(Deserialize)] pub struct FramedCommand"),
+            ("crates/sail-acceptance/src/query_prefix.rs", b"raw: RawTranscript,", b"pub raw: RawTranscript,"),
+            ("crates/sail-acceptance/src/query_prefix.rs", b"head: &'a [u8],", b"pub head: &'a [u8],"),
             ("crates/sail-key/Cargo.toml", b"[lints]", b'[lib]\npath="unreviewed.rs"\n\n[lints]'),
             ("crates/sail-api/src/acceptance.rs", b"pub struct SubmissionBinding", b"#[derive(Deserialize)] pub struct SubmissionBinding"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct SubmittedAuthority", b"#[derive(Default)] pub struct SubmittedAuthority"),
@@ -315,6 +320,19 @@ class SourceCaptureTests(unittest.TestCase):
         ordinary = source[begin:begin + stream[end].end]
         with self.assertRaises(SOURCE.SourceRefusal):
             SOURCE.checked_item_envelopes(ordinary, reviewed_trait_impls=CHECKER.KEY_RECORDING_IMPLS)
+
+    def test_owned_query_modules_keep_actual_imports_and_checked_constructors(self):
+        for path in ("crates/sail-acceptance/src/query_prefix.rs",
+                "crates/sail-acceptance/src/query_policy.rs", CHECKER.KEY_FACTORY):
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            for addition in (b"\nuse hidden::*;", b"\n#[cfg(sail_verus)] use hidden::*;"):
+                with self.subTest(path=path, addition=addition), self.assertRaises(CHECKER.Refusal):
+                    CHECKER.compiled_subset(path, original + addition)
+        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.KEY_FACTORY):
+            original = (ROOT / path).read_bytes()
+            with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
+                CHECKER.compiled_subset(path, original + b"\npub fn unchecked_factory() -> bool { true }")
 
     def test_executable_cfg_loading_and_unchecked_spec_refuse(self):
         for source in (b"#[cfg(sail_verus)] fn valid() -> bool { true }",
