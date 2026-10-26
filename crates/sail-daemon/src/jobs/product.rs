@@ -16,6 +16,8 @@ struct StoredBaseline<T> {
     baseline: T,
     #[serde(default)]
     proof_authority_revision: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    request: Option<sail_api::project::ResolvedRequest>,
 }
 
 fn completed(state: &State, id: &str) -> io::Result<ProjectResult> {
@@ -131,6 +133,7 @@ pub(super) fn save_baseline(state: &State, id: &str, name: &str) -> io::Result<B
         let stored = StoredBaseline {
             baseline: &baseline,
             proof_authority_revision: store::PROOF_AUTHORITY_REVISION,
+            request: store::retained_request(&get(state, id)?).cloned(),
         };
         file.write_all(&serde_json::to_vec(&stored).map_err(io::Error::other)?)?;
         file.sync_all()?;
@@ -220,6 +223,7 @@ pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
         super::contracts::validate_baseline(state, &baseline, &bytes)?;
     } else {
         store::withhold_legacy_authority(&mut baseline.result, stored.proof_authority_revision);
+        store::withhold_unbound_authority(&mut baseline.result, stored.request.as_ref());
     }
     Ok(baseline)
 }

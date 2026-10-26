@@ -199,6 +199,16 @@ without whole-target authority remain observations, even when their exit code
 is zero or their inputs are Current. A genuine verification run with no
 functions can still establish a whole-target proof.
 
+Retained jobs also preserve the target inventory and invocation identity
+resolved before Cargo starts. Job reads compare that independent request with
+the original submission and the sealed result; the result's own `requested`
+flags do not define the expected scope. Missing, malformed, older or mismatched
+request evidence adds `SAIL3115` and withholds target completeness and repair
+acceptance. Input Currentness, diagnostics and negative verdicts remain
+available. Re-run an older job to establish request-bound proof evidence.
+Saved baselines retain the same request binding; copying an incomplete old
+result into a new baseline cannot restore its proof authority.
+
 When Sail cannot confirm that a result's inputs are unchanged, the result is
 Unknown and carries the note `SAIL3114: inputs could not be confirmed
 unchanged; re-run for a current result` ([freshness](freshness.md)).

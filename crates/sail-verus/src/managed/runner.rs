@@ -9,7 +9,8 @@ use super::receipts::{Invocation, PhaseDigests, RECEIPT_VERSION, Receipt, Runtim
 use super::receipts::{artifact_hashes, complete};
 use crate::{Error, Result};
 use sail_api::project::{
-    Currentness, Execution, NoReuse, ProjectResult, SCHEMA_VERSION, TargetResult, VerifiedAs,
+    Currentness, Execution, NoReuse, ProjectResult, RequestTarget, ResolvedRequest, SCHEMA_VERSION,
+    TargetResult, VerifiedAs,
 };
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -59,6 +60,8 @@ pub struct Config {
     /// which prints only Verus's own output, does not (ADR 0047).
     /// Interactive-engine runs always log.
     pub attribution_logs: bool,
+    /// Parent-owned request capture; consumed by Sail, never compiler argv or environment.
+    pub request_capture: Option<super::request::RequestCaptureDestination>,
 }
 
 #[derive(Clone)]
@@ -3015,6 +3018,39 @@ pub(crate) fn run_engine_held(
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);
+    // Capture the independently resolved original request before starting
+    // Cargo. Never rebuild this scope or its input revision from result rows.
+    let original_request = ResolvedRequest {
+        run_id: run_id.clone(),
+        invocation: invocation.to_string_lossy().into_owned(),
+        workspace: before.workspace.to_string_lossy().into_owned(),
+        context_sha256: hash.clone(),
+        input_revision: before.revision.clone(),
+        args: config.args.clone(),
+        engine: engine.as_ref().map(crate::engine::Request::identity),
+        function: engine.as_ref().and_then(|engine| engine.function.clone()),
+        repair_package: engine
+            .as_ref()
+            .and_then(|e| e.selection.as_ref())
+            .map_or_else(String::new, |s| s.package.clone()),
+        repair_target: engine
+            .as_ref()
+            .and_then(|e| e.selection.as_ref())
+            .and_then(|s| s.target.clone()),
+        repair_kind: engine
+            .as_ref()
+            .and_then(|e| e.selection.as_ref())
+            .map_or_else(String::new, |s| s.kind.clone()),
+        targets: expected
+            .iter()
+            .map(|(package_id, target, kind)| RequestTarget {
+                package_id: package_id.clone(),
+                target: target.clone(),
+                kind: kind.clone(),
+            })
+            .collect(),
+    };
+    super::request::capture(&original_request, config.request_capture.as_ref())?;
     let source_engine = engine.is_some();
     // A header may only avoid optional restoration work. Unexpected Cargo
     // rebuilds still run the genuine verifier, and the ordinary complete
@@ -3467,7 +3503,7 @@ pub(crate) fn run_engine_held(
             "SAIL3123: the interactive engine faulted for {fallbacks} target(s); their exact stock Verus results are reported and publish no proof receipt"
         ));
     }
-    let result = ProjectResult {
+    let mut result = ProjectResult {
         kind: "sail-project-result".to_owned(),
         schema_version: SCHEMA_VERSION,
         run_id,
@@ -3494,6 +3530,18 @@ pub(crate) fn run_engine_held(
             verified_as: VerifiedAs::Managed,
         }),
     };
+    if !sail_api::acceptance::request_corresponds(&original_request, &result)
+        || !sail_api::acceptance::verification_enabled_command(&original_request.args)
+        || sail_api::acceptance::focused_command(&original_request.args)
+        || (result.currentness == Currentness::Current
+            && result.exit_code == Some(0)
+            && sail_api::acceptance::complete_request(&original_request, &result).is_none())
+    {
+        for target in &mut result.targets {
+            target.complete = false;
+        }
+        result.notes.push("SAIL3115: retained original request does not match the observed target inventory; whole-request proof authority is withheld".to_owned());
+    }
     let publication = diagnostics.phase(Phase::Publication);
     if result.currentness == Currentness::Current
         && let Some(context) = paths.input_state.parent()
@@ -3798,6 +3846,7 @@ mod tests {
                 args: Vec::new(),
                 force: false,
                 attribution_logs: false,
+                request_capture: None,
             };
             let error = super::run_engine_held(&config, None, &mut Vec::new(), None)
                 .err()
@@ -3877,8 +3926,11 @@ mod tests {
     include!("runner_artifact_isolation_tests.rs");
     #[cfg(unix)]
     include!("runner_cargo_toolchain_tests.rs");
+    #[cfg(unix)]
+    include!("runner_request_capture_tests.rs");
     fn compiler_request(function: Option<&str>) -> crate::engine::Request {
         crate::engine::Request {
+            selection: None,
             function: function.map(str::to_owned),
             cargo_verus: PathBuf::from("engine/cargo-verus"),
             manifest: PathBuf::from("engine/sail-build.json"),
@@ -4053,6 +4105,7 @@ mod tests {
             args: Vec::new(),
             force: true,
             attribution_logs: true,
+            request_capture: None,
         })
     }
 
@@ -5499,6 +5552,7 @@ mod tests {
         manifest.save(&root)?;
         let path = root.join(crate::source_build::MANIFEST);
         let request = crate::engine::Request {
+            selection: None,
             function: None,
             cargo_verus: runtime.join("cargo-verus"),
             manifest_sha256: file_digest(&path)?,
@@ -5519,6 +5573,7 @@ mod tests {
             args: Vec::new(),
             force: true,
             attribution_logs: true,
+            request_capture: None,
         };
         std::fs::write(runtime.join("z3"), b"tampered")?;
         let error = context(&config, Some(&request))
@@ -6223,6 +6278,7 @@ mod tests {
             args: args.iter().map(|&a| a.to_owned()).collect(),
             force: true,
             attribution_logs: true,
+            request_capture: None,
         };
         let focus = config(&["-p", "input", "--", "--verify-function", "input"]);
         let full = config(&["-p", "input"]);
