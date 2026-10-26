@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds Sail's release tarballs and uploads them to a DRAFT GitHub release
-# (docs/releasing.md). Local only: CI never builds or publishes releases.
+# (docs/releasing.md), then starts the attest-release workflow for it. Local
+# only: CI never builds or publishes releases.
 #
 #   scripts/release.sh VERSION       build both platforms, package, draft release
 #   scripts/release.sh package VERSION LINUX_STAGE MACOS_STAGE
@@ -199,11 +200,18 @@ Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/s
     dist/*.tar.gz dist/*.tar.gz.sha256
   gh release view "v$version" --repo "$repo" --json url,isDraft,assets \
     --jq '"\(.url) draft=\(.isDraft)", (.assets[] | "  \(.name) \(.size)")'
+  # Provenance for scripts/install.py: the attest-release workflow signs each
+  # draft archive's digest for this repository. Check it before publishing.
+  gh workflow run attest-release.yml --repo "$repo" -f tag="v$version"
+  echo "Started the attest-release workflow. Before publishing, check each archive:"
+  for target in x86_64-unknown-linux-gnu aarch64-apple-darwin; do
+    echo "  gh attestation verify dist/sail-$version-$target.tar.gz --repo $repo"
+  done
 }
 
 case "${1:-}" in
   stage) shift; stage "$@" ;;
   package) shift; package_stages "$@" ;;
-  ""|-h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  ""|-h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
   *) release "$1" ;;
 esac
