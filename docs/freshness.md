@@ -228,6 +228,18 @@ artifact bytes against an established receipt. The candidate's
 [qualification record](validation/managed-selection-family.md) identifies the
 remaining gates and the original failed diagnostic.
 
+Successful erased compilation may replace a failed verification's dep-info
+with a smaller declared-environment name set. After a complete fresh scan,
+receipt admission preserves names from independently valid original receipts
+for the same admissible compiler context and scope, and freshly samples every
+name in the common union, including absence. The exact name/value-map equality
+check remains in place. An unreadable or malformed fresh scan still refuses
+reuse, and invalid receipts cannot supply names. This prevents unrelated
+successful compilation from discarding a dependency's known declaration
+history. It does not observe ghost-only inputs that no successful original
+record captured; [issue 386](https://github.com/Chelis-Lang/sail/issues/386)
+remains a separate verification-phase coverage gap.
+
 Concurrent dependency publishers reserve a private staging directory before
 writing. A name collision leaves the other publisher's files untouched; a
 failed publication cannot remove a directory it did not create. This does not

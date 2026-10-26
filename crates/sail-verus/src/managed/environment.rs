@@ -119,7 +119,9 @@ const SKIPPED: &[&str] = &["incremental", ".fingerprint", "examples"];
 
 /// The names declared by every unit in a Cargo target: `# env-dep:` lines of
 /// each `deps/*.d` file and `rerun-if-env-changed` lines of each build
-/// script's `build/*/output`. Units of earlier runs only add names. A missing,
+/// script's `build/*/output`. A later compiler phase can overwrite dep-info and
+/// remove names from this fresh scan. Receipt admission separately retains and
+/// freshly reobserves names from independently valid original receipts. A missing,
 /// unreadable, malformed or untraversable observation is `None`, distinct from
 /// a successful empty scan. This enumerates declarations, not all compiler I/O.
 pub(super) fn declared_names(target: &Path) -> Option<BTreeSet<String>> {

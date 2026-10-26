@@ -1707,8 +1707,7 @@ fn target_records_in(
     let siblings = sibling_receipts(paths, context);
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
-    let declared = super::environment::declared_names(&paths.target)
-        .map(|names| super::environment::values(&names));
+    let fresh_declared_names = super::environment::declared_names(&paths.target);
     let artifacts = artifacts(paths);
     let verified = |artifact: &Value| {
         let package = data["packages"]
@@ -1784,6 +1783,47 @@ fn target_records_in(
         current.join().ok()
     })
     .unwrap_or_default();
+    // Successful erasure can replace a failed verification's dep-info with a
+    // smaller declaration set. Retain names from independently admissible old
+    // proofs, then freshly sample the whole common domain before any result is
+    // published or compared. An incomplete fresh scan can never be repaired by
+    // an old receipt.
+    let declared = fresh_declared_names.map(|mut names| {
+        let scope = ReceiptDeclarationScope {
+            data,
+            expected,
+            revisions: &revisions,
+            partial_args,
+            digests: &digests,
+        };
+        for receipt in stored.values().flatten() {
+            preserve_receipt_declarations(&mut names, receipt, context, &scope, true);
+        }
+        for (sibling, directory) in &siblings {
+            for path in stored.keys() {
+                if let Some(name) = path.file_name()
+                    && let Some(receipt) = read::<Receipt>(&directory.join(name))
+                {
+                    preserve_receipt_declarations(&mut names, &receipt, sibling, &scope, false);
+                }
+            }
+        }
+        for seed in seeded {
+            let old_context = &seed.receipt.context;
+            if old_context == context {
+                preserve_receipt_declarations(&mut names, &seed.receipt, context, &scope, true);
+            } else if siblings.iter().any(|(sibling, _)| sibling == old_context) {
+                preserve_receipt_declarations(
+                    &mut names,
+                    &seed.receipt,
+                    old_context,
+                    &scope,
+                    false,
+                );
+            }
+        }
+        super::environment::values(&names)
+    });
     for artifact in artifacts {
         let Some(package) = verified(&artifact) else {
             continue;
@@ -2144,6 +2184,62 @@ fn target_revisions(
     }
     let fresh = crate::parallel::in_order(&requested, |&id| (id, target_revision(data, id)));
     target_revision_readback(&requested, fresh).unwrap_or_default()
+}
+
+/// Evidence from the same admitted receipt policy, independently of the
+/// current declaration-inventory equality that these additional reads support.
+struct ReceiptDeclarationScope<'a> {
+    data: &'a Value,
+    expected: &'a BTreeSet<(String, String, String)>,
+    revisions: &'a HashMap<String, String>,
+    partial_args: Option<&'a [String]>,
+    digests: &'a PhaseDigests,
+}
+
+fn preserve_receipt_declarations(
+    names: &mut BTreeSet<String>,
+    receipt: &Receipt,
+    context: &str,
+    scope: &ReceiptDeclarationScope<'_>,
+    local: bool,
+) {
+    let requested = scope.expected.iter().any(|(package, name, kind)| {
+        package == &receipt.package_id && name == &receipt.name && receipt.kind.contains(kind)
+    });
+    // Sibling scopes can supply dependencies, never a requesting scope's proof.
+    if requested && !local {
+        return;
+    }
+    if receipt.input_revision.is_empty()
+        || scope.revisions.get(&receipt.package_id) != Some(&receipt.input_revision)
+    {
+        return;
+    }
+    let Some(package) = scope.data["packages"].as_array().and_then(|packages| {
+        packages
+            .iter()
+            .find(|package| package["id"] == receipt.package_id)
+    }) else {
+        return;
+    };
+    if receipt.invocation.identity.manifest
+        != Path::new(package["manifest_path"].as_str().unwrap_or_default())
+    {
+        return;
+    }
+    let Some(target) = receipt.invocation.identity.cargo_target(package) else {
+        return;
+    };
+    if target["name"] != receipt.name || target["kind"] != serde_json::json!(receipt.kind) {
+        return;
+    }
+    let partial = scope.partial_args.filter(|_| requested);
+    // Complete original scope, version, checksum, commit, live values and all
+    // artifact/dependency bytes remain mandatory. Old names only ADD fresh
+    // observations; they never replace a scan, import old values or mint reuse.
+    if receipt.valid_scoped_in(context, scope.digests, partial) {
+        names.extend(receipt.declared_environment.keys().cloned());
+    }
 }
 
 fn target_revision_readback(
@@ -5455,6 +5551,141 @@ mod tests {
             target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
         assert!(declared && targets.is_empty());
         assert_eq!(missing, BTreeSet::from(["input".into()]));
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keep establishment, shrink, scan-loss and invalid-original controls on one unchanged receipt fixture."
+    )]
+    fn admissible_receipt_names_survive_erasure_without_rehabilitating_a_failed_scan()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-env-domain-shrink-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
+        let data = serde_json::json!({"workspace_root":root, "sail_cache_directory":config.cache,
+            "workspace_members":["input"], "resolve":{"nodes":[{"id":"input","dependencies":[]}]},
+            "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
+            "source":null,"metadata":{"verus":{"verify":true}},
+            "targets":[{"name":"input","kind":["lib"],"src_path":root.join("lib.rs")}]}]});
+        let deps = paths.target.join("debug/deps");
+        std::fs::create_dir_all(&deps)?;
+        let artifact = paths.target.join("input.rlib");
+        std::fs::write(&artifact, "actual artifact")?;
+        let record = |fresh| {
+            serde_json::json!({"reason":"compiler-artifact", "package_id":"input", "fresh":fresh,
+            "target":{"name":"input","kind":["lib"]}, "filenames":[artifact]})
+        };
+        let declaration = deps.join("actual.d");
+        let dropped = format!("SAIL_ENV_DOMAIN_DROPPED_{}", std::process::id());
+        std::fs::write(
+            &declaration,
+            format!("# env-dep:{dropped}\n# env-dep: __VERUS_DRIVER_ARGS__\n"),
+        )?;
+        json(&paths.run.join("artifacts.jsonl"), &record(false))?;
+        let invocation = paths.run.join("invocations/call.json");
+        json(
+            &invocation,
+            &compiler_receipt(&paths, &data, &artifact).invocation,
+        )?;
+        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let (fresh, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(missing.is_empty() && fresh[0].complete && !fresh[0].reused);
+        super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+        let path = receipt_path(&paths, "input", "input", &["lib".into()]);
+        let original: Receipt = read(&path).ok_or("original receipt absent")?;
+        assert!(original.valid("selected"));
+        assert_eq!(
+            original
+                .declared_environment
+                .keys()
+                .cloned()
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([dropped.clone(), " __VERUS_DRIVER_ARGS__".into()])
+        );
+        std::fs::remove_file(invocation)?;
+        json(&paths.run.join("artifacts.jsonl"), &record(true))?;
+        // Successful erasure overwrites the declaration-bearing file. The
+        // provider genuinely succeeds, but its current name set is now empty.
+        std::fs::write(&declaration, "")?;
+        assert_eq!(
+            super::super::environment::declared_names(&paths.target),
+            Some(BTreeSet::new())
+        );
+        for _ in 0..2 {
+            let (reused, missing, covered) =
+                target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+            assert!(covered && missing.is_empty() && reused[0].reused && reused[0].complete);
+            assert_eq!(reused[0].report, original.invocation.report);
+        }
+        // A lossy fresh provider still refuses: old names cannot repair None.
+        std::fs::write(&declaration, [0xff])?;
+        let (targets, missing, covered) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(!covered && targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        std::fs::write(
+            &declaration,
+            format!("# env-dep:{}\n", dropped.to_lowercase()),
+        )?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        // Independently valid checksum/commit/scope do not permit importing
+        // a changed original value or an original absence that is now present.
+        std::fs::write(&declaration, "")?;
+        assert_eq!(
+            std::env::var("CARGO_PKG_NAME").ok().as_deref(),
+            Some(env!("CARGO_PKG_NAME"))
+        );
+        let pending = paths
+            .run
+            .join("pending-receipts")
+            .join(path.file_name().ok_or("receipt filename")?);
+        let revisions = HashMap::from([("input".into(), target_revision(&data, "input"))]);
+        let digests = PhaseDigests::default();
+        let scope = ReceiptDeclarationScope {
+            data: &data,
+            expected: &expected,
+            revisions: &revisions,
+            partial_args: None,
+            digests: &digests,
+        };
+        for old_value in [None, Some(b"not-the-current-package".to_vec())] {
+            let mut changed = original.clone();
+            changed
+                .declared_environment
+                .insert("CARGO_PKG_NAME".into(), old_value);
+            let changed = changed.seal();
+            json(&pending, &changed)?;
+            super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+            assert!(!changed.valid("selected"));
+            let mut preserved = BTreeSet::new();
+            preserve_receipt_declarations(&mut preserved, &changed, "selected", &scope, true);
+            assert!(
+                preserved.is_empty(),
+                "a changed original cannot supply names"
+            );
+            let (targets, missing) =
+                target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+            assert!(targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        }
+        // A corrupted original is never a source of retained declaration names.
+        let mut corrupt = original;
+        corrupt.checksum.push('0');
+        json(&path, &corrupt)?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(targets.is_empty() && missing == BTreeSet::from(["input".into()]));
         drop(ownership);
         std::fs::remove_dir_all(root)?;
         Ok(())
