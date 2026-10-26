@@ -35,6 +35,18 @@ The build-script scheduling and unit-plan consumers skip only schema-validated
 private control records. Their original unit package/scope checks remain in
 force; malformed controls and unknown records do not gain a metadata exemption.
 
+Before sealing, the native Cargo observer reuses the complete-document parser
+for mixed stdout. It retains artifact/build-script documents, permits known
+Cargo diagnostic/build-finished documents and Verus verification documents, and
+leaves ordinary verifier summary/timing text unchanged. JSON-looking malformed
+or truncated remainder and unsupported JSON documents withhold the terminal
+record even after a normal exit; they cannot become an observed empty child.
+Capture accounting retains at most 64 MiB, then discards its buffer and withholds
+the terminal while forwarding and returning the actual child status as before.
+This parser is reviewed native code, not a complete raw-output proof. Corrupted
+bytes that no longer look like JSON can be indistinguishable from ordinary
+verifier text. That interpretation/provider boundary remains open.
+
 `seal_compiler_provider` additionally scans actual artifact-frame positions.
 Every ordinary compiler artifact requires exactly one tagged successful dep-info
 read. Build-script and custom-build frames are counted but do not require a

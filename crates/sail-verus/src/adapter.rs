@@ -195,7 +195,7 @@ fn cargo_messages(
     records: &mut impl Write,
     forwarded: &mut impl Write,
 ) -> Result<ExitCode> {
-    use crate::managed::source_inputs::{write_artifact, write_provider};
+    use crate::managed::source_inputs::write_provider;
     use sail_acceptance::inputs::ProviderEvent;
     let producer = std::process::id();
     // Declare the required child before spawn. Any subsequent early return
@@ -230,22 +230,11 @@ fn cargo_messages(
         },
     )
     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let mut frames = 0usize;
+    let mut observed = Some(Vec::new());
     if let Some(stdout) = child.stdout.take() {
         for line in std::io::BufReader::new(stdout).split(b'\n') {
             let line = line.map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-            if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&line)
-                && matches!(
-                    value["reason"].as_str(),
-                    Some("compiler-artifact" | "build-script-executed")
-                )
-            {
-                write_artifact(records, value, producer, pid)
-                    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-                frames = frames
-                    .checked_add(1)
-                    .ok_or_else(|| Error::new("SAIL3111", "artifact count overflow"))?;
-            }
+            capture_cargo_line(&mut observed, &line, 64 * 1024 * 1024);
             forwarded
                 .write_all(&line)
                 .and_then(|()| forwarded.write_all(b"\n"))
@@ -257,18 +246,77 @@ fn cargo_messages(
     let actual = child
         .wait()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    write_provider(
-        records,
-        &ProviderEvent {
-            kind: 3,
-            producer,
-            child: pid,
-            frames,
-            exited: actual.code().is_some(),
-        },
-    )
-    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    // A normal wait is independent of whether the mixed output could be
+    // classified. Poisoning withholds the terminal, never changes that status.
+    if let Some(observed) = observed
+        && let Some(frames) = cargo_artifacts(&observed, records, producer, pid)?
+    {
+        write_provider(
+            records,
+            &ProviderEvent {
+                kind: 3,
+                producer,
+                child: pid,
+                frames,
+                exited: actual.code().is_some(),
+            },
+        )
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    }
     Ok(status(actual))
+}
+
+/// Bound only optional accounting retention. A budget refusal is sticky and
+/// cannot suppress output forwarding or change the actual child status.
+fn capture_cargo_line(observed: &mut Option<Vec<u8>>, line: &[u8], limit: usize) {
+    if let Some(buffer) = observed {
+        if line.len() < limit.saturating_sub(buffer.len()) {
+            buffer.extend_from_slice(line);
+            buffer.push(b'\n');
+        } else {
+            *observed = None;
+        }
+    }
+}
+
+/// Parse complete JSON documents so genuine multiline Verus output is not
+/// mistaken for malformed line-delimited Cargo metadata. This is accounting,
+/// not a proof of the surrounding mixed-output parser or physical transport.
+fn cargo_artifacts(
+    stdout: &[u8],
+    records: &mut impl Write,
+    producer: u32,
+    child: u32,
+) -> Result<Option<usize>> {
+    use crate::managed::source_inputs::write_artifact;
+    let (documents, remainder) = crate::attribution::json_documents(stdout);
+    // The remainder normally contains Verus summaries, timing tables and text.
+    // Any JSON-looking remainder failed complete-document framing: it cannot
+    // silently disappear into an apparently completed empty provider.
+    let mut classified = !remainder.split(|byte| *byte == b'\n').any(|line| {
+        line.iter()
+            .find(|byte| !byte.is_ascii_whitespace())
+            .is_some_and(|byte| matches!(byte, b'{' | b'[' | b'"' | b'}' | b']'))
+    });
+    let mut frames = 0usize;
+    for value in documents {
+        match value["reason"].as_str() {
+            Some("compiler-artifact" | "build-script-executed") => {
+                write_artifact(records, value, producer, child)
+                    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+                frames = frames
+                    .checked_add(1)
+                    .ok_or_else(|| Error::new("SAIL3111", "artifact count overflow"))?;
+            }
+            Some("compiler-message") => {}
+            Some("build-finished") if value["success"].is_boolean() => {}
+            None if value.get("reason").is_none() && value["verification-results"].is_object() => {}
+            // Future/unsupported Cargo reasons or other JSON have no implicit
+            // exemption. Forward their bytes but decline provider completion.
+            _ => classified = false,
+        }
+    }
+    Ok(classified.then_some(frames))
 }
 
 fn argument(args: &[OsString], flag: &str) -> Option<String> {
@@ -1471,6 +1519,102 @@ mod tests {
         assert_eq!(lines[3]["child"], actual);
         assert_eq!(lines[3]["frames"], 1);
         assert_eq!(lines[3]["exited"], true);
+        Ok(())
+    }
+
+    #[test]
+    fn cargo_provider_capture_budget_poison_is_sticky() {
+        let mut observed = Some(Vec::new());
+        super::capture_cargo_line(&mut observed, b"{}", 4);
+        assert_eq!(observed, Some(b"{}\n".to_vec()));
+        super::capture_cargo_line(&mut observed, b"x", 4);
+        assert_eq!(observed, None);
+        super::capture_cargo_line(&mut observed, b"{}", 4);
+        assert_eq!(observed, None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cargo_provider_malformed_stdout_cannot_become_an_empty_observation()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-provider-json-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let pretty = serde_json::to_string_pretty(&serde_json::json!({
+            "verification-results":{"verified":1,"errors":0,"success":true},
+            "verus":{"version":"fixture"}
+        }))?;
+        let summary = "verification results:: 1 verified, 0 errors\n";
+        for (index, raw, exit, covered) in [
+            (
+                0,
+                "{\"reason\":\"compiler-artifact\"\n".to_owned(),
+                0,
+                false,
+            ),
+            (
+                1,
+                "{\"reason\":\"compiler-artifact\",\"filenames\":[".to_owned(),
+                0,
+                false,
+            ),
+            (
+                2,
+                "{\"reason\":\"unsupported-cargo-event\"}\n".to_owned(),
+                0,
+                false,
+            ),
+            (
+                7,
+                "{\"reason\":null,\"verification-results\":{}}\n".to_owned(),
+                0,
+                false,
+            ),
+            (8, "{\"unsupported\":true}\n".to_owned(), 0, false),
+            (3, String::new(), 1, true),
+            (4, summary.to_owned(), 0, true),
+            (5, format!("{pretty}\n"), 0, true),
+            (
+                6,
+                format!(
+                    "{summary}{pretty}\n{{\"reason\":\"compiler-message\",\"message\":{{}}}}\n{{\"reason\":\"build-finished\",\"success\":false}}\n"
+                ),
+                1,
+                true,
+            ),
+        ] {
+            let directory = root.join(index.to_string());
+            std::fs::create_dir(&directory)?;
+            let mut command = std::process::Command::new("sh");
+            command
+                .args([
+                    "-c",
+                    "printf '%s' \"$1\"; exit \"$2\"",
+                    "fixture",
+                    &raw,
+                    &exit.to_string(),
+                ])
+                .stdout(std::process::Stdio::piped());
+            let mut journal = Vec::new();
+            let mut forwarded = Vec::new();
+            let actual = super::cargo_messages(&mut command, &mut journal, &mut forwarded)?;
+            assert_eq!(actual, std::process::ExitCode::from(u8::try_from(exit)?));
+            let expected = if raw.is_empty() || raw.ends_with('\n') {
+                raw.clone()
+            } else {
+                format!("{raw}\n")
+            };
+            assert_eq!(
+                forwarded,
+                expected.as_bytes(),
+                "case {index} forwarded bytes"
+            );
+            assert_eq!(
+                crate::managed::source_inputs::fixture_provider_coverage(&directory, &journal)?,
+                covered,
+                "case {index} declaration coverage"
+            );
+        }
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 

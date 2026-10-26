@@ -117,6 +117,10 @@ a missing, malformed or truncated journal
 ([issue #377](https://github.com/Chelis-Lang/sail/issues/377)). Missing, repeated, foreign or
 unreadable dep-info outcomes withhold coverage. A normal nonzero exit can
 complete this accounting without establishing a successful proof or receipt.
+Malformed or truncated JSON-looking child output and unsupported JSON events
+also withhold completion; ordinary verifier summaries and complete multiline
+Verus documents remain supported. Optional output accounting stops at 64 MiB
+without suppressing forwarded bytes or changing the child exit status.
 Fresh verifier diagnostics remain available when declaration coverage is
 unknown. Previously uncovered source inventories do not become covered merely
 because a later observation is empty.
