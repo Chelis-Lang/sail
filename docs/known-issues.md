@@ -48,14 +48,21 @@ binds the latest cumulative source and preserves the same positive-kill limit.
   on Linux and 1.83 s versus 0.28 s on Mac. Linux cold improves
   186.13 → 172.99 s; Mac cold remains 99.88 → 100.73 s. See the
   [runtime qualification](validation/shadow-index.md) and
-  [exact-scope behavior](validation/exact-scope-reuse.md).
+  [exact-scope behavior](validation/exact-scope-reuse.md). The subsequent
+  [projection follow-up](validation/ordered-input-projection.md) reduces a
+  separately paired scoped Anvil unchanged workload from 1.713 to 1.647 s on
+  Linux and 1.508 to 1.457 s on Mac. That small gain does not close this issue.
+  The separately staged three-round Mac follow-up measures Anvil unchanged
+  at 0.281 → 1.778 s; source and scope are identified in that record.
 - **The release performance decision remains open** (#232, #278). Tiny edits
   and unchanged calls retain overhead. Mac Vest cold adds 0.06 s; Mac Anvil
   cold adds 0.86 s on about 100 s. All 31 comparisons are valid on each
   platform, with ten Linux and twelve Mac rows requiring review. Passing
   Vest rows use limit 100 on both arms; the corpus still retains the known
   default-limit failure. [Performance](performance.md) states the current
-  numbers. Recording a loss does not accept it.
+  numbers. Recording a loss does not accept it. The follow-up candidate
+  has three valid cold pairs: Anvil 99.665 → 100.039 s, Vest
+  39.116 → 38.029 s. The small Anvil gap and unchanged costs remain open.
 
 - **IronKV's larger edit losses are removed by the tighter retention budget**
   (#330). All 153 current comparisons match on each platform; complete loops
