@@ -241,6 +241,62 @@ fn submitted_arguments_only_allow_the_documented_incremental_noop() {
 }
 
 #[test]
+fn effective_driver_tokens_cover_the_original_packed_value() {
+    use sail_api::acceptance::{effective_driver_arguments_match, packed_driver_arguments_match};
+    let strings = |values: &[&str]| values.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    let separator = "__VERUS_DRIVER_ARGS_SEP__";
+    assert!(packed_driver_arguments_match("--no-verify", &[]));
+    assert!(packed_driver_arguments_match(separator, &strings(&[""])));
+    let packed = format!("ignored{separator}--time{separator}{separator}--no-verify{separator}");
+    assert!(packed_driver_arguments_match(
+        &packed,
+        &strings(&["--time", "", "--no-verify", ""])
+    ));
+    for candidate in [
+        strings(&["--time", "", ""]),
+        strings(&["--time", "", "--no-verify"]),
+        strings(&["--time", "", "--verify", ""]),
+        strings(&["--time", "--no-verify", "", ""]),
+        strings(&["--time", "", "--no-verify", "", ""]),
+    ] {
+        assert!(!packed_driver_arguments_match(&packed, &candidate));
+    }
+    // Token-looking text in the ignored prefix cannot become an effective flag.
+    assert!(!packed_driver_arguments_match(
+        "--no-verify",
+        &strings(&["--no-verify"])
+    ));
+    assert!(!packed_driver_arguments_match(
+        &format!("{separator}a{separator}b"),
+        &strings(&[&format!("a{separator}b")])
+    ));
+    let common = Some(format!("{separator}--time"));
+    let package = Some(format!("{separator}--no-verify"));
+    let actual = strings(&["--time", "--no-verify"]);
+    assert!(effective_driver_arguments_match(
+        &common, &package, 1, &actual
+    ));
+    assert!(!effective_driver_arguments_match(
+        &common, &package, 0, &actual
+    ));
+    assert!(!effective_driver_arguments_match(
+        &common, &package, 2, &actual
+    ));
+    assert!(!effective_driver_arguments_match(
+        &common,
+        &package,
+        1,
+        &strings(&["--time"])
+    ));
+    assert!(!effective_driver_arguments_match(
+        &package, &common, 1, &actual
+    ));
+    assert!(!effective_driver_arguments_match(
+        &None, &package, 1, &actual
+    ));
+}
+
+#[test]
 fn repair_selection_preserves_raw_package_and_exact_function_identity() {
     let mut request = original_request();
     request.function = Some("app::lemma".into());

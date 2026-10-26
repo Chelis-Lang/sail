@@ -360,6 +360,18 @@ be connected separately to the lifecycle model. A matching context digest is
 still conditional on its documented input encoding and collision-resistance
 assumptions; it is not a proof that the complete compiler-input maps coincide.
 
+The effective Cargo driver decoder treats the raw common and exact current
+package values as independent inputs. Native splitting proposes tokens; the
+source-shared `effective_driver_arguments_match` checks their complete ordered
+correspondence before the adapter uses them. Its delimiter scan proves no
+separator was skipped, every token equals its original byte span, and the last
+span reaches the end. This preserves ignored leading text, empty and trailing
+tokens, and common-before-package ordering, including `--no-verify`. Missing
+sources contribute no tokens; encoding or lookup failures still refuse
+authority. This does not prove environment lookup, Cargo package-key derivation
+or the trusted pinned verifier's decoder implementation. Those native and
+runtime relations remain obligations of the actual launch adapter.
+
 | Model boundary | Production source | Remaining obligation |
 |---|---|---|
 | Exact target and invocation | Managed `TargetIdentity`, `cargo_target`, requested coverage and failed compiler calls | Relate actual Cargo metadata and compiler invocation to the model's complete target inventory and exact fields. |
