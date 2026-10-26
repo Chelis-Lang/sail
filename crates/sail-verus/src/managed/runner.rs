@@ -973,16 +973,22 @@ fn cargo_clean(config: &Config, build_target: &Path, packages: &[String]) -> Res
     Ok(())
 }
 
-fn invocation_command(config: &Config, paths: &Paths, show_output: bool) -> Result<Command> {
+fn invocation_command(
+    config: &Config,
+    paths: &Paths,
+    show_output: bool,
+) -> Result<super::command_environment::Command> {
     let split = config
         .args
         .iter()
         .position(|a| a == "--")
         .unwrap_or(config.args.len());
-    let mut cmd = Command::new(&config.cargo_verus);
+    let mut cmd = super::command_environment::Command::new(&config.cargo_verus);
     // Cargo-Verus, the Cargo it runs through Sail's adapter
     // (`SAIL_MANAGED_CARGO`) and every compiler below inherit the selection.
-    config.cargo_toolchain.apply(&mut cmd);
+    if let Some(toolchain) = config.cargo_toolchain.selected() {
+        cmd.env(super::cargo_toolchain::ENV, toolchain);
+    }
     cmd.current_dir(&config.workspace)
         .args([
             "verus",
@@ -1069,7 +1075,8 @@ fn build_environment(
         .ok()?
         .env(super::build_environment::REQUEST, &directory)
         .output()
-        .ok()?;
+        .ok()?
+        .into_observed_output()?;
     std::fs::write(directory.join("frontend.stdout"), &output.stdout).ok()?;
     std::fs::write(directory.join("frontend.stderr"), &output.stderr).ok()?;
     output.status.success().then_some(())?;
@@ -1127,7 +1134,7 @@ fn invoke(
     out: &mut Option<&mut dyn Write>,
     err: &mut dyn Write,
     seeded: &[super::store::Seeded],
-) -> Result<Option<i32>> {
+) -> Result<(Option<i32>, bool)> {
     let mut cmd = invocation_command(config, paths, out.is_some())?;
     #[cfg(unix)]
     let visible = super::visible_output::Receiver::bind()
@@ -1158,10 +1165,28 @@ fn invoke(
         .wait()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?
         .code();
+    // Preserve the observation in memory through owned wait. No new optional
+    // metadata file appears while the verifier is executing.
+    let environment_complete = child.environment().is_some_and(|environment| {
+        let path = paths
+            .run
+            .join(format!("cargo-environment-{}.json", child.id()));
+        let bytes = serde_json::to_vec(
+            &serde_json::json!({"version":1,"pid":child.id(),"environment":environment}),
+        );
+        bytes.is_ok_and(|bytes| {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(path)
+                .and_then(|mut file| file.write_all(&bytes).and_then(|()| file.sync_data()))
+                .is_ok()
+        })
+    });
     std::fs::write(paths.run.join("cargo.stdout"), stdout)
         .and_then(|()| std::fs::write(paths.run.join("cargo.stderr"), captured))
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-    Ok(code)
+    Ok((code, environment_complete))
 }
 
 /// Whether Sail's stderr is a terminal on which plain Cargo would print
@@ -1201,6 +1226,31 @@ enum Output {
 #[path = "output_readers.rs"]
 mod output_readers;
 
+/// The two owned Cargo pipes; production has no mutable raw-child escape.
+trait CargoPipes {
+    fn take_stdout(&mut self) -> Option<std::process::ChildStdout>;
+    fn take_stderr(&mut self) -> Option<std::process::ChildStderr>;
+}
+impl CargoPipes for super::command_environment::Spawned {
+    fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
+        self.take_stdout()
+    }
+    fn take_stderr(&mut self) -> Option<std::process::ChildStderr> {
+        self.take_stderr()
+    }
+}
+// Original relay cancellation/fault controls retain their real native children
+// and unchanged assertions. This adapter does not exist in production builds.
+#[cfg(test)]
+impl CargoPipes for std::process::Child {
+    fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
+        self.stdout.take()
+    }
+    fn take_stderr(&mut self) -> Option<std::process::ChildStderr> {
+        self.stderr.take()
+    }
+}
+
 /// Preserve Cargo's original diagnostic rendering and stdout records. Only a
 /// fresh completion marker is removed, after earlier same-pipe records have
 /// been forwarded or intentionally suppressed for a structured caller. The ACK
@@ -1210,7 +1260,7 @@ mod output_readers;
     reason = "Original reader setup, completion handling and unconditional owned cleanup stay together."
 )]
 fn relay(
-    child: &mut std::process::Child,
+    child: &mut impl CargoPipes,
     out: &mut Option<&mut dyn Write>,
     err: &mut dyn Write,
     seeded: &[super::store::Seeded],
@@ -1224,7 +1274,7 @@ fn relay(
     let readers = output_readers::Readers::start(child, &tx).map_err(failed)?;
     #[cfg(not(unix))]
     let readers = [
-        child.stdout.take().map(|pipe| {
+        child.take_stdout().map(|pipe| {
             let tx = tx.clone();
             std::thread::spawn(move || {
                 let mut reader = std::io::BufReader::new(pipe);
@@ -1246,7 +1296,7 @@ fn relay(
                 let _ = tx.send(Ok(Output::Closed));
             })
         }),
-        child.stderr.take().map(|mut pipe| {
+        child.take_stderr().map(|mut pipe| {
             let tx = tx.clone();
             std::thread::spawn(move || {
                 let mut buffer = vec![0; 65536];
@@ -3475,7 +3525,8 @@ fn run_recorded(
             .collect();
         super::store::attach(&config.cache, &paths.target, &unowned, &data)
     };
-    let mut exit = invoke(config, &paths, &mut out, err, &seeded)?;
+    let (mut exit, mut invocation_environment_complete) =
+        invoke(config, &paths, &mut out, err, &seeded)?;
     drop(invocation_phase);
     if let Some(plan) = &shipped_plan {
         super::shipped::finish_record(plan, &config.cargo_verus, &workspace_root)?;
@@ -3628,7 +3679,10 @@ fn run_recorded(
         std::fs::remove_dir_all(paths.run.join("pending-receipts"))
             .and_then(|()| std::fs::create_dir_all(paths.run.join("pending-receipts")))
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
-        exit = invoke(config, &paths, &mut out, err, &[])?;
+        let (retried_exit, retried_environment_complete) =
+            invoke(config, &paths, &mut out, err, &[])?;
+        exit = retried_exit;
+        invocation_environment_complete &= retried_environment_complete;
         outside_scope |= !units_in_scope(&paths);
         let (retried, missing, retried_declarations) = target_records_in(
             &paths,
@@ -3695,6 +3749,7 @@ fn run_recorded(
     let stamp_after = super::input::mutation_stamp(&after_run);
     let absent = absent.finish();
     let currentness = if !paths.reuse
+        || !invocation_environment_complete
         || !before.complete
         || !after.complete
         || !after_coverage
@@ -3865,6 +3920,7 @@ fn run_recorded(
     };
     let request_matches = sail_api::acceptance::request_corresponds(&original_request, &result);
     if !request_matches
+        || !invocation_environment_complete
         || !sail_api::acceptance::verification_enabled_command(&original_request.args)
         || sail_api::acceptance::focused_command(&original_request.args)
         || (result.currentness == Currentness::Current
@@ -7158,7 +7214,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn lifecycle_only_job_environment_does_not_partition_proofs() {
+    fn lifecycle_keys_do_not_duplicate_named_context_entries() {
         for key in [
             "SAIL_JOB_EVENTS",
             "SAIL_JOB_GUARD_PARENT",

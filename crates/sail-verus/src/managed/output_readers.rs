@@ -18,16 +18,14 @@ pub(super) struct Readers {
 }
 impl Readers {
     pub(super) fn start(
-        child: &mut std::process::Child,
+        child: &mut impl super::CargoPipes,
         sender: &Sender<io::Result<Output>>,
     ) -> io::Result<Self> {
         let stdout = child
-            .stdout
-            .take()
+            .take_stdout()
             .ok_or_else(|| io::Error::other("missing Cargo stdout"))?;
         let stderr = child
-            .stderr
-            .take()
+            .take_stderr()
             .ok_or_else(|| io::Error::other("missing Cargo stderr"))?;
         nonblocking(&stdout)?;
         nonblocking(&stderr)?;

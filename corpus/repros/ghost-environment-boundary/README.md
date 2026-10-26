@@ -44,3 +44,26 @@ failure diagnostics. Unchanged inputs must still reuse, and exact reverts may
 reuse only after current observations are established. Legacy records with a
 missing verification-phase domain must not acquire coverage from an empty
 later inventory. Full undeclared process I/O remains a separate boundary.
+
+## Executable candidate regression
+
+Run the complete candidate control with a fresh output directory, a built Sail
+binary beside `sail-z3`, an existing pinned fork build and a prepared Cargo
+registry home:
+
+```sh
+python3.12 corpus/repros/ghost-environment-boundary/repro.py \
+  --out "$SAIL_REPRO_OUT" --sail "$SAIL_CANDIDATE" \
+  --build "$SAIL_FORK_BUILD" --cargo-home "$SAIL_REPRO_CARGO_HOME"
+```
+
+The runner validates every pinned runtime file and owns its cache daemon. It
+requires **7** to establish proof, the unchanged command to reuse that proof,
+and removing only the flag to change context and return the real assertion
+failure without forcing. It also requires plain same-fork verification with
+the flag absent to fail. Exact outputs, hashes and commands remain outside the
+repository in the requested directory. Experiment `26ea66b3` passes this control but stays unselected because it fails
+the unchanged unused-authentication reuse requirement. Default behavior keeps
+that policy and still needs the actual per-compiler observation fix for #386.
+This runner remains the required regression for that eventual correction;
+passing it alone is insufficient for selection.

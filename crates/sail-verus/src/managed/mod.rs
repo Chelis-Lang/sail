@@ -5,6 +5,7 @@ pub(crate) mod build_environment;
 mod build_inputs;
 mod build_unit_plan;
 pub mod cargo_toolchain;
+mod command_environment;
 mod configuration;
 mod dependency_snapshot;
 mod diagnostics;

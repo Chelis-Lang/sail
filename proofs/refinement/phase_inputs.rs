@@ -270,4 +270,109 @@ pub fn compiler_filename_encoding_controls() {
     let unsupported = crate::inputs::dependency_filename_matches(&newline, &newline); assert(!unsupported);
 }
 
+/// A constructive inherited environment preserves every name and final removal.
+pub fn effective_environment_nonempty_inherited_and_clear_controls() {
+    let a = vec![65u8]; let b = vec![66u8]; let c = vec![67u8];
+    let parent = vec![InputFact { namespace: 3, name: &a, value: InputValue::Present(b"7") },
+        InputFact { namespace: 3, name: &b, value: InputValue::Present(b"") }];
+    let operations = vec![InputFact { namespace: 3, name: &a, value: InputValue::Absent },
+        InputFact { namespace: 3, name: &c, value: InputValue::Present(b"") }];
+    let result = vec![InputFact { namespace: 3, name: &a, value: InputValue::Absent },
+        InputFact { namespace: 3, name: &b, value: InputValue::Present(b"") },
+        InputFact { namespace: 3, name: &c, value: InputValue::Present(b"") }];
+    let two = vec![0usize, 1usize]; let three = vec![0usize, 1usize, 2usize];
+    assert(lex_at(a@, b@, 0)); assert(lex_at(b@, c@, 0));
+    assert(lex_at(a@, c@, 0));
+    let parent_inventory = Inventory { rows: &parent, order: &two, inverse: &two };
+    let operations_inventory = Inventory { rows: &operations, order: &two, inverse: &two };
+    let result_inventory = Inventory { rows: &result, order: &three, inverse: &three };
+    let valid = environment_rows_valid(&parent, true); assert(valid);
+    let valid = environment_rows_valid(&operations, false); assert(valid);
+    let valid = environment_rows_valid(&result, false); assert(valid);
+    let valid = environment_parent_keys_covered(&parent_inventory, &result_inventory); assert(valid);
+    let valid = inventory_covers(&result_inventory, &operations_inventory); assert(valid);
+    let valid = effective_environment_origins(&parent_inventory, &operations_inventory, &result_inventory); assert(valid);
+    let admitted = seal_environment_projection(EnvironmentInheritance::Inherit,
+        parent_inventory, operations_inventory, result_inventory);
+    assert(admitted.is_some());
+    let admitted = match admitted { Some(admitted) => admitted, None => { assert(false); return; } };
+    let rows = admitted.facts(); assert(rows.len() == 3 && rows[0].value is Absent);
+    let original = admitted.parent(); assert(original.len() == 2);
+    let clear = seal_environment_projection(EnvironmentInheritance::Clear,
+        Inventory { rows: &parent, order: &two, inverse: &two },
+        Inventory { rows: &operations, order: &two, inverse: &two },
+        Inventory { rows: &operations, order: &two, inverse: &two });
+    assert(clear.is_some());
+}
+
+/// Neither a dropped inherited name nor a retained old value survives override validation.
+pub fn effective_environment_wrong_value_and_omission_controls() {
+    let parent = vec![InputFact { namespace: 3, name: b"A", value: InputValue::Present(b"7") }];
+    let operation = vec![InputFact { namespace: 3, name: b"A", value: InputValue::Absent }];
+    let one = vec![0usize];
+    let stale = seal_environment_projection(EnvironmentInheritance::Inherit,
+        Inventory { rows: &parent, order: &one, inverse: &one },
+        Inventory { rows: &operation, order: &one, inverse: &one },
+        Inventory { rows: &parent, order: &one, inverse: &one });
+    assert(stale.is_none());
+    let missing = seal_environment_projection(EnvironmentInheritance::Inherit,
+        Inventory { rows: &parent, order: &one, inverse: &one },
+        Inventory { rows: &[], order: &[], inverse: &[] },
+        Inventory { rows: &[], order: &[], inverse: &[] });
+    assert(missing.is_none());
+    let clears = seal_environment_projection(EnvironmentInheritance::Clear,
+        Inventory { rows: &parent, order: &one, inverse: &one },
+        Inventory { rows: &[], order: &[], inverse: &[] },
+        Inventory { rows: &parent, order: &one, inverse: &one });
+    assert(clears.is_none());
+}
+
+/// Nonempty native builder operations admit their exact actual readback.
+pub fn command_environment_nonempty_and_substitution_controls() {
+    let a = vec![65u8]; let seven = vec![55u8]; let nine = vec![57u8];
+    let parent = vec![InputFact { namespace: 3, name: &a, value: InputValue::Present(&seven) }];
+    let operations = vec![InputFact { namespace: 3, name: &a, value: InputValue::Present(&nine) }];
+    let one = vec![0usize];
+    let valid = seal_command_environment(EnvironmentInheritance::Inherit,
+        Inventory { rows: &parent, order: &one, inverse: &one },
+        Inventory { rows: &operations, order: &one, inverse: &one },
+        Inventory { rows: &operations, order: &one, inverse: &one },
+        Inventory { rows: &operations, order: &one, inverse: &one });
+    assert(valid.is_some());
+}
+
+/// A coherent readback/result pair still cannot replace an independent builder value.
+pub fn command_environment_different_readback_value_control() {
+    let a = vec![65u8]; let seven = vec![55u8]; let nine = vec![57u8];
+    let parent = vec![InputFact { namespace: 3, name: &a, value: InputValue::Present(&seven) }];
+    let operations = vec![InputFact { namespace: 3, name: &a, value: InputValue::Present(&nine) }];
+    let one = vec![0usize];
+    assert(!same_value(operations[0].value, parent[0].value));
+    assert(!contains_fact(parent@, operations[0]));
+    let matches = inventory_covers(
+        &Inventory { rows: &parent, order: &one, inverse: &one },
+        &Inventory { rows: &operations, order: &one, inverse: &one });
+    assert(!matches);
+    let wrong = seal_command_environment(EnvironmentInheritance::Inherit,
+        Inventory { rows: &parent, order: &one, inverse: &one },
+        Inventory { rows: &operations, order: &one, inverse: &one },
+        Inventory { rows: &parent, order: &one, inverse: &one },
+        Inventory { rows: &parent, order: &one, inverse: &one });
+    assert(wrong.is_none());
+}
+
+/// Missing actual readback cannot erase a configured original operation.
+pub fn command_environment_missing_readback_control() {
+    let a = vec![65u8]; let seven = vec![55u8]; let nine = vec![57u8];
+    let parent = vec![InputFact { namespace: 3, name: &a, value: InputValue::Present(&seven) }];
+    let operations = vec![InputFact { namespace: 3, name: &a, value: InputValue::Present(&nine) }];
+    let one = vec![0usize];
+    let omitted = seal_command_environment(EnvironmentInheritance::Inherit,
+        Inventory { rows: &parent, order: &one, inverse: &one },
+        Inventory { rows: &operations, order: &one, inverse: &one },
+        Inventory { rows: &[], order: &[], inverse: &[] },
+        Inventory { rows: &parent, order: &one, inverse: &one });
+    assert(omitted.is_none());
+}
+
 }

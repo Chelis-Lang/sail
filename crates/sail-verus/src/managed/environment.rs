@@ -1,4 +1,4 @@
-//! The environment a managed proof depends on, following Cargo's own model.
+//! Compiler-declared environment values and optional actual-command observations.
 //!
 //! Two parts bind a proof's environment (see `docs/freshness.md`):
 //!
@@ -14,12 +14,19 @@
 //! resolved tools and homes they select. Undeclared reads by build scripts and
 //! proc macros, including tools they find through `PATH`, are not visible here,
 //! exactly as they are not visible to Cargo.
+//!
+//! Default reuse retains the named context/declaration policy. Full raw parent
+//! snapshots are used only by optional owned-command observations; they are not
+//! selected as a global reuse fingerprint because unused authentication changes
+//! must retain their existing context. Effective compiler inputs remain open.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-/// Sail variables that only observe or schedule a run; they never reach a proof.
+/// Keys excluded from default named context identity unless explicitly declared.
+/// Optional owned-command observations retain their actual raw parent bytes.
+/// Complete ghost/opaque-read observation remains a separate input boundary.
 const OBSERVATION_ONLY: &[&str] = &[
     // Private dependency authentication selects fetched bytes, not compiler
     // semantics. Those bytes remain source inputs; explicit env! or script
@@ -82,7 +89,8 @@ const NAMES: &[&str] = &[
     "LANGUAGE",
 ];
 
-/// Whether an environment variable is part of the proof context.
+/// Whether an environment key participates directly in default proof context identity.
+/// Per-unit declared reads remain independently bound.
 pub(super) fn input_environment_key(key: &OsStr) -> bool {
     let bytes = key.as_encoded_bytes();
     // Managed Cargo always receives its owned --target-dir. The caller's
@@ -348,6 +356,76 @@ fn dep_info_name(encoded: &str) -> Option<String> {
         .then(|| String::from_utf8(name).ok())?
 }
 
+/// One actual parent-process environment enumeration, retained only in memory.
+/// No prefix is omitted from observation, including Sail scheduling controls.
+/// This observation does not select the default reusable proof context.
+pub(super) struct ParentEnvironment {
+    entries: Vec<(std::ffi::OsString, std::ffi::OsString)>,
+}
+
+impl ParentEnvironment {
+    pub(super) fn capture() -> Self {
+        Self {
+            entries: std::env::vars_os().collect(),
+        }
+    }
+
+    /// Immutable bytes from the original actual parent enumeration.
+    pub(super) fn entries(&self) -> &[(std::ffi::OsString, std::ffi::OsString)] {
+        &self.entries
+    }
+
+    /// A complete raw parent fingerprint; duplicate/invalid keys refuse authority.
+    /// Only the digest is retained by optional command observations, never these values.
+    pub(super) fn fingerprint(&self) -> Option<String> {
+        use sail_acceptance::inputs::{InputFact, InputValue};
+        use sail_acceptance::phase_inputs::{
+            EnvironmentInheritance, Inventory, seal_environment_projection,
+        };
+        let facts: Vec<_> = self
+            .entries
+            .iter()
+            .map(|(name, value)| InputFact {
+                namespace: 3,
+                name: name.as_encoded_bytes(),
+                value: InputValue::Present(value.as_encoded_bytes()),
+            })
+            .collect();
+        let (order, inverse) = crate::parallel::proposed_fact_order(&facts);
+        let empty = Inventory {
+            rows: &[],
+            order: &[],
+            inverse: &[],
+        };
+        let parent = Inventory {
+            rows: &facts,
+            order: &order,
+            inverse: &inverse,
+        };
+        let result = Inventory {
+            rows: &facts,
+            order: &order,
+            inverse: &inverse,
+        };
+        let admitted =
+            seal_environment_projection(EnvironmentInheritance::Inherit, parent, empty, result)?;
+        let rows = admitted.facts();
+        let literal: Option<Vec<_>> = admitted
+            .order()
+            .iter()
+            .map(|index| {
+                let row = rows.get(*index)?;
+                let InputValue::Present(value) = &row.value else {
+                    return None;
+                };
+                Some((row.name, *value))
+            })
+            .collect();
+        let bytes = serde_json::to_vec(&("sail-parent-environment-v1", literal?)).ok()?;
+        Some(super::files::digest(&bytes))
+    }
+}
+
 /// The current value, or absence, of each declared name.
 pub(super) fn values(names: &BTreeSet<String>) -> BTreeMap<String, Option<Vec<u8>>> {
     names
@@ -370,11 +448,295 @@ pub(super) fn unchanged(recorded: &BTreeMap<String, Option<Vec<u8>>>) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn full_parent_environment_fingerprint_tracks_ordinary_values_and_absence()
+    -> Result<(), Box<dyn std::error::Error>> {
+        const NAME: &str = "ORDINARY_PROOF_FLAG";
+        const CHILD: &str = "SAIL_TEST_FULL_PARENT_ENV";
+        const TEST: &str = "managed::environment::tests::full_parent_environment_fingerprint_tracks_ordinary_values_and_absence";
+        if std::env::var_os(CHILD).is_some() {
+            let snapshot = ParentEnvironment::capture();
+            let digest = snapshot
+                .fingerprint()
+                .ok_or("full parent snapshot refused")?;
+            // No raw environment values are printed or retained.
+            println!("SAIL_PARENT_FINGERPRINT={digest}");
+            return Ok(());
+        }
+        let mut digests = Vec::new();
+        for value in [Some("7"), Some(""), None] {
+            let mut command = std::process::Command::new(std::env::current_exe()?);
+            command
+                .arg("--exact")
+                .arg(TEST)
+                .arg("--nocapture")
+                .env(CHILD, "child");
+            if let Some(value) = value {
+                command.env(NAME, value);
+            } else {
+                command.env_remove(NAME);
+            }
+            let output = command.output()?;
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let stdout = String::from_utf8(output.stdout)?;
+            let fingerprint = stdout
+                .lines()
+                .find_map(|line| line.strip_prefix("SAIL_PARENT_FINGERPRINT="))
+                .ok_or("child fingerprint missing")?
+                .to_owned();
+            digests.push(fingerprint);
+        }
+        assert_ne!(
+            digests[0], digests[1],
+            "nonempty and empty original values differ"
+        );
+        assert_ne!(
+            digests[0], digests[2],
+            "an ordinary untracked variable cannot disappear from identity"
+        );
+        assert_ne!(
+            digests[1], digests[2],
+            "absence is distinct from an empty value"
+        );
+        Ok(())
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "One owned child trace keeps original capture, explicit clear policy, final overrides and complete observed fingerprint together."
+    )]
+    fn full_effective_environment_matches_actual_owned_child()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use sail_acceptance::inputs::{InputFact, InputValue};
+        use sail_acceptance::phase_inputs::{
+            EnvironmentInheritance, Inventory, seal_environment_projection,
+        };
+        const CHILD: &str = "SAIL_TEST_OVERLAY_CHILD";
+        const TEST: &str =
+            "managed::environment::tests::full_effective_environment_matches_actual_owned_child";
+        const NAMES: [&str; 3] = [
+            "SAIL_OVERLAY_PRESENT",
+            "SAIL_OVERLAY_EMPTY",
+            "SAIL_OVERLAY_REMOVED",
+        ];
+        if std::env::var_os(CHILD).is_some() {
+            let values: Vec<_> = NAMES
+                .iter()
+                .map(|name| std::env::var_os(name).map(std::ffi::OsString::into_encoded_bytes))
+                .collect();
+            println!("SAIL_OVERLAY_ACTUAL={}", serde_json::to_string(&values)?);
+            println!(
+                "SAIL_OVERLAY_FINGERPRINT={}",
+                ParentEnvironment::capture()
+                    .fingerprint()
+                    .ok_or("actual child snapshot refused")?
+            );
+            return Ok(());
+        }
+        for clear in [false, true] {
+            let parent = ParentEnvironment::capture();
+            let parent_rows: Vec<_> = parent
+                .entries
+                .iter()
+                .map(|(name, value)| InputFact {
+                    namespace: 3,
+                    name: name.as_encoded_bytes(),
+                    value: InputValue::Present(value.as_encoded_bytes()),
+                })
+                .collect();
+            let mut command = std::process::Command::new(std::env::current_exe()?);
+            let policy = if clear {
+                command.env_clear();
+                EnvironmentInheritance::Clear
+            } else {
+                EnvironmentInheritance::Inherit
+            };
+            command
+                .arg("--exact")
+                .arg(TEST)
+                .arg("--nocapture")
+                .env(CHILD, "child")
+                .env(NAMES[0], "7")
+                .env(NAMES[1], "")
+                .env_remove(NAMES[2]);
+            let operations: Vec<_> = command
+                .get_envs()
+                .map(|(name, value)| InputFact {
+                    namespace: 3,
+                    name: name.as_encoded_bytes(),
+                    value: value.map_or(InputValue::Absent, |value| {
+                        InputValue::Present(value.as_encoded_bytes())
+                    }),
+                })
+                .collect();
+            let mut proposed = BTreeMap::new();
+            if !clear {
+                for (name, value) in &parent.entries {
+                    proposed.insert(name.as_encoded_bytes(), Some(value.as_encoded_bytes()));
+                }
+            }
+            for (name, value) in command.get_envs() {
+                proposed.insert(
+                    name.as_encoded_bytes(),
+                    value.map(std::ffi::OsStr::as_encoded_bytes),
+                );
+            }
+            let result: Vec<_> = proposed
+                .iter()
+                .map(|(name, value)| InputFact {
+                    namespace: 3,
+                    name,
+                    value: value.map_or(InputValue::Absent, InputValue::Present),
+                })
+                .collect();
+            let (parent_order, parent_inverse) = crate::parallel::proposed_fact_order(&parent_rows);
+            let (operations_order, operations_inverse) =
+                crate::parallel::proposed_fact_order(&operations);
+            let (result_order, result_inverse) = crate::parallel::proposed_fact_order(&result);
+            let admitted = seal_environment_projection(
+                policy,
+                Inventory {
+                    rows: &parent_rows,
+                    order: &parent_order,
+                    inverse: &parent_inverse,
+                },
+                Inventory {
+                    rows: &operations,
+                    order: &operations_order,
+                    inverse: &operations_inverse,
+                },
+                Inventory {
+                    rows: &result,
+                    order: &result_order,
+                    inverse: &result_inverse,
+                },
+            )
+            .ok_or("actual configured environment projection refused")?;
+            let expected: Option<Vec<_>> = NAMES
+                .iter()
+                .map(|name| {
+                    let row = admitted
+                        .facts()
+                        .iter()
+                        .find(|row| row.name == name.as_bytes());
+                    // env_clear makes a later env_remove a no-op; get_envs
+                    // then has no removal row. Absence follows the explicit
+                    // Clear policy and exact inventory, not a missing read.
+                    let Some(row) = row else {
+                        return Some(None);
+                    };
+                    match &row.value {
+                        InputValue::Present(value) => Some(Some(value.to_vec())),
+                        InputValue::Absent => Some(None),
+                        InputValue::Unreadable => None,
+                    }
+                })
+                .collect();
+            let expected = expected.ok_or("expected synthetic keys missing")?;
+            let literal: Vec<_> = admitted
+                .order()
+                .iter()
+                .filter_map(|index| {
+                    let row = admitted.facts().get(*index)?;
+                    match &row.value {
+                        InputValue::Present(value) => Some((row.name, *value)),
+                        InputValue::Absent | InputValue::Unreadable => None,
+                    }
+                })
+                .collect();
+            let expected_fingerprint = super::super::files::digest(&serde_json::to_vec(&(
+                "sail-parent-environment-v1",
+                literal,
+            ))?);
+            // Projection borrows the final Command overrides, so it cannot be
+            // mutated until those expected values have been extracted.
+            let output = command.output()?;
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let stdout = String::from_utf8(output.stdout)?;
+            let actual = stdout
+                .lines()
+                .find_map(|line| line.strip_prefix("SAIL_OVERLAY_ACTUAL="))
+                .ok_or("child environment report missing")?;
+            let actual: Vec<Option<Vec<u8>>> = serde_json::from_str(actual)?;
+            assert_eq!(actual, expected);
+            assert_eq!(actual, vec![Some(b"7".to_vec()), Some(Vec::new()), None]);
+            let actual_fingerprint = stdout
+                .lines()
+                .find_map(|line| line.strip_prefix("SAIL_OVERLAY_FINGERPRINT="))
+                .ok_or("child complete fingerprint missing")?;
+            assert_eq!(
+                actual_fingerprint, expected_fingerprint,
+                "every effective child variable participates"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn full_parent_snapshot_rejects_duplicates_and_keeps_scheduling_keys() {
+        let ordinary = ParentEnvironment {
+            entries: vec![("ORDINARY_PROOF_FLAG".into(), "7".into())],
+        };
+        let scheduled = ParentEnvironment {
+            entries: vec![
+                ("ORDINARY_PROOF_FLAG".into(), "7".into()),
+                (
+                    "SAIL_JOB_EVENTS".into(),
+                    "literal-original-caller-value".into(),
+                ),
+            ],
+        };
+        assert!(ordinary.fingerprint().is_some());
+        assert!(scheduled.fingerprint().is_some());
+        assert_ne!(
+            ordinary.fingerprint(),
+            scheduled.fingerprint(),
+            "no original caller key is silently excluded"
+        );
+        let duplicate = ParentEnvironment {
+            entries: vec![("SAME".into(), "7".into()), ("SAME".into(), "9".into())],
+        };
+        assert!(
+            duplicate.fingerprint().is_none(),
+            "no last-wins conversion can hide duplicate raw entries"
+        );
+        let scheduled_fingerprint = scheduled.fingerprint();
+        let reversed = ParentEnvironment {
+            entries: scheduled.entries.into_iter().rev().collect(),
+        };
+        assert_eq!(scheduled_fingerprint, reversed.fingerprint());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn full_parent_snapshot_keeps_non_utf8_bytes() {
+        use std::os::unix::ffi::OsStringExt as _;
+        let name = std::ffi::OsString::from_vec(vec![b'X', 255]);
+        let value = std::ffi::OsString::from_vec(vec![255, 0x7f]);
+        let raw = ParentEnvironment {
+            entries: vec![(name.clone(), value)],
+        };
+        let lossy = ParentEnvironment {
+            entries: vec![(name.to_string_lossy().into_owned().into(), "�\u{7f}".into())],
+        };
+        assert!(raw.fingerprint().is_some());
+        assert_ne!(raw.fingerprint(), lossy.fingerprint());
+    }
+
     use super::*;
     use std::fmt::Write as _;
 
     #[test]
-    fn proof_context_binds_tool_inputs_and_not_session_variables() {
+    fn named_context_selects_tools_without_duplicating_full_parent_entries() {
         for key in [
             "RUSTFLAGS",
             "RUSTC",

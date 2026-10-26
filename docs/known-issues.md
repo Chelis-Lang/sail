@@ -64,6 +64,14 @@ request/producer correspondence remains part of #375/#376.
 
 ## Acceptance authority integration
 
+A local loader-variable control depends on ambient Cargo configuration
+([#419](https://github.com/Chelis-Lang/sail/issues/419)). Its supplied environment
+iterator does not determine configuration homes, so an otherwise unrelated
+runtime-selector file can fail the assertion before the intended loader cases.
+The controlled empty-home run passes and the same test with an ambient selector
+fails. This is a configuration-test isolation defect, not a demonstrated false
+proof; the explicit observed-home correction remains pending.
+
 The compiler-declaration filename decoder can split non-ASCII whitespace and
 remove literal backslashes ([#408](https://github.com/Chelis-Lang/sail/issues/408)).
 An actual pinned-rustc reproduction consumes one external file while the former
@@ -95,7 +103,15 @@ Separately, changing an ordinary variable
 used only by a proof can leave a Current complete receipt reusable
 ([#386](https://github.com/Chelis-Lang/sail/issues/386)); forced
 fresh Sail and plain Cargo-Verus reject that proof with the variable unset.
-The input/phase-observation and environment-restoration fixes remain open.
+The full-parent fingerprint candidate fixes this ordinary ghost-variable witness
+but stays unselected because it violates the unchanged unused-authentication
+reuse controls in `ci/test-managed.py`. Its actual regression establishes and
+reuses with the flag present, then rejects with it absent, matching a fresh
+plain same-fork rejection. Its whole component
+proof and ordinary mutations cover exact supplied environment projection; full
+combined native/conformance/cost qualification remains pending. Effective Cargo
+child environments, input-phase closure and original-environment restoration
+remain open.
 The current main binary has not been qualified against these new fixtures;
 the existing mutation cohorts do not cover them. See the
 [boundary qualification](validation/acceptance-boundary-refinements.md).

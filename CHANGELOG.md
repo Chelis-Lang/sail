@@ -38,6 +38,11 @@ semantic versioning once the API is published.
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
+- Record explicit environment inheritance and exact final overrides for owned
+  managed Cargo and build-planning commands. Reconcile native readback before
+  spawning; optional capture failures preserve fresh output while withholding
+  Current admission.
+
 - Preserve literal Unicode whitespace, tabs and backslashes in compiler-declared
   input filenames; validate filename decoding against rustc's exact space-only
   encoding. Older inventories retain paths but withhold coverage because the

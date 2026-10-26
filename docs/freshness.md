@@ -288,6 +288,22 @@ writing. A name collision leaves the other publisher's files untouched; a
 failed publication cannot remove a directory it did not create. This does not
 change receipt, source or artifact admission checks.
 
+## Owned command environment observations
+
+Outer managed Cargo and optional build-planning commands use a private owned
+builder that records explicit inheritance and final set/remove/clear operations.
+It checks actual `get_envs` readback against those independent records immediately
+before spawning the same command. Optional records bind the owned child PID and
+only environment digests. Capture failure preserves fresh output/status while
+withholding Current and retained completeness; it cannot be repaired by a later
+input-only refresh. This does not establish complete inner compiler inputs.
+
+A separate full-parent reuse experiment (`26ea66b3`) fixes the ordinary ghost
+variable witness but stays unselected: it contradicts the unchanged requirement
+that unused authentication changes reuse the same proof context. The default
+context/declaration policy below remains unchanged. Completing actual compiler
+input observation or an owner contract decision must resolve that conflict.
+
 ## Which environment variables are proof inputs
 
 A managed proof follows the input model of plain `cargo verus`, which is

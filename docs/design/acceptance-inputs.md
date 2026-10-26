@@ -769,6 +769,95 @@ line-oriented text format. Non-UTF-8 path rendering is also lossy. Neither
 checksums nor a successful token check establish that no such physical input
 was consumed. These remain obligations for the stronger compiler provider.
 
+## Parent and effective environment projection
+
+The full-parent **reuse policy** in candidate `26ea66b3` is unselected.
+It fixes the ordinary ghost-variable witness, but contradicts the existing
+acceptance requirement that unused authentication changes retain the same
+context and reuse (`ci/test-managed.py`, authentication controls). That gate
+still requires an explicit credential read to force verification. No assertion
+is weakened. Selection needs actual compiler-input observation that distinguishes
+unused caller values from proof-relevant reads, or an owner contract decision.
+The projection kernel and native command capture below are independent of
+selecting that global reuse policy.
+
+The unselected `26ea66b3` reuse experiment captures every raw parent environment entry once,
+without prefix exclusions. Source-shared `seal_environment_projection` checks
+all unique keys, complete parent coverage, every final override/removal and the
+origin of every projected row. The private token retains the original parent,
+operations, explicit Inherit/Clear policy and exact result, plus its complete
+checked ordering. Missing/extra names, stale overwritten values, removal turned
+into an empty value, duplicate keys and unreadable data cannot enter that token.
+The native parent fingerprint uses the Inherit projection with no overrides;
+only the domain-separated digest is retained by optional command observations. Native
+`vars_os`, byte borrowing and JSON serialization remain explicit adapters.
+Digest identity requires the existing cryptographic assumption.
+
+The kernel also checks supplied effective environments for final command
+overrides and removals. Native controls build and run real inherited and
+cleared commands, compare the complete observed child fingerprint with the
+projection and check nonempty, empty and removed values. The construction
+branch explicitly supplies Inherit/Clear: `Command::get_envs` cannot identify
+that policy, and clearing can erase an otherwise explicit removal operation.
+These controls do not establish that every production command is built through
+a typed policy wrapper or authenticate a Cargo compiler child.
+
+A complete actual managed regression now checks the ordinary ghost-only
+variable witness ([#386](https://github.com/Chelis-Lang/sail/issues/386)):
+flag **7** establishes proof, the unchanged command reuses it, and removing
+only that variable changes the context and yields the genuine assertion
+failure. Plain same-fork verification also rejects it. No forced run is needed.
+[The executable corpus control](../../corpus/repros/ghost-environment-boundary/repro.py)
+checks pinned runtime bytes, original warm reuse and the actual fresh failure.
+This closes that missing-parent-variable axis in the candidate, not all possible
+effective child-input changes. The unselected experiment's policy-3 contexts invalidate filtered older
+identities. No original caller keys, including volatile controls or private
+credentials, are silently excluded to retain cache performance; full native
+cost and conformance qualification remain pending.
+
+Complete original-submission transfer, actual Cargo-generated environments,
+Sail-added input fidelity and opaque compiler filesystem/process I/O remain
+separate obligations. A full parent fingerprint does not supply those facts.
+
+## Owned native command environments
+
+The actual outer managed Cargo invocation and build-environment planner now
+construct a private owned command. Its constructor creates the native
+`std::process::Command` and captures the parent; callers cannot wrap an already
+configured command or obtain mutable access to its native builder. The exact
+`env`, `env_remove` and `env_clear` operations update both the native command
+and independently retained final operations. Clearing records Clear explicitly
+and removes earlier operations. A removal after Clear is a native no-op;
+`get_envs` alone cannot reveal the inheritance policy.
+
+Immediately before the owned native spawn/output, `seal_command_environment`
+requires bidirectional exact matching of recorded and actual `get_envs` rows,
+then uses the checked explicit-policy projection. The same owned native command
+spawns the child. The observation retains only parent, operation and effective
+digests plus the explicit inheritance policy. After the original pipes are drained and the owned child is waited, outer
+invocation records are written with exclusive creation and that same child's
+original PID. They live at `runs/<run>/cargo-environment-<pid>.json`, beside
+`cargo.stdout`/`cargo.stderr`, outside the per-target invocation/selected-attempt
+subtrees. They are optional run observations, not members of the selected-attempt
+archive or a full compiler-input token. A capture or
+recording failure preserves fresh status and diagnostics while withholding
+Current admission; incomplete planning observations supply no plan.
+
+Native controls exercise repeated set/remove/clear sequences and the actual
+child's output. Deliberately changing, adding or omitting private native
+operations behind the recorded builder state withholds the observation; the
+real child still exits and prints its actual result. Direct stock proofs
+include a nonempty readback witness and reject a coherent but different
+readback/result pair or missing readback against original builder operations.
+
+This migration covers the outer Cargo and optional build-planning command
+constructors. Inner adapter/compiler commands, archived command inheritance,
+actual executable launch identity and original-submission correspondence remain
+open. Native `std::Command`/OS/environment enumeration and serialization are
+explicit adapters. The wrapper preserves original physical argv and environment
+operations; it does not clear or normalize them to satisfy its proof. No
+command capture claims that a declared compiler list covers all physical I/O.
+
 ## Remaining concrete refinement
 
 The completed lifecycle and source-shared identity obligations above leave these native/provider interfaces open:
