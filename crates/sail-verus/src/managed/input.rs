@@ -1245,10 +1245,49 @@ pub(super) fn bind_paths(hasher: &mut Sha256, bindings: &BTreeMap<PathBuf, PathB
 // A run-local mutation stamp is separate from logical proof keys: reverting an
 // edit between completed runs may reuse a proof, reverting during a run may not.
 pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
-    stamp_roots(
+    stamp_paths(&mutation_paths(snapshot)?)
+}
+
+fn mutation_paths(snapshot: &InputSnapshot) -> Option<BTreeSet<PathBuf>> {
+    stamp_root_paths(
         snapshot.roots.iter().map(PathBuf::as_path),
         snapshot.observation_paths.clone(),
     )
+}
+
+/// The complete stat-stamp vector behind `expected`, this snapshot's mutation
+/// stamp: every stamped path with its full stamp, or `None` when absent. It is
+/// returned only when the same `lstat` results fold to exactly `expected`, so
+/// the vector describes the state the run's own currentness check accepted.
+#[cfg(unix)]
+pub(super) fn mutation_vector(
+    snapshot: &InputSnapshot,
+    expected: &str,
+) -> Option<Vec<(PathBuf, Option<super::noop::Stamp>)>> {
+    let paths = mutation_paths(snapshot)?;
+    let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
+    let stats = crate::parallel::in_order(&names, |&path| (path, std::fs::symlink_metadata(path)));
+    if stamp_readback(&paths, &stats)? != expected {
+        return None;
+    }
+    stats
+        .into_iter()
+        .map(|(path, metadata)| match metadata {
+            Ok(metadata) => Some((path.to_owned(), Some(super::noop::Stamp::of(&metadata)))),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                Some((path.to_owned(), None))
+            }
+            Err(_) => None,
+        })
+        .collect()
+}
+
+#[cfg(not(unix))]
+pub(super) fn mutation_vector(
+    _snapshot: &InputSnapshot,
+    _expected: &str,
+) -> Option<Vec<(PathBuf, Option<super::noop::Stamp>)>> {
+    None
 }
 
 // The retained readback brackets the entire exact recorded domain, independent
@@ -1260,8 +1299,15 @@ pub(super) fn readback_stamp(roots: &BTreeSet<PathBuf>) -> Option<String> {
 
 fn stamp_roots<'a>(
     roots: impl IntoIterator<Item = &'a Path>,
-    mut paths: BTreeSet<PathBuf>,
+    paths: BTreeSet<PathBuf>,
 ) -> Option<String> {
+    stamp_paths(&stamp_root_paths(roots, paths)?)
+}
+
+fn stamp_root_paths<'a>(
+    roots: impl IntoIterator<Item = &'a Path>,
+    mut paths: BTreeSet<PathBuf>,
+) -> Option<BTreeSet<PathBuf>> {
     let roots: Vec<&Path> = roots.into_iter().collect();
     // Preserve the same exact root domain and conservative error policy while
     // overlapping independent path observations.
@@ -1297,7 +1343,7 @@ fn stamp_roots<'a>(
             .filter(|(_, link)| *link)
             .map(|(alias, _)| (*alias).to_owned()),
     );
-    stamp_paths(&paths)
+    Some(paths)
 }
 
 // The `lstat` calls overlap (about 13,000 paths per vest snapshot); the stamp

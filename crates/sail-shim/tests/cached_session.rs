@@ -895,7 +895,11 @@ fn closed_stderr_sink_does_not_deadlock_a_large_diagnostic() {
     let mut input = child.stdin.take().unwrap_or_else(|| unreachable!("stdin"));
     assert!(input.write_all(b"(check-sat)\n(exit)\n").is_ok());
     drop(input);
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    // A deadlock never ends, so this bound only has to outlast a slow run:
+    // the shim execs this freshly written Python solver (which execs Z3), and
+    // macOS assesses a new executable on its first exec, which under heavy
+    // parallel load has taken over ten seconds.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
     while child.try_wait().ok().flatten().is_none() {
         if std::time::Instant::now() >= deadline {
             let _ = child.kill();

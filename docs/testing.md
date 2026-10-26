@@ -13,6 +13,16 @@ The e2e shell scripts need no GNU tools on macOS: fixture edits use portable
 `ci/timeout.py` (the same options and exit statuses, checked against GNU by
 `ci/test-timeout.py`) where it is not.
 
+Fixture waits must tolerate slow process starts. macOS assesses a freshly
+written executable (a mock worker script, a copied binary) on its first exec,
+and during a parallel `cargo nextest run --workspace` on a loaded Mac that has
+taken over ten seconds, while a known executable or `sh SCRIPT` starts in
+milliseconds. A wait that only guards against a hang therefore uses a bound of
+minutes, and a bound that is itself under test must not include the start of a
+new executable. A test that needs another package's binary supplies a stand-in
+(Cargo builds `sail-bench`, for example, only when that package is selected)
+and leaves checks of the real binary to that package's tests.
+
 ## Release performance matrix
 
 `scripts/perf-matrix.py run` measures passing verification workflows. Both arms
@@ -29,9 +39,9 @@ matrix header records additional project flags in `extra_verus_args_by_project`.
 
 ## End-to-end phases
 
-CI builds the release binaries once, then runs ten independent jobs. Each
+CI builds the release binaries once, then runs eleven independent jobs. Each
 job retains the existing ten-minute hard limit. The required `End to end`
-aggregate accepts only ten successful results: failure, cancellation and a
+aggregate accepts only eleven successful results: failure, cancellation and a
 skipped job all fail the aggregate.
 
 | `ci/local.sh e2e PHASE` | Scope | Image |
@@ -40,6 +50,7 @@ skipped job all fail the aggregate.
 | `output` | Edit-loop output, compile errors, partial verification and a seeded-mutation smoke | core |
 | `flags` | Cargo/Verus invocation flags | core |
 | `loader` | Loader-variable fallback | core |
+| `noop` | Unchanged-call replay against stock, and misses for edits, restored mtimes, touches, files, binaries, declared variables, dep-info inputs, the lockfile, fingerprints, JSON and partial scope | core |
 | `managed` | Failing-first vstd reuse, complete receipts, jobs/MCP, missing evidence, edits, source-alias retargeting, prune and Cargo metadata | mcp |
 | `managed-copies` | Own passing donor, two fresh workspace-member proofs, Current adoption and each project's own receipt reuse | core |
 | `managed-native` | Own passing donor, fresh plain summaries, unchanged silence and same-PATH compiler replacement against Sail and stock | core |

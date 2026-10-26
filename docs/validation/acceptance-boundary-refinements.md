@@ -6,12 +6,23 @@ passes 1,133/1,133 tests. Its native workspace and solver-fault gates pass;
 the complete end-to-end run stops at the unchanged build-script reuse assertion:
 three verifier invocations instead of one. PR conformance is unrun. The
 reported targets remain Current and complete, so this failure demonstrates a
-reuse regression, not a false proof. The cause is not yet established.
+reuse regression, not a false proof. The instrumented repeat isolates vstd
+declaration-inventory growth from an unrelated build script; the candidate
+attribution fix remains under full native e2e qualification.
 [PR #378](https://github.com/Chelis-Lang/sail/pull/378) remains a draft whose
-published head is the initial documentation checkpoint. No service-wide
+published WIP head is `94a9630d`. Later integration work remains local. No service-wide
 theorem, complete compiler closure or authenticated physical observation is
 claimed. The [obligation ledger](../design/acceptance-boundary-refinements.md)
 tracks the six remaining deliverables separately.
+
+The later frozen query assembly `cc8c24a1` passes the complete canonical query
+component on macOS: the whole positive root (288 obligations, 503 function
+entries) and all 39 ordinary failing controls. This preserves all 462 earlier
+function entries and every original control. Source, actual solver/runtime,
+function inventory and post-run source validation pass. The report marks
+complete component controls and explicitly does not claim a complete suite.
+The native full e2e union and PR conformance controller for this checkpoint is
+still running; no result is inferred from its launch or partial log.
 
 ## Source and actual scope
 
@@ -54,7 +65,7 @@ implementation obligation; it is not selected.
 | Combined workspace/solver/e2e | Native `a615dbba` workspace and all 48 solver-fault tests pass. Full e2e passes the earlier managed, fresh-copy and native-compiler controls, then stops at build-script reuse | Fix the regression, rerun the complete e2e union and PR conformance, then qualify the final combined source before publication |
 | Differential conformance | Corpus, comparator and deadlines unchanged | PR tier before publication; full fast and standard before merge |
 | Cost | Additional byte/header scans, request validation and provider accounting are implemented; no measured delta or gain claimed | Bounded native cost measurement before selection; retain every sample |
-| Hosted checks | The draft targets main; its published head is the initial documentation checkpoint | Publish qualified executable changes and require final-head checks before any merge |
+| Hosted checks | The draft publishes executable WIP at `94a9630d` under the owner's pre-push waiver; later integration is local | Final-head local qualification and hosted checks before any merge |
 
 ## Failed and interrupted attempts
 
@@ -152,7 +163,7 @@ adapter source, and checks the recording host implementation inside the Verus
 envelope. All 29 capture self-tests pass. All 103 production cases and 31
 model cases pass coherently on macOS at `53f7ef5f`; native integration and the
 host gate for that expanded checkpoint remain pending. SHA primitives, collision resistance
-and truthful solver origin retain their separate obligations. ADR 0082 owns
+and truthful solver origin retain their separate obligations. ADR 0083 owns
 the added dependency; ADR 0080 belongs to optional temporal packaging.
 
 The file-kernel/readback capture candidate at `3571ecaa` passes all three

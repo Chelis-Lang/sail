@@ -1,4 +1,4 @@
-# 0082: Check query-key framing in the acceptance leaf
+# 0083: Check query-key framing in the acceptance leaf
 
 - **Status:** proposed
 - **Date:** 2026-10-26
