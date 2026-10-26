@@ -33,13 +33,22 @@ observation guarantee is claimed; all six rows of the
 The published `4bd22455` checkpoint also passes all 31 canonical model cases
 and all 155 production cases coherently on macOS, including every required
 ordinary failing control and the final source/runtime checks. Its native Linux
-workspace and model gates pass; production refinements and later native steps
-remain in progress. The newer 322-obligation delivery/write query slice has
+workspace, model and all 155 production refinement cases pass. The solver step
+runs 54 tests: 53 pass and the compiler-phase witness fails because its required
+`SAIL_ACTUAL_PHASE_BUILD` fixture is absent (#425). The controller stops; e2e and
+PR conformance are unrun at this checkpoint. The newer 322-obligation delivery/write query slice has
 only its development positive probe and focused native checks so far. Local
 heavy validation is deferred while the owner's machine is saturated; unfinished
 checks remain unfinished.
 
 ## Source and actual scope
+
+The frozen `4bd22455` native attempt, including source bundle, full workspace,
+model/refinement logs and failed solver receipt, is preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-gate-4bd22455-native.tgz`.
+SHA-256: `06e24d907bdaabfe6cd4fb68727801ea2ab546802474c53fde252fc1d599f0db`.
+The uploaded archive was independently downloaded and hashed. This is a stopped
+gate receipt, not an e2e or conformance pass.
 
 | Slice | Source checkpoints | Established component boundary |
 |---|---|---|
@@ -86,6 +95,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `4bd22455` | Native combined correctness gate | Workspace, all 31 model cases and all 155 production cases pass. Solver passes 53/54; the actual compiler-phase witness is selected without its required frozen input fixture (#425). E2e and PR conformance are unrun. The correction retains strict witness failures and gives it an explicit local `boundary-witness phases` entrypoint; final rerun pending |
 | 2026-10-26 | Expanded query capture based on `82ec798e` | Whole canonical development probe | Original `header_fields` proof reaches the unchanged solver resource limit. Explicit mode case splitting proves the same contract: 288/0 and all 503 function entries, preserving all 462 earlier entries. Full committed mutation qualification remains pending |
 | 2026-10-26 | Legacy updater from `c6270f75` | Missing-journal witness | Returns covered=true for missing observation journal; fixed regression passes in provider slice. Accounting defect #377, no complete false-proof exploit established |
 | 2026-10-26 | Provider candidate `86567f43` | Independent real-child probe | Malformed Cargo artifact stdout was forwarded but omitted from the journal, yielding a completed empty stream. Fixed in `387f7f2e`; independent exact-body retest passes |
