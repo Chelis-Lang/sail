@@ -388,7 +388,15 @@ Stdout EOF, stderr EOF and wait status are separate observations; missing or
 duplicate events cannot seal an `ObservedAttempt`. The seal preserves the exact
 buffers and status passed to the existing report code. Reused PIDs do not reuse
 slots. Per-target journals persist the pre-spawn command observations and
-terminal buffer hashes; `create_new` rejects overwriting an attempt slot.
+terminal buffer hashes. Before request preparation, an exclusive `.allocated`
+marker leases the slot across separate driver invocations in the same managed
+run. A fresh local counter skips existing leases and legacy reservation/terminal
+records; it never deletes or overwrites them. Collision retries are bounded and
+exhaustion withholds observation evidence while preserving fresh execution.
+A private native owner prevents configuring another journal's allocation, even
+when run/unit/directory values match. Exclusive-create filesystem semantics and
+protection of the journal directory remain native adapter obligations. This
+corrects the same-run managed retry collision tracked in #384.
 Allocation and configuration are separate checked transitions: an
 `UnconfiguredAttempt` supplies its run/unit/slot for preparing observation paths,
 then `configure` seals the final program/argv/declared-directory/overrides before
