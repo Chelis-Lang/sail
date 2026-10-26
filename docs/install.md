@@ -62,8 +62,8 @@ manifest or lockfile. Sail supports one Verus version, not arbitrary historical
 Verus/vstd combinations. The [compatibility guide](compatibility.md) describes
 that pin and its known project limitations.
 
-On a fresh project, `note[SAIL3138]` explains why a shipped vstd proof cannot
-be used. A different dependency resolution, extra compiler components or
+On a fresh project, a `SAIL3138` note (in `--output json`, or on stderr with
+`SAIL_EXPLAIN=1`) explains why a shipped vstd proof cannot be used. A different dependency resolution, extra compiler components or
 forwarded verifier flags can cause this. Verification continues normally, with
 exact solver caching still available. Do not rewrite a real project's lockfile
 merely to reproduce a benchmark's bundle hit.

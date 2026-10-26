@@ -28,7 +28,10 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     ("sail-smtlib", &[]),
     ("sail-session", &["sail-smtlib"]),
     ("sail-key", &["sail-smtlib", "sail-session"]),
-    ("sail-cache", &["sail-key", "sail-acceptance"]),
+    (
+        "sail-cache",
+        &["sail-key", "sail-smtlib", "sail-acceptance"],
+    ),
     ("sail-solver", &["sail-smtlib", "sail-session"]),
     ("sail-ledger", &["sail-key"]),
     (

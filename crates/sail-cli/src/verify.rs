@@ -17,7 +17,8 @@
 //! - `SAIL_DAEMON_SOCKET` names the cache daemon, which is started on demand.
 //!
 //! If the daemon cannot be reached, `sail-z3` passes everything through to
-//! that Z3 unchanged, and one `warning[SAIL0003]` line on stderr says why.
+//! that Z3 unchanged, with the same results. JSON results note why
+//! (`SAIL0003`); human output says so only with `SAIL_EXPLAIN=1`.
 
 use std::ffi::OsString;
 use std::io::Read as _;
@@ -94,21 +95,36 @@ pub(crate) fn real_z3(cargo_verus: &Path, shim: &Path) -> Option<PathBuf> {
         .or_else(|| on_path("z3"))
 }
 
+/// Why this process verifies without the cache daemon, once it has tried.
+static DAEMON_UNAVAILABLE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// The `SAIL0003` note for a JSON result when the daemon was unavailable.
+pub(crate) fn daemon_note() -> Option<String> {
+    DAEMON_UNAVAILABLE
+        .get()
+        .map(|message| format!("SAIL0003: {message}"))
+}
+
 /// Connects to the daemon at `socket`, starting `sail serve` if nothing is
-/// listening. Returns whether a daemon is available. When it is not, one
-/// `warning[SAIL0003]` per process says why on stderr; verification then
-/// runs against the pinned Z3 without the cache, with the same results.
+/// listening. Returns whether a daemon is available. When it is not,
+/// verification runs against the pinned Z3 without the cache, with the same
+/// results; [`daemon_note`] says why, and when `show` one
+/// `warning[SAIL0003]` per process says so on stderr. Human callers show it
+/// only with `SAIL_EXPLAIN=1`, so their output stays plain Cargo-Verus's.
 #[cfg(unix)]
-pub(crate) fn ensure_daemon(socket: &Path) -> bool {
+pub(crate) fn ensure_daemon(socket: &Path, show: bool) -> bool {
     static WARNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     match start_daemon(socket) {
         Ok(()) => true,
         Err(why) => {
-            if !WARNED.swap(true, std::sync::atomic::Ordering::SeqCst) {
-                eprintln!(
-                    "warning[SAIL0003]: the Sail cache daemon is unavailable: {why}; \
+            let message = DAEMON_UNAVAILABLE.get_or_init(|| {
+                format!(
+                    "the Sail cache daemon is unavailable: {why}; \
                      verifying without the cache (same results, no reuse)"
-                );
+                )
+            });
+            if show && !WARNED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                eprintln!("warning[SAIL0003]: {message}");
             }
             false
         }
@@ -165,7 +181,7 @@ fn start_daemon(socket: &Path) -> Result<(), String> {
 }
 
 #[cfg(not(unix))]
-pub(crate) fn ensure_daemon(_socket: &Path) -> bool {
+pub(crate) fn ensure_daemon(_socket: &Path, _show: bool) -> bool {
     false
 }
 
@@ -245,7 +261,8 @@ fn direct_source(args: &[String]) -> Option<&str> {
     None
 }
 
-fn command(s: &Setup, args: &[String]) -> (Command, bool) {
+/// The Cargo-Verus command for `s`; `show` as for [`ensure_daemon`].
+fn command(s: &Setup, args: &[String], show: bool) -> (Command, bool) {
     let mut cmd = Command::new(&s.cargo_verus);
     cmd.arg("verus")
         .arg("verify")
@@ -280,7 +297,7 @@ fn command(s: &Setup, args: &[String]) -> (Command, bool) {
             .stdin(Stdio::null());
     }
     s.cargo_toolchain.apply(&mut cmd);
-    let daemon = s.measure.is_none() && ensure_daemon(&s.socket);
+    let daemon = s.measure.is_none() && ensure_daemon(&s.socket, show);
     if daemon {
         cmd.env("SAIL_DAEMON_SOCKET", &s.socket);
     } else {
@@ -374,8 +391,9 @@ pub fn verify(
 /// A setup managed verification cannot bind to a proof receipt (`why`, from
 /// `SAIL3112`): verified exactly as plain `cargo verus verify` verifies it,
 /// with `sail-z3` and the solver cache in front of Z3, no proof reuse and no
-/// receipts (ADR 0046). One `note[SAIL3112]` line on stderr says why; the
-/// rest of the output, the verdicts and the exit code are Cargo-Verus's.
+/// receipts (ADR 0046). The output, the verdicts and the exit code are
+/// Cargo-Verus's; one `note[SAIL3112]` line on stderr says why for JSON
+/// callers and, in human output, only with `SAIL_EXPLAIN=1`.
 /// With `--output json`, stdout is one schema-v2 report, as for the explicit
 /// experiments. A job's worker (`project`), which must return a project
 /// result, prints one `sail-project-result` instead: see [`unbound_project`].
@@ -387,11 +405,13 @@ pub(crate) fn unbound(
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
 ) -> ExitCode {
-    let _ = writeln!(
-        err,
-        "note[SAIL3112]: {why}; verifying as `cargo verus verify` does, with Sail's solver cache and without proof reuse"
-    );
-    let _ = err.flush();
+    if json || sail_verus::explain() {
+        let _ = writeln!(
+            err,
+            "note[SAIL3112]: {why}; verifying as `cargo verus verify` does, with Sail's solver cache and without proof reuse"
+        );
+        let _ = err.flush();
+    }
     if project {
         return unbound_project(args, why, out, err);
     }
@@ -406,7 +426,7 @@ pub(crate) fn unbound(
     if json {
         return verify_json(&setup, args, out, err);
     }
-    let (mut cmd, _) = command(&setup, args);
+    let (mut cmd, _) = command(&setup, args, sail_verus::explain());
     match cmd.status() {
         Ok(status) => exit_code(status.code()),
         Err(e) => {
@@ -891,7 +911,7 @@ fn plain_report(
         logs_unavailable(args)
     };
     let full = logged_args(args, unavailable.is_none(), &logs_dir);
-    let (mut cmd, daemon) = command(setup, &full);
+    let (mut cmd, daemon) = command(setup, &full, true);
     cmd.env("SAIL_PROVENANCE_DIR", scratch.0.join("provenance"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());

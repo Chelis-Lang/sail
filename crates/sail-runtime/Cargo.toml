@@ -8,8 +8,13 @@ publish.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["temporal"]
+# Native temporal jobs through the D.I.V.E. worker client.
+temporal = ["dep:sail-dive"]
+
 [dependencies]
-sail-dive.workspace = true
+sail-dive = { workspace = true, optional = true }
 sail-api.workspace = true
 sail-cache.workspace = true
 sail-key.workspace = true

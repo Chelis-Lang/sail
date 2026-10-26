@@ -12,6 +12,7 @@ repository.workspace = true
 sail-acceptance.workspace = true
 ed25519-dalek.workspace = true
 sail-key.workspace = true
+sail-smtlib.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

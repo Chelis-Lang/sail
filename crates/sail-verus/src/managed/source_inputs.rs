@@ -71,6 +71,12 @@ struct Journal {
 /// Classify only well-formed private non-unit control records. Ordinary unit
 /// records still require each consumer's original package/scope checks.
 pub(super) fn provider_metadata(value: &Value) -> Option<bool> {
+    if matches!(
+        value["reason"].as_str(),
+        Some(crate::adapter::JOURNAL_BEGIN | crate::adapter::JOURNAL_END)
+    ) {
+        return (value.as_object()?.len() == 1).then_some(true);
+    }
     if value["reason"] != PROVIDER {
         return Some(false);
     }
@@ -106,43 +112,55 @@ fn journal(raw: &str) -> Option<Journal> {
     }
     let mut sessions: BTreeMap<u32, Vec<ProviderEvent>> = BTreeMap::new();
     let mut artifacts = Vec::new();
-    for line in raw.lines() {
-        let value: Value = serde_json::from_str(line).ok()?;
-        if value["reason"] == PROVIDER {
-            let event = provider_event(&value)?;
-            if event.kind == 0 {
-                if sessions.contains_key(&event.producer) {
+    for section in completed_sections(raw)? {
+        let mut owners = BTreeSet::new();
+        for value in section {
+            if value["reason"] == PROVIDER {
+                let event = provider_event(&value)?;
+                if event.kind == 0 {
+                    if sessions.contains_key(&event.producer) {
+                        return None;
+                    }
+                    owners.insert(event.producer);
+                    sessions.insert(event.producer, vec![event]);
+                } else {
+                    if !owners.contains(&event.producer) {
+                        return None;
+                    }
+                    sessions.get_mut(&event.producer)?.push(event);
+                }
+            } else if matches!(
+                value["reason"].as_str(),
+                Some("compiler-artifact" | "build-script-executed")
+            ) {
+                let producer = value[OWNER]["producer"].as_u64()?.try_into().ok()?;
+                let child = value[OWNER]["child"].as_u64()?.try_into().ok()?;
+                if !owners.contains(&producer) {
                     return None;
                 }
-                sessions.insert(event.producer, vec![event]);
-            } else {
-                sessions.get_mut(&event.producer)?.push(event);
-            }
-        } else if matches!(
-            value["reason"].as_str(),
-            Some("compiler-artifact" | "build-script-executed")
-        ) {
-            let producer = value[OWNER]["producer"].as_u64()?.try_into().ok()?;
-            let child = value[OWNER]["child"].as_u64()?.try_into().ok()?;
-            let events = sessions.get_mut(&producer)?;
-            let frame = events.len();
-            let needs_read = value["reason"] == "compiler-artifact" && !custom_build(&value);
-            events.push(ProviderEvent {
-                kind: if needs_read { 2 } else { 4 },
-                producer,
-                child,
-                frames: 0,
-                exited: false,
-            });
-            if needs_read {
-                artifacts.push(Artifact {
+                let events = sessions.get_mut(&producer)?;
+                let frame = events.len();
+                let needs_read = value["reason"] == "compiler-artifact" && !custom_build(&value);
+                events.push(ProviderEvent {
+                    kind: if needs_read { 2 } else { 4 },
                     producer,
                     child,
-                    frame,
-                    value,
+                    frames: 0,
+                    exited: false,
                 });
+                if needs_read {
+                    artifacts.push(Artifact {
+                        producer,
+                        child,
+                        frame,
+                        value,
+                    });
+                }
+            } else {
+                return None;
             }
-        } else {
+        }
+        if owners.is_empty() {
             return None;
         }
     }
@@ -166,11 +184,24 @@ pub(super) struct Inputs {
     pub(super) by_package: Option<BTreeMap<String, Vec<PathBuf>>>,
 }
 
-pub(super) fn load(path: &Path) -> (Vec<PathBuf>, bool) {
+/// The recorded compiler-declared inputs and whether they are complete.
+///
+/// A missing record counts as complete only for a proof context's first
+/// observation (`observed_before` false): its run's own inputs are then
+/// recorded and compared after the run. Once a context has run, a missing,
+/// unreadable or malformed record is incomplete.
+pub(super) fn load(path: &Path, observed_before: bool) -> (Vec<PathBuf>, bool) {
     // Older observations do not attribute includes to their consuming package.
     // Establish the scoped declarations before authorizing new current receipts.
     read::<Inputs>(path).map_or_else(
-        || (Vec::new(), !path.exists()),
+        || {
+            let first = !observed_before
+                && matches!(
+                    std::fs::symlink_metadata(path),
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound
+                );
+            (Vec::new(), first)
+        },
         |v| {
             (
                 v.paths,
@@ -217,9 +248,51 @@ pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
     Some(paths)
 }
 
+/// The unit records of a complete artifact journal, without its section
+/// markers: every line parses, and every record lies in a section the
+/// producer opened and closed (see [`crate::adapter::JOURNAL_END`]). `None`
+/// for a missing, unreadable, malformed, truncated or unclosed journal.
+#[cfg(test)]
+pub(super) fn completed_journal(artifacts: &Path) -> Option<Vec<Value>> {
+    let text = std::fs::read_to_string(artifacts).ok()?;
+    completed_sections(&text).map(|sections| sections.into_iter().flatten().collect())
+}
+
+fn completed_sections(text: &str) -> Option<Vec<Vec<Value>>> {
+    use crate::adapter::{JOURNAL_BEGIN, JOURNAL_END};
+    let mut open = false;
+    let mut sections = Vec::new();
+    let mut records = Vec::new();
+    for line in text.lines().filter(|line| !line.trim().is_empty()) {
+        let record: Value = serde_json::from_str(line).ok()?;
+        match record["reason"].as_str() {
+            Some(JOURNAL_BEGIN) if !open && record.as_object()?.len() == 1 => open = true,
+            Some(JOURNAL_END) if open && record.as_object()?.len() == 1 => {
+                open = false;
+                sections.push(std::mem::take(&mut records));
+            }
+            Some(JOURNAL_BEGIN | JOURNAL_END) => return None,
+            _ if open => records.push(record),
+            _ => return None,
+        }
+    }
+    (!open && !sections.is_empty() && text.ends_with('\n')).then_some(sections)
+}
+
+#[cfg(test)]
 pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec<PathBuf>, bool)> {
+    update_with_history(path, artifacts, data, false, true)
+}
+
+pub(super) fn update_with_history(
+    path: &Path,
+    artifacts: &Path,
+    data: &Value,
+    observed_before: bool,
+    prior_covered: bool,
+) -> Result<(Vec<PathBuf>, bool)> {
     let workspace = Path::new(data["workspace_root"].as_str().unwrap_or_default());
-    let (previous, previous_covered) = load(path);
+    let (previous, previous_covered) = load(path, observed_before);
     let mut paths: BTreeSet<PathBuf> = previous.into_iter().collect();
     let mut by_package: BTreeMap<String, BTreeSet<PathBuf>> = packages(path)
         .unwrap_or_default()
@@ -229,7 +302,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
     let observed = std::fs::read_to_string(artifacts)
         .ok()
         .and_then(|raw| journal(&raw));
-    let mut covered = previous_covered && observed.is_some();
+    let mut covered = prior_covered && previous_covered && observed.is_some();
     let mut reads = Vec::new();
     for descriptor in observed
         .as_ref()
@@ -339,14 +412,20 @@ fn ledger_complete(journal: &Journal, reads: &[Read]) -> bool {
 /// A complete producer fixture; production uses actual spawn/read/wait events.
 #[cfg(test)]
 pub(super) fn fixture_journal(artifacts: &[Value]) -> std::io::Result<Vec<u8>> {
+    fixture_journal_for(artifacts, 7, 8)
+}
+
+#[cfg(test)]
+fn fixture_journal_for(artifacts: &[Value], producer: u32, child: u32) -> std::io::Result<Vec<u8>> {
     use sail_acceptance::inputs::ProviderEvent;
-    let mut raw = Vec::new();
-    for (kind, child, frames, exited) in [(0, 0, 0, false), (1, 8, 0, false)] {
+    let mut raw = (serde_json::json!({"reason":crate::adapter::JOURNAL_BEGIN}).to_string() + "\n")
+        .into_bytes();
+    for (kind, child, frames, exited) in [(0, 0, 0, false), (1, child, 0, false)] {
         write_provider(
             &mut raw,
             &ProviderEvent {
                 kind,
-                producer: 7,
+                producer,
                 child,
                 frames,
                 exited,
@@ -354,18 +433,21 @@ pub(super) fn fixture_journal(artifacts: &[Value]) -> std::io::Result<Vec<u8>> {
         )?;
     }
     for artifact in artifacts {
-        write_artifact(&mut raw, artifact.clone(), 7, 8)?;
+        write_artifact(&mut raw, artifact.clone(), producer, child)?;
     }
     write_provider(
         &mut raw,
         &ProviderEvent {
             kind: 3,
-            producer: 7,
-            child: 8,
+            producer,
+            child,
             frames: artifacts.len(),
             exited: true,
         },
     )?;
+    raw.extend_from_slice(
+        (serde_json::json!({"reason":crate::adapter::JOURNAL_END}).to_string() + "\n").as_bytes(),
+    );
     Ok(raw)
 }
 
@@ -387,6 +469,14 @@ pub(crate) fn fixture_complete(raw: &[u8]) -> bool {
         .ok()
         .and_then(journal)
         .is_some_and(|journal| ledger_complete(&journal, &[]))
+}
+
+#[cfg(test)]
+fn closed_journal(records: &[Value]) -> String {
+    String::from_utf8(
+        fixture_journal(records).unwrap_or_else(|e| unreachable!("journal fixture: {e}")),
+    )
+    .unwrap_or_else(|e| unreachable!("journal UTF-8 fixture: {e}"))
 }
 
 #[cfg(test)]
@@ -455,6 +545,87 @@ mod tests {
     }
 
     #[test]
+    fn each_outer_section_requires_its_own_complete_typed_producer()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let begin = (serde_json::json!({"reason":crate::adapter::JOURNAL_BEGIN}).to_string()
+            + "\n")
+            .into_bytes();
+        let end = (serde_json::json!({"reason":crate::adapter::JOURNAL_END}).to_string() + "\n")
+            .into_bytes();
+        let complete = fixture_journal(&[])?;
+        assert!(fixture_complete(&complete));
+        let mut extra_empty = complete.clone();
+        extra_empty.extend_from_slice(&begin);
+        extra_empty.extend_from_slice(&end);
+        assert!(
+            !fixture_complete(&extra_empty),
+            "a section without an observed child cannot disappear"
+        );
+        let mut cross_section = begin.clone();
+        for (kind, child) in [(0, 0), (1, 8)] {
+            write_provider(
+                &mut cross_section,
+                &ProviderEvent {
+                    kind,
+                    producer: 7,
+                    child,
+                    frames: 0,
+                    exited: false,
+                },
+            )?;
+        }
+        cross_section.extend_from_slice(&end);
+        cross_section.extend_from_slice(&begin);
+        write_provider(
+            &mut cross_section,
+            &ProviderEvent {
+                kind: 3,
+                producer: 7,
+                child: 8,
+                frames: 0,
+                exited: true,
+            },
+        )?;
+        cross_section.extend_from_slice(&end);
+        assert!(
+            !fixture_complete(&cross_section),
+            "a later section cannot finish an earlier child"
+        );
+        let mut distinct = complete;
+        distinct.extend(fixture_journal_for(&[], 9, 10)?);
+        assert!(
+            fixture_complete(&distinct),
+            "independent complete sections remain admissible"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn completed_journal_cannot_repair_lost_or_uncovered_history()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-journal-history-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let artifacts = root.join("artifacts.jsonl");
+        std::fs::write(&artifacts, fixture_journal(&[])?)?;
+        let data = serde_json::json!({"workspace_root":root});
+        assert!(update_with_history(&root.join("first.json"), &artifacts, &data, false, true)?.1);
+        assert!(!update_with_history(&root.join("lost.json"), &artifacts, &data, true, true)?.1);
+        assert!(
+            !update_with_history(
+                &root.join("uncovered.json"),
+                &artifacts,
+                &data,
+                false,
+                false
+            )?
+            .1
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn provider_read_ledger_refuses_missing_duplicate_and_foreign_results()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let artifact = serde_json::json!({"reason":"compiler-artifact","package_id":"demo","target":{"kind":["lib"]}});
@@ -496,7 +667,9 @@ mod tests {
     #[test]
     fn append_and_interleaving_preserve_independent_child_intents()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let mut raw = Vec::new();
+        let mut raw = (serde_json::json!({"reason":crate::adapter::JOURNAL_BEGIN}).to_string()
+            + "\n")
+            .into_bytes();
         for (kind, producer, child, frames) in [
             (0, 7, 0, 0),
             (0, 9, 0, 0),
@@ -516,7 +689,11 @@ mod tests {
                 },
             )?;
         }
+        let end = (serde_json::json!({"reason":crate::adapter::JOURNAL_END}).to_string() + "\n")
+            .into_bytes();
+        raw.extend_from_slice(&end);
         assert!(fixture_complete(&raw));
+        raw.truncate(raw.len() - end.len());
         // A third required child cannot disappear merely because the first two
         // finished, even when it emitted no artifacts.
         write_provider(
@@ -529,6 +706,7 @@ mod tests {
                 exited: false,
             },
         )?;
+        raw.extend_from_slice(&end);
         assert!(!fixture_complete(&raw));
         let mut duplicate = fixture_journal(&[])?;
         duplicate.extend(fixture_journal(&[])?);
@@ -550,7 +728,10 @@ mod tests {
                 .lines()
                 .map(serde_json::from_str)
                 .collect::<std::result::Result<_, _>>()?;
-            lines.last_mut().ok_or("terminal")?[field] = wrong;
+            lines
+                .iter_mut()
+                .rfind(|value| value["reason"] == PROVIDER)
+                .ok_or("terminal")?[field] = wrong;
             let mutated = lines
                 .iter()
                 .map(Value::to_string)
@@ -634,17 +815,76 @@ mod tests {
             std::process::id()
         ));
         assert!(std::fs::write(&path, r#"{"paths":[],"covered":true}"#).is_ok());
-        assert!(!load(&path).1);
+        assert!(!load(&path, true).1);
         assert!(packages(&path).is_none());
         assert!(std::fs::write(&path, r#"{"paths":[],"covered":true,"by_package":{}}"#).is_ok());
         assert!(
-            !load(&path).1,
+            !load(&path, true).1,
             "legacy scoped records omitted source aliases too"
         );
         assert!(packages(&path).is_none());
         assert!(std::fs::write(&path, "corrupt source observation").is_ok());
-        assert!(!load(&path).1);
-        assert!(std::fs::remove_file(path).is_ok());
+        assert!(!load(&path, true).1);
+        assert!(
+            !load(&path, false).1,
+            "a corrupt record is never a first observation"
+        );
+        assert!(std::fs::remove_file(&path).is_ok());
+        assert!(load(&path, false).1, "a context's first observation");
+        assert!(!load(&path, true).1, "a lost record after earlier runs");
+    }
+
+    #[test]
+    fn outer_sections_refuse_unclosed_and_foreign_records() {
+        let root = std::env::temp_dir().join(format!("sail-source-journal-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let data = serde_json::json!({"workspace_root":root});
+        let artifacts = root.join("artifacts.jsonl");
+        let begin = serde_json::json!({"reason":crate::adapter::JOURNAL_BEGIN}).to_string() + "\n";
+        let unit = serde_json::json!({"reason":"compiler-artifact","package_id":"demo",
+            "target":{"kind":["lib"]},"filenames":[]})
+        .to_string()
+            + "\n";
+        let complete = closed_journal(&[]);
+        let incomplete: [Option<String>; 9] = [
+            None,
+            Some(String::new()),
+            Some("{not json\n".to_owned()),
+            Some(begin.clone()),
+            Some(begin.clone() + &unit),
+            Some(unit.clone()),
+            Some(complete.clone() + &begin),
+            Some(complete.clone() + &unit),
+            Some(complete.trim_end().to_owned() + "\n{\"reason\":\"compiler-art"),
+        ];
+        for (index, journal) in incomplete.iter().enumerate() {
+            let state = root.join(format!("sources-{index}.json"));
+            let _ = std::fs::remove_file(&artifacts);
+            if let Some(journal) = journal {
+                assert!(std::fs::write(&artifacts, journal).is_ok());
+            }
+            let (_, covered) =
+                update(&state, &artifacts, &data).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+            assert!(!covered, "journal {index} must not be complete coverage");
+            assert!(!load(&state, true).1, "record {index}");
+        }
+        // A completed empty child, and one closed section per Cargo build.
+        let another = String::from_utf8(
+            fixture_journal_for(&[], 9, 10)
+                .unwrap_or_else(|e| unreachable!("second child fixture: {e}")),
+        )
+        .unwrap_or_else(|e| unreachable!("second child UTF-8: {e}"));
+        for journal in [complete.clone(), complete.clone() + &another] {
+            assert!(std::fs::write(&artifacts, journal).is_ok());
+            let state = root.join("sources-complete.json");
+            let (paths, covered) =
+                update(&state, &artifacts, &data).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+            assert!(covered && paths.is_empty());
+            assert!(load(&state, true).1);
+            assert!(completed_journal(&artifacts).is_some());
+        }
+        assert!(std::fs::remove_dir_all(root).is_ok());
     }
 
     #[cfg(unix)]
@@ -679,7 +919,7 @@ mod tests {
             paths.into_iter().collect::<BTreeSet<_>>(),
             BTreeSet::from([alias, destination])
         );
-        assert!(load(&state).1);
+        assert!(load(&state, true).1);
         std::fs::remove_dir_all(root)
     }
 }
