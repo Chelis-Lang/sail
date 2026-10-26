@@ -369,8 +369,8 @@ fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::Project
 /// reuse. A modified record must not reuse frames for another argument list.
 pub(super) fn retained_request(job: &Stored) -> Option<&sail_api::project::ResolvedRequest> {
     let request = job.projection.as_ref()?.request.as_ref()?;
-    if !sail_api::acceptance::submitted_arguments_match(&job.submission.args, &request.args)
-        || !request_matches_mode(&job.submission.mode, request)
+    if sail_api::acceptance::bind_submission(&job.submission.args, &job.submission.mode, request)
+        .is_none()
         || job.submission.project_dir.canonicalize().ok()?.to_str()? != request.invocation
     {
         return None;
@@ -378,21 +378,12 @@ pub(super) fn retained_request(job: &Stored) -> Option<&sail_api::project::Resol
     Some(request)
 }
 
+#[cfg(test)]
 pub(super) fn request_matches_mode(
     mode: &sail_api::jobs::Mode,
     request: &sail_api::project::ResolvedRequest,
 ) -> bool {
-    match mode {
-        sail_api::jobs::Mode::Stock => request.engine.is_none() && request.function.is_none(),
-        sail_api::jobs::Mode::Interactive => request.function.is_none(),
-        sail_api::jobs::Mode::Repair(selection) => {
-            sail_api::acceptance::repair_request_matches(request, &selection.package,
-                &selection.target, &selection.kind, &selection.function)
-                // Independent stock fallback remains full proof evidence;
-                // the actual batch's engine_fault separately forbids repair acceptance.
-                || (request.engine.is_none() && request.function.is_none())
-        }
-    }
+    sail_api::acceptance::classify_submission_mode(mode, request).is_some()
 }
 
 fn retained_repair_accepted(
@@ -410,8 +401,18 @@ fn retained_repair_accepted(
             &selection.target,
             &selection.kind,
             &selection.function,
-        ) && sail_api::acceptance::complete_request(request, project).is_some()
-            && sail_api::acceptance::requested_function_present(request, project)
+        ) && sail_api::acceptance::complete_submitted_request(
+            &job.submission.args,
+            &job.submission.mode,
+            request,
+            project,
+        )
+        .is_some_and(|authority| {
+            matches!(
+                authority.kind(),
+                sail_api::acceptance::SubmissionKind::Repair
+            )
+        }) && sail_api::acceptance::requested_function_present(request, project)
             && batch.accepted_with(project)
     })
 }

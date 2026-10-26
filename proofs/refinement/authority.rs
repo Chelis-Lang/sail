@@ -37,6 +37,74 @@ pub fn checked_request_refines_function(request: &crate::project::ResolvedReques
     Some(project_function(actual))
 }
 
+/// Original-mode and argument correspondence remains attached to the actual
+/// request/project records when projecting a confirmed function into the model.
+pub fn checked_submitted_request_refines_function(arguments: &[String], mode: &crate::jobs::Mode,
+    request: &crate::project::ResolvedRequest, project: &crate::project::ProjectResult,
+    orders: &[acceptance::ReportOrder], target_index: usize, crate_index: usize, function_index: usize)
+    -> (out: Option<model::Function>)
+    requires target_index < project.targets@.len(), project.targets@[target_index as int].requested,
+        crate_index < project.targets@[target_index as int].report.crates@.len(),
+        function_index < project.targets@[target_index as int].report.crates@[crate_index as int].functions@.len(),
+    ensures out.is_some() ==> model::good_function(&out.unwrap()),
+        out.is_some() ==> acceptance::request_authorized(request, project),
+        out.is_some() ==> exists |origin: acceptance::SubmissionKind|
+            acceptance::submission_correspondence(arguments@, mode, request, origin),
+        out.is_some() ==> function_refines(
+            &project.targets@[target_index as int].report.crates@[crate_index as int].functions@[function_index as int], &out.unwrap()),
+{
+    let Some(authority) = acceptance::complete_submitted_request_ordered(arguments, mode, request, project, orders) else { return None; };
+    assert(acceptance::submission_correspondence(arguments@, mode, request, acceptance::submitted_kind(&authority)));
+    let actual = &project.targets[target_index].report.crates[crate_index].functions[function_index];
+    assert(confirmed(actual));
+    Some(project_function(actual))
+}
+
+pub fn changed_original_arguments_refused(arguments: &[String], mode: &crate::jobs::Mode,
+    request: &crate::project::ResolvedRequest, project: &crate::project::ProjectResult,
+    orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires request.args@.map_values(|s: String| string_bytes(&s)) != acceptance::normalized_arguments(arguments@, arguments@.len()),
+    ensures refused,
+{
+    acceptance::complete_submitted_request_ordered(arguments, mode, request, project, orders).is_none()
+}
+
+pub fn changed_original_mode_refused(arguments: &[String],
+    request: &crate::project::ResolvedRequest, project: &crate::project::ProjectResult,
+    orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires request.engine.is_some() || request.function.is_some(),
+    ensures refused,
+{
+    let mode = crate::jobs::Mode::Stock;
+    acceptance::complete_submitted_request_ordered(arguments, &mode, request, project, orders).is_none()
+}
+
+pub fn changed_repair_selection_refused(mode: &crate::jobs::Mode,
+    request: &crate::project::ResolvedRequest) -> (refused: bool)
+    requires request.function.is_some(), match mode {
+        crate::jobs::Mode::Repair(selection) => !acceptance::repair_selection_matches(request,
+            string_bytes(&selection.package), &selection.target, string_bytes(&selection.kind), string_bytes(&selection.function)),
+        _ => false,
+    },
+    ensures refused,
+{
+    acceptance::classify_submission_mode(mode, request).is_none()
+}
+
+pub fn positive_nonempty_submitted_factory(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult) -> (accepted: bool)
+    requires acceptance::small_positive_request(request, project), request.args@.len() == 0,
+        request.engine.is_none(), request.function.is_none(),
+        project.targets@[0].report.crates@[0].functions@.len() == 1,
+    ensures accepted,
+{
+    let arguments: Vec<String> = Vec::new();
+    let mode = crate::jobs::Mode::Stock;
+    let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
+    orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
+    acceptance::complete_submitted_request_ordered(&arguments, &mode, request, project, &orders).is_some()
+}
+
 pub fn swapped_request_refused(request: &crate::project::ResolvedRequest,
     project: &crate::project::ProjectResult, orders: &[acceptance::ReportOrder]) -> (refused: bool)
     requires string_bytes(&request.context_sha256) != string_bytes(&project.context_sha256)

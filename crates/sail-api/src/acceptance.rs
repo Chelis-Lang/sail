@@ -17,9 +17,11 @@ use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verifi
 
 /// Builds untrusted order candidates and invokes the checked authority factory.
 pub use crate::acceptance_sort::{
-    complete_report, complete_request, complete_selection, complete_target, complete_whole_report,
+    complete_report, complete_request, complete_selection, complete_submitted_request,
+    complete_target, complete_whole_report,
 };
 
+use crate::jobs::Mode;
 use crate::output::{
     CrateReport, EngineEstablishment, EstablishmentName, FunctionReport, Report, SourceSummaryName,
     VerdictName,
@@ -57,6 +59,105 @@ sail_code! {
     pub struct CompleteRequest<'a> {
         request: &'a ResolvedRequest,
         project: &'a ProjectResult,
+    }
+
+    /// Pre-execution request correspondence, not a completed invocation origin.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum SubmissionKind {
+        /// The original stock mode matches a captured stock backend selection.
+        Stock,
+        /// The interactive mode matches a captured interactive backend selection.
+        Interactive,
+        /// The exact original repair target/function selection was captured.
+        Repair,
+        /// An opt-in submission has a stock request; failure history is separate.
+        StockForOptIn,
+    }
+
+    /// Exact original submission arguments and mode bound to captured request data.
+    pub struct SubmissionBinding<'a> {
+        arguments: &'a [String],
+        mode: &'a Mode,
+        request: &'a ResolvedRequest,
+        kind: SubmissionKind,
+    }
+
+    /// Whole-request authority retaining the independent original submission borrow.
+    pub struct SubmittedAuthority<'a> {
+        arguments: &'a [String],
+        mode: &'a Mode,
+        request: &'a ResolvedRequest,
+        project: &'a ProjectResult,
+        kind: SubmissionKind,
+    }
+
+    impl SubmissionBinding<'_> {
+        sail_method! {
+            /// Exact original submitted arguments checked by the binding factory.
+            #[must_use]
+            pub fn arguments(&self) -> (out: &[String])
+                requires(true) ensures(out == bound_arguments(self))
+            { self.arguments }
+        }
+        sail_method! {
+            /// Exact original selected mode checked by the binding factory.
+            #[must_use]
+            pub fn mode(&self) -> (out: &Mode)
+                requires(true) ensures(out == bound_mode(self))
+            { self.mode }
+        }
+        sail_method! {
+            /// Exact captured request matched to the original submission.
+            #[must_use]
+            pub fn request(&self) -> (out: &ResolvedRequest)
+                requires(true) ensures(out == bound_request(self))
+            { self.request }
+        }
+        sail_method! {
+            /// Derived request class; never a completion, origin or failure fact.
+            #[must_use]
+            pub fn kind(&self) -> (out: SubmissionKind)
+                requires(true) ensures(out == bound_kind(self))
+            { self.kind }
+        }
+    }
+
+    impl SubmittedAuthority<'_> {
+        sail_method! {
+            /// Actual original submitted arguments, without interpreting a result header.
+            #[must_use]
+            pub fn arguments(&self) -> (out: &[String])
+                requires(true) ensures(out == submitted_arguments(self))
+            { self.arguments }
+        }
+        sail_method! {
+            /// Actual original selected mode.
+            #[must_use]
+            pub fn mode(&self) -> (out: &Mode)
+                requires(true) ensures(out == submitted_mode(self))
+            { self.mode }
+        }
+        sail_method! {
+            /// Actual captured request whose scope and options were checked.
+            #[must_use]
+            pub fn request(&self) -> (out: &ResolvedRequest)
+                requires(true) ensures(out == submitted_request(self))
+            { self.request }
+        }
+        sail_method! {
+            /// Actual checked project, immutably bound to the original submission.
+            #[must_use]
+            pub fn project(&self) -> (out: &ProjectResult)
+                requires(true) ensures(out == submitted_project(self))
+            { self.project }
+        }
+        sail_method! {
+            /// Derived request class, preserving the original mode distinction.
+            #[must_use]
+            pub fn kind(&self) -> (out: SubmissionKind)
+                requires(true) ensures(out == submitted_kind(self))
+            { self.kind }
+        }
     }
 
     impl CompleteRequest<'_> {
@@ -116,6 +217,56 @@ sail_spec! {
 
     pub closed spec fn request_authority_request<'a>(a: &CompleteRequest<'a>) -> &'a ResolvedRequest { a.request }
     pub closed spec fn request_authority_project<'a>(a: &CompleteRequest<'a>) -> &'a ProjectResult { a.project }
+
+    pub closed spec fn bound_request<'a>(a: &SubmissionBinding<'a>) -> &'a ResolvedRequest { a.request }
+    pub closed spec fn bound_arguments<'a>(a: &SubmissionBinding<'a>) -> &'a [String] { a.arguments }
+    pub closed spec fn bound_mode<'a>(a: &SubmissionBinding<'a>) -> &'a Mode { a.mode }
+    pub closed spec fn bound_kind(a: &SubmissionBinding) -> SubmissionKind { a.kind }
+    pub closed spec fn submitted_arguments<'a>(a: &SubmittedAuthority<'a>) -> &'a [String] { a.arguments }
+    pub closed spec fn submitted_mode<'a>(a: &SubmittedAuthority<'a>) -> &'a Mode { a.mode }
+    pub closed spec fn submitted_request<'a>(a: &SubmittedAuthority<'a>) -> &'a ResolvedRequest { a.request }
+    pub closed spec fn submitted_project<'a>(a: &SubmittedAuthority<'a>) -> &'a ProjectResult { a.project }
+    pub closed spec fn submitted_kind(a: &SubmittedAuthority) -> SubmissionKind { a.kind }
+
+    pub open spec fn repair_selection_matches(r: &ResolvedRequest, package: Seq<u8>,
+        target: &Option<String>, kind: Seq<u8>, function: Seq<u8>) -> bool {
+        r.function.is_some() && string_bytes(&r.function.unwrap()) == function
+            && string_bytes(&r.repair_package) == package && string_bytes(&r.repair_kind) == kind
+            && match (&r.repair_target, target) {
+                (None, None) => true,
+                (Some(a), Some(b)) => string_bytes(a) == string_bytes(b),
+                _ => false,
+            }
+    }
+
+    pub open spec fn mode_correspondence(mode: &Mode, r: &ResolvedRequest, kind: SubmissionKind) -> bool {
+        match mode {
+            Mode::Stock => r.engine.is_none() && r.function.is_none() && kind is Stock,
+            Mode::Interactive => r.function.is_none() && if r.engine.is_some() {
+                interactive_engine(&r.engine) && kind is Interactive
+            } else { kind is StockForOptIn },
+            Mode::Repair(selection) => if repair_selection_matches(r, string_bytes(&selection.package), &selection.target, string_bytes(&selection.kind), string_bytes(&selection.function)) {
+                interactive_engine(&r.engine) && kind is Repair
+            } else { r.engine.is_none() && r.function.is_none() && kind is StockForOptIn },
+        }
+    }
+
+    pub open spec fn interactive_engine(engine: &Option<EngineIdentity>) -> bool {
+        match engine {
+            Some(e) => string_bytes(&e.name) == b"interactive"@ && string_bytes(&e.manifest_sha256).len() > 0,
+            None => false,
+        }
+    }
+
+    pub open spec fn submission_correspondence(arguments: Seq<String>, mode: &Mode,
+        r: &ResolvedRequest, kind: SubmissionKind) -> bool {
+        r.args@.map_values(|s: String| string_bytes(&s)) == normalized_arguments(arguments, arguments.len())
+            && mode_correspondence(mode, r, kind)
+    }
+
+    pub closed spec fn binding_valid(b: &SubmissionBinding) -> bool {
+        submission_correspondence(b.arguments@, b.mode, b.request, b.kind)
+    }
 
     pub open spec fn engine_identity_matches(a: &Option<EngineIdentity>, b: &Option<EngineIdentity>) -> bool {
         match (a, b) {
@@ -519,7 +670,8 @@ sail_verified! {
     pub fn submitted_arguments_match(submitted: &[String], actual: &[String]) -> (out: bool)
         requires(true)
         ensures(out ==> actual@.map_values(|s: String| string_bytes(&s))
-            == normalized_arguments(submitted@, submitted@.len()))
+            == normalized_arguments(submitted@, submitted@.len()),
+            submitted@.len() == 0 && actual@.len() == 0 ==> out)
     {
         let mut i = 0usize;
         let mut j = 0usize;
@@ -550,15 +702,8 @@ sail_verified! {
     pub fn repair_request_matches(request: &ResolvedRequest, package: &str,
         target: &Option<String>, kind: &str, function: &str) -> (out: bool)
         requires(true)
-        ensures(out == (request.function.is_some()
-            && string_bytes(&request.function.unwrap()) == vstd::utf8::encode_utf8(function@)
-            && string_bytes(&request.repair_package) == vstd::utf8::encode_utf8(package@)
-            && string_bytes(&request.repair_kind) == vstd::utf8::encode_utf8(kind@)
-            && match (&request.repair_target, target) {
-                (None, None) => true,
-                (Some(a), Some(b)) => string_bytes(a) == string_bytes(b),
-                _ => false,
-            }))
+        ensures(out == repair_selection_matches(request, vstd::utf8::encode_utf8(package@),
+            target, vstd::utf8::encode_utf8(kind@), vstd::utf8::encode_utf8(function@)))
     {
         let same_function = match &request.function {
             Some(actual) => exact_bytes(actual.as_str().as_bytes(), function.as_bytes()),
@@ -589,6 +734,93 @@ sail_verified! {
             || !exact_bytes(request.input_revision.as_str().as_bytes(), project.input_revision.as_str().as_bytes())
             || !same_engine(&request.engine, &project.engine) { return false; }
         true
+    }
+}
+
+sail_verified! {
+    /// Checks the explicitly named interactive backend identity in actual fields.
+    pub fn interactive_engine_matches(engine: &Option<EngineIdentity>) -> (out: bool)
+        requires(true) ensures(out == interactive_engine(engine))
+    {
+        match engine {
+            Some(e) => exact_bytes(e.name.as_str().as_bytes(), b"interactive") && !e.manifest_sha256.is_empty(),
+            None => false,
+        }
+    }
+}
+
+sail_verified! {
+    /// Derives request correspondence from actual original-mode and request records.
+    pub fn classify_submission_mode(mode: &Mode, request: &ResolvedRequest) -> (out: Option<SubmissionKind>)
+        requires(true)
+        ensures(out.is_some() ==> mode_correspondence(mode, request, out.unwrap()),
+            mode is Stock && request.engine.is_none() && request.function.is_none() ==> out.is_some())
+    {
+        let kind = match mode {
+            Mode::Stock => {
+                if request.engine.is_some() || request.function.is_some() { return None; }
+                SubmissionKind::Stock
+            }
+            Mode::Interactive => {
+                if request.function.is_some() { return None; }
+                if request.engine.is_some() {
+                    if !interactive_engine_matches(&request.engine) { return None; }
+                    SubmissionKind::Interactive
+                } else { SubmissionKind::StockForOptIn }
+            }
+            Mode::Repair(selection) => {
+                if repair_request_matches(request, &selection.package, &selection.target, &selection.kind, &selection.function) {
+                    if !interactive_engine_matches(&request.engine) { return None; }
+                    SubmissionKind::Repair
+                } else if request.engine.is_none() && request.function.is_none() {
+                    SubmissionKind::StockForOptIn
+                } else { return None; }
+            }
+        };
+        Some(kind)
+    }
+}
+
+sail_verified! {
+    /// Binds independent original arguments and mode to the actual captured request.
+    #[allow(clippy::question_mark, reason = "Keep explicit refusal branches in the source shared with stock Verus.")]
+    pub fn bind_submission<'a>(arguments: &'a [String], mode: &'a Mode,
+        request: &'a ResolvedRequest) -> (out: Option<SubmissionBinding<'a>>)
+        requires(true)
+        ensures(out.is_some() ==> binding_valid(&out.unwrap()),
+            out.is_some() ==> bound_arguments(&out.unwrap()) == arguments,
+            out.is_some() ==> bound_mode(&out.unwrap()) == mode,
+            out.is_some() ==> bound_request(&out.unwrap()) == request,
+            arguments@.len() == 0 && request.args@.len() == 0 && mode is Stock
+                && request.engine.is_none() && request.function.is_none() ==> out.is_some())
+    {
+        if !submitted_arguments_match(arguments, &request.args) { return None; }
+        let Some(kind) = classify_submission_mode(mode, request) else { return None; };
+        Some(SubmissionBinding { arguments, mode, request, kind })
+    }
+}
+
+sail_verified! {
+    /// Establishes whole authority for the actual independent original submission.
+    #[allow(clippy::question_mark, reason = "Keep explicit refusal branches in the source shared with stock Verus.")]
+    pub fn complete_submitted_request_ordered<'a>(arguments: &'a [String], mode: &'a Mode,
+        request: &'a ResolvedRequest, project: &'a ProjectResult, orders: &[ReportOrder])
+        -> (out: Option<SubmittedAuthority<'a>>)
+        requires(true)
+        ensures(out.is_some() ==> request_authorized(request, project),
+            out.is_some() ==> submission_correspondence(arguments@, mode, request, submitted_kind(&out.unwrap())),
+            out.is_some() ==> submitted_arguments(&out.unwrap()) == arguments,
+            out.is_some() ==> submitted_mode(&out.unwrap()) == mode,
+            out.is_some() ==> submitted_request(&out.unwrap()) == request,
+            out.is_some() ==> submitted_project(&out.unwrap()) == project,
+            arguments@.len() == 0 && request.args@.len() == 0 && mode is Stock
+                && request.engine.is_none() && request.function.is_none()
+                && small_positive_request(request, project) && orders@.len() == 1
+                && orders@[0].forward@.len() == 0 && orders@[0].inverse@.len() == 0 ==> out.is_some())
+    {
+        let Some(binding) = bind_submission(arguments, mode, request) else { return None; };
+        if complete_request_ordered(request, project, orders).is_none() { return None; }
+        Some(SubmittedAuthority { arguments, mode, request, project, kind: binding.kind })
     }
 }
 
