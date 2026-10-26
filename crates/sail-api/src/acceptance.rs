@@ -131,6 +131,11 @@ sail_code! {
 
     impl<'a, 'b> DeclaredReplayAdmission<'a, 'b> {
         sail_method! {
+            /// Borrows the retained original request, without reminting it.
+            pub fn original_request(&self) -> (out: &'a ResolvedRequest)
+                requires(true) ensures(out == declared_replay_original(self)) { self.original }
+        }
+        sail_method! {
             /// Borrows exactly the independently supplied current request.
             pub fn request(&self) -> (out: &'a ResolvedRequest)
                 requires(true) ensures(out == declared_replay_current(self)) { self.current }
@@ -139,6 +144,16 @@ sail_code! {
             /// Borrows the admitted view with its original reports intact.
             pub fn project(&self) -> (out: &ProjectResult)
                 requires(true) ensures(*out == declared_replay_project(self)) { &self.project }
+        }
+        sail_method! {
+            /// Borrows the exact native byte binding retained by admission.
+            pub fn paths(&self) -> (out: &RequestPathBinding<'a>)
+                requires(true) ensures(*out == declared_replay_paths(self)) { &self.paths }
+        }
+        sail_method! {
+            /// Borrows the original declared-domain revision/readback relation.
+            pub fn readback(&self) -> (out: &ReplayReadback<'a, 'b>)
+                requires(true) ensures(*out == declared_replay_readback(self)) { &self.readback }
         }
     }
 
