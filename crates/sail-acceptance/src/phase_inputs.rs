@@ -511,3 +511,224 @@ sail_verified! {
         Some(PhaseInputs { request, observed, document, joined })
     }
 }
+
+sail_code! {
+    /// One decoded source declaration, before any role or byte encoding is assigned.
+    pub struct SourceDeclaration<'a> {
+        /// Exact producer pathname bytes.
+        pub name: &'a [u8],
+        /// Exact producer checksum text, without interpretation as observed contents.
+        pub checksum: &'a [u8],
+        /// Exact producer unnormalized source length.
+        pub size: u64,
+    }
+    /// One decoded environment field; absence is distinct from an empty value.
+    pub struct EnvironmentDeclaration<'a> {
+        /// Exact name bytes; whitespace and invalid UTF-8 are not normalized.
+        pub name: &'a [u8],
+        /// Exact bytes or explicit absence.
+        pub value: Option<&'a [u8]>,
+    }
+    /// Expanded declaration values, retaining the owned little-endian length.
+    pub enum DeclarationValue<'a> {
+        /// Original borrowed bytes.
+        Bytes(&'a [u8]),
+        /// Lossless eight-byte source length encoding.
+        Length([u8; 8]),
+        /// Explicit absent environment variable.
+        Absent,
+    }
+    /// A raw expanded field; this supplies no observation or admission authority.
+    pub struct DeclarationRow<'a> {
+        /// Source checksum=0, source length=1, paths path=2, environment=3.
+        pub namespace: u8,
+        /// Original unmodified name bytes.
+        pub name: &'a [u8],
+        /// Exact expanded value.
+        pub value: DeclarationValue<'a>,
+    }
+}
+
+sail_spec! {
+    /// Exact little-endian representation; all 64 bits participate.
+    pub open spec fn encoded_size(value: u64) -> Seq<u8> {
+        seq![(value & 255) as u8, ((value >> 8) & 255) as u8, ((value >> 16) & 255) as u8, ((value >> 24) & 255) as u8,
+            ((value >> 32) & 255) as u8, ((value >> 40) & 255) as u8, ((value >> 48) & 255) as u8, ((value >> 56) & 255) as u8]
+    }
+    /// Exact raw declaration-to-inventory conversion without UTF-8 conversion.
+    pub open spec fn declaration_fact(row: DeclarationRow, fact: InputFact) -> bool {
+        fact.namespace == row.namespace && fact.name@ == row.name@ && match row.value {
+            DeclarationValue::Bytes(bytes) => match fact.value { crate::inputs::InputValue::Present(value) => value@ == bytes@, _ => false },
+            DeclarationValue::Length(bytes) => match fact.value { crate::inputs::InputValue::Present(value) => value@ == bytes@, _ => false },
+            DeclarationValue::Absent => fact.value is Absent,
+        }
+    }
+    /// Exact source checksum field; no hash truth is assumed.
+    pub open spec fn checksum_row(row: DeclarationRow, source: SourceDeclaration) -> bool {
+        row.namespace == 0 && row.name@ == source.name@ && match row.value {
+            DeclarationValue::Bytes(value) => value@ == source.checksum@, _ => false,
+        }
+    }
+    /// Exact source length field, paired with the same original source name.
+    pub open spec fn size_row(row: DeclarationRow, source: SourceDeclaration) -> bool {
+        row.namespace == 1 && row.name@ == source.name@ && match row.value {
+            DeclarationValue::Length(value) => value@ == encoded_size(source.size), _ => false,
+        }
+    }
+    /// A tracked path is a request, with no invented attestation of its contents.
+    pub open spec fn tracked_row(row: DeclarationRow, name: &[u8]) -> bool {
+        row.namespace == 2 && row.name@ == name@ && match row.value {
+            DeclarationValue::Bytes(value) => value@ == Seq::<u8>::empty(), _ => false,
+        }
+    }
+    /// Absence and an empty present value stay distinct, without name normalization.
+    pub open spec fn environment_row(row: DeclarationRow, field: EnvironmentDeclaration) -> bool {
+        row.namespace == 3 && row.name@ == field.name@ && match (row.value, field.value) {
+            (DeclarationValue::Bytes(value), Some(original)) => value@ == original@,
+            (DeclarationValue::Absent, None) => true, _ => false,
+        }
+    }
+    /// Exact expansion length and both directions of field correspondence.
+    pub open spec fn expanded_declarations(rows: Seq<DeclarationRow>, sources: Seq<SourceDeclaration>,
+        paths: Seq<&[u8]>, environment: Seq<EnvironmentDeclaration>) -> bool {
+        rows.len() == 2 * sources.len() + paths.len() + environment.len()
+            && (forall|i: int| 0 <= i < sources.len() ==> checksum_row(rows[2 * i], #[trigger] sources[i])
+                && size_row(rows[2 * i + 1], sources[i]))
+            && (forall|i: int| 0 <= i < paths.len() ==> tracked_row(rows[2 * sources.len() + i], #[trigger] paths[i]))
+            && (forall|i: int| 0 <= i < environment.len() ==> environment_row(rows[2 * sources.len() + paths.len() + i], #[trigger] environment[i]))
+    }
+}
+
+sail_verified! {
+    /// Encode every bit of a source length with stable existing revision bytes.
+    #[allow(clippy::cast_possible_truncation, reason = "Each byte intentionally keeps one disjoint eight-bit portion; the checked encoding retains all 64 bits.")]
+    pub fn encode_source_size(value: u64) -> (out: [u8; 8])
+        requires (true) ensures (out@ == encoded_size(value))
+    {
+        [(value & 255) as u8, ((value >> 8) & 255) as u8, ((value >> 16) & 255) as u8, ((value >> 24) & 255) as u8,
+            ((value >> 32) & 255) as u8, ((value >> 40) & 255) as u8, ((value >> 48) & 255) as u8, ((value >> 56) & 255) as u8]
+    }
+}
+
+impl DeclarationRow<'_> {
+    sail_method! {
+        /// Borrow the exact expanded bytes without converting names or values.
+        pub fn fact(&self) -> (out: InputFact<'_>)
+            requires (true) ensures (declaration_fact(*self, out))
+        {
+            InputFact { namespace: self.namespace, name: self.name, value: match &self.value {
+                DeclarationValue::Bytes(value) => crate::inputs::InputValue::Present(value),
+                DeclarationValue::Length(value) => crate::inputs::InputValue::Present(value),
+                DeclarationValue::Absent => crate::inputs::InputValue::Absent,
+            } }
+        }
+    }
+}
+
+sail_verified! {
+    /// Convert every expanded declaration exactly once, preserving its original position.
+    pub fn declaration_facts<'a>(rows: &'a [DeclarationRow<'a>]) -> (facts: Vec<InputFact<'a>>)
+        requires (true) ensures (facts.len() == rows.len(),
+            forall|i: int| 0 <= i < rows.len() ==> declaration_fact(#[trigger] rows[i], facts[i]))
+    {
+        let mut facts = Vec::new(); let mut i = 0;
+        sail_while! { (i < rows.len())
+            invariant (i <= rows.len(), facts.len() == i,
+                forall|k: int| 0 <= k < i ==> declaration_fact(#[trigger] rows[k], facts[k]))
+            decreases (rows.len() - i)
+            { facts.push(rows[i].fact()); i += 1; }
+        }
+        facts
+    }
+}
+
+sail_verified! {
+    /// Append one field while retaining every earlier declaration exactly.
+    pub fn append_declaration<'a>(rows: &mut Vec<DeclarationRow<'a>>, row: DeclarationRow<'a>) -> (out: ())
+        requires (old(rows).len() < usize::MAX)
+        ensures (final(rows).len() == old(rows).len() + 1, final(rows)[old(rows).len() as int] == row,
+            forall|i: int| 0 <= i < old(rows).len() ==> #[trigger] final(rows)[i] == old(rows)[i])
+    { rows.push(row); }
+}
+
+sail_spec! {
+    /// The one permitted declaration at each position of the complete expansion.
+    pub open spec fn declaration_at(row: DeclarationRow, sources: Seq<SourceDeclaration>,
+        paths: Seq<&[u8]>, environment: Seq<EnvironmentDeclaration>, index: int) -> bool {
+        if index < 2 * sources.len() {
+            if index % 2 == 0 { checksum_row(row, sources[index / 2]) }
+            else { size_row(row, sources[index / 2]) }
+        } else if index < 2 * sources.len() + paths.len() {
+            tracked_row(row, paths[index - 2 * sources.len()])
+        } else { environment_row(row, environment[index - 2 * sources.len() - paths.len()]) }
+    }
+}
+
+sail_verified! {
+    /// Expand every decoded declaration with checked roles, keys, values and order.
+    /// Overflow refuses; a complete empty decoded phase stays empty.
+    pub fn expand_declarations<'a>(sources: &[SourceDeclaration<'a>], paths: &[&'a [u8]],
+        environment: &[EnvironmentDeclaration<'a>]) -> (out: Option<Vec<DeclarationRow<'a>>>)
+        requires (true) ensures (out.is_some() == (2 * sources.len() + paths.len() + environment.len() <= usize::MAX),
+            out.is_some() ==> expanded_declarations(out.unwrap()@, sources@, paths@, environment@))
+    {
+        if sources.len() > usize::MAX / 2 { return None; }
+        let source_end = sources.len() * 2;
+        if paths.len() > usize::MAX - source_end { return None; }
+        let paths_end = source_end + paths.len();
+        if environment.len() > usize::MAX - paths_end { return None; }
+        let total = paths_end + environment.len();
+        let mut rows = Vec::new(); let mut i = 0;
+        sail_while! { (i < total)
+            invariant (i <= total, rows.len() == i, source_end == 2 * sources.len(),
+                paths_end == source_end + paths.len(), total == paths_end + environment.len(),
+                forall|k: int| 0 <= k < i ==> declaration_at(#[trigger] rows[k], sources@, paths@, environment@, k))
+            decreases (total - i)
+            {
+                let row = if i < source_end {
+                    let source = &sources[i / 2];
+                    if i % 2 == 0 {
+                        DeclarationRow { namespace: 0, name: source.name, value: DeclarationValue::Bytes(source.checksum) }
+                    } else {
+                        DeclarationRow { namespace: 1, name: source.name, value: DeclarationValue::Length(encode_source_size(source.size)) }
+                    }
+                } else if i < paths_end {
+                    DeclarationRow { namespace: 2, name: paths[i - source_end], value: DeclarationValue::Bytes(b"") }
+                } else {
+                    let field = &environment[i - paths_end];
+                    let value = match field.value { Some(value) => DeclarationValue::Bytes(value), None => DeclarationValue::Absent };
+                    DeclarationRow { namespace: 3, name: field.name, value }
+                };
+                sail_proof! {
+                    if i < source_end {
+                        if i % 2 == 0 { assert(checksum_row(row, sources[i as int / 2])); }
+                        else { assert(size_row(row, sources[i as int / 2])); }
+                    } else if i < paths_end {
+                        assert(row.namespace == 2);
+                        assert(row.name@ == paths[i - source_end]@);
+                        assert(match row.value { DeclarationValue::Bytes(value) => value@ == Seq::<u8>::empty(), _ => false });
+                        assert(tracked_row(row, paths[i - source_end]));
+                    }
+                    else { assert(environment_row(row, environment[i - paths_end])); }
+                    assert(declaration_at(row, sources@, paths@, environment@, i as int));
+                }
+                append_declaration(&mut rows, row);
+                i += 1;
+            }
+        }
+        sail_proof! {
+            assert forall|k: int| 0 <= k < sources.len() implies checksum_row(#[trigger] rows[2 * k], sources[k])
+                && size_row(rows[2 * k + 1], sources[k]) by {
+                assert(declaration_at(rows[2 * k], sources@, paths@, environment@, 2 * k));
+                assert(declaration_at(rows[2 * k + 1], sources@, paths@, environment@, 2 * k + 1));
+            }
+            assert forall|k: int| 0 <= k < paths.len() implies tracked_row(#[trigger] rows[2 * sources.len() + k], paths[k]) by {
+                assert(declaration_at(rows[2 * sources.len() + k], sources@, paths@, environment@, 2 * sources.len() + k));
+            }
+            assert forall|k: int| 0 <= k < environment.len() implies environment_row(#[trigger] rows[2 * sources.len() + paths.len() + k], environment[k]) by {
+                assert(declaration_at(rows[2 * sources.len() + paths.len() + k], sources@, paths@, environment@, 2 * sources.len() + paths.len() + k));
+            }
+        }
+        Some(rows)
+    }
+}

@@ -238,6 +238,24 @@ absence are distinct keys. The joined inventory must cover every field in both
 phases and contain no other field. Conflicting values, duplicate identities,
 missing phases, foreign attempts and unreadable outcomes refuse admission.
 These field namespaces describe declarations, not input-world byte observations.
+The actual native consumers now pass borrowed raw source, tracked-path and
+environment declarations to `expand_declarations`. Its checked loop emits both
+source fields under the same exact pathname, every tracked path, and every
+raw environment name/value or explicit absence. The full `u64` source length
+uses the existing eight little-endian bytes; the size-encoding lemma proves
+that no length bits are lost. This is an encoding result, without a digest
+injectivity assumption. `declaration_facts` then converts every emitted row
+exactly once. Whitespace, invalid byte values, absence and present-empty values
+are preserved. Invalid UTF-8 during the later native environment-map extraction
+refuses extraction instead of turning a present value into absence. Duplicate
+tracked paths remain duplicates and fail the existing unique-key check.
+
+The Serde document decoder, BTreeMap iteration and projection into those raw
+borrowed declaration records remain an explicit native adapter boundary.
+The checked expansion establishes no extra compiler reads, producer authenticity
+or complete physical input closure. It preserves the previous successful field
+order and source-length encoding; a complete empty decoded phase stays empty.
+
 Sorting only proposes complete forward/inverse indices. The checked subset
 comparison has an iff contract, and the sorted-cursor lemma proves that a valid
 member cannot be skipped. Both union passes use monotone cursors rather than
