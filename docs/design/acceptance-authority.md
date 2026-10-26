@@ -894,6 +894,27 @@ admission can be implemented. Matching report flags, a Current field, empty
 inventories or a deserialized record cannot fill these gaps. Native placement
 and output/conformance/cost qualification remain separate milestones.
 
+The native replay consumer now receives the already-live current
+`RequestPathBinding` in the same callback as the independent current request
+and actual scoped readback. After the unchanged record/key/location/stamp and
+ordinary original receipt/history gates, `noop::replay_bound` passes the owned
+candidate through `admit_declared_replay`, then obtains the identical admitted
+project through `present_declared_replay`. Only the existing wall-time metadata
+update and result publication follow. Both original whole/partial binders are
+still selected by the checked shared factory from the current request's exact
+scope; native code cannot select a saved completion bit as that branch.
+
+This placement preserves capture-demand exclusion, independently chosen locks
+and run location, all ordinary origin checks, existing trace strings,
+whole/partial/failure behavior and fallback routing. The owned-child native
+fixture forwards separately supplied actual workspace path bytes and the same
+actual guarded readback; it still does not qualify Cargo metadata, trusted
+Verus execution or full input closure. Its original assertions remain intact.
+Native controls withholding either typed witness must make the existing
+whole/partial positive replay assertions fail ordinarily. The new native
+wiring, tests, controls, default output/conformance and added validation cost
+are unrun/unqualified.
+
 ### Remaining service joins
 
 This remaining inventory is an implementation plan, not a service theorem.

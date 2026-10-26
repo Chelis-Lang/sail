@@ -52,6 +52,11 @@ semantic versioning once the API is published.
   exits, input currentness and existing error/fallback routing; add an explicit
   metadata note instead of silently treating lossy path conversion as identity.
 
+- Carry unchanged-call replay through checked declared request/report, native
+  path and guarded-readback admission before returning its preserved project.
+  This composes existing scope/history guards and does not establish complete
+  physical input, solver-inventory or service authority.
+
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
