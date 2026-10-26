@@ -21,6 +21,7 @@ pub mod report;
 mod report_scope;
 pub mod run;
 pub mod rvt;
+pub mod solver_observations;
 pub mod source_build;
 pub mod toolchain;
 mod verus_stdout;

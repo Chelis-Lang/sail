@@ -437,3 +437,69 @@ compiler/runtime identity and the operating-system/process interfaces remain
 trusted where stated. No claim of verified production I/O, default diagnostic
 parity, termination, performance or an end-to-end verified Sail follows from
 this model alone.
+
+## Solver-launch observation candidate
+
+The next production boundary is a source-shared solver-process controller and
+whole-journal consumer in
+[`solver_observations.rs`](../../crates/sail-acceptance/src/solver_observations.rs).
+This file is byte-identical to the candidate fork's
+`source/air/src/solver_observations_core.rs`; its syntax header is also identical.
+The candidate is not the selected verifier runtime. Its integration still needs
+closed cross-repository source/build capture and the runtime qualification gates.
+
+When observations are enabled, the controller appends every actual launch intent before calling the native spawn
+primitive, records the returned child identity, waits on the same owned child,
+and derives terminal counts from the ledger. Observation write failures are
+sticky without suppressing ordinary solver work. Sealing precedes terminal I/O;
+every later launch is refused before a physical spawn, including after the
+logger fails. A zero-SMT invocation requires its own begin and terminal records.
+The fork's actual sole solver-spawn and process-drop paths use this controller;
+its main path drops the verifier and seals after workers return/join. The exact
+main/worker/native-host assembly remains separately source-bound. A public Rust
+implementation of the erased `ProcessHost` trait grants no authority by itself.
+
+The binary consumer treats decoded events as untrusted. `admit_journal` checks
+that every event re-encodes to the complete original journal bytes, then
+reconstructs the ordered intent/start/wait ledger. It requires one begin and one
+terminal at EOF, binds the independently retained request bytes and actual
+verifier PID/normal exit status, and checks terminal counts against the complete
+ledger. The private `AdmittedJournal` exposes exact command bytes, ordered
+arguments, actual child PIDs and wait results. A closed process can have a nonzero
+or signal exit; this does not establish a clean cache publisher.
+
+[`sail-verus::solver_observations`](../../crates/sail-verus/src/solver_observations.rs)
+provides a data-only decoder and owned original byte container. Parser success,
+a plausible end flag and self-described counts cannot establish admission. The
+currently selected runtime receives no new observation flags. Runtime wiring
+must prepare an immutable request file and fresh protected directory before
+sealing the actual launched command descriptor. The consumer's expected process
+identity must come from the retained actual child, not the journal being checked.
+
+On Unix the fork's ordinary launcher uses `exec`; a direct `rust_verify` exec
+preserves the actual PID under the named OS primitive. The `rustup run` chain,
+record/history launcher child, Cargo compiler children and Windows launcher need
+their actual launch/terminal bridges. They cannot be treated as equal PIDs by
+convention. A missing whole process or terminal refuses evidence instead of
+becoming a zero-SMT success.
+
+The explicit remaining contracts are process/pipe/wait identity, exact file I/O,
+protected fresh journal ownership and runtime/build correspondence. A final
+flush error after all truthful terminal bytes reached the file can leave a valid
+complete journal; the hard post-seal spawn refusal prevents a stale end prefix
+from hiding another launch. Durability remains an OS boundary. Complete shim SMT
+streams, command/reply linkage, clean publication and all persistent/shared
+writer origins still need to be connected before the whole-service theorem.
+No cache entry becomes truthful merely because this protocol or its digest parses.
+
+The focused decoder checks run with
+`cargo test -p sail-verus solver_observations`. They cover a nonempty binary
+request/argument payload, exact retained identities/status, zero-SMT closure,
+every truncated prefix, duplicate/trailing records, missing starts/waits and
+wrong child/index association. Fork-native AIR tests additionally launch an
+actual child and exercise broken logging and sealed late-launch refusal.
+Stock Verus checks the complete shared controller/consumer with the pinned
+runtime and ordinary limits; the owning root checker must capture its full
+source inventory and cross-repository identity before qualification. Guard
+controls remove post-seal refusal, write-error poison, child PID matching,
+whole-file byte binding, complete-terminal admission and intent ordering.

@@ -11,3 +11,6 @@ mod syntax;
 pub mod authority;
 pub mod inputs;
 pub mod query;
+
+/// Exact solver-process observation lifecycle and complete journal admission.
+pub mod solver_observations;
