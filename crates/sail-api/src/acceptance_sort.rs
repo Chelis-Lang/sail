@@ -7,8 +7,9 @@
 use sail_acceptance::authority::CompletionPolicy;
 
 use crate::acceptance::{
-    CompleteReport, CompleteRequest, CompleteSelection, ExactPartialRequest, ExactScopeReport,
-    ReportOrder, SubmittedAuthority, bind_replayed_exact_partial_project_ordered,
+    CompleteReport, CompleteRequest, CompleteSelection, DeclaredReplayAdmission,
+    ExactPartialRequest, ExactScopeReport, ReportOrder, RequestPathBinding, SubmittedAuthority,
+    admit_declared_replay_ordered, bind_replayed_exact_partial_project_ordered,
     bind_replayed_project_ordered, complete_exact_partial_request_ordered,
     complete_exact_scope_report_ordered, complete_report_ordered, complete_request_ordered,
     complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered,
@@ -17,6 +18,24 @@ use crate::acceptance::{
 use crate::jobs::Mode;
 use crate::output::Report;
 use crate::project::{ProjectResult, ResolvedRequest, TargetResult};
+
+/// Composes declared replay evidence with untrusted order candidates. Missing
+/// native-path or guarded-readback witnesses refuse without a service claim.
+#[must_use]
+pub fn admit_declared_replay<'a, 'b>(
+    project: ProjectResult,
+    original: &'a ResolvedRequest,
+    current: &'a ResolvedRequest,
+    paths: Option<&RequestPathBinding<'a>>,
+    readback: Option<&'a sail_acceptance::inputs::GuardedReadback<'b>>,
+) -> Option<DeclaredReplayAdmission<'a, 'b>> {
+    let orders = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect::<Vec<_>>();
+    admit_declared_replay_ordered(project, original, current, &orders, paths, readback)
+}
 
 /// Rechecks retained original-request authority with candidate obligation orders.
 #[must_use]

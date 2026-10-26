@@ -927,4 +927,77 @@ pub fn matched_request_paths_preserve_observations(project: &mut crate::project:
     acceptance::withhold_unmatched_request_paths(project, request, Some(paths))
 }
 
+/// Constructive whole admission over a nonempty supplied report/input domain;
+/// no physical compiler-input or complete solver inventory premise is implied.
+pub fn positive_nonempty_declared_whole_replay(project: crate::project::ProjectResult,
+    original: &crate::project::ResolvedRequest, current: &crate::project::ResolvedRequest,
+    invocation: &[u8], workspace: &[u8], readback: &crate::inputs::GuardedReadback)
+    -> (out: Option<crate::project::ProjectResult>)
+    requires acceptance::small_positive_request(original, &project),
+        project.targets@[0].report.crates@[0].functions@.len() == 1,
+        acceptance::replay_request_payload(current, original),
+        !acceptance::partial_command(current.args@),
+        acceptance::request_paths_correspond(current, invocation@, workspace@),
+        readback.unchanged_view(), readback.guard_view().is_some(),
+        readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision),
+        readback.comparison_view().expected_view().len() > 0,
+    ensures out.is_some(), acceptance::same_replay_evidence(&project, &out.unwrap()),
+        acceptance::request_authorized(current, &out.unwrap()),
+{
+    let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
+    orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
+    proof { acceptance::replay_constructive_request_definition(original, &project, current, &orders, readback); }
+    let Some(paths) = acceptance::bind_request_paths(current, invocation, workspace) else { return None; };
+    let Some(admitted) = acceptance::admit_declared_replay_ordered(project, original, current, &orders,
+        Some(&paths), Some(readback)) else { return None; };
+    Some(acceptance::present_declared_replay(admitted))
+}
+
+/// Exact partial admission is constructive and retains whole/selection refusal.
+pub fn positive_nonempty_declared_partial_replay(project: crate::project::ProjectResult,
+    original: &crate::project::ResolvedRequest, current: &crate::project::ResolvedRequest,
+    invocation: &[u8], workspace: &[u8], readback: &crate::inputs::GuardedReadback)
+    -> (out: Option<crate::project::ProjectResult>)
+    requires acceptance::single_exact_partial_request_example(original, &project),
+        project.targets@[0].report.crates@[0].functions@.len() == 1,
+        acceptance::replay_request_payload(current, original),
+        acceptance::partial_command(current.args@),
+        acceptance::request_paths_correspond(current, invocation@, workspace@),
+        readback.unchanged_view(), readback.guard_view().is_some(),
+        readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision),
+        readback.comparison_view().expected_view().len() > 0,
+    ensures out.is_some(), acceptance::same_replay_evidence(&project, &out.unwrap()),
+        acceptance::exact_partial_request_authorized(current, &out.unwrap()),
+        !acceptance::request_authorized(current, &out.unwrap()),
+        !acceptance::supplied_selection_authorized(&out.unwrap()),
+{
+    let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
+    orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
+    proof {
+        acceptance::single_exact_partial_request_reaches_factory(original, &project, orders@);
+        acceptance::small_exact_partial_transfer_definition(original, &project, current, orders@, readback);
+    }
+    let Some(paths) = acceptance::bind_request_paths(current, invocation, workspace) else { return None; };
+    let Some(admitted) = acceptance::admit_declared_replay_ordered(project, original, current, &orders,
+        Some(&paths), Some(readback)) else { return None; };
+    Some(acceptance::present_declared_replay(admitted))
+}
+
+/// Neither flags nor a well-formed report replace missing typed witnesses.
+pub fn declared_replay_missing_readback_refused(project: crate::project::ProjectResult,
+    original: &crate::project::ResolvedRequest, current: &crate::project::ResolvedRequest,
+    orders: &[acceptance::ReportOrder], paths: Option<&acceptance::RequestPathBinding>) -> (refused: bool)
+    ensures refused,
+{
+    acceptance::admit_declared_replay_ordered(project, original, current, orders, paths, None).is_none()
+}
+
+pub fn declared_replay_missing_native_paths_refused(project: crate::project::ProjectResult,
+    original: &crate::project::ResolvedRequest, current: &crate::project::ResolvedRequest,
+    orders: &[acceptance::ReportOrder], readback: &crate::inputs::GuardedReadback) -> (refused: bool)
+    ensures refused,
+{
+    acceptance::admit_declared_replay_ordered(project, original, current, orders, None, Some(readback)).is_none()
+}
+
 }

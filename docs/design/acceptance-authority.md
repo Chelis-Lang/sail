@@ -850,8 +850,54 @@ rendering remain independent service-refinement obligations.
 
 ## Service composition interface plan
 
-This is an inventory and implementation plan, not a new acceptance API or a
-service theorem. The authority component exposes checked borrowed relations;
+### Declared replay admission slice
+
+The source-shared `admit_declared_replay_ordered` implements one bounded
+sub-composition at the unchanged-call boundary. It owns the supplied candidate
+project, rebinds independently supplied native path bytes to the current request,
+requires the actual supplied `GuardedReadback` at that request's bound revision,
+and invokes the original whole or exact-partial full transfer operation.
+The selected operation checks original/current request association and actual
+request/report scope. Its private-field `DeclaredReplayAdmission` retains that
+exact transferred project, both original/current requests, checked path binding
+and revision-linked readback. It has no unchecked or deserializing constructor.
+The untrusted sorting wrapper only proposes report orders.
+
+Missing path/readback witnesses return `None`. Changed original request,
+changed scope, mismatched native bytes, missing guard, wrong revision or failed
+report admission cannot be replaced by project flags. An unsuccessful factory
+discards only the rejected replay candidate, as the ordinary cache-miss path
+already does. It does not change an executed verifier's diagnostics or verdict.
+`present_declared_replay` consumes the private token and returns its exact
+project without changing any field. The original establishing identities and
+report evidence survive the original transfer; partial admission still excludes
+whole-request and selected whole-target authority.
+
+Constructive source lemmas exercise whole and partial admission with a
+nonempty report and nonempty declared input domain. Missing typed witnesses
+have explicit refusal lemmas; the Rust value-domain regression also checks
+each changed/missing conjunct and exact presentation preservation. Full
+factory always-refuse, unchecked witness construction, incorrect native-path
+binding, skipped report binder, swapped scope branch and presentation identity mutations must fail
+ordinarily. The existing original whole/partial binder functions, constructive
+contracts and required full-body controls remain unchanged and are exercised
+through this slice. All new proofs, tests and mutations are unrun/unqualified.
+
+This token is deliberately narrower than the composed model's `Accepted`.
+Its association is exact original/current request and report correspondence;
+it does **not** supply the model's complete per-invocation solver-stream
+inventory or query-execution traces. It also lacks independently established
+complete compiler-input-domain evidence, physical read/launch attribution,
+loaded-image identity and a supported common observation point. Those typed
+inputs must come from the query/input/native providers before full service
+admission can be implemented. Matching report flags, a Current field, empty
+inventories or a deserialized record cannot fill these gaps. Native placement
+and output/conformance/cost qualification remain separate milestones.
+
+### Remaining service joins
+
+This remaining inventory is an implementation plan, not a service theorem.
+The authority component exposes checked relations over actual records;
 the native runner, daemon and serializers still determine which observations
 reach them. The full-service bridge must consume independently produced
 observations rather than reconstruct a model witness from a successful report.
