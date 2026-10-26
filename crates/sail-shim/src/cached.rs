@@ -23,7 +23,7 @@ use sail_acceptance::query::{
 };
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
-use sail_key::{InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
+use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
 use sail_session::Session;
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
@@ -31,7 +31,7 @@ use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_s
 /// What the output side should do with the next reply.
 enum Expect {
     /// Full input reached EOF; certify it only after a quiet, complete session.
-    Terminal(QueryKey),
+    Terminal(DeliveredInput),
     /// Store the reply under this key.
     Store {
         key: QueryKey,
@@ -229,7 +229,7 @@ fn rlimit_count(reply: &[u8]) -> Option<u64> {
 /// `Expect::Stop`, a solver error reply, an implausible reply, or
 /// [`Pairer::stop`].
 struct Pairer {
-    terminal: Option<QueryKey>,
+    terminal: Option<DeliveredInput>,
     pending: CorrelatedQueue<Expect, Vec<u8>>,
     /// The latest `rlimit-count` seen in a statistics reply.
     last_count: Option<u64>,
@@ -256,6 +256,12 @@ impl Pairer {
     }
 
     fn expect(&mut self, expect: Expect) {
+        if self.terminal.is_some() {
+            // The input owner seals once. Any later metadata violates that
+            // terminal boundary and permanently withholds publication.
+            self.pending.stop();
+            return;
+        }
         match expect {
             Expect::Terminal(key) => self.terminal = Some(key),
             _ if self.pending.is_stopped() => {}
@@ -344,7 +350,7 @@ impl Pairer {
             if self.pending.is_empty()
                 && let Some(key) = self.terminal.take()
             {
-                out.push(Entry::Silence { key });
+                out.push(Entry::Silence { key: key.key() });
             }
         }
         out
@@ -725,15 +731,17 @@ impl Solving {
     }
 
     fn finish(mut self, terminal: QueryKey, complete: bool) -> ExitCode {
-        // The independent successful-write prefix must match the parser
-        // owner's terminal key before publication is eligible.
-        if !self.stdin.matches(terminal, complete) {
-            self.input.valid.store(false, Ordering::SeqCst);
-        }
-        let final_expectation = if self.input.valid.load(Ordering::SeqCst) {
-            Expect::Terminal(terminal)
-        } else {
-            Expect::Stop
+        // Only the frozen actual delivery can supply a complete-input token.
+        // It cannot be reconstructed from a terminal key or a success Boolean.
+        let delivered = self.stdin.seal(terminal, complete);
+        let final_expectation = match delivered {
+            Some(delivered) if self.input.valid.load(Ordering::SeqCst) => {
+                Expect::Terminal(delivered)
+            }
+            _ => {
+                self.input.valid.store(false, Ordering::SeqCst);
+                Expect::Stop
+            }
         };
         self.expect(final_expectation);
         // All metadata sends, including their failure latch, precede done.
@@ -1455,7 +1463,7 @@ mod tests {
     }
 
     #[test]
-    fn lost_expectation_metadata_permanently_blocks_publication() {
+    fn lost_expectation_metadata_permanently_blocks_publication() -> Result<(), &'static str> {
         use std::sync::atomic::{AtomicBool, Ordering};
         let status = super::InputStatus {
             done: AtomicBool::new(false),
@@ -1466,9 +1474,44 @@ mod tests {
         status.send_expectation(&sender, Expect::Stop);
         assert!(!status.valid.load(Ordering::SeqCst));
         assert!(!status.done.load(Ordering::SeqCst));
-        status.send_expectation(&sender, Expect::Terminal(key(1)));
+        status.send_expectation(&sender, Expect::Terminal(terminal(b"(echo 1)")?));
         assert!(!status.valid.load(Ordering::SeqCst));
         assert!(!status.done.load(Ordering::SeqCst));
+        Ok(())
+    }
+
+    struct TestPipe;
+    impl sail_acceptance::query_delivery::InputPipe for TestPipe {
+        fn write(&mut self, _: &[u8]) -> bool {
+            true
+        }
+        fn close(&mut self) {}
+    }
+    fn terminal(bytes: &[u8]) -> Result<sail_key::DeliveredInput, &'static str> {
+        let mut prefix = sail_key::SessionPrefix::new(&identity(), &sail_key::Mode::Default);
+        let mut delivery = prefix.delivery(TestPipe);
+        prefix.append(bytes);
+        if !prefix.hash_tail() || !delivery.write(bytes) {
+            return Err("script input must be complete");
+        }
+        delivery
+            .seal(prefix.silence_key(), true)
+            .ok_or("script delivery must seal")
+    }
+
+    #[test]
+    fn duplicate_or_late_metadata_cannot_extend_a_frozen_delivery() -> Result<(), &'static str> {
+        let mut late = Pairer::default();
+        late.expect(Expect::Terminal(terminal(b"(echo 1)")?));
+        late.expect(store(1, "(echo 1)"));
+        assert!(late.pending.is_stopped());
+        assert!(late.finish().is_empty());
+        let mut duplicate = Pairer::default();
+        duplicate.expect(Expect::Terminal(terminal(b"(echo 1)")?));
+        duplicate.expect(Expect::Terminal(terminal(b"(echo 1)")?));
+        assert!(duplicate.pending.is_stopped());
+        assert!(duplicate.finish().is_empty());
+        Ok(())
     }
 
     fn key(i: u8) -> QueryKey {

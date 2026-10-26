@@ -768,11 +768,23 @@ prove constructive controls; native I/O has no predicted outcome. The native
 `SolverPipe` forwards remain reviewed OS/library boundaries, not a proof of the
 operating system. Focused controls cover different physical chunking, omitted,
 extra and reordered bytes, solver/mode mismatches and unhealable partial failure.
-The owning compatibility assembly has 305 obligations. Eight ordinary mutations
+The initial successful-write compatibility assembly has 305 obligations.
+Eight ordinary mutations
 omit the actual write, hash different bytes, heal a failure, drop the terminal
 comparison, accept a closed pipe, omit closure, or detach either factory result
 from the requested mode. Canonical capture and full platform/differential gates
 remain integration work.
+
+The final complete-input handoff is an owned `DeliveredInput` token, not a
+caller-supplied terminal key. Only the delivery controller's checked `seal` can
+construct its private payload. Sealing freezes writes permanently, succeeds
+once and preserves the exact acknowledged key. The output-side pairer rejects
+any duplicate terminal or later expectation. A nonempty checked witness and
+native controls exercise attempted writes and resealing after the freeze.
+The local compatibility root checks 308 obligations and all thirteen delivery
+mutations fail ordinary verification. Five SHA-backed delivery controls,
+fifteen shim units and thirteen actual pinned-Z3 cached sessions pass.
+Canonical assembly and broader qualification still remain pending.
 
 This is a concrete successful-write correspondence step toward query-only
 origin. It does not yet connect complete exact stdout framing, stderr and
@@ -791,8 +803,8 @@ fix ([#397](https://github.com/Chelis-Lang/sail/issues/397)), the actual
 record-write transaction with exclusive temporary-file creation, and independent
 owned solver-input delivery bound to the parser terminal key.
 
-The owner compatibility graph checks 305 obligations. The six writer and eight
-delivery mutations fail ordinary verification. Focused native cache tests, executable
+The owner compatibility graph checks 308 obligations. The six writer and
+thirteen delivery mutations fail ordinary verification. Focused native cache tests, executable
 write scripts and clippy pass. This is separate from the canonical integration
 capture, its newer obligations, native Linux, full host/solver/differential
 qualification and performance acceptance. The writer source/primitive inventory

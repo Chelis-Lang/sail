@@ -351,8 +351,27 @@ impl<Pipe: sail_acceptance::query_delivery::InputPipe> InputDelivery<Pipe> {
     pub fn matches(&self, expected: QueryKey, complete: bool) -> bool {
         self.delivery.matches(expected.0, complete)
     }
+    /// Freezes this input once; no later writes can qualify or modify the token.
+    pub fn seal(&mut self, expected: QueryKey, complete: bool) -> Option<DeliveredInput> {
+        self.delivery
+            .seal(expected.0, complete)
+            .map(|delivered| DeliveredInput { delivered })
+    }
     /// Closes the exact owned input pipe.
     pub fn close(&mut self) {
         self.delivery.close();
+    }
+}
+
+/// Frozen complete input for one actual solver delivery. This is not yet a
+/// clean solver-output or executable-image certificate.
+pub struct DeliveredInput {
+    delivered: sail_acceptance::query_delivery::Delivered<Sha256Host>,
+}
+impl DeliveredInput {
+    /// The complete-input key retained by the private delivery token.
+    #[must_use]
+    pub fn key(&self) -> QueryKey {
+        QueryKey(self.delivered.key())
     }
 }
