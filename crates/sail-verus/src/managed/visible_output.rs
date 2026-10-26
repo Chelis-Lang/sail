@@ -21,7 +21,7 @@ pub(crate) fn emit(kind: Stream, bytes: &[u8]) -> io::Result<()> {
     match kind {
         Stream::Stdout => {
             #[cfg(unix)]
-            if let Some(path) = std::env::var_os(ENV) {
+            if let Some(path) = super::transport::var(ENV) {
                 return unix::send(std::path::Path::new(&path), bytes, &mut io::stdout());
             }
             io::stdout()

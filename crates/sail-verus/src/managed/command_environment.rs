@@ -77,6 +77,7 @@ pub(crate) trait CommandView {
 pub(crate) trait ConfigureCommand {
     fn arg(&mut self, argument: impl AsRef<OsStr>) -> &mut Self;
     fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self;
+    fn env_remove(&mut self, name: impl AsRef<OsStr>) -> &mut Self;
 }
 
 impl Spawned {
@@ -570,6 +571,9 @@ impl ConfigureCommand for Command {
     fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
         Self::env(self, name, value)
     }
+    fn env_remove(&mut self, name: impl AsRef<OsStr>) -> &mut Self {
+        Command::env_remove(self, name)
+    }
 }
 
 // Existing ordinary native controls retain their original std Command setup.
@@ -597,6 +601,9 @@ impl ConfigureCommand for std::process::Command {
     }
     fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
         self.env(name, value)
+    }
+    fn env_remove(&mut self, name: impl AsRef<OsStr>) -> &mut Self {
+        std::process::Command::env_remove(self, name)
     }
 }
 

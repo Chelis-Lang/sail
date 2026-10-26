@@ -152,8 +152,19 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         )
     });
     // Installed executables, engine files and sysroot libraries are identified
-    // by stat: any change to them changes the context, so the next run is fresh.
-    let installed = |path: &Path| super::files::stat_identity(path);
+    // by content (ADR 0082, 2026-10-26 amendment): identical bytes at the same
+    // path keep the context, so a reinstalled toolchain or a restored cache
+    // reuses its receipts, and any change to the bytes makes the next run
+    // fresh. Each file's digest is memoized by its complete stat stamp.
+    // `installed` lists the files in the original order; they are read
+    // concurrently below. Each is first stat'ed where it always was, so a
+    // missing file is still reported before a later probe's error.
+    let mut installed: Vec<PathBuf> = Vec::new();
+    let mut install = |path: &Path| -> Result<()> {
+        super::files::stat_identity(path)?;
+        installed.push(path.to_owned());
+        Ok(())
+    };
     for path in [
         &config.sail,
         &config.cargo_verus,
@@ -161,21 +172,21 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         &config.z3,
         &config.shim,
     ] {
-        identity.push((path.to_string_lossy().into_owned(), installed(path)?));
+        install(path)?;
     }
     if let Some(engine) = engine {
         for path in [&engine.manifest, &engine.stock_wrapper]
             .into_iter()
             .chain(engine.artifacts.iter())
         {
-            identity.push((path.to_string_lossy().into_owned(), installed(path)?));
+            install(path)?;
         }
     }
     let wrapper = wrapper?;
-    identity.push((wrapper.to_string_lossy().into_owned(), installed(&wrapper)?));
+    install(&wrapper)?;
     let mut environment = context_environment(config);
     let rustc = rustc?;
-    identity.push((rustc.to_string_lossy().into_owned(), installed(&rustc)?));
+    install(&rustc)?;
     let actual = cargo_probe
         .ok_or_else(|| Error::new("SAIL3104", "cannot identify Rust toolchain"))??
         .map_err(|e| Error::new("SAIL3104", format!("cannot identify Rust toolchain: {e}")))?;
@@ -186,18 +197,16 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         ));
     }
     let rustup = rustup?;
-    identity.push((rustup.to_string_lossy().into_owned(), installed(&rustup)?));
+    install(&rustup)?;
     let cargo_sysroot = PathBuf::from(String::from_utf8_lossy(&actual.stdout).trim());
     let verifier_sysroot = verifier_probe
         .ok_or_else(|| Error::new("SAIL3104", "cannot identify verifier toolchain"))???;
-    identity.push((
-        config
-            .cargo_verus
-            .with_file_name("rust_verify")
-            .to_string_lossy()
-            .into_owned(),
-        installed(&wrapper.with_file_name("rust_verify"))?,
-    ));
+    // Recorded under Cargo-Verus's directory, read beside the wrapper.
+    let rust_verify = (
+        config.cargo_verus.with_file_name("rust_verify"),
+        wrapper.with_file_name("rust_verify"),
+    );
+    super::files::stat_identity(&rust_verify.1)?;
     // With `rust-src`, rustc names standard library sources by the local copy,
     // and so do span strings in VIR compiled here (VI-0031). Prebuilt VIR is
     // renamed to match, so the copy's presence joins the proof context.
@@ -208,8 +217,23 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
             rust_src.as_os_str().as_encoded_bytes().to_vec(),
         );
     }
-    for path in sysroot_files(&BTreeSet::from([cargo_sysroot, verifier_sysroot]))? {
-        identity.push((path.to_string_lossy().into_owned(), installed(&path)?));
+    let sysroot = sysroot_files(&BTreeSet::from([cargo_sysroot, verifier_sysroot]))?;
+    let named: Vec<PathBuf> = installed
+        .iter()
+        .cloned()
+        .chain(std::iter::once(rust_verify.0))
+        .chain(sysroot.iter().cloned())
+        .collect();
+    let read: Vec<PathBuf> = installed
+        .into_iter()
+        .chain(std::iter::once(rust_verify.1))
+        .chain(sysroot)
+        .collect();
+    let tools = super::tool_digests::ToolDigests::open(&config.cache);
+    let digests = tools.identities(&read);
+    tools.save();
+    for (path, digest) in named.into_iter().zip(digests) {
+        identity.push((path.to_string_lossy().into_owned(), digest?));
     }
     // The exact Cargo configuration bytes join the context, not only its path.
     let invocation = std::path::absolute(&config.workspace)
@@ -331,7 +355,9 @@ fn store_family_hash(
 ) -> Result<String> {
     Ok(digest(
         &serde_json::to_vec(&(
-            "sail-dependency-store-family-v1",
+            // v2: earlier entries were built with Sail's private settings and
+            // observation options visible to the program (#385, #393).
+            "sail-dependency-store-family-v2",
             without_selection(args),
             engine.map(crate::engine::Request::artifact_identity),
             identity,
@@ -569,11 +595,12 @@ fn context_hashes(
     identity: &[(String, String)],
     environment: &[(Vec<u8>, Vec<u8>)],
 ) -> Result<(String, String)> {
-    // Policy 2 refuses legacy proof authority whose declaration scan or exact
-    // environment-name mapping was incomplete. Keep compiler-family artifacts
-    // separate: only genuine current proof evidence can publish new receipts.
+    // Encoding three combines exact declaration-name observation with private
+    // settings and option isolation (#385, #393). Both previous lineages used
+    // encoding two for different contracts, so neither may authorize reuse.
+    // Compiler-family artifacts stay separate from proof receipt authority.
     let hash = digest(
-        &serde_json::to_vec(&(2, args, engine, identity, environment))
+        &serde_json::to_vec(&(3, args, engine, identity, environment))
             .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     );
     let compiler_engine = engine.map(crate::engine::Request::artifact_identity);
@@ -585,7 +612,9 @@ fn context_hashes(
     // authorize skipped verification targets.
     let compiler_hash = digest(
         &serde_json::to_vec(&(
-            "sail-managed-compiler-artifacts-v1",
+            // v2: earlier targets were compiled with Sail's private
+            // settings and observation options visible (#385, #393).
+            "sail-managed-compiler-artifacts-v2",
             without_selection(args),
             compiler_engine,
             identity,
@@ -976,10 +1005,15 @@ fn cargo_clean(config: &Config, build_target: &Path, packages: &[String]) -> Res
     Ok(())
 }
 
+/// One Cargo-Verus invocation through Sail's aliases. `request` names the
+/// build-environment query directory and `visible` the managed output socket,
+/// when this invocation has one.
 fn invocation_command(
     config: &Config,
     paths: &Paths,
     show_output: bool,
+    request: Option<&Path>,
+    visible: Option<&Path>,
 ) -> Result<super::command_environment::Command> {
     let split = config
         .args
@@ -987,11 +1021,44 @@ fn invocation_command(
         .position(|a| a == "--")
         .unwrap_or(config.args.len());
     let mut cmd = super::command_environment::Command::new(&config.cargo_verus);
-    // Cargo-Verus, the Cargo it runs through Sail's adapter
-    // (`SAIL_MANAGED_CARGO`) and every compiler below inherit the selection.
+    // Cargo-Verus, the Cargo it runs through Sail's adapter and every compiler
+    // below inherit the selection.
     if let Some(toolchain) = config.cargo_toolchain.selected() {
         cmd.env(super::cargo_toolchain::ENV, toolchain);
     }
+    // The adapters' private settings go beside them, never into the
+    // environment Cargo hands to build scripts and compilers (#385).
+    let mut transport = super::transport::Transport::new(std::env::var_os("CARGO").as_deref());
+    transport
+        .set("SAIL_MANAGED_CARGO", &config.cargo)
+        .set(
+            crate::adapter::CARGO_METADATA_ENV,
+            crate::adapter::metadata_target(&config.cache)?,
+        )
+        .set("SAIL_MANAGED_PROXY", &paths.proxy_alias)
+        .set("SAIL_MANAGED_RUNTIME", &paths.runtime)
+        .set("SAIL_MANAGED_ARTIFACTS", paths.run.join("artifacts.jsonl"));
+    if let Some(plan) = &paths.shipped_plan {
+        transport.set(super::shipped::PLAN_ENV, plan);
+    }
+    if let Some(base) = &paths.source_base {
+        transport.set(super::shipped::SOURCE_BASE_ENV, base);
+    }
+    if let Some(remap) = &paths.span_remap {
+        transport.set(super::shipped::SPAN_REMAP_ENV, remap);
+    }
+    if let Some(directory) = request {
+        transport.set(super::build_environment::REQUEST, directory);
+    }
+    if let Some(socket) = visible {
+        transport.set(super::visible_output::ENV, socket);
+    }
+    transport.write(
+        paths
+            .proxy_alias
+            .parent()
+            .ok_or_else(|| Error::new("SAIL3104", "managed aliases have no directory"))?,
+    )?;
     cmd.current_dir(&config.workspace)
         .args([
             "verus",
@@ -1014,22 +1081,14 @@ fn invocation_command(
         .args((show_output && terminal_colour(&config.args[..split])).then_some("--color=always"))
         .args(&config.args[split..])
         .env("RUSTC_BOOTSTRAP", "1")
+        // Only Cargo-Verus sees the alias; the alias gives the real Cargo the
+        // caller's own value back.
         .env("CARGO", &paths.cargo_alias)
-        .env("SAIL_MANAGED_CARGO", &config.cargo)
-        .env(
-            crate::adapter::CARGO_METADATA_ENV,
-            crate::adapter::metadata_target(&config.cache)?,
-        )
-        .env("SAIL_MANAGED_PROXY", &paths.proxy_alias)
-        .env("SAIL_MANAGED_RUNTIME", &paths.runtime)
-        .env("SAIL_MANAGED_ARTIFACTS", paths.run.join("artifacts.jsonl"))
+        // The solver route (ADR 0003): the verified compiler starts the shim,
+        // which reads these (docs/known-issues.md).
         .env("VERUS_Z3_PATH", &config.shim)
         .env("SAIL_Z3_PATH", &config.z3)
         .env("SAIL_SOLVER_MODE", "default")
-        .env_remove(super::build_environment::REQUEST)
-        .env_remove(super::shipped::PLAN_ENV)
-        .env_remove(super::shipped::SOURCE_BASE_ENV)
-        .env_remove(super::shipped::SPAN_REMAP_ENV)
         .env_remove("SAIL_ENGINE")
         .env_remove("SAIL_ENGINE_FUNCTION")
         .env_remove("SAIL_ENGINE_EVENTS")
@@ -1043,24 +1102,23 @@ fn invocation_command(
     } else {
         cmd.env_remove("SAIL_DAEMON_SOCKET");
     }
-    if let Some(plan) = &paths.shipped_plan {
-        cmd.env(super::shipped::PLAN_ENV, plan);
-    }
-    if let Some(base) = &paths.source_base {
-        cmd.env(super::shipped::SOURCE_BASE_ENV, base);
-    }
-    if let Some(remap) = &paths.span_remap {
-        cmd.env(super::shipped::SPAN_REMAP_ENV, remap);
-    }
     Ok(cmd)
 }
+
+/// The execution-unit authority, its unit plan, and the key under which this
+/// run's fresh query may be retained once the run is Current. A query retained
+/// under the same key ([`super::build_environment::cache_key`]) is restored
+/// instead of running Cargo again; it is then loaded and checked exactly as a
+/// fresh query.
+type UnitEnvironment = (Value, Option<super::build_unit_plan::Plan>, Option<String>);
 
 fn build_environment(
     config: &Config,
     paths: &Paths,
     data: &Value,
     expected: &BTreeSet<(String, String, String)>,
-) -> Option<(Value, Option<super::build_unit_plan::Plan>)> {
+    context: &str,
+) -> Option<UnitEnvironment> {
     if !data["packages"].as_array()?.iter().any(|package| {
         package["targets"].as_array().is_some_and(|targets| {
             targets.iter().any(|target| {
@@ -1074,9 +1132,21 @@ fn build_environment(
     }
     let directory = paths.run.join("build-environment");
     std::fs::create_dir(&directory).ok()?;
-    let output = invocation_command(config, paths, false)
+    let key = build_environment_key(config, paths, data, context);
+    if let (Some(key), Some(context)) = (&key, paths.input_state.parent())
+        && super::build_environment::restore(context, key, &directory, data)
+    {
+        if let Some(environment) = super::build_environment::load(&directory, data) {
+            event(&serde_json::json!({"kind":"build-environment", "retained":true}));
+            let plan = super::build_unit_plan::Plan::load(&directory, data, expected);
+            return Some((environment, plan, None));
+        }
+        // A restored query that does not load is discarded; Cargo runs it.
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir(&directory).ok()?;
+    }
+    let output = invocation_command(config, paths, false, Some(&directory), None)
         .ok()?
-        .env(super::build_environment::REQUEST, &directory)
         .output()
         .ok()?
         .into_observed_output()?;
@@ -1085,7 +1155,26 @@ fn build_environment(
     output.status.success().then_some(())?;
     let environment = super::build_environment::load(&directory, data)?;
     let plan = super::build_unit_plan::Plan::load(&directory, data, expected);
-    Some((environment, plan))
+    Some((environment, plan, key))
+}
+
+fn build_environment_key(
+    config: &Config,
+    paths: &Paths,
+    data: &Value,
+    context: &str,
+) -> Option<String> {
+    let invocation = std::path::absolute(&config.workspace).ok()?;
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    super::build_environment::cache_key(
+        context,
+        data,
+        &invocation,
+        &paths.target,
+        &super::input::configuration_paths(&invocation, home.as_deref()),
+    )
 }
 
 fn selected_scripts(data: &Value, expected: &BTreeSet<(String, String, String)>) -> bool {
@@ -1138,13 +1227,14 @@ fn invoke(
     err: &mut dyn Write,
     seeded: &[super::store::Seeded],
 ) -> Result<(Option<i32>, bool)> {
-    let mut cmd = invocation_command(config, paths, out.is_some())?;
     #[cfg(unix)]
     let visible = super::visible_output::Receiver::bind()
         .map_err(|error| Error::new("SAIL3106", error.to_string()))?;
-    cmd.env_remove(super::visible_output::ENV);
     #[cfg(unix)]
-    cmd.env(super::visible_output::ENV, visible.path());
+    let visible_path = Some(visible.path());
+    #[cfg(not(unix))]
+    let visible_path = None;
+    let mut cmd = invocation_command(config, paths, out.is_some(), None, visible_path)?;
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
@@ -1821,13 +1911,30 @@ fn dirty_receipt_packages(
     data: &Value,
     observation: Option<RevisionObservation<'_>>,
 ) -> Vec<String> {
-    let receipts: Vec<&ReceiptRevision> = revisions.values().collect();
-    let ids: Vec<String> = receipts.iter().map(|r| r.package_id.clone()).collect();
+    // A receipt of a target the package no longer has (a removed `src/bin`
+    // file) describes nothing Cargo can build or reuse. Cleaning its package
+    // for it on every later run never settled (#401). A header without a
+    // readable target keeps the package revision, so it reads as changed.
+    let receipts: Vec<(&ReceiptRevision, String)> = revisions
+        .values()
+        .filter_map(|r| {
+            let Some((name, kinds)) = r
+                .name
+                .as_str()
+                .zip(serde_json::from_value::<Vec<String>>(r.kind.clone()).ok())
+            else {
+                return Some((r, r.package_id.clone()));
+            };
+            (!removed_target(data, &r.package_id, name, &kinds))
+                .then(|| (r, revision_key(&r.package_id, name, &kinds)))
+        })
+        .collect();
+    let ids: Vec<String> = receipts.iter().map(|(_, key)| key.clone()).collect();
     let current = target_revisions(data, &ids, observation);
     receipts
         .into_iter()
-        .filter(|r| current.get(&r.package_id) != Some(&r.input_revision))
-        .map(|r| r.package_id.clone())
+        .filter(|(r, key)| current.get(key) != Some(&r.input_revision))
+        .map(|(r, _)| r.package_id.clone())
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
@@ -1952,10 +2059,9 @@ fn target_records_in(
     let ids: Vec<String> = artifacts
         .iter()
         .filter(|artifact| verified(artifact).is_some())
-        .filter_map(|artifact| artifact["package_id"].as_str())
+        .map(artifact_revision_key)
         .collect::<BTreeSet<_>>()
         .into_iter()
-        .map(str::to_owned)
         .collect();
     let revisions: HashMap<String, String> = std::thread::scope(|scope| {
         let current = scope.spawn(|| target_revisions(data, &ids, observation));
@@ -2059,10 +2165,11 @@ fn target_records_in(
         });
         let partial_args = partial_args.filter(|_| requested);
         let force = force && requested;
+        let key = revision_key(package_id, name, &kind);
         let input_revision = revisions
-            .get(package_id)
+            .get(&key)
             .cloned()
-            .unwrap_or_else(|| target_revision(data, package_id));
+            .unwrap_or_else(|| target_revision(data, &key));
         let path = receipt_path(paths, package_id, name, &kind);
         let mut matching = calls.iter().enumerate().filter(|(index, _)| {
             let (bound_package, target) = bindings[*index];
@@ -2094,12 +2201,25 @@ fn target_records_in(
                     .filter(|p| p.is_file()),
             );
             let hashes = digests.hashes(&artifact_paths)?;
+            // A verified target whose compiler environment was not observed
+            // may have read a ghost-only variable that no dep-info declares
+            // (#386); it publishes no receipt.
             let reusable = paths.reuse
                 && call.producer_available(&paths.run)
                 && call.successful_for(partial_args)
+                && call.environment_observed()
                 && !input_revision.is_empty()
                 && declared.is_some();
             if let Some(declared) = declared.as_ref().filter(|_| reusable) {
+                let mut declared = declared.clone();
+                for name in call.compiler_environment_names() {
+                    if !declared.contains_key(name) {
+                        declared.insert(
+                            name.clone(),
+                            std::env::var_os(name).map(std::ffi::OsString::into_encoded_bytes),
+                        );
+                    }
+                }
                 json(
                     &paths
                         .run
@@ -2118,7 +2238,7 @@ fn target_records_in(
                         input_revision: input_revision.clone(),
                         invocation: call.clone(),
                         artifact_hashes: hashes,
-                        declared_environment: declared.clone(),
+                        declared_environment: declared,
                     }
                     .seal(),
                 )?;
@@ -2224,6 +2344,7 @@ fn target_records_in(
                                 == observed
                             && digests.matches(&r.artifact_hashes)
                             && digests.matches(&r.invocation.dependencies)
+                            && r.invocation.environment_observed()
                             && super::environment::unchanged(&r.declared_environment))
                         .then(|| (r.clone(), seed.placed.then(|| seed.key.clone())))
                     })
@@ -2516,11 +2637,145 @@ fn target_revision(data: &Value, package_id: &str) -> String {
     })
 }
 
+/// The revision key of one Cargo target, as its proof receipt names it.
+fn revision_key(package_id: &str, name: &str, kinds: &[String]) -> String {
+    super::source_inputs::target_key(package_id, name, kinds)
+}
+
+fn artifact_revision_key(artifact: &Value) -> String {
+    let kinds: Vec<String> = artifact["target"]["kind"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(str::to_owned)
+        .collect();
+    revision_key(
+        artifact["package_id"].as_str().unwrap_or_default(),
+        artifact["target"]["name"].as_str().unwrap_or_default(),
+        &kinds,
+    )
+}
+
+/// Whether Cargo's metadata lists the package and its targets, none of which
+/// is exactly this one. Anything less certain is not a removal.
+fn removed_target(data: &Value, package_id: &str, name: &str, kinds: &[String]) -> bool {
+    let mut packages = data["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|package| package["id"] == package_id);
+    let (Some(package), None) = (packages.next(), packages.next()) else {
+        return false;
+    };
+    package["targets"].as_array().is_some_and(|targets| {
+        !targets.iter().any(|target| {
+            target["name"] == name
+                && serde_json::from_value::<Vec<String>>(target["kind"].clone())
+                    .is_ok_and(|actual| actual == kinds)
+        })
+    })
+}
+
+const LIBRARY_KINDS: [&str; 6] = ["lib", "rlib", "dylib", "cdylib", "staticlib", "proc-macro"];
+
+/// The narrowed file selection of one target's receipt revision (see
+/// `input::RevisionScope`), or `None` to count every file of every closure
+/// package. A closure package is scoped when it is a path package without a
+/// build script whose relevant units all have recorded declarations: for the
+/// target's own package, the target itself and, for a target that is not a
+/// library, the package's library units, which it links; for any other
+/// package, every recorded unit. The declarations kept are those units' and
+/// every other closure package's, so a file another package's unit reads
+/// inside a scoped directory still counts. Another target of the same
+/// package, such as a `src/bin` file, does not bind this target's receipt:
+/// Cargo builds and keeps each target fresh on its own (#401).
+fn revision_scope(
+    data: &Value,
+    closure: &BTreeSet<String>,
+    package_id: &str,
+    name: &str,
+    kinds: &[String],
+) -> Option<Value> {
+    let by_target = data["sail_source_inputs_by_target"].as_object()?;
+    let by_package = data["sail_source_inputs_by_package"].as_object()?;
+    let declared = |paths: &Value| -> Option<Vec<String>> {
+        paths
+            .as_array()?
+            .iter()
+            .map(|path| path.as_str().map(str::to_owned))
+            .collect()
+    };
+    let mut roots = Vec::new();
+    let mut scoped = Vec::new();
+    let mut keep = BTreeSet::new();
+    for package in data["packages"].as_array()? {
+        let Some(id) = package["id"].as_str().filter(|id| closure.contains(*id)) else {
+            continue;
+        };
+        let root = Path::new(package["manifest_path"].as_str()?).parent()?;
+        let root = root.canonicalize().unwrap_or_else(|_| root.to_owned());
+        roots.push(root.to_string_lossy().into_owned());
+        let targets = package["targets"].as_array()?;
+        let script = targets.iter().any(|target| {
+            target["kind"]
+                .as_array()
+                .is_some_and(|kinds| kinds.iter().any(|kind| kind == "custom-build"))
+        });
+        let units = if id == package_id {
+            let mut units = vec![by_target.get(&revision_key(id, name, kinds))];
+            if !kinds
+                .iter()
+                .any(|kind| LIBRARY_KINDS.contains(&kind.as_str()))
+            {
+                for target in targets {
+                    let target_kinds: Vec<String> =
+                        serde_json::from_value(target["kind"].clone()).ok()?;
+                    if target_kinds
+                        .iter()
+                        .any(|kind| LIBRARY_KINDS.contains(&kind.as_str()))
+                    {
+                        units.push(by_target.get(&revision_key(
+                            id,
+                            target["name"].as_str()?,
+                            &target_kinds,
+                        )));
+                    }
+                }
+            }
+            units
+        } else {
+            vec![by_package.get(id)]
+        };
+        let units: Option<Vec<Vec<String>>> = units
+            .into_iter()
+            .map(|unit| unit.and_then(declared))
+            .collect();
+        match units {
+            Some(units) if !script && package["source"].is_null() => {
+                scoped.push(root.to_string_lossy().into_owned());
+                keep.extend(units.into_iter().flatten());
+            }
+            // An unscoped package counts in full; its declarations may also
+            // lie inside another, scoped package's directory.
+            _ => keep.extend(by_package.get(id).and_then(declared).into_iter().flatten()),
+        }
+    }
+    (!scoped.is_empty()).then(|| serde_json::json!({"roots":roots, "scoped":scoped, "keep":keep}))
+}
+
+/// A revision `key` is either a target's [`revision_key`] or, for callers
+/// without one, a package id; the latter counts every closure file.
 fn target_revision_with(
     data: &Value,
-    package_id: &str,
+    key: &str,
     snapshot: impl FnOnce(&Value, &[PathBuf]) -> Option<(String, bool)>,
 ) -> String {
+    let (package_id, unit) = match serde_json::from_str::<(String, String, Vec<String>)>(key) {
+        Ok((package_id, name, kinds)) => (package_id, Some((name, kinds))),
+        Err(_) => (key.to_owned(), None),
+    };
+    let package_id = package_id.as_str();
     let closure = dependency_closure(data, [package_id]);
     // Only the fields the snapshot reads: copying the whole metadata (several
     // MB on vest) for each target cost more than the snapshot itself.
@@ -2559,6 +2814,12 @@ fn target_revision_with(
     // Cargo keeps it fresh (#177). The toolchain files and Cargo
     // configuration stay bound by their bytes.
     let foreign = super::store::foreign_closure_binding(data, &closure);
+    if foreign.is_none()
+        && let Some((name, kinds)) = &unit
+        && let Some(scope) = revision_scope(data, &closure, package_id, name, kinds)
+    {
+        package_data["sail_revision_scope"] = scope;
+    }
     let mut extras = Vec::new();
     if foreign.is_some() {
         let workspace = Path::new(data["workspace_root"].as_str().unwrap_or_default());
@@ -2766,23 +3027,27 @@ pub fn refresh_context(
 }
 
 /// Whether every runtime file of `context` still has its recorded identity
-/// (stat for installed files, content for configuration), checked in parallel.
+/// (memoized content for installed files, content for configuration),
+/// checked in parallel.
 pub(super) fn runtime_current(cache: &Path, context: &str) -> bool {
     let state = cache.join("runtime-identities");
     let identity_sha = read::<String>(&state.join(format!("{context}.link")));
     let identities = identity_sha
         .as_ref()
         .and_then(|sha| read::<Vec<(String, String)>>(&state.join(format!("{sha}.json"))));
-    identities.as_ref().is_some_and(|rows| {
+    let tools = super::tool_digests::ToolDigests::open(cache);
+    let current = identities.as_ref().is_some_and(|rows| {
         identity_sha
             .as_ref()
             .is_some_and(|sha| *sha == digest(&serde_json::to_vec(rows).unwrap_or_default()))
             && crate::parallel::in_order(rows, |(path, expected)| {
-                super::files::identity_matches(Path::new(path), expected)
+                super::files::identity_matches(Path::new(path), expected, &tools)
             })
             .into_iter()
             .all(|matches| matches)
-    })
+    });
+    tools.save();
+    current
 }
 
 /// A snapshot's extra inputs in a run-independent order. Build-script records
@@ -2947,6 +3212,7 @@ fn run_recorded(
     }
     let started = Instant::now();
     let started_wall = SystemTime::now();
+    let _path_snapshots = super::input::PathSnapshotScope::enter();
     let diagnostics = Diagnostics::new();
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
@@ -2978,6 +3244,11 @@ fn run_recorded(
             })
             .ok()
     };
+    // Stamped before Cargo reads the metadata, from the previous run's
+    // selection: when this run's metadata selects the same inputs and they
+    // keep this stamp after the run, the after-run metadata is this one.
+    let metadata_guard = read::<super::input::SnapshotHint>(&hint_path)
+        .and_then(|hint| super::input::MetadataGuard::begin(&hint.projection));
     // Cargo metadata and the runtime context are independent: neither reads
     // the other's result. They overlap, and their results are consumed in the
     // original order, so the first reported error is unchanged.
@@ -3082,7 +3353,7 @@ fn run_recorded(
                 .name("sail-build-environment".to_owned())
                 .spawn_scoped(scope, || {
                     if query_paths.reuse {
-                        build_environment(config, &query_paths, &data, &expected)
+                        build_environment(config, &query_paths, &data, &expected, &hash)
                     } else {
                         None
                     }
@@ -3147,7 +3418,7 @@ fn run_recorded(
             let unit_environment = match query {
                 Some(query) => query.join().ok().flatten(),
                 None if query_paths.reuse => {
-                    build_environment(config, &query_paths, &data, &expected)
+                    build_environment(config, &query_paths, &data, &expected, &hash)
                 }
                 None => None,
             };
@@ -3159,7 +3430,8 @@ fn run_recorded(
                 shipped_plan,
             )
         });
-    let (environment, unit_plan) = unit_environment.unwrap_or((Value::Null, None));
+    let (environment, unit_plan, environment_key) =
+        unit_environment.unwrap_or((Value::Null, None, None));
     if paths.reuse
         && selected_scripts(&data, &expected)
         && let Some(version) =
@@ -3221,6 +3493,8 @@ fn run_recorded(
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
     data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
+    data["sail_source_inputs_by_target"] =
+        serde_json::to_value(super::source_inputs::targets(&source_state)).unwrap_or_default();
     let (stale_scripts, mut extras, script_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
@@ -3617,6 +3891,8 @@ fn run_recorded(
         after_data["sail_source_inputs"] = sources;
         after_data["sail_source_inputs_by_package"] =
             serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
+        after_data["sail_source_inputs_by_target"] =
+            serde_json::to_value(super::source_inputs::targets(&source_state)).unwrap_or_default();
         super::files::json(&paths.input_state, &after_data)?;
         // Kept only if nothing it observed changed while Cargo read the
         // metadata (which may rewrite the lockfile).
@@ -3661,7 +3937,14 @@ fn run_recorded(
     // a retry discards the observation and rereads all inputs after its own
     // invocation. No snapshot or receipt is committed as Current until then.
     let (records, after_thread) = std::thread::scope(|threads| {
-        let after = threads.spawn(|| after_inputs(None, Some(observation)));
+        let after = threads.spawn(|| {
+            // Cargo would read exactly the inputs it read before the run.
+            let unchanged = metadata_guard
+                .as_ref()
+                .filter(|guard| guard.unchanged_for(&data))
+                .map(|_| Ok(data.clone()));
+            after_inputs(unchanged, Some(observation))
+        });
         let records = target_records_in(
             &paths,
             &data,
@@ -3992,6 +4275,20 @@ fn run_recorded(
             json(&path, &receipt)?;
         }
         super::receipts::publish(&paths.run, &paths.receipts, &result.context_sha256)?;
+        // The fresh unit query is retained only when this run is Current and
+        // its key, read again from the metadata and manifests after the run,
+        // is the one the query ran under: nothing it depends on moved.
+        if let (Some(key), Some(context)) = (&environment_key, paths.input_state.parent())
+            && build_environment_key(config, &paths, &after_data, &result.context_sha256).as_ref()
+                == Some(key)
+        {
+            super::build_environment::retain(
+                context,
+                key,
+                &paths.run.join("build-environment"),
+                &after_data,
+            );
+        }
         // Dependencies reused through the store become this context's own
         // receipts, with every ordinary receipt check on later runs.
         for target in result.targets.iter().filter(|t| t.reused) {
@@ -4001,7 +4298,10 @@ fn run_recorded(
             }) else {
                 continue;
             };
-            let input_revision = target_revision(&after_data, &target.package_id);
+            let input_revision = target_revision(
+                &after_data,
+                &revision_key(&target.package_id, &target.target, &target.kind),
+            );
             let path = receipt_path(&paths, &target.package_id, &target.target, &target.kind);
             if input_revision.is_empty() {
                 continue;
@@ -4253,13 +4553,20 @@ fn completed_receipts(
             Ok((path, receipt))
         })
         .collect::<Result<_>>()?;
-    let ids: Vec<String> = pending.iter().map(|(_, r)| r.package_id.clone()).collect();
+    let ids: Vec<String> = pending
+        .iter()
+        .map(|(_, r)| revision_key(&r.package_id, &r.name, &r.kind))
+        .collect();
     let revisions = target_revisions(data, &ids, observation);
     pending
         .into_iter()
         .map(|(path, mut receipt)| {
             let revision = revisions
-                .get(&receipt.package_id)
+                .get(&revision_key(
+                    &receipt.package_id,
+                    &receipt.name,
+                    &receipt.kind,
+                ))
                 .filter(|revision| !revision.is_empty())
                 .ok_or_else(|| {
                     Error::new("SAIL3107", "completed target input revision is unavailable")
@@ -4404,7 +4711,7 @@ mod tests {
         assert_ne!(
             proof,
             digest(&serde_json::to_vec(&(
-                1,
+                2,
                 &args,
                 &selected,
                 &identity,
@@ -4414,7 +4721,7 @@ mod tests {
         assert_eq!(
             proof,
             digest(&serde_json::to_vec(&(
-                2,
+                3,
                 &args,
                 &selected,
                 &identity,
@@ -4780,6 +5087,7 @@ mod tests {
                 success: true,
                 dependencies: BTreeMap::new(),
                 dependency_build: None,
+                compiler_environment: Some(std::collections::BTreeMap::new()),
             },
             artifact_hashes: artifact_hashes(&[artifact.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),
@@ -6348,11 +6656,12 @@ mod tests {
     }
 
     #[test]
-    fn runtime_identity_compares_stats_of_installed_files_and_bytes_of_configuration()
+    fn runtime_identity_compares_bytes_of_installed_files_and_configuration()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-runtime-stat-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
         let installed = root.join("rustc");
         let configuration = root.join("config.toml");
         std::fs::write(&installed, b"binary")?;
@@ -6360,7 +6669,7 @@ mod tests {
         let identities = vec![
             (
                 installed.to_string_lossy().into_owned(),
-                super::super::files::stat_identity(&installed)?,
+                super::super::tool_digests::ToolDigests::open(&root).identity(&installed)?,
             ),
             (
                 configuration.to_string_lossy().into_owned(),
@@ -6373,7 +6682,13 @@ mod tests {
         json(&state.join(format!("{sha}.json")), &identities)?;
         json(&state.join("ctx.link"), &sha)?;
         assert!(runtime_current(&root, "ctx"));
-        // A rewrite that changes the size or modification time changes it.
+        // The same bytes reinstalled (a new inode and mtime) keep it, as on a
+        // new runner with a restored cache.
+        let staged = root.join("rustc.new");
+        std::fs::write(&staged, b"binary")?;
+        std::fs::rename(&staged, &installed)?;
+        assert!(runtime_current(&root, "ctx"));
+        // Changed bytes change it.
         std::fs::write(&installed, b"binary, rebuilt")?;
         assert!(!runtime_current(&root, "ctx"));
         json(
@@ -6513,6 +6828,7 @@ mod tests {
                 success: true,
                 dependencies: BTreeMap::new(),
                 dependency_build: None,
+                compiler_environment: Some(std::collections::BTreeMap::new()),
             },
             artifact_hashes: BTreeMap::new(),
             committed: run.join("committed.json"),
@@ -6826,6 +7142,130 @@ mod tests {
             .ok_or_else(|| std::io::Error::other("no changed revisions"))?;
         assert_ne!(changed.get("a"), original.get("a"));
         assert_eq!(changed.get("b"), original.get("b"));
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "One fixture walks every file class a target revision keeps or leaves out."
+    )]
+    fn target_revisions_count_only_files_that_can_change_the_target() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-target-scope-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("app/src/bin"))?;
+        std::fs::create_dir_all(root.join("target"))?;
+        let root = root.canonicalize()?;
+        let app = root.join("app");
+        let write = |path: &str, text: &str| std::fs::write(app.join(path), text);
+        write("Cargo.toml", "[package]\nname = 'app'\n")?;
+        write("src/lib.rs", "mod m;")?;
+        write("src/m.rs", "m")?;
+        write("src/bin/probe.rs", "fn main() {}")?;
+        let paths = |names: &[&str]| -> Value {
+            serde_json::json!(names.iter().map(|n| app.join(n)).collect::<Vec<_>>())
+        };
+        let lib = revision_key("app", "app", &["lib".to_owned()]);
+        let bin = revision_key("app", "probe", &["bin".to_owned()]);
+        let mut data = serde_json::json!({
+            "workspace_root":app, "target_directory":root.join("target"),
+            "packages":[{"id":"app","source":null,"manifest_path":app.join("Cargo.toml"),
+                "targets":[{"name":"app","kind":["lib"]},{"name":"probe","kind":["bin"]}]}],
+            "resolve":{"nodes":[{"id":"app","dependencies":[]}]},
+            "sail_source_inputs":paths(&["src/lib.rs","src/m.rs","src/bin/probe.rs"]),
+            "sail_source_inputs_by_package":
+                {"app":paths(&["src/lib.rs","src/m.rs","src/bin/probe.rs"])},
+            "sail_source_inputs_by_target":{
+                lib.clone():paths(&["src/lib.rs","src/m.rs"]),
+                bin.clone():paths(&["src/bin/probe.rs"])}
+        });
+        let lib_before = target_revision(&data, &lib);
+        let bin_before = target_revision(&data, &bin);
+        let package_before = target_revision(&data, "app");
+        assert!(!lib_before.is_empty() && !bin_before.is_empty());
+        // A file no unit declares changes neither target (#398); the whole
+        // package revision, which counts every file, does change.
+        write("src/unused.rs", "// unused")?;
+        write("notes.txt", "notes")?;
+        assert_eq!(target_revision(&data, &lib), lib_before);
+        assert_eq!(target_revision(&data, &bin), bin_before);
+        assert_ne!(target_revision(&data, "app"), package_before);
+        let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let observation = Some(RevisionObservation {
+            snapshot: &observed,
+            stamp: stamp.as_ref(),
+        });
+        let ids = vec![lib.clone(), bin.clone()];
+        let projected = target_revisions(&data, &ids, observation);
+        assert_eq!(projected, target_revisions(&data, &ids, None));
+        assert_eq!(projected.get(&lib), Some(&lib_before));
+        // Another target's source binds only that target and the targets
+        // that link it (#401); the library binds the binary.
+        write("src/bin/probe.rs", "fn main() { }")?;
+        assert_eq!(target_revision(&data, &lib), lib_before);
+        assert_ne!(target_revision(&data, &bin), bin_before);
+        write("src/m.rs", "m2")?;
+        assert_ne!(target_revision(&data, &lib), lib_before);
+        assert_ne!(target_revision(&data, &bin), bin_before);
+        write("src/m.rs", "m")?;
+        assert_eq!(target_revision(&data, &lib), lib_before);
+        // The other spelling of a declared module, the manifest and Cargo
+        // configuration inside the package still count.
+        for (created, path) in [
+            ("src/m/mod.rs", app.join("src/m")),
+            (".cargo/config.toml", app.join(".cargo")),
+        ] {
+            std::fs::create_dir_all(&path)?;
+            write(created, "x")?;
+            assert_ne!(target_revision(&data, &lib), lib_before, "{created}");
+            std::fs::remove_dir_all(&path)?;
+            assert_eq!(target_revision(&data, &lib), lib_before, "{created}");
+        }
+        write("Cargo.toml", "[package]\nname = 'app' \n")?;
+        assert_ne!(target_revision(&data, &lib), lib_before);
+        write("Cargo.toml", "[package]\nname = 'app'\n")?;
+        // Without a recorded declaration of the target, or for a package with
+        // a build script, every file counts, as for the package revision.
+        let mut unrecorded = data.clone();
+        unrecorded["sail_source_inputs_by_target"] = serde_json::json!({});
+        assert_eq!(
+            target_revision(&unrecorded, &lib),
+            target_revision(&unrecorded, "app")
+        );
+        let mut scripted = data.clone();
+        scripted["packages"][0]["targets"]
+            .as_array_mut()
+            .ok_or_else(|| std::io::Error::other("targets"))?
+            .push(serde_json::json!({"name":"build-script-build","kind":["custom-build"]}));
+        assert_eq!(
+            target_revision(&scripted, &lib),
+            target_revision(&scripted, "app")
+        );
+        // A receipt of a removed target never dirties its package; a stale
+        // receipt of a current target does.
+        let receipt = |name: &str, kind: &str, revision: &str| -> ReceiptRevision {
+            serde_json::from_value(serde_json::json!({"package_id":"app",
+                "input_revision":revision, "name":name, "kind":[kind]}))
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"))
+        };
+        let current = target_revision(&data, &lib);
+        let receipts = BTreeMap::from([
+            (root.join("lib.json"), receipt("app", "lib", &current)),
+            (root.join("bin.json"), receipt("probe", "bin", "stale")),
+        ]);
+        assert_eq!(dirty_receipt_packages(&receipts, &data, None), ["app"]);
+        // The inventory as the next run loads it, without the vanished file.
+        std::fs::remove_dir_all(app.join("src/bin"))?;
+        data["packages"][0]["targets"] = serde_json::json!([{"name":"app","kind":["lib"]}]);
+        data["sail_source_inputs"] = paths(&["src/lib.rs", "src/m.rs"]);
+        data["sail_source_inputs_by_package"] =
+            serde_json::json!({"app":paths(&["src/lib.rs","src/m.rs"])});
+        data["sail_source_inputs_by_target"][&bin] = serde_json::json!([]);
+        assert_eq!(target_revision(&data, &lib), current);
+        assert_eq!(
+            dirty_receipt_packages(&receipts, &data, None),
+            Vec::<String>::new()
+        );
         std::fs::remove_dir_all(root)
     }
 

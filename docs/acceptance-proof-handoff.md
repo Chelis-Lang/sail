@@ -12,6 +12,45 @@ All six rows in the [obligation ledger](design/acceptance-boundary-refinements.m
 remain open. Component proofs, passing fixtures, checksums and supplied input
 lists do not establish the complete service theorem.
 
+## Current-main source reconciliation
+
+The source-only integration branch `proof/acceptance-current-main-integration`
+combines proof candidate `a46c53b4` with main `e2b5af1b`. It preserves main's
+file-backed alias settings, packed Verus options, two-phase ghost environment
+observation, shared stat stamps, target-specific declarations and content-based
+tool identities. It also preserves owned compiler construction and EOF tokens,
+original selected-attempt histories, independent fallback directories, strict
+readback, exact-partial replay and original-request/baseline admission.
+
+Both lineages independently assigned receipt revision 7 and context encoding 2
+to different contracts ([#446](https://github.com/Chelis-Lang/sail/issues/446)).
+The combined source uses receipt 8, proof-context encoding 3, noop revision 5,
+retained archive revision 5 and source-input revision 4. Both original-producer
+history and observed compiler-environment guards remain mandatory. The fallback
+builder now propagates packed-channel configuration errors while retaining an
+owned command and its own allocated directory; native qualification of that
+newly fallible branch remains required. The bounded source inventory transfer
+(#447) now shares the current declaration-record revision and uses a mandatory,
+separately versioned inventory, while incomplete private ledgers remain
+incomplete. Main's accepted ADR 0083 remains the temporal extension; the
+unmerged framing proposal is ADR 0084.
+
+Only source inspection, formatting and normal commit hooks qualify this
+reconciliation. No build, test, Verus, solver, consumer probe, native host or
+conformance run was performed for it. Canonical native/source capture hashes,
+complete function inventories and final-head proof qualification remain pending;
+unchanged prior hashes do not bless the merged native files. The a46 checker
+retains exactly 78 query, 115 inputs and 107 authority required controls; the query agent's later expanded inventory must be integrated
+separately. Discover and qualify the actual new query function inventory before
+rebinding capture.
+
+Workflow policy is unresolved: main #434 moves direct proofs/refinements to a
+local-only tier, while the owner's session AGENTS.md explicitly requires them
+in CI. The draft keeps eight-status completion and proof/refinement jobs
+internally consistent pending that decision. This source reconciliation does
+not authorize publication or resolve that policy; the lead owns final review,
+qualification and PR publication. All six obligations #371–#376 remain open.
+
 ## Published source and worktrees
 
 The PR branch is `proof/acceptance-followup`. Its implementation checkpoint
@@ -131,7 +170,7 @@ bind one actual Cargo-Verus child, but descendant parent/image checks do not
 prove Cargo launch intent. A proposed Tokio dependency and transport decision have not been
 approved or implemented. ADR 0080 is temporal packaging, 0081 cache response
 framing. Main's ADR 0082 owns unchanged-call replay; the proposed checked-key
-framing decision is renumbered to 0083.
+framing decision is renumbered to 0084.
 
 ## Resume and acceptance
 

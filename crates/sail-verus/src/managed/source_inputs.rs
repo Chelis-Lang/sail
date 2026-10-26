@@ -173,15 +173,32 @@ fn journal(raw: &str) -> Option<Journal> {
     })
 }
 
+/// Private declaration-record revision shared with bounded inventory transfer.
+pub(super) const VERSION: u32 = 4;
+
 #[derive(Default, Serialize, Deserialize)]
 pub(super) struct Inputs {
-    /// Version two preserves the compiler's lexical source aliases.
+    /// Version four combines exact typed producer/declaration journals with
+    /// per-target inventories and removal-aware paths. Earlier records keep
+    /// their paths, but cannot establish complete current coverage.
     #[serde(default)]
     pub(super) version: u32,
     pub(super) paths: Vec<PathBuf>,
     pub(super) covered: bool,
     #[serde(default)]
     pub(super) by_package: Option<BTreeMap<String, Vec<PathBuf>>>,
+    /// The declarations of each compiled unit, by [`target_key`]. Each run
+    /// replaces the entries of the units it reports, so a unit's entry is
+    /// exactly its latest dep-info. Older records have none; their targets
+    /// keep whole-package revisions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) by_target: Option<BTreeMap<String, Vec<PathBuf>>>,
+}
+
+/// The inventory key of one Cargo target: its package id, exact name and
+/// kinds, as Cargo's unit records and proof receipts name them.
+pub(super) fn target_key(package_id: &str, name: &str, kinds: &[String]) -> String {
+    serde_json::to_string(&(package_id, name, kinds)).unwrap_or_default()
 }
 
 /// The recorded compiler-declared inputs and whether they are complete.
@@ -205,8 +222,8 @@ pub(super) fn load(path: &Path, observed_before: bool) -> (Vec<PathBuf>, bool) {
         },
         |v| {
             (
-                v.paths,
-                v.version == 3 && v.covered && v.by_package.is_some(),
+                present(v.paths),
+                v.version == VERSION && v.covered && v.by_package.is_some(),
             )
         },
     )
@@ -214,8 +231,46 @@ pub(super) fn load(path: &Path, observed_before: bool) -> (Vec<PathBuf>, bool) {
 
 pub(super) fn packages(path: &Path) -> Option<BTreeMap<String, Vec<PathBuf>>> {
     read::<Inputs>(path)
-        .filter(|v| v.version == 3)
+        .filter(|v| v.version == VERSION)
         .and_then(|v| v.by_package)
+        .map(present_entries)
+}
+
+/// The recorded declarations of each unit ([`Inputs::by_target`]).
+pub(super) fn targets(path: &Path) -> Option<BTreeMap<String, Vec<PathBuf>>> {
+    read::<Inputs>(path)
+        .filter(|v| v.version == VERSION)
+        .and_then(|v| v.by_target)
+        .map(present_entries)
+}
+
+fn present_entries(entries: BTreeMap<String, Vec<PathBuf>>) -> BTreeMap<String, Vec<PathBuf>> {
+    entries
+        .into_iter()
+        .map(|(key, paths)| (key, present(paths)))
+        .collect()
+}
+
+/// The recorded declarations that still name a directory entry. A unit whose
+/// dep-info names a file that no longer exists is stale to Cargo, which
+/// compiles it again and records its new declarations. Its old input is not
+/// an input of anything this run can reuse: snapshots leave it out, so its
+/// removal changes the revision, and a file created again under that name
+/// enters the next snapshot (or the after-run snapshot) by its content.
+/// Keeping it made every later snapshot incomplete, so every later run was
+/// forced and cleaned every build script (#401). Only a definite absence of
+/// the path itself drops it; any other lookup failure keeps it, and the
+/// snapshot then reports the observation incomplete as before.
+fn present(paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    paths
+        .into_iter()
+        .filter(|path| {
+            !matches!(
+                std::fs::symlink_metadata(path),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound
+            )
+        })
+        .collect()
 }
 
 pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
@@ -368,6 +423,8 @@ pub(super) fn update_with_history(
         .into_iter()
         .map(|(package, paths)| (package, paths.into_iter().collect()))
         .collect();
+    let mut by_target: BTreeMap<String, Vec<PathBuf>> = targets(path).unwrap_or_default();
+    let mut reported: BTreeMap<String, BTreeSet<PathBuf>> = BTreeMap::new();
     let observed = std::fs::read_to_string(artifacts)
         .ok()
         .and_then(|raw| journal(&raw));
@@ -415,6 +472,20 @@ pub(super) fn update_with_history(
             continue;
         };
         reads.push(read);
+        let kinds: Vec<String> = artifact["target"]["kind"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(str::to_owned)
+            .collect();
+        let unit = reported
+            .entry(target_key(
+                package,
+                artifact["target"]["name"].as_str().unwrap_or_default(),
+                &kinds,
+            ))
+            .or_default();
         for input in inputs {
             let declared = workspace.join(input);
             // Retain the compiler's path through any symlink, as well as the
@@ -424,6 +495,7 @@ pub(super) fn update_with_history(
                 .entry(package.to_owned())
                 .or_default()
                 .extend([declared.clone(), resolved.clone()]);
+            unit.extend([declared.clone(), resolved.clone()]);
             paths.insert(declared);
             paths.insert(resolved);
         }
@@ -432,10 +504,17 @@ pub(super) fn update_with_history(
         .as_ref()
         .is_some_and(|journal| ledger_complete(journal, &reads));
     let paths: Vec<PathBuf> = paths.into_iter().collect();
+    // A unit this run reported replaces its earlier declarations; units it
+    // did not report (another selection's) keep theirs.
+    by_target.extend(
+        reported
+            .into_iter()
+            .map(|(key, paths)| (key, paths.into_iter().collect())),
+    );
     super::files::json(
         path,
         &Inputs {
-            version: 3,
+            version: VERSION,
             paths: paths.clone(),
             covered,
             by_package: Some(
@@ -444,6 +523,7 @@ pub(super) fn update_with_history(
                     .map(|(package, paths)| (package, paths.into_iter().collect()))
                     .collect(),
             ),
+            by_target: Some(by_target),
         },
     )?;
     Ok((paths, covered))
@@ -961,6 +1041,65 @@ mod tests {
     }
 
     #[test]
+    fn units_keep_their_own_declarations_and_vanished_inputs_leave_the_record()
+    -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-source-units-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let project = root.join("demo");
+        let target = root.join("target");
+        std::fs::create_dir_all(project.join("src/bin"))?;
+        std::fs::create_dir_all(&target)?;
+        let project = project.canonicalize()?;
+        let target = target.canonicalize()?;
+        std::fs::write(project.join("src/lib.rs"), "lib")?;
+        std::fs::write(project.join("src/bin/probe.rs"), "bin")?;
+        std::fs::write(target.join("demo-1.d"), "lib.d: src/lib.rs\n")?;
+        std::fs::write(target.join("probe-2.d"), "bin.d: src/bin/probe.rs\n")?;
+        let unit = |name: &str, kind: &str, file: &str| {
+            serde_json::json!({"reason":"compiler-artifact","package_id":"demo",
+                "target":{"name":name,"kind":[kind]},"filenames":[target.join(file)]})
+        };
+        let lib = unit("demo", "lib", "libdemo-1.rmeta");
+        let bin = unit("probe", "bin", "probe-2");
+        let artifacts = root.join("artifacts.jsonl");
+        let state = root.join("sources.json");
+        let data = serde_json::json!({"workspace_root":project});
+        std::fs::write(&artifacts, closed_journal(&[lib.clone(), bin]))?;
+        let (_, covered) = update(&state, &artifacts, &data).map_err(std::io::Error::other)?;
+        assert!(covered);
+        let lib_key = target_key("demo", "demo", &["lib".to_owned()]);
+        let bin_key = target_key("demo", "probe", &["bin".to_owned()]);
+        let units = targets(&state).unwrap_or_default();
+        assert_eq!(units.get(&lib_key), Some(&vec![project.join("src/lib.rs")]));
+        assert_eq!(
+            units.get(&bin_key),
+            Some(&vec![project.join("src/bin/probe.rs")])
+        );
+        // The bin is removed (#401): its declaration leaves every view of the
+        // record, so later snapshots stay complete, and the lib keeps its own.
+        std::fs::remove_dir_all(project.join("src/bin"))?;
+        let (paths, covered) = load(&state, true);
+        assert!(covered);
+        assert_eq!(paths, vec![project.join("src/lib.rs")]);
+        assert_eq!(
+            packages(&state).unwrap_or_default().get("demo"),
+            Some(&vec![project.join("src/lib.rs")])
+        );
+        assert_eq!(
+            targets(&state).unwrap_or_default().get(&bin_key),
+            Some(&vec![])
+        );
+        // A later run reporting only the lib leaves the stored record without
+        // the vanished file too.
+        std::fs::write(&artifacts, closed_journal(&[lib]))?;
+        let (paths, _) = update(&state, &artifacts, &data).map_err(std::io::Error::other)?;
+        assert_eq!(paths, vec![project.join("src/lib.rs")]);
+        let stored: Inputs = read(&state).ok_or_else(|| std::io::Error::other("record"))?;
+        assert_eq!(stored.paths, vec![project.join("src/lib.rs")]);
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
     fn legacy_global_observations_require_scoped_establishment() {
         let path = std::env::temp_dir().join(format!(
             "sail-source-input-legacy-{}.json",
@@ -975,15 +1114,18 @@ mod tests {
             "legacy scoped records omitted source aliases too"
         );
         assert!(packages(&path).is_none());
-        let legacy = serde_json::json!({"version":2,"paths":["previous.rs"],"covered":true,
-            "by_package":{"demo":["previous.rs"]}});
+        let previous = path.with_extension("rs");
+        assert!(std::fs::write(&previous, "// previous source").is_ok());
+        let legacy = serde_json::json!({"version":2,"paths":[previous],"covered":true,
+            "by_package":{"demo":[previous]}});
         assert!(std::fs::write(&path, legacy.to_string()).is_ok());
         assert_eq!(
             load(&path, true),
-            (vec![PathBuf::from("previous.rs")], false),
+            (vec![previous.clone()], false),
             "old decoder coverage cannot authorize the corrected filename domain"
         );
         assert!(packages(&path).is_none());
+        assert!(std::fs::remove_file(&previous).is_ok());
         assert!(std::fs::write(&path, "corrupt source observation").is_ok());
         assert!(!load(&path, true).1);
         assert!(

@@ -1,12 +1,14 @@
 //! Bounded declared path inventories, never shared content or proof authority.
 
 use super::{BuildInput, bytes, digest, encode};
-use crate::managed::source_inputs::Inputs;
+use crate::managed::source_inputs::{Inputs, VERSION as SOURCE_VERSION};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
+// Older inventories did not retain the declaration-policy revision.
+const VERSION: u32 = 1;
 const MAX_PATHS: usize = 4096;
 const MAX_PACKAGES: usize = 128;
 const MAX_PATH_BYTES: usize = 4096;
@@ -14,6 +16,7 @@ const MAX_PATH_BYTES: usize = 4096;
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Inventory {
+    version: u32,
     packages: BTreeMap<String, Package>,
 }
 
@@ -111,7 +114,7 @@ impl Inventory {
             return None;
         }
         let inputs: Inputs = serde_json::from_slice(&bytes(local)?).ok()?;
-        if inputs.version != 2 || !inputs.covered || inputs.paths.len() > MAX_PATHS {
+        if inputs.version != SOURCE_VERSION || !inputs.covered || inputs.paths.len() > MAX_PATHS {
             return None;
         }
         let scoped = inputs.by_package?;
@@ -146,7 +149,10 @@ impl Inventory {
         if union != declared {
             return None;
         }
-        Some(Self { packages })
+        Some(Self {
+            version: VERSION,
+            packages,
+        })
     }
 
     pub(super) fn admit(
@@ -158,7 +164,8 @@ impl Inventory {
         if target.canonicalize().ok()?.as_path() != target {
             return None;
         }
-        if self.packages.is_empty() || self.packages.len() > MAX_PACKAGES {
+        if self.version != VERSION || self.packages.is_empty() || self.packages.len() > MAX_PACKAGES
+        {
             return None;
         }
         let mut count = 0_usize;
@@ -182,10 +189,11 @@ impl Inventory {
             scoped.insert(id.clone(), entry.paths.clone());
         }
         Some(Inputs {
-            version: 2,
+            version: SOURCE_VERSION,
             paths: paths.into_iter().collect(),
             covered: true,
             by_package: Some(scoped),
+            by_target: None,
         })
     }
 }
@@ -199,7 +207,8 @@ pub(super) fn merge(local: &Path, mut incoming: Inputs) -> Option<Inputs> {
     // Never drop earlier private declarations or upgrade an incomplete private
     // ledger merely because a different selector completed its own transaction.
     let previous: Inputs = serde_json::from_slice(&bytes(local)?).ok()?;
-    incoming.covered &= previous.version == 2 && previous.covered && previous.by_package.is_some();
+    incoming.covered &=
+        previous.version == SOURCE_VERSION && previous.covered && previous.by_package.is_some();
     let mut scoped = incoming.by_package.take()?;
     let mut paths: BTreeSet<_> = incoming.paths.into_iter().collect();
     for (id, old) in previous.by_package.unwrap_or_default() {
@@ -218,6 +227,11 @@ pub(super) fn merge(local: &Path, mut incoming: Inputs) -> Option<Inputs> {
     }
     incoming.paths = paths.into_iter().collect();
     incoming.by_package = Some(scoped);
+    // Unit declarations are this context's own; an imported inventory has
+    // none and never replaces them.
+    if incoming.by_target.is_none() {
+        incoming.by_target = previous.by_target;
+    }
     encode(&incoming)?;
     Some(incoming)
 }
@@ -264,10 +278,11 @@ mod tests {
             crate::managed::files::json(
                 &local,
                 &Inputs {
-                    version: 2,
+                    version: SOURCE_VERSION,
                     paths: paths.clone(),
                     covered: true,
                     by_package: Some(BTreeMap::from([("fixture".to_owned(), paths)])),
+                    by_target: None,
                 },
             )?;
             let record = BuildInput {
@@ -309,6 +324,29 @@ mod tests {
                 .admit(&fixture.data, &fixture.records, &fixture.target)
                 .is_some()
         );
+        // Older path-only payloads cannot be relabeled as current coverage.
+        let mut legacy = serde_json::to_value(&inventory)?;
+        legacy
+            .as_object_mut()
+            .ok_or("inventory object")?
+            .remove("version");
+        assert!(serde_json::from_value::<Inventory>(legacy).is_err());
+        let mut wrong_version = serde_json::to_value(&inventory)?;
+        wrong_version["version"] = (VERSION + 1).into();
+        let wrong_version: Inventory = serde_json::from_value(wrong_version)?;
+        assert!(
+            wrong_version
+                .admit(&fixture.data, &fixture.records, &fixture.target)
+                .is_none()
+        );
+        let mut old_record: Inputs =
+            serde_json::from_slice(&bytes(&fixture.local).ok_or("record")?)?;
+        old_record.version = SOURCE_VERSION - 1;
+        crate::managed::files::json(&fixture.local, &old_record)?;
+        assert!(fixture.capture().is_none());
+        old_record.version = SOURCE_VERSION;
+        crate::managed::files::json(&fixture.local, &old_record)?;
+        assert!(fixture.capture().is_some());
         let mut changed = fixture.data.clone();
         changed["packages"][0]["version"] = "0.0.1".into();
         assert!(

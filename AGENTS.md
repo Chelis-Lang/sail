@@ -128,6 +128,9 @@ intermediates freely. Cleanup is routine and is not recorded in git.
 
 ```
 crates/sail-*        one crate per charter component (see docs/CHARTER.md)
+extensions/temporal/ separate Cargo workspace for the temporal-enabled `sail`
+                     and its worker, the only build of the private D.I.V.E.
+                     sources (ADR 0083, docs/private-dependencies.md)
 xtask/               cargo xtask: install-hooks, check-layering, protect-main,
                      fetch-verus, build-verus-source
 corpus/              pinned Verus/Z3 toolchain and corpus project pins
@@ -140,11 +143,14 @@ scripts/             small shell helpers used by hooks and CI
 ```
 
 **Layering.** `xtask/src/layering.rs` is the single table of permitted internal
-dependency edges, and `cargo xtask check-layering` enforces it in CI. Two
-structural rules are tested:
+dependency edges, and `cargo xtask check-layering` enforces it in CI for both
+the main workspace and the temporal extension. Three structural rules are
+tested:
 - `sail-shim` must not reach the daemon, cache, solver pool, portfolio or Verus
   crates, so its fallback path stays small;
-- the protocol, session, key and cache layers must not depend on `sail-verus`.
+- the protocol, session, key and cache layers must not depend on `sail-verus`;
+- no main-workspace crate may depend on an extension crate, so the main
+  workspace builds without the private D.I.V.E. sources.
 
 ## Rust conventions
 
@@ -172,16 +178,24 @@ structural rules are tested:
 
 ## Gates
 
+The current integration draft has an unresolved workflow-policy conflict:
+main #434 makes direct proofs and refinements local-only, while the owner's
+session instructions require them in CI. Its candidate workflow retains the
+stronger proof jobs and eight-status completion pending owner resolution;
+this paragraph records the conflict and does not decide policy. See
+`docs/acceptance-proof-handoff.md`.
+
 CI runs every check inside the CI image (ADR 0013), through `ci/run.sh`.
 Run the same steps locally in the same image with `ci/local.sh`:
 
 ```sh
 ci/local.sh gate                  # fmt, clippy, tests, doctests, rustdoc, layering, deny, benchmarks page
 ci/local.sh solver                # every test that needs the pinned Z3 (incl. fault injection)
-ci/local.sh proofs                # direct stock-Verus model proofs and all broken controls
-ci/local.sh refinements           # actual production bodies and refinement controls
+ci/local.sh proofs                # local-only: direct stock-Verus model proofs and all broken controls
+ci/local.sh refinements           # local-only: actual production bodies and refinement controls
 ci/local.sh e2e [PHASE]           # `sail verify` vs `cargo verus verify`: identical output (all phases + extra)
 ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
+ci/local.sh extension             # local-only: temporal extension workspace fmt, clippy, tests (needs D.I.V.E. access)
 ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
 
@@ -204,17 +218,18 @@ release-style checks belong in the local tiers below, never in CI.
 **Required on every PR** (branch protection): `No AI authorship markers`,
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
-gate, including image creation, direct acceptance-model proofs and production refinements, to have succeeded. Branches must be current
-with `main` before merging. The `End to end` check aggregates eleven parallel
+gate, including image creation, to have succeeded. No CI job receives the private-dependency
+token. Branches must be current
+with `main` before merging. The `End to end` check aggregates ten parallel
 phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
   warm, `--output json`, one MCP `verify` call and the portfolio;
 - `output`: the edit loop (combined output, passing, unchanged, compile error,
-  partial verification) and a seeded-mutation smoke;
+  partial verification), a seeded-mutation smoke, then, on the same warm
+  targets, unchanged-call replay (ADR 0082) against `cargo verus verify` and
+  every change that must miss it;
 - `flags`: the setups verified as plain Cargo-Verus verifies them;
 - `loader`: a loader variable (no proof reuse, one note);
-- `noop`: unchanged-call replay (ADR 0082) against `cargo verus verify`, and
-  every change that must miss it;
 - `managed`: managed receipts, failing-first reuse, prune, durable jobs, MCP
   and Claude Code's tool listing;
 - `managed-copies`: two fresh member workspaces establish their own vstd and
@@ -247,12 +262,21 @@ so CI, `ci/local.sh` and native hosts build the image with no token or secret.
 tier, and every CI job must finish well inside 10 minutes. Anything longer
 is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
 - *Fast (CI, every PR):* the six required checks above.
+- *Acceptance proofs (local):* `ci/local.sh proofs` and `ci/local.sh
+  refinements`. Run them before merging changes to the proved models, the
+  production bodies they refine, or their checkers.
 - *Standard (local):* `ci/local.sh conformance fast`, then
   `ci/local.sh conformance standard` (includes anvil). Run it before merging
   changes to the shim, cache, daemon, keys or harness, and put the summary
   lines in the PR.
 - *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
   Run it before pushing changes that touch platform-specific code.
+- *Temporal extension (local):* `ci/local.sh extension` (or `ci/run.sh
+  extension`): the `extensions/temporal` workspace's fmt, clippy and tests,
+  with D.I.V.E. access (see `docs/private-dependencies.md`). Temporal jobs do
+  not ship in 0.1.0, so CI does not run it. Run it before pushing changes to
+  `extensions/` or the `TemporalBackend` interface, and put the result in
+  the PR.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
   `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
   suite, the pinned fork with and without `sail-z3`, with exact output checks,

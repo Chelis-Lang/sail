@@ -498,6 +498,8 @@ pub(crate) struct Restored {
     pub(crate) history: String,
     pub(crate) report: sail_api::output::Report,
     pub(crate) selected_attempt: Option<crate::adapter::attempts::SelectedAttempt>,
+    /// The establishing run's observed compiler environment (#386).
+    pub(crate) compiler_environment: Option<super::super::ghost_environment::Environment>,
     pub(crate) stdout: Vec<u8>,
     pub(crate) stderr: Vec<u8>,
 }
@@ -556,6 +558,7 @@ impl Attempt {
                 history: restored.history,
                 report: restored.receipt.invocation.report.clone(),
                 selected_attempt: restored.receipt.invocation.selected_attempt.clone(),
+                compiler_environment: restored.receipt.invocation.compiler_environment.clone(),
                 stdout: restored.stdout,
                 stderr: restored.stderr,
             })
@@ -580,6 +583,23 @@ impl Attempt {
         command: &mut impl crate::managed::command_environment::ConfigureCommand,
     ) {
         self.observation.configure(command);
+    }
+
+    /// The Verus options this observation needs, which the driver passes
+    /// with its own.
+    #[expect(
+        clippy::unused_self,
+        reason = "The options belong to this attempt's observation."
+    )]
+    pub(crate) fn compiler_options(&self) -> &'static [&'static str] {
+        compiler::Observation::OPTIONS
+    }
+
+    /// Both phases' tracked environment of the compiler child (#386).
+    pub(crate) fn compiler_environment(
+        &self,
+    ) -> Option<super::super::ghost_environment::Environment> {
+        self.observation.environment()
     }
 
     pub(crate) fn started(&mut self, pid: u32) {

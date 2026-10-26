@@ -68,6 +68,9 @@ do not replace the frozen matrix below or accept its remaining slower rows.
   complete report. Plain Cargo can do less work on a no-op, so these calls
   have visible overhead. Anvil's unchanged partial verification remains a
   particular setup cost tracked in [known issues](known-issues.md).
+- **CI.** A fresh runner gains from persisted solver replies, and in
+  SAIL3112 mode from a persisted `target/`. Managed targets and receipts do
+  not move between machines yet. See [caching Sail in CI](ci-cache.md).
 
 The disabled v1 compiled-dependency store is not part of these claims. Other
 compiled dependencies are built separately for each project and worktree

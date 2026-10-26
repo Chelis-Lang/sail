@@ -326,7 +326,7 @@ planned for releases after 0.1.0. The owner answered all twelve on
     whatever."
 27. **Priority against the Verus path.** The 2026-10-13 roadmap review
     deferred more backends, certificates and other verifiers for lack of user
-    pull. The [roadmap](ROADMAP.md#later) now orders the Verus-path items
+    pull. The [roadmap](ROADMAP.md#after-010-parked) now orders the Verus-path items
     (B1, B2, B4, #118) before the verification runtime. Is that the owner's
     order, and which runtime workstream comes first after the interface
     specifications?

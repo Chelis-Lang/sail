@@ -1,13 +1,13 @@
 name: ci
 
 # Every push and PR to main or the release branch runs the six required checks.
-# CI completion also requires direct acceptance-model and production-refinement proofs. Jobs after the
-# authorship check run inside the CI image
+# Jobs after the authorship check run inside the CI image
 # (ci/Dockerfile, ADR 0013), through ci/run.sh, the same steps `ci/local.sh`
 # runs locally. CI serves rapid iteration: each job should finish in about
 # four minutes and must stay well under its 10-minute limit. Long, release
 # and acceptance-style runs (standard and deep conformance tiers, `release`,
-# benchmarks, the macOS `host` check) are local-only.
+# benchmarks, acceptance-model proofs, production refinements, the macOS
+# `host` check) are local-only.
 
 on:
   push:
@@ -246,8 +246,6 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh gate
-        env:
-          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
 
   solver-tests:
     # The suites that need the pinned Z3: real-solver replay, cached sessions
@@ -275,14 +273,12 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh solver
-        env:
-          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
 
   end-to-end:
     # Preserve the required check name and reject failed, cancelled or skipped phases.
     name: End to end
     if: ${{ always() }}
-    needs: [e2e-legacy, e2e-managed, e2e-managed-copies, e2e-managed-native, e2e-contracts, e2e-scripts, e2e-repair, e2e-output, e2e-flags, e2e-loader, e2e-noop]
+    needs: [e2e-legacy, e2e-managed, e2e-managed-copies, e2e-managed-native, e2e-contracts, e2e-scripts, e2e-repair, e2e-output, e2e-flags, e2e-loader]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -301,8 +297,7 @@ jobs:
           OUTPUT: ${{ needs.e2e-output.result }}
           FLAGS: ${{ needs.e2e-flags.result }}
           LOADER: ${{ needs.e2e-loader.result }}
-          NOOP: ${{ needs.e2e-noop.result }}
-        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED" "$MANAGED_COPIES" "$MANAGED_NATIVE" "$CONTRACTS" "$SCRIPTS" "$REPAIR" "$OUTPUT" "$FLAGS" "$LOADER" "$NOOP"
+        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED" "$MANAGED_COPIES" "$MANAGED_NATIVE" "$CONTRACTS" "$SCRIPTS" "$REPAIR" "$OUTPUT" "$FLAGS" "$LOADER"
 
   e2e-build:
     # The release binaries every e2e phase runs, built once per CI run
@@ -327,8 +322,6 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh e2e-build target/e2e-bin
-        env:
-          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-bin
@@ -364,7 +357,7 @@ jobs:
 
   e2e-output:
     # `sail verify`'s output against `cargo verus verify` across the edit
-    # loop (ADR 0046).
+    # loop (ADR 0046), then unchanged-call replay and its misses (ADR 0082).
     name: End to end (output)
     needs: [no-ai-authorship, image, e2e-build]
     runs-on: ubuntu-latest
@@ -429,41 +422,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-output-evidence-flags
-          path: ${{ runner.temp }}/e2e-output-evidence
-          if-no-files-found: ignore
-
-  e2e-noop:
-    # Unchanged-call replay against `cargo verus verify`, and every change
-    # that must miss it (ADR 0082).
-    name: End to end (noop)
-    needs: [no-ai-authorship, image, e2e-build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      packages: read
-    container:
-      image: ${{ needs.image.outputs.image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: e2e-bin
-          path: target/e2e-bin
-      - run: ci/run.sh e2e noop
-        env:
-          SAIL_E2E_PREBUILT: target/e2e-bin/e2e-bin.tar
-          SAIL_E2E_OUTPUT_OUT: ${{ runner.temp }}/e2e-output-evidence
-      - name: Retain original output failure evidence
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: e2e-output-evidence-noop
           path: ${{ runner.temp }}/e2e-output-evidence
           if-no-files-found: ignore
 
@@ -744,7 +702,6 @@ jobs:
       - name: Run conformance
         env:
           SAIL_CONFORMANCE_OUT: ${{ runner.temp }}/conformance-out
-          SAIL_DEPENDENCY_READ_TOKEN: ${{ secrets.SAIL_DEPENDENCY_READ_TOKEN }}
         run: ci/run.sh conformance fast pr
       - name: Upload reports
         if: failure()

@@ -6,12 +6,13 @@
 # inside the CI image, with Sail's Verus selected (SAIL_VERUS_BUILD) and
 # stock `cargo verus` on PATH.
 #
-#   ci/test-output.sh SAIL loop|loader|flags|noop|extra
+#   ci/test-output.sh SAIL loop [noop]|loader|flags|extra
 #
 # `loop`: combined output, passing proofs, an unchanged re-run, a compile
-# error, partial verification and a seeded-mutation smoke. `noop`:
-# unchanged-call replay (ADR 0082) and every change that must miss it.
-# `loader`: a loader variable. `flags`: the
+# error, partial verification and a seeded-mutation smoke; with `noop`
+# (`ci/run.sh` always passes it), then unchanged-call replay (ADR 0082) and
+# every change that must miss it, on the same warm targets. `loader`: a loader
+# variable. `flags`: the
 # setups verified without proof reuse. `extra`: `-- --output-json --time` and
 # a `-p`/`--features` workspace. Every cold build verifies vstd (one to two
 # minutes on a two-CPU CI runner), so CI runs `loop`, `loader` and `flags` as
@@ -19,7 +20,12 @@
 # local-only (`ci/local.sh e2e extra`).
 set -euo pipefail
 sail="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
-part="${2:?usage: ci/test-output.sh SAIL loop|loader|flags|noop|extra}"
+part="${2:?usage: ci/test-output.sh SAIL loop [noop]|loader|flags|extra}"
+noop_part="${3:-}"
+case "$part:$noop_part:$#" in
+  loop::2 | loop:noop:3 | loader::2 | flags::2 | extra::2) ;;
+  *) echo 'usage: ci/test-output.sh SAIL loop [noop]|loader|flags|extra' >&2; exit 2 ;;
+esac
 sail_output_phase="$part"
 sail_output_checkout="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_output_checkout/target/e2e-output-evidence}"
@@ -113,6 +119,8 @@ pub fn bad(x: u32) -> (r: u32)
 
 } // verus!
 RS
+# The original, restored before the replay cases.
+cp src/lib.rs "$work/demo-lib.rs"
 run() { # $1 = label; rest = command
   local label="$1" code; shift
   touch src/lib.rs
@@ -164,8 +172,8 @@ warm_plain() { CARGO_TARGET_DIR="$work/target-plain" quiet_run "$@"; }
 warm_sail() { CARGO_TARGET_DIR="$work/target-sail" quiet_run "$@"; }
 # Warm-ups: each side builds and verifies vstd once, where the part needs it.
 # The loader part's Sail run builds its own context meanwhile (below).
-case "$part" in loop | loader | noop | extra) warm_plain warmup-plain stock_cargo verus verify & ;; esac
-case "$part" in loop | noop | extra) warm_sail warmup-sail "$sail" verify & ;; esac
+case "$part" in loop | loader | extra) warm_plain warmup-plain stock_cargo verus verify & ;; esac
+case "$part" in loop | extra) warm_sail warmup-sail "$sail" verify & ;; esac
 [ "$part" = loader ] || wait
 
 if [ "$part" = loop ]; then
@@ -337,14 +345,86 @@ CARGO_TARGET_DIR="$work/target-plain" stock_cargo clean -q -p demo
 smoke_original forced SAIL_MANAGED_FORCE=1
 echo "e2e: seeded mutants ($smoke_mutants), their reverts, unchanged and forced runs identical to cargo verus verify ($((SECONDS - smoke_start)) s)"
 
+# The program the compiler sees (#385, #393). A procedural macro and
+# `option_env!` read the compiler's arguments and environment; each proof
+# holds only if Sail adds something plain Cargo-Verus does not give it. Both
+# sides must reject all three, plain and with `--output json`.
+cp Cargo.toml "$work/Cargo.toml.keep"
+cp Cargo.lock "$work/Cargo.lock.keep"
+cp src/lib.rs "$work/lib.rs.keep"
+mkdir -p witness/src
+cat > witness/Cargo.toml <<'TOML'
+[package]
+name = "witness"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+TOML
+cat > witness/src/lib.rs <<'RS'
+use proc_macro::TokenStream;
+
+#[proc_macro]
+pub fn witnesses(_: TokenStream) -> TokenStream {
+    let argv = std::env::args().any(|a| {
+        matches!(a.as_str(), "--time" | "--output-json" | "--log" | "--log-dir")
+            || a.starts_with("-Zchecksum-hash-algorithm=")
+    });
+    let env = std::env::vars_os().any(|(k, _)| k.to_string_lossy().starts_with("SAIL_MANAGED_"));
+    format!(
+        "verus! {{ pub proof fn argv_witness() {{ assert({argv}); }} pub proof fn env_witness() {{ assert({env}); }} }}"
+    )
+    .parse()
+    .unwrap()
+}
+RS
+awk -v dep='witness = { path = "witness" }' '
+  { print } $0 == "[dependencies]" { print dep; added = 1 }
+  END { if (!added) { print "[dependencies]"; print dep } }' "$work/Cargo.toml.keep" > Cargo.toml
+grep -q '^witness = ' Cargo.toml
+cat > src/lib.rs <<'RS'
+use vstd::prelude::*;
+
+witness::witnesses!();
+
+verus! {
+
+proof fn injected_runtime_is_present() {
+    assert(match option_env!("SAIL_MANAGED_RUNTIME") {
+        Some(_) => true,
+        None => false,
+    });
+}
+
+} // verus!
+RS
+plain_run visible-plain stock_cargo verus verify
+sail_run visible-sail "$sail" verify
+same visible-plain visible-sail
+grep -q "verification results:: 0 verified, 3 errors" "$work/visible-plain.out"
+CARGO_TARGET_DIR="$work/target-plain" quiet_run visible-again stock_cargo verus verify
+CARGO_TARGET_DIR="$work/target-sail" quiet_run visible-json "$sail" verify --output json
+same visible-again visible-json "rc err"
+cp "$work/Cargo.toml.keep" Cargo.toml
+cp "$work/Cargo.lock.keep" Cargo.lock
+cp "$work/lib.rs.keep" src/lib.rs
+rm -r witness
+echo "e2e: the compiler's arguments and environment as plain cargo verus verify gives them (#385, #393)"
+
 fi
 
-if [ "$part" = noop ]; then
+if [ "$noop_part" = noop ]; then
 # Unchanged-call replay (ADR 0082). The first unchanged call after a
 # verification takes the full path and records; an identical later call
 # replays it without Cargo. Every change below must miss, and every output
 # must still match plain Cargo-Verus. Each decision is logged to the trace,
 # which is constant for the whole part (it is part of the replay key).
+# The cases need warm stock and managed Sail targets, so they follow `loop`
+# and reuse its warm-ups rather than a job of their own, starting from the
+# original source.
+noop_start=$SECONDS
+cp "$work/demo-lib.rs" src/lib.rs
 export SAIL_MANAGED_NOOP_TRACE="$work/noop.trace"
 : > "$SAIL_MANAGED_NOOP_TRACE"
 decision() { tail -n 1 "$SAIL_MANAGED_NOOP_TRACE"; }
@@ -371,9 +451,6 @@ pair() { # label: plain then Sail, without touching the source
   CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-sail" "$sail" verify
   same "$1-plain" "$1-sail"
 }
-# Sail alone, for a change whose full-path output differs from plain
-# Cargo-Verus for reasons unrelated to replay (#398).
-sail_only() { CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-sail" "$sail" verify; }
 # Record, then expect a replay that matches plain output.
 rerecord() { # label
   settle
@@ -406,10 +483,14 @@ RS
 plain_run pass-plain stock_cargo verus verify
 sail_run pass-sail "$sail" verify
 same pass-plain pass-sail
-# The first call after a newly discovered input outside the package cleans
-# the build-script packages and rebuilds (#399, a full-path behaviour, not
-# replay's): let it happen before the compared calls.
-CARGO_TARGET_DIR="$work/target-sail" quiet_run discovered-sail "$sail" verify
+# The first call after a newly discovered input outside the package is
+# Cargo's no-op on both sides; it no longer rebuilds the build-script
+# packages (#399).
+pair discovered
+if grep -qE '^ *(Compiling|Checking) ' "$work/discovered-sail.err"; then
+  echo "e2e: the call after a discovered input rebuilt" >&2
+  exit 1
+fi
 rerecord unchanged
 # The same call again replays again.
 pair unchanged-again
@@ -427,13 +508,20 @@ touch src/lib.rs
 pair touched
 expect touched '^miss: changed: .*src/lib.rs$'
 rerecord after-touch
-# A new and a removed source file, and a new binary target.
+# A new and a removed unreferenced source file: replay misses, and the full
+# path, like plain Cargo-Verus, verifies nothing (#398).
 printf '// unused\n' > src/unused.rs
-sail_only added-file
+pair added-file
 expect added-file '^miss: changed: '
 rm src/unused.rs
-sail_only removed-file
+pair removed-file
 expect removed-file '^miss: '
+for label in added-file removed-file; do
+  if grep -qE '^ *(Compiling|Checking) ' "$work/$label-sail.err"; then
+    echo "e2e: $label: an unreferenced file re-verified the crate" >&2
+    exit 1
+  fi
+done
 rerecord after-files
 # A declared variable.
 NOOP_PROBE_VALUE=set pair env-dep
@@ -481,9 +569,10 @@ PY
 # An exact partial scope replays only itself and is never promoted: the
 # whole-target call after it has no record of its own and stays complete.
 rm -f "$SAIL_CACHE_DIR"/noop/*.json
-# A new scope builds its own target; its second call still rebuilds the
-# build-script packages (#399), so it records once its calls start no verifier.
-for attempt in 1 2 3 4; do
+# A new scope builds its own target. Its first call discovers the input
+# outside the package, so it is Historical and records no receipt; the second
+# verifies the crate again to establish one; the third records.
+for attempt in 1 2 3; do
   settle
   CARGO_TARGET_DIR="$work/target-sail" quiet_run partial-record "$sail" verify --output json -- --verify-module m
   expect partial-record '^miss: no record$'
@@ -515,24 +604,33 @@ if grep -q '^hit$' <(tail -n 4 "$SAIL_MANAGED_NOOP_TRACE"); then
   echo "e2e: a failing project was replayed" >&2
   exit 1
 fi
-# A new binary target, last: after it is removed, every full-path call
-# rebuilds the build-script packages (#401).
+# A new binary target, then its removal. Each verifies only what plain
+# Cargo-Verus verifies: the binary, then nothing. Later unchanged calls are
+# Cargo's no-op again and replay (#401).
 edit_in_place 's/ensures r > x,/ensures r >= x,/' src/lib.rs
 settle
-sail_only bin-base
+pair bin-base
 settle
-sail_only bin-record
+pair bin-record
 recorded bin-record
 mkdir -p src/bin
 printf 'use vstd::prelude::*;\n\nverus! {\nfn main() {}\n} // verus!\n' > src/bin/probe.rs
-sail_only added-bin
+pair added-bin
 expect added-bin '^miss: changed: '
 grep -q 'demo v0.1.0' "$work/added-bin-sail.err"
 rm -r src/bin
-sail_only removed-bin
+pair removed-bin
 expect removed-bin '^miss: '
+pair after-removed-bin
+for label in removed-bin after-removed-bin; do
+  if grep -qE '^ *(Compiling|Checking) ' "$work/$label-sail.err"; then
+    echo "e2e: $label: Sail rebuilt after the binary was removed" >&2
+    exit 1
+  fi
+done
+rerecord after-bin
 unset SAIL_MANAGED_NOOP_TRACE
-echo "e2e: unchanged calls replay plain output; edits, restored mtimes, touches, files, binaries, declared variables, dep-info inputs, the lockfile, fingerprints, JSON and partial scope each miss"
+echo "e2e: unchanged calls replay plain output; edits, restored mtimes, touches, files, binaries, declared variables, dep-info inputs, the lockfile, fingerprints, JSON and partial scope each miss ($((SECONDS - noop_start)) s)"
 fi
 
 if [ "$part" = flags ]; then

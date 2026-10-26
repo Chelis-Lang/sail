@@ -116,8 +116,10 @@ A run is Current only when all of the following hold:
   input file and directory are unchanged across the run. The change time cannot
   be set by user programs, so an edit that was restored during the run, even
   with its modification time put back, is still caught;
-- every installed toolchain file still has the device, inode, size and
-  modification time it had when the run started;
+- every installed toolchain file still has the content (SHA-256) it had when
+  the run started. A file whose complete stat stamp, change time included,
+  equals the one recorded when it was last read on this machine is not read
+  again (ADR 0041, 2026-10-26 note);
 - every absent Cargo configuration file is still absent at the end. On Linux,
   none was created during the run either, even briefly: an inotify watch on
   those paths tells such a file apart from Cargo's own journal writes in its
@@ -341,6 +343,25 @@ establish Current input observations. Missing or unreadable build-script output
 also supplies no complete script contract. Legacy receipt/read-time records and
 proof contexts from the earlier declaration policy cannot authorize new Current
 proof evidence; historical reports remain readable.
+- **What ghost code reads.** Verus compiles a verified crate twice, and the
+  erased compilation rewrites its dep-info without the verification phase's
+  reads, so a read in a `proof fn`, spec or assertion alone is not declared
+  ([VI-0036](verus-issues/VI-0036-ghost-env-reads-missing-from-dep-info.md),
+  #386). For every verified target Sail requests the fork's report of the
+  variables rustc tracked in both phases (`SAIL_COMPILER_INPUTS`; the source
+  checksum the report needs, `-Zchecksum-hash-algorithm=sha256`, travels with
+  Sail's other Verus options in ` __VERUS_DRIVER_ARGS__`, not on the
+  compiler's command line). After a
+  successful verification it appends each missing read to the unit's dep-info
+  in rustc's own form, so Cargo recompiles when it changes, exactly as for an
+  exec read, and records the observed names in the invocation. Variables the
+  proof context already binds (the families above, including the driver's
+  forwarded arguments) are not appended. A receipt requires that observation:
+  a verified target whose report is missing, incomplete, unbound to its
+  compiler process, inconsistent between phases, or whose dep-info cannot be
+  located or rewritten publishes no receipt. Replays of Sail's shipped vstd
+  build keep their own recorded compiler environment
+  ([ADR 0048](decisions/0048-shipped-dependency-build.md)).
 
 Private dependency authentication (`SAIL_DEPENDENCY_READ_TOKEN` and
 `SAIL_PRIVATE_GIT_READY`) does not select a different compiler proof context.
@@ -354,6 +375,17 @@ For build-script declarations, Sail binds `CARGO_FEATURE_*` and `CARGO_CFG_*`
 to Cargo's generated values, not the parent process values. A private Cargo
 unit graph supplies exact unit features. Native compiler cfg queries supply
 target values. Each unit's profile supplies its debug-assertion setting.
+
+A Current run keeps its unit graph and cfg queries for the next run of the
+same proof context. The next run restores them instead of asking Cargo again
+when their key is unchanged. The key binds the proof context (arguments,
+environment, tool identities, Cargo configuration and named target
+specifications), the complete Cargo metadata, the bytes of every manifest and
+the lockfile, the invoking directory and the owned target directory. Source
+edits keep the key. Every restored unit must name a target the current
+metadata lists exactly. A configuration that may include another file, a
+custom target specification, or a key that changed during the run keeps
+nothing.
 
 This model uses Cargo source `5f94df4789f005f9a352888e8355ffc645b7ed0e`.
 Unknown Cargo versions, missing observations, and conflicting unit values
@@ -393,9 +425,19 @@ select `cargo-metadata/` under the Sail cache with a highest-priority
 `build.target-dir` override. Neither caller environment nor Cargo configuration
 can exclude source directories for these probes. Cargo metadata can otherwise create
 `.rustc_info.json` in a source directory named by that override. Compilation
-and cleanup keep the caller's environment value; an internal marker is removed
-before compilation so a build script's own nested Cargo commands retain their
-ordinary environment. Public fallback snapshots retain caller target selection.
+and cleanup keep the caller's environment value. The private metadata setting
+never enters the environment, so a build script's own nested Cargo commands
+retain their ordinary environment. Public fallback snapshots retain caller
+target selection.
+
+Sail's managed Cargo and Verus-driver aliases take their private settings
+(`SAIL_MANAGED_*`: the real Cargo, the runtime and artifact journal, the
+shipped plan, the output socket, the original driver) from a file beside them
+in the compiler family directory, not from the environment. Cargo, build
+scripts, procedural macros and compilers therefore see the caller's
+environment as under plain Cargo-Verus, including the caller's own `CARGO`
+and any `SAIL_MANAGED_*` the caller set (#385). The exceptions are listed in
+[known issues](known-issues.md).
 
 Before reading or seeding any proof receipt, managed verification checks that
 the physical Sail cache and every resolved package directory are disjoint.
@@ -435,6 +477,29 @@ through `PATH` (`cc`, `cmake`, `pkg-config`), is invisible: Cargo does not
 rebuild for it, and Sail does not re-verify for it. Declare such reads with
 `cargo:rerun-if-env-changed` in the build script.
 
+## What a proof receipt binds
+
+Currentness compares every file of the selection's packages. A proof receipt
+is narrower: it is reused while the files that can change its target are
+unchanged. In a path package without a build script, after Sail has recorded
+the compiler's declarations of that package's targets, these are the files the
+target's own compilation read (its dep-info, which includes `include_str!`
+files), the files of the library it links, every other package's files that
+the compiler declared, the manifests, lockfile and toolchain files, anything
+in a `.cargo` directory, and the other spelling of a declared module file
+(`src/m/mod.rs` next to `src/m.rs`). So, as with plain Cargo-Verus:
+
+- a new or removed file that no `mod` names verifies nothing;
+- adding a `src/bin` file verifies only that binary, and removing it again
+  verifies nothing;
+- editing a binary's source re-verifies that binary and its package.
+
+Registry and git packages, packages with build scripts, and packages whose
+declarations are not yet recorded bind every file. A declared file that no
+longer exists drops out of the record, and its removal still counts as a
+change ([ADR 0046](decisions/0046-managed-verification-by-default.md),
+2026-10-26 amendment).
+
 ## Unchanged-call replay
 
 A `sail verify` identical to an earlier call that ended Current without
@@ -445,7 +510,8 @@ the tools or Sail read are the same. Replay also needs the full stat stamp
 (device, inode, size, mode, mtime and ctime) of every input path and walked
 directory to match, along with the owned Cargo target's entries and every
 installed tool and sysroot file. The proof context's cache records must match
-by content, and the variables units declare must have the same values.
+by content, and the variables units declare (ghost-only reads included) must
+have the same values.
 Anything else takes the full path. Only Cargo's `Finished` time is
 regenerated.
 
@@ -467,16 +533,37 @@ with `scripts/reader-gate.sh`; see
 
 `sail watch` completes initial Cargo metadata discovery and subscriptions
 before starting its first debounce window. macOS can replay earlier creation
-notifications. During startup these are ignored only when a complete snapshot
-still matches the initial input bytes and file identities, including change
-times. Real edits still cancel verification, including edits whose bytes and
-modification time are restored. After the first actual input change, native
-notifications retain their unconditional cancellation behavior. Unreadable
-state remains conservative; proof admission checks do not use this filter.
+notifications, and under load it can deliver an edit's notifications late or
+more than once. Immediately before submitting each run, watch records a
+complete snapshot of the input bytes and file identities, including change
+times. A later notification batch cancels that run only when the inputs no
+longer match the snapshot, so a late or repeated notification for an edit the
+run already includes does not restart it. The initial snapshot plays the same
+role during startup. Real edits still cancel verification, including edits
+whose bytes and modification time are restored. A removal or rename of an
+input always cancels, because moving a directory away and back keeps every
+identity the snapshot records. Unreadable state remains conservative; proof
+admission checks do not use this filter.
 
-When native notification coverage is incomplete, watch uses only its documented
-content scans; delayed native events do not queue the same edit again. The
-startup snapshot includes empty input directories, while declared build-output
+Native events are only the fast path. Under load, macOS can drop a watcher's
+events and send its drop notice late or not at all. So every two seconds, in
+every mode, watch compares a metadata stamp of its inputs (path list, file
+identity, size, and modification and change times; no file is read) with the
+last state it saw. Only when the stamp changes does it rehash the inputs and
+restart. On macOS and Linux an input edit therefore cancels the run in flight
+within about two seconds, plus one stamp pass, even if its notification never
+arrives. The same edit is never reported twice by a notification, the stamp
+check and a scan. On an Apple silicon Mac, one stamp pass over Vest's
+workspace (3,458 entries) costs about 19 ms of CPU, under 1% of one core at
+one pass every two seconds. A full rehash (about 120 ms) runs only when a
+stamp changes.
+
+When native notification coverage is incomplete, watch stops reading native
+events and adds content scans every five seconds; delayed native events do not
+queue the same edit again. Scans compare against the last state seen. When a completed run widens the
+watched inputs, watch first checks the previous inputs against that baseline,
+so an edit made before the next scan is never adopted as already verified. The
+snapshot includes empty input directories, while declared build-output
 subtrees remain excluded.
 
 ### Partial verification reports

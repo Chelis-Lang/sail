@@ -204,8 +204,8 @@ fn run_schema() -> Value {
             "package": string_schema("Verify only this workspace package (`-p`)."),
             "module": string_schema("Verify only this module and its descendants, relative to the crate root (Verus `--verify-module`, e.g. `arith` or `foo::bar`)."),
             "function": string_schema("Verify only this function (Verus `--verify-function`: a unique substring of the name, or a pattern with `*` at either end). It is looked up in `module`, or in the crate root if no module is given."),
-            "measure_fragility": {"type": "boolean", "description": "Opt-in local solver replays to attach function fragility scores. Can take much longer than ordinary verification."},
-            "portfolio": {"type": "string", "enum": ["accept-first-proof"], "description": "Explicit opt-in: run complete independent Verus attempts and accept the first complete proof. May take much longer; records every attempt."},
+            "measure_fragility": {"type": "boolean", "description": "Experimental: opt-in local solver replays to attach function fragility scores. Can take much longer than ordinary verification."},
+            "portfolio": {"type": "string", "enum": ["accept-first-proof"], "description": "Experimental, verdict-changing (docs/divergences.md): explicit opt-in to run complete independent Verus attempts and accept the first complete proof. May take much longer; records every attempt."},
             "cargo_args": list_schema("Extra `cargo verus verify` arguments (before `--`), e.g. [\"--release\"]."),
             "verus_args": list_schema("Extra Verus arguments (after `--`), e.g. [\"--rlimit\", \"30\"]."),
         }
@@ -252,7 +252,7 @@ pub fn definitions() -> Value {
         {
             "name": "fragility",
             "title": "Proof fragility",
-            "description": "Measure how fragile proofs are (how often they still verify under different solver seeds), via `sail fragility` (an opt-in measurement that re-runs the solver sessions under several seeds; it changes no verdict and can take much longer than verify). Returns a clear not-available result if this sail build has no `sail fragility`.",
+            "description": "Experimental: measure how fragile proofs are (how often they still verify under different solver seeds), via `sail fragility` (an opt-in measurement that re-runs the solver sessions under several seeds; it changes no verdict and can take much longer than verify). Returns a clear not-available result if this sail build has no `sail fragility`.",
             "inputSchema": run_schema(),
             "annotations": {"readOnlyHint": false, "destructiveHint": false, "openWorldHint": false}
         }
@@ -987,6 +987,50 @@ mod tests {
             assert_eq!(has_fragility(&sail, &root), expected, "{body}");
         }
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// Agents tell experimental tools and options from supported ones by the
+    /// description: experimental ones start with `Experimental`, supported
+    /// ones never mention it.
+    #[test]
+    fn descriptions_mark_exactly_the_experimental_tools_and_options() {
+        let experimental_tools = [
+            "fragility",
+            "requirement_assurance",
+            "runtime_capabilities",
+            "runtime_execute",
+        ];
+        let experimental_options = ["measure_fragility", "portfolio"];
+        let definitions = definitions();
+        let tools = definitions.as_array().cloned().unwrap_or_default();
+        assert!(tools.len() >= 15, "{definitions}");
+        for tool in &tools {
+            let name = tool["name"].as_str().unwrap_or_default();
+            let description = tool["description"].as_str().unwrap_or_default();
+            if experimental_tools.contains(&name) {
+                assert!(
+                    description.starts_with("Experimental"),
+                    "{name}: {description}"
+                );
+            } else {
+                assert!(
+                    !description.contains("xperimental"),
+                    "{name}: {description}"
+                );
+            }
+            let properties = tool["inputSchema"]["properties"]
+                .as_object()
+                .cloned()
+                .unwrap_or_default();
+            for (option, schema) in properties {
+                let text = schema["description"].as_str().unwrap_or_default();
+                if experimental_options.contains(&option.as_str()) {
+                    assert!(text.starts_with("Experimental"), "{name}.{option}: {text}");
+                } else {
+                    assert!(!text.contains("xperimental"), "{name}.{option}: {text}");
+                }
+            }
+        }
     }
 
     #[test]

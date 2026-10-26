@@ -21,326 +21,139 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 | Query association, input identity, scope and result authority models | Expanded lifecycle models, composed admission and captured-source direct stock checking pass native and hosted checks; scope is recorded in the [model guide](design/acceptance-proof-checker.md) | Observation adapters, parser/cache-origin refinement and service-wide theorem |
 | Production acceptance core | Checkpoint `fe8be9ee` passes native/hosted gates and full fast/standard conformance; bounded timing accepted by owner | remaining stages C–F in the [refinement guide](design/acceptance-production-refinements.md); broader release performance remains separate |
 | Acceptance boundary follow-up | Parser/origin, compiler/physical observation and request/result workstreams started; [obligation ledger](design/acceptance-boundary-refinements.md) names six deliverables | Implemented slices need direct-stock proofs, provider correspondence, independent review and native qualification; full service theorem remains open |
+| Current-main source reconciliation | Candidate combines `a46c53b4` and `e2b5af1b`, preserving owned compiler provenance and main safeguards; #446/#447 revisions distinct | Capture rebinding, final-head native/macOS gates, conformance and owner CI policy decision |
 
 ## Goal
 
 The first public release must be clearly faster than plain `cargo verus
 verify` (stock Verus) in normal use. Most scenarios should be faster; Sail
-may add only modest overhead on runs that are already tiny and cannot be
-optimized, and must never make a run genuinely slower, cold runs included
-(owner direction 2026-10-20, superseding the fixed 5% line of
-[question 32](open-questions.md)). Verdicts, diagnostics and exit codes stay
-identical to stock. Sail's Verus fork is an accepted way to get speed (ADR
-0039, ADR 0043). The product is a CLI with Linux and macOS binaries. Oyster
-integration proceeds on main alongside the performance work; final release
-composition remains the owner's decision.
+may add only modest overhead on runs that are already tiny, and must never
+make a run genuinely slower, cold runs included (owner direction
+2026-10-20). Verdicts, diagnostics and exit codes stay identical to stock.
+Sail's Verus fork is an accepted way to get speed (ADR 0039, ADR 0043). The
+product is a CLI with Linux and macOS binaries. Final release composition is
+the owner's decision.
 
-Milestones: the GitHub milestone **0.1.0** holds the release blockers. M11
-is *Verus core and performance*, with its ordered backlog
-[#168](https://github.com/Chelis-Lang/sail/issues/168); new performance
-issues are filed under M11 and listed in #168. M10 is the multi-backend
-verification runtime (#146).
-
-### Current standing against stock Verus
-
-The current runtime `36d65c3f` completes both installed 31-row matrices
-and four three-round mutation cohorts per platform: 651 matching comparisons
-each, no false verified or functional differences. Full edit loops improve
-1.11–2.71× on Linux and 1.40–2.87× on Mac. Native Anvil compiler pairs
-show the erasure index's 10.6% Linux / 13.4% Mac reduction. Unchanged and
-tiny-edit overhead remains, and Mac cold Anvil adds 0.86 s on about 100 s.
-[Performance](performance.md) identifies the exact frozen installs;
-[qualification](validation/shadow-index.md) covers later main integration.
+Milestones: **0.1.0** holds the release blockers. M11 (*Verus core and
+performance*) holds performance work, ordered in
+[#168](https://github.com/Chelis-Lang/sail/issues/168). M10 is the
+multi-backend verification runtime (#146).
 
 ## 0.1.0
 
-Nothing is published and repository visibility is unchanged. Nothing goes to
-crates.io until the owner's rollout; the release is open source under the
-MIT License with macOS and Linux binaries on GitHub releases. The earlier
-private rc.6 remains a historical measurement baseline. Current development
-follows main, including Oyster integration, rather than a separate release
-track. A new candidate or publication waits for owner direction.
+Nothing is published and nothing goes to crates.io until the owner's
+rollout. The release is MIT-licensed, with macOS and Linux archives on GitHub
+releases. It follows main; the earlier private rc.6 is only a measurement
+baseline.
 
-**Verus product baseline** (owner, 2026-10-19): the earlier rc.6 artifacts
-on `release/0.1.0` exclude the newer Oyster work. This does not freeze the
-scope of a future release.
-
-- Verified vstd shipped in release archives as a compiler-boundary proof
-  bundle, served only after exact admission (#249,
-  [ADR 0048](decisions/0048-shipped-dependency-build.md)); any mismatch
-  verifies vstd normally.
-- Fork runtime `7d9d5410` on upstream Verus 0.2026.10.18.7d82994 (Rust
-  1.99.1), Linux and macOS (#267, #338).
-- Proof coexistence, so shipped and locally verified vstd proofs share one
-  cache.
-- Managed builds use the engine's pinned Cargo
-  ([ADR 0058](decisions/0058-managed-builds-use-the-pinned-cargo.md)).
-- Instant revert on Linux and macOS (#224, #269).
-
-The following table qualifies the historical private rc.6 archives. The
-current-main improvement gates are tracked in the sprint below.
-
-| Gate | Status | Next |
+| Gate | State | Next |
 |---|---|---|
-| Runtime rebased onto upstream 7d82994, Linux and macOS | Done; corrected 7d9d5410 manifests selected (#338) | — |
-| Shipped default/100 proofs and signed replies | Both platform factories and public Vest proof/undo controls pass | — |
-| Consumer gates and conformance | Full native gate, solver, E2E+extra, PR/full fast and standard pass | — |
-| Mac host gate | Pass: 981 tests, clippy clean | — |
-| Determinism | Mac: 320 stable query streams; strict output 319/320, one existing resource-count variation | Recorded in runtime qualification |
-| Realistic edit-loop suite (#284) | Pass: four full three-round cohorts per platform, 651 matching comparisons each | — |
-| Release matrices | Complete: 31/31 selected comparisons valid per platform, corrected Vest subsets retained separately | Review slower rows |
-| Cold runs never slower than stock | Linux cold rows at parity or faster; Mac Anvil adds 2.86 s, Vest adds 0.74 s | #314, #278, #232 |
-| Sub-second overhead modest | Unchanged calls replay in 26 ms (ADR 0082); tiny edits remain open | #156, #314 |
-| Deep corpus and fork source suite | Four corpus arms pass; fork direct/cache-fill/cache-warm each 4,901 Same; stock-only control has four unstable debug-order cases | — |
-| Actual archives, clean README and Claude Code | Both frozen archives pass first proof, edit, actual repair and real MCP with 17 tools | — |
-| Performance/docs review and rc.6 draft | Qualified artifacts staged for private rc.6 review; performance acceptance remains open | Owner review of cold and unchanged costs |
-| Owner review and publication | Not started | — |
+| Fork runtime | `36d65c3f` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; selected | — |
+| Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
+| Default output identical to stock | Done: human stderr is byte-identical by default; Sail notes only with `SAIL_EXPLAIN=1` or in JSON (#391) | — |
+| Default-mode verdict conformance | Main fixes #385, #386 and #393 through isolated settings/options and observed ghost environment; residual #435 stays open | Combined draft conformance and remaining transport transparency |
+| Unchanged calls | Done when replay applies: 26 ms against stock's 0.26 s on Anvil (ADR 0082, #402). Otherwise unchanged Anvil about 1.7 s | #314 |
+| Tiny edits | Sail still slower than stock by a fraction of a second | #156 |
+| Cold runs | Linux at parity or faster; macOS Anvil about 0.4 s slower on 100 s | #278, #232 |
+| CI cache reuse | Done: tools identified by content, so restored caches are reused on a new runner (#428); [guide](ci-cache.md) | — |
+| Feature set | Done (#423): repair, `explain`, `baseline`, `compare` and MCP supported; fragility, portfolio, team cache and integration APIs experimental | — |
+| Release attestations | Workflow and installer check built (#400); first exercised on the first real release | Release |
+| Release matrix, deep conformance, walkthroughs | Last complete run on rc.6 / runtime `36d65c3f` archives | Rerun on the release candidate (#282) |
+| Owner review and publication | Not started | Owner |
 
-**Merged on main for 0.1.0** (implemented; release qualification is the
-gate table above): MCP in Claude Code, agent-sized replies, honest counts,
-macOS managed reuse, install and first run, release builds with the engine
-runtime, fork runtime releases, third-party notices, managed target cleanup,
-`LICENSE`/`CONTRIBUTING.md`, `sail new`, output schema v2 (ADR 0044),
-managed output order and script facts, and managed verification by default
-([ADR 0046](decisions/0046-managed-verification-by-default.md)). Out of
-0.1.0: single-file projects (#164), multi-backend verification (M10).
+**On main for 0.1.0:** managed verification by default (ADR 0046), the
+pinned Cargo (ADR 0058), shipped verified vstd and signed vstd replies,
+instant revert with 16 retained revisions and a pinned baseline (#405),
+unchanged-call replay (ADR 0082) with solver-identity reuse (#417),
+per-target revision scoping (#395, #414), single-frame cached replies with
+replay checked against served bytes and fail-closed journals (#392),
+read-back currentness that includes the runtime (#389), setup cuts (#407,
+#424), watch fixes (#420), the guided installer, output schema v2,
+`sail new`, MCP, proof repair and the evidence commands. D.I.V.E. temporal
+jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
 
-## Performance program
+## Performance tracks
 
-### Current improvement sprint
-
-Work follows current main, including the neutral service integration. There
-is no new release branch or predetermined next release artifact.
-
-| Scope | Current state | Completion gate |
+| Track | State | Open work |
 |---|---|---|
-| Installation and adoption | Guided, checksum-checked archive installer merged (#357); actual Linux and Mac install/first-proof/unchanged controls pass | [Installation](validation/install.md) |
-| Avoidable allocation | Streaming attribution hashes merged (#358); bounded hash diagnostic halves peak memory and native gates pass | [Memory scope and limits](validation/transcript-memory.md) |
-| Cold and unchanged overhead | Explicit older-Cargo freshness fixed (#364): Anvil 60.973 to 0.895 s, with no proof reuse. Ordered revision projection reduces scoped unchanged Anvil by about 4% Linux / 3% Mac; Vest is essentially unchanged. Unchanged-call replay (ADR 0082) brings unchanged Anvil and Vest to 26 ms against stock 0.26/0.20 s (native Linux); the full path's setup costs for edits remain open | [Projection qualification](validation/ordered-input-projection.md); [Cargo qualification](validation/unsupported-cargo-fallback.md) |
-| Real-project frontend floor | [Fork PR #11](https://github.com/Chelis-Lang/verus/pull/11) merged: index erasure shadow checks. Six final Linux Anvil pairs improve 10.6%; five-project Mac controls pass. Both installed matrices and all eight mutation cohorts pass functional qualification; runtime 36d65c3f is selected | [Qualification](validation/shadow-index.md); persistent reuse remains unqualified under ADR 0052 |
-| Watch startup | Unrelated sibling removals/renames no longer turn delayed startup notifications into an extra verification; Mac host and twenty startup/cancel stress repetitions pass | [Qualification](validation/watch-and-store-races.md); native Linux workspace/solver/full E2E/PR gates pass; historical missing-file RPC cause remains unknown (#306) |
-| Avoidable invalidation | Authentication plumbing excluded from CLI contexts; actual unchanged and declared-read controls pass, first-use bundle hits preserved | [Qualification](validation/credential-context.md): full native gates, fast/standard conformance and Mac controls pass |
-| Combined product validation | Frozen matrices retain 31 valid comparisons and 651 matching comparisons per platform. The follow-up candidate passes native workspace 1,067, solver 42, full E2E+extra, PR/full FAST/STANDARD; Mac host 1,056 and four full one-round catalogues per platform (217 matches each). Actual private preview archive walkthroughs pass with 18 MCP tools | [Follow-up qualification](validation/ordered-input-projection.md); remaining setup and Mac Anvil cold costs stay open; no new release |
+| 1. Cold runs and first use (#232) | Shipped vstd proof and replies; pinned Cargo; pipelined native admission (ADR 0061); first-use hashing and daemon start cut (#424, levers 1.5/1.6); solver identity reused under a settled stamp (#417) | macOS Anvil cold (#278); macro-closure compile is most of the remaining first use (#234) |
+| 2. Frontend floor (#162) | Profiled; persistent frontend reuse unqualified | Parked after 0.1.0 |
+| 3. Solver work on misses (#158, #244) | Longest-first bucket dispatch by a static size estimate shipped in fork commit `ee8dd97d` (runtime `f8589ed4` onward): Vest 10–15% faster at 7–15 threads, no gain on Anvil | Parked after 0.1.0 |
+| 4. Incidental edits (#118) | Closure identity, spec-parameter names and trait spellings merged | 15-edit catalogue untimed |
+| 5. Managed overhead (#156, #314) | Unchanged-call replay; unit-graph and script-snapshot reuse (#407) | Setup cost when replay misses; tiny-edit cost |
+| 6. Instant revert (#163) | Linux and macOS for qualified profiles; 16 revisions with pinned baseline; `SAIL3146` explains skips | More dependency profiles |
+| CI and team caches (#240, #242) | Measured recipe in [CI caching](ci-cache.md); restored caches reused across runners (#428) | GitHub Actions example not yet run on GitHub |
 
-The historical rc.6 results above remain a baseline. They do not qualify
-later main changes or settle the remaining performance gates.
+## After 0.1.0 (parked)
 
-Ordered by release-goal blocking first (no scenario slower than stock),
-then value × tractability. Track 1 is the release blocker; track 2 is the
-largest edit-loop prize and the only one that moves all five projects.
-"Fork" means the lever changes Sail's Verus. Prizes are measured unless
-marked "estimate"; "unmeasured" means no evidence exists.
-New performance issues are filed under M11 and ordered in #168.
+| Item | Issue |
+|---|---|
+| Acceptance integration draft and its staged input-coverage fixes | #378 |
+| Service-wide acceptance theorem and refinements | #368, #371–#376 |
+| Recorded-cost dispatch hints in the fork | #244 |
+| Heavy-bucket split and opt-in automatic spinoff | #244, #158 |
+| Edit-triggered live-prefix preparation (question 31, ADR 0051) | #158 |
+| EXEC-pass skip | #162 |
+| Warm frontend: position-independent VIR key (ADR 0052) | #162 |
+| Prebuilt macro crates as pinned tools (question 35) | #239 |
+| More vstd versions | #237 |
+| Fragility hardening | — |
+| Portfolio tidy | — |
+| Compiler-boundary local reuse as default fallback | #222 |
+| Background prebuild; bulk prefetch from a team store | #241, #243 |
+| Cargo bypass when only target sources change | #245 |
+| Single-file projects | #164 |
+| CI image pull time | #195 |
+| M10 verification runtime | #146 |
 
-### 1. Cold runs and pre-caching (release blocker)
+## Integration (Oyster and neutral contracts)
 
-The frozen consumer's [matrix](validation/release-matrix.md) remains the
-complete baseline: Linux cold is at parity or faster; Mac Anvil and Vest
-remain open. Main's bounded three-round small/Anvil runs likewise retain
-unchanged-call overhead. The rejected source-observation trials did not
-close it. Shipped proof coverage, native compilation and Cargo planning are
-separate costs; a faster solver cache does not remove the frontend.
+These are experimental integration APIs, not part of the supported 0.1.0
+command set.
 
-The inventory below distinguishes delivered work from remaining experiments.
-Older prizes retain their cited source and are not current acceptance.
+| Slice | State | Remaining |
+|---|---|---|
+| Raw SMT shared runtime | Implemented | Consumer qualification at its selected SDK |
+| Neutral source jobs and baselines | Implemented ([ADR 0070](decisions/0070-neutral-contract-jobs.md)) | Broader source profiles |
+| Requirement assurance | Source-bound proof views implemented | Independent links belong to Oyster |
+| Bounded neutral-source mutation | Implemented ([ADR 0074](decisions/0074-bounded-neutral-mutation.md)) | Positive native kills unestablished |
+| Scalar literal-contract witnesses | Implemented ([ADR 0077](decisions/0077-scalar-literal-contract-witnesses.md)) | — |
+| Native D.I.V.E. temporal worker | Built only by the extension workspace (ADR 0083) | Not in 0.1.0 |
+| Neutral lowering version two (#323) | Implemented | Qualification before lifting the source-job hold |
 
-| # | Lever | Prize | Status | Next experiment (cost) | Fork | Issue |
-|---|---|---|---|---|---|---|
-| 1.1 | Cold-gap attribution, re-baseline and owner | Required for the goal: about 12 s on Vest cold, 4 s on small | Attributed on the 7d82994 runtime; after the #232 fixes, small project +22.5% → +8.2%, public-profile Vest +12.6% → +4.8% (three rounds, [record](validation/cold-first-run.md)) | Owner decision on native-admission waits taken: pipelined admission accepted and selected (ADR 0061); 1.6 (daemon overlap) remains | No | #232 |
-| 1.2 | Shipped verified vstd + pinned Cargo 1.99.1 | Fresh project 31.78 → 14.23 s vs stock (2.23×; pre-join candidate screen) | Merged (#249, ADR 0058) | 0.1.0 gate table | No | #161 |
-| 1.2b | Guided archive and pinned toolchain installation | Actual Linux and Mac install/first-proof/unchanged controls pass | Merged (#357); explicit `--install-toolchain` installs the actual bundled pin and rust-src | Download overlap remains unmeasured; [installation](validation/install.md) | No | #233 |
-| 1.3 | Read the solver binary once per run (or a content-addressed private copy) | 2–3.3 s per fresh project, 0.5–0.9 s per Vest edit | Proposed; #219 recovered 1–3% | Per-run identity reuse (1–2 days); a private copy needs an ADR on same-path replacement | No | #156 |
-| 1.4 | Take instant-revert retention off the cold path | Was +2.65 s on macOS Vest cold (`006ee5d0`, +6.6% vs stock) | Done: closure-scoped source check (#289) and pipelined native admission (ADR 0061). Vest cold: Linux 69.91 s vs stock 71.45 s, macOS +4.3%; returned A about 1.1 s ([record](validation/cold-first-run.md#pipelined-native-admission-adr-0061)). Skipping retention on a first run is not viable (#285) | None | Yes on Vest | #163, #278 |
-| 1.5 | Profile the 9.3–14.2 s residual first use | Unmeasured, likely 0–3 s; fixed waits alone could be up to about 4 s per first run; decides 1.10 | Proposed | Control: stock `cargo build --timings` of only the macro closure (never timed). Then per-phase timestamps: native compile, rust-src setup, admission hashing (662 policy files, 128 source maps), fixed 2 s waits (0.5 day). Candidate cuts: per-machine content-memoized policy-archive attestation, readiness signals in place of the fixed arrival and graph-capture waits, parallel hashing (1–3 days) | No | #234 |
-| 1.6 | Overlap daemon start and solver-identity hashing with Cargo's native compile | Unmeasured; pure cold cut, needs no think time | Proposed | `SAIL_JOB_EVENTS` timeline of a fresh project to show the serial section, then overlap (1–2 days) | No | #235 |
-| 1.7 | Ship vstd SMT replies as signed entries in the release archive ([ADR 0062](decisions/0062-shipped-vstd-solver-replies.md), accepted) for the pinned vstd | Measured: component miss 31.76 → 29.93 s against stock's 29.82 s (+6.5% → +0.4%); lock-file and loader-variable misses 7–10% faster than stock; bundle hit unchanged; 20,197 of 20,197 vstd lookups hit ([record](validation/vstd-miss-replies.md#shipped-replies-implementation)) | Merged (#287); Linux miss performance measured, macOS miss performance unmeasured | Measure on the macOS release stage | No | #236 |
-| 1.8 | Compiler-boundary local reuse as the default fallback | 39.84 → 9.34 s per new demo project (Sail vs Sail); worktree and Vest unmeasured, and Vest's vstd pin likely misses | Built behind a research flag; #222 fix built, qualification pending | Land the #222 fix; Vest hit/miss from 1.1; then qualify as default | No | #161, #222 |
-| 1.9 | More vstd versions (Vest pins 2026-09-06) | About 26 s per Vest-class worktree; corpus gain about 0 today | Proposed | Can start from 1.1's Vest hit/miss: fill-once local store keyed by `Cargo.lock` checksum (about 1 week), then published bundles (about 1 week) | No | #237 |
-| 1.10 | Release-built macro crates as pinned tools | Plausibly 1.5–3 s fresh project (estimate) for projects matching the runtime's pinned vstd and macros; v1's 1.28 s is the upper bound. At opt-level 3 also 0.6–2 s per warm edit (one sample) | Proposed; blocked on an owner parity decision under ADR 0053 (#187: a broken user `cc` would no longer break Sail) | After 1.5: re-run the opt-level 3 macro A/B with ≥3 cold and ≥6 warm samples per arm on Vest and IronKV (0.5 day); then serve exact-match macro units from the archive, bound by digest (4–6 days). On Mac, requires qualifying the VI-0026 stable `@rpath` install-name fix (branch `perf/vstd-macos-repro`) | Yes | #239 |
-| 1.11 | Seed cold runs from a team or CI cache | Cold minus most solver time (Anvil solver about 85.7 s of 124 s), still paying cold compile and frontend; unmeasured | Infrastructure implemented (ADR 0017, 0025); never measured on real projects | One seeded fresh-clone run on Anvil and CapybaraKV (about 1 day, no code); baseline from 1.1 | No | #240 |
-| 1.12 | Background prebuild at `sail new` or first sight (the ordinary managed Cargo build, run early) | Hides up to the residual first use with think time; 0 without | Proposed; independent of 1.8 | Time `sail new` → first verify with a realistic agent think-time trace (days). Background pre-verification on a miss waits for 1.8 to be default-safe | No | #241 |
-| 1.13 | User CI cache recipe | Unmeasured; plausibly the all-hits floor on unchanged code (charter success criterion) | Proposed | One measured GitHub Actions example persisting the Sail cache or reading a team store (days) | No | #242 |
-| 1.14 | Bulk prefetch from the team store | Unmeasured | Proposed | Only after 1.11 shows remote latency matters | No | #243 |
-| 1.15 | Refuse the shipped proof on its sysroot shape before hashing; read the runtime once per run | Measured: toolchain-component miss 36.68 → 35.64 s (+3.8% → +0.8% vs stock), hit −0.29 s, lock miss −0.36 s; `sail new` on that toolchain 1.12 → 0.08 s ([record](validation/shipped-miss-hashing.md)) | Merged (#290). The drivers' per-compile launcher/compiler rehash (about 0.7 GB per miss) stays: ADR 0050 rules out timestamp evidence | Preserve the driver byte checks; optimize other measured costs | No | #286 |
-
-Also a cold contributor: EXEC-pass skip (track 2 step 2) saves about 3 s on
-Vest cold as well as every edit, about a quarter of the Vest cold gap.
-
-Not pursued: v1 unit-copy store (blocked; unsound as designed, #187, ADR
-0053); proc macros at opt-level 3 built locally (cold Vest about 73 → 85 s,
-one sample; resampled inside 1.10).
-
-### 2. Frontend floor (#162)
-
-Current-runtime cache-arm comment edits take 20.98 s on Vest, 4.46 s on
-IronKV and 34.39 s on Anvil. IronKV still starts one solver; the other two
-start none. These diagnostic floors are distinct from unchanged Cargo calls
-and complete mutation loops. Persistent frontend reuse remains unqualified;
-the read-only pruning experiment did not establish a useful overall gain
-([warm-frontend report](reports/2026-10-16-warm-frontend.md),
-[validation](validation/warm-frontend.md)).
-
-| Step | Prize | Status | Next experiment (cost) | Fork | Issue |
-|---|---|---|---|---|---|
-| 1. Profile frontend stages and thread sensitivity | Decides step 3 | Current-runtime three-project default-thread profile complete; thread sweep unrun | Bound the next candidate by measured phase wall time, then run a controlled thread sweep | Yes | #162 |
-| 2. Batch A/B of cheap cuts: EXEC-pass skip or metadata-only (3.04 s of a Vest cycle; also a cold cut), the unmeasured pruning branches `perf/prune-raw-lookups`, `research/prune-shared-indexes` and `perf/prune-traversal-memo`, and small lowering (SCC/AIR/autospec) branches | Historical estimate; no qualified current gain | Read-only pruning inconclusive; other cuts unqualified | One bounded A/B under the current runtime, preserving native compilation and diagnostics | Yes | #162 |
-| 3. Position-independent VIR key and per-bucket memo ([ADR 0052](decisions/0052-warm-frontend-reuse.md), proposed) | Estimated 25–45% off the floor; Vest all-hits 1.6× → about 2.1–2.4× | Blocked: raw key matches 0/200 Vest buckets on any edit (span offsets, unstable `external_fns` order) | Commit only if step 1 shows lowering ≥25% of the floor (3–5 weeks) | Yes | #162 |
-| Cargo bypass when only target sources change | ≤1.72 s (7.1%) of a Vest cycle, upper bound (rescue stage profile¹) | Untried; constrained by ADR 0041 | After step 1 | No | #245 |
-
-Terms: VIR is Verus's intermediate representation; a bucket is the unit
-Verus sends to one solver session; spinoff runs a function in its own solver
-process; rlimit is the solver's resource limit. See the warm-frontend report.
-Merged: the selection-family fix (#220, [record](validation/managed-selection-family.md)).
-
-### 3. Solver work on misses (#158 and throughput)
-
-The large solver prizes are mostly Anvil: one `resource_match` bucket (9
-checks, about 66 s) is re-solved on any edit, and solver time is 85.7 s of
-Anvil's 124 s cold run. Verus dispatches buckets FIFO with spinoff buckets
-last; cost ordering and heavy-bucket splitting were never tried. Estimates
-below come from the [real-project report](reports/2026-10-15-real-project-performance.md)
-("Where the time goes" and the miss-cost table). Kill rule for the whole
-track: stop if the heavy-bucket experiment recovers under 10 s.
-
-| Lever | Prize (estimate) | Status | Next experiment (cost) | Fork | Issue |
-|---|---|---|---|---|---|
-| Heavy-bucket experiment: `#[verifier::spinoff_prover]` on Anvil's 1–3 heaviest functions (measurement only) | Anvil body edits 88–104 → about 44–50 s best case; 0 if one query holds the cost | Proposed; answers #158 and throughput together | Anvil cold timeline plus per-check split, then the annotation A/B (1–2 days) | No | #158 |
-| Cost-ordered (longest-first) bucket dispatch and automatic spinoff of heavy functions | Anvil cold and spec-wide 0–35%, 0–5% elsewhere (jointly) | Deferred until the experiment | Order from recorded cost hints (50–100 lines in `verifier.rs`; queries stay byte-identical). Auto-spinoff changes rlimits, so an opt-in mode, ADR and divergence entry | Yes | #244 |
-| Edit-triggered live-prefix preparation | Anvil edits 88–104 → about 45–55 s with ≥54 s think time; 0 without | Blocked on [question 31](open-questions.md) and scheduling ([ADR 0051](decisions/0051-exact-solver-snapshots.md), proposed) | Fallback if the experiment fails: decide question 31 (about 1 day), then 1–2 weeks | No | #158 |
-
-[Solver-snapshot report](reports/2026-10-16-solver-snapshots.md),
-[validation](validation/solver-snapshots.md).
-
-### 4. Incidental-edit robustness (#118)
-
-Keeps edits that change nothing logically at the floor. Merged (qualified
-per record): closure identity (#221, [record](validation/closure-full-identity.md)),
-spec-parameter names (#223, [record](validation/spec-parameter-names.md)).
-
-| Item | Prize | Status | Next step (cost) | Fork | Issue |
-|---|---|---|---|---|---|
-| Trait function spellings | Vest empty-impl edit 45.09 → 33.96 s | Merged in fork runtime `f8589ed4` | — | Yes | #118 |
-| 15-edit catalogue | Finds remaining leaks; mostly insurance | Prepared, never timed ([catalogue](validation/incidental-edits.md)) | One machine, 5–7 h, no new code, plus one Anvil row | No | #118 |
-
-### 5. Managed overhead (#156)
-
-Small-project edits and unchanged runs are sub-second but slower than stock
-(standing table). Merged (qualified per record): #186, #194, #219, #225,
-#226 ([managed overhead](validation/managed-overhead.md)); solver identity
-(#217) added cost back ([record](validation/solver-identity.md)). Rule: skip
-Sail-side items under 100 ms unless the sub-second threshold decision makes
-them gating.
-
-| Item | Prize | Status | Next experiment (cost) | Fork | Issue |
-|---|---|---|---|---|---|
-| Retention cost gate, concurrent revision snapshots, byte-compared driver aliases | Small edit 2.55 → 1.04 s, revert 1.72 → 1.01 s, unchanged 0.223 → 0.215 s (0.474 → 0.240 s with sail on another filesystem) | Built (branch `perf/small-overhead`) | Review and merge; remaining ≈0.25 s per edit is itemized in the [record](validation/managed-overhead.md#small-project-overhead-156) | No | #156 |
-| Per-run solver identity | See 1.3 | Proposed | Lever 1.3 | No | #156 |
-| Attribute the Vest unchanged gap (0.54 vs 0.23 s) | Up to 0.31 s per unchanged Vest run | Proposed | `SAIL_JOB_EVENTS` breakdown, tied to 1.3 and 1.4 (0.5 day) | No | #156 |
-| Fork attribution sidecar | Up to 0.8 s on JSON/MCP Vest runs only | Unfunded unless MCP latency becomes a priority | — | Yes | #156 |
-
-### 6. Instant revert breadth (#163)
-
-Merged for the Linux public alloc/std profile (#224,
-[record](validation/instant-revert.md), [guide](instant-revert.md));
-qualified on Linux and macOS on `f8589ed4`. Remaining: macOS and other
-dependency profiles, and lever 1.4 (its cold and cache cost, about 519 MB).
-
-## Owner and lead decisions pending
+## Decisions pending
 
 | Decision | Who | Blocks |
 |---|---|---|
-| Closure-name determinism amendments to ADRs 0049 and 0056 (#247), accepted by the lead | Owner review | — |
-| Prebuilt macro crates under ADR 0053 parity ([question 35](open-questions.md)) | Owner | 1.10 |
-| Private solver copy on same-path replacement (ADR) | Lead | 1.3 variant |
+| Release composition and publication | Owner | 0.1.0 |
+| Prebuilt macro crates under ADR 0053 parity ([question 35](open-questions.md)) | Owner | #239 |
 | Question 31, continuation timing oracle | Owner | Live-prefix preparation |
-| ADR 0048 status: research path → release default | Lead | 0.1.0 |
-| ADRs 0051, 0052 still proposed | Lead | Track 2 step 3, track 3 |
-| ADR 0046 managed by default: implemented, awaiting review | Lead | 0.1.0 |
-| M7 milestone acceptance | Lead review | History only |
+| ADR 0048 status: research path to release default | Lead | — |
+| ADRs 0051, 0052 still proposed | Lead | Tracks 2 and 3 |
 
 ## Measured and closed
 
-| Idea | Evidence |
+| Idea | Result |
 |---|---|
-| Rust pre-solver (M9, a planned Rust-side pre-solving milestone) | Covers 0.1% of solve time (ADR 0038; rescue lane¹) |
+| Rust pre-solver (M9) | Covers 0.1% of solve time (ADR 0038) |
 | Warm solver pools | A warm fast-tier run starts a solver for 26 of 1,526 sessions |
-| Warm exact-prefix sessions | Save 9–19 ms per HumanEval cycle, 107 ms per Vest cycle ([ADR 0040](decisions/0040-warm-solver-sessions.md), do not build) |
-| vstd-preloaded spare process | 0.19 s on Vest (0.8%; rescue stage profile¹) |
-| Separate verify-pass cache | No gain; rustc incremental already on (rescue lane¹) |
-| Stack-only keys as default | Identical answers but rlimit deltas up to 17× (ADR 0008); default stays full-prefix ([question 8](open-questions.md)) |
-| Stock `-V spinoff-all` | Floor 1.7–1.8× worse on CapybaraKV and Vest (a little on IronKV), cold 1.4–1.8× slower, one IronKV verdict change ([report](reports/2026-10-15-real-project-performance.md)) |
-| Parked Z3 fork snapshots | Not state-identical: Z3 atfork timer state, `num-allocs` differ ([report](reports/2026-10-16-solver-snapshots.md)) |
-| Fork `--time` per-function report | Within noise, 25.77 vs 25.89 s (ADR 0047) |
-| Read-only pruning traversal | −0.7% Vest, +0.3% IronKV, inconclusive ([validation](validation/warm-frontend.md)) |
-| CI image slimming (#198) | 9% smaller, no latency gain ([record](validation/ci-image-startup.md)) |
-| `sail verify --incremental` | Recompiled about 18 crates every run (#157, fixed by #170) |
+| Warm exact-prefix sessions | 9–19 ms per HumanEval cycle, 107 ms per Vest cycle ([ADR 0040](decisions/0040-warm-solver-sessions.md), not built) |
+| Stack-only keys as default | Identical answers, rlimit deltas up to 17× (ADR 0008); default stays full-prefix |
+| Stock `-V spinoff-all` | Floor 1.7–1.8× worse, cold 1.4–1.8× slower, one verdict change ([report](reports/2026-10-15-real-project-performance.md)) |
+| Parked Z3 fork snapshots | Not state-identical ([report](reports/2026-10-16-solver-snapshots.md)) |
+| Read-only pruning traversal | Inconclusive ([validation](validation/warm-frontend.md)) |
+| v1 native-artifact store | Disabled: unsound as designed (#187, ADR 0053) |
 
-Never run and not funded: Z3 version or option sweeps (stock refuses other
-Z3 versions), unsat-core pruning. Reopened: "a warm team cache does not help
-cold runs" was never measured on real projects (lever 1.11).
+Not funded: Z3 version or option sweeps, unsat-core pruning, instantiation
+replay.
 
-¹ Rescue-lane reports live in tag `archive/rescue-m7-98f6292`
-(`docs/reports/rescue/`), cited by ADR 0038.
+## Delivered milestones
 
-## Delivered history
-
-| Milestone | State | Evidence |
-|---|---|---|
-| M0–M4 foundation: workspace, survey, pass-through shim, corpus, conformance, baseline | Done 2026-10-08 | [bootstrap report](reports/2026-10-08-bootstrap.md) |
-| M5 initial product | Done 2026-10-09 | [report](reports/2026-10-09-initial-product.md) |
-| M6 live workspace verification, jobs/watch/MCP, HTTP team cache | Implemented and accepted locally | [report](reports/2026-10-10-live-workspace.md) |
-| M7 proof engine and repair workflow | Every gate has native evidence; speed accepted at 2.14× HumanEval, 1.82× Vest vs M6 (ADR 0038 amendment); milestone acceptance awaits lead review | [M7 validation](validation/m7.md) |
-| Fork as default runtime (ADR 0043) | Selected | [record](validation/fork-default.md) |
-| M11 Verus core and performance | In progress; ordered backlog #168 | [milestone](https://github.com/Chelis-Lang/sail/issues/168), [managed cold start](managed-cold-start.md) |
-
-Caching, CLI, agent ergonomics, benchmarks, corpus tiers and CI from the
-charter's initial scope are done (ADRs 0009, 0011, 0013–0021, 0025).
-The M11 reliability items in #168 are closed.
-
-## Oyster integration
-
-| Slice | Status | Remaining gate |
-|---|---|---|
-| Raw SMT shared runtime | Implemented; original consumer slice delivered | Continued consumer qualification at its selected immutable SDK |
-| Native D.I.V.E. worker and shared temporal route | Linux installed-service and cumulative Linux/Mac host gates passed | Protected CI and exact-pin consumer delivery |
-| Neutral source jobs | Explicit flat profile two passed native gates, fork/stock order proofs and installed consumer acceptance | [Exact-head protected delivery and immutable consumer selection](validation/neutral-source-profile-two.md); broader source profiles remain separate |
-| Requirement assurance | Source-bound original proof and requirement views implemented | Consumer-owned independent links and complete current evidence |
-| Bounded neutral-source mutation | Actual installed campaigns retain conservative original outcomes | Literal-policy UNKNOWN remains Inconclusive; native kills unestablished and nominal/multiple-ID scope unsupported |
-
-The [combined integration qualification](validation/integration-production.md)
-identifies exact cumulative source, actual platform scope, independent review,
-unchanged corpus components and retained failed attempts. It establishes no
-performance improvement, application trace capture or full realizability.
-
-## Later
-
-- **M10 verification runtime (Oyster integration authorized alongside M11).** One runtime and ledger for
-  Rust, SMT-LIB and TLA+ jobs ([scope](scope/verification-runtime.md), #146).
-  Interfaces (#127–#129), then the SMT-LIB service (#137), then backends
-  (#130–#136), certificates (#138), D.I.V.E. TLA+ jobs (#139), mutation
-  (#140, #141), selection (#142), assurance view (#143), library mode (#144),
-  Dafny evaluation (#145). Every backend passes conformance before any
-  acceleration.
-- **Single-file projects** (#164).
-- **CI image pull time** (#195): developer CI only, not a user claim.
-- **History-tolerant serving and a named stack-only mode** (ADR 0040 point
-  3, ADR 0008): opt-in divergence only; authorized in principle and
-  deferred ([question 8](open-questions.md)).
-- **Per-module `rust_to_vir` / GHOST typeck reuse:** the only route to
-  halving the floor; uncharted compiler work, not counted on.
-- **GHOST incremental build / render-once variants:** source possibly lost;
-  check `archive/retired-ghost-incremental-build-source-829c328e` before
-  treating them as recoverable; unmeasured.
-- **Function-level speculation in `sail watch`:** provisional tier defined
-  (ADR 0016) but never produced; shares the scheduling hook with live-prefix
-  preparation.
-
-| Charter roadmap item | Where it is now |
+| Milestone | State |
 |---|---|
-| Multiple SMT backends, portable queries | M10: #137, #142 |
-| Alethe and Carcara certificates | M10: #138 |
-| Other verifiers | M10: #130–#136; Dafny evaluation #145 |
-| Warm Verus frontend | Performance program track 2, #162 |
-| Rust pre-solver (M9) | Closed (ADR 0038) |
-| Unsat-core pruning, instantiation replay | Not funded |
-| Warm solver sessions, stack-key mode | Closed for default (ADR 0040, ADR 0008) |
+| M0–M4 foundation: workspace, survey, shim, corpus, conformance | Done 2026-10-08 |
+| M5 initial product | Done 2026-10-09 |
+| M6 live workspace verification, jobs, watch, MCP, HTTP team cache | Done |
+| M7 proof engine and repair workflow | Accepted 2026-10-26 ([validation](validation/m7.md)) |
+| Fork as default runtime (ADR 0043) | Selected |
+| M11 Verus core and performance | In progress (#168) |

@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Refuse incompatible proof receipts and contexts from the two integration
+  lineages. The combined contract records both original producer history and
+  the observed compiler environment under fresh private revisions (#446).
+- Keep bounded source inventory transfer on the same declaration revision and
+  refuse older unversioned inventories; incomplete private coverage remains
+  ineligible (#447).
+
 - Add a source candidate for frozen original command checkpoints and bounded
   acknowledged-input capture. Its checked validator compares every original
   command span and prefix key against the actual writer's retained bytes in one
@@ -142,6 +149,84 @@ semantic versioning once the API is published.
   prefix candidates disable cache work. Complete parser, compiler-input,
   process/store-origin and service-composition proofs remain open.
 
+- Stop reusing a proof after an environment variable read only in ghost code
+  changes. Verus's erased compilation leaves an `env!` or `option_env!` read
+  in a `proof fn`, spec or assertion out of the crate's dep-info, so Sail
+  bound nothing for it: a proof established with the variable set was reused
+  as Current after it was removed (#386, VI-0036). Sail now reads the fork's
+  report of the variables both compiler phases tracked, declares the
+  ghost-only ones in the unit's dep-info, so Cargo recompiles when they change
+  as it does for exec reads, and refuses a receipt without that report.
+  The report needs a source checksum, which Sail requests through the same
+  ` __VERUS_DRIVER_ARGS__` channel as its other Verus options, so the
+  compiler's command line stays plain Cargo-Verus's; verdicts and diagnostics
+  are unchanged. Existing receipts are not reused after this upgrade.
+
+- Fix two default-mode verdict differences: managed `sail verify` changed the
+  program the compiler sees. Its private `SAIL_MANAGED_*` settings reached
+  Cargo, build scripts and compilers, so `option_env!("SAIL_MANAGED_RUNTIME")`
+  was set (#385). Its `--output-json`, `--time` and attribution options were on
+  the compiler's command line, so a procedural macro reading `std::env::args`
+  saw them (#393). In both cases a proof that plain `cargo verus verify`
+  rejects was reported verified. The settings now live in a file beside Sail's
+  aliases, the caller's own `CARGO` is restored for Cargo, and Sail's Verus
+  options travel in Cargo-Verus's ` __VERUS_DRIVER_ARGS__` instead of the
+  command line. Proof contexts, receipts, retained archives and managed
+  targets from earlier builds are not reused, so the first run after upgrading
+  verifies afresh. The solver route and fork requests that remain visible are
+  listed in known issues (#435).
+- Promote proof repair, the evidence commands and MCP to the supported set.
+  `sail --help` now lists `repair-check`, `explain`, `baseline` and `compare`,
+  and their help no longer starts with an EXPERIMENTAL note. MCP's evidence,
+  event and repair tools (`explain_failure`, `compare_verification`,
+  `save_baseline`, `list_baselines`, `get_baseline`, `verification_events`,
+  `start_repair_validation`) are supported. Fragility, the portfolio and team
+  caching stay experimental; MCP descriptions of the `fragility` tool, the
+  `portfolio` and `measure_fragility` options and the integration tools
+  (`requirement_assurance`, `runtime_capabilities`, `runtime_execute`) now
+  start with "Experimental:".
+- Reuse a restored `~/.cache/sail/projects/` on a new machine or CI runner.
+  Installed tools (Sail, Cargo, Cargo-Verus, Verus, the solver, rustc, rustup
+  and sysroot libraries) are now identified in the proof context and compiler
+  family by their bytes rather than by device and inode, so identical tools
+  at the same paths reuse the restored managed targets and proof receipts
+  (#421). Each tool is read once per machine and then trusted while its
+  complete stat stamp is unchanged (ADR 0041 note). Existing receipts from
+  earlier Sail builds are not reused after this upgrade.
+
+- Stop `sail verify` rebuilding where `cargo verus verify` is a no-op. After a
+  `src/bin` file was added and removed, every call rebuilt the build-script
+  packages and re-verified vstd (about 26 s); it is a no-op again (#401). A new
+  or removed file that no `mod` names no longer re-verifies the crate, and
+  adding a binary verifies only that binary (#398). The call after a newly
+  discovered `include_str!` file outside the workspace no longer rebuilds the
+  build-script packages and vstd (#399).
+- Build Sail without any private dependency. Native temporal jobs, which link
+  the private D.I.V.E. library, moved to a separate extension workspace
+  (`extensions/temporal`) that builds the temporal-enabled `sail` and
+  `sail-runtime-worker`. Release archives and builds of the main workspace no
+  longer contain the worker; their `sail runtime capabilities` reports
+  temporal jobs unavailable ("native temporal support is not included in this
+  sail build"). This replaces the `temporal` Cargo feature. See
+  docs/private-dependencies.md.
+- Cut managed `sail verify` setup on edits and unchanged reruns of projects
+  with build scripts: a Current run's Cargo unit-graph and compiler cfg query
+  is reused while the proof context, metadata, manifests and lockfile are
+  unchanged; the after-run `cargo metadata` is skipped while every path it
+  reads keeps its stamp; and build-script input snapshots are read once per
+  run while their paths are unchanged.
+- Reuse the solver's identity across handshakes (ADR 0082 amendment). The
+  daemon no longer launches `z3 --version` and reads the whole Z3 executable
+  for every Verus solver session while the executable's complete stat stamp
+  (device, inode, size, mode, mtime, ctime) is unchanged and its last change is
+  at least 2 s old. A replaced or rewritten solver, even with its mtime
+  restored, is identified afresh. A fresh project's first `sail verify` is
+  about 0.67 s faster (31.13 to 30.46 s, native Linux) and the daemon's CPU
+  per Vest edit falls from 3.4 to 1.0 s.
+
+- Document caching Sail in CI ([guide](docs/ci-cache.md)): which directories
+  to persist, a GitHub Actions example, and measured fresh-clone results on
+  Anvil and CapybaraKV.
 - Replay an unchanged `sail verify` (ADR 0082). A call identical to an earlier
   one that ended Current without starting a verifier prints that call's
   output (only Cargo's `Finished` time is regenerated) without running Cargo,
@@ -157,6 +242,23 @@ semantic versioning once the API is published.
   apply and why: an unqualified dependency profile, a target too cheap to
   retain, or an evicted revision. `SAIL3138`'s alignment advice now says the
   vstd default-features step is needed too.
+- Stop `sail watch` cancelling a run for a notification that arrives late or
+  repeats an edit the run already includes: a notification now restarts only
+  when the inputs differ from the snapshot recorded as the run was submitted.
+  In content-scan mode, refreshing the watched inputs after a completed run no
+  longer adopts an edit the next scan had not yet reported.
+- Make `sail watch` see every input edit within about two seconds on macOS
+  and Linux, even when macOS drops the edit's notification. A metadata stamp
+  of the inputs is now compared every two seconds alongside native events,
+  and the inputs are rehashed only when a stamp changes (about 19 ms of CPU
+  per pass on Vest's 3,458 entries).
+- Cut about 2.5 s from a first run on a new project or a fresh clone (native
+  Linux: `sail new` plus the first `sail verify` 13.7 → 11.2 s, IronKV 22.4 →
+  19.9 s). Shipped-proof admission hashes the standard-library source tree on
+  several workers while its sysroot query runs, overlaps its remaining
+  complete reads, and `sail verify` notices a newly started daemon within
+  about a millisecond instead of 25 ms. Every check still reads the same
+  bytes; verdicts and output are unchanged.
 - Sign a GitHub build-provenance attestation for each release archive, and have
   `scripts/install.py` verify it with `gh attestation verify` when GitHub CLI
   is signed in. A failed attestation refuses installation; without `gh` the
@@ -167,11 +269,8 @@ semantic versioning once the API is published.
   receipt package in the run.
 - Overlap path resolution and link checks in managed input mutation stamps; an
   unchanged Anvil rerun spends about 38 ms (2.5%) less in setup.
-- Make native temporal jobs an optional `temporal` build feature (default on).
-  `cargo build -p sail-cli --no-default-features` builds a complete
-  `sail verify` that compiles no D.I.V.E. code. A malformed or unreadable
-  `sail-runtime-worker.json` now only makes temporal jobs unavailable instead
-  of preventing `sail serve` from starting.
+- A malformed or unreadable `sail-runtime-worker.json` now only makes
+  temporal jobs unavailable instead of preventing `sail serve` from starting.
 - Report a stored managed result as Unknown, not Current, in job status, MCP
   and repair acceptance once the Sail, Verus, Cargo or rustc installation it was
   recorded against has changed.

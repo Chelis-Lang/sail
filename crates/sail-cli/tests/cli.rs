@@ -12,8 +12,7 @@ fn sail(args: &[&str]) -> Output {
 
 /// The user help lists the supported commands. `sail bench` needs
 /// `sail-bench`, which only a source build has, and experimental commands
-/// are not part of the supported set, so the help leaves them out;
-/// `repair-check` stays listed, marked experimental.
+/// are not part of the supported set, so the help leaves them out.
 #[test]
 fn help_lists_every_user_command() {
     let output = sail(&["--help"]);
@@ -28,6 +27,9 @@ fn help_lists_every_user_command() {
         "new",
         "verify",
         "repair-check",
+        "explain",
+        "baseline",
+        "compare",
         "engine",
         "watch",
         "jobs",
@@ -37,17 +39,10 @@ fn help_lists_every_user_command() {
     ] {
         assert!(listed.contains(&cmd), "help is missing `{cmd}`:\n{text}");
     }
-    for cmd in [
-        "bench",
-        "explain",
-        "baseline",
-        "compare",
-        "serve",
-        "fragility",
-    ] {
+    for cmd in ["bench", "serve", "fragility", "assurance"] {
         assert!(!listed.contains(&cmd), "help lists `{cmd}`:\n{text}");
     }
-    assert!(text.contains("repair-check  (experimental)"), "{text}");
+    assert!(!text.contains("experimental"), "{text}");
 }
 
 /// `--version` reports the build's `SAIL_VERSION` when set (release builds),
@@ -377,13 +372,24 @@ fn every_command_has_help() {
             assert!(!output.stdout.is_empty(), "{args:?}");
         }
     }
-    // Experimental commands keep their help, which says they are experimental.
+    // Supported commands' help carries no experimental note.
     for args in [
         &["repair-check", "--help"][..],
         &["explain", "--help"],
         &["baseline", "--help"],
         &["compare", "--help"],
-        &["serve", "--help"],
+    ] {
+        let output = sail(args);
+        assert_eq!(output.status.code(), Some(0), "{args:?}");
+        assert!(
+            !String::from_utf8_lossy(&output.stdout).contains("EXPERIMENTAL"),
+            "{args:?}"
+        );
+    }
+    // Experimental commands keep their help, which says they are experimental.
+    for args in [
+        &["serve", "--help"][..],
+        &["assurance", "--help"],
         &["fragility", "--help"],
         &["cache", "keygen", "--help"],
         &["cache", "trust", "list", "--help"],

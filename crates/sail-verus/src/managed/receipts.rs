@@ -116,6 +116,13 @@ pub(crate) struct Invocation {
     /// Original proof provenance for compiler-boundary dependency replay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dependency_build: Option<sail_api::project::DependencyBuildOrigin>,
+    /// Every variable rustc tracked in both compiler phases of the run that
+    /// established this result, ghost code included (#386): name and the
+    /// value the compiler saw. `None` when it was not observed; such an
+    /// invocation never authorizes reuse
+    /// ([`super::ghost_environment`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compiler_environment: Option<super::ghost_environment::Environment>,
 }
 
 impl Invocation {
@@ -137,6 +144,19 @@ impl Invocation {
             _ => false,
         }
     }
+    /// Whether the environment the compiler read in every phase is known: an
+    /// observed verification-phase environment, or a replay of Sail's shipped
+    /// dependency build, whose own admission binds the recorded compiler
+    /// environment of that pinned source (ADR 0048).
+    pub(crate) fn environment_observed(&self) -> bool {
+        self.compiler_environment.is_some() || self.dependency_build.is_some()
+    }
+
+    /// The names the compiler tracked, for a receipt's declared environment.
+    pub(crate) fn compiler_environment_names(&self) -> impl Iterator<Item = &String> {
+        self.compiler_environment.iter().flat_map(BTreeMap::keys)
+    }
+
     /// Whole proofs retain their success authority. A partial report has a
     /// separate authority: exact recorded arguments, successful verifier output
     /// and no source-engine fallback. It never turns `success` into true.
@@ -197,10 +217,12 @@ pub(crate) struct Receipt {
     pub declared_environment: BTreeMap<String, Option<Vec<u8>>>,
 }
 
-/// Version seven binds the original selected process history and archive origin.
-// Older receipts may lack this producer binding or contain incomplete/mapped
-// environment declarations. Preserve their reports, but refuse proof reuse.
-pub(crate) const RECEIPT_VERSION: u32 = 7;
+/// Version eight requires both original selected-producer history and the
+/// observed compiler environment. The two unmerged lineages independently used
+/// version seven for different contracts; neither older encoding is reusable.
+/// Earlier receipts also predate private-settings and option isolation
+/// (#385, #393). Preserve historical reports while requiring a fresh proof.
+pub(crate) const RECEIPT_VERSION: u32 = 8;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
@@ -238,6 +260,7 @@ impl Receipt {
             && partial_args.is_none_or(super::runner::focused)
             && self.version == RECEIPT_VERSION
             && self.producer_history_intact()
+            && self.invocation.environment_observed()
             && super::environment::unchanged(&self.declared_environment)
             && read::<Commit>(&self.committed).is_some_and(|commit| {
                 commit.context == self.context
@@ -623,6 +646,7 @@ mod tests {
                 success: true,
                 dependencies: BTreeMap::new(),
                 dependency_build: None,
+                compiler_environment: Some(BTreeMap::new()),
             },
             artifact_hashes: artifact_hashes(&[path.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),
@@ -720,6 +744,27 @@ mod tests {
         );
         assert!(receipt.valid("ctx"));
         assert!(!declared.valid("ctx"));
+        // An invocation whose compiler environment was not observed may have
+        // read a ghost-only variable no declaration names (#386).
+        let mut unobserved = receipt.clone();
+        unobserved.invocation.compiler_environment = None;
+        let unobserved = unobserved.seal();
+        assert!(
+            json(
+                &unobserved.committed,
+                &Commit {
+                    context: "ctx".to_owned(),
+                    run_id: "run".to_owned(),
+                    receipt_checksums: BTreeSet::from([
+                        receipt.checksum.clone(),
+                        unobserved.checksum.clone()
+                    ]),
+                }
+            )
+            .is_ok()
+        );
+        assert!(receipt.valid("ctx"));
+        assert!(!unobserved.valid("ctx"));
         let mut corrupt = receipt.clone();
         corrupt.invocation.report.mode = "other".to_owned();
         assert!(!corrupt.valid("ctx"));

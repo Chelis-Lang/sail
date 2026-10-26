@@ -224,7 +224,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--part', choices=['loop', 'loader', 'flags', 'noop', 'extra'], required=True)
+    parser.add_argument('--part', choices=['loop', 'loader', 'flags', 'extra'], required=True)
     parser.add_argument('--exit', type=int, required=True)
     parser.add_argument('--sail', type=Path, required=True)
     args = parser.parse_args()

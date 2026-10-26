@@ -318,10 +318,15 @@ def verify(root):
     assert set(index) == {'schema', 'proof', 'files', 'directories'}
     assert index['schema'] == 1 and index['files'] == inventory(root)
     assert index['directories'] == directories(root)
-    assert set(index['files']).issuperset({'bin/sail', 'bin/sail-z3', 'bin/sail-runtime-worker', 'bin/sail-runtime-worker.json'})
-    worker = json.loads((root/'bin/sail-runtime-worker.json').read_bytes())
-    assert worker['version'] == 1 and worker['protocol'] == 1
-    assert worker['sha256'] == digest(root/'bin/sail-runtime-worker')
+    assert set(index['files']).issuperset({'bin/sail', 'bin/sail-z3'})
+    # Only the internal temporal-enabled variant (ADR 0083) has the native
+    # worker, and then always with its exact installation manifest.
+    worker_files = {'bin/sail-runtime-worker', 'bin/sail-runtime-worker.json'}
+    assert not (worker_files & set(index['files'])) or worker_files <= set(index['files'])
+    if worker_files <= set(index['files']):
+        worker = json.loads((root/'bin/sail-runtime-worker.json').read_bytes())
+        assert worker['version'] == 1 and worker['protocol'] == 1
+        assert worker['sha256'] == digest(root/'bin/sail-runtime-worker')
     assert set(index['files']).issuperset({REPLIES+'/vstd.pack', REPLIES+'/release.pub'})
     check_replies(root/REPLIES)
     bundle = root/'deps'/index['proof']['runtime']

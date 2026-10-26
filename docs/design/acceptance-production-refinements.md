@@ -107,6 +107,11 @@ its controls; every job must succeed. Its
 native wrapper takes 197 seconds on the qualified Linux host; the hosted
 production-refinement and model-proof jobs also pass.
 
+The merged draft retains proof/refinement CI wiring pending the owner's
+resolution of the policy conflict: main's #434 makes these checks local-only,
+while the session's AGENTS.md requires them in CI. Neither policy is selected
+by this source reconciliation; final workflow policy remains an open gate.
+
 The runner captures canonical Git blobs with inherited Git redirection and
 replace refs disabled. Fixed drivers compile captured source, never reopened
 working paths. It validates the pinned stock archive, every extracted runtime

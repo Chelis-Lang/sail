@@ -16,12 +16,13 @@ experimental features and validation limits are identified explicitly.
 | Check scalar contracts on ordinary Rust functions with explicit requirement IDs | [Neutral contracts](neutral-contracts.md), [source specification](spec/neutral-contracts.md) |
 | Verify, reuse complete reports, watch edits, inspect and cancel jobs | [Workspace verification](workspace-verification.md) |
 | Restore a previously verified revision after undoing an edit | [Instant revert](instant-revert.md), with qualified platform/profile and cost limits |
-| Check one repair, follow proof events, explain failures and compare saved baselines | [Walkthrough](proof-repair-walkthrough.md), [repair contract](proof-repair.md) — M7 remains experimental |
+| Check one repair, follow proof events, explain failures and compare saved baselines | [Walkthrough](proof-repair-walkthrough.md), [repair contract](proof-repair.md) |
 | Integrate an agent through stdio MCP | [MCP tools](mcp.md) |
 | Execute raw SMT transcripts through the pinned runtime, shared daemon or MCP | [Runtime](runtime.md), [version-one protocol](spec/runtime.md) |
 | Read job Status and Results from Rust | [Result client](result-client.md) |
 | Run isolated native model checks, simulation and independent trace validation from Rust | [Temporal jobs](temporal-jobs.md) |
 | Consume structured reports and provenance | [Output schema](output-schema.md) |
+| Persist Sail's caches between CI runs, with measured gains and a GitHub Actions example | [CI cache](ci-cache.md) |
 | Share signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
 | Interpret Current, Historical and Unknown evidence | [Freshness](freshness.md) |
 | Understand trust boundaries and opt-in verdict differences | [Trust](trust.md), [divergences](divergences.md) |
@@ -38,8 +39,9 @@ phases and their local entry points. The [charter](CHARTER.md) and its correctio
 the correctness contract. [ADRs](decisions/README.md) explain implementation
 decisions; proposed candidates are distinguished from accepted decisions.
 
-[Private dependencies](private-dependencies.md) describes ephemeral read-only
-authentication for the pinned D.I.V.E. source dependency.
+[Private dependencies](private-dependencies.md) describes the temporal
+extension workspace, the only build that needs the private D.I.V.E. source,
+and its ephemeral read-only authentication.
 [Native worker validation](validation/dive-runtime-worker.md) records the
 focused checking, replay and process-isolation evidence and its limits.
 [Combined production integration](validation/integration-production.md) records the

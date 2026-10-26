@@ -578,6 +578,7 @@ fn validated(
         || receipt.clone().seal().checksum != receipt.checksum
         || receipt.package_id != candidate.root
         || !receipt.invocation.success
+        || !receipt.invocation.environment_observed()
         || !complete(&receipt.invocation.report)
         || !producer_intact(entry, &manifest)
     {
@@ -1658,6 +1659,7 @@ mod tests {
                     },
                     run_id: "establishing-run".to_owned(),
                     dependency_build: None,
+                    compiler_environment: Some(std::collections::BTreeMap::new()),
                     report,
                     success: true,
                     dependencies: super::super::receipts::artifact_hashes(&[dep])
