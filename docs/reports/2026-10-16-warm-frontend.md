@@ -26,8 +26,8 @@ all daemon gets hitting; its samples do not establish a complete all-hit
 floor. These are frontend diagnostics, not managed-CLI timings, mutation-loop
 acceptance or qualification of a new runtime. No frontend reuse is selected.
 
-Raw stage logs and summaries:
-`s3://example-evidence-bucket/experiments/2026-10-24/sail-sprint-sprint-frontend.tgz`,
+Raw stage logs and summaries in the private evidence bucket:
+`experiments/2026-10-24/sail-sprint-sprint-frontend.tgz`,
 sha256 `2a6ee0fcffc9ab979bb72574ce024cd1b0388353d3c7a4c99ae9c1af90fec975`.
 The initial launch refused an incorrect stock-install root before verification;
 the corrected run above completed. The older experiments below retain their

@@ -142,16 +142,24 @@ fn project_guard(
     digests: &BTreeMap<PathBuf, String>,
     bindings: &BTreeMap<PathBuf, PathBuf>,
 ) -> Option<SnapshotGuard> {
+    let selected = snapshot_facts(digests, bindings);
+    project_guard_facts(observed, revision, &selected)
+}
+
+fn project_guard_facts(
+    observed: &InputSnapshot,
+    revision: &str,
+    selected: &[InputFact<'_>],
+) -> Option<SnapshotGuard> {
     let capture = observed.capture.as_ref()?;
     let source = snapshot_facts(&observed.digests, &observed.bindings);
-    let selected = snapshot_facts(digests, bindings);
     let (source_order, source_inverse) = proposed_order(&source);
-    let (selected_order, selected_inverse) = proposed_order(&selected);
+    let (selected_order, selected_inverse) = proposed_order(selected);
     let guard = capture.guard.project(
         observed.revision.as_bytes(),
         revision.as_bytes(),
         &source,
-        &selected,
+        selected,
         &source_order,
         &source_inverse,
         &selected_order,
@@ -699,19 +707,133 @@ fn stamped_snapshot(
     )
 }
 
+/// The selected namespace, validated against one complete source observation.
+struct Projection {
+    workspace: PathBuf,
+    roots: Vec<PathBuf>,
+    files: BTreeSet<PathBuf>,
+    bindings: BTreeMap<PathBuf, PathBuf>,
+    ranges: Vec<PathBuf>,
+}
+
+impl Projection {
+    /// Borrow the exact selected digests in order; no input is reread or omitted.
+    fn reads<'a>(
+        &'a self,
+        observed: &'a InputSnapshot,
+    ) -> impl Iterator<Item = (&'a Path, Result<&'a str>)> {
+        let mut available = observed
+            .digests
+            .range(self.files.first().cloned().unwrap_or_default()..)
+            .peekable();
+        self.files.iter().map(move |path| {
+            while available.peek().is_some_and(|(key, _)| *key < path) {
+                available.next();
+            }
+            match available.peek().filter(|(key, _)| *key == path) {
+                Some((key, digest)) => (key.as_path(), Ok(digest.as_str())),
+                None => (
+                    path.as_path(),
+                    Err(Error::new("SAIL3101", "missing observed input")),
+                ),
+            }
+        })
+    }
+}
+
 /// Selects a subset of a complete walk without walking those directories
 /// again. The caller must check the original walk's mutation stamp after
 /// selection. Uncovered roots and aliases retain the ordinary fresh walk.
-#[allow(
-    clippy::too_many_lines,
-    reason = "The selected namespace and complete-byte projection are validated together."
-)]
 fn projected_snapshot(
     data: &Value,
     extras: &[PathBuf],
     cargo_home: Option<&Path>,
     observed: &InputSnapshot,
 ) -> Option<InputSnapshot> {
+    let projection = projected_selection(data, extras, cargo_home, observed)?;
+    let mut observation_paths: BTreeSet<PathBuf> = projection
+        .ranges
+        .iter()
+        .flat_map(|root| {
+            observed
+                .observation_paths
+                .range(root.clone()..)
+                .take_while(move |path| path.starts_with(root))
+                .cloned()
+        })
+        .collect();
+    // Merge ordered sets while keeping the observation's original spellings.
+    observation_paths = observation_paths
+        .union(&projection.files)
+        .cloned()
+        .collect();
+    observation_paths.extend(projection.bindings.keys().cloned());
+    let (revision, complete, digests) = fold_contents(
+        &projection.files,
+        &projection.bindings,
+        projection.reads(observed),
+    );
+    let capture = project_guard(observed, &revision, &digests, &projection.bindings)?;
+    Some(InputSnapshot {
+        workspace: projection.workspace,
+        revision,
+        roots: projection.roots,
+        excluded: observed.excluded.clone(),
+        complete,
+        observation_paths,
+        digests,
+        bindings: projection.bindings,
+        capture: Some(capture),
+    })
+}
+
+/// Only the logical revision of the same validated selection. The caller
+/// still checks the original whole-observation stamp after its batch; no
+/// incomplete snapshot or new proof authority is manufactured here.
+pub(super) fn snapshot_revision_projected(
+    data: &Value,
+    extras: &[PathBuf],
+    observed: &InputSnapshot,
+) -> Option<(String, bool)> {
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    let projection = projected_selection(data, extras, home.as_deref(), observed)?;
+    let (revision, complete) = fold_revision(
+        &projection.files,
+        &projection.bindings,
+        projection.reads(observed),
+        |_, _| {},
+    );
+    let selected: Vec<_> = projection
+        .reads(observed)
+        .map(|(path, read)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: read.map_or(InputValue::Unreadable, |hash| {
+                InputValue::Present(hash.as_bytes())
+            }),
+        })
+        .chain(projection.bindings.iter().map(|(alias, target)| InputFact {
+            namespace: 1,
+            name: alias.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
+        }))
+        .collect();
+    project_guard_facts(observed, &revision, &selected)?;
+    Some((revision, complete))
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "The selected namespace and aliases are validated together."
+)]
+fn projected_selection(
+    data: &Value,
+    extras: &[PathBuf],
+    cargo_home: Option<&Path>,
+    observed: &InputSnapshot,
+) -> Option<Projection> {
     if !observed.complete {
         return None;
     }
@@ -872,45 +994,14 @@ fn projected_snapshot(
         }
         files.insert(path);
     }
-    let mut observation_paths: BTreeSet<PathBuf> = ranges
-        .iter()
-        .flat_map(|root| {
-            observed
-                .observation_paths
-                .range(root.clone()..)
-                .take_while(move |path| path.starts_with(root))
-                .cloned()
-        })
-        .collect();
-    observation_paths.extend(files.iter().cloned());
-    observation_paths.extend(bindings.keys().cloned());
-    let (revision, complete, digests) = fold_contents(
-        &files,
-        &bindings,
-        files.iter().map(|path| {
-            (
-                path.as_path(),
-                observed
-                    .digests
-                    .get(path)
-                    .cloned()
-                    .ok_or_else(|| Error::new("SAIL3101", "missing observed input")),
-            )
-        }),
-    );
-    let capture = project_guard(observed, &revision, &digests, &bindings)?;
     roots.sort();
     roots.dedup();
-    Some(InputSnapshot {
+    Some(Projection {
         workspace,
-        revision,
         roots,
-        excluded: observed.excluded.clone(),
-        complete,
-        observation_paths,
-        digests,
+        files,
         bindings,
-        capture: Some(capture),
+        ranges,
     })
 }
 
@@ -1062,11 +1153,26 @@ fn contents_revision(
     fold_contents(files, bindings, digest_all_tagged(&paths))
 }
 
-fn fold_contents<'a>(
+fn fold_contents<'a, S: AsRef<str>>(
     files: &BTreeSet<PathBuf>,
     bindings: &BTreeMap<PathBuf, PathBuf>,
-    reads: impl IntoIterator<Item = (&'a Path, Result<String>)>,
+    reads: impl IntoIterator<Item = (&'a Path, Result<S>)>,
 ) -> (String, bool, BTreeMap<PathBuf, String>) {
+    let mut recorded = Vec::with_capacity(files.len());
+    let (revision, complete) = fold_revision(files, bindings, reads, |path, hash| {
+        recorded.push((path.to_owned(), hash.to_owned()));
+    });
+    (revision, complete, recorded.into_iter().collect())
+}
+
+/// Fold independently keyed outcomes in the original requested path order,
+/// optionally retaining digests. Revision-only callers avoid building a map.
+fn fold_revision<'a, S: AsRef<str>>(
+    files: &BTreeSet<PathBuf>,
+    bindings: &BTreeMap<PathBuf, PathBuf>,
+    reads: impl IntoIterator<Item = (&'a Path, Result<S>)>,
+    mut record: impl FnMut(&Path, &str),
+) -> (String, bool) {
     // A parallel result owns the path actually read alongside its outcome.
     // Validate all returned keys before reducing them to a keyed lookup.
     let reads: Vec<_> = reads.into_iter().collect();
@@ -1084,7 +1190,7 @@ fn fold_contents<'a>(
             namespace: 0,
             name: path.as_os_str().as_encoded_bytes(),
             value: read.as_ref().map_or(InputValue::Unreadable, |hash| {
-                InputValue::Present(hash.as_bytes())
+                InputValue::Present(hash.as_ref().as_bytes())
             }),
         })
         .collect();
@@ -1106,23 +1212,20 @@ fn fold_contents<'a>(
                 .map(|hash| (path.as_os_str().as_encoded_bytes(), hash))
         })
         .collect();
-    let mut recorded = BTreeMap::new();
     let mut hasher = Sha256::new();
-    // Logical revisions retain the original Path set order regardless of the
-    // worker completion order; no expected label is attached to a raw result.
     for path in files {
         let bytes = path.as_os_str().as_encoded_bytes();
         hasher.update((bytes.len() as u64).to_le_bytes());
         hasher.update(bytes);
         if let Some(hash) = by_name.get(bytes) {
-            hasher.update(hash.as_bytes());
-            recorded.insert(path.clone(), (*hash).clone());
+            hasher.update(hash.as_ref().as_bytes());
+            record(path, hash.as_ref());
         } else {
             hasher.update(b"unreadable");
         }
     }
     bind_paths(&mut hasher, bindings);
-    (format!("{:x}", hasher.finalize()), complete, recorded)
+    (format!("{:x}", hasher.finalize()), complete)
 }
 
 pub(super) fn bind_paths(hasher: &mut Sha256, bindings: &BTreeMap<PathBuf, PathBuf>) {
@@ -1672,6 +1775,16 @@ mod tests {
             .ok_or_else(|| std::io::Error::other("complete source projection refused"))?;
         assert_eq!(projected.revision, observed.revision);
         assert_eq!(projected.bindings, observed.bindings);
+        assert_eq!(
+            snapshot_revision_projected(&data, &[], &observed),
+            Some((projected.revision.clone(), projected.complete))
+        );
+        let mut unguarded = observed.clone();
+        unguarded.capture = None;
+        assert!(snapshot_revision_projected(&data, &[], &unguarded).is_none());
+        let mut rebound = observed.clone();
+        rebound.revision.push_str("-rebound");
+        assert!(snapshot_revision_projected(&data, &[], &rebound).is_none());
         std::fs::remove_file(&alias)?;
         std::os::unix::fs::symlink(root.join("bad.rs"), &alias)?;
         let fresh = snapshot_metadata(&data, &[]);
@@ -1694,29 +1807,18 @@ mod tests {
         let c = Path::new("c.rs");
         let files = BTreeSet::from([a.to_owned(), b.to_owned()]);
         let bindings = BTreeMap::new();
-        let (revision, complete, digests) = fold_contents(
-            &files,
-            &bindings,
-            [(a, Ok("one".into())), (b, Ok("two".into()))],
-        );
+        let (revision, complete, digests) =
+            fold_contents(&files, &bindings, [(a, Ok("one")), (b, Ok("two"))]);
         assert!(complete);
         assert_eq!(digests.len(), 2);
-        let reordered = fold_contents(
-            &files,
-            &bindings,
-            [(b, Ok("two".into())), (a, Ok("one".into()))],
-        );
+        let reordered = fold_contents(&files, &bindings, [(b, Ok("two")), (a, Ok("one"))]);
         assert_eq!(reordered, (revision, true, digests));
         for reads in [
-            vec![(a, Ok("one".into()))],
+            vec![(a, Ok("one"))],
+            vec![(a, Ok("one")), (b, Ok("two")), (c, Ok("extra"))],
+            vec![(a, Ok("one")), (a, Ok("two"))],
             vec![
-                (a, Ok("one".into())),
-                (b, Ok("two".into())),
-                (c, Ok("extra".into())),
-            ],
-            vec![(a, Ok("one".into())), (a, Ok("two".into()))],
-            vec![
-                (a, Ok("one".into())),
+                (a, Ok("one")),
                 (b, Err(Error::new("SAIL3101", "read failed"))),
             ],
         ] {
@@ -1864,6 +1966,25 @@ mod tests {
         assert_eq!(projected.roots, fresh.roots);
         assert_eq!(projected.bindings, fresh.bindings);
         assert_eq!(projected.excluded, fresh.excluded);
+        assert_eq!(
+            snapshot_revision_projected(&subset, &[], &observed),
+            Some((fresh.revision.clone(), fresh.complete))
+        );
+        // Also select the later disjoint range: earlier digests must never
+        // supply a later file's value or leak into its namespace.
+        let mut later = data.clone();
+        later["workspace_root"] = serde_json::json!(b);
+        later["packages"] = serde_json::json!([{"manifest_path":b.join("Cargo.toml")}]);
+        let projected = snapshot_metadata_observed(&later, &[], &observed, stamp.as_ref());
+        let fresh = snapshot_metadata(&later, &[]);
+        assert!(projected.complete && fresh.complete);
+        assert_eq!(projected.revision, fresh.revision);
+        assert_eq!(projected.digests, fresh.digests);
+        assert_eq!(projected.observation_paths, fresh.observation_paths);
+        assert_eq!(
+            snapshot_revision_projected(&later, &[], &observed),
+            Some((fresh.revision.clone(), fresh.complete))
+        );
         // A newly declared external include was absent from the observation.
         // It must be freshly read, including after another content change.
         let outside = root.join("external.rs");

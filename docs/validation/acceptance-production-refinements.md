@@ -5,14 +5,16 @@ checking on native macOS arm64 and Linux x86-64. Native pre-push correctness
 gates, hosted checks and full fast/standard conformance pass. The owner accepts
 the bounded native timing result below; broader release performance and the
 service-wide safety theorem remain open.
+These completed gates apply to checkpoint `fe8be9ee`. Integration with main's
+revision-only input projection is awaiting fresh native and hosted checks.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
 ## Checked source and runtime
 
 The frozen checkpoint is `3b1cb3623ef17a2c4a99bc8bd3e12e88f1ef63fb`.
-Subsequent evidence/test changes preserve its executable, model, manifest and
-runner bytes. The independent receipt binds every captured production Rust
+The evidence/test changes through `fe8be9ee` preserve its executable, model,
+manifest and runner bytes. The independent receipt binds every captured production Rust
 source and manifest, distinguishing checked bodies, declaration projections,
 reviewed forwarding and surrounding runtime source that remains unproved.
 
@@ -148,6 +150,7 @@ establishes a general slowdown. The owner accepts the bounded result on
 Raw original artifact:
 `example-evidence-bucket/experiments/2026-10-25/proof-362-merge-fe8be9ee-durable.tgz`.
 SHA-256: `5565452090c829ef098ee139aab4e4800d89fd6c488f9b7aca54fcb31555d8c8`.
-The final documentation update preserves all implementation, proof, manifest
-and checker bytes qualified here. Required hosted checks run again before the
-protected merge.
+The documentation-only checkpoint update preserves all implementation, proof,
+manifest and checker bytes qualified here. The later integration with main's
+revision-only projection changes native adapters and requires its own fresh
+qualification before the protected merge.

@@ -8,6 +8,9 @@ recorded separately. The owning
 [validation record](../validation/acceptance-production-refinements.md) separates
 checked source from accepted integration.
 
+Checkpoint `fe8be9ee` owns those completed gates. Integration with main's
+revision-only input projection is awaiting fresh native and hosted checks.
+
 The [acceptance design](evidence-acceptance-core.md) targets four independent
 risks: wrong query/reply association, stale input reuse, incomplete requested
 scope and misleading verified reports. This implementation connects selected
@@ -48,6 +51,13 @@ the correspondence; readers preserve the returned descriptor through admission
 and fold hashes only after keyed validation, in the original requested order.
 This is native adapter hardening. It does not prove that the inventory contains
 every compiler input or that the operating system observed an atomic snapshot.
+
+Revision-only projections borrow the original keyed digest observations rather
+than constructing an unused snapshot. They still invoke the checked complete
+read ledger and original-capture projection, retaining the worker-returned path
+with each outcome. The caller checks the source observation's original stamp
+after the complete projection batch. This adapter remains outside the pure
+source-shared theorem.
 
 ## Verification must actually run
 
