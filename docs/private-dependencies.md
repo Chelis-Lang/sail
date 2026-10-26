@@ -37,21 +37,24 @@ target/temporal/debug/sail runtime capabilities
 clippy and tests. `cargo xtask check-layering` checks both workspaces without
 resolving dependencies, so it needs no credential.
 
-## CI credential
+## Local check, not CI
 
-Only the `Temporal extension` job receives a credential. Create a
-fine-grained GitHub personal access token restricted to the private
-`Chelis-Lang/sail` and `Chelis-Lang/dive` repositories, with **Contents:
-read**, and save it as the Actions secret `SAIL_DEPENDENCY_READ_TOKEN` in Sail
-and Oyster. GitHub CLI can install secrets but cannot create such a token, and
-these repositories disable deploy keys, so create it in GitHub settings and
-install it directly; never send it in chat.
+Temporal jobs do not ship in 0.1.0, so Sail's CI does not build or test the
+extension, and no Sail CI job receives a private-dependency credential. Run
+`ci/local.sh extension` (with D.I.V.E. access) before pushing any change to
+`extensions/`, `sail-runtime::temporal` or the `TemporalBackend` interface,
+and put its result in the PR. Main-workspace CI cannot catch a break in the
+extension.
 
-Where the secret is unavailable, as on pull requests from forks, the job skips
-its steps, reports a notice and succeeds, so `CI completion` stays
-satisfiable. A skipped extension is not a passing extension: changes to the
-extension, `sail-runtime::temporal` or the backend contract need a run with
-the token.
+## Credential
+
+Existing credentials with access to both repositories work. For a dedicated
+one, create a fine-grained GitHub personal access token restricted to the
+private `Chelis-Lang/sail` and `Chelis-Lang/dive` repositories, with
+**Contents: read**, and set it as `SAIL_DEPENDENCY_READ_TOKEN` for the local
+command. Oyster's CI holds it as an Actions secret of the same name. GitHub
+CLI cannot create such a token, and these repositories disable deploy keys, so
+create it in GitHub settings; never send it in chat.
 
 `ci/run.sh` gives the credential helper only to its `extension` and `release`
 steps. The secret is never a Docker build argument or embedded in an image,
