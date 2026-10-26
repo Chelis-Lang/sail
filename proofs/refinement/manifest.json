@@ -941,7 +941,7 @@
         {
           "name": "delivery-omit-actual-pipe-write",
           "source": "crates/sail-acceptance/src/query_delivery.rs",
-          "before": "                if !self.pipe.write(bytes) { self.healthy = false; return false; }",
+          "before": "                if !self.pipe.write(bytes) { self.healthy = false; self.capture=None; return false; }",
           "after": ""
         },
         {
@@ -995,14 +995,14 @@
         {
           "name": "delivery-write-after-seal",
           "source": "crates/sail-acceptance/src/query_delivery.rs",
-          "before": "if self.closed || self.sealed { self.healthy = false; return false; }",
-          "after": "if self.closed { self.healthy = false; return false; }"
+          "before": "if self.closed || self.sealed { self.healthy = false; self.capture=None; return false; }",
+          "after": "if self.closed { self.healthy = false; self.capture=None; return false; }"
         },
         {
           "name": "delivery-token-different-prefix",
           "source": "crates/sail-acceptance/src/query_delivery.rs",
-          "before": "Some(Delivered { prefix: self.delivered.duplicate() })",
-          "after": "Some(Delivered { prefix: self.initial.duplicate() })"
+          "before": "Some(Delivered { prefix: self.delivered.duplicate(), initial:self.initial.duplicate(), capture:self.capture.take() })",
+          "after": "Some(Delivered { prefix: self.initial.duplicate(), initial:self.initial.duplicate(), capture:self.capture.take() })"
         },
         {
           "name": "delivery-token-different-domain",

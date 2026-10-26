@@ -475,7 +475,7 @@ class SourceCaptureTests(unittest.TestCase):
             (CHECKER.KEY_NATIVE, b"command: self.frame.freeze(),", b"command: hidden::checkpoint(),"),
             (CHECKER.KEY_NATIVE, b"Arc::ptr_eq(&self.owner, &command.owner)", b"true"),
             (CHECKER.KEY_NATIVE, b".validate_bindings(&checkpoints, &frames, &order, &inverse)", b".validate_bindings(&checkpoints, &frames, &inverse, &order)"),
-            ("crates/sail-shim/src/cached.rs", b"publication.validate_pairs(&pairs)", b"true"),
+            ("crates/sail-shim/src/cached.rs", b"    publication.validate_pairs(&pairs)\n}", b"    true\n}"),
             ("crates/sail-shim/src/cached.rs", b"let fresh = all.advance_replay();", b"let fresh = true;"),
             ("crates/sail-shim/src/cached.rs", b"self.input.charge(bytes.len())", b"true"),
         ):

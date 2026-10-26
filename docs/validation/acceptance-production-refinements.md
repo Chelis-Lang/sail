@@ -71,6 +71,7 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `e7f4dbc6` | Expanded query capture selftests | Refused three stale delivery mutation contexts and one ambiguous native-test source fragment before positive discovery; contexts are updated to preserve their original mutations, with no check or scope relaxation |
 | 2026-10-26 | `fe8be9ee` | Detached merge cost guard | Stopped on a +4.09% external proof-edit median; all correctness gates pass. Retained samples expose 50 ms process-wait polling and a smaller internal timing difference; attribution remains unprofiled. Owner accepts this bounded result |
 | 2026-10-25 | Query refinement before `953f74a6` | Closed-stderr solver regression | Repeated five-second timeout; captured shim stack and open reader FD while producer blocked writing stderr; fixed by closing the failed reader before joining. No false proof demonstrated |
 | 2026-10-25 | Integration development source | Stock-driver compatibility | Unsupported proof-envelope/type and inventory mismatches refused; corrected without scope, resource or timeout relaxation; not qualification |
