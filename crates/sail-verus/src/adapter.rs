@@ -1174,15 +1174,28 @@ pub(crate) fn engine_output<'a>(
     let available = crate::engine::runtime_cargo_features();
     let missing = crate::engine::required_feature(captured.stderr(), &available)
         .or_else(|| crate::engine::required_feature(captured.stdout(), &available));
-    if missing.is_none()
-        && captured.observation().is_some()
-        && captured.directory() == Some(dir)
-        && crate::engine_events::completed(
-            &dir.join("engine.events.jsonl"),
-            captured.stdout(),
-            captured.status().code(),
-        )
-    {
+    let available_bytes = available
+        .iter()
+        .map(|feature| feature.as_bytes().to_vec())
+        .collect::<Vec<_>>();
+    let (protocol, documents) = crate::engine_events::completion_candidates(
+        &dir.join("engine.events.jsonl"),
+        captured.stdout(),
+    );
+    let trusted = captured.directory() == Some(dir)
+        && captured.observation().is_some_and(|observed| {
+            matches!(
+                sail_acceptance::authority::engine_decision(
+                    observed,
+                    &protocol,
+                    &documents,
+                    missing.as_deref().map(str::as_bytes),
+                    &available_bytes
+                ),
+                sail_acceptance::authority::EngineDecision::Complete
+            )
+        });
+    if trusted {
         return Ok((captured, true));
     }
     if let Err(failure) = std::fs::write(dir.join("engine.failed.stdout"), captured.stdout())
@@ -2643,6 +2656,138 @@ mod tests {
         assert!(!trusted);
         assert_eq!(output.stdout, success);
         assert!(engine_directory.join("engine.failed.stdout").is_file());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    fn checked_feature_refusal(
+        captured: &attempts::CapturedChild<'_>,
+    ) -> std::result::Result<usize, Box<dyn std::error::Error>> {
+        use sail_acceptance::authority::{EngineCompletion, EngineDecision};
+        let original_directory = captured.directory().ok_or("original directory")?;
+        let observed = captured.observation().ok_or("actual observation")?;
+        let (protocol, documents) = crate::engine_events::completion_candidates(
+            &original_directory.join("engine.events.jsonl"),
+            captured.stdout(),
+        );
+        assert_eq!(
+            sail_acceptance::authority::engine_completion(
+                &protocol,
+                &documents,
+                captured.stdout(),
+                Some(0)
+            ),
+            EngineCompletion::Complete
+        );
+        let empty = Vec::new();
+        let missing = crate::engine::required_feature(captured.stdout(), &[])
+            .ok_or("native feature decoder")?;
+        let decision = sail_acceptance::authority::engine_decision(
+            observed,
+            &protocol,
+            &documents,
+            Some(missing.as_bytes()),
+            &empty,
+        );
+        let EngineDecision::Declined(declined) = decision else {
+            return Err("missing checked decline".into());
+        };
+        assert_eq!(declined.observed_attempt().exit(), Some(0));
+        assert_eq!(
+            declined.completion_reason(),
+            &EngineCompletion::MissingFeature
+        );
+        assert_eq!(
+            declined
+                .feature_refusal()
+                .as_ref()
+                .ok_or("feature token")?
+                .feature_name(),
+            b"singular"
+        );
+        for invalid in [b"bogus".as_slice(), b"singular`".as_slice(), b"".as_slice()] {
+            assert!(
+                sail_acceptance::authority::missing_engine_feature(observed, invalid, &empty)
+                    .is_none()
+            );
+        }
+        assert!(
+            sail_acceptance::authority::missing_engine_feature(
+                observed,
+                b"singular",
+                &[b"singular".to_vec()]
+            )
+            .is_none()
+        );
+        Ok(observed.reserved().slot())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn valid_protocol_missing_feature_uses_checked_raw_refusal_and_independent_fallback()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "sail-engine-feature-refusal-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root)?;
+        let log = InvocationLog {
+            directory: &root.join("starts"),
+            run_id: "run",
+            target: "demo",
+        };
+        let unit = test_attempt_unit();
+        let directory = root.join("attempts");
+        let mut attempts = attempts::Journal::new(log.run_id.as_bytes(), &unit, &directory);
+        let mut document: serde_json::Value = serde_json::from_slice(include_bytes!(
+            "../tests/fixtures/engine-terminal/success.json"
+        ))?;
+        document["diagnostic"] =
+            "Please cargo build with `--features singular` to use integer_ring attribute".into();
+        let stdout = serde_json::to_vec(&document)?;
+        std::fs::write(
+            root.join("engine.events.jsonl"),
+            include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
+        )?;
+        let captured = capture_engine(&log, &mut attempts, &stdout, "0")?;
+        let original_directory = captured.directory().ok_or("original directory")?.to_owned();
+        let original_slot = checked_feature_refusal(&captured)?;
+        let mut stock = Command::new("/bin/sh");
+        stock.args([
+            "-c",
+            "printf 'independent fallback reply'; printf 'original stock diagnostic' >&2; exit 1",
+        ]);
+        let (output, trusted) = engine_output(
+            &original_directory,
+            |_| stock,
+            captured,
+            &log,
+            &mut attempts,
+        )?;
+        assert!(!trusted);
+        assert_eq!(output.status().code(), Some(1));
+        assert_eq!(output.stdout(), b"independent fallback reply");
+        assert_eq!(output.stderr(), b"original stock diagnostic");
+        assert!(
+            output
+                .observation()
+                .ok_or("fallback observation")?
+                .reserved()
+                .slot()
+                > original_slot
+        );
+        let fallback = output.directory().ok_or("fallback directory")?;
+        assert_ne!(fallback, original_directory);
+        assert_eq!(
+            std::fs::read(fallback.join(crate::engine::MISSING_FEATURE))?,
+            b"singular"
+        );
+        assert_eq!(
+            std::fs::read(original_directory.join("verus.stdout"))?,
+            stdout
+        );
+        assert!(original_directory.join("engine.events.jsonl").is_file());
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

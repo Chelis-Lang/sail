@@ -90,6 +90,20 @@ and freshly reobserves every independently validated original declaration;
 the complete native managed phase now passes. The combined gate remains
 pending, and the ghost-only missing-input defect remains separate.
 
+The selected-history candidate also exposes three distinct migration/archive
+issues, without a demonstrated false mathematical proof: the arena depended on
+removable original producer files
+([#409](https://github.com/Chelis-Lang/sail/issues/409)); the Receipt 7 transition
+retained the old daemon producer revision
+([#410](https://github.com/Chelis-Lang/sail/issues/410)); and the new archived
+selected/predecessor validator initially omitted supported schema checks
+([#411](https://github.com/Chelis-Lang/sail/issues/411)). Candidate corrections
+preserve independent original-history copies, withhold older job/baseline
+completion and check every reservation/terminal version. Their focused macOS
+controls pass; combined canonical proof capture, native Linux, differential
+conformance and cost qualification remain pending. These findings concern the
+PR implementation and are not attributed to an exact-main binary.
+
 Sequential retained file reads can assemble an old revision that never existed
 as one state during the check
 ([#387](https://github.com/Chelis-Lang/sail/issues/387)). The candidate adds

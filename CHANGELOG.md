@@ -18,6 +18,11 @@ semantic versioning once the API is published.
   the arena does not erase an already adopted run's history. Older entries and
   damaged or mismatched archive references refuse reuse.
 
+- Route engine completion and missing-feature fallback through the checked
+  decision over original observed output. A concrete missing-feature diagnostic
+  can refuse a normal-zero engine even with a complete protocol, preserving its
+  status and starting an independent fallback.
+
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
