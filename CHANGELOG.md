@@ -11,6 +11,10 @@ semantic versioning once the API is published.
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
+- Preserve literal Unicode whitespace, tabs and backslashes in compiler-declared
+  input filenames; validate filename decoding against rustc's exact space-only
+  encoding. Older inventories retain paths but withhold coverage because the
+  former decoder could omit a consumed input ([#408](https://github.com/Chelis-Lang/sail/issues/408)).
 
 - Use stock-Verus-checked operations for retained request enforcement and
   freshness projection, preserving diagnostics and refusing promotion of

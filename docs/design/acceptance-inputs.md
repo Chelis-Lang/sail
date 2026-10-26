@@ -739,6 +739,37 @@ retains the same verification scope and requires actual verification errors.
 Parse errors, dropped proof functions and resource-limit failures do not count
 as successful negative controls.
 
+## Exact compiler filename tokens
+
+The actual native `source_inputs::dependencies` decoder now preserves tabs,
+non-ASCII whitespace, hashes, colons and ordinary backslashes, and separates
+only unescaped ASCII spaces. Rust 1.99.1's
+[`escape_dep_filename`](https://github.com/rust-lang/rust/blob/1.99.1/compiler/rustc_interface/src/passes.rs)
+escapes only those spaces. The shared `dependency_filename_matches` operation
+checks each native proposal against that literal encoding. Its contract is an
+iff: a nonempty single-line name without NUL must encode to exactly the supplied
+bytes, with every byte and final length checked. The proof includes positive
+nonempty byte witnesses, rejection controls and ordinary guard-removal mutants.
+
+This fixes the demonstrated declaration-decoding defect
+([#408](https://github.com/Chelis-Lang/sail/issues/408)). The native compiler
+control creates both files invented by the former Unicode split, compiles an
+actual external include, and checks that the corrected inventory retains the
+consumed file and changes revision when it changes. A standalone
+[corpus control](../../corpus/repros/dep-info-filename-bytes/README.md) confirms
+that changing this external file changes the actual pinned compiler outcome.
+Source inventory schema 3 withholds older schema-2 coverage while preserving
+its known paths; an old incomplete decoder result cannot acquire corrected
+coverage merely by loading it under the new code.
+
+The token proof does not prove native character iteration, logical-rule
+selection, document framing, Serde projection or the compiler's input closure.
+Conservative tail checks refuse unsupported ordinary multiline records and
+foreign phony targets, but arbitrary newline names remain ambiguous in rustc's
+line-oriented text format. Non-UTF-8 path rendering is also lossy. Neither
+checksums nor a successful token check establish that no such physical input
+was consumed. These remain obligations for the stronger compiler provider.
+
 ## Remaining concrete refinement
 
 The completed lifecycle and source-shared identity obligations above leave these native/provider interfaces open:

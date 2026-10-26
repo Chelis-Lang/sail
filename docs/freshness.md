@@ -152,6 +152,18 @@ removing only the source inventory does not establish missing compiler reads.
 A complete independently checked compiler-input reestablishment protocol remains
 separate work.
 
+Compiler filename decoding follows rustc's space-only filename encoding:
+ASCII spaces are escaped; tabs, non-ASCII whitespace and ordinary backslashes
+remain literal. Every proposed decoded token is checked against its original
+encoded bytes. Unexpected multiline records, foreign phony targets and NUL or
+carriage-return token bytes withhold declaration coverage. Source inventory
+schema 3 retains older paths but rejects schema 2's coverage: the older decoder
+could omit a consumed input while recording different existing paths
+([#408](https://github.com/Chelis-Lang/sail/issues/408)). This does not establish
+that a first-line text record can represent every possible OS pathname.
+Arbitrary newline-containing filenames and rustc's lossy non-UTF-8 rendering
+still require a stronger input provider.
+
 This check establishes the observed declaration ledger. Cargo/rustc's guarantee
 that dep-info names all actual compiler inputs and the OS's process/filesystem
 semantics remain trusted boundaries; the check does not prove atomic compiler
