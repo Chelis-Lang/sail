@@ -24,6 +24,17 @@ impl Drop for Fixture {
 
 impl Fixture {
     fn new(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_scope(name, None)
+    }
+
+    fn partial(name: &str, args: &[String]) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_scope(name, Some(args))
+    }
+
+    fn with_scope(
+        name: &str,
+        partial_args: Option<&[String]>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!(
             "sail-noop-producer-history-{}-{name}",
             std::process::id()
@@ -60,21 +71,8 @@ impl Fixture {
         record_readback(&cache, &context, &manifest, &source)?;
         let artifact = family.join("target/libdemo.rmeta");
         std::fs::write(&artifact, b"owned fixture artifact")?;
-        let receipt = original_receipt(&context, &producer, &artifact, &manifest)?;
-        let target = TargetResult {
-            package_id: "demo".into(),
-            target: "demo".into(),
-            kind: vec!["lib".into()],
-            establishing_run: "original".into(),
-            reused: true,
-            scope_reuse: None,
-            requested: true,
-            complete: true,
-            report: receipt.invocation.report.clone(),
-            dependency_store: None,
-            dependency_build: None,
-        };
-        assert!(sail_api::acceptance::complete_target(&target).is_some());
+        let receipt = original_receipt(&context, &producer, &artifact, &manifest, partial_args)?;
+        let target = retained_target(&receipt, partial_args);
         let project = ProjectResult {
             kind: "sail-project-result".into(),
             schema_version: sail_api::project::SCHEMA_VERSION,
@@ -87,7 +85,7 @@ impl Fixture {
             targets: vec![target],
             execution: Execution {
                 verifier_invocations: 0,
-                reused_targets: 1,
+                reused_targets: u64::from(partial_args.is_none()),
                 wall_ms: 0.0,
             },
             notes: Vec::new(),
@@ -105,7 +103,7 @@ impl Fixture {
             shim: "/bin/sh".into(),
             z3: "/bin/sh".into(),
             socket: None,
-            args: Vec::new(),
+            args: partial_args.unwrap_or_default().to_vec(),
             force: false,
             attribution_logs: false,
             request_capture: None,
@@ -202,11 +200,35 @@ fn record_readback(
     Ok(())
 }
 
+fn retained_target(receipt: &receipts::Receipt, partial_args: Option<&[String]>) -> TargetResult {
+    let target = TargetResult {
+        package_id: "demo".into(),
+        target: "demo".into(),
+        kind: vec!["lib".into()],
+        establishing_run: "original".into(),
+        reused: partial_args.is_none(),
+        scope_reuse: partial_args.map(<[String]>::to_vec),
+        requested: true,
+        complete: partial_args.is_none(),
+        report: receipt.invocation.report.clone(),
+        dependency_store: None,
+        dependency_build: None,
+    };
+    if let Some(args) = partial_args {
+        assert!(sail_api::acceptance::complete_target(&target).is_none());
+        assert!(sail_api::acceptance::complete_exact_scope_report(&target.report, args).is_some());
+    } else {
+        assert!(sail_api::acceptance::complete_target(&target).is_some());
+    }
+    target
+}
+
 fn original_receipt(
     context: &Path,
     producer: &Path,
     artifact: &Path,
     manifest: &Path,
+    partial_args: Option<&[String]>,
 ) -> Result<receipts::Receipt, Box<dyn std::error::Error>> {
     let identity = receipts::TargetIdentity {
         manifest: manifest.to_owned(),
@@ -215,14 +237,20 @@ fn original_receipt(
         rustc_args_sha256: files::digest(b"exact fixture command"),
         cargo_name: None,
     };
-    let report = zero_function_report();
+    let mut report = zero_function_report();
+    if let Some(args) = partial_args {
+        report.command = args.to_vec();
+        for krate in &mut report.crates {
+            krate.verus.success = None;
+        }
+    }
     let stdout = serde_json::to_vec(&report)?;
     let selected =
         crate::adapter::attempts::fixture_history(producer, "original", &identity, &stdout, b"", 0)
             .ok_or("owned child history")?;
     let receipt = receipts::Receipt {
         version: receipts::RECEIPT_VERSION,
-        partial_args: None,
+        partial_args: partial_args.map(<[String]>::to_vec),
         producer_archive: None,
         checksum: String::new(),
         package_id: "demo".into(),
@@ -237,7 +265,7 @@ fn original_receipt(
             identity,
             run_id: "original".into(),
             report: report.clone(),
-            success: true,
+            success: partial_args.is_none(),
             dependencies: BTreeMap::new(),
             dependency_build: None,
         },
@@ -257,7 +285,12 @@ fn original_receipt(
         &receipts::target_path(&context.join("receipts"), "demo", "demo", &["lib".into()]),
         &receipt,
     )?;
-    assert!(receipt.valid("context"));
+    if let Some(args) = partial_args {
+        assert!(receipt.valid_scoped_in("context", &receipts::PhaseDigests::default(), Some(args)));
+        assert!(!receipt.valid("context"));
+    } else {
+        assert!(receipt.valid("context"));
+    }
     Ok(receipt)
 }
 
@@ -278,7 +311,10 @@ fn zero_function_report() -> sail_api::output::Report {
     report
 }
 
-fn prepare_record(fixture: &Fixture, key: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn prepare_pending(
+    fixture: &Fixture,
+    key: &str,
+) -> Result<Option<Pending>, Box<dyn std::error::Error>> {
     // Real wall-clock settling, not a fabricated old stamp or future start.
     std::thread::sleep(SETTLED + Duration::from_millis(50));
     let observation = fixture
@@ -291,7 +327,7 @@ fn prepare_record(fixture: &Fixture, key: &str) -> Result<(), Box<dyn std::error
     assert_eq!(observation.len(), 3);
     let identity = vec![PathBuf::from("/bin/sh")];
     let original_request = fixture.request("warm-noop-record");
-    let pending = prepare(Facts {
+    Ok(prepare(Facts {
         key,
         cache: &fixture.config.cache,
         start: SystemTime::now(),
@@ -308,9 +344,90 @@ fn prepare_record(fixture: &Fixture, key: &str) -> Result<(), Box<dyn std::error
         siblings: Vec::new(),
         result: &fixture.project,
         original_request: &original_request,
-    })
-    .ok_or("actual replay preparation")?;
+    }))
+}
+
+fn prepare_record(fixture: &Fixture, key: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let pending = prepare_pending(fixture, key)?.ok_or("actual replay preparation")?;
     pending.commit(b"original stdout".to_vec(), Vec::new());
+    Ok(())
+}
+
+#[test]
+fn exact_partial_replay_preserves_scope_and_never_becomes_a_whole_proof()
+-> Result<(), Box<dyn std::error::Error>> {
+    let args = vec!["--".into(), "--verify-module".into(), "m".into()];
+    let mut fixture = Fixture::partial("exact-partial", &args)?;
+    let key = key(&fixture.config, true).ok_or("partial replay key")?;
+    prepare_record(&fixture, &key)?;
+    let replayed = fixture.replay(&key).ok_or("exact partial replay")?;
+    assert_eq!(replayed.result.targets, fixture.project.targets);
+    assert_eq!(replayed.result.execution.reused_targets, 0);
+    assert!(!replayed.result.targets[0].complete);
+    assert!(!replayed.result.targets[0].reused);
+    assert_eq!(replayed.result.targets[0].scope_reuse.as_ref(), Some(&args));
+    assert_eq!(replayed.result.targets[0].establishing_run, "original");
+    assert!(sail_api::acceptance::complete_target(&replayed.result.targets[0]).is_none());
+    assert!(sail_api::acceptance::complete_selection(&replayed.result).is_none());
+
+    // A caller with a different independent scope cannot transfer this record,
+    // even if it mistakenly supplies the old key. Proper keys differ as well.
+    fixture.config.args[2] = "another-module".into();
+    assert_ne!(super::key(&fixture.config, true).as_ref(), Some(&key));
+    assert!(fixture.replay(&key).is_none());
+    fixture.config.args.clear();
+    assert_ne!(super::key(&fixture.config, true).as_ref(), Some(&key));
+    assert!(fixture.replay(&key).is_none());
+    fixture.config.args.clone_from(&args);
+    assert!(fixture.replay(&key).is_some());
+
+    // An overall Cargo failure is not replayable even when its individual
+    // retained partial receipt is otherwise valid. Actual observations settle
+    // as in the positive preparation, so recent stamps cannot mask this guard.
+    fixture.project.exit_code = Some(1);
+    assert!(prepare_pending(&fixture, &key)?.is_none());
+    fixture.project.exit_code = Some(0);
+    assert!(prepare_pending(&fixture, &key)?.is_some());
+    Ok(())
+}
+
+#[test]
+fn exact_partial_replay_refuses_scope_flags_and_missing_original_history()
+-> Result<(), Box<dyn std::error::Error>> {
+    let args = vec!["--".into(), "--verify-module".into(), "m".into()];
+    let fixture = Fixture::partial("partial-refusals", &args)?;
+    let key = key(&fixture.config, true).ok_or("partial replay key")?;
+    prepare_record(&fixture, &key)?;
+    let path = record_path(&fixture.config.cache, &key);
+    let original = std::fs::read(&path)?;
+    for variant in [
+        "original-scope",
+        "retained-scope",
+        "whole-complete",
+        "whole-reuse",
+        "failed",
+        "old-version",
+    ] {
+        let mut record: Record = serde_json::from_slice(&original)?;
+        match variant {
+            "original-scope" => record.original_request.args[2] = "another-module".into(),
+            "retained-scope" => {
+                record.result.targets[0].scope_reuse =
+                    Some(vec!["--".into(), "--verify-root".into()])
+            }
+            "whole-complete" => record.result.targets[0].complete = true,
+            "whole-reuse" => record.result.targets[0].reused = true,
+            "failed" => record.result.exit_code = Some(1),
+            _ => record.version = VERSION - 1,
+        }
+        files::json(&path, &record)?;
+        assert!(fixture.replay(&key).is_none(), "{variant}");
+        std::fs::write(&path, &original)?;
+        assert!(fixture.replay(&key).is_some(), "restored after {variant}");
+    }
+    std::fs::remove_dir_all(&fixture.producer)?;
+    assert!(!fixture.receipt.producer_history_intact());
+    assert!(fixture.replay(&key).is_none());
     Ok(())
 }
 
