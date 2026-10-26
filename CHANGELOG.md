@@ -5,6 +5,15 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Stop reusing a proof after a file read only in ghost code changes. An
+  `include!`, `include_str!` or `include_bytes!` inside a `proof fn`, spec or
+  assertion left its file out of the crate's dep-info, so editing that file
+  so the proof fails kept the old receipt Current (#439, VI-0037). Sail now
+  declares the verification phase's files from the fork's report in the
+  unit's dep-info, with the checksum the compiler computed when Cargo checks
+  checksums, so Cargo and receipts treat them like any other source file.
+  Existing receipts are not reused after this upgrade.
+
 - Stop reusing a proof after an environment variable read only in ghost code
   changes. Verus's erased compilation leaves an `env!` or `option_env!` read
   in a `proof fn`, spec or assertion out of the crate's dep-info, so Sail

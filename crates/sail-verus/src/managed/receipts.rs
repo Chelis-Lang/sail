@@ -169,7 +169,8 @@ pub(crate) struct Receipt {
 /// and observation options reached the compiler (#385, #393), so their proof
 /// may be of a different program; none is reused.
 /// Version 7 requires the invocation's observed compiler environment (#386).
-pub(crate) const RECEIPT_VERSION: u32 = 7;
+/// Version 8 also requires its ghost-only files declared (#439).
+pub(crate) const RECEIPT_VERSION: u32 = 8;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {

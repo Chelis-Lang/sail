@@ -940,11 +940,11 @@ fn driver() -> Result<ExitCode> {
     let compiler_environment = (exit.success() && !engine_restarted)
         .then(|| {
             if let Some(observation) = &ghost {
-                observation.environment()
+                observation.observed()
             } else if let Some(attempt) = &retained {
-                attempt.compiler_environment()
+                attempt.compiler_reads()
             } else {
-                call.as_ref()?.compiler_environment()
+                call.as_ref()?.observed_reads()
             }
         })
         .flatten()
@@ -1005,17 +1005,17 @@ fn driver() -> Result<ExitCode> {
 }
 
 /// The environment rustc tracked in both phases of a successful verified
-/// compiler child, once its ghost-only reads are declared in the unit's
-/// dep-info ([`crate::managed::ghost_environment`]). `None` when they cannot
-/// be: the result then authorizes no reuse.
+/// compiler child, once its ghost-only reads (variables and files) are
+/// declared in the unit's dep-info ([`crate::managed::ghost_environment`]).
+/// `None` when they cannot be: the result then authorizes no reuse.
 fn declare_ghost_reads(
     args: &[OsString],
-    observed: crate::managed::ghost_environment::Environment,
+    observed: crate::managed::ghost_environment::Observed,
 ) -> Option<crate::managed::ghost_environment::Environment> {
     for path in crate::managed::ghost_environment::dep_info(args)? {
         crate::managed::ghost_environment::merge(&path, &observed)?;
     }
-    Some(observed)
+    Some(observed.environment)
 }
 
 /// The logging flags the managed driver adds to every verified target,

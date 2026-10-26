@@ -334,6 +334,15 @@ rebuild for it, and Sail does not re-verify for it. Declare such reads with
 
 ## What a proof receipt binds
 
+Files read only in ghost code count as the target's declared files too. An
+`include!`, `include_str!` or `include_bytes!` inside a proof is missing from
+the dep-info the erased compilation writes
+([VI-0037](verus-issues/VI-0037-ghost-file-reads-missing-from-dep-info.md),
+#439). Sail adds each file the fork reports for the verification phase to the
+unit's dep-info. Under Cargo's checksum freshness it also adds the checksum
+rustc computed of the bytes it read. A file without such a checksum refuses
+the receipt.
+
 Currentness compares every file of the selection's packages. A proof receipt
 is narrower: it is reused while the files that can change its target are
 unchanged. In a path package without a build script, after Sail has recorded
