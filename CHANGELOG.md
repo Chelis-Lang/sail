@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Require EOF and a complete partition of retained solver stdout before cache
+  publication; include response endpoints in the output buffer budget.
+
 - Create cache temporary files exclusively and clean only successfully owned
   writes, preserving independently owned existing names on failure.
 

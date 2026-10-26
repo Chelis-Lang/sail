@@ -860,3 +860,21 @@ terminal key. It still needs the actual output, termination and publication
 refinement. No unknown compiler context is represented as an empty context,
 and a write receipt never supplies solver truth. The broader service theorem
 and physical provider obligations remain open.
+
+## Owned stdout integration candidate
+
+The separate output candidate moves the actual retained stdout buffer into
+`query_output::Transcript`. Every parser interval must follow the previous
+endpoint in that same buffer and pass the existing response grammar. Actual
+zero-byte reads mark EOF; read/framing failures latch refusal. Publication
+requires consuming that owner with an exact partition of all retained bytes.
+The original served-reply comparisons, statistics policy, kill-on-divergence,
+forwarding and overflow paths remain in place. Endpoint storage participates in
+the native buffer budget alongside payload bytes.
+
+`Frame` and `CompleteOutput` attest byte intervals and coverage, not solver
+truth or normal termination. The existing process, input, quiet-stderr and
+pairing gates remain necessary. This source candidate has constructive and
+refusal source controls but no completed proof, native test, canonical capture,
+differential or cost qualification. It does not close #371/#372 or the service
+composition. No compiler context is supplied by an empty placeholder.

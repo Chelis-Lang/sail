@@ -86,6 +86,13 @@ loops share the former short anchor.
 
 ## Source and actual scope
 
+The separate owned-output source candidate adds `query_output` to canonical
+query capture, protects its private Transcript/Frame/CompleteOutput constructors
+and adds 16 whole-body controls. The source matrix requires 229 cases; its new
+query proof/function inventory is still pending discovery and no output proof,
+native test or combined gate is claimed. Native replay comparisons and failure
+handling remain required independently of output-byte coverage.
+
 The frozen `4bd22455` native attempt, including source bundle, full workspace,
 model/refinement logs and failed solver receipt, is preserved at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-gate-4bd22455-native.tgz`.
