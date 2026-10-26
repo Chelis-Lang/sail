@@ -71,6 +71,15 @@ impl Collision {
                 call.identity.cargo_name = observed["name"].as_str().map(str::to_owned);
                 call.identity.rustc_args_sha256 = digest(&serde_json::to_vec(&observed["args"])?);
                 call.report.crates[0].name = Some(name.into());
+                call.selected_attempt = crate::adapter::attempts::fixture_history(
+                    &paths.run,
+                    "run",
+                    &call.identity,
+                    b"actual fixture output",
+                    b"",
+                    0,
+                );
+                assert!(call.selected_attempt.is_some());
                 Ok(call)
             },
         );
@@ -133,6 +142,15 @@ fn colliding_cargo_names_preserve_failed_and_successful_targets() -> TestResult 
     fixture.calls[1].report.exit_code = Some(1);
     fixture.calls[1].report.crates[0].verus.success = Some(false);
     fixture.calls[1].report.crates[0].verus.errors = Some(1);
+    fixture.calls[1].selected_attempt = crate::adapter::attempts::fixture_history(
+        &fixture.paths.run,
+        "run",
+        &fixture.calls[1].identity,
+        b"actual failed fixture output",
+        b"",
+        1,
+    );
+    assert!(fixture.calls[1].selected_attempt.is_some());
     fixture.record(true)?;
     let (targets, missing) = fixture.records()?;
     assert!(missing.is_empty());

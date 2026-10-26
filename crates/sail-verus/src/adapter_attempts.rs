@@ -10,7 +10,7 @@ use sail_acceptance::authority::{
 };
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output};
 use std::sync::Arc;
 
@@ -27,9 +27,14 @@ pub(crate) struct Allocation<'a> {
     attempt: UnconfiguredAttempt<'a>,
     owner: Arc<()>,
     marker: File,
+    directory: PathBuf,
 }
 
 impl<'a> Allocation<'a> {
+    /// Exclusive payload namespace owned by this pre-spawn allocation.
+    pub(crate) fn directory(&self) -> &Path {
+        &self.directory
+    }
     pub(crate) fn run(&self) -> &'a [u8] {
         self.attempt.run()
     }
@@ -51,6 +56,8 @@ pub(crate) struct CapturedChild<'a> {
     status: ExitStatus,
     payload: Payload<'a>,
     unavailable_reason: Option<String>,
+    directory: Option<PathBuf>,
+    predecessor: Option<Box<CapturedChild<'a>>>,
 }
 
 impl CapturedChild<'_> {
@@ -68,6 +75,28 @@ impl CapturedChild<'_> {
     }
     pub(crate) fn status(&self) -> ExitStatus {
         self.status
+    }
+    pub(crate) fn selected_attempt(
+        &self,
+        identity: &crate::managed::TargetIdentity,
+    ) -> Option<SelectedAttempt> {
+        let predecessor = match &self.predecessor {
+            Some(previous) => Some(previous.selected_attempt(identity)?),
+            None => None,
+        };
+        SelectedAttempt::observed(
+            self.observation()?,
+            identity,
+            self.directory()?,
+            predecessor,
+        )
+    }
+    pub(crate) fn with_predecessor(mut self, previous: Self) -> Self {
+        self.predecessor = Some(Box::new(previous));
+        self
+    }
+    pub(crate) fn directory(&self) -> Option<&Path> {
+        self.directory.as_deref()
     }
     pub(crate) fn observation(&self) -> Option<&ObservedAttempt<'_>> {
         match &self.payload {
@@ -101,6 +130,8 @@ impl CapturedChild<'_> {
                 stderr: output.stderr,
             },
             unavailable_reason: None,
+            directory: None,
+            predecessor: None,
         }
     }
 
@@ -122,6 +153,7 @@ impl<'a> Journal<'a> {
     }
 
     /// Reserve and persist the slot before the caller can spawn its child.
+    #[cfg(test)]
     pub(super) fn reserve(&mut self, command: &Command) -> Option<ReservedAttempt<'a>> {
         let allocation = self.allocate()?;
         self.configure(allocation, command)
@@ -170,10 +202,24 @@ impl<'a> Journal<'a> {
                     )));
                 }
             };
+            // A payload directory is never reused, even when a failed or
+            // legacy producer left one without its allocation marker.
+            let directory = self.directory.join(attempt.slot().to_string());
+            match std::fs::create_dir(&directory) {
+                Ok(()) => (),
+                Err(failure) if failure.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(failure) => {
+                    return Err(error(format!(
+                        "cannot create compiler payload namespace {}: {failure}",
+                        directory.display()
+                    )));
+                }
+            }
             let mut allocation = Allocation {
                 attempt,
                 owner: Arc::clone(&self.owner),
                 marker,
+                directory,
             };
             // Preserve pre-marker histories too; never reinterpret an old closed
             // slot as a fresh launch. A concurrent legacy writer fails safe.
@@ -237,7 +283,7 @@ impl<'a> Journal<'a> {
         }
     }
 
-    pub(super) fn started(
+    pub(crate) fn started(
         &mut self,
         reserved: Option<ReservedAttempt<'a>>,
         child: &Child,
@@ -258,7 +304,7 @@ impl<'a> Journal<'a> {
 
     /// Always retains the same fresh bytes/status. Observation failures are sticky
     /// and remove evidence without changing the actual compiler result.
-    pub(super) fn capture(
+    pub(crate) fn capture(
         &mut self,
         running: Option<RunningAttempt<'a>>,
         output: Output,
@@ -294,8 +340,12 @@ impl<'a> Journal<'a> {
                 } else {
                     CapturedChild {
                         status,
+                        directory: Some(
+                            self.directory.join(observed.reserved().slot().to_string()),
+                        ),
                         payload: Payload::Observed(observed),
                         unavailable_reason: None,
+                        predecessor: None,
                     }
                 }
             }
@@ -341,18 +391,8 @@ impl<'a> Journal<'a> {
                 .collect(),
         };
         let reserved = allocation.attempt.configure(descriptor);
-        let descriptor = reserved.descriptor();
-        let unit = reserved.unit();
-        let bytes = serde_json::to_vec(&serde_json::json!({
-            "version": 1,
-            "run": reserved.run(),
-            "slot": reserved.slot(),
-            "unit": {"manifest":unit.manifest,"name":unit.name,
-                "crate_type":unit.crate_type,"cargo_name":unit.cargo_name},
-            "command": {"program":descriptor.program,"arguments":descriptor.arguments,
-                "directory":descriptor.directory,"overrides":descriptor.overrides},
-        }))
-        .map_err(|failure| error(failure.to_string()))?;
+        let bytes = serde_json::to_vec(&ReservedRecord::of(&reserved))
+            .map_err(|failure| error(failure.to_string()))?;
         std::fs::create_dir_all(self.directory).map_err(|failure| error(failure.to_string()))?;
         let path = self.directory.join(format!("{}.reserved", reserved.slot()));
         std::fs::OpenOptions::new()
@@ -369,19 +409,15 @@ impl<'a> Journal<'a> {
         Ok(reserved)
     }
 
-    /// Record the terminal observations while the exact payloads remain borrowed.
-    /// Payload hashes index the existing raw sidecars; they do not authenticate a run.
+    /// Persist exact payloads before the terminal record. Neither payload can
+    /// be overwritten by another attempt. Native protected-writer and filesystem
+    /// semantics remain separate from the source-shared observation reducer.
     fn persist_observed(&self, observed: &ObservedAttempt<'_>) -> Result<()> {
-        let bytes = serde_json::to_vec(&serde_json::json!({
-            "version": 1,
-            "run": observed.reserved().run(),
-            "slot": observed.reserved().slot(),
-            "pid": observed.pid(),
-            "exit": observed.exit(),
-            "stdout_sha256": crate::managed::digest(observed.stdout()),
-            "stderr_sha256": crate::managed::digest(observed.stderr()),
-        }))
-        .map_err(|failure| error(failure.to_string()))?;
+        let directory = self.directory.join(observed.reserved().slot().to_string());
+        persist_new(&directory.join("verus.stdout"), observed.stdout())?;
+        persist_new(&directory.join("verus.stderr"), observed.stderr())?;
+        let bytes = serde_json::to_vec(&TerminalRecord::of(observed))
+            .map_err(|failure| error(failure.to_string()))?;
         let path = self
             .directory
             .join(format!("{}.observed", observed.reserved().slot()));
@@ -399,8 +435,443 @@ impl<'a> Journal<'a> {
     }
 }
 
+fn persist_new(path: &Path, bytes: &[u8]) -> Result<()> {
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .and_then(|mut file| file.write_all(bytes).and_then(|()| file.sync_data()))
+        .map_err(|failure| {
+            error(format!(
+                "cannot persist compiler payload {}: {failure}",
+                path.display()
+            ))
+        })
+}
+
 fn error(message: impl Into<String>) -> Error {
     Error::new("SAIL3111", message)
+}
+
+/// Persisted identity of one actual observed child. Decoding is untrusted: every
+/// consumer joins this record to the independently supplied run/unit and reads
+/// the exact reserved/terminal/payload namespace. It never creates a live seal.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct SelectedAttempt {
+    key: String,
+    reserved: ReservedRecord,
+    terminal: TerminalRecord,
+    files: std::collections::BTreeMap<String, String>,
+    image_sha256: String,
+    predecessor: Option<Box<Self>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct UnitRecord {
+    manifest: Vec<u8>,
+    name: Vec<u8>,
+    crate_type: Vec<u8>,
+    cargo_name: Option<Vec<u8>>,
+}
+
+impl UnitRecord {
+    fn of(unit: &CompilerUnit) -> Self {
+        Self {
+            manifest: unit.manifest.clone(),
+            name: unit.name.clone(),
+            crate_type: unit.crate_type.clone(),
+            cargo_name: unit.cargo_name.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DescriptorRecord {
+    program: Vec<u8>,
+    arguments: Vec<Vec<u8>>,
+    directory: Option<Vec<u8>>,
+    overrides: Vec<(Vec<u8>, Option<Vec<u8>>)>,
+}
+
+impl DescriptorRecord {
+    fn of(value: &ProcessDescriptor) -> Self {
+        Self {
+            program: value.program.clone(),
+            arguments: value.arguments.clone(),
+            directory: value.directory.clone(),
+            overrides: value.overrides.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReservedRecord {
+    version: u32,
+    run: Vec<u8>,
+    slot: usize,
+    unit: UnitRecord,
+    command: DescriptorRecord,
+}
+
+impl ReservedRecord {
+    fn of(value: &ReservedAttempt<'_>) -> Self {
+        Self {
+            version: 1,
+            run: value.run().to_vec(),
+            slot: value.slot(),
+            unit: UnitRecord::of(value.unit()),
+            command: DescriptorRecord::of(value.descriptor()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TerminalRecord {
+    version: u32,
+    run: Vec<u8>,
+    slot: usize,
+    pid: u32,
+    exit: Option<i32>,
+    stdout_sha256: String,
+    stderr_sha256: String,
+}
+
+impl TerminalRecord {
+    fn of(value: &ObservedAttempt<'_>) -> Self {
+        Self {
+            version: 1,
+            run: value.reserved().run().to_vec(),
+            slot: value.reserved().slot(),
+            pid: value.pid(),
+            exit: value.exit(),
+            stdout_sha256: crate::managed::digest(value.stdout()),
+            stderr_sha256: crate::managed::digest(value.stderr()),
+        }
+    }
+}
+
+impl SelectedAttempt {
+    /// Only the actual complete observation supplies a new producer identity.
+    /// Protection of the directory and the OS image/pipe/wait joins remain native
+    /// obligations; neither an archive nor a normal exit establishes a proof.
+    pub(crate) fn observed(
+        value: &ObservedAttempt<'_>,
+        identity: &crate::managed::TargetIdentity,
+        directory: &Path,
+        predecessor: Option<Self>,
+    ) -> Option<Self> {
+        let origin = sail_acceptance::authority::AttemptIdentity::from_observed(value);
+        let reserved = ReservedRecord {
+            version: 1,
+            run: origin.run().to_vec(),
+            slot: origin.slot(),
+            unit: UnitRecord::of(origin.unit()),
+            command: DescriptorRecord::of(origin.descriptor()),
+        };
+        if reserved.unit != UnitRecord::of(&identity.compiler_unit()) {
+            return None;
+        }
+        let terminal = TerminalRecord {
+            version: 1,
+            run: origin.run().to_vec(),
+            slot: origin.slot(),
+            pid: origin.pid(),
+            exit: origin.exit(),
+            stdout_sha256: crate::managed::digest(value.stdout()),
+            stderr_sha256: crate::managed::digest(value.stderr()),
+        };
+        if let Some(previous) = &predecessor
+            && (previous.reserved.run != reserved.run
+                || previous.reserved.unit != reserved.unit
+                || previous.reserved.slot >= reserved.slot)
+        {
+            return None;
+        }
+        let image = Path::new(std::str::from_utf8(&reserved.command.program).ok()?);
+        if !image.is_absolute() {
+            return None;
+        }
+        let image_sha256 = crate::managed::file_digest(image).ok()?;
+        let files = selected_files(directory)?;
+        let candidate = Self {
+            key: identity.key(),
+            reserved,
+            terminal,
+            files,
+            image_sha256,
+            predecessor: predecessor.map(Box::new),
+        };
+        candidate
+            .records_match(directory.parent()?)?
+            .then_some(candidate)
+    }
+
+    /// Derive the namespace from independent run/target identity. A path stored
+    /// inside a result is never allowed to choose the files that justify it.
+    pub(crate) fn directory(
+        &self,
+        run: &Path,
+        identity: &crate::managed::TargetIdentity,
+        exit: Option<i32>,
+    ) -> Option<PathBuf> {
+        self.validate_directory(run, identity, exit, true)
+    }
+
+    fn validate_directory(
+        &self,
+        run: &Path,
+        identity: &crate::managed::TargetIdentity,
+        exit: Option<i32>,
+        current: bool,
+    ) -> Option<PathBuf> {
+        if self.key != identity.key()
+            || self.reserved.version != 1
+            || self.terminal.version != 1
+            || self.reserved.run != run.file_name()?.as_encoded_bytes()
+            || self.reserved.unit != UnitRecord::of(&identity.compiler_unit())
+            || self.terminal.run != self.reserved.run
+            || self.terminal.slot != self.reserved.slot
+            || self.terminal.pid == 0
+            || self.terminal.exit != exit
+        {
+            return None;
+        }
+        let attempts = run.join("sidecars").join(&self.key).join("attempts");
+        if !self.records_match(&attempts)?
+            || current && latest_reservation(&attempts)? != self.reserved.slot
+        {
+            return None;
+        }
+        if let Some(previous) = &self.predecessor
+            && (previous.reserved.run != self.reserved.run
+                || previous.reserved.unit != self.reserved.unit
+                || previous.reserved.slot >= self.reserved.slot
+                || previous
+                    .validate_directory(run, identity, previous.terminal.exit, false)
+                    .is_none())
+        {
+            return None;
+        }
+        Some(attempts.join(self.reserved.slot.to_string()))
+    }
+
+    pub(crate) fn matches_observed(&self, value: &ObservedAttempt<'_>) -> bool {
+        self.reserved == ReservedRecord::of(value.reserved())
+            && self.terminal == TerminalRecord::of(value)
+    }
+
+    pub(crate) fn slot(&self) -> usize {
+        self.reserved.slot
+    }
+
+    /// Validate copied history as an archive. This never returns a live process
+    /// observation or gives archived events a new run/slot/PID.
+    pub(crate) fn archive_matches(
+        &self,
+        attempts: &Path,
+        identity: &crate::managed::TargetIdentity,
+        run: &str,
+        exit: Option<i32>,
+    ) -> bool {
+        let check = || -> Option<bool> {
+            if self.reserved.version != 1
+                || self.terminal.version != 1
+                || self.key != identity.key()
+                || self.reserved.run != run.as_bytes()
+                || self.reserved.unit != UnitRecord::of(&identity.compiler_unit())
+                || self.terminal.run != self.reserved.run
+                || self.terminal.slot != self.reserved.slot
+                || self.terminal.exit != exit
+                || self.terminal.pid == 0
+                || latest_reservation(attempts)? != self.reserved.slot
+                || !self.records_match(attempts)?
+            {
+                return Some(false);
+            }
+            let mut previous = self.predecessor.as_deref();
+            let mut slot = self.reserved.slot;
+            while let Some(history) = previous {
+                if history.reserved.version != 1
+                    || history.terminal.version != 1
+                    || history.key != self.key
+                    || history.reserved.run != self.reserved.run
+                    || history.reserved.unit != self.reserved.unit
+                    || history.reserved.slot >= slot
+                    || history.terminal.run != history.reserved.run
+                    || history.terminal.slot != history.reserved.slot
+                    || history.terminal.pid == 0
+                    || !history.records_match(attempts)?
+                {
+                    return Some(false);
+                }
+                slot = history.reserved.slot;
+                previous = history.predecessor.as_deref();
+            }
+            Some(true)
+        };
+        check() == Some(true)
+    }
+
+    fn records_match(&self, attempts: &Path) -> Option<bool> {
+        let reserved: ReservedRecord =
+            read_selected(&attempts.join(format!("{}.reserved", self.reserved.slot)))?;
+        let terminal: TerminalRecord =
+            read_selected(&attempts.join(format!("{}.observed", self.reserved.slot)))?;
+        let directory = attempts.join(self.reserved.slot.to_string());
+        let stdout = bounded_selected(&directory.join("verus.stdout"))?;
+        let stderr = bounded_selected(&directory.join("verus.stderr"))?;
+        let image = std::str::from_utf8(&self.reserved.command.program).ok()?;
+        Some(
+            reserved == self.reserved
+                && terminal == self.terminal
+                && terminal.stdout_sha256 == crate::managed::digest(&stdout)
+                && terminal.stderr_sha256 == crate::managed::digest(&stderr)
+                && crate::managed::file_digest(Path::new(image)).ok()? == self.image_sha256
+                && selected_files(&directory)? == self.files,
+        )
+    }
+}
+
+fn latest_reservation(directory: &Path) -> Option<usize> {
+    let mut latest = None;
+    for entry in std::fs::read_dir(directory).ok()? {
+        let entry = entry.ok()?;
+        let name = entry.file_name();
+        let name = name.to_str()?;
+        if let Some(slot) = name.strip_suffix(".reserved") {
+            let parsed: usize = slot.parse().ok()?;
+            if parsed.to_string() != slot {
+                return None;
+            }
+            let slot = parsed;
+            if !entry.file_type().ok()?.is_file() {
+                return None;
+            }
+            latest = Some(latest.map_or(slot, |previous: usize| previous.max(slot)));
+        }
+    }
+    latest
+}
+
+fn read_selected<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
+    serde_json::from_slice(&bounded_selected(path)?).ok()
+}
+
+fn bounded_selected(path: &Path) -> Option<Vec<u8>> {
+    use std::io::Read as _;
+    let metadata = std::fs::symlink_metadata(path).ok()?;
+    if !metadata.file_type().is_file() {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .ok()?
+        .take(32 * 1024 * 1024 + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    (bytes.len() <= 32 * 1024 * 1024).then_some(bytes)
+}
+
+fn selected_files(directory: &Path) -> Option<std::collections::BTreeMap<String, String>> {
+    fn visit(
+        root: &Path,
+        directory: &Path,
+        out: &mut std::collections::BTreeMap<String, String>,
+    ) -> Option<()> {
+        if !std::fs::symlink_metadata(directory)
+            .ok()?
+            .file_type()
+            .is_dir()
+        {
+            return None;
+        }
+        for entry in std::fs::read_dir(directory).ok()? {
+            let entry = entry.ok()?;
+            let kind = entry.file_type().ok()?;
+            if kind.is_dir() {
+                visit(root, &entry.path(), out)?;
+            } else if kind.is_file() {
+                let path = entry.path();
+                let relative = path.strip_prefix(root).ok()?.to_str()?.to_owned();
+                if out.len() >= 65_536 {
+                    return None;
+                }
+                out.insert(relative, crate::managed::file_digest(&path).ok()?);
+            } else {
+                return None;
+            }
+        }
+        Some(())
+    }
+    let mut files = std::collections::BTreeMap::new();
+    for name in [
+        "verus.stdout",
+        "verus.stderr",
+        "engine.events.jsonl",
+        "focus.source.json",
+        "focus.report.json",
+        "engine.missing-feature",
+        "launcher-options.json",
+    ] {
+        let path = directory.join(name);
+        match std::fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.file_type().is_file() => {
+                files.insert(name.to_owned(), crate::managed::file_digest(&path).ok()?);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Ok(_) | Err(_) => return None,
+        }
+    }
+    for name in ["logs", "provenance"] {
+        let path = directory.join(name);
+        match std::fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.file_type().is_dir() => visit(directory, &path, &mut files)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Ok(_) | Err(_) => return None,
+        }
+    }
+    Some(files)
+}
+
+/// Native fixture records actual shell output/wait without claiming a trusted
+/// Verus image. The production constructors and persistence checks are unchanged.
+#[cfg(test)]
+pub(crate) fn fixture_history(
+    run: &Path,
+    run_id: &str,
+    identity: &crate::managed::TargetIdentity,
+    stdout: &[u8],
+    stderr: &[u8],
+    exit: i32,
+) -> Option<SelectedAttempt> {
+    let unit = identity.compiler_unit();
+    let attempts = run.join("sidecars").join(identity.key()).join("attempts");
+    let mut journal = Journal::new(run_id.as_bytes(), &unit, &attempts);
+    let allocation = journal.allocate()?;
+    let directory = allocation.directory().to_owned();
+    let out = directory.join("fixture.stdout");
+    let err = directory.join("fixture.stderr");
+    std::fs::write(&out, stdout).ok()?;
+    std::fs::write(&err, stderr).ok()?;
+    let mut command = Command::new("/bin/sh");
+    command
+        .args(["-c", "cat \"$1\"; cat \"$2\" >&2; exit \"$3\"", "fixture"])
+        .arg(out)
+        .arg(err)
+        .arg(exit.to_string())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let reserved = journal.configure(allocation, &command);
+    let child = command.spawn().ok()?;
+    let running = journal.started(reserved, &child);
+    let output = child.wait_with_output().ok()?;
+    let captured = journal.capture(running, output);
+    captured.selected_attempt(identity)
 }
 
 #[cfg(all(test, unix))]
@@ -547,6 +1018,140 @@ mod tests {
     }
 
     #[test]
+    fn selected_history_refuses_stale_subject_payload_and_later_unfinished_attempt() -> TestResult {
+        let root =
+            std::env::temp_dir().join(format!("sail-selected-history-{}", std::process::id()));
+        let run = root.join("run");
+        let identity = TargetIdentity {
+            manifest: root.join("Cargo.toml"),
+            name: "demo".into(),
+            crate_type: "lib".into(),
+            cargo_name: None,
+            rustc_args_sha256: "original-arguments".into(),
+        };
+        let selected = fixture_history(
+            &run,
+            "run",
+            &identity,
+            b"original stdout",
+            b"original stderr",
+            0,
+        )
+        .ok_or("fixture history missing")?;
+        let directory = selected
+            .directory(&run, &identity, Some(0))
+            .ok_or("original admission refused")?;
+        let restored: SelectedAttempt = serde_json::from_slice(&serde_json::to_vec(&selected)?)?;
+        assert_eq!(restored, selected);
+        assert!(restored.directory(&run, &identity, Some(0)).is_some());
+        let mut swapped = identity.clone();
+        swapped.rustc_args_sha256 = "different-arguments".into();
+        assert!(restored.directory(&run, &swapped, Some(0)).is_none());
+        assert!(
+            restored
+                .directory(&root.join("other-run"), &identity, Some(0))
+                .is_none()
+        );
+        assert!(restored.directory(&run, &identity, Some(1)).is_none());
+        let mut wrong_pid = restored.clone();
+        wrong_pid.terminal.pid = wrong_pid.terminal.pid.saturating_add(1);
+        assert!(wrong_pid.directory(&run, &identity, Some(0)).is_none());
+        let mut wrong_command = restored.clone();
+        wrong_command
+            .reserved
+            .command
+            .arguments
+            .push(b"extra option".to_vec());
+        assert!(wrong_command.directory(&run, &identity, Some(0)).is_none());
+        std::fs::write(
+            directory.join("verus.stdout"),
+            b"different valid-looking stdout",
+        )?;
+        assert!(restored.directory(&run, &identity, Some(0)).is_none());
+        std::fs::write(directory.join("verus.stdout"), b"original stdout")?;
+        assert!(restored.directory(&run, &identity, Some(0)).is_some());
+        // A later configured child makes the earlier selection noncurrent even
+        // if the latest invocation JSON was never overwritten by completion.
+        let unit = identity.compiler_unit();
+        let attempts = directory.parent().ok_or("attempt root")?;
+        let mut next = Journal::new(b"run", &unit, attempts);
+        let mut command = Command::new("/bin/sh");
+        command.args(["-c", "exit 0"]);
+        let reserved = next.reserve(&command).ok_or("new reservation refused")?;
+        assert!(reserved.slot() > selected.slot());
+        assert!(restored.directory(&run, &identity, Some(0)).is_none());
+        assert_eq!(
+            std::fs::read(directory.join("verus.stdout"))?,
+            b"original stdout"
+        );
+        assert!(
+            attempts
+                .join(format!("{}.observed", selected.slot()))
+                .is_file()
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn archived_selected_and_predecessor_records_refuse_unknown_schema_versions() -> TestResult {
+        let root = std::env::temp_dir().join(format!("sail-history-schema-{}", std::process::id()));
+        let run = root.join("run");
+        let identity = TargetIdentity {
+            manifest: root.join("Cargo.toml"),
+            name: "demo".into(),
+            crate_type: "lib".into(),
+            cargo_name: None,
+            rustc_args_sha256: "args".into(),
+        };
+        let first =
+            fixture_history(&run, "run", &identity, b"original", b"", 0).ok_or("first history")?;
+        let mut latest = fixture_history(&run, "run", &identity, b"independent", b"", 0)
+            .ok_or("latest history")?;
+        latest.predecessor = Some(Box::new(first));
+        let attempts = run.join("sidecars").join(identity.key()).join("attempts");
+        assert!(latest.archive_matches(&attempts, &identity, "run", Some(0)));
+        for predecessor in [false, true] {
+            for reserved in [false, true] {
+                for version in [0, 2] {
+                    let mut candidate: SelectedAttempt =
+                        serde_json::from_slice(&serde_json::to_vec(&latest)?)?;
+                    let history = if predecessor {
+                        candidate
+                            .predecessor
+                            .as_mut()
+                            .ok_or("missing predecessor")?
+                    } else {
+                        &mut candidate
+                    };
+                    let path = if reserved {
+                        history.reserved.version = version;
+                        attempts.join(format!("{}.reserved", history.reserved.slot))
+                    } else {
+                        history.terminal.version = version;
+                        attempts.join(format!("{}.observed", history.reserved.slot))
+                    };
+                    let original = std::fs::read(&path)?;
+                    let encoded = if reserved {
+                        serde_json::to_vec(&history.reserved)?
+                    } else {
+                        serde_json::to_vec(&history.terminal)?
+                    };
+                    // Both decoded candidate and actual archived record agree;
+                    // equality/checksums cannot substitute for supported schema.
+                    std::fs::write(&path, encoded)?;
+                    assert!(!candidate.archive_matches(&attempts, &identity, "run", Some(0)));
+                    assert!(candidate.directory(&run, &identity, Some(0)).is_none());
+                    std::fs::write(&path, original)?;
+                    assert!(latest.archive_matches(&attempts, &identity, "run", Some(0)));
+                }
+            }
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn journal_failures_preserve_output_and_refuse_retained_authority() -> TestResult {
         const CHILD: &str = "SAIL_ATTEMPT_FAILURE_CHILD";
         if let Some(root) = std::env::var_os(CHILD) {
@@ -587,13 +1192,17 @@ mod tests {
         let document = include_bytes!("../tests/fixtures/engine-terminal/success.json");
         let input = root.join("fixture.stdout");
         std::fs::write(&input, document)?;
-        let unit = CompilerUnit {
-            manifest: b"fixture/Cargo.toml".to_vec(),
-            name: b"demo".to_vec(),
-            crate_type: b"lib".to_vec(),
+        let identity = TargetIdentity {
+            manifest: root.join("Cargo.toml"),
+            name: "demo".into(),
+            crate_type: "lib".into(),
             cargo_name: None,
+            rustc_args_sha256: "args".into(),
         };
-        let directory = root.join("attempts");
+        let unit = identity.compiler_unit();
+        let sidecar = root.join("sidecars").join(identity.key());
+        std::fs::create_dir_all(&sidecar)?;
+        let directory = sidecar.join("attempts");
         if case == "reservation-failure" {
             std::fs::write(&directory, b"not a directory")?;
         }
@@ -649,8 +1258,17 @@ mod tests {
         };
         let invocations = root.join("invocations");
         std::fs::create_dir_all(&invocations)?;
-        let sidecar = root.join("sidecar");
-        std::fs::create_dir_all(&sidecar)?;
+        let identity = TargetIdentity {
+            manifest: root.join("Cargo.toml"),
+            name: "demo".into(),
+            crate_type: "lib".into(),
+            cargo_name: None,
+            rustc_args_sha256: "args".into(),
+        };
+        let presentation = root.join("sidecars").join(identity.key());
+        let sidecar = captured.directory().unwrap_or(&presentation);
+        std::fs::create_dir_all(sidecar)?;
+        let selected_attempt = captured.selected_attempt(&identity);
         let runtime = Runtime {
             run_id: case.into(),
             args,
@@ -669,18 +1287,11 @@ mod tests {
             retained: None,
             attribution_logs: false,
         };
-        let identity = TargetIdentity {
-            manifest: root.join("Cargo.toml"),
-            name: "demo".into(),
-            crate_type: "lib".into(),
-            rustc_args_sha256: "arguments".into(),
-            cargo_name: None,
-        };
         let key = identity.key();
         crate::adapter::finish(
             &runtime,
             identity,
-            &sidecar,
+            sidecar,
             &Captured {
                 stdout: captured.stdout(),
                 stderr: captured.stderr(),
@@ -688,7 +1299,11 @@ mod tests {
             },
             None,
             None,
-            CompletionOrigin::Live(captured.observation(), captured.unavailable_reason()),
+            CompletionOrigin::Live(
+                captured.observation(),
+                captured.unavailable_reason(),
+                selected_attempt.as_ref(),
+            ),
         )?;
         let invocation: Invocation =
             serde_json::from_slice(&std::fs::read(invocations.join(format!("{key}.json")))?)?;

@@ -216,7 +216,10 @@ impl Plan {
             {
                 continue;
             }
-            let directory = runtime.sidecars.join(receipt.invocation.identity.key());
+            let run = runtime.sidecars.parent()?;
+            let Some(directory) = receipt.invocation.selected_directory(run) else {
+                continue;
+            };
             let Some(candidate): Option<Candidate> =
                 receipts::read(&directory.join("retained-candidate.json"))
             else {
@@ -437,6 +440,7 @@ impl Plan {
             observation,
             original_arguments: args.to_vec(),
             directory: directory.to_owned(),
+            invocations: runtime.invocations.clone(),
         })
     }
 }
@@ -491,6 +495,7 @@ pub(super) fn publish_graph(root: &Path, graph: Snapshot, args: &[OsString]) -> 
 /// A checked older proof; compiler invocations remain zero for this restore.
 pub(crate) struct Restored {
     pub(crate) establishing_run: String,
+    pub(crate) selected_attempt: Option<crate::adapter::attempts::SelectedAttempt>,
     pub(crate) stdout: Vec<u8>,
     pub(crate) stderr: Vec<u8>,
 }
@@ -506,6 +511,7 @@ pub(crate) struct Attempt {
     original_arguments: Vec<OsString>,
     observation: compiler::Observation,
     directory: PathBuf,
+    invocations: PathBuf,
 }
 
 impl Attempt {
@@ -542,6 +548,7 @@ impl Attempt {
             }
             restored.map(|restored| Restored {
                 establishing_run: restored.receipt.invocation.establishing_run().to_owned(),
+                selected_attempt: restored.receipt.invocation.selected_attempt.clone(),
                 stdout: restored.stdout,
                 stderr: restored.stderr,
             })
@@ -624,10 +631,7 @@ impl Attempt {
         }
         let invocation: receipts::Invocation = receipts::read(
             &self
-                .directory
-                .parent()?
-                .parent()?
-                .join("invocations")
+                .invocations
                 .join(format!("{}.json", self.basis.identity.key())),
         )?;
         if !invocation.success || !receipts::complete(&invocation.report) {

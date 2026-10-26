@@ -347,6 +347,7 @@ pub(super) fn restore(
             continue;
         };
         if !entry.intact()
+            || !entry.receipt.producer_history_intact()
             || entry.basis != *basis
             || !caller.matches(run, &entry.receipt.declared_environment)
         {
@@ -1050,9 +1051,20 @@ mod tests {
                 encountered_vir_error: Some(false),
             },
         });
+        let run = root.0.join("establishing-A");
+        let selected_attempt = crate::adapter::attempts::fixture_history(
+            &run,
+            "establishing-A",
+            &identity,
+            b"fixture original stdout",
+            b"",
+            0,
+        );
+        assert!(selected_attempt.is_some());
         let receipt = Receipt {
             version: RECEIPT_VERSION,
             partial_args: None,
+            producer_archive: None,
             checksum: String::new(),
             package_id: "unit".into(),
             name: "unit".into(),
@@ -1062,6 +1074,7 @@ mod tests {
             invocation: super::super::super::receipts::Invocation {
                 dependency_build: None,
                 retained_from: None,
+                selected_attempt,
                 identity,
                 run_id: "establishing-A".into(),
                 report,
@@ -1069,7 +1082,7 @@ mod tests {
                 dependencies: BTreeMap::new(),
             },
             artifact_hashes: BTreeMap::from([(artifact.to_owned(), digest(b"artifact A"))]),
-            committed: root.0.join("committed.json"),
+            committed: run.join("committed.json"),
             declared_environment: declared,
         }
         .seal();

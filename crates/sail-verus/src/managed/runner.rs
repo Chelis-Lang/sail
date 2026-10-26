@@ -1919,6 +1919,7 @@ fn target_records_in(
             );
             let hashes = digests.hashes(&artifact_paths)?;
             let reusable = paths.reuse
+                && call.producer_available(&paths.run)
                 && call.successful_for(partial_args)
                 && !input_revision.is_empty()
                 && declared.is_some();
@@ -1931,6 +1932,7 @@ fn target_records_in(
                     &Receipt {
                         version: RECEIPT_VERSION,
                         partial_args: partial_args.map(<[String]>::to_vec),
+                        producer_archive: None,
                         committed: paths.run.join("committed.json"),
                         checksum: String::new(),
                         package_id: package_id.to_owned(),
@@ -1958,6 +1960,7 @@ fn target_records_in(
                 scope_reuse: None,
                 requested,
                 complete: partial_args.is_none()
+                    && call.producer_available(&paths.run)
                     && call.success
                     && sail_api::acceptance::complete_whole_report(&call.report).is_some(),
                 report: call.report.clone(),
@@ -2107,6 +2110,7 @@ fn target_records_in(
                 kind,
                 requested,
                 complete: partial_args.is_none()
+                    && call.producer_available(&paths.run)
                     && call.success
                     && sail_api::acceptance::complete_whole_report(&call.report).is_some(),
                 report: call.report,
@@ -3999,13 +4003,14 @@ fn store_dependencies(
         .filter(|r| r.valid(&result.context_sha256)) else {
             continue;
         };
-        let sidecar = paths
+        let original_run = paths
             .projects
             .join(&receipt.context)
             .join("runs")
-            .join(&receipt.invocation.run_id)
-            .join("sidecars")
-            .join(receipt.invocation.identity.key());
+            .join(&receipt.invocation.run_id);
+        let Some(sidecar) = receipt.invocation.selected_directory(&original_run) else {
+            continue;
+        };
         super::store::publish(
             candidate,
             &super::store::Publication {
@@ -4528,6 +4533,29 @@ mod tests {
         Ok(())
     }
 
+    fn fixture_producer(
+        paths: &Paths,
+        identity: &super::super::receipts::TargetIdentity,
+    ) -> Option<crate::adapter::attempts::SelectedAttempt> {
+        let unit = identity.compiler_unit();
+        let attempts = paths
+            .run
+            .join("sidecars")
+            .join(identity.key())
+            .join("attempts");
+        let mut journal = crate::adapter::attempts::Journal::new(b"run", &unit, &attempts);
+        let allocation = journal.allocate()?;
+        let mut command = Command::new("/bin/sh");
+        command.args(["-c", "printf '%s' '{\"func-details\":{},\"verification-results\":{\"success\":true,\"verified\":0,\"errors\":0,\"encountered-error\":false,\"encountered-vir-error\":false,\"is-verifying-entire-crate\":true}}'"])
+            .stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
+        let reserved = journal.configure(allocation, &command);
+        let child = command.spawn().ok()?;
+        let running = journal.started(reserved, &child);
+        let output = child.wait_with_output().ok()?;
+        let captured = journal.capture(running, output);
+        captured.selected_attempt(identity)
+    }
+
     pub(super) fn compiler_receipt(paths: &Paths, data: &Value, artifact: &Path) -> Receipt {
         let mut report = crate::report::setup_failure(&[], "SAIL3100", "fixture");
         report.error = None;
@@ -4545,6 +4573,7 @@ mod tests {
         Receipt {
             version: RECEIPT_VERSION,
             partial_args: None,
+            producer_archive: None,
             checksum: String::new(),
             committed: paths.run.join("committed.json"),
             package_id: "input".to_owned(),
@@ -4554,6 +4583,20 @@ mod tests {
             input_revision: target_revision(data, "input"),
             invocation: Invocation {
                 retained_from: None,
+                selected_attempt: fixture_producer(
+                    paths,
+                    &super::super::receipts::TargetIdentity {
+                        manifest: PathBuf::from(
+                            data["packages"][0]["manifest_path"]
+                                .as_str()
+                                .unwrap_or_default(),
+                        ),
+                        name: "input".into(),
+                        crate_type: "lib".into(),
+                        rustc_args_sha256: "args".into(),
+                        cargo_name: None,
+                    },
+                ),
                 identity: super::super::receipts::TargetIdentity {
                     manifest: PathBuf::from(
                         data["packages"][0]["manifest_path"]
@@ -4759,6 +4802,8 @@ mod tests {
         call: Invocation,
         result: ProjectResult,
         _ownership: Ownership,
+        directory: PathBuf,
+        engine: bool,
     }
 
     impl NegativeGeneration {
@@ -4777,6 +4822,7 @@ mod tests {
             }]});
             let mut call = compiler_receipt(&paths, &data, &root.join("absent")).invocation;
             call.success = false;
+            call.selected_attempt = None;
             call.report.exit_code = Some(1);
             call.report.crates[0].verus.verified = Some(1);
             call.report.crates[0].verus.errors = Some(1);
@@ -4801,7 +4847,9 @@ mod tests {
                 engine: None,
                 no_reuse: None,
             };
-            let fixture = Self {
+            let mut fixture = Self {
+                directory: PathBuf::new(),
+                engine: label != "stock",
                 root,
                 paths,
                 data,
@@ -4818,21 +4866,56 @@ mod tests {
             Ok(fixture)
         }
 
-        fn seal(&self) -> std::io::Result<()> {
+        fn seal(&mut self) -> std::io::Result<()> {
             let sidecar = self
                 .paths
                 .run
                 .join("sidecars")
                 .join(self.call.identity.key());
             std::fs::create_dir_all(&sidecar)?;
-            std::fs::write(
-                sidecar.join("verus.stdout"),
-                include_bytes!("../../tests/fixtures/engine-terminal/failed-proof.json"),
-            )?;
-            std::fs::write(
-                sidecar.join("engine.events.jsonl"),
-                include_bytes!("../../tests/fixtures/engine-terminal/terminal-failure.jsonl"),
-            )?;
+            let stdout = include_bytes!("../../tests/fixtures/engine-terminal/failed-proof.json");
+            let events =
+                include_bytes!("../../tests/fixtures/engine-terminal/terminal-failure.jsonl");
+            if self.call.selected_attempt.is_none() {
+                let unit = self.call.identity.compiler_unit();
+                let attempts = sidecar.join("attempts");
+                let mut journal = crate::adapter::attempts::Journal::new(b"run", &unit, &attempts);
+                let allocation = journal
+                    .allocate()
+                    .ok_or_else(|| std::io::Error::other("fixture allocation refused"))?;
+                self.directory = allocation.directory().to_owned();
+                let input = self.directory.join("fixture.stdout");
+                let terminal = self.directory.join("fixture.events");
+                std::fs::write(&input, stdout)?;
+                std::fs::write(&terminal, events)?;
+                let mut command = Command::new("/bin/sh");
+                command
+                    .args([
+                        "-c",
+                        "cat \"$1\"; if [ \"$3\" = yes ]; then cat \"$2\" > \"$4\"; fi; exit 1",
+                        "fixture",
+                    ])
+                    .arg(input)
+                    .arg(terminal)
+                    .arg(if self.engine { "yes" } else { "no" })
+                    .arg(self.directory.join("engine.events.jsonl"))
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped());
+                let reserved = journal.configure(allocation, &command);
+                let child = command.spawn()?;
+                let running = journal.started(reserved, &child);
+                let output = child.wait_with_output()?;
+                let captured = journal.capture(running, output);
+                assert_eq!(captured.stdout(), stdout);
+                assert_eq!(captured.status().code(), Some(1));
+                self.call.selected_attempt = captured.selected_attempt(&self.call.identity);
+                assert!(self.call.selected_attempt.is_some());
+            } else {
+                std::fs::write(self.directory.join("verus.stdout"), stdout)?;
+                if self.engine {
+                    std::fs::write(self.directory.join("engine.events.jsonl"), events)?;
+                }
+            }
             std::fs::write(
                 self.paths
                     .run
@@ -4961,7 +5044,7 @@ mod tests {
         )?;
         assert!(!f.eligible(), "started invocation missing its completion");
         f.seal()?;
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        let sidecar = f.directory.clone();
         for field in [
             "encountered-vir-error",
             "is-verifying-entire-crate",
@@ -5013,8 +5096,8 @@ mod tests {
                 &[],
             )
         };
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
-        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        let sidecar = f.directory.clone();
+        assert!(!sidecar.join("engine.events.jsonl").exists());
         assert!(stock(&f), "stock needs no engine terminal");
         assert!(!f.eligible(), "the engine still needs its terminal");
         // A crash exit, a truncated or doubled document, or a document that
@@ -5022,11 +5105,11 @@ mod tests {
         let original_call = f.call.clone();
         f.call.report.exit_code = Some(101);
         f.seal()?;
-        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        assert!(!sidecar.join("engine.events.jsonl").exists());
         assert!(!stock(&f), "panic exit");
         f.call = original_call;
         f.seal()?;
-        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        assert!(!sidecar.join("engine.events.jsonl").exists());
         let document = std::fs::read(sidecar.join("verus.stdout"))?;
         for bytes in [
             document[..document.len() / 2].to_vec(),
@@ -5235,7 +5318,7 @@ mod tests {
         assert!(records.iter().any(|r| r["reason"] == "compiler-artifact"
             && r["target"]["name"] == "input"
             && r["fresh"] == false));
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        let sidecar = f.directory.clone();
         for field in ["encountered-vir-error", "is-verifying-entire-crate"] {
             f.seal()?;
             let mut doc: Value =
@@ -5399,7 +5482,7 @@ mod tests {
         f.call.report.crates[0].verus.verified = Some(0);
         f.call.report.crates[0].verus.errors = Some(0);
         f.seal()?;
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        let sidecar = f.directory.clone();
         std::fs::write(
             sidecar.join("verus.stdout"),
             serde_json::to_vec(
@@ -6031,6 +6114,9 @@ mod tests {
         };
         json(&paths.run.join("artifacts.jsonl"), &artifact_record(false))?;
         let mut call = compiler_receipt(&paths, &data, &artifact).invocation;
+        // A bundled transfer retains its original manifest provenance and
+        // creates no live process observation for this invocation.
+        call.selected_attempt = None;
         call.dependency_build = Some(sail_api::project::DependencyBuildOrigin {
             kind: sail_api::project::DependencyBuildKind::Release,
             identity: "build/entry".to_owned(),
@@ -6237,6 +6323,7 @@ mod tests {
         let receipt = Receipt {
             version: RECEIPT_VERSION,
             partial_args: None,
+            producer_archive: None,
             checksum: String::new(),
             package_id: "vstd".to_owned(),
             name: "vstd".to_owned(),
@@ -6245,6 +6332,7 @@ mod tests {
             input_revision: target_revision(&data, "vstd"),
             invocation: Invocation {
                 retained_from: None,
+                selected_attempt: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: dependency.join("Cargo.toml"),
                     name: "vstd".to_owned(),
