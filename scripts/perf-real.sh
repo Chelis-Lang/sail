@@ -65,7 +65,13 @@
 #   SAIL_PERF_BASELINE directory holding the old fork for `sail` mode only;
 #                      `plain` stays the stock conformance oracle on PATH
 #   SAIL_PERF_NOOPS    comment-only edits after cold (default 3)
-#   SAIL_PERF_UNCHANGED 1: measure an unmodified rerun immediately after cold
+#   SAIL_PERF_UNCHANGED N: measure N unmodified reruns immediately after cold
+#                      (`unchanged`, `unchanged2`, ...; Sail records its
+#                      unchanged-call replay on the first and replays later ones)
+#   SAIL_PERF_NOREPLAY 1: then one more unmodified rerun, `unchanged-noreplay`,
+#                      with SAIL_MANAGED_NOOP=0 for Sail (the full unchanged path)
+#   SAIL_PERF_REVERT   1: after each edit, restore the pristine source and
+#                      measure that as `EDIT-revert`
 #   SAIL_PERF_STOCK_HOME stock release install root for corpus fetching only
 #   SAIL_PERF_CORPUS   fetched corpus (default ~/.cache/sail/corpus)
 #   SAIL_PERF_VERUS_ARGS  extra Verus arguments for every run (e.g. "-V spinoff-all")
@@ -585,8 +591,10 @@ times_of() { # LOG MODE
 results="$out/results.tsv"
 sample_failures=0
 
-run_one() { # ROUND MODE DIR PHASE
+run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run only
   local round="$1" mode="$2" dir="$3" phase="$4" log prov t0 t1 code=0 s0 s1
+  shift 4
+  local run_env=("$@")
   log="$out/r$round/$mode.$phase.log"
   prov="$out/r$round/prov/$mode.$phase"
   mkdir -p "$prov"
@@ -602,6 +610,7 @@ run_one() { # ROUND MODE DIR PHASE
   fi
   t0=$(now)
   (cd "$dir/$pkg" && if [ -n "${SAIL_PERF_VERUS_BUILD:-}" ]; then export SAIL_VERUS_BUILD="$SAIL_PERF_VERUS_BUILD"; fi &&
+    if [ ${#run_env[@]} -gt 0 ]; then export "${run_env[@]}"; fi &&
     PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$prov" verus_cmd "$mode" ${time_args[@]+"${time_args[@]}"}) >"$log" 2>&1 || code=$?
   t1=$(now)
   s1=$(stats)
@@ -654,8 +663,11 @@ run_mode() { # ROUND MODE
     [ "$ready" = 1 ] || { echo "fork-shim daemon did not start; see $out/r$round/$mode.daemon.log" >&2; exit 2; }
   fi
   run_one "$round" "$mode" "$dir" cold
-  if [ "${SAIL_PERF_UNCHANGED:-0}" = 1 ]; then
-    run_one "$round" "$mode" "$dir" unchanged
+  for ((i = 1; i <= ${SAIL_PERF_UNCHANGED:-0}; i++)); do
+    run_one "$round" "$mode" "$dir" "unchanged$([ "$i" = 1 ] || echo "$i")"
+  done
+  if [ "${SAIL_PERF_NOREPLAY:-0}" = 1 ]; then
+    run_one "$round" "$mode" "$dir" unchanged-noreplay SAIL_MANAGED_NOOP=0
   fi
   case "$mode" in
     sail | fork-sail | incremental)
@@ -670,6 +682,10 @@ run_mode() { # ROUND MODE
     reset_files "$dir"
     apply_op "$dir" "$op" "$file" "$line"
     run_one "$round" "$mode" "$dir" "$name"
+    if [ "${SAIL_PERF_REVERT:-0}" = 1 ]; then
+      reset_files "$dir"
+      run_one "$round" "$mode" "$dir" "$name-revert"
+    fi
   done <"$out/selected-edits.txt"
   reset_files "$dir"
   if [ "${SAIL_PERF_NOOPS:-3}" -gt 0 ]; then
