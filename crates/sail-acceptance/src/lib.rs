@@ -13,5 +13,7 @@ pub mod inputs;
 /// Exact incremental key framing through source-bound hash primitives.
 pub mod key_prefix;
 pub mod query;
+/// Default response policy from exact accepted command head bytes.
+pub mod query_policy;
 /// Joint ownership of exact raw input and its incremental key material.
 pub mod query_prefix;

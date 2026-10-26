@@ -222,6 +222,11 @@ impl CommandFrame<'_, '_> {
     pub fn head(&self) -> &[u8] {
         self.frame.head()
     }
+    /// Computes the default successful-command response count from this exact accepted head.
+    #[must_use]
+    pub fn policy(&self) -> sail_acceptance::query_policy::ResponsePolicy {
+        self.frame.policy()
+    }
     /// The exact endpoint at this command transition.
     #[must_use]
     pub fn end(&self) -> usize {
