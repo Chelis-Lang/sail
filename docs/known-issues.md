@@ -126,6 +126,15 @@ controls pass; combined canonical proof capture, native Linux, differential
 conformance and cost qualification remain pending. These findings concern the
 PR implementation and are not attributed to an exact-main binary.
 
+Combining unchanged-call replay with selected-attempt admission also permits a
+cached Current complete target after its original producer run has been removed
+([#415](https://github.com/Chelis-Lang/sail/issues/415)). The actual native
+prepare/commit/replay fixture reproduces that provenance-policy bypass while
+ordinary receipt admission refuses. The candidate retains and revalidates exact
+whole/partial receipts and original histories before replay. Independent current
+request resolution, final native gates, conformance and added-cost qualification
+remain pending; no wrong mathematical theorem is demonstrated by the fixture.
+
 Sequential retained file reads can assemble an old revision that never existed
 as one state during the check
 ([#387](https://github.com/Chelis-Lang/sail/issues/387)). The candidate adds

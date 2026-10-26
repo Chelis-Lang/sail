@@ -578,6 +578,22 @@ does not create a live process seal, and its transfer relation remains a separat
 obligation. No persisted journal or normal exit can independently authorize
 proof success. The extra journal I/O still needs native cost qualification.
 
+The main unchanged-call replay surface has a distinct
+[producer-history integration defect](https://github.com/Chelis-Lang/sail/issues/415):
+its cache scans omit original run directories. Matching cache records and a
+stored Current result therefore cannot replace original receipt admission.
+The candidate version-two replay record retains the exact whole/exact-partial
+receipts for every positive target. Publication and replay check target identity,
+original establishing run, full report, exact scope, commit, artifact/dependency
+bytes and selected or archived producer history through the ordinary receipt
+reader. Missing, modified, omitted or mismatched origins take the ordinary path.
+An owned-child fixture verifies the intact replay, then removes its original
+run and observes refusal rather than a cached complete result. This is a native
+metadata/provenance control, not real-project proof or complete input closure.
+The independently resolved current request, guarded readback and complete
+service-transition correspondence for this surface remain open. A stored
+Current bit and a newly assigned run ID cannot supply them.
+
 The daemon's retained-result path uses the source-shared
 `withhold_unbound_request_authority_ordered`, `retained_currentness` and
 `apply_retained_currentness` operations. The first rechecks the independently

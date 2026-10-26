@@ -26,6 +26,10 @@ semantic versioning once the API is published.
   can refuse a normal-zero engine even with a complete protocol, preserving its
   status and starting an independent fallback.
 
+- Require unchanged-call replay to retain and revalidate the original receipts
+  and selected or archived producer histories for every positive target.
+  Missing, changed or mismatched history takes the ordinary verification path.
+
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.

@@ -19,6 +19,8 @@
 //!   Cargo-Verus, Verus and its engine, the solver, rustc, rustup, sysroot
 //!   libraries), and rustup's settings;
 //! - the proof context's and compiler family's cache records, by content;
+//! - the original whole/exact-partial receipts and their selected or archived
+//!   producer histories, revalidated through the ordinary receipt reader;
 //! - the values of every variable a unit declares (`env-dep`,
 //!   `rerun-if-env-changed`).
 //!
@@ -35,12 +37,16 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const VERSION: u32 = 1;
+// Version two retains the exact ordinary receipts and original producer bindings.
+const VERSION: u32 = 2;
 /// How much older than the run a recorded ctime must be.
 pub(super) const SETTLED: Duration = Duration::from_secs(2);
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
+
+#[path = "noop_origins.rs"]
+mod origins;
 
 /// A complete stat stamp: device, inode, size, mode, mtime and ctime with
 /// nanoseconds.
@@ -100,6 +106,8 @@ struct Record {
     contents: Vec<(PathBuf, String)>,
     /// Declared variables and their values.
     environment: BTreeMap<String, Option<Vec<u8>>>,
+    /// Original whole/exact-partial receipts; every replay rechecks their producers.
+    origins: Vec<super::receipts::Receipt>,
     result: ProjectResult,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
@@ -320,6 +328,7 @@ fn rustup_settings() -> Option<PathBuf> {
 /// Gather a record at the end of a run that ended Current without starting a
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
+    let origins = origins::capture(facts.context, facts.result)?;
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
     let target_stamps = crate::parallel::in_order(&target, |path| lstat(path));
@@ -376,6 +385,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             trees,
             contents,
             environment,
+            origins,
             result: facts.result.clone(),
             stdout: Vec::new(),
             stderr: Vec::new(),
@@ -511,6 +521,10 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     let _family = lock(&record.locks.1, false)?;
     if let Some(reason) = mismatch(&record) {
         trace(&format!("miss: {reason}"));
+        return None;
+    }
+    if !origins::intact(&record.origins, &record.result) {
+        trace("miss: original proof producers unavailable or mismatched");
         return None;
     }
     let run_id = format!(
@@ -680,3 +694,7 @@ mod tests {
         assert!(!at(Duration::ZERO).settled(start));
     }
 }
+
+#[cfg(test)]
+#[path = "noop_authority_tests.rs"]
+mod authority_tests;

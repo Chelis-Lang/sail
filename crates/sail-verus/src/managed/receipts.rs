@@ -262,6 +262,14 @@ impl Receipt {
     }
 }
 
+/// The ordinary per-target receipt name, shared by the runner and replay reader.
+pub(super) fn target_path(directory: &Path, package: &str, name: &str, kind: &[String]) -> PathBuf {
+    directory.join(format!(
+        "{}.json",
+        digest(&serde_json::to_vec(&(package, name, kind)).unwrap_or_default())
+    ))
+}
+
 /// Written last: an interrupted publication can only leave unusable receipts.
 #[derive(Serialize, Deserialize)]
 struct Commit {
