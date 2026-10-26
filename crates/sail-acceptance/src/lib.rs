@@ -18,6 +18,8 @@ pub mod phase_inputs;
 pub mod query;
 /// Actual owned solver-input delivery and terminal key correspondence.
 pub mod query_delivery;
+/// Exact stdout coverage and same-owner response intervals.
+pub mod query_output;
 /// Default response policy from exact accepted command head bytes.
 pub mod query_policy;
 /// Joint ownership of exact raw input and its incremental key material.

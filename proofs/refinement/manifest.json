@@ -15,6 +15,7 @@
         "crates/sail-acceptance/src/query_prefix.rs",
         "crates/sail-acceptance/src/cache_write.rs",
         "crates/sail-acceptance/src/query_delivery.rs",
+        "crates/sail-acceptance/src/query_output.rs",
         "proofs/refinement/query.rs",
         "crates/sail-key/src/lib.rs",
         "crates/sail-key/src/prefix_factory.rs",
@@ -958,6 +959,102 @@
           "source": "crates/sail-key/src/prefix_factory.rs",
           "before": "let session = new_query_prefix(host,solver,mode);",
           "after": "let session = new_query_prefix(host,solver,&Mode::Default);"
+        },
+        {
+          "name": "output-exact-appended-bytes",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                if self.eof { self.healthy=false; }\n                self.bytes.extend_from_slice(bytes);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        assert(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)\n                            =~= old(self).view().subrange(frame_start(self.ends@,i),self.ends@[i] as int));\n                    }\n                }\n            }",
+          "after": "{\n                if self.eof { self.healthy=false; }\n                self.bytes.extend_from_slice(b\"sat\\n\");\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        assert(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)\n                            =~= old(self).view().subrange(frame_start(self.ends@,i),self.ends@[i] as int));\n                    }\n                }\n            }"
+        },
+        {
+          "name": "output-contiguous-start",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }",
+          "after": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }"
+        },
+        {
+          "name": "output-bounded-end",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }",
+          "after": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }"
+        },
+        {
+          "name": "output-response-grammar",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }",
+          "after": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if false { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }"
+        },
+        {
+          "name": "output-recorded-endpoint",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }",
+          "after": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(start);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }"
+        },
+        {
+          "name": "output-exact-frame-bytes",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }",
+          "after": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[..end],ordinal,start,end })\n            }"
+        },
+        {
+          "name": "output-eof-required",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || !self.eof || consumed!=self.bytes.len() { return None; }\n                Some(CompleteOutput { bytes:self.bytes,ends:self.ends })\n            }",
+          "after": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || consumed!=self.bytes.len() { return None; }\n                Some(CompleteOutput { bytes:self.bytes,ends:self.ends })\n            }"
+        },
+        {
+          "name": "output-full-coverage",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || !self.eof || consumed!=self.bytes.len() { return None; }\n                Some(CompleteOutput { bytes:self.bytes,ends:self.ends })\n            }",
+          "after": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || !self.eof { return None; }\n                Some(CompleteOutput { bytes:self.bytes,ends:self.ends })\n            }"
+        },
+        {
+          "name": "output-healthy-origin",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || !self.eof || consumed!=self.bytes.len() { return None; }\n                Some(CompleteOutput { bytes:self.bytes,ends:self.ends })\n            }",
+          "after": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.eof || consumed!=self.bytes.len() { return None; }\n                Some(CompleteOutput { bytes:self.bytes,ends:self.ends })\n            }"
+        },
+        {
+          "name": "output-no-healing-after-eof",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                if self.eof { self.healthy=false; }\n                self.bytes.extend_from_slice(bytes);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        assert(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)\n                            =~= old(self).view().subrange(frame_start(self.ends@,i),self.ends@[i] as int));\n                    }\n                }\n            }",
+          "after": "{\n                if self.eof { self.healthy=true; }\n                self.bytes.extend_from_slice(bytes);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        assert(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)\n                            =~= old(self).view().subrange(frame_start(self.ends@,i),self.ends@[i] as int));\n                    }\n                }\n            }"
+        },
+        {
+          "name": "output-repeat-eof-refuses",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{ if self.eof { self.healthy=false; } self.eof=true; }",
+          "after": "{  self.eof=true; }"
+        },
+        {
+          "name": "output-actual-eof-marker",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{ if self.eof { self.healthy=false; } self.eof=true; }",
+          "after": "{ if self.eof { self.healthy=false; } self.eof=false; }"
+        },
+        {
+          "name": "output-terminal-original-buffer",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || !self.eof || consumed!=self.bytes.len() { return None; }\n                Some(CompleteOutput { bytes:self.bytes,ends:self.ends })\n            }",
+          "after": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || !self.eof || consumed!=self.bytes.len() { return None; }\n                Some(CompleteOutput { bytes:Vec::new(),ends:self.ends })\n            }"
+        },
+        {
+          "name": "output-streaming-refuses",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{ self.bytes=Vec::new();self.ends=Vec::new();self.healthy=false; }",
+          "after": "{ self.bytes=Vec::new();self.ends=Vec::new();self.healthy=true; }"
+        },
+        {
+          "name": "output-frame-always-refuse",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let previous = match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || start != previous || start>=end || end>self.bytes.len() {\n                    self.healthy=false; return None;\n                }\n                if !crate::query::response_frame(&self.bytes[start..end]) { self.healthy=false; return None; }\n                let ordinal=self.ends.len();\n                self.ends.push(end);\n                sail_proof! {\n                    assert forall|i: int| 0 <= i < self.ends@.len() implies\n                        0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()\n                        && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {\n                        if i<ordinal {} else { assert(i==ordinal); }\n                    }\n                }\n                Some(Frame { bytes:&self.bytes[start..end],ordinal,start,end })\n            }",
+          "after": "{ self.healthy=false; None }"
+        },
+        {
+          "name": "output-seal-always-refuse",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || !self.eof || consumed!=self.bytes.len() { return None; }\n                Some(CompleteOutput { bytes:self.bytes,ends:self.ends })\n            }",
+          "after": "{ None }"
         }
       ]
     },

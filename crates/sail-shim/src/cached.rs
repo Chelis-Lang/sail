@@ -515,7 +515,7 @@ fn output_side(
     stderr: Option<&crate::cached_stderr::Monitor>,
 ) -> u8 {
     let limit = buffer_limit();
-    let mut all = Vec::new(); // every output byte so far
+    let mut all = sail_acceptance::query_output::Transcript::new(); // every output byte so far
     // Once forwarding is live and nothing more will be recorded, every later
     // byte is forwarded as read, exactly as pass-through forwards it.
     let mut streaming = false;
@@ -536,10 +536,14 @@ fn output_side(
 
     loop {
         let n = match from.read(&mut buf) {
-            Ok(0) => break,
+            Ok(0) => {
+                all.end();
+                break;
+            }
             Ok(n) => n,
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
             Err(_) => {
+                all.refuse();
                 forwarding_ok = false;
                 break;
             }
@@ -556,15 +560,24 @@ fn output_side(
             }
             continue;
         }
-        all.extend_from_slice(chunk);
+        all.append(chunk);
         let mut items: Vec<Item> = Vec::new();
         splitter.push(chunk, &mut items);
         for item in items {
             let start = usize::try_from(item.offset).unwrap_or(usize::MAX);
-            if let Some((fresh, s)) = prev.take()
-                && !check.settle(fresh, all.get(s..start).unwrap_or_default(), &mut pairer)
-            {
-                break;
+            if let Some((fresh, s)) = prev.take() {
+                if all.frame(s, start).is_none() {
+                    pairer.stop();
+                }
+                // Framing refusal stops publication. Replay comparison still
+                // consumes the original bytes and keeps its original behavior.
+                if !check.settle(
+                    fresh,
+                    all.bytes().get(s..start).unwrap_or_default(),
+                    &mut pairer,
+                ) {
+                    break;
+                }
             }
             let fresh = replay.advance();
             if fresh && forward_from.is_none() {
@@ -578,7 +591,7 @@ fn output_side(
         if let Some(f) = forward_from
             && all.len() > forwarded.max(f)
         {
-            if !write_out(all.get(forwarded.max(f)..).unwrap_or_default()) {
+            if !write_out(all.bytes().get(forwarded.max(f)..).unwrap_or_default()) {
                 forwarding_ok = false;
                 break;
             }
@@ -590,14 +603,18 @@ fn output_side(
         if forward_from.is_some()
             && forwarded == all.len()
             && check.complete()
-            && (pairer.pending.is_stopped() || all.len() > limit)
+            && (pairer.pending.is_stopped()
+                || all
+                    .len()
+                    .saturating_add(all.frames().saturating_mul(std::mem::size_of::<usize>()))
+                    > limit)
         {
             // Recording has stopped, or the session outgrew the buffer: stop
             // recording for good and keep no more output.
             pairer.stop();
             streaming = true;
             prev = None;
-            all = Vec::new();
+            all.discard();
             forwarded = 0;
         }
     }
@@ -609,7 +626,7 @@ fn output_side(
     }
     // End of output. Deliver what is left, as pass-through would.
     if !check.diverged && forward_from.is_some() && all.len() > forwarded {
-        forwarding_ok &= write_out(all.get(forwarded..).unwrap_or_default());
+        forwarding_ok &= write_out(all.bytes().get(forwarded..).unwrap_or_default());
     }
     let (_, mut code) = match child.wait() {
         Ok(status) => crate::status_code(status),
@@ -621,7 +638,17 @@ fn output_side(
         && let Some((fresh, s)) = prev.take()
         && code == 0
     {
-        check.settle(fresh, all.get(s..).unwrap_or_default(), &mut pairer);
+        let end = all.len();
+        if all.frame(s, end).is_none() {
+            pairer.stop();
+        }
+        check.settle(fresh, all.bytes().get(s..).unwrap_or_default(), &mut pairer);
+    }
+    // This consumes the actual stdout owner. It attests EOF and complete
+    // response coverage, separately from the process/input/origin conditions.
+    let output = all.seal();
+    if output.is_none() {
+        pairer.stop();
     }
     if check.finish(forwarding_ok && code == 0) {
         pairer.stop();
