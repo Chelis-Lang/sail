@@ -1406,3 +1406,316 @@ sail_verified! {
         i == encoded.len()
     }
 }
+
+sail_spec! {
+    /// Optional exact in-memory primitive outcomes used by a constructive
+    /// vector provider. The native filesystem provider has no prediction.
+    pub struct ScriptedReadFile {
+        pub key: Seq<u8>,
+        pub stamp: ObjectStamp,
+        pub bytes: Seq<u8>,
+    }
+
+    pub open spec fn valid_read_script(file: ScriptedReadFile, key: Seq<u8>) -> bool {
+        file.key == key && file.stamp.kind == 1 && file.stamp.length == file.bytes.len()
+            && file.bytes.len() <= usize::MAX
+    }
+
+    pub enum FileObservation {
+        Path { key: Seq<u8>, stamp: ObjectStamp },
+        Open { key: Seq<u8>, owner: (u64, u64) },
+        Handle { owner: (u64, u64), stamp: ObjectStamp },
+        Bytes { owner: (u64, u64), bytes: Seq<u8> },
+        Eof { owner: (u64, u64) },
+        Failure { operation: u8 },
+    }
+    pub open spec fn positive_owned_read(event: FileObservation, owner: (u64, u64)) -> bool {
+        match event { FileObservation::Bytes { owner: actual, bytes } => actual == owner && bytes.len() > 0, _ => false }
+    }
+}
+
+sail_trait! {
+    /// Narrow physical-I/O and hash primitives for the checked read transaction.
+    /// Production uses only an explicitly source-bound private native provider;
+    /// arbitrary trait implementations supply no filesystem authority.
+    pub trait FileReadHost<Handle, Hasher, Digest, Failure> {
+        spec {
+            spec fn scripted_file(&self) -> Option<ScriptedReadFile>;
+            spec fn scripted_handle(handle: &Handle) -> Option<ScriptedReadFile>;
+            spec fn key(&self) -> Seq<u8>;
+            spec fn observations(&self) -> Seq<FileObservation>;
+            spec fn owner(handle: &Handle) -> (u64, u64);
+            spec fn observed_bytes(handle: &Handle) -> Seq<u8>;
+            spec fn hashed_bytes(hasher: &Hasher) -> Seq<u8>;
+            spec fn digest_of(bytes: Seq<u8>) -> Digest;
+        }
+        /// Observe the actual requested pathname at this operation.
+        ///
+        /// # Errors
+        /// Returns the provider failure when pathname metadata is unavailable.
+        fn path_stamp(&mut self) -> (result: Result<ObjectStamp, Failure>)
+            requires (true)
+            ensures (final(self).key() == old(self).key(),
+                final(self).scripted_file() == old(self).scripted_file(),
+                final(self).observations() == old(self).observations().push(match result {
+                    Ok(stamp) => FileObservation::Path { key: old(self).key(), stamp },
+                    Err(_) => FileObservation::Failure { operation: 0 },
+                }),
+                match old(self).scripted_file() { Some(file) => valid_read_script(file, old(self).key())
+                    ==> result == Ok(file.stamp), None => true });
+        /// Open the requested path and begin this handle observation history.
+        ///
+        /// # Errors
+        /// Returns the actual provider open failure.
+        fn open(&mut self) -> (result: Result<Handle, Failure>)
+            requires (true)
+            ensures (final(self).key() == old(self).key(),
+                final(self).scripted_file() == old(self).scripted_file(),
+                final(self).observations() == old(self).observations().push(match result {
+                    Ok(handle) => FileObservation::Open { key: old(self).key(), owner: Self::owner(&handle) },
+                    Err(_) => FileObservation::Failure { operation: 1 },
+                }),
+                match result { Ok(handle) => Self::observed_bytes(&handle) == Seq::<u8>::empty(), Err(_) => true },
+                match old(self).scripted_file() { Some(file) => valid_read_script(file, old(self).key())
+                    ==> match result { Ok(handle) => Self::scripted_handle(&handle) == Some(file), Err(_) => false }, None => true });
+        /// Observe metadata of this exact owned handle, preserving its owner.
+        ///
+        /// # Errors
+        /// Returns the provider failure when handle metadata is unavailable.
+        fn handle_stamp(&mut self, handle: &Handle) -> (result: Result<ObjectStamp, Failure>)
+            requires (true)
+            ensures (final(self).key() == old(self).key(),
+                final(self).scripted_file() == old(self).scripted_file(),
+                final(self).observations() == old(self).observations().push(match result {
+                    Ok(stamp) => FileObservation::Handle { owner: Self::owner(handle), stamp },
+                    Err(_) => FileObservation::Failure { operation: 2 },
+                }),
+                match result { Ok(stamp) => (stamp.device, stamp.object) == Self::owner(handle), Err(_) => true },
+                match old(self).scripted_file() { Some(file) => valid_read_script(file, old(self).key()) && Self::scripted_handle(handle) == Some(file)
+                    ==> result == Ok(file.stamp), None => true });
+        /// Return the actual observed buffer prefix from this same handle.
+        ///
+        /// # Errors
+        /// Returns the actual read failure without authorizing a completed read.
+        fn read(&mut self, handle: &mut Handle, buffer: &mut [u8]) -> (result: Result<usize, Failure>)
+            requires (old(buffer).len() > 0)
+            ensures (final(self).key() == old(self).key(),
+                final(self).scripted_file() == old(self).scripted_file(),
+                final(self).observations() == old(self).observations().push(match result {
+                    Ok(count) => if count == 0 { FileObservation::Eof { owner: Self::owner(old(handle)) } }
+                        else { FileObservation::Bytes { owner: Self::owner(old(handle)), bytes: final(buffer)@.take(count as int) } },
+                    Err(_) => FileObservation::Failure { operation: 3 },
+                }),
+                final(buffer).len() == old(buffer).len(),
+                match result { Ok(count) => count <= final(buffer).len()
+                && Self::owner(final(handle)) == Self::owner(old(handle))
+                && Self::observed_bytes(final(handle)) == Self::observed_bytes(old(handle))
+                    + final(buffer)@.take(count as int), Err(_) => true },
+                match old(self).scripted_file() { Some(file) => valid_read_script(file, old(self).key())
+                    && Self::scripted_handle(old(handle)) == Some(file) && old(buffer).len() > 0
+                    && Self::observed_bytes(old(handle)).len() <= file.bytes.len()
+                    && Self::observed_bytes(old(handle)) == file.bytes.take(Self::observed_bytes(old(handle)).len() as int)
+                    ==> match result { Ok(count) => Self::scripted_handle(final(handle)) == Some(file)
+                        && count <= file.bytes.len() - Self::observed_bytes(old(handle)).len()
+                        && (count == 0) == (Self::observed_bytes(old(handle)).len() == file.bytes.len())
+                        && final(buffer)@.take(count as int) == file.bytes.subrange(Self::observed_bytes(old(handle)).len() as int,
+                            Self::observed_bytes(old(handle)).len() as int + count as int), Err(_) => false }, None => true });
+        /// Begin one empty hash stream.
+        fn hash_start(&mut self) -> (result: Hasher)
+            requires (true) ensures (Self::hashed_bytes(&result) == Seq::<u8>::empty(),
+                final(self).key() == old(self).key(),
+                final(self).scripted_file() == old(self).scripted_file(), final(self).observations() == old(self).observations());
+        /// Feed precisely the supplied bytes to the same hash state.
+        fn hash_update(&mut self, hasher: &mut Hasher, bytes: &[u8]) -> (result: ())
+            requires (Self::hashed_bytes(old(hasher)).len() + bytes.len() <= usize::MAX)
+            ensures (Self::hashed_bytes(final(hasher)) == Self::hashed_bytes(old(hasher)) + bytes@,
+                final(self).key() == old(self).key(),
+                final(self).scripted_file() == old(self).scripted_file(), final(self).observations() == old(self).observations());
+        /// Finalize the forward hash function of the supplied byte stream.
+        fn hash_finish(&mut self, hasher: Hasher) -> (result: Digest)
+            requires (true) ensures (result == Self::digest_of(Self::hashed_bytes(&hasher)),
+                final(self).key() == old(self).key(),
+                final(self).scripted_file() == old(self).scripted_file(), final(self).observations() == old(self).observations());
+        /// Construct the ordinary conservative observation error.
+        fn changed(&self) -> (result: Failure)
+            requires (true) ensures (true);
+    }
+}
+
+sail_code! {
+    /// A checked read/hash transaction under its source-bound primitive contract.
+    pub struct CompletedRead<Handle, Digest> {
+        handle: Handle,
+        digest: Digest,
+        seal: ReadSeal,
+    }
+}
+impl<Handle, Digest> CompletedRead<Handle, Digest> {
+    sail_impl_spec! {
+        /// The retained owned handle and its observed transaction history.
+        pub closed spec fn handle_view(&self) -> Handle { self.handle }
+        /// The exact hash result returned by the primitive provider.
+        pub closed spec fn digest_view(&self) -> Digest { self.digest }
+        /// The immutable original observation seal.
+        pub closed spec fn seal_view(&self) -> ReadSeal { self.seal }
+    }
+    sail_method! {
+        /// Extract the digest and original seal, dropping the owned handle now.
+        pub fn into_parts(self) -> (result: (Digest, ReadSeal))
+            requires (true)
+            ensures (result.0 == self.digest_view(), result.1 == self.seal_view())
+        {
+            let Self { handle: _handle, digest, seal } = self;
+            (digest, seal)
+        }
+    }
+}
+
+sail_verified! {
+    /// Read, hash and seal one adopted owned handle using exact primitive results.
+    ///
+    /// # Errors
+    /// Preserves provider failures and refuses empty buffers, incomplete reads
+    /// or metadata observations that disagree with the original object.
+    pub fn read_opened_digest<Host, Handle, Hasher, Digest, Failure>(host: &mut Host,
+        input: Handle, original: ObjectStamp, buffer: &mut [u8]) -> (result: Result<CompletedRead<Handle, Digest>, Failure>)
+        where (Host: FileReadHost<Handle, Hasher, Digest, Failure>)
+        requires (Host::observed_bytes(&input) == Seq::<u8>::empty())
+        ensures (final(buffer).len() == old(buffer).len(), match result { Ok(done) => original.kind == 1 && done.seal_view().original_view() == original
+            && done.seal_view().consumed_view() == original.length
+            && Host::observed_bytes(&done.handle_view()).len() == original.length
+            && done.digest_view() == Host::digest_of(Host::observed_bytes(&done.handle_view()))
+            && Host::owner(&done.handle_view()) == (original.device, original.object)
+            && Host::owner(&done.handle_view()) == Host::owner(&input)
+            && final(host).key() == old(host).key()
+            && final(host).observations().len() >= old(host).observations().len() + 4
+            && final(host).observations().take(old(host).observations().len() as int) == old(host).observations()
+            && final(host).observations()[old(host).observations().len() as int] == (FileObservation::Handle { owner: (original.device, original.object), stamp: original })
+            && final(host).observations()[final(host).observations().len() as int - 3] == (FileObservation::Eof { owner: (original.device, original.object) })
+            && final(host).observations()[final(host).observations().len() as int - 2] == (FileObservation::Handle { owner: (original.device, original.object), stamp: original })
+            && final(host).observations().last() == (FileObservation::Path { key: old(host).key(), stamp: original })
+            && forall|i: int| old(host).observations().len() + 1 <= i < final(host).observations().len() - 3
+                ==> positive_owned_read(final(host).observations()[i], (original.device, original.object)), Err(_) => true },
+            match old(host).scripted_file() { Some(file) => valid_read_script(file, old(host).key())
+                && Host::scripted_handle(&input) == Some(file) && original == file.stamp && old(buffer).len() > 0
+                ==> match result { Ok(done) => Host::observed_bytes(&done.handle_view()) == file.bytes,
+                    Err(_) => false }, None => true })
+    {
+        let mut handle = input;
+        if buffer.is_empty() { return Err(host.changed()); }
+        let opened = host.handle_stamp(&handle)?;
+        let Some(mut read) = OpenedRead::begin(original, &opened) else { return Err(host.changed()); };
+        let mut hasher = host.hash_start();
+        let mut eof = false;
+        sail_while! { (!eof)
+            invariant (buffer.len() > 0, buffer.len() == old(buffer).len(),
+                host.scripted_file() == old(host).scripted_file(),
+                match old(host).scripted_file() { Some(file) => valid_read_script(file, old(host).key())
+                    && Host::scripted_handle(&input) == Some(file) && original == file.stamp
+                    ==> Host::scripted_handle(&handle) == Some(file) && !read.failed_view()
+                        && Host::observed_bytes(&handle) == file.bytes.take(read.consumed_view() as int)
+                        && (eof ==> read.consumed_view() == file.bytes.len()), None => true },
+                host.key() == old(host).key(),
+                host.observations().len() >= old(host).observations().len() + 1 + if eof { 1int } else { 0int },
+                host.observations().take(old(host).observations().len() as int) == old(host).observations(),
+                host.observations()[old(host).observations().len() as int] == (FileObservation::Handle { owner: (original.device, original.object), stamp: original }),
+                eof ==> host.observations().last() == (FileObservation::Eof { owner: (original.device, original.object) }),
+                forall|i: int| old(host).observations().len() + 1 <= i < host.observations().len() - if eof { 1int } else { 0int }
+                    ==> positive_owned_read(host.observations()[i], (original.device, original.object)),
+                Host::owner(&handle) == (original.device, original.object),
+                Host::owner(&handle) == Host::owner(&input),
+                read.well_formed(), read.original_view() == original,
+                Host::observed_bytes(&handle) == Host::hashed_bytes(&hasher),
+                Host::observed_bytes(&handle).len() == read.consumed_view(),
+                eof == read.ended_view(), !eof ==> !read.failed_view())
+            decreases (original.length as int - read.consumed_view() as int, if eof { 0int } else { 1int })
+            {
+                let count = match host.read(&mut handle, buffer) {
+                    Ok(count) => count,
+                    Err(error) => { let _ = read.fail(); return Err(error); }
+                };
+                if count == 0 {
+                    read = read.eof();
+                    eof = true;
+                } else {
+                    let (next, chunk) = read.chunk(&buffer[..count]);
+                    sail_proof! {
+                        if chunk.is_some() {
+                            assert(next.consumed_view() == read.consumed_view() + count);
+                            assert(next.consumed_view() > read.consumed_view());
+                        }
+                    }
+                    read = next;
+                    let Some(chunk) = chunk else { return Err(host.changed()); };
+                    host.hash_update(&mut hasher, chunk.bytes());
+                }
+            }
+        }
+        let handle_after = host.handle_stamp(&handle)?;
+        let path_after = host.path_stamp()?;
+        let Some(seal) = read.finish(&handle_after, &path_after) else { return Err(host.changed()); };
+        let digest = host.hash_finish(hasher);
+        Ok(CompletedRead { handle, digest, seal })
+    }
+}
+
+sail_verified! {
+    /// Observe, open, read and seal the requested path through one owned object.
+    ///
+    /// # Errors
+    /// Preserves path/open/read failures and refuses incomplete or changed
+    /// observations without returning a digest seal.
+    pub fn open_read_digest<Host, Handle, Hasher, Digest, Failure>(host: &mut Host,
+        buffer: &mut [u8]) -> (result: Result<CompletedRead<Handle, Digest>, Failure>)
+        where (Host: FileReadHost<Handle, Hasher, Digest, Failure>)
+        requires (true)
+        ensures (final(buffer).len() == old(buffer).len(), match result { Ok(done) => done.seal_view().original_view().kind == 1
+            && done.seal_view().consumed_view() == done.seal_view().original_view().length
+            && Host::observed_bytes(&done.handle_view()).len() == done.seal_view().original_view().length
+            && done.digest_view() == Host::digest_of(Host::observed_bytes(&done.handle_view()))
+            && Host::owner(&done.handle_view()) == (done.seal_view().original_view().device, done.seal_view().original_view().object)
+            && final(host).key() == old(host).key()
+            && final(host).observations().len() >= old(host).observations().len() + 6
+            && final(host).observations().take(old(host).observations().len() as int) == old(host).observations()
+            && final(host).observations()[old(host).observations().len() as int] == (FileObservation::Path { key: old(host).key(), stamp: done.seal_view().original_view() })
+            && final(host).observations()[old(host).observations().len() as int + 1] == (FileObservation::Open { key: old(host).key(), owner: Host::owner(&done.handle_view()) })
+            && final(host).observations()[old(host).observations().len() as int + 2] == (FileObservation::Handle { owner: Host::owner(&done.handle_view()), stamp: done.seal_view().original_view() })
+            && final(host).observations()[final(host).observations().len() as int - 3] == (FileObservation::Eof { owner: Host::owner(&done.handle_view()) })
+            && final(host).observations()[final(host).observations().len() as int - 2] == (FileObservation::Handle { owner: Host::owner(&done.handle_view()), stamp: done.seal_view().original_view() })
+            && final(host).observations().last() == (FileObservation::Path { key: old(host).key(), stamp: done.seal_view().original_view() })
+            && forall|i: int| old(host).observations().len() + 3 <= i < final(host).observations().len() - 3
+                ==> positive_owned_read(final(host).observations()[i], Host::owner(&done.handle_view())), Err(_) => true },
+            match old(host).scripted_file() { Some(file) => valid_read_script(file, old(host).key()) && old(buffer).len() > 0
+                ==> match result { Ok(done) => Host::observed_bytes(&done.handle_view()) == file.bytes,
+                    Err(_) => false }, None => true })
+    {
+        let original = host.path_stamp()?;
+        let handle = host.open()?;
+        sail_proof! {
+            assert(host.observations().len() == old(host).observations().len() + 2);
+            assert(host.observations() == old(host).observations()
+                .push(FileObservation::Path { key: old(host).key(), stamp: original })
+                .push(FileObservation::Open { key: old(host).key(), owner: Host::owner(&handle) }));
+        }
+        let result = read_opened_digest::<Host, Handle, Hasher, Digest, Failure>(host, handle, original, buffer);
+        sail_proof! {
+            if let Ok(done) = &result {
+                assert(done.seal_view().original_view() == original);
+                assert(host.observations().take(old(host).observations().len() as int + 2) == old(host).observations()
+                    .push(FileObservation::Path { key: old(host).key(), stamp: original })
+                    .push(FileObservation::Open { key: old(host).key(), owner: Host::owner(&done.handle_view()) }));
+                assert(host.observations().take(old(host).observations().len() as int + 2)[old(host).observations().len() as int]
+                    == host.observations()[old(host).observations().len() as int]);
+                assert(host.observations().take(old(host).observations().len() as int + 2)[old(host).observations().len() as int + 1]
+                    == host.observations()[old(host).observations().len() as int + 1]);
+                assert(host.observations()[old(host).observations().len() as int] == (FileObservation::Path { key: old(host).key(), stamp: original }));
+                assert(host.observations()[old(host).observations().len() as int + 1] == (FileObservation::Open { key: old(host).key(), owner: Host::owner(&done.handle_view()) }));
+                assert forall|i: int| old(host).observations().len() + 3 <= i < host.observations().len() - 3
+                    implies positive_owned_read(host.observations()[i], Host::owner(&done.handle_view())) by {
+                    assert(positive_owned_read(host.observations()[i], (original.device, original.object)));
+                }
+            }
+        }
+        result
+    }
+}

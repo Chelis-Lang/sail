@@ -21,80 +21,112 @@ pub(crate) fn file_digest(path: &Path) -> Result<String> {
     file_digest_observed(path).map(|observed| observed.hash)
 }
 
-fn file_digest_observed(path: &Path) -> Result<ObservedDigest> {
-    let original =
-        object_stamp(&std::fs::metadata(path).map_err(|e| {
-            Error::new("SAIL3101", format!("cannot read {}: {e}", path.display()))
-        })?)?;
-    let input = std::fs::File::open(path)
-        .map_err(|e| Error::new("SAIL3101", format!("cannot read {}: {e}", path.display())))?;
-    digest_opened(path, input, original)
+thread_local! {
+    // One allocation per reader thread; no whole-file buffer is introduced.
+    static DIGEST_BUFFER: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(vec![0u8; 65536]);
 }
 
-/// Read, hash and validate through one owned handle. A pathname observation
-/// cannot label bytes read from a different object, even with equal content.
-fn digest_opened(
-    path: &Path,
-    mut input: std::fs::File,
-    original: sail_acceptance::inputs::ObjectStamp,
-) -> Result<ObservedDigest> {
-    use sail_acceptance::inputs::OpenedRead;
-    // One read buffer per thread; the checked chunk borrows exactly its actual
-    // successful prefix, and the hasher receives only that returned slice.
-    thread_local! {
-        static BUFFER: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(vec![0u8; 65536]);
+/// The only production file-read provider for the checked transaction. These
+/// methods are narrow standard-library/SHA forwarders, not a complete-input
+/// inventory or an atomic-filesystem-version claim.
+struct NativeFileHost<'a> {
+    path: &'a Path,
+}
+
+impl sail_acceptance::inputs::FileReadHost<std::fs::File, Sha256, String, Error>
+    for NativeFileHost<'_>
+{
+    sail_acceptance::sail_trait_impl_spec! {
+        open spec fn scripted_file(&self) -> Option<sail_acceptance::inputs::ScriptedReadFile> { None }
+        open spec fn scripted_handle(_handle: &std::fs::File) -> Option<sail_acceptance::inputs::ScriptedReadFile> { None }
     }
-    let changed = || {
+
+    fn path_stamp(&mut self) -> Result<sail_acceptance::inputs::ObjectStamp> {
+        object_stamp(&std::fs::metadata(self.path).map_err(|error| {
+            Error::new(
+                "SAIL3101",
+                format!("cannot read {}: {error}", self.path.display()),
+            )
+        })?)
+    }
+
+    fn open(&mut self) -> Result<std::fs::File> {
+        std::fs::File::open(self.path).map_err(|error| {
+            Error::new(
+                "SAIL3101",
+                format!("cannot read {}: {error}", self.path.display()),
+            )
+        })
+    }
+
+    fn handle_stamp(
+        &mut self,
+        input: &std::fs::File,
+    ) -> Result<sail_acceptance::inputs::ObjectStamp> {
+        object_stamp(
+            &input
+                .metadata()
+                .map_err(|error| Error::new("SAIL3101", error.to_string()))?,
+        )
+    }
+
+    fn read(&mut self, input: &mut std::fs::File, buffer: &mut [u8]) -> Result<usize> {
+        input
+            .read(buffer)
+            .map_err(|error| Error::new("SAIL3101", error.to_string()))
+    }
+
+    fn hash_start(&mut self) -> Sha256 {
+        Sha256::new()
+    }
+
+    fn hash_update(&mut self, hasher: &mut Sha256, bytes: &[u8]) {
+        hasher.update(bytes);
+    }
+
+    fn hash_finish(&mut self, hasher: Sha256) -> String {
+        format!("{:x}", hasher.finalize())
+    }
+
+    fn changed(&self) -> Error {
         Error::new(
             "SAIL3101",
             format!(
                 "opened input changed or could not be observed completely: {}",
-                path.display()
+                self.path.display()
             ),
         )
-    };
-    let opened = object_stamp(
-        &input
-            .metadata()
-            .map_err(|e| Error::new("SAIL3101", e.to_string()))?,
-    )?;
-    let read = OpenedRead::begin(original, &opened).ok_or_else(changed)?;
-    let mut hasher = Sha256::new();
-    let read = BUFFER.with_borrow_mut(|buffer| -> Result<OpenedRead> {
-        let mut read = read;
-        loop {
-            let count = match input.read(buffer) {
-                Ok(count) => count,
-                Err(error) => {
-                    let _ = read.fail();
-                    return Err(Error::new("SAIL3101", error.to_string()));
-                }
-            };
-            if count == 0 {
-                return Ok(read.eof());
-            }
-            let (next, chunk) = read.chunk(&buffer[..count]);
-            read = next;
-            let chunk = chunk.ok_or_else(changed)?;
-            hasher.update(chunk.bytes());
-        }
+    }
+}
+
+fn file_digest_observed(path: &Path) -> Result<ObservedDigest> {
+    let mut host = NativeFileHost { path };
+    let completed = DIGEST_BUFFER.with_borrow_mut(|buffer| {
+        sail_acceptance::inputs::open_read_digest::<_, std::fs::File, Sha256, String, Error>(
+            &mut host, buffer,
+        )
     })?;
-    let handle_after = object_stamp(
-        &input
-            .metadata()
-            .map_err(|e| Error::new("SAIL3101", e.to_string()))?,
-    )?;
-    let path_after =
-        object_stamp(&std::fs::metadata(path).map_err(|e| {
-            Error::new("SAIL3101", format!("cannot read {}: {e}", path.display()))
-        })?)?;
-    let seal = read
-        .finish(&handle_after, &path_after)
-        .ok_or_else(changed)?;
-    Ok(ObservedDigest {
-        hash: format!("{:x}", hasher.finalize()),
-        seal,
-    })
+    // The owned file is dropped per read, never accumulated across a snapshot.
+    let (hash, seal) = completed.into_parts();
+    Ok(ObservedDigest { hash, seal })
+}
+
+/// The fixture seam adopts a real existing descriptor, including partial reads.
+/// Production always enters through the checked path/open transaction above.
+#[cfg(test)]
+fn digest_opened(
+    path: &Path,
+    input: std::fs::File,
+    original: sail_acceptance::inputs::ObjectStamp,
+) -> Result<ObservedDigest> {
+    let mut host = NativeFileHost { path };
+    let completed = DIGEST_BUFFER.with_borrow_mut(|buffer| {
+        sail_acceptance::inputs::read_opened_digest::<_, std::fs::File, Sha256, String, Error>(
+            &mut host, input, original, buffer,
+        )
+    })?;
+    let (hash, seal) = completed.into_parts();
+    Ok(ObservedDigest { hash, seal })
 }
 
 #[cfg(unix)]
@@ -424,6 +456,14 @@ mod tests {
         let empty = root.join("empty.rs");
         std::fs::write(&empty, [])?;
         assert_eq!(file_digest(&empty)?, digest(&[]));
+        let original = object_stamp(&std::fs::metadata(&empty)?)?;
+        let unreadable_empty = std::fs::OpenOptions::new().write(true).open(&empty)?;
+        assert_eq!(
+            digest_opened(&empty, unreadable_empty, original)
+                .err()
+                .map(|e| e.code),
+            Some("SAIL3101")
+        );
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

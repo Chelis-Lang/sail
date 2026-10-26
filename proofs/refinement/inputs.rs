@@ -600,4 +600,148 @@ pub fn environment_name_nonempty_and_wrong_key_controls() {
     let other = environment_name_matches(&plain, &wrong); assert(!other);
 }
 
+/// A checked concrete provider for constructive transaction controls. This is a
+/// finite byte-vector execution, not a filesystem implementation assumption.
+pub struct ReadWitnessHost {
+    pub source: Vec<u8>,
+    pub reported_length: usize,
+    pub path_calls: u8,
+    pub retarget: bool,
+    pub read_failure: bool,
+    pub events: Ghost<Seq<FileObservation>>,
+}
+
+pub struct ReadWitnessHandle {
+    pub source: Vec<u8>,
+    pub start: usize,
+    pub position: usize,
+}
+
+pub fn read_witness_stamp(length: usize, object: u64) -> (stamp: ObjectStamp)
+    ensures stamp == (ObjectStamp { device: 7, object, length, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 })
+{
+    ObjectStamp { device: 7, object, length, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 }
+}
+
+impl FileReadHost<ReadWitnessHandle, Vec<u8>, usize, u8> for ReadWitnessHost {
+    open spec fn scripted_file(&self) -> Option<ScriptedReadFile> {
+        if !self.retarget && !self.read_failure && self.reported_length == self.source.len() {
+            Some(ScriptedReadFile { key: self.key(), bytes: self.source@,
+                stamp: ObjectStamp { device: 7, object: 8, length: self.reported_length, mode: 0o100644,
+                    modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 } })
+        } else { None }
+    }
+    open spec fn scripted_handle(handle: &ReadWitnessHandle) -> Option<ScriptedReadFile> {
+        if handle.start == 0 && handle.position <= handle.source.len() {
+            Some(ScriptedReadFile { key: seq![102u8], bytes: handle.source@,
+                stamp: ObjectStamp { device: 7, object: 8, length: handle.source.len(), mode: 0o100644,
+                    modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 } })
+        } else { None }
+    }
+    open spec fn key(&self) -> Seq<u8> { seq![102u8] }
+    open spec fn observations(&self) -> Seq<FileObservation> { self.events@ }
+    open spec fn owner(handle: &ReadWitnessHandle) -> (u64, u64) { (7, 8) }
+    open spec fn observed_bytes(handle: &ReadWitnessHandle) -> Seq<u8> {
+        if handle.start <= handle.position <= handle.source.len() {
+            handle.source@.subrange(handle.start as int, handle.position as int)
+        } else { Seq::empty() }
+    }
+    open spec fn hashed_bytes(hasher: &Vec<u8>) -> Seq<u8> { hasher@ }
+    // This intentionally colliding forward function proves that the kernel
+    // never needs a universal inverse or injectivity law for a fixed digest.
+    open spec fn digest_of(bytes: Seq<u8>) -> usize { bytes.len() as usize }
+
+    fn path_stamp(&mut self) -> Result<ObjectStamp, u8> {
+        let object = if self.retarget && self.path_calls > 0 { 9 } else { 8 };
+        let stamp = read_witness_stamp(self.reported_length, object);
+        self.path_calls = self.path_calls.wrapping_add(1);
+        proof { self.events@ = self.events@.push(FileObservation::Path { key: self.key(), stamp }); }
+        Ok(stamp)
+    }
+
+    fn open(&mut self) -> Result<ReadWitnessHandle, u8> {
+        let source = self.source.clone();
+        let handle = ReadWitnessHandle { source, start: 0, position: 0 };
+        proof { self.events@ = self.events@.push(FileObservation::Open { key: self.key(), owner: Self::owner(&handle) }); }
+        Ok(handle)
+    }
+
+    fn handle_stamp(&mut self, handle: &ReadWitnessHandle) -> Result<ObjectStamp, u8> {
+        let stamp = read_witness_stamp(self.reported_length, 8);
+        proof { self.events@ = self.events@.push(FileObservation::Handle { owner: Self::owner(handle), stamp }); }
+        Ok(stamp)
+    }
+
+    fn read(&mut self, handle: &mut ReadWitnessHandle, buffer: &mut [u8]) -> Result<usize, u8> {
+        if self.read_failure || buffer.is_empty() || handle.start > handle.position || handle.position > handle.source.len() {
+            proof { self.events@ = self.events@.push(FileObservation::Failure { operation: 3 }); }
+            return Err(3);
+        }
+        if handle.position == handle.source.len() {
+            proof { self.events@ = self.events@.push(FileObservation::Eof { owner: Self::owner(handle) }); }
+            return Ok(0);
+        }
+        let position = handle.position;
+        let byte = handle.source[position];
+        buffer[0] = byte;
+        handle.position += 1;
+        proof {
+            assert(handle.source@.subrange(handle.start as int, handle.position as int)
+                == handle.source@.subrange(handle.start as int, position as int).push(byte));
+            assert(buffer@.take(1) == seq![byte]);
+            self.events@ = self.events@.push(FileObservation::Bytes { owner: Self::owner(handle), bytes: seq![byte] });
+        }
+        Ok(1)
+    }
+
+    fn hash_start(&mut self) -> Vec<u8> { Vec::new() }
+
+    fn hash_update(&mut self, hasher: &mut Vec<u8>, bytes: &[u8]) {
+        let mut i: usize = 0;
+        while i < bytes.len()
+            invariant i <= bytes.len(),
+                hasher@ == old(hasher)@ + bytes@.take(i as int),
+                old(hasher).len() + bytes.len() <= usize::MAX
+            decreases bytes.len() - i
+        {
+            hasher.push(bytes[i]);
+            i += 1;
+        }
+    }
+
+    fn hash_finish(&mut self, hasher: Vec<u8>) -> usize { hasher.len() }
+    fn changed(&self) -> u8 { 4 }
+}
+
+/// Known vector data produces a nonempty checked transaction, and a colliding
+/// forward hash model does not imply equality of the actual read bytes.
+pub fn read_kernel_nonempty_and_collision_controls() {
+    let mut host = ReadWitnessHost { source: vec![1u8, 2u8, 3u8], reported_length: 3,
+        path_calls: 0, retarget: false, read_failure: false, events: Ghost(Seq::empty()) };
+    let mut buffer = vec![0u8, 0u8];
+    let read = open_read_digest::<ReadWitnessHost, ReadWitnessHandle, Vec<u8>, usize, u8>(&mut host, &mut buffer);
+    assert(read.is_ok());
+    let done = match read { Ok(done) => done, Err(_) => { assert(false); return; } };
+    assert(ReadWitnessHost::observed_bytes(&done.handle_view()) == seq![1u8, 2u8, 3u8]);
+    assert(done.digest_view() == 3);
+    let (digest, seal) = done.into_parts();
+    assert(digest == 3 && seal.consumed_view() == 3);
+
+    let mut other = ReadWitnessHost { source: vec![9u8, 9u8, 9u8], reported_length: 3,
+        path_calls: 0, retarget: false, read_failure: false, events: Ghost(Seq::empty()) };
+    let read = open_read_digest::<ReadWitnessHost, ReadWitnessHandle, Vec<u8>, usize, u8>(&mut other, &mut buffer);
+    assert(read.is_ok());
+    let done = match read { Ok(done) => done, Err(_) => { assert(false); return; } };
+    assert(ReadWitnessHost::observed_bytes(&done.handle_view()) == seq![9u8, 9u8, 9u8]);
+    assert(done.digest_view() == digest);
+    assert(ReadWitnessHost::observed_bytes(&done.handle_view()) != seq![1u8, 2u8, 3u8]);
+
+    let mut empty = ReadWitnessHost { source: Vec::new(), reported_length: 0,
+        path_calls: 0, retarget: false, read_failure: false, events: Ghost(Seq::empty()) };
+    let read = open_read_digest::<ReadWitnessHost, ReadWitnessHandle, Vec<u8>, usize, u8>(&mut empty, &mut buffer);
+    assert(read.is_ok());
+}
+
 }
