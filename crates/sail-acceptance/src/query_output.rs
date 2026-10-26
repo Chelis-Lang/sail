@@ -31,6 +31,8 @@ sail_verified! {
             assert(output.endpoints().len() == 0 && output.consumed() == 0);
             assert(output.view().len() == 6);
             assert(crate::query::response_shape(output.view()));
+            assert(output.view().subrange(0, 6) =~= output.view());
+            assert(crate::query::response_shape(output.view().subrange(0, 6)));
         }
         if output.frame(0, 6).is_none() { return false; }
         output.end();

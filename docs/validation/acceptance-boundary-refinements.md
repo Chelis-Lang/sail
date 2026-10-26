@@ -156,6 +156,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `b60694e8` | Native owned-output whole positive root | 342 verified/1 failed function. Every explicit pre-state assertion passes; the nonempty frame-admission exit remains unproved. The next proof step makes the complete-buffer subrange equality explicit, with the same witness, guards, scope and limits |
 | 2026-10-26 | `28b3e001` | Native owned-output whole positive root | 342 verified/1 failed function: the concrete trim/span assertions pass; the witness still cannot discharge the frame-admission exit. Explicit pre-state proof steps retain the same nonempty response, production guards, contracts and unchanged whole-root limits. Other gates remain unrun |
 | 2026-10-26 | `59ec4634` | Native owned-output whole positive root | 342 verified/1 failed function: the nonempty witness's concrete response trim/span assertions remain unproved. Source now spells the same six bytes as an explicit array; production guards, contracts, scope and limits remain unchanged. Final source/runtime checks and other gates were not reached |
 | 2026-10-26 | `5bc2235e` | Native full gate | Source-checker tests and link checks pass. Strict clippy rejects the new exact-scope factory's intentional explicit admission branch under `question_mark`; the documented local lint exception preserves the proved body and its guard control. Later tests, model/refinement suites, solver, e2e and conformance are unrun |
@@ -425,6 +426,11 @@ The `28b3e001` continuation is retained at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-output-28b3e001-native-development.tgz`.
 SHA-256: `7597912e310c1c8f63584f9a356bbd57b8f60772f3365d9e3de37dd3c0ab8a36`.
 Independent GET/hash verification passes; it does not qualify the whole output root.
+
+The `b60694e8` continuation is retained at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-output-b60694e8-native-development.tgz`.
+SHA-256: `929caaeab6a7ddccbf0fde8a73e3312ac1d57ced2c45ffd3e26c40a4d31b6131`.
+Independent GET/hash verification passes; the incomplete source proof remains visible.
 
 ## Environment counterexamples
 
