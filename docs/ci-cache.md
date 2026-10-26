@@ -12,7 +12,7 @@ that apply today.
 |---|---|---|
 | `~/.cache/sail/results/` (solver replies) | 0.1–3 MB | Every solver query of unchanged code is answered from cache. Anvil 64 s against 186 s cold (stock 193 s); CapybaraKV 42 s against 58 s (stock 64 s) |
 | `target/` (your Cargo target), when Sail prints `note[SAIL3112]` | 76–204 MB | Dependencies are not rebuilt, as with stock `cargo verus`. CapybaraKV 12 s against stock's 30 s with the same cache; an Anvil edit commit 86 s against 159 s |
-| `~/.cache/sail/projects/` (managed targets and proof receipts) | 98–248 MB | Nothing on a new runner today ([#421](https://github.com/Chelis-Lang/sail/issues/421)). On the same machine, unchanged code reuses its receipts: Anvil 3 s, CapybaraKV 0.9 s with `git restore-mtime` |
+| `~/.cache/sail/projects/` (managed targets and proof receipts), in managed mode | 98–248 MB | Unchanged code reuses its receipts, on a new runner too: CapybaraKV 0.9 s against 41 s with `results/` alone, with `git restore-mtime`; Anvil 3 s on the same machine |
 | `~/.cargo/registry`, `~/.cargo/git` | varies | Crate downloads, as for any Rust project |
 
 The solver-reply cache is the part that works everywhere. It is small, and its
@@ -30,14 +30,15 @@ Run `SAIL_EXPLAIN=1 sail verify` once and look at the notes:
   and no proof receipts. Both Anvil (Rust 1.98.0) and CapybaraKV (a nightly)
   are in this mode as published. Persist `results/` and `target/`.
 - **No such note.** Sail builds in its own managed target under
-  `~/.cache/sail/projects/` and records proof receipts. On a new runner, only
-  `results/` helps today. See [#421](https://github.com/Chelis-Lang/sail/issues/421).
+  `~/.cache/sail/projects/` and records proof receipts. Persist `results/`
+  and `projects/`. A restored `projects/` is reused on a new runner because
+  installed tools are identified by their bytes, not their inodes.
 
 Setting `RUSTUP_TOOLCHAIN=1.99.1` moves a SAIL3112 project into managed mode
 (see [compatibility](compatibility.md#explicit-cargo-selection)). That gives
-proof receipts, which help on a machine whose Sail cache persists, such as a
-self-hosted runner. On GitHub-hosted runners it is currently slower than
-caching `target/`.
+proof receipts. For CapybaraKV with `git restore-mtime`, an unchanged commit
+then takes 0.9 s on a new runner against 12 s with a cached `target/`; an edit
+commit costs about the same either way.
 
 ## GitHub Actions example
 
@@ -79,6 +80,13 @@ jobs:
           restore-keys: |
             sail-results-${{ runner.os }}-${{ env.SAIL_VERSION }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain*') }}-
             sail-results-${{ runner.os }}-${{ env.SAIL_VERSION }}-
+
+      # Managed mode only (no SAIL3112 note): managed targets and receipts.
+      # - uses: actions/cache@v4
+      #   with:
+      #     path: ~/.cache/sail/projects
+      #     key: sail-projects-${{ runner.os }}-${{ env.SAIL_VERSION }}-${{ github.sha }}
+      #     restore-keys: sail-projects-${{ runner.os }}-${{ env.SAIL_VERSION }}-
 
       # Cargo downloads and, for SAIL3112 projects, the Cargo target.
       - uses: actions/cache@v4
@@ -209,12 +217,16 @@ times, then the caches were restored into a fresh clone:
 
 | Run | Result |
 |---|---|
-| CapybaraKV, managed mode, whole Sail cache, `git restore-mtime` | 42.7 s, all 50 units rebuilt (0.89 s before the reinstall) |
+| CapybaraKV, managed mode, whole Sail cache, `git restore-mtime` | 0.94 s, Current, 2 targets reused² (40.7 s, nothing reused, before tool identity became content-based) |
 | CapybaraKV, SAIL3112 mode, `results/` and `target/`, C0 / C1 | 12.2 s / 13.3 s |
 | Anvil, SAIL3112 mode, `results/` and `target/`, C0 / C1 | 2.5 s¹ / 85.9 s |
 
-So `target/` and `results/` survive a new runner, and `projects/` does not
-([#421](https://github.com/Chelis-Lang/sail/issues/421)).
+So `target/`, `results/` and `projects/` all survive a new runner.
+
+² Measured on main `1f812e12` with and without the content-identity change
+([#428](https://github.com/Chelis-Lang/sail/pull/428)), same host type and
+method. The first run on a new runner reads every installed tool once, about
+0.15 s; later runs reuse a per-machine memo.
 
 ### Sizes
 
@@ -280,14 +292,15 @@ These team-cache commands are experimental.
   stock, Cargo decides from its fingerprints whether Verus runs at all. In
   the Anvil rows marked ¹, neither tool re-verified the unchanged crate. That
   is the trust model of caching `target/` for any Rust project.
-- **Managed targets and receipts do not move between machines**
-  ([#421](https://github.com/Chelis-Lang/sail/issues/421)). They are keyed by
-  the installed tools' file identity, including inodes, so a restored
-  `projects/` gets a new compiler family on a new runner. It costs upload
-  time for no gain there. On a persistent self-hosted runner, keep
-  `~/.cache/sail` in place instead of saving and restoring it. Prune old
-  workspaces with `sail cache projects prune --older-than DAYS`
-  ([disk use](workspace-hygiene.md)).
+- **Managed targets and receipts need the same tools at the same paths.**
+  They are keyed by the installed tools' bytes and absolute paths, so a
+  restored `projects/` is reused when the runner installs the same Sail and
+  Rust toolchain at the same locations, as the example workflow does. A
+  different Sail version or toolchain is a miss, never a wrong reuse. It is
+  large (98–248 MB compressed), so in SAIL3112 mode do not persist it. On a
+  persistent self-hosted runner, keep `~/.cache/sail` in place instead of
+  saving and restoring it. Prune old workspaces with
+  `sail cache projects prune --older-than DAYS` ([disk use](workspace-hygiene.md)).
 - **The checkout path matters.** Managed workspaces are keyed by their
   absolute path. GitHub-hosted runners always check out to the same path,
   `/home/runner/work/REPO/REPO`, but self-hosted runners with several work
