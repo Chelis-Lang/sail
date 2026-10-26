@@ -383,8 +383,33 @@ def selected_entries(entries: list[dict], component: str | None) -> list[dict]:
     return entries if component is None else [entry for entry in entries if entry["id"] == component]
 
 
+def parse_partition(value: str) -> tuple[int, int]:
+    """Decode the canonical zero-based CI partition spelling."""
+    parts = value.split("/")
+    require(len(parts) == 2, "partition must be INDEX/COUNT")
+    try:
+        index, count = (int(part) for part in parts)
+    except ValueError as error:
+        raise Refusal("partition must be INDEX/COUNT") from error
+    require(value == f"{index}/{count}" and 0 <= index < count and count >= 2,
+        "invalid refinement partition")
+    return index, count
+
+
+def partition_cases(entry: dict, partition: tuple[int, int] | None) -> list[tuple[int, dict | None]]:
+    """Every partition checks the whole positive root and its disjoint controls."""
+    cases = list(enumerate([None, *entry["negative_controls"]]))
+    if partition is None:
+        return cases
+    index, count = partition
+    require(type(index) is int and type(count) is int and 0 <= index < count
+        and 2 <= count <= len(entry["negative_controls"]), "invalid refinement partition")
+    return [(ordinal, control) for ordinal, control in cases
+        if ordinal == 0 or (ordinal - 1) % count == index]
+
+
 def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
-        component: str | None = None) -> None:
+        component: str | None = None, partition: tuple[int, int] | None = None) -> None:
     """Qualify every selected actual-body proof and executable guard mutation."""
     started = time.monotonic()
     require(not out.is_relative_to(root.resolve()), "put raw refinement evidence outside checkout")
@@ -403,6 +428,8 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
     require(not COMMON.git(root, "status", "--porcelain=v1", "--", *paths), "refinement source is uncommitted")
     manifest = json.loads(snapshots[MANIFEST], object_pairs_hook=COMMON.unique_object)
     entries = selected_entries(inventory(root, manifest, snapshots), component)
+    require(partition is None or component is not None, "partition requires one explicit component")
+    planned = [(entry, partition_cases(entry, partition)) for entry in entries]
     pins = tomllib.loads(snapshots["corpus/toolchain.toml"].decode())
     hosts = {("Darwin", "arm64"): "aarch64-apple-darwin", ("Linux", "x86_64"): "x86_64-unknown-linux-gnu"}
     host = hosts.get((platform.system(), platform.machine()))
@@ -414,8 +441,8 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
     require("commit-hash: " + pins["verus"]["rust_commit"] in rustc.splitlines(), "Rust compiler identity mismatch")
     out.mkdir(parents=True, exist_ok=False)
     results = []
-    for entry in entries:
-        for index, control in enumerate([None, *entry["negative_controls"]]):
+    for entry, cases in planned:
+        for index, control in cases:
             label = entry["id"] + "-" + str(index)
             name = "positive" if control is None else control["name"]
             driver, data, files = captured_driver(entry, snapshots, control)
@@ -456,7 +483,9 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
         "key_declarations": manifest["key_declarations"],
         "validated_components": list(COMPONENTS),
         "checked_components": [entry["id"] for entry in entries],
-        "complete_suite": component is None,
+        "partition": None if partition is None else {"index": partition[0], "count": partition[1]},
+        "complete_component_controls": partition is None,
+        "complete_suite": component is None and partition is None,
         "source_roles": {entry["id"]: {
             "checked_source": [path for path in entry["dependencies"] if path not in
                 {SYNTAX, RETAINED_BRIDGE, "crates/sail-api/src/acceptance_sort.rs"} and not declaration_source(path)],
@@ -490,10 +519,12 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--component", choices=tuple(COMPONENTS),
         help="check one complete root and all its controls; default checks every root")
+    parser.add_argument("--partition", help="CI INDEX/COUNT: whole positive root plus disjoint guard controls; requires --component")
     args = parser.parse_args()
     try:
         require(args.timeout > 0, "timeout must be positive")
-        check(ROOT, args.stock_archive.resolve(), args.stock_dir.resolve(), args.out.resolve(), args.timeout, args.component)
+        partition = None if args.partition is None else parse_partition(args.partition)
+        check(ROOT, args.stock_archive.resolve(), args.stock_dir.resolve(), args.out.resolve(), args.timeout, args.component, partition)
     except (Refusal, SOURCE.SourceRefusal, OSError, ValueError, KeyError, TypeError,
             subprocess.SubprocessError, zipfile.BadZipFile) as error:
         print("error[SAIL9002]: production refinement check refused: " + str(error), file=sys.stderr)

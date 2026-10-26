@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Every fixed root includes its positive proof and complete mutation inventory.
+# Every fixed matrix must pass: each partition checks the whole positive
+# root, and the four disjoint control partitions cover its complete inventory.
 set -euo pipefail
 if [ "$#" -ne 3 ]; then
   echo 'refinements: expected query, inputs and authority results' >&2
