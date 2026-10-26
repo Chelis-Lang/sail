@@ -1,8 +1,9 @@
 # Acceptance boundary refinement qualification
 
 Status: full service qualification remains open. [PR #378](https://github.com/Chelis-Lang/sail/pull/378)
-is open and draft at published `4bd22455`; later integration is local under the
-owner's WIP publication waiver. No complete compiler-input closure, physical
+remains a draft. The published `4bd22455` checkpoint and later integration
+have separate evidence below; ongoing updates use the owner's WIP publication waiver.
+No complete compiler-input closure, physical
 observation guarantee or service theorem is claimed. All six rows of the
 [obligation ledger](../design/acceptance-boundary-refinements.md) remain open.
 
@@ -56,6 +57,13 @@ conformance and added-cost qualification remain pending. Local builds and
 verifier jobs remain stopped while the owner's machine is busy.
 
 ## Source and actual scope
+
+The `68401bf3` stopped native gate is preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-combined-68401bf3-native-gate.tgz`.
+SHA-256: `313fd065643e234eac95a18fe9fa41844e52e7014fc68601a3aa8ae459aedc21`.
+Workspace reaches the daemon and stops on its optional retained-submission
+binding syntax after 182.10 s. The correction preserves the checked arguments
+and refusal behavior; later gates remain unrun.
 
 The `269317c4` stopped native gate is preserved at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-combined-269317c4-native-gate.tgz`.
@@ -187,6 +195,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `68401bf3` | Native full gate | Earlier API/native diagnostics clear; workspace stops on the daemon retained-submission optional-binding style lint. The equivalent checked optional operation preserves refusal and arguments; later gates are unrun |
 | 2026-10-26 | `269317c4` | Native full gate | API lints pass; workspace stops on native journal unused-self, optional path-binding syntax, test import ordering and one test semicolon. Later gates are unrun; corrected source requires rerun |
 | 2026-10-26 | `3352f2fd` | Native full gate | Workspace stops on five API style diagnostics: nested path-binding admission and explicit replay-refusal branches. Local documented allowances preserve the proved bodies; every later gate remains unrun |
 | 2026-10-26 | `00a501c7` | Native authority proof/workspace | Entire authority root passes 489/0, all 830 functions and final source/runtime checks. Workspace stops at source-shared style/lifetime lint diagnostics and an unfulfilled field lint expectation; local reasons/annotations retain the proved control flow. Full gate rerun pending |
