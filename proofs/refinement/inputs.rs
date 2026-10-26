@@ -149,6 +149,95 @@ pub fn checked_readback_refines_model<'a>(expected: &'a [InputFact<'a>], observe
     equal
 }
 
+/// The production retained-read factory combines its actual typed comparison
+/// with the original capture. Equal stamps alone cannot admit a partial map.
+pub fn checked_guarded_readback_refines_model<'a>(expected: &'a [InputFact<'a>], observed: &'a [InputFact<'a>],
+    before_order: &'a [usize], before_inverse: &[usize],
+    after_order: &'a [usize], after_inverse: &[usize],
+    capture: OriginalCapture, after: Option<&[u8]>, revision: &[u8]) -> (checked: GuardedReadback<'a>)
+    ensures checked.unchanged_view() == (expected.len() > 0
+            && ordered_facts(expected@, before_order@, before_inverse@)
+            && ordered_facts(observed@, after_order@, after_inverse@)
+            && facts_match(expected@, observed@, before_order@, after_order@)
+            && match (capture.before_view(), after) { (Some(before), Some(after)) => before == after@, _ => false }),
+        checked.unchanged_view() ==> input_map(expected@) == input_map(observed@),
+        checked.unchanged_view() ==> expected.len() > 0
+            && checked.guard_view().is_some()
+            && Some(checked.guard_view().unwrap().stamp_view()) == capture.before_view()
+            && Some(checked.guard_view().unwrap().stamp_view()) == match after { Some(bytes) => Some(bytes@), None => None },
+        checked.unchanged_view() ==> forall|key: InputKey| input_map(observed@).dom().contains(key)
+            ==> readable(#[trigger] input_map(observed@)[key]),
+{
+    let checked = guard_readback(expected, observed, before_order, before_inverse,
+        after_order, after_inverse, capture, after, revision);
+    proof {
+        if checked.unchanged_view() { matching_inventory_refines_map(expected@, observed@); }
+    }
+    checked
+}
+
+/// Source, explicit absence and alias facts succeed only with exact complete
+/// inventories and the original available bracketing stamps.
+pub fn guarded_readback_nonempty_and_guard_controls() {
+    let name = vec![1u8];
+    let config = vec![2u8];
+    let alias = vec![3u8];
+    let bytes = vec![4u8];
+    let destination = vec![5u8];
+    let stamp = vec![6u8];
+    let changed_stamp = vec![7u8];
+    let revision = vec![8u8];
+    let expected = vec![
+        InputFact { namespace: 0, name: &name, value: InputValue::Present(&bytes) },
+        InputFact { namespace: 0, name: &config, value: InputValue::Absent },
+        InputFact { namespace: 1, name: &alias, value: InputValue::Present(&destination) },
+    ];
+    let observed = vec![
+        InputFact { namespace: 1, name: &alias, value: InputValue::Present(&destination) },
+        InputFact { namespace: 0, name: &name, value: InputValue::Present(&bytes) },
+        InputFact { namespace: 0, name: &config, value: InputValue::Absent },
+    ];
+    let before_order = vec![0usize, 1usize, 2usize];
+    let after_order = vec![1usize, 2usize, 0usize];
+    let after_inverse = vec![2usize, 0usize, 1usize];
+    proof { assert(lex_at(name@, config@, 0)); assert(lex_less(name@, config@)); }
+    let checked = checked_guarded_readback_refines_model(&expected, &observed,
+        &before_order, &before_order, &after_order, &after_inverse,
+        OriginalCapture::begin(Some(&stamp)), Some(&stamp), &revision);
+    let changed = checked.changed(); let unknown = checked.unknown();
+    assert(!changed && !unknown);
+    assert(input_map(expected@) == input_map(observed@));
+
+    let changed = guard_readback(&expected, &observed, &before_order, &before_order,
+        &after_order, &after_inverse, OriginalCapture::begin(Some(&stamp)), Some(&changed_stamp), &revision);
+    let changed = changed.changed();
+    assert(changed);
+    let missing = guard_readback(&expected, &observed, &before_order, &before_order,
+        &after_order, &after_inverse, OriginalCapture::begin(None), Some(&stamp), &revision);
+    let changed = missing.changed(); let unknown = missing.unknown();
+    assert(!changed && unknown);
+    let missing = guard_readback(&expected, &observed, &before_order, &before_order,
+        &after_order, &after_inverse, OriginalCapture::begin(Some(&stamp)), None, &revision);
+    let changed = missing.changed(); let unknown = missing.unknown();
+    assert(!changed && unknown);
+
+    let partial = vec![InputFact { namespace: 0, name: &name, value: InputValue::Present(&bytes) }];
+    let one = vec![0usize];
+    let partial = guard_readback(&expected, &partial, &before_order, &before_order,
+        &one, &one, OriginalCapture::begin(Some(&stamp)), Some(&stamp), &revision);
+    let changed = partial.changed(); let unknown = partial.unknown();
+    assert(changed || unknown);
+    let duplicate = vec![
+        InputFact { namespace: 0, name: &name, value: InputValue::Present(&bytes) },
+        InputFact { namespace: 0, name: &name, value: InputValue::Present(&bytes) },
+        InputFact { namespace: 1, name: &alias, value: InputValue::Present(&destination) },
+    ];
+    let duplicate = guard_readback(&expected, &duplicate, &before_order, &before_order,
+        &before_order, &before_order, OriginalCapture::begin(Some(&stamp)), Some(&stamp), &revision);
+    let changed = duplicate.changed(); let unknown = duplicate.unknown();
+    assert(changed || unknown);
+}
+
 /// Every fact of a projected snapshot remains an exact original model fact.
 pub proof fn selected_inventory_refines_submap(source: Seq<InputFact>, selected: Seq<InputFact>)
     requires unique_input_keys(source), unique_input_keys(selected), covered_selection(source, selected),
@@ -715,13 +804,25 @@ impl FileReadHost<ReadWitnessHandle, Vec<u8>, usize, u8> for ReadWitnessHost {
     fn changed(&self) -> u8 { 4 }
 }
 
+/// A checked vector constructor summarizes the concrete provider's successful
+/// transaction without exposing every trace quantifier at each call site.
+pub fn read_witness_kernel(source: Vec<u8>, buffer: &mut [u8]) -> (read: Result<CompletedRead<ReadWitnessHandle, usize>, u8>)
+    requires old(buffer).len() > 0,
+    ensures final(buffer).len() == old(buffer).len(),
+        match read { Ok(done) => ReadWitnessHost::observed_bytes(&done.handle_view()) == source@
+            && done.digest_view() == source.len() && done.seal_view().consumed_view() == source.len(), Err(_) => false },
+{
+    let length = source.len();
+    let mut host = ReadWitnessHost { source, reported_length: length,
+        path_calls: 0, retarget: false, read_failure: false, events: Ghost(Seq::empty()) };
+    open_read_digest::<ReadWitnessHost, ReadWitnessHandle, Vec<u8>, usize, u8>(&mut host, buffer)
+}
+
 /// Known vector data produces a nonempty checked transaction, and a colliding
 /// forward hash model does not imply equality of the actual read bytes.
 pub fn read_kernel_nonempty_and_collision_controls() {
-    let mut host = ReadWitnessHost { source: vec![1u8, 2u8, 3u8], reported_length: 3,
-        path_calls: 0, retarget: false, read_failure: false, events: Ghost(Seq::empty()) };
     let mut buffer = vec![0u8, 0u8];
-    let read = open_read_digest::<ReadWitnessHost, ReadWitnessHandle, Vec<u8>, usize, u8>(&mut host, &mut buffer);
+    let read = read_witness_kernel(vec![1u8, 2u8, 3u8], &mut buffer);
     assert(read.is_ok());
     let done = match read { Ok(done) => done, Err(_) => { assert(false); return; } };
     assert(ReadWitnessHost::observed_bytes(&done.handle_view()) == seq![1u8, 2u8, 3u8]);
@@ -729,18 +830,14 @@ pub fn read_kernel_nonempty_and_collision_controls() {
     let (digest, seal) = done.into_parts();
     assert(digest == 3 && seal.consumed_view() == 3);
 
-    let mut other = ReadWitnessHost { source: vec![9u8, 9u8, 9u8], reported_length: 3,
-        path_calls: 0, retarget: false, read_failure: false, events: Ghost(Seq::empty()) };
-    let read = open_read_digest::<ReadWitnessHost, ReadWitnessHandle, Vec<u8>, usize, u8>(&mut other, &mut buffer);
+    let read = read_witness_kernel(vec![9u8, 9u8, 9u8], &mut buffer);
     assert(read.is_ok());
     let done = match read { Ok(done) => done, Err(_) => { assert(false); return; } };
     assert(ReadWitnessHost::observed_bytes(&done.handle_view()) == seq![9u8, 9u8, 9u8]);
     assert(done.digest_view() == digest);
     assert(ReadWitnessHost::observed_bytes(&done.handle_view()) != seq![1u8, 2u8, 3u8]);
 
-    let mut empty = ReadWitnessHost { source: Vec::new(), reported_length: 0,
-        path_calls: 0, retarget: false, read_failure: false, events: Ghost(Seq::empty()) };
-    let read = open_read_digest::<ReadWitnessHost, ReadWitnessHandle, Vec<u8>, usize, u8>(&mut empty, &mut buffer);
+    let read = read_witness_kernel(Vec::new(), &mut buffer);
     assert(read.is_ok());
 }
 

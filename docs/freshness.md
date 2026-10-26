@@ -64,12 +64,19 @@ actual canonical cache-key object and the requested pathname; a changed
 observation forces a fresh read.
 A stable regular file retains the same digest as before. This is an
 opened-object check, not an atomic filesystem snapshot or executable-launch
-guarantee; retained-result reads keep their separate read-time checks below.
+guarantee. Retained-result reads use the same checked read/hash transaction.
 
 Each later read of the result (job Status or Result, `sail jobs`, MCP reads,
 watch) rereads every recorded file completely, in parallel, and compares
 digests. It also checks that the absent configuration paths are still absent.
 Every recorded source binding must still resolve to the same destination.
+Before any of these reads, and again after all content and binding reads,
+Sail observes a mutation stamp over the exact recorded paths, resolved objects
+and linked ancestors. A changed stamp makes the result Historical; an unavailable
+stamp cannot establish Current. This prevents separately matching file reads
+from hiding an observed mutation during the batch. Metadata endpoint equality
+still does not establish an atomic snapshot: repeated metadata, filesystem
+timestamp granularity and transient changes remain observation limits.
 
 - Every digest matches and nothing new appeared: **Current**.
 - Any file changed, disappeared or appeared: **Historical**.

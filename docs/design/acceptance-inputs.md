@@ -95,10 +95,52 @@ version. Transient changes, exact repeated metadata, timestamp granularity,
 filesystem-specific identity behavior and path ABA remain separate observation
 limits. It does not prove that a later pathname-based executable launch runs
 this opened object, nor that SHA-256 was implemented correctly or is injective.
-Native phase-cache map operations, retained-read hashing in `read_check.rs`, compiler
+Native phase-cache map operations, retained-read caller mapping in `read_check.rs`, compiler
 closure discovery, configuration/environment collection and launch identity
 retain their separately listed refinement obligations. Native macOS/Linux host
 gates and cost qualification apply to the integrated implementation.
+
+### A guard over the complete recorded readback batch
+
+`read_check::check` now begins an `OriginalCapture` before any content or alias
+read and finishes it after all those reads. The independently collected guard
+domain is the original record's file paths, binding keys and binding destinations;
+its native stamp also observes resolved objects and linked ancestors. Parallel
+content observations still retain their actual returned keys and pass the same
+exact-domain comparison. Present, absent and failed observations remain distinct.
+Present files use the checked read/hash kernel; a path-metadata failure observes
+absence only for actual `NotFound`, while subsequent kernel failures remain
+unreadable. No extra content read or change to successful revision bytes is needed.
+
+The source-shared `guard_readback` factory retains the exact `Readback` and
+optional `OriginalGuard` in private `GuardedReadback` evidence. It invokes the
+actual comparison and capture factories itself, with no caller-supplied success
+predicate. Its iff contract requires a nonempty exact complete typed domain and
+present equal original/final stamp bytes before both changed/unknown flags can
+be false. `compare_readback` also proves its equality flag is exactly the
+complement of those two flags. The native adapter preserves the original
+capture across the full batch, then consumes the checked getters. Changed stamps
+yield a different revision; unavailable stamps cannot yield the old complete
+revision. The actual-map refinement and constructive controls cover source,
+alias, absence, missing stamps, changed stamps, partial and duplicate domains.
+The run-local stamp encodes presence explicitly
+and validates the returned metadata-key inventory before folding it in sorted
+path order. It is separate from the logical content/revision identity.
+
+The real-file [#387](https://github.com/Chelis-Lang/sail/issues/387) control
+records A0/B0, begins checking A0/B1, reads A0, writes A1 then B0 and finally
+reads B0. No filesystem state during that check had both old values. The original
+helper nevertheless returned the old complete revision. The batch guard now
+refuses it, and removing that guard reproduces the failure. The exact-revert,
+unchanged, absence, linked-ancestor and tagged read-domain controls stay intact.
+
+This guards the original recorded domain, not an independently proved complete
+compiler-input closure. It does not prove a global linearization point from
+metadata equality. The native metadata traversal, observation ordering,
+unsupported mutation classes and cryptographic stamp assumptions remain named
+boundaries. In particular, no axiom equates a repeated ctime with an immutable
+file version, and a loaded record is still only a candidate under the original
+protected evidence/domain contract.
 
 ### Recovery of uncovered source inventories
 
