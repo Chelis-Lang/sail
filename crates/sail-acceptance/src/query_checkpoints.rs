@@ -49,15 +49,34 @@ sail_verified! {
             assert(bytes@ =~= seq![b'(']+seq![b'x']+seq![b')']);
             assert(crate::query::symbol_first(bytes@[1]));
             assert(crate::query::trivia_after(Seq::<u8>::empty(),false) == Some(false));
+            assert(parser.active() && parser.fed()==0 && parser.view() == bytes@);
+            assert(crate::query::single_list(bytes@,true));
+            assert(parser.view().subrange(0,0) =~= Seq::<u8>::empty());
+            assert(parser.view().subrange(0,3) =~= bytes@);
         }
         let Some(borrowed)=parser.command(0,&bytes) else { return false; };
         let command=borrowed.freeze();
+        sail_proof! {
+            assert(parser.matches((b"z3"@,b"pinned"@,b"binary"@,b"platform"@,None)));
+            assert(command.material_view() == parser.material());
+            assert(command.material_view() =~= crate::key_prefix::header(b"z3"@,b"pinned"@,b"binary"@,b"platform"@,None)+bytes@);
+            assert(command.key_view() == Host::digest(crate::key_prefix::end(command.material_view(),3)));
+        }
         if !parser.hash_tail() || !delivery.write(&bytes) { return false; }
+        sail_proof! {
+            assert(parser.matches((b"z3"@,b"pinned"@,b"binary"@,b"platform"@,None)));
+            assert(parser.material() =~= delivery.material());
+            assert(parser.fed() == delivery.length());
+        }
         let Some(input)=delivery.seal(parser.silence_key(),true) else { return false; };
         let commands=[&command]; let order=[0usize]; let inverse=[0usize];
         sail_proof! {
             assert(crate::inputs::valid_permutation(order@,inverse@,1));
             assert(input.capture_view() == Some(bytes@));
+            assert(command.material_view() =~= input.initial_material()+bytes@);
+            assert(command.key_view() == Host::digest(end(input.initial_material()+bytes@,3)));
+            assert(bytes@.subrange(0,3) =~= bytes@);
+            assert(bytes@.take(3) =~= bytes@);
             assert(checkpoint_rank(&input,commands@,order@,0));
             assert(checkpoints_match(&input,commands@,order@,inverse@));
         }
@@ -80,22 +99,48 @@ sail_verified! {
         let mut prefix=input.initial_prefix().duplicate();
         let mut cursor=0usize; let mut rank=0usize;
         sail_while! { (rank < order.len())
-            invariant (rank <= order.len(), crate::inputs::valid_permutation(order@,inverse@,commands@.len()),
+            invariant (rank <= order.len(), input.capture_consistent(), crate::inputs::valid_permutation(order@,inverse@,commands@.len()),
                 input.capture_view() == Some(bytes@), cursor <= bytes.len(),
                 prefix.exact(), prefix.length() == cursor,
                 prefix.material() == input.initial_material()+bytes@.take(cursor as int),
                 rank == 0 ==> cursor == 0,
+                rank > 0 ==> order@[rank-1] < commands@.len(),
                 rank > 0 ==> cursor == commands@[order@[rank-1] as int].endpoint_view(),
                 forall|i:int| 0 <= i < rank ==> checkpoint_rank(input,commands@,order@,i))
             decreases (order.len()-rank)
             {
-                sail_proof! { assert(crate::inputs::permutation_at(order@,inverse@,commands@.len(),rank as int)); }
+                sail_proof! {
+                    assert(crate::inputs::permutation_at(order@,inverse@,commands@.len(),rank as int));
+                    if rank>0 {assert(crate::inputs::permutation_at(order@,inverse@,commands@.len(),rank as int-1));}
+                }
                 let command=commands[order[rank]];
                 let start=command.start(); let finish=command.end();
+                sail_proof! {
+                    if start < cursor || start >= finish || finish > bytes.len() {
+                        assert(!checkpoint_rank(input,commands@,order@,rank as int));
+                        assert(!checkpoints_match(input,commands@,order@,inverse@));
+                    }
+                }
                 if start < cursor || start >= finish || finish > bytes.len() { return false; }
+                sail_proof! {
+                    if command.command_view() != bytes@.subrange(start as int,finish as int) {
+                        assert(!checkpoint_rank(input,commands@,order@,rank as int));
+                        assert(!checkpoints_match(input,commands@,order@,inverse@));
+                    }
+                }
                 if !crate::inputs::byte_eq(command.command(),&bytes[start..finish]) { return false; }
                 prefix.update(&bytes[cursor..finish]);
+                sail_proof! {
+                    assert(bytes@.take(cursor as int)+bytes@.subrange(cursor as int,finish as int) =~= bytes@.take(finish as int));
+                    assert(prefix.material() =~= input.initial_material()+bytes@.take(finish as int));
+                }
                 let actual=prefix.key(); let proposed=command.key();
+                sail_proof! {
+                    if actual != proposed {
+                        assert(!checkpoint_rank(input,commands@,order@,rank as int));
+                        assert(!checkpoints_match(input,commands@,order@,inverse@));
+                    }
+                }
                 if !crate::inputs::byte_eq(&actual,&proposed) { return false; }
                 sail_proof! {
                     assert(bytes@.take(cursor as int)+bytes@.subrange(cursor as int,finish as int) =~= bytes@.take(finish as int));

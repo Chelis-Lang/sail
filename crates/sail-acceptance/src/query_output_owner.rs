@@ -337,7 +337,8 @@ sail_code! {
                 if !self.validate_checkpoints(commands,order,inverse) {return false;}
                 let mut rank=0usize;
                 sail_while! { (rank < order.len())
-                    invariant (rank <= order.len(), frames@.len() == commands@.len(),
+                    invariant (rank <= order.len(), self.complete(), self.publication_view().input_view().capture_consistent(),
+                        frames@.len() == commands@.len(),
                         self.replayed_view() == Some(skipped as nat),
                         skipped <= total, frames.len() == total-skipped,
                         total == self.publication_view().output_view().endpoints().len(),
@@ -347,6 +348,14 @@ sail_code! {
                     {
                         sail_proof! {assert(crate::inputs::permutation_at(order@,inverse@,commands@.len(),rank as int));}
                         let frame=frames[order[rank]];
+                        sail_proof! {
+                            if !(Identity::identity(&self.output_owner_view()) == Identity::identity(&frame.owner_view())
+                                && self.publication_view().output_view().contains(&frame.frame_view()))
+                                || frame.frame_view().ordinal_view() != skipped+rank {
+                                assert(!self.binding_rank(frames@,order@,rank as int));
+                                assert(!self.bindings_match(commands@,frames@,order@,inverse@));
+                            }
+                        }
                         if !self.contains_frame(frame) || frame.payload().ordinal() != skipped+rank {return false;}
                         sail_proof! {assert(self.binding_rank(frames@,order@,rank as int));}
                         rank+=1;
@@ -400,30 +409,54 @@ sail_verified! {
             assert(bytes@ =~= seq![b'(']+seq![b'x']+seq![b')']);
             assert(crate::query::symbol_first(bytes@[1]));
             assert(crate::query::trivia_after(Seq::<u8>::empty(),false) == Some(false));
+            assert(parser.active() && parser.fed()==0 && parser.view() == bytes@);
+            assert(crate::query::single_list(bytes@,true));
+            assert(parser.view().subrange(0,0) =~= Seq::<u8>::empty());
+            assert(parser.view().subrange(0,3) =~= bytes@);
         }
         let Some(borrowed)=parser.command(0,&bytes) else {return false;};
         let command=borrowed.freeze();
+        sail_proof! {
+            assert(parser.matches((b"z3"@,b"pinned"@,b"binary"@,b"platform"@,None)));
+            assert(command.material_view() == parser.material());
+            assert(command.material_view() =~= crate::key_prefix::header(b"z3"@,b"pinned"@,b"binary"@,b"platform"@,None)+bytes@);
+            assert(command.key_view() == Host::digest(crate::key_prefix::end(command.material_view(),3)));
+        }
         if !parser.hash_tail() || !delivery.write(&bytes) {return false;}
+        sail_proof! {
+            assert(parser.matches((b"z3"@,b"pinned"@,b"binary"@,b"platform"@,None)));
+            assert(parser.material() =~= delivery.material());
+            assert(parser.fed() == delivery.length());
+        }
         let Some(input)=delivery.seal(parser.silence_key(),true) else {return false;};
         let response=[b'u',b'n',b's',b'a',b't',b'\n'];
         let mut output=StreamOutput::new(output_owner);
         output.append(&response);
         sail_proof! {
-            reveal(Transcript::consumed); reveal(Transcript::complete);
+            crate::query_output::transcript_partition_facts(&output.output_view());
             assert(crate::query::response_trim(response@,0,5));
             assert(crate::query::response_span(response@,0,5));
             assert(crate::query::response_shape(response@));
             assert(output.output_view().view() =~= response@);
+            assert(output.output_view().consumed()==0 && output.output_view().view().len()==6);
+            assert(output.output_view().view().subrange(0,6) =~= response@);
+            assert(crate::query::response_shape(output.output_view().view().subrange(0,6)));
         }
         let Some(frame)=output.frame(0,6) else {return false;};
         let Some(frame)=frame.into_owned(retained,&identity) else {return false;};
-        output.end(); let Some(output)=output.seal() else {return false;};
+        output.end();
+        sail_proof! {crate::query_output::transcript_partition_facts(&output.output_view());}
+        let Some(output)=output.seal() else {return false;};
         let gate=PublicationGate {input_closed:true,pairing_active:true,queues_empty:true,
             normal_exit:true,quiet:true,forwarding_ok:true};
         let Some(publication)=observe_owned_publication(Some(input),input_owner,Some(output),gate,identity) else {return false;};
         let commands=[&command]; let frames=[&frame]; let order=[0usize]; let inverse=[0usize];
         sail_proof! {
             assert(crate::inputs::valid_permutation(order@,inverse@,1));
+            assert(command.material_view() =~= publication.publication_view().input_view().initial_material()+bytes@);
+            assert(bytes@.subrange(0,3) =~= bytes@);
+            assert(bytes@.take(3) =~= bytes@);
+            assert(publication.publication_view().input_view().capture_view() == Some(bytes@));
             assert(crate::query_checkpoints::checkpoint_rank(&publication.publication_view().input_view(),commands@,order@,0));
             assert(crate::query_checkpoints::checkpoints_match(&publication.publication_view().input_view(),commands@,order@,inverse@));
             assert(publication.binding_rank(frames@,order@,0));
@@ -472,16 +505,19 @@ sail_verified! {
         let mut output = StreamOutput::new(owner);
         output.append(&bytes);
         sail_proof! {
-            reveal(Transcript::consumed);
-            reveal(Transcript::complete);
+            crate::query_output::transcript_partition_facts(&output.output_view());
             assert(crate::query::response_trim(bytes@,0,5));
             assert(crate::query::response_span(bytes@,0,5));
             assert(crate::query::response_shape(bytes@));
             assert(output.output_view().view() =~= bytes@);
+            assert(output.output_view().consumed()==0 && output.output_view().view().len()==6);
+            assert(output.output_view().view().subrange(0,6) =~= bytes@);
+            assert(crate::query::response_shape(output.output_view().view().subrange(0,6)));
         }
         let Some(frame) = output.frame(0,6) else { return false; };
         let Some(owned) = frame.into_owned(retained,identity) else { return false; };
         output.end();
+        sail_proof! {crate::query_output::transcript_partition_facts(&output.output_view());}
         let Some(completed) = output.seal() else { return false; };
         completed.contains_frame(&owned,identity)
     }

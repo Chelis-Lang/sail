@@ -17,6 +17,9 @@
         "crates/sail-acceptance/src/query_delivery.rs",
         "crates/sail-acceptance/src/query_output.rs",
         "crates/sail-acceptance/src/query_publication.rs",
+        "crates/sail-acceptance/src/query_output_owner.rs",
+        "crates/sail-acceptance/src/query_holding.rs",
+        "crates/sail-acceptance/src/query_checkpoints.rs",
         "proofs/refinement/query.rs",
         "crates/sail-key/src/lib.rs",
         "crates/sail-key/src/prefix_factory.rs",
@@ -24,7 +27,7 @@
         "crates/sail-cache/src/persist.rs",
         "crates/sail-shim/src/cached.rs"
       ],
-      "verified": 353,
+      "verified": 431,
       "functions": [
         "check_query::cache_write::PersistenceHost::close",
         "check_query::cache_write::PersistenceHost::closed_image",
@@ -315,6 +318,7 @@
         "check_query::query::PublicationBatch::contents",
         "check_query::query::PublicationBatch::cost",
         "check_query::query::PublicationBatch::empty",
+        "check_query::query::PublicationBatch::entries",
         "check_query::query::PublicationBatch::entries_count",
         "check_query::query::PublicationBatch::push",
         "check_query::query::PublicationBatch::release",
@@ -340,9 +344,13 @@
         "check_query::query::RecoveryRecord::recover",
         "check_query::query::RecoveryRecord::version",
         "check_query::query::ReplayCursor::advance",
+        "check_query::query::ReplayCursor::completed",
         "check_query::query::ReplayCursor::forwarding",
         "check_query::query::ReplayCursor::left",
         "check_query::query::ReplayCursor::new",
+        "check_query::query::ReplayCursor::original",
+        "check_query::query::ReplayedPrefix::count",
+        "check_query::query::ReplayedPrefix::count_view",
         "check_query::query::command_head",
         "check_query::query::commented_head_control",
         "check_query::query::complete_list",
@@ -508,20 +516,37 @@
         "check_query::query_association::store_step",
         "check_query::query_association::store_wf",
         "check_query::query_association::stored_reply_has_admitted_origin",
+        "check_query::query_checkpoints::checkpoint_rank",
+        "check_query::query_checkpoints::checkpoints_match",
+        "check_query::query_checkpoints::constructed_checkpoint_control",
+        "check_query::query_checkpoints::incomplete_checkpoint_order_refused",
+        "check_query::query_checkpoints::nonempty_checkpoint_validation_control",
+        "check_query::query_checkpoints::validate_checkpoints",
+        "check_query::query_delivery::Delivered::capture_consistent",
+        "check_query::query_delivery::Delivered::capture_view",
+        "check_query::query_delivery::Delivered::captured_bytes",
+        "check_query::query_delivery::Delivered::initial_material",
+        "check_query::query_delivery::Delivered::initial_prefix",
+        "check_query::query_delivery::Delivered::initial_view",
         "check_query::query_delivery::Delivered::key",
         "check_query::query_delivery::Delivered::key_view",
         "check_query::query_delivery::Delivered::length",
+        "check_query::query_delivery::Delivered::length_value",
         "check_query::query_delivery::Delivered::material",
         "check_query::query_delivery::Delivery::active",
+        "check_query::query_delivery::Delivery::capture_limit",
+        "check_query::query_delivery::Delivery::capture_view",
         "check_query::query_delivery::Delivery::close",
         "check_query::query_delivery::Delivery::closed",
         "check_query::query_delivery::Delivery::coherent",
+        "check_query::query_delivery::Delivery::forget_capture",
         "check_query::query_delivery::Delivery::healthy",
         "check_query::query_delivery::Delivery::initial_material",
         "check_query::query_delivery::Delivery::length",
         "check_query::query_delivery::Delivery::matches",
         "check_query::query_delivery::Delivery::material",
         "check_query::query_delivery::Delivery::new",
+        "check_query::query_delivery::Delivery::new_captured",
         "check_query::query_delivery::Delivery::seal",
         "check_query::query_delivery::Delivery::sealed",
         "check_query::query_delivery::Delivery::sent",
@@ -534,25 +559,52 @@
         "check_query::query_delivery::InputPipe::write",
         "check_query::query_delivery::ScriptPipe::close",
         "check_query::query_delivery::ScriptPipe::closed",
+        "check_query::query_delivery::ScriptPipe::new",
         "check_query::query_delivery::ScriptPipe::sent",
         "check_query::query_delivery::ScriptPipe::success_hint",
         "check_query::query_delivery::ScriptPipe::write",
+        "check_query::query_delivery::capture_capacity_preserves_delivery_control",
+        "check_query::query_delivery::captured_delivery_control",
         "check_query::query_delivery::complete_delivery_control",
         "check_query::query_delivery::failed_delivery_control",
         "check_query::query_delivery::sealed_delivery_control",
+        "check_query::query_holding::Holding::metadata_view",
+        "check_query::query_holding::Holding::new",
+        "check_query::query_holding::Holding::payload_view",
+        "check_query::query_holding::Holding::put_metadata",
+        "check_query::query_holding::Holding::release_before",
+        "check_query::query_holding::Holding::replace",
+        "check_query::query_holding::Holding::take",
+        "check_query::query_holding::Holding::take_metadata",
+        "check_query::query_holding::Holding::well_formed",
+        "check_query::query_holding::held_pair_preservation_control",
+        "check_query::query_holding::held_release_order_control",
+        "check_query::query_holding::orphan_metadata_refused",
         "check_query::query_output::CompleteOutput::bytes",
         "check_query::query_output::CompleteOutput::complete",
+        "check_query::query_output::CompleteOutput::contains",
+        "check_query::query_output::CompleteOutput::contains_frame",
         "check_query::query_output::CompleteOutput::endpoints",
         "check_query::query_output::CompleteOutput::frames",
         "check_query::query_output::CompleteOutput::view",
         "check_query::query_output::Frame::bytes",
         "check_query::query_output::Frame::end",
         "check_query::query_output::Frame::end_view",
+        "check_query::query_output::Frame::into_owned",
         "check_query::query_output::Frame::ordinal",
         "check_query::query_output::Frame::ordinal_view",
         "check_query::query_output::Frame::start",
         "check_query::query_output::Frame::start_view",
         "check_query::query_output::Frame::view",
+        "check_query::query_output::FramePayload::bytes",
+        "check_query::query_output::FramePayload::end",
+        "check_query::query_output::FramePayload::end_view",
+        "check_query::query_output::FramePayload::into_bytes",
+        "check_query::query_output::FramePayload::ordinal",
+        "check_query::query_output::FramePayload::ordinal_view",
+        "check_query::query_output::FramePayload::start",
+        "check_query::query_output::FramePayload::start_view",
+        "check_query::query_output::FramePayload::view",
         "check_query::query_output::Transcript::append",
         "check_query::query_output::Transcript::bytes",
         "check_query::query_output::Transcript::complete",
@@ -576,6 +628,61 @@
         "check_query::query_output::frames_wf",
         "check_query::query_output::missing_eof_output_control",
         "check_query::query_output::nonempty_output_control",
+        "check_query::query_output::transcript_partition_facts",
+        "check_query::query_output_owner::CompletedStream::complete",
+        "check_query::query_output_owner::CompletedStream::contains_frame",
+        "check_query::query_output_owner::CompletedStream::output_view",
+        "check_query::query_output_owner::CompletedStream::owner_view",
+        "check_query::query_output_owner::CompletedStream::replayed_view",
+        "check_query::query_output_owner::OwnedFrame::bytes",
+        "check_query::query_output_owner::OwnedFrame::frame_view",
+        "check_query::query_output_owner::OwnedFrame::into_bytes",
+        "check_query::query_output_owner::OwnedFrame::owner",
+        "check_query::query_output_owner::OwnedFrame::owner_view",
+        "check_query::query_output_owner::OwnedFrame::payload",
+        "check_query::query_output_owner::OwnedPublication::binding_rank",
+        "check_query::query_output_owner::OwnedPublication::bindings_match",
+        "check_query::query_output_owner::OwnedPublication::complete",
+        "check_query::query_output_owner::OwnedPublication::contains_frame",
+        "check_query::query_output_owner::OwnedPublication::input_key",
+        "check_query::query_output_owner::OwnedPublication::input_length",
+        "check_query::query_output_owner::OwnedPublication::input_owner_view",
+        "check_query::query_output_owner::OwnedPublication::output_owner_view",
+        "check_query::query_output_owner::OwnedPublication::publication_view",
+        "check_query::query_output_owner::OwnedPublication::release",
+        "check_query::query_output_owner::OwnedPublication::replayed_view",
+        "check_query::query_output_owner::OwnedPublication::validate_bindings",
+        "check_query::query_output_owner::OwnedPublication::validate_checkpoints",
+        "check_query::query_output_owner::StreamFrame::frame_view",
+        "check_query::query_output_owner::StreamFrame::into_owned",
+        "check_query::query_output_owner::StreamFrame::owner_view",
+        "check_query::query_output_owner::StreamOutput::advance_replay",
+        "check_query::query_output_owner::StreamOutput::append",
+        "check_query::query_output_owner::StreamOutput::bytes",
+        "check_query::query_output_owner::StreamOutput::discard",
+        "check_query::query_output_owner::StreamOutput::end",
+        "check_query::query_output_owner::StreamOutput::forwarding",
+        "check_query::query_output_owner::StreamOutput::frame",
+        "check_query::query_output_owner::StreamOutput::frames",
+        "check_query::query_output_owner::StreamOutput::is_empty",
+        "check_query::query_output_owner::StreamOutput::len",
+        "check_query::query_output_owner::StreamOutput::new",
+        "check_query::query_output_owner::StreamOutput::new_replayed",
+        "check_query::query_output_owner::StreamOutput::output_view",
+        "check_query::query_output_owner::StreamOutput::owner_view",
+        "check_query::query_output_owner::StreamOutput::refuse",
+        "check_query::query_output_owner::StreamOutput::replay_view",
+        "check_query::query_output_owner::StreamOutput::seal",
+        "check_query::query_output_owner::common_owner_publication_control",
+        "check_query::query_output_owner::constructed_binding_control",
+        "check_query::query_output_owner::different_child_publication_refused",
+        "check_query::query_output_owner::missing_binding_refused",
+        "check_query::query_output_owner::nonempty_owned_stream_control",
+        "check_query::query_output_owner::observe_owned_publication",
+        "check_query::query_output_owner::retained_frame_owner_control",
+        "check_query::query_output_owner::swapped_equal_stream_refused",
+        "check_query::query_output_owner::wrong_original_binding_refused",
+        "check_query::query_output_owner::wrong_retained_owner_refused",
         "check_query::query_policy::ResponsePolicy::clone",
         "check_query::query_policy::named",
         "check_query::query_policy::one_head",
@@ -586,13 +693,31 @@
         "check_query::query_policy::word_eq",
         "check_query::query_policy::word_prefix",
         "check_query::query_prefix::FramedCommand::coherent",
+        "check_query::query_prefix::FramedCommand::command_view",
         "check_query::query_prefix::FramedCommand::end",
         "check_query::query_prefix::FramedCommand::endpoint",
+        "check_query::query_prefix::FramedCommand::freeze",
         "check_query::query_prefix::FramedCommand::head",
         "check_query::query_prefix::FramedCommand::head_view",
         "check_query::query_prefix::FramedCommand::key",
         "check_query::query_prefix::FramedCommand::key_view",
+        "check_query::query_prefix::FramedCommand::material_view",
+        "check_query::query_prefix::FramedCommand::offset_view",
         "check_query::query_prefix::FramedCommand::policy",
+        "check_query::query_prefix::FrozenCommand::coherent",
+        "check_query::query_prefix::FrozenCommand::command",
+        "check_query::query_prefix::FrozenCommand::command_view",
+        "check_query::query_prefix::FrozenCommand::end",
+        "check_query::query_prefix::FrozenCommand::endpoint_view",
+        "check_query::query_prefix::FrozenCommand::head",
+        "check_query::query_prefix::FrozenCommand::head_view",
+        "check_query::query_prefix::FrozenCommand::into_parts",
+        "check_query::query_prefix::FrozenCommand::key",
+        "check_query::query_prefix::FrozenCommand::key_view",
+        "check_query::query_prefix::FrozenCommand::material_view",
+        "check_query::query_prefix::FrozenCommand::offset_view",
+        "check_query::query_prefix::FrozenCommand::prefix",
+        "check_query::query_prefix::FrozenCommand::start",
         "check_query::query_prefix::QueryPrefix::active",
         "check_query::query_prefix::QueryPrefix::append",
         "check_query::query_prefix::QueryPrefix::bytes",
@@ -938,7 +1063,7 @@
         {
           "name": "delivery-omit-actual-pipe-write",
           "source": "crates/sail-acceptance/src/query_delivery.rs",
-          "before": "                if !self.pipe.write(bytes) { self.healthy = false; return false; }",
+          "before": "                if !self.pipe.write(bytes) { self.healthy = false; self.capture=None; return false; }",
           "after": ""
         },
         {
@@ -992,14 +1117,14 @@
         {
           "name": "delivery-write-after-seal",
           "source": "crates/sail-acceptance/src/query_delivery.rs",
-          "before": "if self.closed || self.sealed { self.healthy = false; return false; }",
-          "after": "if self.closed { self.healthy = false; return false; }"
+          "before": "if self.closed || self.sealed { self.healthy = false; self.capture=None; return false; }",
+          "after": "if self.closed { self.healthy = false; self.capture=None; return false; }"
         },
         {
           "name": "delivery-token-different-prefix",
           "source": "crates/sail-acceptance/src/query_delivery.rs",
-          "before": "Some(Delivered { prefix: self.delivered.duplicate() })",
-          "after": "Some(Delivered { prefix: self.initial.duplicate() })"
+          "before": "Some(Delivered { prefix: self.delivered.duplicate(), initial:self.initial.duplicate(), capture:self.capture.take() })",
+          "after": "Some(Delivered { prefix: self.initial.duplicate(), initial:self.initial.duplicate(), capture:self.capture.take() })"
         },
         {
           "name": "delivery-token-different-domain",
@@ -1132,6 +1257,228 @@
           "source": "crates/sail-acceptance/src/query_publication.rs",
           "before": "        pending.release(observation.is_some())",
           "after": "        pending.release(true)"
+        },
+        {
+          "name": "frame-copy-drops-original-bytes",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "                bytes.extend_from_slice(self.bytes);",
+          "after": "                bytes.extend_from_slice(&[]);"
+        },
+        {
+          "name": "frame-copy-replaces-original-ordinal",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "FramePayload { bytes, ordinal:self.ordinal, start:self.start, end:self.end }",
+          "after": "FramePayload { bytes, ordinal:0, start:self.start, end:self.end }"
+        },
+        {
+          "name": "owned-frame-full-copy-always-refuses",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "                if !identity.same_owner(&owner,self.owner) { return None; }\n                Some(OwnedFrame { owner, frame:self.frame.into_owned() })",
+          "after": "                None"
+        },
+        {
+          "name": "owned-frame-copy-ignores-original-lease",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "                if !identity.same_owner(&owner,self.owner) { return None; }",
+          "after": ""
+        },
+        {
+          "name": "owned-controller-frame-always-refuses",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "                let Some(frame) = self.output.frame(start,end) else { return None; };\n                Some(StreamFrame { owner:&self.owner, frame })",
+          "after": "                self.output.refuse(); None"
+        },
+        {
+          "name": "completed-stream-membership-ignores-owner",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "{ identity.same_owner(&self.owner, &frame.owner) && self.output.contains_frame(&frame.frame) }",
+          "after": "{ self.output.contains_frame(&frame.frame) }"
+        },
+        {
+          "name": "owned-publication-full-factory-always-refuses",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "        let Some(output) = output else { return None; };\n        if !identity.same_owner(&input_owner,&output.owner) { return None; }\n        let Some(publication) = observe_publication(input,Some(output.output),gate) else { return None; };\n        Some(OwnedPublication { publication, input_owner, output_owner:output.owner, identity, replayed:output.replayed })",
+          "after": "        None"
+        },
+        {
+          "name": "owned-publication-ignores-common-child-lease",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "        if !identity.same_owner(&input_owner,&output.owner) { return None; }",
+          "after": ""
+        },
+        {
+          "name": "publication-frame-membership-ignores-owner",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "{ self.identity.same_owner(&self.output_owner,&frame.owner) && self.publication.output().contains_frame(&frame.frame) }",
+          "after": "{ self.publication.output().contains_frame(&frame.frame) }"
+        },
+        {
+          "name": "owned-publication-release-always-refuses",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "                if !self.identity.same_owner(&self.input_owner,&self.output_owner) { return None; }\n                release_observed(pending,Some(self.publication))",
+          "after": "                None"
+        },
+        {
+          "name": "batch-borrow-omits-original-entries",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "            { &self.entries }",
+          "after": "            { &self.entries[..0] }"
+        },
+        {
+          "name": "held-replace-drops-displaced-original",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "                let previous = self.take();\n                self.payload=Some(payload); self.metadata=Some(metadata);\n                previous",
+          "after": "                let _ = self.take();\n                self.payload=Some(payload); self.metadata=Some(metadata);\n                None"
+        },
+        {
+          "name": "held-take-silently-discards-original",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "match payload { Some(payload)=>Some((payload,metadata)), None=>None }",
+          "after": "{ let _ = payload; let _ = metadata; None }"
+        },
+        {
+          "name": "held-metadata-detach-discards-original",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "{ self.metadata.take() }",
+          "after": "{ let _ = self.metadata.take(); None }"
+        },
+        {
+          "name": "held-orphan-metadata-creates-annotation",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "                if self.payload.is_none() { return false; }",
+          "after": ""
+        },
+        {
+          "name": "held-release-before-reorders-original-current",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "                if let Some(previous)=held { out.push(previous); }\n                out.push((current,None)); out",
+          "after": "                out.push((current,None));\n                if let Some(previous)=held { out.push(previous); }\n                out"
+        },
+        {
+          "name": "held-replace-returns-wrong-original",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "                let previous = self.take();\n                self.payload=Some(payload); self.metadata=Some(metadata);\n                previous",
+          "after": "                let previous = self.take();\n                self.payload=Some(payload); self.metadata=Some(metadata);\n                if let Some((old_payload, old_metadata)) = previous {\n                    let wrong = self.take();\n                    self.payload=Some(old_payload); self.metadata=old_metadata;\n                    wrong\n                } else { None }"
+        },
+        {
+          "name": "checkpoint-whole-validator-always-refuses",
+          "source": "crates/sail-acceptance/src/query_checkpoints.rs",
+          "before": "        let Some(bytes)=input.captured_bytes() else { return false; };\n        if !crate::inputs::permutation(order,inverse,commands.len()) { return false; }\n        let mut prefix=input.initial_prefix().duplicate();\n        let mut cursor=0usize; let mut rank=0usize;\n        sail_while! { (rank < order.len())\n            invariant (rank <= order.len(), input.capture_consistent(), crate::inputs::valid_permutation(order@,inverse@,commands@.len()),\n                input.capture_view() == Some(bytes@), cursor <= bytes.len(),\n                prefix.exact(), prefix.length() == cursor,\n                prefix.material() == input.initial_material()+bytes@.take(cursor as int),\n                rank == 0 ==> cursor == 0,\n                rank > 0 ==> order@[rank-1] < commands@.len(),\n                rank > 0 ==> cursor == commands@[order@[rank-1] as int].endpoint_view(),\n                forall|i:int| 0 <= i < rank ==> checkpoint_rank(input,commands@,order@,i))\n            decreases (order.len()-rank)\n            {\n                sail_proof! {\n                    assert(crate::inputs::permutation_at(order@,inverse@,commands@.len(),rank as int));\n                    if rank>0 {assert(crate::inputs::permutation_at(order@,inverse@,commands@.len(),rank as int-1));}\n                }\n                let command=commands[order[rank]];\n                let start=command.start(); let finish=command.end();\n                sail_proof! {\n                    if start < cursor || start >= finish || finish > bytes.len() {\n                        assert(!checkpoint_rank(input,commands@,order@,rank as int));\n                        assert(!checkpoints_match(input,commands@,order@,inverse@));\n                    }\n                }\n                if start < cursor || start >= finish || finish > bytes.len() { return false; }\n                sail_proof! {\n                    if command.command_view() != bytes@.subrange(start as int,finish as int) {\n                        assert(!checkpoint_rank(input,commands@,order@,rank as int));\n                        assert(!checkpoints_match(input,commands@,order@,inverse@));\n                    }\n                }\n                if !crate::inputs::byte_eq(command.command(),&bytes[start..finish]) { return false; }\n                prefix.update(&bytes[cursor..finish]);\n                sail_proof! {\n                    assert(bytes@.take(cursor as int)+bytes@.subrange(cursor as int,finish as int) =~= bytes@.take(finish as int));\n                    assert(prefix.material() =~= input.initial_material()+bytes@.take(finish as int));\n                }\n                let actual=prefix.key(); let proposed=command.key();\n                sail_proof! {\n                    if actual != proposed {\n                        assert(!checkpoint_rank(input,commands@,order@,rank as int));\n                        assert(!checkpoints_match(input,commands@,order@,inverse@));\n                    }\n                }\n                if !crate::inputs::byte_eq(&actual,&proposed) { return false; }\n                sail_proof! {\n                    assert(bytes@.take(cursor as int)+bytes@.subrange(cursor as int,finish as int) =~= bytes@.take(finish as int));\n                    assert(actual =~= proposed);\n                    assert(checkpoint_rank(input,commands@,order@,rank as int));\n                }\n                cursor=finish; rank+=1;\n            }\n        }\n        true",
+          "after": "        let _ = (input,commands,order,inverse); false"
+        },
+        {
+          "name": "checkpoint-missing-permutation-check",
+          "source": "crates/sail-acceptance/src/query_checkpoints.rs",
+          "before": "        if !crate::inputs::permutation(order,inverse,commands.len()) { return false; }",
+          "after": ""
+        },
+        {
+          "name": "checkpoint-ignores-original-command-bytes",
+          "source": "crates/sail-acceptance/src/query_checkpoints.rs",
+          "before": "                if !crate::inputs::byte_eq(command.command(),&bytes[start..finish]) { return false; }",
+          "after": ""
+        },
+        {
+          "name": "checkpoint-ignores-original-prefix-key",
+          "source": "crates/sail-acceptance/src/query_checkpoints.rs",
+          "before": "                if !crate::inputs::byte_eq(&actual,&proposed) { return false; }",
+          "after": ""
+        },
+        {
+          "name": "checkpoint-hashes-command-without-original-leading-input",
+          "source": "crates/sail-acceptance/src/query_checkpoints.rs",
+          "before": "                prefix.update(&bytes[cursor..finish]);",
+          "after": "                prefix.update(command.command());"
+        },
+        {
+          "name": "frozen-checkpoint-substitutes-head-for-command",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "                let mut command=Vec::new(); command.extend_from_slice(self.command);",
+          "after": "                let mut command=Vec::new(); command.extend_from_slice(self.head);"
+        },
+        {
+          "name": "frozen-checkpoint-substitutes-original-start",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "FrozenCommand { head,command,offset:self.offset,endpoint:self.endpoint,prefix,key }",
+          "after": "FrozenCommand { head,command,offset:self.endpoint,endpoint:self.endpoint,prefix,key }"
+        },
+        {
+          "name": "captured-writer-always-withholds-nonempty-tape",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                        if self.healthy && fits { capture.extend_from_slice(bytes); Some(capture) } else { None }",
+          "after": "                        let _ = (capture, fits); None"
+        },
+        {
+          "name": "captured-writer-retains-wrong-acknowledged-tape",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "capture.extend_from_slice(bytes); Some(capture)",
+          "after": "capture.clear(); Some(capture)"
+        },
+        {
+          "name": "delivery-seal-drops-original-tape",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "capture:self.capture.take()",
+          "after": "capture:{ let _ = self.capture.take(); None }"
+        },
+        {
+          "name": "full-original-binding-validator-always-refuses",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "                let Some(replayed)=&self.replayed else {return false;};\n                let skipped=replayed.count(); let total=self.publication.output().frames();\n                if skipped > total as u64 || frames.len() != commands.len() {return false;}\n                let skipped=skipped as usize;\n                if frames.len() != total-skipped {return false;}\n                if !self.validate_checkpoints(commands,order,inverse) {return false;}\n                let mut rank=0usize;\n                sail_while! { (rank < order.len())\n                    invariant (rank <= order.len(), self.complete(), self.publication_view().input_view().capture_consistent(),\n                        frames@.len() == commands@.len(),\n                        self.replayed_view() == Some(skipped as nat),\n                        skipped <= total, frames.len() == total-skipped,\n                        total == self.publication_view().output_view().endpoints().len(),\n                        crate::query_checkpoints::checkpoints_match(&self.publication_view().input_view(),commands@,order@,inverse@),\n                        forall|i:int| 0 <= i < rank ==> self.binding_rank(frames@,order@,i))\n                    decreases (order.len()-rank)\n                    {\n                        sail_proof! {assert(crate::inputs::permutation_at(order@,inverse@,commands@.len(),rank as int));}\n                        let frame=frames[order[rank]];\n                        sail_proof! {\n                            if !(Identity::identity(&self.output_owner_view()) == Identity::identity(&frame.owner_view())\n                                && self.publication_view().output_view().contains(&frame.frame_view()))\n                                || frame.frame_view().ordinal_view() != skipped+rank {\n                                assert(!self.binding_rank(frames@,order@,rank as int));\n                                assert(!self.bindings_match(commands@,frames@,order@,inverse@));\n                            }\n                        }\n                        if !self.contains_frame(frame) || frame.payload().ordinal() != skipped+rank {return false;}\n                        sail_proof! {assert(self.binding_rank(frames@,order@,rank as int));}\n                        rank+=1;\n                    }\n                }\n                true",
+          "after": "                let _ = (commands,frames,order,inverse); false"
+        },
+        {
+          "name": "original-binding-skips-acknowledged-prefix-validation",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "                if !self.validate_checkpoints(commands,order,inverse) {return false;}",
+          "after": ""
+        },
+        {
+          "name": "original-binding-drops-complete-fresh-domain",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "                if frames.len() != total-skipped {return false;}",
+          "after": ""
+        },
+        {
+          "name": "original-binding-accepts-swapped-original-ordinals",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "if !self.contains_frame(frame) || frame.payload().ordinal() != skipped+rank {return false;}",
+          "after": "if !self.contains_frame(frame) {return false;}"
+        },
+        {
+          "name": "original-binding-accepts-other-output-owner",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "if !self.contains_frame(frame) || frame.payload().ordinal() != skipped+rank {return false;}",
+          "after": "if frame.payload().ordinal() != skipped+rank {return false;}"
+        },
+        {
+          "name": "original-binding-substitutes-zero-replay-prefix",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "let skipped=replayed.count(); let total=self.publication.output().frames();",
+          "after": "let skipped=0u64; let total=self.publication.output().frames();"
+        },
+        {
+          "name": "owned-output-replaces-original-completion-cursor",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "                let replayed=self.replay.completed();",
+          "after": "                let replayed=ReplayCursor::new(0).completed();"
+        },
+        {
+          "name": "owned-output-never-advances-original-cursor",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "            { self.replay.advance() }",
+          "after": "            { self.replay.forwarding() }"
+        },
+        {
+          "name": "replay-completion-always-refuses",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "                Some(ReplayedPrefix {count:self.original})",
+          "after": "                None"
+        },
+        {
+          "name": "replay-completion-mints-before-drained",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "                if self.remaining != 0 { return None; }",
+          "after": ""
         }
       ]
     },
@@ -4927,7 +5274,7 @@
     }
   },
   "key_declarations": {
-    "source_sha256": "3672f81c280d1a3c5fc391698d9a2f7a3c04e2b985c25b69cea531b2d0459859",
+    "source_sha256": "b363a7cd49229556a8e876af2da2bb7362ba9c4c2874f34bc092c4b59bf6e630",
     "declarations": [
       {
         "name": "SolverIdentity",

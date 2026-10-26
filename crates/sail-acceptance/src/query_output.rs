@@ -11,6 +11,14 @@ sail_spec! {
         forall|i: int| 0 <= i < ends.len() ==> 0 <= frame_start(ends,i) < ends[i] <= bytes.len()
             && crate::query::response_shape(bytes.subrange(frame_start(ends,i),ends[i] as int))
     }
+    /// Exposes the original closed partition relationships without exposing
+    /// private fields or changing the admitted-output/EOF predicates.
+    pub proof fn transcript_partition_facts(output: &Transcript)
+        ensures output.consumed() == if output.endpoints().len()==0 {0nat}
+                else {output.endpoints().last() as nat},
+            output.complete() == (output.healthy() && output.eof()
+                && output.consumed() == output.view().len())
+    {}
 }
 
 sail_verified! {
@@ -164,7 +172,8 @@ sail_code! {
             pub fn refuse(&mut self) -> (out: ())
                 requires (true)
                 ensures (!final(self).healthy(),final(self).view()==old(self).view(),
-                    final(self).endpoints()==old(self).endpoints(),final(self).eof()==old(self).eof())
+                    final(self).endpoints()==old(self).endpoints(),final(self).eof()==old(self).eof(),
+                    final(self).well_formed()==old(self).well_formed())
             { self.healthy=false; }
         }
         sail_method! {
@@ -172,7 +181,8 @@ sail_code! {
             pub fn end(&mut self) -> (out: ())
                 requires (true)
                 ensures (final(self).eof(),final(self).healthy()==(old(self).healthy() && !old(self).eof()),
-                    final(self).view()==old(self).view(),final(self).endpoints()==old(self).endpoints())
+                    final(self).view()==old(self).view(),final(self).endpoints()==old(self).endpoints(),
+                    final(self).well_formed()==old(self).well_formed())
             { if self.eof { self.healthy=false; } self.eof=true; }
         }
         sail_method! {

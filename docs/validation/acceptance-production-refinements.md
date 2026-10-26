@@ -10,6 +10,26 @@ the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
+## Owned query publication candidate
+
+Whole positive discovery at `f8d61408` passes all three complete stock roots
+with final source and runtime rechecks on native x86-64 EC2 `c7i.4xlarge` in
+`us-east-1`. Query checks 431 obligations and 759 function entries, inputs
+308 and 538, authority 498 and 878; every earlier function remains present.
+Root durations are 28.168 s, 31.548 s and 21.467 s respectively. Counts overlap
+across roots and do not represent a service theorem or product performance.
+The positive-only report SHA-256 is
+`30822d09dcc90b76c315fd3ec8fa392af478b7b20def6d9e56e7d5e60cc36876`.
+
+The capture retains 115 query, 115 input and 107 authority ordinary-Verus
+controls. Query control qualification, native workspace/solver checks and
+independent artifact review remain pending. Source-control selftests pass
+43/43 at `0247a13e`, retaining all 41 original tests plus two new tests; the
+final combined gate must rerun them. Development refusals below remain visible.
+Native Rust mutation results are separate from ordinary-Verus negative credit.
+Parser semantics, physical origin, protected writers/recovery and full service
+composition remain open. This candidate precedes the lead's main reconciliation.
+
 ## Checked source and runtime
 
 The frozen checkpoint is `3b1cb3623ef17a2c4a99bc8bd3e12e88f1ef63fb`.
@@ -71,6 +91,10 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `6b7b9c49` | Expanded query whole-positive discovery | Two constructive checkpoint-rank assertions remain unproved; expose the already checked frozen key/material relation directly in its factory postcondition and instantiate the original literal header/span equalities. No completed positive inventory or negative qualification claimed |
+| 2026-10-26 | `dfda8f71` | Expanded query whole-positive discovery | Reports 16 unmet obligations in new capture/checkpoint/owner constructive proofs; proof guidance adds retained invariants, exact sequence equalities and owning-module preservation facts. Executable bodies, predicates, original controls, deadlines and resources remain unchanged; no positive count qualified |
+| 2026-10-26 | `0247a13e` | Expanded query whole-positive discovery | Refused cross-module reveals of two closed partition specs before verification; an owning-module proved lemma supplies the same facts without widening visibility. Source selftests pass 43/43; no new positive count is qualified |
+| 2026-10-26 | `e7f4dbc6` | Expanded query capture selftests | Refused three stale delivery mutation contexts and one ambiguous native-test source fragment before positive discovery; contexts are updated to preserve their original mutations, with no check or scope relaxation |
 | 2026-10-26 | `fe8be9ee` | Detached merge cost guard | Stopped on a +4.09% external proof-edit median; all correctness gates pass. Retained samples expose 50 ms process-wait polling and a smaller internal timing difference; attribution remains unprofiled. Owner accepts this bounded result |
 | 2026-10-25 | Query refinement before `953f74a6` | Closed-stderr solver regression | Repeated five-second timeout; captured shim stack and open reader FD while producer blocked writing stderr; fixed by closing the failed reader before joining. No false proof demonstrated |
 | 2026-10-25 | Integration development source | Stock-driver compatibility | Unsupported proof-envelope/type and inventory mismatches refused; corrected without scope, resource or timeout relaxation; not qualification |
