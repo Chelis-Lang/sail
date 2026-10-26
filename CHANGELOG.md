@@ -30,10 +30,11 @@ semantic versioning once the API is published.
   and selected or archived producer histories for every positive target.
   Missing, changed or mismatched history takes the ordinary verification path.
 
-- Bind unchanged-call whole-proof replay to independently resolved current
-  metadata, runtime identity and actual guarded input readback. Preserve the
-  original proof's establishing identities and reports. Failed and exact-partial
-  calls use the ordinary managed path while retaining its existing receipt reuse.
+- Bind unchanged-call replay to independently resolved current metadata,
+  runtime identity and actual guarded input readback. Whole and exact-partial
+  evidence use separate acceptance paths and preserve original establishment,
+  scope and reports. Partial replay cannot authorize a whole-target proof;
+  failed calls use the ordinary managed path.
 
 - Recheck live original-request admission before serving retained job frames.
   Missing or differently resolved invocation directories withhold completion

@@ -113,6 +113,15 @@ observation and publishes it without another live resolution. Its admission-to-
 refusal and refusal-to-admission transition regression is unrun; existing
 immutable/Historical framing and read-side admission remain unchanged.
 
+The whole-only no-op candidate does not satisfy the unchanged exact-partial
+output controls ([#430](https://github.com/Chelis-Lang/sail/issues/430)). Its
+source correction records and transfers exact partial requests through separate
+factories while preserving every original receipt/history and current-readback
+check. Failed projects remain ineligible; the early cold-miss path again emits
+the literal expected trace. The existing output-script assertions are unchanged.
+New native scope/history regressions and full output/conformance qualification
+remain unrun for this source integration.
+
 Two environment cases reproduce default-mode verdict disagreement in candidate
 `4f46f822`, using the same selected Verus fork and pinned Z3 for both sides.
 Internal `SAIL_MANAGED_RUNTIME` is visible to source macros, so Sail verifies a

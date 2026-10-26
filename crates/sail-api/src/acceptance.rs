@@ -2401,7 +2401,8 @@ sail_spec! {
 sail_verified! {
     /// Transfers an exact retained partial request to an independently supplied
     /// current request and guarded readback, preserving original scope/history
-    /// fields. This is not wired into unchanged-call replay.
+    /// fields. Native unchanged-call replay supplies its independent current
+    /// request and retains separate original producer/history admission.
     pub fn bind_replayed_exact_partial_project_ordered(project: &mut ProjectResult, original: &ResolvedRequest,
         current: &ResolvedRequest, orders: &[ReportOrder], readback: &sail_acceptance::inputs::GuardedReadback)
         -> (accepted: bool)

@@ -37,8 +37,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-// Version three additionally retains the actual independently resolved request.
-const VERSION: u32 = 3;
+// Version four distinguishes checked whole and exact-partial request transfers.
+const VERSION: u32 = 4;
 /// How much older than the run a recorded ctime must be.
 pub(super) const SETTLED: Duration = Duration::from_secs(2);
 /// Cache records up to this size are compared by content; larger files
@@ -332,9 +332,13 @@ fn rustup_settings() -> Option<PathBuf> {
 /// Gather a record at the end of a run that ended Current without starting a
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
-    // Exact-partial replay needs its own transfer contract. It currently takes
-    // the ordinary path, retaining ordinary receipt reuse there.
-    sail_api::acceptance::complete_request(facts.original_request, facts.result)?;
+    // Both branches bind the independently captured original request. Partial
+    // evidence uses its own scope contract and cannot acquire whole authority.
+    if sail_api::acceptance::focused_command(&facts.original_request.args) {
+        sail_api::acceptance::complete_exact_partial_request(facts.original_request, facts.result)?;
+    } else {
+        sail_api::acceptance::complete_request(facts.original_request, facts.result)?;
+    }
     let origins = origins::capture(facts.context, facts.result)?;
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
@@ -514,6 +518,7 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     let workspace = std::path::absolute(&config.workspace).ok()?;
     let cache = workspace.join(&config.cache);
     if !record_path(&cache, key).is_file() {
+        trace("miss: no record");
         return None;
     }
     // Independently resolve scope and current runtime before deserializing any
@@ -575,12 +580,23 @@ fn replay_bound(
         return None;
     }
     let mut result = record.result;
-    if !sail_api::acceptance::bind_replayed_project(
-        &mut result,
-        &record.original_request,
-        current,
-        readback,
-    ) {
+    // Select from the independent current request, not a stored completion bit.
+    let transferred = if sail_api::acceptance::focused_command(&current.args) {
+        sail_api::acceptance::bind_replayed_exact_partial_project(
+            &mut result,
+            &record.original_request,
+            current,
+            readback,
+        )
+    } else {
+        sail_api::acceptance::bind_replayed_project(
+            &mut result,
+            &record.original_request,
+            current,
+            readback,
+        )
+    };
+    if !transferred {
         trace("miss: independent request or guarded original revision differs");
         return None;
     }

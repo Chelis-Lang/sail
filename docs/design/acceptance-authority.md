@@ -195,20 +195,28 @@ operations and lemmas remain source-only and unqualified. Their full-function
 always-refuse and guard-removal mutations still require ordinary stock-Verus
 failures with unchanged inventories and limits.
 
-Re-enabling exact-partial unchanged-call replay still needs native integration
-and qualification under [public-path composition](https://github.com/Chelis-Lang/sail/issues/376).
-Its producer must retain the independent original partial request, revalidate
-every ordinary partial receipt and selected/archive history, resolve the current
-request before reading saved reports, and supply the actual scoped readback to
-this separate transfer. Scope labels, original reports and establishment IDs
-must survive publication and CLI/JSON/retained service views. The requested
+The native unchanged-call producer now selects the whole or exact-partial
+factory from the independently captured original request. Replay selects its
+separate transfer from the independently resolved current request, after actual
+metadata/runtime preflight and scoped readback. Version-four records keep the
+original request and ordinary whole/partial receipts; every selected/archive
+history, exact scope, report and original establishment is rechecked before
+transfer. Failed projects remain ineligible. This closes the source integration
+needed by the unchanged exact-partial output controls in
+[#430](https://github.com/Chelis-Lang/sail/issues/430), including their literal
+cold-miss trace. The source regressions cover changed scope, whole promotion,
+failed status, legacy records and missing original histories. They have not
+been run; actual native output/conformance and component proof qualification
+remain required under
+[public-path composition](https://github.com/Chelis-Lang/sail/issues/376).
+Scope labels, original reports and establishment IDs must survive publication and CLI/JSON/retained service views. The requested
 targets' `reused == false` fields preserve their exclusion from ordinary
 complete-target reuse counting; complete dependency counts are independent.
 The actual compiler/metadata-to-request and selector-to-verifier relations,
 complete input closure, physical observation and full service composition
 remain independent joins. Record correspondence alone does not establish that
-every requested target or function selection was executed. Partial no-op replay
-therefore continues to take the ordinary managed path.
+every requested target or function selection was executed. Neither the replay
+branch nor these record checks close those service joins.
 
 Private `CompleteReport` and `CompleteSelection` tokens immutably borrow the
 checked actual records. Only checked factories construct them. The sibling
@@ -299,7 +307,7 @@ the separate obligations in #375/#376.
 |---|---|---|
 | Foreground human `sail verify` | `managed_cli::verify` calls the managed runner. Its pre-Cargo request comes from actual metadata and original configuration; final requested coverage and complete-request checks control whole flags. Selected original process observations and ordinary receipts control per-target completion/reuse. | Human output forwards original verifier/Cargo bytes and status. This is a native forwarding path, not a new positive authority derived by a formatter. Complete compiler/process/input observation and forwarding refinement remain open. |
 | Foreground JSON | `managed_cli::verify` serializes the resulting `ProjectResult`. The same producer establishes the request/target relation before serialization. Unbound setup fallback explicitly carries `no_reuse`, Unknown currentness and no whole completion. | Serde transports the native result; it does not independently validate request or producer history. Complete serialization and caller correspondence remain native obligations. |
-| Unchanged-call replay | The CLI calls `noop::key`/`replay`; the candidate independently resolves current metadata/runtime before saved result decoding, supplies actual scoped readback, rechecks original ordinary receipts/history, then calls the separate checked whole transfer. Capture-demand workers decline this path. | Replayed output and JSON retain original target reports/establishment. Native selection, physical input closure, measured preflight cost and complete service refinement remain open. Failed/partial no-op replay still declines. |
+| Unchanged-call replay | The CLI calls `noop::key`/`replay`; the candidate independently resolves current metadata/runtime before saved result decoding, supplies actual scoped readback, rechecks original ordinary receipts/history, then calls the separate checked whole transfer. Capture-demand workers decline this path. | Replayed output and JSON retain original target reports/establishment. Native selection, physical input closure, measured preflight cost and complete service refinement remain open. Failed no-op replay still declines; exact partial replay has its own guarded transfer. |
 | Durable job reads | `worker_command` allocates the typed capture journal. `captured_request` selects exactly one request for the actual output run and matches worker/submission/mode/invocation. Worker exit agrees with the report. `store::project_with_request` checks original stdout bytes, producer revision and original request before preserving completion; freshness comes separately through `FreshnessIndex`/read-check. | `jobs::response_text` uses `complete_target` plus result currentness to choose whole-proof labels. The daemon producer must already have withheld unbound flags. Parsing, actual worker/process attribution, complete readback and RPC/JSON correspondence are native joins. |
 | Cached durable frames | Before every lookup, `store::result_frame` obtains live original-request admission and binds it into `frame_key`, alongside the original request/submission, producer revision and stdout seal. The same request observation builds fresh project/repair frames; dynamic readback selects Current/Historical/Unknown. | This closes the source-level warm/fresh mismatch in [#427](https://github.com/Chelis-Lang/sail/issues/427). The transition regression and invocation-binding proof additions remain unqualified. Cached flags cannot stand in for the new live observation; filesystem observation and full frame/transport refinement remain open. |
 | Default MCP `verify` and `verification_result` | `job_tools::blocking`/`read_or_cli` obtains the same daemon result, validating response identity/version. `compact::agent_view` computes whole completeness from requested target factories and distinguishes Current from Historical/Unknown. | Summary, targets and full details shape the same underlying project. `summary::effective_verdict` prevents provisional promotion but only reads function fields; it is not request or process authority. MCP identity/transport, shaping and end-to-end preservation still need service refinement. |
@@ -729,9 +737,9 @@ The main unchanged-call replay surface has a distinct
 [producer-history integration defect](https://github.com/Chelis-Lang/sail/issues/415):
 its cache scans omit original run directories. Matching cache records and a
 stored Current result therefore cannot replace original receipt admission.
-The candidate version-three replay record retains the original independently
-resolved request and exact ordinary receipts for every positive whole target.
-Publication and replay check target identity,
+The candidate version-four replay record retains the original independently
+resolved request and exact ordinary receipts for every positive whole or
+exact-partial target. Publication and replay check target identity,
 original establishing run, full report, exact scope, commit, artifact/dependency
 bytes and selected or archived producer history through the ordinary receipt
 reader. Missing, modified, omitted or mismatched origins take the ordinary path.
@@ -755,8 +763,9 @@ The checked transfer revalidates the original whole request, exact current
 request correspondence and guarded original revision before changing only the
 project view ID. It preserves original establishing IDs and report evidence;
 it creates no verifier attempt. Wall time remains presentation metadata.
-Failed and exact-partial unchanged-call replay currently takes the ordinary
-managed path, where existing exact-scope receipt reuse remains available.
+Failed unchanged-call replay takes the ordinary managed path. Exact-partial
+replay uses its separate checked request/target scope contract; it cannot become
+whole-target or complete-target reuse authority.
 
 Native component fixtures use a separately declared one-library request and
 actual guarded reads of nonempty real file observations. They qualify the
