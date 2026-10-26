@@ -2839,7 +2839,8 @@ pub(crate) fn run_engine_held(
         &data,
     )?;
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
-    let (sources, source_coverage) = super::source_inputs::load(&source_state);
+    let (sources, source_coverage) =
+        super::source_inputs::load(&source_state, paths.input_state.exists());
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
     data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
@@ -5936,11 +5937,7 @@ mod tests {
         assert!(
             std::fs::write(
                 &artifact_path,
-                artifacts
-                    .iter()
-                    .map(Value::to_string)
-                    .collect::<Vec<_>>()
-                    .join("\n")
+                super::super::source_inputs::closed_journal(&artifacts)
             )
             .is_ok()
         );

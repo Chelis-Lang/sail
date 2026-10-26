@@ -16,6 +16,13 @@ semantic versioning once the API is published.
   verification, recording the target as not reusable rather than failing the
   build, and publish no receipt when a unit's dep-info or build-script output
   cannot be read.
+- Serve, store or keep a cached solver reply only when it is exactly one
+  complete response frame (#379). After a cache fallback, compare the pinned
+  solver's replay with every reply already served; a difference stops the
+  session with `SAIL2005` instead of continuing on a diverged stream.
+- Treat a missing, unreadable, malformed or unclosed artifact journal, or a
+  lost source-input record after earlier runs, as incomplete compiler-input
+  coverage (#377): that run verifies again and grants no current receipt.
 
 - Add linked acceptance lifecycle models and a conditional composed proof,
   checked directly by stock Verus with complete captured dependencies and

@@ -130,6 +130,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL2002` | `VERUS_Z3_PATH` cannot be resolved | Fix the path |
 | `SAIL2003` | `VERUS_Z3_PATH` points at `sail-z3` itself | Point it at the real Z3 |
 | `SAIL2004` | Cannot start or keep track of the solver | Check the Z3 binary; re-run |
+| `SAIL2005` | After a cache fallback, the pinned solver's replay differs from a reply already served from the cache; the session stops with exit status 1 | Clear the cache (`sail cache clear`) and re-run; report it if it recurs |
 
 ## Verus runs and corpus tooling (`sail-conformance`, `sail-bench`, `cargo xtask`)
 

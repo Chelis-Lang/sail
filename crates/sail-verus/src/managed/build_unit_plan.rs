@@ -120,6 +120,12 @@ impl Plan {
                     continue;
                 }
                 let value: Value = serde_json::from_str(line).ok()?;
+                if matches!(
+                    value["reason"].as_str(),
+                    Some(crate::adapter::JOURNAL_BEGIN | crate::adapter::JOURNAL_END)
+                ) {
+                    continue;
+                }
                 self.packages
                     .contains(value["package_id"].as_str()?)
                     .then_some(())?;
