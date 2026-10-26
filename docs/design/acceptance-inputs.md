@@ -11,6 +11,9 @@ checks. Its [refinement adapter](../../proofs/refinement/inputs.rs) relates the
 same checked executable bodies to the model's exact input-map representation.
 Physical observation, compiler-closure discovery and the remaining native
 caller/context mapping still have the boundaries listed below.
+The [compiler-consumed observation proposal](compiler-input-observation.md)
+identifies the next actual loader/decoder-buffer slice, phase boundaries and
+the separate opaque-I/O and native launch decisions; it is a source-only plan.
 
 ## Reads through the actual opened object
 

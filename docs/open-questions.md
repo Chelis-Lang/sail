@@ -462,3 +462,19 @@ planned for releases after 0.1.0. The owner answered all twelve on
     The earlier M10 hold until M11 completes is superseded. Private dependency
     access uses a dedicated read-only credential; secrets never enter source,
     images or artifact URLs. See ADR 0065 and charter appendix entry 8.
+
+38. **Complete compiler-input observation and executable identity.**
+
+    The [source-reviewed proposal](design/compiler-input-observation.md) scopes
+    a safe next patch to actual Rustc loader and VIR-decoder buffers. Those hooks
+    cannot discover ordinary direct I/O inside procedural macros or build-script
+    descendants. Which supported architecture should supply that remaining
+    domain and the actual executable-image/stability relation: cooperative
+    compiler hooks with explicitly limited authority, complete process-tree
+    I/O mediation, or execution against a controlled immutable input world?
+    No mechanism is selected. A choice must preserve original default diagnostics,
+    physical argv/environment fidelity and the existing unused-authentication
+    reuse gate; denial of an ordinary read is not a conforming replacement
+    verdict. OS privileges, unsafe exceptions, new dependencies or a Rustc fork
+    require their corresponding owner decisions/ADRs. The first buffer slice
+    can proceed independently without constructing complete compiler authority.

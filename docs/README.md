@@ -73,6 +73,9 @@ tracks the follow-up work on raw transcripts, evidence providers, independently
 retained requests and concrete service composition.
 The [acceptance proof WIP handoff](acceptance-proof-handoff.md) identifies the
 published work branches, existing evidence and unfinished integration work.
+The [compiler-input observation proposal](design/compiler-input-observation.md)
+separates the next loader/decoder implementation slice from unsupported opaque
+I/O and the native observation/launch architecture decisions.
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs
