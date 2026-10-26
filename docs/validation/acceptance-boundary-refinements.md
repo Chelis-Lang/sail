@@ -9,7 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 | Frozen source | Actual result | Limits |
 |---|---|---|
 | `4bd22455` | All 31 model and 155 production cases pass coherently on macOS and native Linux; native workspace passes | Solver passes 53/54 and stops at the actual compiler-phase witness's missing frozen fixture (#425); later e2e/PR conformance unrun |
-| `73f928d1` | Native workspace (605.71 s), all 31 model cases, all 59 query cases and all 80 input cases pass | Authority controls are running; solver, full e2e and PR conformance pending. Later code does not inherit these results |
+| `73f928d1` | Native workspace (605.71 s), all 31 model and 213 production cases pass, complete_suite=true; all 53 solver tests pass (22.49 s gate duration) | Full e2e is running; PR conformance pending. Later code does not inherit these results |
 | `b8775f8f` | Native whole positive roots: query 343/0 (621 function entries), inputs 264/0 (438), authority 430/0 (736); every prior function retained, final source/runtime identity checked. Workspace passes (475.68 s) | Development positive evidence only: 16 new stdout controls and its complete 229-case canonical matrix remain unqualified |
 | `cc8c24a1` | Complete macOS canonical query component: 288 obligations, 503 function entries and all 39 ordinary controls. Native full e2e union including extra and PR conformance pass | Earlier checkpoint, not qualification of later code; e2e/PR gate durations 1,175.78 s/122.67 s include image/build work |
 
@@ -26,25 +26,37 @@ construct full physical-input or solver-origin authority. Closed capture binds
 native adapter sources explicitly without claiming those bodies are proved.
 
 The proposed complete matrix retains every inherited control and requires
-279 cases: three whole positive roots and 276 ordinary failing controls.
+283 cases: three whole positive roots and 280 ordinary failing controls.
 Three whole source assemblies and every mutation anchor pass textual closure;
-this is not compilation or verification. The query inventory uses the actual
-343-obligation/621-function discovery from byte-identical query dependencies at
-`b8775f8f`. Input and authority function/counter discovery must run at the newer
-combined source before it can qualify. Four inherited short mutation anchors
+this is not compilation or verification. The manifest retains the earlier whole-positive function/counter inventories;
+all three roots need new discovery after the ownership primitive, publication
+and replay additions. No guessed count replaces an actual stock run. Four inherited short mutation anchors
 now use their unchanged original function envelopes because new functions share
 the former short needles; guard changes and contracts remain intact. Both full
 whole/partial binder always-refuse controls remain required.
 
-Native `714bf6e5` lexer differential, expanded whole positive discovery and
-workspace qualification are running on their frozen source. That run excludes
-the later declared replay subcomposition. The [lexer allocation defect](https://github.com/Chelis-Lang/sail/issues/432)
+Native `714bf6e5` passes exact lexer equality over 419 Rust sources, all 296
+manifest mutations and all 40 source-control tests (48,852 dual lexer calls).
+Its query root passes 343/0; the input root stops at 277 verified / 5 errors,
+with eight diagnostic locations in new owned-compiler witnesses/contracts.
+Authority and workspace are unrun. The source correction makes byte witnesses
+explicit, composes descriptor correspondence, and strengthens start/completion
+guarantees without weakening contracts or changing production control flow.
+The unchanged ownership primitive now lives in the existing shared input module;
+its phase re-export preserves native callers. Whole-root rerun is pending.
+That stopped run excludes the later declared replay/publication subcompositions. The [lexer allocation defect](https://github.com/Chelis-Lang/sail/issues/432)
 has a source candidate and exact frozen-blob comparison plan; no speedup is
 measured or selected. All newer canonical controls, native integration,
 conformance and added-cost qualification remain pending. Local builds and
 verifier jobs remain stopped while the owner's machine is busy.
 
 ## Source and actual scope
+
+The `714bf6e5` lexer comparison and stopped proof attempt is preserved at
+`example-evidence-bucket/experiments/2026-10-26/acceptance-latest-714bf6e5-native-development.tgz`.
+SHA-256: `a54a5f0ff680a9fc4f7f64d85c7fd9f1d1a17db88b25cf984fa4b947d6a87dd5`.
+The 7,291,282-byte archive was independently downloaded and hashed. This is not
+a passing production suite or a lexer timing measurement.
 
 The separate owned-output source candidate adds `query_output` to canonical
 query capture, protects its private Transcript/Frame/CompleteOutput constructors
@@ -130,6 +142,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `714bf6e5` | Native lexer comparison and whole positive roots | Lexer equality passes all frozen source/mutation/unit cases. Query passes 343/0; inputs reports 277/5 with new owned-compiler witness/contract failures. Authority/workspace unrun; corrected contracts and explicit witnesses await whole-root rerun |
 | 2026-10-26 | `b60694e8` | Native owned-output whole positive root | 342 verified/1 failed function. Every explicit pre-state assertion passes; the nonempty frame-admission exit remains unproved. The next proof step makes the complete-buffer subrange equality explicit, with the same witness, guards, scope and limits |
 | 2026-10-26 | `28b3e001` | Native owned-output whole positive root | 342 verified/1 failed function: the concrete trim/span assertions pass; the witness still cannot discharge the frame-admission exit. Explicit pre-state proof steps retain the same nonempty response, production guards, contracts and unchanged whole-root limits. Other gates remain unrun |
 | 2026-10-26 | `59ec4634` | Native owned-output whole positive root | 342 verified/1 failed function: the nonempty witness's concrete response trim/span assertions remain unproved. Source now spells the same six bytes as an explicit array; production guards, contracts, scope and limits remain unchanged. Final source/runtime checks and other gates were not reached |

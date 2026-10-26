@@ -395,7 +395,9 @@ pub fn configured_intent_witness(inherit: bool) -> (out: Option<ConfiguredIntent
         && out.unwrap().descriptor_view().overrides[0].1.unwrap()@ == seq![55u8]
         && out.unwrap().inheritance_view() == if inherit { EnvironmentInheritance::Inherit } else { EnvironmentInheritance::Clear },
 {
-    let rows = vec![InputFact { namespace: 3, name: b"A", value: InputValue::Present(b"7") }];
+    let name = vec![65u8];
+    let value = vec![55u8];
+    let rows = vec![InputFact { namespace: 3, name: &name, value: InputValue::Present(&value) }];
     let one = vec![0usize];
     let policy = if inherit { EnvironmentInheritance::Inherit } else { EnvironmentInheritance::Clear };
     let environment = seal_command_environment(policy,
@@ -414,7 +416,9 @@ pub fn configured_intent_witness(inherit: bool) -> (out: Option<ConfiguredIntent
 
 /// A typed environment token for different native rows cannot authorize a descriptor.
 pub fn configured_intent_wrong_environment_and_command_controls() {
-    let rows = vec![InputFact { namespace: 3, name: b"A", value: InputValue::Present(b"7") }];
+    let name = vec![65u8];
+    let value = vec![55u8];
+    let rows = vec![InputFact { namespace: 3, name: &name, value: InputValue::Present(&value) }];
     let one = vec![0usize];
     let environment = seal_command_environment(EnvironmentInheritance::Clear,
         Inventory { rows: &[], order: &[], inverse: &[] },
@@ -501,7 +505,7 @@ pub fn owned_compiler_start_missing_and_different_command_controls() {
     let configuration = match configuration { Some(value) => value, None => { assert(false); return; } };
     let mut case = 0u8;
     while case < 3
-        invariant case <= 3,
+        invariant case <= 3, configuration.descriptor_view().arguments@.len() == 0,
         decreases 3 - case,
     {
         let mut ledger = AttemptLedger::new(&run, &unit);
@@ -511,6 +515,12 @@ pub fn owned_compiler_start_missing_and_different_command_controls() {
         } else { copy_descriptor(configuration.descriptor()) };
         let reserved = ledger.reserve(descriptor);
         let reserved = match reserved { Some(value) => value, None => { assert(false); return; } };
+        proof {
+            if case == 2 {
+                assert(reserved_descriptor(&reserved).arguments@.len() == 1);
+                assert(!same_descriptor(reserved_descriptor(&reserved), configuration.descriptor_view()));
+            }
+        }
         let admitted = begin_owned_compiler(reserved, OwnedSpawnFields {
             owner: 17u64, pid: if case == 0 { 0 } else { 7 },
             configuration: if case == 1 { None } else { Some(&configuration) },

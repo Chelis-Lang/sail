@@ -16,6 +16,7 @@
         "crates/sail-acceptance/src/cache_write.rs",
         "crates/sail-acceptance/src/query_delivery.rs",
         "crates/sail-acceptance/src/query_output.rs",
+        "crates/sail-acceptance/src/query_publication.rs",
         "proofs/refinement/query.rs",
         "crates/sail-key/src/lib.rs",
         "crates/sail-key/src/prefix_factory.rs",
@@ -1091,6 +1092,30 @@
           "source": "crates/sail-acceptance/src/query_output.rs",
           "before": "{\n                let consumed=match self.ends.last() { None=>0,Some(value)=>*value };\n                if !self.healthy || !self.eof || consumed!=self.bytes.len() { return None; }\n                Some(CompleteOutput { bytes:self.bytes,ends:self.ends })\n            }",
           "after": "{ None }"
+        },
+        {
+          "name": "publication-observation-full-factory-always-refuses",
+          "source": "crates/sail-acceptance/src/query_publication.rs",
+          "before": "        let Some(input) = input else { return None; };\n        let Some(output) = output else { return None; };\n        if !gate.allows() { return None; }\n        Some(PublicationObservation { input, output, gate })",
+          "after": "        None"
+        },
+        {
+          "name": "publication-observation-skips-existing-closure-gate",
+          "source": "crates/sail-acceptance/src/query_publication.rs",
+          "before": "        let Some(input) = input else { return None; };\n        let Some(output) = output else { return None; };\n        if !gate.allows() { return None; }\n        Some(PublicationObservation { input, output, gate })",
+          "after": "        let Some(input) = input else { return None; };\n        let Some(output) = output else { return None; };\n        Some(PublicationObservation { input, output, gate })"
+        },
+        {
+          "name": "observed-release-full-operation-always-refuses",
+          "source": "crates/sail-acceptance/src/query_publication.rs",
+          "before": "        pending.release(observation.is_some())",
+          "after": "        pending.release(false)"
+        },
+        {
+          "name": "observed-release-without-typed-observation",
+          "source": "crates/sail-acceptance/src/query_publication.rs",
+          "before": "        pending.release(observation.is_some())",
+          "after": "        pending.release(true)"
         }
       ]
     },
@@ -4519,7 +4544,7 @@
     }
   },
   "key_declarations": {
-    "source_sha256": "6cd5a45f3ec7c6f1e08d428a17370ef55f45e5d14bc463e081830db50f16ae5f",
+    "source_sha256": "3672f81c280d1a3c5fc391698d9a2f7a3c04e2b985c25b69cea531b2d0459859",
     "declarations": [
       {
         "name": "SolverIdentity",
