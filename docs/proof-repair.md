@@ -1,9 +1,11 @@
 # Proof events and repair validation
 
-**Experimental.** The optional interactive engine runs stock lowering with a
-focused phase in the same compiler callback (it prepares no lowering for
-reuse). Ordinary verification, without the focused phase, remains the default. Qualification status and its
-open items are in [M7 validation](validation/m7.md); read
+The interactive engine runs stock lowering with a focused phase in the same
+compiler callback (it prepares no lowering for reuse). `sail repair-check` and
+MCP's `start_repair_validation` use it; ordinary verification, without the
+focused phase, remains the default for `sail verify`. A repair is accepted only
+when the independent full-target verification is complete, successful and
+Current. The validation record is [M7 validation](validation/m7.md); read
 [known issues](known-issues.md) before relying on performance.
 
 For setup through a focus/full regression, resumable events, cancellation and
@@ -172,10 +174,13 @@ function of the plain run), and compares the full phase's verdicts and
 diagnostics with the same rules as the other arms, including the ADR 0009
 unstable classification. It also requires a normal, consistent compiler seal.
 `ci/run.sh conformance` runs it after the cache rounds on every tier, using
-`SAIL_ENGINE_BUILD`; the PR subset that CI runs passes `--no-oracle`:
+`SAIL_ENGINE_BUILD`. The PR subset that CI runs (`conformance fast pr`)
+selects the fast tier's `verus-examples` guide units
+(`--tier fast --project verus-examples --filter /guide/`) for every arm,
+including the engine arm; CI cannot skip the engine arm:
 
 ```sh
-ci/local.sh conformance fast pr        # includes the engine arm, without the oracle
+ci/local.sh conformance fast pr        # pass-through, cache fill/warm and engine arms
 sail-conformance engine --tier standard --project vest --engine-build PATH
 ```
 

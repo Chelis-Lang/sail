@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Promote proof repair, the evidence commands and MCP to the supported set.
+  `sail --help` now lists `repair-check`, `explain`, `baseline` and `compare`,
+  and their help no longer starts with an EXPERIMENTAL note. MCP's evidence,
+  event and repair tools (`explain_failure`, `compare_verification`,
+  `save_baseline`, `list_baselines`, `get_baseline`, `verification_events`,
+  `start_repair_validation`) are supported. Fragility, the portfolio and team
+  caching stay experimental; MCP descriptions of the `fragility` tool, the
+  `portfolio` and `measure_fragility` options and the integration tools
+  (`requirement_assurance`, `runtime_capabilities`, `runtime_execute`) now
+  start with "Experimental:".
 - Stop `sail verify` rebuilding where `cargo verus verify` is a no-op. After a
   `src/bin` file was added and removed, every call rebuilt the build-script
   packages and re-verified vstd (about 26 s); it is a no-op again (#401). A new
