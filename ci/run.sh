@@ -11,7 +11,7 @@
 #                        source-shared bodies and all controls; default all roots
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
-#   boundary-witness admission|shapes
+#   boundary-witness admission|shapes|phases
 #                        local-only external compiler witnesses; requires
 #                        frozen inputs and the owning bounded runner
 #   e2e-build DIR        CI only: build the e2e binaries once (release sail,
@@ -220,17 +220,17 @@ case "$step" in
 
   solver)
     : "${SAIL_TEST_Z3:?SAIL_TEST_Z3 must name the pinned z3 (set in the CI image)}"
-    # These two ignored entrypoints require separately captured compiler inputs,
+    # These three ignored entrypoints require separately captured compiler inputs,
     # not just Z3. Keep their strict missing-input failures in the local witness
     # invocation rather than treating them as solver fixtures.
     cargo nextest run --workspace --locked --profile ci --run-ignored only \
-      -E 'not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes))'
+      -E 'not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes) or test(=managed::retained::phase_fields::tests::actual_compiler_phase_record_preserves_ghost_environment))'
     ;;
 
   boundary-witness)
     local_only boundary-witness
     if [ "$#" -ne 1 ]; then
-      echo 'boundary-witness: expected admission|shapes' >&2
+      echo 'boundary-witness: expected admission|shapes|phases' >&2
       exit 2
     fi
     case "$1" in
@@ -242,7 +242,12 @@ case "$step" in
         : "${SAIL_ACTUAL_NATIVE_TUPLES:?requires retained genuine Cargo tuple evidence}"
         sail_witness_test='managed::shipped::native::native_shape::tests::actual_retained_native_shapes'
         ;;
-      *) echo 'boundary-witness: expected admission|shapes' >&2; exit 2 ;;
+      phases)
+        : "${SAIL_ACTUAL_PHASE_BUILD:?requires the frozen pinned native fork build}"
+        : "${SAIL_ACTUAL_PHASE_OUT:?requires a fresh external output directory}"
+        sail_witness_test='managed::retained::phase_fields::tests::actual_compiler_phase_record_preserves_ghost_environment'
+        ;;
+      *) echo 'boundary-witness: expected admission|shapes|phases' >&2; exit 2 ;;
     esac
     cargo nextest run -p sail-verus --lib --locked --profile ci --run-ignored only \
       -E "test(=$sail_witness_test)"

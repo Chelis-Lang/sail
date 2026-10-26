@@ -278,8 +278,7 @@ local witness validates the installed fork before launching its owned child:
 ```sh
 SAIL_ACTUAL_PHASE_BUILD="$SAIL_FORK_BUILD" \
 SAIL_ACTUAL_PHASE_OUT="$SAIL_PHASE_OUT" \
-cargo nextest run -p sail-verus --lib --locked --run-ignored only \
-  -E 'test(=managed::retained::phase_fields::tests::actual_compiler_phase_record_preserves_ghost_environment)'
+ci/run.sh boundary-witness phases
 ```
 
 The output directory must not exist; an external bounded runner owns the child

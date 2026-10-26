@@ -280,8 +280,8 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   never as a dropped sample (ADR 0038).
 - *Fault injection:* `docs/fault-injection.md`, run as part of `solver`.
 - *Compiler-boundary witnesses (local):* the owning bounded acceptance runner
-  invokes `ci/run.sh boundary-witness admission|shapes` with frozen actual
-  compiler inputs. These two ignored witness entrypoints are not pinned-Z3
+  invokes `ci/run.sh boundary-witness admission|shapes|phases` with frozen actual
+  compiler inputs. These three ignored witness entrypoints are not pinned-Z3
   solver fixtures; their missing-input checks remain strict and their results
   are recorded separately from the solver suite.
 - *Determinism (local, before re-pinning the fork):* `scripts/verus-determinism.py

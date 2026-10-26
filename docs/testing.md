@@ -5,6 +5,14 @@ Run Linux checks on a native EC2 host with `ci/local.sh`; use `ci/run.sh host`
 for the macOS platform check. Performance measurements require a quiet native
 host, separate from builds and gates.
 
+Actual compiler-boundary witnesses run separately from the pinned-Z3 solver
+fixtures. An owning bounded runner supplies frozen inputs to `ci/run.sh
+boundary-witness admission|shapes|phases`. The `phases` case requires
+`SAIL_ACTUAL_PHASE_BUILD` (the validated native fork build) and
+`SAIL_ACTUAL_PHASE_OUT` (an external directory that does not exist). Missing
+inputs fail; they never skip or pass the witness. See the
+[two-phase compiler witness](design/acceptance-inputs.md) for its scope.
+
 Real-project benchmarks keep their timings and logs and delete each completed
 arm's temporary source, build artifacts and cache before starting the next arm.
 

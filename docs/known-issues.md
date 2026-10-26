@@ -3,6 +3,17 @@
 Open product defects and release limits. The [roadmap](ROADMAP.md) tracks
 release work; linked validation pages preserve the scope of each result.
 
+## Compiler-phase witness selected without its inputs
+
+[Sail #425](https://github.com/Chelis-Lang/sail/issues/425) records the native
+`4bd22455` solver gate failure: 53/54 tests pass, but the actual compiler-phase
+witness lacks its required frozen build and external output directory. Workspace
+and both complete proof suites pass; the controller leaves e2e and conformance
+unrun. The candidate routes that witness through `ci/run.sh boundary-witness
+phases` with strict required inputs, separately from pinned-Z3 solver fixtures.
+Its assertions and missing-input failures remain unchanged. Final native
+qualification is pending; see the [owning record](validation/acceptance-boundary-refinements.md).
+
 ## Managed metadata changes procedural macro arguments
 
 [Sail #393](https://github.com/Chelis-Lang/sail/issues/393) reproduces an actual
