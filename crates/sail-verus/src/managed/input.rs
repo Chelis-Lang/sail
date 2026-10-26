@@ -1245,20 +1245,49 @@ pub(super) fn bind_paths(hasher: &mut Sha256, bindings: &BTreeMap<PathBuf, PathB
 // A run-local mutation stamp is separate from logical proof keys: reverting an
 // edit between completed runs may reuse a proof, reverting during a run may not.
 pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
-    let mut paths = snapshot.observation_paths.clone();
+    stamp_roots(
+        snapshot.roots.iter().map(PathBuf::as_path),
+        snapshot.observation_paths.clone(),
+    )
+}
+
+// The retained readback brackets the entire exact recorded domain, independent
+// of the content-read executor. A supplied inventory is not a compiler-closure
+// proof; this only guards the paths that the original record actually binds.
+pub(super) fn readback_stamp(roots: &BTreeSet<PathBuf>) -> Option<String> {
+    stamp_roots(roots.iter().map(PathBuf::as_path), roots.clone())
+}
+
+fn stamp_roots<'a>(
+    roots: impl IntoIterator<Item = &'a Path>,
+    mut paths: BTreeSet<PathBuf>,
+) -> Option<String> {
     // Package roots share most ancestors (the registry source directory, the
     // home directory): each ancestor is examined once.
     let mut examined = HashSet::new();
-    for path in &snapshot.roots {
+    for path in roots {
         // Compiler declarations may add an alternate spelling (src/../file)
         // of a file already observed. Stamp the resolved file once; actual
         // aliases remain separately stamped below and bound in the snapshot.
-        paths.insert(path.canonicalize().unwrap_or_else(|_| path.clone()));
+        match path.canonicalize() {
+            Ok(resolved) => {
+                paths.insert(resolved);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                paths.insert(path.to_owned());
+            }
+            Err(_) => return None,
+        }
         for alias in path.ancestors() {
-            if examined.insert(alias)
-                && std::fs::symlink_metadata(alias).is_ok_and(|m| m.file_type().is_symlink())
-            {
-                paths.insert(alias.to_owned());
+            if examined.insert(alias) {
+                match std::fs::symlink_metadata(alias) {
+                    Ok(metadata) if metadata.file_type().is_symlink() => {
+                        paths.insert(alias.to_owned());
+                    }
+                    Ok(_) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(_) => return None,
+                }
             }
         }
     }
@@ -1296,11 +1325,12 @@ fn stamp_readback(
         let metadata = match by_name.get(name)? {
             Ok(metadata) => metadata,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                stamp.update(b"missing");
+                stamp.update([0u8]);
                 continue;
             }
             Err(_) => return None,
         };
+        stamp.update([1u8]);
         for number in [
             metadata.dev(),
             metadata.ino(),

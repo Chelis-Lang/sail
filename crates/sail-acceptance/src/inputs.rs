@@ -455,6 +455,7 @@ sail_verified! {
         after_order: &'a [usize], after_inverse: &[usize]) -> (result: Readback<'a>)
         requires (true)
         ensures (result.expected_view() == expected@, result.observed_view() == observed@,
+            result.equal_view() == (!result.changed_view() && !result.unknown_view()),
             result.expected_order_view() == before_order@, result.observed_order_view() == after_order@,
             result.equal_view() == (expected.len() > 0
                 && ordered_facts(expected@, before_order@, before_inverse@)
@@ -534,6 +535,14 @@ sail_code! {
     pub struct OriginalGuard {
         stamp: Vec<u8>,
         revision: Vec<u8>,
+    }
+
+    /// Exact declared readback and its original bracketing capture together.
+    /// This token supplies no independent compiler-closure or OS snapshot claim.
+    pub struct GuardedReadback<'a> {
+        comparison: Readback<'a>,
+        guard: Option<OriginalGuard>,
+        stamp_changed: bool,
     }
 }
 
@@ -638,6 +647,82 @@ impl OriginalGuard {
             requires (true)
             ensures (guard.stamp_view() == self.stamp_view(), guard.revision_view() == self.revision_view())
         { OriginalGuard { stamp: copy_bytes(&self.stamp), revision: copy_bytes(&self.revision) } }
+    }
+}
+
+impl<'a> GuardedReadback<'a> {
+    sail_impl_spec! {
+        /// The exact complete typed comparison retained by this transaction.
+        pub closed spec fn comparison_view(&self) -> Readback<'a> { self.comparison }
+        /// Original/final observation evidence, present only after sealing.
+        pub closed spec fn guard_view(&self) -> Option<OriginalGuard> { self.guard }
+        /// A concrete input or guard difference was observed.
+        pub closed spec fn changed_view(&self) -> bool { self.comparison.changed_view() || self.stamp_changed }
+        /// A required comparison or stamp could not be established.
+        pub closed spec fn unknown_view(&self) -> bool { self.comparison.unknown_view() || self.guard.is_none() }
+        /// This batch may return the original complete revision.
+        pub open spec fn unchanged_view(&self) -> bool { !self.changed_view() && !self.unknown_view() }
+    }
+    sail_method! {
+        /// Borrow the original immutable typed comparison, preserving its domain.
+        pub fn comparison(&self) -> (comparison: &Readback<'a>)
+            requires (true)
+            ensures (comparison.expected_view() == self.comparison_view().expected_view(),
+                comparison.observed_view() == self.comparison_view().observed_view())
+        { &self.comparison }
+    }
+    sail_method! {
+        /// An actual difference retains precedence for Historical results.
+        pub fn changed(&self) -> (changed: bool)
+            requires (true) ensures (changed == self.changed_view())
+        { self.comparison.changed() || self.stamp_changed }
+    }
+    sail_method! {
+        /// Unavailable evidence cannot establish the original complete revision.
+        pub fn unknown(&self) -> (unknown: bool)
+            requires (true) ensures (unknown == self.unknown_view())
+        { self.comparison.unknown() || self.guard.is_none() }
+    }
+}
+
+sail_verified! {
+    /// Compare the exact declared read domain and seal its original capture.
+    /// Input equality and present equal endpoint stamps are both necessary;
+    /// neither supplies compiler-closure completeness or OS linearization.
+    #[allow(clippy::too_many_arguments, reason = "Both exact inventories, checked permutation proposals and original/final observations are explicit.")]
+    pub fn guard_readback<'a>(expected: &'a [InputFact<'a>], observed: &'a [InputFact<'a>],
+        before_order: &'a [usize], before_inverse: &[usize],
+        after_order: &'a [usize], after_inverse: &[usize],
+        capture: OriginalCapture, after: Option<&[u8]>, revision: &[u8]) -> (result: GuardedReadback<'a>)
+        requires (true)
+        ensures (result.comparison_view().expected_view() == expected@,
+            result.comparison_view().observed_view() == observed@,
+            result.comparison_view().equal_view() == (expected.len() > 0
+                && ordered_facts(expected@, before_order@, before_inverse@)
+                && ordered_facts(observed@, after_order@, after_inverse@)
+                && facts_match(expected@, observed@, before_order@, after_order@)),
+            result.comparison_view().equal_view() == (!result.comparison_view().changed_view() && !result.comparison_view().unknown_view()),
+            result.changed_view() == (result.comparison_view().changed_view()
+                || match (capture.before_view(), after) { (Some(before), Some(after)) => before != after@, _ => false }),
+            result.unknown_view() == (result.comparison_view().unknown_view() || result.guard_view().is_none()),
+            result.guard_view().is_some() == match (capture.before_view(), after) { (Some(before), Some(after)) => before == after@, _ => false },
+            result.unchanged_view() == (result.comparison_view().equal_view()
+                && match (capture.before_view(), after) { (Some(before), Some(after)) => before == after@, _ => false }),
+            result.unchanged_view() ==> same_inventory(expected@, observed@)
+                && expected.len() > 0 && unique_input_keys(expected@) && unique_input_keys(observed@),
+            result.unchanged_view() ==> result.guard_view().is_some()
+                && result.guard_view().unwrap().revision_view() == revision@
+                && Some(result.guard_view().unwrap().stamp_view()) == capture.before_view()
+                && Some(result.guard_view().unwrap().stamp_view()) == match after { Some(bytes) => Some(bytes@), None => None })
+    {
+        let comparison = compare_readback(expected, observed, before_order, before_inverse,
+            after_order, after_inverse);
+        let stamp_changed = match (&capture.before, after) {
+            (Some(before), Some(after)) => !byte_eq(before, after),
+            _ => false,
+        };
+        let guard = capture.finish(after, revision);
+        GuardedReadback { comparison, guard, stamp_changed }
     }
 }
 
