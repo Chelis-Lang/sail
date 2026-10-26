@@ -441,21 +441,40 @@ fn cargo_driver_options_with(
 ) -> Result<DriverOptions> {
     let mut arguments = Vec::new();
     let mut environment = std::collections::BTreeMap::new();
-    for key in [
-        " __VERUS_DRIVER_ARGS__".to_owned(),
-        format!(" __VERUS_DRIVER_ARGS_FOR_{id}"),
-    ] {
-        if let Some(value) = lookup(&key)? {
+    let common_key = " __VERUS_DRIVER_ARGS__".to_owned();
+    let package_key = format!(" __VERUS_DRIVER_ARGS_FOR_{id}");
+    let common = lookup(&common_key)?;
+    let package = lookup(&package_key)?;
+    let mut common_count = 0;
+    for (index, (key, source)) in [(common_key, &common), (package_key, &package)]
+        .into_iter()
+        .enumerate()
+    {
+        if let Some(value) = source {
             // Match the pinned rust_verify decoder exactly: only delimited
             // tokens after the leading separator are effective driver options.
-            arguments.extend(
-                value
-                    .split("__VERUS_DRIVER_ARGS_SEP__")
-                    .skip(1)
-                    .map(str::to_owned),
-            );
-            environment.insert(key, value);
+            let decoded: Vec<String> = value
+                .split("__VERUS_DRIVER_ARGS_SEP__")
+                .skip(1)
+                .map(str::to_owned)
+                .collect();
+            arguments.extend(decoded);
+            environment.insert(key, value.clone());
         }
+        if index == 0 {
+            common_count = arguments.len();
+        }
+    }
+    if !sail_api::acceptance::effective_driver_arguments_match(
+        &common,
+        &package,
+        common_count,
+        &arguments,
+    ) {
+        return Err(Error::new(
+            "SAIL3123",
+            "effective Cargo driver arguments do not match the original packed values",
+        ));
     }
     let effective: Vec<_> = arguments
         .iter()

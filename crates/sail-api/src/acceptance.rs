@@ -1410,6 +1410,19 @@ sail_verified! {
                     assert(c.functions@.take(j as int) =~= c.functions@);
                     assert(report.crates@.take(i as int + 1).drop_last() == report.crates@.take(i as int));
                     assert(report.crates@.take(i as int + 1).last() == report.crates@[i as int]);
+                    assert forall |a: int, b: int| 0 <= a < i + 1
+                        && 0 <= b < report.crates@.take(i as int + 1)[a].functions@.len()
+                        implies #[trigger] owned_function_ids(&report.crates@.take(i as int + 1)[a].functions@[b]) by {
+                        if a < i {
+                            assert(report.crates@.take(i as int)[a] == report.crates@[a]);
+                            assert(all_owned_ids(report.crates@.take(i as int)));
+                            assert(owned_function_ids(&report.crates@.take(i as int)[a].functions@[b]));
+                        } else {
+                            assert(a == i && c == &report.crates@[a]);
+                            assert(b < c.functions@.len() && j == c.functions@.len());
+                            assert(owned_function_ids(&c.functions@[b]));
+                        }
+                    }
                     reveal(report_ids);
                 }
                 i += 1;
@@ -1431,5 +1444,179 @@ sail_verified! {
                 CompletionPolicy::Receipt => c.verus.success != Some(false),
                 CompletionPolicy::Whole | CompletionPolicy::Repair => c.verus.success == Some(true),
             }
+    }
+}
+
+sail_spec! {
+    pub open spec fn driver_delimiter(raw: Seq<u8>, at: int) -> bool {
+        0 <= at && at + b"__VERUS_DRIVER_ARGS_SEP__"@.len() <= raw.len()
+            && raw.subrange(at, at + b"__VERUS_DRIVER_ARGS_SEP__"@.len() as int) == b"__VERUS_DRIVER_ARGS_SEP__"@
+    }
+
+    pub open spec fn first_driver_delimiter(raw: Seq<u8>, start: int, at: int) -> bool {
+        start <= at && driver_delimiter(raw, at)
+            && forall |i: int| start <= i < at ==> !driver_delimiter(raw, i)
+    }
+
+    pub open spec fn driver_token_span(raw: Seq<u8>, token: &String, delimiter: int, end: int) -> bool {
+        let start = delimiter + b"__VERUS_DRIVER_ARGS_SEP__"@.len();
+        driver_delimiter(raw, delimiter) && start <= end <= raw.len()
+            && string_bytes(token) == raw.subrange(start, end)
+            && forall |i: int| start <= i < end ==> !driver_delimiter(raw, i)
+    }
+
+    pub open spec fn driver_token_bounds(raw: Seq<u8>, tokens: Seq<String>, count: int, end: int, bounds: Seq<int>) -> bool {
+        0 <= count <= tokens.len() && bounds.len() == count + 1
+            && first_driver_delimiter(raw, 0, bounds[0]) && bounds.last() == end
+            && forall |i: int| 0 <= i < count ==> driver_token_span(raw, &tokens[i], bounds[i], bounds[i + 1])
+    }
+
+    pub open spec fn driver_token_prefix(raw: Seq<u8>, tokens: Seq<String>, count: int, end: int) -> bool {
+        exists |bounds: Seq<int>| driver_token_bounds(raw, tokens, count, end, bounds)
+    }
+
+    /// Exact non-overlapping delimiter semantics of the pinned driver's split/skip.
+    pub open spec fn packed_driver_tokens(raw: Seq<u8>, tokens: Seq<String>) -> bool {
+        if tokens.len() == 0 {
+            forall |i: int| 0 <= i <= raw.len() ==> !driver_delimiter(raw, i)
+        } else {
+            driver_token_prefix(raw, tokens, tokens.len() as int, raw.len() as int)
+        }
+    }
+
+    pub open spec fn driver_source_tokens(source: &Option<String>, tokens: Seq<String>) -> bool {
+        match source { None => tokens.len() == 0, Some(value) => packed_driver_tokens(string_bytes(value), tokens) }
+    }
+
+    pub open spec fn driver_option_sources(common: &Option<String>, package: &Option<String>,
+        arguments: Seq<String>, boundary: int) -> bool {
+        0 <= boundary <= arguments.len() && driver_source_tokens(common, arguments.take(boundary))
+            && driver_source_tokens(package, arguments.skip(boundary))
+    }
+}
+
+sail_verified! {
+    /// Recognizes the exact packed-driver separator at a bounded byte offset.
+    pub fn driver_delimiter_at(raw: &[u8], at: usize) -> (out: bool)
+        requires(true)
+        ensures(out == driver_delimiter(raw@, at as int))
+    {
+        let delimiter: &[u8] = b"__VERUS_DRIVER_ARGS_SEP__";
+        if at > raw.len() || raw.len() - at < delimiter.len() { return false; }
+        exact_bytes(&raw[at..at + delimiter.len()], delimiter)
+    }
+}
+
+sail_verified! {
+    /// Finds the first separator, proving that no effective token was skipped.
+    pub fn next_driver_delimiter(raw: &[u8], start: usize) -> (out: Option<usize>)
+        requires(start <= raw@.len())
+        ensures(out.is_some() ==> first_driver_delimiter(raw@, start as int, out.unwrap() as int),
+            out.is_none() ==> forall |i: int| start <= i <= raw@.len() ==> !driver_delimiter(raw@, i))
+    {
+        let mut at = start;
+        sail_while! { (at < raw.len())
+            invariant(start <= at <= raw.len(),
+                forall |i: int| start <= i < at ==> !driver_delimiter(raw@, i))
+            decreases(raw.len() - at)
+            {
+                if driver_delimiter_at(raw, at) { return Some(at); }
+                at += 1;
+            }
+        }
+        None
+    }
+}
+
+sail_verified! {
+    /// Validates decoded driver-token candidates against the exact original value.
+    /// The ignored leading prefix, empty tokens and trailing token are preserved.
+    pub fn packed_driver_arguments_match(value: &str, tokens: &[String]) -> (out: bool)
+        requires(true)
+        ensures(out ==> packed_driver_tokens(vstd::utf8::encode_utf8(value@), tokens@),
+            vstd::utf8::encode_utf8(value@).len() < b"__VERUS_DRIVER_ARGS_SEP__"@.len()
+                && tokens@.len() == 0 ==> out,
+            vstd::utf8::encode_utf8(value@) == b"__VERUS_DRIVER_ARGS_SEP__"@
+                && tokens@.len() == 1 && string_bytes(&tokens@[0]).len() == 0 ==> out)
+    {
+        let raw = value.as_bytes();
+        let raw_length = raw.len();
+        let delimiter: &[u8] = b"__VERUS_DRIVER_ARGS_SEP__";
+        let Some(first) = next_driver_delimiter(raw, 0) else {
+            sail_proof! { if raw@ == delimiter@ { assert(driver_delimiter(raw@, 0)); } }
+            return tokens.is_empty();
+        };
+        let mut at = first;
+        let mut index = 0usize;
+        sail_proof! { assert(driver_token_prefix(raw@, tokens@, 0, first as int)) by {
+            let bounds = seq![first as int];
+            assert(bounds.len() == 1 && bounds.last() == first);
+            assert(driver_token_bounds(raw@, tokens@, 0, first as int, bounds));
+        } }
+        sail_while! { (index < tokens.len())
+            invariant(index <= tokens.len(), driver_delimiter(raw@, at as int),
+                raw@ == vstd::utf8::encode_utf8(value@), delimiter@ == b"__VERUS_DRIVER_ARGS_SEP__"@, delimiter.len() == 25,
+                raw@.len() == raw_length,
+                driver_token_prefix(raw@, tokens@, index as int, at as int),
+                raw@ == delimiter@ && tokens@.len() == 1 && string_bytes(&tokens@[0]).len() == 0 ==> index == 0)
+            decreases(tokens.len() - index)
+            {
+                sail_proof! { assert(at as int + delimiter@.len() <= raw@.len()); }
+                let start = at + delimiter.len();
+                let next = next_driver_delimiter(raw, start);
+                let end = match next { Some(found) => found, None => raw_length };
+                sail_proof! {
+                    if raw@ == delimiter@ && tokens@.len() == 1 && string_bytes(&tokens@[0]).len() == 0 {
+                        assert(at == 0 && start == raw@.len() && end == raw@.len());
+                        assert(raw@.subrange(start as int, end as int) =~= Seq::<u8>::empty());
+                        assert(string_bytes(&tokens@[index as int]) =~= Seq::<u8>::empty());
+                    }
+                }
+                if !exact_bytes(tokens[index].as_str().as_bytes(), &raw[start..end]) { return false; }
+                sail_proof! {
+                    let before = choose |bounds: Seq<int>| driver_token_bounds(raw@, tokens@, index as int, at as int, bounds);
+                    let bounds = before.push(end as int);
+                    assert forall |i: int| 0 <= i < index + 1
+                        implies driver_token_span(raw@, &tokens@[i], bounds[i], bounds[i + 1]) by {
+                        if i == index { assert(driver_token_span(raw@, &tokens@[i], bounds[i], bounds[i + 1])); }
+                    }
+                    assert(driver_token_bounds(raw@, tokens@, index as int + 1, end as int, bounds));
+                    assert(driver_token_prefix(raw@, tokens@, index as int + 1, end as int));
+                }
+                index += 1;
+                match next {
+                    None => {
+                        if index != tokens.len() { return false; }
+                        return true;
+                    }
+                    Some(found) => { at = found; }
+                }
+            }
+        }
+        false
+    }
+}
+
+sail_verified! {
+    /// Validates all effective tokens in common-then-current-package order.
+    /// The proposed split index is untrusted, including when a source is absent.
+    pub fn effective_driver_arguments_match(common: &Option<String>, package: &Option<String>,
+        boundary: usize, arguments: &[String]) -> (out: bool)
+        requires(true)
+        ensures(out ==> driver_option_sources(common, package, arguments@, boundary as int),
+            common.is_none() && package.is_none() && boundary == 0 && arguments@.len() == 0 ==> out)
+    {
+        if boundary > arguments.len() { return false; }
+        let first = &arguments[..boundary];
+        let second = &arguments[boundary..];
+        match common {
+            None => { if !first.is_empty() { return false; } }
+            Some(value) => { if !packed_driver_arguments_match(value.as_str(), first) { return false; } }
+        }
+        match package {
+            None => { if !second.is_empty() { return false; } }
+            Some(value) => { if !packed_driver_arguments_match(value.as_str(), second) { return false; } }
+        }
+        true
     }
 }

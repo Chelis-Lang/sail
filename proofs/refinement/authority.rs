@@ -9,6 +9,28 @@ use crate::authority::CompletionPolicy;
 
 verus! {
 
+/// A decoded effective configuration refines the model setting only after all
+/// tokens have been checked against the independent raw common/package values.
+pub fn project_effective_verification(common: &Option<String>, package: &Option<String>,
+    boundary: usize, arguments: &[String]) -> (out: Option<model::VerificationSetting>)
+    ensures out.is_some() ==> acceptance::driver_option_sources(common, package, arguments@, boundary as int),
+        out.is_some() ==> ((out.unwrap() == model::VerificationSetting::Enabled)
+            == !acceptance::options_disable_verification(arguments@)),
+{
+    if !acceptance::effective_driver_arguments_match(common, package, boundary, arguments) { return None; }
+    Some(if acceptance::verification_enabled_options(arguments) {
+        model::VerificationSetting::Enabled
+    } else { model::VerificationSetting::CompileOnly })
+}
+
+pub fn packed_empty_token_positive(value: &str, tokens: &[String]) -> (accepted: bool)
+    requires vstd::utf8::encode_utf8(value@) == b"__VERUS_DRIVER_ARGS_SEP__"@,
+        tokens@.len() == 1, string_bytes(&tokens@[0]).len() == 0,
+    ensures accepted,
+{
+    acceptance::packed_driver_arguments_match(value, tokens)
+}
+
 pub open spec fn model_verdict(v: VerdictName) -> model::Verdict {
     match v {
         VerdictName::Verified => model::Verdict::Verified,
