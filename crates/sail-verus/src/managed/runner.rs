@@ -1238,10 +1238,10 @@ trait CargoPipes {
 }
 impl CargoPipes for super::command_environment::Spawned {
     fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
-        self.take_stdout()
+        self.take_cargo_stdout()
     }
     fn take_stderr(&mut self) -> Option<std::process::ChildStderr> {
-        self.take_stderr()
+        self.take_cargo_stderr()
     }
 }
 // Original relay cancellation/fault controls retain their real native children

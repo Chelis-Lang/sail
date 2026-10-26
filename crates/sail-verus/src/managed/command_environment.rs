@@ -6,13 +6,17 @@
 use super::environment::ParentEnvironment;
 use sail_acceptance::authority::ProcessDescriptor;
 use sail_acceptance::phase_inputs::{
-    ConfiguredIntent, OwnedCompletionFields, OwnedSpawnFields, OwnerIdentity,
+    ConfiguredIntent, OwnedPipeCompletionFields, OwnedSpawnFields, OwnerIdentity,
 };
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ExitStatus, Output, Stdio};
 use std::sync::Arc;
+
+#[path = "command_pipe.rs"]
+mod pipe;
+pub(crate) use pipe::{PipeOutput, PipeReader};
 
 #[derive(serde::Serialize)]
 pub(crate) struct EnvironmentObservation {
@@ -42,16 +46,9 @@ pub(crate) struct Spawned {
 }
 
 pub(crate) struct Completed {
-    output: Output,
+    status: ExitStatus,
     environment: Option<EnvironmentObservation>,
-    launch: Option<WaitedLaunch>,
-}
-
-/// One checked builder, owned child and actual normal wait; not compiler-input authority.
-struct WaitedLaunch {
-    pid: u32,
-    configuration: ConfiguredIntent,
-    owner: Arc<()>,
+    fields: OwnedPipeCompletionFields<LaunchLease>,
 }
 
 /// Native ownership lease; PID reuse cannot substitute a different child.
@@ -103,10 +100,25 @@ impl Spawned {
             configuration: self.configuration.as_ref(),
         }
     }
-    pub(crate) fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
+    pub(crate) fn take_stdout(&mut self) -> Option<PipeReader<std::process::ChildStdout>> {
+        self.child
+            .stdout
+            .take()
+            .map(|reader| PipeReader::new(reader, Arc::clone(&self.owner), 0))
+    }
+    pub(crate) fn take_stderr(&mut self) -> Option<PipeReader<std::process::ChildStderr>> {
+        self.child
+            .stderr
+            .take()
+            .map(|reader| PipeReader::new(reader, Arc::clone(&self.owner), 1))
+    }
+
+    // The original outer Cargo relay is a separate managed-only byte forwarder.
+    // Compiler adapters outside `managed` cannot obtain these raw endpoints.
+    pub(super) fn take_cargo_stdout(&mut self) -> Option<std::process::ChildStdout> {
         self.child.stdout.take()
     }
-    pub(crate) fn take_stderr(&mut self) -> Option<std::process::ChildStderr> {
+    pub(super) fn take_cargo_stderr(&mut self) -> Option<std::process::ChildStderr> {
         self.child.stderr.take()
     }
     pub(crate) fn kill(&mut self) -> std::io::Result<()> {
@@ -126,43 +138,52 @@ impl Spawned {
         Ok(status)
     }
 
-    /// The caller retains original pipe ownership; status comes only from this child.
+    /// Consume private reader completions; no caller-supplied byte vector can attach.
     pub(crate) fn captured(
         &mut self,
-        stdout: Vec<u8>,
-        stderr: Vec<u8>,
+        stdout: PipeOutput,
+        stderr: Option<PipeOutput>,
     ) -> std::io::Result<Completed> {
         let status = self
             .waited
             .ok_or_else(|| std::io::Error::other("owned compiler has no normal wait"))?;
-        let launch = self.configuration.take().map(|configuration| WaitedLaunch {
-            pid: self.child.id(),
-            configuration,
-            owner: Arc::clone(&self.owner),
-        });
         Ok(Completed {
-            output: Output {
-                stdout,
-                stderr,
-                status,
-            },
+            status,
             environment: self.environment.take(),
-            launch,
+            fields: OwnedPipeCompletionFields {
+                owner: Some(LaunchLease {
+                    owner: Arc::clone(&self.owner),
+                }),
+                pid: Some(self.child.id()),
+                configuration: self.configuration.take(),
+                wait: Some(status.code()),
+                stdout: stdout.into_readback(),
+                stderr: stderr.map_or_else(
+                    || sail_acceptance::stream_capture::PipeReadback::Unavailable(Vec::new()),
+                    PipeOutput::into_readback,
+                ),
+            },
         })
     }
 
+    #[cfg(unix)]
+    pub(crate) fn wait_with_output(mut self) -> std::io::Result<Completed> {
+        // std Child::wait_with_output closes owned stdin before draining pipes.
+        // Preserve that ordering: a child waiting for EOF must be allowed to exit.
+        drop(self.child.stdin.take());
+        let stdout = self.take_stdout();
+        let stderr = self.take_stderr();
+        let (stdout, stderr) = pipe::read_pair(stdout, stderr)?;
+        self.wait()?;
+        self.captured(stdout, Some(stderr))
+    }
+
+    #[cfg(not(unix))]
     pub(crate) fn wait_with_output(self) -> std::io::Result<Completed> {
-        let pid = self.child.id();
+        // Preserve fresh std output on an unsupported observation provider;
+        // this path supplies no owned-pipe EOF or compiler-completion authority.
         let output = self.child.wait_with_output()?;
-        Ok(Completed {
-            output,
-            environment: self.environment,
-            launch: self.configuration.map(|configuration| WaitedLaunch {
-                pid,
-                configuration,
-                owner: self.owner,
-            }),
-        })
+        Ok(Completed::unobserved(output, self.environment))
     }
 }
 
@@ -173,36 +194,40 @@ impl Completed {
     }
     #[cfg(test)]
     pub(crate) fn into_output(self) -> Output {
-        self.output
+        self.raw_output()
     }
     pub(crate) fn into_observed_output(self) -> Option<Output> {
-        self.environment?;
-        Some(self.output)
+        if self.environment.is_none() {
+            return None;
+        }
+        Some(self.raw_output())
     }
 
-    pub(crate) fn into_parts(self) -> (ExitStatus, OwnedCompletionFields<LaunchLease>) {
-        let (owner, pid, configuration) = match self.launch {
-            Some(launch) => (
-                Some(LaunchLease {
-                    owner: launch.owner,
-                }),
-                Some(launch.pid),
-                Some(launch.configuration),
-            ),
-            None => (None, None, None),
-        };
-        let status = self.output.status;
-        (
-            status,
-            OwnedCompletionFields {
-                owner,
-                pid,
-                configuration,
-                wait: Some(status.code()),
-                stdout: self.output.stdout,
-                stderr: self.output.stderr,
+    pub(crate) fn into_parts(self) -> (ExitStatus, OwnedPipeCompletionFields<LaunchLease>) {
+        (self.status, self.fields)
+    }
+
+    fn raw_output(self) -> Output {
+        Output {
+            status: self.status,
+            stdout: self.fields.stdout.into_bytes(),
+            stderr: self.fields.stderr.into_bytes(),
+        }
+    }
+
+    fn unobserved(output: Output, environment: Option<EnvironmentObservation>) -> Self {
+        Self {
+            status: output.status,
+            environment,
+            fields: OwnedPipeCompletionFields {
+                owner: None,
+                pid: None,
+                configuration: None,
+                wait: Some(output.status.code()),
+                stdout: sail_acceptance::stream_capture::PipeReadback::Unavailable(output.stdout),
+                stderr: sail_acceptance::stream_capture::PipeReadback::Unavailable(output.stderr),
             },
-        )
+        }
     }
 }
 
@@ -517,13 +542,9 @@ impl Command {
             .observe_environment()
             .map(|(environment, _configuration)| environment);
         let output = self.inner.output()?;
-        Ok(Completed {
-            output,
-            environment,
-            // std Command::output does not expose its child's PID; this path
-            // can supply planning output, never a compiler launch completion.
-            launch: None,
-        })
+        // std Command::output exposes no child PID or actual pipe observations.
+        // It supplies planning/fresh output, never a compiler completion token.
+        Ok(Completed::unobserved(output, environment))
     }
 }
 
@@ -725,16 +746,16 @@ mod tests {
                 .env(FLAG, "child");
             let result = command.output()?;
             assert!(
-                result.output.status.success(),
+                result.status.success(),
                 "{}",
-                String::from_utf8_lossy(&result.output.stderr)
+                String::from_utf8_lossy(result.fields.stderr.bytes())
             );
             let observed = result
                 .environment
                 .ok_or("actual command environment withheld")?;
             let metadata = serde_json::to_value(observed)?;
             assert_eq!(metadata["inherits"], !clear);
-            let stdout = String::from_utf8(result.output.stdout)?;
+            let stdout = String::from_utf8(result.fields.stdout.into_bytes())?;
             let actual = stdout
                 .lines()
                 .find_map(|line| line.strip_prefix("SAIL_OWNED_COMMAND_VALUE="))
@@ -757,8 +778,8 @@ mod tests {
         command.inner.env("SAIL_COMMAND_ACTUAL", "changed");
         let result = command.output()?;
         assert!(result.environment.is_none());
-        assert_eq!(result.output.status.code(), Some(7));
-        assert_eq!(result.output.stdout, b"changed");
+        assert_eq!(result.status.code(), Some(7));
+        assert_eq!(result.fields.stdout.bytes(), b"changed");
         Ok(())
     }
 

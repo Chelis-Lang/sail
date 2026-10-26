@@ -14,7 +14,7 @@ use sail_acceptance::authority::{
     UnconfiguredAttempt, UnsealedOutput,
 };
 use sail_acceptance::phase_inputs::{
-    OwnedCompilerAttempt, begin_owned_compiler, complete_owned_compiler,
+    OwnedCompilerAttempt, begin_owned_compiler, complete_owned_compiler_pipes,
 };
 use std::fs::File;
 use std::io::Write;
@@ -331,7 +331,7 @@ impl<'a> Journal<'a> {
         completed: Completed,
     ) -> CapturedChild<'a> {
         let (status, fields) = completed.into_parts();
-        let observed = complete_owned_compiler(&NativeOwnerIdentity, running, fields);
+        let observed = complete_owned_compiler_pipes(&NativeOwnerIdentity, running, fields);
         self.capture_result(observed, status)
     }
 
