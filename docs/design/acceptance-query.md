@@ -698,3 +698,22 @@ input/output splitter extraction and physical process/I/O correspondence remain
 separate obligations. Neither a successful hash transition nor the tail method
 asserts EOF, a clean solver exit, or a truthful stored solver origin. The
 publication gate and protected-store/writer obligations remain required.
+
+
+## Supported head-extraction completeness
+
+`command_head` proves both directions for its explicit `head_span` grammar:
+every returned head is the exact first supported bare head in a complete list,
+and every list satisfying that grammar returns its unique head, including
+leading whitespace and completed comments. Its loop invariants bound the actual
+scan against every candidate span; the proof does not assume a supplied parser
+offset or a successful classification Boolean. `framed_command` and the joint
+owner preserve that constructive acceptance condition after checking the exact
+owned interval and preceding trivia. The executable stock/native comment witness
+uses a nonempty head after a newline-terminated comment.
+
+The full original query root checks 274 obligations with this witness. Removing
+the actual leading-trivia scan or truncating the returned head causes ordinary
+verification failures at unchanged scope and limits. These clauses specify the
+supported lexical grammar, not the complete SMT simple-symbol alphabet or the
+arity, types, semantic effects and response cardinality of every command.

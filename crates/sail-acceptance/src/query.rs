@@ -1022,6 +1022,8 @@ sail_verified! {
         requires (true)
         ensures (head.is_some() ==> exists|start: int, end: int|
             head_span(bytes@, start, end) && head.unwrap()@ == bytes@.subrange(start, end),
+            (exists|start: int, end: int| head_span(bytes@,start,end)) ==> head.is_some(),
+            forall|start: int,end: int| head_span(bytes@,start,end) ==> head.is_some() && head.unwrap()@ == bytes@.subrange(start,end),
             single_list(bytes@, true) && symbol_first(bytes@[1]) ==> head.is_some(),
             single_list(bytes@, true) && !frame_space(bytes@[1]) && bytes@[1] != b';'
                 && !symbol_first(bytes@[1]) ==> head.is_none())
@@ -1034,11 +1036,19 @@ sail_verified! {
                 || bytes[i] == b' ' || bytes[i] == b'\t' || bytes[i] == b'\n' || bytes[i] == b'\r'))
             invariant (1 <= i <= bytes.len(), single_list(bytes@, true),
                 trivia_after(bytes@.subrange(1, i as int), false) == Some(comment),
+                forall|start: int,end: int| head_span(bytes@,start,end) ==> i <= start,
                 !frame_space(bytes@[1]) && bytes@[1] != b';' ==> i == 1 && !comment)
             decreases (bytes.len() - i)
             {
                 let byte = bytes[i];
                 sail_proof! {
+                    assert forall|start: int,end: int| head_span(bytes@,start,end) implies i < start by {
+                        if i == start {
+                            assert(!comment);
+                            assert(symbol_first(byte));
+                            assert(false);
+                        }
+                    }
                     trivia_join(bytes@.subrange(1, i as int), seq![byte], false);
                     reveal_with_fuel(trivia_after, 2);
                     assert(bytes@.subrange(1, i as int + 1) =~= bytes@.subrange(1, i as int) + seq![byte]);
@@ -1048,16 +1058,36 @@ sail_verified! {
                 i += 1;
             }
         }
+        sail_proof! {
+            assert forall|start: int,end: int| head_span(bytes@,start,end) implies i == start by {
+                if i < start {
+                    assert(!comment);
+                    trivia_join(bytes@.subrange(1,i as int),bytes@.subrange(i as int,start),false);
+                    assert(bytes@.subrange(1,start) =~= bytes@.subrange(1,i as int) + bytes@.subrange(i as int,start));
+                    assert(bytes@.subrange(i as int,start)[0] == bytes@[i as int]);
+                    reveal_with_fuel(trivia_after,1);
+                    assert(false);
+                }
+            }
+        }
         if i == bytes.len() || delimiter(bytes[i]) || bytes[i] == b'#' || bytes[i] == b':'
             || (b'0' <= bytes[i] && bytes[i] <= b'9') { return None; }
         let start = i;
         sail_while! { (i < bytes.len() && !delimiter(bytes[i]))
             invariant (1 <= start <= i <= bytes.len(), start < bytes.len(),
                 single_list(bytes@, true), symbol_first(bytes@[start as int]),
+                forall|s: int,e: int| head_span(bytes@,s,e) ==> start == s && i <= e,
                 trivia_after(bytes@.subrange(1, start as int), false) == Some(false),
                 forall|j: int| start <= j < i ==> !word_delimiter(bytes@[j]))
             decreases (bytes.len() - i)
-            { i += 1; }
+            {
+                sail_proof! {
+                    assert forall|s: int,e: int| head_span(bytes@,s,e) implies i < e by {
+                        if i == e { assert(word_delimiter(bytes@[i as int])); }
+                    }
+                }
+                i += 1;
+            }
         }
         if i == bytes.len() { return None; }
         let head = &bytes[start..i];
@@ -1213,6 +1243,12 @@ sail_verified! {
                 && accepted.unwrap().0.view() == old(raw).view().subrange(old(raw).fed_view() as int, final(raw).fed_view() as int)
                 && trivia_after(old(raw).view().subrange(old(raw).fed_view() as int, offset as int), false) == Some(false)),
             accepted.is_none() ==> (!final(raw).active() && final(raw).fed_view() == old(raw).fed_view()),
+            old(raw).active() && (exists|start: int,end: int| head_span(command@,start,end))
+                && old(raw).fed_view() <= offset
+                && offset as nat + command@.len() <= old(raw).view().len()
+                && old(raw).view().subrange(offset as int, offset as int + command@.len() as int) == command@
+                && trivia_after(old(raw).view().subrange(old(raw).fed_view() as int, offset as int), false) == Some(false)
+                ==> accepted.is_some(),
             old(raw).active() && single_list(command@, true) && symbol_first(command@[1])
                 && old(raw).fed_view() <= offset
                 && offset as nat + command@.len() <= old(raw).view().len()
@@ -1224,5 +1260,28 @@ sail_verified! {
         let Some(head) = head else { raw.refuse(); return None; };
         let feed = raw.command(offset, command);
         match feed { Some(feed) => Some((feed, head)), None => None }
+    }
+}
+
+sail_verified! {
+    /// A nonempty command head following whitespace and a completed comment is accepted exactly.
+    #[allow(clippy::byte_char_slices, reason = "Explicit byte values expose the constructive grammar witness to stock verification.")]
+    pub fn commented_head_control() -> (passed: bool)
+        requires (true) ensures (passed)
+    {
+        let bytes = [b'(',b' ',b';',b'x',b'\n',b'c',b')'];
+        sail_proof! {
+            reveal_with_fuel(frame_scan,8);
+            reveal_with_fuel(trivia_after,6);
+            assert(head_span(bytes@,5,6));
+        }
+        let expected = [b'c'];
+        match command_head(&bytes) {
+            Some(head) => {
+                sail_proof! { assert(head@ == bytes@.subrange(5,6)); assert(head@ =~= expected@); }
+                crate::inputs::byte_eq(head,&expected)
+            }
+            None => false,
+        }
     }
 }

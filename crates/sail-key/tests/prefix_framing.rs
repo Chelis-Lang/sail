@@ -51,6 +51,7 @@ fn native_shared_primitive_controls_execute() {
     assert!(sail_acceptance::key_prefix::overflow_framing_control());
     assert!(sail_acceptance::key_prefix::owned_feed_control());
     assert!(sail_acceptance::key_prefix::joint_owner_control());
+    assert!(sail_acceptance::query::commented_head_control());
 }
 
 #[test]
