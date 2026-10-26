@@ -383,6 +383,13 @@ sail_code! {
         }
 
         sail_method! {
+            /// Borrows the exact original batch for checks before owned release.
+            pub fn entries(&self) -> (entries: &[T])
+                requires (true) ensures (entries@ == self.contents())
+            { &self.entries }
+        }
+
+        sail_method! {
             /// Appends a payload only when its entire byte cost fits the bound.
             /// Overflow and oversized payloads leave the batch unchanged.
             pub fn push(&mut self, entry: T, cost: usize, limit: usize) -> (result: bool)
