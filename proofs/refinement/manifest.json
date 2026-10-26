@@ -971,7 +971,25 @@
         "crates/sail-acceptance/src/authority.rs",
         "crates/sail-acceptance/src/phase_inputs.rs",
         "proofs/refinement/inputs.rs",
-        "proofs/refinement/phase_inputs.rs"
+        "proofs/refinement/phase_inputs.rs",
+        "crates/sail-verus/src/adapter.rs",
+        "crates/sail-verus/src/adapter_attempts.rs",
+        "crates/sail-verus/src/engine.rs",
+        "crates/sail-verus/src/managed/mod.rs",
+        "crates/sail-verus/src/managed/command_environment.rs",
+        "crates/sail-verus/src/managed/runner.rs",
+        "crates/sail-verus/src/managed/request.rs",
+        "crates/sail-verus/src/managed/noop.rs",
+        "crates/sail-verus/src/managed/shipped.rs",
+        "crates/sail-verus/src/managed/shipped/compiler.rs",
+        "crates/sail-verus/src/managed/shipped/native.rs",
+        "crates/sail-verus/src/managed/shipped/native_reads.rs",
+        "crates/sail-verus/src/managed/retained/driver.rs",
+        "crates/sail-verus/src/managed/retained/compiler.rs",
+        "crates/sail-verus/src/managed/retained/native.rs",
+        "crates/sail-verus/src/managed/retained/producers.rs",
+        "crates/sail-daemon/src/jobs/product.rs",
+        "crates/sail-daemon/src/jobs/result_cache.rs"
       ],
       "verified": 264,
       "functions": [
@@ -1888,6 +1906,102 @@
           "source": "crates/sail-acceptance/src/phase_inputs.rs",
           "before": "Some(projection) => Some(CommandEnvironment { projection, recorded })",
           "after": "Some(_projection) => None"
+        },
+        {
+          "name": "owned-config-env-cardinality",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "if descriptor.overrides.len() != rows.len() { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "owned-config-env-row",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "if !input_key_eq(&expected, &rows[i]) || value_difference(&expected.value, &rows[i].value) != 0",
+          "after": "if false"
+        },
+        {
+          "name": "owned-config-original-command",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "!descriptors_equal(recorded, actual)",
+          "after": "false"
+        },
+        {
+          "name": "owned-config-map-binding",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "!descriptor_environment_matches(actual, environment.projection().overrides())",
+          "after": "false"
+        },
+        {
+          "name": "owned-config-constructive",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "Some(ConfiguredIntent { descriptor: copy_descriptor(actual), inheritance })",
+          "after": "None"
+        },
+        {
+          "name": "owned-start-descriptor",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "if !descriptors_equal(reserved.descriptor(), configuration.descriptor())",
+          "after": "if false"
+        },
+        {
+          "name": "owned-start-pid",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "reserved.started(fields.pid)",
+          "after": "reserved.started(1)"
+        },
+        {
+          "name": "owned-start-constructive",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "Some(running) => Some(OwnedCompilerAttempt { running, owner: fields.owner, pid: fields.pid, descriptor, inheritance })",
+          "after": "Some(_running) => None"
+        },
+        {
+          "name": "owned-completion-owner",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "identity.same_owner(original_owner, actual_owner)",
+          "after": "true"
+        },
+        {
+          "name": "owned-completion-pid",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "identity.same_owner(original_owner, actual_owner) && original_pid == actual_pid",
+          "after": "identity.same_owner(original_owner, actual_owner)"
+        },
+        {
+          "name": "owned-completion-descriptor",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "&& descriptors_equal(original_descriptor, actual_descriptor)",
+          "after": "&& true"
+        },
+        {
+          "name": "owned-completion-wait",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "if completion.wait.is_none()",
+          "after": "if false"
+        },
+        {
+          "name": "owned-completion-policy",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "!environment_inheritance_equal(&attempt.inheritance, configuration.inheritance())",
+          "after": "false"
+        },
+        {
+          "name": "owned-completion-output",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": ".stdout_eof(completion.stdout).stderr_eof(completion.stderr)",
+          "after": ".stdout_eof(completion.stderr).stderr_eof(completion.stdout)"
+        },
+        {
+          "name": "owned-completion-status",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": ".exited(exit).finish_or_output()",
+          "after": ".exited(Some(0)).finish_or_output()"
+        },
+        {
+          "name": "owned-completion-constructive",
+          "source": "crates/sail-acceptance/src/phase_inputs.rs",
+          "before": "attempt.running.stdout_eof(completion.stdout).stderr_eof(completion.stderr).exited(exit).finish_or_output()",
+          "after": "Err(UnsealedOutput { stdout: completion.stdout, stderr: completion.stderr, exit })"
         }
       ]
     },
@@ -1902,6 +2016,24 @@
         "crates/sail-acceptance/src/authority.rs",
         "crates/sail-acceptance/src/phase_inputs.rs",
         "proofs/refinement/authority.rs",
+        "crates/sail-verus/src/adapter.rs",
+        "crates/sail-verus/src/adapter_attempts.rs",
+        "crates/sail-verus/src/engine.rs",
+        "crates/sail-verus/src/managed/mod.rs",
+        "crates/sail-verus/src/managed/command_environment.rs",
+        "crates/sail-verus/src/managed/runner.rs",
+        "crates/sail-verus/src/managed/request.rs",
+        "crates/sail-verus/src/managed/noop.rs",
+        "crates/sail-verus/src/managed/shipped.rs",
+        "crates/sail-verus/src/managed/shipped/compiler.rs",
+        "crates/sail-verus/src/managed/shipped/native.rs",
+        "crates/sail-verus/src/managed/shipped/native_reads.rs",
+        "crates/sail-verus/src/managed/retained/driver.rs",
+        "crates/sail-verus/src/managed/retained/compiler.rs",
+        "crates/sail-verus/src/managed/retained/native.rs",
+        "crates/sail-verus/src/managed/retained/producers.rs",
+        "crates/sail-daemon/src/jobs/product.rs",
+        "crates/sail-daemon/src/jobs/result_cache.rs",
         "crates/sail-api/src/acceptance.rs",
         "crates/sail-api/src/acceptance_sort.rs",
         "crates/sail-api/src/output.rs",
@@ -2701,8 +2833,8 @@
         {
           "name": "fresh-selection",
           "source": "crates/sail-api/src/acceptance.rs",
-          "before": "!matches!(project.currentness, Currentness::Current) ||",
-          "after": "false ||"
+          "before": "sail_verified! {\n    /// Mints selected-target authority using actual reports and arbitrary index candidates.\n    pub fn complete_selection_ordered<'a>(project: &'a ProjectResult, orders: &[ReportOrder])\n        -> (out: Option<CompleteSelection<'a>>)\n        requires(true)\n        ensures(out.is_some() ==> supplied_selection_authorized(project),\n            out.is_some() ==> selection_project(&out.unwrap()) == project,\n            out.is_some() ==> selection_authority_valid(&out.unwrap()))\n    {\n        if !matches!(project.currentness, Currentness::Current) || project.exit_code != Some(0)\n            || project.error.is_some() || orders.len() != project.targets.len() { return None; }\n        let mut found = false;\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),\n                found == (exists |j: int| 0 <= j < i && project.targets@[j].requested),\n                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>\n                    project.targets@[j].complete && project.targets@[j].scope_reuse.is_none()\n                        && !partial_command(project.targets@[j].report.command@)\n                        && successful_report(&project.targets@[j].report, CompletionPolicy::Repair),\n                forall |j: int, k: int| 0 <= j < k < i\n                    && project.targets@[j].requested && project.targets@[k].requested ==>\n                        !same_target_identity(&project.targets@[j], &project.targets@[k]))\n            decreases(project.targets.len() - i)\n            {\n                let t = &project.targets[i];\n                if t.requested {\n                    if !t.complete || t.scope_reuse.is_some() || focused_command(&t.report.command)\n                        || complete_report_ordered(&t.report, CompletionPolicy::Repair,\n                            &orders[i].forward, &orders[i].inverse).is_none() { return None; }\n                    let mut j = 0usize;\n                    sail_while! { (j < i)\n                        invariant(j <= i, i < project.targets.len(),\n                            forall |k: int| 0 <= k < j && project.targets@[k].requested ==>\n                                !same_target_identity(&project.targets@[k], t))\n                        decreases(i - j)\n                        {\n                            if project.targets[j].requested && same_target(&project.targets[j], t) { return None; }\n                            j += 1;\n                        }\n                    }\n                    found = true;\n                }\n                i += 1;\n            }\n        }\n        if !found { return None; }\n        Some(CompleteSelection { project })\n    }\n}",
+          "after": "sail_verified! {\n    /// Mints selected-target authority using actual reports and arbitrary index candidates.\n    pub fn complete_selection_ordered<'a>(project: &'a ProjectResult, orders: &[ReportOrder])\n        -> (out: Option<CompleteSelection<'a>>)\n        requires(true)\n        ensures(out.is_some() ==> supplied_selection_authorized(project),\n            out.is_some() ==> selection_project(&out.unwrap()) == project,\n            out.is_some() ==> selection_authority_valid(&out.unwrap()))\n    {\n        if false || project.exit_code != Some(0)\n            || project.error.is_some() || orders.len() != project.targets.len() { return None; }\n        let mut found = false;\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),\n                found == (exists |j: int| 0 <= j < i && project.targets@[j].requested),\n                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>\n                    project.targets@[j].complete && project.targets@[j].scope_reuse.is_none()\n                        && !partial_command(project.targets@[j].report.command@)\n                        && successful_report(&project.targets@[j].report, CompletionPolicy::Repair),\n                forall |j: int, k: int| 0 <= j < k < i\n                    && project.targets@[j].requested && project.targets@[k].requested ==>\n                        !same_target_identity(&project.targets@[j], &project.targets@[k]))\n            decreases(project.targets.len() - i)\n            {\n                let t = &project.targets[i];\n                if t.requested {\n                    if !t.complete || t.scope_reuse.is_some() || focused_command(&t.report.command)\n                        || complete_report_ordered(&t.report, CompletionPolicy::Repair,\n                            &orders[i].forward, &orders[i].inverse).is_none() { return None; }\n                    let mut j = 0usize;\n                    sail_while! { (j < i)\n                        invariant(j <= i, i < project.targets.len(),\n                            forall |k: int| 0 <= k < j && project.targets@[k].requested ==>\n                                !same_target_identity(&project.targets@[k], t))\n                        decreases(i - j)\n                        {\n                            if project.targets[j].requested && same_target(&project.targets[j], t) { return None; }\n                            j += 1;\n                        }\n                    }\n                    found = true;\n                }\n                i += 1;\n            }\n        }\n        if !found { return None; }\n        Some(CompleteSelection { project })\n    }\n}"
         },
         {
           "name": "obligation-uniqueness",
@@ -2737,8 +2869,8 @@
         {
           "name": "request-current",
           "source": "crates/sail-api/src/acceptance.rs",
-          "before": "|| !matches!(project.currentness, Currentness::Current)",
-          "after": "|| false"
+          "before": "sail_verified! {\n    /// Mints Current whole-request authority from an independent request and actual reports.\n    pub fn complete_request_ordered<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,\n        orders: &[ReportOrder]) -> (out: Option<CompleteRequest<'a>>)\n        requires(true)\n        ensures(out.is_some() ==> request_authorized(request, project),\n            out.is_some() ==> request_authority_request(&out.unwrap()) == request,\n            out.is_some() ==> request_authority_project(&out.unwrap()) == project,\n            small_positive_request(request, project) && orders@.len() == 1\n                && orders@[0].forward@.len() == 0 && orders@[0].inverse@.len() == 0 ==> out.is_some())\n    {\n        if !request_corresponds(request, project) || focused_command(&request.args)\n            || !verification_enabled_command(&request.args)\n            || !matches!(project.currentness, Currentness::Current)\n            || project.exit_code != Some(0) || project.error.is_some()\n            || orders.len() != project.targets.len() { return None; }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),\n                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>\n                    project.targets@[j].complete && project.targets@[j].scope_reuse.is_none()\n                        && !partial_command(project.targets@[j].report.command@)\n                        && successful_report(&project.targets@[j].report, CompletionPolicy::Whole))\n            decreases(project.targets.len() - i)\n            {\n                if project.targets[i].requested && complete_target_ordered(&project.targets[i],\n                    &orders[i].forward, &orders[i].inverse).is_none() { return None; }\n                i += 1;\n            }\n        }\n        Some(CompleteRequest { request, project })\n    }\n}",
+          "after": "sail_verified! {\n    /// Mints Current whole-request authority from an independent request and actual reports.\n    pub fn complete_request_ordered<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,\n        orders: &[ReportOrder]) -> (out: Option<CompleteRequest<'a>>)\n        requires(true)\n        ensures(out.is_some() ==> request_authorized(request, project),\n            out.is_some() ==> request_authority_request(&out.unwrap()) == request,\n            out.is_some() ==> request_authority_project(&out.unwrap()) == project,\n            small_positive_request(request, project) && orders@.len() == 1\n                && orders@[0].forward@.len() == 0 && orders@[0].inverse@.len() == 0 ==> out.is_some())\n    {\n        if !request_corresponds(request, project) || focused_command(&request.args)\n            || !verification_enabled_command(&request.args)\n            || false\n            || project.exit_code != Some(0) || project.error.is_some()\n            || orders.len() != project.targets.len() { return None; }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),\n                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>\n                    project.targets@[j].complete && project.targets@[j].scope_reuse.is_none()\n                        && !partial_command(project.targets@[j].report.command@)\n                        && successful_report(&project.targets@[j].report, CompletionPolicy::Whole))\n            decreases(project.targets.len() - i)\n            {\n                if project.targets[i].requested && complete_target_ordered(&project.targets[i],\n                    &orders[i].forward, &orders[i].inverse).is_none() { return None; }\n                i += 1;\n            }\n        }\n        Some(CompleteRequest { request, project })\n    }\n}"
         },
         {
           "name": "request-repair-function",
@@ -2875,8 +3007,8 @@
         {
           "name": "retained-clear-refused-labels",
           "source": "crates/sail-api/src/acceptance.rs",
-          "before": "project.targets[i].complete = false;",
-          "after": "project.targets[i].complete = true;"
+          "before": "sail_verified! {\n    /// Rechecks original request authority before retained completion can be shown.\n    /// Refusal clears labels while preserving the recorded reports and currentness.\n    pub fn withhold_unbound_request_authority_ordered(project: &mut ProjectResult,\n        request: Option<&ResolvedRequest>, orders: &[ReportOrder]) -> (corresponding: bool)\n        requires(true)\n        ensures(same_project_except_completion(old(project), final(project)),\n            forall |i: int| 0 <= i < final(project).targets@.len() ==>\n                final(project).targets@[i].complete ==> old(project).targets@[i].complete,\n            final(project).currentness is Current && final(project).exit_code == Some(0i32)\n                && (exists |i: int| 0 <= i < final(project).targets@.len()\n                    && final(project).targets@[i].complete) ==>\n                request.is_some() && request_authorized(request.unwrap(), final(project)),\n            request.is_none() ==> !corresponding,\n            request.is_some() && small_positive_request(request.unwrap(), old(project))\n                && orders@.len() == 1 && orders@[0].forward@.len() == 0\n                && orders@[0].inverse@.len() == 0 ==>\n                corresponding && *final(project) == *old(project))\n    {\n        let corresponding = match request {\n            Some(request) => request_corresponds(request, project),\n            None => false,\n        };\n        let admitted = match request {\n            Some(request) => corresponding\n                && verification_enabled_command(&request.args)\n                && !focused_command(&request.args)\n                && (!matches!(project.currentness, Currentness::Current)\n                    || project.exit_code != Some(0)\n                    || complete_request_ordered(request, project, orders).is_some()),\n            None => false,\n        };\n        if admitted {\n            return corresponding;\n        }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(),\n                same_project_except_completion(old(project), project),\n                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete,\n                forall |j: int| i <= j < project.targets@.len() ==>\n                    project.targets@[j].complete == old(project).targets@[j].complete)\n            decreases(project.targets.len() - i)\n            {\n                project.targets[i].complete = false;\n                i += 1;\n            }\n        }\n        corresponding\n    }\n}",
+          "after": "sail_verified! {\n    /// Rechecks original request authority before retained completion can be shown.\n    /// Refusal clears labels while preserving the recorded reports and currentness.\n    pub fn withhold_unbound_request_authority_ordered(project: &mut ProjectResult,\n        request: Option<&ResolvedRequest>, orders: &[ReportOrder]) -> (corresponding: bool)\n        requires(true)\n        ensures(same_project_except_completion(old(project), final(project)),\n            forall |i: int| 0 <= i < final(project).targets@.len() ==>\n                final(project).targets@[i].complete ==> old(project).targets@[i].complete,\n            final(project).currentness is Current && final(project).exit_code == Some(0i32)\n                && (exists |i: int| 0 <= i < final(project).targets@.len()\n                    && final(project).targets@[i].complete) ==>\n                request.is_some() && request_authorized(request.unwrap(), final(project)),\n            request.is_none() ==> !corresponding,\n            request.is_some() && small_positive_request(request.unwrap(), old(project))\n                && orders@.len() == 1 && orders@[0].forward@.len() == 0\n                && orders@[0].inverse@.len() == 0 ==>\n                corresponding && *final(project) == *old(project))\n    {\n        let corresponding = match request {\n            Some(request) => request_corresponds(request, project),\n            None => false,\n        };\n        let admitted = match request {\n            Some(request) => corresponding\n                && verification_enabled_command(&request.args)\n                && !focused_command(&request.args)\n                && (!matches!(project.currentness, Currentness::Current)\n                    || project.exit_code != Some(0)\n                    || complete_request_ordered(request, project, orders).is_some()),\n            None => false,\n        };\n        if admitted {\n            return corresponding;\n        }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(),\n                same_project_except_completion(old(project), project),\n                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete,\n                forall |j: int| i <= j < project.targets@.len() ==>\n                    project.targets@[j].complete == old(project).targets@[j].complete)\n            decreases(project.targets.len() - i)\n            {\n                project.targets[i].complete = true;\n                i += 1;\n            }\n        }\n        corresponding\n    }\n}"
         },
         {
           "name": "retained-preserve-positive",
@@ -3043,8 +3175,8 @@
         {
           "name": "replay-transfer-report-preservation",
           "source": "crates/sail-api/src/acceptance.rs",
-          "before": "        project.run_id = current_run;",
-          "after": "        project.run_id = current_run;\n        project.targets = Vec::new();"
+          "before": "sail_verified! {\n    /// Binds a retained whole proof to an independent current request and actual\n    /// typed guarded readback. It changes only the view ID; reports and original\n    /// establishing identities remain intact. Native request production and\n    /// complete physical compiler-input observation remain separate obligations.\n    pub fn bind_replayed_project_ordered(project: &mut ProjectResult, original: &ResolvedRequest,\n        current: &ResolvedRequest, orders: &[ReportOrder], readback: &sail_acceptance::inputs::GuardedReadback)\n        -> (accepted: bool)\n        requires(true)\n        ensures(same_replay_evidence(old(project), final(project)),\n            accepted ==> replay_request_payload(current, original),\n            accepted ==> request_authorized(original, old(project)),\n            accepted ==> request_authorized(current, final(project)),\n            accepted ==> readback.unchanged_view() && readback.guard_view().is_some()\n                && readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision),\n            accepted ==> string_bytes(&final(project).run_id) == string_bytes(&current.run_id),\n            !accepted ==> *final(project) == *old(project),\n            replay_constructive_request(original, old(project), current, orders, readback) ==> accepted)\n    {\n        sail_proof! { reveal(replay_constructive_request); }\n        if !replay_requests_match(current, original) { return false; }\n        sail_proof! { replay_request_preserves_modes(current, original); }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if !verification_enabled_command(&current.args) || focused_command(&current.args)\n            || complete_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! {\n            assert(request_authorized(original, project));\n            replay_request_preserves_coverage(current, original, project);\n        }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(request_authorized(current, project));\n        }\n        true\n    }\n}",
+          "after": "sail_verified! {\n    /// Binds a retained whole proof to an independent current request and actual\n    /// typed guarded readback. It changes only the view ID; reports and original\n    /// establishing identities remain intact. Native request production and\n    /// complete physical compiler-input observation remain separate obligations.\n    pub fn bind_replayed_project_ordered(project: &mut ProjectResult, original: &ResolvedRequest,\n        current: &ResolvedRequest, orders: &[ReportOrder], readback: &sail_acceptance::inputs::GuardedReadback)\n        -> (accepted: bool)\n        requires(true)\n        ensures(same_replay_evidence(old(project), final(project)),\n            accepted ==> replay_request_payload(current, original),\n            accepted ==> request_authorized(original, old(project)),\n            accepted ==> request_authorized(current, final(project)),\n            accepted ==> readback.unchanged_view() && readback.guard_view().is_some()\n                && readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision),\n            accepted ==> string_bytes(&final(project).run_id) == string_bytes(&current.run_id),\n            !accepted ==> *final(project) == *old(project),\n            replay_constructive_request(original, old(project), current, orders, readback) ==> accepted)\n    {\n        sail_proof! { reveal(replay_constructive_request); }\n        if !replay_requests_match(current, original) { return false; }\n        sail_proof! { replay_request_preserves_modes(current, original); }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if !verification_enabled_command(&current.args) || focused_command(&current.args)\n            || complete_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! {\n            assert(request_authorized(original, project));\n            replay_request_preserves_coverage(current, original, project);\n        }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        project.targets = Vec::new();\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(request_authorized(current, project));\n        }\n        true\n    }\n}"
         },
         {
           "name": "replay-transfer-always-refuses",
@@ -3087,6 +3219,168 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "{\n        sail_proof! { reveal(small_exact_scope_candidate); }\n        if !focused_command(arguments) || !same_replay_arguments(arguments, &report.command)\n            || report.engine.is_some() { return None; }\n        if complete_report_ordered(report, CompletionPolicy::Receipt, forward, inverse).is_none() {\n            return None;\n        }\n        Some(ExactScopeReport { report, arguments })\n    }",
           "after": "{ None }"
+        },
+        {
+          "name": "whole-replay-full-binder-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(replay_constructive_request); }\n        if !replay_requests_match(current, original) { return false; }\n        sail_proof! { replay_request_preserves_modes(current, original); }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if !verification_enabled_command(&current.args) || focused_command(&current.args)\n            || complete_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! {\n            assert(request_authorized(original, project));\n            replay_request_preserves_coverage(current, original, project);\n        }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(request_authorized(current, project));\n        }\n        true\n    }",
+          "after": "    { false }"
+        },
+        {
+          "name": "partial-target-full-factory-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_target); }\n        if !target.requested || target.complete || target.reused || target.establishing_run.is_empty() {\n            return None;\n        }\n        let Some(scope) = &target.scope_reuse else { return None; };\n        if !same_replay_arguments(scope, arguments) { return None; }\n        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)\n    }",
+          "after": "    { None }"
+        },
+        {
+          "name": "partial-request-full-factory-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_request); }\n        if !request_corresponds(request, project) || !plain_partial_request_matches(request)\n            || !matches!(project.currentness, Currentness::Current) || project.exit_code != Some(0)\n            || project.error.is_some() || orders.len() != project.targets.len() { return None; }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),\n                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>\n                    exact_partial_target(&project.targets@[j], request.args@))\n            decreases(project.targets.len() - i)\n            {\n                sail_proof! {\n                    if small_exact_partial_request(request, project, orders@) {\n                        assert(i == 0);\n                    }\n                }\n                if project.targets[i].requested && complete_exact_partial_target_ordered(&project.targets[i],\n                    &request.args, &orders[i].forward, &orders[i].inverse).is_none() { return None; }\n                i += 1;\n            }\n        }\n        Some(ExactPartialRequest { request, project })\n    }",
+          "after": "    { None }"
+        },
+        {
+          "name": "partial-transfer-full-binder-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }",
+          "after": "    { false }"
+        },
+        {
+          "name": "partial-transfer-full-binder-always-accepts",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }",
+          "after": "    { true }"
+        },
+        {
+          "name": "partial-report-raw-scope-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_scope_candidate); }\n        if !focused_command(arguments) || !same_replay_arguments(arguments, &report.command)\n            || report.engine.is_some() { return None; }\n        if complete_report_ordered(report, CompletionPolicy::Receipt, forward, inverse).is_none() {\n            return None;\n        }\n        Some(ExactScopeReport { report, arguments })\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_scope_candidate); }\n        if !focused_command(arguments)\n            || report.engine.is_some() { return None; }\n        if complete_report_ordered(report, CompletionPolicy::Receipt, forward, inverse).is_none() {\n            return None;\n        }\n        Some(ExactScopeReport { report, arguments })\n    }"
+        },
+        {
+          "name": "partial-report-engine-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_scope_candidate); }\n        if !focused_command(arguments) || !same_replay_arguments(arguments, &report.command)\n            || report.engine.is_some() { return None; }\n        if complete_report_ordered(report, CompletionPolicy::Receipt, forward, inverse).is_none() {\n            return None;\n        }\n        Some(ExactScopeReport { report, arguments })\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_scope_candidate); }\n        if !focused_command(arguments) || !same_replay_arguments(arguments, &report.command) { return None; }\n        if complete_report_ordered(report, CompletionPolicy::Receipt, forward, inverse).is_none() {\n            return None;\n        }\n        Some(ExactScopeReport { report, arguments })\n    }"
+        },
+        {
+          "name": "partial-report-record-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_scope_candidate); }\n        if !focused_command(arguments) || !same_replay_arguments(arguments, &report.command)\n            || report.engine.is_some() { return None; }\n        if complete_report_ordered(report, CompletionPolicy::Receipt, forward, inverse).is_none() {\n            return None;\n        }\n        Some(ExactScopeReport { report, arguments })\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_scope_candidate); }\n        if !focused_command(arguments) || !same_replay_arguments(arguments, &report.command)\n            || report.engine.is_some() { return None; }\n\n        Some(ExactScopeReport { report, arguments })\n    }"
+        },
+        {
+          "name": "partial-target-whole-label-checks-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_target); }\n        if !target.requested || target.complete || target.reused || target.establishing_run.is_empty() {\n            return None;\n        }\n        let Some(scope) = &target.scope_reuse else { return None; };\n        if !same_replay_arguments(scope, arguments) { return None; }\n        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_target); }\n        if !target.requested || target.establishing_run.is_empty() {\n            return None;\n        }\n        let Some(scope) = &target.scope_reuse else { return None; };\n        if !same_replay_arguments(scope, arguments) { return None; }\n        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)\n    }"
+        },
+        {
+          "name": "partial-target-establishing-identity-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_target); }\n        if !target.requested || target.complete || target.reused || target.establishing_run.is_empty() {\n            return None;\n        }\n        let Some(scope) = &target.scope_reuse else { return None; };\n        if !same_replay_arguments(scope, arguments) { return None; }\n        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_target); }\n        if !target.requested || target.complete || target.reused {\n            return None;\n        }\n        let Some(scope) = &target.scope_reuse else { return None; };\n        if !same_replay_arguments(scope, arguments) { return None; }\n        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)\n    }"
+        },
+        {
+          "name": "partial-target-recorded-scope-binding-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_target); }\n        if !target.requested || target.complete || target.reused || target.establishing_run.is_empty() {\n            return None;\n        }\n        let Some(scope) = &target.scope_reuse else { return None; };\n        if !same_replay_arguments(scope, arguments) { return None; }\n        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_target); }\n        if !target.requested || target.complete || target.reused || target.establishing_run.is_empty() {\n            return None;\n        }\n        let scope = arguments;\n        if !same_replay_arguments(scope, arguments) { return None; }\n        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)\n    }"
+        },
+        {
+          "name": "partial-target-raw-scope-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_target); }\n        if !target.requested || target.complete || target.reused || target.establishing_run.is_empty() {\n            return None;\n        }\n        let Some(scope) = &target.scope_reuse else { return None; };\n        if !same_replay_arguments(scope, arguments) { return None; }\n        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_target); }\n        if !target.requested || target.complete || target.reused || target.establishing_run.is_empty() {\n            return None;\n        }\n        let Some(scope) = &target.scope_reuse else { return None; };\n\n        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)\n    }"
+        },
+        {
+          "name": "partial-request-coverage-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_request); }\n        if !request_corresponds(request, project) || !plain_partial_request_matches(request)\n            || !matches!(project.currentness, Currentness::Current) || project.exit_code != Some(0)\n            || project.error.is_some() || orders.len() != project.targets.len() { return None; }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),\n                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>\n                    exact_partial_target(&project.targets@[j], request.args@))\n            decreases(project.targets.len() - i)\n            {\n                sail_proof! {\n                    if small_exact_partial_request(request, project, orders@) {\n                        assert(i == 0);\n                    }\n                }\n                if project.targets[i].requested && complete_exact_partial_target_ordered(&project.targets[i],\n                    &request.args, &orders[i].forward, &orders[i].inverse).is_none() { return None; }\n                i += 1;\n            }\n        }\n        Some(ExactPartialRequest { request, project })\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_request); }\n        if !plain_partial_request_matches(request)\n            || !matches!(project.currentness, Currentness::Current) || project.exit_code != Some(0)\n            || project.error.is_some() || orders.len() != project.targets.len() { return None; }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),\n                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>\n                    exact_partial_target(&project.targets@[j], request.args@))\n            decreases(project.targets.len() - i)\n            {\n                sail_proof! {\n                    if small_exact_partial_request(request, project, orders@) {\n                        assert(i == 0);\n                    }\n                }\n                if project.targets[i].requested && complete_exact_partial_target_ordered(&project.targets[i],\n                    &request.args, &orders[i].forward, &orders[i].inverse).is_none() { return None; }\n                i += 1;\n            }\n        }\n        Some(ExactPartialRequest { request, project })\n    }"
+        },
+        {
+          "name": "partial-request-target-report-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_request); }\n        if !request_corresponds(request, project) || !plain_partial_request_matches(request)\n            || !matches!(project.currentness, Currentness::Current) || project.exit_code != Some(0)\n            || project.error.is_some() || orders.len() != project.targets.len() { return None; }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),\n                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>\n                    exact_partial_target(&project.targets@[j], request.args@))\n            decreases(project.targets.len() - i)\n            {\n                sail_proof! {\n                    if small_exact_partial_request(request, project, orders@) {\n                        assert(i == 0);\n                    }\n                }\n                if project.targets[i].requested && complete_exact_partial_target_ordered(&project.targets[i],\n                    &request.args, &orders[i].forward, &orders[i].inverse).is_none() { return None; }\n                i += 1;\n            }\n        }\n        Some(ExactPartialRequest { request, project })\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_request); }\n        if !request_corresponds(request, project) || !plain_partial_request_matches(request)\n            || !matches!(project.currentness, Currentness::Current) || project.exit_code != Some(0)\n            || project.error.is_some() || orders.len() != project.targets.len() { return None; }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),\n                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>\n                    exact_partial_target(&project.targets@[j], request.args@))\n            decreases(project.targets.len() - i)\n            {\n                sail_proof! {\n                    if small_exact_partial_request(request, project, orders@) {\n                        assert(i == 0);\n                    }\n                }\n                if false { return None; }\n                i += 1;\n            }\n        }\n        Some(ExactPartialRequest { request, project })\n    }"
+        },
+        {
+          "name": "partial-transfer-independent-request-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }"
+        },
+        {
+          "name": "partial-transfer-original-authority-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }"
+        },
+        {
+          "name": "partial-transfer-actual-readback-check-removed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }"
+        },
+        {
+          "name": "partial-transfer-report-inventory-cleared",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        project.targets = Vec::new();\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }"
+        },
+        {
+          "name": "partial-transfer-original-establishment-reset",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }",
+          "after": "    {\n        sail_proof! { reveal(small_exact_partial_transfer); }\n        if !replay_requests_match(current, original) { return false; }\n        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };\n        let current = sealed.request();\n        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }\n        sail_proof! { replay_preserves_partial_coverage(current, original, project); }\n        if !plain_partial_request_matches(current) { return false; }\n        let current_run = current.run_id.clone();\n        project.run_id = current_run;\n        if !project.targets.is_empty() { project.targets[0].establishing_run = current.run_id.clone(); }\n        sail_proof! {\n            assert(request_header_matches(current, project));\n            assert(exact_partial_request_authorized(current, project));\n            exact_partial_request_excludes_whole(current, project);\n        }\n        true\n    }"
+        },
+        {
+          "name": "retained-submission-full-factory-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        let Some(current) = current_invocation else { return None; };\n        if !exact_bytes(current.as_bytes(), request.invocation.as_str().as_bytes()) { return None; }\n        bind_submission(arguments, mode, request)\n    }",
+          "after": "    { None }"
+        },
+        {
+          "name": "retained-submission-full-factory-skips-live-invocation",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        let Some(current) = current_invocation else { return None; };\n        if !exact_bytes(current.as_bytes(), request.invocation.as_str().as_bytes()) { return None; }\n        bind_submission(arguments, mode, request)\n    }",
+          "after": "    { bind_submission(arguments, mode, request) }"
+        },
+        {
+          "name": "request-path-binding-full-factory-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        if !exact_bytes(invocation, request.invocation.as_str().as_bytes())\n            || !exact_bytes(workspace, request.workspace.as_str().as_bytes()) { return None; }\n        Some(RequestPathBinding { request, invocation, workspace })\n    }",
+          "after": "    { None }"
+        },
+        {
+          "name": "request-path-binding-full-factory-skips-raw-comparison",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        if !exact_bytes(invocation, request.invocation.as_str().as_bytes())\n            || !exact_bytes(workspace, request.workspace.as_str().as_bytes()) { return None; }\n        Some(RequestPathBinding { request, invocation, workspace })\n    }",
+          "after": "    { Some(RequestPathBinding { request, invocation, workspace }) }"
+        },
+        {
+          "name": "request-path-withholding-full-operation-always-accepts",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        if let Some(binding) = paths {\n            if bind_request_paths(request, binding.invocation(), binding.workspace()).is_some() { return true; }\n        }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), project.targets@.len() == old(project).targets@.len(),\n                same_project_except_path_authority(old(project), project),\n                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete && project.targets@[j].scope_reuse.is_none(),\n                forall |j: int| i <= j < project.targets@.len() ==>\n                    project.targets@[j].complete == old(project).targets@[j].complete\n                        && project.targets@[j].scope_reuse == old(project).targets@[j].scope_reuse)\n            decreases(project.targets.len() - i)\n            {\n                project.targets[i].complete = false;\n                project.targets[i].scope_reuse = None;\n                i += 1;\n            }\n        }\n        false\n    }",
+          "after": "    { true }"
+        },
+        {
+          "name": "request-path-withholding-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        if let Some(binding) = paths {\n            if bind_request_paths(request, binding.invocation(), binding.workspace()).is_some() { return true; }\n        }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), project.targets@.len() == old(project).targets@.len(),\n                same_project_except_path_authority(old(project), project),\n                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete && project.targets@[j].scope_reuse.is_none(),\n                forall |j: int| i <= j < project.targets@.len() ==>\n                    project.targets@[j].complete == old(project).targets@[j].complete\n                        && project.targets@[j].scope_reuse == old(project).targets@[j].scope_reuse)\n            decreases(project.targets.len() - i)\n            {\n                project.targets[i].complete = false;\n                project.targets[i].scope_reuse = None;\n                i += 1;\n            }\n        }\n        false\n    }",
+          "after": "    { false }"
+        },
+        {
+          "name": "request-path-withholding-keeps-partial-scope",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        if let Some(binding) = paths {\n            if bind_request_paths(request, binding.invocation(), binding.workspace()).is_some() { return true; }\n        }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), project.targets@.len() == old(project).targets@.len(),\n                same_project_except_path_authority(old(project), project),\n                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete && project.targets@[j].scope_reuse.is_none(),\n                forall |j: int| i <= j < project.targets@.len() ==>\n                    project.targets@[j].complete == old(project).targets@[j].complete\n                        && project.targets@[j].scope_reuse == old(project).targets@[j].scope_reuse)\n            decreases(project.targets.len() - i)\n            {\n                project.targets[i].complete = false;\n                project.targets[i].scope_reuse = None;\n                i += 1;\n            }\n        }\n        false\n    }",
+          "after": "    {\n        if let Some(binding) = paths {\n            if bind_request_paths(request, binding.invocation(), binding.workspace()).is_some() { return true; }\n        }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), project.targets@.len() == old(project).targets@.len(),\n                same_project_except_path_authority(old(project), project),\n                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete && project.targets@[j].scope_reuse.is_none(),\n                forall |j: int| i <= j < project.targets@.len() ==>\n                    project.targets@[j].complete == old(project).targets@[j].complete\n                        && project.targets@[j].scope_reuse == old(project).targets@[j].scope_reuse)\n            decreases(project.targets.len() - i)\n            {\n                project.targets[i].complete = false;\n\n                i += 1;\n            }\n        }\n        false\n    }"
+        },
+        {
+          "name": "request-path-withholding-keeps-whole-completion",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "    {\n        if let Some(binding) = paths {\n            if bind_request_paths(request, binding.invocation(), binding.workspace()).is_some() { return true; }\n        }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), project.targets@.len() == old(project).targets@.len(),\n                same_project_except_path_authority(old(project), project),\n                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete && project.targets@[j].scope_reuse.is_none(),\n                forall |j: int| i <= j < project.targets@.len() ==>\n                    project.targets@[j].complete == old(project).targets@[j].complete\n                        && project.targets@[j].scope_reuse == old(project).targets@[j].scope_reuse)\n            decreases(project.targets.len() - i)\n            {\n                project.targets[i].complete = false;\n                project.targets[i].scope_reuse = None;\n                i += 1;\n            }\n        }\n        false\n    }",
+          "after": "    {\n        if let Some(binding) = paths {\n            if bind_request_paths(request, binding.invocation(), binding.workspace()).is_some() { return true; }\n        }\n        let mut i = 0usize;\n        sail_while! { (i < project.targets.len())\n            invariant(i <= project.targets.len(), project.targets@.len() == old(project).targets@.len(),\n                same_project_except_path_authority(old(project), project),\n                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete && project.targets@[j].scope_reuse.is_none(),\n                forall |j: int| i <= j < project.targets@.len() ==>\n                    project.targets@[j].complete == old(project).targets@[j].complete\n                        && project.targets@[j].scope_reuse == old(project).targets@[j].scope_reuse)\n            decreases(project.targets.len() - i)\n            {\n\n                project.targets[i].scope_reuse = None;\n                i += 1;\n            }\n        }\n        false\n    }"
         }
       ]
     }
