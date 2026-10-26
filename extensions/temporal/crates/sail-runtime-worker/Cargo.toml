@@ -13,8 +13,8 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 sail-api.workspace = true
-sail-daemon = { workspace = true, features = ["temporal"] }
-sail-runtime = { workspace = true, features = ["temporal"] }
+sail-daemon.workspace = true
+sail-runtime.workspace = true
 
 [lints]
 workspace = true

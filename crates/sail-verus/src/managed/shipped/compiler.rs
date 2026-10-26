@@ -135,6 +135,15 @@ impl Observation {
         self.pid = Some(pid);
     }
 
+    /// Both phases' tracked environment, read without source admission (#386).
+    pub(super) fn environment(&self) -> Option<super::super::ghost_environment::Environment> {
+        super::super::ghost_environment::read(
+            &self.directory.join("inputs.json"),
+            &self.binding,
+            self.pid?,
+        )
+    }
+
     pub(super) fn read(&self, call: &Call<'_>) -> Option<Document> {
         let entries = std::fs::read_dir(&self.directory).ok()?;
         let mut count = 0;
@@ -157,7 +166,10 @@ impl Observation {
         if bytes.len() as u64 > LIMIT {
             return None;
         }
-        let document: Document = serde_json::from_slice(&bytes).ok()?;
+        let mut document: Document = serde_json::from_slice(&bytes).ok()?;
+        for phase in document.phases.values_mut() {
+            crate::adapter::verus_channel::normalize(&mut phase.tracked_environment);
+        }
         (Some(document.pid) == self.pid
             && document.binding == self.binding
             && document.valid(call, &call.plan.run_id))

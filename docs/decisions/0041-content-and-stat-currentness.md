@@ -59,6 +59,46 @@ Measurements and validation: natively, managed overhead on a HumanEval
 edit fell from 3.03 s to 0.94 s and on Vest from 7.27 s to 3.40 s, and Vest
 results read back Current instead of Unknown (`SAIL7102`), L7c (rescue lane report, tag `archive/rescue-m7-98f6292`).
 
+## Note (2026-10-26): installed tools are identified by content (#421)
+
+The proof context, compiler family and dependency-store family identified
+installed tools (Sail, Cargo, Cargo-Verus, Verus and its engine, the solver,
+rustc, rustup and sysroot libraries) by dev/ino/size/mtime. A restored
+`projects/` cache or a reinstalled toolchain always has new inodes, so a new
+CI runner never reused a managed target or proof receipt, even with
+identical bytes at the same paths. Byte equality is the identity relation
+([evidence acceptance core](../design/evidence-acceptance-core.md),
+assumption 4), so a file's identity is now the SHA-256 of its bytes
+(`sha256:<hex>`). Paths stay in the context exactly as before.
+
+Reads are memoized per machine in `runtime-identities/tool-digests.json`
+under the Sail cache: absolute path, complete stat stamp
+(dev/ino/size/mode/mtime/ctime) and digest. A stamp equal to the recorded
+one takes the recorded digest without reading; anything else reads the file.
+A digest is recorded only under ADR 0082's settle rule: the stamps before and
+after the read are equal and the ctime is at least 2 s older than the start
+of the observation. A restored memo cannot match on another machine, because
+restored files have new inodes and change times. The run-time check
+(`runtime_current`) uses the same memo, so an in-place rewrite that restores
+mtime is now detected (ctime advances); the remaining limits are ADR 0082's
+(a filesystem whose ctime does not advance on write, or a clock set
+backwards). Records written with `stat:` identities still compare by stat
+and simply never match a new context. The engine runtime's revalidation
+record (ADR 0043) keeps its stat record: a mismatch there repeats the full
+content check and blocks nothing. Unchanged-call replay keeps its own full
+stamps, so the first call after a restore takes the full path, which then
+reuses the restored receipts.
+
+Measured on native c7i.4xlarge (us-east-1), CapybaraKV with crates.io vstd,
+`RUSTUP_TOOLCHAIN=1.99.1`, Sail's install, the Rust toolchain and
+`~/.cargo/bin` recreated with new inodes and identical bytes, a fresh clone
+with `git restore-mtime` and the whole Sail cache restored with `tar`: main
+`1f812e12` took 40.7 s with 2 verifier runs and 0 reused targets; this
+change 0.94 s, Current, 0 verifier runs and 2 reused targets (0.80 s on the
+same machine without reinstalling). On a warm machine, ten alternating
+unchanged full-path calls took a median 0.473 s against main's 0.478 s, and
+replayed calls 0.030 s for both. The memo held 77 entries (21 KB).
+
 ## Note (2026-10-16): memoize successful Cargo scheduling (#174)
 
 Cargo's resolved graph includes scripts the selected build never schedules.

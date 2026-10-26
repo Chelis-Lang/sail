@@ -1467,6 +1467,7 @@ mod tests {
             success: true,
             dependencies: std::collections::BTreeMap::new(),
             dependency_build: None,
+            compiler_environment: Some(std::collections::BTreeMap::new()),
         };
         std::fs::write(
             root.join("invocations")
@@ -1523,7 +1524,7 @@ mod tests {
         );
         let (output, trusted) = crate::adapter::engine_output(
             &sidecar,
-            |_| stock,
+            |_| Ok(stock),
             crate::adapter::attempts::CapturedChild::unavailable(captured),
             &log,
             &mut attempts,
@@ -1640,7 +1641,7 @@ mod tests {
             .to_owned();
         let (_, trusted) = crate::adapter::engine_output(
             &engine_directory,
-            |_| stock(),
+            |_| Ok(stock()),
             captured,
             &log,
             &mut attempts,
@@ -1656,7 +1657,7 @@ mod tests {
             .to_owned();
         let (output, trusted) = crate::adapter::engine_output(
             &engine_directory,
-            |_| stock(),
+            |_| Ok(stock()),
             captured,
             &log,
             &mut attempts,

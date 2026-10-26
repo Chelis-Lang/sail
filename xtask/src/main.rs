@@ -125,13 +125,25 @@ fn set_executable(_path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Checks every workspace member's direct `sail-*` dependencies (normal and
-/// build; dev-dependencies are exempt) against [`layering::ALLOWED`].
+/// Checks every member's direct `sail-*` dependencies (normal and build;
+/// dev-dependencies are exempt) against [`layering::ALLOWED`] for the main
+/// workspace and [`layering::EXTENSION_ALLOWED`] for the temporal extension
+/// workspace. Neither check resolves dependencies, so neither needs the
+/// extension's private sources.
 fn check_layering() -> Result<()> {
     let root = workspace_root();
+    let main = check_workspace(&root, layering::ALLOWED)?;
+    let extension = check_workspace(&root.join(layering::EXTENSION), layering::EXTENSION_ALLOWED)
+        .map_err(|e| format!("{}: {e}", layering::EXTENSION))?;
+    println!("layering ok ({main} crates, {extension} extension crates)");
+    Ok(())
+}
+
+/// Checks one workspace's members against `table`; returns the member count.
+fn check_workspace(root: &Path, table: &[(&str, &[&str])]) -> Result<usize> {
     let raw = run_capture(
         Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned()))
-            .current_dir(&root)
+            .current_dir(root)
             .args([
                 "metadata",
                 "--format-version",
@@ -142,7 +154,7 @@ fn check_layering() -> Result<()> {
     )?;
     let meta: serde_json::Value =
         serde_json::from_str(&raw).map_err(|e| format!("cannot parse cargo metadata: {e}"))?;
-    let allowed: BTreeMap<&str, BTreeSet<&str>> = layering::ALLOWED
+    let allowed: BTreeMap<&str, BTreeSet<&str>> = table
         .iter()
         .map(|(name, deps)| (*name, deps.iter().copied().collect()))
         .collect();
@@ -180,8 +192,7 @@ fn check_layering() -> Result<()> {
         }
     }
     if violations.is_empty() {
-        println!("layering ok ({} crates)", seen.len());
-        Ok(())
+        Ok(seen.len())
     } else {
         Err(format!(
             "layering violations:\n  {}",

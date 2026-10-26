@@ -297,3 +297,57 @@ today's behaviour.
 The run itself stays Historical and records no receipt. The next unchanged
 run is Cargo's own no-op with the same output as plain Cargo-Verus. The
 output phase's `loop` checks this (`ci/test-output.sh`).
+
+## Amendment (2026-10-26): target revisions and discovered inputs
+
+Three full-path behaviours made `sail verify` rebuild or re-verify where plain
+Cargo-Verus is a no-op. Verdicts were unaffected.
+
+- **A receipt's input revision now covers what can change its target.** It
+  hashed every file of every closure package, so an unreferenced new file made
+  the crate's receipt changed, its package was cleaned and re-verified (#398).
+  Adding a `src/bin` file did the same to the library. Sail now records each
+  unit's dep-info declarations (`source-inputs.json`, per target). In a path
+  package without a build script whose relevant units all have records, a
+  target's revision counts only: the declarations of the target and, for a
+  non-library target, of the package's library units; the declarations of
+  every other closure package; manifests, lockfiles and toolchain files;
+  anything under a `.cargo` directory; and the other spelling of a declared
+  module file (`a/b.rs` and `a/b/mod.rs`). Every other package, every file
+  outside package directories, and every package without complete records
+  still counts in full. Rustc's dep-info lists every file it reads, including
+  `include_*!` files, so a file outside this set cannot change the target's
+  compilation; Cargo keeps the target fresh then too. Receipt reuse still
+  checks the artifact and extern bytes, declared variables and the context,
+  and every run still compares its whole snapshot for Currentness.
+- **A vanished declaration leaves the record.** A declared input that no
+  longer exists (a removed `src/bin` file) stayed in the record, so every later
+  snapshot was incomplete, every run was forced, and the missing export made
+  every build script count as unobserved: nine crates and vstd were rebuilt on
+  every call (#401). A path that is definitely absent is now dropped when the
+  record is read; its removal still changes the revision, and a file created
+  again under that name enters the next snapshot by its content. A receipt of
+  a target that Cargo's metadata no longer lists no longer marks its package
+  changed.
+- **A discovered compiler input does not withhold the export.** A run that
+  first observes an `include_str!` file outside the workspace is Historical,
+  since its before-run snapshot could not contain the file. The export rule
+  above now also accepts a path that is new in the after-run snapshot and is a
+  compiler-declared input, under the same script-package and declared-path
+  exclusions (#399). The run itself still records no receipt.
+
+The e2e `noop` phase compares each case with plain Cargo-Verus.
+
+## Amendment (2026-10-26): ghost-only environment reads
+
+Receipts bound only the variables the final dep-info declares, and Verus's
+erased compilation rewrites that file without the verification phase's reads.
+A variable read only in ghost code therefore bound nothing, and a proof
+established with it set was reused as Current after it was removed (#386,
+[VI-0036](../verus-issues/VI-0036-ghost-env-reads-missing-from-dep-info.md)).
+Each verified target now requests the pinned fork's report of rustc's tracked
+environment in both phases, appends the missing reads to the unit's dep-info
+(variables the proof context binds excepted), and records them in its
+invocation. A receipt (version 6) requires that record; replays of the shipped
+vstd build keep their own recorded environment. See
+[freshness](../freshness.md#which-environment-variables-are-proof-inputs).

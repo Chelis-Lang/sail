@@ -233,7 +233,9 @@ fn actual_worker_is_cancelled_after_spawn_for_large_assumption_input() -> TestRe
                 }) {
                     break true;
                 }
-                if started.elapsed() >= Duration::from_secs(5) {
+                // A hang guard only: on a loaded runner the first launch of a
+                // freshly written binary can take several seconds.
+                if started.elapsed() >= Duration::from_secs(60) {
                     break false;
                 }
                 std::thread::sleep(Duration::from_millis(5));
@@ -241,7 +243,9 @@ fn actual_worker_is_cancelled_after_spawn_for_large_assumption_input() -> TestRe
             cancel.store(true, Ordering::Release);
             observed
         });
-        let result = run(worker, &hash, &request, Duration::from_secs(10), &cancel);
+        // Longer than the observer's guard, so a slow start is still
+        // cancelled rather than reaching the deadline.
+        let result = run(worker, &hash, &request, Duration::from_secs(120), &cancel);
         (result, monitor.join())
     });
     assert!(

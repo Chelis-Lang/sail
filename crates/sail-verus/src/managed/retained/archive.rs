@@ -17,7 +17,9 @@ use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-const VERSION: u32 = 4;
+/// Version five combines selected-producer archives, observed compiler
+/// environment and private-settings isolation; earlier lineages are invalid.
+const VERSION: u32 = 5;
 const FILE_LIMIT: u64 = 256 * 1024 * 1024;
 const OUTPUT_LIMIT: u64 = 16 * 1024 * 1024;
 const ENTRY_LIMIT: u64 = 8 * 1024 * 1024;
@@ -1107,6 +1109,7 @@ mod tests {
             input_revision: "A".into(),
             invocation: super::super::super::receipts::Invocation {
                 dependency_build: None,
+                compiler_environment: Some(std::collections::BTreeMap::new()),
                 retained_from: None,
                 retained_history: None,
                 selected_attempt,

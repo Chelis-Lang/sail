@@ -276,6 +276,7 @@ fn original_receipt(
             success: partial_args.is_none(),
             dependencies: BTreeMap::new(),
             dependency_build: None,
+            compiler_environment: Some(BTreeMap::new()),
         },
         artifact_hashes: BTreeMap::from([(
             artifact.to_owned(),

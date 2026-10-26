@@ -1,6 +1,6 @@
 # 0080: Optional native temporal runtime
 
-- **Status:** accepted
+- **Status:** superseded by [0083](0083-temporal-extension-workspace.md)
 - **Date:** 2026-10-26
 
 ## Context

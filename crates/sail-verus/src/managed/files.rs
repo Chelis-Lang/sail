@@ -357,12 +357,12 @@ pub(crate) fn json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     json_bytes(path, &bytes)
 }
 
-/// Identity of an installed toolchain file without reading its bytes: device,
-/// inode, size and modification time. Replacement, reinstallation and ordinary
-/// writes change it, and any change makes the next run fresh; an in-place
-/// rewrite that restores the modification time is not detected. The change time
-/// is left out: Sail's own hard-linked aliases of `sail` change it on every new
-/// compiler family. Elsewhere this falls back to the complete content digest.
+/// Identity of a file without reading its bytes: device, inode, size and
+/// modification time. The engine runtime's revalidation record uses it; the
+/// proof context identifies installed tools by content instead
+/// ([`super::tool_digests`]). Replacement, reinstallation and ordinary
+/// writes change it, and any change repeats the full content check. Elsewhere
+/// this falls back to the complete content digest.
 pub(crate) fn stat_identity(path: &Path) -> Result<String> {
     #[cfg(unix)]
     {
@@ -384,10 +384,18 @@ pub(crate) fn stat_identity(path: &Path) -> Result<String> {
     }
 }
 
-/// Whether `path` still has the recorded identity: a `stat:` identity is
-/// compared by stat, anything else as a complete content digest.
-pub(super) fn identity_matches(path: &Path, expected: &str) -> bool {
-    if expected.starts_with("stat:") {
+/// Whether `path` still has the recorded identity: a `sha256:` identity of
+/// an installed tool through the stamp memo, a `stat:` identity (recorded
+/// before tools were identified by content) by stat, anything else as a
+/// complete content digest.
+pub(super) fn identity_matches(
+    path: &Path,
+    expected: &str,
+    tools: &super::tool_digests::ToolDigests,
+) -> bool {
+    if expected.starts_with(super::tool_digests::PREFIX) {
+        tools.matches(path, expected)
+    } else if expected.starts_with("stat:") {
         stat_identity(path).is_ok_and(|actual| actual == expected)
     } else {
         file_digest(path).is_ok_and(|actual| actual == expected)

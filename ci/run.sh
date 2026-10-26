@@ -49,6 +49,10 @@
 #                        `pr` limits the fast tier to the guide examples;
 #                        otherwise extra arguments (for example
 #                        `--project anvil`) are passed to sail-conformance
+#   extension            the temporal extension workspace (extensions/temporal,
+#                        ADR 0083): fmt, clippy and tests. The only step
+#                        that needs the private D.I.V.E. sources, so the
+#                        only one given SAIL_DEPENDENCY_READ_TOKEN
 #   host                 local-only, outside the image, on the developer's
 #                        own machine (macOS or Linux): clippy and the
 #                        non-solver tests
@@ -57,7 +61,8 @@
 #                        mutants NAME ROUNDS` runs corpus/mutants/NAME.toml
 #   release              local-only: stage the Linux release tree (binaries
 #                        and the prebuilt engine) in $SAIL_RELEASE_OUT for
-#                        scripts/release.sh
+#                        scripts/release.sh; SAIL_RELEASE_TEMPORAL=1 stages
+#                        the internal temporal-enabled variant instead
 #   build-verus-source [--force] [--keep-intermediates] [--fork]
 #                        a source build of the pinned Verus commit with its
 #                        rust_verify_test binaries, under the cache
@@ -70,15 +75,23 @@
 #                        warm). ARGS go to `sail-conformance
 #                        rust-verify-test` (for example --filter modes::)
 #
-# CI runs gate, proofs, refinements, solver, e2e and `conformance fast pr`. Every other tier
+# Draft policy pending owner resolution: retain the required proof jobs.
+# CI runs gate, proofs, refinements, solver, e2e and `conformance fast pr`.
+# Every other tier (including `extension`)
 # and every benchmark is local-only: run them with ci/local.sh
 # (`host` runs directly: ci/run.sh host).
 set -euo pipefail
-# Only command-time Git access receives the read-only private-dependency secret.
-# It is never a Docker build argument or a persisted Git URL/configuration.
-if [ -n "${SAIL_DEPENDENCY_READ_TOKEN:-}" ] && [ "${SAIL_PRIVATE_GIT_READY:-}" != 1 ]; then
-  exec "$(dirname "$0")/../scripts/with-private-dependencies.sh" "$0" "$@"
-fi
+# Only the extension workspace's command-time Git access receives the
+# read-only private-dependency secret (ADR 0083). It is never a Docker build
+# argument or a persisted Git URL/configuration, and every other step builds
+# the main workspace, which resolves no private source.
+case "${1:-}" in
+  extension|release)
+    if [ -n "${SAIL_DEPENDENCY_READ_TOKEN:-}" ] && [ "${SAIL_PRIVATE_GIT_READY:-}" != 1 ]; then
+      exec "$(dirname "$0")/../scripts/with-private-dependencies.sh" "$0" "$@"
+    fi
+    ;;
+esac
 
 cd "$(dirname "$0")/.."
 
@@ -90,15 +103,19 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|boundary-witness|e2e-build|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|boundary-witness|e2e-build|e2e|conformance|extension|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
-  cargo build --release --locked -p sail-cli -p sail-shim -p sail-runtime-worker "$@"
+  cargo build --release --locked -p sail-cli -p sail-shim "$@"
 }
 
+# The temporal extension workspace, built into its own directory under
+# target/ (one cache and container volume for both workspaces).
+extension_cargo=(--manifest-path extensions/temporal/Cargo.toml --target-dir target/temporal)
+
 # The binaries every e2e phase uses, relative to target/release.
-e2e_binaries=(sail sail-z3 sail-runtime-worker sail-conformance examples/check_output examples/check_mcp examples/check_contract_jobs)
+e2e_binaries=(sail sail-z3 sail-conformance examples/check_output examples/check_mcp examples/check_contract_jobs)
 
 e2e_build() {
   release_build -p sail-conformance --bins --example check_output --example check_mcp --example check_contract_jobs
@@ -120,9 +137,8 @@ unpack_e2e_binaries() {
 install_runtime() {
   sail_runtime="$(mktemp -d /tmp/sail-e2e-runtime.XXXXXX)"
   trap 'rm -rf "$sail_runtime"' EXIT
-  cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_checkout/target/release/sail-runtime-worker" "$sail_runtime/"
+  cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_runtime/"
   chmod 700 "$sail_runtime/sail" "$sail_runtime/sail-z3"
-  python3 scripts/stage-temporal-worker.py "$sail_runtime/sail-runtime-worker" "$sail_runtime"
   sail="$sail_runtime/sail"
 }
 
@@ -204,8 +220,6 @@ case "$step" in
     python3 scripts/test-bench-cargo-compare.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
-    # `sail verify` without D.I.V.E. (ADR 0080) stays buildable and lint-clean.
-    cargo clippy --locked -p sail-cli -p sail-daemon -p sail-runtime --no-default-features -- -D warnings
     cargo nextest run --workspace --locked --profile ci
     # check_mcp drives the e2e legacy phase; its own unit tests stay here.
     cargo test --locked -p sail-cli --example check_mcp
@@ -264,12 +278,12 @@ case "$step" in
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|noop|extra' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|noop|extra) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|noop|extra" >&2; exit 2 ;;
+      full|legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
     sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_checkout/target/e2e-output-evidence}"
@@ -406,8 +420,8 @@ RS
     fi
     if [ "$phase" = full ] || [ "$phase" = output ]; then
       # `sail verify` against plain `cargo verus verify` across the edit loop
-      # (ADR 0046), in a job of its own.
-      (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" loop)
+      # (ADR 0046), then unchanged-call replay and its misses (ADR 0082).
+      (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" loop noop)
     fi
     if [ "$phase" = full ] || [ "$phase" = loader ]; then
       # A loader variable: verified without proof reuse, with one note.
@@ -416,10 +430,6 @@ RS
     if [ "$phase" = full ] || [ "$phase" = flags ]; then
       # The setups verified as plain Cargo-Verus verifies them.
       (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" flags)
-    fi
-    if [ "$phase" = full ] || [ "$phase" = noop ]; then
-      # Unchanged-call replay and every change that must miss it (ADR 0082).
-      (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" noop)
     fi
     if [ "$phase" = extra ] || { [ "$phase" = full ] && [ "${CI:-}" != true ]; }; then
       # `-- --output-json --time` and a workspace: four cold builds, so
@@ -458,6 +468,17 @@ RS
         --out "${SAIL_REPAIR_ACCEPTANCE_OUT:-$PWD/target/repair-acceptance}" \
         --environment-label "Linux x86-64 prebuilt-engine CI/local container"
     fi
+    ;;
+
+  extension)
+    # The temporal extension workspace (ADR 0083): its own lock, the pinned
+    # private D.I.V.E. sources, and Sail's crates by path. Its tests cover the
+    # native worker, the D.I.V.E. client and backend, the shared runtime
+    # endpoint with the backend linked, and the temporal-enabled `sail`.
+    cargo fmt --all --check --manifest-path extensions/temporal/Cargo.toml
+    cargo clippy "${extension_cargo[@]}" --workspace --all-targets --locked -- -D warnings
+    cargo nextest run "${extension_cargo[@]}" --workspace --locked \
+      --config-file .config/nextest.toml --profile ci
     ;;
 
   host)
@@ -543,6 +564,10 @@ RS
     # image's validated prebuilt engine, staged in $SAIL_RELEASE_OUT.
     local_only release "$@"
     release_build
+    if [ "${SAIL_RELEASE_TEMPORAL:-}" = 1 ]; then
+      # Internal temporal-enabled variant (ADR 0083); never a public archive.
+      cargo build "${extension_cargo[@]}" --release --locked -p sail-temporal -p sail-runtime-worker
+    fi
     # The disposable CI container also installs verismo's bare-metal target.
     # A distributed proof uses the README's minimal verifier toolchain; its
     # exact sysroot identity includes every installed target library.

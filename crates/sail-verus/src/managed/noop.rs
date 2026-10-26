@@ -35,12 +35,12 @@ use sail_api::project::{ProjectResult, ResolvedRequest};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
+#[cfg(test)]
+use std::time::{Duration, UNIX_EPOCH};
 
-// Version four distinguishes checked whole and exact-partial request transfers.
-const VERSION: u32 = 4;
-/// How much older than the run a recorded ctime must be.
-pub(super) const SETTLED: Duration = Duration::from_secs(2);
+// Version five combines checked request transfers and private-settings isolation.
+const VERSION: u32 = 5;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
@@ -48,44 +48,9 @@ const CONTENT_LIMIT: u64 = 16 << 20;
 #[path = "noop_origins.rs"]
 mod origins;
 
-/// A complete stat stamp: device, inode, size, mode, mtime and ctime with
-/// nanoseconds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct Stamp([i64; 8]);
-
-impl Stamp {
-    #[cfg(unix)]
-    pub(crate) fn of(metadata: &std::fs::Metadata) -> Self {
-        use std::os::unix::fs::MetadataExt as _;
-        let wide = |value: u64| i64::try_from(value).unwrap_or(i64::MAX);
-        Self([
-            wide(metadata.dev()),
-            wide(metadata.ino()),
-            wide(metadata.size()),
-            i64::from(metadata.mode()),
-            metadata.mtime(),
-            metadata.mtime_nsec(),
-            metadata.ctime(),
-            metadata.ctime_nsec(),
-        ])
-    }
-
-    #[cfg(not(unix))]
-    pub(crate) fn of(_metadata: &std::fs::Metadata) -> Self {
-        Self([0; 8])
-    }
-
-    /// Whether the last status change happened at least [`SETTLED`] before
-    /// `start`.
-    fn settled(self, start: SystemTime) -> bool {
-        let (Ok(seconds), Ok(nanos)) = (u64::try_from(self.0[6]), u32::try_from(self.0[7])) else {
-            return false;
-        };
-        start
-            .duration_since(UNIX_EPOCH + Duration::new(seconds, nanos))
-            .is_ok_and(|age| age >= SETTLED)
-    }
-}
+/// The complete stat stamp and its settle rule are shared with the daemon's
+/// solver identity.
+pub(crate) use sail_api::stamp::Stamp;
 
 #[derive(Serialize, Deserialize)]
 struct Record {
@@ -737,7 +702,7 @@ mod tests {
     }
 
     #[test]
-    fn recent_status_changes_are_not_settled() {
+    fn recent_status_changes_are_not_settled() -> Result<(), Box<dyn std::error::Error>> {
         let start = SystemTime::now();
         let at = |age: Duration| {
             let time = start - age;
@@ -745,11 +710,12 @@ mod tests {
             let mut fields = [0i64; 8];
             fields[6] = i64::try_from(since.as_secs()).unwrap_or_default();
             fields[7] = i64::from(since.subsec_nanos());
-            Stamp(fields)
+            serde_json::from_value::<Stamp>(serde_json::json!(fields))
         };
-        assert!(at(Duration::from_secs(3)).settled(start));
-        assert!(!at(Duration::from_millis(1500)).settled(start));
-        assert!(!at(Duration::ZERO).settled(start));
+        assert!(at(Duration::from_secs(3))?.settled(start));
+        assert!(!at(Duration::from_millis(1500))?.settled(start));
+        assert!(!at(Duration::ZERO)?.settled(start));
+        Ok(())
     }
 }
 

@@ -12,6 +12,7 @@ mod diagnostics;
 mod environment;
 mod files;
 mod freshness;
+pub(crate) mod ghost_environment;
 mod input;
 mod native_include_hints;
 pub mod noop;
@@ -29,6 +30,8 @@ mod runner;
 pub(crate) mod shipped;
 pub(crate) mod source_inputs;
 mod store;
+mod tool_digests;
+pub(crate) mod transport;
 pub(crate) mod visible_output;
 
 pub use cargo_toolchain::CargoToolchain;

@@ -172,7 +172,11 @@ fn start_daemon(socket: &Path) -> Result<(), String> {
                 socket.display()
             ));
         }
-        std::thread::sleep(Duration::from_millis(25));
+        // A new daemon binds within a few milliseconds and every first run
+        // waits for it, so look again soon. A failed connection costs
+        // microseconds. The daemon has no other channel to announce itself
+        // that its job workers would not inherit.
+        std::thread::sleep(Duration::from_millis(1));
     }
     Err(format!(
         "no daemon answered on {} within 5 s; run `sail serve` to see why",

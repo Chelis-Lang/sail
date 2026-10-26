@@ -47,18 +47,17 @@ matrix header records additional project flags in `extra_verus_args_by_project`.
 
 ## End-to-end phases
 
-CI builds the release binaries once, then runs eleven independent jobs. Each
+CI builds the release binaries once, then runs ten independent jobs. Each
 job retains the existing ten-minute hard limit. The required `End to end`
-aggregate accepts only eleven successful results: failure, cancellation and a
+aggregate accepts only ten successful results: failure, cancellation and a
 skipped job all fail the aggregate.
 
 | `ci/local.sh e2e PHASE` | Scope | Image |
 |---|---|---|
 | `legacy` | New projects, cold/warm output parity, JSON, MCP and portfolio | core |
-| `output` | Edit-loop output, compile errors, partial verification and a seeded-mutation smoke | core |
+| `output` | Edit-loop output, compile errors, partial verification, a seeded-mutation smoke, then (same warm targets) unchanged-call replay against stock and misses for edits, restored mtimes, touches, files, binaries, declared variables, dep-info inputs, the lockfile, fingerprints, JSON and partial scope | core |
 | `flags` | Cargo/Verus invocation flags | core |
 | `loader` | Loader-variable fallback | core |
-| `noop` | Unchanged-call replay against stock, and misses for edits, restored mtimes, touches, files, binaries, declared variables, dep-info inputs, the lockfile, fingerprints, JSON and partial scope | core |
 | `managed` | Failing-first vstd reuse, complete receipts, jobs/MCP, missing evidence, edits, source-alias retargeting, prune and Cargo metadata | mcp |
 | `managed-copies` | Own passing donor, two fresh workspace-member proofs, Current adoption and each project's own receipt reuse | core |
 | `managed-native` | Own passing donor, fresh plain summaries, unchanged silence and same-PATH compiler replacement against Sail and stock | core |

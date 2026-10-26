@@ -47,7 +47,7 @@ struct CfgObservation<'a> {
 
 /// Execute Cargo's native query before any compiler-cache observation.
 pub(crate) fn probe(wrapper: &Path, args: &[OsString]) -> Option<Result<ExitCode>> {
-    let directory = std::env::var_os(REQUEST)?;
+    let directory = super::transport::var(REQUEST)?;
     let arguments: Vec<Vec<u8>> = args
         .iter()
         .map(|arg| arg.as_encoded_bytes().to_vec())
@@ -403,6 +403,182 @@ pub(super) fn package_values<'a>(
         .all(|(key, value)| generated_key(key) && value.is_string())
         .then_some(())?;
     Some(values)
+}
+
+const CACHE_VERSION: u64 = 1;
+const CACHE_FILE: &str = "build-environment.json";
+
+/// A retained query: the exact files one complete query wrote, under the key
+/// of everything that query depends on ([`cache_key`]).
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct Retained {
+    version: u64,
+    key: String,
+    files: BTreeMap<String, String>,
+}
+
+/// The key of one execution-unit query. The proof context binds the exact
+/// arguments (features, package and target selection, profile flags), every
+/// tool identity (Cargo, rustc, Cargo-Verus and their sysroots), the
+/// environment families Cargo and rustc read (`CARGO_*`, `RUST*`,
+/// `RUSTFLAGS`), the bytes of every Cargo configuration and toolchain file,
+/// and named target specifications. This key adds what the proof context
+/// leaves to the source revision but Cargo's unit graph reads: the complete
+/// metadata (packages, targets Cargo discovered, dependency edges and the
+/// resolve), the bytes of every manifest (profiles are not in metadata) and of
+/// the lockfile, the invoking directory and the owned target directory.
+/// Source contents are not part of it: Cargo plans units without them.
+/// `None` (no reuse) when a configuration file may include another file.
+pub(super) fn cache_key(
+    context: &str,
+    data: &Value,
+    invocation: &Path,
+    target: &Path,
+    configuration: &[std::path::PathBuf],
+) -> Option<String> {
+    for path in configuration {
+        match std::fs::read(path) {
+            Ok(bytes) => {
+                // An included configuration file is not in the proof context.
+                bytes
+                    .windows(b"include".len())
+                    .all(|window| window != b"include")
+                    .then_some(())?;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => return None,
+        }
+    }
+    let metadata: Vec<(&String, &Value)> = data
+        .as_object()?
+        .iter()
+        .filter(|(key, _)| !key.starts_with("sail_"))
+        .collect();
+    let workspace = Path::new(data.get("workspace_root")?.as_str()?);
+    let mut files = BTreeSet::from([workspace.join("Cargo.toml"), workspace.join("Cargo.lock")]);
+    for package in data.get("packages")?.as_array()? {
+        files.insert(std::path::PathBuf::from(
+            package.get("manifest_path")?.as_str()?,
+        ));
+    }
+    let mut digests = Vec::with_capacity(files.len());
+    for path in &files {
+        let digest = match std::fs::read(path) {
+            Ok(bytes) => super::files::digest(&bytes),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => "missing".to_owned(),
+            Err(_) => return None,
+        };
+        digests.push((path, digest));
+    }
+    let bytes = serde_json::to_vec(&(
+        "sail-build-environment-cache",
+        CACHE_VERSION,
+        context,
+        invocation,
+        target,
+        metadata,
+        digests,
+    ))
+    .ok()?;
+    Some(super::files::digest(&bytes))
+}
+
+/// Restores the retained query of `key` into the empty `directory`, as the
+/// query itself would have written it. The caller then loads it exactly as a
+/// fresh query; a unit graph naming any target the current metadata does not
+/// list exactly refuses.
+pub(super) fn restore(context: &Path, key: &str, directory: &Path, metadata: &Value) -> bool {
+    let restored = || -> Option<()> {
+        let retained: Retained =
+            serde_json::from_slice(&std::fs::read(context.join(CACHE_FILE)).ok()?).ok()?;
+        (retained.version == CACHE_VERSION && retained.key == key).then_some(())?;
+        let graph: Value = serde_json::from_str(retained.files.get("graph.json")?).ok()?;
+        consistent(&graph, metadata)?;
+        for (name, text) in &retained.files {
+            retained_name(name).then_some(())?;
+            std::fs::write(directory.join(name), text).ok()?;
+        }
+        Some(())
+    };
+    restored().is_some()
+}
+
+/// Retains this run's complete query for `key`. Only a query whose files load
+/// as complete authority, with no custom target specification (its bytes are
+/// not bound), is retained. Failure to retain changes nothing.
+pub(super) fn retain(context: &Path, key: &str, directory: &Path, metadata: &Value) {
+    let retained = || -> Option<Retained> {
+        load(directory, metadata)?;
+        let mut files = BTreeMap::new();
+        for entry in std::fs::read_dir(directory).ok()? {
+            let entry = entry.ok()?;
+            let name = entry.file_name().into_string().ok()?;
+            if !retained_name(&name) {
+                continue;
+            }
+            let text = String::from_utf8(std::fs::read(entry.path()).ok()?).ok()?;
+            if name.starts_with("cfg-") {
+                let observation: Observation = serde_json::from_str(&text).ok()?;
+                target(&observation.arguments)?
+                    .is_none_or(|target| {
+                        !target.contains('/')
+                            && !Path::new(&target)
+                                .extension()
+                                .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+                    })
+                    .then_some(())?;
+            }
+            files.insert(name, text);
+        }
+        let graph: Value = serde_json::from_str(files.get("graph.json")?).ok()?;
+        consistent(&graph, metadata)?;
+        files.contains_key("cargo-version.txt").then_some(())?;
+        Some(Retained {
+            version: CACHE_VERSION,
+            key: key.to_owned(),
+            files,
+        })
+    };
+    if let Some(retained) = retained() {
+        let _ = super::files::json(&context.join(CACHE_FILE), &retained);
+    }
+}
+
+fn retained_name(name: &str) -> bool {
+    name == "graph.json"
+        || name == "cargo-version.txt"
+        || (name.starts_with("cfg-")
+            && Path::new(name).extension().is_some_and(|ext| ext == "json")
+            && !name.contains('/'))
+}
+
+/// Every unit's package and target is exactly one the metadata lists.
+fn consistent(graph: &Value, metadata: &Value) -> Option<()> {
+    let mut targets = BTreeSet::new();
+    for package in metadata.get("packages")?.as_array()? {
+        let id = package.get("id")?.as_str()?;
+        for target in package.get("targets")?.as_array()? {
+            targets.insert((
+                id,
+                target.get("name")?.as_str()?,
+                target.get("kind")?.to_string(),
+                target.get("src_path")?.as_str()?,
+            ));
+        }
+    }
+    for unit in graph.get("units")?.as_array()? {
+        let target = unit.get("target")?;
+        targets
+            .contains(&(
+                unit.get("pkg_id")?.as_str()?,
+                target.get("name")?.as_str()?,
+                target.get("kind")?.to_string(),
+                target.get("src_path")?.as_str()?,
+            ))
+            .then_some(())?;
+    }
+    Some(())
 }
 
 #[cfg(test)]
@@ -918,6 +1094,114 @@ mod tests {
         let current = json!({"sail_build_environment":authority});
         assert_eq!(get(&current, "CARGO_CFG_UNIX"), Some(Some(String::new())));
         assert_eq!(get(&current, "CARGO_FEATURE_ABSENT"), Some(None));
+        Ok(())
+    }
+
+    fn cached_metadata(root: &Path) -> Value {
+        json!({"workspace_root":root,"packages":[{"id":ID,
+            "manifest_path":root.join("Cargo.toml"),"features":{},
+            "targets":[{"name":"build-script-build","kind":["custom-build"],
+                "src_path":root.join("build.rs")}]}],
+            "sail_selected_package_ids":[ID]})
+    }
+
+    fn cached_graph(root: &Path) -> Value {
+        let mut execution = unit(&[], Value::Null);
+        execution["target"] = json!({"name":"build-script-build","kind":["custom-build"],
+            "src_path":root.join("build.rs")});
+        graph(vec![execution])
+    }
+
+    fn write_query(directory: &Path, graph: &Value, observation: &Observation) -> TestResult {
+        std::fs::create_dir_all(directory)?;
+        std::fs::write(directory.join("graph.json"), serde_json::to_vec(graph)?)?;
+        std::fs::write(
+            directory.join("cfg-7.json"),
+            serde_json::to_vec(observation)?,
+        )?;
+        std::fs::write(
+            directory.join("cargo-version.txt"),
+            format!("{CARGO_COMMIT}\n"),
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn retained_query_restores_only_under_its_exact_key() -> TestResult {
+        let fixture = CargoFixture::new()?;
+        let root = fixture.root.clone();
+        let metadata = cached_metadata(&root);
+        let config = vec![root.join(".cargo/config.toml")];
+        let key = |data: &Value| cache_key("context", data, &root, &root.join("target"), &config);
+        let first = key(&metadata).ok_or("key refused")?;
+        // Source contents are not part of the key; manifests and the lockfile are.
+        std::fs::write(root.join("src/lib.rs"), "// edited")?;
+        assert_eq!(key(&metadata).as_deref(), Some(first.as_str()));
+        let mut with_sail = metadata.clone();
+        with_sail["sail_build_environment"] = json!({"version":1});
+        assert_eq!(key(&with_sail).as_deref(), Some(first.as_str()));
+        assert_ne!(
+            cache_key("other", &metadata, &root, &root.join("target"), &config),
+            Some(first.clone())
+        );
+        let query = root.join("query");
+        write_query(&query, &cached_graph(&root), &observation(None, b"unix\n"))?;
+        let context = root.join("context");
+        std::fs::create_dir_all(&context)?;
+        retain(&context, &first, &query, &metadata);
+        let restored = root.join("restored");
+        std::fs::create_dir_all(&restored)?;
+        assert!(!restore(&context, "other", &restored, &metadata));
+        assert!(restore(&context, &first, &restored, &metadata));
+        assert_eq!(load(&restored, &metadata), load(&query, &metadata));
+        // A metadata target the unit graph does not name exactly refuses.
+        let mut moved = metadata.clone();
+        moved["packages"][0]["targets"][0]["src_path"] = json!(root.join("other.rs"));
+        let again = root.join("again");
+        std::fs::create_dir_all(&again)?;
+        assert!(!restore(&context, &first, &again, &moved));
+        std::fs::write(root.join("Cargo.lock"), "# changed")?;
+        assert_ne!(key(&metadata), Some(first.clone()));
+        std::fs::write(root.join("Cargo.lock"), "")?;
+        let locked = key(&metadata).ok_or("key refused")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[profile.dev]\ndebug-assertions=false\n",
+        )?;
+        assert_ne!(key(&metadata), Some(locked));
+        std::fs::create_dir_all(root.join(".cargo"))?;
+        std::fs::write(&config[0], "include = ['other.toml']\n")?;
+        assert_eq!(key(&metadata), None);
+        Ok(())
+    }
+
+    #[test]
+    fn custom_target_specifications_and_incomplete_queries_are_not_retained() -> TestResult {
+        let fixture = CargoFixture::new()?;
+        let root = fixture.root.clone();
+        let metadata = cached_metadata(&root);
+        let context = root.join("context");
+        std::fs::create_dir_all(&context)?;
+        let query = root.join("custom");
+        let mut execution = cached_graph(&root);
+        execution["units"][0]["platform"] = json!("custom.json");
+        write_query(
+            &query,
+            &execution,
+            &observation(Some("custom.json"), b"unix\n"),
+        )?;
+        assert!(load(&query, &metadata).is_some());
+        retain(&context, "key", &query, &metadata);
+        assert!(!context.join(CACHE_FILE).exists());
+        let incomplete = root.join("incomplete");
+        write_query(
+            &incomplete,
+            &cached_graph(&root),
+            &observation(None, b"unix\n"),
+        )?;
+        std::fs::remove_file(incomplete.join("cargo-version.txt"))?;
+        retain(&context, "key", &incomplete, &metadata);
+        assert!(!context.join(CACHE_FILE).exists());
         Ok(())
     }
 

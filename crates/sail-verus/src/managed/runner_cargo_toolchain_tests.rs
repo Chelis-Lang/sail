@@ -10,14 +10,14 @@ fn toolchain_root(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("sail-cargo-toolchain-{name}-{}", std::process::id()))
 }
 
-/// An executable that appends `RUSTUP_TOOLCHAIN` and `SAIL_MANAGED_CARGO`
-/// (or `unset`) to `log`, and succeeds without output.
+/// An executable that appends `RUSTUP_TOOLCHAIN` (or `unset`) and how many
+/// `SAIL_MANAGED_*` variables it sees to `log`, and succeeds without output.
 fn recording_tool(path: &Path, log: &Path) -> std::io::Result<()> {
     use std::os::unix::fs::PermissionsExt as _;
     std::fs::write(
         path,
         format!(
-            "#!/bin/sh\nprintf '%s %s\\n' \"${{RUSTUP_TOOLCHAIN-unset}}\" \"${{SAIL_MANAGED_CARGO-unset}}\" >> '{}'\n",
+            "#!/bin/sh\nprintf '%s %s\\n' \"${{RUSTUP_TOOLCHAIN-unset}}\" \"$(env | grep -c '^SAIL_MANAGED_')\" >> '{}'\n",
             log.display()
         ),
     )?;
@@ -134,18 +134,23 @@ fn clean_and_invocation_run_with_the_selected_toolchain() -> ToolchainResult {
         drop(owner);
         let calls = std::fs::read_to_string(&log)?;
         let calls = calls.lines().collect::<Vec<_>>();
-        let cargo = tool.display().to_string();
-        // Cargo-Verus also receives the real Cargo its adapter runs, which
-        // inherits the same selection.
+        // Neither the clean nor Cargo-Verus sees a private setting (#385).
         assert_eq!(
             calls,
-            [
-                format!("{expected} unset"),
-                format!("{expected} {cargo}")
-            ],
+            [format!("{expected} 0"), format!("{expected} 0")],
             "{}",
             String::from_utf8_lossy(&err)
         );
+        // The real Cargo the adapter runs, which inherits the same
+        // selection, is named beside the aliases instead.
+        let transport = paths
+            .proxy_alias
+            .with_file_name(crate::managed::transport::FILE);
+        let transport: serde_json::Value = serde_json::from_slice(&std::fs::read(transport)?)?;
+        let cargo: Vec<u8> = serde_json::from_value(
+            transport["values"]["SAIL_MANAGED_CARGO"].clone(),
+        )?;
+        assert_eq!(cargo, tool.as_os_str().as_encoded_bytes());
     }
     std::fs::remove_dir_all(&root)?;
     Ok(())

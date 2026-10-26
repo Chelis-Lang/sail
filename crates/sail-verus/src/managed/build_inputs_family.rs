@@ -349,7 +349,8 @@ pub(in crate::managed) fn begin(
 /// Whether a run whose inputs changed (Historical) left every build-script
 /// contract it observed intact, so it may still publish them (ADR 0046/0047
 /// amendment). Every path whose content differs between `before` and `after`
-/// must lie inside `workspace` and outside every build-script package, and
+/// must lie inside `workspace` (or be a compiler-declared input first observed
+/// after the run) and outside every build-script package, and
 /// must not be a recorded script's declared path. Declared variables are
 /// checked against the record when publishing. Anything else returns false,
 /// keeping the export unpublished.
@@ -402,17 +403,29 @@ pub(in crate::managed) fn scripts_unchanged_by_run(
         .filter(|(path, digest)| after.get(*path) != Some(*digest))
         .map(|(path, _)| path)
         .chain(after.keys().filter(|path| !before.contains_key(*path)));
+    // A compiler-declared input this run discovered (an `include_str!` of a
+    // file outside the workspace) was simply not observed before the run.
+    // No script declared it, so no contract can depend on it (#399).
+    let discovered: BTreeSet<std::path::PathBuf> = data["sail_source_inputs"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .flat_map(|path| forms(Path::new(path)))
+        .collect();
     let mut any = false;
     for path in changed {
         any = true;
         let path_forms = forms(path);
-        let inside = path_forms
+        let covered = path_forms
             .iter()
-            .any(|form| workspace.iter().any(|root| form.starts_with(root)));
+            .any(|form| workspace.iter().any(|root| form.starts_with(root)))
+            || (!before.contains_key(path)
+                && path_forms.iter().any(|form| discovered.contains(form)));
         let in_script = path_forms
             .iter()
             .any(|form| scripts.iter().any(|root| form.starts_with(root)));
-        if !inside || in_script || path_forms.iter().any(|form| declared.contains(form)) {
+        if !covered || in_script || path_forms.iter().any(|form| declared.contains(form)) {
             return false;
         }
     }
@@ -648,6 +661,46 @@ mod tests {
         assert!(!run.unchanged(&[run.root.join("elsewhere.txt")]));
         // Nothing changed: not a Historical run this decides for.
         assert!(!run.unchanged(&[]));
+        Ok(())
+    }
+
+    #[test]
+    fn historical_run_publishes_after_discovering_an_external_compiler_input() -> TestResult {
+        // `include_str!` of a file outside the workspace: the run's compiler
+        // declares it, so it appears only in the after-run snapshot (#399).
+        let mut run = Run::new("discovered", true)?;
+        let outside = run.root.join("outside.txt");
+        assert!(!run.unchanged(std::slice::from_ref(&outside)));
+        run.data["sail_source_inputs"] = serde_json::json!([outside]);
+        assert!(run.unchanged(std::slice::from_ref(&outside)));
+        // Observed before and changed during the run, it is no discovery.
+        let before: BTreeMap<PathBuf, String> =
+            BTreeMap::from([(outside.clone(), "before".to_owned())]);
+        let after = BTreeMap::from([(outside.clone(), "after".to_owned())]);
+        assert!(!scripts_unchanged_by_run(
+            &run.local,
+            &run.data,
+            &before,
+            &after,
+            &run.workspace
+        ));
+        // A discovered input that a script declares, or one inside a script
+        // package, still withholds the export.
+        let declared = run.declared.clone();
+        run.data["sail_source_inputs"] = serde_json::json!([outside, declared]);
+        let mut after = BTreeMap::from([(run.workspace.join("src/lib.rs"), "s".to_owned())]);
+        let before = after.clone();
+        after.insert(declared, "x".to_owned());
+        assert!(!scripts_unchanged_by_run(
+            &run.local,
+            &run.data,
+            &before,
+            &after,
+            &run.workspace
+        ));
+        let generated = run.script.join("src/generated.rs");
+        run.data["sail_source_inputs"] = serde_json::json!([generated]);
+        assert!(!run.unchanged(std::slice::from_ref(&generated)));
         Ok(())
     }
 
@@ -1100,10 +1153,11 @@ mod tests {
         json(
             &source_state,
             &crate::managed::source_inputs::Inputs {
-                version: 2,
+                version: crate::managed::source_inputs::VERSION,
                 paths,
                 covered: true,
                 by_package: Some(by_package),
+                by_target: None,
             },
         )?;
         let export = root.join("family.json");

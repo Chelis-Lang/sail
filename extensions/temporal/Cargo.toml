@@ -1,0 +1,63 @@
+# The temporal extension workspace (ADR 0083). It builds the temporal-enabled
+# `sail` and its isolated native worker against the private, pinned D.I.V.E.
+# sources. Sail's main workspace (the repository root) never resolves them.
+#
+# Package metadata, lints and profiles mirror the root Cargo.toml; keep them
+# in step. The root rust-toolchain.toml and clippy.toml apply here as well.
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+publish = false
+repository = "https://github.com/Chelis-Lang/sail"
+license = "MIT"
+
+[workspace.dependencies]
+# The exact D.I.V.E. revision; sail_api::temporal::DIVE_REVISION states it too.
+dive-api = { git = "https://github.com/Chelis-Lang/dive", rev = "1025cd6a0510183bc16abc1e6e3eea4f9305c5a9" }
+dive-ir = { git = "https://github.com/Chelis-Lang/dive", rev = "1025cd6a0510183bc16abc1e6e3eea4f9305c5a9" }
+sail-dive = { path = "crates/sail-dive" }
+# Sail's own crates, unchanged, from the main workspace.
+sail-api = { path = "../../crates/sail-api" }
+sail-cli = { path = "../../crates/sail-cli" }
+sail-daemon = { path = "../../crates/sail-daemon" }
+sail-runtime = { path = "../../crates/sail-runtime" }
+# The same requirements as the root workspace; Cargo.lock started from its lock.
+rustix = { version = "=1.1.5", default-features = false, features = ["std", "event", "fs", "process"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+sha2 = { version = "0.10", features = ["asm"] }
+
+[workspace.lints.rust]
+missing_docs = "deny"
+unsafe_code = "forbid"
+unexpected_cfgs = { level = "deny", check-cfg = ["cfg(sail_verus)"] }
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+dbg_macro = "deny"
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.test]
+debug = "line-tables-only"
+
+[profile.dev.package.curve25519-dalek]
+opt-level = 3
+
+[profile.test.package.curve25519-dalek]
+opt-level = 3
+
+[profile.release]
+debug = "line-tables-only"

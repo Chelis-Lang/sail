@@ -288,13 +288,24 @@ bind source aliases and linked ancestors to their canonical destinations;
 the union of canonical file contents alone cannot identify which source a
 compiler path selects. A later read rehashes exactly the recorded files and
 rechecks those bindings: equal is Current, different is Historical, unreadable is
-Unknown. Toolchain and sysroot files are identified by device, inode, size and
-modification time; configuration is identified by content.
+Unknown. Toolchain and sysroot files are identified by content, read again
+only when their complete stat stamp (including change time) differs from the
+one recorded on this machine; configuration is identified by content.
+
+A proof receipt also binds the environment its compiler read. That includes
+variables read only in ghost code, which the erased compilation's dep-info
+omits: Sail takes them from the pinned fork's report of rustc's tracked
+environment in both compiler phases, and a verified target without a complete
+report bound to its own compiler process gets no receipt (#386). Sail trusts
+that report to list every `env!`, `option_env!` and tracked proc-macro read,
+as it trusts rustc's dep-info for exec code; undeclared reads by build scripts
+and proc macros stay invisible, as they are to Cargo.
 
 What this trusts and does not detect is listed in [freshness](freshness.md):
 an edit made and undone during a run through an already-dirty shared writable
 mapping, a bind mount added and removed during a run (root only), and an
-in-place toolchain rewrite that restores the modification time.
+in-place toolchain rewrite on a filesystem whose change time does not
+advance, or after the clock was set back.
 
 Encoded job-result frames are an allocation optimization, not freshness
 evidence. Every read verifies the retained stdout bytes against the result's

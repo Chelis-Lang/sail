@@ -9,6 +9,9 @@
 //!   come from rustc's `# env-dep:` lines and build scripts' `rerun-if-env-changed`
 //!   directives ([`declaration_files`]); originally admitted same-target names
 //!   remain freshly sampled when later compiler erasure drops them.
+//!   Reads in ghost code alone, omitted by Verus's erased dep-info, are
+//!   appended by the managed driver ([`super::ghost_environment`]) and retained
+//!   as observed compiler environment before a receipt may be published.
 //!
 //! `PATH` and `HOME` are not bound as raw values: the context binds the
 //! resolved tools and homes they select. Undeclared reads by build scripts and

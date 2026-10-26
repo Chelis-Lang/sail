@@ -1,6 +1,6 @@
 [package]
 name = "sail-dive"
-description = "Pinned native temporal jobs and isolated worker client"
+description = "Pinned native temporal jobs, isolated worker client and the runtime's temporal backend"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,6 +9,7 @@ license.workspace = true
 
 [dependencies]
 sail-api.workspace = true
+sail-runtime.workspace = true
 dive-api = { workspace = true }
 dive-ir = { workspace = true }
 serde = { workspace = true }
