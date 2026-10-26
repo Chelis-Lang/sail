@@ -70,11 +70,22 @@ pub(crate) fn configuration(cache: PathBuf) -> Result<Config, String> {
     let pins = sail_verus::toolchain::Pins::embedded().map_err(|e| e.to_string())?;
     let build = sail_verus::engine::resolve_build(&root, &pins);
     let z3 = sail_verus::source_build::checkout_dir(&build).join("source/target-verus/release/z3");
+    // A missing, unreadable or malformed worker installation only makes
+    // temporal jobs unavailable; it never stops the service or `sail verify`.
+    let (temporal_worker, temporal_unavailable) = match std::env::current_exe() {
+        Ok(sail) => sail_runtime::temporal::locate(&sail),
+        Err(error) => (
+            None,
+            Some(sail_api::runtime::Error {
+                code: "SAIL6102".into(),
+                kind: "unavailable".into(),
+                message: format!("native temporal worker unavailable: {error}"),
+            }),
+        ),
+    };
     Ok(Config {
-        temporal_worker: sail_runtime::temporal::Worker::discover(
-            &std::env::current_exe().map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?,
+        temporal_worker,
+        temporal_unavailable,
         z3: Some(z3),
         cache_directory: Some(cache),
         workers: 2,
