@@ -944,12 +944,21 @@ pub fn positive_nonempty_declared_whole_replay(project: crate::project::ProjectR
     ensures out.is_some(), acceptance::same_replay_evidence(&project, &out.unwrap()),
         acceptance::request_authorized(current, &out.unwrap()),
 {
+    proof {
+        hide(acceptance::small_positive_request);
+        hide(acceptance::request_authorized);
+        hide(acceptance::replay_request_payload);
+        hide(acceptance::same_replay_evidence);
+    }
     let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
     orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
     let order_slice: &[acceptance::ReportOrder] = &orders;
-    proof { acceptance::replay_constructive_request_definition(original, &project, current, order_slice, readback); }
+    proof {
+        acceptance::replay_constructive_request_definition(original, &project, current, order_slice, readback);
+        assert(acceptance::replay_constructive_request(original, &project, current, order_slice, readback));
+    }
     let Some(paths) = acceptance::bind_request_paths(current, invocation, workspace) else { return None; };
-    let Some(admitted) = acceptance::admit_declared_replay_ordered(project, original, current, &orders,
+    let Some(admitted) = acceptance::admit_declared_replay_ordered(project, original, current, order_slice,
         Some(&paths), Some(readback)) else { return None; };
     Some(acceptance::present_declared_replay(admitted))
 }
