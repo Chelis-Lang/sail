@@ -208,11 +208,25 @@ close either gap; their exact projects are in `corpus/repros/`.
 ### Attributable verification and compilation fields
 
 The source-shared [phase component](../../crates/sail-acceptance/src/phase_inputs.rs)
-accounts for the existing fork's two actual declaration phases. Before a child
-exists, `PhaseRequest::for_attempt` copies the allocated run, every raw compiler
-unit field, slot and binding. Cargo-name absence and an empty Cargo name remain
-different. The seal consumes that immutable request and borrows the actual
-`ObservedAttempt`; it compares exact run/unit/slot, child PID and original binding.
+accounts for the existing fork's two actual declaration phases. After all command
+configuration and before spawn, `PhaseRequest::for_reserved` copies the allocated
+run, every raw compiler unit field, slot, binding and full final
+`ProcessDescriptor`. Program bytes, ordered argument boundaries, explicit
+working-directory presence and ordered environment override/removal pairs all
+participate; inherited environment and directory remain separate context inputs.
+The constructor consumes and returns the same owned reservation. A later
+`ObservedAttempt::reserved()` borrow cannot attach a new original binding;
+the compile-fail documentation control checks this ownership boundary.
+Cargo-name absence and an empty Cargo name remain different. The seal consumes
+that immutable request and compares it with the actual `ObservedAttempt`'s
+reservation, including the complete final descriptor. This matters because
+separate native argument-key namespaces can both allocate slot zero for the
+same raw run/unit. Their commands still cannot share a phase request.
+
+The parsed document separately reports only PID, binding and its phase fields;
+36d does not echo raw run/unit/slot/descriptor fields. Matching that metadata is
+not authentication of the file writer. A fresh immutable selected slot namespace
+and descriptor-bound producer path remain part of the native origin obligation.
 It requires one verification phase and one compilation phase, the existing
 final-document header and a normal observed exit. A normal nonzero exit can
 complete declaration accounting, without becoming a successful proof. The
