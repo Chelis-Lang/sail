@@ -58,6 +58,16 @@ verifier jobs remain stopped while the owner's machine is busy.
 
 ## Source and actual scope
 
+The `c70169a3` native gate passes strict clippy, then runs 1,228 workspace
+tests: 1,227 pass and one new declared-replay constructive fixture fails.
+Its helper starts with `original observation stamp`, but the supposed positive
+supplies `fixture guard`; the unchanged shared guard correctly refuses it.
+The correction supplies the matching stamp for that positive and retains the
+old mismatched stamp as an additional negative in both whole and partial cases.
+No production admission check or existing assertion changes. Later gates are unrun.
+Archive: `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-combined-c70169a3-native-gate.tgz`.
+SHA-256: `93df6a93bf72a2c108d408401e3d93b68b266239f6a9afbe9d9c90ea55f77c30`.
+
 The `68401bf3` stopped native gate is preserved at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-combined-68401bf3-native-gate.tgz`.
 SHA-256: `313fd065643e234eac95a18fe9fa41844e52e7014fc68601a3aa8ae459aedc21`.
@@ -195,6 +205,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `c70169a3` | Native full gate | Strict clippy passes; workspace tests pass 1,227/1,228. The new supposed-positive replay fixture supplies a different after-read stamp and is correctly refused. Matching the positive and adding an explicit changed-guard negative preserves every production guard/assertion; later gates unrun |
 | 2026-10-26 | `68401bf3` | Native full gate | Earlier API/native diagnostics clear; workspace stops on the daemon retained-submission optional-binding style lint. The equivalent checked optional operation preserves refusal and arguments; later gates are unrun |
 | 2026-10-26 | `269317c4` | Native full gate | API lints pass; workspace stops on native journal unused-self, optional path-binding syntax, test import ordering and one test semicolon. Later gates are unrun; corrected source requires rerun |
 | 2026-10-26 | `3352f2fd` | Native full gate | Workspace stops on five API style diagnostics: nested path-binding admission and explicit replay-refusal branches. Local documented allowances preserve the proved bodies; every later gate remains unrun |
