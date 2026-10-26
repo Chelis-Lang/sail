@@ -64,6 +64,14 @@ request/producer correspondence remains part of #375/#376.
 
 ## Acceptance authority integration
 
+The owned inner-compiler command migration is a source-only candidate. It
+routes native, verifying and fallback launches through private construction,
+checks final raw argv/environment readback, and joins journal admission to the
+same child's ownership lease and actual wait. No build, test, proof, native gate
+or cost qualification has run on this candidate. Existing phase transport,
+opaque procedural-macro/build-script I/O and executable-image/atomicity limits
+remain open; see the [source scope](design/acceptance-inputs.md#owned-inner-compiler-candidate).
+
 A local loader-variable control depends on ambient Cargo configuration
 ([#419](https://github.com/Chelis-Lang/sail/issues/419)). The candidate derives
 `CARGO_HOME` and `HOME` from the same supplied environment used to validate

@@ -3,6 +3,7 @@
 //! OS command/pipe/wait attribution is an explicit native adapter boundary.
 //! These records do not certify compiler input closure or verifier semantics.
 
+use crate::managed::command_environment::{CommandView, Completed, LaunchLease, Spawned};
 use crate::{Error, Result};
 use sail_acceptance::authority::{
     AttemptLedger, CompilerUnit, ObservedAttempt, ProcessDescriptor, ReservedAttempt,
@@ -11,7 +12,9 @@ use sail_acceptance::authority::{
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Output};
+#[cfg(test)]
+use std::process::{Child, Command};
+use std::process::{ExitStatus, Output};
 use std::sync::Arc;
 
 pub(crate) struct Journal<'a> {
@@ -28,6 +31,14 @@ pub(crate) struct Allocation<'a> {
     owner: Arc<()>,
     marker: File,
     directory: PathBuf,
+}
+
+/// Keeps the actual owned launch bound to its original reserved command.
+pub(super) struct OwnedRunningAttempt<'a> {
+    running: RunningAttempt<'a>,
+    pid: u32,
+    descriptor: ProcessDescriptor,
+    lease: LaunchLease,
 }
 
 impl<'a> Allocation<'a> {
@@ -154,7 +165,7 @@ impl<'a> Journal<'a> {
 
     /// Reserve and persist the slot before the caller can spawn its child.
     #[cfg(test)]
-    pub(super) fn reserve(&mut self, command: &Command) -> Option<ReservedAttempt<'a>> {
+    pub(super) fn reserve(&mut self, command: &impl CommandView) -> Option<ReservedAttempt<'a>> {
         let allocation = self.allocate()?;
         self.configure(allocation, command)
     }
@@ -269,7 +280,7 @@ impl<'a> Journal<'a> {
     pub(crate) fn configure(
         &mut self,
         allocation: Allocation<'a>,
-        command: &Command,
+        command: &impl CommandView,
     ) -> Option<ReservedAttempt<'a>> {
         if self.unavailable.is_some() {
             return None;
@@ -283,6 +294,31 @@ impl<'a> Journal<'a> {
         }
     }
 
+    pub(super) fn started_owned(
+        &mut self,
+        reserved: Option<ReservedAttempt<'a>>,
+        child: &Spawned,
+    ) -> Option<OwnedRunningAttempt<'a>> {
+        let reserved = reserved?;
+        if !child.matches_descriptor(reserved.descriptor()) {
+            self.refuse(
+                "owned compiler command differs from its reserved descriptor or environment",
+            );
+            return None;
+        }
+        let descriptor = sail_acceptance::phase_inputs::copy_descriptor(reserved.descriptor());
+        let pid = child.id();
+        let lease = child.launch_lease();
+        let running = reserved.started(pid)?;
+        Some(OwnedRunningAttempt {
+            running,
+            pid,
+            descriptor,
+            lease,
+        })
+    }
+
+    #[cfg(test)]
     pub(crate) fn started(
         &mut self,
         reserved: Option<ReservedAttempt<'a>>,
@@ -302,9 +338,38 @@ impl<'a> Journal<'a> {
         }
     }
 
+    /// Only the same privately owned child's actual wait can complete this launch.
+    pub(super) fn capture_owned(
+        &mut self,
+        running: Option<OwnedRunningAttempt<'a>>,
+        completed: Completed,
+    ) -> CapturedChild<'a> {
+        let (output, waited) = completed.into_parts();
+        let Some(running) = running else {
+            self.refuse("owned compiler has no matching reserved launch");
+            return self.capture_inner(None, output);
+        };
+        if !waited
+            .is_some_and(|waited| waited.matches(&running.lease, running.pid, &running.descriptor))
+        {
+            self.refuse("compiler completion does not match its original owned child and wait");
+            return self.capture_inner(None, output);
+        }
+        self.capture_inner(Some(running.running), output)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn capture(
+        &mut self,
+        running: Option<RunningAttempt<'a>>,
+        output: Output,
+    ) -> CapturedChild<'a> {
+        self.capture_inner(running, output)
+    }
+
     /// Always retains the same fresh bytes/status. Observation failures are sticky
     /// and remove evidence without changing the actual compiler result.
-    pub(crate) fn capture(
+    fn capture_inner(
         &mut self,
         running: Option<RunningAttempt<'a>>,
         output: Output,
@@ -366,7 +431,7 @@ impl<'a> Journal<'a> {
     fn try_configure(
         &self,
         allocation: Allocation<'a>,
-        command: &Command,
+        command: &impl CommandView,
     ) -> Result<ReservedAttempt<'a>> {
         if !Arc::ptr_eq(&allocation.owner, &self.owner) {
             return Err(error("compiler allocation belongs to another journal"));

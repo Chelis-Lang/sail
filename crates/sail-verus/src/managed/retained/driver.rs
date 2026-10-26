@@ -575,7 +575,10 @@ impl Attempt {
         self.graph.arguments()
     }
 
-    pub(crate) fn configure(&self, command: &mut std::process::Command) {
+    pub(crate) fn configure(
+        &self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         self.observation.configure(command);
     }
 

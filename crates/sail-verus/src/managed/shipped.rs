@@ -2028,7 +2028,10 @@ impl<'a> Call<'a> {
     }
 
     /// Request observations only for this actual admitted compiler invocation.
-    pub(crate) fn observe_compiler(&mut self, command: &mut std::process::Command) {
+    pub(crate) fn observe_compiler(
+        &mut self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         self.compiler_observation = compiler::Observation::begin(self);
         if let Some(observation) = &self.compiler_observation {
             observation.configure(command);

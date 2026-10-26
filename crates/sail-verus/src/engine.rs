@@ -1493,7 +1493,7 @@ mod tests {
         let captured = std::process::Command::new("/bin/sh")
             .args(["-c", "printf 'interrupted'; exit 101"])
             .output()?;
-        let mut stock = std::process::Command::new("/bin/sh");
+        let mut stock = crate::managed::command_environment::Command::new("/bin/sh");
         stock
             .args(["-c", "cat \"$1\"", "stock"])
             .arg(sidecar.join("verus.stdout"));
@@ -1616,7 +1616,7 @@ mod tests {
             target: "demo",
         };
         let stock = || {
-            let mut stock = std::process::Command::new("/bin/sh");
+            let mut stock = crate::managed::command_environment::Command::new("/bin/sh");
             stock.args(["-c", "printf stock; exit 1"]);
             stock
         };

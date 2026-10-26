@@ -71,7 +71,10 @@ impl Observation {
 
     /// SHA-256 is explicitly requested in both real compiler phases; a
     /// runtime that does not honor it cannot match the complete source basis.
-    pub(super) fn configure(&self, command: &mut std::process::Command) {
+    pub(super) fn configure(
+        &self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         command
             .arg("-Zchecksum-hash-algorithm=sha256")
             .env("SAIL_COMPILER_INPUTS", &self.directory)

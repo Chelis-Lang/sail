@@ -47,6 +47,11 @@ semantic versioning once the API is published.
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
+- Extend owned command construction to native, verifying and fallback compiler
+  launches. Reconcile exact program, ordered arguments, directory and environment
+  operations before spawn; match completion to the original owned child and its
+  actual wait. Fresh diagnostics and exit status remain the fallback when the
+  optional construction observation is unavailable. Qualification is pending.
 - Derive Cargo configuration homes from the same supplied environment used to
   validate runtime selectors, preserving exact path bytes and Cargo-home priority.
 - Record explicit environment inheritance and exact final overrides for owned
