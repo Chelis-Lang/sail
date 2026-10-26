@@ -42,6 +42,17 @@ request/producer correspondence remains part of #375/#376.
 
 ## Acceptance authority integration
 
+The compiler-declaration filename decoder can split non-ASCII whitespace and
+remove literal backslashes ([#408](https://github.com/Chelis-Lang/sail/issues/408)).
+An actual pinned-rustc reproduction consumes one external file while the former
+decoder names two different existing files. The candidate preserves literal
+bytes, checks each token's exact rustc encoding and invalidates older source
+coverage. The [corpus reproduction](../corpus/repros/dep-info-filename-bytes/README.md)
+and actual native compiler test demonstrate the decoder boundary, not an
+end-to-end Sail false Current result. Full combined Linux/conformance
+qualification remains pending. Arbitrary newline-containing or non-UTF-8 paths
+and complete physical compiler-input closure remain open.
+
 Compile-only Verus output can resemble a successful zero-function proof
 ([#367](https://github.com/Chelis-Lang/sail/issues/367),
 [reproduction](verus-issues/VI-0035-no-verify-success.md)). The production

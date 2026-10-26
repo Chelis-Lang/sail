@@ -152,6 +152,18 @@ pub fn descriptor_copy_and_nonempty_boundary_controls() {
     let first = ProcessDescriptor { program: vec![1u8], arguments: vec![vec![2u8], vec![3u8, 4u8]],
         directory: Some(Vec::new()), overrides: vec![(vec![5u8], None), (vec![6u8], Some(Vec::new()))] };
     let copied = copy_descriptor(&first);
+    assert(same_descriptor(copied, first));
+    assert(same_overrides(copied.overrides@, first.overrides@));
+    assert forall|i: int| 0 <= i < first.arguments.len() implies
+        #[trigger] first.arguments[i]@ == copied.arguments[i]@ by {
+        assert(copied.arguments[i]@ == first.arguments[i]@);
+    }
+    assert forall|i: int| 0 <= i < first.overrides.len() implies
+        #[trigger] first.overrides[i].0@ == copied.overrides[i].0@
+            && same_optional(first.overrides[i].1, copied.overrides[i].1) by {
+        assert(copied.overrides[i].0@ == first.overrides[i].0@);
+        assert(same_optional(copied.overrides[i].1, first.overrides[i].1));
+    }
     let equal = descriptors_equal(&first, &copied);
     assert(equal);
     let other = ProcessDescriptor { program: vec![1u8], arguments: vec![vec![2u8, 3u8], vec![4u8]],
@@ -233,6 +245,29 @@ pub proof fn source_size_encoding_is_lossless(a: u64, b: u64)
             ((a >> 24) & 255) as u8 == ((b >> 24) & 255) as u8, ((a >> 32) & 255) as u8 == ((b >> 32) & 255) as u8,
             ((a >> 40) & 255) as u8 == ((b >> 40) & 255) as u8, ((a >> 48) & 255) as u8 == ((b >> 48) & 255) as u8,
             ((a >> 56) & 255) as u8 == ((b >> 56) & 255) as u8;
+}
+
+/// Raw filename encoding preserves all ordinary bytes and escapes only spaces.
+pub fn compiler_filename_encoding_controls() {
+    reveal_with_fuel(encoded_dependency_name, 8);
+    assert(encoded_dependency_name(seq![97u8, 194u8, 160u8, 98u8, 99u8]) == seq![97u8, 194u8, 160u8, 98u8, 99u8]) by(compute);
+    assert(encoded_dependency_name(seq![97u8, 9u8, 98u8]) == seq![97u8, 9u8, 98u8]) by(compute);
+    assert(encoded_dependency_name(seq![97u8, 92u8, 98u8]) == seq![97u8, 92u8, 98u8]) by(compute);
+    assert(encoded_dependency_name(seq![97u8, 32u8, 98u8]) == seq![97u8, 92u8, 32u8, 98u8]) by(compute);
+    let unicode: [u8; 5] = [97, 194, 160, 98, 99];
+    let tab: [u8; 3] = [97, 9, 98];
+    let slash: [u8; 3] = [97, 92, 98];
+    let encoded: [u8; 4] = [97, 92, 32, 98];
+    let spaced: [u8; 3] = [97, 32, 98];
+    let wrong: [u8; 2] = [97, 98];
+    let newline: [u8; 3] = [97, 10, 98];
+    let literal = crate::inputs::dependency_filename_matches(&unicode, &unicode); assert(literal);
+    let literal = crate::inputs::dependency_filename_matches(&tab, &tab); assert(literal);
+    let literal = crate::inputs::dependency_filename_matches(&slash, &slash); assert(literal);
+    let escaped = crate::inputs::dependency_filename_matches(&encoded, &spaced); assert(escaped);
+    let trimmed = crate::inputs::dependency_filename_matches(&encoded, &wrong); assert(!trimmed);
+    let escaped_wrong = crate::inputs::dependency_filename_matches(&slash, &wrong); assert(!escaped_wrong);
+    let unsupported = crate::inputs::dependency_filename_matches(&newline, &newline); assert(!unsupported);
 }
 
 }

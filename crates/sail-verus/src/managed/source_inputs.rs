@@ -191,8 +191,9 @@ pub(super) struct Inputs {
 /// recorded and compared after the run. Once a context has run, a missing,
 /// unreadable or malformed record is incomplete.
 pub(super) fn load(path: &Path, observed_before: bool) -> (Vec<PathBuf>, bool) {
-    // Older observations do not attribute includes to their consuming package.
-    // Establish the scoped declarations before authorizing new current receipts.
+    // Older observations either lack consuming-package attribution or used a
+    // filename decoder that could omit literal tabs, backslashes and Unicode.
+    // Preserve their paths while withholding their claimed declaration coverage.
     read::<Inputs>(path).map_or_else(
         || {
             let first = !observed_before
@@ -205,7 +206,7 @@ pub(super) fn load(path: &Path, observed_before: bool) -> (Vec<PathBuf>, bool) {
         |v| {
             (
                 v.paths,
-                v.version == 2 && v.covered && v.by_package.is_some(),
+                v.version == 3 && v.covered && v.by_package.is_some(),
             )
         },
     )
@@ -213,37 +214,78 @@ pub(super) fn load(path: &Path, observed_before: bool) -> (Vec<PathBuf>, bool) {
 
 pub(super) fn packages(path: &Path) -> Option<BTreeMap<String, Vec<PathBuf>>> {
     read::<Inputs>(path)
-        .filter(|v| v.version == 2)
+        .filter(|v| v.version == 3)
         .and_then(|v| v.by_package)
 }
 
 pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
-    // Rust emits make-style dep-info. Only the first rule contains inputs;
-    // subsequent empty rules and env-dep comments are not file dependencies.
+    // Rustc escapes ASCII spaces only. Other backslashes and whitespace are
+    // literal filename bytes, not generic make escapes or token separators.
+    // The first logical rule remains the declaration source; phony targets and
+    // environment comments are separate records, not additional input tokens.
     let joined = text.replace("\\\n", "");
-    let rule = joined.lines().next()?.split_once(": ")?.1;
+    let mut lines = joined.lines();
+    let rule = lines.next()?.split_once(": ")?.1;
     let mut paths = Vec::new();
     let mut word = String::new();
-    let mut escape = false;
-    for c in rule.chars() {
-        if escape {
-            word.push(c);
-            escape = false;
-        } else if c == '\\' {
-            escape = true;
-        } else if c.is_whitespace() {
+    let mut start = 0;
+    let mut chars = rule.char_indices().peekable();
+    while let Some((index, c)) = chars.next() {
+        if c == '\\' {
+            match chars.peek() {
+                Some((_, ' ')) => {
+                    chars.next();
+                    word.push(' ');
+                }
+                Some(_) => word.push(c),
+                None => return None,
+            }
+        } else if c == ' ' {
             if !word.is_empty() {
+                if !sail_acceptance::inputs::dependency_filename_matches(
+                    &rule.as_bytes()[start..index],
+                    word.as_bytes(),
+                ) {
+                    return None;
+                }
                 paths.push(std::mem::take(&mut word));
             }
+            start = index + 1;
         } else {
             word.push(c);
         }
     }
-    if escape {
-        return None;
-    }
     if !word.is_empty() {
+        if !sail_acceptance::inputs::dependency_filename_matches(
+            &rule.as_bytes()[start..],
+            word.as_bytes(),
+        ) {
+            return None;
+        }
         paths.push(word);
+    }
+    // Refuse unsupported multiline records rather than silently accepting only
+    // a prefix of one filename. This is a conservative format check, not a
+    // proof that rustc's line-oriented format represents every possible path.
+    for line in lines {
+        if line.is_empty() || line.starts_with("# env-dep:") || line.starts_with("# checksum:") {
+            continue;
+        }
+        if let Some((_, body)) = line.split_once(": ") {
+            if body != rule {
+                return None;
+            }
+        } else {
+            let encoded = line.strip_suffix(':')?;
+            if !paths.iter().any(|path| {
+                sail_acceptance::inputs::dependency_filename_matches(
+                    encoded.as_bytes(),
+                    path.as_bytes(),
+                )
+            }) {
+                return None;
+            }
+        }
     }
     Some(paths)
 }
@@ -393,7 +435,7 @@ pub(super) fn update_with_history(
     super::files::json(
         path,
         &Inputs {
-            version: 2,
+            version: 3,
             paths: paths.clone(),
             covered,
             by_package: Some(
@@ -785,6 +827,89 @@ mod tests {
         assert!(dependencies("out.d: trailing\\").is_none());
     }
     #[test]
+    fn compiler_dep_info_keeps_literal_unicode_tabs_and_backslashes() {
+        for name in [
+            "left\u{a0}right.txt",
+            "tab\tname",
+            "slash\\name",
+            "hash#name",
+            "colon:name",
+        ] {
+            let text = format!("out.d: source.rs {name}\n\n{name}:\n");
+            assert_eq!(
+                dependencies(&text),
+                Some(vec!["source.rs".into(), name.into()])
+            );
+        }
+        assert!(dependencies("out.d: bad\0name\n").is_none());
+        assert!(dependencies("out.d: bad\rname\n").is_none());
+        assert!(dependencies("out.d: source.rs line\nname\n\nsource.rs:\nline\nname:\n").is_none());
+        assert!(dependencies("out.d: source.rs\n\nforeign.rs:\n").is_none());
+    }
+
+    #[test]
+    fn actual_rustc_dep_info_does_not_replace_one_consumed_path_with_two_existing_files()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-dep-actual-{}", std::process::id()));
+        let project = root.join("project");
+        let target = root.join("target");
+        std::fs::create_dir_all(&project)?;
+        std::fs::create_dir_all(&target)?;
+        let name = "left\u{a0}right.txt";
+        let external = root.join(name);
+        std::fs::write(&external, "7")?;
+        // Both wrongly split names exist, so checking readability cannot repair
+        // the old parser's omission of the actual file consumed by rustc.
+        std::fs::write(root.join("left"), "unchanged decoy")?;
+        std::fs::write(project.join("right.txt"), "unchanged decoy")?;
+        std::fs::write(
+            project.join("lib.rs"),
+            format!("pub const VALUE: &str = include_str!(\"../{name}\");\n"),
+        )?;
+        let output = std::process::Command::new("rustc")
+            .args([
+                "--crate-name",
+                "demo",
+                "--crate-type",
+                "lib",
+                "--emit=dep-info,metadata",
+                "--out-dir",
+            ])
+            .arg(&target)
+            .arg("lib.rs")
+            .current_dir(&project)
+            .output()?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let raw = std::fs::read_to_string(target.join("demo.d"))?;
+        let actual = format!("../{name}");
+        let decoded = dependencies(&raw).ok_or("actual compiler dep-info refused")?;
+        assert!(decoded.contains(&actual));
+        assert!(!decoded.contains(&"../left".to_owned()));
+        assert!(!decoded.contains(&"right.txt".to_owned()));
+        let artifacts = root.join("artifacts.jsonl");
+        let artifact = serde_json::json!({"reason":"compiler-artifact","package_id":"demo",
+            "target":{"kind":["lib"]},"filenames":[target.join("libdemo.rmeta")]});
+        std::fs::write(&artifacts, fixture_journal(&[artifact])?)?;
+        let data = serde_json::json!({"workspace_root":project,"packages":[{"manifest_path":project.join("Cargo.toml")}]});
+        let (paths, covered) = update(&root.join("sources.json"), &artifacts, &data)?;
+        assert!(covered);
+        assert!(paths.contains(&project.join(&actual)));
+        assert!(paths.contains(&external.canonicalize()?));
+        assert!(!paths.contains(&root.join("left")));
+        assert!(!paths.contains(&project.join("right.txt")));
+        let before = super::super::input::snapshot_metadata(&data, &paths);
+        std::fs::write(&external, "9")?;
+        let after = super::super::input::snapshot_metadata(&data, &paths);
+        assert_ne!(before.revision, after.revision);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn external_include_paths_join_future_revision_and_watch_coverage() {
         let root =
             std::env::temp_dir().join(format!("sail-source-input-test-{}", std::process::id()));
@@ -848,6 +973,15 @@ mod tests {
         assert!(
             !load(&path, true).1,
             "legacy scoped records omitted source aliases too"
+        );
+        assert!(packages(&path).is_none());
+        let legacy = serde_json::json!({"version":2,"paths":["previous.rs"],"covered":true,
+            "by_package":{"demo":["previous.rs"]}});
+        assert!(std::fs::write(&path, legacy.to_string()).is_ok());
+        assert_eq!(
+            load(&path, true),
+            (vec![PathBuf::from("previous.rs")], false),
+            "old decoder coverage cannot authorize the corrected filename domain"
         );
         assert!(packages(&path).is_none());
         assert!(std::fs::write(&path, "corrupt source observation").is_ok());
