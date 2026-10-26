@@ -179,7 +179,10 @@ impl Observation {
         if bytes.len() as u64 > LIMIT {
             return None;
         }
-        let document: Document = serde_json::from_slice(&bytes).ok()?;
+        let mut document: Document = serde_json::from_slice(&bytes).ok()?;
+        for phase in document.phases.values_mut() {
+            crate::adapter::verus_channel::normalize(&mut phase.tracked_environment);
+        }
         (Some(document.pid) == self.pid
             && document.binding == self.binding
             && document.valid(call, &call.plan.run_id))

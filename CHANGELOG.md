@@ -5,6 +5,19 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Fix two default-mode verdict differences: managed `sail verify` changed the
+  program the compiler sees. Its private `SAIL_MANAGED_*` settings reached
+  Cargo, build scripts and compilers, so `option_env!("SAIL_MANAGED_RUNTIME")`
+  was set (#385). Its `--output-json`, `--time` and attribution options were on
+  the compiler's command line, so a procedural macro reading `std::env::args`
+  saw them (#393). In both cases a proof that plain `cargo verus verify`
+  rejects was reported verified. The settings now live in a file beside Sail's
+  aliases, the caller's own `CARGO` is restored for Cargo, and Sail's Verus
+  options travel in Cargo-Verus's ` __VERUS_DRIVER_ARGS__` instead of the
+  command line. Proof contexts, receipts, retained archives and managed
+  targets from earlier builds are not reused, so the first run after upgrading
+  verifies afresh. The solver route and fork requests that remain visible are
+  listed in known issues (#435).
 - Promote proof repair, the evidence commands and MCP to the supported set.
   `sail --help` now lists `repair-check`, `explain`, `baseline` and `compare`,
   and their help no longer starts with an EXPERIMENTAL note. MCP's evidence,

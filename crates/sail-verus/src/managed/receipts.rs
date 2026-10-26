@@ -145,7 +145,10 @@ pub(crate) struct Receipt {
 }
 
 /// Version 4 distinguishes exact-scope reports from whole-target proof receipts.
-pub(crate) const RECEIPT_VERSION: u32 = 5;
+/// Version 6: earlier receipts were established while Sail's private settings
+/// and observation options reached the compiler (#385, #393), so their proof
+/// may be of a different program; none is reused.
+pub(crate) const RECEIPT_VERSION: u32 = 6;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {

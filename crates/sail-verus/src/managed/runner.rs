@@ -353,7 +353,9 @@ fn store_family_hash(
 ) -> Result<String> {
     Ok(digest(
         &serde_json::to_vec(&(
-            "sail-dependency-store-family-v1",
+            // v2: earlier entries were built with Sail's private settings and
+            // observation options visible to the program (#385, #393).
+            "sail-dependency-store-family-v2",
             without_selection(args),
             engine.map(crate::engine::Request::artifact_identity),
             identity,
@@ -461,10 +463,12 @@ fn context_hashes(
     identity: &[(String, String)],
     environment: &[(Vec<u8>, Vec<u8>)],
 ) -> Result<(String, String)> {
-    // Keep the existing proof-context encoding: focus selectors still bind
-    // reports, receipts, runtime validation and prepared invocation contexts.
+    // Focus selectors still bind reports, receipts, runtime validation and
+    // prepared invocation contexts. Encoding 2: contexts before it compiled
+    // with Sail's private settings and observation options visible to the
+    // program (#385, #393); nothing established there is reused.
     let hash = digest(
-        &serde_json::to_vec(&(1, args, engine, identity, environment))
+        &serde_json::to_vec(&(2, args, engine, identity, environment))
             .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     );
     let compiler_engine = engine.map(crate::engine::Request::artifact_identity);
@@ -476,7 +480,9 @@ fn context_hashes(
     // authorize skipped verification targets.
     let compiler_hash = digest(
         &serde_json::to_vec(&(
-            "sail-managed-compiler-artifacts-v1",
+            // v2: earlier targets were compiled with Sail's private
+            // settings and observation options visible (#385, #393).
+            "sail-managed-compiler-artifacts-v2",
             without_selection(args),
             compiler_engine,
             identity,
@@ -867,16 +873,58 @@ fn cargo_clean(config: &Config, build_target: &Path, packages: &[String]) -> Res
     Ok(())
 }
 
-fn invocation_command(config: &Config, paths: &Paths, show_output: bool) -> Result<Command> {
+/// One Cargo-Verus invocation through Sail's aliases. `request` names the
+/// build-environment query directory and `visible` the managed output socket,
+/// when this invocation has one.
+fn invocation_command(
+    config: &Config,
+    paths: &Paths,
+    show_output: bool,
+    request: Option<&Path>,
+    visible: Option<&Path>,
+) -> Result<Command> {
     let split = config
         .args
         .iter()
         .position(|a| a == "--")
         .unwrap_or(config.args.len());
     let mut cmd = Command::new(&config.cargo_verus);
-    // Cargo-Verus, the Cargo it runs through Sail's adapter
-    // (`SAIL_MANAGED_CARGO`) and every compiler below inherit the selection.
+    // Cargo-Verus, the Cargo it runs through Sail's adapter and every compiler
+    // below inherit the selection.
     config.cargo_toolchain.apply(&mut cmd);
+    // The adapters' private settings go beside them, never into the
+    // environment Cargo hands to build scripts and compilers (#385).
+    let mut transport = super::transport::Transport::new(std::env::var_os("CARGO").as_deref());
+    transport
+        .set("SAIL_MANAGED_CARGO", &config.cargo)
+        .set(
+            crate::adapter::CARGO_METADATA_ENV,
+            crate::adapter::metadata_target(&config.cache)?,
+        )
+        .set("SAIL_MANAGED_PROXY", &paths.proxy_alias)
+        .set("SAIL_MANAGED_RUNTIME", &paths.runtime)
+        .set("SAIL_MANAGED_ARTIFACTS", paths.run.join("artifacts.jsonl"));
+    if let Some(plan) = &paths.shipped_plan {
+        transport.set(super::shipped::PLAN_ENV, plan);
+    }
+    if let Some(base) = &paths.source_base {
+        transport.set(super::shipped::SOURCE_BASE_ENV, base);
+    }
+    if let Some(remap) = &paths.span_remap {
+        transport.set(super::shipped::SPAN_REMAP_ENV, remap);
+    }
+    if let Some(directory) = request {
+        transport.set(super::build_environment::REQUEST, directory);
+    }
+    if let Some(socket) = visible {
+        transport.set(super::visible_output::ENV, socket);
+    }
+    transport.write(
+        paths
+            .proxy_alias
+            .parent()
+            .ok_or_else(|| Error::new("SAIL3104", "managed aliases have no directory"))?,
+    )?;
     cmd.current_dir(&config.workspace)
         .args([
             "verus",
@@ -899,22 +947,14 @@ fn invocation_command(config: &Config, paths: &Paths, show_output: bool) -> Resu
         .args((show_output && terminal_colour(&config.args[..split])).then_some("--color=always"))
         .args(&config.args[split..])
         .env("RUSTC_BOOTSTRAP", "1")
+        // Only Cargo-Verus sees the alias; the alias gives the real Cargo the
+        // caller's own value back.
         .env("CARGO", &paths.cargo_alias)
-        .env("SAIL_MANAGED_CARGO", &config.cargo)
-        .env(
-            crate::adapter::CARGO_METADATA_ENV,
-            crate::adapter::metadata_target(&config.cache)?,
-        )
-        .env("SAIL_MANAGED_PROXY", &paths.proxy_alias)
-        .env("SAIL_MANAGED_RUNTIME", &paths.runtime)
-        .env("SAIL_MANAGED_ARTIFACTS", paths.run.join("artifacts.jsonl"))
+        // The solver route (ADR 0003): the verified compiler starts the shim,
+        // which reads these (docs/known-issues.md).
         .env("VERUS_Z3_PATH", &config.shim)
         .env("SAIL_Z3_PATH", &config.z3)
         .env("SAIL_SOLVER_MODE", "default")
-        .env_remove(super::build_environment::REQUEST)
-        .env_remove(super::shipped::PLAN_ENV)
-        .env_remove(super::shipped::SOURCE_BASE_ENV)
-        .env_remove(super::shipped::SPAN_REMAP_ENV)
         .env_remove("SAIL_ENGINE")
         .env_remove("SAIL_ENGINE_FUNCTION")
         .env_remove("SAIL_ENGINE_EVENTS")
@@ -927,15 +967,6 @@ fn invocation_command(config: &Config, paths: &Paths, show_output: bool) -> Resu
         cmd.env("SAIL_DAEMON_SOCKET", socket);
     } else {
         cmd.env_remove("SAIL_DAEMON_SOCKET");
-    }
-    if let Some(plan) = &paths.shipped_plan {
-        cmd.env(super::shipped::PLAN_ENV, plan);
-    }
-    if let Some(base) = &paths.source_base {
-        cmd.env(super::shipped::SOURCE_BASE_ENV, base);
-    }
-    if let Some(remap) = &paths.span_remap {
-        cmd.env(super::shipped::SPAN_REMAP_ENV, remap);
     }
     Ok(cmd)
 }
@@ -980,9 +1011,8 @@ fn build_environment(
         let _ = std::fs::remove_dir_all(&directory);
         std::fs::create_dir(&directory).ok()?;
     }
-    let output = invocation_command(config, paths, false)
+    let output = invocation_command(config, paths, false, Some(&directory), None)
         .ok()?
-        .env(super::build_environment::REQUEST, &directory)
         .output()
         .ok()?;
     std::fs::write(directory.join("frontend.stdout"), &output.stdout).ok()?;
@@ -1062,13 +1092,14 @@ fn invoke(
     err: &mut dyn Write,
     seeded: &[super::store::Seeded],
 ) -> Result<Option<i32>> {
-    let mut cmd = invocation_command(config, paths, out.is_some())?;
     #[cfg(unix)]
     let visible = super::visible_output::Receiver::bind()
         .map_err(|error| Error::new("SAIL3106", error.to_string()))?;
-    cmd.env_remove(super::visible_output::ENV);
     #[cfg(unix)]
-    cmd.env(super::visible_output::ENV, visible.path());
+    let visible_path = Some(visible.path());
+    #[cfg(not(unix))]
+    let visible_path = None;
+    let mut cmd = invocation_command(config, paths, out.is_some(), None, visible_path)?;
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
@@ -4289,7 +4320,7 @@ mod tests {
         assert_eq!(
             proof,
             digest(&serde_json::to_vec(&(
-                1,
+                2,
                 &args,
                 &selected,
                 &identity,

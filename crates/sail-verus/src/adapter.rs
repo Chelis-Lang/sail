@@ -4,6 +4,7 @@
 //! forwarded with their original argument bytes. Verified targets alone get
 //! isolated observation sidecars; these flags leave solver input unchanged.
 
+use crate::managed::transport;
 use crate::managed::{Invocation, Runtime, TargetIdentity, digest, event, file_digest, json};
 use crate::{Error, Result};
 use std::ffi::OsString;
@@ -13,9 +14,11 @@ use std::process::{Command, ExitCode, Stdio};
 
 #[path = "adapter_metadata_stdout.rs"]
 mod metadata_stdout;
+#[path = "adapter_verus_channel.rs"]
+pub(crate) mod verus_channel;
 
-/// Only Cargo-Verus's own metadata probe receives this private marker. The
-/// build subprocess removes it so nested user commands retain their environment.
+/// Only Cargo-Verus's own metadata probe receives this private setting
+/// (through [`transport`], never the environment).
 pub(crate) const CARGO_METADATA_ENV: &str = "SAIL_MANAGED_CARGO_METADATA";
 
 /// The `reason` of the record that opens one Cargo build's section of the
@@ -148,17 +151,20 @@ pub fn dispatch() -> Option<ExitCode> {
 
 fn cargo() -> Result<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
-    let mut cmd = Command::new(required("SAIL_MANAGED_CARGO")?);
+    let mut cmd = Command::new(transport::required("SAIL_MANAGED_CARGO")?);
     cmd.args(&args);
+    // The real Cargo, and so every build script and compiler, gets the
+    // caller's own `CARGO`, not the runner's alias (#385).
+    transport::restore_cargo(&mut cmd);
     if args.first().is_some_and(|argument| argument == "metadata")
-        && let Some(target) = std::env::var_os(CARGO_METADATA_ENV)
+        && let Some(target) = transport::var(CARGO_METADATA_ENV)
     {
         // Cargo metadata probes rustc and can write .rustc_info.json in the
         // caller's target, even though it does not compile. Managed builds use
         // their explicit owned target, so that override cannot select artifacts.
         configure_metadata_target(&mut cmd, Path::new(&target))?;
     }
-    cmd.env_remove(CARGO_METADATA_ENV);
+    transport::clear(&mut cmd, CARGO_METADATA_ENV);
     let build = args.iter().any(|s| s == "build" || s == "check");
     if !build {
         return cmd
@@ -166,9 +172,13 @@ fn cargo() -> Result<ExitCode> {
             .map(status)
             .map_err(|e| Error::new("SAIL3111", e.to_string()));
     }
-    cmd.env("SAIL_MANAGED_WRAPPER", required("RUSTC_WRAPPER")?)
-        .env("RUSTC_WRAPPER", required("SAIL_MANAGED_PROXY")?);
-    if let Some(directory) = std::env::var_os(crate::managed::build_environment::REQUEST) {
+    transport::forward(
+        &mut cmd,
+        "SAIL_MANAGED_WRAPPER",
+        &required("RUSTC_WRAPPER")?,
+    )?;
+    cmd.env("RUSTC_WRAPPER", transport::required("SAIL_MANAGED_PROXY")?);
+    if let Some(directory) = transport::var(crate::managed::build_environment::REQUEST) {
         let directory = PathBuf::from(directory);
         let version = Command::new(cmd.get_program())
             .args(["--version", "--verbose"])
@@ -196,7 +206,7 @@ fn cargo() -> Result<ExitCode> {
     }
     // Cargo messages remain on stdout; target Verus documents live in sidecars.
     cmd.stdout(Stdio::piped()).stderr(Stdio::inherit());
-    let path = PathBuf::from(required("SAIL_MANAGED_ARTIFACTS")?);
+    let path = PathBuf::from(transport::required("SAIL_MANAGED_ARTIFACTS")?);
     let mut records = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -427,6 +437,27 @@ fn launcher_arguments(args: &[OsString], engine: bool, effective: &[String]) -> 
     arguments
 }
 
+/// The actual compiler `wrapper`, in the environment plain Cargo-Verus gives
+/// it (#385): Cargo's, which is the caller's plus Cargo-Verus's and Cargo's
+/// own, and no private alias setting. Only Sail's requests to its Verus fork
+/// for a shipped dependency build are added, as before only when this run
+/// has one (ADR 0048, VI-0031); Cargo and build scripts no longer see them.
+fn compiler_command(wrapper: &Path) -> Command {
+    let mut command = Command::new(wrapper);
+    transport::clear(&mut command, crate::managed::visible_output::ENV);
+    if transport::file_backed() {
+        for name in [
+            crate::managed::shipped::SOURCE_BASE_ENV,
+            crate::managed::shipped::SPAN_REMAP_ENV,
+        ] {
+            if let Some(value) = transport::var(name) {
+                command.env(name, value);
+            }
+        }
+    }
+    command
+}
+
 fn custom_compiler_context(args: &[OsString]) -> bool {
     if args
         .iter()
@@ -453,7 +484,7 @@ fn retained_runtime(mode: crate::managed::research::Mode) -> Option<Runtime> {
     if mode == crate::managed::research::Mode::VstdBoundary {
         return None;
     }
-    let path = std::env::var_os("SAIL_MANAGED_RUNTIME")?;
+    let path = transport::var("SAIL_MANAGED_RUNTIME")?;
     let runtime: Runtime = serde_json::from_slice(&std::fs::read(path).ok()?).ok()?;
     runtime.retained.as_ref()?;
     Some(runtime)
@@ -466,7 +497,7 @@ fn retained_runtime(mode: crate::managed::research::Mode) -> Option<Runtime> {
 fn driver() -> Result<ExitCode> {
     let research = crate::managed::research::selected()?;
     let mut args: Vec<OsString> = std::env::args_os().skip(1).collect();
-    let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
+    let wrapper = PathBuf::from(transport::required("SAIL_MANAGED_WRAPPER")?);
     if let Some(result) = crate::managed::build_environment::probe(&wrapper, &args) {
         return result;
     }
@@ -474,7 +505,7 @@ fn driver() -> Result<ExitCode> {
     // experimental cache is consulted only once Cargo reaches verified vstd.
     if !verifying(&args) {
         let metadata_stdout = if let Some(index) = metadata_stdout::metadata_output(&args) {
-            let artifacts = PathBuf::from(required("SAIL_MANAGED_ARTIFACTS")?);
+            let artifacts = PathBuf::from(transport::required("SAIL_MANAGED_ARTIFACTS")?);
             let run = artifacts
                 .parent()
                 .ok_or_else(|| Error::new("SAIL3111", "managed artifacts have no run directory"))?;
@@ -489,9 +520,8 @@ fn driver() -> Result<ExitCode> {
             .then(crate::managed::shipped::active)
             .flatten();
         if research == crate::managed::research::Mode::Off && runtime.is_none() && plan.is_none() {
-            let actual = Command::new(wrapper)
+            let actual = compiler_command(&wrapper)
                 .args(&args)
-                .env_remove(crate::managed::visible_output::ENV)
                 .status()
                 .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             if let Some(metadata) = &metadata_stdout {
@@ -513,7 +543,7 @@ fn driver() -> Result<ExitCode> {
             // use after its fresh native boundary checks succeed.
             .filter(|_| observation.is_none())
             .and_then(|runtime| crate::managed::retained::Native::begin(runtime, &args, &wrapper));
-        let mut command = Command::new(&wrapper);
+        let mut command = compiler_command(&wrapper);
         let native_args = if let Some(call) = &observation {
             call.arguments()
         } else if let Some(attempt) = &retained {
@@ -521,9 +551,7 @@ fn driver() -> Result<ExitCode> {
         } else {
             args.as_slice()
         };
-        command
-            .args(native_args)
-            .env_remove(crate::managed::visible_output::ENV);
+        command.args(native_args);
         if let Some(call) = &observation {
             call.configure(&mut command);
         }
@@ -567,7 +595,7 @@ fn driver() -> Result<ExitCode> {
             "managed verification does not support a custom sysroot or JSON target specification",
         ));
     }
-    let runtime_path = PathBuf::from(required("SAIL_MANAGED_RUNTIME")?);
+    let runtime_path = PathBuf::from(transport::required("SAIL_MANAGED_RUNTIME")?);
     let runtime: Runtime = serde_json::from_slice(
         &std::fs::read(runtime_path).map_err(|e| Error::new("SAIL3111", e.to_string()))?,
     )
@@ -718,7 +746,7 @@ fn driver() -> Result<ExitCode> {
         return Ok(ExitCode::SUCCESS);
     }
     let mut retention = retained.as_ref().map(|_| retention_started.elapsed());
-    let mut cmd = Command::new(&wrapper);
+    let mut cmd = compiler_command(&wrapper);
     let compiler_args = if let Some(call) = &call {
         call.compiler_arguments()
     } else if let Some(attempt) = &retained {
@@ -726,9 +754,18 @@ fn driver() -> Result<ExitCode> {
     } else {
         launcher_args.as_slice()
     };
+    // Sail's own Verus options travel as Cargo-Verus's do, outside the
+    // command line procedural macros can read (#393).
+    let base = verus_channel::Channel::cargo_value(&launcher_environment)?;
+    let mut options = observation_args(flags, logs.as_deref());
+    if let Some(attempt) = &retained {
+        options.extend(attempt.compiler_options().iter().map(OsString::from));
+    }
+    let channel = verus_channel::Channel::new(base.clone(), &options)?;
+    channel.publish();
+    let dep_info = verus_channel::dep_info_path(compiler_args);
     cmd.args(compiler_args)
         .envs(&launcher_environment)
-        .args(observation_args(flags, logs.as_deref()))
         .args(
             call.as_ref()
                 .map(crate::managed::shipped::Call::record_args)
@@ -736,8 +773,8 @@ fn driver() -> Result<ExitCode> {
         )
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    cmd.env_remove(crate::managed::visible_output::ENV)
-        .env_remove("SAIL_COMPILER_INPUTS")
+    channel.apply(&mut cmd);
+    cmd.env_remove("SAIL_COMPILER_INPUTS")
         .env_remove("SAIL_COMPILER_INPUTS_BINDING");
     if let Some(call) = &mut call {
         call.observe_compiler(&mut cmd);
@@ -823,13 +860,13 @@ fn driver() -> Result<ExitCode> {
         relay.finish();
     }
     let mut established = None;
+    // The exact stock restart has only the observation options.
+    let stock_channel =
+        verus_channel::Channel::new(base, &observation_args(flags, logs.as_deref()))?;
     let (stdout, stderr, exit) = if let Some(engine) = &runtime.engine {
-        let mut stock = Command::new(&engine.stock_wrapper);
-        stock
-            .args(&launcher_args)
-            .env_remove(crate::managed::visible_output::ENV)
-            .envs(&launcher_environment)
-            .args(observation_args(flags, logs.as_deref()));
+        let mut stock = compiler_command(&engine.stock_wrapper);
+        stock.args(&launcher_args).envs(&launcher_environment);
+        stock_channel.apply(&mut stock);
         let captured = std::process::Output {
             stdout,
             stderr,
@@ -855,6 +892,10 @@ fn driver() -> Result<ExitCode> {
         )
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
+    // Cargo's next build compares the dep-info with its own environment.
+    // Each restores only its own exact value, so at most one applies.
+    channel.restore_dep_info(dep_info.as_deref());
+    stock_channel.restore_dep_info(dep_info.as_deref());
     let invocation_key = identity.key();
     let measured = (identity.manifest.clone(), identity.target_name().to_owned());
     let verifier_readable = finish(
