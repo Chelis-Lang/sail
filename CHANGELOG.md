@@ -36,6 +36,15 @@ semantic versioning once the API is published.
   unchanged; the after-run `cargo metadata` is skipped while every path it
   reads keeps its stamp; and build-script input snapshots are read once per
   run while their paths are unchanged.
+- Reuse the solver's identity across handshakes (ADR 0082 amendment). The
+  daemon no longer launches `z3 --version` and reads the whole Z3 executable
+  for every Verus solver session while the executable's complete stat stamp
+  (device, inode, size, mode, mtime, ctime) is unchanged and its last change is
+  at least 2 s old. A replaced or rewritten solver, even with its mtime
+  restored, is identified afresh. A fresh project's first `sail verify` is
+  about 0.67 s faster (31.13 to 30.46 s, native Linux) and the daemon's CPU
+  per Vest edit falls from 3.4 to 1.0 s.
+
 - Replay an unchanged `sail verify` (ADR 0082). A call identical to an earlier
   one that ended Current without starting a verifier prints that call's
   output (only Cargo's `Finished` time is regenerated) without running Cargo,

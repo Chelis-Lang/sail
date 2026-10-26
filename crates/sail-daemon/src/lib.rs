@@ -14,6 +14,7 @@
 mod bundled;
 #[cfg(unix)]
 mod digest_memo;
+mod identity_memo;
 #[cfg(unix)]
 pub mod jobs;
 #[cfg(unix)]
