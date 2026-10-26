@@ -70,6 +70,13 @@ semantic versioning once the API is published.
   of the inputs is now compared every two seconds alongside native events,
   and the inputs are rehashed only when a stamp changes (about 19 ms of CPU
   per pass on Vest's 3,458 entries).
+- Cut about 2.5 s from a first run on a new project or a fresh clone (native
+  Linux: `sail new` plus the first `sail verify` 13.7 → 11.2 s, IronKV 22.4 →
+  19.9 s). Shipped-proof admission hashes the standard-library source tree on
+  several workers while its sysroot query runs, overlaps its remaining
+  complete reads, and `sail verify` notices a newly started daemon within
+  about a millisecond instead of 25 ms. Every check still reads the same
+  bytes; verdicts and output are unchanged.
 - Sign a GitHub build-provenance attestation for each release archive, and have
   `scripts/install.py` verify it with `gh attestation verify` when GitHub CLI
   is signed in. A failed attestation refuses installation; without `gh` the
