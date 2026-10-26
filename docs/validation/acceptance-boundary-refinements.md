@@ -71,6 +71,7 @@ implementation obligation; it is not selected.
 | 2026-10-26 | `0b646c48` | Native Linux full end-to-end | Workspace, all 29 model cases, all 71 production cases and solver tests pass. Managed acceptance fails its original one-invocation/reuse assertion after an edit: the fresh target is verified but has SAIL3111 and no completion authority. Actual syscall tracing confirms a second driver in the same run/unit reuses slot 0 and receives EEXIST; the earlier reservation and observation remain present. No assertion or coverage check is relaxed; remaining e2e/PR conformance are unrun |
 | 2026-10-26 | `bcd21d9d` | Native Linux complete managed phase | Exclusive journal allocation restores complete evidence for both reported targets, with no report error. The original cold-edit assertion still fails: three verifier invocations, zero reused targets, expected one invocation. The 111.73-second run is a failed targeted regression check, not a full pre-push gate; the remaining cause is under investigation |
 | 2026-10-26 | `e2dcee0d` | macOS complete expanded input/kernel integration | Query and all 28 input cases, all 31 models, 27 source-capture tests and the full host gate pass. The authority root refuses its original request-coverage mutation because it hits the normal solver resource limit. The complete attempt fails; no resource, scope, inventory or guard check is relaxed. A proof-only opacity/reveal correction passes both whole-root development probes; final canonical qualification remains pending |
+| 2026-10-26 | `9bce577a` | Native combined pre-push gate | Workspace passes. Model stage is deliberately interrupted after main merges #389's runtime/currentness and shim safeguards as `6d825736`; source must incorporate those fixes before qualification. Remaining stages are unrun. The interruption is recorded separately from verifier/check failures |
 
 Legacy updater-body SHA-256:
 `94d497cbcd16f4f6f0b94b6d4166d07f3d26abf54b9b05abc9c78eb433a65ef4`.
@@ -162,6 +163,23 @@ Its exact source and receipt are preserved at
 `example-evidence-bucket/experiments/2026-10-26/acceptance-authority-aeb741ff.tgz`,
 SHA-256 `1d487f5ff8544e6c07dd7fb615ba62fd442a3743bacd97a0c4cce750c4cbbb95`.
 These component checkpoints do not replace a fresh final combined qualification.
+
+The combined `9bce577a` checkpoint passes the full macOS qualification:
+92 production cases, 31 model cases, 27 capture tests, 12 model-checker tests
+and strict clippy with 1,130/1,130 host tests. Its native attempt is interrupted
+as indexed above; the private raw artifact is
+`example-evidence-bucket/experiments/2026-10-26/acceptance-combined-9bce577a-native.tgz`,
+SHA-256 `2a3dcbad33865dae6b366411ef4c62b239ddbbf4e2a0c41edff91dff4da5caba`.
+
+The current-main integration preserves both independent readback conditions:
+the checked complete-batch guard and the context's runtime binding. Invocation
+retention also requires both a bound process observation and readable verifier
+bytes. Shim overflow transfers the original `RawTranscript` owner directly to
+pass-through and releases it after replay, preserving the main branch's memory
+bound without cloning the transcript. Strict workspace clippy, all 652 selected
+daemon/ledger/shim/verifier tests and all 12 real pinned-Z3 cached sessions pass
+on macOS after resolving these conflicts. Full coherent stock proofs, the host
+gate and native qualification of that merged source remain pending.
 
 The model runner now requires every inventoried guard control by name and
 order. Its failure tests remove each required control in turn; all 12 tests

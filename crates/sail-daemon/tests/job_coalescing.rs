@@ -111,6 +111,30 @@ fn record(context: &Path, project: &Path, version: u32) -> String {
         })
         .chain([(project.join(".cargo/config.toml"), None)])
         .collect();
+    // The run's runtime identity: here one toolchain file, by content.
+    let cache = context
+        .ancestors()
+        .nth(3)
+        .unwrap_or_else(|| unreachable!("context is under the cache"));
+    let toolchain = cache.join("toolchain");
+    if !toolchain.exists() {
+        assert!(std::fs::write(&toolchain, "toolchain").is_ok());
+    }
+    let rows = vec![(
+        toolchain.display().to_string(),
+        format!(
+            "{:x}",
+            Sha256::digest(std::fs::read(&toolchain).unwrap_or_default())
+        ),
+    )];
+    let identity = format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(&rows).unwrap_or_default())
+    );
+    let state = cache.join("runtime-identities");
+    assert!(std::fs::create_dir_all(&state).is_ok());
+    write(&state.join(format!("{identity}.json")), &rows);
+    write(&state.join("fixture-context.link"), &identity);
     let revision = "fixture-revision".to_owned();
     write(
         &context.join("read-check.json"),
@@ -181,6 +205,14 @@ fn remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edit
     assert_ne!(warm.id, configured.id);
     cancel(&client, &configured.id);
     assert!(std::fs::remove_file(project.join(".cargo/config.toml")).is_ok());
+    await_coalescing(&client, &root, &environment, &warm.id);
+    // A changed toolchain is not the runtime the result was recorded for.
+    let toolchain = root.join("cache/toolchain");
+    assert!(std::fs::write(&toolchain, "another toolchain").is_ok());
+    let retooled = submit(&client, &root, &environment);
+    assert_ne!(warm.id, retooled.id);
+    cancel(&client, &retooled.id);
+    assert!(std::fs::write(&toolchain, "toolchain").is_ok());
     await_coalescing(&client, &root, &environment, &warm.id);
     // Restoring the modification time does not hide a content edit.
     let source = project.join("source.rs");

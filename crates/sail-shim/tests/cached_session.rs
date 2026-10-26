@@ -54,14 +54,27 @@ fn session_starts(dir: &Path) -> usize {
 }
 
 fn run_shim(solver: &Path, socket: Option<&Path>, provenance: Option<&Path>) -> Vec<u8> {
+    run_shim_capped(solver, socket, provenance, None)
+}
+
+fn run_shim_capped(
+    solver: &Path,
+    socket: Option<&Path>,
+    provenance: Option<&Path>,
+    cap: Option<usize>,
+) -> Vec<u8> {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail-z3"));
     cmd.args(["-smt2", "-in"])
         .env("SAIL_Z3_PATH", solver)
         .env_remove("SAIL_TRACE_DIR")
         .env_remove("SAIL_DAEMON_SOCKET")
         .env_remove("SAIL_PROVENANCE_DIR")
+        .env_remove("SAIL_SHIM_BUFFER_BYTES")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped());
+    if let Some(cap) = cap {
+        cmd.env("SAIL_SHIM_BUFFER_BYTES", cap.to_string());
+    }
     if let Some(s) = socket {
         cmd.env("SAIL_DAEMON_SOCKET", s);
     }
@@ -216,6 +229,86 @@ fn second_session_replays_from_cache_without_unknowns_skipped() {
     // served (ADR 0009), so the solver starts again at the first of them and
     // replays everything before it.
     assert_eq!(session_starts(&dir), before + 2);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn sessions_over_the_buffer_bound_continue_as_pass_through() {
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let socket = dir.join("d.sock");
+    let (sock, cache) = (socket.clone(), dir.join("cache"));
+    let counters = Arc::new(sail_daemon::Stats::default());
+    std::thread::spawn(move || sail_daemon::serve(&sock, &cache, counters));
+    for _ in 0..50 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let records = dir.join("provenance");
+    assert!(std::fs::create_dir_all(&records).is_ok());
+    let direct = run_shim(&solver, None, None);
+    // A cold session over the bound forwards exactly and records nothing.
+    let capped = run_shim_capped(&solver, Some(&socket), Some(&records), Some(1));
+    assert_equivalent(&direct, &capped);
+    assert_eq!(std::fs::read_dir(&records).into_iter().flatten().count(), 0);
+    let fill = run_shim(&solver, Some(&socket), Some(&records));
+    assert_equivalent(&direct, &fill);
+    assert_eq!(
+        take_record(&records)["replies_served"],
+        0,
+        "the over-bound session published nothing"
+    );
+    // A warm session that served replies before reaching the bound still
+    // gives the solver's exact replies afterwards.
+    let starts = session_starts(&dir);
+    let warm = run_shim_capped(&solver, Some(&socket), Some(&records), Some(1));
+    assert_equivalent(&direct, &warm);
+    assert_eq!(session_starts(&dir), starts + 1);
+    assert_eq!(std::fs::read_dir(&records).into_iter().flatten().count(), 0);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn an_unwritable_cached_reply_exits_non_zero() {
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let socket = dir.join("d.sock");
+    let (sock, cache) = (socket.clone(), dir.join("cache"));
+    let counters = Arc::new(sail_daemon::Stats::default());
+    std::thread::spawn(move || sail_daemon::serve(&sock, &cache, counters));
+    for _ in 0..50 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let _ = run_shim(&solver, Some(&socket), None);
+    let mut child = Command::new(env!("CARGO_BIN_EXE_sail-z3"))
+        .args(["-smt2", "-in"])
+        .env("SAIL_Z3_PATH", &solver)
+        .env("SAIL_DAEMON_SOCKET", &socket)
+        .env_remove("SAIL_TRACE_DIR")
+        .env_remove("SAIL_PROVENANCE_DIR")
+        .env_remove("SAIL_SHIM_BUFFER_BYTES")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|e| unreachable!("shim: {e}"));
+    // The reader is gone before the first cached reply is written.
+    drop(child.stdout.take());
+    let mut stdin = child.stdin.take();
+    let writer = std::thread::spawn(move || {
+        if let Some(s) = stdin.as_mut() {
+            let _ = s.write_all(INPUT);
+        }
+    });
+    let status = child.wait().unwrap_or_else(|e| unreachable!("{e}"));
+    let _ = writer.join();
+    assert!(!status.success(), "{status}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
