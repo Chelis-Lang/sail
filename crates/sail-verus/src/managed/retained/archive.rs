@@ -22,7 +22,16 @@ const FILE_LIMIT: u64 = 256 * 1024 * 1024;
 const OUTPUT_LIMIT: u64 = 16 * 1024 * 1024;
 const ENTRY_LIMIT: u64 = 8 * 1024 * 1024;
 const TOTAL_LIMIT: u64 = 1024 * 1024 * 1024;
-const CAPACITY: usize = 4;
+/// At most this many archived revisions per logical target. The per-target
+/// byte limit (`TOTAL_LIMIT`, over every kept entry) and the arena's aggregate
+/// admission bound it further: a Vest-class entry is about 38 MB.
+const CAPACITY: usize = 16;
+/// Eviction hint naming the target's baseline: the first verified revision of
+/// its current lineage. It grants nothing; restore never reads it.
+const PIN: &str = "baseline.pin";
+/// The most recently evicted entry keys, so a later miss can be explained.
+const EVICTED: &str = "evicted.log";
+const EVICTED_KEPT: usize = 64;
 
 /// Fresh outer-caller values, captured before Cargo applies its managed child
 /// overrides. Only digests are serialized; a missing name means actual absence.
@@ -495,11 +504,175 @@ pub(super) fn retain(
     std::fs::create_dir_all(&directory).ok()?;
     let key = digest(&serde_json::to_vec(&entry.basis).ok()?);
     super::super::files::json(&directory.join(format!("{key}.json")), &entry).ok()?;
-    for path in entries(&directory).into_iter().skip(CAPACITY) {
-        std::fs::remove_file(path).ok()?;
-    }
+    evict(&directory, &key, &lineage(&entry.basis)?)?;
     collect(root, live_graphs);
     Some(())
+}
+
+/// The basis without its source revision: revisions of one lineage differ
+/// only in source content.
+fn lineage(basis: &Basis) -> Option<String> {
+    let mut basis = basis.clone();
+    basis.source_revision.clear();
+    Some(digest(&serde_json::to_vec(&basis).ok()?))
+}
+
+/// The key of the archived entry for `basis`.
+fn key(basis: &Basis) -> Option<String> {
+    Some(digest(&serde_json::to_vec(basis).ok()?))
+}
+
+/// One archived entry as eviction sees it, newest first.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Kept {
+    key: String,
+    bytes: u64,
+    lineage: Option<String>,
+}
+
+/// Which entries stay. `newest` (just written) always stays. The pinned
+/// baseline stays while it fits the byte limit beside `newest`; the others
+/// stay newest first while both the count and byte limits allow, and once one
+/// does not fit it and every older one go. Returns the kept keys and the
+/// baseline to record.
+fn plan(
+    listed: &[Kept],
+    newest: &str,
+    newest_lineage: &str,
+    pinned: Option<&str>,
+    capacity: usize,
+    limit: u64,
+) -> (BTreeSet<String>, Option<String>) {
+    let Some(first) = listed.iter().find(|kept| kept.key == newest) else {
+        return (BTreeSet::new(), None);
+    };
+    let mut kept = BTreeSet::from([first.key.clone()]);
+    let mut used = first.bytes;
+    // The recorded baseline, while it is of this lineage and still present;
+    // otherwise the oldest present revision of the lineage (an arena from
+    // before pinning, or after the byte limit evicted the old baseline).
+    let baseline = pinned
+        .and_then(|pin| {
+            listed
+                .iter()
+                .find(|kept| kept.key == pin && kept.lineage.as_deref() == Some(newest_lineage))
+        })
+        .or_else(|| {
+            listed
+                .iter()
+                .rev()
+                .find(|kept| kept.lineage.as_deref() == Some(newest_lineage))
+        });
+    let mut recorded = None;
+    if let Some(baseline) = baseline {
+        if baseline.key == newest {
+            recorded = Some(baseline.key.clone());
+        } else if kept.len() < capacity
+            && let Some(total) = used.checked_add(baseline.bytes)
+            && total <= limit
+        {
+            used = total;
+            kept.insert(baseline.key.clone());
+            recorded = Some(baseline.key.clone());
+        }
+    }
+    let rest: Vec<&Kept> = listed
+        .iter()
+        .filter(|entry| !kept.contains(&entry.key))
+        .collect();
+    for entry in rest {
+        match used.checked_add(entry.bytes) {
+            Some(total) if total <= limit && kept.len() < capacity => {
+                used = total;
+                kept.insert(entry.key.clone());
+            }
+            _ => break,
+        }
+    }
+    (kept, recorded)
+}
+
+/// Bounded per-target eviction after `newest` is written. Only the pinned
+/// baseline is exempt from count eviction; the byte limit binds every entry
+/// but the newest. Evicted keys are logged so a later miss can say why.
+fn evict(directory: &Path, newest: &str, newest_lineage: &str) -> Option<()> {
+    let paths = entries(directory);
+    let listed: Vec<Kept> = paths
+        .iter()
+        .filter_map(|path| {
+            let key = path.file_stem()?.to_str()?.to_owned();
+            let raw = bytes(path, ENTRY_LIMIT);
+            let parsed = raw
+                .as_deref()
+                .and_then(|raw| serde_json::from_slice::<Entry>(raw).ok());
+            let file = std::fs::metadata(path).map_or(ENTRY_LIMIT, |meta| meta.len());
+            let bytes = parsed.as_ref().map_or(Some(file), |entry| {
+                entry
+                    .outputs
+                    .iter()
+                    .map(|output| &output.content)
+                    .chain([&entry.stdout, &entry.stderr, &entry.compiler_reads])
+                    .try_fold(file, |total, content| total.checked_add(content.size))
+            });
+            Some(Kept {
+                key,
+                bytes: bytes.unwrap_or(u64::MAX),
+                lineage: parsed.and_then(|entry| lineage(&entry.basis)),
+            })
+        })
+        .collect();
+    let pinned = std::fs::read_to_string(directory.join(PIN)).ok();
+    let (kept, baseline) = plan(
+        &listed,
+        newest,
+        newest_lineage,
+        pinned.as_deref().map(str::trim),
+        CAPACITY,
+        TOTAL_LIMIT,
+    );
+    let mut evicted = Vec::new();
+    for path in &paths {
+        let Some(key) = path.file_stem().and_then(|stem| stem.to_str()) else {
+            continue;
+        };
+        if !kept.contains(key) {
+            std::fs::remove_file(path).ok()?;
+            evicted.push(key.to_owned());
+        }
+    }
+    match baseline {
+        Some(baseline) if pinned.as_deref().map(str::trim) != Some(baseline.as_str()) => {
+            let _ = std::fs::write(directory.join(PIN), baseline);
+        }
+        None => {
+            let _ = std::fs::remove_file(directory.join(PIN));
+        }
+        Some(_) => {}
+    }
+    if !evicted.is_empty() {
+        let log = directory.join(EVICTED);
+        let previous = std::fs::read_to_string(&log).unwrap_or_default();
+        let mut lines: Vec<&str> = previous
+            .lines()
+            .filter(|line| sha(line) && !kept.contains(*line))
+            .chain(evicted.iter().map(String::as_str))
+            .collect();
+        let excess = lines.len().saturating_sub(EVICTED_KEPT);
+        lines.drain(..excess);
+        let _ = std::fs::write(&log, lines.join("\n") + "\n");
+    }
+    Some(())
+}
+
+/// Whether the archived revision for `basis` was evicted and is not present.
+/// Explanation only: it never affects what is restored.
+pub(super) fn evicted(root: &Path, basis: &Basis) -> bool {
+    let (Some(directory), Some(key)) = (target(root, &basis.identity), key(basis)) else {
+        return false;
+    };
+    !directory.join(format!("{key}.json")).exists()
+        && std::fs::read_to_string(directory.join(EVICTED))
+            .is_ok_and(|log| log.lines().any(|line| line == key))
 }
 
 /// Eviction also releases unreferenced bodies. Any incomplete index scan keeps
@@ -524,6 +697,14 @@ fn collect(root: &Path, live_graphs: &BTreeSet<String>) {
             let Ok(entry) = entry else {
                 return;
             };
+            // The baseline pin and eviction log are not entries.
+            if entry
+                .path()
+                .extension()
+                .is_none_or(|extension| extension != "json")
+            {
+                continue;
+            }
             let Some(record) = bytes(&entry.path(), ENTRY_LIMIT)
                 .and_then(|raw| serde_json::from_slice::<Entry>(&raw).ok())
             else {
@@ -561,7 +742,7 @@ fn collect(root: &Path, live_graphs: &BTreeSet<String>) {
         }
     }
     // The caller supplies graph references from every live compiler artifact
-    // generation, in addition to the four retained entries per logical target.
+    // generation, in addition to the retained entries of every logical target.
     let Ok(entries) = std::fs::read_dir(root.join("graphs")) else {
         return;
     };
@@ -1067,6 +1248,130 @@ mod tests {
         );
         assert!(!artifact.exists());
         late_cleanup_refusal(&root, &basis, &names, &artifact)?;
+        Ok(())
+    }
+
+    fn kept(key: &str, bytes: u64, lineage: &str) -> Kept {
+        Kept {
+            key: key.into(),
+            bytes,
+            lineage: Some(lineage.into()),
+        }
+    }
+
+    #[test]
+    fn eviction_pins_the_baseline_against_the_count_limit_only() {
+        // Newest first: R5 was just written, A is the lineage's first.
+        let listed: Vec<_> = ["R5", "R4", "R3", "R2", "R1", "A"]
+            .into_iter()
+            .map(|key| kept(key, 10, "L"))
+            .collect();
+        let (keep, pin) = plan(&listed, "R5", "L", Some("A"), 4, 1000);
+        assert_eq!(
+            keep,
+            BTreeSet::from(["R5", "A", "R4", "R3"].map(String::from))
+        );
+        assert_eq!(pin.as_deref(), Some("A"));
+        // Without a recorded pin the oldest revision of the lineage is pinned.
+        let (keep, pin) = plan(&listed, "R5", "L", None, 4, 1000);
+        assert!(keep.contains("A"));
+        assert_eq!(pin.as_deref(), Some("A"));
+        // The byte limit binds every entry but the newest, oldest first.
+        let (keep, _) = plan(&listed, "R5", "L", Some("A"), 16, 35);
+        assert_eq!(keep, BTreeSet::from(["R5", "A", "R4"].map(String::from)));
+        // A baseline that cannot fit beside the newest is evicted by bytes.
+        let mut large = listed.clone();
+        large[5].bytes = 991;
+        let (keep, pin) = plan(&large, "R5", "L", Some("A"), 16, 1000);
+        assert!(!keep.contains("A"));
+        assert_eq!(pin, None);
+        assert_eq!(keep.len(), 5);
+        // Once one older entry does not fit, it and every older one go.
+        let mut gap = listed.clone();
+        gap[2].bytes = 500;
+        let (keep, _) = plan(&gap, "R5", "L", Some("A"), 16, 100);
+        assert_eq!(keep, BTreeSet::from(["R5", "A", "R4"].map(String::from)));
+        // A new lineage pins its own first revision; the old one is unpinned.
+        let mut switched = listed.clone();
+        switched[0].lineage = Some("M".into());
+        let (keep, pin) = plan(&switched, "R5", "M", Some("A"), 4, 1000);
+        assert_eq!(pin.as_deref(), Some("R5"));
+        assert_eq!(
+            keep,
+            BTreeSet::from(["R5", "R4", "R3", "R2"].map(String::from))
+        );
+    }
+
+    #[test]
+    fn many_passing_edits_still_restore_the_original_revision()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("baseline")?;
+        let original = archive_fixture(&root, BTreeMap::new())?;
+        let streams = [
+            root.0.join("stdout"),
+            root.0.join("stderr"),
+            root.0.join("inputs.json"),
+        ];
+        let streams: [&Path; 3] = [&streams[0], &streams[1], &streams[2]];
+        let directory = target(&root.0, &original.basis.identity).ok_or("target")?;
+        let mut revisions = Vec::new();
+        // The original, then more passing edits than the revision limit.
+        for index in 0..=CAPACITY + 3 {
+            let mut entry = original.clone();
+            if index > 0 {
+                entry.basis.source_revision = format!("R{index}");
+            }
+            let entry = entry.seal().ok_or("seal")?;
+            retain(&root.0, &entry, streams, &BTreeSet::new()).ok_or("retain")?;
+            let path = directory.join(format!("{}.json", key(&entry.basis).ok_or("key")?));
+            std::fs::File::options()
+                .append(true)
+                .open(path)?
+                .set_modified(
+                    SystemTime::UNIX_EPOCH
+                        + std::time::Duration::from_secs(1000 * (index as u64 + 1)),
+                )?;
+            revisions.push(entry.basis);
+        }
+        assert_eq!(entries(&directory).len(), CAPACITY);
+        let artifact = root.0.join("libunit-abcd.rmeta");
+        std::fs::write(&artifact, b"artifact B")?;
+        let names = BTreeSet::from([OsString::from("libunit-abcd.rmeta")]);
+        let caller = CallerEnvironment::capture("test-current").ok_or("caller snapshot")?;
+        let restored = restore(
+            &root.0,
+            &revisions[0],
+            &root.0,
+            &names,
+            &caller,
+            "test-current",
+            || true,
+        )
+        .map_err(|error| format!("rollback: {:?}", error.paths))?
+        .ok_or("the original revision was evicted")?;
+        assert_eq!(restored.receipt.invocation.run_id, "establishing-A");
+        assert_eq!(std::fs::read(&artifact)?, b"artifact A");
+        assert!(!evicted(&root.0, &revisions[0]));
+        // The oldest unpinned edits went, and the log says so.
+        for basis in &revisions[1..=4] {
+            assert!(evicted(&root.0, basis));
+            assert!(
+                restore(
+                    &root.0,
+                    basis,
+                    &root.0,
+                    &names,
+                    &caller,
+                    "test-current",
+                    || true
+                )
+                .is_ok_and(|value| value.is_none())
+            );
+        }
+        assert!(!evicted(&root.0, &revisions[5]));
+        // Pin and log files are not entries: collection still releases nothing
+        // that a kept entry references.
+        assert!(root.0.join("blobs").join(&original.stdout.sha256).exists());
         Ok(())
     }
 }

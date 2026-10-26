@@ -677,10 +677,12 @@ pub(crate) fn closure_miss(metadata: &Value) -> Option<String> {
         let advice = match (commands.is_empty(), difference.vstd_default_off) {
             (false, false) => format!("align them with {}", list(&commands, "and")),
             (false, true) => format!(
-                "align them with {}, and by {feature}",
+                "align them with {}, and by {feature}; the shipped proof and instant revert need this feature step too, not only the `cargo update` commands",
                 list(&commands, "and")
             ),
-            (true, _) => format!("align them by {feature}"),
+            (true, _) => format!(
+                "align them by {feature}; the shipped proof and instant revert need this step"
+            ),
         };
         reason.push_str(" (");
         reason.push_str(&advice);
@@ -3026,13 +3028,13 @@ mod tests {
         assert_eq!(
             closure_miss(&vest).ok_or("no reason")?,
             format!(
-                "vstd's dependencies differ from the shipped build's: unicode-ident is 1.0.24 instead of {unicode} and vstd's default features are off (align them with `cargo update -p unicode-ident --precise {unicode}`, and by enabling vstd's default features, that is removing `default-features = false` from its dependency)"
+                "vstd's dependencies differ from the shipped build's: unicode-ident is 1.0.24 instead of {unicode} and vstd's default features are off (align them with `cargo update -p unicode-ident --precise {unicode}`, and by enabling vstd's default features, that is removing `default-features = false` from its dependency; the shipped proof and instant revert need this feature step too, not only the `cargo update` commands)"
             )
         );
         let mut defaults = shipped.clone();
         admission::test_features(&mut defaults, "vstd", &["alloc", "std"])?;
         assert!(closure_miss(&defaults).ok_or("no reason")?.ends_with(
-            "vstd's default features are off (align them by enabling vstd's default features, that is removing `default-features = false` from its dependency)"
+            "vstd's default features are off (align them by enabling vstd's default features, that is removing `default-features = false` from its dependency; the shipped proof and instant revert need this step)"
         ));
         let mut verismo = shipped.clone();
         admission::test_features(&mut verismo, "vstd", &["alloc", "allow_panic"])?;

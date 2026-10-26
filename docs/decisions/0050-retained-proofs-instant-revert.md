@@ -370,6 +370,31 @@ targets. The full three-round IronKV catalogue now has 153 matching comparisons
 and a 1.48× edit-loop gain, with two remaining median overheads of 0.03–0.10 s.
 The other cohorts and platform gates remain separate release requirements.
 
+## Amendment 2026-10-26: pin the baseline and size retention by bytes
+
+Item 6's four proofs per target proved too few. A native measurement on Vest
+found that five passing edits evicted the original verified revision, so
+reverting to it recompiled (about 21 s instead of 1.4 s). Each Vest entry is
+about 38 MB.
+
+Decision: a target keeps up to 16 archived revisions. They are also bounded by
+1 GiB of declared entry bytes per target (the same `TOTAL_LIMIT` that bounds
+one entry) and by the arena's aggregate admission. The first verified revision
+of the target's current lineage (the same basis apart from source revision) is
+the baseline. The baseline is exempt from count eviction. The newest entry
+always stays; then the baseline stays if it fits the byte limit beside the
+newest; then the other revisions stay, newest first. Once one does not fit,
+it and every older revision are evicted. When the byte limit evicts the
+baseline, the oldest remaining revision of the lineage becomes the baseline.
+The pin (`baseline.pin`) and a bounded log of evicted keys (`evicted.log`) are
+eviction and explanation hints. Restore never reads them, and every
+restore-time check is unchanged.
+
+When automatic retention does not apply, a `SAIL3146` note says why: the
+dependency profile is not qualified (with the first mismatch), the target is
+too cheap for the cost budget, or its earlier revision was evicted. The note
+is in `--output json` notes, and on stderr only with `SAIL_EXPLAIN=1`.
+
 ## Amendment 2026-10-20: the source snapshot reads the selected closure (#278)
 
 **Status:** accepted by the owner 2026-10-20 (#289).

@@ -326,12 +326,15 @@ pub(super) fn parse_outputs(stdout: &[u8]) -> (Vec<Value>, String) {
 /// Raw stderr remains in the captured log; every other byte stays comparable.
 pub(super) fn separate_sail_notes(run: &mut RunRecord) -> Vec<String> {
     const PREFIX: &str = "note[SAIL3138]: Sail's preverified vstd proof was not used because ";
+    // Why instant revert did not apply (SAIL3146), also explanation only.
+    const RETENTION: &str = "note[SAIL3146]: instant revert did not apply because ";
     let mut diagnostics = String::new();
     let mut notices = Vec::new();
     for line in run.stderr.split_inclusive('\n') {
         let text = line.trim_end_matches(['\r', '\n']);
         if text.starts_with(PREFIX)
             && text.ends_with(", so this run verified vstd itself; verification is unaffected")
+            || text.starts_with(RETENTION) && text.ends_with("; verification is unaffected")
         {
             notices.push(text.to_owned());
         } else {
@@ -770,6 +773,9 @@ mod tests {
             run.stderr,
             "note[SAIL3138]: unexpected text\nnote[SAIL3102]: other note\n"
         );
+        run.stderr = "note[SAIL3146]: instant revert did not apply because demo last compiled in 5 ms; verification is unaffected\nerror: failed\n".to_owned();
+        assert_eq!(separate_sail_notes(&mut run).len(), 1);
+        assert_eq!(run.stderr, "error: failed\n");
     }
 
     #[test]
