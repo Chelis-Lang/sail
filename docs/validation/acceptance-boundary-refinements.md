@@ -10,6 +10,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 |---|---|---|
 | `4bd22455` | All 31 model and 155 production cases pass coherently on macOS and native Linux; native workspace passes | Solver passes 53/54 and stops at the actual compiler-phase witness's missing frozen fixture (#425); later e2e/PR conformance unrun |
 | `73f928d1` | Native workspace (605.71 s), all 31 model and 213 production cases pass, complete_suite=true; all 53 solver tests pass (22.49 s gate duration) | Full e2e stops at the cold JSON replay trace assertion; PR conformance unrun. The newer source restores the missing cold-miss trace; later code does not inherit the passing earlier stages |
+| `3352f2fd` | Native combined gate stops during workspace lint checks (181.61 s) | Five source-shared API style diagnostics; models, refinements, solver, e2e and conformance are unrun. Documented local lint allowances preserve the proved path-binding/refusal branches; rerun required |
 | `00a501c7` | Whole authority root passes 489/0 with all 830 function entries and final frozen source/runtime checks. The byte-identical query/input assemblies pass separately at `11f3be8c`: 353/0 (637), 283/0 (469); every previous function retained | Component development evidence, not one combined canonical pass. Workspace stops at twelve style/lint diagnostics; corrected local annotations retain proved bodies and require rerun |
 | `b8775f8f` | Native whole positive roots: query 343/0 (621 function entries), inputs 264/0 (438), authority 430/0 (736); every prior function retained, final source/runtime identity checked. Workspace passes (475.68 s) | Development positive evidence only: 16 new stdout controls and its complete 229-case canonical matrix remain unqualified |
 | `cc8c24a1` | Complete macOS canonical query component: 288 obligations, 503 function entries and all 39 ordinary controls. Native full e2e union including extra and PR conformance pass | Earlier checkpoint, not qualification of later code; e2e/PR gate durations 1,175.78 s/122.67 s include image/build work |
@@ -55,6 +56,11 @@ conformance and added-cost qualification remain pending. Local builds and
 verifier jobs remain stopped while the owner's machine is busy.
 
 ## Source and actual scope
+
+The `3352f2fd` stopped native gate is preserved at
+`example-evidence-bucket/experiments/2026-10-26/acceptance-combined-3352f2fd-native-gate.tgz`.
+SHA-256: `d1c573d8b6b5f3588959b3827d1b4f949b57f83e61d2368e932331df03043dd4`.
+The 6,371,979-byte archive was independently downloaded and hashed.
 
 The `00a501c7` whole authority proof and stopped workspace gate are preserved at
 `example-evidence-bucket/experiments/2026-10-26/acceptance-latest-00a501c7-native-development.tgz`.
@@ -173,6 +179,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `3352f2fd` | Native full gate | Workspace stops on five API style diagnostics: nested path-binding admission and explicit replay-refusal branches. Local documented allowances preserve the proved bodies; every later gate remains unrun |
 | 2026-10-26 | `00a501c7` | Native authority proof/workspace | Entire authority root passes 489/0, all 830 functions and final source/runtime checks. Workspace stops at source-shared style/lifetime lint diagnostics and an unfulfilled field lint expectation; local reasons/annotations retain the proved control flow. Full gate rerun pending |
 | 2026-10-26 | `73f928d1` | Native full gate | Workspace, 31 model cases, all 213 production cases and 53 solver tests pass. E2e stops at the original cold JSON replay trace assertion; PR conformance unrun. Restored cold trace and exact-partial source fixes require a new whole gate |
 | 2026-10-26 | `66a4cb46` | Whole authority root development | VIR checking requires hide headers at the start of the function body, not inside a nested proof block. The correction moves the identical headers to the supported position; loop/liveness verification and workspace remain pending |
