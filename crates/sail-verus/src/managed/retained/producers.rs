@@ -597,7 +597,10 @@ impl Native {
     pub(crate) fn arguments(&self) -> &[OsString] {
         self.graph.arguments()
     }
-    pub(crate) fn configure(&self, command: &mut std::process::Command) {
+    pub(crate) fn configure(
+        &self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         self.reads.configure(command);
     }
     pub(crate) fn started(&mut self, pid: u32) {
