@@ -798,7 +798,20 @@ sail_verified! {
                     }
                     return false;
                 }
-                sail_proof! { assert(contains_present(observed@, *wanted)); }
+                sail_proof! {
+                    assert(same_key(required[required_order[i as int] as int], observed[observed_order[i as int] as int]));
+                    assert(value_present(observed[observed_order[i as int] as int].value));
+                    assert(contains_present(observed@, *wanted));
+                    assert forall|j: int| #![trigger required_order[j]] 0 <= j < i + 1 implies
+                        same_key(required[required_order[j] as int], observed[observed_order[j] as int])
+                            && value_present(observed[observed_order[j] as int].value) by {
+                        assert(permutation_at(required_order@, required_inverse@, required.len() as nat, j));
+                        assert(permutation_at(observed_order@, observed_inverse@, observed.len() as nat, j));
+                        if j < i {
+                            assert(same_key(required[required_order[j] as int], observed[observed_order[j] as int]));
+                        }
+                    }
+                }
                 i += 1;
             }
         }
