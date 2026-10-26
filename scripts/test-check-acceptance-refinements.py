@@ -28,6 +28,67 @@ CHECKER = load("production_refinement_checker_tests", "check-acceptance-refineme
 SOURCE = CHECKER.SOURCE
 
 
+class SourceLexerTests(unittest.TestCase):
+    """Indexed matching preserves exact literal boundaries and source spans."""
+
+    def assert_values_and_spans(self, source: str, values: list[str]):
+        expected = []
+        cursor = 0
+        for value in values:
+            begin = source.index(value, cursor)
+            cursor = begin + len(value)
+            expected.append((value, begin, cursor))
+        self.assertEqual([tuple(token) for token in SOURCE.tokens(source)], expected)
+
+    def test_each_regex_uses_absolute_end_at_nonzero_positions(self):
+        source = 'pre r#"raw"# \'a\' \'life 12u8 post'
+        self.assertEqual([tuple(token) for token in SOURCE.tokens(source)], [
+            ("pre", 0, 3), ('r#"raw"#', 4, 12), ("'a'", 13, 16),
+            ("'life", 17, 22), ("12u8", 23, 27), ("post", 28, 32)])
+
+    def test_unicode_spans_are_original_character_offsets(self):
+        source = "λ \u2003'a' r\"é\" z"
+        self.assertEqual([tuple(token) for token in SOURCE.tokens(source)], [
+            ("λ", 0, 1), ("'a'", 3, 6), ('r"é"', 7, 11), ("z", 12, 13)])
+
+    def test_comments_and_escaped_literals_do_not_expose_delimiters(self):
+        literal = r'"// text /* \" ]"'
+        raw = r'br##"/* // \" }"##'
+        source = "before /* first /* nested */ { } */ " + literal + " // ignored\r\n" + raw + " after"
+        self.assert_values_and_spans(source, ["before", literal, raw, "after"])
+
+    def test_raw_prefixes_and_exact_hash_terminators(self):
+        for prefix in ("r", "br", "cr"):
+            for hashes in ("", "###"):
+                body = "/* [ ] // é" if not hashes else 'short "## does not end'
+                literal = prefix + hashes + '"' + body + '"' + hashes
+                source = "before " + literal + "; after"
+                with self.subTest(prefix=prefix, hashes=hashes):
+                    self.assert_values_and_spans(source, ["before", literal, ";", "after"])
+
+    def test_character_priority_lifetimes_and_existing_prefix_subset(self):
+        source = r'''before 'a' 'static '\n' b'7' c"text" 0xff_u8 r#name'''
+        self.assert_values_and_spans(source, ["before", "'a'", "'static", r"'\n'", "b", "'7'",
+            "c", '"text"', "0xff_u8", "r", "#", "name"])
+
+    def test_malformed_literals_keep_exact_refusal_messages(self):
+        for source, message in (
+            ("before /* open", "unterminated block comment"),
+            ('before r##"open"#', "unterminated raw string"),
+            ('before br#"open', "unterminated raw string"),
+            ('before cr"open', "unterminated raw string"),
+            ('before "open\\', "unterminated string"),
+            ("before '", "unsupported character literal"),
+            (r"before '\u{41}'", "unsupported character literal"),
+            ("before '\\\n'", "unsupported character literal"),
+            ("before 'λ", "unsupported character literal"),
+        ):
+            with self.subTest(source=source):
+                with self.assertRaises(SOURCE.SourceRefusal) as failure:
+                    SOURCE.tokens(source)
+                self.assertEqual(str(failure.exception), message)
+
+
 class SourceCaptureTests(unittest.TestCase):
     """Mistaken source/representation selection cannot become proof evidence."""
 

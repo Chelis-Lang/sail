@@ -76,6 +76,8 @@ published work branches, existing evidence and unfinished integration work.
 The [compiler-input observation proposal](design/compiler-input-observation.md)
 separates the next loader/decoder implementation slice from unsupported opaque
 I/O and the native observation/launch architecture decisions.
+The [source lexer qualification plan](design/acceptance-source-lexer.md) covers
+exact Git-blob differential checks and separate native preflight measurements.
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs
