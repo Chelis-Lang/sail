@@ -125,6 +125,7 @@ a=sys.argv[1:]
 if a[:2]==['engine','status']:print(json.dumps({'rust_toolchain':'sail-test-pin'}));sys.exit(0)
 if a[:2]==['verus','new']:
  state.write_text(os.getcwd());p=Path('demo/src');p.mkdir(parents=True);(p/'lib.rs').write_text('fixture');Path('demo/Cargo.toml').write_text('[package]\nname="demo"\nversion="0.0.0"\n');sys.exit(0)
+if a[:1]==['clean']:sys.exit(0)
 if a[:1]==['generate-lockfile']:
  if os.environ['SAIL_E2E_TEST_CASE'] in ['child-failed','both-failed','relative-child-failed']:print('original fixture child failure',file=sys.stderr);sys.exit(23)
  Path('Cargo.lock').write_text('fixture lock');sys.exit(0)
@@ -141,7 +142,8 @@ if 'pub fn broken' in source:os.write(2,b'cannot find value y\n');sys.exit(101)
 if is_sail and os.environ['SAIL_E2E_TEST_CASE'] in ['mismatch','collector-failed']:os.write(1,b'intentional fixture mismatch\n')
 if 'DisplaySpecImpl' in source:
  os.write(2,b'[rust_verify/src/verifier.rs:113:17] &sp.as_string = "/rustc/fixture/library/core/src/fmt/mod.rs:1:1: 1:2 (#1)"\nerror: could not compile `demo`\n');sys.exit(101)
-if 'ensures r > x,' in source:
+# The seeded-mutation smoke's failing mutants.
+if 'ensures r > x,' in source or 'r == a && r == b' in source or ('fn sum_to' in source and 's = s + i as u64;' not in source):
  os.write(1,b'verification results:: 1 verified, 1 errors\n');os.write(2,b'error: postcondition not satisfied\nerror: could not compile `demo`\n');sys.exit(101)
 os.write(1,b'verification results:: 2 verified, 0 errors\n')
 '''
@@ -180,6 +182,10 @@ a=a[1:];os.execvp(a[0],a)
             # Select the same Python as this test without changing HOME/toolchains.
             python = tools / 'python3'
             python.symlink_to(sys.executable)
+            # The smoke's per-function verdict checker, which needs real JSON.
+            check_output = tools / 'check_output'
+            check_output.write_text('#!/bin/sh\nexit 0\n')
+            check_output.chmod(0o755)
             evidence = root / ('relative-evidence' if case == 'relative-child-failed' else 'evidence')
             if case in ('collector-failed', 'both-failed', 'relative-child-failed'):
                 evidence.write_text('intentional destination failure')
@@ -188,6 +194,7 @@ a=a[1:];os.execvp(a[0],a)
                 'SAIL_E2E_OUTPUT_OUT': evidence.name if case == 'relative-child-failed' else str(evidence),
                 'SAIL_E2E_TEST_CASE': case,
                 'SAIL_E2E_TEST_STATE': str(root / 'fixture-work'),
+                'SAIL_E2E_CHECK_OUTPUT': str(check_output),
             }
             result = subprocess.run(['bash', str(HERE / 'test-output.sh'), str(tools / 'sail'), 'loop'],
                                     env=env, cwd=root, capture_output=True, timeout=30)
