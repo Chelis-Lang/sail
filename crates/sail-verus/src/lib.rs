@@ -54,6 +54,15 @@ impl std::error::Error for Error {}
 /// Result type for this crate.
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Whether Sail's own explanatory notes (`SAIL0003`, `SAIL3112`, `SAIL3138`)
+/// are also printed in human output: only with `SAIL_EXPLAIN=1`. By default a
+/// human `sail verify` prints exactly what plain `cargo verus verify` prints;
+/// `--output json` results always carry the notes.
+#[must_use]
+pub fn explain() -> bool {
+    std::env::var_os("SAIL_EXPLAIN").is_some_and(|value| value == "1")
+}
+
 /// The root of sail's cache: `$SAIL_CACHE_DIR`, else `$XDG_CACHE_HOME/sail`,
 /// else `~/.cache/sail`.
 ///

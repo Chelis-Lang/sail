@@ -98,7 +98,7 @@ pub(crate) fn config(
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
     let socket = std::env::var_os("SAIL_DAEMON_SOCKET")
         .map_or_else(|| crate::default_socket(&cache), PathBuf::from);
-    let daemon = crate::verify::ensure_daemon(&socket);
+    let daemon = crate::verify::ensure_daemon(&socket, attribution_logs || sail_verus::explain());
     let workspace = std::env::current_dir().map_err(|e| e.to_string())?;
     let (cargo, cargo_toolchain) =
         cargo(&workspace).ok_or("error[SAIL3100]: cargo is not on PATH")?;
@@ -224,8 +224,9 @@ pub(crate) fn verify(
         sail_verus::managed::run_showing_output(&config, out, err)
     };
     match result {
-        Ok(result) => {
+        Ok(mut result) => {
             if options.json {
+                result.notes.extend(crate::verify::daemon_note());
                 let _ = writeln!(
                     out,
                     "{}",
