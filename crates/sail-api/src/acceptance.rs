@@ -10,8 +10,8 @@
 )]
 
 use sail_acceptance::authority::{
-    CompletionPolicy, RequestedTarget, argument_flag, copy_bytes, exact_bytes, owned_obligation,
-    unique_obligations,
+    CompletionPolicy, ObservedAttempt, RequestedTarget, argument_flag, copy_bytes, exact_bytes,
+    observed_payload_matches, owned_obligation, unique_obligations,
 };
 use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verified, sail_while};
 
@@ -23,8 +23,8 @@ pub use crate::acceptance_sort::{
 
 use crate::jobs::Mode;
 use crate::output::{
-    CrateReport, EngineEstablishment, EstablishmentName, FunctionReport, Report, SourceSummaryName,
-    VerdictName,
+    CrateReport, EngineEstablishment, ErrorInfo, EstablishmentName, FunctionReport, Report,
+    SourceSummaryName, VerdictName,
 };
 use crate::project::{Currentness, EngineIdentity, ProjectResult, ResolvedRequest, TargetResult};
 
@@ -1444,6 +1444,32 @@ sail_verified! {
                 CompletionPolicy::Receipt => c.verus.success != Some(false),
                 CompletionPolicy::Whole | CompletionPolicy::Repair => c.verus.success == Some(true),
             }
+    }
+}
+
+sail_verified! {
+    /// Binds live report input to sealed process observations, preserving fresh
+    /// output while recording missing history as retained-authority refusal.
+    pub fn require_process_observation(report: &mut Report, observed: Option<&ObservedAttempt>,
+        stdout: &[u8], stderr: &[u8], exit: Option<i32>, unavailable: ErrorInfo) -> (out: bool)
+        requires(observed.is_some() ==> sail_acceptance::authority::observation_complete(
+            &sail_acceptance::authority::observed_running(observed.unwrap())))
+        ensures(out == (observed.is_some()
+            && sail_acceptance::authority::running_stdout(&sail_acceptance::authority::observed_running(observed.unwrap())).unwrap()@ == stdout@
+            && sail_acceptance::authority::running_stderr(&sail_acceptance::authority::observed_running(observed.unwrap())).unwrap()@ == stderr@
+            && sail_acceptance::authority::running_exit(&sail_acceptance::authority::observed_running(observed.unwrap())).unwrap() == exit),
+            final(report).error.is_some() == (old(report).error.is_some() || !out),
+            old(report).error.is_some() ==> final(report).error == old(report).error,
+            final(report).command == old(report).command, final(report).schema_version == old(report).schema_version,
+            final(report).exit_code == old(report).exit_code, final(report).summary == old(report).summary,
+            final(report).crates == old(report).crates, final(report).engine == old(report).engine)
+    {
+        let matched = match observed {
+            Some(observed) => observed_payload_matches(observed, stdout, stderr, exit),
+            None => false,
+        };
+        if !matched && report.error.is_none() { report.error = Some(unavailable); }
+        matched
     }
 }
 
