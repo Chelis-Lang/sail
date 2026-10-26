@@ -723,6 +723,8 @@ sail_code! {
         ExitMismatch,
         /// Original result document fields or framing refuse completion.
         Document,
+        /// An original observed diagnostic requires an unavailable runtime feature.
+        MissingFeature,
     }
 }
 
@@ -834,7 +836,8 @@ sail_verified! {
     pub fn engine_completion(p: &Option<EngineProtocolCandidate>, d: &EngineDocumentCandidates,
         stdout: &[u8], exit: Option<i32>) -> (out: EngineCompletion)
         requires(true)
-        ensures((out == EngineCompletion::Complete) == engine_completion_valid(p, d, stdout@, exit))
+        ensures((out == EngineCompletion::Complete) == engine_completion_valid(p, d, stdout@, exit),
+            out != EngineCompletion::MissingFeature)
     {
         if exit != Some(0i32) && exit != Some(1i32) { return EngineCompletion::ProcessStatus; }
         if stdout.len() > 33_554_432 { return EngineCompletion::ResultSize; }
@@ -876,6 +879,192 @@ sail_verified! {
     }
 }
 
+sail_spec! {
+    pub open spec fn engine_prefix_at(bytes: Seq<u8>, pattern: Seq<u8>, at: int) -> bool {
+        0 <= at <= bytes.len() && at + pattern.len() <= bytes.len()
+            && bytes.subrange(at, at + pattern.len()) == pattern
+    }
+    pub open spec fn engine_contains_pattern(bytes: Seq<u8>, pattern: Seq<u8>) -> bool {
+        exists |at: int| 0 <= at <= bytes.len() && engine_prefix_at(bytes, pattern, at)
+    }
+    pub open spec fn engine_feature_byte(byte: u8) -> bool {
+        (48 <= byte <= 57) || (65 <= byte <= 90) || (97 <= byte <= 122)
+            || byte == 95 || byte == 45
+    }
+    pub open spec fn engine_feature_name(feature: Seq<u8>) -> bool {
+        feature.len() > 0 && forall |i: int| 0 <= i < feature.len() ==> engine_feature_byte(feature[i])
+    }
+    pub open spec fn engine_feature_pattern(feature: Seq<u8>) -> Seq<u8> {
+        b"Please cargo build with `--features "@ + feature + seq![96u8]
+    }
+}
+
+sail_verified! {
+    /// Checks an exact byte pattern at one candidate original offset.
+    pub fn engine_pattern_at(bytes: &[u8], pattern: &[u8], at: usize) -> (out: bool)
+        requires(true)
+        ensures(out == engine_prefix_at(bytes@, pattern@, at as int))
+    {
+        if at > bytes.len() || pattern.len() > bytes.len() - at { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < pattern.len())
+            invariant(i <= pattern.len(), at <= bytes.len(), pattern.len() <= bytes.len() - at,
+                forall |j: int| 0 <= j < i ==> bytes@[at as int + j] == pattern@[j])
+            decreases(pattern.len() - i)
+            {
+                if bytes[at + i] != pattern[i] { return false; }
+                i += 1;
+            }
+        }
+        sail_proof! { assert(bytes@.subrange(at as int, at as int + pattern@.len()) =~= pattern@); }
+        true
+    }
+}
+
+sail_verified! {
+    /// Searches original bytes without decoding, normalization or candidate offsets.
+    pub fn engine_contains(bytes: &[u8], pattern: &[u8]) -> (out: bool)
+        requires(true)
+        ensures(out == engine_contains_pattern(bytes@, pattern@))
+    {
+        let mut at = 0usize;
+        sail_while! { (at < bytes.len())
+            invariant(at <= bytes.len(),
+                forall |j: int| 0 <= j < at ==> !engine_prefix_at(bytes@, pattern@, j))
+            decreases(bytes.len() - at)
+            {
+                if engine_pattern_at(bytes, pattern, at) { return true; }
+                at += 1;
+            }
+        }
+        engine_pattern_at(bytes, pattern, at)
+    }
+}
+
+sail_verified! {
+    /// Checks the exact ASCII feature-name grammar used by the native decoder.
+    #[allow(clippy::manual_range_contains,
+        reason = "The explicit byte comparisons are shared with the stock-checked grammar, without a range-library adapter.")]
+    pub fn engine_valid_feature_name(feature: &[u8]) -> (out: bool)
+        requires(true)
+        ensures(out == engine_feature_name(feature@))
+    {
+        if feature.is_empty() { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < feature.len())
+            invariant(i <= feature.len(), feature@.len() > 0,
+                forall |j: int| 0 <= j < i ==> engine_feature_byte(feature@[j]))
+            decreases(feature.len() - i)
+            {
+                let byte = feature[i];
+                if !((48 <= byte && byte <= 57) || (65 <= byte && byte <= 90)
+                    || (97 <= byte && byte <= 122) || byte == 95 || byte == 45) { return false; }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Constructs the complete unchanged diagnostic spelling, including its delimiter.
+    pub fn engine_diagnostic_pattern(feature: &[u8]) -> (out: Vec<u8>)
+        requires(true)
+        ensures(out@ == engine_feature_pattern(feature@))
+    {
+        let mut out = copy_bytes(b"Please cargo build with `--features ");
+        let mut i = 0usize;
+        sail_while! { (i < feature.len())
+            invariant(i <= feature.len(),
+                out@ == b"Please cargo build with `--features "@ + feature@.take(i as int))
+            decreases(feature.len() - i)
+            { out.push(feature[i]); i += 1; }
+        }
+        out.push(b'`');
+        out
+    }
+}
+
+sail_code! {
+    /// A concrete missing-feature diagnostic in this exact observed child's raw
+    /// output, absent from its declared available feature inventory. It is a
+    /// refusal, never proof authority or a trusted runtime-image certificate.
+    pub struct MissingEngineFeature<'a, 'b> {
+        observed: &'a ObservedAttempt<'b>,
+        feature: &'a [u8],
+        available: &'a [Vec<u8>],
+    }
+    impl<'a, 'b> MissingEngineFeature<'a, 'b> {
+        sail_impl_spec! {
+            pub closed spec fn observed(&self) -> &'a ObservedAttempt<'b> { self.observed }
+            pub closed spec fn feature(&self) -> &'a [u8] { self.feature }
+            pub closed spec fn available(&self) -> &'a [Vec<u8>] { self.available }
+            pub open spec fn valid(&self) -> bool { missing_engine_feature_valid(self) }
+        }
+        sail_method! {
+            /// Borrows the original actual process observation.
+            pub fn observed_attempt(&self) -> (out: &'a ObservedAttempt<'b>)
+                requires(true) ensures(out == self.observed()) { self.observed }
+        }
+        sail_method! {
+            /// Exact validated feature-name bytes from its original diagnostic.
+            pub fn feature_name(&self) -> (out: &'a [u8])
+                requires(true) ensures(out == self.feature()) { self.feature }
+        }
+        sail_method! {
+            /// Exact runtime-feature candidates used by the refusal factory.
+            pub fn available_features(&self) -> (out: &'a [Vec<u8>])
+                requires(true) ensures(out == self.available()) { self.available }
+        }
+    }
+}
+
+sail_spec! {
+    pub open spec fn feature_refusal_fields(stdout: Seq<u8>, stderr: Seq<u8>, feature: Seq<u8>, available: Seq<Vec<u8>>) -> bool {
+        engine_feature_name(feature)
+            && (forall |i: int| 0 <= i < available.len() ==> available[i]@ != feature)
+            && (engine_contains_pattern(stdout, engine_feature_pattern(feature))
+                || engine_contains_pattern(stderr, engine_feature_pattern(feature)))
+    }
+    pub open spec fn missing_engine_feature_valid(f: &MissingEngineFeature) -> bool {
+        observation_complete(&observed_running(f.observed()))
+            && feature_refusal_fields(running_stdout(&observed_running(f.observed())).unwrap()@,
+                running_stderr(&observed_running(f.observed())).unwrap()@, f.feature()@, f.available()@)
+    }
+}
+
+sail_verified! {
+    /// Validates a candidate against the actual observed byte streams and the
+    /// exact declared feature inventory. A caller-supplied feature name alone
+    /// cannot authorize a missing-feature restart.
+    pub fn missing_engine_feature<'a, 'b>(observed: &'a ObservedAttempt<'b>, feature: &'a [u8],
+        available: &'a [Vec<u8>]) -> (out: Option<MissingEngineFeature<'a, 'b>>)
+        requires(observation_complete(&observed_running(observed)))
+        ensures(out.is_some() == feature_refusal_fields(
+                running_stdout(&observed_running(observed)).unwrap()@,
+                running_stderr(&observed_running(observed)).unwrap()@, feature@, available@),
+            out.is_some() ==> out.unwrap().valid(),
+            out.is_some() ==> out.unwrap().observed() == observed,
+            out.is_some() ==> out.unwrap().feature() == feature,
+            out.is_some() ==> out.unwrap().available() == available)
+    {
+        if !engine_valid_feature_name(feature) { return None; }
+        let mut i = 0usize;
+        sail_while! { (i < available.len())
+            invariant(i <= available.len(), engine_feature_name(feature@),
+                forall |j: int| 0 <= j < i ==> available@[j]@ != feature@)
+            decreases(available.len() - i)
+            {
+                if exact_bytes(&available[i], feature) { return None; }
+                i += 1;
+            }
+        }
+        let pattern = engine_diagnostic_pattern(feature);
+        if !engine_contains(observed.stderr(), &pattern) && !engine_contains(observed.stdout(), &pattern) { return None; }
+        Some(MissingEngineFeature { observed, feature, available })
+    }
+}
+
 sail_code! {
     /// A normally exited observed child whose typed engine-protocol candidates
     /// refuse completion. Engine image/target and physical file attribution
@@ -884,6 +1073,7 @@ sail_code! {
         observed: &'a ObservedAttempt<'b>,
         protocol: &'a Option<EngineProtocolCandidate>,
         documents: &'a EngineDocumentCandidates,
+        missing: Option<MissingEngineFeature<'a, 'b>>,
         reason: EngineCompletion,
     }
 
@@ -893,6 +1083,7 @@ sail_code! {
             pub closed spec fn protocol(&self) -> &'a Option<EngineProtocolCandidate> { self.protocol }
             pub closed spec fn documents(&self) -> &'a EngineDocumentCandidates { self.documents }
             pub closed spec fn reason(&self) -> EngineCompletion { self.reason }
+            pub closed spec fn missing(&self) -> Option<MissingEngineFeature<'a, 'b>> { self.missing }
             pub open spec fn valid(&self) -> bool { declined_origin_valid(self) }
         }
         sail_method! {
@@ -912,6 +1103,11 @@ sail_code! {
             pub fn document_candidates(&self) -> (out: &'a EngineDocumentCandidates)
                 requires(true) ensures(out == self.documents())
             { self.documents }
+        }
+        sail_method! {
+            /// Borrows the concrete raw-output feature refusal, when present.
+            pub fn feature_refusal(&self) -> (out: &Option<MissingEngineFeature<'a, 'b>>)
+                requires(true) ensures(*out == self.missing()) { &self.missing }
         }
         sail_method! {
             /// Borrows the refusal reason derived from the actual typed candidates.
@@ -936,12 +1132,78 @@ sail_verified! {
             out.is_some() ==> out.unwrap().valid(),
             out.is_some() ==> out.unwrap().observed() == observed,
             out.is_some() ==> out.unwrap().protocol() == protocol,
-            out.is_some() ==> out.unwrap().documents() == documents)
+            out.is_some() ==> out.unwrap().documents() == documents,
+            out.is_some() ==> out.unwrap().missing().is_none())
     {
         if observed.exit() != Some(0i32) { return None; }
         let reason = engine_completion(protocol, documents, observed.stdout(), observed.exit());
         if matches!(reason, EngineCompletion::Complete) { return None; }
-        Some(DeclinedEngine { observed, protocol, documents, reason })
+        Some(DeclinedEngine { observed, protocol, documents, missing: None, reason })
+    }
+}
+
+sail_verified! {
+    /// Derives a normal-zero engine decline from a concrete original missing-
+    /// feature diagnostic even when its protocol and result are well formed.
+    pub fn decline_engine_missing_feature<'a, 'b>(feature: MissingEngineFeature<'a, 'b>,
+        protocol: &'a Option<EngineProtocolCandidate>, documents: &'a EngineDocumentCandidates)
+        -> (out: Option<DeclinedEngine<'a, 'b>>)
+        requires(feature.valid())
+        ensures(out.is_some() == (running_exit(&observed_running(feature.observed())).unwrap() == Some(0i32)),
+            out.is_some() ==> out.unwrap().valid(),
+            out.is_some() ==> out.unwrap().observed() == feature.observed(),
+            out.is_some() ==> out.unwrap().protocol() == protocol,
+            out.is_some() ==> out.unwrap().documents() == documents,
+            out.is_some() ==> out.unwrap().missing() == Some(feature),
+            out.is_some() ==> out.unwrap().reason() == EngineCompletion::MissingFeature)
+    {
+        let observed = feature.observed_attempt();
+        if observed.exit() != Some(0i32) { return None; }
+        Some(DeclinedEngine { observed, protocol, documents, missing: Some(feature), reason: EngineCompletion::MissingFeature })
+    }
+}
+
+sail_code! {
+    /// Original candidate decision; completion is protocol completion only, not
+    /// mathematical proof authority or a physical loaded-image certificate.
+    pub enum EngineDecision<'a, 'b> {
+        /// No decoded missing feature and consistent original completion fields.
+        Complete,
+        /// An actual normal-zero child supplies a checked concrete refusal.
+        Declined(DeclinedEngine<'a, 'b>),
+        /// Other process, parser, diagnostic or observation failure needs fallback.
+        Refused,
+    }
+}
+
+sail_verified! {
+    /// Makes the actual native engine/fallback choice from original observed
+    /// output and decoder candidates. The decoder's absence/completeness and
+    /// runtime feature inventory attribution remain explicit native joins.
+    pub fn engine_decision<'a, 'b>(observed: &'a ObservedAttempt<'b>,
+        protocol: &'a Option<EngineProtocolCandidate>, documents: &'a EngineDocumentCandidates,
+        missing: Option<&'a [u8]>, available: &'a [Vec<u8>]) -> (out: EngineDecision<'a, 'b>)
+        requires(observation_complete(&observed_running(observed)))
+        ensures((out is Complete) == (missing.is_none() && engine_completion_valid(protocol, documents,
+                running_stdout(&observed_running(observed)).unwrap()@, running_exit(&observed_running(observed)).unwrap())),
+            out is Declined ==> out->Declined_0.valid() && out->Declined_0.observed() == observed,
+            missing.is_some() && running_exit(&observed_running(observed)).unwrap() == Some(0i32)
+                && feature_refusal_fields(running_stdout(&observed_running(observed)).unwrap()@,
+                    running_stderr(&observed_running(observed)).unwrap()@, missing.unwrap()@, available@)
+                ==> out is Declined)
+    {
+        if let Some(name) = missing {
+            let Some(feature) = missing_engine_feature(observed, name, available) else { return EngineDecision::Refused; };
+            return match decline_engine_missing_feature(feature, protocol, documents) {
+                Some(declined) => EngineDecision::Declined(declined), None => EngineDecision::Refused,
+            };
+        }
+        if matches!(engine_completion(protocol, documents, observed.stdout(), observed.exit()), EngineCompletion::Complete) {
+            return EngineDecision::Complete;
+        }
+        match decline_engine(observed, protocol, documents) {
+            Some(declined) => EngineDecision::Declined(declined), None => EngineDecision::Refused,
+        }
     }
 }
 
@@ -949,9 +1211,13 @@ sail_spec! {
     pub open spec fn declined_origin_valid(d: &DeclinedEngine) -> bool {
         observation_complete(&observed_running(d.observed()))
             && running_exit(&observed_running(d.observed())).unwrap() == Some(0i32)
-            && !engine_completion_valid(d.protocol(), d.documents(),
-                running_stdout(&observed_running(d.observed())).unwrap()@, Some(0i32))
-            && d.reason() != EngineCompletion::Complete
+            && (match d.missing() {
+                Some(feature) => feature.valid() && feature.observed() == d.observed()
+                    && d.reason() == EngineCompletion::MissingFeature,
+                None => !engine_completion_valid(d.protocol(), d.documents(),
+                    running_stdout(&observed_running(d.observed())).unwrap()@, Some(0i32))
+                    && d.reason() != EngineCompletion::Complete && d.reason() != EngineCompletion::MissingFeature,
+            })
     }
 }
 

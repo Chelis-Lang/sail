@@ -338,8 +338,9 @@ The concrete-to-model projection preserves each original field and proves the
 completion predicates equivalent.
 
 `DeclinedEngine` is a separate private checked token for an actually observed
-normal exit zero whose protocol or document candidates refuse completion. Its
-status remains zero. The model observes those fields once, creates a distinct
+normal exit zero whose protocol/document candidates refuse completion, or whose
+original stdout/stderr contains an exact missing-feature diagnostic. Its status
+remains zero. The model observes those fields once, creates a distinct
 `EngineDecline`, and starts an independent `RestartAfterDecline` only with the
 same exact subject, a later start and fresh empty document/solver history.
 Ordinary `EngineFailure` retains its original nonzero/interrupted/malformed
@@ -347,13 +348,34 @@ process guard. Both restart origins enter the same per-target candidate and
 coverage factory; every fallback in the requested repair scope is rejected.
 A repeated protocol observation cannot overwrite an earlier refusal.
 
+The private `MissingEngineFeature` factory independently validates the original
+raw diagnostic spelling and closing delimiter, the nonempty ASCII feature-name
+grammar and absence from the runtime-feature candidate inventory. It retains
+the same actual `ObservedAttempt`; an arbitrary supplied name cannot construct
+the token. `engine_decision`, called by the native per-target controller,
+chooses completed engine output only when no missing-feature candidate exists
+and the original completion fields are consistent. A valid feature refusal can
+therefore restart a normal-zero child even when its protocol is complete.
+The model preserves those raw fields, rejects direct completion, and begins a
+new fallback with an empty document/solver inventory and the original subject.
+The concrete projection retains every protocol/document/remainder/status field.
+Native JSON decoding, complete discovery of feature diagnostics, attribution of
+the runtime feature inventory and physical loaded-image identity remain open
+joins; this component does not infer their completeness from a token.
+
 The native controlled witness runs a real child producing a nonempty complete
 Verus fixture at exit zero with a missing terminal, checks the private decline
 factory preserves that actual status/slot, and runs a distinct fresh stock
 fallback with exact stdout/stderr/status. The model witness additionally rejects
 old engine documents, refuses calling that zero exit a crash, and demonstrates
 whole-target acceptance followed by repair refusal. These are component controls,
-not a qualified real-project engine rollout.
+not a qualified real-project engine rollout. A second owned-child fixture emits
+a complete protocol/result plus a missing-feature diagnostic. The checked raw
+factory preserves normal exit zero; the native controller starts an independent
+fallback and keeps the earlier output/event files. Bogus, malformed and already
+available names refuse a feature token. The whole local stock component checks
+374 obligations and six ordinary failing feature controls; the canonical
+combined source capture and native qualification remain separate.
 
 Raw JSON decoding and attribution to the original child still require native
 refinement. The projection does not invent a modeled invocation from an arbitrary
@@ -374,7 +396,8 @@ A later configured reservation makes an older selection noncurrent even if an
 interrupted writer left its invocation JSON behind. Fixed target filenames do
 not supply live authority.
 
-The daemon's private producer revision is three for both retained job projections
+The [producer-policy migration](https://github.com/Chelis-Lang/sail/issues/410)
+uses private revision three for both retained job projections
 and saved baselines. Missing, superseded and unknown revisions withhold target
 completion without changing original reports or input-currentness observations.
 Copying an older job into a current baseline cannot restore withheld completion.
@@ -398,7 +421,10 @@ Removing the original run and evicting the arena do not erase an already
 adopted copy. Missing, extra or modified history, older entry versions, subset
 indexes, mismatched reports and stripped/conflicting references refuse reuse.
 Current receipts still require their own final commit and exact artifact reads.
-The physical target-domain and protected-storage transition proofs remain open.
+The [original-history dependence](https://github.com/Chelis-Lang/sail/issues/409)
+and [archive schema checks](https://github.com/Chelis-Lang/sail/issues/411)
+retain their candidate status and outstanding combined gates. The physical
+target-domain and protected-storage transition proofs remain open.
 
 The disabled native-artifact store's version-two layout copies the complete
 original producer subtree, including raw streams, per-attempt records and owned

@@ -118,12 +118,47 @@ pub struct EngineProtocolObservation {
     pub terminal: Option<EngineTerminalObservation>,
 }
 
+/// Original name, runtime inventory and diagnostic bytes; no refusal Boolean.
+pub struct MissingFeatureObservation {
+    pub feature: Seq<u8>,
+    pub available: Seq<Seq<u8>>,
+    pub stderr: Seq<u8>,
+}
+
 /// One EOF-time observation of the original protocol/result candidates.
 pub struct EngineCompletionObservation {
     pub protocol: Option<EngineProtocolObservation>,
     pub documents: Seq<EngineDocumentObservation>,
     pub stdout: Seq<u8>,
     pub remainder: Seq<u8>,
+    pub missing_feature: Option<MissingFeatureObservation>,
+}
+
+pub open spec fn feature_prefix(bytes: Seq<u8>, pattern: Seq<u8>, at: int) -> bool {
+    0 <= at <= bytes.len() && at + pattern.len() <= bytes.len()
+        && bytes.subrange(at, at + pattern.len()) == pattern
+}
+
+pub open spec fn missing_feature_valid(stdout: Seq<u8>, f: &MissingFeatureObservation) -> bool {
+    let name = f.feature;
+    let pattern = b"Please cargo build with `--features "@ + name + seq![96u8];
+    name.len() > 0
+        && (forall |i: int| 0 <= i < name.len() ==> (48 <= name[i] <= 57)
+            || (65 <= name[i] <= 90) || (97 <= name[i] <= 122) || name[i] == 95 || name[i] == 45)
+        && (forall |i: int| 0 <= i < f.available.len() ==> f.available[i] != name)
+        && ((exists |at: int| 0 <= at <= stdout.len() && feature_prefix(stdout, pattern, at))
+            || (exists |at: int| 0 <= at <= f.stderr.len() && feature_prefix(f.stderr, pattern, at)))
+}
+
+pub open spec fn engine_observation_usable(o: &EngineCompletionObservation, end: ProcessEnd) -> bool {
+    o.missing_feature.is_none() && engine_protocol_complete(o, end)
+}
+
+pub open spec fn engine_observation_refuses(o: &EngineCompletionObservation, end: ProcessEnd) -> bool {
+    match o.missing_feature {
+        Some(feature) => missing_feature_valid(o.stdout, &feature),
+        None => !engine_protocol_complete(o, end),
+    }
 }
 
 pub open spec fn engine_text_present(value: Option<Seq<u8>>) -> bool {
@@ -322,7 +357,7 @@ impl EngineDecline {
     pub closed spec fn valid(&self) -> bool {
         invocation_wf(&self.invocation) && self.invocation.origin == Origin::Engine
             && self.end == ProcessEnd::Exit(0) && self.observed_at >= self.invocation.started_at
-            && !engine_protocol_complete(&self.completion, self.end)
+            && engine_observation_refuses(&self.completion, self.end)
     }
 }
 
@@ -434,7 +469,7 @@ pub proof fn engine_declined(run: RunningInvocation, end: ProcessEnd, point: u64
     requires running_wf(&run),
     ensures out.is_some() == (run.invocation().origin == Origin::Engine
         && end == ProcessEnd::Exit(0) && point >= run.invocation().started_at
-        && run.completion().is_some() && !engine_protocol_complete(&run.completion().unwrap(), end)),
+        && run.completion().is_some() && engine_observation_refuses(&run.completion().unwrap(), end)),
         out.is_some() ==> out.unwrap().valid(),
         out.is_some() ==> out.unwrap().invocation() == run.invocation(),
         out.is_some() ==> out.unwrap().end() == end && out.unwrap().point() == point,
@@ -442,7 +477,7 @@ pub proof fn engine_declined(run: RunningInvocation, end: ProcessEnd, point: u64
 {
     if run.invocation.origin == Origin::Engine && end == ProcessEnd::Exit(0)
         && point >= run.invocation.started_at && run.completion.is_some()
-        && !engine_protocol_complete(&run.completion.unwrap(), end) {
+        && engine_observation_refuses(&run.completion.unwrap(), end) {
         Some(EngineDecline { invocation: run.invocation, end, observed_at: point,
             completion: run.completion.unwrap() })
     } else { None }
@@ -580,7 +615,7 @@ pub closed spec fn can_complete(run: &RunningInvocation, end: ProcessEnd, point:
     running_wf(run) && run.stream == StreamState::Running
         && run.invocation.verification == VerificationSetting::Enabled
         && (run.invocation.origin == Origin::Engine ==> run.completion.is_some()
-            && engine_protocol_complete(&run.completion.unwrap(), end))
+            && engine_observation_usable(&run.completion.unwrap(), end))
         && end == ProcessEnd::Exit(0) && point >= run.invocation.started_at
         && run.documents.len() > 0
         && every_child_closed(run.children)
@@ -1116,12 +1151,13 @@ proof fn record_child_lifecycles(run: RunningInvocation, transcripts: Seq<Solver
 
 proof fn positive_engine_completion(whole: bool) -> (out: EngineCompletionObservation)
     ensures engine_protocol_complete(&out, ProcessEnd::Exit(0)),
+        engine_observation_usable(&out, ProcessEnd::Exit(0)),
 {
     EngineCompletionObservation {
         protocol: Some(EngineProtocolObservation { raw: seq![10u8], versions: seq![Some(1u64)],
             terminal: Some(EngineTerminalObservation { version: 1, event: b"compiler-sealed"@,
                 phase: b"full"@, normal: Some(true), success: Some(true) }) }),
-        stdout: Seq::empty(), remainder: Seq::empty(),
+        stdout: Seq::empty(), remainder: Seq::empty(), missing_feature: None,
         documents: seq![EngineDocumentObservation { functions: EngineFieldShape::Object,
             version: Some(seq![1u8]), profile: Some(seq![2u8]), toolchain: Some(seq![3u8]),
             commit: Some(seq![4u8]), os: Some(seq![5u8]), arch: Some(seq![6u8]),
@@ -1622,6 +1658,59 @@ pub fn normal_zero_decline_fresh_fallback_control() {
         let good_observed = observe_engine_completion(good_started.unwrap(), valid_protocol);
         let good_decline = engine_declined(good_observed, ProcessEnd::Exit(0), 2);
         assert(good_decline.is_none());
+    }
+}
+
+/// Even a valid engine protocol cannot override an actual missing-feature
+/// diagnostic. The restart has fresh observations and preserves its subject.
+pub fn valid_protocol_missing_feature_restart_control() {
+    let engine = example_invocation(true, 1, Origin::Engine);
+    let fallback = example_invocation(true, 3, Origin::RestartAfterDecline(1));
+    let document = example_document(true, 1, true, Verdict::Verified,
+        Establishment::Confirmed, VerifierEnd::Finished(0));
+    proof {
+        let valid = positive_engine_completion(true);
+        let feature = MissingFeatureObservation { feature: b"singular"@, available: Seq::empty(),
+            stderr: b"Please cargo build with `--features "@ + b"singular"@ + seq![96u8] };
+        let observation = EngineCompletionObservation { missing_feature: Some(feature), ..valid };
+        assert(engine_protocol_complete(&observation, ProcessEnd::Exit(0)));
+        assert(missing_feature_valid(observation.stdout, &feature)) by {
+            reveal_byteslit(b"singular");
+            let pattern = b"Please cargo build with `--features "@ + b"singular"@ + seq![96u8];
+            assert(feature.stderr.subrange(0, pattern.len() as int) =~= pattern);
+            assert(feature_prefix(feature.stderr, pattern, 0));
+            assert(exists |at: int| 0 <= at <= feature.stderr.len() && feature_prefix(feature.stderr, pattern, at));
+            assert(b"singular"@ =~= seq![115u8,105u8,110u8,103u8,117u8,108u8,97u8,114u8]);
+            assert forall |i: int| 0 <= i < feature.feature.len() implies
+                ((48 <= feature.feature[i] <= 57) || (65 <= feature.feature[i] <= 90)
+                    || (97 <= feature.feature[i] <= 122) || feature.feature[i] == 95 || feature.feature[i] == 45) by {}
+
+        }
+        let started = start(engine);
+        assert(started.is_some());
+        assert(started.unwrap().documents() =~= Seq::<VerifierDocument>::empty());
+        let with_document = observe(started.unwrap(), document);
+        assert(with_document.documents() == seq![document]);
+        single_document_inventory(document);
+        assert(observed_transcripts(with_document.documents()) =~= Seq::<SolverTranscript>::empty());
+        assert(child_stream_inventory(with_document.children()) =~= Seq::<SolverTranscript>::empty());
+        let good = observe_engine_completion(with_document, valid);
+        assert(can_complete(&good, ProcessEnd::Exit(0), 2));
+        let accepted_control = complete(good, ProcessEnd::Exit(0), 2);
+        assert(accepted_control.is_some());
+        let observed = observe_engine_completion(with_document, observation);
+        let completed = complete(observed, ProcessEnd::Exit(0), 2);
+        assert(completed.is_none());
+        let failed = engine_failed(observed, ProcessEnd::Exit(0), 2);
+        assert(failed.is_none());
+        let declined = engine_declined(observed, ProcessEnd::Exit(0), 2);
+        assert(declined.is_some());
+        assert(declined.unwrap().end() == ProcessEnd::Exit(0));
+        let restarted = start_declined_fallback(declined.unwrap(), fallback);
+        assert(restarted.is_some());
+        assert(restarted.unwrap().documents().len() == 0);
+        assert(restarted.unwrap().children().len() == 0);
+        assert(restarted.unwrap().completion().is_none());
     }
 }
 

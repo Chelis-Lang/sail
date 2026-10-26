@@ -75,7 +75,7 @@ pub open spec fn project_engine_completion(p: &Option<crate::authority::EnginePr
     d: &crate::authority::EngineDocumentCandidates, stdout: Seq<u8>) -> model::EngineCompletionObservation {
     model::EngineCompletionObservation { protocol: project_engine_protocol(p), stdout,
         documents: Seq::new(d.documents@.len(), |i: int| project_engine_document(&d.documents@[i])),
-        remainder: d.remainder@ }
+        remainder: d.remainder@, missing_feature: None }
 }
 
 pub proof fn engine_document_fields_refine(d: &crate::authority::EngineDocumentFields, success: bool)
@@ -113,20 +113,76 @@ pub proof fn engine_completion_fields_refine(p: &Option<crate::authority::Engine
     }
 }
 
+pub open spec fn project_missing_feature(f: &crate::authority::MissingEngineFeature) -> model::MissingFeatureObservation {
+    model::MissingFeatureObservation { feature: f.feature()@,
+        available: Seq::new(f.available()@.len(), |i: int| f.available()@[i]@),
+        stderr: crate::authority::running_stderr(&crate::authority::observed_running(f.observed())).unwrap()@ }
+}
+
+pub proof fn missing_feature_fields_refine(f: &crate::authority::MissingEngineFeature)
+    requires f.valid(),
+    ensures model::missing_feature_valid(
+        crate::authority::running_stdout(&crate::authority::observed_running(f.observed())).unwrap()@,
+        &project_missing_feature(f)),
+{
+    let stdout = crate::authority::running_stdout(&crate::authority::observed_running(f.observed())).unwrap()@;
+    let stderr = crate::authority::running_stderr(&crate::authority::observed_running(f.observed())).unwrap()@;
+    reveal_byteslit(b"Please cargo build with `--features ");
+    let name = f.feature()@;
+    let projected = project_missing_feature(f);
+    let pattern = crate::authority::engine_feature_pattern(name);
+    assert(crate::authority::feature_refusal_fields(stdout, stderr, name, f.available()@));
+    assert(name.len() > 0);
+    assert forall |i: int| 0 <= i < name.len() implies
+        ((48 <= name[i] <= 57) || (65 <= name[i] <= 90) || (97 <= name[i] <= 122)
+            || name[i] == 95 || name[i] == 45) by {
+        assert(crate::authority::engine_feature_byte(name[i]));
+    }
+
+    assert forall |i: int| 0 <= i < projected.available.len()
+        implies projected.available[i] != name by {
+        assert(projected.available[i] == f.available()@[i]@);
+    }
+    assert(pattern == b"Please cargo build with `--features "@ + name + seq![96u8]);
+    assert(projected.feature == name);
+    assert(projected.stderr == stderr);
+    if crate::authority::engine_contains_pattern(stdout, pattern) {
+        let at = choose |at: int| 0 <= at <= stdout.len() && crate::authority::engine_prefix_at(stdout, pattern, at);
+        assert(model::feature_prefix(stdout, pattern, at));
+        assert(exists |at: int| 0 <= at <= stdout.len() && model::feature_prefix(stdout, pattern, at));
+    } else {
+        let at = choose |at: int| 0 <= at <= stderr.len() && crate::authority::engine_prefix_at(stderr, pattern, at);
+        assert(model::feature_prefix(stderr, pattern, at));
+        assert(exists |at: int| 0 <= at <= stderr.len() && model::feature_prefix(stderr, pattern, at));
+    }
+    assert(model::missing_feature_valid(stdout, &projected));
+}
+
 /// The private concrete token preserves its actual normal exit zero and
-/// projects a genuine refusal. This does not invent a model invocation identity;
-/// attaching it to a target/run still needs the checked native event simulation.
+/// projects either protocol refusal or a concrete raw missing-feature witness.
+/// Attaching it to a target/run still needs the checked native event simulation.
 pub proof fn checked_decline_preserves_status_and_refusal(declined: &crate::authority::DeclinedEngine)
     -> (out: model::EngineCompletionObservation)
     requires declined.valid(),
     ensures crate::authority::running_exit(&crate::authority::observed_running(declined.observed())).unwrap() == Some(0i32),
-        out == project_engine_completion(declined.protocol(), declined.documents(),
-            crate::authority::running_stdout(&crate::authority::observed_running(declined.observed())).unwrap()@),
-        !model::engine_protocol_complete(&out, model::ProcessEnd::Exit(0)),
+        out.protocol == project_engine_protocol(declined.protocol()),
+        out.stdout == crate::authority::running_stdout(&crate::authority::observed_running(declined.observed())).unwrap()@,
+        out.documents == project_engine_completion(declined.protocol(), declined.documents(), out.stdout).documents,
+        out.remainder == declined.documents().remainder@,
+        out.missing_feature == (match declined.missing() { None => None,
+            Some(feature) => Some(project_missing_feature(&feature)) }),
+        model::engine_observation_refuses(&out, model::ProcessEnd::Exit(0)),
+        !model::engine_observation_usable(&out, model::ProcessEnd::Exit(0)),
+        out.missing_feature.is_some() == declined.missing().is_some(),
 {
     let stdout = crate::authority::running_stdout(&crate::authority::observed_running(declined.observed())).unwrap()@;
     engine_completion_fields_refine(declined.protocol(), declined.documents(), stdout, Some(0i32));
-    project_engine_completion(declined.protocol(), declined.documents(), stdout)
+    let base = project_engine_completion(declined.protocol(), declined.documents(), stdout);
+    let missing_feature = match declined.missing() {
+        None => None,
+        Some(feature) => { missing_feature_fields_refine(&feature); Some(project_missing_feature(&feature)) },
+    };
+    model::EngineCompletionObservation { missing_feature, ..base }
 }
 
 /// Reusing a PID cannot merge two different exclusively allocated launch slots.
