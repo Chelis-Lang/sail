@@ -462,4 +462,119 @@ pub fn compiler_provider_lifecycle_controls() {
     let replayed = seal_provider(&replayed); assert(replayed.is_none());
 }
 
+
+/// Exact concatenation of the actual supplied chunk slices, in observation order.
+pub open spec fn opened_prefix(chunks: Seq<&[u8]>, end: nat) -> Seq<u8>
+    recommends end <= chunks.len()
+    decreases end
+{
+    if end == 0 { Seq::empty() }
+    else { opened_prefix(chunks, (end - 1) as nat) + chunks[end - 1]@ }
+}
+
+/// A complete finite trace invokes the same factories/getters as the native
+/// owned-file adapter. It relates every returned byte to its original chunk;
+/// interpreting a File read and the stamp fields remains an OS obligation.
+pub fn checked_opened_read_trace(original: ObjectStamp, opened: &ObjectStamp,
+    chunks: &[&[u8]], handle_after: &ObjectStamp, path_after: &ObjectStamp) -> (seal: Option<ReadSeal>)
+    ensures seal.is_some() ==> seal.unwrap().original_view() == original
+        && original == *opened && original == *handle_after && original == *path_after
+        && original.length == opened_prefix(chunks@, chunks.len() as nat).len()
+        && seal.unwrap().consumed_view() == opened_prefix(chunks@, chunks.len() as nat).len(),
+{
+    let mut read = match OpenedRead::begin(original, opened) {
+        Some(read) => read, None => return None,
+    };
+    let ghost mut hashed_bytes = Seq::<u8>::empty();
+    let mut i = 0usize;
+    while i < chunks.len()
+        invariant i <= chunks.len(), read.well_formed(), !read.failed_view(), !read.ended_view(),
+            read.original_view() == original, original == *opened,
+            hashed_bytes == opened_prefix(chunks@, i as nat),
+            read.consumed_view() == hashed_bytes.len(),
+        decreases chunks.len() - i,
+    {
+        let (next, chunk) = read.chunk(chunks[i]);
+        read = next;
+        let chunk = match chunk { Some(chunk) => chunk, None => return None };
+        let bytes = chunk.bytes();
+        let owner = chunk.owner();
+        assert(bytes@ == chunks[i as int]@);
+        assert(owner == (original.device, original.object));
+        proof { hashed_bytes = hashed_bytes + bytes@; }
+        i += 1;
+    }
+    let read = read.eof();
+    read.finish(handle_after, path_after)
+}
+
+/// A nonempty, two-chunk successful observation produces the exact stream and
+/// original object seal. An observed change cannot be repaired by a fresh stamp.
+pub fn opened_read_nonempty_and_retarget_controls() {
+    let original = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let opened = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let raw = vec![10u8, 11u8, 12u8];
+    let first = &raw[..1]; let second = &raw[1..];
+    let read = OpenedRead::begin(original, &opened);
+    assert(read.is_some()); let read = read.unwrap();
+    let (read, first_chunk) = read.chunk(first);
+    assert(first_chunk.is_some()); let first_chunk = first_chunk.unwrap();
+    let first_bytes = first_chunk.bytes(); assert(first_bytes@ == seq![10u8]);
+    let (read, second_chunk) = read.chunk(second);
+    assert(second_chunk.is_some()); let second_chunk = second_chunk.unwrap();
+    let second_bytes = second_chunk.bytes(); assert(second_bytes@ == seq![11u8, 12u8]);
+    let read = read.eof(); let sealed = read.finish(&opened, &opened);
+    assert(sealed.is_some()); let sealed = sealed.unwrap();
+    let count = sealed.bytes(); let owner = sealed.owner();
+    assert(count == 3 && owner == (7u64, 8u64));
+    let changed = ObjectStamp { device: 7, object: 9, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let rebound = OpenedRead::begin(changed, &opened); assert(rebound.is_none());
+}
+
+/// Partial EOF, read error, changed final stamps, overlong reads and reads after EOF
+/// cannot gain a seal, even when later observations use matching fresh stamps.
+pub fn opened_read_failure_and_original_stamp_controls() {
+    let stamp = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let other = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 5, changed_nanos: 6, kind: 1 };
+    let short = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let read = OpenedRead::begin(short, &stamp).unwrap();
+    let partial = read.eof().finish(&stamp, &stamp); assert(partial.is_none());
+    let original = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let bytes = vec![1u8, 2u8, 3u8];
+    let read = OpenedRead::begin(original, &stamp).unwrap();
+    let (read, chunk) = read.chunk(&bytes); assert(chunk.is_some());
+    let read = read.eof();
+    let changed = read.finish(&other, &other); assert(changed.is_none());
+    let fresh = OpenedRead::begin(other, &stamp); assert(fresh.is_none());
+    let failed_stamp = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let failed = OpenedRead::begin(failed_stamp, &stamp).unwrap();
+    let (failed, chunk) = failed.chunk(&bytes); assert(chunk.is_some());
+    let failed = failed.fail().eof().finish(&stamp, &stamp); assert(failed.is_none());
+    let overlong_stamp = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let too_long = vec![1u8, 2u8, 3u8, 4u8];
+    let read = OpenedRead::begin(overlong_stamp, &stamp).unwrap();
+    let (read, chunk) = read.chunk(&too_long); assert(chunk.is_none());
+    let refused = read.eof().finish(&stamp, &stamp); assert(refused.is_none());
+    let unended_stamp = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let read = OpenedRead::begin(unended_stamp, &stamp).unwrap();
+    let (read, chunk) = read.chunk(&bytes); assert(chunk.is_some());
+    let unended = read.finish(&stamp, &stamp); assert(unended.is_none());
+    let ended_stamp = ObjectStamp { device: 7, object: 8, length: 3, mode: 0o100644,
+        modified_seconds: 1, modified_nanos: 2, changed_seconds: 3, changed_nanos: 4, kind: 1 };
+    let read = OpenedRead::begin(ended_stamp, &stamp).unwrap();
+    let (read, chunk) = read.chunk(&bytes); assert(chunk.is_some());
+    let (read, chunk) = read.eof().chunk(&bytes); assert(chunk.is_none());
+    let refused = read.finish(&stamp, &stamp); assert(refused.is_none());
+}
+
 }

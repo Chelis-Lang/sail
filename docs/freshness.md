@@ -50,6 +50,16 @@ contents changed. Directory symlinks and compiler-declared external includes
 receive the same checks. Restoring the original binding and contents restores
 the logical input identity.
 
+Fresh managed content-digest reads keep one opened file handle and compare its
+original/final device, inode, length, mode and modification/change timestamps
+with the requested pathname. The hasher receives the exact checked read chunks;
+incomplete EOF, an unreadable handle or a different final object supplies no
+digest. Phase-local digest reuse also checks the original read seal against the
+actual canonical cache-key object; a changed observation forces a fresh read.
+A stable regular file retains the same digest as before. This is an
+opened-object check, not an atomic filesystem snapshot or executable-launch
+guarantee; retained-result reads keep their separate read-time checks below.
+
 Each later read of the result (job Status or Result, `sail jobs`, MCP reads,
 watch) rereads every recorded file completely, in parallel, and compares
 digests. It also checks that the absent configuration paths are still absent.
@@ -123,7 +133,10 @@ Verus documents remain supported. Optional output accounting stops at 64 MiB
 without suppressing forwarded bytes or changing the child exit status.
 Fresh verifier diagnostics remain available when declaration coverage is
 unknown. Previously uncovered source inventories do not become covered merely
-because a later observation is empty.
+because a later observation is empty. A rerun can therefore remain Unknown;
+removing only the source inventory does not establish missing compiler reads.
+A complete independently checked compiler-input reestablishment protocol remains
+separate work.
 
 This check establishes the observed declaration ledger. Cargo/rustc's guarantee
 that dep-info names all actual compiler inputs and the OS's process/filesystem
