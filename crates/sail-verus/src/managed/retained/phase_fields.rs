@@ -5,8 +5,9 @@
 use sail_acceptance::authority::ObservedAttempt;
 use sail_acceptance::inputs::{InputFact, InputValue};
 use sail_acceptance::phase_inputs::{
-    Inventory, PhaseDocument, PhaseRecord, PhaseRequest, inventory_covers, joined_rows_recorded,
-    seal_phase_inputs,
+    DeclarationRow, EnvironmentDeclaration, Inventory, PhaseDocument, PhaseRecord, PhaseRequest,
+    SourceDeclaration, declaration_facts, expand_declarations, inventory_covers,
+    joined_rows_recorded, seal_phase_inputs,
 };
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -73,64 +74,32 @@ fn unique_map<'de, D: Deserializer<'de>, V: Deserialize<'de>>(
     decoder.deserialize_map(Unique(std::marker::PhantomData))
 }
 
-enum Value<'a> {
-    Bytes(&'a [u8]),
-    Length([u8; 8]),
-    Absent,
-}
-
-struct Row<'a> {
-    role: u8,
-    name: &'a [u8],
-    value: Value<'a>,
-}
-
-impl Row<'_> {
-    fn fact(&self) -> InputFact<'_> {
-        InputFact {
-            namespace: self.role,
-            name: self.name,
-            value: match &self.value {
-                Value::Bytes(bytes) => InputValue::Present(bytes),
-                Value::Length(bytes) => InputValue::Present(bytes),
-                Value::Absent => InputValue::Absent,
-            },
-        }
-    }
-}
-
-fn rows(phase: &Phase) -> Vec<Row<'_>> {
-    let mut rows = Vec::new();
-    for (name, source) in &phase.sources {
-        rows.push(Row {
-            role: 0,
+// Serde/map iteration and String-to-byte borrowing remain the explicit decoder
+// adapter. No role, length encoding or absent/present decision is assigned here.
+fn rows(phase: &Phase) -> Option<Vec<DeclarationRow<'_>>> {
+    let sources: Vec<_> = phase
+        .sources
+        .iter()
+        .map(|(name, source)| SourceDeclaration {
             name: name.as_bytes(),
-            value: Value::Bytes(source.checksum.as_bytes()),
-        });
-        rows.push(Row {
-            role: 1,
+            checksum: source.checksum.as_bytes(),
+            size: source.size,
+        })
+        .collect();
+    let paths: Vec<_> = phase
+        .extra_tracked_files
+        .iter()
+        .map(String::as_bytes)
+        .collect();
+    let environment: Vec<_> = phase
+        .tracked_environment
+        .iter()
+        .map(|(name, value)| EnvironmentDeclaration {
             name: name.as_bytes(),
-            value: Value::Length(source.size.to_le_bytes()),
-        });
-    }
-    for name in &phase.extra_tracked_files {
-        // A tracked pathname is a declaration, not an attestation of its bytes.
-        rows.push(Row {
-            role: 2,
-            name: name.as_bytes(),
-            value: Value::Bytes(&[]),
-        });
-    }
-    for (name, value) in &phase.tracked_environment {
-        rows.push(Row {
-            role: ENVIRONMENT,
-            name: name.as_bytes(),
-            value: value
-                .as_ref()
-                .map_or(Value::Absent, |value| Value::Bytes(value.as_bytes())),
-        });
-    }
-    rows
+            value: value.as_ref().map(String::as_bytes),
+        })
+        .collect();
+    expand_declarations(&sources, &paths, &environment)
 }
 
 fn inspect<T>(
@@ -140,15 +109,15 @@ fn inspect<T>(
     if document.phases.len() != 2 {
         return None;
     }
-    let verification = rows(document.phases.get("verification")?);
-    let compilation = rows(document.phases.get("compilation")?);
+    let verification = rows(document.phases.get("verification")?)?;
+    let compilation = rows(document.phases.get("compilation")?)?;
     let proposed: BTreeMap<_, _> = verification
         .iter()
         .chain(&compilation)
-        .map(|row| ((row.role, row.name), row))
+        .map(|row| ((row.namespace, row.name), row))
         .collect();
-    let first: Vec<_> = verification.iter().map(Row::fact).collect();
-    let second: Vec<_> = compilation.iter().map(Row::fact).collect();
+    let first = declaration_facts(&verification);
+    let second = declaration_facts(&compilation);
     let joined: Vec<_> = proposed.values().map(|row| row.fact()).collect();
     let (first_order, first_inverse) = crate::parallel::proposed_fact_order(&first);
     let (second_order, second_inverse) = crate::parallel::proposed_fact_order(&second);
@@ -245,6 +214,101 @@ mod tests {
     use std::process::{Command, Output, Stdio};
 
     type Failure = Box<dyn std::error::Error>;
+    type ExpectedRow<'a> = (u8, &'a [u8], Option<&'a [u8]>);
+
+    #[test]
+    fn checked_declaration_expansion_keeps_every_raw_field() -> Result<(), Failure> {
+        let sources = [
+            SourceDeclaration {
+                name: b" source\xff ",
+                checksum: b"raw-checksum\x00",
+                size: 0x0807_0605_0403_0201,
+            },
+            SourceDeclaration {
+                name: b"other",
+                checksum: b"different",
+                size: u64::MAX,
+            },
+        ];
+        let paths: [&[u8]; 2] = [b" extra ", b"\xff"];
+        let environment = [
+            EnvironmentDeclaration {
+                name: b" FLAG ",
+                value: Some(b"\xff\x00"),
+            },
+            EnvironmentDeclaration {
+                name: b"missing",
+                value: None,
+            },
+            EnvironmentDeclaration {
+                name: b"empty",
+                value: Some(b""),
+            },
+        ];
+        let expanded =
+            expand_declarations(&sources, &paths, &environment).ok_or("expansion refused")?;
+        let facts = declaration_facts(&expanded);
+        assert_eq!(facts.len(), 9);
+        let expected: [ExpectedRow<'_>; 9] = [
+            (0, sources[0].name, Some(sources[0].checksum)),
+            (1, sources[0].name, Some(&[1, 2, 3, 4, 5, 6, 7, 8])),
+            (0, sources[1].name, Some(sources[1].checksum)),
+            (1, sources[1].name, Some(&[255; 8])),
+            (2, paths[0], Some(b"")),
+            (2, paths[1], Some(b"")),
+            (3, environment[0].name, environment[0].value),
+            (3, environment[1].name, None),
+            (3, environment[2].name, Some(b"")),
+        ];
+        for (actual, (namespace, name, value)) in facts.iter().zip(expected) {
+            assert_eq!(actual.namespace, namespace);
+            assert_eq!(actual.name, name);
+            match (&actual.value, value) {
+                (InputValue::Present(actual), Some(value)) => assert_eq!(*actual, value),
+                (InputValue::Absent, None) => {}
+                _ => return Err("declaration value or absence changed".into()),
+            }
+        }
+        assert!(
+            environment_rows(&facts).is_none(),
+            "invalid UTF-8 must refuse extraction, never become absence"
+        );
+        let empty = expand_declarations(&[], &[], &[]).ok_or("empty expansion refused")?;
+        assert!(declaration_facts(&empty).is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn decoded_phase_row_expansion_keeps_duplicate_tracked_paths_for_refusal() -> Result<(), Failure>
+    {
+        let phase = Phase {
+            sources: BTreeMap::from([(
+                " src ".to_owned(),
+                Source {
+                    checksum: "exact".to_owned(),
+                    size: 257,
+                },
+            )]),
+            extra_tracked_files: vec!["same".to_owned(), "same".to_owned()],
+            tracked_environment: BTreeMap::from([
+                (" FLAG ".to_owned(), Some(String::new())),
+                ("ABSENT".to_owned(), None),
+            ]),
+        };
+        let expanded = rows(&phase).ok_or("expansion refused")?;
+        let facts = declaration_facts(&expanded);
+        assert_eq!(facts.len(), 6);
+        assert_eq!(facts[0].name, b" src ");
+        assert_eq!(facts[2].name, facts[3].name);
+        let (order, inverse) = crate::parallel::proposed_fact_order(&facts);
+        assert!(!sail_acceptance::inputs::input_order(
+            &facts, &order, &inverse
+        ));
+        let extracted = environment_rows(&facts).ok_or("valid names refused")?;
+        assert_eq!(extracted.get(" FLAG "), Some(&Some(String::new())));
+        assert_eq!(extracted.get("ABSENT"), Some(&None));
+        Ok(())
+    }
 
     fn directory(name: &str) -> std::io::Result<PathBuf> {
         let path =
