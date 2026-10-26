@@ -467,10 +467,48 @@ Exhaustion permanently withholds recording and can reduce reuse; original
 delivery/forwarding and independently selected fallback remain unchanged.
 Allocator bookkeeping is outside this existing logical payload budget.
 Capture/key controls, native tests, complete-source proofs, default conformance
-and the added validation/retention cost remain unrun/unqualified. Full fresh
-frame-inventory/replay association, actual parser emission/semantic coverage,
+and the added validation/retention cost remain unrun/unqualified. Actual parser emission/semantic coverage,
 physical I/O/image contracts, protected writers and restart still need their
 separate concrete joins; this is not full #371/#372 closure.
+
+### Original command and fresh-response association (source candidate)
+
+`StreamOutput` owns the actual `ReplayCursor` alongside its original stdout
+controller and lease. The production loop creates them together from the same
+original served-reply count and advances that cursor at the same actual parser
+events. `CompletedStream` retains the cursor's completed prefix count through
+`OwnedPublication`; an independently constructed count token cannot be supplied
+to the publication constructor. Every preexisting replay byte comparison,
+forwarding decision and divergence failure remains required. The count records
+suppression, not solver truth or proof of semantic parsing.
+
+`OwnedPublication::validate_bindings` checks both the acknowledged-prefix
+relation and the complete fresh response domain. Every candidate keeps its
+original command/frame pair. In certified command-endpoint order, each frame
+must belong to the original output lease and exact output partition, with
+ordinal equal to the completed replay prefix plus that command's rank. Pair
+count must equal the entire fresh suffix length. Missing, duplicate or swapped
+original frames therefore refuse even when their bytes are identical. Sorting
+only validation references preserves the existing held-check publication order,
+including the statistics/reason/check sequence.
+
+Native `validate_pairs` constructs that certificate over the same original
+paired entries inspected by the private storer gate; publication consumes the
+unchanged pending batch. Symbolic fixture metadata cannot pass this gate. The
+working arrays are charged at six machine-word slots per candidate plus five
+vector headers within the existing bound. Ordinary UTF-8 command metadata, key
+bytes, solver arguments, effort rules, forwarding and independent fallback stay
+unchanged. Capacity refusal can reduce caching and needs native cost measurement.
+
+The source includes a constructive nonempty parser/delivery/output/binding
+witness and missing/wrong-original controls. Native source regressions cover
+the actual Pairer held-release permutation, equal-byte ordinal swaps, missing
+frames, equal-session/wrong acknowledged prefixes, absent capture and original
+complete/incomplete replay cursors. They are unrun and unqualified. This is a
+checked relation over supplied original parser/frame observations, not full
+semantic event coverage or a proved native storer/OS refinement. Actual delimiter
+and mode coverage, pinned executed image, protected writers, arbitrary startup
+content and crash/restart/recovery remain separate open requirements.
 
 The component uses `ModelContext`, `Mode` and `SolverId` from the captured
 [shared context](../../proofs/acceptance/context.rs). A current session retains

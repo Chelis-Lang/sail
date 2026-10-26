@@ -11,6 +11,12 @@ semantic versioning once the API is published.
   incremental pass. Native integration, proofs, conformance and cost remain
   unqualified.
 
+- Add a source candidate for complete original command/fresh-response binding.
+  It retains the actual stdout controller's replay cursor and checks each
+  original frame's owner and ordinal against acknowledged command order,
+  preserving held-check release order and refusing missing or swapped frames.
+  Native and formal qualification remain pending.
+
 - Retain the actual frozen input delivery and complete stdout observations
   through the local cache publication handoff, requiring their typed joint
   observation before releasing pending entries. This preserves existing

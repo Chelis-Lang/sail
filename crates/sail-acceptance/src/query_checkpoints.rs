@@ -40,7 +40,7 @@ sail_verified! {
         let seed=crate::key_prefix::Prefix::new(host,b"z3",b"pinned",b"binary",b"platform",None);
         let mut parser=crate::query_prefix::QueryPrefix::new(seed.duplicate());
         let mut delivery=crate::query_delivery::Delivery::new_captured(
-            crate::query_delivery::ScriptPipe {bytes:Vec::new(),closed:false,fail_next:false},seed,3);
+            crate::query_delivery::ScriptPipe::new(false),seed,3);
         parser.append(&bytes);
         sail_proof! {
             crate::query_prefix::flat_list_frame(seq![b'x']);

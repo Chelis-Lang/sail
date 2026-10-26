@@ -255,7 +255,11 @@ sail_code! {
     /// Counts the already-served prefix still to suppress during solver replay.
     pub struct ReplayCursor {
         remaining: u64,
+        original: u64,
     }
+    /// Original replay-prefix count after the actual suppression cursor drained.
+    /// It is a count observation, not solver-origin or byte-comparison authority.
+    pub struct ReplayedPrefix { count: u64 }
 }
 
 sail_code! {
@@ -263,14 +267,15 @@ sail_code! {
         sail_impl_spec! {
             /// Number of leading solver responses still to suppress.
             pub closed spec fn left(&self) -> nat { self.remaining as nat }
+            pub closed spec fn original(&self) -> nat { self.original as nat }
         }
 
         sail_method! {
             /// Suppresses the first `served` complete response frames.
             pub fn new(served: u64) -> (result: Self)
                 requires (true)
-                ensures (result.left() == served as nat)
-            { Self { remaining: served } }
+                ensures (result.left() == served as nat, result.original() == served as nat)
+            { Self { remaining: served, original:served } }
         }
 
         sail_method! {
@@ -287,6 +292,7 @@ sail_code! {
             pub fn advance(&mut self) -> (result: bool)
                 requires (true)
                 ensures (
+                    final(self).original() == old(self).original(),
                     result == (old(self).left() == 0),
                     final(self).left() == if old(self).left() == 0 { 0nat }
                         else { (old(self).left() - 1) as nat }
@@ -299,6 +305,25 @@ sail_code! {
                     false
                 }
             }
+        }
+        sail_method! {
+            /// Retains the original replay count only after every suppressed
+            /// position was consumed by this same actual cursor.
+            pub fn completed(&self) -> (out: Option<ReplayedPrefix>)
+                requires (true)
+                ensures (out.is_some() == (self.left() == 0),
+                    out.is_some() ==> out.unwrap().count_view() == self.original())
+            {
+                if self.remaining != 0 { return None; }
+                Some(ReplayedPrefix {count:self.original})
+            }
+        }
+    }
+    impl ReplayedPrefix {
+        sail_impl_spec! { pub closed spec fn count_view(&self) -> nat { self.count as nat } }
+        sail_method! {
+            /// Original count retained by the completed actual replay cursor.
+            pub fn count(&self) -> (out: u64) requires (true) ensures (out == self.count_view()) { self.count }
         }
     }
 }
