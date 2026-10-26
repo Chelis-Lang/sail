@@ -9,7 +9,8 @@ semantic versioning once the API is published.
   available: capture requests take the ordinary execution path.
 - Isolate managed compiler evidence per attempt, bind completion and reuse to
   the selected original history, and preserve independent fallback files.
-  Older private receipts require a fresh check; archived transfers validate the
+  Older private receipts, retained jobs and saved baselines require a fresh
+  check for whole-target completion; archived transfers validate the
   complete original producer files without fabricating new live invocations.
 
 - Preserve and freshly reobserve valid receipts' declared environment names when

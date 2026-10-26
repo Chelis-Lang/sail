@@ -374,6 +374,13 @@ A later configured reservation makes an older selection noncurrent even if an
 interrupted writer left its invocation JSON behind. Fixed target filenames do
 not supply live authority.
 
+The daemon's private producer revision is three for both retained job projections
+and saved baselines. Missing, superseded and unknown revisions withhold target
+completion without changing original reports or input-currentness observations.
+Copying an older job into a current baseline cannot restore withheld completion.
+This revision check records the producer policy; it does not itself establish
+an original request, actual process or trustworthy filesystem history.
+
 Receipt version seven rejects older producer evidence. Its current-run admission
 requires the selected original namespace and reserved/terminal/raw file binding;
 missing, mismatched or ambiguous producer kinds cannot mint a live receipt.
