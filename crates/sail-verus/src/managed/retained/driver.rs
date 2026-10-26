@@ -4,7 +4,7 @@
 //! independent of the verifier's final source snapshot and proof receipt.
 
 use super::super::{dependency_snapshot, files, input, receipts};
-use super::{archive, compiler, eligibility};
+use super::{archive, compiler, eligibility, skipped_note};
 use dependency_snapshot::{Content, Snapshot};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -59,6 +59,11 @@ impl Plan {
         if matches!(mode, super::super::research::Mode::Off)
             && !eligibility::Closure::automatic_profile_candidate(metadata)
         {
+            notes.push(skipped_note(&format!(
+                "the dependency profile is not qualified: {}",
+                eligibility::Closure::profile_mismatch(metadata)
+                    .unwrap_or_else(|| "vstd's dependency graph is unreadable".to_owned())
+            )));
             return None;
         }
         let packages = metadata["packages"].as_array()?;
@@ -79,7 +84,19 @@ impl Plan {
             }
             let package = packages.iter().find(|p| p["id"] == *id)?;
             let manifest = PathBuf::from(package["manifest_path"].as_str()?);
-            let admitted = eligibility::Closure::admit(metadata, &manifest, source, registry)?;
+            let Some(admitted) = eligibility::Closure::admit(metadata, &manifest, source, registry)
+            else {
+                let reason = eligibility::Closure::profile_mismatch(metadata).unwrap_or_else(|| {
+                    format!(
+                        "{} must be a verified workspace library whose only normal dependency is vstd, with no build script or proc-macro target, and vstd's dependency sources must match the qualified bytes",
+                        package["name"].as_str().unwrap_or("the target")
+                    )
+                });
+                notes.push(skipped_note(&format!(
+                    "the dependency profile is not qualified: {reason}"
+                )));
+                return None;
+            };
             roots.insert(manifest);
             closure = Some(admitted);
         }
@@ -516,6 +533,13 @@ impl Attempt {
             || self.unchanged(),
         )
         .map(|restored| {
+            if restored.is_none() && archive::evicted(&self.plan.root, &self.basis) {
+                // Explanation only, read by the runner for its notes.
+                let _ = std::fs::write(
+                    self.directory.join(super::EVICTED_MARKER),
+                    self.basis.identity.target_name(),
+                );
+            }
             restored.map(|restored| Restored {
                 establishing_run: restored.receipt.invocation.establishing_run().to_owned(),
                 stdout: restored.stdout,

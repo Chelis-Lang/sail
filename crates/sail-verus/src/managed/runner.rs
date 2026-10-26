@@ -278,6 +278,10 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         hash,
         compiler_hash,
         store_hash,
+        identity_paths: identity
+            .iter()
+            .map(|(path, _)| PathBuf::from(path))
+            .collect(),
     })
 }
 
@@ -425,6 +429,9 @@ struct Context {
     /// The dependency store's view of the compiler family
     /// ([`store_family_hash`]).
     store_hash: String,
+    /// Every installed file the context identifies (executables, engine
+    /// files, sysroot libraries, configuration files).
+    identity_paths: Vec<PathBuf>,
 }
 
 fn context_hashes(
@@ -2674,9 +2681,45 @@ pub(crate) fn run_engine(
 )]
 pub(crate) fn run_engine_held(
     config: &Config,
+    out: Option<&mut dyn Write>,
+    err: &mut dyn Write,
+    engine: Option<crate::engine::Request>,
+) -> Result<(ProjectResult, File)> {
+    run_recorded(config, out, err, engine, None)
+}
+
+/// [`run`] or [`run_showing_output`] for `sail verify`, which may record this
+/// invocation for unchanged-call replay under `key` (ADR 0082). The returned
+/// record is committed by the caller with what it printed.
+///
+/// # Errors
+///
+/// As [`run`].
+pub fn run_for_replay(
+    config: &Config,
+    out: Option<&mut dyn Write>,
+    err: &mut dyn Write,
+    key: &str,
+) -> Result<(ProjectResult, Option<super::noop::Pending>)> {
+    let mut pending = None;
+    let record = config
+        .request_capture
+        .is_none()
+        .then_some((key, &mut pending));
+    let result = run_recorded(config, out, err, None, record);
+    result.map(|(result, _)| (result, pending))
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "The complete proof lifecycle and final input sealing remain together."
+)]
+fn run_recorded(
+    config: &Config,
     mut out: Option<&mut dyn Write>,
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
+    record: Option<(&str, &mut Option<super::noop::Pending>)>,
 ) -> Result<(ProjectResult, File)> {
     let research = super::research::selected()?;
     let mut owned = config.clone();
@@ -2729,6 +2772,7 @@ pub(crate) fn run_engine_held(
         ));
     }
     let started = Instant::now();
+    let started_wall = SystemTime::now();
     let diagnostics = Diagnostics::new();
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
@@ -2808,6 +2852,7 @@ pub(crate) fn run_engine_held(
         hash,
         compiler_hash,
         store_hash,
+        identity_paths,
     } = context_result?;
 
     let run_id = format!(
@@ -3283,16 +3328,19 @@ pub(crate) fn run_engine_held(
             .collect(),
         // Retention is optional restoration work: a target whose compile is
         // cheap next to retention compiles normally instead (#156).
-        retained: if !forced
-            && !source_engine
-            && paths.reuse
-            && !receipt_covered
-            && super::retained::cost::pays(
-                &paths.receipts,
-                selected_targets(&data, &expected)
+        retained: if !forced && !source_engine && paths.reuse && !receipt_covered && {
+            let selected = selected_targets(&data, &expected);
+            let targets = || {
+                selected
                     .iter()
-                    .map(|(manifest, name)| (manifest.as_path(), name.as_str())),
-            ) {
+                    .map(|(manifest, name)| (manifest.as_path(), name.as_str()))
+            };
+            let pays = super::retained::cost::pays(&paths.receipts, targets());
+            if !pays {
+                retained_notes.extend(super::retained::cost_note(&paths.receipts, targets()));
+            }
+            pays
+        } {
             super::retained::Plan::prepare(
                 &data,
                 &paths.target,
@@ -3474,7 +3522,8 @@ pub(crate) fn run_engine_held(
     let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
     let mut overlapped = Some(after_thread.unwrap_or_else(|_| Err(reader_failed())));
     let (mut targets, missing, mut declarations_complete) = records?;
-    if retry_possible && !missing.is_empty() {
+    let retried = retry_possible && !missing.is_empty();
+    if retried {
         overlapped = None;
         let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
@@ -3613,6 +3662,17 @@ pub(crate) fn run_engine_held(
     let reused_targets =
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = retained_notes;
+    notes.extend(super::retained::evicted_notes(&paths.run.join("sidecars")));
+    // Why instant revert did not apply: on stderr only when explained, so
+    // default human and JSON stderr stay exactly stock's.
+    if crate::explain() {
+        let skipped = format!("{}: ", super::retained::SKIPPED);
+        for note in &notes {
+            if let Some(message) = note.strip_prefix(&skipped) {
+                let _ = writeln!(err, "note[{}]: {message}", super::retained::SKIPPED);
+            }
+        }
+    }
     // Only a release with a shipped vstd proof has a fast path to offer.
     if super::shipped::has_adjacent_bundle(&config.cargo_verus) {
         notes.extend(config.cargo_toolchain.note());
@@ -3812,6 +3872,39 @@ pub(crate) fn run_engine_held(
             scripts_unchanged,
         },
     );
+    // An unchanged call that ended Current without starting a verifier and
+    // without help from the dependency store can be replayed (ADR 0082).
+    if let Some((key, pending)) = record {
+        *pending = (result.currentness == Currentness::Current
+            && result.exit_code.is_some()
+            && result.execution.verifier_invocations == 0
+            && !retried
+            && !forced
+            && paths.reuse
+            && runtime.engine.is_none()
+            && research == super::research::Mode::Off
+            && seeded.is_empty())
+        .then(|| {
+            Some(super::noop::Facts {
+                key,
+                cache: &config.cache,
+                start: started_wall,
+                workspace_lock: paths.projects.join(super::projects::WORKSPACE_LOCK),
+                family: paths.target.parent()?,
+                context: paths.receipts.parent()?,
+                target: &paths.target,
+                observation: super::input::mutation_vector(&after_run, stamp_after.as_ref()?)?,
+                identity: &identity_paths,
+                siblings: sibling_receipts(&paths, &result.context_sha256)
+                    .into_iter()
+                    .map(|(_, receipts)| receipts)
+                    .collect(),
+                result: &result,
+            })
+        })
+        .flatten()
+        .and_then(super::noop::prepare);
+    }
     drop(publication);
     // Freeing the metadata and snapshots (tens of thousands of allocations on
     // vest, about 15 ms) does not hold up the caller; nothing reads them.

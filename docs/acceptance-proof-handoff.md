@@ -128,9 +128,10 @@ The candidate fork `12459c9c` passes its full Verus test suite but fails actual
 proc-macro argv controls. Do not select it, publish its runtime or update pins.
 The normal-wrapper transport remains a proposal. Direct parent/peer PID may
 bind one actual Cargo-Verus child, but descendant parent/image checks do not
-prove Cargo launch intent. A proposed Tokio dependency/ADR 0083 has not been
+prove Cargo launch intent. A proposed Tokio dependency and transport decision have not been
 approved or implemented. ADR 0080 is temporal packaging, 0081 cache response
-framing and 0082 checked key framing.
+framing. Main's ADR 0082 owns unchanged-call replay; the proposed checked-key
+framing decision is renumbered to 0083.
 
 ## Resume and acceptance
 

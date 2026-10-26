@@ -153,9 +153,13 @@ fn worker(fixture: &Fixture) -> Result<PathBuf, Box<dyn std::error::Error>> {
 }
 fn wait(fixture: &Fixture, id: &str) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new(sail_api::jobs::socket_path(&fixture.socket));
-    let deadline = Instant::now() + Duration::from_secs(5);
+    // A liveness bound, not a latency check: macOS assesses a freshly written
+    // executable on its first exec, and under heavy parallel load that alone
+    // has taken over ten seconds for this mock worker.
+    let deadline = Instant::now() + Duration::from_secs(120);
     loop {
-        match client.call(&Request::Status { id: id.into() })? {
+        let response = client.call(&Request::Status { id: id.into() })?;
+        match &response {
             Response::Status(status) if status.state == Lifecycle::Completed => return Ok(()),
             Response::Status(status) if status.state.terminal() => {
                 return Err(format!("unexpected {status:?}").into());
@@ -163,7 +167,7 @@ fn wait(fixture: &Fixture, id: &str) -> Result<(), Box<dyn std::error::Error>> {
             _ => {}
         }
         if Instant::now() > deadline {
-            return Err("mock worker deadline".into());
+            return Err(format!("mock worker deadline; last status {response:?}").into());
         }
         std::thread::sleep(Duration::from_millis(10));
     }

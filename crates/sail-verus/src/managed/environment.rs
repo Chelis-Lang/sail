@@ -134,7 +134,6 @@ pub(super) struct DeclarationFiles(BTreeMap<PathBuf, BTreeSet<String>>);
 /// Unknown, ambiguous or unreported files cannot be excluded from any target.
 pub(super) struct DeclarationOwners(BTreeMap<PathBuf, BTreeSet<String>>);
 
-#[cfg(test)]
 pub(super) fn declared_names(target: &Path) -> Option<BTreeSet<String>> {
     declaration_files(target).map(|files| files.all_names())
 }

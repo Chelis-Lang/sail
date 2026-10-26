@@ -31,15 +31,29 @@ existing refusal rules.
 
 Retention also has to pay for itself. Its checks read the target's whole
 private dependency graph (vstd and the macro crates) before and after the
-compiler runs, about 1.5 s on the current runtime. Each verifying compile
+compiler runs; on Vest that measures about 0.2–0.3 s. Each verifying compile
 records, beside the proof context's receipts (`retention-costs/`), how long
 the compiler and, when engaged, retention took. A run prepares no retention
 for its selected targets when every one of them last compiled in less than
-four times its measured retention, so a one-function crate compiles normally
-on every edit and revert, while a Vest-class target (about 26 s against
-1.5 s) keeps instant revert. A target without a record, or with an unreadable
-one, keeps retention; a skipped plan compiles normally and changes no verdict,
-receipt or check. The records authorize nothing.
+16 times its measured retention, so a one-function crate compiles normally
+on every edit and revert, while a Vest-class target keeps instant revert. A
+target without a record, or with an unreadable one, keeps retention; a
+skipped plan compiles normally and changes no verdict, receipt or check. The
+records authorize nothing.
+
+When automatic retention does not apply, a `SAIL3146` note says why. The note
+appears in `--output json` notes, and on stderr only with `SAIL_EXPLAIN=1`;
+default human output is unchanged. It names one of three reasons:
+
+- the dependency profile is not qualified, with the first mismatch. For
+  example, a project that ran `SAIL3138`'s `cargo update` commands but kept
+  vstd's `default-features = false` is told that the updated package belongs
+  to the default-feature profile, so vstd's default features must be enabled
+  too;
+- the target compiles in less than 16 times its measured retention, so
+  retention would cost more than it saves;
+- the earlier verified revision was evicted from the arena, so it was
+  compiled again.
 
 The source check reads the packages that the selected targets depend on (the
 same closure receipts use), every workspace member's manifest, the lockfile
@@ -65,9 +79,18 @@ late-authority mutation checks and existing complete Vest regression must pass
 on the final matching runtime. See the [candidate decision](decisions/0048-shipped-dependency-build.md#candidate-requested-target-coexistence)
 and [qualification record](validation/vstd-compile-boundary.md).
 
-The durable retained arena admits at most 8 GiB and 65,536 entries, with at most
-four archived revisions and 1 GiB of outputs per target. Fullness takes the fresh
-compiler path and preserves unknown live graph references. These are not global
+The durable retained arena admits at most 8 GiB and 65,536 entries. Each target
+keeps at most 16 archived revisions and 1 GiB of declared entry bytes; a Vest
+entry is about 38 MB. The first verified revision of the target's current
+lineage (the same context, dependency graph, directory and environment) is its
+baseline. Count eviction never removes the baseline, so an original revision
+can still be restored after many passing edits. Eviction keeps the newest
+revision, then the baseline if it fits the byte limit, then the other revisions
+newest first; once one does not fit, it and every older one are evicted. If
+the byte limit evicts the baseline, the oldest remaining revision of the
+lineage becomes the baseline. The pin and the eviction log are hints only:
+restore never reads them, and every restore-time check is unchanged. Fullness
+takes the fresh compiler path and preserves unknown live graph references. These are not global
 bounds on all managed-run sidecars, project targets or logs. Whole-project
 storage growth and scan costs are included in the native cycle measurements below.
 

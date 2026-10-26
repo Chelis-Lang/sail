@@ -63,6 +63,7 @@ The initial consumer inventory is:
 
 | Surface | Existing checked operation | Correspondence still needed |
 |---|---|---|
+| Unchanged-call CLI replay | Saved-result and input-stamp comparison | Bind the current request independently to the retained producer and require fresh capture when requested; saved Current labels and a new run ID cannot supply this relation |
 | Fresh managed completion | `sail-verus` runner's independent requested coverage and whole-report admission | Persist the independently resolved request through later reads |
 | CLI retained job labels | `sail-cli/src/jobs.rs` calls `complete_target` | Bind the retained target to the original request before a current complete claim |
 | MCP summary/targets/full views | `sail-mcp/src/compact.rs` rechecks target authority | Preserve original-request admission across shaping and detail choices |

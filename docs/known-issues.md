@@ -29,6 +29,17 @@ hits and no warm solver. Removing the actual variant makes the warm test fail.
 This is a response-accounting defect, without a demonstrated false-proof exploit;
 it does not close complete stream classification or writer-origin obligations.
 
+## Original-request capture and unchanged-call replay
+
+[Sail #413](https://github.com/Chelis-Lang/sail/issues/413) records a defect in
+this draft's integration of unchanged-call replay with independent request
+capture. The replay key omitted the typed capture requirement, allowing a
+saved result to bypass the requested new capture. The native regression fails
+before the guard and passes after key, direct replay and record-creation guards
+require ordinary execution. All four replay unit tests pass. This is a draft
+integration defect, not a demonstrated shipped false verdict. Complete replay
+request/producer correspondence remains part of #375/#376.
+
 ## Acceptance authority integration
 
 Compile-only Verus output can resemble a successful zero-function proof
@@ -400,6 +411,18 @@ binds the latest cumulative source and preserves the same positive-kill limit.
   lookup/coalescing fixtures have failed in many complete gates and passed in
   others. Cause unknown; the deadlines are unchanged.
   [Gate 3](validation/m7.md#gate-3-workspace-gate-solver-suite-and-native-ci), [#76](https://github.com/Chelis-Lang/sail/issues/76).
+- **Short fixture deadlines under heavy parallel load on macOS.** Exec of a
+  freshly written executable has taken up to 10.5 s during a
+  `cargo nextest run --workspace -j 32` on an 8-core Mac (a known executable:
+  under 0.12 s). Tests whose 1–10 s bounds include such a start fail there and
+  pass alone, among them the `sail-daemon` `neutral_jobs`, `proof_product`,
+  `job_coalescing`, `bundled`, `jobs` and `tiers` fixtures,
+  `sail-cli::daemon_ops`, `sail-cli::shared_ops`,
+  `sail-runtime-worker::process` and `sail-shim::faults` wait controls. The
+  rule for fixture waits is in [testing](testing.md). Separately, under that
+  load the `sail-cli::watch` fixture rarely sees one extra restart after its
+  Cargo output write (about 1 in 100 runs; cause unconfirmed,
+  [#403](https://github.com/Chelis-Lang/sail/issues/403)).
 - **Verifier wait under amd64 emulation.** Verification sometimes stalls under
   amd64 emulation, which is no longer used for performance or Linux
   validation (ADR 0038). [#68](https://github.com/Chelis-Lang/sail/issues/68),
@@ -447,6 +470,21 @@ binds the latest cumulative source and preserves the same positive-kill limit.
   fork suite passes, including all nine source-JSON tests. The original failing
   sample remains in [VI-0021](verus-issues/VI-0021-proof-note-json-order.md);
   [qualification](validation/deep-tier.md#fork-source-suite-gate-124).
+
+## Full-path rebuilds unrelated to proof inputs
+
+These change output or cost relative to `cargo verus verify` on calls where
+plain Cargo-Verus is a no-op. Verdicts are unaffected:
+
+- An unreferenced new or removed file in a package makes the next call
+  re-verify the crate and print its results
+  ([#398](https://github.com/Chelis-Lang/sail/issues/398)).
+- The first call after a newly discovered input outside the package rebuilds
+  the build-script packages and re-verifies vstd once
+  ([#399](https://github.com/Chelis-Lang/sail/issues/399)).
+- After a `src/bin` target is added and removed, every call rebuilds them and
+  re-verifies vstd, about 26 s each on the demo project
+  ([#401](https://github.com/Chelis-Lang/sail/issues/401)).
 
 ## Product limitations
 
