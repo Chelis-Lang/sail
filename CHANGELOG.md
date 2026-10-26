@@ -13,6 +13,12 @@ semantic versioning once the API is published.
   temporal jobs unavailable ("native temporal support is not included in this
   sail build"). This replaces the `temporal` Cargo feature. See
   docs/private-dependencies.md.
+- Cut managed `sail verify` setup on edits and unchanged reruns of projects
+  with build scripts: a Current run's Cargo unit-graph and compiler cfg query
+  is reused while the proof context, metadata, manifests and lockfile are
+  unchanged; the after-run `cargo metadata` is skipped while every path it
+  reads keeps its stamp; and build-script input snapshots are read once per
+  run while their paths are unchanged.
 - Replay an unchanged `sail verify` (ADR 0082). A call identical to an earlier
   one that ended Current without starting a verifier prints that call's
   output (only Cargo's `Finished` time is regenerated) without running Cargo,
