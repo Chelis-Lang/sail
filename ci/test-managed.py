@@ -1112,8 +1112,9 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             # compilation rewrites the dep-info without the verification
             # phase's read; Sail must still bind it. Only the demo crate
             # compiles; vstd stays reused, and the stock oracle's target is warm.
+            # The name is outside every proof-context family (no SAIL_ prefix).
             original_source = source.read_text()
-            ghost_flag = "SAIL_E2E_GHOST_PROOF_FLAG"
+            ghost_flag = "ORDINARY_GHOST_PROOF_FLAG"
             ghost_source = original_source + (
                 "\nverus! {\nproof fn ghost_flag_is_present() {\n"
                 f'    assert(match option_env!("{ghost_flag}") {{ Some(_) => true, None => false }});\n'
