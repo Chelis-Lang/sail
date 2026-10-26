@@ -426,6 +426,9 @@ def candidate_forwarders(source: str) -> None:
     is reviewed runner logic, not a claim that std sorting is formally proved.
     """
     expected = {
+        "complete_submitted_request": """let orders: Vec<_> = project.targets.iter()
+            .map(|target| candidate_order(&target.report)).collect();
+            complete_submitted_request_ordered(arguments, mode, request, project, &orders)""",
         "complete_request": """let orders: Vec<_> = project.targets.iter()
             .map(|target| candidate_order(&target.report)).collect();
             complete_request_ordered(request, project, &orders)""",
@@ -441,6 +444,7 @@ def candidate_forwarders(source: str) -> None:
             }).collect(); complete_selection_ordered(project, &orders)""",
     }
     signatures = {
+        "complete_submitted_request": "fn complete_submitted_request<'a>(arguments: &'a [String], mode: &'a Mode, request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<SubmittedAuthority<'a>>",
         "complete_request": "fn complete_request<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<CompleteRequest<'a>>",
         "complete_report": "fn complete_report(report: &Report, policy: CompletionPolicy) -> Option<CompleteReport<'_>>",
         "complete_whole_report": "fn complete_whole_report(report: &Report) -> Option<CompleteReport<'_>>",
@@ -450,7 +454,8 @@ def candidate_forwarders(source: str) -> None:
     }
     imports = [
         "use sail_acceptance::authority::CompletionPolicy;",
-        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_target_ordered, complete_whole_report_ordered,};",
+        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, SubmittedAuthority, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered,};",
+        "use crate::jobs::Mode;",
         "use crate::output::Report;", "use crate::project::{ProjectResult, ResolvedRequest, TargetResult};",
     ]
     stream = tokens(source)
@@ -484,7 +489,7 @@ def candidate_forwarders(source: str) -> None:
             actual = [token.value for token in stream[begin + 1:end]]
             wanted = [token.value for token in tokens(expected[name])]
             require(actual == wanted, "untrusted authority forwarding changed: " + name)
-    require(len(found) == 6 and set(found) == {*expected, "candidate_order"},
+    require(len(found) == 7 and set(found) == {*expected, "candidate_order"},
         "authority candidate adapter function inventory changed")
     require(actual_imports == [[t.value for t in tokens(text)] for text in imports],
         "candidate forwarding binding environment changed")

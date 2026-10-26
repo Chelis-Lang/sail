@@ -149,3 +149,14 @@ Stage C has actual source-shared logic and callers; D and E have selected
 concrete operations and hardened adapters. Their remaining obligations cannot
 be replaced with an assumed successful-result Boolean. Shared/bundled writers,
 cryptography and trusted Verus translation retain their named trust boundaries.
+
+## Low-level host interfaces
+
+The syntax envelopes support contract-only host trait methods and identical
+ordinary `where` bounds in both profiles. Proof-only trait spec methods erase
+for Cargo; native executable method signatures and generic function bodies
+remain the same. A concrete implementation must satisfy those contracts or be
+bound to a reviewed low-level OS/library primitive with its explicit assumption
+inventory. An arbitrary native trait implementation supplies no physical-input,
+solver-origin or completed-service authority. The interfaces let checked
+controllers own read/launch loops instead of proving only supplied event lists.

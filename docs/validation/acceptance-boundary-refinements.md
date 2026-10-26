@@ -104,3 +104,27 @@ The marker-accounting regression is separately tracked in
 component behavior; complete command semantics, launched process identity,
 truthful origins and the service theorem remain open. Canonical combined
 source and native integration require fresh complete checking after integration.
+
+## Opened-object and original-submission milestones
+
+The read factories retain the actual opened object, exact returned chunks,
+complete byte count and EOF, then compare final handle/path attributes. Private
+seals are checked again against both canonical and requested paths before
+phase-local memo admission or reuse. The native retarget seam originally checked
+only the canonical path; independent integration review found and fixed the
+requested-path gap before qualification. Outer snapshot guards remain separate;
+no public false-proof exploit is inferred from the inner seam witness.
+
+Original-submission factories preserve immutable original arguments, actual
+job mode, independent request and actual project borrows. Their derived
+`SubmissionKind` is a request class, not a completed engine/fallback origin.
+Normal fixed-scope direct-stock component checks and ordinary mutations pass;
+full canonical combined source qualification is pending below. Runtime helpers
+and actual dependency-domain closure remain explicit obligations.
+
+The host-envelope prototype compiles and executes the same nonempty counter
+host in the native Cargo profile and passes direct stock checking (three
+obligations). Removing the actual closed-controller guard produces one ordinary
+verification failure. This is syntax/control-flow qualification, not a physical
+process or compiler-input provider proof. Full combined checking retains all
+original roots, functions and ordinary guard controls.
