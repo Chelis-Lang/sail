@@ -65,12 +65,12 @@ request/producer correspondence remains part of #375/#376.
 ## Acceptance authority integration
 
 A local loader-variable control depends on ambient Cargo configuration
-([#419](https://github.com/Chelis-Lang/sail/issues/419)). Its supplied environment
-iterator does not determine configuration homes, so an otherwise unrelated
-runtime-selector file can fail the assertion before the intended loader cases.
-The controlled empty-home run passes and the same test with an ambient selector
-fails. This is a configuration-test isolation defect, not a demonstrated false
-proof; the explicit observed-home correction remains pending.
+([#419](https://github.com/Chelis-Lang/sail/issues/419)). The candidate derives
+`CARGO_HOME` and `HOME` from the same supplied environment used to validate
+runtime selectors, preserving raw path bytes and explicit Cargo-home priority.
+The original selector assertions remain intact. Normal checks of this correction
+are pending; the earlier controlled empty-home pass and ambient-selector failure
+establish the defect, not qualification of the fix. No false proof is claimed.
 
 The compiler-declaration filename decoder can split non-ASCII whitespace and
 remove literal backslashes ([#408](https://github.com/Chelis-Lang/sail/issues/408)).
