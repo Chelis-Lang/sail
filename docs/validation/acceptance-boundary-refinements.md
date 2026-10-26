@@ -1,0 +1,79 @@
+# Acceptance boundary refinement qualification
+
+Status: implemented candidates and component checks; combined captured-source
+stock checking and native integration qualification are pending. Draft
+[PR #378](https://github.com/Chelis-Lang/sail/pull/378) is stacked on #362.
+No service-wide theorem, complete compiler closure or authenticated physical
+observation is claimed. The [obligation ledger](../design/acceptance-boundary-refinements.md)
+tracks the six remaining deliverables separately.
+
+## Source and actual scope
+
+| Slice | Source checkpoints | Established component boundary |
+|---|---|---|
+| Raw query bytes and local record framing | `c9067734`, `651ed92c` | Exact owned transcript intervals, gap validation, contiguous feeds/replay and header/newline/payload roundtrip; actual shim/cache callers use shared bodies |
+| Compiler declaration provider | `86567f43`, `387f7f2e` | Exact supplied producer lifecycle and required artifact-frame/read association; native producer/parser refuses missing or malformed JSON-looking observations and caps additional accounting at 64 MiB |
+| Original request authority | `ce6a996b`, `421a0a7b`, `f3354995` | Actual typed request/header/target/report relations and raw repair selection; private pre-execution capture retained through job/frame/baseline admission |
+
+Component stock probes use the pinned original Verus
+`0.2026.10.18.7d82994`, revision
+`7d829946231d6413a398f6e4160cdfe951261dad`, Rust `1.99.1`, pinned Z3,
+`--cfg sail_verus --no-cheating --output-json --num-threads 1`, whole-crate
+verification and unchanged resource settings. Local probes use different
+assemblies and are not combined canonical qualification: query 163/0 with six
+ordinary guard failures, inputs 69/0 with eight failures, authority 160/0 with
+seven failures. Counts overlap and must not be added as a coverage metric.
+The final closed source/type/import/function inventories and all original
+guard controls must qualify together before selecting integration.
+
+Focused component tests pass: query/cache/shim tests and eight actual pinned-Z3
+sessions; provider source, real-child and unit-plan tests; typed authority,
+retained job, engine, CLI and declared-environment controls. Independent review
+retests nine real producer cases and the sticky capture-budget control from
+the exact committed bodies. These tests do not prove the native adapters.
+
+The request metadata channel is typed runner configuration carried through a
+private consumed CLI argument. It does not inject new environment variables
+into compilation. Original absent or user-supplied values remain consistent
+with declared environment-read accounting.
+
+## Native and hosted gates
+
+| Gate | Current evidence | Remaining |
+|---|---|---|
+| Initial documentation draft | Native Linux full workspace gate at `d4bb18a3`; 1,098 tests and all workspace checks pass. Implementation bytes equal parent `c6270f75`, whose pre-push proof, solver, full e2e and PR conformance gates pass | Does not qualify the later executable changes |
+| Combined production proofs | New fields, private-token boundaries and guard mutations are inventoried in the closed runner | Direct pinned-stock run on the integrated committed source, both platforms |
+| Combined workspace/solver/e2e | Component checks above | Native Linux full pre-push suite and macOS host gate; all managed failing-first cases retained |
+| Differential conformance | Corpus, comparator and deadlines unchanged | PR tier before publication; full fast and standard before merge |
+| Cost | Additional byte/header scans, request validation and provider accounting are implemented; no measured delta or gain claimed | Bounded native cost measurement before selection; retain every sample |
+| Hosted checks | Normal workflow selects main/release PR bases | Explicit hosted run for the stacked implementation, or retarget after #362 merges; final-head required checks before any merge |
+
+## Failed and interrupted attempts
+
+| Date | Source | Gate | Result |
+|---|---|---|---|
+| 2026-10-26 | Legacy updater from `c6270f75` | Missing-journal witness | Returns covered=true for missing observation journal; fixed regression passes in provider slice. Accounting defect #377, no complete false-proof exploit established |
+| 2026-10-26 | Provider candidate `86567f43` | Independent real-child probe | Malformed Cargo artifact stdout was forwarded but omitted from the journal, yielding a completed empty stream. Fixed in `387f7f2e`; independent exact-body retest passes |
+| 2026-10-26 | Request-capture prototype before `421a0a7b` | Environment correspondence review | Fresh transport variables could leak into compilation while excluded from context; replaced with consumed private arguments and typed configuration |
+| 2026-10-26 | Combined source before `e3b37022` | macOS workspace tests | 1,104/1,105 pass; stable error registry rejects unlisted SAIL3115. Registered in the integration; no test weakened |
+
+Legacy updater-body SHA-256:
+`94d497cbcd16f4f6f0b94b6d4166d07f3d26abf54b9b05abc9c78eb433a65ef4`.
+Independent fixed-provider stdout SHA-256:
+`42888842f4de2a732f3b5389b3411120daa5c93e61e8d6b7344c1124ff1e3a05`;
+source-index SHA-256:
+`97840e61fad11cfb5012f48bea1fb7813ec463f6f3017fa3eda5ae75526c11a0`.
+Raw receipts and logs stay outside the repository; combined immutable artifact
+identity belongs here when the integrated gate completes.
+
+## Limits retained after these slices
+
+SMT delimiter/classification and identity/hash encoding, complete actual
+compiler inputs, Cargo/dep-info semantics, physical reads and launches,
+metadata serialization, cache writer truth/persistence and all service
+transitions remain open under their named contracts. Corruption that resembles
+ordinary non-JSON verifier text cannot be ruled out by JSON-document refusal.
+An endpoint trace is accounting evidence, not an authenticated solver or
+compiler observation. Previously uncovered source inventories remain uncovered
+until an owning recovery protocol can establish their replacement; a later
+empty or partial observation cannot invent that fact.
