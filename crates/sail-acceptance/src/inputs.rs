@@ -1074,3 +1074,208 @@ sail_verified! {
         seal
     }
 }
+
+sail_code! {
+    /// Raw attributes observed from a pathname or the owned opened file.
+    /// Equality is exact; interpreting these fields is an explicit OS adapter.
+    #[derive(Debug)]
+    pub struct ObjectStamp {
+        /// Filesystem device identity.
+        pub device: u64,
+        /// Open object identity within that filesystem.
+        pub object: u64,
+        /// Reported byte length, checked for native address-size representability.
+        pub length: usize,
+        /// Raw permissions and file-kind mode bits.
+        pub mode: u32,
+        /// Modification timestamp seconds.
+        pub modified_seconds: i64,
+        /// Modification timestamp fractional nanoseconds.
+        pub modified_nanos: i64,
+        /// Change timestamp seconds.
+        pub changed_seconds: i64,
+        /// Change timestamp fractional nanoseconds.
+        pub changed_nanos: i64,
+        /// One is a regular file; all other kinds refuse this read protocol.
+        pub kind: u8,
+    }
+
+    /// Owned read state bound to the original opened object's attributes.
+    #[derive(Debug)]
+    pub struct OpenedRead {
+        original: ObjectStamp,
+        consumed: usize,
+        ended: bool,
+        failed: bool,
+    }
+
+    /// The exact successful chunk supplied to this read transaction.
+    #[derive(Debug)]
+    pub struct ReadChunk<'a> {
+        bytes: &'a [u8],
+        device: u64,
+        object: u64,
+    }
+
+    /// Complete EOF observation with the original opened/path object preserved.
+    #[derive(Debug)]
+    pub struct ReadSeal {
+        original: ObjectStamp,
+        consumed: usize,
+    }
+}
+
+sail_verified! {
+    /// Compare every structured object attribute without digest assumptions.
+    pub fn same_object_stamp(a: &ObjectStamp, b: &ObjectStamp) -> (equal: bool)
+        requires (true)
+        ensures (equal == (*a == *b))
+    {
+        a.device == b.device && a.object == b.object && a.length == b.length
+            && a.mode == b.mode && a.modified_seconds == b.modified_seconds
+            && a.modified_nanos == b.modified_nanos && a.changed_seconds == b.changed_seconds
+            && a.changed_nanos == b.changed_nanos && a.kind == b.kind
+    }
+}
+
+impl OpenedRead {
+    sail_impl_spec! {
+        /// Original path/open-object observation; never replaced by a later stamp.
+        pub closed spec fn original_view(&self) -> ObjectStamp { self.original }
+        /// Exact accumulated lengths of accepted chunks.
+        pub closed spec fn consumed_view(&self) -> usize { self.consumed }
+        /// Whether EOF was observed, including a refused premature EOF.
+        pub closed spec fn ended_view(&self) -> bool { self.ended }
+        /// A refusal is sticky across all later transitions.
+        pub closed spec fn failed_view(&self) -> bool { self.failed }
+        /// Constructor-preserved arithmetic/file-kind invariant.
+        pub closed spec fn well_formed(&self) -> bool {
+            self.original.kind == 1 && self.consumed <= self.original.length
+        }
+    }
+    sail_method! {
+        /// Begin only when the requested pathname and actual opened handle agree.
+        pub fn begin(original: ObjectStamp, opened: &ObjectStamp) -> (read: Option<Self>)
+            requires (true)
+            ensures (read.is_some() == (original.kind == 1 && original == *opened),
+                read.is_some() ==> read.unwrap().well_formed()
+                    && read.unwrap().original_view() == original
+                    && read.unwrap().consumed_view() == 0 && !read.unwrap().ended_view()
+                    && !read.unwrap().failed_view())
+        {
+            if original.kind != 1 || !same_object_stamp(&original, opened) { return None; }
+            Some(OpenedRead { original, consumed: 0, ended: false, failed: false })
+        }
+    }
+    sail_method! {
+        /// Return only exact chunk bytes, retaining the same opened object.
+        pub fn chunk<'a>(mut self, bytes: &'a [u8]) -> (out: (Self, Option<ReadChunk<'a>>))
+            requires (self.well_formed())
+            ensures (out.0.well_formed(), out.0.original_view() == self.original_view(),
+                out.0.ended_view() == self.ended_view(),
+                out.1.is_some() == (!self.failed_view() && !self.ended_view()
+                    && bytes.len() > 0 && bytes.len() <= self.original_view().length - self.consumed_view()),
+                out.1.is_some() ==> out.0.consumed_view() == self.consumed_view() + bytes.len()
+                    && !out.0.failed_view() && out.1.unwrap().bytes_view() == bytes@
+                    && out.1.unwrap().owner_view() == (self.original_view().device, self.original_view().object),
+                out.1.is_none() ==> out.0.consumed_view() == self.consumed_view() && out.0.failed_view())
+        {
+            if self.failed || self.ended || bytes.is_empty() || bytes.len() > self.original.length - self.consumed {
+                self.failed = true;
+                return (self, None);
+            }
+            self.consumed += bytes.len();
+            let chunk = ReadChunk { bytes, device: self.original.device, object: self.original.object };
+            (self, Some(chunk))
+        }
+    }
+    sail_method! {
+        /// A short read is allowed; only EOF at exactly the original length seals.
+        #[must_use]
+        pub fn eof(mut self) -> (read: Self)
+            requires (self.well_formed())
+            ensures (read.well_formed(), read.original_view() == self.original_view(),
+                read.consumed_view() == self.consumed_view(), read.ended_view(),
+                read.failed_view() == (self.failed_view() || self.ended_view()
+                    || self.consumed_view() != self.original_view().length))
+        {
+            if self.ended || self.consumed != self.original.length { self.failed = true; }
+            self.ended = true;
+            self
+        }
+    }
+    sail_method! {
+        /// Failure cannot be repaired by EOF or newly matching attributes.
+        #[must_use]
+        pub fn fail(mut self) -> (read: Self)
+            requires (self.well_formed())
+            ensures (read.well_formed(), read.original_view() == self.original_view(),
+                read.consumed_view() == self.consumed_view(), read.ended_view() == self.ended_view(),
+                read.failed_view())
+        { self.failed = true; self }
+    }
+    sail_method! {
+        /// Final path and handle observations must equal the original stamp.
+        pub fn finish(self, handle_after: &ObjectStamp, path_after: &ObjectStamp) -> (seal: Option<ReadSeal>)
+            requires (self.well_formed())
+            ensures (seal.is_some() == (!self.failed_view() && self.ended_view()
+                && self.consumed_view() == self.original_view().length
+                && *handle_after == self.original_view() && *path_after == self.original_view()),
+                seal.is_some() ==> seal.unwrap().original_view() == self.original_view()
+                    && seal.unwrap().consumed_view() == self.original_view().length)
+        {
+            if self.failed || !self.ended || self.consumed != self.original.length
+                || !same_object_stamp(&self.original, handle_after)
+                || !same_object_stamp(&self.original, path_after) { return None; }
+            Some(ReadSeal { original: self.original, consumed: self.consumed })
+        }
+    }
+}
+
+impl ReadChunk<'_> {
+    sail_impl_spec! {
+        /// Exact bytes supplied by the actual chunk observation.
+        pub closed spec fn bytes_view(&self) -> Seq<u8> { self.bytes@ }
+        /// Original opened object to which this chunk was admitted.
+        pub closed spec fn owner_view(&self) -> (u64, u64) { (self.device, self.object) }
+    }
+    sail_method! {
+        /// The hasher consumes this exact returned slice, not a copied label.
+        pub fn bytes(&self) -> (bytes: &[u8])
+            requires (true) ensures (bytes@ == self.bytes_view())
+        { self.bytes }
+    }
+    sail_method! {
+        /// Actual observed object identity associated with these bytes.
+        pub fn owner(&self) -> (owner: (u64, u64))
+            requires (true) ensures (owner == self.owner_view())
+        { (self.device, self.object) }
+    }
+}
+
+impl ReadSeal {
+    sail_method! {
+        /// A cache key's actual object observation must match this original read.
+        pub fn matches(&self, observed: &ObjectStamp) -> (matches: bool)
+            requires (true) ensures (matches == (*observed == self.original_view()))
+        { same_object_stamp(&self.original, observed) }
+    }
+    sail_impl_spec! {
+        /// Unmodified original object attributes backing this seal.
+        pub closed spec fn original_view(&self) -> ObjectStamp { self.original }
+        /// Complete number of accepted bytes.
+        pub closed spec fn consumed_view(&self) -> usize { self.consumed }
+    }
+    sail_method! {
+        /// Total bytes accounted through the exact chunk factories.
+        pub fn bytes(&self) -> (bytes: usize)
+            requires (true) ensures (bytes == self.consumed_view())
+        { self.consumed }
+    }
+    sail_method! {
+        /// Original observed opened object, preserved through EOF and validation.
+        pub fn owner(&self) -> (owner: (u64, u64))
+            requires (true) ensures (owner == (self.original_view().device, self.original_view().object))
+        { (self.original.device, self.original.object) }
+    }
+}

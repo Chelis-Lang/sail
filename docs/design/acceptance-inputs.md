@@ -12,6 +12,88 @@ same checked executable bodies to the model's exact input-map representation.
 Physical observation, compiler-closure discovery and the remaining native
 caller/context mapping still have the boundaries listed below.
 
+## Reads through the actual opened object
+
+Fresh `managed/files.rs::file_digest` calls now bracket their byte stream with
+structured pathname and opened-handle observations. The native adapter owns
+one `File`: it obtains that handle's initial metadata, reads through the same
+handle, obtains its final metadata, and rechecks the requested pathname. It
+never closes and reopens a path to obtain the final handle stamp. On Unix the
+adapter copies device, inode, byte length, mode, modification seconds/nanoseconds
+and change seconds/nanoseconds without normalization. Length conversion is
+checked; other platforms refuse this observation protocol conservatively.
+
+The source-shared `OpenedRead::begin` requires a regular file and exact equality
+of the original pathname and opened-handle stamps. Each successful nonempty
+read prefix passes to `OpenedRead::chunk`. The returned private `ReadChunk`
+retains those exact bytes and the original object identity; the native hasher
+consumes only `ReadChunk::bytes()`. The counter admits partial chunks but cannot
+exceed the original reported length. EOF, read failure and later chunks are
+distinct transitions. Failure is sticky, and EOF before the exact byte length
+cannot produce a `ReadSeal`. Final handle and pathname stamps must equal the
+original stamp, which the transaction never replaces.
+
+Phase-local digest entries retain the hash and original `ReadSeal` together.
+Before admitting a parallel result under a proposed canonical key, and before
+returning a cached value, `ReadSeal::matches` compares that key's actual current
+object attributes with the original read. An alias retarget between canonical
+key discovery and opening cannot populate the old key with the newly opened
+object's digest. A changed cache-key observation discards the old entry and
+rereads instead of attaching a fresh stamp to old bytes. As with the other
+endpoint checks, inode reuse and repeated metadata remain OS observation limits;
+this is not a proof of global atomicity or a retained live-descriptor lease.
+
+`checked_opened_read_trace` in the refinement adapter verifies a finite sequence
+of these actual factories/getters. Its ghost byte stream is the concatenation
+of the exact supplied chunk slices, in order. A successful seal establishes
+that this stream has the original reported length and that original, opened,
+final-handle and final-path observations agree. Nonempty constructive controls
+exercise two chunks, the exact returned bytes/object, premature EOF, missing
+EOF, read errors, overlong/post-EOF chunks and changed/restamped observations.
+Native controls hash a real multi-chunk file and an empty file, refuse a
+partially consumed or write-only handle, and refuse an opened handle retained
+across a same-content symlink retarget. A genuinely fresh open after retargeting
+remains usable. Existing successful SHA-256 output and requested fold ordering
+are unchanged for stable regular files.
+
+This shrinks the pathname-label/opened-object and short-read boundaries. The
+named low-level OS contract is that `File::open` yields an owned object at its
+initial offset, `File::metadata` describes that same object, successful reads
+return the next observed bytes of that handle, and pathname metadata describes
+the object resolved at that call. Private native ownership supplies the same
+handle to these operations. Those standard-library/syscall semantics and their
+native call wiring remain reviewed adapters, not external axioms added to the
+stock proof. The pure factories themselves assume no filesystem or hash law.
+
+This **does not** prove that equal endpoint metadata implies one atomic content
+version. Transient changes, exact repeated metadata, timestamp granularity,
+filesystem-specific identity behavior and path ABA remain separate observation
+limits. It does not prove that a later pathname-based executable launch runs
+this opened object, nor that SHA-256 was implemented correctly or is injective.
+Native phase-cache map operations, retained-read hashing in `read_check.rs`, compiler
+closure discovery, configuration/environment collection and launch identity
+retain their separately listed refinement obligations. Native macOS/Linux host
+gates and cost qualification apply to the integrated implementation.
+
+### Recovery of uncovered source inventories
+
+`previous_covered` remains required. A later empty or partial declaration journal
+cannot reestablish an inventory that previously lost a required observation.
+Deleting only that source record would forget the missing domain while allowing
+Cargo to reuse the same compiled target; it is not a proved recovery protocol.
+
+A justified replacement protocol needs an independently identified fresh
+compiler/unit execution domain. One concrete candidate is a fresh owned compiler
+target plus the current pre-Cargo unit graph, with each required unit matched to
+actual wrapper starts, normal completion/artifact disposition and usable dep-info
+reads. It must preserve exact package/target/features/platform identity, distinguish
+fresh/up-to-date and unexecuted units on failure, include generated inputs and
+declared environment/configuration, and retain original before/after guards.
+Only a complete reestablishment could replace old uncovered hints; interrupted
+or partial runs cannot promote them. The current package-only unit-plan check
+cannot establish this replacement. This recovery protocol is not implemented
+by the opened-read transaction and remains tracked with compiler closure.
+
 ## Completed compiler-declaration providers
 
 The default managed Cargo adapter records a private pre-spawn intent in the
