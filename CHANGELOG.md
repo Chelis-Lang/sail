@@ -5,6 +5,19 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Bind retained job completeness and repair acceptance to independently captured
+  original requests, including exact target scope and repair selection. Missing
+  older request evidence withholds completeness while preserving input Current
+  observations and historical diagnostics.
+- Refuse missing, malformed or incomplete compiler-declaration journals as
+  complete input evidence. Record child lifecycle and exact artifact/read
+  association; normal failing verifier exits remain distinct from incomplete
+  observations. Uncovered source inventories remain conservative.
+- Use stock-Verus-checked raw transcript feeds and cache record framing in
+  production. Exact bytes, separators and payloads are preserved; malformed
+  prefix candidates disable cache work. Complete parser, compiler-input,
+  process/store-origin and service-composition proofs remain open.
+
 - Add linked acceptance lifecycle models and a conditional composed proof,
   checked directly by stock Verus with complete captured dependencies and
   guard-removal controls. CI completion requires the model-proof job.

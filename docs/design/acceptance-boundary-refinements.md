@@ -11,6 +11,8 @@ the executable operations already checked with stock Verus. This follow-up
 connects more of the actual producers and consumers of their evidence.
 Verus translation and the pinned solver remain trusted as in the original
 design. Default-mode verdict and diagnostic conformance remains mandatory.
+The [qualification record](../validation/acceptance-boundary-refinements.md)
+distinguishes component probes, captured proofs and integration gates.
 
 ## Obligations and first implementation slices
 
