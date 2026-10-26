@@ -10,6 +10,8 @@ mod syntax;
 
 pub mod authority;
 pub mod inputs;
+/// One owned operational argument layer with exact ordinary-argv restoration.
+pub mod observation_arguments;
 pub mod query;
 
 /// Exact retained compiler attempt binding for solver-launch journals.

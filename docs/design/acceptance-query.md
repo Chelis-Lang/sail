@@ -499,6 +499,21 @@ existing `--` and forwarded to rustc. Inherited environment/input completeness
 and full semantic `ModelContext` linkage remain their own obligations, distinct
 from this exact declared command-descriptor codec.
 
+The shared [`observation_arguments`](../../crates/sail-acceptance/src/observation_arguments.rs)
+transport uses one owned `on`/`off` envelope for a capability-validated new runtime.
+It always wraps once, including observation refusal and preparation failure.
+Off authorizes no journal. The outer launcher strips once before its ordinary
+option handling, then re-wraps its held layer; `rust_verify` strips once before
+Cargo, internal-test and trait-check interpretation. Its two former argument
+reads use the same exact restored vector, including the original program name.
+Neither stage recursively interprets a reserved prefix inside caller arguments.
+Thus a caller's complete, partial or nested reserved prefix reaches ordinary
+getopts unchanged even when capture refuses. The private envelope is not added to
+getopts' public option inventory. A universal source-shared roundtrip covers both
+modes and every original Unicode argument sequence, with separate token, mode,
+marker and program-name guard controls. Full actual compiler/launcher CLI parity
+is a runtime qualification gate; shared-body fixtures are not that acceptance.
+
 The explicit remaining contracts are process/pipe/wait identity, exact file I/O,
 protected fresh journal ownership and runtime/build correspondence. A final
 flush error after all truthful terminal bytes reached the file can leave a valid
