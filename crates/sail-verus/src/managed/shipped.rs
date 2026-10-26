@@ -441,11 +441,37 @@ fn runtime_root(cargo_verus: &Path) -> Option<PathBuf> {
 fn sysroot_identity(sysroot: &Path) -> Option<String> {
     // Several files at once; any unreadable one still declines reuse.
     let inputs: Vec<_> = sysroot_inputs(sysroot)?.into_iter().collect();
-    let hashes = crate::parallel::in_order(&inputs, |(_, path)| sha256_file(path));
-    let portable = inputs
+    let descriptors: Vec<_> = inputs
+        .iter()
+        .map(|(relative, path)| (relative.as_str(), path.as_path()))
+        .collect();
+    let reads = crate::parallel::in_order(&descriptors, |&(relative, path)| {
+        (relative, path, sha256_file(path))
+    });
+    sysroot_identity_readback(&inputs, reads)
+}
+
+/// A worker retains its portable/native names with the complete hash and size.
+type SysrootReading<'a> = (&'a str, &'a Path, Option<(String, u64)>);
+
+fn sysroot_identity_readback(
+    inputs: &[(String, PathBuf)],
+    reads: Vec<SysrootReading<'_>>,
+) -> Option<String> {
+    let expected: Vec<_> = inputs
+        .iter()
+        .map(|(relative, path)| (relative.as_bytes(), path.as_os_str().as_encoded_bytes()))
+        .collect();
+    let returned: Vec<_> = reads
+        .iter()
+        .map(|(relative, path, _)| (relative.as_bytes(), path.as_os_str().as_encoded_bytes()))
+        .collect();
+    if !crate::parallel::exact_descriptors(&expected, &returned) {
+        return None;
+    }
+    let portable = reads
         .into_iter()
-        .zip(hashes)
-        .map(|((relative, _), hash)| Some((relative, hash?)))
+        .map(|(relative, _, hash)| Some((relative.to_owned(), hash?)))
         .collect::<Option<BTreeMap<_, _>>>()?;
     Some(digest(&serde_json::to_vec(&portable).ok()?))
 }
@@ -3960,6 +3986,53 @@ mod tests {
         std::fs::remove_file(source.join("source.rs"))?;
         std::fs::create_dir(source.join("unreadable-file-shape"))?;
         assert!(capture(&virtual_base, &machine.plan.registry).is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn tagged_sysroot_reads_preserve_portable_identity() -> TestResult {
+        let root = std::env::temp_dir().join(format!("sail-tagged-sysroot-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let a = root.join("a.rlib");
+        let b = root.join("b.rlib");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        let inputs = [
+            ("lib/a.rlib".to_owned(), a.clone()),
+            ("lib/b.rlib".to_owned(), b.clone()),
+        ];
+        let descriptors: Vec<_> = inputs
+            .iter()
+            .map(|(relative, path)| (relative.as_str(), path.as_path()))
+            .collect();
+        let read = || {
+            crate::parallel::in_order(&descriptors, |&(relative, path)| {
+                (relative, path, sha256_file(path))
+            })
+        };
+        let before = sysroot_identity_readback(&inputs, read());
+        assert!(before.is_some());
+        let mut reversed = read();
+        reversed.reverse();
+        assert_eq!(sysroot_identity_readback(&inputs, reversed), before);
+        let mut missing = read();
+        missing.pop();
+        assert!(sysroot_identity_readback(&inputs, missing).is_none());
+        let mut duplicate = read();
+        duplicate[1] = duplicate[0].clone();
+        assert!(sysroot_identity_readback(&inputs, duplicate).is_none());
+        let mut mismatched = read();
+        mismatched[0].1 = b.as_path();
+        assert!(sysroot_identity_readback(&inputs, mismatched).is_none());
+        let mut extra = read();
+        extra.push(("lib/foreign.rlib", root.as_path(), None));
+        assert!(sysroot_identity_readback(&inputs, extra).is_none());
+        std::fs::write(&a, "second")?;
+        std::fs::write(&b, "first")?;
+        let mut swapped = read();
+        swapped.reverse();
+        assert_ne!(sysroot_identity_readback(&inputs, swapped), before);
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 

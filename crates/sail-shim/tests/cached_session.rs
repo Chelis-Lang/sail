@@ -220,6 +220,15 @@ fn second_session_replays_from_cache_without_unknowns_skipped() {
 }
 
 fn input_run(solver: &Path, socket: Option<&Path>, input: &[u8]) -> std::process::Output {
+    input_run_released(solver, socket, input, None)
+}
+
+fn input_run_released(
+    solver: &Path,
+    socket: Option<&Path>,
+    input: &[u8],
+    release: Option<PathBuf>,
+) -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail-z3"));
     cmd.args(["-smt2", "-in"])
         .env("SAIL_Z3_PATH", solver)
@@ -237,6 +246,10 @@ fn input_run(solver: &Path, socket: Option<&Path>, input: &[u8]) -> std::process
     let writer = std::thread::spawn(move || {
         if let Some(stdin) = stdin.as_mut() {
             let _ = stdin.write_all(&bytes);
+        }
+        drop(stdin);
+        if let Some(path) = release {
+            let _ = std::fs::write(path, b"released");
         }
     });
     let output = child
@@ -364,6 +377,132 @@ sys.exit(p.returncode)
             .count();
         assert_eq!(files, 0);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn unmatched_clean_exit_preserves_output_and_publishes_nothing() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let dir = scratch();
+    let real = serde_json::to_string(&z3()).unwrap_or_default();
+    // A faulty solver producer exits successfully after only its first reply.
+    // Its version/probe invocations remain the real pinned solver's responses.
+    let script = format!(
+        r"#!/usr/bin/env python3
+import subprocess, sys
+real = {real}
+if '-smt2' not in sys.argv:
+    sys.exit(subprocess.run([real] + sys.argv[1:]).returncode)
+p = subprocess.run([real] + sys.argv[1:], input=sys.stdin.buffer.read(), capture_output=True)
+sys.stdout.buffer.write(p.stdout.splitlines(keepends=True)[0])
+sys.stdout.buffer.flush()
+",
+    );
+    let solver = dir.join("z3");
+    assert!(std::fs::write(&solver, script).is_ok());
+    assert!(std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o755)).is_ok());
+    let (socket, cache) = (dir.join("d.sock"), dir.join("cache"));
+    let (sock, root) = (socket.clone(), cache.clone());
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &root, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let input = b"(get-info :version)\n(echo \"unanswered\")\n(exit)\n";
+    let direct = input_run(&solver, None, input);
+    assert!(direct.status.success());
+    assert_ne!(direct.stdout, [] as [u8; 0]);
+    for _ in 0..2 {
+        let actual = input_run(&solver, Some(&socket), input);
+        assert_eq!(actual.status.code(), direct.status.code());
+        assert_eq!(actual.stdout, direct.stdout);
+        assert_eq!(actual.stderr, direct.stderr);
+    }
+    assert!(
+        sail_cache::DiskCache::new(&cache).list().is_empty(),
+        "an unmatched session must not publish its earlier paired reply"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn incomplete_or_undelivered_input_never_publishes_completed_origins() {
+    use std::os::unix::fs::PermissionsExt as _;
+    use std::sync::atomic::Ordering;
+    for close_early in [false, true] {
+        let dir = scratch();
+        let real = serde_json::to_string(&z3()).unwrap_or_default();
+        let release = dir.join("release");
+        let release_json = serde_json::to_string(&release).unwrap_or_default();
+        let script = format!(
+            r"#!/usr/bin/env python3
+import os, pathlib, subprocess, sys, time
+real = {real}
+if '-smt2' not in sys.argv:
+    sys.exit(subprocess.run([real] + sys.argv[1:]).returncode)
+if {close_early}:
+    while os.read(0, 1) != b'\n':
+        pass
+    os.close(0)
+else:
+    sys.stdin.buffer.read()
+p = subprocess.run([real] + sys.argv[1:], input=b'(get-info :version)\n(exit)\n', capture_output=True)
+sys.stdout.buffer.write(p.stdout)
+sys.stdout.buffer.flush()
+deadline = time.monotonic() + 10
+while not pathlib.Path({release_json}).exists():
+    if time.monotonic() >= deadline:
+        sys.exit(1)
+    time.sleep(0.005)
+time.sleep(0.1)
+",
+            close_early = if close_early { "True" } else { "False" },
+        );
+        let solver = dir.join("z3");
+        assert!(std::fs::write(&solver, script).is_ok());
+        assert!(std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o755)).is_ok());
+        let (socket, cache) = (dir.join("d.sock"), dir.join("cache"));
+        let (sock, root) = (socket.clone(), cache.clone());
+        let counters = Arc::new(sail_daemon::Stats::default());
+        let observed = Arc::clone(&counters);
+        std::thread::spawn(move || sail_daemon::serve(&sock, &root, observed));
+        for _ in 0..100 {
+            if socket.exists() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let mut input = b"(get-info :version)\n".to_vec();
+        if close_early {
+            // More bytes than a pipe can buffer: delivery must fail once the
+            // wrapper closes stdin after consuming only the first command.
+            input.extend(std::iter::repeat_n(b';', 2 * 1024 * 1024));
+            input.extend_from_slice(b"\n(exit)\n");
+        } else {
+            // A successful quiet producer can still have incomplete parser input.
+            input.extend_from_slice(b"(assert true");
+        }
+        assert!(std::fs::write(&release, b"released").is_ok());
+        let direct = input_run(&solver, None, &input);
+        assert!(direct.status.success());
+        assert!(std::fs::remove_file(&release).is_ok());
+        let actual = input_run_released(&solver, Some(&socket), &input, Some(release));
+        assert_eq!(actual.status.code(), direct.status.code());
+        assert_eq!(actual.stdout, direct.stdout);
+        assert_eq!(actual.stderr, direct.stderr);
+        assert_eq!(
+            counters.puts.load(Ordering::Relaxed),
+            0,
+            "incomplete or failed input delivery cannot publish pairs or silence"
+        );
+        assert!(sail_cache::DiskCache::new(&cache).list().is_empty());
+        let _ = std::fs::remove_dir_all(dir);
     }
 }
 

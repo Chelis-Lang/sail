@@ -5,6 +5,19 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add linked acceptance lifecycle models and a conditional composed proof,
+  checked directly by stock Verus with complete captured dependencies and
+  guard-removal controls. CI completion requires the model-proof job.
+  Selected production acceptance paths now share checked executable source and
+  concrete refinement proofs; full service composition remains an explicit
+  proof obligation.
+- Refuse compile-only verification runs as proof authority, including effective
+  per-package options and older retained completeness records. Preserve Current
+  input observations separately from proof success. CLI and MCP proof labels
+  require checked authority and qualify historical or unknown inputs.
+- Preserve actual input descriptors through parallel read admission, and block
+  solver-reply publication after incomplete input delivery or metadata loss.
+
 - Avoid an extra `sail watch` startup verification when unrelated file removals
   or renames arrive alongside delayed input-creation notifications. Actual input
   edits, removals and renames still cancel and restart the active verification.

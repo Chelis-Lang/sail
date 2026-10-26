@@ -242,17 +242,18 @@ pub fn parse_entry(data: &[u8], key: &str) -> Result<(Meta, Vec<u8>), Problem> {
         .get(..nl)
         .and_then(|h| serde_json::from_slice(h).ok())
         .ok_or(Problem::BadHeader)?;
-    if meta.entry_version != ENTRY_VERSION {
-        return Err(Problem::WrongVersion);
-    }
-    if meta.key != key {
-        return Err(Problem::KeyMismatch);
-    }
     let reply = data.get(nl + 1..).unwrap_or_default().to_vec();
-    if meta.reply_sha256 != hex(&sha256(&reply)) {
-        return Err(Problem::HashMismatch);
-    }
-    Ok((meta, reply))
+    let computed = hex(&sha256(&reply));
+    let version = meta.entry_version;
+    let recorded_key = meta.key.as_bytes().to_vec();
+    let recorded_digest = meta.reply_sha256.as_bytes().to_vec();
+    sail_acceptance::query::RecoveryRecord::new(meta, reply, version, recorded_key, recorded_digest)
+        .recover(ENTRY_VERSION, key.as_bytes(), computed.as_bytes())
+        .map_err(|rejection| match rejection {
+            sail_acceptance::query::RecoveryRejection::WrongVersion => Problem::WrongVersion,
+            sail_acceptance::query::RecoveryRejection::KeyMismatch => Problem::KeyMismatch,
+            sail_acceptance::query::RecoveryRejection::HashMismatch => Problem::HashMismatch,
+        })
 }
 
 /// Whether `meta`'s access time is missing or older than [`TOUCH_INTERVAL`].

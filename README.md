@@ -346,6 +346,8 @@ what each does.
 - Validation status of each milestone gate is in
   [docs/validation/](docs/validation/), and the plan in the
   [roadmap](docs/ROADMAP.md).
+- [Acceptance refinements](docs/design/acceptance-production-refinements.md):
+  checked production operations, concrete model relations and remaining proof boundaries.
 - Working on Sail itself: [AGENTS.md](AGENTS.md) (workflow, gates, Rust
   conventions), the [charter](docs/CHARTER.md) (scope and correctness
   contract) and the [decision records](docs/decisions/README.md).

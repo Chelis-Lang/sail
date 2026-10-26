@@ -51,6 +51,7 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0032](VI-0032-vest-rlimit-on-7d82994.md) | vest_lib exceeds the default rlimit on 0.2026.10.18.7d82994 | open | — | corpus entry `vest` |
 | [VI-0033](VI-0033-crate-metadata-in-smt-names.md) | The fork's closure and alias SMT names carry Cargo's crate metadata | fork defect (VI-0019/VI-0030 renamings); stock unaffected | fixed: `bd79859c` fix: spell closure and alias SMT names without the stable crate ID (Linux pin `f8589ed4`) | `corpus/repros/verus-macro-profile-names/` |
 | [VI-0034](VI-0034-spec-formal-solver-context.md) | Positional spec-formal names change a later HumanEval proof from verified to failed on Mac | fork defect; release blocker #337 | signature-size correction passes installed Mac regression and both ordinary-undo controls; full qualification pending | `corpus/repros/verus-spec-formal-context/` |
+| [VI-0035](VI-0035-no-verify-success.md) | Compile-only invocations report successful whole-crate JSON | Reproduced option boundary; no upstream defect claim | No fork change proposed | `corpus/repros/verus-no-verify-success/` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The

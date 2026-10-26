@@ -9,7 +9,6 @@
 //! solver's output byte for byte. While the solver runs, replies are paired
 //! with their commands and stored in the cache.
 
-use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, ExitCode, Stdio};
@@ -19,6 +18,9 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use sail_acceptance::query::{
+    BoundPair, CorrelatedQueue, PublicationBatch, PublicationGate, ReplayCursor,
+};
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
 use sail_key::{Mode, PrefixHasher, QueryKey, SolverIdentity};
@@ -125,19 +127,74 @@ fn unservable(command: &[u8], reply: &[u8], effort: Option<&Effort>) -> bool {
             && !sail_api::policy::unknown_servable(effort))
 }
 
-/// A reply ready to store.
-#[derive(Debug)]
-struct Entry {
-    key: QueryKey,
-    command: String,
-    reply: Vec<u8>,
-    effort: Option<Effort>,
+/// A paired reply keeps its complete expectation and bytes together until PUT.
+/// Silence certificates have a separate complete-session origin.
+enum Entry {
+    Paired {
+        pair: BoundPair<Expect, Vec<u8>>,
+        effort: Option<Effort>,
+    },
+    Silence {
+        key: QueryKey,
+    },
+}
+
+impl Entry {
+    fn effort_mut(&mut self) -> Option<&mut Effort> {
+        match self {
+            Self::Paired { effort, .. } => effort.as_mut(),
+            Self::Silence { .. } => None,
+        }
+    }
+
+    fn wire_cost(&self) -> Option<usize> {
+        match self {
+            Self::Paired { pair, .. } => {
+                let Expect::Store { command, text, .. } = pair.expectation() else {
+                    return None;
+                };
+                pair.reply()
+                    .len()
+                    .checked_add(command.len())?
+                    .checked_add(text.len())
+            }
+            Self::Silence { .. } => {
+                Some(b"sail-session-silent/v1\n".len() + "sail-session-silence".len())
+            }
+        }
+    }
+
+    fn into_put(self) -> Option<([u8; 32], PutMeta, Vec<u8>)> {
+        let (key, command, reply, effort) = match self {
+            Self::Paired { pair, effort } => {
+                let (expect, reply) = pair.into_parts();
+                let Expect::Store { key, command, .. } = expect else {
+                    return None;
+                };
+                (key, command, reply, effort)
+            }
+            Self::Silence { key } => (
+                key,
+                "sail-session-silence".to_owned(),
+                b"sail-session-silent/v1\n".to_vec(),
+                None,
+            ),
+        };
+        Some((
+            key.0,
+            PutMeta {
+                command,
+                provenance: "pinned-solver".to_owned(),
+                effort,
+            },
+            reply,
+        ))
+    }
 }
 
 /// A `check-sat` reply held back until its effort is known: the
 /// `:all-statistics` reply after it gives the `rlimit-count` delta, and a
 /// `reason-unknown` reply may come in between (ADR 0009).
-#[derive(Debug)]
 struct HeldCheck {
     entry: Entry,
     before: Option<u64>,
@@ -161,31 +218,39 @@ fn rlimit_count(reply: &[u8]) -> Option<u64> {
 /// order, whichever arrives first. Recording stops for good at an
 /// `Expect::Stop`, a solver error reply, an implausible reply, or
 /// [`Pairer::stop`].
-#[derive(Default)]
 struct Pairer {
     terminal: Option<QueryKey>,
-    replies: VecDeque<Vec<u8>>,
-    expects: VecDeque<Expect>,
-    stopped: bool,
+    pending: CorrelatedQueue<Expect, Vec<u8>>,
     /// The latest `rlimit-count` seen in a statistics reply.
     last_count: Option<u64>,
     held: Option<HeldCheck>,
 }
 
+impl Default for Pairer {
+    fn default() -> Self {
+        Self {
+            terminal: None,
+            pending: CorrelatedQueue::empty(),
+            last_count: None,
+            held: None,
+        }
+    }
+}
+
 impl Pairer {
     fn reply(&mut self, reply: Vec<u8>) {
-        self.replies.push_back(reply);
+        self.pending.reply(reply);
     }
 
     fn expect(&mut self, expect: Expect) {
         match expect {
             Expect::Terminal(key) => self.terminal = Some(key),
-            other => self.expects.push_back(other),
+            other => self.pending.expect(other),
         }
     }
 
     fn stop(&mut self) {
-        self.stopped = true;
+        self.pending.stop();
     }
 
     /// Releases a held check, with whatever effort is known.
@@ -200,41 +265,30 @@ impl Pairer {
         let mut out = Vec::new();
         // Pop only when both sides have an entry: popping one and finding the
         // other empty would drop it and shift every later pairing by one.
-        while !self.stopped && !self.replies.is_empty() && !self.expects.is_empty() {
-            let (Some(reply), Some(expect)) = (self.replies.pop_front(), self.expects.pop_front())
-            else {
-                break;
-            };
-            let Expect::Store {
-                key,
-                command,
-                text,
-                limit,
-            } = expect
-            else {
-                self.stopped = true;
+        while let Some(pair) = self.pending.take_pair() {
+            let reply = pair.reply();
+            let Expect::Store { text, limit, .. } = pair.expectation() else {
+                self.pending.stop();
                 break;
             };
             // Never store a reply that does not fit its command; stop
             // recording, since pairing can no longer be trusted.
-            if reply.starts_with(b"(error") || !plausible(&text, &reply) {
-                self.stopped = true;
+            if reply.starts_with(b"(error") || !plausible(text, reply) {
+                self.pending.stop();
                 break;
             }
-            let kind = classify(&text).map(|c| c.kind).ok();
+            let kind = classify(text).map(|c| c.kind).ok();
             match kind {
                 Some(k) if k.is_check() => {
                     self.release(&mut out);
                     self.held = Some(HeldCheck {
-                        entry: Entry {
-                            key,
-                            command,
-                            reply,
+                        entry: Entry::Paired {
                             effort: Some(Effort {
-                                limit,
+                                limit: *limit,
                                 used: None,
                                 reason: None,
                             }),
+                            pair,
                         },
                         before: self.last_count,
                     });
@@ -243,7 +297,7 @@ impl Pairer {
                 Some(CommandKind::GetInfo {
                     keyword: b":reason-unknown",
                 }) => {
-                    if let Some(effort) = self.held.as_mut().and_then(|h| h.entry.effort.as_mut()) {
+                    if let Some(effort) = self.held.as_mut().and_then(|h| h.entry.effort_mut()) {
                         effort.reason =
                             Some(String::from_utf8_lossy(reply.trim_ascii()).into_owned());
                     }
@@ -251,10 +305,10 @@ impl Pairer {
                 Some(CommandKind::GetInfo {
                     keyword: b":all-statistics",
                 }) => {
-                    let count = rlimit_count(&reply);
+                    let count = rlimit_count(reply);
                     if let Some(h) = self.held.as_mut()
                         && let (Some(before), Some(after)) = (h.before, count)
-                        && let Some(effort) = h.entry.effort.as_mut()
+                        && let Some(effort) = h.entry.effort_mut()
                     {
                         effort.used = Some(after.saturating_sub(before));
                     }
@@ -263,12 +317,7 @@ impl Pairer {
                 }
                 _ => {}
             }
-            out.push(Entry {
-                key,
-                command,
-                reply,
-                effort: None,
-            });
+            out.push(Entry::Paired { pair, effort: None });
         }
         out
     }
@@ -276,29 +325,38 @@ impl Pairer {
     /// At the end of the session: releases a held check.
     fn finish(&mut self) -> Vec<Entry> {
         let mut out = Vec::new();
-        if !self.stopped {
+        if !self.pending.is_stopped() {
             self.release(&mut out);
-            if self.expects.is_empty()
-                && self.replies.is_empty()
+            if self.pending.is_empty()
                 && let Some(key) = self.terminal.take()
             {
-                out.push(Entry {
-                    key,
-                    command: "sail-session-silence".to_owned(),
-                    reply: b"sail-session-silent/v1\n".to_vec(),
-                    effort: None,
-                });
+                out.push(Entry::Silence { key });
             }
         }
         out
     }
 }
 
+struct InputStatus {
+    /// All producer expectations have been queued and the input side has finished.
+    done: AtomicBool,
+    /// Permanently false after any failed input delivery or completion observation.
+    valid: AtomicBool,
+}
+
+impl InputStatus {
+    fn send_expectation(&self, expects: &Sender<Expect>, expectation: Expect) {
+        if expects.send(expectation).is_err() {
+            self.valid.store(false, Ordering::SeqCst);
+        }
+    }
+}
+
 struct Solving {
     stdin: Option<ChildStdin>,
     expects: Sender<Expect>,
-    /// Set once the input side has seen the end of its input.
-    input_done: Arc<AtomicBool>,
+    /// Input completion and permanently latched delivery/completion failures.
+    input: Arc<InputStatus>,
     /// The output side; it owns the solver and returns its exit status.
     output: JoinHandle<u8>,
 }
@@ -308,7 +366,7 @@ struct Solving {
 fn spawn_storer(
     mut client: Client,
     entries: Receiver<Entry>,
-    quiet: Arc<AtomicBool>,
+    publication_allowed: Arc<AtomicBool>,
 ) -> Option<JoinHandle<()>> {
     std::thread::Builder::new()
         .name("sail-z3-store".to_owned())
@@ -316,29 +374,20 @@ fn spawn_storer(
             // No entry is published until the entire solver session is known
             // to have emitted no stderr. Replies from older warning sessions
             // otherwise freeze a missing diagnostic on warm runs.
-            let mut pending = Vec::new();
-            let mut bytes = 0usize;
+            let mut pending = PublicationBatch::empty();
             for entry in entries {
-                bytes = bytes
-                    .saturating_add(entry.reply.len())
-                    .saturating_add(entry.command.len());
-                if bytes > 64 * 1024 * 1024 {
+                let Some(cost) = entry.wire_cost() else {
+                    return;
+                };
+                if !pending.push(entry, cost, 64 * 1024 * 1024) {
                     return;
                 }
-                pending.push(entry);
             }
-            if !quiet.load(Ordering::SeqCst) {
+            let Some(pending) = pending.release(publication_allowed.load(Ordering::SeqCst)) else {
                 return;
-            }
+            };
             // A daemon error drops the remaining stores.
-            let _ = client.put_all(pending.into_iter().map(|entry| {
-                let meta = PutMeta {
-                    command: entry.command,
-                    provenance: "pinned-solver".to_owned(),
-                    effort: entry.effort,
-                };
-                (entry.key.0, meta, entry.reply)
-            }));
+            let _ = client.put_all(pending.into_iter().filter_map(Entry::into_put));
         })
         .ok()
 }
@@ -381,24 +430,26 @@ fn output_side(
     skip: u64,
     expects: &Receiver<Expect>,
     client: Option<Client>,
-    input_done: &AtomicBool,
+    input: &InputStatus,
     stderr: Option<&crate::cached_stderr::Monitor>,
 ) -> u8 {
     let mut all = Vec::new(); // every output byte so far
     let mut splitter = ResponseSplitter::new();
-    let mut forward_from: Option<usize> = (skip == 0).then_some(0);
+    let mut replay = ReplayCursor::new(skip);
+    let mut forward_from: Option<usize> = replay.forwarding().then_some(0);
     let mut forwarded = 0usize;
     let mut forwarding_ok = true;
-    let mut seen = 0u64; // replies completed so far
-    let mut prev: Option<(u64, usize)> = None; // (index, start) of the last completed reply
+    // Whether the last complete response belongs to the fresh suffix, and its start.
+    let mut prev: Option<(bool, usize)> = None;
     let mut buf = vec![0u8; 64 * 1024];
 
     // Pairs replies with expectations as either arrives. Stores go to a
     // separate thread, so forwarding never waits on the daemon.
     let mut pairer = Pairer::default();
     let (store_tx, store_rx) = std::sync::mpsc::channel::<Entry>();
-    let quiet = Arc::new(AtomicBool::new(false));
-    let storer = client.and_then(|client| spawn_storer(client, store_rx, Arc::clone(&quiet)));
+    let publication_allowed = Arc::new(AtomicBool::new(false));
+    let storer =
+        client.and_then(|client| spawn_storer(client, store_rx, Arc::clone(&publication_allowed)));
     if storer.is_none() {
         // No daemon to store to.
         pairer.stop();
@@ -424,16 +475,16 @@ fn output_side(
         splitter.push(chunk, &mut items);
         for item in items {
             let start = usize::try_from(item.offset).unwrap_or(usize::MAX);
-            if let Some((k, s)) = prev.take()
-                && k >= skip
+            if let Some((fresh, s)) = prev.take()
+                && fresh
             {
                 pairer.reply(all.get(s..start).unwrap_or_default().to_vec());
             }
-            if seen == skip && forward_from.is_none() {
+            let fresh = replay.advance();
+            if fresh && forward_from.is_none() {
                 forward_from = Some(start);
             }
-            prev = Some((seen, start));
-            seen += 1;
+            prev = Some((fresh, start));
         }
         if let Some(f) = forward_from
             && all.len() > forwarded.max(f)
@@ -459,13 +510,13 @@ fn output_side(
     };
     // The last reply runs to the end of the stream, and is complete only if
     // the solver exited cleanly.
-    if let Some((k, s)) = prev.take()
-        && k >= skip
+    if let Some((fresh, s)) = prev.take()
+        && fresh
         && code == 0
     {
         pairer.reply(all.get(s..).unwrap_or_default().to_vec());
     }
-    let input_done = input_done.load(Ordering::SeqCst);
+    let input_done = input.done.load(Ordering::SeqCst);
     // Once the input has ended, every expectation is queued or about to be.
     // Before that, more may never come, so take only what is there.
     queue_stores(&mut pairer, expects, &store_tx, input_done);
@@ -476,7 +527,15 @@ fn output_side(
     if stderr.is_some_and(crate::cached_stderr::Monitor::failed) || !forwarding_ok {
         code = 1;
     }
-    quiet.store(code == 0 && silent, Ordering::SeqCst);
+    let gate = PublicationGate {
+        input_closed: input_done && input.valid.load(Ordering::SeqCst),
+        pairing_active: !pairer.pending.is_stopped(),
+        queues_empty: pairer.pending.is_empty(),
+        normal_exit: code == 0,
+        quiet: silent,
+        forwarding_ok,
+    };
+    publication_allowed.store(gate.allows(), Ordering::SeqCst);
     drop(store_tx);
     if let Some(h) = storer {
         let _ = h.join();
@@ -517,20 +576,33 @@ fn start_solver(
         return None;
     };
     let (tx, rx) = std::sync::mpsc::channel();
+    let input = Arc::new(InputStatus {
+        done: AtomicBool::new(false),
+        valid: AtomicBool::new(true),
+    });
     // Queued before the solver sees any input, so it precedes its reply.
-    let _ = tx.send(first);
-    let input_done = Arc::new(AtomicBool::new(false));
-    let done = Arc::clone(&input_done);
+    input.send_expectation(&tx, first);
+    let observed_input = Arc::clone(&input);
     // If the thread cannot start, the solver is dropped with it; it exits
     // when `stdin` is dropped below.
     let output = std::thread::Builder::new()
         .name("sail-z3-cached-out".to_owned())
-        .spawn(move || output_side(stdout, child, skip, &rx, client, &done, stderr.as_ref()))
+        .spawn(move || {
+            output_side(
+                stdout,
+                child,
+                skip,
+                &rx,
+                client,
+                &observed_input,
+                stderr.as_ref(),
+            )
+        })
         .ok()?;
     let mut s = Solving {
         stdin: Some(stdin),
         expects: tx,
-        input_done,
+        input,
         output,
     };
     s.write(raw);
@@ -538,17 +610,31 @@ fn start_solver(
 }
 
 impl Solving {
+    fn expect(&self, expectation: Expect) {
+        self.input.send_expectation(&self.expects, expectation);
+    }
+
     fn write(&mut self, bytes: &[u8]) {
         if let Some(stdin) = &mut self.stdin
             && stdin.write_all(bytes).and_then(|()| stdin.flush()).is_err()
         {
+            self.input.valid.store(false, Ordering::SeqCst);
             self.stdin = None;
         }
     }
 
-    fn finish(mut self, terminal: QueryKey) -> ExitCode {
-        self.input_done.store(true, Ordering::SeqCst);
-        let _ = self.expects.send(Expect::Terminal(terminal));
+    fn finish(mut self, terminal: QueryKey, complete: bool) -> ExitCode {
+        if !complete {
+            self.input.valid.store(false, Ordering::SeqCst);
+        }
+        let final_expectation = if self.input.valid.load(Ordering::SeqCst) {
+            Expect::Terminal(terminal)
+        } else {
+            Expect::Stop
+        };
+        self.expect(final_expectation);
+        // All metadata sends, including their failure latch, precede done.
+        self.input.done.store(true, Ordering::SeqCst);
         drop(self.stdin.take());
         drop(self.expects);
         ExitCode::from(self.output.join().unwrap_or(1))
@@ -646,6 +732,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     let mut solving: Option<Solving> = None;
     let mut client = Some(client);
     let mut stdin = std::io::stdin().lock();
+    let mut input_read_ok = true;
     let mut buf = vec![0u8; 64 * 1024];
 
     loop {
@@ -653,7 +740,10 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             Ok(0) => break,
             Ok(n) => n,
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
-            Err(_) => break,
+            Err(_) => {
+                input_read_ok = false;
+                break;
+            }
         };
         let chunk = buf.get(..n).unwrap_or_default().to_vec();
         raw.extend_from_slice(&chunk);
@@ -668,7 +758,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 if let Some(s) = &solving
                     && expects != Output::None
                 {
-                    let _ = s.expects.send(expect);
+                    s.expect(expect);
                 }
                 if let Some(s) = &mut solving
                     && !fresh_solver
@@ -687,7 +777,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
             if let Some(s) = &solving {
                 if expects != Output::None {
-                    let _ = s.expects.send(expect);
+                    s.expect(expect);
                 }
                 continue;
             }
@@ -734,7 +824,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         args,
         (&raw, served),
         &mut prefix,
-        splitter.finish().is_none(),
+        input_read_ok && splitter.finish().is_none(),
     )
 }
 
@@ -791,7 +881,7 @@ fn finish_input(
                 .is_some_and(|r| r == b"sail-session-silent/v1\n")
         });
     match solving {
-        Some(s) => (Some(s.finish(end.terminal)), true),
+        Some(s) => (Some(s.finish(end.terminal, end.complete)), true),
         None if !certified => (
             start_solver(
                 solver,
@@ -801,7 +891,7 @@ fn finish_input(
                 Expect::Stop,
                 client.take(),
             )
-            .map(|s| s.finish(end.terminal)),
+            .map(|s| s.finish(end.terminal, end.complete)),
             true,
         ),
         None => (Some(ExitCode::SUCCESS), false),
@@ -847,6 +937,44 @@ mod tests {
     use super::{Expect, Pairer};
     use proptest::prelude::*;
     use sail_key::QueryKey;
+
+    struct StoredEntry {
+        key: QueryKey,
+        reply: Vec<u8>,
+        effort: Option<super::Effort>,
+    }
+
+    fn stored_entry(entry: super::Entry) -> StoredEntry {
+        let Some((key, meta, reply)) = entry.into_put() else {
+            unreachable!("a stored entry must retain a Store expectation");
+        };
+        StoredEntry {
+            key: QueryKey(key),
+            reply,
+            effort: meta.effort,
+        }
+    }
+
+    fn stored_entries(entries: Vec<super::Entry>) -> Vec<StoredEntry> {
+        entries.into_iter().map(stored_entry).collect()
+    }
+
+    #[test]
+    fn lost_expectation_metadata_permanently_blocks_publication() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let status = super::InputStatus {
+            done: AtomicBool::new(false),
+            valid: AtomicBool::new(true),
+        };
+        let (sender, receiver) = std::sync::mpsc::channel();
+        drop(receiver);
+        status.send_expectation(&sender, Expect::Stop);
+        assert!(!status.valid.load(Ordering::SeqCst));
+        assert!(!status.done.load(Ordering::SeqCst));
+        status.send_expectation(&sender, Expect::Terminal(key(1)));
+        assert!(!status.valid.load(Ordering::SeqCst));
+        assert!(!status.done.load(Ordering::SeqCst));
+    }
 
     fn key(i: u8) -> QueryKey {
         QueryKey([i; 32])
@@ -896,7 +1024,8 @@ mod tests {
             while usize::from(e) < n { p.expect(model(e)); e += 1; }
             stored.extend(p.drain());
             prop_assert_eq!(stored.len(), n);
-            for entry in &stored {
+            for entry in stored {
+                let entry = stored_entry(entry);
                 prop_assert_eq!(entry.key.0[0], entry.reply[1]);
             }
         }
@@ -915,7 +1044,7 @@ mod tests {
         p.reply(b"<<DONE>>\n".to_vec());
         // The `unknown` check is held for its effort when recording stops,
         // so only the model is stored.
-        let stored = p.drain();
+        let stored = stored_entries(p.drain());
         assert_eq!(stored.len(), 1);
         assert_eq!(stored[0].key, key(2));
         assert!(p.finish().is_empty());
@@ -946,7 +1075,7 @@ mod tests {
         p.reply(b"(:reason-unknown \"incomplete quantifiers\")\n".to_vec());
         p.expect(store(4, "(get-info :all-statistics)"));
         p.reply(b"(:rlimit-count 160)\n".to_vec());
-        let stored = p.drain();
+        let stored = stored_entries(p.drain());
         let keys: Vec<u8> = stored.iter().map(|e| e.key.0[0]).collect();
         assert_eq!(keys, [1, 3, 2, 4]);
         let effort = stored
@@ -969,7 +1098,7 @@ mod tests {
         p.expect(check(1, 10));
         p.reply(b"unsat\n".to_vec());
         assert!(p.drain().is_empty());
-        let rest = p.finish();
+        let rest = stored_entries(p.finish());
         assert_eq!(rest.len(), 1);
         assert_eq!(rest[0].effort.as_ref().and_then(|e| e.used), None);
     }

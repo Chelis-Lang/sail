@@ -1,6 +1,7 @@
 //! Content digests and atomic private sidecar files.
 
 use crate::{Error, Result};
+use sail_acceptance::inputs::{InputFact, InputValue, reads_complete, selection_covered};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -106,20 +107,99 @@ impl FileDigests {
                 pending.push((canonical, path));
             }
         }
-        for ((canonical, _), digest) in pending.iter().zip(digest_all(
-            &pending.iter().map(|(_, path)| *path).collect::<Vec<_>>(),
-        )) {
-            if let Ok(digest) = digest {
-                self.0.insert(canonical.clone(), digest);
+        let descriptors: Vec<_> = pending
+            .iter()
+            .map(|(canonical, path)| (canonical.as_path(), *path))
+            .collect();
+        let reads = crate::parallel::in_order(&descriptors, |&(canonical, path)| {
+            (canonical, path, file_digest(path))
+        });
+        self.retain_prefetched(&pending, reads);
+    }
+
+    fn retain_prefetched(
+        &mut self,
+        pending: &[(PathBuf, &Path)],
+        reads: Vec<(&Path, &Path, Result<String>)>,
+    ) {
+        let required: Vec<_> = pending
+            .iter()
+            .map(|(canonical, path)| InputFact {
+                namespace: 0,
+                name: canonical.as_os_str().as_encoded_bytes(),
+                value: InputValue::Present(path.as_os_str().as_encoded_bytes()),
+            })
+            .collect();
+        let observed: Vec<_> = reads
+            .iter()
+            .filter(|(_, _, read)| read.is_ok())
+            .map(|(canonical, path, _)| InputFact {
+                namespace: 0,
+                name: canonical.as_os_str().as_encoded_bytes(),
+                value: InputValue::Present(path.as_os_str().as_encoded_bytes()),
+            })
+            .collect();
+        let (source_order, source_inverse) = super::input::proposed_order(&required);
+        let (selected_order, selected_inverse) = super::input::proposed_order(&observed);
+        if !selection_covered(
+            &required,
+            &observed,
+            &source_order,
+            &source_inverse,
+            &selected_order,
+            &selected_inverse,
+        ) {
+            return;
+        }
+        // Successful records retain their own canonical/lexical descriptor and
+        // digest. Failed or missing prefetches remain uncached for hash().
+        for (canonical, _, read) in reads {
+            if let Ok(hash) = read {
+                self.0.insert(canonical.to_owned(), hash);
             }
         }
     }
 }
 
-/// Complete content digests of `paths`, in order, read by at most eight
-/// concurrent workers. Each result is exactly `file_digest` of that path.
-pub(super) fn digest_all(paths: &[&Path]) -> Vec<Result<String>> {
-    crate::parallel::in_order(paths, |path| file_digest(path))
+/// Complete reads retain the actual requested path inside each worker result;
+/// callers validate these keys rather than relying on executor result order.
+pub(super) fn digest_all_tagged<'a>(paths: &[&'a Path]) -> Vec<(&'a Path, Result<String>)> {
+    crate::parallel::in_order(paths, |&path| (path, file_digest(path)))
+}
+
+/// Checks the complete ledger of returned outcome records, including failures.
+/// Present markers mean a returned record exists, not that its file was read
+/// successfully. Callers retain and check the actual Result independently.
+pub(super) fn read_outcome_keys_match<T, E>(
+    paths: &[&Path],
+    reads: &[(&Path, std::result::Result<T, E>)],
+) -> bool {
+    let required: Vec<_> = paths
+        .iter()
+        .map(|path| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(&[]),
+        })
+        .collect();
+    let observed: Vec<_> = reads
+        .iter()
+        .map(|(path, _)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(&[]),
+        })
+        .collect();
+    let (required_order, required_inverse) = super::input::proposed_order(&required);
+    let (observed_order, observed_inverse) = super::input::proposed_order(&observed);
+    reads_complete(
+        &required,
+        &observed,
+        &required_order,
+        &required_inverse,
+        &observed_order,
+        &observed_inverse,
+    )
 }
 
 pub(crate) fn json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
@@ -196,6 +276,60 @@ pub(crate) fn event(value: &serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prefetched_records_preserve_their_read_descriptors()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-tagged-prefetch-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        let extra = root.join("extra.rs");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        std::fs::write(&extra, "extra")?;
+        let pending = [(a.clone(), a.as_path()), (b.clone(), b.as_path())];
+        let descriptors = [(a.as_path(), a.as_path()), (b.as_path(), b.as_path())];
+        let read = || {
+            crate::parallel::in_order(&descriptors, |&(canonical, path)| {
+                (canonical, path, file_digest(path))
+            })
+        };
+        let mut reads = read();
+        reads.reverse();
+        let mut phase = FileDigests::default();
+        phase.retain_prefetched(&pending, reads);
+        assert_eq!(phase.hash(&a)?, file_digest(&a)?);
+        assert_eq!(phase.hash(&b)?, file_digest(&b)?);
+        for invalid in [
+            vec![
+                (a.as_path(), a.as_path(), file_digest(&a)),
+                (a.as_path(), a.as_path(), file_digest(&a)),
+            ],
+            vec![(extra.as_path(), extra.as_path(), file_digest(&extra))],
+            vec![(a.as_path(), b.as_path(), file_digest(&b))],
+        ] {
+            let mut phase = FileDigests::default();
+            phase.retain_prefetched(&pending, invalid);
+            assert!(phase.0.is_empty());
+        }
+        let mut partial = FileDigests::default();
+        partial.retain_prefetched(&pending, vec![(a.as_path(), a.as_path(), file_digest(&a))]);
+        assert!(!partial.0.contains_key(&b));
+        assert_eq!(partial.hash(&b)?, file_digest(&b)?);
+        std::fs::write(&a, "second")?;
+        std::fs::write(&b, "first")?;
+        let mut swapped = read();
+        swapped.reverse();
+        let mut fresh = FileDigests::default();
+        fresh.retain_prefetched(&pending, swapped);
+        assert_eq!(fresh.hash(&a)?, file_digest(&a)?);
+        assert_eq!(fresh.hash(&b)?, file_digest(&b)?);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn same_content_reads_every_byte() -> std::result::Result<(), Box<dyn std::error::Error>> {

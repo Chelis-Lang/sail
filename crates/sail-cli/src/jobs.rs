@@ -273,11 +273,7 @@ fn response_text(response: &Response) -> String {
                         "\n  {}: {}; {} established by {}",
                         target.target,
                         crate::report::Counts::of(&target.report),
-                        if target.reused {
-                            "reused"
-                        } else {
-                            "verified now"
-                        },
+                        target_result_label(target, result.currentness),
                         target.establishing_run
                     );
                 }
@@ -291,6 +287,27 @@ fn response_text(response: &Response) -> String {
         Response::Chunk(chunk) => chunk.text.clone(),
         Response::Error(error) => error.clone(),
         _ => "Unsupported job response; request structured output.".to_owned(),
+    }
+}
+
+fn target_result_label(
+    target: &sail_api::project::TargetResult,
+    currentness: sail_api::project::Currentness,
+) -> &'static str {
+    use sail_api::project::Currentness;
+    if sail_api::acceptance::complete_target(target).is_some() {
+        match currentness {
+            Currentness::Current if target.reused => "reused whole-target proof",
+            Currentness::Current => "verified now",
+            Currentness::Historical => "historical whole-target proof",
+            Currentness::Unknown => "recorded whole-target proof (currentness unknown)",
+        }
+    } else if !sail_api::acceptance::verification_enabled_command(&target.report.command) {
+        "compile-only result (no proof authority)"
+    } else if target.reused {
+        "retained result (no whole-target proof authority)"
+    } else {
+        "observed result (no whole-target proof authority)"
     }
 }
 
@@ -365,5 +382,126 @@ mod environment_tests {
                 .collect::<BTreeMap<_, _>>()
         };
         assert_eq!(select(original), select(observed));
+    }
+}
+
+#[cfg(test)]
+mod result_presentation_tests {
+    use super::*;
+    use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
+
+    fn zero_project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
+        let mut report: sail_api::output::Report =
+            serde_json::from_str(include_str!("../tests/fixtures/attr/report.golden.json"))?;
+        report.exit_code = Some(0);
+        report.diagnostics.clear();
+        for krate in &mut report.crates {
+            krate.functions.clear();
+            krate.verus.verified = Some(0);
+            krate.verus.errors = Some(0);
+            krate.verus.success = Some(true);
+            krate.verus.encountered_vir_error = Some(false);
+        }
+        report.summary = sail_api::output::Summary::of(&report.crates);
+        Ok(ProjectResult {
+            kind: "sail-project-result".into(),
+            schema_version: sail_api::project::SCHEMA_VERSION,
+            run_id: "run".into(),
+            workspace: "/workspace".into(),
+            context_sha256: "context".into(),
+            input_revision: "revision".into(),
+            currentness: Currentness::Current,
+            exit_code: Some(0),
+            targets: vec![TargetResult {
+                package_id: "package".into(),
+                target: "target".into(),
+                kind: vec!["lib".into()],
+                establishing_run: "run".into(),
+                reused: false,
+                scope_reuse: None,
+                requested: true,
+                complete: true,
+                report,
+                dependency_store: None,
+                dependency_build: None,
+            }],
+            execution: Execution::default(),
+            notes: Vec::new(),
+            error: None,
+            engine: None,
+            no_reuse: None,
+        })
+    }
+
+    fn text(project: ProjectResult) -> Result<String, Box<dyn std::error::Error>> {
+        let currentness = match project.currentness {
+            Currentness::Current => sail_api::jobs::Currentness::Current,
+            Currentness::Historical => sail_api::jobs::Currentness::Historical,
+            Currentness::Unknown => sail_api::jobs::Currentness::Unknown,
+        };
+        let status = Status {
+            version: sail_api::jobs::VERSION,
+            id: "job".into(),
+            project_dir: "/workspace".into(),
+            args: Vec::new(),
+            state: sail_api::jobs::Lifecycle::Completed,
+            submitted_at_ms: 0,
+            started_at_ms: Some(0),
+            finished_at_ms: Some(1),
+            exit_code: Some(0),
+            input_revision: Some("revision".into()),
+            currentness,
+            error: None,
+        };
+        Ok(response_text(&Response::Result(
+            sail_api::jobs::ResultDocument {
+                job: status,
+                contracts: None,
+                repair: None,
+                result: Some(serde_json::to_value(project)?),
+            },
+        )))
+    }
+
+    #[test]
+    fn current_compile_only_result_never_says_verified_now()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut project = zero_project()?;
+        project.targets[0].report.command = vec!["--".into(), "--no-verify".into()];
+        let result = text(project)?;
+        assert!(result.contains("Current"));
+        assert!(result.contains("compile-only result (no proof authority)"));
+        assert!(!result.contains("verified now"));
+        Ok(())
+    }
+
+    #[test]
+    fn legacy_completion_withholding_also_withholds_reused_proof_wording()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for reused in [false, true] {
+            let mut project = zero_project()?;
+            project.targets[0].complete = false;
+            project.targets[0].reused = reused;
+            let result = text(project)?;
+            assert!(result.contains("no whole-target proof authority"));
+            assert!(!result.contains("verified now"));
+            assert!(!result.contains("reused whole-target proof"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn genuine_zero_function_proofs_keep_currentness_separate()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let project = zero_project()?;
+        assert!(text(project.clone())?.contains("verified now"));
+        for currentness in [Currentness::Historical, Currentness::Unknown] {
+            let mut old = project.clone();
+            old.currentness = currentness;
+            let result = text(old)?;
+            assert!(result.contains("whole-target proof"));
+            assert!(!result.contains("verified now"));
+        }
+        Ok(())
     }
 }

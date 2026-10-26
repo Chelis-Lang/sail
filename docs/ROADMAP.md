@@ -14,6 +14,13 @@ AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
 | Bounded neutral-source body mutation | Lifecycle qualified; native strong mutants remain Unknown and positive kills unestablished | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
 | Separate scalar literal-contract witnesses | Native Linux gates and installed source-owner witness acceptance pass; protected delivery remains separate | [Qualification](validation/scalar-literal-witnesses.md), [ADR 0077](decisions/0077-scalar-literal-contract-witnesses.md) |
 
+## Evidence-acceptance proofs
+
+| Gate | Current state | Remaining work |
+|---|---|---|
+| Query association, input identity, scope and result authority models | Expanded lifecycle models, composed admission and captured-source direct stock checking pass native and hosted checks; scope is recorded in the [model guide](design/acceptance-proof-checker.md) | Observation adapters, parser/cache-origin refinement and service-wide theorem |
+| Production acceptance core | Checkpoint `fe8be9ee` passes native/hosted gates and full fast/standard conformance; bounded timing accepted by owner | remaining stages C–F in the [refinement guide](design/acceptance-production-refinements.md); broader release performance remains separate |
+
 ## Goal
 
 The first public release must be clearly faster than plain `cargo verus

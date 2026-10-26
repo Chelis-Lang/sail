@@ -1,7 +1,6 @@
 //! Forward solver stderr and certify silence only after solver shutdown.
 
 use std::io::{Read, Write};
-use std::net::Shutdown;
 use std::os::fd::OwnedFd;
 use std::os::unix::net::UnixStream;
 use std::process::Stdio;
@@ -11,7 +10,7 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 struct State {
-    stream: UnixStream,
+    stream: Option<UnixStream>,
     seen: bool,
     eof: bool,
     failed: bool,
@@ -21,8 +20,12 @@ impl State {
     fn drain(&mut self) -> bool {
         let mut buffer = [0; 8192];
         loop {
-            match self.stream.read(&mut buffer) {
+            let Some(stream) = self.stream.as_mut() else {
+                return !self.failed;
+            };
+            match stream.read(&mut buffer) {
                 Ok(0) => {
+                    drop(self.stream.take());
                     self.eof = true;
                     break;
                 }
@@ -35,10 +38,11 @@ impl State {
                         .is_err()
                     {
                         self.failed = true;
-                        // Release the child's writer even when our stderr sink
-                        // is gone. Keeping a full unread socket would deadlock
-                        // a solver before it can produce stdout or exit.
-                        let _ = self.stream.shutdown(Shutdown::Read);
+                        // Release the actual reader descriptor. A read-side
+                        // shutdown alone can leave an in-flight peer write
+                        // waiting while this descriptor is retained until the
+                        // solver exits, creating a stdout/stderr wait cycle.
+                        drop(self.stream.take());
                         self.eof = true;
                         break;
                     }
@@ -47,7 +51,7 @@ impl State {
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                 Err(_) => {
                     self.failed = true;
-                    let _ = self.stream.shutdown(Shutdown::Read);
+                    drop(self.stream.take());
                     self.eof = true;
                     break;
                 }
@@ -68,7 +72,7 @@ impl Monitor {
         let (reader, writer) = UnixStream::pair()?;
         reader.set_nonblocking(true)?;
         let state = Arc::new(Mutex::new(State {
-            stream: reader,
+            stream: Some(reader),
             seen: false,
             eof: false,
             failed: false,

@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+sail-acceptance.workspace = true
 sail-key.workspace = true
 sail-ledger.workspace = true
 sail-smtlib.workspace = true

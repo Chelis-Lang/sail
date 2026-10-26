@@ -6,7 +6,7 @@
 
 use super::input::InputSnapshot;
 use std::path::Path;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", test))]
 use std::path::PathBuf;
 #[cfg(target_os = "linux")]
 use std::time::{Duration, Instant};
@@ -25,16 +25,42 @@ fn relevant(path: &Path, tracked: &[PathBuf]) -> bool {
 }
 
 #[cfg(target_os = "linux")]
-fn missing(snapshot: &InputSnapshot) -> Vec<PathBuf> {
-    // One `stat` per root (thousands on vest); they overlap, order is kept.
-    let exists = crate::parallel::in_order(&snapshot.roots, |p| p.exists());
-    snapshot
+fn missing(snapshot: &InputSnapshot) -> Option<Vec<PathBuf>> {
+    let requested: std::collections::BTreeMap<_, _> = snapshot
         .roots
         .iter()
-        .zip(exists)
-        .filter(|(_, exists)| !exists)
-        .map(|(p, _)| p.clone())
-        .collect()
+        .map(|path| (path.as_os_str().as_encoded_bytes(), path.as_path()))
+        .collect();
+    let paths: Vec<_> = requested.values().copied().collect();
+    let exists = crate::parallel::in_order(&paths, |&path| (path, path.exists()));
+    missing_from_observations(&snapshot.roots, &exists)
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn missing_from_observations(roots: &[PathBuf], exists: &[(&Path, bool)]) -> Option<Vec<PathBuf>> {
+    let requested: std::collections::BTreeMap<_, _> = roots
+        .iter()
+        .map(|path| (path.as_os_str().as_encoded_bytes(), path.as_path()))
+        .collect();
+    let expected: Vec<_> = requested.keys().map(|&name| (name, &[][..])).collect();
+    let returned: Vec<_> = exists
+        .iter()
+        .map(|(path, _)| (path.as_os_str().as_encoded_bytes(), &[][..]))
+        .collect();
+    if !crate::parallel::exact_descriptors(&expected, &returned) {
+        return None;
+    }
+    let by_name: std::collections::BTreeMap<_, _> = exists
+        .iter()
+        .map(|(path, present)| (path.as_os_str().as_encoded_bytes(), *present))
+        .collect();
+    let mut missing = Vec::new();
+    for path in roots {
+        if !*by_name.get(path.as_os_str().as_encoded_bytes())? {
+            missing.push(path.clone());
+        }
+    }
+    Some(missing)
 }
 
 #[cfg(target_os = "linux")]
@@ -50,7 +76,13 @@ mod platform {
     }
     impl Observer {
         pub(in crate::managed) fn begin(snapshot: &InputSnapshot, _: &Path) -> Self {
-            let mut tracked = missing(snapshot);
+            let Some(mut tracked) = missing(snapshot) else {
+                return Self {
+                    native: None,
+                    directories: HashMap::new(),
+                    tracked: Vec::new(),
+                };
+            };
             tracked.extend(tracked.clone().into_iter().filter_map(|path| {
                 let ancestor = path.ancestors().find(|p| p.exists())?;
                 let canonical = ancestor.canonicalize().ok()?;
@@ -193,6 +225,7 @@ mod tests {
                 observation_paths: std::collections::BTreeSet::new(),
                 digests: std::collections::BTreeMap::new(),
                 bindings: std::collections::BTreeMap::new(),
+                capture: None,
             },
         )
     }
@@ -270,5 +303,43 @@ mod tests {
         assert!(result.complete);
         assert!(result.changed);
         assert!(std::fs::remove_dir_all(dir).is_ok());
+    }
+}
+
+#[cfg(test)]
+mod association_tests {
+    use super::*;
+
+    #[test]
+    fn tagged_absence_checks_decline_incomplete_ledgers() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-tagged-absence-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let a = root.join("a.toml");
+        let b = root.join("b.toml");
+        std::fs::write(&a, "present")?;
+        let roots = [a.clone(), b.clone(), b.clone()];
+        let paths = [a.as_path(), b.as_path()];
+        let read = || crate::parallel::in_order(&paths, |&path| (path, path.exists()));
+        let mut reversed = read();
+        reversed.reverse();
+        assert_eq!(
+            missing_from_observations(&roots, &reversed),
+            Some(vec![b.clone(), b.clone()])
+        );
+        reversed.pop();
+        assert!(missing_from_observations(&roots, &reversed).is_none());
+        assert!(
+            missing_from_observations(&roots, &[(a.as_path(), true), (a.as_path(), true)])
+                .is_none()
+        );
+        let mut extra = read();
+        extra.push((root.as_path(), true));
+        assert!(missing_from_observations(&roots, &extra).is_none());
+        std::fs::remove_file(&a)?;
+        std::fs::write(&b, "appeared")?;
+        let mut swapped = read();
+        swapped.reverse();
+        assert_eq!(missing_from_observations(&roots, &swapped), Some(vec![a]));
+        std::fs::remove_dir_all(root)
     }
 }

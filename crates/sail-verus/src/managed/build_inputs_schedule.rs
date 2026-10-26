@@ -230,6 +230,7 @@ mod tests {
                 observation_paths: BTreeSet::new(),
                 digests: BTreeMap::from([(script, digest(b"fn main() {}"))]),
                 bindings: BTreeMap::new(),
+                capture: None,
             };
             Ok(Self {
                 root,

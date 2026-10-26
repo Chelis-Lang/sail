@@ -3,6 +3,20 @@
 Open product defects and release limits. The [roadmap](ROADMAP.md) tracks
 release work; linked validation pages preserve the scope of each result.
 
+## Acceptance authority integration
+
+Compile-only Verus output can resemble a successful zero-function proof
+([#367](https://github.com/Chelis-Lang/sail/issues/367),
+[reproduction](verus-issues/VI-0035-no-verify-success.md)). The production
+refinement candidate checks effective package options and withholds older
+retained completeness, while preserving input Current observations. Checkpoint
+`fe8be9ee` passes native/hosted gates and full fast/standard conformance; the
+owner accepts its bounded timing result. The combined revision-only input
+projection passes fresh native gates and complete conformance in the
+[owning record](validation/acceptance-production-refinements.md).
+The broader service-wide acceptance theorem remains open
+([#368](https://github.com/Chelis-Lang/sail/issues/368)).
+
 ## Functional release qualification
 
 Runtime `36d65c3f` passes all four complete installed mutation cohorts on

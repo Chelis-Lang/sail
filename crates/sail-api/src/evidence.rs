@@ -462,12 +462,10 @@ fn inventory(project: &ProjectResult, id: &Target) -> bool {
     project.error.is_none()
         && project.exit_code == Some(0)
         && project.targets.iter().any(|target| {
-            target.complete
+            crate::acceptance::complete_target(target).is_some()
                 && target.package_id == id.package_id
                 && target.target == id.name
                 && target.kind == id.kind
-                && target.report.error.is_none()
-                && !target.report.crates.is_empty()
                 && target.report.crates.iter().all(|report| {
                     report.verus.success == Some(true)
                         && report.verus.encountered_vir_error != Some(true)
