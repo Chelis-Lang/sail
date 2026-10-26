@@ -15,9 +15,10 @@ use serde::{Deserialize, Serialize};
 use super::State;
 
 /// Private producer admissibility revision, not proof authority by itself.
-pub(super) const PROOF_AUTHORITY_REVISION: u32 = 1;
+pub(super) const PROOF_AUTHORITY_REVISION: u32 = 2;
 
-const LEGACY_AUTHORITY_NOTE: &str = "The producer did not record verification-enabled proof authority; target completion is withheld. Re-run to establish proof evidence.";
+const LEGACY_AUTHORITY_NOTE: &str = "The producer did not record independent verification-enabled request authority; target completion is withheld. Re-run to establish proof evidence.";
+const UNBOUND_AUTHORITY_NOTE: &str = "SAIL3115: original request correspondence could not be established; whole-target proof authority is withheld";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct Stored {
@@ -42,6 +43,8 @@ pub(super) struct Projection {
     // Absent older producers are unrecorded, never implicitly current policy.
     #[serde(default)]
     proof_authority_revision: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    request: Option<sail_api::project::ResolvedRequest>,
 }
 impl Projection {
     pub(super) fn validated(bytes: &[u8], project: &sail_api::project::ProjectResult) -> Self {
@@ -53,10 +56,18 @@ impl Projection {
             input_revision: project.input_revision.clone(),
             currentness: project.currentness,
             proof_authority_revision: PROOF_AUTHORITY_REVISION,
+            request: None,
         }
     }
     pub(super) fn with_stderr(mut self, bytes: &[u8]) -> Self {
         self.stderr_sha256 = Some(stdout_digest(bytes));
+        self
+    }
+    pub(super) fn with_request(
+        mut self,
+        request: Option<sail_api::project::ResolvedRequest>,
+    ) -> Self {
+        self.request = request;
         self
     }
     pub(super) fn matches_stderr(&self, bytes: &[u8]) -> bool {
@@ -166,7 +177,7 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
             // The full phase is sent once, as `result`.
             let mut envelope = repair_project(state, job)?;
             envelope.batch.full = None;
-            envelope.accepted = envelope.batch.accepted_with(&project);
+            envelope.accepted = retained_repair_accepted(job, &envelope.batch, &project);
             repair = Some(Box::new(envelope));
         }
         Some(serde_json::to_value(project).map_err(io::Error::other)?)
@@ -220,6 +231,7 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         )
     };
     withhold_legacy_authority(&mut project, projection.proof_authority_revision);
+    withhold_unbound_authority(&mut project, retained_request(job));
     let frame = |currentness| {
         let mut project = project.clone();
         let mut status = job.status.clone();
@@ -227,7 +239,7 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         apply_currentness(&mut project, currentness);
         let mut repair = repair.clone();
         if let Some(envelope) = &mut repair {
-            envelope.accepted = envelope.batch.accepted_with(&project);
+            envelope.accepted = retained_repair_accepted(job, &envelope.batch, &project);
         }
         encode_result(ResultDocument {
             contracts: None,
@@ -257,12 +269,16 @@ fn frame_key(job: &Stored, projection: &Projection) -> io::Result<String> {
         repair: bool,
         stdout_sha256: &'a str,
         proof_authority_revision: u32,
+        request: &'a Option<sail_api::project::ResolvedRequest>,
+        submission: &'a Submission,
     }
     serde_json::to_vec(&Key {
         status: &job.status,
         repair: matches!(job.submission.mode, sail_api::jobs::Mode::Repair(_)),
         stdout_sha256: &projection.stdout_sha256,
         proof_authority_revision: projection.proof_authority_revision,
+        request: &projection.request,
+        submission: &job.submission,
     })
     .map(|bytes| stdout_digest(&bytes))
     .map_err(io::Error::other)
@@ -345,7 +361,87 @@ fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::Project
             .as_ref()
             .map_or(0, |projection| projection.proof_authority_revision),
     );
+    withhold_unbound_authority(&mut project, retained_request(job));
     Ok(project)
+}
+
+/// Submission remains an independent input on every read, including frame
+/// reuse. A modified record must not reuse frames for another argument list.
+pub(super) fn retained_request(job: &Stored) -> Option<&sail_api::project::ResolvedRequest> {
+    let request = job.projection.as_ref()?.request.as_ref()?;
+    if !sail_api::acceptance::submitted_arguments_match(&job.submission.args, &request.args)
+        || !request_matches_mode(&job.submission.mode, request)
+        || job.submission.project_dir.canonicalize().ok()?.to_str()? != request.invocation
+    {
+        return None;
+    }
+    Some(request)
+}
+
+pub(super) fn request_matches_mode(
+    mode: &sail_api::jobs::Mode,
+    request: &sail_api::project::ResolvedRequest,
+) -> bool {
+    match mode {
+        sail_api::jobs::Mode::Stock => request.engine.is_none() && request.function.is_none(),
+        sail_api::jobs::Mode::Interactive => request.function.is_none(),
+        sail_api::jobs::Mode::Repair(selection) => {
+            sail_api::acceptance::repair_request_matches(request, &selection.package,
+                &selection.target, &selection.kind, &selection.function)
+                // Independent stock fallback remains full proof evidence;
+                // the actual batch's engine_fault separately forbids repair acceptance.
+                || (request.engine.is_none() && request.function.is_none())
+        }
+    }
+}
+
+fn retained_repair_accepted(
+    job: &Stored,
+    batch: &sail_api::repair::BatchResult,
+    project: &sail_api::project::ProjectResult,
+) -> bool {
+    let sail_api::jobs::Mode::Repair(selection) = &job.submission.mode else {
+        return false;
+    };
+    retained_request(job).is_some_and(|request| {
+        sail_api::acceptance::repair_request_matches(
+            request,
+            &selection.package,
+            &selection.target,
+            &selection.kind,
+            &selection.function,
+        ) && sail_api::acceptance::complete_request(request, project).is_some()
+            && sail_api::acceptance::requested_function_present(request, project)
+            && batch.accepted_with(project)
+    })
+}
+
+/// Input Currentness remains independent when original request evidence is
+/// missing. Retained target flags cannot recreate that missing authority.
+pub(super) fn withhold_unbound_authority(
+    project: &mut sail_api::project::ProjectResult,
+    request: Option<&sail_api::project::ResolvedRequest>,
+) {
+    if request.is_some_and(|request| {
+        sail_api::acceptance::request_corresponds(request, project)
+            && sail_api::acceptance::verification_enabled_command(&request.args)
+            && !sail_api::acceptance::focused_command(&request.args)
+            && (project.currentness != sail_api::project::Currentness::Current
+                || project.exit_code != Some(0)
+                || sail_api::acceptance::complete_request(request, project).is_some())
+    }) {
+        return;
+    }
+    for target in &mut project.targets {
+        target.complete = false;
+    }
+    if !project
+        .notes
+        .iter()
+        .any(|note| note == UNBOUND_AUTHORITY_NOTE)
+    {
+        project.notes.push(UNBOUND_AUTHORITY_NOTE.to_owned());
+    }
 }
 
 /// Old records can retain observations and historical verdicts, but cannot
@@ -745,6 +841,30 @@ mod legacy_authority_tests {
         Ok(project)
     }
 
+    fn original_request(
+        original: &sail_api::project::ProjectResult,
+        root: &Path,
+    ) -> Result<sail_api::project::ResolvedRequest, Box<dyn std::error::Error>> {
+        Ok(sail_api::project::ResolvedRequest {
+            run_id: original.run_id.clone(),
+            invocation: root.canonicalize()?.to_string_lossy().into_owned(),
+            workspace: original.workspace.clone(),
+            context_sha256: original.context_sha256.clone(),
+            input_revision: original.input_revision.clone(),
+            args: Vec::new(),
+            engine: None,
+            function: None,
+            repair_package: String::new(),
+            repair_target: None,
+            repair_kind: String::new(),
+            targets: vec![sail_api::project::RequestTarget {
+                package_id: "package".into(),
+                target: "target".into(),
+                kind: "lib".into(),
+            }],
+        })
+    }
+
     #[test]
     fn missing_legacy_revision_cannot_be_laundered_by_frames_or_baseline_copy()
     -> Result<(), Box<dyn std::error::Error>> {
@@ -763,7 +883,8 @@ mod legacy_authority_tests {
             "fresh enabled zero-function control"
         );
         let bytes = serde_json::to_vec(&original)?;
-        let fresh = Projection::validated(&bytes, &original);
+        let request = original_request(&original, &root)?;
+        let fresh = Projection::validated(&bytes, &original).with_request(Some(request));
         let mut old = serde_json::to_value(&fresh)?;
         old.as_object_mut()
             .ok_or("projection must be an object")?

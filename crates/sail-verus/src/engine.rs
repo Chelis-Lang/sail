@@ -501,6 +501,8 @@ pub fn import(cache: &Path, pins: &Pins, source: &Path) -> Result<Status> {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Request {
     pub function: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection: Option<sail_api::repair::Selection>,
     pub cargo_verus: PathBuf,
     pub manifest: PathBuf,
     #[serde(default)]
@@ -528,6 +530,7 @@ impl Request {
         // omitted; no owned strings, paths or artifact vectors are cloned.
         let Self {
             function: _,
+            selection: _,
             cargo_verus,
             manifest,
             manifest_sha256,
@@ -578,6 +581,7 @@ fn request(config: &crate::managed::Config, function: Option<String>) -> Result<
         .map_err(|e| Error::new("SAIL3120", e.to_string()))?
         .with_file_name("verus");
     let request = Request {
+        selection: None,
         function,
         cargo_verus: runtime_dir(&build).join("cargo-verus"),
         manifest: manifest_path,
@@ -770,13 +774,39 @@ pub fn repair(
     function: &str,
     err: &mut dyn std::io::Write,
 ) -> Result<sail_api::repair::BatchResult> {
+    repair_selected_inner(config, function, None, err)
+}
+
+/// Runs a repair with the exact target/function selection already checked by
+/// the CLI worker against its original request arguments.
+/// Library callers must establish the same selection-to-Cargo-arguments
+/// relationship; this entry point retains that selection but does not itself
+/// resolve raw package selectors into canonical Cargo target identities.
+///
+/// # Errors
+/// As [`repair`]; the exact validated selection is retained before execution.
+pub fn repair_selected(
+    config: &crate::managed::Config,
+    selection: &sail_api::repair::Selection,
+    err: &mut dyn std::io::Write,
+) -> Result<sail_api::repair::BatchResult> {
+    repair_selected_inner(config, &selection.function, Some(selection), err)
+}
+
+fn repair_selected_inner(
+    config: &crate::managed::Config,
+    function: &str,
+    selection: Option<&sail_api::repair::Selection>,
+    err: &mut dyn std::io::Write,
+) -> Result<sail_api::repair::BatchResult> {
     if function.is_empty() || !function.contains("::") || crate::managed::focused(&config.args) {
         return Err(Error::new(
             "SAIL3120",
             "repair requires one exact crate-qualified function and independent full scope",
         ));
     }
-    let (request, manifest_sha256) = request(config, Some(function.to_owned()))?;
+    let (mut request, manifest_sha256) = request(config, Some(function.to_owned()))?;
+    request.selection = selection.cloned();
     let mut config = config.clone();
     config.force = true;
     let (mut full, _workspace) =
@@ -1222,6 +1252,7 @@ mod tests {
         manifest.save(&root)?;
         let path = root.join(source_build::MANIFEST);
         let request = Request {
+            selection: None,
             function: Some("demo::selected".to_owned()),
             cargo_verus: runtime.join("cargo-verus"),
             manifest: path.clone(),

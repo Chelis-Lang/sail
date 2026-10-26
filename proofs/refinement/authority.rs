@@ -63,6 +63,75 @@ pub fn compile_only_original_request_refused(request: &crate::project::ResolvedR
     acceptance::complete_request_ordered(request, project, orders).is_none()
 }
 
+/// A nonempty coherent concrete request reaches the same checked factory;
+/// rejecting every candidate would fail this constructive positive control.
+pub fn positive_nonempty_request_factory(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult) -> (accepted: bool)
+    requires acceptance::small_positive_request(request, project),
+        project.targets@[0].report.crates@[0].functions@.len() == 1,
+    ensures accepted,
+{
+    let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
+    orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
+    let authority = acceptance::complete_request_ordered(request, project, &orders);
+    assert(authority.is_some());
+    authority.is_some()
+}
+
+pub fn missing_requested_scope_refused(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult, orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires !acceptance::resolved_coverage(request, project),
+    ensures refused,
+{
+    acceptance::complete_request_ordered(request, project, orders).is_none()
+}
+
+/// Raw selection bytes are compared to the original selection, rather than
+/// confusing a package selector with the canonical resolved Cargo package ID.
+pub fn swapped_repair_function_refused(request: &crate::project::ResolvedRequest,
+    package: &str, target: &Option<String>, kind: &str, function: &str) -> (refused: bool)
+    requires request.function.is_none()
+        || string_bytes(&request.function.unwrap()) != vstd::utf8::encode_utf8(function@),
+    ensures refused,
+{
+    !acceptance::repair_request_matches(request, package, target, kind, function)
+}
+
+pub fn matching_repair_selection_accepts(request: &crate::project::ResolvedRequest,
+    package: &str, target: &Option<String>, kind: &str, function: &str) -> (accepted: bool)
+    requires request.function.is_some(),
+        string_bytes(&request.function.unwrap()) == vstd::utf8::encode_utf8(function@),
+        string_bytes(&request.repair_package) == vstd::utf8::encode_utf8(package@),
+        string_bytes(&request.repair_kind) == vstd::utf8::encode_utf8(kind@),
+        match (&request.repair_target, target) {
+            (None, None) => true,
+            (Some(a), Some(b)) => string_bytes(a) == string_bytes(b),
+            _ => false,
+        },
+    ensures accepted,
+{
+    acceptance::repair_request_matches(request, package, target, kind, function)
+}
+
+pub fn missing_repair_function_refused(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult) -> (refused: bool)
+    requires !acceptance::repair_function_present(request, project),
+    ensures refused,
+{
+    !acceptance::requested_function_present(request, project)
+}
+
+pub proof fn checked_repair_presence_has_confirmed_evidence(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult)
+    requires acceptance::request_authorized(request, project),
+        acceptance::repair_function_present(request, project),
+    ensures exists |t: int, c: int, f: int| acceptance::repair_function_at(request, project, t, c, f)
+        && confirmed(&project.targets@[t].report.crates@[c].functions@[f]),
+{
+    let (t, c, f) = choose |t: int, c: int, f: int| acceptance::repair_function_at(request, project, t, c, f);
+    assert(confirmed(&project.targets@[t].report.crates@[c].functions@[f]));
+}
+
 pub open spec fn model_establishment(e: EstablishmentName) -> model::Establishment {
     match e {
         EstablishmentName::Confirmed => model::Establishment::Confirmed,

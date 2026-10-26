@@ -23,9 +23,72 @@ The pure factory proves correspondence between its concrete record inputs.
 Its pre-execution producer, original-submission argument mapping, actual Cargo
 scope resolution, complete process observation and retained service adapters
 remain separate proof obligations. Digest equality retains collision-resistance
-assumptions and does not establish complete compiler-input equality. Native
-request capture and retained admission are a separate integration slice; the
-factory alone does not prove all CLI, JSON, MCP or repair callers.
+assumptions and does not establish complete compiler-input equality. The
+native request-capture and retained-admission integrations below have their
+own adapter obligations; the factory alone does not prove all CLI, JSON, MCP
+or repair callers.
+
+The managed runner now constructs the immutable request from its independently
+resolved expected target set, original configuration, original stamped snapshot
+and selected engine before executing Cargo. A worker-only journal carries each
+actual run separately, including independent fallback runs. The daemon selects
+exactly one record for the output run and compares its worker ID, canonical
+invocation directory and arguments against the retained original submission.
+The shared argument matcher permits only removal of the documented no-op
+`--incremental` before `--`; it preserves all forwarded arguments. This is a
+CLI argument correspondence check, not a claim that submitted options equal
+effective per-package compiler options. The existing effective verification
+decoder and actual per-target report checks remain required.
+
+The capture destination and worker ID travel through private Sail arguments
+into an explicit optional `Config` field. Sail consumes them before constructing
+Cargo commands; they are never fresh environment variables or forwarded
+compiler arguments. Original submitted environment values are preserved,
+including user variables with the former transport names. A real-child
+environment probe checks absence and original-value cases against the same
+declared-read recorder used for proof inputs.
+
+Private job projections retain the independent request beside the stdout seal.
+Every result read validates that binding, and immutable frame keys include the
+original submission and request. Current successful projects additionally pass
+the checked whole-request factory before retaining complete target flags.
+Unknown and Historical projections retain their explicit evidence framing.
+Baselines preserve the same binding and cannot restore completeness stripped
+from a legacy job. The private producer revision is two; absent or older
+records withhold authority without changing input Currentness or verdicts.
+
+This connects the concrete request predicate to the actual managed runner,
+retained job JSON, cached frame, baseline and repair projection paths. Their
+native capture, serialization, filesystem and process adapters are tested Rust
+and remain outside the stock-Verus checked bodies. Cargo metadata's scope
+resolution and complete discovery of generated/compiler inputs are not proved
+by the request token. The pre-execution revision is never replaced from output
+to satisfy the comparison. The composition interface is the token's exact
+immutable request/project projections plus `request_authorized`; independent
+input and query evidence must establish their own physical observation and
+context relations. Plain default diagnostic forwarding is unchanged.
+
+Repair workers additionally retain the actual pre-execution raw package
+selector, optional binary name, target kind and exact function selection. The
+checked `repair_request_matches` predicate compares those fields to the
+original retained repair mode. Raw package selectors such as `name@version`
+remain distinct from canonical Cargo package IDs in the independently resolved
+target inventory. Their metadata resolution is still a native adapter
+obligation. Changing a retained repair function or target cannot reuse a
+previous selection's acceptance. Independent stock fallback retains its full
+proof evidence and never accepts a repair. The standalone `repair-check`
+document still derives acceptance from the native selected batch and checked
+report predicates; its complete native selection/process correspondence is
+not proved by the retained-job refinement.
+Library callers of `engine::repair_selected` must establish the same native
+selection-to-Cargo-argument relation that the CLI worker checks; the wrapper
+does not independently resolve a contradictory library `Config` and selection.
+
+Retained repair acceptance also scans the actual requested whole reports for
+the exact captured function name through the checked
+`requested_function_present` predicate. The independent complete-request token
+establishes that every such function is confirmed verified. Native selection
+status fields alone cannot authorize a function absent from those records.
 
 `crates/sail-api/src/acceptance.rs` checks actual public `Report`, `CrateReport`,
 `FunctionReport`, `TargetResult` and `ProjectResult` fields. Cargo and stock

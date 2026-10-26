@@ -2004,6 +2004,7 @@ mod tests {
         assert!(stock.engine.is_none());
         assert!(receipt_success(&stock, &[]), "stock control publishes");
         let request = crate::engine::Request {
+            selection: None,
             function: None,
             cargo_verus: PathBuf::new(),
             manifest: PathBuf::new(),

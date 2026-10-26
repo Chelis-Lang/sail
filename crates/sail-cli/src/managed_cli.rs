@@ -11,6 +11,7 @@ struct Options {
     background: bool,
     json: bool,
     args: Vec<String>,
+    request_capture: Option<sail_verus::managed::RequestCaptureDestination>,
 }
 
 /// Sail's own options before any `--`: `--background` and `--output json`.
@@ -22,6 +23,7 @@ fn options(args: &[String]) -> Result<Options, (&'static str, String)> {
         background: false,
         json: false,
         args: Vec::new(),
+        request_capture: None,
     };
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
@@ -32,6 +34,13 @@ fn options(args: &[String]) -> Result<Options, (&'static str, String)> {
                 break;
             }
             "--background" => result.background = true,
+            "--_sail-request-capture-json" => {
+                let value = iter
+                    .next()
+                    .ok_or(("SAIL3115", "missing private request capture".to_owned()))?;
+                result.request_capture =
+                    Some(parse_request_capture(value).map_err(|e| ("SAIL3115", e))?);
+            }
             "--output" | "--output=json" => {
                 let format = if arg == "--output" {
                     iter.next().map(String::as_str)
@@ -62,6 +71,34 @@ fn options(args: &[String]) -> Result<Options, (&'static str, String)> {
         }
     }
     Ok(result)
+}
+
+fn parse_request_capture(
+    value: &str,
+) -> Result<sail_verus::managed::RequestCaptureDestination, String> {
+    serde_json::from_str(value).map_err(|e| format!("invalid private request capture: {e}"))
+}
+
+pub(crate) fn request_capture_arguments(
+    args: &[String],
+) -> Result<
+    (
+        Option<sail_verus::managed::RequestCaptureDestination>,
+        &[String],
+    ),
+    String,
+> {
+    if args
+        .first()
+        .is_none_or(|arg| arg != "--_sail-request-capture-json")
+    {
+        return Ok((None, args));
+    }
+    let value = args.get(1).ok_or("missing private request capture")?;
+    Ok((
+        Some(parse_request_capture(value)?),
+        args.get(2..).unwrap_or_default(),
+    ))
 }
 
 /// The Cargo managed verification runs in `workspace`, and the toolchain it
@@ -115,6 +152,7 @@ pub(crate) fn config(
         args,
         force: std::env::var_os("SAIL_MANAGED_FORCE").is_some_and(|v| v == "1"),
         attribution_logs,
+        request_capture: None,
     })
 }
 
@@ -205,6 +243,7 @@ pub(crate) fn verify(
         Err(message) => return failure(&message, out, err, options.json),
     };
     let mut config = config;
+    config.request_capture = options.request_capture;
     config.args = args;
     let interactive = mode == sail_api::jobs::Mode::Interactive;
     if !worker && !options.json && sail_verus::managed::partial(&config.args) {
@@ -292,5 +331,42 @@ mod tests {
         for bad in [&["--output", "yaml"][..], &["--output"], &["--output=yaml"]] {
             assert_eq!(options(&args(bad)).err().map(|e| e.0), Some("SAIL0106"));
         }
+    }
+
+    #[test]
+    fn private_capture_is_consumed_before_compiler_arguments()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let capture = serde_json::to_string(&sail_verus::managed::RequestCaptureDestination {
+            path: std::path::PathBuf::from("/private/request-journal"),
+            worker_id: "private-job".into(),
+        })?;
+        let input = vec![
+            "--_sail-request-capture-json".into(),
+            capture.clone(),
+            "-p".into(),
+            "app".into(),
+            "--".into(),
+            "--no-verify".into(),
+        ];
+        let parsed = options(&input).map_err(|(_, message)| message)?;
+        assert_eq!(parsed.args, ["-p", "app", "--", "--no-verify"]);
+        assert_eq!(
+            parsed.request_capture.ok_or("capture missing")?.worker_id,
+            "private-job"
+        );
+        let (request, tail) = super::request_capture_arguments(&input)?;
+        assert_eq!(tail, ["-p", "app", "--", "--no-verify"]);
+        assert_eq!(
+            request.ok_or("worker capture missing")?.worker_id,
+            "private-job"
+        );
+        let forwarded = vec!["--".into(), "--_sail-request-capture-json".into(), capture];
+        assert!(
+            options(&forwarded)
+                .map_err(|(_, message)| message)?
+                .request_capture
+                .is_none()
+        );
+        Ok(())
     }
 }
