@@ -809,3 +809,22 @@ actual input core preserves exact declared identity and guard bytes. It does
 not prove that every real compiler/filesystem observation produces that map
 or that every production Current response follows the complete modeled
 authority transaction.
+
+## Canonical compiler-phase capture
+
+The input root includes the actual `authority` and `phase_inputs` leaf modules
+and the supporting `proofs/refinement/phase_inputs.rs` witness module. Its
+closed dependency list, import bindings and private `PhaseRequest`/`PhaseInputs`
+constructors are checked alongside every earlier input function and control.
+The authority root includes the same phase module for exact owned attempt
+identity copies. All methods in these modules participate in whole-crate
+verification; the supporting module is not a fourth optional proof root.
+
+The input control inventory retains all 27 prior controls and adds 36 phase,
+command, declaration-row and filename controls. Two original environment-name
+mutation anchors now name their complete original function because the new
+filename checker contains similar byte comparisons; the original mutation
+semantics and required failures are unchanged. The combined positive input
+probe checks 221 obligations and 379 function entries. These development counts
+do not replace the complete canonical control suite, prove exhaustive compiler
+I/O, or establish physical observation atomicity.

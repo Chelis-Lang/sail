@@ -1,28 +1,34 @@
 # Acceptance boundary refinement qualification
 
-Status: frozen `a615dbba` passes all 92 canonical production cases and
-31 model cases on macOS and native x86-64 Linux, and the full macOS host gate
-passes 1,133/1,133 tests. Its native workspace and solver-fault gates pass;
-the complete end-to-end run stops at the unchanged build-script reuse assertion:
-three verifier invocations instead of one. PR conformance is unrun. The
-reported targets remain Current and complete, so this failure demonstrates a
-reuse regression, not a false proof. The instrumented repeat isolates vstd
-declaration-inventory growth from an unrelated build script; the candidate
-attribution fix remains under full native e2e qualification.
-[PR #378](https://github.com/Chelis-Lang/sail/pull/378) remains a draft whose
-published WIP head is `94a9630d`. Later integration work remains local. No service-wide
-theorem, complete compiler closure or authenticated physical observation is
-claimed. The [obligation ledger](../design/acceptance-boundary-refinements.md)
-tracks the six remaining deliverables separately.
+Status: frozen `cc8c24a1` passes the complete canonical query component on
+macOS: the whole positive root (288 obligations, 503 function entries) and all
+39 ordinary failing controls. The source-bound report validates runtime,
+function inventory and post-run source state, and explicitly does not claim a
+complete suite. On native x86-64 Linux, the same checkpoint passes the full
+local e2e union, including extra, and PR conformance. The previous build-script
+reuse failure is corrected by target-attributed declaration inventories; the
+original assertions remain unchanged.
 
-The later frozen query assembly `cc8c24a1` passes the complete canonical query
-component on macOS: the whole positive root (288 obligations, 503 function
-entries) and all 39 ordinary failing controls. This preserves all 462 earlier
-function entries and every original control. Source, actual solver/runtime,
-function inventory and post-run source validation pass. The report marks
-complete component controls and explicitly does not claim a complete suite.
-The native full e2e union and PR conformance controller for this checkpoint is
-still running; no result is inferred from its launch or partial log.
+The e2e and PR-conformance controller steps take 1,175.78 s and 122.67 s,
+respectively, including their image/build work. These are gate durations, not
+performance benchmarks. Earlier `a615dbba` passes all 92 production cases,
+31 model cases, the macOS host gate, native workspace and solver faults; that
+older full e2e failure remains indexed below.
+
+Later phase/history integration has passing whole positive-root development
+probes (query 294/0, inputs 221/0, authority 367/0), strict workspace clippy and
+29 focused source/phase/archive tests. Its complete committed proof/control
+matrix and native/conformance/cost gates remain pending. The added engine model
+replaces the generated ambiguous `Origin::arrow_0` selector with named variant
+selectors when introducing `RestartAfterDecline`; every explicit prior proof
+and function remains. The capture still requires exact full actual function
+inventories and obligation counts.
+
+[PR #378](https://github.com/Chelis-Lang/sail/pull/378) remains a draft, with
+published WIP head `94a9630d` under the owner's pre-push waiver. Later integration
+is local. No complete service theorem, compiler-input closure or physical
+observation guarantee is claimed; all six rows of the
+[obligation ledger](../design/acceptance-boundary-refinements.md) remain open.
 
 ## Source and actual scope
 
@@ -62,8 +68,8 @@ implementation obligation; it is not selected.
 |---|---|---|
 | Initial documentation draft | Native Linux full workspace gate at `d4bb18a3`; 1,098 tests and all workspace checks pass. Implementation bytes equal parent `c6270f75`, whose pre-push proof, solver, full e2e and PR conformance gates pass | Does not qualify the later executable changes |
 | Combined production proofs | All 92 canonical production cases and all 31 model cases pass coherently on macOS and native Linux at `a615dbba` | Later key, compiler-phase and owned-attempt changes need their own final combined qualification |
-| Combined workspace/solver/e2e | Native `a615dbba` workspace and all 48 solver-fault tests pass. Full e2e passes the earlier managed, fresh-copy and native-compiler controls, then stops at build-script reuse | Fix the regression, rerun the complete e2e union and PR conformance, then qualify the final combined source before publication |
-| Differential conformance | Corpus, comparator and deadlines unchanged | PR tier before publication; full fast and standard before merge |
+| Combined workspace/solver/e2e | Native `a615dbba` workspace and all 48 solver-fault tests pass. Native `cc8c24a1` full e2e union and PR conformance pass, including the original build-script reuse assertion | Qualify the later combined phase/history source with every required gate |
+| Differential conformance | Native PR tier passes at `cc8c24a1`; corpus, comparator and deadlines unchanged | Final combined PR tier, full fast and standard before merge |
 | Cost | Additional byte/header scans, request validation and provider accounting are implemented; no measured delta or gain claimed | Bounded native cost measurement before selection; retain every sample |
 | Hosted checks | The draft publishes executable WIP at `94a9630d` under the owner's pre-push waiver; later integration is local | Final-head local qualification and hosted checks before any merge |
 
@@ -152,6 +158,15 @@ covered by regression tests. Prior missing or uncovered input history cannot
 become covered from a later closed journal alone. All 669 selected tests,
 27 source-capture tests and strict workspace clippy pass on macOS; the full
 combined qualification remains pending.
+
+The successful frozen `cc8c24a1` native e2e/PR attempt is preserved under
+`experiments/2026-10-26/acceptance-resume-cc8c24a1-native.tgz`, SHA-256
+`51993fae26db35bef9a0f00e79ffed8b872d515361bc3faa6254e1159912b1e4`.
+Its full canonical macOS query component is preserved under
+`experiments/2026-10-26/acceptance-query-cc8c24a1-mac.tgz`, SHA-256
+`d54333f3eb0e0c9c79c2c47e86ae1f8715908c9b972ead42a74dc619e967d733`.
+Both objects were independently read back; the native archive includes the
+frozen source bundle. No later component is qualified by these receipts.
 
 ## Limits retained after these slices
 
