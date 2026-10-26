@@ -1563,10 +1563,7 @@ fn artifacts(paths: &Paths) -> Vec<Value> {
 }
 
 fn receipt_path(paths: &Paths, package: &str, name: &str, kind: &[String]) -> PathBuf {
-    paths.receipts.join(format!(
-        "{}.json",
-        digest(&serde_json::to_vec(&(package, name, kind)).unwrap_or_default())
-    ))
+    super::receipts::target_path(&paths.receipts, package, name, kind)
 }
 
 /// The receipt directories of the other proof contexts in this compiler
