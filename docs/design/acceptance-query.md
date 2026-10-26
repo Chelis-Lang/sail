@@ -514,6 +514,16 @@ semantic event coverage or a proved native storer/OS refinement. Actual delimite
 and mode coverage, pinned executed image, protected writers, arbitrary startup
 content and crash/restart/recovery remain separate open requirements.
 
+The qualification candidate extends the canonical query closure with
+`query_output_owner`, `query_holding` and `query_checkpoints`, retaining all 78
+earlier query mutations and adding 37 ordinary-Verus controls. The input and
+authority inventories retain their 115 and 107 controls. Exact module/import,
+private-constructor, host/script, native key/shim and declaration projections
+are bound before complete positive-root discovery; expected function/count
+inventories change only from successful stock output with final source/runtime
+checks. These selected controls are not yet qualified, and native Rust mutation
+results never count as ordinary-Verus negative results.
+
 The component uses `ModelContext`, `Mode` and `SolverId` from the captured
 [shared context](../../proofs/acceptance/context.rs). A current session retains
 the exact request, scope, runtime, solver, mode and effective input map throughout

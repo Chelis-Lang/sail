@@ -78,11 +78,20 @@ sail_code! {
                 requires (self.coherent())
                 ensures (out.coherent(), out.head_view() == self.head_view(), out.command_view() == self.command_view(),
                     out.offset_view() == self.offset_view(), out.endpoint_view() == self.endpoint(),
-                    out.material_view() == self.material_view(), out.key_view() == self.key_view())
+                    out.material_view() == self.material_view(), out.key_view() == self.key_view(),
+                    out.key_view() == Host::digest(crate::key_prefix::end(out.material_view(),out.endpoint_view() as u64)))
             {
                 let mut head=Vec::new(); head.extend_from_slice(self.head);
                 let mut command=Vec::new(); command.extend_from_slice(self.command);
                 let prefix=self.prefix.duplicate(); let key=self.prefix.key();
+                sail_proof! {
+                    assert(head@ =~= self.head@);
+                    assert(command@ =~= self.command@);
+                    assert(prefix.length() == self.endpoint());
+                    assert(key == Host::digest(crate::key_prefix::end(prefix.material(),self.endpoint as u64)));
+                    assert(exists|start:int,end:int| crate::query::head_span(command@,start,end)
+                        && head@ == command@.subrange(start,end));
+                }
                 FrozenCommand { head,command,offset:self.offset,endpoint:self.endpoint,prefix,key }
             }
         }
