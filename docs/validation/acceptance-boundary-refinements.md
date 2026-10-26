@@ -156,6 +156,7 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `59ec4634` | Native owned-output whole positive root | 342 verified/1 failed function: the nonempty witness's concrete response trim/span assertions remain unproved. Source now spells the same six bytes as an explicit array; production guards, contracts, scope and limits remain unchanged. Final source/runtime checks and other gates were not reached |
 | 2026-10-26 | `5bc2235e` | Native full gate | Source-checker tests and link checks pass. Strict clippy rejects the new exact-scope factory's intentional explicit admission branch under `question_mark`; the documented local lint exception preserves the proved body and its guard control. Later tests, model/refinement suites, solver, e2e and conformance are unrun |
 | 2026-10-26 | `619d3c0f` | Native development and workspace | All three whole positive production roots pass with every prior function retained; 210 negative controls unrun. Workspace stops at two proposal links whose existing corpus fixtures were omitted from integration. The correction retains their original source and scope; full final qualification remains pending |
 | 2026-10-26 | `4bd22455` | Native combined correctness gate | Workspace, all 31 model cases and all 155 production cases pass. Solver passes 53/54; the actual compiler-phase witness is selected without its required frozen input fixture (#425). E2e and PR conformance are unrun. The correction retains strict witness failures and gives it an explicit local `boundary-witness phases` entrypoint; final rerun pending |
@@ -412,6 +413,12 @@ selection and serialization are not claimed verified. The later qualification
 edit changes only this record. Native Linux and combined integration gates
 remain pending for this candidate. Physical compiler-input closure,
 origin history and every service/presentation path remain separate obligations.
+
+The stopped `59ec4634` output development attempt, copied proof sources, runtime
+inventory and exact diagnostics are retained at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-output-59ec4634-native-development.tgz`.
+SHA-256: `a7df094e50c15f9af338cf79eede8e8cc13e95313d77b12f919a70baa15492a4`.
+The archive is independently downloaded and hashed; it is a failed proof receipt.
 
 ## Environment counterexamples
 
