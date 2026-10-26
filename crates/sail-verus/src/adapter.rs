@@ -1031,7 +1031,7 @@ fn driver() -> Result<ExitCode> {
     }
     let invocation_key = identity.key();
     let measured = (identity.manifest.clone(), identity.target_name().to_owned());
-    finish(
+    let observation_available = finish(
         &runtime,
         identity,
         &dir,
@@ -1060,7 +1060,7 @@ fn driver() -> Result<ExitCode> {
     }
     if let Some(attempt) = &retained {
         let finishing = std::time::Instant::now();
-        let _ = attempt.finish(exit.success() && captured.observation().is_some());
+        let _ = attempt.finish(exit.success() && observation_available);
         retention = retention.map(|before| before + finishing.elapsed());
     }
     if exit.success() && runtime.engine.is_none() {
@@ -1248,6 +1248,9 @@ fn report_verification_arguments(
     Some(arguments)
 }
 
+/// Records the target's invocation. Returns whether origin evidence is bound
+/// and Verus remains readable afterwards. Missing either records no reusable
+/// success while preserving the target's own exit status, as with stock.
 fn finish(
     runtime: &Runtime,
     identity: TargetIdentity,
@@ -1256,7 +1259,7 @@ fn finish(
     engine: Option<&sail_api::output::EngineProvenance>,
     dependency_build: Option<&sail_api::project::DependencyBuildOrigin>,
     origin: CompletionOrigin<'_, '_>,
-) -> Result<()> {
+) -> Result<bool> {
     let Captured {
         stdout,
         stderr,
@@ -1329,14 +1332,17 @@ fn finish(
         mark_engine(&mut report, engine);
     }
     let origin_available = bind_process_observation(&mut report, captured, origin);
-    let success = origin_available && receipt_success(&report, &report_args);
     // The complete read of Verus below (about 26 MB) overlaps the reads of
-    // the dependencies; both happen after verification, as before.
+    // the dependencies; both happen after verification, as before. Solver
+    // bytes are evidence, never a transformed input: a Verus that disappeared
+    // during verification never establishes a reusable success.
     let (dependencies, verifier_readable) = std::thread::scope(|scope| {
         let verifier = scope.spawn(|| file_digest(&runtime.original_wrapper).is_ok());
         (driver_dependencies(), verifier.join().unwrap_or(false))
     });
     let dependencies = dependencies?;
+    let observation_available = origin_available && verifier_readable;
+    let success = observation_available && receipt_success(&report, &report_args);
     let invocation = Invocation {
         retained_from: None,
         identity,
@@ -1355,14 +1361,7 @@ fn finish(
     event(
         &serde_json::json!({"event":"target-complete","run_id":runtime.run_id,"target":invocation.identity.target_name(),"success":success}),
     );
-    // Solver bytes are evidence, never a transformed input.
-    if !verifier_readable {
-        return Err(Error::new(
-            "SAIL3111",
-            "Verus disappeared during verification",
-        ));
-    }
-    Ok(())
+    Ok(observation_available)
 }
 
 fn bind_process_observation(
@@ -1876,6 +1875,80 @@ mod tests {
         assert_ne!(journal, [] as [u8; 0]);
         assert!(!crate::managed::source_inputs::fixture_complete(&journal));
         assert_eq!(forwarded, [] as [u8; 0]);
+    }
+
+    #[test]
+    fn a_vanished_verus_records_no_success_and_keeps_the_exit_status()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-adapter-vanished-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("invocations"))?;
+        let runtime = super::Runtime {
+            run_id: "run".into(),
+            args: Vec::new(),
+            z3: root.join("z3"),
+            z3_sha256: String::new(),
+            daemon: false,
+            sidecars: root.join("sidecars"),
+            invocations: root.join("invocations"),
+            original_wrapper: root.join("missing-verus"),
+            receipts: root.join("receipts"),
+            context_sha256: "context".into(),
+            input_revision: "source".into(),
+            packages: std::collections::BTreeMap::new(),
+            target_kinds: std::collections::BTreeMap::new(),
+            engine: None,
+            retained: None,
+            attribution_logs: false,
+        };
+        let identity = super::TargetIdentity {
+            manifest: root.join("Cargo.toml"),
+            name: "demo".into(),
+            crate_type: "lib".into(),
+            rustc_args_sha256: "args".into(),
+            cargo_name: None,
+        };
+        let key = identity.key();
+        let captured = super::Captured {
+            stdout: b"",
+            stderr: b"",
+            exit: Some(0),
+        };
+        // Before, this was an error after `success` had been recorded.
+        let readable = super::finish(
+            &runtime,
+            identity.clone(),
+            &root,
+            &captured,
+            None,
+            None,
+            super::CompletionOrigin::Bundled,
+        )?;
+        assert!(!readable);
+        let recorded: super::Invocation = serde_json::from_slice(&std::fs::read(
+            root.join("invocations").join(format!("{key}.json")),
+        )?)?;
+        assert!(!recorded.success);
+        // Readable verifier bytes alone cannot rehabilitate missing process
+        // evidence or mark retained capture complete after the merge.
+        std::fs::write(&runtime.original_wrapper, b"readable verifier fixture")?;
+        let observed = super::finish(
+            &runtime,
+            identity,
+            &root,
+            &captured,
+            None,
+            None,
+            super::CompletionOrigin::Live(None, None),
+        )?;
+        assert!(!observed);
+        let recorded: super::Invocation = serde_json::from_slice(&std::fs::read(
+            root.join("invocations").join(format!("{key}.json")),
+        )?)?;
+        assert!(!recorded.success);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[test]

@@ -243,12 +243,16 @@ impl Default for Pairer {
 
 impl Pairer {
     fn reply(&mut self, reply: Vec<u8>) {
-        self.pending.reply(reply);
+        // A stopped pairer never pairs again; retaining payloads only grows.
+        if !self.pending.is_stopped() {
+            self.pending.reply(reply);
+        }
     }
 
     fn expect(&mut self, expect: Expect) {
         match expect {
             Expect::Terminal(key) => self.terminal = Some(key),
+            _ if self.pending.is_stopped() => {}
             other => self.pending.expect(other),
         }
     }
@@ -428,6 +432,10 @@ fn queue_stores(
 /// when the solver exits, nothing will ever answer the commands the client
 /// is waiting on, so the shim exits with the solver's status, as
 /// pass-through does.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one forwarding loop; splitting it would scatter its offsets"
+)]
 fn output_side(
     mut from: impl Read,
     mut child: Child,
@@ -437,7 +445,11 @@ fn output_side(
     input: &InputStatus,
     stderr: Option<&crate::cached_stderr::Monitor>,
 ) -> u8 {
+    let limit = buffer_limit();
     let mut all = Vec::new(); // every output byte so far
+    // Once forwarding is live and nothing more will be recorded, every later
+    // byte is forwarded as read, exactly as pass-through forwards it.
+    let mut streaming = false;
     let mut splitter = ResponseSplitter::new();
     let mut replay = ReplayCursor::new(skip);
     let mut forward_from: Option<usize> = replay.forwarding().then_some(0);
@@ -474,6 +486,13 @@ fn output_side(
             break;
         }
         let chunk = buf.get(..n).unwrap_or_default();
+        if streaming {
+            if !write_out(chunk) {
+                forwarding_ok = false;
+                break;
+            }
+            continue;
+        }
         all.extend_from_slice(chunk);
         let mut items: Vec<Item> = Vec::new();
         splitter.push(chunk, &mut items);
@@ -500,6 +519,18 @@ fn output_side(
             forwarded = all.len();
         }
         queue_stores(&mut pairer, expects, &store_tx, false);
+        if forward_from.is_some()
+            && forwarded == all.len()
+            && (pairer.pending.is_stopped() || all.len() > limit)
+        {
+            // Recording has stopped, or the session outgrew the buffer: stop
+            // recording for good and keep no more output.
+            pairer.stop();
+            streaming = true;
+            prev = None;
+            all = Vec::new();
+            forwarded = 0;
+        }
     }
     // Stop reading first: a solver blocked writing to a closed pipe then
     // fails and exits instead of waiting forever.
@@ -645,6 +676,21 @@ impl Solving {
     }
 }
 
+/// Default bound on the input and output a cached session retains for replay
+/// and recording.
+const BUFFER_LIMIT: usize = 256 * 1024 * 1024;
+
+/// The bound on retained session bytes: `SAIL_SHIM_BUFFER_BYTES` if set to a
+/// positive number, otherwise [`BUFFER_LIMIT`]. A session that exceeds it
+/// stops using the cache and continues as pass-through.
+fn buffer_limit() -> usize {
+    std::env::var(crate::ENV_BUFFER_BYTES)
+        .ok()
+        .and_then(|v| v.trim().parse::<usize>().ok())
+        .filter(|&bytes| bytes > 0)
+        .unwrap_or(BUFFER_LIMIT)
+}
+
 /// The client timeout: `SAIL_DAEMON_TIMEOUT_MS` if set to a positive number
 /// of milliseconds, otherwise [`sail_api::client::TIMEOUT`].
 fn daemon_timeout() -> Duration {
@@ -751,6 +797,10 @@ fn observe(
 /// solver without recording. A connection that failed mid-exchange is never
 /// reused, so a late reply can never be read as the answer to a later
 /// request.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one input loop; splitting it would scatter the session state"
+)]
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
     let (client, mut prefix) = connect(socket, solver)?;
     let mut session = Session::new();
@@ -762,6 +812,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     let mut stdin = std::io::stdin().lock();
     let mut input_read_ok = true;
     let mut buf = vec![0u8; 64 * 1024];
+    let limit = buffer_limit();
 
     loop {
         let n = match stdin.read(&mut buf) {
@@ -825,7 +876,8 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             };
             if let Some(reply) = hit {
                 if !write_out(&reply) {
-                    return Some(ExitCode::SUCCESS);
+                    // As when forwarding the solver's output fails.
+                    return Some(ExitCode::from(1));
                 }
                 served += 1;
                 continue;
@@ -843,6 +895,12 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         {
             s.write(&chunk);
         }
+        if raw.bytes().len() > limit {
+            let terminal = prefix.silence_key();
+            return Some(overflow(
+                solving, solver, args, raw, served, terminal, &mut stdin,
+            ));
+        }
     }
     // At the end of input while serving, incomplete trailing input goes to
     // the solver, which decides what it means.
@@ -856,6 +914,49 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         &mut prefix,
         complete,
     )
+}
+
+/// Continues a session that outgrew [`buffer_limit`] as pass-through: no
+/// more lookups, nothing recorded, and no retained input. A solver already
+/// running stops recording; otherwise one starts now with the whole input,
+/// and its replies to the commands already served are discarded as on any
+/// miss. No provenance record is written, so the session's checks are
+/// reported as unrecorded.
+fn overflow(
+    solving: Option<Solving>,
+    solver: &Path,
+    args: &[std::ffi::OsString],
+    raw: RawTranscript,
+    served: u64,
+    terminal: QueryKey,
+    stdin: &mut impl Read,
+) -> ExitCode {
+    let mut s = match solving {
+        Some(s) => {
+            s.expect(Expect::Stop);
+            s
+        }
+        None => match start_solver(solver, args, raw.bytes(), served, Expect::Stop, None) {
+            Some(s) => s,
+            None => return ExitCode::from(1),
+        },
+    };
+    drop(raw);
+    let mut buf = vec![0u8; 64 * 1024];
+    loop {
+        let n = match stdin.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => n,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => break,
+        };
+        s.write(buf.get(..n).unwrap_or_default());
+        if s.stdin.is_none() {
+            break;
+        }
+    }
+    // Never certified or published: the input was not retained.
+    s.finish(terminal, false)
 }
 
 fn closes_session(command: &[u8]) -> bool {

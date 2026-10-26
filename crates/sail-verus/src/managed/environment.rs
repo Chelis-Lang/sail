@@ -303,11 +303,14 @@ mod tests {
         )?;
         std::fs::write(&ignored, "# env-dep:IGNORED\n")?;
         std::fs::write(deps.join("notes.txt"), "# env-dep:NOT_DEP_INFO\n")?;
-        let names =
-            declared_names(&root).ok_or_else(|| std::io::Error::other("incomplete scan"))?;
+        let names = declared_names(&root);
+        // An unreadable dep-info file leaves the declarations unknown.
+        std::fs::write(deps.join("bad-0123.d"), [0xff, 0xfe])?;
+        let unreadable = declared_names(&root);
         std::fs::remove_dir_all(&root)?;
+        assert!(unreadable.is_none());
         assert_eq!(
-            names.into_iter().collect::<Vec<_>>(),
+            names.into_iter().flatten().collect::<Vec<_>>(),
             [
                 "AGENT_FLAG",
                 "CARGO_PKG_NAME",

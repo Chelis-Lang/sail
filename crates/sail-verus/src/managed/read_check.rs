@@ -7,7 +7,10 @@
 //! absent. A later read rehashes exactly those files and checks the absent
 //! ones are still absent. Every byte is read again on every check; nothing is
 //! inferred from timestamps. Any difference reports the result as not current,
-//! and any file that cannot be read reports Unknown, so the user re-runs.
+//! and any file that cannot be read reports Unknown, so the user re-runs. The
+//! context's recorded runtime identity (the Sail, Verus, Cargo and rustc
+//! installation and the Cargo configuration) must also still match, or an
+//! otherwise unchanged result reports Unknown.
 
 use super::InputSnapshot;
 use super::files::{digest, json};
@@ -117,7 +120,8 @@ fn observe(path: &Path, expected_absent: bool) -> Observation {
 ///
 /// The returned snapshot carries the recorded revision when every file is
 /// unchanged, a different revision when any file changed, and
-/// `complete == false` when a file could not be read.
+/// `complete == false` when a file could not be read or the context's runtime
+/// identity no longer matches.
 ///
 /// # Errors
 /// `SAIL3108` when the context has no readable record (no Current run yet).
@@ -186,12 +190,17 @@ fn check_with(
     });
     let observed: Vec<_> = reads.into_iter().chain(alias_reads).collect();
     let after = super::input::readback_stamp(&guarded_paths);
-    let (changed, unreadable) = compare_observed(
+    let (changed, mut unreadable) = compare_observed(
         &record,
         &observed,
         capture,
         after.as_deref().map(str::as_bytes),
     );
+    if !changed && !unreadable && !super::runner::runtime_current(cache, context) {
+        // A changed toolchain is not an input change the record can name,
+        // but the stored result no longer describes this installation.
+        unreadable = true;
+    }
     Ok(InputSnapshot {
         workspace: workspace.to_owned(),
         revision: if changed {
@@ -301,6 +310,41 @@ mod tests {
             ],
             BTreeMap::new(),
         )?;
+        runtime(&root.join("cache"), &root.join("rustc"), "ctx")?;
+        Ok(())
+    }
+
+    /// Records a one-file runtime identity for `context`, as a run does.
+    fn runtime(cache: &Path, toolchain: &Path, context: &str) -> TestResult {
+        std::fs::write(toolchain, b"toolchain")?;
+        let rows = vec![(
+            toolchain.to_string_lossy().into_owned(),
+            super::super::files::stat_identity(toolchain)?,
+        )];
+        let state = cache.join("runtime-identities");
+        std::fs::create_dir_all(&state)?;
+        let sha = digest(&serde_json::to_vec(&rows)?);
+        json(&state.join(format!("{sha}.json")), &rows)?;
+        json(&state.join(format!("{context}.link")), &sha)?;
+        Ok(())
+    }
+
+    #[test]
+    fn a_changed_runtime_is_never_current() -> TestResult {
+        let root = fixture("runtime")?;
+        setup(&root)?;
+        let cache = root.join("cache");
+        let current = check(&cache, &root.join("ws"), "ctx")?;
+        assert!(current.complete);
+        assert_eq!(current.revision, "rev");
+        // A reinstalled toolchain binary changes its recorded stat identity.
+        std::fs::write(root.join("rustc"), b"another toolchain build")?;
+        let changed = check(&cache, &root.join("ws"), "ctx")?;
+        assert!(!changed.complete, "a changed runtime reads as Unknown");
+        // A missing runtime record is not Current either.
+        std::fs::remove_dir_all(cache.join("runtime-identities"))?;
+        assert!(!check(&cache, &root.join("ws"), "ctx")?.complete);
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 

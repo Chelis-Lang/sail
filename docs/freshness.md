@@ -88,10 +88,11 @@ verification again to establish a complete record.
 Nothing is inferred from timestamps, so an edit whose modification time was
 restored still reads as changed. Files of packages that the selection never
 builds, such as other workspace members' dependencies, are not part of the
-record; editing them does not change the label. The toolchain itself (the Verus,
-Cargo, Sail and Z3 binaries) is identified by the run's proof context rather
-than reread on each read; a different toolchain gives a different context on
-the next run.
+record; editing them does not change the label. Each read also rechecks the
+proof context's recorded runtime identity (the installed Sail, Verus, Cargo,
+rustc and rustup files and the Cargo configuration). If any of them changed, or
+the identity record is missing, an otherwise unchanged result reads as
+**Unknown**, and the next run uses a different context.
 
 Job submission uses the same check: a new request joins a running or completed
 job only when the recorded inputs are unchanged. Without a record (no Current

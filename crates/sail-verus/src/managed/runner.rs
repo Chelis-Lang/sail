@@ -1877,9 +1877,11 @@ fn target_records_in(
                     .filter(|p| p.is_file()),
             );
             let hashes = digests.hashes(&artifact_paths)?;
-            let reusable =
-                paths.reuse && call.successful_for(partial_args) && !input_revision.is_empty();
-            if reusable && let Some(declared) = &declared {
+            let reusable = paths.reuse
+                && call.successful_for(partial_args)
+                && !input_revision.is_empty()
+                && declared.is_some();
+            if let Some(declared) = declared.as_ref().filter(|_| reusable) {
                 json(
                     &paths
                         .run
@@ -2505,8 +2507,9 @@ pub fn refresh_result(
     )
 }
 
-/// Rechecks a context's latest Current record without invoking Cargo. The
-/// environment is bound by the context identity itself.
+/// Rechecks a context's latest Current record without invoking Cargo,
+/// including the context's recorded runtime identity. The environment is bound
+/// by the context identity itself.
 ///
 /// # Errors
 /// Returns `SAIL3108` until a run of this context has ended Current.
@@ -2521,7 +2524,7 @@ pub fn refresh_context(
 
 /// Whether every runtime file of `context` still has its recorded identity
 /// (stat for installed files, content for configuration), checked in parallel.
-fn runtime_current(cache: &Path, context: &str) -> bool {
+pub(super) fn runtime_current(cache: &Path, context: &str) -> bool {
     let state = cache.join("runtime-identities");
     let identity_sha = read::<String>(&state.join(format!("{context}.link")));
     let identities = identity_sha
