@@ -148,7 +148,7 @@ establishes a general slowdown. The owner accepts the bounded result on
 2026-10-26; release-wide performance remains separately gated.
 
 Raw original artifact:
-`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-25/proof-362-merge-fe8be9ee-durable.tgz`.
+`experiments/2026-10-25/proof-362-merge-fe8be9ee-durable.tgz` in the private evidence bucket.
 SHA-256: `5565452090c829ef098ee139aab4e4800d89fd6c488f9b7aca54fcb31555d8c8`.
 The documentation-only checkpoint update preserves all implementation, proof,
 manifest and checker bytes qualified here. The later integration with main's
@@ -178,7 +178,7 @@ The bounded timing observation above remains specific to `fe8be9ee`; no new
 performance claim is inferred from this integration or its proof checks.
 The service-wide theorem and the named observation/origin obligations remain open.
 
-Raw combined qualification: `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/proof-362-integration-c6270f75-durable.tgz`.
+Raw combined qualification: `experiments/2026-10-26/proof-362-integration-c6270f75-durable.tgz` in the private evidence bucket.
 SHA-256: `28098974ddb3c9381ac7b7b12c39ced51d4a42a23955e87809f7a52930f23995`.
 The final documentation commit changes only the four status-owning guides
 and this record; required hosted checks rerun on that final head.
