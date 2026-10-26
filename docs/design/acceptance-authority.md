@@ -282,6 +282,53 @@ remain unchanged. The owning validation record and source manifest carry final
 counts and platform qualification. Local proofs do not substitute for native
 gates or corpus conformance.
 
+## Success presentation call graph
+
+This is a source inventory of actual consumers and producing guards. It is not
+a checked full-service refinement. A serializer, `complete_target` call or
+confirmed function field cannot establish independent request scope, original
+producer observation or complete physical input freshness by itself. The
+default managed producer constructs its local original request before Cargo;
+durable workers additionally capture that request independently of stdout.
+Worker stdout seals and producer revisions retain recorded provenance; they
+do not turn deserialized reports into live process-observation tokens. The
+native producer-to-record relation and complete physical input readback remain
+the separate obligations in #375/#376.
+
+| Surface | Actual producing path and admission | Presentation boundary and remaining join |
+|---|---|---|
+| Foreground human `sail verify` | `managed_cli::verify` calls the managed runner. Its pre-Cargo request comes from actual metadata and original configuration; final requested coverage and complete-request checks control whole flags. Selected original process observations and ordinary receipts control per-target completion/reuse. | Human output forwards original verifier/Cargo bytes and status. This is a native forwarding path, not a new positive authority derived by a formatter. Complete compiler/process/input observation and forwarding refinement remain open. |
+| Foreground JSON | `managed_cli::verify` serializes the resulting `ProjectResult`. The same producer establishes the request/target relation before serialization. Unbound setup fallback explicitly carries `no_reuse`, Unknown currentness and no whole completion. | Serde transports the native result; it does not independently validate request or producer history. Complete serialization and caller correspondence remain native obligations. |
+| Unchanged-call replay | The CLI calls `noop::key`/`replay`; the candidate independently resolves current metadata/runtime before saved result decoding, supplies actual scoped readback, rechecks original ordinary receipts/history, then calls the separate checked whole transfer. Capture-demand workers decline this path. | Replayed output and JSON retain original target reports/establishment. Native selection, physical input closure, measured preflight cost and complete service refinement remain open. Failed/partial no-op replay still declines. |
+| Durable job reads | `worker_command` allocates the typed capture journal. `captured_request` selects exactly one request for the actual output run and matches worker/submission/mode/invocation. Worker exit agrees with the report. `store::project_with_request` checks original stdout bytes, producer revision and original request before preserving completion; freshness comes separately through `FreshnessIndex`/read-check. | `jobs::response_text` uses `complete_target` plus result currentness to choose whole-proof labels. The daemon producer must already have withheld unbound flags. Parsing, actual worker/process attribution, complete readback and RPC/JSON correspondence are native joins. |
+| Cached durable frames | Before every lookup, `store::result_frame` obtains live original-request admission and binds it into `frame_key`, alongside the original request/submission, producer revision and stdout seal. The same request observation builds fresh project/repair frames; dynamic readback selects Current/Historical/Unknown. | This closes the source-level warm/fresh mismatch in [#427](https://github.com/Chelis-Lang/sail/issues/427). The transition regression and invocation-binding proof additions remain unqualified. Cached flags cannot stand in for the new live observation; filesystem observation and full frame/transport refinement remain open. |
+| Default MCP `verify` and `verification_result` | `job_tools::blocking`/`read_or_cli` obtains the same daemon result, validating response identity/version. `compact::agent_view` computes whole completeness from requested target factories and distinguishes Current from Historical/Unknown. | Summary, targets and full details shape the same underlying project. `summary::effective_verdict` prevents provisional promotion but only reads function fields; it is not request or process authority. MCP identity/transport, shaping and end-to-end preservation still need service refinement. |
+| `cached_result` and `counterexample` | Managed lookup prefers admitted job results. The separate legacy per-project store retains historical per-function records; its limited local source snapshot reports freshness Unknown or stale, never managed Current authority. | Recorded function verdicts remain historical evidence with their establishment/freshness context. The limited source snapshot cannot prove workspace/runtime currentness or replace the managed admission chain. |
+| Repair CLI/MCP | Public repair submits a job. `retained_repair_accepted` requires the independently captured repair request, exact original selection, complete submitted full request, requested named function presence and the batch's no-selection-error/no-engine-fault/full repair policy. CLI `product_cli::repair` displays that daemon decision; MCP proof tools use the same service. | The low-level `BatchResult::accepted_with`/`repair::accepted` checks report/selection records. Private worker output and direct library use still depend on the native selected-function gatherer and original Config-to-selection mapping; those helpers alone do not establish the full original request or service relation. |
+| Ordinary immutable baselines | `product::save_baseline` obtains `store::result`, preserves request evidence and producer revision, then explicitly changes the view to Historical. Load checks identity/version/Historical framing and withholds older/unbound authority. | A baseline is recorded evidence, never today's proof. Independent serialization, retained original producer attribution and baseline-to-submission correspondence remain native joins; typed report checks alone do not prove them. |
+| Neutral contract results/baselines | Jobs with a contract submission branch into the contract handler rather than generic result frames. Its decode/admission binds original source/worker evidence; neutral baselines retain and recheck original source, stdout/stderr and seals separately. | This is a distinct source/contract evidence path. Its backend project/report fields cannot silently substitute for complete generic Verus request authority. Full composition with its own negotiated source contract remains separate. |
+
+The concrete frame bypass illustrates why source inventory matters. Previously,
+warm lookup returned before `retained_request` canonicalized the current
+invocation directory. All serialized key fields could stay unchanged while the
+fresh path refused that live observation. The source correction evaluates it
+once before lookup and uses that same decision for cache identity, whole-flag
+withholding and repair acceptance. The shared `bind_retained_submission` body
+checks submitted arguments/mode and the separately supplied invocation value;
+native canonicalization itself is not proved. The source regression warms
+actual frame families, removes and restores the invocation directory, and
+compares warm/fresh responses while preserving original stdout/report/identity.
+It has not been run. No mathematical false-proof witness is claimed by this
+admission/presentation finding.
+
+Baseline creation has a distinct source interleaving tracked in
+[#429](https://github.com/Chelis-Lang/sail/issues/429): it obtains an admitted
+project, then separately resolves the request when persisting the private
+baseline. A changed invocation resolution can make the returned and immediately
+reloaded completion labels differ. This Historical metadata consistency case
+requires carrying the same admitted project/request observation through
+publication; it is not a demonstrated Current false proof.
+
 ## Exact evidence context
 
 Requests, started invocations and observed verifier documents carry the shared

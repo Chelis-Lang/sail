@@ -1,6 +1,6 @@
 //! A small LRU of immutable encoded Result frames. Freshness and the exact
-//! stdout seal are validated before every lookup; these bytes never authorize
-//! Currentness.
+//! stdout seal are validated before every lookup. The key also binds fresh
+//! original-request admission; these bytes never authorize Currentness.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};

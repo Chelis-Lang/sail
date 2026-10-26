@@ -95,6 +95,21 @@ projection passes fresh native gates and complete conformance in the
 The broader service-wide acceptance theorem remains open
 ([#368](https://github.com/Chelis-Lang/sail/issues/368)).
 
+Source review finds that cached retained-result frames can bypass the live
+canonical-invocation check applied by freshly built results
+([#427](https://github.com/Chelis-Lang/sail/issues/427)). The source correction
+checks original-request admission before lookup and binds that same observation
+into the frame key and repair projection. The new transition regression and
+shared invocation-binding refinement are unrun; this is an admission/presentation
+mismatch, not a demonstrated false theorem. The
+[authority design](design/acceptance-authority.md#success-presentation-call-graph)
+records the reviewed consumers and remaining service-composition boundaries.
+The same review identifies a separate baseline save/read mismatch: creation
+can reobserve the request after obtaining its admitted project and persist a
+different admission outcome ([#429](https://github.com/Chelis-Lang/sail/issues/429)).
+That source interleaving remains unqualified and requires carrying the same
+original project/request observation through immutable publication.
+
 Two environment cases reproduce default-mode verdict disagreement in candidate
 `4f46f822`, using the same selected Verus fork and pinned Z3 for both sides.
 Internal `SAIL_MANAGED_RUNTIME` is visible to source macros, so Sail verifies a
