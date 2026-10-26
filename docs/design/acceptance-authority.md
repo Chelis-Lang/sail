@@ -372,6 +372,15 @@ authority. This does not prove environment lookup, Cargo package-key derivation
 or the trusted pinned verifier's decoder implementation. Those native and
 runtime relations remain obligations of the actual launch adapter.
 
+Native target resolution now uses the checked `compiler_unit_matches_target`
+predicate for actual Cargo/Rust name and kind fields. It preserves the existing
+hyphen-to-underscore Rust crate-name relation and requires the exact Cargo
+binary name when the launcher provided it; normalized-name collisions remain
+distinct. The native resolver retains its manifest comparison and single-match
+check and refuses malformed kind arrays. The proof covers this shared name/kind
+predicate. Metadata decoding, manifest/source resolution, complete target
+inventory and the join to actual compiler arguments remain separate obligations.
+
 The live driver and its independent stock fallback now use the source-shared
 attempt reducer. It reserves a monotone slot before spawning, retains the raw
 managed-run and compiler-unit fields, and attaches the actual returned PID.

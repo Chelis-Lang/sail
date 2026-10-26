@@ -924,15 +924,7 @@ fn driver() -> Result<ExitCode> {
         .engine
         .as_ref()
         .map(|_| crate::engine_events::Relay::start(source_events.clone(), &runtime, &identity));
-    let unit = sail_acceptance::authority::CompilerUnit {
-        manifest: identity.manifest.as_os_str().as_encoded_bytes().to_vec(),
-        name: identity.name.as_bytes().to_vec(),
-        crate_type: identity.crate_type.as_bytes().to_vec(),
-        cargo_name: identity
-            .cargo_name
-            .as_ref()
-            .map(|name| name.as_bytes().to_vec()),
-    };
+    let unit = identity.compiler_unit();
     let attempt_directory = dir.join("attempts");
     let mut attempts = attempts::Journal::new(runtime.run_id.as_bytes(), &unit, &attempt_directory);
     let reserved = attempts.reserve(&cmd);
