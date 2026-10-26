@@ -446,7 +446,7 @@ incremental framing executed by `sail-key::PrefixHasher`. The source-shared
 `SolverIdentity` fields and `Mode` variant. The stock driver captures their full
 original declarations, including the opt-in `String` payload and binary array,
 rather than substituting an unrelated proof-only identity. Neither type moves
-out of its public `sail-key` namespace. [ADR 0080](../decisions/0080-checked-query-key-framing.md)
+out of its public `sail-key` namespace. [ADR 0081](../decisions/0081-checked-query-key-framing.md)
 proposes the explicit key-to-leaf edge; there is no cross-crate source-path bypass.
 
 The controller proves these exact effects:
