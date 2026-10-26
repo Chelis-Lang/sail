@@ -38,32 +38,57 @@ Before admitting a parallel result under a proposed canonical key, and before
 returning a cached value, `ReadSeal::matches_binding` compares both the key's
 and the actual requested pathname's object observations with the original read.
 An alias retarget between canonical key discovery and opening cannot populate
-the old key with the newly opened object's digest. A changed cache-key observation discards the old entry and
-rereads instead of attaching a fresh stamp to old bytes. As with the other
+the old key with the newly opened object's digest. A changed cache-key observation
+discards the old entry and rereads instead of attaching a fresh stamp to old bytes. As with the other
 endpoint checks, inode reuse and repeated metadata remain OS observation limits;
 this is not a proof of global atomicity or a retained live-descriptor lease.
+The cache association defect is tracked in [#381](https://github.com/Chelis-Lang/sail/issues/381).
 
-`checked_opened_read_trace` in the refinement adapter verifies a finite sequence
-of these actual factories/getters. Its ghost byte stream is the concatenation
-of the exact supplied chunk slices, in order. A successful seal establishes
-that this stream has the original reported length and that original, opened,
-final-handle and final-path observations agree. Nonempty constructive controls
-exercise two chunks, the exact returned bytes/object, premature EOF, missing
-EOF, read errors, overlong/post-EOF chunks and changed/restamped observations.
-Native controls hash a real multi-chunk file and an empty file, refuse a
-partially consumed or write-only handle, and refuse an opened handle retained
-across a same-content symlink retarget. A genuinely fresh open after retargeting
-remains usable. Existing successful SHA-256 output and requested fold ordering
-are unchanged for stable regular files.
+`open_read_digest` and `read_opened_digest` are now the actual executable
+open/read/hash loops used by native digest production. The checked body owns the
+file and hash state, passes only the actual returned read prefix through
+`ReadChunk::bytes()`, and requires explicit EOF, exact length and original
+endpoint observations before returning `CompletedRead`. Its logical
+`FileObservation` trace binds the actual path/open/handle/read/EOF operations in
+order. Hash operations preserve that filesystem trace; omitting an observation
+or substituting an earlier stamp cannot establish the final trace contract.
+The owned descriptor is dropped when native code extracts the digest/seal,
+within each file read.
+
+The kernel's unconditional safety contract permits real I/O failure. A separate
+conditional productivity clause uses structured `ScriptedReadFile` primitive
+outcomes, derived by a checked concrete provider from its owned byte vector.
+Every concrete primitive body verifies the exact bytes and observations it
+produces. Nonempty and empty successful kernel calls are proved without assuming
+that hardware succeeds. The private native provider explicitly exposes no
+scripted file or handle; these constructive outcomes cannot authorize native
+filesystem or compiler-domain evidence. A deliberately colliding length-based
+forward hash accepts two distinct three-byte streams with the same digest,
+showing that the kernel does not need a universal inverse/injectivity law.
+Native SHA identities require their separately named finite-domain crypto
+condition or direct byte comparison when proving byte equality from a digest.
+
+`checked_opened_read_trace` also verifies finite factory transitions. Its ghost
+byte stream concatenates the exact supplied chunk slices in order. Constructive
+controls exercise partial/overlong/post-EOF chunks, read errors and mismatched
+original/final observations. Native controls hash a real multi-chunk file and an
+empty file, refuse partially consumed or write-only handles (including empty
+write-only files), and refuse an opened handle retained across a same-content
+symlink retarget. A fresh open after retargeting remains usable. Successful
+SHA-256 output and requested fold ordering are unchanged for stable files.
 
 This shrinks the pathname-label/opened-object and short-read boundaries. The
 named low-level OS contract is that `File::open` yields an owned object at its
 initial offset, `File::metadata` describes that same object, successful reads
 return the next observed bytes of that handle, and pathname metadata describes
 the object resolved at that call. Private native ownership supplies the same
-handle to these operations. Those standard-library/syscall semantics and their
-native call wiring remain reviewed adapters, not external axioms added to the
-stock proof. The pure factories themselves assume no filesystem or hash law.
+handle to these operations. The generic kernel proves its theorem for providers
+satisfying these operation contracts. The private native forwarders and their
+standard-library/OS/SHA semantics remain explicit source-bound assumptions; the
+stock check does not prove those native bodies or the OS. Production Host
+implementations and call sites require a closed source inventory. A generic
+`CompletedRead` alone cannot mint a complete compiler-domain/service authority.
+The pure factories themselves assume no filesystem or hash law.
 
 This **does not** prove that equal endpoint metadata implies one atomic content
 version. Transient changes, exact repeated metadata, timestamp granularity,
@@ -119,6 +144,10 @@ converting it into an empty successful contract. This closes concrete provider
 loss/name-association defects; it does not discover undeclared process I/O or
 prove that the enumerated target tree contains every actual compiler request.
 
+The provider-loss and wrong-name defects are tracked separately in
+[#382](https://github.com/Chelis-Lang/sail/issues/382) and
+[#383](https://github.com/Chelis-Lang/sail/issues/383).
+
 Receipt policy 6, read-time record policy 3 and proof-context policy 2 refuse
 legacy proof authority established with partial scans or incorrectly mapped
 names. Compiler-family artifact identity is unchanged; it cannot mint proof
@@ -126,6 +155,11 @@ receipts by itself. Dependency-store admission checks the receipt version.
 Baselines retain Historical evidence. Shipped/native tracked-environment JSON
 records use exact original keys independently of this declaration parser and
 are not reclassified by an unrelated schema bump.
+Verification-phase environment completeness and original compiler-environment
+preservation remain independently tracked defects in
+[#386](https://github.com/Chelis-Lang/sail/issues/386) and
+[#385](https://github.com/Chelis-Lang/sail/issues/385). The read kernel does not
+close either gap; their exact projects are in `corpus/repros/`.
 
 ## Completed compiler-declaration providers
 

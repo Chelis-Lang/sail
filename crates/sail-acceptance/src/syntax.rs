@@ -63,9 +63,10 @@ macro_rules! sail_proof {
 macro_rules! sail_verified {
     ($(#[$attribute:meta])* $visibility:vis fn $name:ident $(<$($generic:tt),*>)?
         ($($argument:tt)*) -> ($result:ident: $return_type:ty)
+        $(where ($($bounds:tt)*))?
         requires ($($requires:tt)*) ensures ($($ensures:tt)*)
         $(decreases ($($decreases:tt)*))? $body:block) => {
-        $(#[$attribute])* $visibility fn $name $(<$($generic),*>)? ($($argument)*) -> $return_type $body
+        $(#[$attribute])* $visibility fn $name $(<$($generic),*>)? ($($argument)*) -> $return_type $(where $($bounds)*)? $body
     };
 }
 
@@ -75,11 +76,13 @@ macro_rules! sail_verified {
 macro_rules! sail_verified {
     ($(#[$attribute:meta])* $visibility:vis fn $name:ident $(<$($generic:tt),*>)?
         ($($argument:tt)*) -> ($result:ident: $return_type:ty)
+        $(where ($($bounds:tt)*))?
         requires ($($requires:tt)*) ensures ($($ensures:tt)*)
         $(decreases ($($decreases:tt)*))? $body:block) => {
         ::vstd::prelude::verus! {
             $(#[$attribute])* $visibility fn $name $(<$($generic),*>)?
                 ($($argument)*) -> ($result: $return_type)
+                $(where $($bounds)*)?
                 requires $($requires)*, ensures $($ensures)*,
                 $(decreases $($decreases)*,)? $body
         }
@@ -92,9 +95,10 @@ macro_rules! sail_verified {
 macro_rules! sail_method {
     ($(#[$attribute:meta])* $visibility:vis fn $name:ident $(<$($generic:tt),*>)?
         ($($argument:tt)*) -> ($result:ident: $return_type:ty)
+        $(where ($($bounds:tt)*))?
         requires ($($requires:tt)*) ensures ($($ensures:tt)*)
         $(decreases ($($decreases:tt)*))? $body:block) => {
-        $(#[$attribute])* $visibility fn $name $(<$($generic),*>)? ($($argument)*) -> $return_type $body
+        $(#[$attribute])* $visibility fn $name $(<$($generic),*>)? ($($argument)*) -> $return_type $(where $($bounds)*)? $body
     };
 }
 
@@ -104,11 +108,13 @@ macro_rules! sail_method {
 macro_rules! sail_method {
     ($(#[$attribute:meta])* $visibility:vis fn $name:ident $(<$($generic:tt),*>)?
         ($($argument:tt)*) -> ($result:ident: $return_type:ty)
+        $(where ($($bounds:tt)*))?
         requires ($($requires:tt)*) ensures ($($ensures:tt)*)
         $(decreases ($($decreases:tt)*))? $body:block) => {
         ::verus_builtin_macros::verus_impl! {
             $(#[$attribute])* $visibility fn $name $(<$($generic),*>)?
                 ($($argument)*) -> ($result: $return_type)
+                $(where $($bounds)*)?
                 requires $($requires)*, ensures $($ensures)*,
                 $(decreases $($decreases)*,)? $body
         }
@@ -130,4 +136,54 @@ macro_rules! sail_while {
     (($condition:expr) invariant ($($invariant:tt)*) decreases ($($decreases:tt)*) $body:block) => {
         ::verus_builtin_macros::verus_exec_expr! { while $condition invariant $($invariant)*, decreases $($decreases)*, $body }
     };
+}
+
+/// Declare a host trait with identical executable method signatures.
+#[cfg(not(sail_verus))]
+#[macro_export]
+macro_rules! sail_trait {
+    ($(#[$attribute:meta])* $visibility:vis trait $name:ident $(<$($generic:tt),*>)? {
+        $(spec { $($specification:tt)* })?
+        $($(#[$method_attribute:meta])* fn $method:ident ($($argument:tt)*)
+            -> ($result:ident: $return_type:ty)
+            requires ($($requires:tt)*) ensures ($($ensures:tt)*);)*
+    }) => {
+        $(#[$attribute])* $visibility trait $name $(<$($generic),*>)? {
+            $($(#[$method_attribute])* fn $method ($($argument)*) -> $return_type;)*
+        }
+    };
+}
+
+/// Declare the same host interface with checked method contracts.
+#[cfg(sail_verus)]
+#[macro_export]
+macro_rules! sail_trait {
+    ($(#[$attribute:meta])* $visibility:vis trait $name:ident $(<$($generic:tt),*>)? {
+        $(spec { $($specification:tt)* })?
+        $($(#[$method_attribute:meta])* fn $method:ident ($($argument:tt)*)
+            -> ($result:ident: $return_type:ty)
+            requires ($($requires:tt)*) ensures ($($ensures:tt)*);)*
+    }) => {
+        ::vstd::prelude::verus! {
+            $(#[$attribute])* $visibility trait $name $(<$($generic),*>)? {
+                $($($specification)*)?
+                $($(#[$method_attribute])* fn $method ($($argument)*) -> ($result: $return_type)
+                    requires $($requires)*, ensures $($ensures)*;)*
+            }
+        }
+    };
+}
+
+/// Trait specification implementations add no executable Cargo items.
+#[cfg(not(sail_verus))]
+#[macro_export]
+macro_rules! sail_trait_impl_spec {
+    ($($code:tt)*) => {};
+}
+
+/// Check trait specification implementations in their actual trait context.
+#[cfg(sail_verus)]
+#[macro_export]
+macro_rules! sail_trait_impl_spec {
+    ($($code:tt)*) => { ::verus_builtin_macros::verus_trait_impl! { $($code)* } };
 }
