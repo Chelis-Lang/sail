@@ -25,6 +25,8 @@ const OBSERVATION_ONLY: &[&str] = &[
     // reads of either name remain declared receipt inputs below.
     "SAIL_DEPENDENCY_READ_TOKEN",
     "SAIL_PRIVATE_GIT_READY",
+    // Whether Sail's notes are also printed in human output.
+    "SAIL_EXPLAIN",
     "SAIL_PROOF_EVENTS",
     "SAIL_ENGINE_EVENTS",
     "SAIL_ENGINE_FOCUS_REPORT",
@@ -238,6 +240,7 @@ mod tests {
             "GITHUB_RUN_ID",
             "TMPDIR",
             "SAIL_JOB_EVENTS",
+            "SAIL_EXPLAIN",
             "SAIL_MANAGED_FORCE",
             "SAIL_MANAGED_PROXY",
             "SAIL_DEPENDENCY_READ_TOKEN",

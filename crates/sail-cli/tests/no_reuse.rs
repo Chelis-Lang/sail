@@ -203,6 +203,50 @@ fn assert_ran_with(fixture: &Fixture, setup: &[&str]) {
     );
 }
 
+/// Human `sail verify` prints exactly Cargo-Verus's stderr: Sail's notes
+/// (`SAIL3112` here, and `SAIL0003` for the unavailable cache daemon) are
+/// added only with `SAIL_EXPLAIN=1`.
+#[test]
+fn human_output_has_sail_notes_only_when_explained() {
+    let fixture = Fixture::new("human");
+    let expected = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/attr/stderr.txt"),
+    )
+    .unwrap_or_else(|error| unreachable!("{error}"));
+    let run = |explain: bool| {
+        let mut command = fixture.sail();
+        // Too long for a Unix socket: the daemon is unavailable and never started.
+        command
+            .args(["verify", "--tests"])
+            .env("SAIL_DAEMON_SOCKET", fixture.root.join("d".repeat(120)));
+        if explain {
+            command.env("SAIL_EXPLAIN", "1");
+        }
+        command
+            .output()
+            .unwrap_or_else(|error| unreachable!("{error}"))
+    };
+    // The fixture's fake Cargo-Verus is a development override, announced by
+    // its own `warning[SAIL0108]` line; that is not default mode.
+    let without_override = |bytes: &[u8]| -> String {
+        String::from_utf8_lossy(bytes)
+            .split_inclusive('\n')
+            .filter(|line| !line.starts_with("warning[SAIL0108]: "))
+            .collect()
+    };
+    let plain = run(false);
+    assert_eq!(plain.status.code(), Some(1));
+    assert_eq!(without_override(&plain.stderr), expected);
+    assert_ran_with(&fixture, &["--tests"]);
+    let explained = run(true);
+    assert_eq!(explained.status.code(), Some(1));
+    let text = without_override(&explained.stderr);
+    assert!(text.contains("note[SAIL3112]: "), "{text}");
+    assert!(text.contains("warning[SAIL0003]: "), "{text}");
+    assert!(text.ends_with(&expected), "{text}");
+    assert_eq!(explained.stdout, plain.stdout);
+}
+
 #[test]
 fn jobs_verify_unbound_setups_as_plain_cargo_verus() {
     let fixture = Fixture::new("jobs");

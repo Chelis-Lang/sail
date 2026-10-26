@@ -217,7 +217,7 @@ SAIL3138 = re.compile(r"note\[SAIL3138\]: (.*)")
 def vstd_proof(cache, log):
     """Whether a Sail run served the release's shipped vstd proof: `served`
     when a vstd receipt in its cache replays a release dependency build,
-    `miss: REASON` with Sail's SAIL3138 note, else `not offered` (for
+    `miss: REASON` with Sail's SAIL3138 note (printed with SAIL_EXPLAIN=1), else `not offered` (for
     example partial verification, which never uses it)."""
     for path in sorted(Path(cache).glob("**/receipts/*.json")):
         try:
@@ -367,8 +367,10 @@ class Runner:
         base = self.out / f"r{rnd}" / f"small-{arm}"
         shutil.rmtree(base, ignore_errors=True)
         base.mkdir(parents=True)
+        # SAIL_EXPLAIN=1 keeps Sail's SAIL3138 note in the log (vstd_proof);
+        # normalize() drops it, and stock Cargo-Verus ignores the variable.
         env = scrubbed_env(keep=self.extra, extra={"PATH": self.path, "CARGO_HOME": str(base / "cargo-home"),
-                            "SAIL_CACHE_DIR": str(base / "sail-cache"),
+                            "SAIL_CACHE_DIR": str(base / "sail-cache"), "SAIL_EXPLAIN": "1",
                             "GIT_AUTHOR_NAME": "perf", "GIT_AUTHOR_EMAIL": "perf@example.invalid",
                             "GIT_COMMITTER_NAME": "perf", "GIT_COMMITTER_EMAIL": "perf@example.invalid"})
         # A fresh Cargo home still needs the user's rustup proxies (on PATH).

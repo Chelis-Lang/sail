@@ -2574,7 +2574,11 @@ pub(crate) fn run_engine_held(
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
     let loader = super::configuration::check(&invocation, &config.args)?;
-    if let Some(variable) = &loader {
+    // Human output is plain Cargo-Verus's; Sail's notes reach it only with
+    // `SAIL_EXPLAIN=1`. JSON callers (jobs, `watch`, MCP) keep them on stderr
+    // as diagnostics and in the result's notes.
+    let show_notes = out.is_none() || crate::explain();
+    if let Some(variable) = loader.as_ref().filter(|_| show_notes) {
         let _ = writeln!(
             err,
             "note[SAIL3112]: {variable} is set, so this run reuses no proof receipts and records none; it verifies what Cargo rebuilds, as `cargo verus verify` does (unset {variable} to reuse proofs)"
@@ -3458,7 +3462,9 @@ pub(crate) fn run_engine_held(
     }
     if let Some(reason) = shipped_miss {
         let message = shipped_miss_message(&reason);
-        let _ = writeln!(err, "note[SAIL3138]: {message}");
+        if show_notes {
+            let _ = writeln!(err, "note[SAIL3138]: {message}");
+        }
         notes.push(format!("SAIL3138: {message}"));
     }
     for target in targets.iter().filter(|t| t.dependency_store.is_some()) {
