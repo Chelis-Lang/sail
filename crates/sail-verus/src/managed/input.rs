@@ -1405,11 +1405,176 @@ pub fn snapshot(
     Ok(snapshot)
 }
 
-// Used for build-script paths outside the package/workspace root.
+/// Every path whose state `cargo metadata` reads for `data` (metadata, or a
+/// snapshot projection of it): each package manifest and the directories
+/// Cargo discovers targets in (the package root, `src`, `src/bin`,
+/// `examples`, `tests`, `benches` and their subdirectories), every directory
+/// and `Cargo.toml` between the invoking directory or a package and the
+/// workspace root, the root manifest, lockfile and member-pattern
+/// directories, and every Cargo configuration and toolchain file. Absent
+/// paths are part of the set: creating one changes its stamp. `None` when the
+/// root manifest cannot be read as TOML.
+fn metadata_inputs(data: &Value, cargo_home: Option<&Path>) -> Option<BTreeSet<PathBuf>> {
+    let workspace = PathBuf::from(data.get("workspace_root")?.as_str()?);
+    let invocation = PathBuf::from(data.get("sail_invocation_directory")?.as_str()?);
+    let mut paths = BTreeSet::new();
+    let up_to_root = |start: &Path, paths: &mut BTreeSet<PathBuf>| {
+        for directory in start.ancestors() {
+            paths.insert(directory.to_owned());
+            paths.insert(directory.join("Cargo.toml"));
+            if directory == workspace {
+                break;
+            }
+        }
+    };
+    up_to_root(&invocation, &mut paths);
+    paths.insert(workspace.join("Cargo.lock"));
+    let manifest: toml::Table = std::fs::read_to_string(workspace.join("Cargo.toml"))
+        .ok()?
+        .parse()
+        .ok()?;
+    let patterns = manifest
+        .get("workspace")
+        .and_then(|workspace| workspace.get("members"))
+        .and_then(toml::Value::as_array)
+        .into_iter()
+        .flatten();
+    for pattern in patterns {
+        let pattern = pattern.as_str()?;
+        let fixed = &pattern[..pattern.find(['*', '?', '[']).unwrap_or(pattern.len())];
+        let directory = workspace.join(fixed);
+        paths.insert(directory.clone());
+        if let Some(parent) = directory.parent() {
+            paths.insert(parent.to_owned());
+        }
+    }
+    for package in data.get("packages")?.as_array()? {
+        let manifest = PathBuf::from(package.get("manifest_path")?.as_str()?);
+        let root = manifest.parent()?.to_owned();
+        paths.insert(manifest);
+        if root.starts_with(&workspace) {
+            up_to_root(&root, &mut paths);
+        }
+        paths.insert(root.clone());
+        paths.insert(root.join("src"));
+        for name in ["src/bin", "examples", "tests", "benches"] {
+            let directory = root.join(name);
+            if let Ok(entries) = std::fs::read_dir(&directory) {
+                for entry in entries {
+                    let entry = entry.ok()?;
+                    if entry.file_type().ok()?.is_dir() {
+                        paths.insert(entry.path());
+                    }
+                }
+            }
+            paths.insert(directory);
+        }
+    }
+    paths.extend(configuration_paths(&invocation, cargo_home));
+    Some(paths)
+}
+
+/// The stamp of [`metadata_inputs`], taken before Cargo reads the metadata.
+/// If the same paths keep that stamp after the run, `cargo metadata` would
+/// read exactly the same inputs again: the run's metadata describes them.
+pub(super) struct MetadataGuard {
+    paths: BTreeSet<PathBuf>,
+    stamp: String,
+}
+
+impl MetadataGuard {
+    /// From the previous run's selection, before this run's metadata starts.
+    pub(super) fn begin(projection: &Value) -> Option<Self> {
+        let paths = metadata_inputs(projection, cargo_home().as_deref())?;
+        // A link's own stamp does not describe its target: refuse links, and
+        // the stamp (which binds each file type) refuses a later one.
+        paths
+            .iter()
+            .all(|path| {
+                std::fs::symlink_metadata(path).map_or_else(
+                    |error| error.kind() == std::io::ErrorKind::NotFound,
+                    |metadata| !metadata.file_type().is_symlink(),
+                )
+            })
+            .then_some(())?;
+        let stamp = stamp_paths(&paths)?;
+        Some(Self { paths, stamp })
+    }
+
+    /// Whether `data`, read after [`Self::begin`], still describes every
+    /// metadata input: its inputs are the guarded paths, all unchanged.
+    pub(super) fn unchanged_for(&self, data: &Value) -> bool {
+        metadata_inputs(data, cargo_home().as_deref()).as_ref() == Some(&self.paths)
+            && stamp_paths(&self.paths).as_ref() == Some(&self.stamp)
+    }
+}
+
+fn cargo_home() -> Option<PathBuf> {
+    std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
+}
+
+type PathSnapshots =
+    std::collections::HashMap<(Vec<PathBuf>, Option<PathBuf>), Arc<(InputSnapshot, String)>>;
+
+/// Complete build-script path snapshots of the current managed run, keyed by
+/// the declared paths and Cargo home they read. One run checks the same
+/// declarations several times before and after Cargo (family admission,
+/// staleness, the post-guard recheck, the after-run contracts).
+static PATH_SNAPSHOTS: std::sync::Mutex<Option<PathSnapshots>> = std::sync::Mutex::new(None);
+
+/// Scopes [`snapshot_paths`] reuse to one managed run: entries never outlive it.
+pub(super) struct PathSnapshotScope(());
+
+impl PathSnapshotScope {
+    pub(super) fn enter() -> Self {
+        if let Ok(mut snapshots) = PATH_SNAPSHOTS.lock() {
+            *snapshots = Some(PathSnapshots::new());
+        }
+        Self(())
+    }
+}
+
+impl Drop for PathSnapshotScope {
+    fn drop(&mut self) {
+        if let Ok(mut snapshots) = PATH_SNAPSHOTS.lock() {
+            *snapshots = None;
+        }
+    }
+}
+
+// Used for build-script paths outside the package/workspace root. Within a
+// managed run, a complete earlier snapshot of the same declarations is the
+// answer only while every file and directory it observed keeps the stamp
+// (device, inode, size, mode, mtime and ctime) it had around its content
+// reads, the check every reused source snapshot passes; otherwise the paths
+// are read again. Outside a run every call reads.
 pub(super) fn snapshot_paths(paths: &[PathBuf]) -> (String, bool) {
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    let key = (paths.to_vec(), home);
+    let earlier = PATH_SNAPSHOTS
+        .lock()
+        .ok()
+        .and_then(|snapshots| snapshots.as_ref()?.get(&key).cloned());
+    if let Some(earlier) = earlier
+        && unchanged_since(&earlier.0, Some(&earlier.1))
+    {
+        return (earlier.0.revision.clone(), true);
+    }
     let data = serde_json::json!({"workspace_root":"/", "packages":[]});
-    let snapshot = snapshot_metadata(&data, paths);
-    (snapshot.revision, snapshot.complete)
+    let (snapshot, stamp) = snapshot_metadata_stamped(&data, paths);
+    let result = (snapshot.revision.clone(), snapshot.complete);
+    if snapshot.complete
+        && let Some(stamp) = stamp
+        && let Ok(mut snapshots) = PATH_SNAPSHOTS.lock()
+        && let Some(snapshots) = snapshots.as_mut()
+    {
+        snapshots.insert(key, Arc::new((snapshot, stamp)));
+    }
+    result
 }
 
 pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -> Vec<PathBuf> {
@@ -2257,6 +2422,88 @@ mod tests {
     }
 
     use std::fs::{File, FileTimes};
+
+    #[cfg(unix)]
+    #[test]
+    fn metadata_guard_refuses_any_change_cargo_metadata_could_read() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-metadata-guard-{}", std::process::id()));
+        let member = root.join("crates/a");
+        std::fs::create_dir_all(member.join("src"))?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[workspace]\nmembers = [\"crates/*\"]\n",
+        )?;
+        std::fs::write(member.join("Cargo.toml"), "[package]\nname = \"a\"\n")?;
+        std::fs::write(member.join("src/lib.rs"), "")?;
+        let data = serde_json::json!({"workspace_root":root,"sail_invocation_directory":member,
+            "packages":[{"manifest_path":member.join("Cargo.toml")}]});
+        let guard = |change: &dyn Fn() -> std::io::Result<()>| -> std::io::Result<bool> {
+            let guard = MetadataGuard::begin(&data).ok_or(std::io::ErrorKind::Other)?;
+            assert!(guard.unchanged_for(&data));
+            change()?;
+            Ok(guard.unchanged_for(&data))
+        };
+        // Source edits do not change what metadata reads.
+        assert!(guard(&|| std::fs::write(
+            member.join("src/lib.rs"),
+            "// edit"
+        ))?);
+        assert!(!guard(&|| std::fs::create_dir_all(root.join("crates/b")))?);
+        assert!(!guard(&|| std::fs::create_dir_all(
+            member.join("src/bin/tool")
+        ))?);
+        assert!(!guard(&|| std::fs::write(
+            member.join("src/bin/tool/main.rs"),
+            ""
+        ))?);
+        assert!(!guard(&|| std::fs::write(
+            root.join("Cargo.lock"),
+            "# lock"
+        ))?);
+        assert!(!guard(&|| std::fs::write(member.join("build.rs"), ""))?);
+        assert!(!guard(&|| std::fs::write(
+            member.join("Cargo.toml"),
+            "[package]\nname='a'\n"
+        ))?);
+        let other = MetadataGuard::begin(&data).ok_or(std::io::ErrorKind::Other)?;
+        let mut more = data.clone();
+        more["packages"] = serde_json::json!([
+            {"manifest_path":member.join("Cargo.toml")},
+            {"manifest_path":root.join("crates/b/Cargo.toml")}
+        ]);
+        assert!(!other.unchanged_for(&more));
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
+    fn run_scoped_path_snapshots_reread_after_any_change() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-path-memo-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("dir"))?;
+        let file = root.join("dir/input.txt");
+        std::fs::write(&file, "aaaa")?;
+        let paths = vec![root.join("dir")];
+        let outside = snapshot_paths(&paths);
+        let scope = PathSnapshotScope::enter();
+        let first = snapshot_paths(&paths);
+        assert_eq!(first, outside);
+        assert!(first.1);
+        assert_eq!(snapshot_paths(&paths), first);
+        // Same size, restored modification time: the change time still differs.
+        let mtime = std::fs::metadata(&file)?.modified()?;
+        std::fs::write(&file, "bbbb")?;
+        File::options()
+            .write(true)
+            .open(&file)?
+            .set_times(FileTimes::new().set_modified(mtime))?;
+        let changed = snapshot_paths(&paths);
+        assert_ne!(changed.0, first.0);
+        std::fs::write(root.join("dir/new.txt"), "")?;
+        let added = snapshot_paths(&paths);
+        assert_ne!(added.0, changed.0);
+        drop(scope);
+        assert_eq!(snapshot_paths(&paths), added);
+        std::fs::remove_dir_all(root)
+    }
 
     #[test]
     fn mutation_stamp_detects_restored_content_and_mtime_without_callbacks() {
