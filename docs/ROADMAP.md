@@ -156,9 +156,9 @@ Older prizes retain their cited source and are not current acceptance.
 | 1.8 | Compiler-boundary local reuse as the default fallback | 39.84 → 9.34 s per new demo project (Sail vs Sail); worktree and Vest unmeasured, and Vest's vstd pin likely misses | Built behind a research flag; #222 fix built, qualification pending | Land the #222 fix; Vest hit/miss from 1.1; then qualify as default | No | #161, #222 |
 | 1.9 | More vstd versions (Vest pins 2026-09-06) | About 26 s per Vest-class worktree; corpus gain about 0 today | Proposed | Can start from 1.1's Vest hit/miss: fill-once local store keyed by `Cargo.lock` checksum (about 1 week), then published bundles (about 1 week) | No | #237 |
 | 1.10 | Release-built macro crates as pinned tools | Plausibly 1.5–3 s fresh project (estimate) for projects matching the runtime's pinned vstd and macros; v1's 1.28 s is the upper bound. At opt-level 3 also 0.6–2 s per warm edit (one sample) | Proposed; blocked on an owner parity decision under ADR 0053 (#187: a broken user `cc` would no longer break Sail) | After 1.5: re-run the opt-level 3 macro A/B with ≥3 cold and ≥6 warm samples per arm on Vest and IronKV (0.5 day); then serve exact-match macro units from the archive, bound by digest (4–6 days). On Mac, requires qualifying the VI-0026 stable `@rpath` install-name fix (branch `perf/vstd-macos-repro`) | Yes | #239 |
-| 1.11 | Seed cold runs from a team or CI cache | Cold minus most solver time (Anvil solver about 85.7 s of 124 s), still paying cold compile and frontend; unmeasured | Infrastructure implemented (ADR 0017, 0025); never measured on real projects | One seeded fresh-clone run on Anvil and CapybaraKV (about 1 day, no code); baseline from 1.1 | No | #240 |
+| 1.11 | Seed cold runs from a team or CI cache | Measured on fresh clones: Anvil 186 → 64 s (stock 193 s), CapybaraKV 58 → 42–44 s (stock 64 s), from restored `results/` or a signed directory store alike; cold compile and frontend remain ([guide](ci-cache.md#measured-results)) | Measured (native Linux, one run per row) | Managed targets and receipts do not move between machines (#421) | No | #240 |
 | 1.12 | Background prebuild at `sail new` or first sight (the ordinary managed Cargo build, run early) | Hides up to the residual first use with think time; 0 without | Proposed; independent of 1.8 | Time `sail new` → first verify with a realistic agent think-time trace (days). Background pre-verification on a miss waits for 1.8 to be default-safe | No | #241 |
-| 1.13 | User CI cache recipe | Unmeasured; plausibly the all-hits floor on unchanged code (charter success criterion) | Proposed | One measured GitHub Actions example persisting the Sail cache or reading a team store (days) | No | #242 |
+| 1.13 | User CI cache recipe | Fresh runner, unchanged code: solver replies only, Anvil 64 s and CapybaraKV 42 s; with `target/` in SAIL3112 mode, CapybaraKV 12 s against stock's 30 s, and an Anvil edit commit 86 s against 159 s. Same-machine receipts: Anvil 3 s, CapybaraKV 0.9 s ([guide](ci-cache.md)) | Guide and GitHub Actions example written; the example has not run on GitHub | Portable managed-target and receipt keys (#421), then remeasure the all-hits floor on a new runner | No | #242 |
 | 1.14 | Bulk prefetch from the team store | Unmeasured | Proposed | Only after 1.11 shows remote latency matters | No | #243 |
 | 1.15 | Refuse the shipped proof on its sysroot shape before hashing; read the runtime once per run | Measured: toolchain-component miss 36.68 → 35.64 s (+3.8% → +0.8% vs stock), hit −0.29 s, lock miss −0.36 s; `sail new` on that toolchain 1.12 → 0.08 s ([record](validation/shipped-miss-hashing.md)) | Merged (#290). The drivers' per-compile launcher/compiler rehash (about 0.7 GB per miss) stays: ADR 0050 rules out timestamp evidence | Preserve the driver byte checks; optimize other measured costs | No | #286 |
 
@@ -274,8 +274,8 @@ dependency profiles, and lever 1.4 (its cold and cache cost, about 519 MB).
 | `sail verify --incremental` | Recompiled about 18 crates every run (#157, fixed by #170) |
 
 Never run and not funded: Z3 version or option sweeps (stock refuses other
-Z3 versions), unsat-core pruning. Reopened: "a warm team cache does not help
-cold runs" was never measured on real projects (lever 1.11).
+Z3 versions), unsat-core pruning. "A warm team cache does not help cold runs" is now
+measured as false for the solver share (lever 1.11).
 
 ¹ Rescue-lane reports live in tag `archive/rescue-m7-98f6292`
 (`docs/reports/rescue/`), cited by ADR 0038.

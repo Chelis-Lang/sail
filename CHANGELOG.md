@@ -45,6 +45,9 @@ semantic versioning once the API is published.
   about 0.67 s faster (31.13 to 30.46 s, native Linux) and the daemon's CPU
   per Vest edit falls from 3.4 to 1.0 s.
 
+- Document caching Sail in CI ([guide](docs/ci-cache.md)): which directories
+  to persist, a GitHub Actions example, and measured fresh-clone results on
+  Anvil and CapybaraKV.
 - Replay an unchanged `sail verify` (ADR 0082). A call identical to an earlier
   one that ended Current without starting a verifier prints that call's
   output (only Cargo's `Finished` time is regenerated) without running Cargo,
