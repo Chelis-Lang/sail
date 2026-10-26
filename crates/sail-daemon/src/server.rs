@@ -20,6 +20,7 @@ use sail_key::{QueryKey, SolverIdentity};
 
 use crate::bundled::{self, BundledConfig, BundledTier};
 use crate::digest_memo::{DigestMemo, MAX_RETAINED_BYTES};
+use crate::identity_memo::{Found, IdentityMemo, Known};
 use crate::log::Log;
 use crate::shared::{Lookup, SharedConfig, SharedTier};
 use crate::writer::{Job, Submitted, Writer};
@@ -166,6 +167,8 @@ struct State {
     last_activity: Mutex<Instant>,
     /// Digest reuse requires equality of the entire freshly read executable.
     binary_digests: DigestMemo,
+    /// Identities of settled executables, by complete stat stamp (ADR 0084).
+    identities: IdentityMemo,
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -177,9 +180,31 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 // Equal path, length and mtime do not establish equal executable bytes (#213).
-// Identify every handshake afresh from the complete current bytes; any read or
-// launch failure rejects the handshake so the shim takes its fail-safe path.
-fn identify(path: &Path, digests: &DigestMemo) -> Result<Identity, String> {
+// A settled native executable whose complete stat stamp (device, inode, size,
+// mode, mtime and ctime) is unchanged keeps the identity a fresh
+// identification recorded (ADR 0084): a same-path replacement or rewrite,
+// even one restoring mtime, moves inode or ctime. Every other handshake is
+// identified afresh from the complete current bytes, and any read or launch
+// failure rejects it so the shim takes its fail-safe path.
+fn identify(path: &Path, digests: &DigestMemo, memo: &IdentityMemo) -> Result<Identity, String> {
+    let known = match memo.lookup(path) {
+        Found::Hit(known) => known,
+        Found::Miss(observed) => {
+            let known = identify_fresh(path, digests)?;
+            memo.record(path, &observed, &known);
+            known
+        }
+    };
+    Ok(Identity {
+        name: "z3".to_owned(),
+        version: known.version,
+        binary_sha256: hex(&known.digest),
+        platform: SolverIdentity::host_platform(),
+        protocol_version: sail_api::protocol::PROTOCOL_VERSION,
+    })
+}
+
+fn identify_fresh(path: &Path, digests: &DigestMemo) -> Result<Known, String> {
     let cannot_run = |e: std::io::Error| format!("cannot run {}: {e}", path.display());
     let version_process = std::process::Command::new(path)
         .arg("--version")
@@ -209,13 +234,7 @@ fn identify(path: &Path, digests: &DigestMemo) -> Result<Identity, String> {
             std::fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?,
         ),
     };
-    Ok(Identity {
-        name: "z3".to_owned(),
-        version,
-        binary_sha256: hex(&digest),
-        platform: SolverIdentity::host_platform(),
-        protocol_version: sail_api::protocol::PROTOCOL_VERSION,
-    })
+    Ok(Known { version, digest })
 }
 
 /// Which tier a `GET` hit came from.
@@ -539,7 +558,11 @@ impl State {
                     if session.is_some() {
                         return;
                     }
-                    let id = match identify(Path::new(&hello.solver_path), &self.binary_digests) {
+                    let id = match identify(
+                        Path::new(&hello.solver_path),
+                        &self.binary_digests,
+                        &self.identities,
+                    ) {
                         Ok(id) => id,
                         Err(error) => {
                             let _ = write_hello_response(&mut writer, Err(&error));
@@ -711,6 +734,7 @@ pub fn bind(
         active: AtomicU64::new(0),
         last_activity: Mutex::new(Instant::now()),
         binary_digests: DigestMemo::new(MAX_RETAINED_BYTES),
+        identities: IdentityMemo::new(),
     });
     if let Some(shared) = &state.shared {
         shared.prepare();
