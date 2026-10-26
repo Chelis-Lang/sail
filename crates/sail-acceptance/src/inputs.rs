@@ -684,6 +684,21 @@ impl<'a> GuardedReadback<'a> {
         { &self.comparison }
     }
     sail_method! {
+        /// Bind a usable typed readback to the revision sealed around those
+        /// reads. This does not establish physical compiler-input completeness.
+        pub fn matches_revision(&self, revision: &[u8]) -> (matches: bool)
+            requires (true)
+            ensures (matches == (self.unchanged_view() && self.guard_view().is_some()
+                && self.guard_view().unwrap().revision_view() == revision@))
+        {
+            if self.changed() || self.unknown() { return false; }
+            match &self.guard {
+                Some(guard) => byte_eq(revision, &guard.revision),
+                None => false,
+            }
+        }
+    }
+    sail_method! {
         /// An actual difference retains precedence for Historical results.
         pub fn changed(&self) -> (changed: bool)
             requires (true) ensures (changed == self.changed_view())
