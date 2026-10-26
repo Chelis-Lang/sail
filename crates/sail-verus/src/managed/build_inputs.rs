@@ -406,8 +406,8 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
             unit_out_dir: value["out_dir"].as_str().map(str::to_owned),
         };
         for line in text.lines() {
-            // Cargo interprets directives after removing trailing line whitespace.
-            let line = line.trim_end();
+            // Cargo trims line framing before interpreting directive payloads.
+            let line = line.trim();
             let line = line
                 .strip_prefix("cargo::")
                 .or_else(|| line.strip_prefix("cargo:"))
@@ -810,7 +810,7 @@ mod tests {
             None,
             Some(b"cargo:rerun-if-env-changed=ACTUAL\n\xff".as_slice()),
             Some(b"".as_slice()),
-            Some(b"cargo:rerun-if-env-changed= FLAG \n".as_slice()),
+            Some(b" \tcargo:rerun-if-env-changed= FLAG \n".as_slice()),
         ] {
             if let Some(bytes) = bytes {
                 std::fs::write(&output, bytes)?;
@@ -822,7 +822,7 @@ mod tests {
                 records[0].covered,
                 bytes.is_some_and(|raw| std::str::from_utf8(raw).is_ok())
             );
-            if bytes.is_some_and(|raw| raw.starts_with(b"cargo:rerun-if-env-changed= FLAG")) {
+            if bytes.is_some_and(|raw| raw.starts_with(b" \tcargo:rerun-if-env-changed= FLAG")) {
                 assert_eq!(
                     records[0]
                         .env
