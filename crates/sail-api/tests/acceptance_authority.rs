@@ -2,14 +2,16 @@
 
 use sail_acceptance::authority::CompletionPolicy;
 use sail_api::acceptance::{
-    complete_report, complete_report_ordered, complete_target, complete_whole_report,
-    focused_command, requested_coverage, requested_target, verification_enabled_command,
-    verification_enabled_options,
+    complete_report, complete_report_ordered, complete_request, complete_target,
+    complete_whole_report, focused_command, requested_coverage, requested_target,
+    verification_enabled_command, verification_enabled_options,
 };
 use sail_api::output::{
     ErrorInfo, EstablishmentName, Report, SourceSummaryName, Summary, VerdictName,
 };
-use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
+use sail_api::project::{
+    Currentness, Execution, ProjectResult, RequestTarget, ResolvedRequest, TargetResult,
+};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -65,6 +67,76 @@ fn project(targets: Vec<TargetResult>) -> ProjectResult {
         engine: None,
         no_reuse: None,
     }
+}
+
+fn original_request() -> ResolvedRequest {
+    ResolvedRequest {
+        run_id: "current-run".into(),
+        invocation: "/workspace".into(),
+        workspace: "/workspace".into(),
+        context_sha256: "context".into(),
+        input_revision: "revision".into(),
+        args: Vec::new(),
+        engine: None,
+        targets: vec![RequestTarget {
+            package_id: "cargo-package#1.0.0".into(),
+            target: "app".into(),
+            kind: "bin".into(),
+        }],
+    }
+}
+
+#[test]
+fn original_request_binds_nonempty_scope_and_all_identity_fields() -> TestResult {
+    let request = original_request();
+    let actual = project(vec![target("app", passing_report()?)]);
+    let authority = complete_request(&request, &actual).ok_or("valid nonempty request refused")?;
+    assert!(std::ptr::eq(authority.request(), &request));
+    assert!(std::ptr::eq(authority.project(), &actual));
+    for field in [
+        "run",
+        "workspace",
+        "context",
+        "revision",
+        "target",
+        "omitted",
+        "compile-only",
+    ] {
+        let mut wrong = request.clone();
+        match field {
+            "run" => wrong.run_id.push('x'),
+            "workspace" => wrong.workspace.push('x'),
+            "context" => wrong.context_sha256.push('x'),
+            "revision" => wrong.input_revision.push('x'),
+            "target" => wrong.targets[0].target.push('x'),
+            "omitted" => wrong.targets.clear(),
+            "compile-only" => wrong.args = vec!["--".into(), "--no-verify".into()],
+            _ => unreachable!(),
+        }
+        assert!(complete_request(&wrong, &actual).is_none(), "{field}");
+    }
+    let mut missing = actual.clone();
+    missing.targets.clear();
+    assert!(complete_request(&request, &missing).is_none());
+    for currentness in [Currentness::Historical, Currentness::Unknown] {
+        let mut old = actual.clone();
+        old.currentness = currentness;
+        assert!(complete_request(&request, &old).is_none());
+    }
+    let mut refused = actual.clone();
+    refused.targets[0].complete = false;
+    assert!(complete_request(&request, &refused).is_none());
+    let mut ambiguous = actual.clone();
+    ambiguous.targets.push(ambiguous.targets[0].clone());
+    assert!(complete_request(&request, &ambiguous).is_none());
+    let mut zero = actual;
+    for krate in &mut zero.targets[0].report.crates {
+        krate.functions.clear();
+        krate.verus.verified = Some(0);
+    }
+    zero.targets[0].report.summary = Summary::of(&zero.targets[0].report.crates);
+    assert!(complete_request(&request, &zero).is_some());
+    Ok(())
 }
 
 #[test]

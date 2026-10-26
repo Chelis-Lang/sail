@@ -18,6 +18,51 @@ pub open spec fn model_verdict(v: VerdictName) -> model::Verdict {
     }
 }
 
+/// The request factory supplies the same concrete function-to-model relation,
+/// now with an independently retained target inventory and invocation identity.
+pub fn checked_request_refines_function(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult, orders: &[acceptance::ReportOrder],
+    target_index: usize, crate_index: usize, function_index: usize) -> (out: Option<model::Function>)
+    requires target_index < project.targets@.len(), project.targets@[target_index as int].requested,
+        crate_index < project.targets@[target_index as int].report.crates@.len(),
+        function_index < project.targets@[target_index as int].report.crates@[crate_index as int].functions@.len(),
+    ensures out.is_some() ==> acceptance::request_authorized(request, project),
+        out.is_some() ==> model::good_function(&out.unwrap()),
+        out.is_some() ==> function_refines(
+            &project.targets@[target_index as int].report.crates@[crate_index as int].functions@[function_index as int], &out.unwrap()),
+{
+    if acceptance::complete_request_ordered(request, project, orders).is_none() { return None; }
+    let actual = &project.targets[target_index].report.crates[crate_index].functions[function_index];
+    assert(confirmed(actual));
+    Some(project_function(actual))
+}
+
+pub fn swapped_request_refused(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult, orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires string_bytes(&request.context_sha256) != string_bytes(&project.context_sha256)
+        || string_bytes(&request.input_revision) != string_bytes(&project.input_revision)
+        || string_bytes(&request.run_id) != string_bytes(&project.run_id),
+    ensures refused,
+{
+    acceptance::complete_request_ordered(request, project, orders).is_none()
+}
+
+pub fn stale_request_refused(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult, orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires !(project.currentness is Current),
+    ensures refused,
+{
+    acceptance::complete_request_ordered(request, project, orders).is_none()
+}
+
+pub fn compile_only_original_request_refused(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult, orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires acceptance::verification_disabled(request.args@),
+    ensures refused,
+{
+    acceptance::complete_request_ordered(request, project, orders).is_none()
+}
+
 pub open spec fn model_establishment(e: EstablishmentName) -> model::Establishment {
     match e {
         EstablishmentName::Confirmed => model::Establishment::Confirmed,
