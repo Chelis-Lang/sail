@@ -173,14 +173,12 @@ pub(super) struct FileDigests(BTreeMap<PathBuf, ObservedDigest>);
 impl FileDigests {
     pub(super) fn hash(&mut self, path: &Path) -> Result<String> {
         let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
-        if let Some(observed) = self.0.get(&canonical) {
-            if canonical_stamp(&canonical).is_ok_and(|stamp| observed.seal.matches(&stamp)) {
-                return Ok(observed.hash.clone());
-            }
-            self.0.remove(&canonical);
+        if let Some(hash) = self.cached_hash(path, &canonical) {
+            return Ok(hash);
         }
+        self.0.remove(&canonical);
         let observed = file_digest_observed(path)?;
-        if !observed.seal.matches(&canonical_stamp(&canonical)?) {
+        if !matches_cache_binding(&observed, &canonical, path) {
             return Err(Error::new(
                 "SAIL3101",
                 "canonical input changed before cache admission",
@@ -189,6 +187,13 @@ impl FileDigests {
         let hash = observed.hash.clone();
         self.0.insert(canonical, observed);
         Ok(hash)
+    }
+
+    /// A separately testable actual hit stage: canonical discovery is only a
+    /// proposal, and cannot replace the requested pathname's own observation.
+    fn cached_hash(&self, requested: &Path, canonical: &Path) -> Option<String> {
+        let observed = self.0.get(canonical)?;
+        matches_cache_binding(observed, canonical, requested).then(|| observed.hash.clone())
     }
 
     /// Reads files concurrently into this phase-local map, exactly as `hash`
@@ -250,14 +255,22 @@ impl FileDigests {
         }
         // Successful records retain their own canonical/lexical descriptor and
         // digest. Failed or missing prefetches remain uncached for hash().
-        for (canonical, _, read) in reads {
+        for (canonical, requested, read) in reads {
             if let Ok(observed) = read
-                && canonical_stamp(canonical).is_ok_and(|stamp| observed.seal.matches(&stamp))
+                && matches_cache_binding(&observed, canonical, requested)
             {
                 self.0.insert(canonical.to_owned(), observed);
             }
         }
     }
+}
+
+fn matches_cache_binding(observed: &ObservedDigest, canonical: &Path, requested: &Path) -> bool {
+    let (Ok(canonical), Ok(requested)) = (canonical_stamp(canonical), canonical_stamp(requested))
+    else {
+        return false;
+    };
+    observed.seal.matches_binding(&canonical, &requested)
 }
 
 fn canonical_stamp(path: &Path) -> Result<sail_acceptance::inputs::ObjectStamp> {
@@ -538,6 +551,32 @@ mod tests {
             digest(b"later"),
             "cached old object must be reread after replacement"
         );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cache_hit_checks_requested_path_after_canonical_discovery()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-cache-hit-retarget-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        let alias = root.join("alias.rs");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "other")?;
+        std::os::unix::fs::symlink(&a, &alias)?;
+        let mut phase = FileDigests::default();
+        assert_eq!(phase.hash(&alias)?, digest(b"first"));
+        let earlier_canonical = alias.canonicalize()?;
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(&b, &alias)?;
+        // Execute the actual hit stage after a deterministic filesystem change
+        // at the canonical-lookup/cache-validation seam. A itself is unchanged.
+        assert_eq!(phase.cached_hash(&alias, &earlier_canonical), None);
+        assert_eq!(phase.hash(&alias)?, digest(b"other"));
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
