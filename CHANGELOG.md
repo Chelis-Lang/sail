@@ -44,6 +44,11 @@ semantic versioning once the API is published.
   publication, so invocation-directory changes cannot split saved and reloaded
   completion labels. Baselines remain Historical evidence.
 
+- Withhold whole and exact-partial authority when native invocation/workspace
+  bytes differ from their resolved request strings. Preserve observed reports,
+  exits, input currentness and existing error/fallback routing; add an explicit
+  metadata note instead of silently treating lossy path conversion as identity.
+
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.

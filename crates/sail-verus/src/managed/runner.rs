@@ -462,7 +462,7 @@ impl ReplayPreflight {
                 if !snapshot.complete {
                     return None;
                 }
-                let current = super::request::Resolution {
+                let resolution = super::request::Resolution {
                     run_id: &self.run_id,
                     invocation: &self.config.workspace,
                     workspace: &self.workspace,
@@ -471,9 +471,13 @@ impl ReplayPreflight {
                     args: &self.config.args,
                     engine: None,
                     targets: &self.expected,
-                }
-                .resolve();
-                Some(consume(&current, readback))
+                };
+                let native_paths = resolution.capture_paths();
+                let current = resolution.resolve();
+                let Some(paths) = native_paths.bind(&current) else {
+                    return None;
+                };
+                Some(consume(paths.request(), readback))
             },
         )
     }
@@ -3397,17 +3401,22 @@ fn run_recorded(
     drop(cleanup);
     // Capture the independently resolved original request before starting
     // Cargo. Never rebuild this scope or its input revision from result rows.
-    let original_request = super::request::Resolution {
-        run_id: &run_id,
-        invocation: &invocation,
-        workspace: &before.workspace,
-        context: &hash,
-        revision: &before.revision,
-        args: &config.args,
-        engine: engine.as_ref(),
-        targets: &expected,
-    }
-    .resolve();
+    let (original_request, original_path_observation) = {
+        let resolution = super::request::Resolution {
+            run_id: &run_id,
+            invocation: &invocation,
+            workspace: &before.workspace,
+            context: &hash,
+            revision: &before.revision,
+            args: &config.args,
+            engine: engine.as_ref(),
+            targets: &expected,
+        };
+        (resolution.resolve(), resolution.capture_paths())
+    };
+    // Preserve the pre-Cargo native bytes independently of the String fields.
+    // Lossy display/capture conversion cannot supply positive path authority.
+    let original_path_binding = original_path_observation.bind(&original_request);
     super::request::capture(&original_request, config.request_capture.as_ref())?;
     let source_engine = engine.is_some();
     // A header may only avoid optional restoration work. Unexpected Cargo
@@ -3918,8 +3927,14 @@ fn run_recorded(
             verified_as: VerifiedAs::Managed,
         }),
     };
+    let paths_match = sail_api::acceptance::withhold_unmatched_request_paths(
+        &mut result,
+        &original_request,
+        original_path_binding.as_ref(),
+    );
     let request_matches = sail_api::acceptance::request_corresponds(&original_request, &result);
-    if !request_matches
+    if !paths_match
+        || !request_matches
         || !invocation_environment_complete
         || !sail_api::acceptance::verification_enabled_command(&original_request.args)
         || sail_api::acceptance::focused_command(&original_request.args)
@@ -3933,6 +3948,9 @@ fn run_recorded(
         if !request_matches {
             result.notes.push("SAIL3115: retained original request does not match the observed target inventory; whole-request proof authority is withheld".to_owned());
         }
+    }
+    if !paths_match {
+        result.notes.push("SAIL3115: native invocation/workspace path bytes do not match the original request; whole and exact-partial proof authority is withheld".to_owned());
     }
     let publication = diagnostics.phase(Phase::Publication);
     if result.currentness == Currentness::Current

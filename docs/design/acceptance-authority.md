@@ -370,7 +370,31 @@ admission, mismatch refusal, preservation on match and refusal by both whole
 and exact-partial request factories after withholding. Source Rust controls
 also contrast invalid native bytes with a different real UTF-8 replacement-name
 path and compare complete project preservation. These additions are unrun and
-unqualified; native boundary integration is a separate source milestone.
+unqualified.
+
+The runner's source integration captures invocation/workspace
+`as_encoded_bytes` through `Resolution::capture_paths` before Cargo and retains
+that independent native observation beside the original request. It does not
+recover path bytes from request Strings or result fields. Final whole/partial
+labels pass the shared withholding operation against that original binding.
+Current replay preflight independently captures and binds the same native path
+inputs before passing a current request to the saved-result consumer.
+
+Ordinary UTF-8 behavior is unchanged. A mismatch does not introduce an early
+unsupported-path error, new fallback route or success exception. The runner
+preserves raw reports, establishing identities, process exits and input
+currentness, clears `complete` and `scope_reuse` authority, and appends the
+explicit `SAIL3115` metadata explanation. Thus unsupported Historical/Unknown
+JSON may lose positive labels and gain that note. Existing late serialization
+errors and separate compiler/receipt publication guards remain in place;
+this relation does not replace their admission. Current replay declines a
+mismatched binding through its existing ordinary fallback. Native source
+regression coverage constructs valid and invalid Unix `Path` values directly,
+checks both byte projections, and rejects lossy invocation or workspace
+bindings. It performs no filesystem, Cargo or verifier operation; it and its
+projection mutations remain unrun, with macOS and Linux qualification pending.
+Native capture, boundary placement, output/conformance and added-cost qualification
+remain open; this is not a proved file, launch or global input-domain closure.
 
 Current fail-closed path gates do not require assuming Cargo rejects non-UTF-8
 paths: job RPC/private-record Path serialization, live canonical invocation
