@@ -187,3 +187,21 @@ neither the trait contract nor a digest provides solver origin. The syntax
 header preserves the literal `: Sized` bound in both profiles. Whole-root
 inventories and eleven additional ordinary guard controls must qualify these
 changes before production selection.
+
+
+## Complete controls in bounded CI jobs
+
+The native `a615dbba` authority partition takes 549.82 seconds for its complete
+44-case matrix, close to the unchanged ten-minute job deadline. Each CI
+component therefore runs four fixed control partitions. Every partition checks
+the entire positive root at normal resources and verifies its assigned ordinary
+failing mutations; controls are assigned by their original manifest ordinal.
+The required aggregate accepts only when all four jobs for all three components
+succeed. Missing, cancelled, skipped or failing matrix results refuse it. Runner
+failure tests check the exact CI matrices and disjoint complete control coverage.
+
+`ci/local.sh refinements` still checks every root and every control together.
+`ci/local.sh refinements authority 0/4` is one diagnostic/CI partition, whose
+report explicitly withholds complete-component and complete-suite qualification.
+No partition uses focused Verus verification or changes proof obligations,
+function inventories, mutation definitions, resource limits or job deadlines.

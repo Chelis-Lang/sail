@@ -479,6 +479,47 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(CHECKER.Refusal, "selected mutation inventory"):
             CHECKER.inventory(ROOT, manifest, snapshots)
 
+    def test_ci_partitions_cover_every_control_once_and_repeat_the_whole_positive(self):
+        import json
+        entries = json.loads((ROOT / CHECKER.MANIFEST).read_text())["components"]
+        for entry in entries:
+            expected = CHECKER.partition_cases(entry, None)
+            for count in (2, 4):
+                combined = []
+                for index in range(count):
+                    part = CHECKER.partition_cases(entry, (index, count))
+                    self.assertEqual(part[0], (0, None))
+                    self.assertTrue(part[1:], "no positive-only CI partition")
+                    self.assertEqual([ordinal for ordinal, _ in part], sorted(ordinal for ordinal, _ in part))
+                    combined.extend(part[1:])
+                self.assertEqual(sorted(combined), expected[1:])
+                self.assertEqual(len(combined), len({ordinal for ordinal, _ in combined}))
+        for bad in ("", "0", "0/1", "1/1", "4/4", "-1/4", "0/0", "00/4", "0/04", "0/4/5", " 0/4", "zero/4"):
+            with self.subTest(bad=bad), self.assertRaises(CHECKER.Refusal):
+                CHECKER.parse_partition(bad)
+        for bad in ((0, 0), (0, 1), (-1, 4), (4, 4), (False, 4), (0, True), (0, 10000)):
+            with self.subTest(bad=bad), self.assertRaises(CHECKER.Refusal):
+                CHECKER.partition_cases(entries[0], bad)
+
+    def test_ci_matrix_requires_all_fixed_partitions_for_each_component(self):
+        import json
+        import re
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        for component in CHECKER.COMPONENTS:
+            job = workflow.split("\n  refinement-" + component + ":\n", 1)[1]
+            job = re.split(r"\n  [a-z][a-z0-9-]*:\n", job, maxsplit=1)[0]
+            match = re.search(r"^        partition: (\[[^\n]+\])$", job, re.M)
+            self.assertIsNotNone(match)
+            self.assertEqual(json.loads(match[1]), ["0/4", "1/4", "2/4", "3/4"])
+            self.assertIn("fail-fast: false", job)
+            self.assertIn('ci/run.sh refinements ' + component + ' "$PARTITION"', job)
+            self.assertIn("PARTITION: ${{ matrix.partition }}", job)
+        aggregate = workflow.split("\n  acceptance-refinements:\n", 1)[1]
+        aggregate = re.split(r"\n  [a-z][a-z0-9-]*:\n", aggregate, maxsplit=1)[0]
+        self.assertIn("needs: [refinement-query, refinement-inputs, refinement-authority]", aggregate)
+        for name in ("QUERY", "INPUTS", "AUTHORITY"):
+            self.assertIn(name + ": ${{ needs.refinement-" + name.lower() + ".result }}", aggregate)
+
     def test_captured_driver_uses_snapshots_not_current_paths(self):
         component = "inputs"
         entry = {"id": component, "source": "proofs/refinement/inputs.rs",

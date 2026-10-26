@@ -7,7 +7,7 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   proofs               direct pinned stock-Verus model proofs and all
 #                        deliberate guard-removal controls; no Sail driver
-#   refinements [query|inputs|authority]
+#   refinements [query|inputs|authority [INDEX/COUNT]]
 #                        source-shared bodies and all controls; default all roots
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
@@ -155,14 +155,17 @@ case "$step" in
     fi
     sail_proof_options=()
     if [ "$#" -gt 0 ]; then
-      if [ "$step" != refinements ] || [ "$#" -ne 1 ]; then
-        echo 'proofs accepts no selector; refinements accepts one complete component' >&2
+      if [ "$step" != refinements ] || [ "$#" -gt 2 ]; then
+        echo 'proofs accepts no selector; refinements accepts COMPONENT [INDEX/COUNT]' >&2
         exit 1
       fi
       case "$1" in
         query|inputs|authority) sail_proof_options=(--component "$1");;
         *) echo 'unknown refinement component' >&2; exit 1;;
       esac
+      if [ "$#" -eq 2 ]; then
+        sail_proof_options+=(--partition "$2")
+      fi
     fi
     rm -rf "target/$sail_proof_artifact"
     mkdir -p "target/$sail_proof_artifact"

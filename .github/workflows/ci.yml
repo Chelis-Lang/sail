@@ -95,8 +95,12 @@ jobs:
         run: bash ci/check-refinements.sh "$QUERY" "$INPUTS" "$AUTHORITY"
 
   refinement-query:
-    name: Acceptance production refinements (query)
+    name: Acceptance production refinements (query ${{ matrix.partition }})
     needs: [no-ai-authorship, image]
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: ["0/4", "1/4", "2/4", "3/4"]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -111,18 +115,24 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: ci/run.sh refinements query
+      - run: ci/run.sh refinements query "$PARTITION"
+        env:
+          PARTITION: ${{ matrix.partition }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ failure() }}
         with:
-          name: acceptance-production-refinement-query-failure
+          name: acceptance-production-refinement-query-${{ strategy.job-index }}-failure
           path: target/acceptance-refinements/
           if-no-files-found: warn
           retention-days: 7
 
   refinement-inputs:
-    name: Acceptance production refinements (inputs)
+    name: Acceptance production refinements (inputs ${{ matrix.partition }})
     needs: [no-ai-authorship, image]
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: ["0/4", "1/4", "2/4", "3/4"]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -137,18 +147,24 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: ci/run.sh refinements inputs
+      - run: ci/run.sh refinements inputs "$PARTITION"
+        env:
+          PARTITION: ${{ matrix.partition }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ failure() }}
         with:
-          name: acceptance-production-refinement-inputs-failure
+          name: acceptance-production-refinement-inputs-${{ strategy.job-index }}-failure
           path: target/acceptance-refinements/
           if-no-files-found: warn
           retention-days: 7
 
   refinement-authority:
-    name: Acceptance production refinements (authority)
+    name: Acceptance production refinements (authority ${{ matrix.partition }})
     needs: [no-ai-authorship, image]
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: ["0/4", "1/4", "2/4", "3/4"]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -163,11 +179,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: ci/run.sh refinements authority
+      - run: ci/run.sh refinements authority "$PARTITION"
+        env:
+          PARTITION: ${{ matrix.partition }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ failure() }}
         with:
-          name: acceptance-production-refinement-authority-failure
+          name: acceptance-production-refinement-authority-${{ strategy.job-index }}-failure
           path: target/acceptance-refinements/
           if-no-files-found: warn
           retention-days: 7
