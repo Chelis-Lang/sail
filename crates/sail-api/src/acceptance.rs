@@ -2594,6 +2594,7 @@ sail_verified! {
     /// Keeps authority only when the independently retained native path bytes
     /// still match this request. Missing/mismatched bindings clear whole and
     /// exact-partial labels, preserving reports, identities and input currentness.
+    #[allow(clippy::collapsible_if, reason = "Keep the checked path-binding branches shared with stock Verus unchanged.")]
     pub fn withhold_unmatched_request_paths(project: &mut ProjectResult, request: &ResolvedRequest,
         paths: Option<&RequestPathBinding>) -> (matched: bool)
         requires(true)
@@ -2675,6 +2676,7 @@ sail_verified! {
     /// supplied guarded readback. Missing witnesses refuse the replay candidate.
     /// Existing full whole/partial binders retain their original checks and
     /// constructive contracts. This does not admit a full service proof.
+    #[allow(clippy::question_mark, reason = "Keep explicit refusal branches in the source shared with stock Verus.")]
     pub fn admit_declared_replay_ordered<'a, 'b>(mut project: ProjectResult,
         original: &'a ResolvedRequest, current: &'a ResolvedRequest, orders: &[ReportOrder],
         paths: Option<&RequestPathBinding<'a>>,

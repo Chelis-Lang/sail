@@ -6,7 +6,7 @@ At `714bf6e5`, all 419 Rust sources, 296 mutations and 40 source-control tests
 (48,852 dual calls) agree. At `11f3be8c`, a quiet c7i.4xlarge in us-east-1
 checks 727 frozen source/mutation cases over four alternating rounds, retaining
 all 16 timing samples and final source checks. Median lexer time falls from
-27.2620 s to 8.4631 s; unchanged source-preflight time falls from75.1638 s to
+27.2620 s to 8.4631 s; unchanged source-preflight time falls from 75.1638 s to
 27.0651 s. This measures source tooling only. Full canonical/current-source
 qualification and production runtime cost remain separate; see the
 [owning record](../validation/acceptance-boundary-refinements.md).
