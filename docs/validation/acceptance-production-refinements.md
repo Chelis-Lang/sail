@@ -5,8 +5,8 @@ checking on native macOS arm64 and Linux x86-64. Native pre-push correctness
 gates, hosted checks and full fast/standard conformance pass. The owner accepts
 the bounded native timing result below; broader release performance and the
 service-wide safety theorem remain open.
-These completed gates apply to checkpoint `fe8be9ee`. Integration with main's
-revision-only input projection is awaiting fresh native and hosted checks.
+The original results apply to checkpoint `fe8be9ee`; fresh qualification of
+the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
@@ -154,3 +154,31 @@ The documentation-only checkpoint update preserves all implementation, proof,
 manifest and checker bytes qualified here. The later integration with main's
 revision-only projection changes native adapters and requires its own fresh
 qualification before the protected merge.
+
+## Combined revision-only projection qualification
+
+Combined implementation `c6270f75ab228efbdf30a288308dd9713b4e58f2` integrates main `3ca8264ee4f50de868a1f640598a4aa3939f10dc`.
+Native x86-64 Linux validation uses a dedicated EC2 c7i.4xlarge in us-east-1.
+The workspace gate, direct-stock model proofs, production refinements, pinned
+solver faults, all local end-to-end phases plus extra, and PR conformance pass.
+147/147 Same in all four arms; 3451 functions per arm; zero unstable/different/infra/skipped.
+159/159 Same in all four arms; 13166 functions per arm; zero unstable/different/infra/skipped.
+The full original corpus commands, mutation controls and deadlines are unchanged.
+
+The merge retains the actual returned input descriptor beside each digest,
+the complete checked read ledger and original-capture projection. Revision-only
+callers avoid constructing an unused full snapshot. A missing capture or a
+rebound observation revision refuses projection. The 26 focused input tests
+and 1,087-test isolated macOS host gate pass before publication. The first
+Mac host attempt refused the operator's global Cargo wrapper configuration;
+that attempt is not qualification. The fresh direct-stock receipts bind the
+combined source, including surrounding native adapters that remain unproved.
+
+The bounded timing observation above remains specific to `fe8be9ee`; no new
+performance claim is inferred from this integration or its proof checks.
+The service-wide theorem and the named observation/origin obligations remain open.
+
+Raw combined qualification: `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/proof-362-integration-c6270f75-durable.tgz`.
+SHA-256: `28098974ddb3c9381ac7b7b12c39ced51d4a42a23955e87809f7a52930f23995`.
+The final documentation commit changes only the four status-owning guides
+and this record; required hosted checks rerun on that final head.

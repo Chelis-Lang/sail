@@ -8,8 +8,9 @@ recorded separately. The owning
 [validation record](../validation/acceptance-production-refinements.md) separates
 checked source from accepted integration.
 
-Checkpoint `fe8be9ee` owns those completed gates. Integration with main's
-revision-only input projection is awaiting fresh native and hosted checks.
+The combined revision-only input projection passes fresh native gates, both
+direct-stock proof suites and full fast/standard conformance. The final
+documentation head must pass all hosted checks before merge.
 
 The [acceptance design](evidence-acceptance-core.md) targets four independent
 risks: wrong query/reply association, stale input reuse, incomplete requested
