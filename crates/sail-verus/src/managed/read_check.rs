@@ -281,7 +281,7 @@ mod tests {
         std::fs::write(toolchain, b"toolchain")?;
         let rows = vec![(
             toolchain.to_string_lossy().into_owned(),
-            super::super::files::stat_identity(toolchain)?,
+            super::super::tool_digests::ToolDigests::open(cache).identity(toolchain)?,
         )];
         let state = cache.join("runtime-identities");
         std::fs::create_dir_all(&state)?;
@@ -299,7 +299,7 @@ mod tests {
         let current = check(&cache, &root.join("ws"), "ctx")?;
         assert!(current.complete);
         assert_eq!(current.revision, "rev");
-        // A reinstalled toolchain binary changes its recorded stat identity.
+        // A toolchain binary with other bytes changes its recorded identity.
         std::fs::write(root.join("rustc"), b"another toolchain build")?;
         let changed = check(&cache, &root.join("ws"), "ctx")?;
         assert!(!changed.complete, "a changed runtime reads as Unknown");
